@@ -1,0 +1,151 @@
+# MIF 1.1
+#
+# This is a sample input file for the micromagnetic modeling
+# program developed in the Magnetic Materials Group at NIST.
+#
+# The first line must consist of the characters "# MIF x.y", where
+# x.y represents the format revision number.
+#
+# Any line ending in a backslash, '\', is joined to the previous one
+# before any processing is done.
+#
+# Lines beginning with a '#' are comments and are ignored.  Blank
+# lines are also ignored.
+#
+# All other lines must consist of a "Record Identifier" followed by
+# a parameter list.  The Record Identifier is separated from the
+# parameter list by one or more ":" and/or "=" characters.  Whitespace
+# and case is ignored in the Record Identifier field.
+#
+# The parameter list must be a proper Tcl list.  The parameters are
+# parsed (broken into separate elements) following normal Tcl rules;
+# in short, items are separated by whitespace, except as grouped by
+# double quotes, '"', and curly braces, '{' + '}'.  The grouping
+# characters are removed during parsing.  If a parameter is discovered
+# that consists of a lone '#', then that and all following parameters
+# are interpreted as comments and are thrown away.
+#
+# Order of the records in this file is unimportant unless othersize
+# stated.  If two or more lines contain the same Record Identifier,
+# then the last one takes precedence.
+#
+# All units are SI.
+#
+####################### MATERIAL PARAMETERS ############################
+# MIF 1.1
+####################### MATERIAL PARAMETERS ############################
+#Base Material Type:  permalloy
+Ms= 800e3     # Saturation magnetization in A/m.
+A=   13e-12   # Exchange stiffness in J/m.
+K1=   0.5e3   # Anisotropy constant in J/m^3.
+Anisotropy Type:uniaxial     # One of <uniaxial|cubic>.
+Anisotropy Dir1: 1 0 0    # Directional cosines wrt to coordinate axes
+                     # (3 numbers). Optional; Default is 1 0 0
+#Anisotropy Dir2: 1 1 1    # Directional cosines wrt to coordinate axes
+                     # (3 numbers). Optional; Default is 0 1 0
+                     #
+                     # NOTE: For uniaxial materials it suffices to
+                     # specify only "Anisotropy Dir1".  For cubic
+                     # materials specify also "Anisotropy Dir2", and
+                     # the third axis direction is calculated as the
+                     # cross product of the first two.
+                     #   The anisotropy directions will be automatically
+                     # normalized if necessary, so for example 1 1 1
+                     # is valid input (it will be modified to
+                     # .5774 .5774 .5774).  For cubic materials,
+                     # Dir2 will be adjusted to be perpendicular
+                     # to Dir1 (by subtracting out the component
+
+                     # parallel to Dir1).
+
+####################### DEMAG SPECIFICATION ############################
+Demag Type: ConstMag # One of <ConstMag|FastPipe|2dSlab|3dSlab|None>.
+	             #  2dSlab and 3dSlab require that the part
+                     # thickness be set (cf. PART GEOMETRY section
+                     # below). This field is optional; Default is fast
+                     # (FFT) pipe model.
+
+########################## PART GEOMETRY ###############################
+Part Width: 1.8E-6   # Nominal part width in m, adjusted by Cell Size.
+                     # Required.
+
+Part Height: 6.0E-7  # Nominal part height in m, adjusted by CellSize.
+                     # Required.
+
+Part Thickness: 10e-9 # Part thickness in m. Required for 2d- and 3d-
+                      # Slab models.
+
+Cell Size: 10.0e-9   # Cell size in m. Required.  The part width
+                     # and height are adjusted to an integral multiple
+                     # of the cell size.
+
+Part Shape:  Mask app/mmpe/examples/nistlogo.ppm
+# One of <Rectangle|Ellipse|Oval|Mask filename>.  Optional.
+                              # Default value is Rectangle.
+
+###################### INITIAL MAGNETIZATION ###########################
+Init Mag:  Random    # Inital magnetization routine, and routine
+                     # parameters, if any.  Optional, with default
+                     # "Random".  The following routines are currently
+                     # available---
+                     #  <Name>        <Arguments>       \n(Notes)
+                     #  Bloch         phi
+                     #   (180 degree rotation in the x-z plane, starting
+                     #    at phi degrees)
+                     #  Uniform       theta phi
+                     #   (uniform magnetization in specified
+                     #    direction, in degrees)
+                     #  Exvort
+                     #  In
+                     #  InLeftOut
+                     #  InOut
+                     #  InOutRot      phi
+                     #   (Similar to InOut, but rotated phi degrees 
+                     #    in the x-z plane.) 
+                     #  InOuts        domain_width
+                     #   (domain_width in cells)
+                     #  InUpOut
+                     #  InUpOutRot    phi
+                     #   (Similar to InUpOut, but rotated phi degrees 
+                     #    in the x-z plane.) 
+                     #   
+                     #  InWideUpOut
+                     #  Random
+                     #  Up
+                     #  UpDowns       domain_width
+                     #   (domain_width in cells)
+                     #  UpDownsRot    domain_width phi
+                     #   (Similar to UpDowns, but rotated phi degrees 
+                     #    in x-z plane.) 
+                     #  Vortex
+                     #  1domain
+                     #  4domain
+                     #  7domain
+                     #
+
+###################### EXPERIMENT PARAMETERS ###########################
+Field Range:   0.05     0   0  -0.025    0 0   10
+Field Range:  -0.025    0   0   0.0125   0 0   10
+Field Range:   0.0125   0   0  -0.00625  0 0   10
+Field Range:  -0.00625  0   0   0.003125 0 0   10
+Field Range:   0.003125 0   0   0        0 0    5
+                     # 7 numbers: Start field Bx By Bz in _Tesla_
+                     #            Stop  field Bx By Bz in _Tesla_
+                     #            Number of steps (>=1)
+                     # THESE MUST ALL BE ON THE SAME LINE!
+                     # The number of "Field Range" lines should be
+                     # the same as the value of "Field Range Count",
+                     # unless "Field Range Count" is 1, in which case
+                     # a default value of "0 0 0 0 0 0 1" will be used
+                     # if no "Field Range" lines are found.  Should not
+                     # precede any "Field Range Count" lines.
+
+###################### OUTPUT SPECIFICATIONS ###########################
+Base Output Filename: nistlogo # Character string; Required
+
+########################## MISCELLANEOUS ###############################
+Randomizer seed: 1   # Value to seed random number generator with.
+                     # Optional.  Default value is 0, which uses the
+                     # system clock to generate a semi-random value.
+
+Converge mxh Value: 1e-5

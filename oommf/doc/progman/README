@@ -1,0 +1,144 @@
+The OXS class hierarchy diagram (oxsclass.[ps|png|gif]) is created from
+two TGIF *.obj files.  The main one is oxsclass.obj, which is used to
+create the plain (encapsulated) postcript file, using the TGIF
+postscript driver.  The two bitmap versions (oxsclass.png and
+oxsclass.gif) are created directly from TGIF using the bitmap "printer"
+driver.  The output from the main oxsclass.obj file is too big (just too
+many pixels), so a reduced version, oxsclass-small.obj is used to create
+these.  After creation, they are renamed and moved by hand into the
+appropriate subdirectories (./pngfiles and ./giffiles).  -mjd 13-Nov-2000
+
+
+-----------------------
+Below is a mail message outlining some of the OOMMF structure.  This
+should be worked into the Programming Manual:
+
+To: "dr. Alexandru  Boboc" <alexandru.boboc@ul.ie>
+Subject: Re: request info
+In-Reply-To: <5.2.0.9.0.20021119173500.00de7350@exch-staff1>
+References: <5.1.1.6.0.20021108095710.029f3830@exch-staff1>
+	<5.2.0.9.0.20021119173500.00de7350@exch-staff1>
+X-Mailer: VM 7.00 under Emacs 20.7.1
+Reply-To: michael.donahue@nist.gov (Michael Donahue)
+FCC: ~/Mail/.SMAIL
+FCC: ~/Mail/oommf.mail
+--text follows this line--
+>Do you have any document where is explained what is the content of
+>program structure directory(example \OXS contain the folders
+>base,local,ext....  what is every of these?)
+
+The oommf/pkg (package) area contains library support code:
+
+  oc - OOMMF core; all the bootstrap code is here
+  nb - "Nuts & Bolts"; miscellaneous grab bag of support routines
+  net - networking support (Tcl only, no C++)
+  ow - OOMMF widgets, i.e., user windowing interface support (Tcl)
+  vf - vector field code
+  if - image format extensions
+
+If the directory contains any C++ code, then there will be a *.h file by
+the same name in that directory.  Code in other directories that want
+access to that support code should #include that file.  For example, the
+file oommf/app/oc/ext/uzeeman.cc uses the routine Nb_Atof, and if you
+check the #include list at the top of that file you'll find
+
+   #include "nb.h"
+
+All the exported routines in a package use the package name as a prefix,
+e.g., Nb_Atof.  The only exception to this rule are the routines in
+oommf/pkg/nb/evoc.h, which use Oc_ as a prefix.  "evoc" means
+"eventually Oc", i.e., we are planning at some point in the future to
+move these routines over into the Oc area.
+
+The prefixes are capitalized and followed by an underscore; any routines
+missing the underscore are not intended for external use.
+
+If a directory contains C++ code, then you'll find a platform specific
+subdirectory containing the compiled code.  For example, on a Linux/x86
+machine the directory
+
+  oommf/pkg/nb/lintel
+
+will be created by the build process to hold the nb object modules and
+library.
+
+The oommf/app area contains top-level applications.  These are named
+after the main application provided by the code.  Some applications
+provide a shell (basically a replacement for tclsh or wish) that can be
+run with different Tcl scripts to provide different applications.  For
+example, in oommf/app/mmdisp/scripts you'll find
+
+   avf2odt.tcl - Command line utility, avf2odt
+   avf2ovf.tcl - Command line utility, avf2ovf
+   avf2ppm.tcl - Command line utility, avf2ppm
+   avf2vio.tcl - Command line utility, avf2vio (deprecated)
+   avfdiff.tcl - Command line utility, avfdiff
+   mmdisp.tcl  - Main application, mmDisp
+
+mmdisp.tcl is run with the mmdispsh executable, the others use
+condispsh, where "con" indicates "console".
+
+Some application directories have a separate script directory, like
+mmDisp.  We are finding, though, that the line between scripts and C++
+code becomes blurred in some cases, and we have moved away from that
+layout in the newer applications, such as Oxs.
+
+Under oommf/app/oxs you'll find
+
+  base
+  ext
+  local
+  <platform specific directory>
+
+The directory base/ holds the Oxs infrastructure code.  This is
+essentially everything except for concrete Oxs_Ext (Oxs Extension) child
+classes.  All the Oxs_Ext objects are housed under ext/, with the
+exception of Oxs_UniformScalarField and Oxs_UniformVectorField, which
+are there because they are referenced by ext.cc.
+
+The stuff in base/ is code that is guaranteed loaded and initialized.  The
+Oxs_Ext objects are brought in as requested by the input .mif file, via
+Specify blocks.  If you look at the class diagram in the OOMMF
+eXtensible Solve section of the Programming Manual, the Oxs_Ext concrete
+child classes are those colored in yellow.  The red objects are abstract
+Oxs_Ext objects.  The black "director" is in base/.   The control
+scripts, oxsii.tcl and boxsi.tcl, currently reside in the oommf/app/oxs/
+directory itself.
+
+The local/ directory is the same as ext/, except that it is intended for
+"local" extensions.  All the classes in ext/ use the Oxs_ prefix;
+classes in local/ should use a different prefix that indicates their
+origin.
+
+Compilation and linking of files is governed by the makerules.tcl file
+in each directory.  If you check the makerules.tcl file in
+oommf/app/oxs, you'll see that each file in the base/ area is explicitly
+listed.  On the other hand, in the ext/ and local/ directories, the
+compile list is built by 'glob *.cc' commands.  This means that to get
+code compiled and linked into the oxs executable you need only give it
+the .cc extension, and place it into ext/ or local/.
+
+>What about the physics formulas used in the algorithm ( energies for
+>example) with what methods for approximation?
+
+I've been working on adding this information to the User's Guide, at
+least for Oxs.  Check there first, and if you have any specific
+questions, please ask.
+
+Hope this helps,
+
+-mike
+
+-- 
+Michael J. Donahue
+National Institute of Standards and Technology
+Mathematical & Computational Sciences Division
+100 Bureau Dr Stop 8910
+Gaithersburg, MD 20899-8910
+email: michael.donahue@nist.gov
+voice: (301) 975-5424
+  fax: (301) 990-4127
+  web: http://math.nist.gov/~MDonahue/
+
+-----------------------
+

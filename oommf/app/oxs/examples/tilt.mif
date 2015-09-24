@@ -1,0 +1,113 @@
+# MIF 2.1
+# MIF Example File: tilt.mif
+# Description: Example with central parallelepiped region defined
+#              via Oxs_ScriptAtlas.
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter cellsize 4e-9
+
+set xmax 200e-9
+set ymax 200e-9
+set zmax 200e-9
+
+# Set up interior (inner) region defined by the parallelepiped with
+# normal vectors (a1,a2,a3), (b1,b2,b3), (c1,c2,c3) and widths Aw, Bw,
+# Cw, at center (Lx,Ly,Lz).  Set these up at global scope so that the
+# normalization computation is done only once.
+foreach {a1 a2 a3 Aw} {  1  1  1  50e-9} break
+foreach {b1 b2 b3 Bw} { -1  1  3  40e-9} break
+foreach {c1 c2 c3 Cw} {  2 -1 -1  30e-9} break
+foreach {Lx Ly Lz} {100e-9 80e-9 120e-9} break
+
+set anorm [expr {sqrt($a1*$a1+$a2*$a2+$a3*$a3)}]
+set a1 [expr {$a1/$anorm}] ; set a2 [expr {$a2/$anorm}]
+set a3 [expr {$a3/$anorm}]
+set bnorm [expr {sqrt($b1*$b1+$b2*$b2+$b3*$b3)}]
+set b1 [expr {$b1/$bnorm}] ; set b2 [expr {$b2/$bnorm}]
+set b3 [expr {$b3/$bnorm}]
+set cnorm [expr {sqrt($c1*$c1+$c2*$c2+$c3*$c3)}]
+set c1 [expr {$c1/$cnorm}] ; set c2 [expr {$c2/$cnorm}]
+set c3 [expr {$c3/$cnorm}]
+
+proc regions_proc { x y z } {
+   # Imports are in raw coordinates (meters)
+   global a1 a2 a3 Aw
+   global b1 b2 b3 Bw
+   global c1 c2 c3 Cw
+   global Lx Ly Lz
+
+   set x [expr {$x - $Lx}]
+   set y [expr {$y - $Ly}]
+   set z [expr {$z - $Lz}]
+   set aoff [expr {$x*$a1 + $y*$a2 + $z*$a3}]
+   set boff [expr {$x*$b1 + $y*$b2 + $z*$b3}]
+   set coff [expr {$x*$c1 + $y*$c2 + $z*$c3}]
+
+   if {abs($aoff)<$Aw/2 && abs($boff)<$Bw/2 \
+          && abs($coff)<$Cw/2} {
+      return 1 ;# Region 1 == "inner" region
+   }
+   return 2 ;# Region 2 == "outer" region
+}
+
+Specify Oxs_ScriptAtlas:atlas [subst {
+  xrange {0 $xmax}
+  yrange {0 $ymax}
+  zrange {0 $zmax}
+  regions { inner outer }
+  script_args rawpt   comment {NOTE: "raw" coordinates}
+  script regions_proc
+}]
+
+# Define an Oxs_AtlasVectorField object to define initial magnetization.
+Specify Oxs_AtlasVectorField:m0 [subst {
+   atlas :atlas
+   norm 1.0
+   values {
+      inner {-1 -1 0}
+      outer {1 0 0}
+   }
+}]
+
+# Define an Oxs_AtlasScalarField object to define saturation magnetization.
+Specify Oxs_AtlasScalarField:Ms [subst {
+   atlas :atlas
+   values {
+      inner 4e5
+      outer 8e5
+   }
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+
+Specify Oxs_UniformExchange {
+   A  13e-12  comment {A here is a single scalar, not a scalar field}
+}
+
+Specify Oxs_UZeeman [subst {
+  multiplier [expr {0.001/$mu0}]
+  Hrange {
+     {   0 0 0   100    0  0   10 }
+     { 100 0 0     0 -100  0   10 }
+  }
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+ evolver :evolve
+ stopping_mxHxm 0.1
+ mesh :mesh
+ Ms :Ms
+ m0 :m0
+}]

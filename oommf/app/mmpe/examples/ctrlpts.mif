@@ -1,0 +1,24 @@
+# MIF 1.1
+ms:485E3
+a:8E-12
+k1:-4.5E3
+anisotropy type:cubic
+anisotropy dir1:1 0 0
+anisotropy dir2:0 1 0
+demag type:3dslab
+part height:580E-9
+part width:1440E-9
+part thickness:100e-9
+cell size:20.0e-9
+part shape:mask app/mmpe/examples/oommf-small.bmp
+init mag:random
+base output filename:ctrlpts
+log level:0
+randomizer seed:1
+user interaction level:1
+user report code:30
+field range count:3
+field range: 0. 0.0 0 0.05 0.001 0 5 -torque .1 -time .5e-9 -iteration 200
+field range: 0.05 0.001 0 -0.05 -0.001 0 10
+field range: -0.05 -0.001 0.0 0.05 0.001 0 10 -time 1e-9
+default control point spec: -time 2e-9

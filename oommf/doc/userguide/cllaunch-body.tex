@@ -1,0 +1,214 @@
+
+\section{Command Line Launching}\label{sec:cll}
+\index{launch!from~command~line}\index{launch!with~bootstrap~application}
+
+Some of the \OOMMF\ applications are platform-independent Tcl
+scripts.  Some of them are Tcl scripts that require special
+platform-dependent interpreters.  Others are platform-dependent,
+compiled C++ applications.  It is likely that some of them will 
+change status in later releases of \OOMMF.  Each of these types
+of application requires a different command line for launching.
+Rather than require all \OOMMF\ users to manage this complexity,
+we provide a pair of programs that provide simplified interfaces
+for launching \OOMMF\ applications.
+
+\index{application!bootstrap|(}
+The first of these is used to launch \OOMMF\ applications from the
+command line.  Because its function is only to start another
+program, we refer to this program as the ``bootstrap application.''
+The bootstrap application is the Tcl script \fn{oommf.tcl}.
+In its simplest usage, it takes a single argument on the command line,
+the name of the application to launch.  For example, to launch
+\hyperrefhtml{\app{mmGraph}}{\app{mmGraph} (Sec.~}{)}{sec:mmgraph},
+the command line is:
+\begin{verbatim}
+tclsh oommf.tcl mmGraph
+\end{verbatim}
+The search for an application matching the name is case-insensitive.
+(Here, as elsewhere in this document, the current working
+directory\index{working~directory} is assumed to be the \OOMMF\ root
+directory.  For other cases, adjust the pathname to {\tt oommf.tcl} as
+appropriate.)  As discussed \hyperrefhtml{earlier}{in
+Sec.~}{}{sec:install.requirements}, the name of the \Tcl\ shell,
+rendered here as \verb+tclsh+, may vary between systems.
+
+If no command line arguments are passed to the bootstrap application,
+by default it will launch the application
+\hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}.
+
+\index{launch!command~line~arguments|(}
+Any command line arguments to the bootstrap
+application that begin with the character `\cd{+}' modify its
+behavior.
+For a summary of all command line options recognized by the bootstrap
+application, run:
+\begin{verbatim}
+tclsh oommf.tcl +help
+\end{verbatim}
+
+\index{launch!foreground|(}
+The command line arguments \cd{+bg} and \cd{+fg} control how the
+bootstrap behaves after launching the requested application.  It
+can exit immediately after launching the requested application 
+in background mode (\cd{+bg}), or it can block until the
+launched application exits (\cd{+fg}).  Each application
+registers within the \OOMMF\ system whether it prefers to be launched
+in foreground or background mode.  If neither option is requested on
+the command line, the bootstrap launches the requested application
+in its preferred mode.
+\index{launch!foreground|)}
+
+\index{launch!version~requirement|(}
+The first command line argument that does not begin with the
+character \cd{+} is interpreted as a specification of which
+application should be launched.  As described above, this is 
+usually the simple name of an application.
+When a particular
+version of an application is required, though, the bootstrap
+allows the user to include that requirement as part of the
+specification.  For example:
+\begin{verbatim}
+tclsh oommf.tcl "mmGraph 1.1"
+\end{verbatim}
+will guarantee that the instance of the application mmGraph it
+launches is of at least version 1.1.  If no copy of mmGraph
+satisfying the version requirement can be found, an error is
+reported.
+\index{launch!version~requirement|)}
+
+The rest of the command line arguments that are not recognized by
+the bootstrap are passed along as arguments to the application the
+bootstrap launches.  Since the bootstrap recognizes command line
+arguments that begin with \cd{+} and most other applications
+recognize command line arguments that begin with \cd{-}, confusion
+about which options are provided to which programs can be avoided.
+For example,
+\begin{verbatim}
+tclsh oommf.tcl +help mmGraph
+\end{verbatim}
+prints out help information about the bootstrap and exits without
+launching mmGraph.  However,
+\begin{verbatim}
+tclsh oommf.tcl mmGraph -help
+\end{verbatim}
+launches mmGraph with the command line argument \cd{-help}.
+mmGraph then displays its own help message.
+
+\index{launch!standard~options|(}
+\index{standard~options|(}
+Most \OOMMF\ applications accept the standard options listed below.
+Some of the \OOMMF\ applications accept additional arguments when
+launched from the command line, as documented in the corresponding
+sections of this manual.  The \verb+-help+ command line option can
+also be used to view the complete list of available options.  When an
+option argument is specified as \verb+<0|1>+, \verb+0+ typically means
+off, no or disable, and \verb+1+ means on, yes or enable.
+
+\begin{description}
+\item[\optkey{-version}]
+Display the version of the application and exit.
+
+\item[\optkey{-help}]
+Display a help message and exit.
+
+\item[\optkey{-tk \boa 0\pipe 1\bca}]
+Disable or enable Tk.  Tk must be enabled for an application to display
+graphical widgets.  However, when Tk is enabled on Unix platforms
+the application is dependent on an X Windows server.  If the 
+X Windows server dies, it will kill the application.  Long-running
+applications that do not inherently use display widgets support
+disabling of Tk with \verb+-tk 0+.  
+Other applications that must use display widgets are unable to run
+with the option \verb+-tk 0+.  To run applications that require
+\verb+-tk 1+ on a Unix system with no display, one might use
+\htmladdnormallinkfoot{Xvfb}{http://www.itworld.com/AppDev/1461/UIR000330xvfb/}
+\index{application!Xvfb}.
+
+\item[\optkey{-cwd directory}]
+Set the current working directory of the application.
+
+\item[\optkey{-console}]
+Display a console widget in which Tcl
+commands may be interactively typed into the application.
+Useful for debugging.
+
+\item[\optkey{-nickname \boa name\bca}]\index{nicknames}
+Associates the specified \textit{name} as a nickname for the process.
+The string \textit{name} should contain at least one non-numeric
+character.  Nicknames can also be set at launch time via the
+\htmlonlyref{\cd{Destination}}{html:destinationCmd} command\latex{
+(Sec.~\ref{sec:mif2ExtensionCommands})} in \cd{MIF 2.x} files, or
+after a process is running via the
+\hyperrefhtml{\app{nickname}}{\app{nickname} (Sec.~}{)}{sec:nickname}
+command line application.  Nicknames are used by the \MIF\ 2.x
+\cd{Destination} command to associate \cd{Oxs} output streams with
+particular application instances.  Multiple \cd{-nickname} options may
+be used to set multiple nicknames.  (Technical detail: Nickname
+functionality is only available to processes that connect to an
+account server.)
+\end{description}
+
+In addition, those applications which enable Tk accept additional Tk
+options, such as \verb+-display+.  See the Tk documentation for details.
+\index{standard~options|)}
+\index{launch!standard~options|)}
+\index{launch!command~line~arguments|)}
+
+The bootstrap application should be infrequently used by most users.
+The application \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
+(Sec.~}{)}{sec:mmlaunch} provides a more convenient graphical
+interface for launching applications.  The main uses for the bootstrap
+application are launching \app{mmLaunch}, launching \app{pimake},
+launching programs which make up the \hyperrefhtml{OOMMF Batch
+System}{OOMMF Batch System (Sec.~}{)}{sec:obs} and other programs
+that are inherently command line driven, and in circumstances where
+the user wishes to precisely control the command line arguments passed
+to an \OOMMF\ application or the environment in which an \OOMMF\ application
+runs.
+\index{application!bootstrap|)}
+
+\ssechead{Platform Issues}
+
+\index{platform!Unix!executable~Tcl~scripts|(}
+On most Unix platforms, if \fn{oommf.tcl} is marked executable,
+it may be run directly, i.e., without specifying \cd{tclsh}.  This
+works because the first few lines of the \fn{oommf.tcl} Tcl script are:
+\begin{verbatim}
+#!/bin/sh
+# \
+exec tclsh "$0" ${1+"$@"}
+\end{verbatim}
+When run, the first \fn{tclsh} on the execution path is invoked to
+interpret the \fn{oommf.tcl} script.  If the Tcl shell program cannot be
+invoked by the name \fn{tclsh} on your computer, edit the first lines of
+\fn{oommf.tcl} to use the correct name.  Better still, use symbolic links
+or some other means to make the Tcl shell program available by the name
+\fn{tclsh}.  The latter solution will not be undone by file overwrites
+from \OOMMF\ upgrades.
+
+If in addition, the directory
+\fn{.../path/to/oommf} is in the execution path, the command line can
+be as simple as:
+\begin{verbatim}
+oommf.tcl appName
+\end{verbatim}
+from any working directory.
+\index{platform!Unix!executable~Tcl~scripts|)}
+
+\index{platform!Windows!file~extension~associations|(}
+On Windows platforms, because \fn{oommf.tcl} has the file
+extension \fn{.tcl}, it is normally associated by Windows with the
+\fn{wish} interpreter.  The \fn{oommf.tcl} script has been
+specially written so that either \fn{tclsh} or \fn{wish} is a suitable
+interpreter.  This means that simply double-clicking on an icon
+associated with the file \fn{oommf.tcl} 
+(say, in Windows Explorer\index{application!Windows~Explorer})
+will launch the bootstrap application with no arguments.  This will
+result in the default behavior of launching the application
+\app{mmLaunch}, which is suitable for launching other \OOMMF\
+applications.  (If this doesn't work, refer back to the
+\html{\htmlref{Windows Options}{sec:install.windows} section in the
+installation instructions.)}  \latex{Windows Options section in the
+installation instructions, Sec.~\ref{sec:install.windows}.)}
+\index{platform!Windows!file~extension~associations|)}
+

@@ -1,0 +1,9 @@
+# PLEASE NOTE: The following values should *not* be taken as standard
+# reference values for these materials.  These values are only approximate.
+# They are included here as examples for users who wish to supply their
+# own material types with symbolic names.
+#		M_s	A	K	anisotropy type
+Permalloy	 860E3	13E-12	   0	uniaxial
+Iron		1700E3	21E-12	  48E3	cubic
+Nickel		 490E3	 9E-12	-5.7E3	cubic
+"Cobalt (hcp)"	1400E3	30E-12	 520E3	uniaxial

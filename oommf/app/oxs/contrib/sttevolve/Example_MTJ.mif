@@ -1,0 +1,316 @@
+# MIF 2.1
+# Description: Spin valve example
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+set LX [expr 30e-9]
+set LY [expr 20e-9]
+set LZ1 [expr 2e-9]
+set LZ2 [expr 1e-9]
+set LZ3 [expr 2e-9]
+set LZ4 [expr 1e-9]
+set LZ5 [expr 2e-9]
+
+set phi_H [expr $pi/6.0]
+set theta_H [expr $pi/6.0]
+# set theta_H [expr 0.0]
+# unit of mT
+set Max_H [expr 2000] 
+set Ms1 [expr 1.3e6]
+set Ms2 [expr 0.0e6]
+set Ms3 [expr 1.3e6]
+set Ms4 [expr 0.0e6]
+set Ms5 [expr 1.3e6]
+
+# total number of stage
+set NumStageCount [expr 1200]
+# unit time for each stage (sec unit)
+set DeltaTStage [expr 1e-11]
+
+set StopTime [expr $NumStageCount*$DeltaTStage]
+
+Parameter CurrentDensity -1.0e11			;# Current Density A/m^2
+Parameter BaseName SyF3_60x40			;# Base File Name
+
+Specify Oxs_MultiAtlas:atlas [subst {
+    atlas { Oxs_BoxAtlas {
+	name Top
+	xrange {-$LX $LX}
+	yrange {-$LY $LY}
+	zrange {[expr $LZ5 + $LZ4 + $LZ3 + $LZ2] [expr $LZ5 + $LZ4 + $LZ3 + $LZ2 + $LZ1]}
+    } }
+    atlas { Oxs_BoxAtlas {
+        name Insulator
+        xrange {-$LX $LX}
+        yrange {-$LY $LY}
+        zrange {[expr $LZ5 + $LZ4 + $LZ3] [expr $LZ5 + $LZ4 + $LZ3 + $LZ2]}
+    } }
+    atlas { Oxs_BoxAtlas {
+        name F1
+        xrange {-$LX $LX}
+        yrange {-$LY $LY}
+        zrange {[expr $LZ5 + $LZ4] [expr $LZ5 + $LZ4 + $LZ3] }
+    } }
+    atlas { Oxs_BoxAtlas {
+        name Spacer
+        xrange {-$LX $LX}
+        yrange {-$LY $LY}
+        zrange {$LZ5 [expr $LZ5 + $LZ4]}
+    } }
+    atlas { Oxs_BoxAtlas {
+        name F2
+        xrange {-$LX $LX}
+        yrange {-$LY $LY}
+        zrange {0 $LZ5}
+    } }
+}]
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {1e-9 1e-9 1e-9}
+  atlas :atlas
+}
+
+Specify Oxs_Exchange6Ngbr:NiFe {
+  atlas :atlas
+  default_A 20e-12
+  A  {
+    Insulator Insulator 0
+    Insulator Top 0
+    Insulator F1 0
+    Spacer Spacer 0
+    Spacer F1 0
+    Spacer F2 0
+  }
+}
+
+# Add biasing field to bottom layer. 40e3 A/m \approx 500 Oe.
+Specify Oxs_TransformZeeman:Bias {
+  field { Oxs_AtlasVectorField {
+    atlas :atlas
+    default_value {0. 0. 0.}
+    values {
+	F2  { 400e3 0. 0. }
+    }
+  }}
+}
+
+
+Specify Oxs_UniaxialAnisotropy {
+
+  K1 { Oxs_UniformScalarField { 
+ value  0.0e4 } }
+  
+ axis { Oxs_UniformVectorField {
+    norm 1
+    vector {0 1 0}
+  } 
+}
+}
+
+
+# Add antiferromagnetic exchange coupling across top-bottom
+# layers
+Specify Oxs_LinearScalarField:zheight {
+ vector {0 0 1}
+ norm   1.0
+}
+
+Specify Oxs_TwoSurfaceExchange:SyAF [subst {
+ sigma -1e-3
+ comment {sigma2 -1e-4}
+ surface1 {
+         atlas  :atlas
+        region  F2
+   scalarfield  :zheight
+   scalarvalue  [expr $LZ5]
+    scalarside  -
+ }
+ surface2 {
+         atlas  :atlas
+        region  F1
+   scalarfield  :zheight
+   scalarvalue  [expr $LZ5 + $LZ4]
+    scalarside  +
+ }
+}]
+
+Specify Oxs_StageZeeman  [subst {
+  
+ multiplier [expr $CurrentDensity]
+ stage_count $NumStageCount
+ script { ReadHField } 
+ 
+ }]
+
+proc ReadHField { stage } {
+	
+    if { $stage < 1000 } {
+    set HField Oxs_FileVectorField 
+    lappend HField [subst {
+    atlas :atlas
+    file "Oersted_H_Field.ohf" 
+    }]
+    return $HField
+    } else {
+    return "0.0 0.0 0.0"
+    }
+}
+
+
+Specify Oxs_Demag {}
+
+proc J_time { t } {
+    set scale 1.0;
+    set StopCurrent [expr 1.0e-8]
+
+    if {$t > $StopCurrent} {
+        set scale 0
+    }
+    return $scale
+}
+
+
+Specify CYY_STTEvolve [subst {
+  do_precess 1
+  gamma_LL 2.21e5
+  method rkf54s
+  alpha 0.02
+  
+  Jcurr $CurrentDensity
+  J_profile J_time
+  J_profile_args total_time
+  
+  bJ0	0.0e11
+  bJ1	0.0e11
+  bJ2 	0.0e11
+  eta0  0.7
+  
+ Inter_down {
+         atlas  :atlas
+        region  F1
+   scalarfield  :zheight
+   scalarvalue  [expr $LZ5 + $LZ4 + $LZ3]
+    scalarside  -
+ }
+ Inter_up {
+         atlas  :atlas
+        region  Top
+   scalarfield  :zheight
+   scalarvalue  [expr $LZ5 + $LZ4 + $LZ3 + $LZ2]
+    scalarside  +
+ }  
+  	
+}]
+
+Specify Oxs_TimeDriver [subst {
+ basename $BaseName
+ evolver CYY_STTEvolve
+ vector_field_output_format {text "%e"}
+ stopping_time $DeltaTStage 
+ stopping_dm_dt .01
+ mesh :mesh
+ stage_count 0
+ stage_iteration_limit 0
+ total_iteration_limit 0
+ Ms  { Oxs_ScriptScalarField {
+     atlas :atlas
+     script_args {rawpt}
+     script {Ellipse $Ms1 $Ms2 $Ms3 $Ms4 $Ms5 $LX $LY $LZ1 $LZ2 $LZ3 $LZ4 $LZ5} 
+
+ }}
+ comment { m0 { Oxs_ScriptVectorField {
+  atlas :atlas
+  script_args {rawpt}
+  script {InitConfigMs $LZ1 $LZ2 $LZ3 $LZ4 $LZ5}  
+  norm 1
+ }}}
+ m0 { Oxs_FileVectorField {
+ atlas :atlas
+ file "Stable_AP.omf"
+}}
+}]
+
+
+proc Ellipse { Ms1 Ms2 Ms3 Ms4 Ms5 Lx Ly Lz1 Lz2 Lz3 Lz4 Lz5 x y z } {
+    
+
+   set test [expr $x*$x/$Lx/$Lx + $y*$y/$Ly/$Ly]
+    
+	
+   if {$test > 1.0} { return 0 }
+   
+   
+   if {$z < $Lz5} {	
+      return $Ms5
+
+   } elseif {$z < [expr $Lz5 + $Lz4]} {	
+      return $Ms4
+
+   } elseif {$z < [expr $Lz5 + $Lz4 + $Lz3]} {	
+      return $Ms3
+
+   } elseif {$z < [expr $Lz5 + $Lz4 + $Lz3 + $Lz2]} {	
+      return $Ms2
+
+   } else {
+      return $Ms1
+   } 
+} 
+
+proc InitConfigMs { Lz1 Lz2 Lz3 Lz4 Lz5 x y z } {
+
+   if {$z < $Lz5} {	
+      return "1.0 0.0 0.0"
+
+   } elseif {$z < [expr $Lz5 + $Lz4]} {	
+      return "1.0 0.0 0.0"
+
+   } elseif {$z < [expr $Lz5 + $Lz4 + $Lz3]} {	
+      return "-1.0 0.0 0.0"
+
+   } elseif {$z < [expr $Lz5 + $Lz4 + $Lz3 + $Lz2]} {	
+      return "1.0 0.0 0.0"
+
+   } else {
+      return "-1.0 0.0 0.0"
+   } 
+
+}
+
+
+
+
+#Destination archive mmArchive new
+#Destination disp mmDisp new
+#Destination disptable mmDataTable new 
+#Destination monitor mmGraph new
+
+Destination archive mmArchive 
+Destination disp mmDisp 
+Destination disptable mmDataTable 
+Destination monitor mmGraph 
+
+Schedule Oxs_TimeDriver::Magnetization archive stage 1
+Schedule Oxs_TimeDriver::Magnetization disp stage 1 
+Schedule DataTable archive stage 1
+Schedule DataTable monitor stage 1
+Schedule DataTable disptable stage 1
+
+# Schedule Oxs_TimeDriver::Magnetization archive step 1000
+# Schedule Oxs_TimeDriver::Magnetization disp step 1000 
+# Schedule DataTable monitor Step 100
+# Schedule DataTable disptable Step 100
+
+
+#Destination archive mmArchive  
+#Destination screen mmDisp  
+#Destination disptable mmDataTable  
+
+
+#Schedule DataTable archive Step 1
+#Schedule DataTable archive Step 100
+#Schedule DataTable monitor Step 50
+#Schedule DataTable disptable Step 100
+
+#Schedule Oxs_TimeDriver::Magnetization screen Step 100
+#Schedule Oxs_TimeDriver::Magnetization archive Step 5000
+#Schedule Oxs_TimeDriver::Magnetization archive Step 100

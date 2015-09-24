@@ -1,0 +1,104 @@
+Memory usage by mmsolve
+
+Nx and Ny are the x and y grid dimensions
+
+1) There are 4 magelt grids, of dimension Nx*Ny.  Each has the following
+   data members (pointers are sized at 8 bytes, as on the Linux/Axp
+   platform):
+
+	  Size          Member
+	  ---------------------------------------------------------
+	   16      Parent ThreeVector
+	    8      double thickness
+	    4      int ngbrcnt
+	  128      MagEltLink ngbr[MAXMAGNGBRCNT]
+	   24      double vecarr[VECDIM]
+	    8      double anisotropy_coef
+	   48      ThreeVector AnisDirA|B|C (see also item 5 below)
+	  ---------------------------------------------------------
+   Total: 236
+
+   It appears that this gets padded to 240 bytes (a multiple of 8) on
+   Linux/Axp.  Therefore,
+   TOTAL: 4*240 Nx Ny
+          = 960 Nx Ny
+
+2) Demag.  Let NFx=(NextPowerOfTwo(Nx+Nx-1))/2+1
+               NFy=NextPowerOfTwo(Ny+Ny-1)
+   Then demag holds directly
+               1 REAL8 array of dimension Nx*Ny (spacework)
+               8 COMPLEX8 arrays of dimension NFx*NFy
+   plus fft2d holds 1 COMPLEX8 array of dimension NFx*NFy
+   (workarr, which is workspace used by the inverse routines)
+   If Nx and Ny are powers of 2, then this works out to
+   TOTAL:  8*Nx*Ny + 9*(16*Nx*2*Ny) = (8+9*32) Nx Ny
+                                    = 296 Nx Ny
+
+3) 4 H and 3 torque ThreeVector arrays of dimension Nx*Ny.
+   Each ThreeVector consists of 3*REAL8 data values, plus
+   a pointer to this data (*arr), plus a vptr (virtual table
+   pointer) because ThreeVector has a virtual destructor.  The
+   only class that inherits off of ThreeVector is MagElt, and
+   the current code always calls the MagElt destructor directly,
+   so we could remove virtual from the ThreeVector destructor.
+   This would make ThreeVector a non-virtual function, so
+   presumably the vptr (virtual table pointer) would go away.
+   I don't know that this constitutes sufficient savings to
+   justify the risk of some future code trying to delete a
+   MagElt through its ThreeVector destructor.  On the AXP,
+   pointers are 8 bytes wide, so the memory usage is
+   TOTAL: 7*(3*8+8+8) Nx Ny = 7*40 Nx Ny
+                            = 280 Nx Ny
+
+4) There are 2 energy density arrays.  The size of these is just
+   TOTAL: 2*(8) Nx Ny
+          = 16 Nx Ny
+
+5) There are 3 anis arrays.  The size of these vary,
+   depending on whether the anisotropy is uniform or
+   not, and whether it is uniaxial or cubic.  For uniform
+   anisotropy these are not larger than 1*1, independent of
+   Nx and Ny.  If the anisotropy varies throughout the
+   grid, then each array would have full Nx*Ny dimension.
+   So the memory usage varies between essentially 0, to
+   3*ThreeVector memory usage*Nx*Ny (see item 3 above), i.e.,
+   TOTAL:   0  to  3*40 Nx Ny
+          = 0  to  120 Nx Ny
+
+
+------------------------------------------------------------------------
+
+GRAND TOTAL: (960 + 296 + 280 + 16 + (0 to 120)) Nx Ny
+            = (1552 to 1672) Nx Ny bytes.
+
+on Linux/Axp (Digital/Compaq Alpha).  The ThreeVector structure in
+particular is smaller on, e.g., Linux/x86 or Windows, because there
+pointers are only 4 bytes wide, so a ThreeVector takes up 32 bytes
+instead of 40 (a 20% reduction).
+
+Some test runs on Linux/Axp indicate that memory usage with uniform
+anisotropy (item 5 = 0) follows the relation
+
+      5MB + (1600 bytes)*Nx*Ny
+
+which is pretty close.
+
+On a machine with 4 byte pointers (e.g., Linux/x86, Windows, ...), the
+sizes for each of the above items is:
+
+1) Magelt grid size: (8 + 8 + 4 + 96 + 24 + 8 + 24) Nx Ny
+                      = 172 Nx Ny  ...           x4 grids = 688 Nx Ny
+
+2) Demag: Essentially the same as in the Linux/Axp case   = 296 Nx Ny
+
+3) H and torque arrays: 7*32 Nx Ny                        = 224 Nx Ny
+
+4) Energy density arrays: As before, essentially          =  16 Nx Ny
+
+5) Anis arrays: 0 to 3*32 Nx Ny                       = 0 to 96 Nx Ny
+
+ -----------------------------------------> TOTAL: 1224 to 1320 Nx Ny
+ which is about 15% smaller than for Axp.
+
+-mjd, 7-June-2000.
+

@@ -1,0 +1,28 @@
+# MIF 2.1
+# MIF Example File: tiny2.mif
+# Description: Another minimalist MIF 2.1 file
+# Note: No energy terms!
+
+Parameter evolver RK   ;# Either RK or Euler
+
+if {[string match RK $evolver]} {
+   Specify Oxs_RungeKuttaEvolve:evolver {}
+} else {
+   Specify Oxs_EulerEvolve:evolver {}
+}
+
+Specify Oxs_TimeDriver {
+ evolver :evolver
+ stopping_dm_dt 0.01
+ mesh { Oxs_RectangularMesh {
+    cellsize {5e-9 5e-9 5e-9}
+    atlas { Oxs_BoxAtlas {
+      xrange {0 200e-9}
+      yrange {0 100e-9}
+      zrange {0   5e-9}
+    }}
+ }}
+ Ms 8.6e5
+ m0 {10 1 0}
+ report_max_spin_angle 1
+}

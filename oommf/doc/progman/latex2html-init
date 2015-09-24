@@ -1,0 +1,32 @@
+#LaTeX2HTML Version 96.1 : dot.latex2html-init
+#
+
+require "../common/latex2html-init";
+
+sub custom_title_hook {
+    my $title = shift;
+    # Return is filename to associate with section "$title". Use
+    # return ""; to get the default, which is of the form nodeN.html
+
+    $cth_count++;
+    if ($title eq "OOMMF Documentation") {
+	$title = "progman";
+    } elsif ($title =~ /Bibliography.*/) {
+	$title = "bibliography"
+    } elsif ($title =~ /Index/) {
+	$title = "docindex"
+    } else {
+	my $small_words = "a|an|and|of|on|the|";
+	my $to_underscore = '\s+|:|/|\(|\)|<|>';
+	$title =~ s/<b>|<\/b>//gio;
+	$title =~ s/\b($small_words)\b//gio;
+	$title =~ s/$to_underscore/_/go;
+	$title =~ s/_+/_/go;
+	$title =~ s/(^_|_$)//go;
+#	$title = "N${cth_count}_$title"
+    }
+
+    return "$title";
+}
+
+1;	# This must be the last line

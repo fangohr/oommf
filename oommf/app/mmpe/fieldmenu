@@ -1,0 +1,12 @@
+Name of Window: .fields
+Number of Commands: 1 #commands; commands are numbered from 0 and 
+#and interlayed with placement info
+0:ScaleButton $buttonname $label $ButtonNow 10 2 -side left  
+0:-side top -fill x -expand 1
+Number of Data Changes: 1 #Below is the first data change type
+Data Change:field range count 
+Number of Choices: 1
+0:NULL!0!Number of Field Ranges!x,y,z,x,y,z! !
+
+
+

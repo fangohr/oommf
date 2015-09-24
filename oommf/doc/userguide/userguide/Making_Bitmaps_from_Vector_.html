@@ -1,0 +1,324 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Making Bitmaps from Vector Fields: avf2ppm</TITLE>
+<META NAME="description" CONTENT="Making Bitmaps from Vector Fields: avf2ppm">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Making_PostScript_from_Vect.html">
+<LINK REL="previous" HREF="Vector_Field_File_Format_Co.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Making_PostScript_from_Vect.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html597"
+  HREF="Making_PostScript_from_Vect.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html593"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html587"
+  HREF="Vector_Field_File_Format_Co.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html599"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html595"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html598"
+  HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector</A>
+<B> Up:</B> <A NAME="tex2html594"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html588"
+  HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000174000000000000000"></A><A NAME="sec:avf2ppm"></A>
+<BR>
+Making Bitmaps from Vector Fields:
+            avf2ppm
+</H2><A NAME="16608"></A><A NAME="16609"></A><A NAME="16610"></A><A NAME="16611"></A>
+
+<P>
+The <B>avf2ppm</B><A NAME="16613"></A> utility converts a
+collection of vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>) into color
+bitmaps suitable for inclusion into documents or collating into movies.
+The command line arguments control filename and format selection, while
+plain-text configuration files, modeled after the
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
+ NAME="16620"><B>mmDisp</B></A> configuration dialog
+box, specify display parameters.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>avf2ppm</B> launch command is:
+<PRE>
+tclsh oommf.tcl avf2ppm [standard options] [-config file] [-f] \
+   [-filter program] [-format &lt;P3|P6|B24&gt;] [-ipat pattern] \
+   [-opatexp regexp] [-opatsub sub] [-v level] [infile ...]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-config file</B></TT></STRONG></DT>
+<DD>User configuration file that specifies image display parameters.  This
+  file is discussed in <A HREF="#sec:avf2ppmconfig">detail below</A>.
+</DD>
+<DT><STRONG><TT><B>-f</B></TT></STRONG></DT>
+<DD>Force overwriting of existing (output) files.  By default, if
+  <B>avf2ppm</B> tries to create a file, say <TT><B>foo.ppm</B></TT>, that already
+  exists, it generates instead a new name of the form <TT><B>foo.ppm-000</B></TT>,
+  or <TT><B>foo.ppm-001</B></TT>, ..., or <TT><B>foo.ppm-999</B></TT>, that doesn't exist
+  and writes to that instead.  The <TT>-f</TT> flag disallows alternate
+  filename generation, and overwrites <TT><B>foo.ppm</B></TT> instead.
+</DD>
+<DT><STRONG><TT><B>-filter program</B></TT></STRONG></DT>
+<DD>Post-processing application to run on each <B>avf2ppm</B> output
+  file.  May be a pipeline of several programs.
+</DD>
+<DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>P3|P6|B24<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify the output image file format.  Currently supported formats are
+  the true color <EM>Portable Pixmap</EM> (PPM)<A NAME="16641"></A> formats P3
+  (ASCII text) and P6 (binary), and the uncompressed Windows
+  BMP<A NAME="16642"></A> 24 bits-per-pixel format.  The default is P6.
+</DD>
+<DT><STRONG><TT><B>-ipat pattern</B></TT></STRONG></DT>
+<DD>Specify input files using a pattern with ``glob-style'' wildcards.
+  Mostly useful in DOS.
+</DD>
+<DT><STRONG><TT><B>-opatexp regexp</B></TT></STRONG></DT>
+<DD>Specify the ``regular expression'' applied to input filenames to
+  determine portion to be replaced in generation of output filenames.
+  The default regular expression is: <code>(\.[^.]?[^.]?[^.]?$|$)</code>
+</DD>
+<DT><STRONG><TT><B>-opatsub sub</B></TT></STRONG></DT>
+<DD>The string with which to replace the portion of input filenames
+  matched by the <TT>-opatexp regexp</TT> during output filename
+  generation.  The default is <code>.ppm</code> for type P3 and P6 file
+  output, <code>.bmp</code> for B24 file output.
+</DD>
+<DT><STRONG><TT><B>-v level</B></TT></STRONG></DT>
+<DD>Verbosity (informational message) level, with 0 generating only
+  error messages, and larger numbers generating additional information.
+  The <TT>level</TT> value is an integer, defaulting to 1.
+</DD>
+<DT><STRONG><TT><B>infile ...</B></TT></STRONG></DT>
+<DD>List of input files to process.
+</DD>
+</DL>
+
+<P>
+The file specification options require some explanation.  Input files
+may be specified either by an explicit list (<TT>infile ...</TT>),
+or by giving a wildcard pattern, e.g., <TT>-ipat *.omf</TT>, which is
+expanded in the usual way by <B>avf2ppm</B> (using the Tcl command
+<TT>glob</TT>).   Unix shells (sh, csh, etc.) automatically expand
+wildcards before handing control over to the invoked application, so the
+<TT>-ipat</TT> option is not needed (although it is useful in case of a
+``command-line too long'' error).  DOS does not do this expansion, so
+you must use <TT>-ipat</TT> to get
+wildcard expansion<A NAME="16660"></A> in Windows.
+
+<P>
+As each input file is processed, a name for the output file is produced
+from the input filename by rules determined by handing the
+<TT>-opatexp</TT> and <TT>-opatsub</TT> expressions to the Tcl <TT>regsub</TT> command.  Refer to the Tcl <TT>regsub</TT> documentation for
+details, but essentially whatever portion of the input filename is
+matched by the <TT>-opatexp</TT> expression is removed and replaced by
+the <TT>-opatsub</TT> string.  The default <TT>-opatexp</TT> expression
+matches against any filename extension of up to 3 characters, and the
+default <TT>-opatsub</TT> string replaces this with the extension
+<TT><B>.ppm</B></TT> or <TT><B>.bmp</B></TT>.
+
+<P>
+If you have command line image processing ``filter'' programs, e.g.,
+<B>ppmtogif</B><A NAME="16672"></A> (part of the
+NetPBM<A NAME="16673"></A> package), then you can use the <TT>-filter</TT>
+option to pipe the output of <B>avf2ppm</B> through that filter before it
+is written to the output file specified by the <TT>-opat*</TT>
+expressions.  If the processing changes the format of the file, (e.g.,
+<B>ppmtogif</B> converts from PPM<A NAME="16678"></A> to
+GIF<A NAME="16679"></A>), then you will likely want to specify a
+<TT>-opatsub</TT> different from the default.
+
+<P>
+Here is an example that processes all files with the <TT><B>.omf</B></TT>
+extension, sending the output through <B>ppmtogif</B> before saving the
+results in files with the extension <TT><B>.gif</B></TT>:
+<PRE>
+tclsh oommf.tcl avf2ppm -ipat *.omf -opatsub .gif -filter ppmtogif
+</PRE>
+(On Unix, either drop the <TT>-ipat</TT> flag, or use quotes to protect
+the input file specification string from expansion by the shell, as in
+<TT>-ipat '*.omf'</TT>.)  You may also pipe together multiple filters, e.g.,
+<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="16689"></A>.
+
+<P>
+
+<A NAME="pt:avf2ppm.config"></A>
+
+<P>
+<FONT SIZE="+1"><B>Configuration
+files<A NAME="sec:avf2ppmconfig"></A></B></FONT>
+<BR><A NAME="16691"></A>
+The details of the conversion process are specified by plain-text
+configuration files, in the same format as the
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration 
+files</A>.
+
+<P>
+Each of the configurable parameters is an element in an array named
+<TT>plot_config</TT>.  The default values for this array are read first
+from the main configuration file
+<BLOCKQUOTE>
+<TT><B>oommf/app/mmdisp/scripts/avf2ppm.config</B></TT>
+
+</BLOCKQUOTE>
+followed by the local customization file
+<BLOCKQUOTE>
+<TT><B>oommf/app/mmdisp/scripts/local/avf2ppm.config</B></TT>
+
+</BLOCKQUOTE>
+if it exists.  Lastly, any files passed as <TT>-config</TT> options on the
+command line are input.  Each of these parameters is interpreted as
+explained in the <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B></A>
+documentation, except that <B>avf2ppm</B> ignores the
+<TT>misc,defaultwindowwidth</TT> and <TT>misc,defaultwindowheight</TT>
+parameters, and the following additional parameters are available:
+<DL>
+<DT><STRONG><TT><B>arrow,antialias</B></TT></STRONG></DT>
+<DD>If 1<A NAME="16713"></A>, then each pixel along the edge of an arrow is
+ drawn not with the color of the arrow, but with a mixture of the arrow
+ color and the background color.  This makes arrow boundaries appear
+ less jagged, but increases computation time.  Also, the colors used in
+ the anti-aliased pixels are not drawn from the arrow or pixel colormap
+ discretizations, so color allocation in the output bitmap may increase
+ dramatically.
+</DD>
+<DT><STRONG><TT><B>misc,boundarypos</B></TT></STRONG></DT>
+<DD>Placement of the bounding polygon, either <TT>back</TT> or <TT>front</TT>,
+ i.e., either behind or in front of the rendered arrows and pixel
+ elements.
+</DD>
+<DT><STRONG><TT><B>misc,matwidth</B></TT></STRONG></DT>
+<DD>Specifies the width, in pixels, of a mat (frame) around the outer edge
+ of the image.  The mat is drawn in front of all other objects.  To
+ disable, set matwidth to 0.
+</DD>
+<DT><STRONG><TT><B>misc,matcolor</B></TT></STRONG></DT>
+<DD>Color of the mat.
+</DD>
+<DT><STRONG><TT><B>misc,width</B></TT>, <TT><B>misc,height</B></TT></STRONG></DT>
+<DD>Maximum width and height of the output bitmap, in pixels.  If
+ <TT>misc,crop</TT> is enabled, then one or both of these dimensions may be
+ shortened.
+</DD>
+<DT><STRONG><TT><B>misc,crop</B></TT></STRONG></DT>
+<DD>If disabled (0), then any leftover space in the bitmap (of dimensions
+ <TT>misc,width</TT> by <TT>misc,height</TT>) after packing the image are filled
+ with the background color.  If enabled (1), then the bitmap is cropped
+ to just include the image (with the margin specified by
+ <TT>misc,margin</TT>).  <B>NOTE:</B> Some movie formats require that
+ bitmap dimensions be multiples of 8 or 16.  For such purposes, you
+ should disable <TT>misc,crop</TT> and specify appropriate dimensions
+ directly with <TT>misc,width</TT> and <TT>misc,height</TT>.
+</DD>
+</DL>
+
+<P>
+The <A HREF="#fig:avf2ppm.config">default configuration file</A> can be used as a starting point for
+user configuration files.  You may also use configuration files produced
+by the <FONT COLOR="#800000"><B>File|Write config...</B></FONT> command in
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp</B></A>, although any of the above
+<B>avf2ppm</B>-specific parameters that you wish to use will have to be
+added manually, using a plain text editor.  You may omit any entries
+that you do not want to change from the default.  You may ``layer''
+configuration files by specifying multiple user configuration files on
+the command line.  These are processed from left to right, with the last
+value set for each entry taking precedence.
+
+<P>
+<A NAME="fig:avf2ppm.config"></A>  
+  
+  <BR CLEAR="ALL">
+<HR><PRE>
+array set plot_config {
+  arrow,status       1                  misc,background     #FFFFFF
+  arrow,colormap     Black-Gray-White   misc,drawboundary   1
+  arrow,colorcount   0                  misc,boundarywidth  1
+  arrow,quantity     z                  misc,boundarycolor  #000000
+  arrow,colorphase   0.                 misc,boundarypos    front
+  arrow,colorinvert  0                  misc,matwidth       0
+  arrow,autosample   1                  misc,matcolor       #FFFFFF
+  arrow,subsample    10                 misc,margin         10
+  arrow,size         1                  misc,width          640
+  arrow,antialias    1                  misc,height         480
+                                        misc,crop           1
+  pixel,status       1                  misc,zoom           0
+  pixel,colormap     Teal-White-Red     misc,rotation       0
+  pixel,colorcount   225                misc,datascale      0
+  pixel,opaque       1                  misc,relcenterpt {0.5 0.5 0.5}
+  pixel,quantity     x
+  pixel,colorphase   0.                 viewaxis            +z
+  pixel,colorinvert  0                  viewaxis,xarrowspan {}
+  pixel,autosample   1                  viewaxis,xpixelspan {}
+  pixel,subsample    0                  viewaxis,yarrowspan {}
+  pixel,size         1                  viewaxis,ypixelspan {}
+                                        viewaxis,zarrowspan {}
+                                        viewaxis,zpixelspan {}
+}
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 5:
+    Contents of default configuration
+file <TT><B>avf2ppm.config</B></TT>.
+    <A HREF="#pt:avf2ppm.config">(Description.)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html597"
+  HREF="Making_PostScript_from_Vect.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html593"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html587"
+  HREF="Vector_Field_File_Format_Co.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html600"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html595"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

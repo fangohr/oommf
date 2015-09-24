@@ -1,0 +1,226 @@
+# MIF 2.1
+# Example of stripe domain pattern induced by
+# perpendicular anisotropy.
+#
+# Default material parameters: Ms = 1400 kA/m, A = 30 pJ/m, K = 520 kJ/m^3
+#  Anisotropy field Hk = 2K/(mu0.Ms) = 591 kA/m
+#  Hk/Ms ratio= 0.4222478082029876
+#  Magnetostatic-exchange length = sqrt(2A/(mu0.Ms^2)) = 4.94 nm
+#  Magnetocrystalline-exchange length =    sqrt(A/|K|) = 7.60 nm
+
+RandomSeed 18
+
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+# Hk = 2*K/(mu0.Ms)
+Parameter Ms 1.4e6
+Parameter Hk_Ms_ratio 0.4222478082029876
+Parameter K1 [expr {$Hk_Ms_ratio*$MU0*$Ms*$Ms/2.0}]
+
+set xrange 800e-9
+set yrange 800e-9
+set zrange  40e-9
+
+Parameter pbcdir y
+
+Parameter xcellsize 4e-9
+Parameter ycellsize 4e-9
+Parameter zcellsize 4e-9
+
+Parameter translate {0 0 0}
+foreach {xtrans ytrans ztrans} $translate break
+
+Parameter total_iteration_limit 0
+
+# Tweak trans so they'll be a full cell step
+proc Tweak { srel srange scell } {
+   set s [expr {$srel*$srange}]
+   set s [expr {round($s/$scell)*$scell}]
+   return [expr {$s/$srange}]
+}
+set xtrans [Tweak $xtrans $xrange $xcellsize]
+set ytrans [Tweak $ytrans $yrange $ycellsize]
+set ztrans [Tweak $ztrans $zrange $zcellsize]
+
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0  $xrange}
+  yrange {0  $yrange}
+  zrange {0  $zrange}
+}]
+
+if {[string match "none" $pbcdir]} {
+   Specify Oxs_RectangularMesh:mesh [subst {
+    cellsize {$xcellsize $ycellsize $zcellsize}
+    atlas :atlas
+   }]
+} else {
+   Specify Oxs_PeriodicRectangularMesh:mesh [subst {
+    cellsize {$xcellsize $ycellsize $zcellsize}
+    atlas :atlas
+    periodic $pbcdir
+   }]
+}
+
+# Note: May want to introduce higher order
+# K2 term to anisotropy.
+Specify Oxs_UniaxialAnisotropy [subst {
+  K1  $K1
+  axis { Oxs_UniformVectorField {
+    norm 1
+    vector {0 0 1}
+  }  }
+}]
+
+Specify Oxs_UniformExchange {
+  A  3e-11
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve:evolver {}
+
+# Several scripts for setting initial magnetization
+# m0 aligned to +z, except for ring around border
+proc m0perp {x y z} {
+   set r1 [expr {rand()*0.01}]
+   set r2 [expr {rand()*0.01}]
+   if {0.1<$x && $x<0.9 && 0.1<$y && $y<0.9} {
+      set x $r1
+      set y $r2
+      set z 1.0
+   } else {
+      set z $r2
+      if {$x<=0.1 && $y<0.9} {
+         set x $r1
+         set y -1.0
+      } elseif {$y<=0.1} {
+         set x 1.0
+         set y $r1
+      } elseif {$x>=0.9} {
+         set x $r1
+         set y 1.0
+      } else {
+         set x -1.0
+         set y  $r1
+      }
+   }
+   return [list $x $y $z]
+}
+
+proc m0perp_norandom {x y z} {
+   set r1 0.006
+   set r2 0.0001
+   if {0.1<$x && $x<0.9 && 0.1<$y && $y<0.9} {
+      set x $r1
+      set y $r2
+      set z 1.0
+   } else {
+      set z $r2
+      if {$x<=0.1 && $y<0.9} {
+         set x $r1
+         set y -1.0
+      } elseif {$y<=0.1} {
+         set x 1.0
+         set y $r1
+      } elseif {$x>=0.9} {
+         set x $r1
+         set y 1.0
+      } else {
+         set x -1.0
+         set y  $r1
+      }
+   }
+   return [list $x $y $z]
+}
+
+# Concentric rings of up and down magnetization
+Parameter ringcount 12
+proc m0rings {x y z} {
+   global ringcount
+   set rx [expr {2*$x-1.0}]
+   set ry [expr {2*$y-1.0}]
+   set rad [expr {sqrt($rx*$rx+$ry*$ry)}]
+   set ringid [expr {int(round($ringcount*$rad))}]
+   if {$ringid%2 == 0} {
+      set zret 1.0
+   } else {
+      set zret -1.0
+   }
+   set xret [expr {rand()*0.01}]
+   set yret [expr {rand()*0.01}]
+   return [list $xret $yret $zret]
+}
+
+# Up and down (+/-z) magnetization in stripe domains
+# parallel to y-axis.
+Parameter stripecount 8
+proc m0stripes {x y z} {
+   global stripecount
+   set strip [expr {int(floor($x*$stripecount))}]
+   if {$strip % 2} {
+      set zret -1.0
+   } else {
+      set zret  1.0
+   }
+   set xret [expr {rand()*0.01}]
+   set yret [expr {rand()*0.01}]
+   return [list $xret $yret $zret]
+}
+
+# Similar to m0stripes, but wavy stripes; also shifted 1/2 period to
+# reduce orphan domains on left and right edges.
+Parameter wavystripecount 6
+Parameter wavyamp 0.25
+Parameter wavyfreq 8
+proc m0wavystripes {x y z} {
+   global PI wavystripecount wavyamp wavyfreq
+   set edgeoff [expr {$wavyamp*cos(2*$PI*$wavyfreq*$y)}]
+   set strip [expr {int(floor($x*$wavystripecount+$edgeoff-0.5))}]
+   if {$strip % 2} {
+      set zret -1.0
+   } else {
+      set zret  1.0
+   }
+   set xret [expr {rand()*0.01}]
+   set yret [expr {rand()*0.01}]
+   return [list $xret $yret $zret]
+}
+
+# m0 with pointwise random orientation.
+proc m0random {x y z} {
+   set xret [expr {2*rand()-1.0}]
+   set yret [expr {2*rand()-1.0}]
+   set zret [expr {2*rand()-1.0}]
+   return [list $xret $yret $zret]
+}
+
+# m0script choices: m0perp, m0perp_norandom, m0rings,
+#                   m0stripes, m0wavystripes, m0random
+Parameter m0script m0perp
+
+proc m0translate { m0script x y z } {
+   # scriptargs: relpt
+   global xtrans ytrans ztrans
+   set x [expr {$x-$xtrans}]  ; set x [expr {$x - floor($x)}]
+   set y [expr {$y-$ytrans}]  ; set y [expr {$y - floor($y)}]
+   set z [expr {$z-$ztrans}]  ; set z [expr {$z - floor($z)}]
+   $m0script $x $y $z
+}
+
+Specify Oxs_MinDriver [subst {
+  evolver :evolver
+  mesh :mesh
+  stopping_mxHxm 0.1
+  stage_count 0
+  total_iteration_limit $total_iteration_limit
+  Ms $Ms
+  comment {m0 { Oxs_RandomVectorField { min_norm 1  max_norm 1 } }}
+  m0 { Oxs_ScriptVectorField {
+     atlas :atlas
+     script {m0translate $m0script}
+     norm 1.0
+  }}
+  report_max_spin_angle 1
+}]

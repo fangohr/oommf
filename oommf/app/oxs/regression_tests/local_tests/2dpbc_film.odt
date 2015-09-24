@@ -1,0 +1,7 @@
+# ODT 1.0
+# Table Start
+# Title: mmArchive Data Table, Thu Dec 15 01:13:45 EST 2011
+# Columns: {Oxs_EulerEvolve::Total energy} {Oxs_EulerEvolve::Energy calc count} {Oxs_EulerEvolve::Max dm/dt} Oxs_EulerEvolve::dE/dt {Oxs_EulerEvolve::Delta E} PBC_Exchange_2D::Energy PBC_Demag_2D::Energy Oxs_TimeDriver::Iteration {Oxs_TimeDriver::Stage iteration} Oxs_TimeDriver::Stage Oxs_TimeDriver::mx   Oxs_TimeDriver::my   Oxs_TimeDriver::mz   {Oxs_TimeDriver::Last time step} {Oxs_TimeDriver::Simulation time}
+# Units:                  J                                 {}                             deg/ns                     J/s                       J                         J                     J                      {}                            {}                          {}                   {}                   {}                   {}                          s                                 s                
+                 0                                  1                                0                         0                        0                        0                      0                      0                             0                           0                     1                    0                    0                          0                                0                         
+# Table End

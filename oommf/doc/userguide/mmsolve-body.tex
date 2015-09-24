@@ -1,0 +1,1297 @@
+\section{The 2D Micromagnetic Solver}\label{sec:mmsolve}%
+\index{simulation~2D}
+
+%begin{latexonly}
+\newcounter{msoldsecnumdepth}
+\setcounter{msoldsecnumdepth}{\value{secnumdepth}}
+\setcounter{secnumdepth}{4}
+%end{latexonly}
+
+
+The OOMMF 2D micromagnetic computation engine, mmSolve, is capable of
+solving problems defined on a two-dimensional grid of square cells with
+three-dimensional spins.  This solver is older, less flexible and less
+extensible than the \hyperrefhtml{Oxs}{Oxs (Sec.~}{)}{sec:oxs} solver.
+Users are encouraged to migrate to Oxs where possible.
+
+There are two interfaces provided to mmSolve, the interactive
+\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D} (Sec.~}{)}{sec:mmsolve2d}
+interface and the command line driven
+\hyperrefhtml{\app{batchsolve}}{\app{batchsolve} (Sec.~}{)}{sec:batchsolve}
+interface which can be used in conjunction with the
+\hyperrefhtml{OOMMF Batch System}{OOMMF Batch System (Sec.~}{)}{sec:obs}.
+
+Problem definition for mmSolve is accomplished using input files in the
+\hyperrefhtml{\MIF~1.1 format}{\MIF~1.1 format (Sec.~}{)}{sec:mif1format}.
+Please note that this format is incompatible with the newer \MIF~2.x
+format used by the Oxs solver.  However, the command line utility
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert} can be used to aid conversion from the
+\MIF~1.1 format to \MIF~2.1.
+
+mmSolve will also accept files in the \hyperrefhtml{\MIF~1.2
+format}{\MIF~1.2 format (Sec.~}{)}{sec:mif12format} format, provided the
+\texttt{CellSize} record meets the restriction that the $x$- and
+$y$-dimensions are the same, and that the $z$-dimension equals the part
+thickness.
+
+Note on \Tk\ dependence: If a problem is loaded that uses a
+{\hyperrefhtml{bitmap mask file}{bitmap mask file
+(Sec.~}{)}{sec:partgeometry}}\index{file!mask}\index{file!bitmap}, and
+if that mask file is not in the PPM P3 (text) format, then
+\app{mmSolve2D} will launch {\hyperrefhtml{any2ppm}{\app{any2ppm}
+(Sec.~}{)}{sec:any2ppm}}\index{application!any2ppm} to convert it into
+the PPM P3 format.  Since \app{any2ppm}
+requires\index{requirement!Tk}\index{requirement!display} \Tk, at the
+time the mask file is read a valid display must be available.  See the
+\app{any2ppm} documentation for details.
+
+\subsection{The 2D Micromagnetic Interactive Solver: mmSolve2D}%
+\label{sec:mmsolve2d}\index{simulation~2D}\index{application!mmSolve2D}
+
+\begin{center}
+\includepic{mmsolve2d-ss}{mmSolve2D Screen Shot}
+\end{center}
+
+\sssechead{Overview}
+The application \app{mmSolve2D} is a micromagnetic computation engine
+capable of solving problems defined on two-dimensional square grids of
+three-dimensional spins.  Within the \hyperrefhtml{\OOMMF\
+architecture}{\OOMMF\ architecture (see Sec.~}{)}{sec:arch},
+\app{mmSolve2D} is both a server and a client application.
+\app{mmSolve2D} is a client of 
+problem description server applications, data table display and storage
+applications, and vector field display and storage applications.  
+\app{mmSolve2D} is the server of a solver control service for which the
+only client is \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
+(Sec.~}{)}{sec:mmlaunch}\index{application!mmLaunch}.  It is through
+this service that \app{mmLaunch} provides a user interface window (shown
+above) on behalf of \app{mmSolve2D}.
+
+\sssechead{Launching}
+\app{mmSolve2D} may be started either by selecting the
+\btn{mmSolve2D} button on \htmlref{mmLaunch}{sec:mmlaunch}, or from the
+command line via
+\begin{verbatim}
+tclsh oommf.tcl mmSolve2D [standard options] [-restart <0|1>]
+\end{verbatim}
+\begin{description}
+\item[\optkey{-restart \boa 0\pipe 1\bca\index{simulation~2D!restarting}}]
+  Affects the behavior of the solver
+  when a new problem is loaded.  Default value is 0.  When launched with
+  \cd{-restart 1}, the solver will look for \fn{\textit{basename}.log}
+  and \fn{\textit{basename*}.omf} files to restart a previous run from
+  the last saved state (where \fn{\textit{basename}} is the ``Base
+  Output Filename'' specified in the input {\latex{\MIF~1.1 problem
+  specification file
+  (Sec.~\ref{sec:mif1format})).}}{\html{\htmlref{\MIF~1.1}{sec:mif1outspec}
+  problem specification file).}}  If these files cannot be found, then a
+  warning is issued and the solver falls back to the default behavior
+  (\cd{-restart 0}) of starting the problem from scratch.  The specified
+  \cd{-restart} setting holds for \textbf{all} problems fed to the
+  solver, not just the first.  (There is currently no interactive way to
+  change the value of this switch.)
+\end{description}
+
+Since \app{mmSolve2D}\index{mmLaunch~user~interface} does not present
+any user interface window of its own, it depends on
+\app{mmLaunch}\index{application!mmLaunch} to provide an interface on
+its behalf.  The entry for an instance of \app{mmSolve2D} in the
+\btn{Threads}\index{threads} column of any running copy of
+\app{mmLaunch} has a checkbutton next to it.  This button toggles the
+presence of a user interface window through which the user may control
+that instance of \app{mmSolve2D}.  The user interface window is divided
+into panels, providing user interfaces to the
+\btn{Inputs}, \btn{Outputs}, and \btn{Controls} of \app{mmSolve2D}.
+
+\sssechead{Inputs}
+The top panel of the user interface window may be opened and closed
+by toggling the \btn{Inputs} checkbutton.  When open, the
+\btn{Inputs} panel reveals two subpanels.  The left subpanel 
+contains a list of the inputs required by \app{mmSolve2D}.  There is
+only one item in the list: \btn{ProblemDescription}.  When
+\btn{ProblemDescription} is selected, the right subpanel (labeled
+\btn{Source Threads}\index{threads}) displays a list of applications
+that can supply a problem description.  The user selects from among the
+listed applications the one from which \app{mmSolve2D} should request a
+problem description.
+
+\sssechead{Outputs}
+When \app{mmSolve2D} has outputs available to be controlled, a
+\btn{Scheduled Outputs} checkbutton appears in the user interface
+window.  Toggling the \btn{Scheduled Outputs} checkbutton causes a
+bottom panel to open and close in the user interface window.  When open,
+the \btn{Scheduled Outputs} panel contains three subpanels.  The
+\btn{Outputs} subpanel is filled with a list of the types of output
+\app{mmSolve2D} can generate while solving the loaded problem.  The
+three elements in this list are \btn{TotalField}, for the output of a
+vector field\index{file!vector~field} representing the total effective
+field, \btn{Magnetization}, for the output of a vector field
+representing the current magnetization state of the grid of spins, and
+\btn{DataTable}, for the output of a table of data
+values\index{file!data~table} describing other quantities of interest
+calculated by \app{mmSolve2D}.
+
+Upon selecting one of the output types from the \btn{Outputs} subpanel,
+a list of applications appears in the
+\btn{Destination Threads}\index{threads} subpanel which provide a
+display and/or storage service for the type of output selected.  The
+user may select from this list those applications to which the selected
+type of output should be sent.
+
+For each application selected, a final interface is displayed in the
+\btn{Schedule}\index{output~schedule} subpanel.  Through this interface
+the user may set the schedule according to which the selected type of
+data is sent to the selected application for display or storage.  The
+schedule is described relative to events in \app{mmSolve2D}.  An
+\btn{Iteration}~event occurs at every step in the solution of the ODE.
+A \btn{ControlPoint}\index{simulation~2D!control~point} event occurs
+whenever the solver determines that a control point specification is
+met.  (Control point specs are discussed in the {\htmlref{Experiment
+parameters}{sec:expparams}} paragraph in the {\hyperrefhtml{\MIF~1.1
+documentation}{\MIF~1.1 documentation (Sec.~}{)}{sec:mif1format}}, and
+are triggered by solver equilibrium, simulation time, and iteration
+count conditions.)  An {\btn{Interactive}} event occurs for a particular
+output type whenever the corresponding ``Interactive Outputs'' button is
+clicked in the {\btn{Runtime Control}} panel.  The \btn{Interactive}
+schedule gives the user the ability to interactively force data to be
+delivered to selected display and storage applications.  For the
+\btn{Iteration} and \btn{ControlPoint} events, the granularity of the
+output delivery schedule is under user control.  For example, the user
+may elect to send vector field data describing the current magnetization
+state to an \htmlref{\app{mmDisp}}{sec:mmdisp}\index{application!mmDisp}
+instance for display every 25 iterations of the ODE, rather than every
+iteration.
+
+The quantities included in \btn{DataTable} output produced by
+\app{mmSolve2D} include:
+\begin{itemize}
+\item {\bf Iteration:}\index{iteration} The iteration count of the ODE
+      solver.
+\item {\bf Field Updates:}\index{field!update~count} The number of times the
+      ODE solver has calculated the effective field.
+\item {\bf Sim Time (ns):}\index{simulation~2D!time} The elapsed simulated
+      time.
+\item {\bf Time Step (ns):}\index{time~step} The interval of simulated
+      time spanned by the last step taken in the ODE solver.
+\item {\bf Step Size:}\index{step~size} The magnitude of the last step
+        taken by the ODE solver as a normalized value.  (This is
+        currently the time step in seconds, multiplied by the
+        gyromagnetic ratio times the damping coefficient times $M_s$.)
+\item {\bf Bx, By, Bz (mT):}\index{field!applied} The $x$, $y$, and $z$
+        components of the \hyperrefhtml{nominal applied field}{nominal
+        applied field (see Sec.~}{)}{sec:expparams}.
+\item {\bf B (mT):} The magnitude of the nominal applied field (always non-negative).
+\item {\bf \pipe m x h\pipe:}\index{simulation~2D!mxh}  The maximum of the
+        point-wise quantity
+        \html{$|\vM\times\vH_{eff}|/M_s^2$}\latex{$\|\vM\times\vH_{\rm
+        eff}\|/M_s^2$} over all the spins.  This ``torque'' value is
+        used to test convergence to an equilibrium state (and raise
+        control point --torque events).
+\item {\bf Mx/Ms, My/Ms, Mz/Ms:}\index{magnetization} The $x$,
+        $y$, and $z$ components of the average magnetization of the
+        magnetically active elements of the simulated part.
+\item {\bf Total Energy (J/m${}^3$):}\index{energy!total} The total
+        average energy density for the magnetically active elements of
+        the simulated part.
+\item {\bf Exchange Energy (J/m${}^3$):}\index{energy!exchange} The
+        component of the average energy density for the magnetically
+        active elements of the simulated part due to exchange
+        interactions.
+\item {\bf Anisotropy Energy (J/m${}^3$):}\index{energy!anisotropy} The
+        component of the average energy density for the magnetically
+        active elements of the simulated part due to crystalline and
+        surface anisotropies.
+\item {\bf Demag Energy (J/m${}^3$):}\index{energy!demag} The component
+        of the average energy density for the magnetically active
+        elements of the simulated part due to self-demagnetizing fields.
+\item {\bf Zeeman Energy (J/m${}^3$):}\index{energy!Zeeman}  The
+        component of average energy density for the magnetically active
+        elements of the simulated part due to interaction with the
+        applied field.
+\item {\bf Max Angle:}\index{max~angle}  The maximum angle (in degrees)
+        between the magnetization orientation of any pair of neighboring
+        spins in the grid.  (The neighborhood of a spin is the same as
+        that defined by the exchange energy calculation.)
+\end{itemize}
+In addition, the solver automatically keeps a log file\index{file!log}
+that records the input problem specification and miscellaneous runtime
+information.  The name of this log file is \fn{\textit{basename}.log},
+where \fn{\textit{basename}} is the ``Base Output Filename'' specified
+in the input problem specification.  If this file already exists, then
+new entries are appended to the end of the file.
+
+\sssechead{Controls}
+The middle section of the user interface window contains a series of
+buttons providing user control over the
+solver\index{simulation~2D!interactive~control}.  After a problem
+description server application has been selected, the \btn{LoadProblem}
+button triggers a fetch of a problem description from the selected
+server.  The \btn{LoadProblem} button may be selected at any time to
+(re-)load a problem description from the currently selected server.
+After loading a new problem the solver goes automatically into a paused
+state.  (If no problem description server is selected when the
+\btn{LoadProblem} button is invoked, nothing will happen.)  The
+\btn{Reset} button operates similarly, except that the current problem
+specifications are used.
+
+Once a problem is loaded, the solver can be put into any of three
+states: run, relax and pause.  Selecting \btn{Relax} puts the solver
+into the ``relax'' state, where it runs until a control point is
+reached, after which the solver pauses.  If the \btn{Relax} button is
+reselected after reaching a control point, then the solver will simply
+re-pause immediately.  The \btn{Field+} or \btn{Field--} button must be
+invoked to change the applied field state. (Field state schedules are
+discussed below.)  The \btn{Run} selection differs in that when a
+control point is reached, the solver automatically steps the nominal
+applied field to the next value, and continues.  In ``run'' mode the
+solver will continue to process until there are no more applied field
+states in the problem description.  At any time the \btn{Pause} button
+may be selected to pause the solver.  The solver will stay in this state
+until the user reselects either \btn{Run} or \btn{Relax}.  The current
+state of the solver is indicated in the \btn{Status} line in the center
+panel of the user interface window.
+
+The problem description (\MIF~1.x format)\index{file!MIF~1.x}
+specifies a fixed \hyperrefhtml{applied field schedule}{applied field
+schedule (see Sec.~}{)}{sec:expparams}.  This schedule defines an
+ordered list of applied fields, which the solver in ``run'' mode steps
+through in sequence.  The \btn{Field--} and \btn{Field+} buttons allow
+the user to interactively adjust the applied field sequence.  Each click
+on the
+\btn{Field+} button advances forward one step through the specified
+schedule, while \btn{Field--} reverses that process.  In general, the
+step direction is {\em not} related to the magnitude of the applied
+field.  Also note that hitting these buttons does not generate a
+``ControlPoint'' event.  In particular, if you are manually accelerating
+the progress of the solver through a hysteresis loop, and want to send
+non-ControlPoint data to a display or archive widget before advancing
+the field, then you must use the appropriate ``Interactive Output''
+button.
+
+The second row of buttons in the interaction control panel,
+\btn{TotalField}, \btn{Magnetization} and \btn{DataTable}, allow the
+user to view the current state of the solver at any time.  These buttons
+cause the solver to send out data of the corresponding type to all
+applications for which the ``Interactive'' schedule button for that 
+data type has been selected, as discussed in the Outputs section above.
+
+At the far right of the solver controls is the \btn{Exit} button, which
+terminates\index{simulation~2D!termination} \app{mmSolve2D}.  Simply
+closing the user interface window does not terminate \app{mmSolve2D},
+but only closes the user interface window.  To kill the solver the
+\btn{Exit} button must be pressed.
+
+\sssechead{Details}
+Given a problem description, \app{mmSolve2D} integrates the
+Landau-Lifshitz equation\index{ODE!Landau-Lifshitz}~\cite{gilbert55,landau35}\\
+\begin{equation}
+\htmlimage{antialias}
+  \frac{d\vM}{dt} = -|\bar{\gamma}|\,\vM\times\vH_{\rm eff}
+   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
+     \vM\times\left(\vM\times\vH_{\rm eff}\right),
+\label{eq:llode}
+\end{equation}
+where
+\latex{
+\begin{eqnarray*}
+  \vM       && \mbox{is the pointwise magnetization (A/m),} \\
+  \vH_{\rm eff} && \mbox{is the pointwise effective field (A/m),} \\
+  \bar{\gamma}  && \mbox{is the Landau-Lifshitz gyromagnetic ratio
+    (m/(A$\cdot$s)),} \\
+  \alpha    && \mbox{is the damping coefficient (dimensionless).}
+\end{eqnarray*}
+} % close latex
+% Use BLOCKQUOTE until mmHelp supports tables.
+\html{
+\begin{quotation}
+  $\vM$              is the pointwise magnetization (A/m),\\
+  $\vH_{\mbox{eff}}$ is the pointwise effective field (A/m),\\
+  \abovemath{\bar{\gamma}} is the Landau-Lifshitz gyromagnetic ratio
+                        (m/(A\begin{rawhtml}&#183;\end{rawhtml}s)),\\
+  $\alpha$           is the damping coefficient (dimensionless).
+\end{quotation}
+} % close html
+\latex{(Compare to (\ref{eq:oxsllode}), page~\pageref{eq:oxsllode}.)}%
+\html{(See also the discussion of the \htmlref{Landau-Lifshitz-Gilbert
+equations}{eq:oxsllode} in the Oxs documentation.)}
+
+% Note 1: Don't use transparent images, because mmHelp renders them
+%   rather slowly.
+% Note 2: makeimage (maybe +tabular?) breaks on newer systems, with
+%   latex2html v1.71 and v1.68.  OTOH, v1.68 works on older systems,
+%   so it is not clear what the problem is.  The error message is:
+%          panic: end_shift at /usr/local/bin/latex2html line 11720.
+%   This is with Perl v5.8.0.  So, we have to render the table
+%   directly.  This is actually preferred with real HTML browsers,
+%   but as of this writing (Dec-2004) mmHelp doesn't do tables.
+The effective field\index{field!effective} is defined as
+\html{\begin{center}}
+%\begin{makeimage}
+%\htmlimage{no_transparent}
+\begin{displaymath}
+  \vH_{\rm eff} = -\mu_0^{-1} \frac{\partial E}{\partial\vM}.
+\end{displaymath}
+%\end{makeimage}
+\html{\end{center}}
+The average energy density\index{energy!total} $E$ is a function of
+$\vM$ specified by Brown's equations \cite{brown78}, including
+anisotropy\index{energy!anisotropy},
+exchange\index{energy!exchange}, self-magnetostatic
+(demagnetization)\index{energy!demag} and applied
+field\index{energy!Zeeman} (Zeeman) terms.
+
+The micromagnetic problem is impressed upon a regular 2D
+grid\index{grid} of squares, with 3D magnetization spins positioned at
+the centers of the cells.  Note that the constraint that the grid be
+composed of square elements takes priority over the requested size of
+the grid.  The actual size of the grid used in the computation will be
+the nearest integral multiple of the grid's cell size to the requested
+size.  It is important when comparing the results from grids with
+different cell sizes to account for the possible change in size of the
+overall grid.
+
+The anisotropy and applied field energy terms are calculated
+assuming constant magnetization in each cell.  The exchange energy is
+calculated using the eight-neighbor bilinear interpolation described in
+\cite{donahue97}, with Neumann boundary conditions.  The more common
+four-neighbor scheme is available as a compile-time option.  Details can
+be found in the source-code file \fn{oommf/app/mmsolve/magelt.cc}.
+
+The self-magnetostatic field is calculated as the convolution of the
+magnetization against a kernel that describes the cell to cell
+magnetostatic interaction.  The convolution is evaluated using fast
+Fourier transform (FFT)\index{FFT} techniques.  Several kernels are
+supported; these are selected as part of the problem description in
+\hyperrefhtml{\MIF~1.x format}{\MIF~1.x format; for details see Sec.~}{:
+Demag specification}{sec:mifdemagspec}.  Each kernel represents a different
+interpretation of the discrete magnetization.  The recommended model is
+\cd{ConstMag}, which assumes the magnetization is constant in each cell,
+and computes the average demagnetization field through the cell using
+formulae from \cite{newell93} and \cite{aharoni98}.
+
+The Landau-Lifshitz ODE\index{ODE!Landau-Lifshitz} (\ref{eq:llode}) is
+integrated using a second order
+predictor-corrector\index{ODE!predictor-corrector} technique of the
+Adams type.  The right side of (\ref{eq:llode}) at the current and
+previous step is extrapolated forward in a linear fashion, and is
+integrated across the new time interval to obtain a quadratic prediction
+for $\vM$ at the next time step.  At each stage the spins are
+renormalized to $M_s$ before evaluating the energy and effective
+fields.  The right side of (\ref{eq:llode}) is evaluated at the
+predicted $\vM$, which is then combined with the value at the current
+step to produce a linear interpolation of $d\vM/dt$ across the new
+interval.  This is then integrated to obtain the final estimate of $\vM$
+at the new step.  The local (one step) error of this procedure should be
+\html{$O(dt^3)$}\latex{$O(\Delta t^3)$}.
+
+The step is accepted if the total energy of the system decreases, and
+the maximum error between the predicted and final $\vM$ is smaller than
+a nominal value.  If the step is rejected, then the step size is reduced
+and the integration procedure is repeated.  If the step is accepted,
+then the error between the predicted and final $\vM$ is used to adjust
+the size of the next step.  No fixed ratio between the previous and
+current time step is assumed.
+
+A fourth order Runge-Kutta\index{ODE!Runge-Kutta} solver is used to
+prime the predictor-corrector solver, and is used as a backup in case
+the predictor-corrector fails to find a valid step.  The Runge-Kutta
+solver is not selectable as the primary solver at runtime, but may be so
+selected at compile time by defining the \cd{RUNGE\_KUTTA\_ODE} macro.
+See the file \fn{oommf/app/mmsolve/grid.cc} for all details of the
+integration procedure.
+
+For a given applied field, the integration continues until a
+\htmlref{control point}{sec:expparams}
+\latex{(cf.\ Experiment parameters, Sec.~\ref{sec:expparams})} is
+reached.  A control point\index{simulation~2D!control~point} event may
+be raised by the ODE iteration count, elapsed simulation time, or by the
+maximum value of {\html{$|\vM\times\vH_{\mbox{eff}}|/M_s^2$}}
+{\latex{$\|\vM\times\vH_{\mbox{eff}}\|/M_s^2$}} dropping below a
+specified control point --torque value (implying an equilibrium state
+has been reached).
+
+Depending on the problem size, \app{mmSolve2D} can require a good deal
+of working memory.  The exact amount depends on a number of factors, but
+a reasonable estimate is 5~MB + 1500~bytes per cell.  For example, a
+1~\micrometer~$\times$~1~\micrometer\ part discretized with 5~nm cells will require
+approximately 62~MB.
+
+\sssechead{Known Bugs}
+\app{mmSolve2D} requires the damping coefficient to be non-zero.
+See the \hyperrefhtml{\MIF~1.1 documentation}{\MIF~1.1 documentation
+(Sec.~}{)}{sec:mif1format} for details on specifying the damping
+coefficient.
+
+When multiple copies of
+\app{mmLaunch}\index{mmLaunch~user~interface}\index{application!mmLaunch}
+are used, each can have its own interface to a running copy of
+\app{mmSolve2D}.  When the interface presented by one copy of
+\app{mmLaunch} is used to set the output schedule in \app{mmSolve2D},
+those settings are not reflected in the interfaces presented by other
+copies of \app{mmLaunch}.  For example, although the first interface
+sets a schedule that DataTable data is to be sent to an instance of
+\app{mmGraph}\index{application!mmGraph} every third Iteration, there is
+no indication of that schedule presented to the user in the second
+interface window.  It is unusual to have more than one copy of
+\app{mmLaunch} running simultaneously. However, this bug also appears
+when one copy of \app{mmLaunch} is used to load a problem and start a
+solver, and later a second copy of \app{mmLaunch} is used to monitor the
+status of that running solver.
+
+\index{platform!Windows!network socket bug|(}
+A bug in the network traffic handling code\index{network~socket} of
+\Tcl\ on \Windows~9X systems can sometimes interfere
+with communications between the control interface of \app{mmSolve2D} and
+the actual computation engine.  If \app{mmSolve2D} is sending out data
+to two or more data display services every iteration, the resulting
+network traffic can ``crowd out'' the receipt of control messages from
+the control interface.  You may observe this as a long delay between the
+time you click the \btn{Pause} button and the time the solver stops
+iterating.  This bug first appeared in \Tcl\ release 8.0.3, and remained
+through \Tcl\ release 8.1.1.  It is fixed in
+\Tcl\ releases 8.2 and later, which we recommend for \OOMMF\ users on
+\Windows~9X systems.  Other platforms do not have this problem.
+\index{platform!Windows!network socket bug|)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{\OOMMF\ 2D Micromagnetic Solver Batch System}\label{sec:obs}
+\index{simulation~2D}\index{application!OOMMF~Batch~System}
+
+The \OOMMF\ Batch System (\OBS) provides a scriptable interface
+to the same micromagnetic solver engine used by
+\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
+(Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}, in the
+form of three \Tcl\ applicatons
+(\app{batchmaster}, \app{batchslave}, and
+\app{batchsolve}) that provide support for complex job scheduling.
+All \OBS\ script files are in the \OOMMF\ distribution directory
+\fn{app/mmsolve/scripts}.
+
+Unlike much of the \OOMMF\ package, the \OBS\ is meant to be
+driven primarily from the command line or shell (batch) script.
+\OBS\ applications are launched from the command line using the
+\hyperrefhtml{bootstrap application}{bootstrap application
+(Sec.~}{)}{sec:cll}.
+
+\subsubsection{2D Micromagnetic Solver Batch Interface: batchsolve}%
+\label{sec:batchsolve}
+
+\sssechead{Overview}
+The application
+\app{batchsolve}\index{application!batchsolve} provides a simple
+command line interface to the \OOMMF\ 2D micromagnetic solver engine.
+
+\sssechead{Launching}
+The application \app{batchsolve} is launched by the command line:
+\begin{verbatim}
+tclsh oommf.tcl batchsolve [standard options] 
+   [-end_exit <0|1>] [-end_paused] [-interface <0|1>] \
+   [-restart <0|1>] [-start_paused] [file]
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{-end\_exit \boa 0\pipe 1\bca}]
+  Whether or not to explicitly call exit at bottom of \fn{batchsolve.tcl}.
+  When launched from the command line, the default is to exit after
+  solving the problem in \cd{file}.  When sourced into another script,
+  like \fn{batchslave.tcl}, the default is to wait for the caller script
+  to provide further instructions.
+\item[\optkey{-interface \boa 0\pipe 1\bca}]
+  Whether to register with the account service
+  directory\index{account~service~directory} application, so
+  that \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
+  (Sec.~}{)}{sec:mmlaunch}\index{application!mmLaunch}, can provide
+  an interactive interface.  Default = 1 (do register), which will
+  automatically start account service directory and
+  host service directory applications as necessary.
+\item[\optkey{-start\_paused}]
+  Pause solver after loading problem.
+\item[\optkey{-end\_paused}]
+  Pause solver and enter event loop at bottom of {\fn{batchsolve.tcl}}
+  rather than just falling off the end (the effect of which will
+  depend on whether or not \Tk\ is loaded).
+\item[\optkey{-restart \boa 0\pipe 1\bca\index{simulation~2D!restarting}}]
+  Determines solver behavior when a new problem is loaded.  If 1, then
+  the solver will look for \fn{\textit{basename}.log}\index{file!log}
+  and \fn{\textit{basename*}.omf}\index{file!magnetization} files to
+  restart a previous run from the last
+  saved state (where \fn{\textit{basename}} is the ``Base Output
+  Filename'' specified in the input problem specification).  If these
+  files cannot be found, then a warning is issued and the solver falls
+  back to the default behavior (equivalent to \cd{-restart 0}) of
+  starting the problem from scratch.  The specified \cd{-restart}
+  setting holds for \textbf{all} problems fed to the solver, not just
+  the first.
+\item[\optkey{file}]
+  Immediately load and run the specified \MIF~1.x
+  file\index{file!MIF~1.x}.
+\end{description}
+
+The input file {\bf\fn{file}} should contain a
+\hyperrefhtml{Micromagnetic Input Format}{Micromagnetic Input
+Format (Sec.~}{)}{sec:mifformat} 1.x problem
+description\index{file!MIF~1.x}, such as produced by
+\hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
+(Sec.~}{)}{sec:mmprobed}\index{application!mmProbEd}.  The batch solver
+searches several directories for this file, including the current
+working directory\index{working~directory}, the \fn{data} and
+\fn{scripts} subdirectories, and parallel directories relative to the
+directories \fn{app/mmsolve} and
+\fn{app/mmpe} in the \OOMMF\ distribution.  Refer to the
+\cd{mif\_path} variable in \fn{batchsolve.tcl} for the complete list.
+
+If \cd{-interface} is set to 1 (enabled), \app{batchsolve} registers
+with the account service directory\index{account~service~directory}
+application, and \app{mmLaunch} will be able to provide an interactive
+interface.  Using this interface, \app{batchsolve} may be controlled in
+a manner similar to \hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
+(Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}.  The
+interface\index{simulation~2D!interactive~control} allows you to pause,
+un-pause, and terminate\index{simulation~2D!termination} the current
+simulation, as well as to attach data display applications to monitor
+the solver's progress.  If more interactive control is needed,
+\app{mmSolve2D} should be used.
+
+If \cd{-interface} is 0 (disabled), \app{batchsolve} does not register,
+leaving it without an interface, unless it is sourced into another
+script (e.g., \fn{batchslave.tcl}\index{application!batchslave}) that
+arranges for an interface on the behalf of \app{batchsolve}.
+
+Use the {\bf\verb|-start_paused|} switch to monitor the progress of
+\app{batchsolve} from the very start of a simulation.  With this
+switch the solver will be paused immediately after loading the
+specified \MIF\ file, so you can bring up the interactive interface
+and connect display applications before the simulation begins.  Start the
+simulation by selecting the \btn{Run} command from the interactive
+interface.  This option cannot be used if \cd{-interface} is disabled.
+
+The {\bf\verb|-end_paused|} switch insures that the solver does
+not automatically terminate after completing the specified
+simulation.  This is not generally useful, but may find application
+when \app{batchsolve} is called from inside a \Tcl -only wrapper
+script.
+
+Note on \Tk\ dependence: If a problem is loaded that uses a
+{\hyperrefhtml{bitmap mask file}{bitmap mask file
+(Sec.~}{)}{sec:partgeometry}}\index{file!mask}\index{file!bitmap}, and
+if that mask file is not in the PPM P3 (text) format, then
+\app{batchsolve} will launch {\hyperrefhtml{any2ppm}{\app{any2ppm}
+(Sec.~}{)}{sec:any2ppm}}\index{application!any2ppm} to convert it into
+the PPM P3 format.  Since \app{any2ppm}
+requires\index{requirement!Tk}\index{requirement!display} \Tk, at the
+time the mask file is read a valid display must be available.  See the
+\app{any2ppm} documentation for details.
+
+\sssechead{Output}
+The output may be changed by a \Tcl\ \hyperrefhtml{wrapper
+script}{wrapper script (see Sec.~}{)}{sec:batchsolvepi}, but the default
+output behavior of \app{batchsolve} is to write tabular text data and
+the magnetization state at the control point for each applied field
+step.  The tabular data are appended to the file \fn{{\em
+basename}.odt}\index{file!data~table}, where {\em basename} is the
+``Base Output Filename'' specified in the input
+\MIF~1.x file\index{file!MIF~1.x}.  See the routine \cd{GetTextData} in
+\fn{batchsolve.tcl} for details, but at present the output consists of
+the solver iteration count\index{iteration}, nominal applied field
+\vB\index{field!applied}, reduced average
+magnetization \vm\index{magnetization}, and total
+energy\index{energy!total}.  This output is in the \ODT\ file format.
+
+The magnetization data are written to a series of \OVF\ (\OOMMF\ Vector
+Field) files\index{file!vector~field},
+\fn{\textit{basename}.field\textit{nnnn}.omf}, where \fn{\textit{nnnn}}
+starts at \fn{0000} and is incremented at each applied
+field\index{field!applied} step.  (The ASCII text header inside each
+file records the nominal applied field at that step.)  These files are
+viewable using \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}.
+
+The solver also automatically appends the input problem specification
+and miscellaneous runtime information to the log file
+\fn{{\em basename}.log}\index{file!log}.
+
+
+\sssechead{Programmer's interface}\label{sec:batchsolvepi}
+In addition to directly launching \app{batchsolve} from the command
+line, \fn{batchsolve.tcl}  may also be sourced into another \Tcl\ script
+that provides additional control structures.  Within the scheduling
+system of \OBS,
+\fn{batchsolve.tcl} is sourced into \app{batchslave}, which provides
+additional control structures that support scheduling control by
+\app{batchmaster}.
+There are several variables and routines
+inside \fn{batchsolve.tcl} that may be accessed and redefined from such
+a wrapper script to provide enhanced functionality.
+
+%\paragraph{Global variables}\par
+\sssechead{Global variables}
+\begin{description}
+\item[\cd{\bf mif}] A \Tcl\ handle to a global \cd{mms\_mif} 
+  object holding the problem description defined by the input
+  \MIF~1.x file\index{file!MIF~1.x}.
+\item[\cd{\bf solver}] A \Tcl\ handle to the \cd{mms\_solver} object.
+\item[\cd{\bf search\_path}] Directory search path used by the
+ \latex{\cd{FindFile} proc (see below).}\html{\htmlref{FindFile
+ proc}{pt:batchsolveFindFile}.}
+\end{description}
+Refer to the source code and sample scripts for details on manipulation
+of these variables.
+
+%\paragraph{Batchsolve procs}\label{sec:batchsolveprocs}\par
+\sssechead{Batchsolve procs}\label{sec:batchsolveprocs}
+The following \Tcl\ procedures are designed for external use and/or
+redefinition:
+\begin{description}
+\item[\cd{\bf SolverTaskInit}]
+   Called at the start of each task.
+\item[\cd{\bf BatchTaskIterationCallback}]
+   Called after each iteration in the simulation.
+\item[\cd{\bf BatchTaskRelaxCallback}]
+   Called at each control point reached in the simulation.
+\item[\cd{\bf SolverTaskCleanup}]
+   Called at the conclusion of each task.
+\begin{rawhtml}
+<A NAME="pt:batchsolveFindFile"></A>
+\end{rawhtml}
+\item[\cd{\bf FindFile}]
+   Searches the directories specified by the global variable
+   \cd{search\_path} for a specified file.  The default
+   \cd{SolverTaskInit} proc uses this routine to locate the requested
+   input \MIF\ file.
+\end{description}
+\cd{SolverTaskInit} and \cd{SolverTaskCleanup} accept an arbitrary
+argument list (\cd{args}), which is copied over from the \cd{args}
+argument to the \cd{BatchTaskRun} and \cd{BatchTaskLaunch} procs in
+\fn{batchsolve.tcl}.  Typically one copies the default procs (as needed)
+into a \htmlref{task script}{sec:batchschedex}, and makes appropriate
+modifications.  You may (re-)define these procs either before or after
+sourcing \fn{batchsolve.tcl}\index{application!batchsolve}.
+\latex{See Sec.~\ref{sec:batchschedex} for example scripts.}
+
+\subsubsection{2D Micromagnetic Solver Batch Scheduling System}
+
+\sssechead{Overview}
+The \OBS\ supports complex scheduling of multiple batch jobs
+with two applications, \app{batchmaster} and \app{batchslave}.
+The user launches \app{batchmaster} and provides it with
+a task script\index{task~script}.  The task script is a
+\Tcl\ script that describes the set of tasks for \app{batchmaster}
+to accomplish.  The work is actually done by instances of
+\app{batchslave} that are launched by \app{batchmaster}.
+The task script may be
+modeled after the included {\fn{simpletask.tcl}} or {\fn{multitask.tcl}}
+\hyperrefhtml{sample scripts}{sample scripts
+(Sec.~}{)}{sec:batchschedex}.
+
+The \OBS\ has been designed to control multiple sequential and
+concurrent micromagnetic simulations, but 
+\app{batchmaster} and \app{batchslave} are completely general
+and may be used to schedule other types of jobs as well.
+
+\paragraph{Master Scheduling Control: batchmaster}\par
+The application \app{batchmaster}\index{simulation~2D!scheduling} is
+launched by the command line:
+\begin{verbatim}
+tclsh oommf.tcl batchmaster [standard options] task_script \
+      [host [port]]
+\end{verbatim}
+\begin{description}
+\item[{\tt\bf task\_script}]
+  is the user defined task (job) definition \Tcl\ script,
+\item[{\tt\bf host}]
+  specifies the network address for the master to use (default is {\em
+  localhost}),
+\item[{\tt\bf port}]
+  is the port address for the master (default is {\em 0}, which
+  selects an arbitrary open port).
+\end{description}
+
+When \app{batchmaster}\index{application!batchmaster} is run, it
+sources the task script.  \Tcl\ commands in the task script
+should modify the global object \cd{\$TaskInfo}
+to inform the master what tasks to perform and
+optionally how to launch slaves to perform those tasks.  
+The easiest way to create a task script is to modify one of the 
+\hyperrefhtml{included example scripts}{example scripts in
+Sec.~}{}{sec:batchschedex}.  More detailed instructions are in
+\html{the }\hyperrefhtml{Batch task
+scripts}{Sec.~}{}{sec:batchschedtask}\html{ section}.
+
+After sourcing the task script, \app{batchmaster} launches all the
+specified slaves, initializes each with a slave initialization script,
+and then feeds tasks sequentially from the task list to the slaves.
+When a slave completes a task it reports back to the master and is given
+the next unclaimed task.  If there are no more tasks, the slave is shut
+down.  When all the tasks are complete, the master prints a summary of
+the tasks and exits.
+
+When the task script requests the launching and controlling of jobs off
+the local machine, with slaves running on remote machines, then the
+command line argument \fn{host} {\bf must} be set to the local machine's
+network name, and the \cd{\$TaskInfo} methods \cd{AppendSlave} and
+\cd{ModifyHostList} will need to be called from inside the task script.
+Furthermore, \OOMMF\ does not currently supply any methods for launching
+jobs on remote machines, so a task script which requests the launching
+of jobs on remote machines requires a working
+\verb+rsh+\index{application!rsh} command or
+equivalent\index{requirement!rsh}.
+\hyperrefhtml{(Details.)}{See Sec.~}{ for
+details.}{sec:batchschedtask}
+
+\paragraph{Task Control: batchslave}\par
+The application \app{batchslave} may be launched by the command line:
+\begin{verbatim}
+tclsh oommf.tcl batchslave [standard options] \
+   host port id password [auxscript [arg ...]]
+\end{verbatim}
+\begin{description}
+\item[{\tt\bf host, port}]
+  Host and port at which to contact the master to serve.
+\item[{\tt\bf id, password}]
+  ID and password to send to the master for identification.
+\item[{\tt\bf auxscript arg ...}]
+  The name of an optional script to source (which actually performs the
+  task the slave is assigned), and any arguments it needs.
+\end{description}
+
+In normal operation, the user does not launch
+\app{batchslave}.  Instead, instances of \app{batchslave} are
+launched by \app{batchmaster} as instructed by a task script.
+Although \app{batchmaster} may launch any slaves requested
+by its task script, by default it launches instances of
+\app{batchslave}.
+
+The function of \app{batchslave} is to make a connection to
+a master program, source the \cd{auxscript} and pass it the
+list of arguments \cd{aux\_arg ...}.  Then it receives commands
+from the master, and evaluates them, making use of the
+facilities provided by \cd{auxscript}.  Each command is typically a
+long-running one, such as solving a complete micromagnetic problem.
+When each command is complete, the \app{batchslave} reports back to 
+its master program, asking for the next command.  When the master
+program has no more commands \app{batchslave} terminates.
+
+Inside \app{batchmaster}, each instance of \app{batchslave} is
+launched by evaluating a \Tcl\ command.  This command is called
+the spawn command, and it may be redefined by the task script
+in order to completely control which slave applications are launched
+and how they are launched.  When \app{batchslave} is to be launched,
+the spawn command might be:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+exec tclsh oommf.tcl batchslave -tk 0 -- $server(host) $server(port) \
+   $slaveid $passwd batchsolve.tcl -restart 1 &
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The \Tcl\ command \cd{exec} is used to launch subprocesses.  When
+the last argument to \cd{exec} is \cd{\&}, the subprocess runs in
+the background.  The rest of the spawn command should look familiar
+as the command line syntax for launching \app{batchslave}.
+
+The example spawn command above cannot be completely provided by
+the task script, however, because parts of it are only known
+by \app{batchmaster}.  Because of this, the task script should
+define the spawn command using ``percent variables'' which are
+substituted by \app{batchmaster}.  Continuing the example, the task
+script provides the spawn command:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+exec %tclsh %oommf batchslave -tk 0 %connect_info \
+   batchsolve.tcl -restart 1
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\app{batchmaster} replaces \cd{\%tclsh} with the path to \fn{tclsh},
+and \cd{\%oommf} with the path to the \OOMMF\ bootstrap application.  
+It also replaces \cd{\%connect\_info} with the five arguments from \verb+--+
+through \cd{\$password} that provide \app{batchslave}
+the hostname and port where \app{batchmaster} is waiting for
+it to report to, and the ID and password it should pass back.
+In this example, the task script instructs \app{batchslave} to source the
+file \fn{batchsolve.tcl} and pass it the arguments \cd{-restart 1}.
+Finally, \app{batchmaster} always appends the argument \cd{\&} to
+the spawn command so that all slave applications are launched in the
+background.
+
+The communication protocol\index{communication~protocol} between
+\app{batchmaster} and \app{batchslave} is evolving and is not
+described here.  Check the source code for the latest details.
+
+\paragraph{Batch Task Scripts}\label{sec:batchschedtask}\par
+The application \app{batchmaster} 
+creates an instance of a \cd{BatchTaskObj} object with
+the name \cd{\$TaskInfo}.  The task script\index{task~script} uses
+method calls to this object to set up tasks to be performed.  The only
+required call is to the \cd{AppendTask} method, e.g.,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This method expects two arguments, a label for the task (here ``A'') and
+a script to accomplish the task.  
+The script will be passed across a
+network socket\index{network~socket} from 
+\app{batchmaster} to a slave application, and
+then the script will be interpreted by the slave.  In particular, keep
+in mind that the file system seen by the script will be that of the
+machine on which the slave process is running.
+
+This example uses the default \fn{batchsolve.tcl} procs to run the
+simulation defined by the \fn{taskA.mif} \MIF~1.x
+file\index{file!MIF~1.x}.  If you want to make changes to the \MIF\
+problem specifications on the fly, you will need to modify the default
+procs.  This is done by creating a slave initialization script, via the
+call
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo SetSlaveInitScript { <insert script here> }
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The slave initialization script does global initializations, and also
+usually redefines the \cd{SolverTaskInit} proc; optionally the
+\cd{BatchTaskIterationCallback}, \cd{BatchTaskRelaxCallback} and
+\cd{SolverTaskCleanup} procs may be redefined as well.  At the start of
+each task \cd{SolverTaskInit} is called by \cd{BatchTaskRun} (in
+\fn{batchsolve.tcl}), after each iteration
+\cd{BatchTaskIterationCallback} is executed, at each control
+point\index{simulation~2D!control~point} \cd{BatchTaskRelaxCallback} is
+run, and at the end of each task \cd{SolverTaskCleanup} is called.
+\cd{SolverTaskInit} and \cd{SolverTaskCleanup} are passed the arguments
+that were passed to \cd{BatchTaskRun}.  A simple \cd{SolverTaskInit}
+proc could be 
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+proc SolverTaskInit { args } {
+   global mif basename outtextfile
+   set A [lindex $args 0]
+   set outbasename "$basename-A$A"
+   $mif SetA $A
+   $mif SetOutBaseName $outbasename
+   set outtextfile [open "$outbasename.odt" "a+"]
+   puts $outtextfile [GetTextData header \
+         "Run on $basename.mif, with A=[$mif GetA]"]
+}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This proc receives the exchange constant \cd{A}
+for this task on the argument list, and makes use of the global
+variables \cd{mif} and \cd{basename}.  (Both should be initialized in
+the slave initialization script outside the \cd{SolverTaskInit} proc.)
+It then stores the requested value of \cd{A} in the
+\cd{mif}\index{file!MIF~1.x} object, sets up the base filename to use for
+output, and opens a text file to which tabular
+data\index{file!data~table} will be appended.  The handle to this text
+file is stored in the global \cd{outtextfile}, which is closed by the
+default \cd{SolverTaskCleanup} proc.  A corresponding task script could
+be
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo AppendTask "A=13e-12 J/m" "BatchTaskRun 13e-12"
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+which runs a simulation with \cd{A} set to
+\latex{$13\times 10^{-12}$~J/m.}\html{13e-12 J/m.}
+This example is taken from the \fn{multitask.tcl}
+\hyperrefhtml{sample script}{script in Sec.~}{}{sec:batchschedex}.  (For
+commands accepted by \cd{mif} objects, see the file \fn{mmsinit.cc}.
+Another object than can be gainfully manipulated is \cd{solver}, which
+is defined in \fn{solver.tcl}.)
+
+If you want to run more than one task at a time, then the
+\cd{\$TaskInfo} method \cd{AppendSlave} will have to be invoked.  This
+takes the form
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo AppendSlave <spawn count> <spawn command>
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+where \cd{<spawn command>} is the command to launch the slave
+process, and \cd{<spawn count>} is the number of slaves to launch
+with this command.  (Typically \cd{<spawn count>} should not be
+larger than the number of processors on the target system.)  The default
+value for this item (which gets overwritten with the first call to
+\cd{\$TaskInfo AppendSlave}) is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+ 1 {Oc_Application Exec batchslave -tk 0 %connect_info batchsolve.tcl}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The \Tcl\ command \cd{Oc\_Application Exec} is supplied by \OOMMF\
+and provides access to the same application-launching capability
+that is used by the \OOMMF\ 
+\hyperrefhtml{bootstrap application}{bootstrap application
+(Sec.~}{)}{sec:cll}.  Using a \cd{<spawn command>} of
+\cd{Oc\_Application Exec} instead of \cd{exec \%tclsh \%oommf}
+saves the spawning of an additional process.
+The default \cd{<spawn command>} 
+launches the \app{batchslave}
+application, with connection information provided by \app{batchmaster}, and
+using the \cd{auxscript} \fn{batchsolve.tcl}.  
+
+Before evaluating the \cd{<spawn command>}, \app{batchmaster}
+applies several percent-style substitutions useful in slave
+launch scripts: \%tclsh, \%oommf, \%connect\_info, \%oommf\_root, and
+\%\%.  The first is the \Tcl\ shell to use, the second is an absolute
+path to the \OOMMF\ bootstrap program on the master machine, the third
+is connection information needed by the \fn{batchslave} application, the
+fourth is the path to the \OOMMF\ root directory on the master machine,
+and the last is interpreted as a single percent.
+\app{batchmaster} automatically appends the argument
+\cd{\&} to the
+\cd{<spawn command>} so that the slave applications
+are launched in the background.
+
+To launch \app{batchslave} on a remote host, use \fn{rsh}\index{application!rsh}
+in the spawn command, e.g.,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo AppendSlave 1 {exec rsh foo tclsh oommf/oommf.tcl \
+      batchslave -tk 0 %connect_info batchsolve.tcl}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This example assumes \fn{tclsh} is in the execution path on the remote
+machine \fn{foo}, and \OOMMF\ is installed off of your home directory.
+In addition, you will have to add the machine \fn{foo} to the host
+connect list with
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+$TaskInfo ModifyHostList +foo
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+and \fn{batchmaster} must be run with the network interface specified
+as the server host (instead of the default \fn{localhost}), e.g.,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+tclsh oommf.tcl batchmaster multitask.tcl bar
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+where \fn{bar} is the name of the local machine.
+
+This may seem a bit complicated, but the examples in the
+next section should make things clearer.
+
+\paragraph{Sample task scripts}\label{sec:batchschedex}\par
+The
+\begin{rawhtml}
+<A NAME="pt:batchschedsimpletask"></A>
+\end{rawhtml}
+\hyperrefhtml{first sample task script}{first sample task script
+(Fig.~}{)}{fig:batchschedsimpletask} is a simple example that runs the
+3 micromagnetic simulations described by the \MIF~1.x files
+\fn{taskA.mif}, \fn{taskB.mif} and \fn{taskC.mif}\index{file!MIF~1.x}.  It
+is launched with the command
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+tclsh oommf.tcl batchmaster simpletask.tcl
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This example uses the default slave launch script, so a single slave is
+launched on the current machine, and the 3 simulations will be run
+sequentially.  Also, no slave initialization script is given, so the
+default procs in \fn{batchsolve.tcl} are used.  Output will be magnetization
+states\index{file!magnetization} and tabular data\index{file!data~table}
+at each control point\index{simulation~2D!control~point}, stored in
+files on the local machine with base names as specified in the \MIF\
+files.
+
+\begin{codelisting}{f}{fig:batchschedsimpletask}{Sample task script
+\fn{simpletask.tcl}.}{pt:batchschedsimpletask}
+\begin{verbatim}
+# FILE: simpletask.tcl
+#
+# This is a sample batch task file.  Usage example:
+#
+#   tclsh oommf.tcl batchmaster simpletask.tcl
+#
+# Form task list
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+$TaskInfo AppendTask B "BatchTaskRun taskB.mif"
+$TaskInfo AppendTask C "BatchTaskRun taskC.mif"
+\end{verbatim}
+\end{codelisting}
+
+The\begin{rawhtml}
+<A NAME="pt:batchoctrltask"></A>
+\end{rawhtml}
+\hyperrefhtml{second sample task script}{second sample task script
+(Fig.~}{)}{fig:batchoctrltask} builds on the previous example by
+defining \cd{BatchTaskIterationCallback} and
+\cd{BatchTaskRelaxCallback} procedures in the slave init script.
+The first set up to write tabular data every 10 iterations, while the
+second writes tabular data on each control point event.  The data is
+written to the output file specified by the \cd{Base Output Filename}
+entry in the input \MIF\ files.  Note that there is no magnetization
+vector field output in this example.  This task script is launched the
+same way as the previous example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+tclsh oommf.tcl batchmaster octrltask.tcl
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+\begin{codelisting}{f}{fig:batchoctrltask}{Task script with
+iteration output \fn{octrltask.tcl}.}{pt:batchoctrltask}
+\begin{verbatim}
+# FILE: octrltask.tcl
+#
+# This is a sample batch task file, with expanded output control.
+# Usage example:
+#
+#        tclsh oommf.tcl batchmaster octrltask.tcl
+#
+# "Every" output selection count
+set SKIP_COUNT 10
+
+# Initialize solver. This is run at global scope
+set init_script {
+    # Text output routine
+    proc MyTextOutput {} {
+        global outtextfile
+        puts $outtextfile [GetTextData data]
+        flush $outtextfile
+    }
+    # Change control point output
+    proc BatchTaskRelaxCallback {} {
+        MyTextOutput
+    }
+    # Add output on iteration events
+    proc BatchTaskIterationCallback {} {
+        global solver
+        set count [$solver GetODEStepCount]
+        if { ($count % __SKIP_COUNT__) == 0 } { MyTextOutput }
+    }
+}
+
+# Substitute $SKIP_COUNT in for __SKIP_COUNT__ in above "init_script"
+regsub -all -- __SKIP_COUNT__ $init_script $SKIP_COUNT init_script
+$TaskInfo SetSlaveInitScript $init_script
+
+# Form task list
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+$TaskInfo AppendTask B "BatchTaskRun taskB.mif"
+$TaskInfo AppendTask C "BatchTaskRun taskC.mif"
+\end{verbatim}
+\end{codelisting}
+
+The
+\begin{rawhtml}
+<A NAME="pt:batchschedmultitask"></A>
+\end{rawhtml}
+ \hyperrefhtml{third task script}{third task script
+(Fig.~}{)}{fig:batchschedmultitask} is a more complicated example
+running concurrent processes\index{simulation~2D!scheduling} on two
+machines.  This script should be run with the command
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+tclsh oommf.tcl batchmaster multitask.tcl bar
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+where \fn{bar} is the name of the local machine.
+
+Near the top of the \fn{multitask.tcl} script several \Tcl\ variables
+(\cd{RMT\_MACHINE} through \cd{A\_list}) are defined; these are used
+farther down in the script.  The remote machine is specified as
+\fn{foo}, which is used in the \cd{\$TaskInfo AppendSlave} and
+\cd{\$TaskInfo ModifyHostList} commands.
+
+There are two \cd{AppendSlave} commands, one to run two slaves on the
+local machine, and one to run a single slave on the remote machine
+(\fn{foo}).  The latter changes to a specified
+working directory\index{working~directory}  before
+launching the \fn{batchslave} application on the remote machine.  (For
+this to work you must have \cd{rsh} configured properly.  In the future
+it may be possible to launch remote commands using the \OOMMF\ account
+server application, thereby lessening the reliance on system commands
+like \cd{rsh}\index{application!rsh}.)
+
+Below this the slave initialization script is defined.  The \Tcl\
+\cd{regsub} command is used to place the task script defined value of
+\cd{BASEMIF} into the init script template.  The init script is run on
+the slave when the slave is first brought up.  It first reads the base
+\MIF\ file into a newly created \cd{mms\_mif} instance.  (The \MIF\ file
+needs to be accessible by the slave process, irrespective of which
+machine it is running on.)  Then replacement \cd{SolverTaskInit} and
+\cd{SolverTaskCleanup} procs are defined.  The new \cd{SolverTaskInit}
+interprets its first argument as a value for the exchange constant
+\cd{A}.  Note that this is different from the default
+\cd{SolverTaskInit} proc, which interprets its first argument as the
+name of a \MIF~1.x file\index{file!MIF~1.x} to load.  With this task
+script, a \MIF\ file is read once when the slave is brought up, and then
+each task redefines only the value of \cd{A} for the simulation (and
+corresponding changes to the output filenames and data table header).
+
+Finally, the \Tcl\ loop structure
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+foreach A $A_list {
+    $TaskInfo AppendTask "A=$A" "BatchTaskRun $A"
+}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+is used to build up a task list consisting of one task for each value
+of \cd{A} in \cd{A\_list} (defined at the top of the task script).  For
+example, the first value of \cd{A} is 10e-13, so the first task
+will have the label \cd{A=10e-13} and the corresponding script is
+\cd{BatchTaskRun 10e-13}.  The value 10e-13 is passed on by
+\cd{BatchTaskRun} to the \cd{SolverTaskInit} proc, which has been
+redefined to process this argument as the value for \cd{A}, as
+described above.
+
+There are 6 tasks in all, and 3 slave processes, so the first three
+tasks will run concurrently in the 3 slaves.  As each slave finishes
+it will be given the next task, until all the tasks are complete.
+
+\begin{codelisting}{p}{fig:batchschedmultitask}{Advanced sample task
+script \fn{multitask.tcl}.}{pt:batchschedmultitask}
+\begin{verbatim}
+# FILE: multitask.tcl
+#
+# This is a sample batch task file.  Usage example:
+#
+#   tclsh oommf.tcl batchmaster multitask.tcl hostname [port]
+#
+# Task script configuration
+set RMT_MACHINE   foo 
+set RMT_TCLSH      tclsh
+set RMT_OOMMF      "/path/to/oommf/oommf.tcl"
+set RMT_WORK_DIR   "/path/to/oommf/app/mmsolve/data"
+set BASEMIF taskA
+set A_list { 10e-13 10e-14 10e-15 10e-16 10e-17 10e-18 }
+
+# Slave launch commands
+$TaskInfo ModifyHostList +$RMT_MACHINE
+$TaskInfo AppendSlave 2 "exec %tclsh %oommf batchslave -tk 0 \
+        %connect_info batchsolve.tcl"
+$TaskInfo AppendSlave 1 "exec rsh $RMT_MACHINE \
+        cd $RMT_WORK_DIR \\\;\
+        $RMT_TCLSH $RMT_OOMMF batchslave -tk 0 %connect_info batchsolve.tcl"
+
+# Slave initialization script (with batchsolve.tcl proc
+# redefinitions)
+set init_script {
+    # Initialize solver. This is run at global scope
+    set basename __BASEMIF__      ;# Base mif filename (global)
+    mms_mif New mif
+    $mif Read [FindFile ${basename}.mif]
+    # Redefine TaskInit and TaskCleanup proc's
+    proc SolverTaskInit { args } {
+        global mif outtextfile basename
+        set A [lindex $args 0]
+        set outbasename "$basename-A$A"
+        $mif SetA $A
+        $mif SetOutBaseName $outbasename
+        set outtextfile [open "$outbasename.odt" "a+"]
+        puts $outtextfile [GetTextData header \
+                "Run on $basename.mif, with A=[$mif GetA]"]
+        flush $outtextfile
+    }
+    proc SolverTaskCleanup { args } {
+        global outtextfile
+        close $outtextfile
+    }
+}
+# Substitute $BASEMIF in for __BASEMIF__ in above script
+regsub -all -- __BASEMIF__ $init_script $BASEMIF init_script
+$TaskInfo SetSlaveInitScript $init_script
+
+# Create task list
+foreach A $A_list {
+    $TaskInfo AppendTask "A=$A" "BatchTaskRun $A"
+}
+\end{verbatim}
+\end{codelisting}
+
+%begin{latexonly}
+\setcounter{secnumdepth}{\value{msoldsecnumdepth}}
+%end{latexonly}

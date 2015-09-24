@@ -1,0 +1,174 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML Strict Level 1//EN">
+<! -- This is an HTML comment -- 
+   -- Actually it's an SGML comment, but since HTML is an SGML 
+      application, the effect is the same.
+   --
+>
+<! -- Documents written for the OOMMF Help Browser should be
+      written to conform to the HTML Strict Level 1 DTD.
+      It is useful to use a DOCTYPE SGML entity, like that in
+      the first line of this file, to indicate that.
+   --
+>
+<HTML>
+<HEAD>
+<! -- Within the HEAD element, the OOMMF Help Browser only makes 
+      use of the TITLE tag -->
+<TITLE>Example HTML Page for OOMMF Help Browser</TITLE>
+<! -- Some other HTML tags are legal within the HEAD element, and
+      are accepted, but ignored by the OOMMF Help Browser -->
+<! -- <ISINDEX> -->
+<! -- <BASE HREF="file://localhost/foo/bar"> -->
+<LINK HREF="mailto:donald.porter@nist.gov" REV=author>
+<META NAME=author CONTENT="Don Porter">
+<! -- Any other tags within a HEAD element will confuse the OOMMF
+      Help Browser, and will probably cause an error -->
+</HEAD>
+<! -- Everything between the </HEAD> and <BODY> tags is ignored -->
+<FOO>
+<BODY>
+<H1>Example HTML Page for OOMMF Help Browser</H1>
+<H2>OOMMF Help Browser HTML Syntax</H2>
+<p>HTML files are structured as nested elements.  An element consists
+of a start tag, a corresponding end tag, and the text between them.
+For example <tt>&lt;I&gt;this&lt;/I&gt;</tt> is a simple I element.
+Some elements have their end tags implied by context.
+Each element has rules, determined by its tags, about the type of 
+elements which it can contain.
+<p>The BODY element may contain 
+ADDRESS, BLOCKQUOTE, DL, H1, H2, H3, H4, H5, H6, HR, IMG, OL, P, PRE, 
+and UL elements.  It may not contain text outside of an element.  A
+common mistake is to forget to open a paragraph with a <tt>&lt;P&gt;</tt>
+tag.  Examples of each of these legal elements follow.  
+<p>The P element indicates a paragraph, and is used throughout
+this example page.  It may contain text outside an element as well
+as the elements 
+<A NAME="Aexample">A</A>
+(<A HREF="#bottom">like this link to the bottom of the page</A>), 
+IMG (<IMG SRC="oommficon.gif" ALT="The OOMMF icon">), BR, <BR>
+and the formatting elements <tt>TT</tt>, <code>CODE</code>, 
+<samp>SAMP</samp>, <kbd>KBD</kbd>, <var>VAR</var>, <B>B</B>, 
+<strong>STRONG</strong>, <i>I</I>, <EM>EM</EM>, and <cite>CITE</cite>.
+
+<p>Some additions to the HTML Level 1 formatting elements are
+the elements SUP for super<SUP>scripts</SUP> and SUB for
+sub<SUB>scripts</SUB>.
+
+<P ALIGN="right">The P element also accepts an ALIGN attribute which
+takes the values <tt>left</tt>, <tt>center</tt>, and <tt>right</tt>
+which determine the justification of the display.  Left justification
+is the default.
+Several extra sentences are appended to this paragraph 
+to illustrate the right justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the right justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the right justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the right justification.
+<DIV ALIGN="center">The DIV element also accepts the ALIGN attribute
+and is an alternate way to describe document structure.  
+Several extra sentences are appended to this paragraph 
+to illustrate the center justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the center justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the center justification.
+Several extra sentences are appended to this paragraph 
+to illustrate the center justification.
+</DIV>
+
+<P><ADDRESS>An address: donald.porter@nist.gov</ADDRESS>
+<P><STRONG>NOTE:</STRONG>Use of the ADDRESS tag is not recommended, as
+there does not appear to be any consensus what it means.
+<BLOCKQUOTE>
+<p>This text is set off from the main text within a BLOCKQUOTE element.
+<P>BLOCKQUOTE elements are often handy to force indentation, even if 
+their contents are not really quoted text.  The legal contents of
+a BLOCKQUOTE element are the same as those of a BODY element.
+</BLOCKQUOTE>
+<P>Next is an example of a definition list, the DL element. The DL 
+element may contain only DT and DL elements.
+Note that DT and DD elements may omit their end tags.  Here they are
+included to make the nesting clear.
+<DL>
+<DT>Term</DT>
+<DD>Definition</DD>
+<DT>Second Term</DT>
+<DD>Second Definition
+<DL>
+<DT>Nested list example</DT>
+<DD>Part of the Second Definition in the main list is this nested
+definition list.</DD>
+</DL>
+</DD>
+</DL>
+<H1>Heading examples</H1>
+<H2>There are six levels of headings</H2>
+<H3>They should be used to head sections</H3>
+<H4>Their level indicates a hierarchy</H4>
+<H5>Level 5</H5>
+<H6>Level 6</H6>
+<p>A horizontal rule:
+<HR>
+<P>An IMG element:</P>
+<IMG SRC="oommficon.gif" ALT="The OOMMF icon">
+<P>An ordered list is indicated by the OL element.  
+The OL element may contain only LI
+elements.  The TYPE attribute of the OL tag determines the symbols used
+to order the list.
+<OL type=I>
+<LI> Item one
+<OL type=A>
+<LI> Item one
+<OL type=i>
+<LI> Item one
+<OL type=a>
+<LI> Item one
+<OL>
+<LI> Item one
+<LI> Item two
+<LI> Item three
+</OL>
+<LI> Item two
+<LI> Item three
+</OL>
+<LI> Item two
+<LI> Item three
+</OL>
+<LI> Item two
+<LI> Item three
+</OL>
+<LI> Item two
+<LI> Item three
+</OL>
+<P>The PRE element causes a block of text to be printed as it
+appears within the HTML file, without interpretation of any
+HTML tags, and using the original line breaks. It is most useful
+for displaying source code or for displaying rudimentary tables.
+<PRE>
+The I element is used 
+to cause text to be 
+displayed <I>in italics</I>
+</PRE>
+<P>Finally, unordered (or bulleted) lists are indicated by the UL element.
+<UL>
+<LI> Item one
+<UL>
+<LI> Item one
+<UL> 
+<LI> Item one
+<LI> Item two
+<LI> Item three
+</UL>
+<LI> Item two
+<LI> Item three
+</UL>
+<LI> Item two
+<LI> Item three
+</UL>
+<P>
+<A NAME="bottom"></A>
+<A HREF="#Aexample">return to the A element example</A>.
+</BODY>
+</HTML>

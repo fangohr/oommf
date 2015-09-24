@@ -1,0 +1,399 @@
+
+% Leave a blank line at top to work around some flakiness in l2h
+% on RedHat 5.2/AXP (otherwise the images.tex file can get some
+% bad characters dumped into it).
+%
+% The following interlock is taken from Knuth's  ``The TeXbook'',
+% p383 (Appendix D: Dirty Tricks).  It insures this file gets read
+% at most once.  (NOTE: Unfortunately, latex2html doesn't do
+% \if statements.)
+%\ifx\oommfheadread\relax\endinput\else\let\oommfheadread=\relax\fi
+
+\documentclass[12pt]{article}
+
+\usepackage{makeidx}
+
+%begin{latexonly}
+% Use package pdftex, iff we are running pdftex with pdf output
+% (This logic is from Heiko Oberdiek's ifpdf package.)
+\ifx\pdfoutput\undefined
+  % not running PDFTeX
+  \def\oommfpdf{0}
+\else
+  \ifx\pdfoutput\relax
+    % not running PDFTeX
+    \def\oommfpdf{0}
+  \else
+    % running PDFTeX, with...
+    \ifnum\pdfoutput>0
+      % ...PDF output
+      \def\oommfpdf{1}
+    \else
+      % ...DVI output
+      \def\oommfpdf{0}
+    \fi
+  \fi
+\fi
+\ifnum\oommfpdf=1
+  \usepackage[pdftex, colorlinks=true, citecolor=blue]{hyperref}
+\fi
+%end{latexonly}
+
+\ifnum\oommfpdf=0
+% pdflatex command not in use
+% The html package included below uses \pdfoutput to determine whether
+% or not pdf-TeX is being used.  Unfortunately, the code in html.sty
+% that determines this is broken, at least v1.39 2001/10/01 as shipped
+% with Fedora Core 6 (FC6) when used with the latex in FC6.  This
+% results in breakage of some commands defined in html.sty, including at
+% least \htmlimage and \htmladdnormallink.  The breakage is such that
+% the pdf-versions of these commands are wrongly defined in the case
+% where latex or latex2html is running.  One workaround would be to
+% redefine these commands after \usepackage{html}, but a more general
+% fix would appear to be to just redefine \pdfoutput so that the logic
+% in html.sty works.  This latter approach is done here, by unsetting
+% \pdfoutput.  I've included this lengthy note because the problematic
+% case is when \pdfoutput is defined to value 0.  Is there code
+% someplace that functions differently if \pdfoutput is 0 than if it is
+% undefined?  I don't know.  If it turns out that this breaks something,
+% then one can try redefining \pdfoutput to 0 after \usepackage{html},
+% or otherwise leaving \pdfoutput alone and just redefining \htmlimage
+% etc. as needed.
+\let\pdfoutput\relax
+\fi
+
+% \ifnum\oommfpdf=0
+% pdflatex command not in use
+% \renewcommand{\htmlimage}[1]{} % pdf-mode detection code is broken
+%    in some versions of html.sty, causing \htmlimage to be re-defined
+%    as taking 2 arguments.  This causes some havoc.  Define it back to
+%    be safe.
+%    NOTE: This code superceded by \let\pdfoutput\relax code above.
+%    The code in this current stanza is left in but commented out in
+%    case it occurs that the more general fix above breaks stuff.
+% \renewcommand{\htmladdnormallink}[2]{#1} % Ditto.
+% \fi
+
+
+%\usepackage[pdftex, colorlinks=true, citecolor=blue]{hyperref}
+\usepackage{html}
+
+%begin{latexonly}
+\usepackage{../common/oommf} % Base style redefinitions and/or patches
+%\ifx\undefined\pdfpagewidth % pdflatex command not in use
+\ifnum\oommfpdf=0
+% pdflatex command not in use
+\newcommand{\pdfonly}[1]{}
+\newcommand{\ifnotpdf}[1]{#1}
+\usepackage{color}
+\usepackage{graphics}
+\else                       % pdflatex command in use
+\newcommand{\pdfonly}[1]{#1}
+\newcommand{\ifnotpdf}[1]{}
+\pdfcompresslevel=9
+%\pdfpagesattr={/CropBox [60 290 480 720]}
+%\pdfpagewidth=6.0in
+%\pdfpageheight=5.5in
+%\pdfcatalog{/PageMode /UseOutlines}
+\pdfcatalog{            % Catalog dictionary of PDF output.
+    /PageMode /UseOutlines
+    /URI (http://math.nist.gov/oommf/)
+}
+% openaction goto page 1 {/Fit}
+
+\usepackage[pdftex]{color}
+\usepackage[pdftex]{graphics}
+\fi
+\newcommand{\htmlonlyref}[2]{#1}
+%end{latexonly}
+
+\html{
+\newcommand{\pdfonly}[1]{}
+\newcommand{\ifnotpdf}[1]{#1}
+\usepackage{color}
+\usepackage{graphics}
+%\let\hyperrefhtml=\hyperref
+\newcommand{\hyperrefhtml}[3]{\hyperref{#1}{#2}{#3}}
+\newcommand{\htmlonlyref}[2]{\htmlref{#1}{#2}}
+% Use \htmlonlyref for links to be available in HTML, but not
+% in PDF.  In particular, this applies to \label{} commands not
+% placed near counter updates, since latex2html drops an anchor
+% tag at the right location, but pdflatex just drops the ball
+% (well at least pdflatex Version 3.14159-13d (Web2C 7.3.1) does).
+}
+
+\setlength{\textwidth}{6.5in}
+\setlength{\oddsidemargin}{0in}
+\setlength{\textheight}{8.5in}
+
+\begin{htmlonly}
+\HTMLset{myTODAY}{\today}
+\usepackage{localmods}
+\end{htmlonly}
+
+\newcommand{\myimage}[2]{\HTMLcode[#1 #2]{IMG}}
+
+\htmlinfo*
+\bodytext{BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF"}
+
+%\htmladdtonavigation{\htmladdnormallink
+%    {\myimage{ALT="OOMMF Home",BORDER="2"}{http://math.nist.gov/oommf/images/oommficon.gif}}{http://math.nist.gov/oommf}}
+
+\htmladdtonavigation{\htmladdnormallink
+    {\myimage{ALT="OOMMF Home",BORDER="2"}{oommficon.gif}}{http://math.nist.gov/oommf}}
+
+\newcommand{\blackhole}[1]{}
+\newcommand{\Unix}{Unix}
+\newcommand{\X}{X}
+\newcommand{\Windows}{Windows}
+\newcommand{\MacOSX}{Mac OS X}
+\newcommand{\DOS}{DOS}
+\newcommand{\Tcl}{Tcl}
+\newcommand{\C}{C}
+\newcommand{\Cplusplus}{C++}
+\newcommand{\Tk}{Tk}
+\newcommand{\OOMMF}{OOMMF}
+\newcommand{\MIF}{MIF}
+\newcommand{\ODT}{ODT}
+\newcommand{\OVF}{OVF}
+\newcommand{\SVF}{SVF}
+\newcommand{\VIO}{VIO}
+\newcommand{\OBS}{OBS}
+\newcommand{\eps}{Encapsulated PostScript}
+\newcommand{\postscript}{PostScript}
+\newcommand{\mumag}{\latex{$\mu$}\html{mu}MAG}
+\newcommand{\micrometer}{\latex{$\mu$m}\html{\begin{rawhtml}&micro;m\end{rawhtml}}}
+\newcommand{\munaught}{\latex{$\mu_0$}\html{\begin{rawhtml}&micro;<SUB>0</SUB>\end{rawhtml}}}
+\newcommand{\SI}{SI}     % as in SI units
+\newcommand{\ASCII}{ASCII}
+
+\newcommand{\oxslabel}[1]{\textbf{#1}}
+% Use \oxslabel to refer to Oxs Specify block labels the first time
+% in the running text.
+
+\newcommand{\oxsval}[1]{\textit{\textrm{#1}}}
+% Use \oxsval for the value portion of label+value keys in both
+% the TeX version of the Specify block, and in the running text.
+
+% Filenames and program code identifiers
+\blackhole{
+\definecolor{fn}{rgb}{0,0.5,0}
+\definecolor{cd}{rgb}{0.5,0,0}
+\definecolor{btn}{rgb}{0.5,0,0}
+\newcommand{\fn}[1]{\latex{{\tt #1}}\html{\textcolor{fn}{#1}}}   % Files
+\newcommand{\cd}[1]{\latex{{\tt #1}}\html{\textcolor{cd}{#1}}}   % Code
+\newcommand{\btn}[1]{\latex{{\tt #1}}\html{\textcolor{btn}{#1}}} % Buttons
+} % blackhole
+
+%begin{latexonly}
+\newcommand{\bftt}[1]{\textsf{\textbf{#1}}}
+%% This is meant to be a bold tt, but there is no boldface cmtt (TeX
+%% Typewriter font)!
+\newcommand{\app}[1]{\textbf{#1}}    % Apps
+\newcommand{\key}[1]{\texttt{#1}}    % Keys
+\newcommand{\fn}[1]{\texttt{#1}}     % Files
+\newcommand{\cd}[1]{\texttt{#1}}     % Code
+\newcommand{\btn}[1]{\bftt{#1}}      % Buttons
+\newcommand{\wndw}[1]{\textbf{#1}}   % Windows
+%end{latexonly} % Close \latex
+\begin{htmlonly}
+\newcommand{\bftt}[1]{\texttt{\textbf{#1}}}
+%% NOTE: There is no boldface cmtt (TeX), but HTML browsers
+%%  may render differently?!
+\newcommand{\app}[1]{\textbf{#1}}    % Apps
+\newcommand{\key}[1]{\bftt{#1}} % Keys
+\newcommand{\fn}[1]{\bftt{#1}}  % Files
+\newcommand{\cd}[1]{\texttt{#1}}  % Code
+\definecolor{btn}{rgb}{0.5,0,0}          % Buttons
+\newcommand{\btn}[1]{{\textcolor{btn}{\textbf{#1}}}}
+\newcommand{\wndw}[1]{{\bf #1}} % Windows
+\end{htmlonly} % close \html
+
+
+% Latex2html inserts unwanted whitespace after \rm, in structures like
+%      \newcommand{\vB}{{\rm\bf B}}
+% but the following seem to work:
+\newcommand{\vB}{\textbf{B}}
+\newcommand{\vH}{\textbf{H}}
+\newcommand{\vM}{\textbf{M}}
+\newcommand{\vm}{\textbf{m}}
+\newcommand{\vh}{\textbf{h}}
+\newcommand{\vx}{\textbf{x}}
+
+\newcommand{\lb}{\texttt{\#}}  % "Pound" symbol
+\newcommand{\pipe}{\latex{{\tt|}}\html{|}} % "Pipe" symbol
+\newcommand{\bs}{\texttt{\char'134}} % Backslash, tt font
+\newcommand{\fs}{\texttt{/}} % Forward slash, tt font
+
+% MIF 2.x Specify block definitions.
+\newcommand{\bi}{\hspace*{2em}}
+% \bi is bullet indent.
+\newcommand{\ocb}{\textrm{\{}}
+\newcommand{\ccb}{\textrm{\}}}
+% \ocb is open curly brace, \ccb is close curly brace.
+
+% Bold open and close angle brackets (aka less-than and greater-than
+% symbols)
+\newcommand{\boa}{\latex{{\boldmath$<$}}\html{\texttt{\textbf{<}}}}
+\newcommand{\bca}{\latex{{\boldmath$>$}}\html{\texttt{\textbf{>}}}}
+
+% ``Launching'' option keyword lists font selection
+\newcommand{\optkey}[1]{\latex{\textbf{#1}}\html{\texttt{\textbf{#1}}}}
+
+% Codelisting environment
+%begin{latexonly}
+\newenvironment{codelisting}[4]{%
+ \def\codelistingtype{#1}     % f for float, p for ``in page''
+ \def\codelistinglabel{#2}    % \label tag
+ \def\codelistingcaption{#3}  % caption
+ % Parameter #4 is used in the \html version, and is a \ref-style
+ % tag to the location in the main text describing the codelisting.
+ \if\codelistingtype f \begin{figure}
+ \fi
+}{
+ \if\codelistingtype f  
+   \caption{\codelistingcaption\label{\codelistinglabel}}\end{figure}
+ \else
+    \nopagebreak\parbox{\textwidth}{
+    \begin{center}
+    \refstepcounter{figure}
+    Figure \thefigure: {\codelistingcaption\label{\codelistinglabel}}
+    \end{center}
+   }\pagebreak[2]
+ \fi
+}
+%end{latexonly}
+
+\html{
+\newenvironment{codelisting}[4]{%
+  \addtocounter{figure}{1}\label{#2}
+  \HTMLsetenv{codelistingcaption}{#3}
+  \HTMLsetenv{textlink}{#4}
+  \htmlrule
+}{
+  \begin{center}
+  Figure \thefigure:
+    \HTMLget{codelistingcaption}
+    \htmlref{(Description.)}{\HTMLget{textlink}}
+  \end{center}
+  \htmlrule
+}}
+
+
+% Ersatz figure environment.  This is a standard figure environment in
+% LaTex, but a dummy block in HTML.  This is useful because LaTeX2HTML
+% passes figure environments to LaTex, and converts the resulting
+% postscript to a graphics bitmap for inclusion.  Sometimes we don't
+% want this, for example if the figure data is already in bitmap format.
+% Also, we may want to throw in an ALT tag.
+% SAMPLE USAGE:
+%   \ofig{\includeimage{6in}{!}{oxsclass}{OXS top-level class
+%         diagram}}{OXS top-level class diagram.}{fig:oxsclass}
+%
+\latex{
+\newcommand{\ofig}[3]{%
+\begin{figure}
+ \begin{center}
+   #1\\
+   \caption{#2\label{#3}}
+ \end{center}
+\end{figure}}
+}
+\html{
+\newcommand{\ofig}[3]%
+{\begin{center}
+ \addtocounter{figure}{1}\label{#3}
+ \textbf{Figure \thefigure: #2}\\
+ #1
+\end{center}}
+}
+%% Is \refstepcounter{figure} needed in the \html def?
+
+
+% Graphics inclusion.
+%  Usage: \includepic{basename}{altstring}
+%     A fixed scale parameter is used in the LaTeX code;
+%   under HTML the graphic is brought directly in without any scaling.
+%     Basename is the name of the graphic to include,
+%   expanded as psfiles/basename.ps under latex, and
+%   giffiles/basename.gif under html.
+%     Altstring it a string to be passed to the ALT= tag
+%   in HTML.  It is not used in the LaTeX code.
+%begin{latexonly}
+\newcommand{\includepic}[2]{%
+\scalebox{0.3333}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
+\renewcommand{\includepic}[2]{%
+\scalebox{0.75}{\includegraphics{pngfiles/#1.png}} } }
+%end{latexonly}
+\begin{htmlonly}
+\newcommand{\includepic}[2]{%
+\HTMLcode[../giffiles/#1.gif,ALT="#2"]{IMG}
+}
+\end{htmlonly}
+
+% Alternate graphics inclusion
+%  Usage: \includeimage{width}{height}{basename}{altstring}
+%     Width and height are dimensions, e.g., 4in.  One of
+%   these may be an exclamation mark '!', in which case
+%   the corresponding dimension will be scaled as necessary
+%   to keep the original aspect ratio.  Presently these two
+%   parameters are used only in the LaTeX code; under HTML
+%   graphic is brought directly in without any scaling.
+%     Basename is the name of the graphic to include,
+%   expanded as psfiles/basename.ps under latex, and
+%   giffiles/basename.gif under html.
+%     Altstring it a string to be passed to the ALT= tag
+%   in HTML.  It is not used in the LaTeX code.
+%begin{latexonly}
+\newcommand{\includeimage}[4]{%
+\resizebox{#1}{#2}{\includegraphics{psfiles/#3.ps}}
+}
+\pdfonly{%
+\renewcommand{\includeimage}[4]{%
+\resizebox{#1}{#2}{\includegraphics{pngfiles/#3.png}}
+}
+}
+%end{latexonly}
+\begin{htmlonly}
+\newcommand{\includeimage}[4]{%
+\HTMLcode[../giffiles/#3.gif,ALT="#4"]{IMG}
+}
+\end{htmlonly}
+
+% Work around for some apparently broken LaTeX2HTML Table of Contents
+% controls.
+\latex{
+\def\ssechead{\subsection*}
+\def\sssechead{\subsubsection*}
+}
+\html{
+\newcommand{\ssechead}[1]{\par\noindent{\Large\bf{#1}}\\}
+\newcommand{\sssechead}[1]{\par\noindent{\large\bf{#1}}\\}
+}
+
+
+% If an inline formula has positive depth, then LaTeX2HTML handles
+% vertical positioning of that formula by adding a vertical rule so
+% that the depth and height are equal.  The resulting image is then
+% marked in the HTML with the align=middle tag, which aligns the
+% vertical center of the image with the current baseline.  This adds
+% extra whitespace below the image, sometimes a lot, which can yield
+% essentially an extra blank line in the viewed HTML.  The \abovemath
+% command raises the math-mode formulae just enough so that the depth
+% is zero, in which case the generated image is aligned in the HTML
+% with the align=bottom tag.  This also looks bad, so it is a matter
+% of choice which is the worse evil.  But it is probably an improvement
+% in situations with the formula extends just a *little* below the
+% baseline.  WRT the TeX output, this command just renders the formula
+% in in-line math mode.
+\newcommand{\nodepth}[1]{% Auxiliary command
+$\mbox{\renewcommand{\arraystretch}{0}%
+$\begin{array}[b]{@{}c@{}}#1\\\rule{1pt}{0pt}\end{array}$}$}
+\newcommand{\abovemath}[1]{\latex{$#1$}\html{\nodepth{#1}}}
+
+% Hyphenation
+\hyphenation{DataTable}
+
+% Index generation
+\makeindex

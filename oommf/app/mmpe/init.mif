@@ -1,0 +1,23 @@
+# MIF 1.1
+ms:800e3
+a:13e-12
+k1:0.5E3
+damp coef:0.5
+anisotropy type:uniaxial
+anisotropy dir1:1 0 0
+anisotropy dir2:0 1 0
+anisotropy init:constant
+demag type:ConstMag
+solver type:rkf54
+part height:500E-9
+part width:2.0E-6
+part thickness:20e-9
+cell size:20e-9
+part shape:Rectangle
+init mag:Random
+base output filename:test
+magnetization output format: binary 4
+total field output format: binary 4
+data table output format: %.15g
+converge |mxh| value: 1.0E-5
+randomizer seed:0

@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>OOMMF Documentation</TITLE>
+<META NAME="description" CONTENT="OOMMF Documentation">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Disclaimer.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html42"
+  HREF="Disclaimer.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up_g.gif"> 
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev_g.gif">  
+<A NAME="tex2html40"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html43"
+  HREF="Disclaimer.html">Disclaimer</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<P>
+  
+<P>
+
+<A NAME="page:contents"></A>
+<P>
+<BR>
+<DIV ALIGN="CENTER">
+<FONT SIZE="+2"><B> OOMMF
+<BR>
+User's Guide
+<BR>
+<BR>
+<BR><FONT SIZE="+1">September 28, 2012
+<BR>
+<BR>
+<BR>
+This manual documents release 1.2a4.
+<BR>
+<BR>
+WARNING: In this alpha release, the
+documentation may not be up to date.
+</FONT></B></FONT></DIV>
+<P>
+<DIV ALIGN="CENTER"><FONT SIZE="+2"><B></B></FONT></DIV>
+<BR>
+
+<H3>Abstract:</H3>
+<DIV>
+This manual describes OOMMF (Object Oriented Micromagnetic Framework),
+a public domain micromagnetics program developed at the
+<A NAME="tex2html2"
+  HREF="http://www.nist.gov/">National Institute of Standards and Technology</A>.  The program is designed
+to be portable, flexible, and extensible, with a user-friendly graphical
+interface.  The code is written in C++ and Tcl/Tk. Target systems
+include a wide range of Unix platforms, Windows&nbsp;NT, and
+Windows&nbsp;9X.
+</DIV>
+<P>
+<BR>
+
+<P>
+
+<P>
+<A NAME="309"></A>
+<A NAME="310"></A>
+<A NAME="311"></A>
+<A NAME="312"></A>
+<A NAME="313"></A>
+<A NAME="314"></A>
+<A NAME="315"></A>
+<A NAME="316"></A>
+<A NAME="317"></A>
+<A NAME="318"></A>
+<A NAME="319"></A>
+<A NAME="320"></A>
+<A NAME="321"></A>
+<A NAME="322"></A>
+<A NAME="323"></A>
+<A NAME="324"></A>
+<A NAME="325"></A>
+<A NAME="326"></A>
+<A NAME="327"></A>
+<A NAME="328"></A>
+<A NAME="329"></A>
+<A NAME="330"></A>
+<A NAME="331"></A>
+<A NAME="332"></A>
+<A NAME="333"></A>
+<A NAME="334"></A>
+<A NAME="335"></A>
+<A NAME="336"></A>
+
+<P>
+
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"></A>
+
+<UL>
+<LI><A NAME="tex2html44"
+  HREF="Disclaimer.html">Disclaimer</A>
+<LI><A NAME="tex2html45"
+  HREF="Overview_OOMMF.html">Overview of OOMMF</A>
+<LI><A NAME="tex2html46"
+  HREF="Installation.html">Installation</A>
+<UL>
+<LI><A NAME="tex2html47"
+  HREF="Requirements.html">Requirements</A>
+<LI><A NAME="tex2html48"
+  HREF="Basic_Installation.html">Basic Installation</A>
+<LI><A NAME="tex2html49"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<LI><A NAME="tex2html50"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html51"
+  HREF="quickstart.html">Quick Start: Example OOMMF Session</A>
+<LI><A NAME="tex2html52"
+  HREF="OOMMF_Architecture_Overview.html">OOMMF Architecture Overview</A>
+<LI><A NAME="tex2html53"
+  HREF="Command_Line_Launching.html">Command Line Launching</A>
+<LI><A NAME="tex2html54"
+  HREF="OOMMF_Launcher_Control_Inte.html">OOMMF Launcher/Control Interface: mmLaunch</A>
+<LI><A NAME="tex2html55"
+  HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
+<UL>
+<LI><A NAME="tex2html56"
+  HREF="OOMMF_eXtensible_Solver_Int.html">OOMMF eXtensible Solver Interactive Interface:
+Oxsii</A>
+<LI><A NAME="tex2html57"
+  HREF="OOMMF_eXtensible_Solver_Bat.html">OOMMF eXtensible Solver Batch Interface: boxsi</A>
+<LI><A NAME="tex2html58"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html59"
+  HREF="Micromagnetic_Problem_Edito.html">Micromagnetic Problem Editor: mmProbEd</A>
+<LI><A NAME="tex2html60"
+  HREF="Micromagnetic_Problem_File_.html">Micromagnetic Problem File Source: FileSource</A>
+<LI><A NAME="tex2html61"
+  HREF="2D_Micromagnetic_Solver.html">The 2D Micromagnetic Solver</A>
+<UL>
+<LI><A NAME="tex2html62"
+  HREF="2D_Micromagnetic_Interactiv.html">The 2D Micromagnetic Interactive Solver: mmSolve2D</A>
+<LI><A NAME="tex2html63"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">OOMMF 2D Micromagnetic Solver Batch System</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html64"
+  HREF="Data_Table_Display_mmDataTa.html">Data Table Display: mmDataTable</A>
+<LI><A NAME="tex2html65"
+  HREF="Data_Graph_Display_mmGraph.html">Data Graph Display: mmGraph</A>
+<LI><A NAME="tex2html66"
+  HREF="Vector_Field_Display_mmDisp.html">Vector Field Display: mmDisp</A>
+<LI><A NAME="tex2html67"
+  HREF="Data_Archive_mmArchive.html">Data Archive: mmArchive</A>
+<LI><A NAME="tex2html68"
+  HREF="Documentation_Viewer_mmHelp.html">Documentation Viewer: mmHelp</A>
+<LI><A NAME="tex2html69"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<UL>
+<LI><A NAME="tex2html70"
+  HREF="Bitmap_File_Format_Conversi.html">Bitmap File Format Conversion:
+          any2ppm</A>
+<LI><A NAME="tex2html71"
+  HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from Vector Fields:
+          avf2odt</A>
+<LI><A NAME="tex2html72"
+  HREF="Vector_Field_File_Format_Co.html">Vector Field File Format Conversion:
+          avf2ovf</A>
+<LI><A NAME="tex2html73"
+  HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector Fields:
+            avf2ppm</A>
+<LI><A NAME="tex2html74"
+  HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector Fields:
+            avf2ps</A>
+<LI><A NAME="tex2html75"
+  HREF="Vector_Field_File_Differenc.html">Vector Field File Difference:
+          avfdiff</A>
+<LI><A NAME="tex2html76"
+  HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
+<LI><A NAME="tex2html77"
+  HREF="Killing_OOMMF_Processes_kil.html">Killing OOMMF Processes: killoommf</A>
+<LI><A NAME="tex2html78"
+  HREF="Launching_OOMMF_host_server.html">Launching the OOMMF host server:
+   launchhost</A>
+<LI><A NAME="tex2html79"
+  HREF="Calculating_H_Fields_from_M.html">Calculating <B>H</B> Fields from Magnetization:
+            mag2hfield</A>
+<LI><A NAME="tex2html80"
+  HREF="mifconvert.html">MIF Format Conversion: mifconvert</A>
+<LI><A NAME="tex2html81"
+  HREF="ODT_Column_Extraction_odtco.html">ODT Column Extraction: odtcols</A>
+<LI><A NAME="tex2html82"
+  HREF="OOMMF_Process_ID_Informatio.html">OOMMF and Process ID Information: pidinfo</A>
+<LI><A NAME="tex2html83"
+  HREF="Process_Nicknames_nickname.html">Process Nicknames: nickname</A>
+<LI><A NAME="tex2html84"
+  HREF="Platform-Independent_Make_p.html">Platform-Independent Make:
+            pimake</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html85"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats (MIF)</A>
+<UL>
+<LI><A NAME="tex2html86"
+  HREF="MIF_2.1.html">MIF 2.1</A>
+<LI><A NAME="tex2html87"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<LI><A NAME="tex2html88"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<LI><A NAME="tex2html89"
+  HREF="MIF_1.2.html">MIF 1.2</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html90"
+  HREF="Data_Table_File_Format_ODT.html">Data Table File Format (ODT)</A>
+<LI><A NAME="tex2html91"
+  HREF="Vector_Field_File_Format_OV.html">Vector Field File Format (OVF)</A>
+<UL>
+<LI><A NAME="tex2html92"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<LI><A NAME="tex2html93"
+  HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
+<LI><A NAME="tex2html94"
+  HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html95"
+  HREF="Troubleshooting.html">Troubleshooting</A>
+<LI><A NAME="tex2html96"
+  HREF="bibliography.html">Bibliography</A>
+<LI><A NAME="tex2html97"
+  HREF="Credits.html">Credits</A>
+<LI><A NAME="tex2html98"
+  HREF="docindex.html">Index</A>
+</UL>
+<!--End of Table of Child-Links-->
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

@@ -1,0 +1,138 @@
+# MIF 2.2
+# Parameterized rectangle, with arbitrary in-plane rotation angle.
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+# For a 100 nm x 20 nm x 5 nm part with Ms=8e5 A/m, the correct
+# value for the demag energy is 1.638738415e-019 J. 
+
+Parameter THETA 0.  ;# Rectangle rotation angle in degrees
+Parameter R1 2000e-9  ;# Dimensions in meters
+Parameter R2  500e-9
+Parameter R3   20e-9
+
+set xycellsize 5e-9 ;# Cellsize in meters
+#set zcellsize  [expr {$R3/4.0}]
+set zcellsize  $R3
+
+if {$THETA==90.} {
+    set ANGX 0.
+    set ANGY 1.
+} else {
+    set ANGX [expr {cos($THETA*$pi/180.)}]
+    set ANGY [expr {sin($THETA*$pi/180.)}]
+}
+set L1 [expr {ceil(($R1*$ANGX+$R2*$ANGY)/$xycellsize)*$xycellsize}]
+set L2 [expr {ceil(($R1*$ANGY+$R2*$ANGX)/$xycellsize)*$xycellsize}]
+set L3 $R3
+
+SetOptions {
+ basename rect
+}
+
+### Support procs ##############################################
+proc Vortex { x y z } {
+    set xrad [expr {2.*$x-1.}]
+    set yrad [expr {2.*$y-1.}]
+    set normsq [expr {$xrad*$xrad+$yrad*$yrad}]
+    if {$normsq <= 0.05} {return "0 0 1"}
+    return [list [expr {-1*$yrad}] $xrad 0]
+}
+
+proc Sphere { Ms x y z xmin ymin zmin xmax ymax zmax } {
+    set xcenter [expr {($xmax-$xmin)/2.}]
+    set ycenter [expr {($ymax-$ymin)/2.}]
+    set zcenter [expr {($zmax-$zmin)/2.}]
+    set rad $xcenter
+    if {$rad>$ycenter} {set rad $ycenter}
+    if {$rad>$zcenter} {set rad $zcenter}
+    set xrad [expr {$x-$xcenter}]
+    set yrad [expr {$y-$ycenter}]
+    set zrad [expr {$z-$zcenter}]
+    set normsq [expr {$xrad*$xrad+$yrad*$yrad+$zrad*$zrad}]
+    if {$normsq <= $rad*$rad} {return $Ms}
+    return 0.
+}
+
+proc Rect { Ms l1 l2 angx angy r1 r2 x y z } {
+    set x [expr {$x*$l1}]
+    set y [expr {$y*$l2}]
+    set h2 [expr {$r2*$angy*$angy}]
+    set dot2 [expr {$x*$angy-$y*$angx}]
+    if {$dot2>$h2 || $dot2<$h2-$r2} { return 0. }
+
+    set dot1 [expr {$x*$angx+$y*$angy}]
+    set h1 [expr {$r2*$angy*$angx}]
+    if {$dot1<$h1 || $dot1>$h1+$r1} { return 0. }
+
+    return $Ms
+}
+
+### Specify blocks #############################################
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $L1}
+  yrange {0 $L2}
+  zrange {0 $L3}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+    cellsize {$xycellsize $xycellsize $zcellsize}
+    atlas :atlas
+}]
+
+# Uniaxial anistropy
+Ignore Specify Oxs_UniaxialAnisotropy {
+  K1 { Oxs_UniformScalarField { value  6.2831853e4 } }
+  axis { Oxs_UniformVectorField {
+    norm 1
+    vector {0 1 0}
+  } }
+}
+
+# Exchange
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+# Demag
+Specify Oxs_Demag {}
+
+Ignore Specify Oxs_CoarseDemag:NoCorr {
+  subx 2
+  suby 2
+  subz 2
+  corrsize 0
+}
+
+Ignore Specify Oxs_CoarseDemag:WithCorr {
+  subx 2
+  suby 2
+  subz 2
+  corrsize 1
+}
+
+Specify Oxs_UZeeman {
+  Hrange {
+     { 0 -1.3333333333333e5  0  0 0 0   0 }
+  }
+}
+
+# Evolver
+Specify Oxs_CGEvolve:evolver {}
+
+# Driver
+Specify Oxs_MinDriver [subst {
+ evolver :evolver
+ stopping_mxHxm 0.01
+ mesh :mesh
+ Ms { Oxs_ScriptScalarField {
+   atlas :atlas
+   script { Rect 8e5 $L1 $L2 $ANGX $ANGY $R1 $R2}
+ } }
+ comment { m0 { Oxs_ScriptVectorField {
+    atlas :atlas
+    script Vortex
+    norm  1
+ } } }
+ m0 {$ANGX $ANGY 0.01}
+}]

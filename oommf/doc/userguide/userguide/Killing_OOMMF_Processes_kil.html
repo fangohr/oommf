@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Killing OOMMF Processes: killoommf</TITLE>
+<META NAME="description" CONTENT="Killing OOMMF Processes: killoommf">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Launching_OOMMF_host_server.html">
+<LINK REL="previous" HREF="Cyclic_Redundancy_Check_crc.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Launching_OOMMF_host_server.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html653"
+  HREF="Launching_OOMMF_host_server.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html649"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html643"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html655"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html651"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html654"
+  HREF="Launching_OOMMF_host_server.html">Launching the OOMMF host</A>
+<B> Up:</B> <A NAME="tex2html650"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html644"
+  HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000178000000000000000"></A><A NAME="sec:killoommf"></A><A NAME="16924"></A><A NAME="16925"></A>
+<BR>
+Killing OOMMF Processes: killoommf
+</H2>
+
+<P>
+The <B>killoommf</B> application terminates running OOMMF processes.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>killoommf</B> command line is:
+<PRE>
+tclsh oommf.tcl killoommf [standard options] [-account name] \
+   [-hostport port] [-q] [-show] [-shownames] [-test] \
+   [-timeout secs] oid [...]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-account name</B></TT></STRONG></DT>
+<DD>Specify the account name.  The default is the same used by 
+ <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>:
+ the current user login name, except on Windows&nbsp;9X, where the dummy
+ account ID  ``oommf''<A NAME="16937"></A> may be used
+ instead.
+</DD>
+<DT><STRONG><TT><B>-hostport port</B></TT></STRONG></DT>
+<DD>Use the host server listening on <TT>port</TT>.  Default is set by the
+ <TT>Net_Host&nbsp;port</TT> setting in <TT><B>oommf/config/options.tcl</B></TT>, or by
+ the environment variable <TT>OOMMF_HOSTPORT</TT> (which, if set,
+ overrides the former).  The standard setting is 15136.
+</DD>
+<DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
+<DD>Quiet; don't print informational messages.
+</DD>
+<DT><STRONG><TT><B>-show</B></TT></STRONG></DT>
+<DD>Don't kill anything, just print matching targets.
+</DD>
+<DT><STRONG><TT><B>-shownames</B></TT></STRONG></DT>
+<DD>Don't kill anything, just print nicknames of matching targets, where
+ nicknames are as set by the MIF 2.1
+ <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A>
+ command.
+</DD>
+<DT><STRONG><TT><B>-test</B></TT></STRONG></DT>
+<DD>Don't kill anything, just test that targets are responding.
+</DD>
+<DT><STRONG><TT><B>-timeout secs</B></TT></STRONG></DT>
+<DD>Maximum time to wait for response from servers, in seconds.  Default
+ is five seconds.
+</DD>
+<DT><STRONG><TT><B>oid ...</B></TT></STRONG></DT>
+<DD>List of one or more oids (OOMMF ID's), application names,
+ nicknames, or the keyword ``all''.  Glob-style wildcards may also be
+ used.  This field is required (there are no default kill targets).
+</DD>
+</DL>
+The <B>killoommf</B> command affects processes that listen to OOMMF message traffic.  These are the same applications that are listed in
+the ``Threads'' list of <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>.  The command
+<PRE>
+tclsh oommf.tcl killoommf all
+</PRE>
+is essentially equivalent to the ``<TT>File|Exit All OOMMF</TT>''
+menu option in <B>mmLaunch</B>, except that <B>killoommf</B> does not
+shut down any <B>mmLaunch</B> processes.
+
+<P>
+An OOMMF application that does not respond to <B>killoommf</B> can be
+killed by using the OOMMF command line program
+<A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A> to
+determine its PID (process identification) as used by the operating
+system, and then using the system facilities for terminating processes
+(e.g., <TT>kill</TT> on Unix, or the <TT>Windows Task Manager</TT> on
+Windows).
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html653"
+  HREF="Launching_OOMMF_host_server.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html649"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html643"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html656"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html651"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

@@ -1,0 +1,1652 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>MIF 2.1</TITLE>
+<META NAME="description" CONTENT="MIF 2.1">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="MIF_2.2.html">
+<LINK REL="previous" HREF="Problem_Specification_File_.html">
+<LINK REL="up" HREF="Problem_Specification_File_.html">
+<LINK REL="next" HREF="MIF_2.2.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html796"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html792"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html786"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html798"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html794"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html797"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Up:</B> <A NAME="tex2html793"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
+<B> Previous:</B> <A NAME="tex2html787"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html800"
+  HREF="MIF_2.1.html#SECTION000181100000000000000">MIF 2.1 File Overview</A>
+<LI><A NAME="tex2html801"
+  HREF="MIF_2.1.html#SECTION000181200000000000000">MIF&nbsp;2.1 Extension Commands</A>
+<LI><A NAME="tex2html802"
+  HREF="MIF_2.1.html#SECTION000181300000000000000">Specify Conventions</A>
+<UL>
+<LI><A NAME="tex2html803"
+  HREF="MIF_2.1.html#SECTION000181310000000000000">Initialization string format</A>
+<LI><A NAME="tex2html804"
+  HREF="MIF_2.1.html#SECTION000181320000000000000"><TT>Oxs_Ext</TT> referencing</A>
+<LI><A NAME="tex2html805"
+  HREF="MIF_2.1.html#SECTION000181330000000000000">Grouped lists</A>
+<LI><A NAME="tex2html806"
+  HREF="MIF_2.1.html#SECTION000181340000000000000">Comments</A>
+<LI><A NAME="tex2html807"
+  HREF="MIF_2.1.html#SECTION000181350000000000000">Attributes</A>
+<LI><A NAME="tex2html808"
+  HREF="MIF_2.1.html#SECTION000181360000000000000">User defined support procedures</A>
+<LI><A NAME="tex2html809"
+  HREF="MIF_2.1.html#SECTION000181370000000000000">User defined scalar outputs</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html810"
+  HREF="MIF_2.1.html#SECTION000181400000000000000">Variable Substitution</A>
+<LI><A NAME="tex2html811"
+  HREF="MIF_2.1.html#SECTION000181500000000000000">Sample MIF&nbsp;2.1 File</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H2><A NAME="SECTION000181000000000000000"></A><A NAME="sec:mif2format"></A>
+<BR>
+MIF 2.1
+</H2>
+
+<A NAME="pt:mif2format"></A>
+The MIF&nbsp;2.x format was introduced with the
+<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
+ NAME="18819">Oxs 3D solver</A><A NAME="18820"></A>.
+It is <I>not</I> backwards compatible with the MIF&nbsp;1.x formats,
+however a conversion utility,
+<A HREF="mifconvert.html#sec:mifconvert"
+ NAME="18826"><B>mifconvert</B></A>, is available
+to aid in converting MIF&nbsp;1.x files to the MIF&nbsp;2.1 format.
+
+<P>
+
+<H3><A NAME="SECTION000181100000000000000"></A><A NAME="sec:mif2overview"></A><A NAME="18829"></A>
+<BR>
+MIF 2.1 File Overview
+</H3>
+
+<P>
+The first line of a MIF file must be of the form ``<code>#</code> MIF x.y'',
+where x.y represents the format revision number, here 2.1.  Unlike
+MIF&nbsp;1.1 files, the structure of MIF&nbsp;2.1 files are governed by the
+requirement that they be valid Tcl scripts, albeit with a handful of
+extensions.  These files are evaluated inside a Tcl interpreter, which
+may be a ``safe'' interpreter, i.e., one in which disk and other system
+access is disabled.  (Refer to the documentation of the Tcl <TT>interp</TT> command for details on safe interpreters.)  The security
+level is controlled by the <TT>MIFinterp</TT> option in the <TT><B>options.tcl</B></TT>
+<A HREF="Advanced_Installation.html#sec:custom">customization file</A>.
+The default setting is
+<BLOCKQUOTE>
+<PRE>
+Oc_Option Add Oxs* MIFinterp safety custom
+</PRE>
+</BLOCKQUOTE>
+which enables all the Tcl interpreter extensions described in
+the
+<A HREF="#sec:mif2ExtensionCommands">MIF&nbsp;2.1 Extension Commands</A>
+section
+below, but otherwise provides a standard Tcl safe interpreter.  The
+keyword <TT>custom</TT> above may be replaced with either <TT>safe</TT> or
+<TT>unsafe</TT>.  The <TT>safe</TT> selection is similar to <TT>custom</TT>, except
+that the <TT>ReadFile</TT> and <TT>RGlob</TT> extensions are not provided,
+thereby eliminating all disk access at the MIF script level.  At the
+other extreme, choosing <TT>unsafe</TT> provides an unrestricted Tcl interpreter.  This option should be used with caution, especially if you
+are reading MIF files from an unknown or untrusted source.
+
+<P>
+After the first line, there is considerable flexibility in the layout of
+the file.  Generally near the top of the file one places any
+<A HREF="#html:mif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
+<A HREF="#html:mif2parameter"><TT>Parameter</TT></A>, and
+<A HREF="#html:mif2randomseed"><TT>RandomSeed</TT></A> statements, as
+desired.
+
+<P>
+This is followed by the major content of the file, the various
+<A HREF="#html:specifyCmd"><TT>Specify</TT></A> blocks, which initialize
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext"><TT>Oxs_Ext</TT> objects</A>:
+
+<UL>
+<LI>Atlas (one or more)
+</LI>
+<LI>Mesh (one)
+</LI>
+<LI>Energy terms (one or more)
+</LI>
+<LI>Evolver (one)
+</LI>
+<LI>Driver(one)
+</LI>
+</UL>
+The <TT>Specify</TT> blocks are processed in order, so any block that is
+referred to by another block must occur earlier in the file.  For that
+reason, the main atlas object, which is referenced in many other
+<TT>Specify</TT> blocks, is generally listed first.  The atlas object
+defines the spatial extent of the simulation, and optionally declares
+subregions inside the simulation volume.
+
+<P>
+The mesh object details the spatial discretization of the simulation
+volume.  Conventionally its <TT>Specify</TT> block follows the <TT>Specify</TT>
+block for the main atlas object; the mesh is referenced by the driver,
+so in any event the mesh <TT>Specify</TT> block needs to precede the driver
+<TT>Specify</TT> block.
+
+<P>
+The energy terms describe the typical micromagnetic energies and fields
+that determine the evolution of the simulation, such as exchange energy,
+magnetostatic fields, and anisotropy energies.  Material parameters,
+such as the anisotropy constant <TT>K1</TT> and the exchange constant
+<TT>A</TT>, are generally specified inside the <TT>Specify</TT> block for the
+relevant energy, e.g., <TT>Oxs_UniaxialAnisotropy</TT> or
+<TT>Oxs_Exchange6Ngbr</TT>.  The exception to this is saturation
+magnetization, <TT>Ms</TT>, which is declared in the driver <TT>Specify</TT> block.
+The initial magnetization, <TT>m0</TT>, is also specified in the driver
+<TT>Specify</TT> block.  In many cases these material parameters may be
+varied spatially by defining them using scalar or vector
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsFieldObjects">field objects</A>.  As discussed
+in the section on <A HREF="#sec:specConventions">Specify Conventions</A>, auxiliary objects such as scalar and
+vector fields can be defined either inline (i.e., inside the body of the
+referencing <TT>Specify</TT> block) or in their own, standalone top-level
+<TT>Specify</TT> blocks.  In the latter case, the auxiliary
+<TT>Specify</TT> blocks must precede the referencing <TT>Specify</TT> blocks in
+the MIF&nbsp;2.1 file.
+
+<P>
+Given the energies and fields, the evolver and driver form a matched
+pair that advance the magnetic state from an initial configuration,
+obeying either Landau-Lifshitz-Gilbert (LLG) dynamics or direct energy
+minimization.  For energy minimization studies, the driver must be an
+<TT>Oxs_MinDriver</TT> object, and the evolver must be a minimization
+evolver.  At the time of this writing, the only minimization evolver
+packaged with OOMMF is the <TT>Oxs_CGEvolve</TT> conjugate-gradient
+evolver.  For time-evolution (LLG) simulations, the driver must be an
+<TT>Oxs_TimeDriver</TT> object, and the evolver must be a time evolver,
+such as <TT>Oxs_RungeKuttaEvolve</TT>.  The evolver to be used is cited
+inside the driver <TT>Specify</TT> block, so the evolver must precede the
+driver in the MIF&nbsp;2.1 file.  As noted above, the pointwise saturation
+magnetization <TT>Ms</TT> and initial magnetization configuration <TT>m0</TT>
+are declared inside the driver <TT>Specify</TT> block as well.
+
+<P>
+The pre-specified outputs, indicated by zero or more
+<A HREF="#html:destinationCmd"><TT>Destination</TT></A> and
+<A HREF="#html:scheduleCmd"><TT>Schedule</TT></A> commands, are
+conventionally placed after the <TT>Specify</TT> blocks.  Output selection
+can also be modified at runtime using the
+<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> or
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"><B>Boxsi</B></A> interactive interfaces.
+
+<P>
+Auxiliary Tcl procs may be placed anywhere in the file, but
+commonly either near their point of use or else at the bottom of the
+MIF file.  If a proc is only referenced from inside <TT>Specify</TT> blocks, then
+it can be placed anywhere in the file.  On the other hand, if a proc is
+used at the top level of the MIF file, for example to dynamically
+create part of the problem specification ``on-the-fly,'' then it must be
+defined before it is used, in the normal Tcl manner.
+
+<P>
+A sample MIF&nbsp;2.1 file is <A HREF="#fig:mif2sample">included below.</A>
+More details on the individual <TT>Oxs_Ext</TT> objects can be found in the
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">Standard Oxs_Ext Child Classes section</A>
+of the Oxs documentation.
+
+<P>
+
+<H3><A NAME="SECTION000181200000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="18929"></A>
+<BR>
+MIF&nbsp;2.1 Extension Commands
+</H3>
+In addition to the standard Tcl commands (modulo the safe Tcl restrictions outlined above), a number of additional commands are
+available in MIF&nbsp;2.1 files:
+<A HREF="#html:specifyCmd"><TT>Specify</TT></A>,
+<A HREF="#html:mif2ClearSpec"><TT>ClearSpec</TT></A>,
+<A HREF="#html:destinationCmd"><TT>Destination</TT></A>,
+<A HREF="#html:mif2Ignore"><TT>Ignore</TT></A>,
+<A HREF="#html:mif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
+<A HREF="#html:mif2parameter"><TT>Parameter</TT></A>,
+<A HREF="#html:mif2Random"><TT>Random</TT></A>,
+<A HREF="#html:mif2randomseed"><TT>RandomSeed</TT></A>,
+<A HREF="#html:MifReport"><TT>Report</TT></A>,
+<A HREF="#html:ReadFile"><TT>ReadFile</TT></A>,
+<A HREF="#html:mif2rglob"><TT>RGlob</TT></A>,
+and <A HREF="#html:scheduleCmd"><TT>Schedule</TT></A>.
+
+<P>
+<DL>
+<DT><STRONG>Specify<A NAME="html:specifyCmd"></A></STRONG></DT>
+<DD><A NAME="18956"></A>
+An Oxs simulation is built as a collection of <TT>Oxs_Ext</TT> (Oxs
+Extension) objects.  In general, <TT>Oxs_Ext</TT> objects are specified and
+initialized in the input MIF&nbsp;2.1 file using the <TT>Specify</TT> command,
+making Specify blocks the primary component of the problem
+definition.  The <TT>Specify</TT> command takes two arguments: the name of
+the <TT>Oxs_Ext</TT> object to create, and an <I>initialization string</I>
+that is passed to the <TT>Oxs_Ext</TT> object during its construction.
+The objects are created in the order in which they appear in the MIF file. Order is important in some cases; for example, if one <TT>Oxs_Ext</TT>
+object refers to another in its initialization string, then the referred
+to object must precede the referrer in the MIF file.
+
+<P>
+Here is a simple Specify block:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_EulerEvolve:foo {
+  alpha 0.5
+  start_dm 0.01
+}
+</PRE>
+</BLOCKQUOTE>
+The name of the new <TT>Oxs_Ext</TT> object is ``Oxs_EulerEvolve:foo.''
+The first part of this name, up to the colon, is the the C++ class name of the object.  This must be a child of the <TT>Oxs_Ext</TT>
+class.  Here, <TT>Oxs_EulerEvolve</TT> is a class that integrates the
+Landau-Lifshitz ODE using a simple forward Euler method.  The second
+part of the name, i.e., the part following the colon, is
+the <I>instance name</I><A NAME="18971"></A> for
+this particular instance of the object.  In general, it is possible to
+have multiple instances of an <TT>Oxs_Ext</TT> child class in a simulation,
+but each instance must have a unique name.  These names are used for
+identification by output routines, and to allow one Specify block to
+refer to another Specify block appearing earlier in the MIF file.  If
+the second part of the name is not given, then as a default the empty
+string is appended.  For example, if instead of ``Oxs_EulerEvolve:foo''
+above the name was specified as just ``Oxs_EulerEvolve'', then the
+effective full name of the created object would be
+``Oxs_EulerEvolve:''.
+
+<P>
+The second argument to the <TT>Specify</TT> command, here everything between
+the curly braces, is a string that is interpreted by the new
+<TT>Oxs_Ext</TT> (child) object in its constructor.  The format of this
+string is up to the designer of the child class, but there are a number
+of conventions that designers are encouraged to follow.  These
+conventions are described in the
+<A HREF="#sec:specConventions">Specify Conventions</A> section below.
+
+<P>
+</DD>
+<DT><STRONG>ClearSpec<A NAME="html:mif2ClearSpec"></A></STRONG></DT>
+<DD>This command is used to disable one or all preceding <TT>Specify</TT>
+commands.  In particular, one could use <TT>ClearSpec</TT> to nullify a
+Specify block from a base MIF file that was imported using the
+<TT>ReadFile</TT> command.  Sample usage is
+<BLOCKQUOTE>
+<PRE>
+ClearSpec Oxs_EulerEvolve:foo
+</PRE>
+</BLOCKQUOTE>
+where the parameter is the full name (here <TT>Oxs_EulerEvolve:foo</TT>) of
+the Specify block to remove.  If no parameter is given, then all
+preceding Specify blocks are removed.
+
+<P>
+</DD>
+<DT><STRONG>Destination<A NAME="html:destinationCmd"></A></STRONG></DT>
+<DD><A NAME="18989"></A><A NAME="18990"></A>
+The format for the <TT>Destination</TT> command is
+<BLOCKQUOTE>
+<PRE>
+Destination &lt;desttag&gt; &lt;appname&gt; [new]
+</PRE>
+</BLOCKQUOTE>
+This command associates a symbolic <I>desttag</I> with an
+application.  The tags are used by the
+<A HREF="#html:scheduleCmd"><TT>Schedule</TT></A> command
+to refer to specific application instances.  The <I>appname</I> may
+either be an OOMMF application name, e.g., mmDisp, or else a
+specific application instance in the form application:nickname, such
+as mmDisp:Spock.  In the first case, the tag is associated with the
+running instance of the requested application (here <TT>mmDisp</TT>) with
+the lowest OOMMF ID (OID) that has not yet been associated with
+another tag.  If no running application can be found that meets these
+criteria, then a new instance of the application is launched.
+
+<P>
+If the <I>appname</I> refers to a specific application instance, then
+the tag is associated with the running instance of the application (say
+<B>mmDisp</B>) that has been assigned the specified nickname.  Name
+matching is case insensitive.  If there is no running copy of the
+application meeting this condition, then a new instance of the
+application is launched and it is assigned the specified nickname.  The
+OOMMF <A HREF="OOMMF_Architecture_Overview.html#sec:arch">account service directory</A> guarantees
+that there is never more than one instance of an application with a
+given nickname.  However, as with the object name in the <TT>Specify</TT>
+command, instances of two different applications, e.g., <B>mmDisp</B> and
+<B>mmGraph</B>, are allowed to share nicknames, because their full
+instance names, say mmDisp:Spock and mmGraph:Spock, are unique.
+
+<P>
+The <TT>Destination</TT> commands are processed in the order in which they
+appear in the the MIF file.  No <I>desttag</I> may appear in more
+than one <TT>Destination</TT> command, and no two destination tags may refer
+to the same application instance.  To insure the latter, the user is
+advised to place all <TT>Destination</TT> commands referring to specific
+instances (e.g., mmDisp:Spock) before any <TT>Destination</TT> commands
+using generic application references (e.g., mmDisp).  Otherwise a
+generic reference might be associated to a running application holding a
+nickname that is referenced by a later <TT>Destination</TT> command.
+
+<P>
+The tag association by the <TT>Destination</TT> command is only known to the
+solver reading the MIF file.  In contrast, assigned instance nicknames
+are recognized across applications.  In particular, multiple solvers may
+reference the same running application by nickname.  For example,
+several sequential solver runs could send stage output to the same
+<B>mmGraph</B> widget, to build up overlapping hysteresis loops.
+
+<P>
+The last parameter to the Destination command is the optional
+<TT>new</TT> keyword.  If present, then a fresh copy of the requested
+application is always launched for association with the given tag.  The
+<TT>new</TT> option can be safely used with any generic application
+reference, but caution must be taken when using this option with
+specific instance references, because an error is raised if the
+requested nickname is already in use.
+
+<P>
+</DD>
+<DT><STRONG>Ignore<A NAME="html:mif2Ignore"></A></STRONG></DT>
+<DD>The <TT>Ignore</TT> command takes an arbitrary number of arguments, which
+are thrown away without being interpreted.  The primary use of
+<TT>Ignore</TT> is to temporarily ``comment out'' (i.e., disable) Specify
+blocks.
+
+<P>
+</DD>
+<DT><STRONG>OOMMFRootDir<A NAME="html:mif2oommfrootdir"></A></STRONG></DT>
+<DD>This command takes no arguments, and returns the full directory path of
+the OOMMF root directory.  This is useful in conjunction with the
+<TT>ReadFile</TT> command for locating files within the OOMMF hierarchy,
+and can also be used to place output files.  File paths must be created
+directly since the Tcl <TT>file</TT> command is not accessible inside safe
+interpreters.  For example
+<BLOCKQUOTE>
+<PRE>
+set outfile [OOMMFRootDir]/data/myoutput
+</PRE>
+</BLOCKQUOTE>
+In this context one should always use Tcl path conventions.  In
+particular, use forward slashes, ``<TT>/</TT>'', to separate directories.
+
+<P>
+</DD>
+<DT><STRONG>Parameter<A NAME="html:mif2parameter"></A></STRONG></DT>
+<DD>The Oxs interfaces
+(<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii">Oxsii</A> and
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi">Boxsi</A>)
+allow specified variables in the MIF file to be set from the command
+line via the <TT>-parameters</TT> option.  This functionality is enabled
+inside the MIF file via the <TT>Parameter</TT> command:
+<BLOCKQUOTE>
+<TT>Parameter</TT> <I>varname</I> <I>optional_default_value</I>
+
+</BLOCKQUOTE>
+Here <I>varname</I> is the name of a variable that may be set from
+the command line.  If it is not set on the command line then the
+variable is set to the optional default value, if any, or otherwise an
+error is raised.  An error is also raised if a variable set on the
+command line does not have a corresponding <TT>Parameter</TT> command in the
+MIF file.  See also the notes on
+<A HREF="#sec:varSubst">variable substitution</A> below.
+
+<P>
+</DD>
+<DT><STRONG>Random<A NAME="html:mif2Random"></A></STRONG></DT>
+<DD>Returns a pseudo-random number in the interval <B>[0, 1]</B>
+<!-- MATHEND
+ 
+ -->
+, using a
+C-library random number generator.  This random number generator is
+specified by the <TT>OMF_RANDOM</TT> macro in the <TT><B>ocport.h</B></TT> file found in
+the system-specific subdirectory of <TT><B>oommf/pkg/oc/</B></TT>.  The standard
+Tcl <TT>expr rand()</TT> command is also available.
+
+<P>
+</DD>
+<DT><STRONG>RandomSeed<A NAME="html:mif2randomseed"></A></STRONG></DT>
+<DD>Initializes both the Tcl and the C-library random number generators.
+If no parameter is given, then a seed is drawn from the system clock.
+Otherwise, one integer parameter may be specified to be used as the
+seed.
+
+<P>
+</DD>
+<DT><STRONG>Report<A NAME="html:MifReport"></A></STRONG></DT>
+<DD>Intended primarily as a MIF debugging aid, <TT>Report</TT> takes one
+string argument that is printed to the solver interface console and the
+Oxs log file.  It is essentially a replacement for the standard Tcl <TT>puts</TT> command, which is not available in safe interpreters.
+
+<P>
+</DD>
+<DT><STRONG>ReadFile<A NAME="html:ReadFile"></A></STRONG></DT>
+<DD>The Tcl <TT>read</TT> command is absent from safe interpreters.  The
+<TT>ReadFile</TT> command is introduced as a replacement available in
+``custom'' and ``unsafe'' interpreters.  <TT>ReadFile</TT> takes two
+arguments, the file to be read and an optional translation
+specification.  The file may either be specified with an absolute path,
+i.e., one including all its directory components, or with a relative
+path interpreted with respect to the directory containing the MIF file.  The <TT>OOMMFRootDir</TT> command can be used to advantage to locate
+files in other parts of the OOMMF directory tree.
+
+<P>
+The translation specification should be one of <TT>binary</TT>, <TT>auto</TT>
+(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="19065"></A>.  The
+first two translation modes provide the functionality of the
+<TT>-translation</TT> option of the Tcl <TT>fconfigure</TT> command.  Refer to
+the Tcl documentation for details.  Specifying <TT>image</TT> causes the
+input file to be read as an image file.  The file will be read
+directly if it in the PPM P3 (text), PPM P6 (binary), or uncompressed
+BMP formats; otherwise it is filtered through the OOMMF <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><B>any2ppm</B></A>
+program.  (Note that <B>any2ppm</B> requires Tk, and Tk requires a
+display.)  The input file is converted into a string that mimics a PPM
+P3 text file, minus the leading ``P3''.  In particular, after conversion
+the first 3 whitespace separated values are image width, height and
+maxvalue, followed by an array of 3 <B><TT>x</TT></B>
+<!-- MATHEND
+ 
+ -->
+ width <B><TT>x</TT></B>
+<!-- MATHEND
+ 
+ -->
+ height
+values, where each triplet corresponds to the red, green and blue
+components of an image pixel, sequenced in normal English reading order.
+Each component is in the range <!-- MATH
+ $[0,maxvalue]$
+ -->
+<B>[0, <I>maxvalue</I>]</B>
+<!-- MATHEND
+ 
+ -->
+.  This output contains no
+comments, and may be treated directly as a Tcl list.  The
+<TT>floatimage</TT> option is very similar to the <TT>image</TT> option, except
+that the third value (i.e., maxvalue) in the resulting string is always
+``1'', and the succeeding red, green and blue values are floating point
+values in the range <B>[0, 1]</B>
+<!-- MATHEND
+ 
+ -->
+.
+
+<P>
+In all cases, the return value from the <TT>ReadFile</TT> command is a
+string corresponding to the contents of the (possibly translated) file.
+For example,
+<BLOCKQUOTE>
+<PRE>
+eval [ReadFile extra_mif_commands.tcl]
+</PRE>
+</BLOCKQUOTE>
+can be used to embed a separate Tcl file into a MIF&nbsp;2.1 file.
+
+<P>
+<A NAME="19079"></A>Here's a more complicated example that uses a color image file to
+create a vector field:
+<BLOCKQUOTE>
+<PRE>
+set colorimage [ReadFile mirror.ppm floatimage]
+set imagewidth [lindex $colorimage 0]
+set imageheight [lindex $colorimage 1]
+set imagedepth [lindex $colorimage 2] ;# Depth value should be 1
+if {$imagedepth != 1} {
+   Report "ReadFile returned unexpected list value."
+}
+
+proc ColorField { x y z } {
+     global colorimage imagewidth imageheight
+     set i [expr {int(floor(double($x)*$imagewidth))}]
+     if {$i&gt;=$imagewidth} {set i [expr {$imagewidth-1}]}
+     set j [expr {int(floor(double(1-$y)*$imageheight))}]
+     if {$j&gt;=$imageheight} {set j [expr {$imageheight-1}]}
+     set index [expr {3*($j*$imagewidth+$i)+3}]  ;# +3 is to skip header
+     set vx [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Red
+     set vy [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Green
+     set vz [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Blue
+     return [list $vx $vy $vz]
+}
+
+Specify Oxs_ScriptVectorField:sample {
+   atlas :atlas
+   norm 1.0
+   script ColorField
+}
+</PRE>
+</BLOCKQUOTE><A NAME="19082"></A>
+If the input image is large, then it is best to work with the image list
+(i.e., the variable <TT>colorimage</TT> in the preceding example) directly,
+as illustrated above.  The image list as returned by <TT>ReadFile</TT> is in
+a packed format; if you make modifications to the list values then the
+memory footprint of the list can grow substantially.
+
+<P>
+The <TT>ReadFile</TT> command is not available if the <TT>MIFinterp safety</TT>
+option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
+<A HREF="Advanced_Installation.html#sec:custom">customization file</A>.
+
+<P>
+</DD>
+<DT><STRONG>RGlob<A NAME="html:mif2rglob"></A></STRONG></DT>
+<DD>This command is modeled on the Tcl <TT>glob</TT> command (q.v.), but
+is restricted to the current working directory, that is, the
+directory holding the MIF file.  The syntax is
+<BLOCKQUOTE>
+<PRE>
+RGlob [-types typelist] [--] pattern [...]
+</PRE>
+</BLOCKQUOTE>
+The optional <TT>typelist</TT> restricts the match to files meeting the
+typelist criteria.  The optional <code>--</code> switch marks the end of
+options.  The one or more <TT>pattern</TT>'s should be glob-style
+patterns (strings containing asterisks and question marks) intended to
+match filenames in the current working directory.  See the Tcl <TT>glob</TT> documentation for details on the <TT>-types</TT> option and
+glob pattern details.
+
+<P>
+One use of this command is to identify files created by earlier runs of
+Oxs.  For example, suppose we wanted to use the mmArchive magnetization
+output from the third stage of a previous MIF file with basename ``sample''.
+Output files are tagged by stage number (here ``2'' since stages are
+counted from 0) and iteration.  The iteration is generally not known a
+priori, but assuming the output files are in the same directory as the
+current MIF file, we could use a command like
+<BLOCKQUOTE>
+<PRE>
+set file [RGlob sample-Oxs_MinDriver-Magnetization-02-???????.omf]
+</PRE>
+</BLOCKQUOTE>
+to determine the name of the magnetization file.  If more than one
+magnetization state was saved for that stage, then the variable
+<TT>file</TT> will hold a list of filenames.  In this case the Tcl <TT>lsort</TT>
+command can be used to select the one with the highest iteration number.
+The <TT>file</TT> variable can be used in conjunction with the
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#item:FileVectorField"><TT>Oxs_FileVectorField</TT></A>
+class to import the magnetization into the new simulation, for example
+to set the initial magnetization configuration.
+
+<P>
+The <TT>RGlob</TT> command is not available if the <TT>MIFinterp safety</TT>
+option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
+<A HREF="Advanced_Installation.html#sec:custom">customization file</A>.  If <TT>MIFinterp safety</TT> is set to
+<TT>unsafe</TT>, then the standard (and more capable) Tcl <TT>glob</TT> command will be available.
+
+<P>
+</DD>
+<DT><STRONG>Schedule<A NAME="html:scheduleCmd"></A></STRONG></DT>
+<DD><A NAME="19120"></A>
+The <TT>Schedule</TT> command is used to setup outputs from the MIF file.
+This functionality is critical for solvers running in batch mode, but is
+also useful for setting up default connections in interactive mode.
+
+<P>
+The syntax for the <TT>Schedule</TT> command is
+<BLOCKQUOTE>
+<PRE>
+Schedule &lt;outname&gt; &lt;desttag&gt; &lt;event&gt; &lt;frequency&gt;
+</PRE>
+</BLOCKQUOTE>
+The <TT>Schedule</TT> command mirrors the interactive output scheduling
+provided by the
+<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> and
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"><B>Boxsi</B></A>
+graphical interfaces.  The first parameter
+to the <TT>Schedule</TT> command is the name of the output being scheduled.
+These names are the same as those appearing in the ``Outputs'' list in
+the Oxs graphical interfaces, for example ``DataTable'' or
+``Oxs_CubicAnisotropy:Nickel:Field.''  The name must be presented to
+the <TT>Schedule</TT> command as a single argument; if the name includes one
+or more spaces then use double quotes to protect the spaces.  Aside from
+the DataTable output which is always present, the
+<I>outname</I>'s are MIF file dependent.
+
+<P>
+The second parameter to the <TT>Schedule</TT> command is a destination tag.
+This is a tag associated to a running application by a previous
+<A HREF="#html:destinationCmd"><TT>Destination</TT> command</A>.  The symbolic destination tag replaces the application:OID
+nomenclature used in the graphical interface, because in general it is
+not possible to know the OOMMF ID for application instances at the
+time the MIF file is composed.  In fact, some of the applications may
+be launched by <TT>Destination</TT> commands, and so don't even have OID's
+at the time the <TT>Destination</TT> command is processed.
+
+<P>
+The <I>event</I> parameter should be one of the keywords <TT>Step</TT> or
+<TT>Stage</TT>, and the <I>frequency</I> parameter should be a positive integer,
+representing with what frequency of the specified event should output be
+dispatched.  For example, if <TT>Step 5</TT> is given, then on every fifth
+step of the solver output of the indicated type will be sent to the
+selected destination.  Set <I>frequency</I> to 1 to send output each
+time the event occurs.
+
+<P>
+All of the parameters to the <TT>Schedule</TT> command are required.
+
+<P>
+There are examples of scheduling with the <TT>Destination</TT> and
+<TT>Schedule</TT> commands in the <A HREF="#fig:mif2sample">sample MIF&nbsp;2.1
+file</A>.  There,
+three destinations are tagged.  The first refers to a possibly already
+running instance of <B>mmGraph</B>, having nickname Hysteresis.  The
+associated <TT>Schedule</TT> command sends DataTable output to this
+application at the end of each Stage, so hysteresis graphs can be
+produced.  The second destination tag references a different copy of
+<B>mmGraph</B> that will be used for monitoring the run.  To make sure
+that this output is rendered onto a blank slate, the <TT>new</TT>
+keyword is used to launch a fresh copy of <B>mmGraph</B>.  The
+<TT>Schedule</TT> command for the monitor destination delivers output to
+the monitoring <B>mmGraph</B> every 5 iterations of the solver.  The last
+<TT>Destination</TT> command tags an arbitrary <B>mmArchive</B> application,
+which is used for file storage of DataTable results at the end of each
+stage, and snapshots of the magnetization and total field at the end of
+every third stage.  Note that double quotes enclose the
+``Oxs_EulerEvolve::Total field'' output name.  Without the quotes, the
+<TT>Schedule</TT> command would see five arguments,
+``Oxs_EulerEvolve::Total'', ``field'', ``archive'', ``Stage'', and
+``3''.
+</DD>
+</DL>
+
+<P>
+
+<H3><A NAME="SECTION000181300000000000000"></A><A NAME="sec:specConventions"></A><A NAME="19169"></A>
+<BR>
+Specify Conventions
+</H3>
+The Specify blocks in the input MIF file determine the collection
+of <TT>Oxs_Ext</TT> objects defining the Oxs simulation.  As explained
+above, the <A HREF="#html:specifyCmd"><TT>Specify</TT></A> command takes two
+arguments, the name of the <TT>Oxs_Ext</TT> object to create, and an
+initialization string.  The format of the initialization string can
+be arbitrary, as determined by the author of the <TT>Oxs_Ext</TT> class.
+This section presents a number of recommended conventions which
+<TT>Oxs_Ext</TT> class authors are encouraged to follow.  Any <TT>Oxs_Ext</TT>
+classes that don't follow these conventions should make that fact
+explicitly clear in their documentation.
+Details on the standard <TT>Oxs_Ext</TT> classes included with OOMMF can
+be found in the
+<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs section</A>
+of this document.
+
+<P>
+
+<H4><A NAME="SECTION000181310000000000000"></A><A NAME="par:specInitString"></A><A NAME="19185"></A>
+<BR>
+Initialization string format
+</H4>
+Consider again the simple Specify block presented above:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_EulerEvolve:foo {
+  alpha 0.5
+  start_dm 0.01
+}
+</PRE>
+</BLOCKQUOTE>
+The first convention is that the initialization string be structured as
+a Tcl list<A NAME="19188"></A> with an even number of elements, with
+consecutive elements consisting of a label + value pairs.  In the above
+example, the initialization string consists of two label + value pairs,
+``alpha 0.5'' and ``start_dm 0.01''.  The first specifies that the
+damping parameter <B><IMG
+ WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ SRC="img18.gif"
+ ALT="$ \alpha$"></B>
+<!-- MATHEND
+ 
+ -->
+ in the Landau-Lifshitz ODE is 0.5.  The
+second specifies the initial step size for the integration routine.
+Interested parties should refer to a Tcl programming reference (e.g.,
+[<A
+ HREF="bibliography.html#welch00">20</A>]) for details on forming a proper Tcl list, but in short
+the items are separated by whitespace, and grouped by double quotes or
+curly braces (``<code>{</code>'' and ``<code>}</code>'').  Opening braces and quotes
+must be whitespace separated from the preceding text.  Grouping
+characters are removed during parsing.  In this example the list as a
+whole is set off with curly braces, and individual elements are white
+space delimited.  Generally, the ordering of the label + value pairs in
+the initialization string is irrelevant, i.e., <TT>start_dm 0.01</TT> could
+equivalently precede <TT>alpha 0.5</TT>.
+
+<P>
+Sometimes the value portion of a label + value pair will itself be a list,
+as in this next example:
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_BoxAtlas:myatlas {</TT>
+<DD>...
+<DT><TT>}</TT>
+<DT><DT><TT>Specify Oxs_RectangularMesh:mymesh {</TT>
+<DD><TT>cellsize { 5e-9 5e-9 5e-9 }</TT>
+<DD><TT>atlas Oxs_BoxAtlas:myatlas</TT>
+<DT><TT>}</TT></DL>
+</BLOCKQUOTE><P>
+Here the value associated with ``cellsize'' is a list of 3 elements,
+which declare the sampling rate along each of the coordinate axes, in
+meters.  (<TT>Oxs_BoxAtlas</TT> is a particular type of <TT>Oxs_Atlas</TT>,
+and ``...'' mark the location of the <TT>Oxs_BoxAtlas</TT>
+initialization string, which is omitted because it is not pertinent to
+the present discussion.)
+
+<P>
+
+<H4><A NAME="SECTION000181320000000000000"></A><A NAME="par:oxsExtReferencing"></A><A NAME="19197"></A>
+<BR>
+<TT>Oxs_Ext</TT> referencing
+</H4>
+The ``atlas'' value in the mesh Specify block of the preceding example
+refers to an earlier <TT>Oxs_Ext</TT> object, ``Oxs_BoxAtlas:myatlas''.
+It frequently occurs that one <TT>Oxs_Ext</TT> object needs access to
+another <TT>Oxs_Ext</TT> object.  In this example the mesh object
+<TT>:mymesh</TT> needs to query the atlas object <TT>:myatlas</TT> in order to
+know the extent of the space that is to be gridded.  The atlas object is
+defined earlier in the MIF input file by its own, separate, top-level
+Specify block, and the mesh object refers to it by simply specifying its
+name.  Here the full name is used, but the short form <TT>:myatlas</TT>
+would suffice, provided no other <TT>Oxs_Ext</TT> object has the same short
+name.
+
+<P>
+Alternatively, the <TT>Oxs_RectangularMesh</TT> object could define an
+<TT>Oxs_BoxAtlas</TT> object inline:
+<BLOCKQUOTE><DL><DT>
+<DT><DT><TT>Specify Oxs_RectangularMesh:mymesh {</TT>
+<DD><TT>atlas { Oxs_BoxAtlas {</TT>
+<DD><DL><DD>...</DL>
+<DD><TT>}}</TT>
+<DD><TT>cellsize { 5e-9 5e-9 5e-9 }</TT>
+<DT><TT>}</TT></DL>
+</BLOCKQUOTE><P>
+In place of the name of an external atlas object, a
+two item list is provided consisting of the type of object (here
+<TT>Oxs_BoxAtlas</TT>) and the corresponding initialization
+string.  The initialization string is provided as a sublist, with the
+same format that would be used if that object were initialized via a
+separate Specify block.
+
+<P>
+More commonly, embedded <TT>Oxs_Ext</TT> objects are used to initialize
+spatially varying quantities.  For
+example,
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_UniaxialAnisotropy {
+  axis { Oxs_RandomVectorField {
+           min_norm 1
+           max_norm 1
+  }}
+  K1  { Oxs_UniformScalarField { value 530e3 } }
+}
+</PRE>
+</BLOCKQUOTE>
+
+The magneto-crystalline anisotropy class <TT>Oxs_UniaxialAnisotropy</TT>
+supports cellwise varying K1 and anisotropy axis directions.  In this
+example, the anisotropy axis directions are randomly distributed.  To
+initialize its internal data structure, <TT>Oxs_UniaxialAnisotropy</TT>
+creates a local <TT>Oxs_RandomVectorField</TT> object.  This object is
+also a child of the <TT>Oxs_Ext</TT> hierarchy, which allows it to be
+constructed using the same machinery invoked by the <TT>Specify</TT>
+command.  However, it is known only to the enclosing
+<TT>Oxs_UniaxialAnisotropy</TT> object, and no references to it are
+possible, either from other Specify blocks or even elsewhere inside
+the same initialization string.  Because it cannot be referenced, the
+object does not need an instance name.  It does need an initialization
+string, however, which is given here as the 4-tuple ``min_norm 1
+max_norm 1''.  Notice how the curly braces are nested so that this
+4-tuple is presented to the <TT>Oxs_RandomVectorField</TT> initializer as a
+single item, while ``Oxs_RandomVectorField'' and the associated
+initialization string are wrapped up in another Tcl list, so that the
+value associated with ``axis'' is parsed at that level as a single item.
+
+<P>
+The value associated with ``K1'' is another embedded <TT>Oxs_Ext</TT>
+object.  In this particular example, K1 is desired uniform (homogeneous)
+throughout the simulation region, so the trivial
+<TT>Oxs_UniformScalarField</TT> class is used for initialization (to the value
+530e3 J/m^3).  In the case of
+uniform fields, scalar or vector, a shorthand notation is available that
+implicitly supplies a uniform <TT>Oxs_Ext</TT> field class:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  K1  530e3
+}
+</PRE>
+</BLOCKQUOTE>
+which is equivalent to
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_UniaxialAnisotropy {
+  axis { Oxs_UniformVectorField {
+           vector { 1 0 0 }
+  }}
+  K1  { Oxs_UniformScalarField { value 530e3 } }
+}
+</PRE>
+</BLOCKQUOTE>
+
+<P>
+While embedding <TT>Oxs_Ext</TT> objects inside Specify blocks can be
+convenient, it is important to remember that such objects are not
+available to any other <TT>Oxs_Ext</TT> object--only objects declared via
+top-level Specify blocks may be referenced from inside other
+Specify blocks.  Also, embedded <TT>Oxs_Ext</TT> objects cannot
+directly provide user output.  Furthermore, the only <TT>Oxs_Energy</TT>
+energy objects included in energy and field calculations are those
+declared via top-level Specify blocks.  For this reason
+<TT>Oxs_Energy</TT> terms are invariably created via top-level Specify
+blocks, and not as embedded objects.
+
+<P>
+
+<H4><A NAME="SECTION000181330000000000000"></A><A NAME="par:groupedLists"></A><A NAME="19235"></A>
+<BR>
+Grouped lists
+</H4>
+As noted earlier, sometimes the value portion of a label + value pair
+will be a list.  Some Oxs objects support <I>grouped lists</I>, which
+provide a type of run-length encoding for lists.  Consider the sample
+list
+<PRE>
+   { 1.1  1.2  1.2  1.2  1.2  1.3 }
+</PRE>
+In a grouped list the middle run of 1.2's may be represented as a
+sublist with a repeat count of 4, like so
+<PRE>
+   { 1.1  { 1.2  4 } 1.3 :expand: }
+</PRE>
+Here the <TT>:expand:</TT> keyword, when appearing as the last element of
+the top level list, enables the group expansion mechanism.  Any
+preceding element, such as <TT> { 1.2 4  }</TT>, that 1) is a proper
+sublist, and 2) has a positive integer as the last element, is treated
+as a grouped sublist with repeat count given by the last element.  No
+element of the top-level list is ever interpreted as a repeat count.
+For example, the short form of the list
+<PRE>
+   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
+</PRE>
+is
+<PRE>
+   { { 1e-9 6 } :expand: }
+</PRE>
+Note the additional level of brace grouping.  Grouped lists may also be
+nested, as in this example
+<PRE>
+   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
+</PRE>
+which is equivalent to
+<PRE>
+   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
+</PRE>
+There are some difficulties with this mechanism when the list components
+are strings, such as filenames, that may contain embedded spaces.  For
+example, consider the list
+<PRE>
+   { "file 3" "file 3" "5 file" }
+</PRE>
+If we tried to write this as
+<PRE>
+   { { "file 3" 2 } "5 file" :expand: }
+</PRE>
+we would find that, because of the nested grouping rules, this grouped
+list gets expanded into
+<PRE>
+   { file file file file file file "5 file" }
+</PRE>
+Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
+Following normal Tcl rules, the double quotes are treated as equivalents
+to braces for grouping purposes.  However, the keyword <TT>:noexpand:</TT>
+may be used to disable further expansion, like so
+<PRE>
+   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
+</PRE>
+The <TT>:noexpand:</TT> keyword placed at the end of a list disables all
+group expansion in that list.  Although it is an unlikely example,
+if one had a flat, i.e., non-grouped list with last element ``:expand:'',
+then one would have to disable the grouping mechanism that would
+otherwise be invoked by appending <TT>:noexpand:</TT> to the list.  In
+flat lists generated by program code, it is recommended to append
+<TT>:noexpand:</TT> just to be certain that the list is not expanded.
+
+<P>
+As a matter of nomenclature, standard (i.e., flat) lists and single
+values are also considered grouped lists, albeit trivial ones.  Any Oxs
+object that accepts grouped lists in its Specify block should explicitly
+state so in its documentation.
+
+<P>
+
+<H4><A NAME="SECTION000181340000000000000"></A><A NAME="par:specifyComments"></A><A NAME="19265"></A>
+<BR>
+Comments
+</H4>
+The standard Tcl commenting mechanism treats all text running from an
+initial <TT>#</TT> symbol through to the end of a line as a comment.  You may
+note in the above examples that newlines are treated the same as
+other whitespace inside the curly braces delimiting the <TT>Specify</TT>
+initialization string.  Because of this and additional reasons, Tcl comments cannot be used inside Specify blocks.  Instead, by
+convention any label + value pair where label is ``comment'' is treated
+as a comment and thrown away.  For example:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  comment {K1  4500e3}
+  K1 530e3
+  comment { 530e3 J/m^3 is nominal for Co }
+}
+</PRE>
+</BLOCKQUOTE>
+Pay attention to the difference between ``comment'' used here as the
+label portion of a label + value pair, and the MIF extension command
+``Ignore'' used outside Specify blocks.  In particular, <TT>Ignore</TT>
+takes an arbitrary number of arguments, but the value element associated
+with a comment label must be grouped as a single element, just as any
+other value element.
+
+<P>
+
+<H4><A NAME="SECTION000181350000000000000"></A><A NAME="par:specifyAttributes"></A><A NAME="19272"></A>
+<BR>
+Attributes
+</H4>
+Sometimes it is convenient to define label + value pairs outside a
+particular Specify block, and then import them using the
+``attributes'' label.  For example:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_LabelValue:probdata {
+  alpha 0.5
+  start_dm 0.01
+}
+Specify Oxs_EulerEvolve {
+  attributes :probdata
+}
+</PRE>
+</BLOCKQUOTE>
+The <TT>Oxs_LabelValue</TT> object is an <TT>Oxs_Ext</TT> class that does
+nothing except hold label + value pairs.  The ``attributes'' label acts as an
+include statement, causing the label + value pairs contained in the
+specified <TT>Oxs_LabelValue</TT> object to be embedded into the enclosing
+<TT>Specify</TT> initialization string.  This technique is most useful if the
+label + value pairs in the <TT>Oxs_LabelValue</TT> object are used in
+multiple Specify blocks, either inside the same MIF file, or
+across several MIF files into which the <TT>Oxs_LabelValue</TT> block is
+imported using the <TT>ReadFile</TT> MIF extension command.
+
+<P>
+
+<H4><A NAME="SECTION000181360000000000000"></A><A NAME="par:supportProcs"></A><A NAME="19284"></A>
+<BR>
+User defined support procedures
+</H4>
+A number of <TT>Oxs_Ext</TT> classes utilize user-defined Tcl procedures (procs) to provide extended runtime functionality.  The
+most common examples are the various field initialization script
+classes, which call a user specified Tcl proc for each point in the
+simulation discretization mesh.  The proc returns a value, either
+scalar or vector, which is interpreted as some property of the
+simulation at that point in space, such as saturation magnetization,
+anisotropy properties, or an external applied field.
+
+<P>
+Here is an example proc that may be used to set the initial
+magnetization configuration into an approximate vortex state, with a
+central core in the positive <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+ direction:
+<BLOCKQUOTE>
+<PRE>
+proc Vortex { x_rel y_rel z_rel } {
+   set xrad [expr {$x_rel-0.5}]
+   set yrad [expr {$y_rel-0.5}]
+   set normsq [expr {$xrad*$xrad+$yrad*$yrad}]
+   if {$normsq &lt;= 0.0125} {return "0 0 1"}
+   return [list [expr {-1*$yrad}] $xrad 0]
+}
+</PRE>
+</BLOCKQUOTE>
+The return value in this case is a 3D vector representing the spin
+direction at the point <TT>(x_rel,y_rel,z_rel)</TT>.  Procs
+that are used to set scalar properties, such as saturation
+magnetization <B><I>M</I><SUB>s</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, return a scalar value instead.  But in both
+cases, the import argument list specifies a point in the simulation
+mesh.
+
+<P>
+In the above example, the import point is specified relative to the
+extents of the simulation mesh.  For example, if <TT>x_rel</TT> were
+0.1, then the <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+-coordinate of the point is one tenth of the way
+between the minimum <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+ value in the simulation  and the maximum <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+value.  In all cases <TT>x_rel</TT> will have a value between 0 and
+1.
+
+<P>
+In most support proc examples, relative coordinates are the most
+flexible and easiest representation to work with.  However, by
+convention, scripting <TT>Oxs_Ext</TT> classes also support absolute
+coordinate representations.  The representation used is selected in the
+<TT>Oxs_Ext</TT> object Specify block by the optional <TT>script_args</TT>
+entry.  The Tcl proc itself is specified by the <TT>script</TT> entry,
+as seen in this example:
+<BLOCKQUOTE>
+<PRE>
+Specify ScriptScalarField:Ms {
+   atlas :atlas
+   script_args { rawpt }
+   script SatMag
+}
+proc SatMag { x y z } {
+   if {$z &lt; 20e-9} {return 8e5}
+   return 5e5
+}
+</PRE>
+</BLOCKQUOTE>
+The value associated with the label <TT>script_args</TT> should in this
+case be a subset of <TT> {relpt rawpt minpt maxpt span scalars
+vectors }</TT>, as explained in the
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#item:ScriptScalarField"><TT>Oxs_ScriptScalarField</TT></A>
+documentation.  Here
+<TT>rawpt</TT> provides the point representation in problem coordinates,
+i.e., in meters.  Other <TT>Oxs_Ext</TT> objects support a different list of
+allowed <TT>script_args</TT> values.  Check the documentation of the
+<TT>Oxs_Ext</TT> object in question for details.  Please note that the
+names used in the proc argument lists above are for exposition purposes
+only.  You may use other names as you wish.  It is the order of the
+arguments that is important, not their names.  Also, because the MIF file is parsed first in toto before the Specify blocks are evaluated,
+the support procs may be placed anywhere in the MIF file, regardless
+of the location of the referencing Specify blocks.
+
+<P>
+The command call to the Tcl support proc is actually built up by
+appending to the <TT>script</TT> value the arguments as specified by the
+<TT>script_args</TT> value.  This allows additional arguments to the
+Tcl proc to be specified in the <TT>script</TT> value, in which case
+they will appear in the argument list in front of the
+<TT>script_args</TT> values.  The following is equivalent to the
+preceding example:
+<BLOCKQUOTE>
+<PRE>
+Specify ScriptScalarField:Ms {
+   script_args { rawpt }
+   script {SatMag 20e-9 8e5 5e5}
+}
+proc SatMag { zheight Ms1 Ms2 x y z } {
+   if {$z &lt; $zheight} {return $Ms1}
+   return $Ms2
+}
+</PRE>
+</BLOCKQUOTE>
+Notice in this case that the <TT>script</TT> value is wrapped in curly
+braces so that the string <TT>SatMag 20e-9 8e5 5e5</TT> will be treated as
+the single value associated with the label <TT>script</TT>.
+
+<P>
+As seen in the earlier example using the <TT>Vortex</TT> Tcl proc,
+support procedures in MIF&nbsp;2.1 files will frequently make use of the
+Tcl <TT>expr</TT> command.  If you are using Tcl version 8.0 or later,
+then the cpu time required by the potentially large number of calls to
+such procedures can be greatly reduced by grouping the arguments to
+<TT>expr</TT> commands in curly braces, as illustrated in the
+<TT>Vortex</TT> example.  The braces aid the operation of the Tcl byte code compiler, although there are a few rare situations involving
+multiple substitution where such bracing cannot be applied.  See the
+Tcl documentation for the <TT>expr</TT> command for details.
+
+<P>
+<A NAME="19320"></A>Sometimes externally defined data can be put to good use inside a
+Tcl support proc, as in this example:
+<BLOCKQUOTE>
+<PRE>
+# Lay out a 6 x 16 mask, at global scope.
+set mask {
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+}
+proc MyShape { xrel yrel znotused } {
+   global mask  ;# Make mask accessible inside proc
+   set Ms 8e5   ;# Saturation magnetization of element
+   set xindex [expr {int(floor($xrel*16))}]
+   set yindex [expr {5 - int(floor($yrel*6))}]
+   set index [expr {$yindex*16+$xindex}]
+   # index references point in mask corresponding
+   # to (xrel,yrel)
+   return [expr {[lindex $mask $index]*$Ms}]
+}
+</PRE>
+</BLOCKQUOTE>
+The variable <TT>mask</TT> holds a Tcl list of 0's and 1's defining a part
+shape.  The mask is brought into the scope of the <TT>MyShape</TT> proc via
+the Tcl <TT>global</TT> command.  The relative <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ coordinates are
+converted into an index into the list, and the proc return value is
+either 0 or 8e5 depending on whether the corresponding point in the mask
+is 0 or 1.  This is essentially the same technique used in the
+<TT>ColorField</TT> proc example presented in the
+<A HREF="#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+documented above,
+except that there the data structure values are built from a separate
+image file rather than from data embedded inside the MIF file.
+<A NAME="19330"></A>
+
+<P>
+
+<H4><A NAME="SECTION000181370000000000000"></A><A NAME="par:userScalarOutputs"></A><A NAME="19333"></A>
+<BR>
+User defined scalar outputs
+</H4>
+OOMMF <TT>Oxs_Ext</TT> objects support a general method to allow users to
+define scalar (DataTable) outputs derived from vector field outputs.
+These scalar outputs are defined by ``<TT>user_output</TT>'' sub-blocks inside
+Specify blocks.  The format is:
+      <BLOCKQUOTE><DL><DT>
+      <TT>user_output {</TT>
+      <DD><TT> name </TT><I>output_name</I>
+      <DD><TT> source_field </TT><I>source</I>
+      <DD><TT> select_field </TT><I>weighting</I>
+      <DD><TT> normalize </TT><I>norm_request</I>
+      <DD><TT> exclude_0_Ms </TT><I>novacuum</I>
+      <DD><TT> user_scaling </TT><I>scale</I>
+      <DD><TT> units </TT><I>units</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The first parameter, <B>name</B>, specifies the label attached to
+this output in the DataTable results; the full name will be the Specify
+block instance name, followed by <I> :output_name</I>.  The second
+parameter, <B>source_field</B>, specifies the vector field output
+that the output is derived from.  The <I> source</I> value should
+match the label for the source field output as displayed in the ``Output'' pane
+of the Oxsii or Boxsi interactive interface; this can also be found in the
+documentation for the source field <TT>Oxs_Ext</TT> class.  If the source
+field is from the same class as the user output, then <I> source</I>
+can use the short form of the name (i.e., the component following the
+last ``:''); otherwise the full name must be used.
+
+<P>
+The third parameter, <B>select_field</B>, references a field that
+is used to weight the source field to create the scalar output.  The
+output is computed according to
+
+<P></P>
+<DIV ALIGN="CENTER">
+<A NAME="eq:UserScalarOutput"></A><!-- MATH
+ \begin{equation}
+\sum_i W_{\rm select}[i]\cdot V_{\rm source}[i]
+/\sum_i \|W_{\rm select}[i]\|
+\end{equation}
+ -->
+<TABLE WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG>
+<B><IMG
+ WIDTH="29" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ SRC="img70.gif"
+ ALT="$\displaystyle \sum_{i}^{}$"><I>W</I><SUB>select</SUB>[<I>i</I>]<SUP> . </SUP><I>V</I><SUB>source</SUB>[<I>i</I>]/<IMG
+ WIDTH="29" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ SRC="img70.gif"
+ ALT="$\displaystyle \sum_{i}^{}$">| <I>W</I><SUB>select</SUB>[<I>i</I>]|</B>
+</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(6)</TD></TR>
+</TABLE>
+<!-- MATHEND
+ 
+ -->
+</DIV>
+where the sums are across all cells in the simulation, <!-- MATH
+ $W_{\rm
+select}[i]$
+ -->
+<B><I>W</I><SUB>select</SUB>[<I>i</I>]</B>
+<!-- MATHEND
+ 
+ -->
+ is the value of the select field at cell <B><I>i</I></B>
+<!-- MATHEND
+ 
+ -->
+,
+<!-- MATH
+ $V_{\rm source}[i]$
+ -->
+<B><I>V</I><SUB>source</SUB>[<I>i</I>]</B>
+<!-- MATHEND
+ 
+ -->
+ is the value of the source field at cell <B><I>i</I></B>
+<!-- MATHEND
+ 
+ -->
+,
+and ``<B><SUP> . </SUP></B>
+<!-- MATHEND
+ 
+ -->
+'' indicates the scalar (dot) product.
+
+<P>
+The first three parameters are required, the remaining parameters are
+optional.  The first of the optional parameters, <B>normalize</B>,
+affects the denominator in (<A HREF="#eq:UserScalarOutput">6</A>).  If
+<I> norm_request</I> is 1 (the default), then the output is computed
+as shown in (<A HREF="#eq:UserScalarOutput">6</A>).  If <I> norm_request</I> is 0,
+then instead the denominator is replaced with the number of cells in the
+simulation, i.e., <B><IMG
+ WIDTH="24" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img71.gif"
+ ALT="$ \sum_{i}^{}$">1</B>
+<!-- MATHEND
+ 
+ -->
+.
+
+<P>
+The second optional parameter, <B>exclude_0_Ms</B>, is a
+convenience operator; if <I> novacuum</I> is 1, then the select field
+is reset so that it is the zero vector at all cells in the simulation
+where the saturation magnetization is zero.  This is especially useful
+when you want to compute the average magnetization of a shaped part.
+The change to the select field is made before the denominator in
+(<A HREF="#eq:UserScalarOutput">6</A>) is computed, so setting
+<B>exclude_0_Ms</B> to 1 is equivalent to defining the select
+field as being zero where <B><I>M</I><SUB>s</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ is zero in the first place.  The default
+value for this parameter is 0, which results in the select field being
+used exactly as defined.
+
+<P>
+The <B>user_scaling</B> parameter (default value 1.0) allows the
+user to define a constant factor that is multiplied against the result
+of (<A HREF="#eq:UserScalarOutput">6</A>).  This can be used, for example, in
+conjuction with the <B>units</B> parameter to implement unit
+conversion.  The <I> units</I> value is an arbitrary string (for
+example, A/m) that is placed in the DataTable output.  If <I> units</I>
+is not set, then the units string is copied from the units for the
+source field.
+
+<P>
+The following is a simple example showing two user outputs based
+off the demagnetization field:
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $cube_edge}
+  yrange {0 $cube_edge}
+  zrange {0 $cube_edge}
+}]
+
+Specify Oxs_BoxAtlas:octant [subst {
+  xrange {0 [expr {$cube_edge/2.}]}
+  yrange {0 [expr {$cube_edge/2.}]}
+  zrange {0 [expr {$cube_edge/2.}]}
+}]
+
+Specify Oxs_AtlasVectorField:octant_field_y {
+   atlas :octant
+   default_value {0 0 0}
+   values {
+      octant {0 1 0}
+   }
+}
+
+Specify Oxs_Demag {
+  user_output {
+     name "Hdemag_x"
+     source_field Field
+     select_field {1 0 0}
+  }
+  user_output {
+     name "octant Hdemag_y"
+     source_field Field
+     select_field :octant_field_y
+  }
+}
+</PRE>
+</BLOCKQUOTE>
+The first user output, ``<TT>Hdemag_x</TT>,'' returns the
+<B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+-component of the demagnetization field, averaged across the entire
+simulation volume.  This output will appear in DataTable output with the
+label ``<TT>Oxs_Demag::Hdemag_x</TT>.''  The <TT>source_field</TT> parameter
+``Field'' refers to the ``Field'' output of the surrounding
+<TT>Oxs_Ext</TT> object, which in this case means <TT>Oxs_Demag::Field</TT>.
+The select field is <B>(1, 0, 0)</B>
+<!-- MATHEND
+ 
+ -->
+, uniform across the simulation volume.
+The second output, ``<TT>octant Hdemag_y</TT>,'' is similar, but the
+average is of the <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ component of the demagnetization field, and is
+averaged across only the first octant of the simulation volume.  The
+averaging volume and component selection are defined by the
+<TT>:octant_field_y</TT> field object, which is <B>(0, 1, 0)</B>
+<!-- MATHEND
+ 
+ -->
+ in the first
+octant and <B>(0, 0, 0)</B>
+<!-- MATHEND
+ 
+ -->
+ everywhere else.
+
+<P>
+The source code for user defined scalar outputs can be found in the
+files <TT><B>ext.h</B></TT> and <TT><B>ext.cc</B></TT> in the directory <TT><B>oommf/app/oxs/base/</B></TT>.
+
+<P>
+
+<H3><A NAME="SECTION000181400000000000000"></A><A NAME="sec:varSubst"></A><A NAME="19379"></A>
+<BR>
+Variable Substitution
+</H3>
+One powerful consequence of the evaluation of MIF&nbsp;2.1 input files by
+Tcl is the ability to define and use variables.  For example,
+the Oxs interfaces (<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii">Oxsii</A> and <A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi">Boxsi</A>)
+use the <TT>-parameter</TT> command line option in conjunction with
+the MIF <A HREF="#html:mif2parameter">Parameter</A> command to
+set variables from the command line for use inside the MIF input file.
+Variables in Tcl are evaluated (i.e., value substituted)
+by prefixing the variable name with the symbol ``$''.  For example, if
+<TT>cellsize</TT> is a variable holding the value <TT>5e-9</TT>, then
+<TT>$cellsize</TT> evaluates to <TT>5e-9</TT>.
+
+<P>
+Unfortunately, there are complications in using variables inside
+Specify blocks.  Consider this simple example:
+<BLOCKQUOTE>
+<PRE>
+Parameter cellsize 5e-9
+Specify Oxs_RectangularMesh:BadExample {
+  comment {NOTE: THIS DOESN'T WORK!!!}
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}
+</PRE>
+</BLOCKQUOTE>
+This <B>doesn't work</B>, because the curly braces used to set off the
+<TT>Specify</TT> initialization string also inhibit variable substitution.
+There are several ways to work around this, but the easiest is usually
+to embed the initialization string inside a <TT>subst</TT> (substitution)
+command:
+<BLOCKQUOTE>
+<PRE>
+Parameter cellsize 5e-9
+Specify Oxs_RectangularMesh:GoodExample [subst {
+  comment {NOTE: This works.}
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+</PRE>
+</BLOCKQUOTE>
+Here the square brackets, ``<TT>[</TT>'' and ``<TT>]</TT>'',
+cause Tcl to perform <I>command substitution</I>, i.e.,
+execute the string inside the square brackets as a Tcl command, in this case the <TT>subst</TT> command.  See the Tcl documentation for <TT>subst</TT> for details, but the default
+usage illustrated above performs variable, command and
+backslash substitutions on the argument string.
+
+<P>
+One more example, this time involving both variable and command
+substitution:
+<BLOCKQUOTE>
+<PRE>
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+Specify Oxs_UZeeman [subst {
+  comment {Set units to mT}
+  Hscale [expr {0.001/$mu0}]
+  Hrange {
+     {  0  0  0   10  0  0   2 }
+     { 10  0  0  -10  0  0   2 }
+  }
+}]
+</PRE>
+</BLOCKQUOTE>
+Note that the <TT>subst</TT> command is evaluated at global scope, so that
+the global variable <TT>mu0</TT> is directly accessible.
+
+<P>
+
+<H3><A NAME="SECTION000181500000000000000"></A><A NAME="sec:mif2sample"></A>
+<BR>
+Sample MIF&nbsp;2.1 File
+</H3>
+<A NAME="fig:mif2sample"></A>  
+  
+  <BR CLEAR="ALL">
+<HR><PRE>
+# MIF 2.1
+#
+# All units are SI.
+#
+# This file must be a valid Tcl script.
+#
+
+# Initialize random number generators with seed=1
+RandomSeed 1
+
+# Individual Oxs_Ext objects are loaded and initialized via
+# Specify command blocks.  The following block defines the
+# extents (in meters) of the volume to be modeled.  The
+# prefix "Oxs_BoxAtlas" specifies the type of Oxs_Ext object
+# to create, and the suffix ":WorldAtlas" is the name
+# assigned to this particular instance.  Each object created
+# by a Specify command must have a unique full name (here
+# "Oxs_BoxAtlas:WorldAtlas").  If the suffix is not
+# explicitly given, then the default ":" is automatically
+# assigned.  References may be made to either the full name,
+# or the shorter suffix instance name (here ":WorldAtlas")
+# if the latter is unique. See the Oxs_TimeDriver block for
+# some reference examples.
+Specify Oxs_BoxAtlas:WorldAtlas {
+  xrange {0 500e-9}
+  yrange {0 250e-9}
+  zrange {0 10e-9}
+}
+
+# The Oxs_RectangularMesh object is initialized with the
+# discretization cell size (in meters).
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :WorldAtlas
+}
+
+# Magnetocrystalline anisotropy block.   The setting for
+# K1 (500e3 J/m^3) implicitly creates an embedded
+# Oxs_UniformScalarField object.  Oxs_RandomVectorField
+# is an explicit embedded Oxs_Ext object.
+Specify Oxs_UniaxialAnisotropy {
+  K1  530e3
+  axis { Oxs_RandomVectorField {
+           min_norm 1
+           max_norm 1
+  } }
+}
+
+# Homogeneous exchange energy, in J/m.  This may be set
+# from the command line with an option like
+#    -parameters "A 10e-12"
+# If not set from the command line, then the default value
+# specified here (13e-12) is used.
+Parameter A 13e-12
+Specify Oxs_UniformExchange:NiFe [subst {
+  A  $A
+}]
+
+# Define a couple of constants for later use.
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+# The Oxs_UZeeman class is initialized with field ranges in A/m.
+# The following block uses the multiplier option to allow ranges
+# to be specified in mT.  Use the Tcl "subst" command to enable
+# variable and command substitution inside a Specify block.
+Specify Oxs_UZeeman:AppliedField [subst {
+  multiplier [expr 0.001/$MU0]
+  Hrange {
+    {  0  0  0   10  0  0   2 }
+    { 10  0  0  -10  0  0   2 }
+    {  0  0  0    0 10  0   4 }
+    {  1  1  1    5  5  5   0 }
+  }
+}]
+
+# Enable demagnetization (self-magnetostatic) field
+# computation.  This block takes no parameters.
+Specify Oxs_Demag {}
+
+# Runge-Kutta-Fehlberg ODE solver, with default parameter values.
+Specify Oxs_RungeKuttaEvolve {}
+
+# The following procedure is used to set the initial spin
+# configuration in the Oxs_TimeDriver block.  The arguments
+# x, y, and z are coordinates relative to the min and max
+# range of each dimension, e.g., 0&lt;=x&lt;=1, where x==0
+# corresponds to xmin, x==1 corresponds to xmax.
+proc UpDownSpin { x y z } {
+  if { $x &lt; 0.45 } {
+    return "0 1 0"
+  } elseif { $x &gt; 0.55 } {
+    return "0 -1 0"
+  } else {
+    return "0 0 1"
+  }
+}
+
+Specify Oxs_TimeDriver {
+ evolver Oxs_RungeKuttaEvolve
+ stopping_dm_dt 0.01
+ mesh :mesh
+ Ms 8e5   comment {implicit Oxs_UniformScalarField object}
+ m0 { Oxs_ScriptVectorField {
+        script {UpDownSpin}
+        norm  1
+        atlas :WorldAtlas
+ } }
+ basename example
+}
+
+# Default outputs
+Destination hystgraph mmGraph:Hysteresis
+Destination monitor   mmGraph   new
+Destination archive   mmArchive
+
+Schedule DataTable hystgraph Stage 1
+Schedule DataTable monitor   Step 5
+Schedule DataTable archive   Stage 1
+Schedule Oxs_TimeDriver::Magnetization archive Stage 3
+Schedule "Oxs_RungeKuttaEvolve::Total field" archive Stage 3
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 7:
+    Example MIF&nbsp;2.1 file.
+    <A HREF="#pt:mif2format">(Description.)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html796"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html792"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html786"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html799"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html794"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

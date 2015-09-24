@@ -1,0 +1,97 @@
+Name of Windows: .mags
+Number of different widgits used in window: 3
+#######################################################################
+# The commands that construct each widgit used in the menu are given   #
+# below.  The widgits are numbered from 0 and interlayed with          #
+# placement info that decribes how the widgits are to be integrated    #
+# with the rest of the menu. Comments for the widgits are in dmif.tcl  #
+#######################################################################
+#$buttonname is the tk path to the created widgit 
+#label is the text of the button
+#title is the mif name of what the button is changing
+0:radiobuttonandpack $buttonname $name $title "ChangeMif2 $title $ButtonNow $ButtonNow "
+0:-side top -fill x
+1:checklabelentry $buttonname $label $name $title 6 "NewVal2 $ButtonNow $offset $a.$ButtonNow.$name.entry" "ChangeMif3 $title $ButtonNow $a.$ButtonNow.$name" 
+1:-side top -fill x
+2:radiobibutton $buttonname $label $label2 $name $title 7 "" "NewVal2 $ButtonNow $offset $a.$ButtonNow.$name.entry" "ChangeMif3 $title $ButtonNow $a.$ButtonNow.$name" 
+2:-side top -fill x
+#2:-side left -fill x
+##########################################################################
+#The remainder of the file gives the labeling for each widgit and defines  
+#the mif file entry that the widgit controls.                             
+#Consider the following mif file fragment,                               
+#...                                                                     
+#ms:800E3                                                                
+#a:13E-12                                                                
+#demag type: 3dslab                                                      
+#...                                                                    
+#The data on the left of the colon in the above example is known as a
+#mif entry.  The fields on the right of the colon can equal many things.
+#For example, demag type can be set to 3dslab, 3dcharge, etc.
+#Each thing that the mif entry can be changed to is called a choice.
+#Note that some entries, such as ms, can only be set to one type of
+#data so those entries will only have one choice defined.
+#The format for the remainder of the file is:
+#Number of Mif entries: a number equal the number of entries
+#                        changed by menu e.g.: 5
+# Data Change: defines the mif entry, e.g.: demag type, that is
+#              changed by the widgit.
+# Number of choices: Total number of data types that are defined for a
+#              given mif entry.
+# 0:the specification of the choice's properties. using the format
+# number:choice name!command number!displayed label i.e.
+# Choice Number:$title!widgit number (see above)!$label
+# this structure repeats for all mif entries
+##########################################################################
+Number of Data Changes: 1
+# a data change is a mifentry such as A,K demagtype etc; the stuff on
+#the left side of the colon in a mif file
+Data Change: init mag # the data change
+Number of Choices: 16 #what the data can be changed to.
+#order:choice name!command number!label 1! label 2!location in list
+#where second data point is stored.  This should be two if the initial
+#menu entry takes more than one parameter.
+0:random!0!
+1:uniform!2!theta!phi!2
+2:avffile!1!name! !2
+3:1domain!0! 
+4:4domain!0! 
+5:7domain!0!
+6:vortex!0! 
+7:exvort!0! 
+8:bloch!1!theta! !2 
+9:neel!2!theta!width!2
+10:rightleft!0! 
+11:crot!1!theta! !2 
+12:upoutdownheadtohead!1!width! !2 
+13:uprightdownheadtohead!1!width! !2 
+14:inleftoutrot!1!theta! !2 
+15:spiral!2!theta!period!2
+#the below stuff is not shown; however it can be included by changing
+#number of choices. 
+16:updownsrot!2!width!theta!2
+17:in!0! 
+18:up!0!
+19:inupout!0!
+20:inleftout!0!  
+21:inouts!1!width! !2 
+22:inwideupout!0!  
+23:inout!0!  
+24:inoutrot!1!theta! !2
+25:inupoutrot!1!theta! !2
+26:viofile!1!vio file name! !2
+27:sphere!0! 
+28:source!0! 
+29:updownheadtohead!0!
+30:updowns!1!width! !2 
+31:updownshift!1!theta! !2 
+32:rightupleft!0!
+
+
+
+
+
+
+
+
+

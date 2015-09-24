@@ -1,0 +1,52 @@
+# This file holds the mif file entries recognized by the problem editor.
+# The problem editor will print entries based on the order of this file.
+# For the problem editor to pass entries in a mif file  to the solver they
+# must be added here.
+# The number after the colon is the maximum number of entries allowed in
+# the list used to hold the value of the mif field.  
+# If mmpe is not going to edit this entry it can be set to 1.
+Material Name: 1
+Ms: 1
+A: 1
+K1: 1
+Do Precess: 1
+Gyratio: 1
+Damp Coef: 1
+Anisotropy Type: 1
+Anisotropy Init: 1
+Anisotropy Dir1: 3
+Anisotropy Dir2: 3
+Demag Type: 1
+Solver Type: 1
+Part Height: 1
+Part Width: 1
+Base Material Type:1
+Part Thickness: 1
+Part Shape: 2
+Cell Size: 1
+Init Mag: 3
+Base Output Filename: 1
+Magnetization Output Format:1
+Total Field Output Format:1
+Data Table Output Format:1
+Log Level: 1
+User Interaction Level: 1
+Initial Increment: 1
+User Report Code: 1
+Converge |mxh| Value:1
+Randomizer Seed:1
+Random Perturb Mag:1
+Max Iteration Count: 1
+Min Time Step: 1
+Max Time Step: 1
+User Comment: 1
+#Default Control Point Spec: ???
+#Edge K1: ???
+Field Type:999
+#add new data types for mif to pass to solver ABOVE this line
+Field Range Count: 1
+# Initial field + final field + numStep = 7...
+#Field Range: 7
+# ...but with control point specs, we can have more parameters.
+# A limit of 30 should be enough.
+Field Range: 30

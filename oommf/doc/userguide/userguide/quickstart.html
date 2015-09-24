@@ -1,0 +1,580 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Quick Start: Example OOMMF Session</TITLE>
+<META NAME="description" CONTENT="Quick Start: Example OOMMF Session">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="OOMMF_Architecture_Overview.html">
+<LINK REL="previous" HREF="Installation.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="OOMMF_Architecture_Overview.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html251"
+  HREF="OOMMF_Architecture_Overview.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html247"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html241"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html253"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html249"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html252"
+  HREF="OOMMF_Architecture_Overview.html">OOMMF Architecture Overview</A>
+<B> Up:</B> <A NAME="tex2html248"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html242"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00040000000000000000"></A><A NAME="sec:quickstart"></A>
+<BR>
+Quick Start: Example OOMMF Session
+</H1>
+
+<P>
+  
+<P>
+
+<P>
+
+<P>
+
+<P>
+
+<P>
+
+<UL>
+<LI><B>STEP 1: Start up the
+               mmLaunch<A NAME="2539"></A> window.</B>
+  
+<UL>
+<LI>At the command prompt, when you are in the OOMMF root
+          directory, type 
+<PRE>
+tclsh oommf.tcl
+</PRE>
+    (The name of the Tcl shell, rendered here as <code>tclsh</code>, may
+    <A HREF="Requirements.html#sec:install.requirements">vary between systems.</A>)
+    Alternatively, you may launch <code>oommf.tcl</code> using
+    whatever ``point and click'' interface is provided by your operating
+    system.
+</LI>
+<LI>This will bring up a small window labeled
+          <B>mmLaunch</B>. It will come up in background mode, so you will get
+          another prompt in your original window, even before the
+          <B>mmLaunch</B> window appears.
+  
+</LI>
+</UL>
+</LI>
+<LI><B>STEP 2: Gain access to other useful windows.</B>
+  
+<UL>
+<LI>On the <B>mmLaunch</B> window, check the <FONT COLOR="#800000"><B>localhost</B></FONT> box,
+          causing a menu of user account boxes to appear.  Check
+          the box corresponding to the account you want to compute on.
+          (On Windows&nbsp;9X systems, the user account list may consist of
+          only the faux ``oommf'' user account.)  This gives a menu of
+          options:
+    
+<UL>
+<LI><B>mmArchive:</B><A NAME="2247"></A>
+                   to auto-save scalar and vector field data
+</LI>
+<LI><B>mmDataTable:</B><A NAME="2249"></A>
+                   to display current values of scalar outputs
+</LI>
+<LI><B>mmDisp:</B><A NAME="2251"></A>
+                   to display vector fields
+</LI>
+<LI><B>mmGraph:</B><A NAME="2253"></A>
+                   to form x-y plots
+</LI>
+<LI><B>mmProbEd:</B><A NAME="2255"></A>
+                   to grab/modify a problem for <B>mmSolve2D</B>
+                   or <B>Oxsii</B>
+</LI>
+<LI><B>mmSolve2D:</B><A NAME="2259"></A>
+                   to control the 2D solver
+</LI>
+<LI><B>Oxsii:</B><A NAME="2261"></A>
+                   to control the 3D solver
+    
+</LI>
+</UL>
+</LI>
+<LI>Click on <FONT COLOR="#800000"><B>mmDisp</B></FONT>, <FONT COLOR="#800000"><B>mmGraph</B></FONT>, and/or
+          <FONT COLOR="#800000"><B>mmDataTable</B></FONT>, depending on what form of output you
+          want.  Use <FONT COLOR="#800000"><B>mmArchive</B></FONT> to save data to disk.
+  
+</LI>
+</UL>
+</LI>
+<LI><B>STEP 3a: Run a 2D problem.</B>
+    <DL>
+<DT><STRONG>Load problem:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>mmLaunch</B> window, click on the <FONT COLOR="#800000"><B>mmProbEd</B></FONT>
+         button.
+</LI>
+<LI>On the <B>mmProbEd</B> window, make menu selection
+            <FONT COLOR="#800000"><B>File|Open...</B></FONT>  An <FONT COLOR="#800000"><B>Open File</B></FONT> dialog window
+            will appear.  On this window:
+      
+<UL>
+<LI>Double click in the <FONT COLOR="#800000"><B>Path</B></FONT> subwindow to change
+              directories.  Several sample problems can be found in
+              the directory <TT><B>oommf/app/mmpe/examples</B></TT>.
+</LI>
+<LI>To load a problem, double click on a <TT><B>*.mif</B></TT> file
+              (e.g., prob1.mif) from the list above the <FONT COLOR="#800000"><B>Filter:</B></FONT>
+              subwindow.
+      
+</LI>
+</UL>
+</LI>
+<LI>Modify the problem as desired by clicking on buttons from
+            the main <B>mmProbEd</B> window (e.g., <FONT COLOR="#800000"><B>Material
+            Parameters</B></FONT>), and fill out the pop-up forms.  A
+            completely new problem may be defined this way.
+</LI>
+<LI>If desired, the defined problem may be stored to disk via
+            the <FONT COLOR="#800000"><B>File|Save as...</B></FONT> menu selection.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Initialize solver:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>mmLaunch</B> window, click on the <FONT COLOR="#800000"><B>mmSolve2D</B></FONT>
+            button to launch an instance of the program
+            <B>mmSolve2D</B><A NAME="2290"></A>.
+</LI>
+<LI>Wait for the new solver instance to appear in the 
+          <FONT COLOR="#800000"><B>Threads</B></FONT> column in the <B>mmLaunch</B> window.
+</LI>
+<LI>Check the box next to the <B>mmSolve2D</B> entry in the
+          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2295"></A> column.  A window containing an
+          <B>mmSolve2D</B> interface will appear.
+</LI>
+<LI>On the <B>mmSolve2D</B> window:
+      
+<UL>
+<LI>Check <FONT COLOR="#800000"><B>Problem Description</B></FONT> under <FONT COLOR="#800000"><B>Inputs</B></FONT>.
+</LI>
+<LI>Check <FONT COLOR="#800000"><B>mmProbEd</B></FONT> under <FONT COLOR="#800000"><B>Source Threads</B></FONT>.
+</LI>
+<LI>Click <FONT COLOR="#800000"><B>LoadProblem</B></FONT>.
+</LI>
+<LI>A status line will indicate the problem is loading.
+</LI>
+<LI>When the problem is fully loaded, more buttons appear.
+</LI>
+<LI>Check <FONT COLOR="#800000"><B>Scheduled Outputs</B></FONT>.
+</LI>
+<LI>For each desired output (<FONT COLOR="#800000"><B>TotalField</B></FONT>, <FONT COLOR="#800000"><B>Magnetization</B></FONT>, 
+          and/or <FONT COLOR="#800000"><B>DataTable</B></FONT>), specify the frequency of update:
+        
+<OL>
+<LI>Check desired output.  This will exhibit the possible
+                output destinations under the Destination Threads
+                heading.  Output applications such as <FONT COLOR="#800000"><B>mmDisp</B></FONT>,
+                <FONT COLOR="#800000"><B>mmGraph</B></FONT>, and/or <FONT COLOR="#800000"><B>mmDataTable</B></FONT> must be running
+                to appear in this list.
+</LI>
+<LI>Check the box next to the desired Destination Thread.  
+                This will exhibit Schedule options.
+</LI>
+<LI>Choose a schedule<A NAME="2312"></A>:
+          
+<UL>
+<LI><B>Iteration:</B> fill in number and check the box.
+</LI>
+<LI><B>ControlPoint:</B> fill in number and check the box.
+</LI>
+<LI><B>Interactive:</B> whenever you click corresponding
+                  Interactive output button.
+          
+</LI>
+</UL>
+</LI>
+</OL>
+</LI>
+</UL>
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Start calculation:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>mmSolve2D</B> window, start the calculation with
+            <FONT COLOR="#800000"><B>Run</B></FONT> (which runs until problem completion) or
+            <FONT COLOR="#800000"><B>Relax</B></FONT> (which runs until the next control point is
+            reached)<A NAME="2325"></A>.
+</LI>
+<LI>If you requested mmDataTable output, check the boxes for the
+            desired quantities on the
+            <B>mmDataTable</B><A NAME="2327"></A> window under
+            the <FONT COLOR="#800000"><B>Data</B></FONT> menu, so that they appear and are updated as
+            requested in your schedule.
+</LI>
+<LI>Similarly, check the box for the desired X, Y1, and Y2
+            quantities on the <B>mmGraph</B><A NAME="2330"></A>
+            window(s) under the <FONT COLOR="#800000"><B>X</B></FONT>, <FONT COLOR="#800000"><B>Y1</B></FONT> and <FONT COLOR="#800000"><B>Y2</B></FONT> menus.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Save results:</STRONG></DT>
+<DD><A NAME="2335"></A> 
+    
+<UL>
+<LI>Vector field data (magnetization and effective field) may be
+            interactively written to disk<A NAME="2337"></A> using
+            <B>mmDisp</B><A NAME="2339"></A>, or may be
+            automatically saved via scheduled output to
+            <B>mmArchive</B><A NAME="2341"></A>.  For example, to
+            save the magnetization state at each control point, start up
+            an instance of <B>mmArchive</B> and select the <B>            ControlPoint</B><A NAME="2344"></A> check box for
+            <B>mmArchive</B> on the <FONT COLOR="#800000"><B>Magnetization</B></FONT> schedule in the
+            solver.  This may be done before starting the calculation.
+            (Control points are points in the simulation where the applied
+            field is stepped.  These are typically
+            equilibrium<A NAME="2347"></A> states, but
+            depending on the input <TT><B>*.mif</B></TT> file, may be triggered by
+            elapsed simulation time or iteration count.)
+</LI>
+<LI><FONT COLOR="#800000"><B>DataTable</B></FONT> data<A NAME="2350"></A> may be saved by
+            sending scheduled output<A NAME="2351"></A> from the
+            solver to <B>mmArchive</B><A NAME="2353"></A>,
+            which will automatically save all the data it receives.
+            Alternatively, <B>mmGraph</B><A NAME="2355"></A>
+            can perform this function.  Schedule output to
+            <B>mmGraph</B> as desired, and use either the
+            interactive or automated save functionality of
+            <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"><B>mmGraph</B></A>.  You can setup the solver data
+            scheduling before the calculation is started, but must wait
+            for the first data point to configure <B>mmGraph</B> before
+            saving any data.  As a workaround, you may configure
+            <B>mmGraph</B> by sending it the initial solver state
+            interactively, and then use the <FONT COLOR="#800000"><B>Options|clear
+            Data</B></FONT> menu item in <B>mmGraph</B> to remove the
+            initializing data point.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Midcourse control:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>mmSolve2D</B> window, buttons can stop and restart the
+            calculation<A NAME="2368"></A>:
+      
+<UL>
+<LI><B>Reset:</B>  Return to beginning of problem.
+</LI>
+<LI><B>LoadProblem:</B> Restart with a new problem.
+</LI>
+<LI><B>Run:</B>    Apply a sequence of fields until all complete.
+</LI>
+<LI><B>Relax:</B>  Run the ODE at the current applied field until
+            the next control point is reached.
+</LI>
+<LI><B>Pause:</B>  Click anytime to stop the solver.  Continue
+            simulation from paused point with <FONT COLOR="#800000"><B>Run</B></FONT> or <FONT COLOR="#800000"><B>Relax</B></FONT>.
+</LI>
+<LI><B>Field<B>-</B>
+<!-- MATHEND
+ 
+ -->
+:</B> Apply the previous field again.
+</LI>
+<LI><B>Field<B>+</B>
+<!-- MATHEND
+ 
+ -->
+:</B> Apply the next field in the list.
+      
+</LI>
+</UL>
+</LI>
+<LI>Output options can be changed and new output windows opened.
+    
+</LI>
+</UL>
+</DD>
+</DL>
+</LI>
+<LI><B>STEP 3b: Run a 3D problem.</B>
+  <DL>
+<DT><STRONG>Launch solver:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>mmLaunch</B> window, click on the <FONT COLOR="#800000"><B>Oxsii</B></FONT>
+            button to launch an instance of the program
+            <B>Oxsii</B><A NAME="2388"></A>.
+</LI>
+<LI>Wait for the new solver instance to appear in the 
+          <FONT COLOR="#800000"><B>Threads</B></FONT> column in the <B>mmLaunch</B> window.
+</LI>
+<LI>Check the box next to the <B>Oxsii</B> entry in the
+          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2393"></A> column.  A window containing an
+          <B>Oxsii</B> interface will appear.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Load problem:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>Oxsii</B> window, select the
+        <FONT COLOR="#800000"><B>File|Load...</B></FONT> menu option.  A <FONT COLOR="#800000"><B>Load Problem</B></FONT>
+        dialog box will appear.  On this window:
+        
+<UL>
+<LI>Double click in the <FONT COLOR="#800000"><B>Path</B></FONT> subwindow to change
+                directories.  Several sample problems can be found in
+                the directory <TT><B>oommf/app/oxs/examples</B></TT>.
+</LI>
+<LI>To load a problem, double click on a <TT><B>*.mif</B></TT> file
+                (e.g., stdprob1.mif) from the list above the <FONT COLOR="#800000"><B>Filter:</B></FONT>
+                subwindow.
+        
+</LI>
+</UL>
+        The native input format for the 3D solver is the
+        <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2.1</A>
+        format, which must be composed by hand using a plain text
+        editor.  (See the <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">Oxs_Ext Child Class</A> documentation for additional
+        details.)  However, MIF&nbsp;1.1 (i.e., 2D problem) files are
+        readable by <B>Oxsii</B>, or may be converted to the MIF&nbsp;2.1
+        format using the command line tool
+        <A HREF="mifconvert.html#sec:mifconvert"
+ NAME="2419"><B>mifconvert</B></A>.
+        <B>mmProbEd</B> also supports an extension to the MIF&nbsp;1.1
+        format, namely MIF&nbsp;1.2, which provides limited 3D
+        functionality.  MIF&nbsp;1.2 files may also be read directly by
+        <B>Oxsii</B>.
+</LI>
+<LI>The status line in the <B>Oxsii</B> interface window will
+        indicate the problem is loading. 
+</LI>
+<LI>When the problem is fully loaded, the status line will
+        show ``Pause'', and the top row of buttons (<FONT COLOR="#800000"><B>Reload</B></FONT>,
+        <FONT COLOR="#800000"><B>Reset</B></FONT>, ...) will become active.  Also, the
+        Output list will fill with available outputs.
+</LI>
+<LI>Set up scheduled outputs.  For each desired output
+      
+<OL>
+<LI>Select the source from the Output list.
+</LI>
+<LI>Select the receiver from the Destination list.
+</LI>
+<LI>Specify the frequency of update:
+         
+<UL>
+<LI><B>Step:</B> fill in number and check the box.
+</LI>
+<LI><B>Stage:</B> fill in number and check the box.
+         
+</LI>
+</UL>
+</LI>
+</OL>
+      The items in the Output list will vary depending on the
+      problem that was loaded.  The items in the Destination list
+      reflect the OOMMF data display and archiving programs currently
+      running.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Start calculation:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>Oxsii</B> window, start the calculation with
+         <FONT COLOR="#800000"><B>Run</B></FONT>, <FONT COLOR="#800000"><B>Relax</B></FONT>, or
+         <FONT COLOR="#800000"><B>Step</B></FONT><A NAME="2437"></A>.
+</LI>
+<LI>If you requested mmDataTable output, check the boxes for the
+         desired quantities on the
+         <B>mmDataTable</B><A NAME="2439"></A> window under
+         the <FONT COLOR="#800000"><B>Data</B></FONT> menu, so that they appear and are updated as
+         requested in your schedule.
+</LI>
+<LI>Similarly, check the box for the desired X, Y1, and Y2
+         quantities on the <B>mmGraph</B><A NAME="2442"></A>
+         window(s) under the <FONT COLOR="#800000"><B>X</B></FONT>, <FONT COLOR="#800000"><B>Y1</B></FONT> and <FONT COLOR="#800000"><B>Y2</B></FONT> menus.
+    
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Save results:</STRONG></DT>
+<DD><A NAME="2447"></A> 
+    
+<UL>
+<LI>Vector field data (magnetization and effective field) may be
+        interactively written to disk<A NAME="2449"></A> using
+        <B>mmDisp</B><A NAME="2451"></A>, or may be
+        automatically saved via scheduled output to
+        <B>mmArchive</B><A NAME="2453"></A>.  For example, to
+        save the magnetization state at the end of each problem
+        stage, start up an instance of <B>mmArchive</B> and select
+        the <B>Stage</B><A NAME="2456"></A> check box for
+        the <TT>Magnetization</TT> output, <TT>mmArchive</TT> destination pair.
+        (Stages denote points in the simulation where some
+         significant event occurs, such as when an equilibrium is
+         reached or some preset simulation time index is met.
+         These criteria are set by the input MIF file.)
+</LI>
+<LI>Tabular data<A NAME="2459"></A> may be saved by
+        sending scheduled output<A NAME="2460"></A> from the
+        solver to <B>mmArchive</B><A NAME="2462"></A>,
+        which will automatically save all the data it receives.
+        Alternatively, <B>mmGraph</B><A NAME="2464"></A>
+        can perform this function.  Schedule output to
+        <B>mmGraph</B> as desired, and use either the
+        interactive or automated save functionality of
+        <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"><B>mmGraph</B></A>.  You can setup the solver data
+        scheduling before the calculation is started, but must wait
+        for the first data point to configure <B>mmGraph</B> before
+        saving any data.  As a workaround, you may configure
+        <B>mmGraph</B> by sending it the initial solver state
+        interactively, and then use the <FONT COLOR="#800000"><B>Options|clear
+        Data</B></FONT> menu item in <B>mmGraph</B> to remove the
+        initializing data point.
+      
+</LI>
+</UL>
+    
+</DD>
+<DT><STRONG>Midcourse control:</STRONG></DT>
+<DD> 
+    
+<UL>
+<LI>On the <B>Oxsii</B> window, buttons can stop and restart the
+             calculation<A NAME="2477"></A>:
+       
+<UL>
+<LI><B>Reload:</B> Reload the same file from disk.
+</LI>
+<LI><B>Reset:</B>  Return to problem start.
+</LI>
+<LI><B>Run:</B>    Step through all stages until all complete.
+</LI>
+<LI><B>Relax:</B>  Run until the current stage termination
+                             criteria are met.
+</LI>
+<LI><B>Step:</B>   Do one solver iteration and then pause.
+</LI>
+<LI><B>Pause:</B>  Click anytime to stop the solver.  Continue
+             simulation from paused point with <FONT COLOR="#800000"><B>Run</B></FONT>, <FONT COLOR="#800000"><B>Relax</B></FONT> or
+             <FONT COLOR="#800000"><B>Step</B></FONT>.
+</LI>
+<LI><B>Stage:</B>  Interactively change the current stage
+             index by either typing the desired stage number (counting
+             from 0) into the <FONT COLOR="#800000"><B>Stage</B></FONT> entry box or by moving the
+             associated slider.
+       
+</LI>
+</UL>
+</LI>
+<LI>Output options can be changed and new output windows
+             opened.  The <FONT COLOR="#800000"><B>Send</B></FONT> button in the <B>Oxsii</B> Schedule
+             subwindow is used to interactively send output to the
+             selected Output + Destination pair.
+    
+</LI>
+</UL>
+</DD>
+</DL>
+</LI>
+<LI><B>STEP 4: Exit OOMMF.</B>
+  
+<UL>
+<LI>Individual OOMMF applications can be terminated by selecting 
+       the <FONT COLOR="#800000"><B>File|Exit</B></FONT> menu item from their interface window.
+</LI>
+<LI>Selecting <FONT COLOR="#800000"><B>File|Exit</B></FONT> on the <B>mmLaunch</B> window
+       will close the <B>mmLaunch</B> window, and also the interface
+       windows for any <B>mmArchive</B>, <B>mmSolve2D</B>, and <B>Oxsii</B>
+       applications.  However, those applications will continue to run
+       in the background, and their interfaces may be re-displayed by
+       starting a new <B>mmLaunch</B> instance.
+</LI>
+<LI>To automatically kill all OOMMF applications, select the
+       <FONT COLOR="#800000"><B>File|Exit All OOMMF</B></FONT> option from the <B>mmLaunch</B>
+       menu bar.
+  
+</LI>
+</UL>
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html251"
+  HREF="OOMMF_Architecture_Overview.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html247"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html241"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html254"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html249"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

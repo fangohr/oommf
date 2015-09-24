@@ -1,0 +1,145 @@
+# MIF 2.1
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+# Allowed values for EvolverType: 
+#             stiff  --- Cvode stiff solver (BDF)
+#          nonstiff  --- Cvode nonstiff solver (Adams)
+#                rk  --- Stock Oxs RungeKutta evolver
+#             euler  --- Stock Oxs Euler evolver
+Parameter EvolverType stiff
+set EvolverType [string tolower $EvolverType]
+
+# Damping parameter (dimensionless)
+Parameter alpha 0.05
+
+Specify Oxs_BoxAtlas:atlas {
+   xrange {0 100e-9}
+   yrange {0 100e-9}
+   zrange {0  60e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {4e-9 4e-9 4e-9}
+  atlas :atlas
+}
+
+Specify Oxs_UniaxialAnisotropy {
+  K1 { Oxs_UniformScalarField { value  45.0e4 } }
+  axis { Oxs_UniformVectorField {
+    norm 1
+    vector {0 0 1}
+  } }
+}
+
+Specify Oxs_UniformExchange {
+  A  1.3e-11
+}
+
+Specify Oxs_FixedZeeman [subst {
+    multiplier [expr 0.001/$mu0]
+    field {0 0 10}
+}]
+
+Specify Oxs_ScriptUZeeman {
+   script SineField
+}
+
+Specify Oxs_Demag {}
+
+# Notes on Tuw_CvodeEvolve:
+#   ode_style and alpha are required parameters.  ode_style
+# should be one of nonstiff (for Adams) or stiff (to get implicit
+# Euler).  alpha is dimensionless damping coefficient.
+#  The following optional parameters are supported:
+#    error : Allowed error, in deg/ns.  Default is 1.0
+#    reltol : Relative tolerance.  Default is 1e-5
+#    abstol : Absolute tolerance.  Default is 1e-8
+#    renormtol : Renormalize spin magnitude when max(| |spin_i| - 1.0 |)
+#                  is bigger than this.  Default is 1e-5.
+#    do_precess : Default is 1, i.e., enable precession
+#    gamma_G    : Gyromagnetic ratio, m/A.s.  Default is 2.211e5.
+switch $EvolverType {
+    stiff -
+    nonstiff {
+	Specify Tuw_CvodeEvolve:evolver [subst {
+	    ode_style $EvolverType
+	    alpha $alpha
+	    exact_report_period 1
+	}]
+    }
+    rk { Specify Oxs_RungeKuttaEvolve:evolver [subst { alpha $alpha }] }
+    euler { Specify Oxs_EulerEvolve:evolver [subst { alpha $alpha }] }
+    default {
+	error "Invalid EvolverType parameter; should be one of\
+               stiff, nonstiff, rk, or euler"
+    }
+}
+
+# Oxs_TimeDriver notes:
+#  New parameter "stopping_time" supported.  If non-zero, then stage
+# will end when stage time reaches specified value, in seconds.
+#  Extended behavior: Each of stopping_dm_dt, stopping_time,
+# and stage_iteration_limit may be a list of values, which will be
+# applied in sequence to the various stages.  If a list is shorter
+# than the number of stages, then the last value will be used ad
+# infinitum.  A value of 0 disables the corresponding stopping criterion
+# for the current stage.  For example, to stop the first stage when
+# dm/dt is smaller than 0.01, but to stop all subsequent stages when the
+# stage time index reaches 1 ns, use this:
+#
+#      stopping_dm_dt {0.01 0}
+#      stopping_time  { 0   1e-9}
+#
+Specify Oxs_TimeDriver {
+ basename cvodedemo
+ evolver :evolver
+ comment {stopping_dm_dt 0.01}
+ stopping_time 0.1e-9
+ mesh :mesh
+ stage_count 100
+ Ms { Oxs_ScriptScalarField {
+    atlas :atlas
+    script {Dot 1.422e6}
+ } }
+ m0 { Oxs_ScriptVectorField {
+   atlas :atlas
+   script Vortex
+ }}
+}
+
+proc Dot { Ms x y z } {
+    set xrad [expr {2.*$x - 1.} ]
+    set yrad [expr {2.*$y - 1.} ]
+    set test [expr {$xrad*$xrad+$yrad*$yrad}]
+    if {$test>1.0} {return 0}
+    return $Ms
+}
+
+proc Vortex { x y z } {
+    set xrad [expr {$x-0.5}]
+    set yrad [expr {$y-0.5}]
+    set normsq [expr {$xrad*$xrad+$yrad*$yrad}]
+    set vz [expr {1.-4.*$normsq}]
+    if {$vz<0.0} {
+	set vz 0.0
+	set a [expr {1.0/sqrt($normsq)}]
+    } else {
+	set vz [expr {sqrt($vz)}]
+	set a 2.0
+    }
+    set vx [expr {-$a*$yrad}]
+    set vy [expr {$a*$xrad}]
+    return [list $vx $vy $vz]
+}
+
+proc SineField { stage stage_time total_time } {
+    global mu0 pi
+    set Amp [expr {1*0.001/$mu0}]
+    set Freq [expr {1e9*(2*$pi)}]
+    set Hx [expr {$Amp*sin($Freq*$total_time)}]
+    set dHx [expr {$Amp*$Freq*cos($Freq*$total_time)}]
+    return [list $Hx 0 0 $dHx 0 0]
+}

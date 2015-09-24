@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Data Table Display: mmDataTable</TITLE>
+<META NAME="description" CONTENT="Data Table Display: mmDataTable">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Data_Graph_Display_mmGraph.html">
+<LINK REL="previous" HREF="2D_Micromagnetic_Solver.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="Data_Graph_Display_mmGraph.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html456"
+  HREF="Data_Graph_Display_mmGraph.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html452"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html446"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html458"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html454"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html457"
+  HREF="Data_Graph_Display_mmGraph.html">Data Graph Display: mmGraph</A>
+<B> Up:</B> <A NAME="tex2html453"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html447"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">OOMMF 2D Micromagnetic Solver</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION000120000000000000000"></A><A NAME="sec:mmdatatable"></A>
+<BR>
+Data Table Display: mmDataTable
+</H1><A NAME="13055"></A>
+
+<P>
+<DIV ALIGN="CENTER">
+<IMG ALT="mmDataTable Screen Shot" SRC="../giffiles/mmdatatable-ss.gif">
+
+</DIV>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Overview</B></FONT>
+<BR>
+The application <B>mmDataTable</B> provides a data display service to its
+client applications.  It accepts data from clients which are displayed in
+a tabular format in a top-level window.  Its typical use is to display
+the evolving values of quantities computed by micromagnetic solver
+programs.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Launching</B></FONT>
+<BR><B>mmDataTable</B> may be started either by selecting the
+<FONT COLOR="#800000"><B>mmDataTable</B></FONT> button on <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>, 
+or from the command line via
+<PRE>
+tclsh oommf.tcl mmDataTable [standard options] [-net &lt;0|1&gt;]
+</PRE>
+
+<P>
+<DL>
+<DT><STRONG><TT><B>-net <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Disable or enable a server which allows the data displayed by
+  <B>mmDataTable</B> to be updated by another application.
+  By default, the server is enabled.  When the server is disabled,
+  <B>mmProbEd</B> is only useful if it is embedded in another application.
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Inputs</B></FONT>
+<BR>
+The client application(s) that send data to <B>mmDataTable</B> for 
+display control the flow of data.  The user, interacting with
+the <B>mmDataTable</B> window, controls how the data is displayed.
+Upon launch, <B>mmDataTable</B> displays only a menubar.  Upon user
+request, a display window below the menubar displays data values.
+
+<P>
+Each message from a client contains a list of
+(name, value, units) triples containing data for display.  
+For example, one element in the list might be 
+<TT>{Magnetization 800000 A/m}</TT>.  <B>mmDataTable</B>
+stores the latest value it receives for each name.  Earlier
+values are discarded when new data arrives from a client.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Outputs</B></FONT>
+<BR><B>mmDataTable</B> does not support any data output or storage
+facilities.  To save tabular data, use the
+<A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
+ NAME="13087"><B>mmGraph</B></A>
+or
+<A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
+ NAME="13092"><B>mmArchive</B></A> applications.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Controls</B></FONT>
+<BR>
+The <FONT COLOR="#800000"><B>Data</B></FONT> menu holds a list of all the data names for which
+<B>mmDataTable</B> has received data.  Initially, <B>mmDataTable</B> has
+received no data from any clients, so this menu is empty.  As data
+arrives from clients, the menu fills with the list of data names.
+Each data name on the list lies next to a checkbutton.  When the
+checkbutton is toggled from off to on, the corresponding data name and
+its value and units are displayed at the bottom of the display window.
+When the checkbutton is toggled from on to off, the corresponding data
+name is removed from the display window.  In this way, the user
+selects from all the data received what is to be displayed.  Selecting
+the dashed rule at the top of the <FONT COLOR="#800000"><B>Data</B></FONT> menu detaches it so the
+user may easily click multiple checkbuttons.
+
+<P>
+Displayed data values can be individually selected (or deselected) with
+a left mouse button click on the display entry.  Highlighting is used to
+indicated which data values are currently selected.  The <FONT COLOR="#800000"><B>Options</B></FONT>
+menu also contains commands to select or deselect all displayed values.
+The selected values can be copied into the
+cut-and-paste<A NAME="13099"></A> (clipboard) buffer with the
+<TT><B>CTRL-c</B></TT> key combination, or the <FONT COLOR="#800000"><B>Options|Copy</B></FONT> menu
+command.
+
+<P>
+The data value selection mechanism is also used for data value
+formatting control.  The <FONT COLOR="#800000"><B>Options|Format</B></FONT> menu command brings
+up a <B>Format</B> dialog box to change the justification and format
+specification string.  The latter is the conversion string passed to
+the Tcl <TT>format</TT> command, which uses the C <TT>printf</TT> format
+codes.  If the <FONT COLOR="#800000"><B>Adjust:Selected</B></FONT> radiobutton is active, then the
+specification will be applied to only the currently selected
+(highlighted) data values.  Alternately, if <FONT COLOR="#800000"><B>Adjust:All</B></FONT> is
+active, then the specification will be applied to all data values,
+and will additionally become the default specification.
+
+<P>
+A right mouse button click on a display entry will select that entry,
+and bring up the <B>Format</B> dialog box with the justification and
+format specifications of the selected entry.  These specifications, with
+any revisions, may then be applied to all of the selected entries.
+
+<P>
+If a value cannot be displayed with the selected format specification
+string, e.g., if a ``%d'' integer format were applied to a string
+containing a decimal point, then the value will be printed in red
+in the form as received by <B>mmDataTable</B>, without any additional
+formatting.
+
+<P>
+The menu selection <FONT COLOR="#800000"><B>File|Reset</B></FONT> reinitializes the
+<B>mmDataTable</B> application to its original state, clearing the
+display and the <FONT COLOR="#800000"><B>Data</B></FONT> menu.  The reset operation is also
+automatically invoked upon receipt of new data following a data set
+close message from a solver application.  The menu selection
+<FONT COLOR="#800000"><B>File|Exit</B></FONT> terminates the application.  The menu <FONT COLOR="#800000"><B>Help</B></FONT>
+provides the usual help facilities.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html456"
+  HREF="Data_Graph_Display_mmGraph.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html452"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html446"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html459"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html454"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

@@ -1,0 +1,23 @@
+# MIF 1.1
+# material name:Permalloy
+ms:800e3
+a:13e-12
+k1:0.5e3
+anisotropy type:uniaxial
+anisotropy dir1:0 1 0
+demag type:3dcharge
+part height:1250e-9
+part width:1250e-9
+part thickness:20e-9
+cell size:10e-9
+part shape:rectangle
+init mag:uniform 90.0 45.0
+base output filename:fileseq
+log level:1
+randomizer seed:1
+user interaction level:1
+user report code:500
+converge mxh value:1e-6
+field range count:1
+field range: .1 .1 0 -.1 .1 0 1
+field type: fileseq app/mmpe/examples/fileseq.tcl myzeeman -1

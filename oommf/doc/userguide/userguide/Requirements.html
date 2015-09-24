@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Requirements</TITLE>
+<META NAME="description" CONTENT="Requirements">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Basic_Installation.html">
+<LINK REL="previous" HREF="Installation.html">
+<LINK REL="up" HREF="Installation.html">
+<LINK REL="next" HREF="Basic_Installation.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html169"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html165"
+  HREF="Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html159"
+  HREF="Installation.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html171"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html167"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html170"
+  HREF="Basic_Installation.html">Basic Installation</A>
+<B> Up:</B> <A NAME="tex2html166"
+  HREF="Installation.html">Installation</A>
+<B> Previous:</B> <A NAME="tex2html160"
+  HREF="Installation.html">Installation</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00031000000000000000"></A><A NAME="sec:install.requirements"></A>
+<BR>
+Requirements
+</H2>
+OOMMF software is written in C++ and Tcl.  It uses the Tcl-based
+Tk Windowing Toolkit to create graphical user interfaces that are
+portable to many varieties of Unix as well as Microsoft 
+Windows.  
+
+<P>
+Tcl and Tk must be installed before installing OOMMF.  
+Tcl and Tk are available for free from the
+<A NAME="tex2html14"
+  HREF="http://purl.org/tcl/home/">Tcl Developer Xchange</A>.
+We recommend the latest stable 
+versions of Tcl and Tk concurrent with this release of OOMMF.
+OOMMF requires<A NAME="758"></A>
+at least Tcl version 7.5 and Tk version 4.1 
+on Unix platforms, and requires at least Tcl version 8.0 and 
+Tk version 8.0 on Microsoft Windows platforms.  OOMMF software 
+does not support any alpha or beta versions of Tcl/Tk, and 
+each release of OOMMF may not work with later releases of
+Tcl/Tk.  Check the release dates of both OOMMF and
+Tcl/Tk to ensure compatibility.
+
+<P>
+A Tcl/Tk installation includes two shell programs.  The names of 
+these programs may vary depending on the Tcl/Tk version and the 
+type of platform.  The first shell program contains an interpreter 
+for the base Tcl language.  In the OOMMF documentation we refer 
+to this program as <TT><B>tclsh</B></TT><A NAME="760"></A>.  
+The second shell program contains 
+an interpreter for the base Tcl language extended by the 
+Tcl commands supplied by the Tk toolkit.  In the 
+OOMMF documentation we refer to this program as 
+<TT><B>wish</B></TT><A NAME="762"></A>.  
+Consult your Tcl/Tk documentation to determine 
+the actual names of these programs on your platform (for example, 
+<TT><B>tclsh83.exe</B></TT> or <TT><B>wish8.0</B></TT>).
+
+<P>
+OOMMF applications communicate via TCP/IP<A NAME="765"></A> network sockets.
+This means that OOMMF requires<A NAME="766"></A>
+support for networking, even 
+on a stand-alone machine.  At a minimum, OOMMF must be able to 
+access the loopback interface so that the host can talk to 
+itself using TCP/IP.
+
+<P>
+<A NAME="767"></A>
+OOMMF applications that use Tk require a windowing system and
+a valid display.  On Unix systems, this means that an X server must
+be running.  If you need to run OOMMF applications on a Unix system
+without display hardware or software, you may need to start the 
+application with command line option 
+<A HREF="Command_Line_Launching.html#sec:cll"><TT><B>-tk 0</B></TT></A>
+or use the
+<A NAME="tex2html15"
+  HREF="http://www.itworld.com/AppDev/1461/UIR000330xvfb/">Xvfb</A>
+virtual frame buffer.
+<A NAME="774"></A>
+
+<P>
+<A NAME="775"></A>
+The OOMMF source distribution unpacks into a directory tree containing
+about 800 files and directories, occupying approximately 10 MB of
+storage.  The amount of disk space needed for compiling and linking
+varies greatly between platforms; allow an additional 15 MB to 80 MB for
+the build.  Removing intermediate object modules (cf. the <TT>pimake</TT>
+``objclean'' target, in the <A HREF="Advanced_Installation.html#sec:install.reducedisk">Reducing Disk Space
+Usage</A> section) reduces the final space
+requirement for source + binary executables to between 15 MB and 25 MB.
+The OOMMF distribution containing Windows executables unpacks into a
+directory tree occupying about 15 MB of storage.  <B>Note:</B> On a
+non-compressed <TT>FAT16</TT> file system on a large disk, OOMMF may take
+up much more disk space.  This is because on such systems, the minimum
+size of any file is large, as much as 32 KB.  Since this is much larger
+than many files in the OOMMF distribution require, a great deal of
+disk space is wasted.
+<A NAME="785"></A>
+
+<P>
+<A NAME="786"></A><A NAME="787"></A>
+To build OOMMF software from source code, you will
+need<A NAME="788"></A> a C++ compiler capable of handling
+C++ templates, C++ exceptions, and (for the OOMMF eXtensible Solver)
+the C++ Standard Template Library.  You will need other software
+development utilities for your platform as well.  We do development and
+test builds on the following platforms, although porting to others
+should not be difficult:
+
+<P>
+<DIV ALIGN="CENTER">
+<TABLE CELLPADDING=3 BORDER="1">
+<TR><TD ALIGN="LEFT">Platform</TD>
+<TD ALIGN="LEFT">Compilers</TD>
+</TR>
+<TR><TD ALIGN="LEFT">Windows</TD>
+<TD ALIGN="LEFT">Microsoft Visual C++, Borland C++,</TD>
+</TR>
+<TR><TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">Intel C++, MinGW g++</TD>
+</TR>
+<TR><TD ALIGN="LEFT">Linux/x86</TD>
+<TD ALIGN="LEFT">Gnu g++, Intel C++, Portland Group pgCC</TD>
+</TR>
+<TR><TD ALIGN="LEFT">Linux/Itanium</TD>
+<TD ALIGN="LEFT">Intel C++, Gnu g++</TD>
+</TR>
+<TR><TD ALIGN="LEFT">Mac OS X</TD>
+<TD ALIGN="LEFT">Gnu g++</TD>
+</TR>
+<TR><TD ALIGN="LEFT">MIPS/IRIX 6 (SGI)</TD>
+<TD ALIGN="LEFT">MIPSpro C++, Gnu g++</TD>
+</TR>
+<TR><TD ALIGN="LEFT">SPARC/Solaris</TD>
+<TD ALIGN="LEFT">Sun Workshop C++, Gnu g++</TD>
+</TR>
+</TABLE>
+</DIV>
+
+<P>
+System Notes:
+
+<UL>
+<LI><B>Linux/x86</B>: Both 32-bit x86 and 64-bit x86_64 supported.
+</LI>
+<LI><B>Windows:</B> Microsoft Visual C++ compiler 6.0 or later required.
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html169"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html165"
+  HREF="Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html159"
+  HREF="Installation.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html172"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html167"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

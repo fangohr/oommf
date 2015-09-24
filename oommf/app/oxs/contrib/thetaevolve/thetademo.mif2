@@ -1,0 +1,47 @@
+# MIF 2.1
+# a simple system of uncoupled spins to illustrate the effect of temperature
+# The initial state is a system of perfect order and magnetization Mx = Ms, My = Mz = 0
+# Under the influence of temperature order decreases rapidly
+# My and Mz will fluctuate around zero
+# Mx decays exponentially with characteristic time thau = 5.835e-11 s
+# and <Mx> = Ms*exp(-t/thau)
+
+#Destination Archiv mmArchive
+
+#Schedule DataTable Archiv Step 100
+
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 1E-7}
+  yrange {0 1E-7}
+  zrange {0 1e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {1e-9 1e-9 1e-9}
+  atlas :atlas
+}
+
+# Specify at least the temperature and timestep you want to use
+Specify UHH_ThetaEvolve {
+  do_precess 1
+  gamma_LL 2.21e5
+  alpha 0.1
+	fixed_timestep 2e-13
+	temperature 60
+	uniform_seed 111
+}
+
+# Don't forget to specify the correct evolver UHH_thetaevolve
+Specify Oxs_TimeDriver {
+ basename thetademo
+ vector_field_output_format {binary 4}
+ scalar_output_format %.15g
+ evolver UHH_ThetaEvolve
+ mesh :mesh
+ stopping_time 5e-10
+ stage_count 0
+ Ms { Oxs_UniformScalarField  {value 1700E3} }
+ m0 { Oxs_UniformVectorField { norm 1  vector {1 0 0} } }
+}
+

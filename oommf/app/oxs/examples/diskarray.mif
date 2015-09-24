@@ -1,0 +1,167 @@
+# MIF 2.1
+# MIF Example File: diskarray.mif
+# Description: Example file using an Oxs_ScriptAtlas to define an array
+#  of disks.
+#
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter cellsize        5    ;# Discretization cell size, in nm
+Parameter thickness      20    ;# Film thickness, in nm
+
+Parameter disk_diameter  50    ;# Dimension of disks, in nm
+Parameter disk_spacing   75    ;# Spacing between disk centers
+Parameter disk_xcount     5    ;# Number of disks in x-direction
+Parameter disk_ycount     3    ;# Number of disks in y-direction
+
+# Convert parameter dimensions from nm to m
+set cellsize      [expr {$cellsize*1e-9}]
+set thickness     [expr {$thickness*1e-9}]
+set disk_diameter [expr {$disk_diameter*1e-9}]
+set disk_spacing  [expr {$disk_spacing*1e-9}]
+
+set xrange [expr {($disk_xcount-1)*$disk_spacing+$disk_diameter}]
+set yrange [expr {($disk_ycount-1)*$disk_spacing+$disk_diameter}]
+set zrange $thickness
+
+# Proc that assigns raw point coordinates to regions.  There
+# are 3 regions.  Region 0 is the encompassing matrix/universe.
+# Regions 1 and 2 form a checkerboard pattern on the array of
+# disks, with the disk in the lower lefthand corner being in
+# region 1.
+proc DiskRegion {x y z} {
+   global disk_diameter disk_spacing
+   set rx [expr {fmod($x,$disk_spacing) - $disk_diameter/2.}]
+   set ry [expr {fmod($y,$disk_spacing) - $disk_diameter/2.}]
+   if {$rx*$rx+$ry*$ry>$disk_diameter*$disk_diameter/4.} {
+      return 0;
+   }
+   set xindex [expr {int(floor($x/$disk_spacing))}]
+   set yindex [expr {int(floor($y/$disk_spacing))}]
+   return [expr {1+($xindex+$yindex)%2}]
+}
+
+proc VortexInit { x y z } {
+   global disk_diameter disk_spacing
+
+   set coresize 0.5
+
+   # Compute position relative to center point of nearest disk
+   set rx [expr {2*fmod($x,$disk_spacing)/$disk_diameter - 1.}]
+   set ry [expr {2*fmod($y,$disk_spacing)/$disk_diameter - 1.}]
+
+   # Compute mz component
+   set rsq [expr {$rx*$rx+$ry*$ry}]
+   if {$rsq>=$coresize*$coresize} {
+      set mz 0.0
+   } else {
+      set rn [expr {sqrt($rsq)/$coresize}]
+      set mz [expr {(2.*$rn-3.)*$rn*$rn+1}]
+   }
+
+   # Compute checkboard code, to determint chirality
+   set xindex [expr {int(floor($x/$disk_spacing))}]
+   set yindex [expr {int(floor($y/$disk_spacing))}]
+   set chiral [expr {2*(($xindex+$yindex)%2)-1}]
+
+   # Compute mx, my
+   set scale [expr {sqrt((1.0-$mz*$mz)/$rsq)}]
+   set mx [expr {$chiral*$ry*$scale}]
+   set my [expr {-1*$chiral*$rx*$scale}]
+
+   return [list $mx $my $mz]
+}
+
+# Atlas
+Specify Oxs_ScriptAtlas:atlas [subst {
+   xrange {0 $xrange}
+   yrange {0 $yrange}
+   zrange {0 $zrange}
+   regions { Adisks Bdisks }
+   script  DiskRegion
+   script_args rawpt
+}]
+
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy {
+   K1  { Oxs_AtlasScalarField {
+      atlas :atlas
+      default_value 0
+      values {
+         Adisks 520e3
+         Bdisks 520e3
+      }
+   }}
+   axis { Oxs_AtlasVectorField {
+      atlas :atlas
+      default_value {0 0 1}
+      values {
+         Adisks {1 0 0}
+         Bdisks {0 1 0}
+      }
+   }}
+}
+
+# Exchange is automatically 0 in regions where Ms = 0.0.  See definition
+# of Ms in the Oxs_MinDriver Specify block.
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+     {    0    0 0     1000  100 0    20 }
+     { 1000  100 0    -1000 -100 0    40 }
+  }
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver {
+ basename diskarray
+ evolver Oxs_CGEvolve
+ stopping_mxHxm 1
+ mesh :mesh
+ Ms { Oxs_AtlasScalarField {
+    atlas :atlas
+    default_value 0.0
+    values {
+       Adisks 1400e3
+       Bdisks { Oxs_RandomScalarField {
+            range_min 600e3
+            range_max 800e3
+       }}
+    }
+ }}
+ m0 { Oxs_ScriptVectorField {
+    atlas :atlas
+    script VortexInit
+    script_args rawpt
+    norm 1.0
+ }}
+ comment {m0 { Oxs_AtlasVectorField {
+    atlas :atlas
+    default_value {0 0 1}
+    values {
+         Adisks { Oxs_RandomVectorField {
+              min_norm 1.0
+              max_norm 1.0
+         }}
+         Bdisks {0 1 0}
+    }
+ }}}
+ comment {m0 { Oxs_RandomVectorField {
+    min_norm 1.0
+    max_norm 1.0
+ }}}
+}

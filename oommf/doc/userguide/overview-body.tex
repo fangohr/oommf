@@ -1,0 +1,91 @@
+\section{Overview of \OOMMF}\label{sec:overview}
+The goal of the
+\htmladdnormallinkfoot{\OOMMF}{http://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework) project in the
+\htmladdnormallink{Information Technology
+Laboratory}{http://www.itl.nist.gov/} (ITL) at the
+\htmladdnormallink{National Institute of Standards and
+Technology}{http://www.nist.gov/} (NIST)
+is to develop a portable, extensible public domain micromagnetic
+program and associated tools.  This code will form a completely
+functional micromagnetics package, but will also have a well
+documented, flexible programmer's interface so that people developing
+new code can swap their own code in and out as desired.  The main
+contributors to \OOMMF\ are
+\ifnotpdf{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\~{}MDonahue}}
+\pdfonly{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\%7EMDonahue}}
+and
+\ifnotpdf{\htmladdnormallink{Don Porter}{http://math.nist.gov/\~{}DPorter}.}
+\pdfonly{\htmladdnormallink{Don Porter}{http://math.nist.gov/\%7EDPorter}.}
+
+In order to allow a programmer not familiar with the code as a whole
+to add modifications and new functionality, we feel that an object
+oriented approach is critical, and have settled on C++ as a good
+compromise with respect to availability, functionality, and
+portability.  In order to allow the code to run on a wide variety of
+systems, we are writing the interface and glue code in \Tcl/\Tk.  This
+enables our code to operate across a wide range of \Unix\ platforms,
+\Windows~NT, and \Windows~9X.
+
+The code may be modified at 3 distinct levels.  At the top level,
+individual programs interact via well-defined protocols across network
+sockets\index{network~socket}.  One may connect these modules together
+in various ways from the user interface, and new modules speaking the
+same protocol can be transparently added.  The second level of
+modification is at the \Tcl/\Tk\ script level.  Some modules allow
+\Tcl/\Tk\ scripts to be imported and executed at run time, and the top
+level scripts are relatively easy to modify or replace.  At the lowest
+level, the C++ source is provided and can be modified, although at
+present the documentation for this is incomplete (cf.\ the ``OOMMF
+Programming Manual'').
+
+The first portion of OOMMF released was a magnetization file display
+program called
+\htmladdnormallink{\app{mmDisp}}{http://math.nist.gov/oommf/mmdisp/mmdisp.html}\index{application!mmDisp}.
+A \htmladdnormallinkfoot{working
+release}{http://math.nist.gov/oommf/software.html} of the complete OOMMF
+project was first released in October, 1998.  It included a problem
+editor, a 2D micromagnetic solver\index{simulation~2D}, and several
+display widgets, including an updated version of \app{mmDisp}.  The
+solver can be controlled by an {\hyperrefhtml{interactive
+interface}{interactive interface (Sec.~}{)}{sec:mmsolve2d}}, or through
+a sophisticated {\hyperrefhtml{batch control system}{batch control
+system (Sec.~}{)}{sec:obs}}.  This solver was originally based on a
+micromagnetic code that
+\ifnotpdf{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\~{}MDonahue}}
+\pdfonly{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\%7EMDonahue}}
+and
+\htmladdnormallink{Bob McMichael}{mailto:rmcmichael@nist.gov}
+had previously developed.  It utilizes a Landau-Lifshitz
+ODE\index{ODE!Landau-Lifshitz} solver to relax 3D spins on a 2D
+mesh\index{grid} of square cells, using FFT's\index{FFT} to compute the
+self-magnetostatic (demag) field\index{field!demag}.  Anisotropy,
+applied field\index{field!applied}, and initial
+magnetization\index{magnetization!initial} can be varied pointwise, and
+arbitrarily shaped elements\index{boundary} can be modeled.  
+
+The current development version, \OOMMF\ 1.2, includes Oxs, the
+\OOMMF\ eXtensible Solver.  Oxs offers users of \OOMMF\ the ability
+to extend Oxs with their own modules.  The details of programming
+an Oxs extension module are found in the
+\htmladdnormallinkfoot{OOMMF Programming Manual
+}{http://math.nist.gov/oommf/doc/}.  The extensible nature of the Oxs
+solver means that its capabilities may be varied as necessary for the
+problem to be solved.  Oxs modules distributed as part of \OOMMF\
+support full 3D\index{simulation~3D} simulations suitable for modeling
+layered materials.
+
+{\samepage
+If you want to receive e-mail\index{e-mail}
+notification\index{announcements} of updates to this project, register
+your e-mail address with the ``\mumag\ Announcement'' mailing list:
+\begin{center}
+\ifnotpdf{\htmladdnormallink{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}.}
+\pdfonly{\htmladdnormallink{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}{http://www.ctcms.nist.gov/\%7Erdm/email-list.html}.}
+\end{center}
+} % end \samepage
+
+The \OOMMF\ developers are always interested in your comments about
+\OOMMF.  See the \hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
+for instructions on how to contact them, and for information on
+referencing \OOMMF.

@@ -1,0 +1,116 @@
+/* FILE: oc.h                    -*-Mode: c++-*-
+ *
+ *	The OOMMF Core extension public header file.
+ *
+ * NOTICE: Please see the file ../../LICENSE
+ *
+ * Last modified on: $Date: 2012-09-19 21:34:22 $
+ * Last modified by: $Author: donahue $
+ */
+
+#ifndef _OC
+#define _OC
+
+#define OC_STRINGIFY(x) OC_STRINGIFY1(x)
+#define OC_STRINGIFY1(x) #x
+#define OC_JOIN(a,b) OC_JOIN1(a,b)
+#define OC_JOIN1(a,b) a##b
+
+#define OC_MAKE_VERSION(x) OC_STRINGIFY(OC_JOIN(x,_MAJOR_VERSION)) "." \
+                           OC_STRINGIFY(OC_JOIN(x,_MINOR_VERSION)) "." \
+                           OC_STRINGIFY(OC_JOIN(x,_RELEASE_LEVEL)) "." \
+                           OC_STRINGIFY(OC_JOIN(x,_RELEASE_SERIAL))
+
+/*
+ * Get version macros from another file so they can be 
+ * automatically generated
+ */
+#include "version.h"
+
+#define OC_VERSION OC_MAKE_VERSION(OC)
+
+/* Header containing macros and typedefs describing the platform */
+#include "ocport.h"
+
+/* The various levels of SSE instructions and instrinsic
+ * header files are:
+ *
+ *    mmintrin.h    MMX
+ *   xmmintrin.h    SSE
+ *   emmintrin.h    SSE2
+ *   pmmintrin.h    SSE3
+ *   tmmintrin.h    SSSE3 (supplemental SSE3)
+ *   ammintrin.h    SSE4A
+ *   bmmintrin.h    SSE5
+ *
+ * At present OOMMF only makes use of SSE2.
+ * The macro OC_USE_SSE is defined in ocport.h
+ */
+#if OC_USE_SSE
+# include <emmintrin.h>
+#endif
+
+/* Prototypes imported from other extensions and libraries */
+#include "imports.h"
+
+/* Prototypes of functions in this extension */
+#include "byte.h"
+#include "messages.h"
+#include "nullchannel.h"
+
+/* Declarations of classes in this extension */
+#include "autobuf.h"
+#include "ocexcept.h"
+#include "ocfpu.h"
+#include "ocsse.h"
+#include "octhread.h"
+#include "ocnuma.h"
+
+/* End includes */     /* Optional directive to pimake */
+
+/* Functions to be passed to the Tcl/Tk libraries */
+Tcl_PackageInitProc	Oc_Init;
+
+/* Prototypes for the routines defined in oc.cc */
+
+/* Callers of Oc_GlobalInterpreter() should use
+ * Tcl_SaveResult and Tcl_RestoreResult when using
+ * the returned interp to leave the result of the
+ * interp apparently unchanged.
+ */
+Tcl_Interp*	Oc_GlobalInterpreter();
+int		Oc_InitScript(Tcl_Interp*, const char*, const char*);
+int		Oc_AppMain(int,char**);
+int		Oc_RegisterCommand(Tcl_Interp*,const char*,Tcl_CmdProc*);
+#if TCL_MAJOR_VERSION >= 8  // Obj interface available
+int		Oc_RegisterObjCommand(Tcl_Interp*,
+                                      const char*,Tcl_ObjCmdProc*);
+#endif
+void		Oc_SetDefaultTkFlag(int);
+void		Oc_Main(int,char**,Tcl_AppInitProc*);
+float           Oc_Nop(float);
+double          Oc_Nop(double);
+long double     Oc_Nop(long double);
+int             Oc_Nop(int);
+long            Oc_Nop(long);
+unsigned int    Oc_Nop(unsigned int);
+unsigned long   Oc_Nop(unsigned long);
+void*           Oc_Nop(void*);
+Tcl_Channel     Oc_Nop(Tcl_Channel);
+#if OC_USE_SSE
+__m128d         Oc_Nop(__m128d);
+__m128i         Oc_Nop(__m128i);
+#endif
+#if OC_SYSTEM_TYPE == OC_WINDOWS
+__int64          Oc_Nop(__int64);
+unsigned __int64 Oc_Nop(unsigned __int64);
+#endif
+
+
+size_t          Oc_CacheSize(int level=0);
+void            Oc_DirectPathname(const char *nickname,
+				  Oc_AutoBuf& fullname);
+void            Oc_FileDirname(const char* filename,
+                               Oc_AutoBuf& dirname);
+
+#endif /* _OC */

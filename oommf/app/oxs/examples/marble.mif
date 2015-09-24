@@ -1,0 +1,154 @@
+# MIF 2.2
+# MIF Example File: marble.mif
+# Description: Simulation of a spherical particle, using several
+#  Tcl procs to support arbitary orientation of initial vortex
+#  magnetization pattern.
+#
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter v {0 0 1}   ;# Vortex axis direction
+
+SetOptions {
+ basename marble
+}
+
+### Support procs ##############################################
+proc Ellipsoid { Ms x y z } {
+    set xrad [expr {2.*$x - 1.} ]
+    set yrad [expr {2.*$y - 1.} ]
+    set zrad [expr {2.*$z - 1.} ]
+    set test [expr {$xrad*$xrad+$yrad*$yrad+$zrad*$zrad}]
+    if {$test>1.0} {return 0}
+    return $Ms
+}
+
+
+# Coordinate transform to select initial vortex orientation:
+proc Mag { v } {
+   set v0  [lindex $v 0]
+   set v1  [lindex $v 1]
+   set v2  [lindex $v 2]
+   return [expr {sqrt($v0*$v0+$v1*$v1+$v2*$v2)}]
+}
+
+proc Scale { a v } {
+   set w0  [expr {$a*[lindex $v 0]}]
+   set w1  [expr {$a*[lindex $v 1]}]
+   set w2  [expr {$a*[lindex $v 2]}]
+   return [list $w0 $w1 $w2]
+}
+
+proc Normalize { v } {
+   set mag [Mag $v]
+   return [Scale [expr {1.0/$mag}] $v]
+}
+
+proc Dot { v w } {
+   return [expr {[lindex $v 0]*[lindex $w 0]
+                 + [lindex $v 1]*[lindex $w 1]
+                 + [lindex $v 2]*[lindex $w 2]}]
+}
+
+proc Cross { v w } {
+   set v0  [lindex $v 0]
+   set v1  [lindex $v 1]
+   set v2  [lindex $v 2]
+   set w0  [lindex $w 0]
+   set w1  [lindex $w 1]
+   set w2  [lindex $w 2]
+   set u0 [expr {$v1*$w2-$v2*$w1}]
+   set u1 [expr {$v2*$w0-$v0*$w2}]
+   set u2 [expr {$v0*$w1-$v1*$w0}]
+   return [list $u0 $u1 $u2]
+}
+
+set v1 [Normalize $v] ;# Make unit vector
+set v2 [Cross $v1 [list 1 0 0]]      ;# Construct orthogonal vector
+if {[Mag $v2]<0.5} {
+   set v2 [Cross $v1 [list 0 1 0]]
+   if {[Mag $v2]<0.5} {
+      set v2 [Cross $v1 [list 0 0 1]]
+   }
+}
+set v2 [Normalize $v2]
+set v3 [Normalize [Cross $v1 $v2]] ;# Normalize just safety
+
+set a11  [lindex $v2 0]
+set a21  [lindex $v2 1]
+set a31  [lindex $v2 2]
+	 
+set a12  [lindex $v3 0]
+set a22  [lindex $v3 1]
+set a32  [lindex $v3 2]
+	 
+set a13  [lindex $v1 0]
+set a23  [lindex $v1 1]
+set a33  [lindex $v1 2]
+
+proc Vortex { x y z } {
+    global a11 a12 a13 a21 a22 a23 a31 a32 a33
+    set x [expr {$x-0.5}]  ;# Shift origin
+    set y [expr {$y-0.5}]
+    set z [expr {$z-0.5}]
+    set nx [expr {$a11*$x+$a21*$y+$a31*$z}] ;# Rotate, frontside
+    set ny [expr {$a12*$x+$a22*$y+$a32*$z}]
+    set nz [expr {$a13*$x+$a23*$y+$a33*$z}]
+    foreach {nvx nvy nvz} [VortexBaseCompute $nx $ny $nz] {}
+    set vx [expr {$a11*$nvx+$a12*$nvy+$a13*$nvz}] ;# Rotate, backside
+    set vy [expr {$a21*$nvx+$a22*$nvy+$a23*$nvz}]
+    set vz [expr {$a31*$nvx+$a32*$nvy+$a33*$nvz}]
+    return [list $vx $vy $vz]
+}
+
+proc VortexBaseCompute { x y z } {
+    set normsq [expr {$x*$x+$y*$y}]
+    if {$normsq <= 0.0125} {
+	return [list [expr {0.125*rand()}] [expr {0.125*rand()}] 1.0]
+    }
+    return [list [expr {-1*$y}] $x 0]
+}
+
+### Specify blocks #############################################
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 160e-9}
+  yrange {0 160e-9}
+  zrange {0 160e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :atlas
+}
+
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+      { 0  0  0   200  0  0   10}
+  }
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver {
+ evolver Oxs_CGEvolve
+ stopping_mxHxm 0.1
+ mesh :mesh
+ Ms { Oxs_ScriptScalarField {
+    atlas :atlas
+    script {Ellipsoid 8e5}
+ } }
+ m0 { Oxs_ScriptVectorField {
+    atlas :atlas
+    script Vortex
+    norm  1
+ } }
+}

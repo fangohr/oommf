@@ -1,0 +1,134 @@
+# MIF 2.1
+# Current induced domain wall propagation in a Permalloy nanowire with a 160nm×8nm cross section
+
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+set length 5.0E-6
+set width 160E-9
+set thickness 8e-9
+set Ms 800e3
+
+
+Specify Oxs_ImageAtlas:atlas [subst {
+  xrange {0 $length}
+  yrange {0 $width}
+  zrange {0 $thickness }
+  image mask-160-8-4-s.gif
+  viewplane xy
+  colormap {
+      white nonmagnetic
+      black magnetic
+	red fixed
+  }
+}]
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {4e-9 4e-9 8e-9}
+  atlas :atlas
+}
+
+Specify Oxs_UniaxialAnisotropy {
+        K1  0.0
+        axis { Oxs_RandomVectorField {
+    min_norm 1.0
+    max_norm 1.0
+  }  }
+}
+
+Specify Oxs_UniformExchange {
+  A  13E-12
+}
+
+Specify Oxs_FileVectorField:leftedge {
+   file "./dw_edgefield_cut_cell4_160.ohf"
+   spatial_scaling {1 1 1}
+   spatial_offset  {0 0 0}
+ }
+
+
+#Field from the left edge
+Specify Oxs_FixedZeeman:leftadj { 
+   field :leftedge
+   multiplier -1
+}
+
+# Field from the right edge.  This is the same as the left edge field,
+# but rotated about the origin via the 'M -1' entry (the *.ohf fields
+# are located in the first octant), and translated into position with
+# the offset entry.
+Specify Oxs_FixedZeeman:rightadj [subst { 
+   field { Oxs_AffineOrientVectorField {
+      field :leftedge
+      M -1
+      offset { $length $width $thickness }
+   }}
+}]
+
+
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UZeeman:extfield0 [subst {
+  comment {Field values in Tesla; scale to A/m}
+  multiplier [expr {1/$MU0}]
+  Hrange {	
+    {0 0 0 0.0 0 0 0}
+  }
+}]
+
+#Evolver with spin-torque/spin-flip terms
+# For Permalloy u=J*P*7e-11 (Thiaville-epl)
+
+proc uprofile { s } {
+    set scale 0.0;
+    if {$s==1} {
+        set scale 0
+    }
+    return $scale
+}
+
+
+Specify Anv_SpinTEvolve {
+  do_precess 1
+  gamma_LL 2.21e5
+  method rkf54s
+  alpha 0.005
+  fixed_spins {
+  	atlas fixed
+  }
+  u {Oxs_UniformScalarField {
+   value 100
+	}}
+  beta 0.04
+  	
+}
+
+Specify Oxs_TimeDriver [subst {
+ basename ./DW-150-8-3D-01
+ vector_field_output_format {binary 4}
+ scalar_output_format %.15g
+ evolver Anv_SpinTEvolve
+ mesh :mesh
+ stopping_dm_dt 1
+ stage_count 1
+ Ms {Oxs_AtlasScalarField {
+   atlas :atlas
+   values {
+     nonmagnetic  0
+     magnetic     $Ms
+	fixed 	$Ms
+  } } }
+ m0 { Oxs_FileVectorField {
+   atlas :atlas
+   norm  1
+   file ./DW-160-8-4-3D-01ini.omf
+} }
+}]
+
+
+Destination archive mmArchive
+Destination disp mmDisp
+Schedule Oxs_TimeDriver::Magnetization archive step 1000
+Schedule Oxs_TimeDriver::Magnetization archive stage 1
+Schedule Oxs_TimeDriver::Magnetization disp step 100 

@@ -1,0 +1,281 @@
+\section{Data Graph Display: mmGraph}\label{sec:mmgraph}%
+\index{application!mmGraph}
+
+\begin{center}
+\includepic{mmgraph-ss}{mmGraph Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{mmGraph} provides a data display service similar to
+that of \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+(Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  The usual
+data source is a running solver, but rather than the textual output
+provided by \app{mmDataTable}, \app{mmGraph} produces 2D line plots.
+\app{mmGraph} also stores the data it receives, so it can produce
+multiple views of the data and can save the data to disk.  Postscript
+output is also supported.
+
+\ssechead{Launching}
+\app{mmGraph} may be started either by selecting the {\btn{mmGraph}}
+button on \htmlref{\app{mmLaunch}}{sec:mmlaunch} or from the command
+line via
+\begin{verbatim}
+tclsh oommf.tcl mmGraph [standard options] [-net <0|1>] [loadfile ...]
+\end{verbatim}
+
+\begin{description}
+\item[\optkey{-net \boa 0\pipe 1\bca}]
+  Disable or enable a server which allows the data displayed by
+  \app{mmGraph} to be updated by another application.
+  By default, the server is enabled.  When the server is disabled,
+  \app{mmGraph} may only input data from a file.
+\item[\optkey{loadfile \ldots}]
+  Optional list of data (\ODT) files to preload.
+\end{description}
+
+\ssechead{Inputs}
+Input to \app{mmGraph} may come from either a file in the 
+\hyperrefhtml{\ODT\ format}{\ODT\ format
+(Sec.~}{)}{sec:odtformat}\index{file!data~table}, 
+or when \cd{-net 1} (the default) is active, from a client application
+(typically a running solver).  The
+\btn{File\pipe Open\ldots} dialog box is used to select an input file.
+Receipt of data from client applications is the same as for
+\hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+(Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  In either
+case, input data are appended to any previously held data.
+
+When reading from a file, \app{mmGraph} will automatically
+decompress\index{compressed~files}
+data using the \hyperrefhtml{local customization}{local customization
+(Sec.~}{)}{sec:custom}\index{file!configuration}
+``Nb\_InputFilter decompress'' option to \cd{Oc\_Option}.  For details,
+see the discussion on file translation in the Inputs section of the 
+\hyperrefhtml{\app{mmDisp} documentation}{\app{mmDisp}
+documentation (Sec.~}{)}{sec:mmdisp}.
+
+Curve breaks\index{curve~break} (i.e., separation of a curve into
+disjoint segments) are recorded in the data storage buffer via {\em
+curve break records.}  These records are generated whenever a new data
+table is detected by \app{mmGraph}, or when requested by the user using
+the \app{mmGraph} \btn{Options\pipe Break Curves} menu option.
+
+\ssechead{Outputs}
+
+Unlike \app{mmDataTable}\index{application!mmDataTable}, \app{mmGraph}
+internally stores the data sent to it.  These data may be written to
+disk via the \btn{File\pipe Save As...} dialog box.  If the file
+specified already exists, then {\bf mmGraph} output is appended to that
+file.  The output is in the tabular \hyperrefhtml{\ODT\ format}{\ODT\
+format described in Sec.~}{}{sec:odtformat}\index{file!data~table}.  The
+data are segmented into separate \cd{Table Start/Table End} blocks
+across each curve break record.
+
+By default, all data currently held by \app{mmGraph} is written, but the
+\btn{Save: Selected Data} option presented in the \btn{File\pipe Save
+As...} dialog box causes the output to be restricted to those curves
+currently selected for display.  In either case, the graph display
+limits do {\em not} affect the output.
+
+The save operation\index{data!save} writes records that are held by
+\app{mmGraph} at the time the \btn{File\pipe Save As...} dialog box
+\btn{OK} button is invoked.  Additionally, the \btn{Auto Save} option in
+this dialog box may be used to automatically append to the specified
+file each new data record as it is received by \app{mmGraph}.  The
+appended fields will be those chosen at the time of the save operation,
+i.e., subsequent changing of the curves selected for display does not
+affect the automatic save operation.  The automatic save operation
+continues until either a new output file is specified, the
+\btn{Options\pipe Stop Autosave} control is invoked, or \app{mmGraph} is
+terminated.
+
+The \btn{File\pipe Print...}\index{data!print} dialog is used to
+produce a Postscript file of the current graph.  On Unix systems, the
+output may be sent directly to a 
+printer\index{platform!Unix!PostScript~to~printer} 
+by filling the \btn{Print to:}
+entry with the appropriate pipe command, e.g., \texttt{|lpr}.  (The
+exact form is system dependent.)
+
+\ssechead{Controls}
+Graphs are constructed by selecting any one item off the
+\btn{X}-axis menu, and any number of items off the \btn{Y1}-axis and
+\btn{Y2}-axis menus.  The y1-axis is marked on the left side of the
+graph; the y2-axis on the right.  These menus may be detached by
+selecting the dashed rule at the top of the list.  Sample results are
+shown in the figure at the start of this section.
+
+When \app{mmGraph} is first launched, all the axis menus are empty.
+They are dynamically built based on the data received by \app{mmGraph}.
+By default, the graph limits and labels are automatically set based on
+the data.  The x-axis label is set using the selected item data label
+and measurement unit (if any).  The y-axes labels are the measurement
+unit of the first corresponding y-axis item selected.
+
+The \btn{Options\pipe Configure...} dialog box allows the user to
+override default settings.  To change the graph title, simply enter
+the desired title into the \btn{Title} field.  To set the axis labels,
+deselect the \btn{Auto Label} option in this dialog box, and fill in the
+\btn{X Label}, \btn{Y1 Label} and \btn{Y2 Label} fields as desired.
+The axis limits can be set in a similar fashion.  In addition, if an
+axis limit is left empty, a default value (based on all selected data)
+will be used.  Select the \btn{Auto Scale} option to have the axis
+ranges automatically adjust to track incoming data.
+
+Use the \btn{Auto Offset Y1} and \btn{Auto Offset Y2} to automatically
+translate each curve plotted against the specified axis up or down so
+that the first point on the curve has a y-value of zero.  This feature
+is especially useful for comparing variations between different energy
+curves, because for these curves one is typically interested in
+changes is values rather than the absolute energy value itself.
+
+The size of the margin surrounding the plot region is computed
+automatically.  Larger margins may be specified by filling in the
+appropriate fields in the \btn{Margin Requests} section.  Units are
+pixels.  Requested values smaller than the computed (default) values are
+ignored.
+
+The initial curve width is determined by the \cd{Ow\_GraphWin
+default\_curve\_width} setting in the \fn{config/options.tcl} and
+\fn{config/local/options.tcl} files, following the usual method of
+\hyperrefhtml{local customization}{local customization
+(Sec.~}{)}{sec:custom}\index{file!configuration}.  The current curve
+width can be changed by specifying the desired width in the \btn{Curve
+Width} entry in the {\btn{Options\pipe Configure...}} dialog box.
+The units are pixels.  Long curves will be rendered more quickly,
+especially on \Windows, if the curve width is set to 1.
+
+As mentioned earlier, \app{mmGraph} stores in memory all data it
+receives.  Over the course of a long run, the amount of data stored can
+grow to many megabytes\index{memory~use}.  This storage can be limited
+by specifying a positive ($>0$) value for the \btn{Point buffer size}
+entry in the {\btn{Options\pipe Configure...}} dialog box.  The oldest
+records are removed as necessary to keep the total number of records
+stored under the specified limit.  A zero value for \btn{Point buffer
+size} is interpreted as no limit.  (The storage size of an individual
+record depends upon several factors, including the number of items in
+the record and the version of \Tcl\ being used.)  Data erasures may not
+be immediately reflected in the graph display.  At any time, the point
+buffer storage may be completely emptied with the \btn{Options\pipe
+clear Data} command.  The \btn{Options\pipe Stop Autosave} selection
+will turn off the auto save feature, if currently active.
+
+Also on this menu is \btn{Options\pipe Rescale}, which autoscales the
+graph axis limits from the selected data.  This command ignores but does
+not reset the \btn{Auto Scale} setting in the \btn{Options\pipe
+Configure...} dialog box.  The Rescale command may also be invoked by
+pressing the \key{Home} key.
+
+The \btn{Options\pipe Break Curves} item inserts a curve break record
+into the point buffer, causing a break in each curve after the current
+point.  This option may be useful if \app{mmGraph} is being fed data
+from multiple sources.
+
+The \btn{Options\pipe Key} selection toggles the key (legend) display on
+and off.  The key may also be repositioned by dragging with the left
+mouse button.  If curves are selected off both the y1 and y2 menus, then
+a horizontal line in the key separates the two sets of curves, with the
+labels for the y1 curves on top.
+
+If the \btn{Options\pipe Auto Reset} selection is enabled, then when a
+new table is detected all previously existing axis menu labels that are
+not present in the column list of the new data set are deleted, along
+with their associated data.  \app{mmGraph} will detect a new table when
+results from a new problem are received, or when data is input from a
+file.  If \btn{Options\pipe Auto Reset} is not selected, then no data or
+axis menu labels are deleted, and the axes menus will show the union of
+the old column label list and the new column label list.  If the axes
+menus grow too long, the user may manually apply the
+\btn{File\pipe Reset} command to clear them.
+
+The last command on the options menu is \btn{Options\pipe Smooth}.  If
+smoothing is disabled, then the data points are connected by straight
+line segments.  If enabled, then each curve is rendered as a set of
+parabolic splines, which do not in general pass through the data points.
+This is implemented using the \cd{--smooth 1} option to the
+\Tcl\ \cd{canvas create line} command; see that documentation for
+details.
+
+A few controls are available only using the mouse.  If the mouse pointer
+is positioned over a drawn item in the graph, holding down the
+\key{Control} key and the left mouse button will bring up the
+coordinates of that point, with respect to the y1-axis.  Similarly,
+depressing the \key{Control} key and the right mouse button, or
+alternatively holding down the \key{Control}+\key{Shift} keys while
+pressing the left mouse button will bring up the coordinates of the
+point with respect to the y2-axis.  The coordinates displayed are the
+coordinates of a point on a drawn line, which are not necessarily the
+coordinates of a plotted data point.  (The data points are plotted at
+the endpoints of each line segment.)  The coordinate display is cleared
+when the mouse button is released while the \key{Control} key is down.
+
+One vertical and one horizontal rule (line) are also available.
+Initially, these rules are tucked and hidden against the left and bottom
+graph axes, respectively.  Either may be repositioned by dragging with
+the left or right mouse button.  The coordinates of the cursor are
+displayed while dragging the rules.  The displayed y-coordinate
+corresponds to the y1-axis if the left mouse button is used, or the
+y2-axis if the right mouse button or the \key{Shift} key with the left
+mouse button are engaged.
+
+The graph extents may be changed by selecting a ``zoom box'' with the
+mouse.  This is useful for examining a small portion of the graph in
+more detail.  This feature is activated by clicking and dragging the
+left or right mouse button.  A rectangle will be displayed that changes
+size as the mouse is dragged.  If the left mouse button is depressed,
+then the x-axis and y1-axis are rescaled to just match the extents of
+the displayed rectangle.  If the right mouse button, or alternatively
+the shift key + left mouse button, is used, then the x-axis and y2-axis
+are rescaled.  An arrow is drawn against the rectangle indicating which
+y-axis will be rescaled.  The rescaling may be canceled by positioning
+the mouse pointer over the initial point before releasing the mouse
+button.  The zoom box feature is similar to the mouse zoom control in
+the
+\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} application, except
+that here there is no ``un-zooming'' mouse control.
+
+The \key{PageUp} and \key{PageDown} keys may also be used to zoom the
+display in and out.  Use in conjuction with the \key{Shift} key to jump
+by larger steps, or with the \key{Control} key for finer control.  The
+\btn{Options\pipe Rescale} command or the
+\btn{Options\pipe Configure\ldots} dialog box may also be used to reset the
+graph extents.
+
+If \app{mmGraph} is being used to display data from a running solver,
+and if \btn{Auto Scale} is selected in the
+\btn{Options\pipe Configure\ldots} dialog box, then the graph extents
+may be changed automatically when a new data point is received.  This is
+inconvenient if one is simultaneously using the zoom feature to examine
+some portion of the graph.  In this case, one might prefer to disable
+the \btn{Auto Scale} feature, and manually pan the display using the
+keyboard arrow keys.  Each key press will translate the display one half
+frame in the indicated direction.  The \key{Shift} key used in
+combination with an arrow keys double the pan step size, while the
+\key{Control} key halves it.
+
+The menu selection \btn{File\pipe Reset} reinitializes the
+\app{mmGraph} application to its original state, releasing all data and
+clearing the axis menus.  The menu selection \btn{File\pipe Exit}
+terminates the application.  The menu \btn{Help} provides the usual help
+facilities.
+
+\ssechead{Details}
+The axes menus are configured based on incoming data.  As a result,
+these menus are initially empty.  If a graph widget is scheduled to
+receive data only upon control point or stage done events in the solver,
+it may be a long time after starting a problem in the solver before the
+graph widget can be configured.  Because \app{mmGraph} keeps all data up
+to the limit imposed by the \cd{Point buffer size}, data loss is usually
+not a problem.  Of more importance is the fact that automatic data
+saving\index{data!save} can not be set up until the first data point is
+received.  As a workaround, the solver initial state may be sent
+interactively as a dummy point to initialize the graph widget axes
+menus.  Select the desired quantities off the axes menus, and use the
+\btn{Options\pipe clear Data} command to remove the dummy point from
+\app{mmGraph}'s memory.  The {\btn{File\pipe Save As...}} dialog box may
+then be used---with the {\btn{Auto Save}} option enabled---to write out
+an empty table with proper column header information.  Subsequent data
+will be written to this file as they arrive.
+
+

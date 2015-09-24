@@ -1,0 +1,137 @@
+# MIF 1.1
+# FILE: blank.mif (Blank micromagnetic input form)
+#
+# This is a blank sample input file for the micromagnetic modeling
+# program developed in the Magnetic Materials Group at NIST.
+#
+# Anything on the same line and following a '#' character is a comment.
+# Character case (upper or lower) does not matter.  If a parameter is
+# set by more than one statement, the last one takes precedence.  Order
+# is unimportant unless otherwise stated.
+#
+# Fields within a line may be seperated by spaces, tabs, or by any
+# number of the following characters: ,;:"'`[]{}()
+# 
+# If the last character on a line is a backslash, '\', then the next
+# line is joined to the current one.  Maximum line size is one less
+# than the value of the #defined constant MIFBUFSIZE in mifio.cc;
+# At this time (10-May-1996), MIFBUFSIZE is 4096.
+#
+# All units are SI.
+#
+####################### MATERIAL PARAMETERS ############################
+#Base Material Type:  permalloy
+Ms= 800e3
+A=13e-12
+K1=  0.5e3
+Anisotropy Type:uniaxial     # One of <uniaxial|cubic>.
+     
+Anisotropy Dir1: 0 1 0    # Directional cosines wrt to coordinate axes
+                     # (3 numbers). Optional; Default is "1 0 0"
+#Anisotropy Dir2: 1 1 1    # Directional cosines wrt to coordinate axes
+                     # (3 numbers). Optional; Default is "0 1 0"
+                     #
+                     # NOTE: For uniaxial materials it suffices to
+                     # specify only "Anisotropy Dir1".  For cubic
+                     # materials specify also "Anisotropy Dir2", and
+                     # the third axis direction is calculated as the
+                     # cross product of the first two.
+                     #   The anisotropy directions will be automatically
+                     # normalized if necessary, so for example "1 1 1"
+                     # is valid input (it will be modified to
+                     # ".5774 .5774 .5774").  For cubic materials,
+                     # Dir2 will be adjusted to be perpendicular
+                     # to Dir1 (by subtracting out the component
+                     # parallel to Dir1).
+
+####################### DEMAG SPECIFICATION ############################
+Demag Type: 3dslab   # One of <SlowPipe|FastPipe|2dSlab|3dSlab|None>.
+	             #  2dSlab and 3dSlab require that the part
+                     # thickness be set (cf. PART GEOMETRY section
+                     # below). This field is optional; Default is fast
+                     # (FFT) pipe model.
+
+########################## PART GEOMETRY ###############################
+Part Width: .1e-6     # Nominal part width in m, adjusted by Cell Size.
+                     # Required.
+
+Part Height: 1.6e-6    # Nominal part height in m, adjusted by Cell Size.
+                     # Required.
+
+Part Thickness: 20e-9 # Part thickness in m. Required for 2d- and 3d-
+                      # Slab models.
+
+Cell Size: 10e-9     # Cell size in m. Required.  The part width
+                     # and height are adjusted to an integral multiple
+                     # of the cell size.
+
+#Part Shape:  Ellipse  # One of <Rectangle|Ellipse|Oval>.  Optional.
+                       # Default value is Rectangle.
+
+###################### INITIAL MAGNETIZATION ###########################
+Init Mag: vortex
+#Init Mag: Random
+#Init Mag: uniform 89 90 # Inital magnetization routine, and routine
+                     # parameters, if any.  Optional, with default
+                     # "Random".  The following routines are currently
+                     # available---
+                     #  <Name>        <Arguments>       \n(Notes)
+                     #  Bloch         phi
+                     #   (180 degree rotation in the x-z plane, starting
+                     #    at phi degrees)
+                     #  Uniform          theta phi
+                     #   (uniform magnetization in specified
+                     #    direction, in degrees)
+                     #  Exvort
+                     #  In
+                     #  InLeftOut
+                     #  InOut
+                     #  InOutRot      phi
+                     #   (Similar to InOut, but rotated phi degrees 
+                     #    in the x-z plane.) 
+                     #  InOuts        domain_width
+                     #   (domain_width in cells)
+                     #  InUpOut
+                     #  InUpOutRot    phi
+                     #   (Similar to InUpOut, but rotated phi degrees 
+                     #    in the x-z plane.) 
+                     #   
+                     #  InWideUpOut
+                     #  Random
+                     #  Up
+                     #  UpDowns       domain_width
+                     #   (domain_width in cells)
+                     #  UpDownsRot    domain_width phi
+                     #   (Similar to UpDowns, but rotated phi degrees 
+                     #    in x-z plane.) 
+                     #  Vortex
+                     #  1domain
+                     #  4domain
+                     #  7domain
+                     #
+
+###################### EXPERIMENT PARAMETERS ###########################
+Field Range Count:  1 
+                     # Optional. Default is 1; Resets any preceding
+                     # "Field Range" lines.
+Field Range: 0 0 0 0 0.1 0 5
+                     # 7 numbers: Start field Bx By Bz in _Tesla_
+                     #            Stop  field Bx By Bz in _Tesla_
+                     #            Number of steps (>=1)
+                     # THESE MUST ALL BE ON THE SAME LINE!
+                     # The number of "Field Range" lines should be
+                     # the same as the value of "Field Range Count",
+                     # unless "Field Range Count" is 1, in which case
+                     # a default value of "0 0 0 0 0 0 1" will be used
+                     # if no "Field Range" lines are found.  Should not
+                     # precede any "Field Range Count" lines.
+
+###################### OUTPUT SPECIFICATIONS ###########################
+Base Output Filename: taskA  # Character string; Required
+
+########################## MISCELLANEOUS ###############################
+Randomizer seed: 1   # Value to seed random number generator with.
+                     # Optional.  Default value is 0, which uses the
+                     # system clock to generate a semi-random value.
+
+Default Control Point Spec: -torque .01 -iteration 100

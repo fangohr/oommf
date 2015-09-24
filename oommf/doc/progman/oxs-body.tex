@@ -1,0 +1,204 @@
+\section{\OOMMF\ eXtensible Solver}\label{sec:oxs}
+
+The \OOMMF\ eXtensible Solver (OXS) top level architecture is shown in
+\hyperrefhtml{the class diagram below}{Fig.~}{}{fig:oxsclass}.
+The ``Tcl Control Script'' block represents the user interface and
+associated control code, which is written in \Tcl.  The
+micromagnetic problem input file is the content of the ``Problem
+Specification'' block.  The input file should be a valid \MIF~2.0 file
+(see the \OOMMF\ User's Guide for details on the \MIF\ file formats),
+which also happens to be a valid \Tcl\ script.  The rest of the
+architecture diagram represents \Cplusplus\ classes.
+
+\ofig{\includeimage{6in}{!}{oxsclass}{OXS top-level class diagram}}{OXS
+top-level class diagram.}{fig:oxsclass}
+
+All interactions between the \Tcl\ script level and the core solver are
+routed through the Director object.  Aside from the Director, all other
+classes in this diagram are examples of \cd{Oxs\_Ext}
+objects---technically, \Cplusplus\ child classes of the abstract
+\cd{Oxs\_Ext} class.  OXS is designed to be extended primarily by the
+addition of new \cd{Oxs\_Ext} child classes.
+
+The general steps involved in adding an \cd{Oxs\_Ext} child class to OXS
+are:
+\begin{enumerate}
+\item Add new source code files to \fn{oommf/app/oxs/local} containing
+your class definitions.  The \Cplusplus\ non-header source code file(s)
+must be given the \cd{.cc} extension.  (Header files are typically
+denoted with the \cd{.h} extension, but this is not mandatory.)
+\item Run \app{pimake} to compile your new code and link it in to the OXS
+executable.
+\item Add the appropriate \cd{Specify} blocks to your input \MIF~2.0
+files.
+\end{enumerate}
+The source code can usually be modeled after an existing \cd{Oxs\_Ext}
+object.  Refer to the Oxsii section of the \OOMMF\ User's Guide for a
+description of the standard \cd{Oxs\_Ext} classes, or
+\hyperrefhtml{below}{Sec.~}{}{sec:energyexample} for an annotated example of
+an \cd{Oxs\_Energy} class.  Base details on adding a new energy term are
+\hyperrefhtml{also presented below}{presented in Sec.~}{}{sec:energynew}.
+
+The \app{pimake} application automatically detects all files in the
+\fn{oommf/app/oxs/local} directory with the \cd{.cc} extension, and searches
+them for \cd{\lb include} requests to construct a build dependency tree.
+Then \app{pimake} compiles and links them together with the rest of the
+OXS files into the \app{oxs} executable.  Because of the automatic file
+detection, no modifications are required to any files of the standard
+\OOMMF\ distribution in order to add local extensions.
+
+Local extensions are then activated by \cd{Specify} requests in the
+input \MIF~2.0 files.  The object name prefix in the \cd{Specify} block
+is the same as the \Cplusplus\ class name.  All \cd{Oxs\_Ext} classes in
+the standard distribution are distinguished by an \cd{Oxs\_} prefix.  It
+is recommended that local extensions use a local prefix to avoid name
+collisions with standard OXS objects.  (\Cplusplus\ namespaces are not
+currently used in \OOMMF\ for compatibility with some older \Cplusplus\
+compilers.)  The \cd{Specify} block initialization string format is
+defined by the \cd{Oxs\_Ext} child class itself; therefore, as the
+extension writer, you may choose any format that is convenient.
+However, it is recommended that you follow the conventions laid out in
+the \MIF~2.0 file format section of the \OOMMF\ User's Guide.
+
+
+\subsection{Sample \cd{Oxs\_Energy} Class}\label{sec:energyexample}
+This sections provides an extended dissection of a simple
+\cd{Oxs\_Energy} child class.  The computational details are kept as
+simple as possible, so the discussion can focus on the \Cplusplus\ class
+structural details.  Although the calculation details will vary between
+energy terms, the class structure issues discussed here apply across the
+board to all energy terms.
+
+The particular example presented here is for simulating
+uniaxial magneto-crystalline energy, with a single anisotropy constant,
+\cd{K1}, and a single axis, \cd{axis}, which are uniform across the
+sample.
+\begin{htmlonly}
+The \htmlref{class definition}{fig:energyexampledfn} (.h) and
+\htmlref{code}{fig:energyexamplecode} (.cc) files are included below.
+\end{htmlonly}
+\begin{latexonly}
+The class definition (.h) and code (.cc) are displayed in
+Fig.~\ref{fig:energyexampledfn} and \ref{fig:energyexamplecode},
+respectively.
+\end{latexonly}
+
+\begin{codelisting}{p}{fig:energyexampledfn}{Example energy class
+definition.}{sec:energyexample}
+\begin{verbatim}
+/* FILE: exampleanisotropy.h
+ *
+ * Example anisotropy class definition.
+ * This class is derived from the Oxs_Energy class.
+ *
+ */
+
+#ifndef _OXS_EXAMPLEANISOTROPY
+#define _OXS_EXAMPLEANISOTROPY
+
+#include "energy.h"
+#include "threevector.h"
+#include "meshvalue.h"
+
+/* End includes */
+
+class Oxs_ExampleAnisotropy:public Oxs_Energy {
+private:
+  double K1;        // Primary anisotropy coeficient
+  ThreeVector axis; // Anisotropy direction
+public:
+  virtual const char* ClassName() const; // ClassName() is
+  /// automatically generated by the OXS_EXT_REGISTER macro.
+  virtual BOOL Init();
+  Oxs_ExampleAnisotropy(const char* name,  // Child instance id
+			Oxs_Director* newdtr, // App director
+			Tcl_Interp* safe_interp, // Safe interpreter
+			const char* argstr);  // MIF input block parameters
+
+  virtual ~Oxs_ExampleAnisotropy() {}
+
+  virtual void GetEnergyAndField(const Oxs_SimState& state,
+                                 Oxs_MeshValue<REAL8m>& energy,
+                                 Oxs_MeshValue<ThreeVector>& field
+                                 ) const;
+};
+
+
+#endif // _OXS_EXAMPLEANISOTROPY
+\end{verbatim}
+\end{codelisting}
+
+\begin{codelisting}{p}{fig:energyexamplecode}{Example energy class
+code.}{sec:energyexample}
+\begin{verbatim}
+/* FILE: exampleanisotropy.cc            -*-Mode: c++-*-
+ *
+ * Example anisotropy class implementation.
+ * This class is derived from the Oxs_Energy class.
+ *
+ */
+
+#include "exampleanisotropy.h"
+
+// Oxs_Ext registration support
+OXS_EXT_REGISTER(Oxs_ExampleAnisotropy);
+
+/* End includes */
+
+#define MU0           12.56637061435917295385e-7   /* 4 PI 10^7 */
+
+// Constructor
+Oxs_ExampleAnisotropy::Oxs_ExampleAnisotropy(
+  const char* name,     // Child instance id
+  Oxs_Director* newdtr, // App director
+  Tcl_Interp* safe_interp, // Safe interpreter
+  const char* argstr)   // MIF input block parameters
+  : Oxs_Energy(name,newdtr,safe_interp,argstr)
+{
+  // Process arguments
+  K1=GetRealInitValue("K1");
+  axis=GetThreeVectorInitValue("axis");
+  VerifyAllInitArgsUsed();
+}
+
+BOOL Oxs_ExampleAnisotropy::Init()
+{ return 1; }
+
+void Oxs_ExampleAnisotropy::GetEnergyAndField
+(const Oxs_SimState& state,
+ Oxs_MeshValue<REAL8m>& energy,
+ Oxs_MeshValue<ThreeVector>& field
+ ) const
+{
+  const Oxs_MeshValue<REAL8m>& Ms_inverse = *(state.Ms_inverse);
+  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+  UINT4m size = state.mesh->Size();
+
+  for(UINT4m i=0;i<size;++i) {
+    REAL8m field_mult = (2.0/MU0)*K1*Ms_inverse[i];
+    if(field_mult==0.0) {
+      energy[i]=0.0;
+      field[i].Set(0.,0.,0.);
+      continue;
+    }
+    REAL8m dot = axis*spin[i];
+    field[i] = (field_mult*dot) * axis;
+    if(K1>0) {
+      energy[i] = -K1*(dot*dot-1.0); // Make easy axis zero energy
+    } else {
+      energy[i] = -K1*dot*dot; // Easy plane is zero energy
+    }
+  }
+}
+\end{verbatim}
+\end{codelisting}
+
+
+\subsection{Writing a New \cd{Oxs\_Energy} Extension}\label{sec:energynew}
+Under construction.
+
+
+
+
+
+

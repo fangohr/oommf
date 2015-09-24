@@ -1,0 +1,409 @@
+/* FILE: threevector.h        -*-Mode: c++-*-
+ *
+ * Simple 3D vector class.  *All* client code should use the
+ * ThreeVector typedef in case this class gets moved into an
+ * OOMMF extension library.
+ *
+ */
+
+#ifndef _OXS_THREEVECTOR
+#define _OXS_THREEVECTOR
+
+#if OC_USE_SSE
+# include <emmintrin.h>
+#endif
+
+#include <assert.h>
+
+#include "oc.h"
+
+OC_USE_STD_NAMESPACE;  // For std::fabs()
+
+/* End includes */
+
+class Oxs_ThreeVector;  // Forward declaration for typedef
+typedef Oxs_ThreeVector ThreeVector;
+
+class Oxs_ThreeVector {
+public:
+  OC_REAL8m x,y,z;
+
+  // Constructors
+  Oxs_ThreeVector(): x(0.), y(0.), z(0.) {}
+  Oxs_ThreeVector(OC_REAL8m xi,OC_REAL8m yi,OC_REAL8m zi)
+    : x(xi), y(yi), z(zi) {}
+  Oxs_ThreeVector(OC_REAL8m *arr) : x(arr[0]), y(arr[1]), z(arr[2]) {}
+  Oxs_ThreeVector(const Oxs_ThreeVector &v) : x(v.x), y(v.y), z(v.z) {}
+
+  // Assignment operators
+  Oxs_ThreeVector& Set(OC_REAL8m xi,OC_REAL8m yi,OC_REAL8m zi)
+    { x=xi; y=yi; z=zi; return *this; }
+  Oxs_ThreeVector& operator=(const Oxs_ThreeVector &v) {
+    x=v.x; y=v.y; z=v.z;
+    return *this;
+  }
+  Oxs_ThreeVector& operator+=(const Oxs_ThreeVector& v) { 
+    x+=v.x; y+=v.y; z+=v.z;
+    return *this;
+  }
+  Oxs_ThreeVector& operator-=(const Oxs_ThreeVector& v) {
+    x-=v.x; y-=v.y; z-=v.z;
+    return *this;
+  }
+
+  Oxs_ThreeVector& operator^=(const Oxs_ThreeVector& w) { // Cross product
+#if 0
+    OC_REAL8m tx = y * w.z  -  z * w.y;
+    OC_REAL8m ty = z * w.x  -  x * w.z;
+    OC_REAL8m tz = x * w.y  -  y * w.x;
+    x = tx; y = ty; z = tz;
+#else // In principle, the ordering below reduces register pressure
+    OC_REAL8m p12 = x*w.y;
+    OC_REAL8m p13 = x*w.z;
+    OC_REAL8m p23 = y*w.z;
+    p12 -= y*w.x;
+    y = z*w.x - p13;
+    x = p23 - z*w.y;
+    z = p12;
+#endif
+
+    return *this;
+  }
+
+  Oxs_ThreeVector& operator*=(OC_REAL8m a) { x*=a; y*=a; z*=a; return *this; }
+
+  Oxs_ThreeVector Accum(OC_REAL8m a,const Oxs_ThreeVector& v) {
+    x+=a*v.x;  y+=a*v.y;  z+=a*v.z;  return *this;
+  }
+
+
+  Oxs_ThreeVector& wxvxw(const Oxs_ThreeVector& w) {
+    // Performs w x *this x w
+
+    OC_REAL8m tx = y * w.z  -  z * w.y;
+    OC_REAL8m ty = z * w.x  -  x * w.z;
+    z = ty * w.x  - tx * w.y ;
+
+    OC_REAL8m tz = x * w.y  -  y * w.x;
+    x = tz * w.y  - ty * w.z ;
+    y = tx * w.z  - tz * w.x ;
+
+    return *this;
+  }
+
+  // Misc
+  OC_REAL8m MagSq() const { return x*x+y*y+z*z; }
+  OC_REAL8m TaxicabNorm() const { return fabs(x)+fabs(y)+fabs(z); }  // aka L1-norm
+  void SetMag(OC_REAL8m mag);  // Adjusts size to "mag"
+  void Random(OC_REAL8m mag);  // Makes a random vector of size "mag"
+  OC_REAL8m MakeUnit(); // High-precision version of SetMag(1.0).
+  /// Return value is original MagSq(), i.e., on entry.
+};
+
+// Test operators on Oxs_ThreeVector's
+inline OC_BOOL operator==(const Oxs_ThreeVector& lhs,
+		const Oxs_ThreeVector& rhs)
+{ return ((lhs.x==rhs.x) && (lhs.y==rhs.y) && (lhs.z==rhs.z)); }
+
+inline OC_BOOL operator!=(const Oxs_ThreeVector& lhs,
+		const Oxs_ThreeVector& rhs)
+{ return ((lhs.x!=rhs.x) || (lhs.y!=rhs.y) || (lhs.z!=rhs.z)); }
+
+// The next two operators are defined so MSVC++ 5.0 will accept
+// vector<ThreeVector>, but are left undefined because there
+// is no way to define them that makes sense in all contexts.
+OC_BOOL operator<(const Oxs_ThreeVector&,const Oxs_ThreeVector&);
+OC_BOOL operator>(const Oxs_ThreeVector&,const Oxs_ThreeVector&);
+
+
+// Binary operators on Oxs_ThreeVector's
+inline const Oxs_ThreeVector
+operator+(const Oxs_ThreeVector& lhs,
+	  const Oxs_ThreeVector& rhs)
+{ Oxs_ThreeVector result(lhs); return result+=rhs; }
+
+inline const Oxs_ThreeVector
+operator-(const Oxs_ThreeVector& lhs,
+	  const Oxs_ThreeVector& rhs)
+{ Oxs_ThreeVector result(lhs); return result-=rhs; }
+
+// Cross product
+inline const Oxs_ThreeVector
+operator^(const Oxs_ThreeVector& v,
+	  const Oxs_ThreeVector& w)
+{
+#if 0
+  OC_REAL8m tx = v.y * w.z  -  w.y * v.z;
+  OC_REAL8m ty = w.x * v.z  -  v.x * w.z;
+  OC_REAL8m tz = v.x * w.y  -  w.x * v.y;
+#else // In principle, the ordering below reduces register pressure
+  OC_REAL8m tz = v.x*w.y;
+  OC_REAL8m ty = v.x*w.z;
+  OC_REAL8m tx = v.y*w.z;
+  tz -= v.y*w.x;
+  ty  = v.z*w.x - ty;
+  tx -= v.z*w.y;
+#endif
+  return Oxs_ThreeVector(tx,ty,tz);
+}
+
+
+// Product against scalar
+inline const Oxs_ThreeVector
+operator*(OC_REAL8m scalar,
+	  const Oxs_ThreeVector& vec)
+{ Oxs_ThreeVector result(vec); return result*=scalar; }
+
+inline const Oxs_ThreeVector
+operator*(const Oxs_ThreeVector& vec,
+	  OC_REAL8m scalar)
+{ Oxs_ThreeVector result(vec); return result*=scalar; }
+
+
+// Dot product
+inline OC_REAL8m
+operator*(const Oxs_ThreeVector& lhs,const Oxs_ThreeVector& rhs)
+{ return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z; }
+
+////////////////////////////////////////////////////////////////////////
+// "Pair" routines, that process two vectors at a time.  If SSE is
+// available, then these versions can be significantly faster than the
+// serial routines.
+#if OC_USE_SSE
+inline __m128d Oxs_ThreeVectorPairMagSq
+(const __m128d vx,const __m128d vy,const __m128d vz)
+{ // Returns |vec0|^2 in in lower half, |vec1|^2 in upper half.
+  __m128d txsq = _mm_mul_pd(vx,vx);
+  __m128d tysq = _mm_mul_pd(vy,vy);
+  __m128d tzsq = _mm_mul_pd(vz,vz);
+  return _mm_add_pd(_mm_add_pd(txsq,tysq),tzsq);
+}
+
+inline __m128d Oxs_ThreeVectorPairMagSq
+(const Oxs_ThreeVector& vec0,
+ const Oxs_ThreeVector& vec1)
+{ // Returns |vec0|^2 in in lower half, |vec1|^2 in upper half.
+  return Oxs_ThreeVectorPairMagSq(_mm_set_pd(vec1.x,vec0.x),
+                                  _mm_set_pd(vec1.y,vec0.y),
+                                  _mm_set_pd(vec1.z,vec0.z));
+}
+#endif // OC_USE_SSE
+
+inline void Oxs_ThreeVectorPairMagSq
+(const Oxs_ThreeVector& vec0,
+ const Oxs_ThreeVector& vec1,
+ OC_REAL8m& magsq0, OC_REAL8m& magsq1)
+{ // Returns |vec0|^2 in mag0, and |vec1|^2 in mag1
+#if !OC_USE_SSE
+  magsq0 = vec0.x*vec0.x + vec0.y*vec0.y + vec0.z*vec0.z;
+  magsq1 = vec1.x*vec1.x + vec1.y*vec1.y + vec1.z*vec1.z;
+#else
+  __m128d tmagsq = Oxs_ThreeVectorPairMagSq(vec0,vec1);
+  _mm_storel_pd(&magsq0,tmagsq);
+  _mm_storeh_pd(&magsq1,tmagsq);
+#endif
+}
+
+#if OC_USE_SSE
+void Oxs_ThreeVectorPairMakeUnit
+(__m128d& tx,__m128d& ty,__m128d& tz,
+ OC_REAL8m* magsq0=0, OC_REAL8m* magsq1=0);
+// Here imports/exports tx,ty,tz are packed double-precision
+// components of two three vectors,
+//  tx = (t0.x,t1.x), ty = (t0.y,t1.y), tz = (t0.z,t1.z)
+// where t0 is placed in the lower-half of the __m128d variables.
+// Code for this routine is in the file threevector.cc.
+
+inline void Oxs_ThreeVectorPairMakeUnit
+(__m128d tx,__m128d ty,__m128d tz,
+ Oxs_ThreeVector& vec0,
+ Oxs_ThreeVector& vec1,
+ OC_REAL8m* magsq0=0, OC_REAL8m* magsq1=0)
+{ // Here imports tx,ty,tz are packed double-precision components of two
+  // three vectors,
+  //  tx = (t0.x,t1.x), ty = (t0.y,t1.y), tz = (t0.z,t1.z)
+  // where t0 is placed in the lower-half of the __m128d variables.
+
+  Oxs_ThreeVectorPairMakeUnit(tx,ty,tz,magsq0,magsq1);
+
+  _mm_storel_pd(&vec0.x,tx);
+  _mm_storel_pd(&vec0.y,ty);
+  _mm_storel_pd(&vec0.z,tz);
+
+  _mm_storeh_pd(&vec1.x,tx);
+  _mm_storeh_pd(&vec1.y,ty);
+  _mm_storeh_pd(&vec1.z,tz);
+}
+#endif
+
+void Oxs_ThreeVectorPairMakeUnit
+(Oxs_ThreeVector& vec0,
+ Oxs_ThreeVector& vec1,
+ OC_REAL8m* magsq0=0, OC_REAL8m* magsq1=0);
+// Parameters vec0 and vec1 are both imports and exports.
+// Code for this routine is in the file threevector.cc.
+
+#if !OC_USE_SSE
+void Oxs_ThreeVectorPairMakeUnit
+(Oc_Duet& tx,Oc_Duet& ty,Oc_Duet& tz,
+ OC_REAL8m* magsq0=0, OC_REAL8m* magsq1=0);
+/// Non-SSE implementation in threevector.cc
+#else // OC_USE_SSE
+inline void Oxs_ThreeVectorPairMakeUnit
+(Oc_Duet& tx,Oc_Duet& ty,Oc_Duet& tz,
+ OC_REAL8m* magsq0=0, OC_REAL8m* magsq1=0)
+{ // Here imports tx,ty,tz are packed double-precision components of two
+  // three vectors,
+  //  tx = (t0.x,t1.x), ty = (t0.y,t1.y), tz = (t0.z,t1.z)
+  // where t0 is placed in the lower-half of the __m128d variables.
+  Oxs_ThreeVectorPairMakeUnit(tx.GetSSERef(),
+                              ty.GetSSERef(),
+                              tz.GetSSERef(),magsq0,magsq1);
+}
+#endif // OC_USE_SSE
+
+#if !OC_USE_SSE
+inline void Oxs_ThreeVectorPairLoadAligned
+(const Oxs_ThreeVector* vec,
+ Oc_Duet& vx,Oc_Duet& vy,Oc_Duet& vz) {
+  // Loads pair of vectors vec[0], vec[1] into doublets vx, vy, vz.
+  // Note: Non-SSE version doesn't actually care if vec[0] is
+  //       16-bit aligned or not.
+  vx.Set(vec[0].x,vec[1].x);
+  vy.Set(vec[0].y,vec[1].y);
+  vz.Set(vec[0].z,vec[1].z);
+}
+inline void Oxs_ThreeVectorPairStreamAligned
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oxs_ThreeVector* vec) {
+  // Writes doublets vx, vy, vz into vec[0], vec[1].
+  // Note: Non-SSE version doesn't actually care if vec[0] is
+  //       16-bit aligned or not, and also doesn't "stream"
+  vx.StoreA(vec[0].x);  vy.StoreA(vec[0].y);  vz.StoreA(vec[0].z);
+  vx.StoreB(vec[1].x);  vy.StoreB(vec[1].y);  vz.StoreB(vec[1].z);
+}
+
+inline void Oxs_ThreeVectorPairStoreAligned
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oxs_ThreeVector* vec) {
+  // Non-SSE version of this function same as "stream" call.
+  Oxs_ThreeVectorPairStreamAligned(vx,vy,vz,vec);
+}
+
+inline void Oxs_ThreeVectorPairUnpack
+(const Oc_Duet& tA,const Oc_Duet& tB,const Oc_Duet& tC,
+ Oc_Duet& vx,Oc_Duet& vy,Oc_Duet& vz) {
+  // NOTE: This code assumes tA, tB, tC are
+  //       distinct from all of vx, vy, vz !!!
+  // Takes packed vector imports tA, tB, tC where
+  //    tA = (vec[0].x, vec[0].y)
+  //    tB = (vec[0].z, vec[1].x)
+  //    tC = (vec[1].y, vec[1].z)
+  // and unpacks into exports vx, vy, vz so that
+  //    vx = (vec[0].x, vec[1].x)
+  //    vy = (vec[0].y, vec[1].y)
+  //    vz = (vec[0].z, vec[1].z)
+  vx.Set(tA.GetA(),tB.GetB());
+  vy.Set(tA.GetB(),tC.GetA());
+  vz.Set(tB.GetA(),tC.GetB());
+}
+inline void Oxs_ThreeVectorPairPack
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oc_Duet& tA,Oc_Duet& tB,Oc_Duet& tC) {
+  // Inverse of Oxs_ThreeVectorPairUnpack
+  // NOTE: This code assumes tA, tB, tC are
+  //       distinct from all of vx, vy, vz !!!
+  tA.Set(vx.GetA(),vy.GetA());
+  tB.Set(vz.GetA(),vx.GetB());
+  tC.Set(vy.GetB(),vz.GetB());
+}
+#else // OC_USE_SSE
+inline void Oxs_ThreeVectorPairLoadAligned
+(const Oxs_ThreeVector* vec,
+ Oc_Duet& vx,Oc_Duet& vy,Oc_Duet& vz) {
+  // Loads pair of vectors vec[0], vec[1] into doublets vx, vy, vz.
+  // Code assumes vec[0] is 16-bit aligned.
+  const double *dptr = &(vec[0].x);
+  assert(size_t(dptr) % 16 == 0);
+  __m128d tA = _mm_load_pd(dptr);   // vec[0].x, vec[0].y
+  __m128d tB = _mm_load_pd(dptr+2); // vec[0].z, vec[1].x
+  __m128d tC = _mm_load_pd(dptr+4); // vec[1].y, vec[1].z
+  vx = _mm_shuffle_pd(tA,tB,2);
+  vy = _mm_shuffle_pd(tA,tC,1);
+  vz = _mm_shuffle_pd(tB,tC,2);
+}
+inline void Oxs_ThreeVectorPairStreamAligned
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oxs_ThreeVector* vec) {
+  // Writes doublets vx, vy, vz into vec[0], vec[1], via SSE instruction
+  // _mm_stream_pd.  This instruction writes straight to main memory
+  // bypassing cache.  Note that this will result in *much* slower code
+  // if the output vec[0], vec[1] address is in the cache, or will soon
+  // be needed in cache.
+  // NB: This code assumes vec[0] is 16-bit aligned.
+  double* dptr = (double*)vec;
+  _mm_stream_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
+  _mm_stream_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
+  _mm_stream_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+}
+inline void Oxs_ThreeVectorPairStoreAligned
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oxs_ThreeVector* vec) {
+  // Same as Oxs_ThreeVectorPairStreamAligned, except uses _mm_store_pd
+  // instead of _mm_stream_pd.  _mm_store_pd does not bypass the cache,
+  // and is significantly faster if the store address is either already
+  // in the cache or will soon be so.
+  // NB: This code assumes vec[0] is 16-bit aligned.
+  double* dptr = (double*)vec;
+  _mm_store_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
+  _mm_store_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
+  _mm_store_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+}
+
+inline void Oxs_ThreeVectorPairUnpack
+(const Oc_Duet& tA,const Oc_Duet& tB,const Oc_Duet& tC,
+ Oc_Duet& vx,Oc_Duet& vy,Oc_Duet& vz) {
+  // NOTE: This code assumes tA, tB, tC are
+  //       distinct from all of vx, vy, vz !!!
+  // Takes packed vector imports tA, tB, tC where
+  //    tA = (vec[0].x, vec[0].y)
+  //    tB = (vec[0].z, vec[1].x)
+  //    tC = (vec[1].y, vec[1].z)
+  // and unpacks into exports vx, vy, vz so that
+  //    vx = (vec[0].x, vec[1].x)
+  //    vy = (vec[0].y, vec[1].y)
+  //    vz = (vec[0].z, vec[1].z)
+  vx = _mm_shuffle_pd(tA.GetSSERef(),tB.GetSSERef(),2);
+  vy = _mm_shuffle_pd(tA.GetSSERef(),tC.GetSSERef(),1);
+  vz = _mm_shuffle_pd(tB.GetSSERef(),tC.GetSSERef(),2);
+  // NOTE: If you don't care about the relative ordering of the x, y,
+  //       and z components inside the output v Oc_Duets, then you can
+  //       unpack with two operations: one unpacklo and one unpackhi.
+  //       This is useful if for example v is only being used via dot
+  //       products with other vectors that can similarly be
+  //       pseudo-unpacked.
+  //  For example:
+  //
+  //    vx = Oc_Duet(_mm_unpacklo_pd(tA.GetSSERef(),tC.GetSSERef()));
+  //    vy = tB;
+  //    vz = Oc_Duet(_mm_unpackhi_pd(tA.GetSSERef(),tC.GetSSERef()));
+  //
+  //  yields
+  //
+  //    vx = (vec[0].x,vec[1].y)
+  //    vy = (vec[0].z,vec[1].x)
+  //    vz = (vec[0].y,vec[1].z)
+}
+inline void Oxs_ThreeVectorPairPack
+(const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
+ Oc_Duet& tA,Oc_Duet& tB,Oc_Duet& tC) {
+  // Inverse of Oxs_ThreeVectorPairUnpack
+  // NOTE: This code assumes tA, tB, tC are
+  //       distinct from all of vx, vy, vz !!!
+  tA = _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef());
+  tB = _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2);
+  tC = _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef());
+}
+#endif // OC_USE_SSE
+
+#endif // _OXS_THREEVECTOR

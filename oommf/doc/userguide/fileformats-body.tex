@@ -1,0 +1,3066 @@
+%begin{latexonly}
+\newcounter{ffoldsecnumdepth}
+\setcounter{ffoldsecnumdepth}{\value{secnumdepth}}
+\setcounter{secnumdepth}{4}
+%end{latexonly}
+
+\section{Problem Specification File Formats (\MIF)}\label{sec:mifformat}
+Micromagnetic simulations are specified to the \OOMMF\ solvers using the
+\OOMMF\ \textit{Micromagnetic Input Format} (\MIF)\index{file!MIF}.  There
+are four distinct versions of this format.  The oldest format,
+version 1.1, is used by the mmSolve 2D solvers
+(\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D},
+Sec.~}{}{sec:mmsolve2d}\index{application!mmSolve2D} and
+\hyperrefhtml{\app{batchsolve}}{\app{batchsolve},
+Sec.~}{}{sec:batchsolve}\index{application!batchsolve}) and the
+\hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
+(Sec.~}{)}{sec:mmprobed}\index{application!mmProbEd} problem editor.
+The \MIF~2.1 and \MIF~2.2 formats are the powerful, native format used by the
+\hyperrefhtml{Oxs 3D solvers}{Oxs 3D solvers
+(Sec.~}{)}{sec:oxs}.  The \MIF~1.2 format is a minor modification to
+the 1.1 format, which can be used as a simple but restricted interface
+to the Oxs solvers.  In all cases values are specified in \SI\ units.  A
+command line utility \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert}\index{application!mifconvert} is provided to
+aid in converting \MIF~1.1 files to the \MIF~2.1 format.  For all
+versions it is recommended that \MIF\ files be given names ending with
+the \fn{.mif} file extension.
+
+\subsection{\MIF\ 2.1}\label{sec:mif2format}
+\begin{rawhtml}
+<A NAME="pt:mif2format"></A>
+\end{rawhtml}
+The \MIF~2.x format was introduced with the
+\hyperrefhtml{Oxs 3D solver}{Oxs 3D solver
+(Sec.~}{)}{sec:oxs}\index{application!Oxsii}\index{application!Boxsi}.
+It is \textit{not} backwards compatible with the \MIF~1.x formats,
+however a conversion utility,
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert}\index{application!mifconvert}, is available
+to aid in converting \MIF~1.x files to the \MIF~2.1 format.
+
+\subsubsection{\MIF\ 2.1 File Overview}%
+\label{sec:mif2overview}\index{MIF~2.1~Overview}
+
+The first line of a \MIF\ file must be of the form ``\verb+#+ MIF x.y'',
+where x.y represents the format revision number, here 2.1.  Unlike
+\MIF~1.1 files, the structure of \MIF~2.1 files are governed by the
+requirement that they be valid \Tcl\ scripts, albeit with a handful of
+extensions.  These files are evaluated inside a \Tcl\ interpreter, which
+may be a ``safe'' interpreter, i.e., one in which disk and other system
+access is disabled.  (Refer to the documentation of the \Tcl\
+\cd{interp} command for details on safe interpreters.)  The security
+level is controlled by the \cd{MIFinterp} option in the \fn{options.tcl}
+\hyperrefhtml{customization file}{customization file (Sec.~}{)}{sec:custom}.
+The default setting is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Oc_Option Add Oxs* MIFinterp safety custom
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+which enables all the \Tcl\ interpreter extensions described in
+\html{the}
+\hyperrefhtml{\MIF~2.1 Extension Commands}{\MIF~2.1 Extension Commands
+(Sec.~}{)}{sec:mif2ExtensionCommands}
+\html{section}
+below, but otherwise provides a standard \Tcl\ safe interpreter.  The
+keyword \cd{custom} above may be replaced with either \cd{safe} or
+\cd{unsafe}.  The \cd{safe} selection is similar to \cd{custom}, except
+that the \cd{ReadFile} and \cd{RGlob} extensions are not provided,
+thereby eliminating all disk access at the \MIF\ script level.  At the
+other extreme, choosing \cd{unsafe} provides an unrestricted \Tcl\
+interpreter.  This option should be used with caution, especially if you
+are reading \MIF\ files from an unknown or untrusted source.
+
+After the first line, there is considerable flexibility in the layout of
+the file.  Generally near the top of the file one places any
+\htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
+\htmlonlyref{\cd{Parameter}}{html:mif2parameter}, and
+\htmlonlyref{\cd{RandomSeed}}{html:mif2randomseed} statements, as
+desired.
+
+This is followed by the major content of the file, the various
+\htmlonlyref{\cd{Specify}}{html:specifyCmd} blocks, which initialize
+\hyperrefhtml{\cd{Oxs\_Ext} objects}{\cd{Oxs\_Ext} objects
+(Sec.~}{, page~\pageref{sec:oxsext})}{sec:oxsext}:
+\begin{itemize}
+  \item Atlas (one or more)
+  \item Mesh (one)
+  \item Energy terms (one or more)
+  \item Evolver (one)
+  \item Driver(one)
+\end{itemize}
+The \cd{Specify} blocks are processed in order, so any block that is
+referred to by another block must occur earlier in the file.  For that
+reason, the main atlas object, which is referenced in many other
+\cd{Specify} blocks, is generally listed first.  The atlas object
+defines the spatial extent of the simulation, and optionally declares
+subregions inside the simulation volume.
+
+The mesh object details the spatial discretization of the simulation
+volume.  Conventionally its \cd{Specify} block follows the \cd{Specify}
+block for the main atlas object; the mesh is referenced by the driver,
+so in any event the mesh \cd{Specify} block needs to precede the driver
+\cd{Specify} block.
+
+The energy terms describe the typical micromagnetic energies and fields
+that determine the evolution of the simulation, such as exchange energy,
+magnetostatic fields, and anisotropy energies.  Material parameters,
+such as the anisotropy constant \cd{K1} and the exchange constant
+\cd{A}, are generally specified inside the \cd{Specify} block for the
+relevant energy, e.g., \cd{Oxs\_UniaxialAnisotropy} or
+\cd{Oxs\_Exchange6Ngbr}.  The exception to this is saturation
+magnetization, \cd{Ms}, which is declared in the driver \cd{Specify} block.
+The initial magnetization, \cd{m0}, is also specified in the driver
+\cd{Specify} block.  In many cases these material parameters may be
+varied spatially by defining them using scalar or vector
+\hyperrefhtml{field objects}{field objects (Sec.~}{,
+page~\pageref{sec:oxsFieldObjects})}{sec:oxsFieldObjects}.  As discussed
+in the section on \hyperrefhtml{Specify Conventions}{Specify Conventions
+(Sec.~}{)}{sec:specConventions}, auxiliary objects such as scalar and
+vector fields can be defined either inline (i.e., inside the body of the
+referencing \cd{Specify} block) or in their own, standalone top-level
+\cd{Specify} blocks.  In the latter case, the auxiliary
+\cd{Specify} blocks must precede the referencing \cd{Specify} blocks in
+the \MIF~2.1 file.
+
+Given the energies and fields, the evolver and driver form a matched
+pair that advance the magnetic state from an initial configuration,
+obeying either Landau-Lifshitz-Gilbert (LLG) dynamics or direct energy
+minimization.  For energy minimization studies, the driver must be an
+\cd{Oxs\_MinDriver} object, and the evolver must be a minimization
+evolver.  At the time of this writing, the only minimization evolver
+packaged with \OOMMF\ is the \cd{Oxs\_CGEvolve} conjugate-gradient
+evolver.  For time-evolution (LLG) simulations, the driver must be an
+\cd{Oxs\_TimeDriver} object, and the evolver must be a time evolver,
+such as \cd{Oxs\_RungeKuttaEvolve}.  The evolver to be used is cited
+inside the driver \cd{Specify} block, so the evolver must precede the
+driver in the \MIF~2.1 file.  As noted above, the pointwise saturation
+magnetization \cd{Ms} and initial magnetization configuration \cd{m0}
+are declared inside the driver \cd{Specify} block as well.
+
+The pre-specified outputs, indicated by zero or more
+\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
+\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands, are
+conventionally placed after the \cd{Specify} blocks.  Output selection
+can also be modified at runtime using the
+\hyperrefhtml{\app{Oxsii}}{\app{Oxsii} (Sec.~}{,
+page~\pageref{sec:oxsii})}{sec:oxsii} or
+\hyperrefhtml{\app{Boxsi}}{\app{Boxsi} (Sec.~}{,
+page~\pageref{sec:boxsi})}{sec:boxsi} interactive interfaces.
+
+Auxiliary \Tcl\ procs may be placed anywhere in the file, but
+commonly either near their point of use or else at the bottom of the
+\MIF\ file.  If a proc is only referenced from inside \cd{Specify} blocks, then
+it can be placed anywhere in the file.  On the other hand, if a proc is
+used at the top level of the \MIF\ file, for example to dynamically
+create part of the problem specification ``on-the-fly,'' then it must be
+defined before it is used, in the normal \Tcl\ manner.
+
+A sample \MIF~2.1 file is \hyperrefhtml{included below.}{presented in
+Fig.~}{ (Sec.~\ref{sec:mif2sample},
+pages~\pageref{sec:mif2sample}--\pageref{fig:mif2sample}).}{fig:mif2sample}
+More details on the individual \cd{Oxs\_Ext} objects can be found in the
+\hyperrefhtml{Standard Oxs\_Ext Child Classes section}{Standard Oxs\_Ext
+Child Classes portion (Sec.~}{, page~\pageref{sec:oxsext})}{sec:oxsext}
+of the Oxs documentation.
+
+
+\subsubsection{\MIF~2.1 Extension Commands}%
+\label{sec:mif2ExtensionCommands}\index{MIF~2.1~Commands}
+In addition to the standard \Tcl\ commands (modulo the safe \Tcl\
+restrictions outlined above), a number of additional commands are
+available in \MIF~2.1 files:
+\htmlonlyref{\cd{Specify}}{html:specifyCmd},
+\htmlonlyref{\cd{ClearSpec}}{html:mif2ClearSpec},
+\htmlonlyref{\cd{Destination}}{html:destinationCmd},
+\htmlonlyref{\cd{Ignore}}{html:mif2Ignore},
+\htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
+\htmlonlyref{\cd{Parameter}}{html:mif2parameter},
+\htmlonlyref{\cd{Random}}{html:mif2Random},
+\htmlonlyref{\cd{RandomSeed}}{html:mif2randomseed},
+\htmlonlyref{\cd{Report}}{html:MifReport},
+\htmlonlyref{\cd{ReadFile}}{html:ReadFile},
+\htmlonlyref{\cd{RGlob}}{html:mif2rglob},
+and \htmlonlyref{\cd{Schedule}}{html:scheduleCmd}.
+
+\begin{description}
+\item[Specify\label{html:specifyCmd}]\index{Specify~block~(MIF)}
+An Oxs simulation is built as a collection of \cd{Oxs\_Ext} (Oxs
+Extension) objects.  In general, \cd{Oxs\_Ext} objects are specified and
+initialized in the input \MIF~2.1 file using the \cd{Specify} command,
+making Specify blocks the primary component of the problem
+definition.  The \cd{Specify} command takes two arguments: the name of
+the \cd{Oxs\_Ext} object to create, and an {\it initialization string}
+that is passed to the \cd{Oxs\_Ext} object during its construction.
+The objects are created in the order in which they appear in the \MIF\
+file. Order is important in some cases; for example, if one \cd{Oxs\_Ext}
+object refers to another in its initialization string, then the referred
+to object must precede the referrer in the \MIF\ file.
+
+Here is a simple Specify block:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_EulerEvolve:foo {
+  alpha 0.5
+  start_dm 0.01
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The name of the new \cd{Oxs\_Ext} object is ``Oxs\_EulerEvolve:foo.''
+The first part of this name, up to the colon, is the the \Cplusplus\
+class name of the object.  This must be a child of the \cd{Oxs\_Ext}
+class.  Here, \cd{Oxs\_EulerEvolve} is a class that integrates the
+Landau-Lifshitz ODE using a simple forward Euler method.  The second
+part of the name, i.e., the part following the colon, is
+the \textit{instance name}\index{instance~name~(MIF~2)} for
+this particular instance of the object.  In general, it is possible to
+have multiple instances of an \cd{Oxs\_Ext} child class in a simulation,
+but each instance must have a unique name.  These names are used for
+identification by output routines, and to allow one Specify block to
+refer to another Specify block appearing earlier in the \MIF\ file.  If
+the second part of the name is not given, then as a default the empty
+string is appended.  For example, if instead of ``Oxs\_EulerEvolve:foo''
+above the name was specified as just ``Oxs\_EulerEvolve'', then the
+effective full name of the created object would be
+``Oxs\_EulerEvolve:''.
+
+The second argument to the \cd{Specify} command, here everything between
+the curly braces, is a string that is interpreted by the new
+\cd{Oxs\_Ext} (child) object in its constructor.  The format of this
+string is up to the designer of the child class, but there are a number
+of conventions that designers are encouraged to follow.  These
+conventions are described in \html{the}
+\hyperrefhtml{Specify Conventions}{Specify Conventions,
+Sec.~}{,}{sec:specConventions} \html{section} below.
+
+\item[ClearSpec\label{html:mif2ClearSpec}]
+This command is used to disable one or all preceding \cd{Specify}
+commands.  In particular, one could use \cd{ClearSpec} to nullify a
+Specify block from a base \MIF\ file that was imported using the
+\cd{ReadFile} command.  Sample usage is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+ClearSpec Oxs_EulerEvolve:foo
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+where the parameter is the full name (here \cd{Oxs\_EulerEvolve:foo}) of
+the Specify block to remove.  If no parameter is given, then all
+preceding Specify blocks are removed.
+
+\item[Destination\label{html:destinationCmd}]
+\index{Destination~command~(MIF)}\index{nicknames}
+The format for the \cd{Destination} command is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Destination <desttag> <appname> [new]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This command associates a symbolic \textit{desttag} with an
+application.  The tags are used by the
+\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} command\latex{ (see below)}
+to refer to specific application instances.  The \textit{appname} may
+either be an \OOMMF\ application name, e.g., mmDisp, or else a
+specific application instance in the form application:nickname, such
+as mmDisp:Spock.  In the first case, the tag is associated with the
+running instance of the requested application (here \cd{mmDisp}) with
+the lowest \OOMMF\ ID (OID) that has not yet been associated with
+another tag.  If no running application can be found that meets these
+criteria, then a new instance of the application is launched.
+
+If the \textit{appname} refers to a specific application instance, then
+the tag is associated with the running instance of the application (say
+\app{mmDisp}) that has been assigned the specified nickname.  Name
+matching is case insensitive.  If there is no running copy of the
+application meeting this condition, then a new instance of the
+application is launched and it is assigned the specified nickname.  The
+\OOMMF\ \htmlonlyref{account service directory}{sec:arch} guarantees
+that there is never more than one instance of an application with a
+given nickname.  However, as with the object name in the \cd{Specify}
+command, instances of two different applications, e.g., \app{mmDisp} and
+\app{mmGraph}, are allowed to share nicknames, because their full
+instance names, say mmDisp:Spock and mmGraph:Spock, are unique.
+
+The \cd{Destination} commands are processed in the order in which they
+appear in the the \MIF\ file.  No \textit{desttag} may appear in more
+than one \cd{Destination} command, and no two destination tags may refer
+to the same application instance.  To insure the latter, the user is
+advised to place all \cd{Destination} commands referring to specific
+instances (e.g., mmDisp:Spock) before any \cd{Destination} commands
+using generic application references (e.g., mmDisp).  Otherwise a
+generic reference might be associated to a running application holding a
+nickname that is referenced by a later \cd{Destination} command.
+
+The tag association by the \cd{Destination} command is only known to the
+solver reading the \MIF\ file.  In contrast, assigned instance nicknames
+are recognized across applications.  In particular, multiple solvers may
+reference the same running application by nickname.  For example,
+several sequential solver runs could send stage output to the same
+\app{mmGraph} widget, to build up overlapping hysteresis loops.
+
+The last parameter to the Destination command is the optional
+\cd{new} keyword.  If present, then a fresh copy of the requested
+application is always launched for association with the given tag.  The
+\cd{new} option can be safely used with any generic application
+reference, but caution must be taken when using this option with
+specific instance references, because an error is raised if the
+requested nickname is already in use.
+
+\item[Ignore\label{html:mif2Ignore}]
+The \cd{Ignore} command takes an arbitrary number of arguments, which
+are thrown away without being interpreted.  The primary use of
+\cd{Ignore} is to temporarily ``comment out'' (i.e., disable) Specify
+blocks.
+
+\item[OOMMFRootDir\label{html:mif2oommfrootdir}]
+This command takes no arguments, and returns the full directory path of
+the \OOMMF\ root directory.  This is useful in conjunction with the
+\cd{ReadFile} command for locating files within the \OOMMF\ hierarchy,
+and can also be used to place output files.  File paths must be created
+directly since the \Tcl\ \cd{file} command is not accessible inside safe
+interpreters.  For example
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+set outfile [OOMMFRootDir]/data/myoutput
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+In this context one should always use \Tcl\ path conventions.  In
+particular, use forward slashes, ``\fs'', to separate directories.
+
+\item[Parameter\label{html:mif2parameter}]
+The Oxs interfaces
+(\hyperrefhtml{Oxsii}{Oxsii, Sec.~}{}{sec:oxsii} and
+\hyperrefhtml{Boxsi}{Boxsi, Sec.~}{}{sec:boxsi})
+allow specified variables in the \MIF\ file to be set from the command
+line via the \cd{-parameters} option.  This functionality is enabled
+inside the \MIF\ file via the \cd{Parameter} command:
+\begin{quote}
+\cd{Parameter} \textit{varname} \textit{optional\_default\_value}
+\end{quote}
+Here \textit{varname} is the name of a variable that may be set from
+the command line.  If it is not set on the command line then the
+variable is set to the optional default value, if any, or otherwise an
+error is raised.  An error is also raised if a variable set on the
+command line does not have a corresponding \cd{Parameter} command in the
+\MIF\ file.  See also the notes on
+\hyperrefhtml{variable substitution}{variable substitution
+(Sec.~}{)}{sec:varSubst} below.
+
+\item[Random\label{html:mif2Random}]
+Returns a pseudo-random number in the interval $[0,1]$, using a
+C-library random number generator.  This random number generator is
+specified by the \cd{OMF\_RANDOM} macro in the \fn{ocport.h} file found in
+the system-specific subdirectory of \fn{oommf/pkg/oc/}.  The standard
+\Tcl\ \cd{expr rand()} command is also available.
+
+\item[RandomSeed\label{html:mif2randomseed}]
+Initializes both the \Tcl\ and the C-library random number generators.
+If no parameter is given, then a seed is drawn from the system clock.
+Otherwise, one integer parameter may be specified to be used as the
+seed.
+
+\item[Report\label{html:MifReport}]
+Intended primarily as a \MIF\ debugging aid, \cd{Report} takes one
+string argument that is printed to the solver interface console and the
+Oxs log file.  It is essentially a replacement for the standard \Tcl\
+\cd{puts} command, which is not available in safe interpreters.
+
+\item[ReadFile\label{html:ReadFile}]
+The \Tcl\ \cd{read} command is absent from safe interpreters.  The
+\cd{ReadFile} command is introduced as a replacement available in
+``custom'' and ``unsafe'' interpreters.  \cd{ReadFile} takes two
+arguments, the file to be read and an optional translation
+specification.  The file may either be specified with an absolute path,
+i.e., one including all its directory components, or with a relative
+path interpreted with respect to the directory containing the \MIF\
+file.  The \cd{OOMMFRootDir} command can be used to advantage to locate
+files in other parts of the \OOMMF\ directory tree.
+
+The translation specification should be one of \cd{binary}, \cd{auto}
+(the default), \cd{image} or \cd{floatimage}\index{file!bitmap}.  The
+first two translation modes provide the functionality of the
+\cd{-translation} option of the \Tcl\ \cd{fconfigure} command.  Refer to
+the \Tcl\ documentation for details.  Specifying \cd{image} causes the
+input file to be read as an image file.  The file will be read
+directly if it in the PPM P3 (text), PPM P6 (binary), or uncompressed
+BMP formats; otherwise it is filtered through the \OOMMF\
+\hyperrefhtml{\app{any2ppm}}{\app{any2ppm}(Sec.~}{)}{sec:any2ppm}
+program.  (Note that \app{any2ppm} requires Tk, and Tk requires a
+display.)  The input file is converted into a string that mimics a PPM
+P3 text file, minus the leading ``P3''.  In particular, after conversion
+the first 3 whitespace separated values are image width, height and
+maxvalue, followed by an array of 3 $\times$ width $\times$ height
+values, where each triplet corresponds to the red, green and blue
+components of an image pixel, sequenced in normal English reading order.
+Each component is in the range $[0,maxvalue]$.  This output contains no
+comments, and may be treated directly as a \Tcl\ list.  The
+\cd{floatimage} option is very similar to the \cd{image} option, except
+that the third value (i.e., maxvalue) in the resulting string is always
+``1'', and the succeeding red, green and blue values are floating point
+values in the range $[0,1]$.
+
+In all cases, the return value from the \cd{ReadFile} command is a
+string corresponding to the contents of the (possibly translated) file.
+For example,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+eval [ReadFile extra_mif_commands.tcl]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+can be used to embed a separate \Tcl\ file into a \MIF~2.1 file.
+
+\index{file!bitmap|(}%
+Here's a more complicated example that uses a color image file to
+create a vector field:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+set colorimage [ReadFile mirror.ppm floatimage]
+set imagewidth [lindex $colorimage 0]
+set imageheight [lindex $colorimage 1]
+set imagedepth [lindex $colorimage 2] ;# Depth value should be 1
+if {$imagedepth != 1} {
+   Report "ReadFile returned unexpected list value."
+}
+
+proc ColorField { x y z } {
+     global colorimage imagewidth imageheight
+     set i [expr {int(floor(double($x)*$imagewidth))}]
+     if {$i>=$imagewidth} {set i [expr {$imagewidth-1}]}
+     set j [expr {int(floor(double(1-$y)*$imageheight))}]
+     if {$j>=$imageheight} {set j [expr {$imageheight-1}]}
+     set index [expr {3*($j*$imagewidth+$i)+3}]  ;# +3 is to skip header
+     set vx [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Red
+     set vy [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Green
+     set vz [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Blue
+     return [list $vx $vy $vz]
+}
+
+Specify Oxs_ScriptVectorField:sample {
+   atlas :atlas
+   norm 1.0
+   script ColorField
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}\index{file!bitmap|)}
+If the input image is large, then it is best to work with the image list
+(i.e., the variable \cd{colorimage} in the preceding example) directly,
+as illustrated above.  The image list as returned by \cd{ReadFile} is in
+a packed format; if you make modifications to the list values then the
+memory footprint of the list can grow substantially.
+
+The \cd{ReadFile} command is not available if the \cd{MIFinterp safety}
+option is set to \cd{safe} in the \fn{options.tcl}
+\hyperrefhtml{customization file}{customization file (Sec.~}{)}{sec:custom}.
+
+\item[RGlob\label{html:mif2rglob}]
+This command is modeled on the \Tcl\ \cd{glob} command (q.v.), but
+is restricted to the current working directory, that is, the
+directory holding the \MIF\ file.  The syntax is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+RGlob [-types typelist] [--] pattern [...]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The optional \texttt{typelist} restricts the match to files meeting the
+typelist criteria.  The optional \verb+--+ switch marks the end of
+options.  The one or more \texttt{pattern}'s should be glob-style
+patterns (strings containing asterisks and question marks) intended to
+match filenames in the current working directory.  See the \Tcl\
+\cd{glob} documentation for details on the \texttt{-types} option and
+glob pattern details.
+
+One use of this command is to identify files created by earlier runs of
+Oxs.  For example, suppose we wanted to use the mmArchive magnetization
+output from the third stage of a previous MIF file with basename ``sample''.
+Output files are tagged by stage number (here ``2'' since stages are
+counted from 0) and iteration.  The iteration is generally not known a
+priori, but assuming the output files are in the same directory as the
+current MIF file, we could use a command like
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+set file [RGlob sample-Oxs_MinDriver-Magnetization-02-???????.omf]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+to determine the name of the magnetization file.  If more than one
+magnetization state was saved for that stage, then the variable
+\cd{file} will hold a list of filenames.  In this case the \Tcl\ \cd{lsort}
+command can be used to select the one with the highest iteration number.
+The \cd{file} variable can be used in conjunction with the
+\htmlonlyref{\cd{Oxs\_FileVectorField}}{item:FileVectorField}
+class to import the magnetization into the new simulation, for example
+to set the initial magnetization configuration.
+
+The \cd{RGlob} command is not available if the \cd{MIFinterp safety}
+option is set to \cd{safe} in the \fn{options.tcl}
+\hyperrefhtml{customization file}{customization file
+(Sec.~}{)}{sec:custom}.  If \cd{MIFinterp safety} is set to
+\cd{unsafe}, then the standard (and more capable) \Tcl\
+\cd{glob} command will be available.
+
+\item[Schedule\label{html:scheduleCmd}]\index{Schedule~command~(MIF)}
+The \cd{Schedule} command is used to setup outputs from the \MIF\ file.
+This functionality is critical for solvers running in batch mode, but is
+also useful for setting up default connections in interactive mode.
+
+The syntax for the \cd{Schedule} command is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Schedule <outname> <desttag> <event> <frequency>
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The \cd{Schedule} command mirrors the interactive output scheduling
+provided by the
+\htmlonlyref{\app{Oxsii}}{sec:oxsii} and
+\htmlonlyref{\app{Boxsi}}{sec:boxsi}
+graphical interfaces\latex{ (Sec.~\ref{sec:oxs})}.  The first parameter
+to the \cd{Schedule} command is the name of the output being scheduled.
+These names are the same as those appearing in the ``Outputs'' list in
+the Oxs graphical interfaces, for example ``DataTable'' or
+``Oxs\_CubicAnisotropy:Nickel:Field.''  The name must be presented to
+the \cd{Schedule} command as a single argument; if the name includes one
+or more spaces then use double quotes to protect the spaces.  Aside from
+the DataTable output which is always present, the
+\textit{outname}'s are \MIF\ file dependent.
+
+The second parameter to the \cd{Schedule} command is a destination tag.
+This is a tag associated to a running application by a previous
+\htmlonlyref{\cd{Destination} command}{html:destinationCmd}\latex{ (see
+above)}.  The symbolic destination tag replaces the application:OID
+nomenclature used in the graphical interface, because in general it is
+not possible to know the \OOMMF\ ID for application instances at the
+time the \MIF\ file is composed.  In fact, some of the applications may
+be launched by \cd{Destination} commands, and so don't even have OID's
+at the time the \cd{Destination} command is processed.
+
+The \textit{event} parameter should be one of the keywords \cd{Step} or
+\cd{Stage}, and the \textit{frequency} parameter should be a positive integer,
+representing with what frequency of the specified event should output be
+dispatched.  For example, if \cd{Step 5} is given, then on every fifth
+step of the solver output of the indicated type will be sent to the
+selected destination.  Set \textit{frequency} to 1 to send output each
+time the event occurs.
+
+All of the parameters to the \cd{Schedule} command are required.
+
+There are examples of scheduling with the \cd{Destination} and
+\cd{Schedule} commands in the \hyperrefhtml{sample \MIF~2.1
+file}{sample \MIF~2.1 file presented in Fig.~}{}{fig:mif2sample}\latex{
+(Sec.~\ref{sec:mif2sample},
+pages~\pageref{sec:mif2sample}--\pageref{fig:mif2sample})}.  There,
+three destinations are tagged.  The first refers to a possibly already
+running instance of \app{mmGraph}, having nickname Hysteresis.  The
+associated \cd{Schedule} command sends DataTable output to this
+application at the end of each Stage, so hysteresis graphs can be
+produced.  The second destination tag references a different copy of
+\app{mmGraph} that will be used for monitoring the run.  To make sure
+that this output is rendered onto a blank slate, the \texttt{new}
+keyword is used to launch a fresh copy of \app{mmGraph}.  The
+\cd{Schedule} command for the monitor destination delivers output to
+the monitoring \app{mmGraph} every 5 iterations of the solver.  The last
+\cd{Destination} command tags an arbitrary \app{mmArchive} application,
+which is used for file storage of DataTable results at the end of each
+stage, and snapshots of the magnetization and total field at the end of
+every third stage.  Note that double quotes enclose the
+``Oxs\_EulerEvolve::Total field'' output name.  Without the quotes, the
+\cd{Schedule} command would see five arguments,
+``Oxs\_EulerEvolve::Total'', ``field'', ``archive'', ``Stage'', and
+``3''.
+\end{description}
+
+\subsubsection{Specify Conventions}%
+\label{sec:specConventions}\index{Specify~conventions~(MIF)}
+The Specify blocks in the input \MIF\ file determine the collection
+of \cd{Oxs\_Ext} objects defining the Oxs simulation.  As explained
+above, the \htmlonlyref{\cd{Specify}}{html:specifyCmd} command takes two
+arguments, the name of the \cd{Oxs\_Ext} object to create, and an
+initialization string.  The format of the initialization string can
+be arbitrary, as determined by the author of the \cd{Oxs\_Ext} class.
+This section presents a number of recommended conventions which
+\cd{Oxs\_Ext} class authors are encouraged to follow.  Any \cd{Oxs\_Ext}
+classes that don't follow these conventions should make that fact
+explicitly clear in their documentation.
+Details on the standard \cd{Oxs\_Ext} classes included with \OOMMF\ can
+be found in the
+\hyperrefhtml{Oxs section}{Oxs documentation (Sec.~}{)}{sec:oxs}\html{
+of this document}.
+
+\paragraph{Initialization string format}%
+\label{par:specInitString}\index{Specify~initialization~string~(MIF)}
+Consider again the simple Specify block presented above:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_EulerEvolve:foo {
+  alpha 0.5
+  start_dm 0.01
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The first convention is that the initialization string be structured as
+a \Tcl\ list\index{Tcl~list} with an even number of elements, with
+consecutive elements consisting of a label + value pairs.  In the above
+example, the initialization string consists of two label + value pairs,
+``alpha 0.5'' and ``start\_dm 0.01''.  The first specifies that the
+damping parameter $\alpha$ in the Landau-Lifshitz ODE is 0.5.  The
+second specifies the initial step size for the integration routine.
+Interested parties should refer to a \Tcl\ programming reference (e.g.,
+\cite{welch00}) for details on forming a proper \Tcl\ list, but in short
+the items are separated by whitespace, and grouped by double quotes or
+curly braces (``\verb+{+'' and ``\verb+}+'').  Opening braces and quotes
+must be whitespace separated from the preceding text.  Grouping
+characters are removed during parsing.  In this example the list as a
+whole is set off with curly braces, and individual elements are white
+space delimited.  Generally, the ordering of the label + value pairs in
+the initialization string is irrelevant, i.e., \cd{start\_dm 0.01} could
+equivalently precede \cd{alpha 0.5}.
+
+Sometimes the value portion of a label + value pair will itself be a list,
+as in this next example:
+\begin{latexonly}
+\begin{quote}\tt
+Specify Oxs\_BoxAtlas:myatlas \ocb\\
+\bi\bi\ldots\\
+\ccb\\
+\\
+Specify Oxs\_RectangularMesh:mymesh \ocb \\
+\bi cellsize \ocb\ 5e-9 5e-9 5e-9 \ccb\\
+\bi atlas Oxs\_BoxAtlas:myatlas\\
+\ccb
+\end{quote}
+\end{latexonly}
+\begin{rawhtml}<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_BoxAtlas:myatlas {</TT>
+<DD>...
+<DT><TT>}</TT>
+<DT><DT><TT>Specify Oxs_RectangularMesh:mymesh {</TT>
+<DD><TT>cellsize { 5e-9 5e-9 5e-9 }</TT>
+<DD><TT>atlas Oxs_BoxAtlas:myatlas</TT>
+<DT><TT>}</TT></DL>
+</BLOCKQUOTE><P>
+\end{rawhtml}
+Here the value associated with ``cellsize'' is a list of 3 elements,
+which declare the sampling rate along each of the coordinate axes, in
+meters.  (\cd{Oxs\_BoxAtlas} is a particular type of \cd{Oxs\_Atlas},
+and ``\ldots'' mark the location of the \cd{Oxs\_BoxAtlas}
+initialization string, which is omitted because it is not pertinent to
+the present discussion.)
+
+
+\paragraph{\cd{Oxs\_Ext} referencing}%
+\label{par:oxsExtReferencing}\index{Oxs\_Ext~referencing~(MIF)}
+The ``atlas'' value in the mesh Specify block of the preceding example
+refers to an earlier \cd{Oxs\_Ext} object, ``Oxs\_BoxAtlas:myatlas''.
+It frequently occurs that one \cd{Oxs\_Ext} object needs access to
+another \cd{Oxs\_Ext} object.  In this example the mesh object
+\cd{:mymesh} needs to query the atlas object \cd{:myatlas} in order to
+know the extent of the space that is to be gridded.  The atlas object is
+defined earlier in the \MIF\ input file by its own, separate, top-level
+Specify block, and the mesh object refers to it by simply specifying its
+name.  Here the full name is used, but the short form \cd{:myatlas}
+would suffice, provided no other \cd{Oxs\_Ext} object has the same short
+name.
+
+Alternatively, the \cd{Oxs\_RectangularMesh} object could define an
+\cd{Oxs\_BoxAtlas} object inline:
+\begin{latexonly}
+\begin{quote}\tt
+Specify Oxs\_RectangularMesh:mymesh \ocb \\
+\bi atlas \ocb\\
+\bi\bi Oxs\_BoxAtlas \ocb\\
+\bi\bi\bi\ldots\\
+\bi\bi\ccb\\
+\bi\ccb\\
+\bi cellsize \ocb\ 5e-9 5e-9 5e-9 \ccb\\
+\ccb
+\end{quote}
+\end{latexonly}
+\begin{rawhtml}<BLOCKQUOTE><DL><DT>
+<DT><DT><TT>Specify Oxs_RectangularMesh:mymesh {</TT>
+<DD><TT>atlas { Oxs_BoxAtlas {</TT>
+<DD><DL><DD>...</DL>
+<DD><TT>}}</TT>
+<DD><TT>cellsize { 5e-9 5e-9 5e-9 }</TT>
+<DT><TT>}</TT></DL>
+</BLOCKQUOTE><P>
+\end{rawhtml}
+In place of the name of an external atlas object, a
+two item list is provided consisting of the type of object (here
+\texttt{Oxs\_BoxAtlas}) and the corresponding initialization
+string.  The initialization string is provided as a sublist, with the
+same format that would be used if that object were initialized via a
+separate Specify block.
+
+More commonly, embedded \cd{Oxs\_Ext} objects are used to initialize
+spatially varying quantities.  For
+example,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy {
+  axis { Oxs_RandomVectorField {
+           min_norm 1
+           max_norm 1
+  }}
+  K1  { Oxs_UniformScalarField { value 530e3 } }
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\sloppy
+The magneto-crystalline anisotropy class \cd{Oxs\_UniaxialAnisotropy}
+supports cellwise varying K1 and anisotropy axis directions.  In this
+example, the anisotropy axis directions are randomly distributed.  To
+initialize its internal data structure, \cd{Oxs\_UniaxialAnisotropy}
+creates a local \cd{Oxs\_RandomVectorField} object.  This object is
+also a child of the \cd{Oxs\_Ext} hierarchy, which allows it to be
+constructed using the same machinery invoked by the \cd{Specify}
+command.  However, it is known only to the enclosing
+\cd{Oxs\_UniaxialAnisotropy} object, and no references to it are
+possible, either from other Specify blocks or even elsewhere inside
+the same initialization string.  Because it cannot be referenced, the
+object does not need an instance name.  It does need an initialization
+string, however, which is given here as the 4-tuple ``min\_norm 1
+max\_norm 1''.  Notice how the curly braces are nested so that this
+4-tuple is presented to the \cd{Oxs\_RandomVectorField} initializer as a
+single item, while ``Oxs\_RandomVectorField'' and the associated
+initialization string are wrapped up in another \Tcl\ list, so that the
+value associated with ``axis'' is parsed at that level as a single item.
+
+\fussy
+The value associated with ``K1'' is another embedded \cd{Oxs\_Ext}
+object.  In this particular example, K1 is desired uniform (homogeneous)
+throughout the simulation region, so the trivial
+\cd{Oxs\_UniformScalarField} class is used for initialization (to the value
+\latex{$530\times 10^{3}$~J/m${}^3$}\html{530e3 J/m^3}).  In the case of
+uniform fields, scalar or vector, a shorthand notation is available that
+implicitly supplies a uniform \cd{Oxs\_Ext} field class:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  K1  530e3
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+which is equivalent to
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy {
+  axis { Oxs_UniformVectorField {
+           vector { 1 0 0 }
+  }}
+  K1  { Oxs_UniformScalarField { value 530e3 } }
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+While embedding \cd{Oxs\_Ext} objects inside Specify blocks can be
+convenient, it is important to remember that such objects are not
+available to any other \cd{Oxs\_Ext} object---only objects declared via
+top-level Specify blocks may be referenced from inside other
+Specify blocks.  Also, embedded \cd{Oxs\_Ext} objects cannot
+directly provide user output.  Furthermore, the only \cd{Oxs\_Energy}
+energy objects included in energy and field calculations are those
+declared via top-level Specify blocks.  For this reason
+\cd{Oxs\_Energy} terms are invariably created via top-level Specify
+blocks, and not as embedded objects.
+
+\paragraph{Grouped lists}%
+\label{par:groupedLists}\index{grouped~lists~(MIF)}
+As noted earlier, sometimes the value portion of a label + value pair
+will be a list.  Some Oxs objects support \textit{grouped lists}, which
+provide a type of run-length encoding for lists.  Consider the sample
+list
+\begin{verbatim}
+   { 1.1  1.2  1.2  1.2  1.2  1.3 }
+\end{verbatim}
+In a grouped list the middle run of 1.2's may be represented as a
+sublist with a repeat count of 4, like so
+\begin{verbatim}
+   { 1.1  { 1.2  4 } 1.3 :expand: }
+\end{verbatim}
+Here the \cd{:expand:} keyword, when appearing as the last element of
+the top level list, enables the group expansion mechanism.  Any
+preceding element, such as \cd{\ocb\ 1.2 4 \ccb}, that 1) is a proper
+sublist, and 2) has a positive integer as the last element, is treated
+as a grouped sublist with repeat count given by the last element.  No
+element of the top-level list is ever interpreted as a repeat count.
+For example, the short form of the list
+\begin{verbatim}
+   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
+\end{verbatim}
+is
+\begin{verbatim}
+   { { 1e-9 6 } :expand: }
+\end{verbatim}
+Note the additional level of brace grouping.  Grouped lists may also be
+nested, as in this example
+\begin{verbatim}
+   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
+\end{verbatim}
+which is equivalent to
+\begin{verbatim}
+   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
+\end{verbatim}
+There are some difficulties with this mechanism when the list components
+are strings, such as filenames, that may contain embedded spaces.  For
+example, consider the list
+\begin{verbatim}
+   { "file 3" "file 3" "5 file" }
+\end{verbatim}
+If we tried to write this as
+\begin{verbatim}
+   { { "file 3" 2 } "5 file" :expand: }
+\end{verbatim}
+we would find that, because of the nested grouping rules, this grouped
+list gets expanded into
+\begin{verbatim}
+   { file file file file file file "5 file" }
+\end{verbatim}
+Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
+Following normal \Tcl\ rules, the double quotes are treated as equivalents
+to braces for grouping purposes.  However, the keyword \cd{:noexpand:}
+may be used to disable further expansion, like so
+\begin{verbatim}
+   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
+\end{verbatim}
+The \cd{:noexpand:} keyword placed at the end of a list disables all
+group expansion in that list.  Although it is an unlikely example,
+if one had a flat, i.e., non-grouped list with last element ``:expand:'',
+then one would have to disable the grouping mechanism that would
+otherwise be invoked by appending \cd{:noexpand:} to the list.  In
+flat lists generated by program code, it is recommended to append
+\cd{:noexpand:} just to be certain that the list is not expanded.
+
+As a matter of nomenclature, standard (i.e., flat) lists and single
+values are also considered grouped lists, albeit trivial ones.  Any Oxs
+object that accepts grouped lists in its Specify block should explicitly
+state so in its documentation.
+
+\paragraph{Comments}%
+\label{par:specifyComments}\index{Specify~comments~(MIF)}
+The standard \Tcl\ commenting mechanism treats all text running from an
+initial \lb\ symbol through to the end of a line as a comment.  You may
+note in the above examples that newlines are treated the same as
+other whitespace inside the curly braces delimiting the \cd{Specify}
+initialization string.  Because of this and additional reasons, \Tcl\
+comments cannot be used inside Specify blocks.  Instead, by
+convention any label + value pair where label is ``comment'' is treated
+as a comment and thrown away.  For example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  comment {K1  4500e3}
+  K1 530e3
+  comment { 530e3 J/m^3 is nominal for Co }
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Pay attention to the difference between ``comment'' used here as the
+label portion of a label + value pair, and the \MIF\ extension command
+``Ignore'' used outside Specify blocks.  In particular, \cd{Ignore}
+takes an arbitrary number of arguments, but the value element associated
+with a comment label must be grouped as a single element, just as any
+other value element.
+
+\paragraph{Attributes}%
+\label{par:specifyAttributes}\index{Specify~attributes~(MIF)}
+Sometimes it is convenient to define label + value pairs outside a
+particular Specify block, and then import them using the
+``attributes'' label.  For example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_LabelValue:probdata {
+  alpha 0.5
+  start_dm 0.01
+}
+Specify Oxs_EulerEvolve {
+  attributes :probdata
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The \cd{Oxs\_LabelValue} object is an \cd{Oxs\_Ext} class that does
+nothing except hold label + value pairs.  The ``attributes'' label acts as an
+include statement, causing the label + value pairs contained in the
+specified \cd{Oxs\_LabelValue} object to be embedded into the enclosing
+\cd{Specify} initialization string.  This technique is most useful if the
+label + value pairs in the \cd{Oxs\_LabelValue} object are used in
+multiple Specify blocks, either inside the same \MIF\ file, or
+across several \MIF\ files into which the \cd{Oxs\_LabelValue} block is
+imported using the \cd{ReadFile} \MIF\ extension command.
+
+\paragraph{User defined support procedures}%
+\label{par:supportProcs}\index{Specify~support~procs~(MIF)}
+A number of \cd{Oxs\_Ext} classes utilize user-defined \Tcl\
+procedures (procs) to provide extended runtime functionality.  The
+most common examples are the various field initialization script
+classes, which call a user specified \Tcl\ proc for each point in the
+simulation discretization mesh.  The proc returns a value, either
+scalar or vector, which is interpreted as some property of the
+simulation at that point in space, such as saturation magnetization,
+anisotropy properties, or an external applied field.
+
+Here is an example proc that may be used to set the initial
+magnetization configuration into an approximate vortex state, with a
+central core in the positive $z$ direction:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+proc Vortex { x_rel y_rel z_rel } {
+   set xrad [expr {$x_rel-0.5}]
+   set yrad [expr {$y_rel-0.5}]
+   set normsq [expr {$xrad*$xrad+$yrad*$yrad}]
+   if {$normsq <= 0.0125} {return "0 0 1"}
+   return [list [expr {-1*$yrad}] $xrad 0]
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The return value in this case is a 3D vector representing the spin
+direction at the point \texttt{(x\_rel,y\_rel,z\_rel)}.  Procs
+that are used to set scalar properties, such as saturation
+magnetization $M_s$, return a scalar value instead.  But in both
+cases, the import argument list specifies a point in the simulation
+mesh.
+
+In the above example, the import point is specified relative to the
+extents of the simulation mesh.  For example, if \texttt{x\_rel} were
+0.1, then the $x$-coordinate of the point is one tenth of the way
+between the minimum $x$ value in the simulation  and the maximum $x$
+value.  In all cases \texttt{x\_rel} will have a value between 0 and
+1.
+
+In most support proc examples, relative coordinates are the most
+flexible and easiest representation to work with.  However, by
+convention, scripting \cd{Oxs\_Ext} classes also support absolute
+coordinate representations.  The representation used is selected in the
+\cd{Oxs\_Ext} object Specify block by the optional \cd{script\_args}
+entry.  The \Tcl\ proc itself is specified by the \cd{script} entry,
+as seen in this example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify ScriptScalarField:Ms {
+   atlas :atlas
+   script_args { rawpt }
+   script SatMag
+}
+proc SatMag { x y z } {
+   if {$z < 20e-9} {return 8e5}
+   return 5e5
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The value associated with the label \cd{script\_args} should in this
+case be a subset of \cd{\ocb relpt rawpt minpt maxpt span scalars
+vectors\ccb}, as explained in the
+\htmlonlyref{\cd{Oxs\_ScriptScalarField}}{item:ScriptScalarField}
+documentation\latex{ (page~\pageref{item:ScriptScalarField})}.  Here
+\cd{rawpt} provides the point representation in problem coordinates,
+i.e., in meters.  Other \cd{Oxs\_Ext} objects support a different list of
+allowed \cd{script\_args} values.  Check the documentation of the
+\cd{Oxs\_Ext} object in question for details.  Please note that the
+names used in the proc argument lists above are for exposition purposes
+only.  You may use other names as you wish.  It is the order of the
+arguments that is important, not their names.  Also, because the \MIF\
+file is parsed first in toto before the Specify blocks are evaluated,
+the support procs may be placed anywhere in the \MIF\ file, regardless
+of the location of the referencing Specify blocks.
+
+The command call to the \Tcl\ support proc is actually built up by
+appending to the \cd{script} value the arguments as specified by the
+\cd{script\_args} value.  This allows additional arguments to the
+\Tcl\ proc to be specified in the \cd{script} value, in which case
+they will appear in the argument list in front of the
+\cd{script\_args} values.  The following is equivalent to the
+preceding example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify ScriptScalarField:Ms {
+   script_args { rawpt }
+   script {SatMag 20e-9 8e5 5e5}
+}
+proc SatMag { zheight Ms1 Ms2 x y z } {
+   if {$z < $zheight} {return $Ms1}
+   return $Ms2
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Notice in this case that the \cd{script} value is wrapped in curly
+braces so that the string \cd{SatMag 20e-9 8e5 5e5} will be treated as
+the single value associated with the label \cd{script}.
+
+As seen in the earlier example using the \cd{Vortex} \Tcl\ proc,
+support procedures in \MIF~2.1 files will frequently make use of the
+\Tcl\ \cd{expr} command.  If you are using \Tcl\ version 8.0 or later,
+then the cpu time required by the potentially large number of calls to
+such procedures can be greatly reduced by grouping the arguments to
+\cd{expr} commands in curly braces, as illustrated in the
+\cd{Vortex} example.  The braces aid the operation of the \Tcl\
+byte code compiler, although there are a few rare situations involving
+multiple substitution where such bracing cannot be applied.  See the
+\Tcl\ documentation for the \cd{expr} command for details.
+
+\index{file!mask|(}%
+Sometimes externally defined data can be put to good use inside a
+\Tcl\ support proc, as in this example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+# Lay out a 6 x 16 mask, at global scope.
+set mask {
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+   1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
+}
+proc MyShape { xrel yrel znotused } {
+   global mask  ;# Make mask accessible inside proc
+   set Ms 8e5   ;# Saturation magnetization of element
+   set xindex [expr {int(floor($xrel*16))}]
+   set yindex [expr {5 - int(floor($yrel*6))}]
+   set index [expr {$yindex*16+$xindex}]
+   # index references point in mask corresponding
+   # to (xrel,yrel)
+   return [expr {[lindex $mask $index]*$Ms}]
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The variable \cd{mask} holds a \Tcl\ list of 0's and 1's defining a part
+shape.  The mask is brought into the scope of the \cd{MyShape} proc via
+the \Tcl\ \cd{global} command.  The relative $x$ and $y$ coordinates are
+converted into an index into the list, and the proc return value is
+either 0 or 8e5 depending on whether the corresponding point in the mask
+is 0 or 1.  This is essentially the same technique used in the
+\cd{ColorField} proc example presented in the
+\htmlonlyref{\cd{ReadFile}}{html:ReadFile} \MIF\ extension command
+documented above\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})},
+except that there the data structure values are built from a separate
+image file rather than from data embedded inside the \MIF\ file.
+\index{file!mask|)}
+
+\paragraph{User defined scalar outputs}%
+\label{par:userScalarOutputs}\index{Specify~user~scalar~outputs~(MIF)}
+\OOMMF\ \cd{Oxs\_Ext} objects support a general method to allow users to
+define scalar (DataTable) outputs derived from vector field outputs.
+These scalar outputs are defined by ``\cd{user\_output}'' sub-blocks inside
+Specify blocks.  The format is:
+      \begin{latexonly}
+      \begin{quote}\tt
+      user\_output \ocb\\
+       \bi name \oxsval{output\_name}\\
+       \bi source\_field \oxsval{source}\\
+       \bi select\_field \oxsval{weighting}\\
+       \bi normalize \oxsval{norm\_request}\\
+       \bi exclude\_0\_Ms \oxsval{novacuum}\\
+       \bi user\_scaling \oxsval{scale}\\
+       \bi units \oxsval{units}\\
+      \ccb
+      \end{quote}
+      \end{latexonly}
+      \begin{rawhtml}<BLOCKQUOTE><DL><DT>
+      <TT>user_output {</TT>
+      <DD><TT> name </TT><I>output_name</I>
+      <DD><TT> source_field </TT><I>source</I>
+      <DD><TT> select_field </TT><I>weighting</I>
+      <DD><TT> normalize </TT><I>norm_request</I>
+      <DD><TT> exclude_0_Ms </TT><I>novacuum</I>
+      <DD><TT> user_scaling </TT><I>scale</I>
+      <DD><TT> units </TT><I>units</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+      \end{rawhtml}
+The first parameter, \oxslabel{name}, specifies the label attached to
+this output in the DataTable results; the full name will be the Specify
+block instance name, followed by \oxsval{:output\_name}.  The second
+parameter, \oxslabel{source\_field}, specifies the vector field output
+that the output is derived from.  The \oxsval{source} value should
+match the label for the source field output as displayed in the ``Output'' pane
+of the Oxsii or Boxsi interactive interface; this can also be found in the
+documentation for the source field \cd{Oxs\_Ext} class.  If the source
+field is from the same class as the user output, then \oxsval{source}
+can use the short form of the name (i.e., the component following the
+last ``:''); otherwise the full name must be used.
+
+The third parameter, \oxslabel{select\_field}, references a field that
+is used to weight the source field to create the scalar output.  The
+output is computed according to
+\begin{equation}
+\sum_i W_{\rm select}[i]\cdot V_{\rm source}[i]
+/\sum_i \|W_{\rm select}[i]\|
+\label{eq:UserScalarOutput}
+\end{equation}
+where the sums are across all cells in the simulation, $W_{\rm
+select}[i]$ is the value of the select field at cell $i$,
+$V_{\rm source}[i]$ is the value of the source field at cell $i$,
+and ``$\cdot$'' indicates the scalar (dot) product.
+
+The first three parameters are required, the remaining parameters are
+optional.  The first of the optional parameters, \oxslabel{normalize},
+affects the denominator in (\ref{eq:UserScalarOutput}).  If
+\oxsval{norm\_request} is 1 (the default), then the output is computed
+as shown in (\ref{eq:UserScalarOutput}).  If \oxsval{norm\_request} is 0,
+then instead the denominator is replaced with the number of cells in the
+simulation, i.e., $\sum_i 1$.
+
+The second optional parameter, \oxslabel{exclude\_0\_Ms}, is a
+convenience operator; if \oxsval{novacuum} is 1, then the select field
+is reset so that it is the zero vector at all cells in the simulation
+where the saturation magnetization is zero.  This is especially useful
+when you want to compute the average magnetization of a shaped part.
+The change to the select field is made before the denominator in
+(\ref{eq:UserScalarOutput}) is computed, so setting
+\oxslabel{exclude\_0\_Ms} to 1 is equivalent to defining the select
+field as being zero where $M_s$ is zero in the first place.  The default
+value for this parameter is 0, which results in the select field being
+used exactly as defined.
+
+The \oxslabel{user\_scaling} parameter (default value 1.0) allows the
+user to define a constant factor that is multiplied against the result
+of (\ref{eq:UserScalarOutput}).  This can be used, for example, in
+conjuction with the \oxslabel{units} parameter to implement unit
+conversion.  The \oxsval{units} value is an arbitrary string (for
+example, A/m) that is placed in the DataTable output.  If \oxsval{units}
+is not set, then the units string is copied from the units for the
+source field.
+
+The following is a simple example showing two user outputs based
+off the demagnetization field:
+% The extra BLOCKQUOTE's here are a workaround for an apparent
+% latex2html bug
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $cube_edge}
+  yrange {0 $cube_edge}
+  zrange {0 $cube_edge}
+}]
+
+Specify Oxs_BoxAtlas:octant [subst {
+  xrange {0 [expr {$cube_edge/2.}]}
+  yrange {0 [expr {$cube_edge/2.}]}
+  zrange {0 [expr {$cube_edge/2.}]}
+}]
+
+Specify Oxs_AtlasVectorField:octant_field_y {
+   atlas :octant
+   default_value {0 0 0}
+   values {
+      octant {0 1 0}
+   }
+}
+
+Specify Oxs_Demag {
+  user_output {
+     name "Hdemag_x"
+     source_field Field
+     select_field {1 0 0}
+  }
+  user_output {
+     name "octant Hdemag_y"
+     source_field Field
+     select_field :octant_field_y
+  }
+}\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The first user output, ``\cd{Hdemag\_x},'' returns the
+$x$-component of the demagnetization field, averaged across the entire
+simulation volume.  This output will appear in DataTable output with the
+label ``\cd{Oxs\_Demag::Hdemag\_x}.''  The \cd{source\_field} parameter
+``Field'' refers to the ``Field'' output of the surrounding
+\cd{Oxs\_Ext} object, which in this case means \cd{Oxs\_Demag::Field}.
+The select field is $(1,0,0)$, uniform across the simulation volume.
+The second output, ``\cd{octant Hdemag\_y},'' is similar, but the
+average is of the $y$ component of the demagnetization field, and is
+averaged across only the first octant of the simulation volume.  The
+averaging volume and component selection are defined by the
+\cd{:octant\_field\_y} field object, which is $(0,1,0)$ in the first
+octant and $(0,0,0)$ everywhere else.
+
+The source code for user defined scalar outputs can be found in the
+files \fn{ext.h} and \fn{ext.cc} in the directory \fn{oommf/app/oxs/base/}.
+
+\subsubsection{Variable Substitution}%
+\label{sec:varSubst}\index{variable~substitution~(MIF)}
+One powerful consequence of the evaluation of \MIF~2.1 input files by
+\Tcl\ is the ability to define and use variables.  For example,
+the Oxs interfaces (\hyperrefhtml{Oxsii}{Oxsii,
+Sec.~}{}{sec:oxsii} and \hyperrefhtml{Boxsi}{Boxsi, Sec.~}{}{sec:boxsi})
+use the \cd{-parameter} command line option in conjunction with
+the \MIF\ \htmlonlyref{Parameter}{html:mif2parameter} command to
+set variables from the command line for use inside the \MIF\ input file.
+Variables in \Tcl\ are evaluated (i.e., value substituted)
+by prefixing the variable name with the symbol ``\$''.  For example, if
+\cd{cellsize} is a variable holding the value \cd{5e-9}, then
+\cd{\$cellsize} evaluates to \cd{5e-9}.
+
+Unfortunately, there are complications in using variables inside
+Specify blocks.  Consider this simple example:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Parameter cellsize 5e-9
+Specify Oxs_RectangularMesh:BadExample {
+  comment {NOTE: THIS DOESN'T WORK!!!}
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This \textbf{doesn't work}, because the curly braces used to set off the
+\cd{Specify} initialization string also inhibit variable substitution.
+There are several ways to work around this, but the easiest is usually
+to embed the initialization string inside a \cd{subst} (substitution)
+command:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Parameter cellsize 5e-9
+Specify Oxs_RectangularMesh:GoodExample [subst {
+  comment {NOTE: This works.}
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Here the square brackets, ``\texttt{[}'' and ``\texttt{]}'',
+cause \Tcl\ to perform \textit{command substitution}, i.e.,
+execute the string inside the square brackets as a \Tcl\
+command, in this case the \cd{subst} command.  See the \Tcl\
+documentation for \cd{subst} for details, but the default
+usage illustrated above performs variable, command and
+backslash substitutions on the argument string.
+
+One more example, this time involving both variable and command
+substitution:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+Specify Oxs_UZeeman [subst {
+  comment {Set units to mT}
+  Hscale [expr {0.001/$mu0}]
+  Hrange {
+     {  0  0  0   10  0  0   2 }
+     { 10  0  0  -10  0  0   2 }
+  }
+}]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Note that the \cd{subst} command is evaluated at global scope, so that
+the global variable \cd{mu0} is directly accessible.
+
+\subsubsection{Sample \MIF~2.1 File}\label{sec:mif2sample}
+\begin{codelisting}{p}{fig:mif2sample}{Example \MIF~2.1 file.}{pt:mif2format}
+\begin{verbatim}
+# MIF 2.1
+#
+# All units are SI.
+#
+# This file must be a valid Tcl script.
+#
+
+# Initialize random number generators with seed=1
+RandomSeed 1
+
+# Individual Oxs_Ext objects are loaded and initialized via
+# Specify command blocks.  The following block defines the
+# extents (in meters) of the volume to be modeled.  The
+# prefix "Oxs_BoxAtlas" specifies the type of Oxs_Ext object
+# to create, and the suffix ":WorldAtlas" is the name
+# assigned to this particular instance.  Each object created
+# by a Specify command must have a unique full name (here
+# "Oxs_BoxAtlas:WorldAtlas").  If the suffix is not
+# explicitly given, then the default ":" is automatically
+# assigned.  References may be made to either the full name,
+# or the shorter suffix instance name (here ":WorldAtlas")
+# if the latter is unique. See the Oxs_TimeDriver block for
+# some reference examples.
+Specify Oxs_BoxAtlas:WorldAtlas {
+  xrange {0 500e-9}
+  yrange {0 250e-9}
+  zrange {0 10e-9}
+}
+
+# The Oxs_RectangularMesh object is initialized with the
+# discretization cell size (in meters).
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :WorldAtlas
+}
+
+# Magnetocrystalline anisotropy block.   The setting for
+# K1 (500e3 J/m^3) implicitly creates an embedded
+# Oxs_UniformScalarField object.  Oxs_RandomVectorField
+# is an explicit embedded Oxs_Ext object.
+Specify Oxs_UniaxialAnisotropy {
+  K1  530e3
+  axis { Oxs_RandomVectorField {
+           min_norm 1
+           max_norm 1
+  } }
+}
+
+# Homogeneous exchange energy, in J/m.  This may be set
+# from the command line with an option like
+#    -parameters "A 10e-12"
+# If not set from the command line, then the default value
+# specified here (13e-12) is used.
+Parameter A 13e-12
+Specify Oxs_UniformExchange:NiFe [subst {
+  A  $A
+}]
+
+# Define a couple of constants for later use.
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+# The Oxs_UZeeman class is initialized with field ranges in A/m.
+# The following block uses the multiplier option to allow ranges
+# to be specified in mT.  Use the Tcl "subst" command to enable
+# variable and command substitution inside a Specify block.
+Specify Oxs_UZeeman:AppliedField [subst {
+  multiplier [expr 0.001/$MU0]
+  Hrange {
+    {  0  0  0   10  0  0   2 }
+    { 10  0  0  -10  0  0   2 }
+    {  0  0  0    0 10  0   4 }
+    {  1  1  1    5  5  5   0 }
+  }
+}]
+
+# Enable demagnetization (self-magnetostatic) field
+# computation.  This block takes no parameters.
+Specify Oxs_Demag {}
+
+# Runge-Kutta-Fehlberg ODE solver, with default parameter values.
+Specify Oxs_RungeKuttaEvolve {}
+
+# The following procedure is used to set the initial spin
+# configuration in the Oxs_TimeDriver block.  The arguments
+# x, y, and z are coordinates relative to the min and max
+# range of each dimension, e.g., 0<=x<=1, where x==0
+# corresponds to xmin, x==1 corresponds to xmax.
+proc UpDownSpin { x y z } {
+  if { $x < 0.45 } {
+    return "0 1 0"
+  } elseif { $x > 0.55 } {
+    return "0 -1 0"
+  } else {
+    return "0 0 1"
+  }
+}
+
+Specify Oxs_TimeDriver {
+ evolver Oxs_RungeKuttaEvolve
+ stopping_dm_dt 0.01
+ mesh :mesh
+ Ms 8e5   comment {implicit Oxs_UniformScalarField object}
+ m0 { Oxs_ScriptVectorField {
+        script {UpDownSpin}
+        norm  1
+        atlas :WorldAtlas
+ } }
+ basename example
+}
+
+# Default outputs
+Destination hystgraph mmGraph:Hysteresis
+Destination monitor   mmGraph   new
+Destination archive   mmArchive
+
+Schedule DataTable hystgraph Stage 1
+Schedule DataTable monitor   Step 5
+Schedule DataTable archive   Stage 1
+Schedule Oxs_TimeDriver::Magnetization archive Stage 3
+Schedule "Oxs_RungeKuttaEvolve::Total field" archive Stage 3
+\end{verbatim}
+\end{codelisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{\MIF\ 2.2}\label{sec:mif22format}
+\begin{rawhtml}
+<A NAME="pt:mif22format"></A>
+\end{rawhtml}
+The \MIF~2.2 format, introduced with \OOMMF~1.2a4, is a minor
+modification to the \MIF~2.1 format.  \MIF~2.2 provides a few additional
+commands, and is mostly backwards compatible with \MIF~2.1, except as
+detailed below.
+\subsubsection{Differences between \MIF~2.2 and \MIF~2.1 Formats}\label{sec:mif22diffs}
+\begin{enumerate}
+\item The first line of a \MIF~2.2 file must be ``\verb+#+ MIF 2.2''.
+\item The \cd{basename}, \cd{scalar\_output\_format} and
+ \cd{vector\_field\_output\_format} options to the \cd{Oxs\_TimeDriver}
+ and \cd{Oxs\_MinDriver} objects are no longer supported.  Instead,
+ there is a new top-level extension command, \cd{SetOptions}, where
+ these options are declared.  The \cd{SetOptions} block also
+ supports new options for controlling output vector field mesh type
+ (rectangular or irregular) and scalar field output format.
+\item In the \MIF~2.1 format, \MIF\ files are
+ processed in a two pass mode.  During the first pass, \cd{Specify}
+ commands simply store the contents of the \cd{Specify} blocks without
+ creating any \cd{Oxs\_Ext} objects.  The \cd{Oxs\_Ext} objects
+ associated with each \cd{Specify} block are created in the second pass
+ from the data stored in the first pass.  In the \MIF~2.2 format, this is
+ replaced with a one pass mode, where \cd{Oxs\_Ext} objects are created
+ at the time that the \cd{Specify} commands are parsed.  This processing
+ model is more intuitive for \MIF\ file authors, but has two main
+ consequences.  The first is that in \MIF~2.1 format files, \Tcl procs that
+ are used only inside \cd{Specify} commands can be placed anywhere inside
+ the \MIF\ file (for example, commonly at the end), because they won't be
+ called during the first pass.  As long as they are defined at any point
+ during the first pass, they will be available for use in the second
+ pass.  In contrast, in the \MIF~2.2 format, \Tcl procs definitions must
+ generally be moved forward, before any references in \cd{Specify}
+ blocks.  The second consequence is that \cd{Oxs\_Ext} objects defined by
+ \cd{Specify} commands are available for use inside the \MIF\ file.  This
+ allows support for the two new commands discussed next.
+\item Two new top-level extension commands are supported in the \MIF~2.2
+ format, \cd{EvalScalarField} and \cd{EvalVectorField}.  These commands
+ are described in detail below.
+\end{enumerate}
+
+\subsubsection{\MIF~2.2 New Extension Commands}%
+\label{sec:mif22ExtensionCommands}\index{MIF~2.2~Commands}
+In addition to the commands available in
+\hyperrefhtml{\MIF~2.1 files}{\MIF~2.1 files (Sec.~}{)}{sec:mif2ExtensionCommands},
+\MIF~2.2 introduces the following new commands:
+%
+\htmlonlyref{\cd{GetMifFilename}}{html:mif2GetMifFilename},
+\htmlonlyref{\cd{GetMifParameters}}{html:mif2GetMifParameters},
+\htmlonlyref{\cd{GetOptions}}{html:mif2GetOptions},
+\htmlonlyref{\cd{SetOptions}}{html:mif2SetOptions},
+\htmlonlyref{\cd{EvalScalarField}}{html:mif2EvalScalarField},
+\htmlonlyref{\cd{EvalVectorField}}{html:mif2EvalVectorField},
+\htmlonlyref{\cd{GetAtlasRegions}}{html:mif2GetAtlasRegions},
+and \htmlonlyref{\cd{GetAtlasRegionByPosition}}{html:mif2GetAtlasRegionByPosition}.
+
+\begin{description}
+\item[GetMifFilename\label{html:mif2GetMifFilename}]\index{GetMifFilename~command~(MIF)}
+The \cd{GetMifFilename} command returns the full (absolute) name of the
+\MIF\ file being read.  This command takes no parameters.
+
+\item[GetMifParameters\label{html:mif2GetMifParameters}]\index{GetMifParameters~command~(MIF)}
+This command takes no parameters, and returns an even numbered list of
+``Parameter'' label + value pairs as set on the command line or in the
+Load Problem dialog box.  If no parameters were specified, then the return
+will be an empty list.
+
+\item[GetOptions\label{html:mif2GetOptions}]
+The \cd{GetOptions} command takes no parameters.  It returns the
+accumulated contents of all preceding \cd{SetOptions} blocks, as an even
+numbered list of label + value pairs.
+
+\item[SetOptions\label{html:mif2SetOptions}]\index{SetOptions~command~(MIF)}
+In \MIF~2.1 files, the output basename and output file formats are
+specified inside the driver's Specify block.  In \MIF~2.2 these
+specifications are moved to a separate \cd{SetOptions} block.  This
+block can be placed anywhere in the \MIF\ file, but is typically placed
+near the start of the file so that it affects all output
+initializations.  The \cd{SetOptions} command takes a single argument,
+which is a list of label + value pairs.  The default labels are:
+\begin{itemize}
+\item \cd{basename}
+\item \cd{scalar\_output\_format}
+\item \cd{scalar\_field\_output\_format}
+\item \cd{scalar\_field\_output\_meshtype}
+\item \cd{vector\_field\_output\_format}
+\item \cd{vector\_field\_output\_meshtype}
+\end{itemize}
+The \cd{basename} value is used as a prefix for output filename
+construction by the data output routines.  If \cd{basename} is not
+specified, then the default value is taken from the filename of the
+input MIF file.  The \cd{scalar\_output\_format} value is a C-style
+printf string specifying
+the output format for DataTable output.  This is
+optional, with default value ``\cd{\%.17g}''.  The values associated with
+\cd{scalar\_field\_output\_format} and
+\cd{vector\_field\_output\_format} should be two element lists
+that specify the style and precision for scalar and vector field
+output sent to \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} and
+\hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+(Sec.~}{)}{sec:mmarchive}\index{application!mmArchive}.  The first
+element in the list should be one of \cd{binary} or \cd{text}, specifying
+the output style.  If binary output is selected, then the second element
+specifying precision should be either 4 or 8, denoting component binary
+output length in bytes.  For text output, the
+second element should be a C-style printf string like that used by
+\cd{scalar\_output\_format}.  The default value for both
+\cd{scalar\_field\_output\_format} and
+\cd{vector\_field\_output\_format} is ``\cd{binary 8}''.
+The values for \cd{scalar\_field\_output\_meshtype} and
+\cd{vector\_field\_output\_meshtype} should be either ``rectangular''
+(default) or ``irregular'', specifying the grid type for the
+corresponding field output files.
+
+Multiple \cd{SetOptions} blocks are allowed.  Label values specified
+in one \cd{SetOption} block may be overwritten by a later
+\cd{SetOption} block.  Output formats for a given output are
+set during the processing of the \cd{Specify} block for the enclosing
+\cd{Oxs\_Ext} object.  Therefore, one can specify different formats
+for outputs in different \cd{Oxs\_Ext} objects by strategic placement
+of \cd{SetOptions} blocks.
+
+Additional label names may be added in the future, and may be
+\cd{Oxs\_Ext} class dependent.  At present there is no checking for
+unknown label names, but that policy is subject to change.
+
+An example \cd{SetOptions} block:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+SetOptions {
+ basename fubar
+ scalar_output_format %.12g
+ scalar_field_output_format {text %.4g}
+ scalar_field_output_meshtype irregular
+ vector_field_output_format {binary 4}
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+
+
+\item[EvalScalarField\label{html:mif2EvalScalarField}]\index{EvalScalarField~command~(MIF)}
+This command allows access in a \MIF\ file to values from a scalar field
+defined in a preceding \cd{Specify} block.  For example,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+   Oxs_AtlasScalarField:Ms {
+      atlas :atlas
+      default_value 0
+      values {
+         Adisks 520e3
+         Bdisks 520e3
+      }
+   }}
+
+   set Ms_a [EvalScalarField :Ms 50e-9 20e-9 2e-9]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The four arguments to \cd{EvalScalarField} are a reference to the scalar
+field (here \cd{:Ms}), and the three coordinates of the point where you
+want the field evaluated.  The coordinates are in the problem coordinate
+space, i.e., in meters.
+
+\item[EvalVectorField\label{html:mif2EvalVectorField}]\index{EvalVectorField~command~(MIF)}
+This command is the same as the \cd{EvalScalarField} command, except
+that the field reference is to a vector field, and the return value is a
+three item list representing the three components of the vector field at
+the specified point.
+
+\item[GetAtlasRegions\label{html:mif2GetAtlasRegions}]
+This command takes one argument, which is a reference to an atlas, and
+returns an ordered list of all the regions in that atlas.  The first
+item on the returned list will always be ``universe'', which includes
+all points not in any of the other regions, including in particular any
+points outside the nominal bounds of the atlas.  Sample usage:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+   set regions_list [GetAtlasRegions :atlas]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+
+\item[GetAtlasRegionByPosition\label{html:mif2GetAtlasRegionByPosition}]
+This command takes four arguments: a reference to atlas, followed by the
+x, y, and z coordinates of a point using problem coordinates (i.e.,
+meters).  The return value is the name of the region containing the
+specified point.  This name will match exactly one of the names on the
+list returned by the \cd{GetAtlasRegions} command for the given atlas.
+Note that the return value might be the ``universe'' region.  Sample
+usage:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+   set rogue_region [GetAtlasRegionByPosition :atlas 350e-9 120e-9 7.5e-9]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+
+\end{description}
+
+\subsubsection{Sample \MIF~2.2 File}\label{sec:mif22sample}
+\begin{codelisting}{p}{fig:mif22sample}{Example \MIF~2.2 file.}{pt:mif22format}
+\begin{verbatim}
+# MIF 2.2
+
+###############
+# Constants
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+
+###############
+# Command-line controls
+Parameter seed 1
+Parameter thickness 6e-9
+Parameter stop 1e-2
+
+# Texturing angle, phideg, in degrees, from 0 to 90; 0 is all z.
+Parameter phideg 10;
+
+
+###############
+# Output options
+SetOptions [subst {
+   basename "polyuniaxial_phi_$phideg"
+   scalar_output_format %.12g
+   scalar_field_output_format {text %.4g}
+   scalar_field_output_meshtype irregular
+   vector_field_output_format {binary 4}
+}]
+
+
+###############
+# Rogue grain:
+# If RoguePt is an empty string, then no rogue grain is selected.  OTOH,
+# If RoguePt is set to a three item list consisting of x, y, and z coords
+#   in the problem coordinate system (i.e., in meters), then the grain
+#   containing that point is individually set as specified below.
+Parameter RoguePt {263.5e-9 174.5e-9 3e-9}
+
+
+###############
+# Support procs:
+proc Ellipse { Ms x y z} {
+   set x [expr {2*$x-1.}]
+   set y [expr {2*$y-1.}]
+   if {$x*$x+$y*$y<=1.0} {
+      return $Ms
+   }
+   return 0.0
+}
+
+
+###############
+# Material constants
+set Ms 1.40e6
+set Ku 530e3
+set A  8.1e-12
+
+
+###############
+# Atlas and mesh
+set xsize 400e-9
+set ysize 400e-9
+set xycellsize 1.0e-9
+set zcellsize  3.0e-9
+
+set grain_count 260
+set grain_map polycrystal-map-mif.ppm
+
+set colormap {}
+for {set i 0} {$i<$grain_count} {incr i} {
+   lappend colormap [format "#%06x" $i]
+   lappend colormap $i
+}
+
+Specify Oxs_ImageAtlas:world [subst {
+   xrange {0 $xsize}
+   yrange {0 $ysize}
+   zrange {0 $thickness}
+   viewplane xy
+   image $grain_map
+   colormap {
+      $colormap
+   }
+   matcherror 0.0
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+   cellsize {$xycellsize $xycellsize $zcellsize}
+   atlas :world
+}]
+
+
+#################################	
+# Uniaxial Anisotropy
+
+# Generate TEXTURED random unit vector
+set phirange [expr {1-cos($phideg*$pi/180.)}]
+proc Texture {} {
+   global pi phirange
+
+   set theta [expr {(2.*rand()-1.)*$pi}]
+   set costheta [expr {cos($theta)}]
+   set sintheta [expr {sin($theta)}]
+
+   set cosphi [expr {1.-$phirange*rand()}]
+   set sinphi [expr {1.0-$cosphi*$cosphi}]
+   if {$sinphi>0.0} { set sinphi [expr {sqrt($sinphi)}] }
+
+   set x [expr {$sinphi*$costheta}]
+   set y [expr {$sinphi*$sintheta}]
+   set z [expr {$cosphi}]
+
+   return [list $x $y $z]
+}
+
+
+# Set a random unit vector for each grain region
+set axes {}
+for {set i 0} {$i<$grain_count} {incr i} {
+   lappend axes $i
+   lappend axes [Texture]
+}
+
+# Sets the rogue grain ($Rogue < $grain_count)
+if {[llength $RoguePt] == 3} {
+   # The :Regions field maps region name (which is a number)
+   # to the corresponding number.
+   set regionmap {}
+   for {set i 0} {$i<$grain_count} {incr i} {lappend regionmap $i $i }
+   Specify Oxs_AtlasScalarField:Regions [subst {
+      atlas :world
+      values [list $regionmap]
+   }]
+   foreach {x y z} $RoguePt { break }
+   set Rogue [EvalScalarField :Regions $x $y $z]
+   set item_number [expr 2*$Rogue+1]
+   set axes [lreplace $axes $item_number $item_number {1 0 0}]
+}
+
+Specify Oxs_AtlasVectorField:axes [subst {
+   atlas :world
+   norm 1.0
+   values [list $axes]
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+   K1 $Ku
+   axis :axes
+}]
+
+
+#################################	
+# Exchange
+set A_list {}
+for {set i 0} {$i<$grain_count} {incr i} {
+   lappend A_list $i $i $A
+}
+
+Specify Oxs_Exchange6Ngbr [subst {
+   default_A $A
+   atlas world
+   A   [list $A_list]
+}]
+
+
+#################################	
+# Zeeman (applied) field
+set field 10000		;# Maximum field (in Oe) 
+Specify Oxs_UZeeman [subst {
+   multiplier [expr (1./($mu0*1e4))*$field]
+   Hrange  {
+      { 0 0 0   0 0 1   10}
+   }       	   
+}]
+
+
+#################################	
+# Driver and Evolver
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+   evolver evolve
+   stopping_mxHxm $stop
+   mesh :mesh
+   Ms { Oxs_ScriptScalarField {
+      atlas :world
+      script_args {relpt}
+      script {Ellipse $Ms}
+   } }
+   m0 { 0 0 -1 }
+}]
+\end{verbatim}
+\end{codelisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{\MIF\ 1.1}\label{sec:mif1format}
+\begin{rawhtml}
+<A NAME="pt:mif1format"></A>
+\end{rawhtml}
+The \MIF~1.1 format is an older micromagnetic problem specification
+format used by the mmSolve 2D solvers.  It is not compatible with the
+\MIF~2.1 format used by the Oxs 3D solvers.  However, the command line tool
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert} may be used as a conversion aid;
+\app{mifconvert} is also called automatically by Oxs solvers when a
+\MIF~1.x file is input to them.
+
+A sample \MIF~1.1 file is \hyperrefhtml{included below}{presented in
+Fig.~}{}{fig:mif1sample}.  The first line of a \MIF\ file must be of the
+form ``\verb+#+ MIF x.y'', where x.y represents the format revision
+number.  (The predecessor \MIF~1.0 format was not included in any
+released version of \OOMMF.)  
+
+After the format identifier line, any line ending in a backslash,
+`\bs', is joined to the succeeding line before any other processing
+is performed.  Lines beginning with a `\verb+#+' character are comments
+and are ignored.  Blank lines are also ignored.
+
+All other lines must consist of a {\em Record Identifier} followed by
+a parameter list.  The Record Identifier is separated from the
+parameter list by one or more `:' and/or `=' characters.  Whitespace
+and case is ignored in the Record Identifier field.
+
+The parameter list must be a proper \Tcl\ list\index{Tcl~list}.  The
+parameters are parsed (broken into separate elements) following normal
+\Tcl\ rules; in short, items are separated by whitespace, except as
+grouped by double quotes and curly braces.  Opening braces and quotes
+must be whitespace separated from the preceding text.  The grouping
+characters are removed during parsing.  Any `\lb' character that is
+found outside of any grouping mechanism is interpreted as a comment
+start character.  The `\lb' and all following characters on that line
+are interpreted as a comment.
+
+Order of the records in a \MIF~1.1 file is unimportant, except as
+explicitly stated below.  If two or more lines contain the same Record
+Identifier\index{record~identifier}, then the last one takes precedence,
+with the exception of Field Range records, of which there may be several
+active.  All records are required unless listed as optional.  Some of
+these record types are not supported by \app{mmProbEd}, however you
+may modify a \MIF~1.1 file using any plain text editor and supply it to
+\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
+(Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}
+using 
+\hyperrefhtml{\app{FileSource}}{\app{FileSource}
+(Sec.~}{)}{sec:filesource}\index{application!FileSource}.
+
+For convenience, the Record Identifier tags are organized into several
+groups; these groups correspond to the top-level buttons presented by
+\app{mmProbEd}.  We follow this convention below.
+
+\subsubsection{Material parameters}\index{materials}
+\begin{itemize}
+\item {\bf\lb\ Material Name:} This is a convenience entry for
+   \app{mmProbEd}; inside the \MIF~1.1 file it is a comment line.  It
+   relates a symbolic name (e.g., Iron) to specific values to the next
+   4 items.  Ignored by solvers.
+\item {\bf Ms:} Saturation magnetization\index{saturation~magnetization}
+   in A/m.
+\item {\bf A:} Exchange stiffness\index{exchange~stiffness} in J/m.
+\item {\bf K1:} Crystalline
+ anisotropy\index{crystalline~anisotropy}\index{energy!crystalline~anisotropy}
+   constant in J/m${}^3$.  If $K1>0$, then the anisotropy axis (or axes)
+   is an easy axis; if $K1<0$ then the anisotropy axis is a hard axis.
+\item {\bf Anisotropy Type:} Crystalline anisotropy type; One of
+\texttt{<uniaxial|cubic>}.
+\item {\bf Anisotropy Dir1:} Directional cosines of first crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 1 0 0 (x-axis).
+\item {\bf Anisotropy Dir2:} Directional cosines of second crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 0 1 0 (y-axis).
+   \html{\\}\latex{\par}
+   For uniaxial materials it suffices to specify only Anisotropy
+   Dir1.  For cubic materials one must also specify Anisotropy
+   Dir2; the third axis direction will be calculated as the cross
+   product of the first two.  The anisotropy directions will be
+   automatically normalized if necessary, so for example 1 1 1 is
+   valid input (it will be modified to .5774 .5774 .5774).  For cubic
+   materials, Dir2 will be adjusted to be perpendicular to Dir1 (by
+   subtracting out the component parallel to Dir1).
+\item {\bf Anisotropy Init:}
+   Method to use to set up directions of anisotropy axes, as a function
+   of spatial location; This is a generalization of the Anisotropy
+   Dir1/2 records.  The value for this record should be one of
+   \texttt{<Constant|UniformXY|UniformS2>}.  \texttt{Constant} uses the
+   values specified for Anisotropy Dir1 and Dir2, with no dispersion.
+   \texttt{UniformXY} ignores the values given for Anisotropy Dir1 and
+   Dir2, and randomly varies the anisotropy directions uniformly in the
+   xy-plane.  \texttt{UniformS2} is similar, but randomly varies the
+   anisotropy directions uniformly on the unit sphere ($S^2$).  This
+   record is optional; the default value is \texttt{Constant}.
+\item {\bf Edge K1:}  Anisotropy
+   constant\index{edge~anisotropy}\index{energy!edge~anisotropy}
+   similar to crystalline anisotropy constant K1 described above, but
+   applied only along the edge surface of the part.  This is a uniaxial
+   anisotropy, directed along the normal to the boundary surface.  Units
+   are J/m${}^3$, with positive values making the surface normal an easy
+   axis, and negative values making the surface an easy plane.  The
+   default value for Edge K1 is 0, which disables the term.
+\item {\bf Do Precess:}
+   If 1, then enable the precession\index{precession} term in the
+   Landau-Lifshitz ODE\index{ODE!Landau-Lifshitz}.  If 0, then do pure
+   damping only.  (Optional; default value is 1.)
+\item {\bf Gyratio:}
+   The Landau-Lifshitz gyromagnetic ratio\index{gyromagnetic ratio}, in
+   m/(A.s).  This is optional, with default value of \latex{$2.21\times
+   10^5$}\html{2.21e5}.  See the discussion of the Landau-Lifshitz ODE
+   under the Damp~Coef record identifier description.
+\item {\bf Damp Coef:}
+   The ODE solver in \OOMMF\ integrates the Landau-Lifshitz
+   equation\index{ODE!Landau-Lifshitz}~\cite{gilbert55,landau35},
+   written as
+\begin{displaymath}
+\htmlimage{antialias}
+  \frac{d\vM}{dt} = -|\bar{\gamma}|\,\vM\times\vH_{\rm eff}
+   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
+     \vM\times\left(\vM\times\vH_{\rm eff}\right),
+\end{displaymath}
+where
+\latex{
+\begin{eqnarray*}
+  \bar{\gamma}  && \mbox{is the Landau-Lifshitz gyromagnetic ratio
+    (m/(A$\cdot$s)),} \\
+  \alpha    && \mbox{is the damping coefficient (dimensionless).}
+\end{eqnarray*}
+} % close latex
+% Use BLOCKQUOTE until mmHelp supports tables.
+\html{
+\begin{quotation}
+  \abovemath{\bar{\gamma}} is the Landau-Lifshitz gyromagnetic ratio
+                        (m/(A.s)),\\
+  $\alpha$           is the damping coefficient (dimensionless).
+\end{quotation}
+} % close html
+  \latex{(Compare to (\ref{eq:oxsllode}), page~\pageref{eq:oxsllode}.)}%
+  \html{(See also the discussion of the \htmlref{Landau-Lifshitz-Gilbert
+  equations}{eq:oxsllode} in the Oxs documentation.)}  Here $\alpha$ is
+  specified by the ``Damp Coef'' entry in the \MIF~1.1 file.  If not
+  specified, a default value of 0.5 is used, which allows the solver to
+  converge in a reasonable number of iterations.  Physical materials
+  will typically have a damping coefficient in the range 0.004 to
+  0.15.  The 2D solver engine
+  \hyperrefhtml{\app{mmSolve}}{\app{mmSolve}
+  (Sec.~}{)}{sec:mmsolve}\index{application!mmSolve} requires a
+  non-zero damping coefficient.
+\end{itemize}
+
+\subsubsection{Demag specification}\label{sec:mifdemagspec}
+\begin{itemize}
+   \item {\bf Demag Type:} Specify algorithm and demagnetization kernel
+      used to calculate self-magnetostatic
+      (demagnetization\index{demagnetization}) field.  Must be one of 
+      \begin{itemize}
+         \item {\bf ConstMag:} Calculates the {\em average} field in
+            each cell under the assumption that the magnetization is
+            constant in each cell, using formulae from \cite{newell93}.
+            (The other demag options calculate the field at the center
+            of each cell.)
+         \item {\bf 3dSlab:}  Calculate the in-plane field components
+            using offset blocks of constant (volume) charge.  Details
+            are given in \cite{berkov93}. Field components parallel to
+            the $z$-axis are calculated using squares of constant
+            (surface) charge on the upper and lower surfaces of the
+            sample.
+         \item {\bf 3dCharge:} Calculate the in-plane field component
+            using rectangles of constant (surface) charge on each cell.
+            This is equivalent to assuming constant magnetization in
+            each cell.  The $z$-components of the field are calculated
+            in the same manner as for the 3dSlab approach.
+         \item {\bf FastPipe:} Algorithm suitable for simulations that
+            have infinite extent in the $z$-direction.  This is a 2D
+            version of the 3dSlab algorithm.
+        \item {\bf None:} No demagnetization.  Fastest but least
+            accurate method.  \verb+:-}+    %\html{ :-\}}
+    \end{itemize}
+
+    All of these algorithms except FastPipe and None require that the
+    Part Thickness (cf.\ the \htmlref{Part Geometry}{sec:partgeometry}
+    section) be set.  Fast Fourier Transform (FFT)\index{FFT} techniques
+    are used to accelerate the calculations.
+
+\end{itemize}
+
+\subsubsection{Part geometry}\label{sec:partgeometry}\index{part~geometry}
+\begin{itemize}
+   \item {\bf Part Width:} Nominal part width ($x$-dimension) in
+      meters.  Should be an integral multiple of Cell~Size.
+   \item {\bf Part Height:} Nominal part height ($y$-dimension) in
+      meters.  Should be an integral multiple of Cell~Size.
+   \item {\bf Part~Thickness:} Part thickness ($z$-dimension) in meters.
+      Required for all demag types except FastPipe and None.
+   \item {\bf Cell Size:}\index{cell~size} In-plane ($xy$-plane) edge
+      dimension of base calculation cell.  This cell is a rectangular
+      brick, with square in-plane cross-section and thickness given by
+      Part~Thickness.  N.B.: Part~Width and Part~Height should be
+      integral multiples of Cell~Size.  Part~Width and Part~Height will
+      be automatically adjusted slightly (up to 0.01\%) to meet this
+      condition (affecting a small change to the problem), but if the
+      required adjustment is too large then the problem specification is
+      considered to be invalid, and the solver will signal an error.
+   \item {\bf Part Shape:} Optional.  Part shape in the $xy$-plane;
+      must be one of the following:
+   \begin{itemize}
+      \item {\bf Rectangle}\\
+         The sample fills the area specified by Part Width and Part
+         Height. (Default.) 
+      \item {\bf Ellipse}\\
+         The sample (or the magnetically active
+         portion thereof) is an ellipse inscribed into the rectangular
+         area specified by Part Width and Part Height.
+      \item {\bf Ellipsoid}\\
+         Similar to the Ellipse shape, but the part thickness is
+         varied to simulate an ellipsoid, with axis lengths of
+         Part Width, Part Height and Part Thickness.
+      \item {\bf Oval r}\\
+         Shape is a rounded rectangle, where each
+         corner is replaced by a quarter circle with radius $r$, where
+         \latex{$0\leq r\leq 1$}\html{$0 <= r <= 1$}
+         is relative to the half-width of the rectangle.
+      \item {\bf Pyramid overhang}\\
+         Shape is a truncated pyramid, with ramp transition base
+         width (overhang) specified in meters.
+      \item {\bf Mask filename}\index{file!mask}\index{file!bitmap}%
+         \label{html:mifvariablethickness}\\
+         Shape and thickness are determined by a bitmap file, the name
+         of which is specified as the second parameter.  The overall
+         size of the simulation is still determined by Part Width and
+         Part Height (above); the bitmap is spatially scaled to fit
+         those dimensions.  Note that this scaling will not be square if
+         the aspect ratio of the part is different from the aspect ratio
+         of the bitmap.
+
+         The given filename must be accessible to the solver
+         application.  At present the bitmap file must be in either the
+         PPM\index{file!ppm} (portable pixmap), GIF\index{file!gif}, or
+         BMP\index{file!bmp} formats.  (Formats other than the PPM P3
+         (text) format may be handled by spawning an
+         {\hyperrefhtml{\app{any2ppm}}{\app{any2ppm}
+         (Sec.~}{)}{sec:any2ppm}}
+         subprocess\index{application!any2ppm}.)
+
+         White areas of the bitmap are interpreted as being non-magnetic
+         (or having 0 thickness); all other areas are assumed to be
+         composed of the material specified in the ``Material
+         Parameters'' section.  Thickness is determined by the relative
+         darkness of the pixels in the bitmap.  Black pixels are given
+         full nominal thickness (specified by the ``Part Thickness''
+         parameter above), and gray pixels are linearly mapped to a
+         thickness between the nominal thickness and 0.  In general,
+         bitmap pixel values are converted to a thickness relative to
+         the nominal thickness by the formula 1-(R+G+B)/(3M), where R, G
+         and B are the magnitudes of the red, green and blue components,
+         respectively, and M is the maximum allowed component magnitude.
+         For example, black has R=G=B=0, so the relative thickness is 1,
+         and white has R=G=B=M, so the relative thickness is 0.
+   \end{itemize}
+   The code does not perform a complete 3D evaluation of thickness
+   effects.  Instead, the approximation discussed in \cite{porter01} is
+   implemented.
+\end{itemize}
+
+\subsubsection{Initial magnetization}\index{magnetization~initial}
+\begin{itemize}
+   \item {\bf Init Mag:} Name of routine to use to initialize the
+   simulation magnetization directions (as a function of position), and
+   routine parameters, if any.  Optional, with default Random.  The list
+   of routines is long, and it is easy to add new ones.  See the file
+   \fn{oommf/app/mmsolve/maginit.cc} for details.  A few of the more
+   useful routines are:
+   \begin{itemize}
+      \item {\bf Random}\\
+         Random directions on the unit sphere.  This
+         is somewhat like a quenched thermal demagnetized state.
+      \item {\bf Uniform \latex{\boldmath$\theta$ $\phi$}\html{theta phi}}\\
+         Uniform magnetization in the direction
+         indicated by the two additional parameters, \latex{$\theta$ and
+         $\phi$}\html{theta and phi}, where the first is the angle
+         from the $z$-axis (in degrees), and the second is the angle
+         from the $x$-axis (in degrees) of the projection onto the
+         $xy$-plane.
+      \item {\bf Vortex}\\
+         Fits an idealized vortex\index{vortex} about the center of the
+         sample.
+      \item {\bf avfFile filename}\\
+         The second parameter specifies an OVF/VIO (i.e., ``any''
+         vector field) file\index{file!vector~field}\index{file!vio} to use to
+         initialize the magnetization. The grid in the input file will
+         be scaled as necessary to fit the grid in the current
+         simulation.  The file must be accessible to the intended solver
+         application.
+   \end{itemize}
+\end{itemize}
+
+\subsubsection{Experiment parameters}\label{sec:expparams}
+The following records specify the applied field schedule:
+\begin{itemize}
+   \item {\bf Field Range:}\index{field~range} Specifies a range of
+      applied fields that are stepped though in a linear manner.  The
+      parameter list should be 7 numbers, followed by optional control
+      point (stopping criteria) specifications.  The 7 required fields
+      are the begin field Bx By Bz in Tesla, the end field Bx By Bz in
+      Tesla, and an integer number of steps (intervals) to take between
+      the begin and end fields (inclusive).  Use as many Field Range
+      records as necessary---they will be stepped through in order of
+      appearance.  If the step count is 0, then the end field is ignored
+      and only the begin field is applied.  If the step count is larger
+      than 0, and the begin field is the same as the last field from the
+      previous range, then the begin field is not repeated.
+
+      The optional control point\index{simulation~2D!control~point} specs
+      determine the conditions that cause the applied field to be
+      stepped, or more precisely, end the simulation of the
+      magnetization evolution for the current applied field.  The
+      control point specs are specified as {\em --type value} pairs.
+      There are 3 recognized control point types:
+      {\bf --torque}\index{simulation~2D!mxh},
+      {\bf --time}\index{simulation~2D!time}, and
+      {\bf --iteration}\index{simulation~2D!iteration}.  If a --torque pair
+      is given, then the simulation at the current applied field is
+      ended when {\html{$|\vm\times\vh|$\ (i.e.,
+      $|\vM\times\vH|/M_s^2$)}} {\latex{$\|\vm\times\vh\|$ (i.e.,
+      $\|\vM\times\vH\|/M_s^2$)}} at all spins in the simulation is
+      smaller than the specified --torque value (dimensionless).  If a
+      --time pair is given, then the simulation at the current field is
+      ended when the elapsed simulation time {\em for the current field
+      step} reaches the specified --time value (in seconds).  Similarly,
+      an --iteration pair steps the applied field when the iteration
+      count for the current field step reaches the --iteration value.
+      If multiple control point specs are given, then the applied field
+      is advanced when any one of the specs is met.  If no control point
+      specs are given on a range line, then the {\bf Default Control
+      Point Spec} is used.
+
+      For example, consider the following Field Range line:
+\begin{verbatim}   Field Range: 0 0 0 .05 0 0  5  -torque 1e-5 -time 1e-9\end{verbatim}
+      This specifies 6 applied field values, (0,0,0), (0.01,0,0),
+      (0.02,0,0), \ldots, (0.05,0,0) (in Tesla), with the advancement
+      from one to the next occurring whenever
+      {\html{$|\vm\times\vh|$}}{\latex{$\|\vm\times\vh\|$}}
+      is smaller than 1e-5 for all spins,
+      or when 1 nanosecond (simulation time) has elapsed at the current
+      field. (If --torque was not specified, then the applied field
+      would be stepped at 1, 2, 3 4 and 5~ns in simulation time.)
+
+      The Field Range record is optional, with a default value of 0 0 0
+      0 0 0 0.
+
+   \item {\bf Default Control Point Spec:} List of control
+      point\index{simulation~2D!control~point} {\em --type value} pairs to
+      use as stepping criteria for any field range with no control point
+      specs.  This is a generalization of and replacement for the {\em
+      Converge $|$mxh$|$ Value} record.  Optional, with default
+      ``\cd{-torque~1e-5}.''
+
+   \item {\bf Field Type:} Applied (external) field\index{field!applied}
+     routine and parameters, if any. This is optional, with default
+     Uniform.  At most one record of this type is allowed, but the Multi
+     type may be used to apply a collection of fields.  The nominal
+     applied field (NAF) is stepped through the Field Ranges described
+     above, and is made available to the applied field routines which
+     use or ignore it as appropriate.  \html{\\}\latex{\par} The
+     following Field Type routines are available:
+     \begin{itemize}
+        \item {\bf Uniform}\\
+          Applied field is uniform with value specified by the NAF.
+        \item {\bf Ribbon relcharge x0 y0 x1 y1 height}\\
+          Charge ``Ribbon,'' lying perpendicular to the $xy$-plane.
+          Here relcharge is the charge strength relative to Ms, and
+          (x0,y0), (x1,y1) are the endpoints of the ribbon (in
+          meters).  The ribbon extends height/2 above and below the
+          calculation plane.  This routine ignores the NAF.
+        \item {\bf Tie rfx rfy rfz x0 y0 x1 y1 ribwidth}\\
+          The points (x0,y0) and (x1,y1) define (in meters) the
+          endpoints of the center spine of a rectangular ribbon of
+          width ribwidth lying in the $xy$-plane.  The cells with
+          sample point inside this rectangle see an applied field of
+          (rfx,rfy,rfz), in units relative to Ms.  (If the field is
+          large, then the magnetizations in the rectangle will be
+          ``tied'' to the direction of that field.)  This routine
+          ignores the NAF.
+        \item {\bf OneFile filename multiplier}\\
+          Read B field (in Tesla) in from a file.  Each value in the
+          file is multiplied by the ``multiplier'' value on input.  This
+          makes it simple to reverse field direction (use -1 for the
+          multiplier), or to convert H fields to B fields (use
+          1.256637e-6).  The input file may be any of the vector field
+          file types recognized by \app{mmDisp}.  The input dimensions
+          will be scaled as necessary to fit the simulation grid, with
+          zeroth order interpolation as necessary.  This routine ignores
+          the NAF.
+        \item {\bf FileSeq filename procname multiplier}\\
+          This is a generalization of the OneFile routine that reads in
+          fields from a sequence of files.  Here ``filename'' is the
+          name of a file containing Tcl code to be sourced during
+          problem initialization, and ``procname'' is the name of a Tcl
+          procedure defined in filename, which takes the nominal B field
+          components (in Tesla) and field step count values as imports
+          (4 values total), and returns the name of the vector field
+          file that should be used as the applied B field for that field
+          step.  The B field units in the vector field file should be
+          Tesla.
+        \item {\bf Multi routinecount \bs\\
+                   param1count name1 param1 param2 \ldots \bs\\
+                   param2count name2 param1 param2 \ldots \bs\\
+                   \ldots}\\
+          Allows a conglomeration of several field type routines.  All
+          entries must be on the same logical line, i.e., end physical
+          lines with '\bs' continuation characters as necessary.
+          Here routinecount is the number of routines, and param1count
+          is the number parameters (including name1) needed by the
+          first routine, etc.
+     \end{itemize}
+     Note that all lengths are in meters.  The coordinates in the
+     simulation lie in the first octant, running from (0,0,0) to
+     (Part~Width, Part~Height, Part~Thickness).
+\end{itemize}
+
+\subsubsection{Output specification}\label{sec:mif1outspec}
+\begin{itemize}
+   \item {\bf Base Output Filename:} Default base name used to
+      construct output filenames.
+   \item {\bf Magnetization Output Format:}\index{file!magnetization}
+      Format to use in the \hyperrefhtml{\OVF}{\OVF\
+      (Sec.~}{)}{sec:ovfformat} data block for exported magnetization
+      files.  Should be one of ``binary~4'' (default), ``binary 8'', or
+      ``text {\em format-spec}'', where {\em format-spec} is a C
+      \cd{printf}-style format code, such as ``\cd{\%\lb~.17g}''.
+       Optional.
+   \item {\bf Total Field Output Format:}\index{file!vector~field}
+      Analogous to the Magnetization Output Format, but for total field
+      output files.  Optional, with default ``binary~4''.
+   \item {\bf Data Table Output Format:}\index{file!data~table}
+      Format to use when producing data table style scalar output, such
+      as that sent to
+      \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+      (Sec.~}{)}{sec:mmdatatable},
+      \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+      (Sec.~}{)}{sec:mmgraph}, and
+      \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+      (Sec.~}{)}{sec:mmarchive}.
+      Should specify a C \cd{printf}-style format code, such as the
+      default ``\cd{\%.16g}''.  Optional.
+\end{itemize}
+
+\subsubsection{Miscellaneous}\label{sec:mifmisc}
+\begin{itemize}
+   \item {\bf\boldmath Converge $|$mxh$|$ Value:}\index{simulation~2D!mxh}
+      Nominal value to use as a stopping criterion: When
+      {\html{$|\vm\times\vh|$\ (i.e., $|\vM\times\vH|/M_s^2$)}}
+      {\latex{$\|\vm\times\vh\|$ (i.e., $\|\vM\times\vH\|/M_s^2$)}}
+      at all spins in the simulation is smaller than this value, it is
+      assumed that a relaxed (equilibrium) state has been reached for
+      the current applied field.  This is a dimensionless value.\\
+      {\bf NOTE:} This Record Identifier is deprecated.  Use {\em
+      Default Control Point Spec} instead.
+  \item {\bf Randomizer Seed:} Value with which to seed random
+      number\index{random~numbers} generator.  Optional.  Default value
+      is 0, which uses the system clock to generate a semi-random seed.
+  \item {\bf Max Time Step:} Limit the maximum ODE step
+      size\index{ODE!step~size} to no larger than this amount, in
+      seconds.  Optional.
+  \item {\bf Min Time Step:} Limit the minimum ODE step size to no
+      less than this amount, in seconds.  Optional.
+  \item {\bf User Comment:} Free-form comment string that may be used
+      for problem identification.  Optional.
+\end{itemize}
+
+\begin{codelisting}{p}{fig:mif1sample}{Example \MIF~1.1 file.}{pt:mif1format}
+\begin{verbatim}
+# MIF 1.1
+#
+# Example from the OOMMF User's Guide.
+#
+# All units are SI.
+#
+################# MATERIAL PARAMETERS ######################
+Ms:  800e3                # Saturation magnetization in A/m.
+A:   13e-12               # Exchange stiffness in J/m.
+K1:  0.5e3                # Anisotropy constant in J/m^3.
+Anisotropy Type: uniaxial # One of <uniaxial|cubic>.
+Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
+                          # coordinate axes
+
+################# DEMAG SPECIFICATION ######################
+Demag Type: ConstMag # One of <ConstMag|3dSlab|2dSlab
+                     #         |3dCharge|FastPipe|None>.
+
+#################### PART GEOMETRY #########################
+Part Width:     0.25e-6    # Nominal part width in m
+Part Height:    1.0e-6     # Nominal part height in m
+Part Thickness: 1e-9       # Part thickness in m.
+Cell Size:      7.8125e-9  # Cell size in m.
+#Part Shape:    # One of <Rectangle|Ellipse|Oval|Mask>.
+                # Optional.
+
+################ INITIAL MAGNETIZATION #####################
+Init Mag: Uniform 90 45 # Initial magnetization routine
+                        # and parameters
+
+################ EXPERIMENT PARAMETERS #####################
+# Field Range:  Start_field  Stop_field  Steps
+Field Range: -.05 -.01 0.  .05  .01 0. 100
+Field Range:  .05  .01 0. -.05 -.01 0. 100
+Field Type: Multi 4 \
+ 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
+ 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
+ 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
+ 1 Uniform
+# The above positions ribbons of positive charge along the
+# upper and lower edges with strength Ms, applies a large
+# (100 Ms) field to the center cells, and also applies a
+# uniform field across the sample stepped from
+# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
+# approximately 0.001 T steps.
+
+Default Control Point Spec: -torque 1e-6
+# Assume equilibrium has been reached, and step the applied
+# field, when the reduced torque |mxh| drops below 1e-6.
+
+################ OUTPUT SPECIFICATIONS #####################
+Base Output Filename: samplerun
+Magnetization Output Format: binary 8 # Save magnetization
+# states in binary format with full (8-byte) precision.
+
+#################### MISCELLANEOUS #########################
+Randomizer Seed: 1   # Random number generator seed.
+User Comment: Example MIF 1.1 file, with lots of comments.
+\end{verbatim}
+\end{codelisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{\MIF\ 1.2}\label{sec:mif12format}
+\begin{rawhtml}
+<A NAME="pt:mif12format"></A>
+\end{rawhtml}
+The \MIF~1.2 format is a minor modification to the \MIF~1.1 format,
+which supports limited 3D problem specification.  It can be read by the
+Oxs 3D solvers, and, with certain restrictions, by the mmSolve 2D
+solvers as well.  The \app{mmProbEd} problem editor can read and
+write this format.  The
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert} command line tool can be used to convert
+between the \MIF~1.1 and \MIF~1.2 formats, and to convert from the
+\MIF~1.x formats to the Oxs \MIF~2.1 format.  \app{mifconvert} is also
+called automatically by Oxs solvers when a \MIF~1.x file is input to
+them, so questions about the details of Oxs interpretation of \MIF~1.x
+files can be answered by running \app{mifconvert} separately on the
+input \MIF~1.x file.
+
+There are four differences between the \MIF~1.1 and 1.2 formats.  In
+the \MIF~1.2 format:
+\begin{enumerate}
+\item The first line reads: \verb+# MIF 1.2+
+\item The \texttt{CellSize} record takes three parameters:
+      $x$-dimension, $y$-dimension, and $z$-dimension (in meters).
+\item The \texttt{3dSlab}, \texttt{2dSlab}, \texttt{3dCharge}, and
+      \texttt{FastPipe} parameters of the \texttt{DemagType} record
+      are deprecated.
+\item The new record \texttt{SolverType} is introduced.  Valid values
+      are \texttt{Euler}, \texttt{RK2}, \texttt{RK4}, \texttt{RKF54},
+      and \texttt{CG}, requesting a first order Euler, second order
+      Runge-Kutta, fourth order Runge-Kutta, fifth(+fourth) order
+      Runge-Kutta-Fehlberg, and Conjugate-Gradient solvers,
+      respectively.  This record is optional, with default value of
+      \texttt{RKF54}.
+\end{enumerate}
+If the \texttt{CellSize} record has only one parameter, then it is
+interpreted in the same manner as in the \MIF~1.1 format, i.e., the
+parameter is taken as the $x$- and $y$-dimension of the computation
+cell, and the $z$-dimension is set to the part thickness.
+
+The mmSolve 2D solvers will accept files in the \MIF~1.2 format provided
+the \texttt{CellSize} record meets the restrictions of those solvers,
+namely, the $x$- and $y$-dimensions must be the same, and the
+$z$-dimension must equal the part thickness.  The \texttt{SolverType}
+record, if any, is ignored.
+
+The Oxs 3D solvers will read files in the \MIF~1.2 format, but support
+only the \texttt{ConstMag} and \texttt{None} demagnetization kernels.
+All other \texttt{DemagType} records are silently converted
+to \texttt{ConstMag}.  The \texttt{SolverType} record is converted into
+the appropriate solver+driver pair.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data Table File Format (\ODT)}\label{sec:odtformat}
+Textual output from solver applications that is not of the vector field
+variety is output in the {\em \OOMMF\ Data Table} (\ODT)
+format\index{file!data~table}.  This is an \ASCII\ text file format,
+with column information in the header and one line of data per record.
+Any line ending in a '\bs' character is joined to the succeeding
+line before any other processing is performed.  Any leading `\lb'
+characters on the second line are removed.
+
+As with the \hyperrefhtml{\OVF\ format}{\OVF\ format
+(Sec.~}{)}{sec:ovfformat}, all non-data lines begin with a `\lb'
+character, comments with two `\lb' characters.  (This makes it easier
+to import the data into external programs, for example, plotting
+packages.)  An example is \hyperrefhtml{included below.}{shown in
+Fig.~}{.}{fig:odtsample}
+
+The first line of an \ODT\ file should be the file type descriptor
+\begin{verbatim}
+# ODT 1.0
+\end{verbatim}
+It is also recommended that \ODT\ files be given names ending
+in the file extension \fn{.odt} so that \ODT\ files may be
+easily identified.
+
+The remaining lines of the \ODT\ file format should be comments,
+data, or any of the following 5 recognized descriptor tag lines:
+\begin{itemize}
+\item {\bf\ \lb\ Table Start:} Optional, used to segment a file
+   containing multiple data table blocks.  Anything after the colon is
+   taken as an optional label for the following data block.
+\item {\bf\ \lb\ Title:} Optional; everything after the colon is
+   interpreted as a title for the table.
+\item {\bf\ \lb\ Columns:} Required.  One parameter per column,
+   designating the label for that column.  Spaces may be embedded in a
+   column label by using the normal \Tcl\ grouping mechanisms (i.e.,
+   double-quotes and braces).
+\item {\bf\ \lb\ Units:} Optional.  If given, it should have one
+   parameter for each column, giving a unit label for the
+   corresponding column.
+\item {\bf\ \lb\ Table End}: Optional, no parameters.  Should be paired
+   with a corresponding Table Start record.
+\end{itemize}
+Data may appear anywhere after the Columns descriptor record
+and before any Table End line, with one record per line.
+The data should be numeric values separated by whitespace.  The two
+character open-close curly brace pair, \ocb\ccb, is used to indicate
+a missing value.
+
+The command line utility, 
+\hyperrefhtml{\app{odtcols}}{\app{odtcols} (Sec.~}{)}{sec:odtcols},
+can be a useful tool for examining and partitioning \ODT\ files.
+
+\begin{codelisting}{f}{fig:odtsample}{Sample \ODT\ file.}{sec:odtformat}
+\begin{verbatim}
+# ODT 1.0
+# Table Start
+# Title: This is a small sample ODT file.
+#
+## This is a sample comment.  You can put anything you want
+## on comment lines.
+#
+# Columns: Iteration "Applied Field"  {Total Energy}    Mx
+# Units:      {}          "mT"           "J/m^3"       "A/m"
+              103          50            0.00636      787840
+             1000          32            0.00603      781120
+            10300       -5000            0.00640     -800e3
+# Table End
+\end{verbatim}
+\end{codelisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Vector Field File Format (\OVF)}\label{sec:vfformats}
+Vector field files\index{file!vector~field} specify vector quantities
+(e.g., magnetization or magnetic flux density) as a function of spatial
+position.  The \textit{\OOMMF\ Vector Field} (\OVF) format is the output
+vector field file format used by both the
+\hyperrefhtml{2D}{2D (Sec.~}{)}{sec:mmsolve} and
+\hyperrefhtml{3D}{3D (Sec.~}{)}{sec:oxs}
+micromagnetic solvers.  It is also the input data type read by
+\hyperrefhtml{\app{mmDisp}}{\app{mmDisp} (Sec.~}{)}{sec:mmdisp}.  There
+are three versions of the \OVF\ format supported by \OOMMF.  The
+\OVF~1.0 and 2.0 formats are preferred formats and the only ones
+written by \OOMMF\ software.  They support both rectangular and
+irregular meshes, in binary and \ASCII\ text.
+
+The \OVF~0.0 format (formerly SVF\index{file!svf})
+is an older, simpler format that can be useful for importing
+three-dimensional vector
+field data into \OOMMF\ from other programs.  (A fourth format, the
+\textit{VecFil\index{file!VecFil}} or \textit{Vector Input/Output}
+(VIO\index{file!vio}) format, was used by some precursors to the \OOMMF\
+code.  Although \OOMMF\ is able to read the VIO format, its use is
+deprecated.)
+
+In all these formats, the field domain (i.e., the spatial extent) lies
+across three dimensions, with units typically expressed in meters or
+nanometers.  In all the formats except the \OVF~2.0 format, the field
+values are also three dimensional; the value units are more varied, but
+are most often Tesla or A/m.  The \OVF~2.0 format is more general, in
+that the field values can be of any arbitrary dimension $N>0$.  (This
+dimension, however, is fixed within the file.)  If $N=3$, then the
+\OVF~2.0 format supports the same types of data as the \OVF~1.0
+format, but another common case is $N=1$, which represents scalar
+fields, such as energy density (in say, J/m${}^3$).
+
+The recommended file extensions for \OVF\ files are \fn{.omf} for
+magnetization files, \fn{.ohf} for magnetic field (\vH) files, \fn{.obf} 
+for magnetic flux density (\vB) files,  \fn{.oef} for energy density
+files, or \fn{.ovf} for generic files.  
+
+\subsection{The \OVF\ 1.0 format}\label{sec:ovfformat}
+A commented sample \OVF\ 1.0 file is provided
+\hyperrefhtml{below}{in Fig.~}{}{fig:ovfsample}.
+An \OVF\ file has an \ASCII\ header and trailer, and a data block that
+may be either \ASCII\ or binary.  All non-data lines begin with a `\lb'
+character; double `\lb\lb' mark the start of a comment, which
+continues until the end of the line.  There is no line continuation
+character.  Lines starting with a `\lb' but containing only whitespace
+characters are ignored.
+
+All non-empty non-comment lines in the file header are structured as
+label+value pairs.  The label tag consists of all characters after the
+initial `\lb' up to the first colon (`:') character.  Case is ignored,
+and all space and tab characters are eliminated.  The value consists
+of all characters after the first colon, continuing up to a `\verb+##+'
+comment designator or the end of the line.
+
+The first line of an \OVF\ file should be a file type identification
+line, having the form
+\begin{verbatim}
+# OOMMF: rectangular mesh v1.0
+\end{verbatim}
+or
+\begin{verbatim}
+# OOMMF: irregular mesh v1.0
+\end{verbatim}
+where the value ``rectangular mesh v1.0'' or ``irregular mesh v1.0''
+identifies the mesh type and revision.  While the \OVF\ 1.0 format was
+under development in earlier \OOMMF\ releases, the revision strings
+\cd{0.99} and \cd{0.0a0} were sometimes recorded on the file type
+identification line. \OOMMF\ treats all of these as synonyms for
+\cd{1.0} when reading \OVF\ files.
+
+The remainder of the file is conceptually broken into Segment
+blocks\index{segment block}, and each Segment block is composed of a
+(Segment) Header block and a Data block.  Each block begins with a
+``\verb+# Begin: <block type>+'' line, and ends with a corresponding
+``\verb+# End: <block type>+'' line.  The number of Segment blocks is
+specified in the
+\begin{verbatim}
+# Segment count: 1
+\end{verbatim}
+line.  Currently only 1 segment is allowed.  This may be changed in
+the future to allow for multiple vector fields per file.  
+This is followed by
+\begin{verbatim}
+# Begin: Segment
+\end{verbatim}
+to start the first segment.
+
+\subsubsection{Segment Header block}\label{sec:ovfsegmentheader}
+The Segment Header block start is marked by the line
+``\lb~Begin: Header'' and the end by ``\lb~End: Header''.  Everything
+between these lines should be either comments or one of the following
+file descriptor lines.  They are order independent.  All are required
+unless otherwise stated.  Numeric values are floating point values
+unless ``integer'' is explicitly stated.
+\begin{itemize}
+\item {\bf title:} Long file name or title.
+\item {\bf desc:} Description line.  Optional.  Use as many as desired.
+   Description lines may be displayed by post-processing programs,
+   unlike comment lines which are ignored by all automated processing.
+\item {\bf meshunit:} Fundamental mesh spatial unit, treated as a
+   label.  The comment marker `\verb+##+' is not allowed in this label.
+   Example value: ``nm''.
+\item {\bf valueunit:} Fundamental field value unit, treated as a
+   label.  The comment marker `\verb+##+' is not allowed in this label.
+   Example: ``kA/m.''
+\item {\bf valuemultiplier:} Values in the data block are multiplied by
+   this to get true values in units of ``valueunit.''  This simplifies
+   the use of normalized values.
+\item {\bf xmin, ymin, zmin, xmax, ymax, zmax:} Six separate lines,
+   specifying the bounding box for the mesh, in units of ``meshunit.''
+   This may be used by display programs to limit the display area,
+   and may be used for drawing a boundary frame if ``boundary'' is not
+   specified.
+\item {\bf boundary:} List of {\it (x,y,z)} triples specifying the
+   vertices of a boundary frame.  Optional.
+\item {\bf ValueRangeMaxMag, ValueRangeMinMag:}  The maximum and
+   minimum field magnitudes in the data block, in the same
+   units and scale as used in the data block.  These are for optional
+   use as hints by postprocessing programs; for example, \app{mmDisp}
+   will not display any vector with magnitude smaller than
+   ValueRangeMinMag.  If both ValueRangeMinMag and ValueRangeMaxMag
+   are zero, then the values should be ignored.
+\item {\bf meshtype:}\index{grid} Grid structure; should be either
+   ``rectangular'' or
+   ``irregular.''  Irregular grid files should specify ``pointcount''
+   in the header; rectangular grid files should specify instead
+   ``xbase, ybase, zbase,'' ``xstepsize, ystepsize, zstepsize,'' and
+   ``xnodes, ynodes, znodes.''
+\item {\bf pointcount:} Number of data sample points/locations, i.e.,
+   nodes (integer).  For irregular grids only.
+\item {\bf xbase, ybase, zbase:} Three separate lines, denoting the
+   position of the first point in the data section, in units of
+   ``meshunit.''  For rectangular grids only.
+\item {\bf xstepsize, ystepsize, zstepsize:} Three separate lines,
+   specifying the distance between adjacent grid points, in units
+   of ``meshunit.''  Required for rectangular grids, but may be
+   specified as a display hint for irregular grids.
+\item {\bf xnodes, ynodes, znodes:} Three separate lines, specifying
+   the number of nodes along each axis (integers).  For
+   rectangular grids only.
+\end{itemize}
+
+\subsubsection{Data block}
+The data block start is marked by a line of the form
+\begin{verbatim}
+# Begin: data <representation>
+\end{verbatim}
+where \texttt{<representation>} is one of ``text'', ``binary 4'', or
+``binary 8''.  Text mode uses the \ASCII\ specification, with
+individual data items separated by an arbitrary amount of whitespace
+(spaces, tabs and newlines).  Comments are not allowed inside binary
+mode data blocks, but are permitted inside text data blocks.
+
+The binary representations are IEEE floating point in network byte
+order (MSB).  To insure that the byte order is correct, and to provide
+a partial check that the file hasn't been sent through a non 8-bit
+clean channel, the first datum is a predefined value: 1234567.0 (Hex:
+49 96 B4 38) for 4-byte mode, and 123456789012345.0 (Hex: 42 DC 12 21
+83 77 DE 40) for 8-byte mode.  The data immediately follow the check
+value.
+
+The structure of the data depends on whether the ``meshtype'' declared
+in the header is ``irregular'' or ``rectangular''.  For irregular
+meshes, each data element is a 6-tuple, consisting of the $x$, $y$ and
+$z$ components of the node position, followed by the $x$, $y$ and $z$
+components of the field at that position.  Ordering among the nodes is
+not relevant.  The number of nodes is specified in the ``pointcount''
+line in the segment header.
+
+For rectangular meshes, data input is field values only, in $x$, $y$,
+$z$ component triples.  These are ordered with the $x$ index
+incremented first, then the $y$ index, and the $z$ index last.  This
+is nominally Fortran order, and is adopted here because commonly $x$
+will be the longest dimension, and $z$ the shortest, so this order is
+more memory-access efficient than the normal C array indexing of $z$,
+$y$, $x$.  The size of each dimension is specified in the ``xnodes,
+ynodes, znodes'' lines in the segment header.
+
+In any case, the first character after the last data item should be a
+newline, followed by
+\begin{verbatim}
+# End: data <representation>
+\end{verbatim}
+where \texttt{<representation>} must match the value in the ``Begin:
+data'' line.  This is followed by a
+\begin{verbatim}
+# End: segment
+\end{verbatim}
+line that ends the segment, and hence the file.
+
+Note: An \OVF~1.0 file with \ASCII\ data and irregular meshtype is
+also a valid \OVF~0.0 (\SVF\index{file!svf}) file, although as a
+\OVF~0.0 file the value scaling as specified by
+``\verb+# valueunit+'' and ``\verb+# valuemultiplier+'' header lines is
+inactive.
+
+\begin{codelisting}{p}{fig:ovfsample}{Commented \OVF\ sample
+file.}{sec:ovfformat}
+\begin{verbatim}
+# OOMMF: rectangular mesh v1.0
+#
+## This is a comment.
+## No comments allowed in the first line.
+#
+# Segment count: 1   ## Number of segments.  Should be 1 for now.
+#
+# Begin: Segment
+# Begin: Header
+#
+# Title: Long file name or title goes here
+#
+# Desc: 'Description' tag, which may be used or ignored by postprocessing
+# Desc: programs. You can put anything you want here, and can have as many
+# Desc: 'Desc' lines as you want.  The ## comment marker is disabled in
+# Desc: description lines. 
+#
+## Fundamental mesh measurement unit.  Treated as a label:
+# meshunit: nm
+#
+# meshtype: rectangular
+# xbase: 0.      ## (xbase,ybase,zbase) is the position, in
+# ybase: 0.      ## 'meshunit', of the first point in the data
+# zbase: 0.      ## section (below).
+#
+# xstepsize: 20. ## Distance between adjacent grid pts.: on the x-axis,
+# ystepsize: 10. ## 20 nm, etc.  The sign on this value determines the
+# zstepsize: 10. ## grid orientation relative to (xbase,ybase,zbase).
+#
+# xnodes: 200    ## Number of nodes along the x-axis, etc. (integers)
+# ynodes: 400
+# znodes:   1
+#
+# xmin:    0.    ## Corner points defining mesh bounding box in
+# ymin:    0.    ## 'meshunit'.  Floating point values.
+# zmin:  -10.
+# xmax: 4000.
+# ymax: 4000.
+# zmax:   10.
+#
+## Fundamental field value unit, treated as a label:
+# valueunit: kA/m
+# valuemultiplier: 0.79577472  ## Multiply data block values by this
+#                              ## to get true value in 'valueunits'.
+#
+# ValueRangeMaxMag:  1005.3096  ## These are in data block value units,
+# ValueRangeMinMag:  1e-8       ## and are used as hints (or defaults)
+#     ## by postprocessing programs.  The mmDisp program ignores any
+#     ## points with magnitude smaller than ValueRangeMinMag, and uses
+#     ## ValueRangeMaxMag to scale inputs for display.
+#
+# End: Header
+#
+## Anything between '# End: Header' and '# Begin: data text',
+## '# Begin: data binary 4' or '# Begin: data binary 8' is ignored.
+##
+## Data input is in 'x-component y-component z-component' triples,
+## ordered with x incremented first, then y, and finally z.
+#
+# Begin: data text
+1000 0 0 724.1 0. 700.023
+578.5 500.4 -652.36
+<...data omitted for brevity...>
+252.34 -696.42 -671.81
+# End: data text
+# End: segment
+\end{verbatim}
+\end{codelisting}
+
+\subsection{The \OVF\ 2.0 format}\label{sec:ovf20format}
+\begin{rawhtml}
+<A NAME="pt:ovf20format"></A>
+\end{rawhtml}
+The \OVF~2.0 format is a modification to the \OVF~1.0 format that also
+supports fields across three spatial dimensions but having values of
+arbitrary (but fixed) dimension.  In the \OVF~2.0 format:
+\begin{enumerate}
+\item The first line reads: \verb+# OOMMF OVF 2.0+ for both
+regular and irregular meshes.
+\item In the Segment Header block, the new record \cd{valuedim} is
+required.  This must specify an integer value, $N$, bigger or equal to
+one.
+\item In the Segment Header block, the new \cd{valueunits} record
+replaces the \cd{valueunit} record of \OVF~1.0.  Instead of a single
+unit value, \cd{valueunits} should be a (\Tcl) list of value units, each
+treated as an unparsed label.  The list should either have length $N$
+(as specified by \cd{valuedim}), in which case each element denotes
+the units for the corresponding dimension index, or else the list
+should have length one, in which case the single element is applied to
+all dimension indexes.  The old \cd{valueunit} record is not allowed
+in \OVF~2.0 files.
+\item In the Segment Header block, the new \cd{valuelabels} record is
+required.  This should be an $N$-item (\Tcl) list of value labels, one
+for each value dimension.  The labels identify the quantity in each
+dimension.  For example, in an energy density file, $N$ would be 1,
+\cd{valueunits} could be J/m${}^3$, and \cd{valuelabels} might be
+``Exchange energy density''.
+\item In the Segment Header block, the records
+\cd{valuemultiplier}, \cd{boundary}, \cd{ValueRangeMaxMag} and
+\cd{ValueRangeMinMag} of the \OVF~1.0 format are not supported.
+\item In the Data block, for regular meshes each record consists of
+$N$ values, where $N$ is the value dimension as specified by the
+\cd{valuedim} record in the Segment Header.  The node ordering is
+the same as for the \OVF~1.0 format.  For irregular meshes, each
+record consists of $N+3$ values, where the first three values are the
+$x$, $y$ and $z$ components of the node position.  For data blocks
+using text representation with $N = 3$, the Data block in
+\OVF~1.0 and \OVF~2.0 files are exactly the same.
+\item The data layout for data blocks using binary representation is
+also the same as in \OVF~1.0 files, except that all binary values are
+written in a little endian (LSB) order, as compared to the MSB order
+used in the \OVF~1.0 format.  This includes the initial check value
+(IEEE floating point value 1234567.0 for 4-byte format, corresponding
+to the LSB hex byte sequence 38 B4 96 49, and 123456789012345.0 for
+8-byte format, corresponding to the LSB hex byte sequence 40 DE 77 83
+21 12 DC 42) as well as the subsequent data records.
+\end{enumerate}
+In all other respects, the \OVF~1.0 and \OVF~2.0 are the same.  An
+example \OVF~2.0 file for an irregular mesh with $N=2$
+\hyperrefhtml{follows}{follows (Fig.~}{)}{fig:ovf20sample}.
+
+\begin{codelisting}{p}{fig:ovf20sample}{Commented \OVF~2.0 sample
+file.}{sec:ovf20format}
+\begin{verbatim}
+# OOMMF OVF 2.0
+#
+# Segment count: 1
+#
+# Begin: Segment
+# Begin: Header
+#
+# Title: Long file name or title goes here
+#
+# Desc: Optional description line 1.
+# Desc: Optional description line 2.
+# Desc: ...
+#
+## Fundamental mesh measurement unit.  Treated as a label:
+# meshunit: nm
+#
+# meshtype: irregular
+# pointcount: 5      ## Number of nodes in mesh
+#
+# xmin:    0.    ## Corner points defining mesh bounding box in
+# ymin:    0.    ## 'meshunit'.  Floating point values.
+# zmin:    0.
+# xmax:   10.
+# ymax:    5.
+# zmax:    1.
+#
+# valuedim: 2    ## Value dimension
+#
+## Fundamental field value units, treated as labels (i.e., unparsed).
+## In general, there should be one label for each value dimension.
+# valueunits:  J/m^3  A/m
+# valuelabels: "Zeeman energy density"  "Anisotropy field"
+#
+# End: Header
+#
+## Each data records consists of N+3 values: the (x,y,z) node
+## location, followed by the N value components.  In this example,
+## N+3 = 5, the two value components are in units of J/m^3 and A/m,
+## corresponding to Zeeman energy density and a magneto-crystalline
+## anisotropy field, respectively.
+#
+# Begin: data text
+0.5 0.5 0.5  500.  4e4
+9.5 0.5 0.5  300.  5e3
+0.5 4.5 0.5  400.  4e4
+9.5 4.5 0.5  200.  5e3
+5.0 2.5 0.5  350.  2.1e4
+# End: data text
+# End: segment
+\end{verbatim}
+\end{codelisting}
+
+
+\subsection{The \OVF\ 0.0 format}\label{sec:svfformat}
+
+The \OVF\ 0.0 format\index{file!vector~field} is a simple \ASCII\ text
+format supporting irregularly sampled data.  It is intended as an aid
+for importing data from non-\OOMMF\ programs, and is backwards
+compatible with the format used for problem submissions for the
+\ifnotpdf{\htmladdnormallinkfoot{first \mumag\ standard
+problem}{http://www.ctcms.nist.gov/\~{}rdm/stdprob\_1.html}.}
+\pdfonly{\htmladdnormallinkfoot{first \mumag\ standard
+problem}{http://www.ctcms.nist.gov/\%7Erdm/stdprob\_1.html}.}
+
+Users of early releases of \OOMMF\ may recognize the \OVF\ 0.0 format
+by its previous name, the Simple Vector Field (\SVF)\index{file!svf}
+format.  It came to the attention of the \OOMMF\ developers that the
+file extension \fn{.svf} was already registered in several MIME systems
+to indicate the
+\htmladdnormallinkfoot{Simple Vector Format}{http://www.softsource.com/svf/},
+a vector graphics format.  To avoid conflict, we have stopped using
+the name Simple Vector Field format, although \OOMMF\ software still
+recognizes the \fn{.svf} extension and you may still find example
+files and other references to the \SVF\ format.
+
+A sample \OVF\ 0.0 file is shown \hyperrefhtml{below}{in
+Fig.~}{}{fig:svfsample}.  Any line beginning with a `\lb' character is
+a comment, all others are data lines.  Each data line is a whitespace
+separated list of 6 elements: the $x$, $y$ and $z$ components of a
+node position, followed by the $x$, $y$ and $z$ components of the
+field at that position.  Input continues until the end of the file is
+reached.
+
+It is recommended (but not required) that the first line of an \OVF\
+file be
+\begin{verbatim}
+# OOMMF: irregular mesh v0.0
+\end{verbatim}
+This will aid automatic file type detection.  Also, three special
+(extended) comments in \OVF\ 0.0 files are recognized by \app{mmDisp}:
+\begin{verbatim}
+## File: <filename or extended filename>
+## Boundary-XY: <boundary vertex pairs>
+## Grid step: <cell dimension triple>
+\end{verbatim}
+All these lines are optional.  The ``File'' provides a preferred
+(possibly extended) filename to use for display identification.  The
+``Boundary-XY'' line specifies the ordered vertices of a bounding
+polygon in the $xy$-plane.  If given, \app{mmDisp} will draw a frame
+using those points to ostensibly indicate the edges of the simulation
+body.  Lastly, the ``Grid step'' line provides three values
+representing the average $x$, $y$ and $z$ dimensions of the volume
+corresponding to an individual node (field sample).  It is used by
+\app{mmDisp} to help scale the display.
+
+Note that the data section of an \OVF\ 0.0 file takes the simple
+form of columns of \ASCII\ formatted numbers.  Columns of whitespace
+separated numbers expressed in \ASCII\ are easy to import
+into other programs that process numerical datasets, and
+are easy to generate, so the \OVF\ 0.0 file format is useful for
+exchanging vector field data between \OOMMF\ and non-\OOMMF\ programs.
+Furthermore, the data section of an \OVF\ 0.0 file is consistent
+with the data section of an \OVF\ 1.0 file that has been saved
+as an irregular mesh using text data representation.  This means that
+even though \OOMMF\ software now writes only the \OVF\ 1.0 format
+for vector field data, simple interchange of vector field data
+with other programs is still supported.
+
+\begin{codelisting}{f}{fig:svfsample}{Example \OVF\ 0.0 file.}{sec:svfformat}
+\begin{verbatim}
+# OOMMF: irregular mesh v0.0
+## File: sample.ovf
+## Boundary-XY: 0.0 0.0 1.0 0.0 1.0 2.0 0.0 2.0 0.0 0.0
+## Grid step: .25 .5 0
+#  x      y      z        m_x      m_y      m_z
+  0.01   0.01   0.01   -0.35537  0.93472 -0.00000
+  0.01   1.00   0.01   -0.18936  0.98191 -0.00000
+  0.01   1.99   0.01   -0.08112  0.99670 -0.00000
+  0.50   0.50   0.01   -0.03302  0.99945 -0.00001
+  0.99   0.05   0.01   -0.08141  0.99668 -0.00001
+  0.75   1.50   0.01   -0.18981  0.98182 -0.00000
+  0.99   1.99   0.01   -0.35652  0.93429 -0.00000
+\end{verbatim}
+\end{codelisting}
+
+%begin{latexonly}
+\setcounter{secnumdepth}{\value{ffoldsecnumdepth}}
+%end{latexonly}

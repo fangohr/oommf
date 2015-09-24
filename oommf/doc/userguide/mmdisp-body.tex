@@ -1,0 +1,824 @@
+\section{Vector Field Display: mmDisp}\label{sec:mmdisp}%
+\index{application!mmDisp}
+
+\begin{center}
+\includepic{mmdisp-ss}{mmDisp Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{mmDisp} displays two-dimensional spatial
+distributions of three-dimensional vectors (i.e., vector fields).  It
+can load vector fields from files in a variety of formats, or it can
+accept vector field data from a client application, typically a running
+solver.  \app{mmDisp} offers a rich interface for
+controlling the display of vector field data, and can also save the data
+to a file and produce Postscript print output.
+
+\ssechead{Launching}
+\app{mmDisp} may be started either by selecting the \btn{mmDisp} button
+on \htmlref{\app{mmLaunch}}{sec:mmlaunch}, or from the command line via
+\begin{verbatim}
+tclsh oommf.tcl mmDisp [standard options] [-config file] \
+   [-net <0|1>] [filename]
+\end{verbatim}
+
+\begin{description}
+\item[\optkey{-config file}]
+  User configuration file that specifies default display parameters.
+  This file is discussed in
+  \htmlref{detail below}{sec:mmdispconfig}.
+\item[\optkey{-net \boa 0\pipe 1\bca}]
+  Disable or enable a server which allows the data displayed by
+  \app{mmDisp} to be updated by another application.
+  By default, the server is enabled.  When the server is disabled,
+  \app{mmDisp} may only input data from a file.
+\end{description}
+
+If a filename is supplied on the command line, \app{mmDisp} takes
+it to be the name of a file containing vector field data for display.
+That file will be opened on startup.
+
+\ssechead{Inputs}
+Input to \app{mmDisp} may come from either a file or from a client
+application (typically a running solver), in any of the
+\hyperrefhtml{\OOMMF\ vector field formats}{vector field
+formats described in Sec.~}{}{sec:vfformats}\index{file!vector~field}.
+Other file formats can also be supported if a translation filter program
+is available.
+
+Client applications that send data to \app{mmDisp} control the flow of
+data.  The user, interacting with the \app{mmDisp} window, determines
+how the vector field data are displayed.
+
+File input is initiated through the \btn{File\pipe Open\ldots}\ dialog
+box.  Several example files are included in the \OOMMF\ release in the
+directory \fn{app/mmdisp/examples}.  When the \btn{Browse} button is
+enabled, the ``Open File'' dialog box will remain open after loading a
+file, so that multiple files may be displayed in sequence.  The
+{\btn{Auto}} configuration box determines whether the vector
+subsampling, data scale, zoom and slice settings should be
+determined automatically (based on the data in the file and the current
+display window size), or whether their values should be held constant
+while loading the file.
+
+\index{customize!file~format~translation|(}
+
+\app{mmDisp} permits local customization allowing for automatic
+translation from other file formats into one of the
+\hyperrefhtml{\OOMMF\ vector field formats}{vector field formats
+(Sec.~}{)}{sec:vfformats} that \app{mmDisp} recognizes.  When loading
+a file, \app{mmDisp} compares the file name to a list of extensions.
+An example extension is \cd{.gz}.  The assumption is that the extension
+identifies files containing data in a particular format.  For each
+extension in the list, there is a corresponding translation program.
+\app{mmDisp} calls on that program as a filter which takes data in one
+format from standard input and writes to standard output the same data
+in one of the formats supported by \app{mmDisp}.  In its default
+configuration, \app{mmDisp} recognizes the patterns \cd{.gz}, \cd{.z},
+and \cd{.zip}, and invokes the translation
+program {\cd{gzip -dc}}\index{application!gzip} to perform the
+``translation.''  In this way, support for reading
+compressed\index{compressed~files} files is
+``built in'' to \app{mmDisp} on any platform where the \app{gzip}
+program is installed.
+
+There are two categories of translations supported: decompression and
+format conversion.  Both are modified by the usual method of
+\hyperrefhtml{local customization}{local customization
+(Sec.~}{)}{sec:custom}\index{file!configuration}.  The
+command governing decompression in the customization file is of the form
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+Oc_Option Add * Nb_InputFilter decompress {{.gz .zip} {gzip -dc}}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The final argument in this command is a list with an even number of
+elements.  The first element of each pair is the filename extension.
+The second element in each pair is the command line for launching the
+corresponding translation program.  To add support for bzip2 compressed
+files, change this line to
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+Oc_Option Add * Nb_InputFilter decompress \
+                {{.gz .zip} {gzip -dc} .bz2 bunzip2}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This option also affects other applications such as
+\htmlref{\app{mmGraph}}{sec:mmgraph} that support ``on-the-fly''
+decompression.  In all cases the decompression program must accept
+compressed input on standard input and write the decompressed output to
+standard output.
+
+There is also input translation support for filters that convert from
+foreign (i.e., non-\OOMMF) file formats.  For example,
+if a program \cd{foo} were known to translate a file format identified by the
+extension \fn{.bar} into the
+\OVF\ file format, that program could be made known to \app{mmDisp}
+by setting the customization command:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin<latexonly>
+\begin{quote}
+%end<latexonly>
+\begin{verbatim}
+Oc_Option Add * Nb_InputFilter ovf {.bar foo}
+\end{verbatim}
+%begin<latexonly>
+\end{quote}
+%end<latexonly>
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+This assumes that the program \cd{foo} accepts input of the form
+\fn{.bar} on standard input and writes the translated results to
+standard output.
+\index{customize!file~format~translation|)}
+
+
+\ssechead{Outputs}
+The vector field displayed by \app{mmDisp} may be saved to disk via the
+{\btn{File\pipe Save As\ldots}}\index{data!save} dialog box.  The output
+is in the \hyperrefhtml{\OVF\ format}{\OVF\ format
+(Sec.~}{)}{sec:ovfformat}\index{file!vector~field}.  The \OVF\ file
+options may be set by selecting the appropriate radio buttons in the
+\OVF\ File Options panel.  The \btn{Title} and \btn{Desc} fields may be
+edited before saving.  Enabling the \btn{Browse} button allows for
+saving multiple files without closing the ``Save File'' dialog box.
+
+The \btn{File\pipe Print\ldots}\index{data!print} dialog is used to
+produce a Postscript file of the current display.  On Unix systems, the
+output may be sent directly to a
+printer\index{platform!Unix!PostScript~to~printer} by filling the
+\btn{Print to:} entry with the appropriate pipe command, e.g.,
+\pipe\texttt{lpr}.  (The exact form is system dependent.)  The other
+print dialog box options are described in the
+\htmlref{configuration files}{sec:mmdispconfig} section below.
+
+The \btn{File\pipe Write config\ldots}\index{file!configuration} dialog
+allows one to save to disk a configuration file holding the current
+display parameters.  This file can be used to affect startup display
+parameters, or used as input to the \hyperrefhtml{avf2ppm}{\app{avf2ppm}
+(Sec.~}{)}{sec:avf2ppm}\index{application!avf2ppm} and
+\hyperrefhtml{avf2ps}{\app{avf2ps}
+(Sec.~}{)}{sec:avf2ps}\index{application!avf2ps} command line utilities
+that convert files from the \OVF\ format into bitmap images and
+\postscript\ printer files, respectively.  (mmDisp does not provide
+direct support for writing bitmap files.)  Details of the configuration
+file are \htmlref{discussed below}{sec:mmdispconfig}.
+
+\ssechead{Controls}\label{sec:mmdispcontrols}
+
+The menu selection \btn{File\pipe Clear} clears the display window.
+The menu selection \btn{File\pipe Exit} terminates the
+\app{mmDisp} application.  The menu \btn{Help} provides
+the usual help facilities.
+
+The \btn{View} menu provides high-level control over how the vector
+field is placed in the display window.  The menu selection
+{\btn{View\pipe Wrap Display}} resizes the display window so that it
+just contains the entire vector field surrounded by a margin.
+{\btn{View\pipe Fill Display}} resizes the vector field until it fills
+the current size of the display window.  If the aspect ratio of the
+display window does not match the aspect ratio of the vector field, a
+larger than requested margin appears along one edge to make up the
+difference.  {\btn{View\pipe Center Display}} translates the vector
+field to put the center of view at the center of the display window.
+{\btn{View\pipe Rotate ccw}} and {\btn{View\pipe Rotate cw}} rotate the
+display one quarter turn counter-clockwise and clockwise respectively.
+If the display size is not locked (see {\btn{Options\pipe Lock~size}}
+below), then the display window also rotates, so that the portion of the
+vector field seen and any margins are preserved (unless the display of
+the control bar forces the display window to be wider).  {\btn{View\pipe
+reDraw}} allows the user to invoke a redrawing of the display window.
+The {\btn{View\pipe Viewpoint}} tearable submenu supports rotation of
+the vector field out of the plane of the display, so that it may be
+viewed from along a different axis.
+
+The menu selection \btn{Options\pipe Configure\ldots}\ brings up a
+dialog box through which the user may control many features of the
+vector field display.  Vectors in the vector field may be displayed as
+arrows, pixels, or both.  The \btn{Arrow} and \btn{Pixel} buttons in the
+\btn{Plot type} column on the left of the dialog box enable each type of
+display.
+
+Columns 2--4 in the Configure dialog box control the use of color.  Both
+arrows and pixels may be independently colored to indicate some
+quantity\index{color!quantity}.  The \btn{Color Quantity} column
+controls which scalar quantity the color of the arrow or pixel
+represents.  Available color quantities include vector $x$, $y$, and $z$
+components, total vector magnitude, slice depth, and angles as measured
+in-plane from a fixed axis.  On regularly gridded data the vector field
+divergence is also available for display.
+
+The assignment of a color to a quantity value is determined by the
+\btn{Colormap}\index{color!map} selected.  Colormaps are labeled by a
+sequence of colors that are mapped across the range of the selected
+quantity.  For example, if the ``Red-Black-Blue'' colormap is applied to
+the {\btn{Color Quantity}} ``z'', then vectors pointing into the
+$xy$-plane ($z<0$) are colored red, those lying in the plane ($z=0$) are
+colored black, and those pointing out of the plane ($z>0$) are colored
+blue.  Values between the extremes are colored with intermediate colors,
+selected using a discretization determined by the \btn{\lb\ of Colors}
+value.  This value governs the use of potentially limited color
+resources, and can be used to achieve some special coloring effects.
+(Note: The in-plane angle quantities are generally best viewed with a
+colormap that begins and ends with the same color, e.g.,
+``Red-Green-Blue-Red.'')  The ordering of the colormap can be reversed
+by selecting the \btn{Reverse} checkbox.  For example, this would change
+the ``Red-Black-Blue'' colormap to effectively ``Blue-Black-Red.''
+
+Below the \btn{Reverse} checkbutton in the pixel plot type row is a
+\btn{Opaque} checkbutton.  If this is selected then arrows below the top
+row in the pixel slice range (see slice discussion below) will be hidden
+by the pixel object.  If disabled, then the pixel object is translucent,
+so objects further below are partially visible.
+
+When there are many vectors in a vector field, a display of all of them
+may be more confusing than helpful.  The \btn{Subsample} column
+allows the user to request that only a sampling of vectors from the
+vector field be displayed.  The \btn{Subsample} value is roughly
+the number of vectors along one spatial dimension of the vector field
+which map to a single displayed vector (arrow or pixel).  Each vector
+displayed is an actual vector in the vector field---the selection of
+vectors for display is a sampling process, not an averaging or
+interpolation process.  The subsample rates for arrows and pixels may be
+set independently.  A subsample rate of 0 is interpreted specially to
+display all data.  (This is typically much quicker than subsampling at a
+small rate, e.g., 0.1.)
+
+The length of an arrow represents the magnitude of the vector field.
+All arrows are drawn with a length between zero and ``full-scale.''
+By default, the full-scale arrow length is computed
+so that it covers the region of the screen that one displayed
+vector is intended to represent, given the current subsample rate.
+Following this default, arrows do not significantly overlap each other,
+yet all non-zero portions of the vector field have
+a representation in the display.  Similarly, pixels are drawn with
+a default size that fills an area equal to the region of the screen
+one pixel is intended to represent, given the pixel subsample rate.
+The \btn{Size} column allows the user to (independently)
+override the default size of pixels and full-scale arrows.
+A value of 1 represents the default size.  By
+changing to a larger or smaller \btn{Size} value, the user may
+request arrows or pixels larger or smaller than the default size.
+
+Below the Arrow and Pixel Controls are several additional controls.  The
+\btn{Data Scale}\index{data!scale}\label{html:mmdispdatascale} entry
+affects the data value scaling.  As described above, all arrows are
+displayed with length between zero and full-scale.  The full-scale arrow
+length corresponds to some scalar value of the magnitude of the vector
+field.  The \btn{Data Scale}\index{data!scale} entry allows the user to
+set the value at which the drawn arrow length goes full-scale.  Any
+vectors in the vector field with magnitude equal to or greater than the
+data scale value will be represented by arrows drawn at full scale.
+Other vectors will be represented by shorter arrows with length
+determined by a linear scale between zero and the data scale value.
+Similarly, the data scale value controls the range of values spanned by
+the colormap used to color pixels.  The usual use of the
+\btn{Data Scale}\index{data!scale} entry is to reduce the data
+scale value so that more detail can be seen in those portions of
+the vector field which have magnitude less than other parts of the
+vector field.
+If the data scale value is increased, then the length of the
+arrows in the plot is reduced accordingly.  If the data scale value is
+decreased, then the length of the arrows is increased, until they
+reach full-scale.
+An arrow representing a vector with magnitude larger than the
+data scale value may be thought of as being truncated to the data scale
+value.  The initial (default) data scale value is usually the maximum
+vector magnitude in the field, so at this setting no arrows are
+truncated.  Entering \key{0} into the data scale box will cause the data
+scale to be reset to the default value.  (For \hyperrefhtml{\OVF\
+files}{\OVF\ files (Sec.~}{)}{sec:ovfformat}\index{file!vector~field},
+the default data scale value is set from the \cd{ValueRangeMaxMag}
+header line.  This is typically set to the maximum vector magnitude, but
+this is not guaranteed.)  The data scale control is intended primarily
+for use with vector fields of varying magnitude (e.g., \vH -fields), but
+may also be used to adjust the pixel display contrast for any field
+type.
+
+The \btn{Zoom}\index{data!zoom} entry controls the spatial scaling of
+the display.  The value roughly corresponds to the number of pixels per
+vector in the fully-sampled vector field.  (This value is not affected
+by the subsampling rate.)
+
+The \btn{Margin} entry specifies the margin size, in pixels, to be
+maintained around the vector field.
+
+The next row of entry boxes control slice\index{data!slice~selection}
+display.  Slice selection allows display of that subset of the data
+that is within a specified distance of a plane running perpendicular
+to the view axis.  The location of that plane with respect to the view
+axis is specified in the \btn{X-slice center}, \btn{Y-slice center} or
+\btn{Z-slice center} entry, depending on the current view axis.
+The thickness of the slice may be varied separately for arrow and
+pixel displays, as specified in the next two entry boxes.  The slice
+span boxes interpret specially the following values: 0 resets the
+slice thickness to the default value, which is usually the thickness
+of a single cell.  Any negative value sets the slice thickness to be
+the full thickness of the mesh.  Values for all of the slice control
+entries are specified in the fundamental mesh spatial unit, for
+example, meters.  (Refer to the vector field
+\hyperrefhtml{file format}{file format (Sec.~}{)}{sec:vfformats}
+documentation for more on mesh spatial units.)
+
+Below the slice contols are controls to specify whether or not a
+bounding polygon\index{boundary} is displayed, and the background
+color for the display window.
+
+No changes made by the user in the {\btn{Options\pipe Configure\ldots}}\
+dialog box affect the display window until either the
+\btn{Apply} or \btn{OK} button is selected.  If the \btn{OK} button is
+selected, the dialog box is also dismissed.  The {\btn{Close}}
+button dismisses the dialog without changing the display window.
+
+The next item under the \btn{Options} menu is a checkbutton that
+toggles the display of a control bar.  The control bar offers
+alternative interfaces to some of the operations available from the
+\btn{Options\pipe Configure\ldots}\ dialog box and the \btn{View} menu.
+On the left end of the control bar is a display of the coordinate axes.
+These axes rotate along with the vector field in the display window to
+identify the coordinate system of the display, and are color coded to
+agree with the pixel (if active) or arrow coloring.  A click of the left
+mouse button on the coordinate axes causes a counter-clockwise rotation.
+A click of the right mouse button on the coordinate axes causes a
+clockwise rotation.
+
+To the right of the coordinate axes are two rows of controls.  The top
+row allows the user to control the subsample rate and size of displayed
+arrows.  The subsample rate may be modified either by direct entry of a
+new rate, or by manipulation of the slider.  The second row controls the
+current data scale value and zoom (spatial magnification).  A vertical
+bar in the slider area marks the default data scale value.  Specifying
+\key{0} for the data scale value will reset the data scale to the
+default value.
+
+The spatial magnification may be changed either by typing a value in the
+Zoom box of the control bar, or by using the mouse inside the display
+window.  A click and drag with the left mouse button displays a red
+rectangle that changes size as the mouse is dragged.  When the left
+mouse button is released, the vector field is rescaled so that the
+portion of the display window within the red rectangle expands until it
+reaches the edges of the display window.  Both dimensions are scaled by
+the same amount so there is no aspect distortion of the vector field.
+Small red arrows on the sides of the red rectangle indicate which
+dimension will expand to meet the display window boundaries upon release
+of the left mouse button.  After the rescaling, the red rectangle
+remains in the display window briefly, surrounding the same region of
+the vector field, but at the new scale.
+
+A click and drag with the right mouse button displays a blue rectangle
+that changes size as the mouse is dragged.  When the right mouse button
+is released, the vector field is rescaled so that all of the vector
+field currently visible in the display window fits the size of the
+blue rectangle.  Both dimensions are scaled by the same amount so there
+is no aspect distortion of the vector field.  Small blue arrows on the
+sides of the blue rectangle indicate the dimension in which the vector
+field will shrink to exactly transform the display window size to the
+blue rectangle size.  After the rescaling, the blue rectangle remains in
+the display window briefly, surrounding the same region of the vector
+field, now centered in the display window, and at the new scale.
+
+When the zoom value is large enough that a portion of the vector field
+lies outside the display window, scrollbars appear that may be used to
+translate the vector field so that different portions are visible in the
+display window.  On systems that have a middle mouse button, clicking
+the middle button on a point in the display window translates the vector
+field so that the selected point is centered within the display window.
+
+\app{mmDisp} remembers the previous zoom value and data scale values.
+To revert to the previous settings, the user may hit the \key{ESC} key.
+This is a limited ``Undo'' feature.
+
+Below the data scale and zoom controls in the control bar is the slice
+center selection control\index{data!slice~selection}.  This will be
+labeled \btn{Z-slice}, \btn{X-slice}, or \btn{Y-slice}, depending on
+which view axis is selected.  The thickness of the slice can be set
+from the \btn{Options\pipe Configure\ldots}\ dialog box.
+
+The final item under the \btn{Options} menu is the
+\btn{Options\pipe Lock~size} checkbutton.  By default, when the
+display is rotated in-plane, the width and height of the viewport are
+interchanged so that the same portion of the vector field remains
+displayed.  Selecting the \btn{Options\pipe Lock~size} checkbutton
+disables this behavior, and also other viewport changing operations
+(e.g., display wrap).
+
+Several keyboard shortcuts are available as alternatives to menu- or
+mouse-based operations.  (These are in addition to the usual keyboard
+access to the menu.)  The effect of a key combination depends on which
+subwindow of \app{mmDisp} is active.  The \key{TAB} key may be used to
+change the active subwindow.  The \key{SHIFT-TAB} key combination also
+changes the active subwindow, in reverse order.
+
+When the active subwindow is the display window, the following
+key combinations are active:
+\begin{itemize}
+\item \key{CTRL-o} -- same as menu selection \btn{File\pipe Open\ldots}
+\item \key{CTRL-s} -- same as menu selection 
+                       {\btn{File\pipe Save as\ldots}\index{data!save}}
+\item \key{CTRL-p} -- same as menu selection
+                       {\btn{File\pipe Print\ldots}\index{data!print}}
+\item \key{CTRL-c} -- same as menu selection
+        \btn{Options\pipe Configure\ldots}
+\item \key{CTRL-v} -- launches viewpoint selection menu,
+        \btn{View\pipe Viewpoint}
+\item \key{CTRL-w} -- same as menu selection {\btn{View\pipe Wrap Display}}
+\item \key{CTRL-f} -- same as menu selection {\btn{View\pipe Fill Display}}
+\item \key{HOME} -- First fill, then wrap the display.
+\item \key{CTRL-space} --
+ same as menu selection {\btn{View\pipe Center Display}}
+\item \key{CTRL-r} -- same as menu selection \btn{View\pipe Rotate ccw}
+\item \key{SHIFT-CTRL-r} -- same as menu selection \btn{View\pipe Rotate cw}
+\item \key{INSERT} -- decrease arrow subsample by 1
+\item \key{DEL} -- increase arrow subsample by 1
+\item \key{SHIFT-INSERT} -- decrease arrow subsample by factor of 2
+\item \key{SHIFT-DEL} -- increase arrow subsample by factor of 2
+\item \key{PAGEUP} -- increase the zoom value by a factor of 1.149
+\item \key{PAGEDOWN} -- decrease the zoom value by a factor of 1.149
+\item \key{SHIFT-PAGEUP} -- increase the zoom value by factor of 2
+\item \key{SHIFT-PAGEDOWN} -- decrease the zoom value by factor of 2
+\item \key{ESC} -- revert to previous data scale and zoom values
+\end{itemize}
+
+When the active subwindow is the control bar's coordinate axes display,
+the following key combinations are active:
+\begin{itemize}
+\item \key{LEFT} -- same as menu selection \btn{View\pipe Rotate ccw}
+\item \key{RIGHT} -- same as menu selection \btn{View\pipe Rotate cw}
+\end{itemize}
+
+When the active subwindow is any of the control bar's value entry
+windows -- arrow subsample, size, data scale or zoom, the following key
+combinations are active:
+\begin{itemize}
+\item \key{ESC} -- undo uncommitted value (displayed in red)
+\item \key{RETURN} -- commit entered value
+\end{itemize}
+
+When the active subwindow is in any of the control bar's sliders---arrow
+subsample, data scale or slice---the following key combinations are
+active:
+\begin{itemize}
+\item \key{LEFT} -- slide left (decrease value)
+\item \key{RIGHT} -- slide right (increase value)
+\item \key{ESC} -- undo uncommitted value (displayed in red)
+\item \key{RETURN} -- commit current value
+\end{itemize}
+
+When any of the separate dialog windows are displayed (e.g., the
+\btn{File\pipe Open\ldots} or \btn{Options\pipe Configure\ldots}
+dialogs), the shortcut \key{CTRL-.} (control-period) will raise and
+transfer keyboard focus back to the root \app{mmDisp} window.
+
+\begin{rawhtml}
+<A NAME="pt:mmdisp.config"></A>
+\end{rawhtml}
+\ssechead{Configuration files\label{sec:mmdispconfig}}
+The various initial display parameters (e.g., window size, orientation,
+colormap) are set by configuration files.  The default configuration
+file
+\begin{quote}
+\fn{oommf/app/mmdisp/scripts/mmdisp.config}
+\end{quote}
+is read first, followed by the local customization file,
+\begin{quote}
+\fn{oommf/app/mmdisp/scripts/local/mmdisp.config}
+\end{quote}
+if it exists.  Lastly, any files passed as \cd{-config} options on the
+command line are input.  The files must be valid \Tcl\ scripts, the main
+purpose of which is to set elements of the \cd{plot\_config} and
+\cd{print\_config} arrays, as illustrated in the \hyperrefhtml{default
+configuration file}{default configuration file
+(Fig.~}{,}{fig:mmdisp.config}\latex{ page~\pageref{fig:mmdisp.config})}.
+(See the \Tcl\ documentation for details of the \cd{array set} command.)
+
+There are several places in the configuration file where colors are
+specified.  Colors may be represented using the symbolic names in
+\fn{oommf/config/colors.config}, in any of the \Tk\ hexadecimal
+formats, e.g., \cd{\#RRGGBB}, or as a shade of gray using the format
+``grayD'' (or ``greyD''), where D is a decimal integer from 0-100,
+inclusive.  Examples in the latter two formats are \cd{\#FFFF00} for
+yellow, \cd{gray0} for black, and \cd{gray100} or \cd{\#FFFFFF} for
+white.
+
+Refer to the default configuration file as we discuss each element of
+the \cd{plot\_config} array:
+\begin{description}
+\item[\optkey{arrow,status}]
+  Set to 1 to display arrows, 0 to not draw arrows.
+\item[\optkey{arrow,autosample}]
+ If 1, then ignore the value of \cd{arrow,subsample}\index{sampling} and
+ automatically determine a ``reasonable'' subsampling rate for the
+ arrows.  Set to 0 to turn off this feature.
+\item[\optkey{arrow,subsample}]
+ If \cd{arrow,autosample} is 0, then subsample the input vectors at this
+ rate when drawing arrows.  A value of 0 for \cd{arrow,subsample} is
+ interpreted specially to display all data.
+\item[\optkey{arrow,colormap}]
+  Select the colormap to use when drawing arrows.  Should be one of the
+  strings specified in the {\tt Colormap} section of the
+  \btn{Options\pipe Configure\ldots} dialog.
+\item[\optkey{arrow,colorcount}]
+  Number of discretization\index{color!discretization} levels to use
+  from the colormap.  A value of zero will color all arrows with the
+  first color in the colormap.
+\item[\optkey{arrow,quantity}]
+ Scalar quantity the arrow color\index{color!quantity} is to represent.
+ Supported values include \cd{x}, \cd{y}, \cd{z}, \cd{xy-angle},
+ \cd{xz-angle}, \cd{yz-angle}, and \cd{slice}.  The
+ \btn{Options\pipe Configure\ldots} dialog presents the complete list of
+ allowed quantities, which may be image dependent.
+\item[\optkey{arrow,colorreverse}]
+ The \cd{colorreverse} value should be 1 or 0, signifying to reverse or
+ not reverse, respectively.  If reverse is selected, then the colormap
+ ordering is inverted, changing for example \cd{Blue-White-Red} into
+ \cd{Red-White-Blue}.  This corresponds to the \cd{Reverse} control in
+ the \btn{Options\pipe Configure\ldots}.
+\item[\optkey{arrow,colorphase}]
+ The phase is a real number between -1 and 1 that provides a translation
+ in the selected \cd{colormap}.  For the \cd{xy-angle}, \cd{xz-angle}
+ and \cd{yz-angle} color quantities, this displays as a rotation of the
+ colormap, e.g., setting colorphase to 0.333 would effectively
+ change the \cd{Red-Green-Blue-Red} colormap into
+ \cd{Green-Blue-Red-Green}.  For the other color quantities, it simply
+ shifts the display band, saturating at one end.  For example, setting
+ colorphase to 0.5 changes the \cd{Blue-White-Red} colormap into
+ \cd{White-Red-Red}.  If both inversion and phase adjustment are
+ requested, then inversion is applied first.
+\item[\optkey{arrow,size}]
+ Size of the arrows relative to the default size (represented as 1.0).
+\item[\optkey{pixel,\ldots}]
+ Most of the pixel configuration elements have analogous arrow
+ configuration elements, and are interpreted in the same manner.  The
+ exception is the \cd{pixel,opaque} element, which is discussed next.
+ Note too that the auto subsampling rate for pixels is considerably
+ denser than for arrows.
+\item[\optkey{pixel,opaque}]
+ If the opaque value is 1, then the pixel is drawn in a solid manner,
+ concealing any arrows which are drawn under it.  If opaque is 0, then
+ the pixel is drawn only partially filled-in, so objects beneath it can
+ still be discerned.
+\item[\optkey{misc,background}]
+ Specify the background color.
+\item[\optkey{misc,drawboundary}]
+ If 1, then draw the bounding polygon\index{boundary}, if any, as
+ specified in the input vector field file.
+\item[\optkey{misc,boundarycolor}]
+ String specifying the bounding polygon color, if drawn.
+\item[\optkey{misc,boundarywidth}]
+ Width of the bounding polygon, in pixels.
+\item[\optkey{misc,margin}]
+ The size of the border margin\index{margin}, in pixels.
+\item[\optkey{misc,defaultwindowwidth}, \optkey{misc,defaultwindowheight}]
+ Width and height of initial display viewport, in pixels.
+\item[\optkey{misc,width}, \optkey{misc,height}]
+ Width and height of displayed area.  This will be less than the
+ viewport dimensions if scrollbars are present.  These values are
+ ignored during \app{mmDisp} initialization, but are written out by the
+ \btn{File\pipe Write config\ldots} command as a convenience for the
+ \hyperrefhtml{avf2ppm}{\app{avf2ppm}
+ (Sec.~}{)}{sec:avf2ppm}\index{application!avf2ppm} command line
+ utility.
+\item[\optkey{misc,rotation}]
+ Counterclockwise rotation in degrees; either 0, 90, 180 or 270.
+\item[\optkey{misc,zoom}]
+ Scaling factor for the display.  This is the same value as shown in the
+ ``zoom'' box in the \app{mmDisp} control bar,
+ and corresponds roughly to the number of pixels per vector in the
+ (original, fully-sampled) vector field.  If set to zero, then
+ the scaling is set so the image, including margins, just fits inside
+ the viewport dimensions.
+\item[\optkey{misc,datascale}]
+ Scale for arrow size and colormap ranges; equivalent to the
+ \htmlref{\cd{Data Scale} control}{html:mmdispdatascale}.  In general,
+ this should be a positive real value, but a zero or empty value will
+ set the scaling to its default setting.
+\item[\optkey{misc,centerpt}]
+ If specified, the value should be a three item list of real numbers
+ specifying the center of the display, \cd{\ocb x y z\ccb}, in
+ file mesh units (e.g., meters).
+\item[\optkey{misc,relcenterpt}]
+ If specified, the value should be a three item list of real numbers in
+ the range $[0,1]$ specifying the center of the display in relative
+ coordinates.  If both \cd{misc,relcenterpt} and \cd{misc,centerpt} are
+ defined, then \cd{misc,centerpt} takes precedence.
+\item[\optkey{viewaxis}]
+ Select the view axis, which should be one of \cd{+z}, \cd{-z}, \cd{+y},
+ \cd{-y}, \cd{+x}, or \cd{-x}.  This option is equivalent to the
+ \btn{View\pipe Viewpoint} menu control.
+\item[\optkey{viewaxis,xarrowspan}, \optkey{viewaxis,yarrowspan},
+      \optkey{viewaxis,zarrowspan}]
+ Specifies the thickness of the arrow display slice, for the
+ corresponding view.  For example, if the view axis is \cd{+z} or
+ \cd{-z}, then only \optkey{viewaxis,zarrowspan} is active.  The value
+ for each element should be either a real value or an empty string.  If
+ the value is zero or an empty string, then the thickness is set to the
+ default value, which is typically the thickness of a single cell.  If
+ the value is positive, then it specifies the slice range in file mesh
+ units, e.g., in meters.  Lastly, if the value is negative, then the
+ slice is set to the entire thickness of the mesh in that view
+ direction.
+\item[\optkey{viewaxis,xpixelspan}, \optkey{viewaxis,ypixelspan},
+      \optkey{viewaxis,zpixelspan}]
+ Identical interpretation and behavior as the corresponding arrow span
+ elements, but with regards to pixel display.
+\end{description}
+
+The \cd{print\_config} array controls printing defaults, as displayed in
+the \btn{File\pipe Print\ldots}\index{data!print} dialog box:
+\begin{description}
+\item[\optkey{orient}]
+ Paper orientation, either landscape or portrait.
+\item[\optkey{paper}]
+ Paper type: letter, legal, A4 or A3.
+\item[\optkey{hpos}, \optkey{vpos}]
+ The horizontal and vertical positioning on the printed page.  Valid
+ values for \cd{hpos} are left, center, or right, and for \cd{vpos} are
+ top, center, or bottom.
+\item[\optkey{units}]
+ Units that the margin and print area dimensions are measured in;
+ either in or cm.
+\item[\optkey{tmargin}, \optkey{lmargin}]
+ Top and left margin size, measured in the selected units.
+\item[\optkey{pwidth}, \optkey{pheight}]
+ Output print area dimensions, width and height, measured in the
+ selected units.  The output will be scaled to meet the more restrictive
+ dimension.  In particular, the x/y-scaling ratio remains 1:1.
+\item[\optkey{croptoview}]
+ Boolean value, either 0 or 1.  If 1 (true), then the print
+ output is cropped to display only that portion of the vector field that
+ is visible in the display window.  If 0, then the display is ignored
+ and the output is scaled so that the entire vector field is printed.
+\end{description}
+
+If any of the above elements are set in multiple configuration files,
+then the last value read takes precedence.
+
+\begin{codelisting}{f}{fig:mmdisp.config}{Contents of default configuration
+file \fn{mmdisp.config}.}{pt:mmdisp.config}
+\begin{verbatim}
+array set plot_config {
+  arrow,status       1                misc,background           white
+  arrow,autosample   1                misc,drawboundary         1
+  arrow,subsample    0                misc,boundarycolor        black
+  arrow,colormap     Red-Black-Blue   misc,boundarywidth        1
+  arrow,colorcount   256              misc,margin               10
+  arrow,quantity     z                misc,defaultwindowwidth   640
+  arrow,colorreverse 0                misc,defaultwindowheight  480
+  arrow,colorphase   0                misc,width                0
+  arrow,size         1                misc,height               0
+                                      misc,rotation             0
+  pixel,status       0                misc,zoom                 0
+  pixel,autosample   1                misc,datascale            0
+  pixel,subsample    0                misc,relcenterpt     {0.5 0.5 0.5}
+  pixel,colormap     Blue-White-Red
+  pixel,colorcount   256              viewaxis                  +z
+  pixel,quantity     x                viewaxis,xarrowspan       {}
+  pixel,colorreverse 0                viewaxis,xpixelspan       {}
+  pixel,colorphase   0                viewaxis,yarrowspan       {}
+  pixel,size         1                viewaxis,ypixelspan       {}
+  pixel,opaque       1                viewaxis,zarrowspan       {}
+                                      viewaxis,zpixelspan       {}
+}
+array set print_config {
+    orient   landscape                tmargin   1.0
+    paper    letter                   lmargin   1.0
+    hpos     center                   pwidth    6.0
+    vpos     center                   pheight   6.0
+    units    in                       croptoview 1
+}
+\end{verbatim}
+\end{codelisting}
+
+\ssechead{Details}
+
+The selection of vectors for display determined by the
+\btn{Subsample} value differs depending on whether or not the data
+lie on a regular grid\index{grid}.  If so, \btn{Subsample} takes integer
+values and determines the ratio of data points to displayed points.  For
+example, a value of 5 means that every fifth vector on the grid is
+displayed.  This means that the number of vectors displayed is 25 times
+fewer than the number of vectors on the grid.
+
+For an irregular grid of vectors, an average cell size is computed,
+and the \btn{Subsample} takes values in units of 0.1 times the
+average cell size.  A square grid of that size is overlaid on the
+irregular grid.  For each cell in the square grid, the data vector
+from the irregular grid closest to the center of the square grid
+cell is selected for display.  The vector is displayed at its true
+location in the irregular grid, not at the center of the square
+grid cell.  As the subsample rate changes, the set of displayed
+vectors also changes, which can in some circumstances substantially
+change the appearance of the displayed vector field.
+
+\begin{rawhtml}
+<A NAME="pt:wwwhelpersetup"></A>
+\end{rawhtml}
+\ssechead{Using \app{mmDisp} as a WWW browser helper application}
+
+You may configure your web browser\index{application!web~browser} to
+automatically launch \app{mmDisp} when downloading an \OVF\ file.  The
+exact means to do this depends on your browser, but a couple of examples
+are presented below.
+
+In Netscape Navigator 4.X\index{application!Netscape}, bring up the
+\btn{Edit\pipe Preferences\ldots} dialog box, and select the
+\cd{Category} \btn{Navigator\pipe Applications} subwindow.  Create a
+\btn{New Type}, with the following fields:
+\begin{description}
+\item[Description of type:] \OOMMF\ Vector Field
+\item[MIME Type:] application/x-oommf-vf
+\item[Suffixes:] ovf,omf,ohf,obf
+\item[Application:]
+{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``{\em arg}''
+\end{description}
+
+On \Windows\ platforms, the \cd{Suffixes} field is labeled
+\cd{File Extension}, and only one file extension may be entered.
+Files downloaded from a web server are handled according to their
+MIME Type, rather than their file extension, so that restriction
+isn't important when web browsing.  If you wish to have files on the
+local disk with all the above file extensions recognized as
+\OOMMF\ Vector Field\index{file!vector~field} files, you must repeat the
+\btn{New Type} entry for each file extension.  In the \cd{Application}
+field, the values of {\em tclsh}, {\em oommfroot}, and {\em arg} vary
+with your platform configuration.  The value of {\em tclsh} is the full
+path to the \app{tclsh} application on your platform (see
+\hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  On Unix
+systems, {\em tclsh} may be omitted, assuming that the
+\fn{oommf.tcl} script is executable.  If {\em tclsh} is not omitted
+on Unix systems, Netscape may issue a security warning each time it
+opens an \OOMMF\ Vector Field file.  The value of {\em oommfroot} should
+be the full path to the root directory of your \OOMMF\ installation.
+The value of {\em arg} should be ``\%1'' on \Windows\ and ``\%s'' on
+Unix.  The MIME type ``application/x-oommf-vf'' must be configured on
+any HTTP server which provides \OOMMF\ Vector Field files as well.
+
+For Microsoft Internet
+Explorer\index{application!Internet~Explorer}~3.X, bring up the
+\btn{View\pipe Options\ldots} dialog box, and select the
+\btn{Program} tab.  Hit the
+\btn{File Types\ldots}\ button, followed by the
+\btn{New Type\dots} button. Fill the resulting dialog box with
+\begin{description}
+\item[Description of type:] \OOMMF\ Vector Field
+\item[Associated extension:] ovf
+\item[Content type (MIME):] application/x-oommf-vf
+\end{description}
+You may also disable the \btn{Confirm open after download} checkbutton
+if you want.  Then hit the \btn{New\ldots}\ button below the
+{\cd{Actions:}} window, and in the pop-up fill in
+\begin{description}
+\item[Action:] open
+\item[Application used to perform action:]\ \\
+{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``\%1''
+\end{description}
+Hit \btn{OK}, \btn{Close}, \btn{Close} and \btn{OK}.  Replace {\em tclsh}
+and {\em oommfroot} with the appropriate paths on your system
+(cf.\ \hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  This will
+set up an association on files with the .ovf extension. Internet
+Explorer 3.X apparently ignores the HTML Content Type field, so you must
+repeat this process for each file extension (.ovf, .omf, .ohf, .obf and
+.svf) that you want to recognize.  This means, however, that Internet
+Explorer will make the appropriate association even if the HTML server
+does not properly set the HTML Content Type field.
+
+Microsoft Internet Explorer 4.X is integrated with the \Windows\ operating
+system.  Internet Explorer 4.X doesn't offer any means to set up
+associations between particular file types and the applications which
+should be used to open them.  Instead, this association is configured
+within the \Windows\ operating system.
+To set up associations for the
+\OOMMF\ Vector Field file type on \Windows~95 or \Windows~NT,
+select \btn{Settings\pipe Control Panel} from the \btn{Start} menu.
+The Control Panel window appears.  Select \btn{View\pipe Options\ldots}
+to display a dialog box.
+A \Windows~98 shortcut to the same dialog box is to select
+\btn{Settings\pipe Folder Options\ldots} from the \btn{Start} menu.
+Select the \btn{File Types} tab and proceed as
+described above for Internet Explorer 3.X.
+Depending on the exact release/service patch of your \Windows\ operating
+system, the exact instructions may vary.
+
+Once you have your browser configured, you can test with the following
+URL:
+\begin{center}
+\ifnotpdf{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}}
+\pdfonly{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\%7EMDonahue/cubevortex.ovf}}
+\end{center}
+
+\ssechead{Known Bugs}
+The slice selection feature does not work properly with irregular
+meshes.
+%
+%

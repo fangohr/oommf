@@ -1,0 +1,105 @@
+\section{Data Table Display: mmDataTable}\label{sec:mmdatatable}%
+\index{application!mmDataTable}
+
+\begin{center}
+\includepic{mmdatatable-ss}{mmDataTable Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{mmDataTable} provides a data display service to its
+client applications.  It accepts data from clients which are displayed in
+a tabular format in a top-level window.  Its typical use is to display
+the evolving values of quantities computed by micromagnetic solver
+programs.
+
+\ssechead{Launching}
+{\bf mmDataTable} may be started either by selecting the
+\btn{mmDataTable} button on \htmlref{{\bf mmLaunch}}{sec:mmlaunch}, 
+or from the command line via
+\begin{verbatim}
+tclsh oommf.tcl mmDataTable [standard options] [-net <0|1>]
+\end{verbatim}
+
+\begin{description}
+\item[\optkey{-net \boa 0\pipe 1\bca}]
+  Disable or enable a server which allows the data displayed by
+  \app{mmDataTable} to be updated by another application.
+  By default, the server is enabled.  When the server is disabled,
+  \app{mmProbEd} is only useful if it is embedded in another application.
+\end{description}
+
+\ssechead{Inputs}
+The client application(s) that send data to {\bf mmDataTable} for 
+display control the flow of data.  The user, interacting with
+the {\bf mmDataTable} window, controls how the data is displayed.
+Upon launch, {\bf mmDataTable} displays only a menubar.  Upon user
+request, a display window below the menubar displays data values.
+
+Each message from a client contains a list of
+(name, value, units) triples containing data for display.  
+For example, one element in the list might be 
+\cd{{\rm\{}Magnetization 800000 A/m{\rm\}}}.  {\bf mmDataTable}
+stores the latest value it receives for each name.  Earlier
+values are discarded when new data arrives from a client.
+
+\ssechead{Outputs}
+\app{mmDataTable} does not support any data output or storage
+facilities.  To save tabular data, use the
+\hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+(Sec.~}{)}{sec:mmgraph}\index{application!mmGraph}
+or
+\hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+(Sec.~}{)}{sec:mmarchive}\index{application!mmArchive} applications.
+
+\ssechead{Controls}
+The \btn{Data} menu holds a list of all the data names for which
+\app{mmDataTable} has received data.  Initially, \app{mmDataTable} has
+received no data from any clients, so this menu is empty.  As data
+arrives from clients, the menu fills with the list of data names.
+Each data name on the list lies next to a checkbutton.  When the
+checkbutton is toggled from off to on, the corresponding data name and
+its value and units are displayed at the bottom of the display window.
+When the checkbutton is toggled from on to off, the corresponding data
+name is removed from the display window.  In this way, the user
+selects from all the data received what is to be displayed.  Selecting
+the dashed rule at the top of the \btn{Data} menu detaches it so the
+user may easily click multiple checkbuttons.
+
+Displayed data values can be individually selected (or deselected) with
+a left mouse button click on the display entry.  Highlighting is used to
+indicated which data values are currently selected.  The {\btn{Options}}
+menu also contains commands to select or deselect all displayed values.
+The selected values can be copied into the
+cut-and-paste\index{cut-and-paste} (clipboard) buffer with the
+\key{CTRL-c} key combination, or the {\btn{Options\pipe Copy}} menu
+command.
+
+The data value selection mechanism is also used for data value
+formatting control.  The \btn{Options\pipe Format} menu command brings
+up a \wndw{Format} dialog box to change the justification and format
+specification string.  The latter is the conversion string passed to
+the \Tcl\ \cd{format} command, which uses the \C\ \cd{printf} format
+codes.  If the {\btn{Adjust:Selected}} radiobutton is active, then the
+specification will be applied to only the currently selected
+(highlighted) data values.  Alternately, if {\btn{Adjust:All}} is
+active, then the specification will be applied to all data values,
+and will additionally become the default specification.
+
+A right mouse button click on a display entry will select that entry,
+and bring up the \wndw{Format} dialog box with the justification and
+format specifications of the selected entry.  These specifications, with
+any revisions, may then be applied to all of the selected entries.
+
+If a value cannot be displayed with the selected format specification
+string, e.g., if a ``\%d'' integer format were applied to a string
+containing a decimal point, then the value will be printed in red
+in the form as received by \app{mmDataTable}, without any additional
+formatting.
+
+The menu selection \btn{File\pipe Reset} reinitializes the
+\app{mmDataTable} application to its original state, clearing the
+display and the \btn{Data} menu.  The reset operation is also
+automatically invoked upon receipt of new data following a data set
+close message from a solver application.  The menu selection
+\btn{File\pipe Exit} terminates the application.  The menu \btn{Help}
+provides the usual help facilities.

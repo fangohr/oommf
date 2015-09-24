@@ -1,0 +1,228 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>OOMMF Variable Types and Macros</TITLE>
+<META NAME="description" CONTENT="OOMMF Variable Types and Macros">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="OOMMF_eXtensible_Solver.html">
+<LINK REL="previous" HREF="Platform-Independent_Make.html">
+<LINK REL="up" HREF="progman.html">
+<LINK REL="next" HREF="OOMMF_eXtensible_Solver.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html82"
+  HREF="OOMMF_eXtensible_Solver.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html78"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html72"
+  HREF="Platform-Independent_Make.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html84"
+  HREF="progman.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html80"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html83"
+  HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
+<B> Up:</B> <A NAME="tex2html79"
+  HREF="progman.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html73"
+  HREF="Platform-Independent_Make.html">Platform-Independent Make</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00040000000000000000"></A><A NAME="sec:vartypes"></A>
+<BR>
+OOMMF Variable Types and Macros
+</H1>
+The following typedefs are defined in the
+<TT><B>oommf/pkg/oc/<I>platform</I>/ocport.h</B></TT> header file; this file is
+created by the <B>pimake</B> build process (see
+<TT><B>oommf/pkg/oc/procs.tcl</B></TT>), and contains platform and machine
+specific information.
+
+<UL>
+<LI><TT>OC_BOOL</TT>  Boolean type, unspecified width.
+</LI>
+<LI><TT>OC_BYTE</TT>  Unsigned integer type exactly one byte wide.
+</LI>
+<LI><TT>OC_CHAR</TT>  Character type, may be signed or unsigned.
+</LI>
+<LI><TT>OC_UCHAR</TT>  Unsigned character type.
+</LI>
+<LI><TT>OC_SCHAR</TT>  Signed character type.  If <TT>signed char</TT>
+  is not supported by a given compiler, then this falls back to a
+  plain <TT>char</TT>, so use with caution.
+</LI>
+<LI><TT>OC_INT2, OC_INT4</TT>  Signed integer with width of
+  exactly 2, respectively 4, bytes.
+</LI>
+<LI><TT>OC_INT2m, OC_INT4m</TT>  Signed integer with width of
+  at least 2, respectively 4, bytes.  A type wider than the minimum
+  may be specified if the wider type is handled faster by the
+  particular machine.
+</LI>
+<LI><TT>OC_UINT2, OC_UINT4, OC_UINT2m, OC_UINT4m</TT>  Unsigned
+  integer versions of the preceding.
+</LI>
+<LI><TT>OC_REAL4, OC_REAL8</TT>  Four byte, respectively eight
+  byte, floating point variable.  Typically corresponds to C++   ``float'' and ``double'' types.
+</LI>
+<LI><TT>OC_REAL4m, OC_REAL8m</TT>  Floating point variable with
+  width of at least 4, respectively 8, bytes.  A type wider than the minimum
+  may be specified if the wider type is handled faster by the
+  particular machine.
+</LI>
+<LI><TT>OC_REALWIDE</TT>  Widest type natively supported by the
+  underlying hardware.  This is usually the C++ ``long
+  double'' type, but may be overridden by the
+<DIV ALIGN="CENTER">
+<TT>program_compiler_c++_typedef_realwide</TT>
+
+</DIV>
+option in the <TT><B>oommf/config/platform/<I>platform</I>.tcl</B></TT> file.
+</LI>
+</UL>
+
+<P>
+The <TT><B>oommf/pkg/oc/<I>platform</I>/ocport.h</B></TT> header file also
+defines the following macros for use with the floating point variable
+types:
+
+<UL>
+<LI><TT>OC_REAL8m_IS_DOUBLE</TT>  True if <TT>OC_REAL8m</TT> type
+  corresponds to the C++ ``double'' type.
+</LI>
+<LI><TT>OC_REAL8m_IS_REAL8</TT>  True if <TT>OC_REAL8m</TT> and
+  <TT>OC_REAL8</TT> refer to the same type.
+</LI>
+<LI><TT>OC_REAL4_EPSILON</TT>  The smallest value that can be added to
+  a <TT>OC_REAL4</TT> value of ``1.0'' and yield a value different from
+  ``1.0''.  For IEEE 754 compatible floating point, this should be
+  <TT>1.1920929e-007</TT>.
+</LI>
+<LI><TT>OC_SQRT_REAL4_EPSILON</TT>
+     Square root of the preceding.
+</LI>
+<LI><TT>OC_REAL8_EPSILON</TT>  The smallest value that can be added to
+  a <TT>OC_REAL8</TT> value of ``1.0'' and yield a value different from
+  ``1.0''.  For IEEE 754 compatible floating point, this should be
+  <TT>2.2204460492503131e-016</TT>.
+</LI>
+<LI><TT>OC_SQRT_REAL8_EPSILON, OC_CUBE_ROOT_REAL8_EPSILON</TT>
+     Square and cube roots of the preceding.
+</LI>
+<LI><TT>OC_FP_REGISTER_EXTRA_PRECISION</TT>  True if
+  intermediate floating point operations use a wider precision than
+  the floating point variable type; notably, this occurs with some
+  compilers on x86 hardware.
+</LI>
+</UL>
+
+<P>
+Note that all of the above macros have a leading ``<TT>OC_</TT>''
+prefix.  The prefix is intended to protect against possible name
+collisions with system header files.  Versions of some of these macros
+are also defined without the prefix; these definitions represent
+backward support for existing OOMMF extensions.  All new code
+should use the versions with the ``<TT>OC_</TT>'' prefix, and old code
+should be updated where possible.  The complete list of deprecated
+macros is:
+<BLOCKQUOTE>
+<TT>BOOL, UINT2m, INT4m, UINT4m,
+    REAL4, REAL4m, REAL8, REAL8m, REALWIDE,
+    REAL4_EPSILON, REAL8_EPSILON,
+    SQRT_REAL8_EPSILON, CUBE_ROOT_REAL8_EPSILON,
+    FP_REGISTER_EXTRA_PRECISION
+</TT>
+
+</BLOCKQUOTE>
+
+<P>
+Macros for system identification:
+
+<UL>
+<LI><TT>OC_SYSTEM_TYPE</TT>  One of <TT>OC_UNIX</TT> or
+  <TT>OC_WINDOWS</TT>.
+</LI>
+<LI><TT>OC_SYSTEM_SUBTYPE</TT>  For unix systems, this is
+    either <TT>OC_VANILLA</TT> (general unix) or <TT>OC_DARWIN</TT>
+    (Mac OS X).  For Windows systems, this is generally
+    <TT>OC_WINNT</TT>, unless one is running out of a Cygwin shell,
+    in which case the value is <TT>OC_CYGWIN</TT>.
+</LI>
+</UL>
+
+<P>
+Additional macros and typedefs:
+
+<UL>
+<LI><TT>OC_POINTERWIDTH</TT>  Width of pointer type, in bytes.
+</LI>
+<LI><TT>OC_INDEX</TT>  Typedef for signed array index type;
+  typically the width of this (integer) type matches the width of the
+  pointer type, but is in any event at least four bytes wide and not
+  narrower than the pointer type.
+</LI>
+<LI><TT>OC_UINDEX</TT>  Typedef for unsigned version of
+  OC_INDEX.  It is intended for special-purpose use only.  In general,
+  use OC_INDEX where possible.
+</LI>
+<LI><TT>OC_INDEX_WIDTH</TT>  Width of <TT>OC_INDEX</TT> type.
+</LI>
+<LI><TT>OC_BYTEORDER</TT> Either ``4321'' for little endian machines,
+  or ``1234'' for big endian.
+</LI>
+<LI><TT>OC_THROW(x)</TT>  Throws a C++ exception with
+  value ``x''.
+</LI>
+<LI><TT>OOMMF_THREADS</TT>  True threaded (multi-processing) builds.
+</LI>
+<LI><TT>OC_USE_NUMA</TT>  If true, then NUMA (non-uniform memory
+  access) libraries are available.
+</LI>
+</UL>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html82"
+  HREF="OOMMF_eXtensible_Solver.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html78"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html72"
+  HREF="Platform-Independent_Make.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html85"
+  HREF="progman.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html80"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

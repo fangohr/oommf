@@ -1,0 +1,49 @@
+\section{Programming Overview of \OOMMF}\label{sec:overview}
+The
+\htmladdnormallinkfoot{\OOMMF}{http://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework) project in the
+\htmladdnormallink{Information Technology
+Laboratory}{http://www.itl.nist.gov/} (ITL) at the
+\htmladdnormallink{National Institute of Standards and
+Technology}{http://www.nist.gov/} (NIST) is intended to develop a
+portable, extensible public domain micromagnetic program and associated
+tools.  This manual aims to document the programming interfaces to
+\OOMMF\ at the source code level.  The main developers of this code are
+\ifnotpdf{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\~{}MDonahue}}
+\pdfonly{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\%7EMDonahue}}
+and
+\ifnotpdf{\htmladdnormallink{Don Porter}{http://math.nist.gov/\~{}DPorter}.}
+\pdfonly{\htmladdnormallink{Don Porter}{http://math.nist.gov/\%7EDPorter}.}
+
+The underlying numerical engine for \OOMMF\ is written in \Cplusplus,
+which provides a reasonable compromise with respect to efficiency,
+functionality, availability and portability.  The interface and glue
+code is written primarily in \Tcl/\Tk, which hides most platform
+specific issues. \Tcl\ and \Tk\ are available for free
+\htmladdnormallinkfoot{download
+}{http://purl.org/tcl/home/software/tcltk/choose.html}
+from the
+\htmladdnormallinkfoot{Tcl Developer Xchange}{http://purl.org/tcl/home/}.
+
+The code may actually be modified at 3 distinct levels.  At the top
+level, individual programs interact via well-defined protocols across
+network sockets\index{network~socket}.  One may connect these modules
+together in various ways from the user interface, and new modules
+speaking the same protocol can be transparently added.  The second level
+of modification is at the \Tcl/\Tk\ script level.  Some modules allow
+\Tcl/\Tk\ scripts to be imported and executed at run time, and the top
+level scripts are relatively easy to modify or replace.  The lowest
+level is the \Cplusplus\ source code.  The OOMMF extensible solver, OXS,
+is designed with modification at this level in mind.
+
+If you want to receive e-mail\index{e-mail}
+notification\index{announcements} of updates to this project, register
+your e-mail address with the ``\mumag\ Announcement'' mailing list:
+\begin{center}
+\ifnotpdf{\htmladdnormallink{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}.}
+\pdfonly{\htmladdnormallink{http://www.ctcms.nist.gov/\~{}rdm/email-list.html}{http://www.ctcms.nist.gov/\%7Erdm/email-list.html}.}
+\end{center}
+
+The \OOMMF\ developers are always interested in your comments about
+\OOMMF.  See the \hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
+for instructions on how to contact them.

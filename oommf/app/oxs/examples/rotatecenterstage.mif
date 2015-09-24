@@ -1,0 +1,83 @@
+# MIF 2.1
+# MIF Example File: rotatecenterstage.mif
+# Description: The Oxs_StageZeeman, Oxs_MaskVectorField, and
+#     Oxs_ImageScalarField classes are used to produce an applied field
+#     restricted to a central disk region in the simulation.  The
+#     direction of the field is rotated between stages, to produce a
+#     quasi-static (as opposed to dynamic) simulation of an angular
+#     hysteresis loop.
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter Happ  250 ;# Applied field strength, in mT
+Parameter Stages 37 ;# Number of stages.  Stage step is 360/($Stages-1)
+                    ## degrees.
+
+Parameter cellsize 5e-9
+
+# Convert Happ from mT to A/m
+set Happ [expr {$Happ*0.001/$mu0}]
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {0  20e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy {
+  K1  5e3
+  axis {0 1 0}
+}
+
+Specify Oxs_UniformExchange {
+  A  12e-12
+}
+
+proc AppFieldSpec { stage_total stage } {
+   # Compute field direction
+   global pi
+   set angle [expr {2*$pi*double($stage)/double($stage_total-1)}]
+   set Hx [expr {cos($angle)}]
+   set Hy [expr {sin($angle)}]
+   set Hz 0.0
+
+   # Construct field object.  Use Oxs_MaskVectorField and
+   # Oxs_ImageScalarField to limit field to central disk.
+   set spec [subst {Oxs_MaskVectorField {
+      mask {Oxs_ImageScalarField {
+         image blockhole.gif
+         atlas :atlas
+      }}
+      field {$Hx $Hy $Hz}
+   }}]
+
+   return $spec
+}
+
+
+Specify Oxs_StageZeeman [subst {
+ script {AppFieldSpec $Stages}
+ multiplier $Happ
+ stage_count $Stages
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+ basename rotatecenterstage
+ evolver :evolve
+ stopping_mxHxm 0.1
+ mesh :mesh
+ Ms 800e3
+ m0 { 1 0.02 0.01 }
+}]

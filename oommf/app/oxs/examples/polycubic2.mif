@@ -1,0 +1,356 @@
+# MIF 2.2
+
+# Save-path is set to current directory  #
+# "stop" is the mxHxm stopping criterion #
+##########################################
+set stop 0.1
+set tag CUBIC
+RandomSeed 1
+
+# Cone angle in proc Texture (q.v.); #
+# specifies angle range for random   #
+# anisotropies.                      #
+######################################
+Parameter phideg 10 ;# in degrees,
+      ## from 0 to 90, 0 is all z.
+
+
+### Input Files ###
+###################
+Parameter grain_map polycrystal-map.ppm
+
+### Output Files ###
+####################
+set outname [format "${tag}_phi=%g" $phideg]
+
+
+##########################
+###### ATLAS & MESH ######
+##########################
+
+# Part dimensions, in meters
+set length 512e-9  ;# x extent
+set width  512e-9  ;# y extent
+set thick    6e-9  ;# z extent
+
+# Cell dimensions, in meters
+set xycellsize  1.0e-9
+set zcellsize   3.0e-9
+
+### Atlas ####################################
+Specify Oxs_ImageAtlas:world [subst {
+   xrange {0 $length}
+   yrange {0 $width}
+   zrange {0 $thick}
+   viewplane xy
+   image $grain_map
+   colorfunction auto
+   matcherror 0.0
+}]
+
+# Get a comprehensive list of all regions
+# (i.e., grains)
+set atlas_regions [GetAtlasRegions :world]
+
+set grain_count [llength $atlas_regions]
+set component_count 3  ;# If this is different than 3, then
+                   ## code in proc Ellipse must be adjusted.
+
+
+### Mesh ###
+############
+
+Specify Oxs_RectangularMesh:mesh [subst {
+   cellsize {$xycellsize $xycellsize $zcellsize}
+   atlas :world
+}]
+
+
+##############################################
+#              ROGUE GRAIN(s):               #
+# Rogue is a list of locations depicting     #
+# grain positions. Each location consists of #
+# three values, representing x, y, and z in  #
+# simulation coordinates (meters).  Leave    #
+# this list empty or undefined to have no    #
+# rogue grains.                              #
+##############################################
+set RoguePos {
+   391.5e-9  26.5e-9  4.5e-9
+   285.5e-9  59.5e-9  4.5e-9
+}
+
+# Map "rogue" grains to regions
+foreach {x y z} $RoguePos {
+   lappend Rogue \
+     [GetAtlasRegionByPosition :world $x $y $z]
+}
+
+
+#######################
+###### CONSTANTS ######
+#######################
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+
+#######################
+###### MATERIALS ######
+#######################
+
+### for Ni #############################
+# Saturation magnetization, A/m
+Parameter Ms  500e3
+Parameter Ms_range [expr {0.1*$Ms}]
+
+# Magnetocrystalline anisotropy, J/m^3
+set Ku -5.7e3
+
+# Exchange coupling, J/m:
+set A_intragrain 6.9e-12  ;# Intra-grain
+set A_intergrain 2.0e-12  ;# Inter-grain
+
+
+###########################
+###### SUPPORT PROCS ######
+###########################
+
+### This proc makes ellipses and circles  ###
+#############################################
+
+set max_component [expr {int(ceil(pow($grain_count,
+                                      1./double($component_count))))}]
+set component_scale [expr {256/$max_component}]
+
+Report "mc: $max_component"
+Report "cs: $component_scale"
+
+proc Ellipse { Ms_base Ms_range x y z r g b } {
+   # Imports x, y, and z are each relative
+   # values, in range [0,1]
+   set x0 [expr {2*$x-1}]
+   set y0 [expr {2*$y-1}]
+   if {0 && $x0*$x0+$y0*$y0 > 1} {
+      return 0.0
+   }
+
+   # Convert (r,g,b) to offset.  This code assumes component_count == 3.
+   global max_component component_scale grain_count
+   set r [expr {$r/$component_scale}]
+   set g [expr {$g/$component_scale}]
+   set b [expr {$b/$component_scale}]
+   set val [expr {($r*$max_component+$g)*$max_component+$b}]
+   set val [expr {$val/($grain_count-1)}] ;# Range is [0,1], inclusive.
+   set Ms [expr {$Ms_base - $Ms_range + 2*$Ms_range*$val}]
+   return $Ms
+}
+
+# This proc generates TEXTURED unit   #
+# vector, random in cone about z-axis #
+# with aperture angle 2*$phideg.      #
+#######################################
+set cosphirange [expr {cos($phideg*$pi/180.)}]
+proc Texture {} {
+   global pi cosphirange
+
+   set theta [expr {(2.*rand()-1.)*$pi}]
+   set costheta [expr {cos($theta)}]
+   set sintheta [expr {sin($theta)}]
+
+   if {rand()<0.5} {
+      set sgn -1.0
+   } else {
+      set sgn 1.0
+   }
+   set cosphi \
+      [expr {$sgn*(1-(1-$cosphirange)*rand())}]
+
+   set sinphisq [expr {1.0-$cosphi*$cosphi}]
+   if {$sinphisq>0.0} {
+      set sinphi [expr {sqrt($sinphisq)}]
+   } else {
+      set sinphi 0.0
+   }
+
+   set x [expr {$sinphi*$costheta}]
+   set y [expr {$sinphi*$sintheta}]
+   set z [expr {$cosphi}]
+
+   return [list $x $y $z]
+}
+
+# This proc generates a random unit vector, #
+# uniformly selected on the unit sphere.    #
+#############################################
+proc RandomUnitVec {} {
+   global pi
+	
+   set theta [expr {(2.*rand()-1.)*$pi}]
+   set costheta [expr {cos($theta)}]
+   set sintheta [expr {sin($theta)}]
+
+   set cosphi [expr {1.0 - 2.*rand()}]
+   set sinphi [expr {1.0-$cosphi*$cosphi}]
+   if {$sinphi>0.0} {
+      set sinphi [expr {sqrt($sinphi)}]
+   }
+
+   set x [expr {$sinphi*$costheta}]
+   set y [expr {$sinphi*$sintheta}]
+   set z [expr {$cosphi}]
+
+   return [list $x $y $z]
+}
+
+
+##############################
+###### CUBIC ANISOTROPY ######
+##############################
+
+# Construct a pair of orthogonal anisotropy #
+# axes for each grain region.  The third    #
+# cubic anisotropy axis is automatically    #
+# generated by OOMMF as c = a x b.          #
+#############################################
+set A_axes {}
+set B_axes {}
+if {![info exists Rogue]} { set Rogue {} }
+foreach grain $atlas_regions {
+   lappend A_axes $grain
+   lappend B_axes $grain
+   if {[lsearch -exact $Rogue $grain]>=0} {
+      # Rogue grain
+      lappend A_axes {1 0 0}
+      lappend B_axes {0 1 0}
+   } else {
+      # Non-rogue; this grain has random
+      # anisotropy axes
+
+      # For first ("a") axis, select unit
+      # vector within phideg cone about z-axis
+      set a_axis [Texture]
+      lappend A_axes $a_axis
+
+      # Construct second ("b") axis,
+      # perpendicular to "a" axis, by grabbing
+      # a random vector on the sphere and
+      # computing an orthogonal vector via the
+      # cross product, b = a x tmp
+      set ax [lindex $a_axis 0] ;# x,y,z axis
+      set ay [lindex $a_axis 1] ;# components
+      set az [lindex $a_axis 2]
+
+      set tmp [RandomUnitVec]
+      set tmpx [lindex $tmp 0]
+      set tmpy [lindex $tmp 1]
+      set tmpz [lindex $tmp 2]
+      while {[expr {abs($ax*$tmpx + $ay*$tmpy \
+                          + $az*$tmpz)>0.9}]} {
+
+         # If tmp is too close to a, then a x
+         # tmp may be numerically unstable.
+         set tmp [RandomUnitVec]
+         set tmpx [lindex $tmp 0]
+         set tmpy [lindex $tmp 1]
+         set tmpz [lindex $tmp 2]
+      }
+      # Set b = a x tmp.  This is not a unit
+      # vector, but the preceding check on
+      # a*tmp guarantees that |b| != 0, which
+      # is good enough. (b will be normalized
+      # inside Oxs_AtlasVectorField:B_axes
+      # below.
+      set bx [expr {$ay*$tmpz-$az*$tmpy}]
+      set by [expr {$az*$tmpx-$ax*$tmpz}]
+      set bz [expr {$ax*$tmpy-$ay*$tmpx}]
+      lappend B_axes [list $bx $by $bz]
+   }
+}
+
+Specify Oxs_AtlasVectorField:A_axes [subst {
+   atlas :world
+   norm 1.0
+   values { $A_axes }
+}]
+
+Specify Oxs_AtlasVectorField:B_axes [subst {
+   atlas :world
+   norm 1.0
+   values { $B_axes }
+}]
+
+
+Specify Oxs_CubicAnisotropy [subst {
+   K1 $Ku
+   axis1 :A_axes
+   axis2 :B_axes
+}]
+
+
+
+######################
+###### EXCHANGE ######
+######################
+set A_list {}
+foreach grain $atlas_regions {
+   # Intra-grain coupling
+   lappend A_list $grain $grain $A_intragrain
+}
+
+# default_A sets inter-grain coupling,
+# A_list sets intra-grain coupling
+Specify Oxs_Exchange6Ngbr [subst {
+   default_A $A_intergrain
+   atlas :world
+   A   { $A_list }
+}]
+
+
+#####################################
+###### ZEEMAN (applied field ) ######
+#####################################
+set field 10000    ;# Maximum field (in Oe)
+Specify Oxs_UZeeman [subst {
+   multiplier [expr (1./($mu0*1e4))*$field]
+   Hrange  {
+      { 0 0 0   0 0 1   10}
+   }
+}]
+# H value times "multiplier" is field in A/m
+
+
+##############################
+###### DRIVER & EVOLVER ######
+##############################
+
+SetOptions [subst {
+  basename $outname
+}]
+
+### Evolver ###
+###############
+Specify Oxs_CGEvolve:evolve {}
+
+### Driver ###
+##############
+Specify Oxs_ImageVectorField:grainvf [subst {
+   atlas :world
+   viewplane xy
+   image $grain_map
+   multiplier 256
+}]
+
+
+Specify Oxs_MinDriver [subst {
+   evolver evolve
+   stopping_mxHxm $stop
+   mesh :mesh
+   Ms { Oxs_ScriptScalarField {
+      atlas :world
+      script_args {relpt vectors}
+      script {Ellipse $Ms $Ms_range}
+      vector_fields :grainvf
+   } }
+   m0 {1 0 0}
+   comment {m0 :A_axes}
+   comment {m0 :B_axes}
+} ]

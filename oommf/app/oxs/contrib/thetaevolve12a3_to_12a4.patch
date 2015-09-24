@@ -1,0 +1,120 @@
+diff -crN 12a3/thetaevolve.cc 12a4/thetaevolve.cc
+*** 12a3/thetaevolve.cc	2004-02-06 07:54:22.000000000 -0500
+--- 12a4/thetaevolve.cc	2004-12-21 20:16:55.000000000 -0500
+***************
+*** 46,61 ****
+      energy_accum_count_limit(25),
+      energy_state_id(0),next_timestep(0.),
+  		KBoltzmann(1.38062e-23),
+! 		iteration_Tcalculated(0),
+!     max_dm_dt_output(-5),
+!     dE_dt_output(-5),
+!     delta_E_output(-5),
+!     dm_dt_output(-5),
+!     mxH_output(-5)
+  {
+    // Process arguments
+!  	fixed_timestep = GetRealInitValue("fixed_timestep",1e-16);
+!  	min_timestep = max_timestep = fixed_timestep;             //artefacts of the older code, to lazy to rewrite it completely till now
+    if(max_timestep<=0.0) {
+      char buf[4096];
+      Oc_Snprintf(buf,sizeof(buf),
+--- 46,56 ----
+      energy_accum_count_limit(25),
+      energy_state_id(0),next_timestep(0.),
+  		KBoltzmann(1.38062e-23),
+! 		iteration_Tcalculated(0)
+  {
+    // Process arguments
+!   fixed_timestep = GetRealInitValue("fixed_timestep",1e-16);
+!   min_timestep = max_timestep = fixed_timestep;   //artifacts of the older code, too lazy to rewrite it completely till now
+    if(max_timestep<=0.0) {
+      char buf[4096];
+      Oc_Snprintf(buf,sizeof(buf),
+***************
+*** 131,152 ****
+  
+  	gaus2_isset = 0;    //no gaussian random numbers calculated yet
+  
+-   VerifyAllInitArgsUsed();
+- }   // end Constructor
+-  
+- BOOL UHH_ThetaEvolve::Init()
+- {
+    // Setup outputs
+    max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
+    dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
+    delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
+    dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
+    mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
+  
+    // dm_dt and mxH output caches are used for intermediate storage,
+    // so enable caching.
+--- 126,154 ----
+  
+  	gaus2_isset = 0;    //no gaussian random numbers calculated yet
+  
+    // Setup outputs
+    max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+    dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+    delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+    dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+    mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+!      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+! 
+!   VerifyAllInitArgsUsed();
+! }   // end Constructor
+!  
+! BOOL UHH_ThetaEvolve::Init()
+! {
+!   // Register outputs
+!   max_dm_dt_output.Register(director,-5);
+!   dE_dt_output.Register(director,-5);
+!   delta_E_output.Register(director,-5);
+!   dm_dt_output.Register(director,-5);
+!   mxH_output.Register(director,-5);
+  
+    // dm_dt and mxH output caches are used for intermediate storage,
+    // so enable caching.
+***************
+*** 312,317 ****
+--- 314,320 ----
+  BOOL
+  UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
+  		      Oxs_ConstKey<Oxs_SimState> current_state,
++ 		      const Oxs_DriverStepInfo& /* step_info */,
+  		      Oxs_Key<Oxs_SimState>& next_state)
+  {
+    const REAL8m max_step_increase = 1.25;
+***************
+*** 321,326 ****
+--- 324,330 ----
+  
+    const Oxs_SimState& cstate = current_state.GetReadReference();
+    Oxs_SimState& workstate = next_state.GetWriteReference();
++   driver->FillState(cstate,workstate);
+  
+    if(cstate.mesh->Id() != workstate.mesh->Id()) {
+      throw Oxs_Ext::Error(this,
+diff -crN 12a3/thetaevolve.h 12a4/thetaevolve.h
+*** 12a3/thetaevolve.h	2004-02-06 07:54:30.000000000 -0500
+--- 12a4/thetaevolve.h	2004-12-21 20:06:29.000000000 -0500
+***************
+*** 170,175 ****
+--- 170,176 ----
+    virtual  BOOL
+    Step(const Oxs_TimeDriver* driver,
+         Oxs_ConstKey<Oxs_SimState> current_state,
++        const Oxs_DriverStepInfo& step_info,
+         Oxs_Key<Oxs_SimState>& next_state);
+    // Returns true if step was successful, false if
+    // unable to step as requested.

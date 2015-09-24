@@ -1,0 +1,60 @@
+\section{Micromagnetic Problem File Source: FileSource}\label{sec:filesource}
+\index{application!FileSource}
+
+\begin{center}
+\includepic{filesource-ss}{FileSource Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{FileSource} provides the same service as
+{\hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
+(Sec.~}{)}{sec:mmprobed}}\index{application!mmProbEd}, supplying
+\MIF~1.x\index{file!MIF~1.x} problem descriptions to running \app{mmSolve2D}
+micromagnetic solvers.  As the \MIF\ specification evolves,
+\app{mmProbEd} may lag behind.  There may be new fields in the \MIF\
+specification that \app{mmProbEd} is not capable of editing, or which
+\app{mmProbEd} may not pass on to solvers after loading them in from a
+file.  To make use of such fields, a \MIF\ file may need to be edited
+``by hand'' using a general purpose text editor.  \app{FileSource} may
+then be used to supply the \MIF\ problem description contained in a file
+to a solver without danger of corrupting its contents.
+
+\ssechead{Launching}
+\app{FileSource} must be launched from the command line. You may specify
+on the command line the \MIF\ problem description file it should serve
+to client applications.  The command line is
+\begin{verbatim}
+tclsh oommf.tcl FileSource [standard options] [filename]
+\end{verbatim}
+
+Although \app{FileSource} does not appear on the list of
+{\btn{Programs}} that \app{mmLaunch} offers to launch, running copies do
+appear on the list of \btn{Threads} since they do provide a service
+registered with the account service directory.
+
+\ssechead{Inputs}
+\app{FileSource} takes its \MIF\ problem description from the file named
+on the command line, or from a file selected through the
+\btn{File\pipe Open} dialog box.  No checking of the file contents
+against the \MIF\ specification is performed.  The file contents are
+passed uncritically to any client application requesting a problem
+description.  Those client applications should raise errors when
+presented with invalid problem descriptions.
+
+\ssechead{Outputs}
+Each instance of \app{FileSource} provides the contents of exactly one
+file at a time.  The file name is displayed in the \app{FileSource}
+window to help the user associate each instance of \app{FileSource} with
+the data file it provides.  Each instance of \app{FileSource} accepts
+and services requests from client applications (typically solvers) for
+the contents of the file it exports.
+
+The contents of the file are read at the time of the client request, so
+if the contents of a file change between the time of the
+\app{FileSource} file selection and the arrival of a request from a
+client, the new contents will be served to the client application.
+
+\ssechead{Controls}
+The menu selection \btn{File\pipe Exit} terminates the 
+\app{FileSource} application.  The \btn{Help} menu provides
+the usual help facilities.

@@ -1,0 +1,56 @@
+Name of Window: .miscs
+Number of different widgits used in window:1
+#######################################################################
+# The commands that construct each widgit used in the menu are given   #
+# below.  The widgits are numbered from 0 and interlayed with          #
+# placement info that decribes how the widgits are to be integrated    #
+# with the rest of the menu. Comments for the widgits are in dmif.tcl  #
+#######################################################################
+0:label+entry $buttonname $label 22  "-textvar vals($ButtonNow)" "NewVal $ButtonNow"
+0:-side top
+#end of commands
+##########################################################################
+#The remainder of the file gives the labeling for each widgit and defines  
+#the mif file entry that the widgit controls.                             
+#Consider the following mif file fragment,                               
+#...                                                                     
+#ms:800E3                                                                
+#a:13E-12                                                                
+#demag type: 3dslab                                                      
+#...                                                                    
+#The data on the left of the colon in the above example is known as a
+#mif entry.  The fields on the right of the colon can equal many things.
+#For example, demag type can be set to 3dslab, 3dcharge, etc.
+#Each thing that the mif entry can be changed to is called a choice.
+#Note that some entries, such as ms, can only be set to one type of
+#data so those entries will only have one choice defined.
+#The format for the remainder of the file is:
+#Number of Mif entries: a number equal the number of entries
+#                        changed by menu e.g.: 5
+# Data Change: defines the mif entry, e.g.: demag type, that is
+#              changed by the widgit.
+# Number of choices: Total number of data types that are defined for a
+#              given mif entry.
+# 0:the specification of the choice's properties. using the format
+# number:choice name!command number!displayed label i.e.
+# Choice Number:$title!widgit number (see above)!$label
+# this structure repeats for all mif entries
+##########################################################################
+Number of Data Changes: 5
+Data Change: converge |mxh| value
+# a data change is a mifentry such as A,K demagtype etc; the stuff on
+#the left side of the colon in a mif file
+Number of Choices: 1  #what the data can be changed to.
+0:converge |mxh| value !0!Converge |mxh| Value
+Data Change: randomizer seed
+Number of Choices: 1
+0:randomizer seed!0!Randomizer Seed
+Data Change: user comment
+Number of Choices: 1
+0:user comment!0!User Comment
+Data Change: min time step
+Number of Choices: 1
+0:min time step!0!Min Time Step (s)
+Data Change: max time step
+Number of Choices: 1
+0:max time step!0!Max Time Step (s)

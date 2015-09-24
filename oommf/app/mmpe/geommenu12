@@ -1,0 +1,59 @@
+Name of Window: .geoms
+#order is important
+#commands; commands are numbered from 0 and 
+#and interlayed with placement info
+Number of Commands: 4 # the total number of commands used by the menu
+0:label+entry $buttonname $label 25 \
+        "-textvar vals($ButtonNow)" "NewVal $ButtonNow"
+0:-side top -fill x
+1:radiobuttonandpack $buttonname $label $name \
+        "ChangeMif2 $title $ButtonNow $ButtonNow"
+1:-side top -fill x
+#name label bchange btext width command command2 
+2:checklabelentry $buttonname $label2 $label $title 10   \
+        "NewVal2 $ButtonNow $offset $buttonname.entry" \
+        "ChangeMif3 $title $ButtonNow $a.$ButtonNow.$name" 
+2:-side top -fill x
+3:radiomultientrybutton  $buttonname $label 4 $name $title 8 "NewVal2 $ButtonNow $offset $a.$ButtonNow.$name.entry"
+3:-side top -fill x
+# a data change is a mifentry such as A,K demagtype etc; the stuff on
+#the left side of the colon in a mif file
+Number of Data Changes: 5 #the total number of data changes that can
+                          #be made by the window
+Data Change: part width #changes the part width mif field
+Number of Choices: 1 
+# format for the stuff below is:
+# number of choice:
+# The variable ($title above), if any, output to the 
+# mif file e.g. demag type: 3dSlab!
+# The command number as given above e.g. 0 
+# would mean the label+entry command!
+# finaly the $label variable which is how the choice is labeled on the
+# menu
+0:part width!0!Part Width (m)
+Data Change: part height
+Number of Choices: 1 
+0:part height!0!Part Height (m)
+Data Change: part thickness
+Number of Choices: 1 
+0:part thickness!0!Part Thickness (m)
+Data Change: cell size
+Number of Choices: 1
+0:cell size!3!Cellsize (m)  x,y,z
+Data Change: part shape
+Number of Choices: 5
+1:rectangle!1!Rectangle
+2:ellipse!1!Ellipse
+3:ellipsoid!1!Ellipsoid
+4:oval!2!Oval!radius!2
+5:mask!2!Mask!file!2
+# the last two fields are a second label
+# and an offset used for placing the data in proper order in a list
+#end of data changes
+
+
+
+
+
+
+

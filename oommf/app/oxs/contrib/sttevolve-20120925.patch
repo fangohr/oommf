@@ -1,0 +1,33 @@
+diff -ru sttevolve/CYY_STTEvolve.cc sttevolve-patched/CYY_STTEvolve.cc
+--- sttevolve/CYY_STTEvolve.cc	2012-09-25 19:46:24.000000000 -0400
++++ sttevolve-patched/CYY_STTEvolve.cc	2012-09-25 19:48:47.000000000 -0400
+@@ -387,14 +387,16 @@
+   // Zero spin torque on fixed spins
+ 	const OC_INDEX size = mesh->Size();
+ 
+-	OC_INDEX i,j;
++	OC_INDEX i;
+ 
+   UpdateFixedSpinList(mesh); // Safety
+ 
++#if 0  // This block does nothing?! -mjd
+   const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+-    OC_INDEX i = GetFixedSpin(j);  // This is a NOP?! -mjd
++    OC_INDEX i = GetFixedSpin(j);
+   }
++#endif
+ 
+   alpha_init->FillMeshValue(mesh,alpha);
+   gamma_init->FillMeshValue(mesh,gamma);
+@@ -2151,8 +2153,8 @@
+ 
+   const Oxs_RectangularMesh* mesh
+     = dynamic_cast<const Oxs_RectangularMesh*>(state.mesh);		// CYYOU
+-  const OC_INDEX size = mesh->Size();
+-  OC_INDEX i,j;
++  // const OC_INDEX size = mesh->Size();
++  // OC_INDEX i,j;
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+ 

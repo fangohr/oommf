@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Micromagnetic Problem File Source: FileSource</TITLE>
+<META NAME="description" CONTENT="Micromagnetic Problem File Source: FileSource">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="2D_Micromagnetic_Solver.html">
+<LINK REL="previous" HREF="Micromagnetic_Problem_Edito.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="2D_Micromagnetic_Solver.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html392"
+  HREF="2D_Micromagnetic_Solver.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html388"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html382"
+  HREF="Micromagnetic_Problem_Edito.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html394"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html390"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html393"
+  HREF="2D_Micromagnetic_Solver.html">The 2D Micromagnetic Solver</A>
+<B> Up:</B> <A NAME="tex2html389"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html383"
+  HREF="Micromagnetic_Problem_Edito.html">Micromagnetic Problem Editor: mmProbEd</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION000100000000000000000"></A><A NAME="sec:filesource"></A><A NAME="10578"></A>
+<BR>
+Micromagnetic Problem File Source: FileSource
+</H1>
+
+<P>
+<DIV ALIGN="CENTER">
+<IMG ALT="FileSource Screen Shot" SRC="../giffiles/filesource-ss.gif">
+
+</DIV>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Overview</B></FONT>
+<BR>
+The application <B>FileSource</B> provides the same service as
+<A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"><B>mmProbEd</B></A><A NAME="10589"></A>, supplying
+MIF&nbsp;1.x<A NAME="10590"></A> problem descriptions to running <B>mmSolve2D</B>
+micromagnetic solvers.  As the MIF specification evolves,
+<B>mmProbEd</B> may lag behind.  There may be new fields in the MIF specification that <B>mmProbEd</B> is not capable of editing, or which
+<B>mmProbEd</B> may not pass on to solvers after loading them in from a
+file.  To make use of such fields, a MIF file may need to be edited
+``by hand'' using a general purpose text editor.  <B>FileSource</B> may
+then be used to supply the MIF problem description contained in a file
+to a solver without danger of corrupting its contents.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Launching</B></FONT>
+<BR><B>FileSource</B> must be launched from the command line. You may specify
+on the command line the MIF problem description file it should serve
+to client applications.  The command line is
+<PRE>
+tclsh oommf.tcl FileSource [standard options] [filename]
+</PRE>
+
+<P>
+Although <B>FileSource</B> does not appear on the list of
+<FONT COLOR="#800000"><B>Programs</B></FONT> that <B>mmLaunch</B> offers to launch, running copies do
+appear on the list of <FONT COLOR="#800000"><B>Threads</B></FONT> since they do provide a service
+registered with the account service directory.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Inputs</B></FONT>
+<BR><B>FileSource</B> takes its MIF problem description from the file named
+on the command line, or from a file selected through the
+<FONT COLOR="#800000"><B>File|Open</B></FONT> dialog box.  No checking of the file contents
+against the MIF specification is performed.  The file contents are
+passed uncritically to any client application requesting a problem
+description.  Those client applications should raise errors when
+presented with invalid problem descriptions.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Outputs</B></FONT>
+<BR>
+Each instance of <B>FileSource</B> provides the contents of exactly one
+file at a time.  The file name is displayed in the <B>FileSource</B>
+window to help the user associate each instance of <B>FileSource</B> with
+the data file it provides.  Each instance of <B>FileSource</B> accepts
+and services requests from client applications (typically solvers) for
+the contents of the file it exports.
+
+<P>
+The contents of the file are read at the time of the client request, so
+if the contents of a file change between the time of the
+<B>FileSource</B> file selection and the arrival of a request from a
+client, the new contents will be served to the client application.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Controls</B></FONT>
+<BR>
+The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT> terminates the 
+<B>FileSource</B> application.  The <FONT COLOR="#800000"><B>Help</B></FONT> menu provides
+the usual help facilities.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html392"
+  HREF="2D_Micromagnetic_Solver.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html388"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html382"
+  HREF="Micromagnetic_Problem_Edito.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html395"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html390"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

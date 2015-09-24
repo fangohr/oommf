@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Launching the OOMMF host server: launchhost</TITLE>
+<META NAME="description" CONTENT="Launching the OOMMF host server: launchhost">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Calculating_H_Fields_from_M.html">
+<LINK REL="previous" HREF="Killing_OOMMF_Processes_kil.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Calculating_H_Fields_from_M.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html667"
+  HREF="Calculating_H_Fields_from_M.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html663"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html657"
+  HREF="Killing_OOMMF_Processes_kil.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html669"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html665"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html668"
+  HREF="Calculating_H_Fields_from_M.html">Calculating H Fields from</A>
+<B> Up:</B> <A NAME="tex2html664"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html658"
+  HREF="Killing_OOMMF_Processes_kil.html">Killing OOMMF Processes: killoommf</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000179000000000000000"></A><A NAME="sec:launchhost"></A><A NAME="16972"></A><A NAME="16973"></A><A NAME="16974"></A>
+<BR>
+Launching the OOMMF host server:
+   launchhost
+</H2>
+
+<P>
+Under normal circumstances, the OOMMF host server (also known as the
+host service directory) is automatically launched in the background as
+needed by client applications.  However, it can be useful, primarily in
+batch compute environments, to launch the host server explicitly in
+order to control the host server port address.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>launchhost</B> command line is:
+<PRE>
+tclsh oommf.tcl launchhost [standard options] port
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>port</B></TT></STRONG></DT>
+<DD>Requested port number for host server to listen on.  For
+non-privileged users, this usually has to be larger than 1024, or the
+special value 0 which signals the host server to open on a random,
+unused port.  On success, <B>launchhost</B> writes the host port number
+actually used to stdout.
+</DD>
+</DL>
+As described in the <A HREF="OOMMF_Architecture_Overview.html#sec:arch">OOMMF architecture
+documentation</A>, the host server (host service directory) plays a
+vital role in allowing various OOMMF applications to communicate
+with one another.  To work, the host server port number must be known
+to all OOMMF applications.  Typically this port number is determined
+by the <TT>Net_Host&nbsp;port</TT> setting in the file
+<TT><B>oommf/config/options.tcl</B></TT>, although this
+setting may be overridden by the environment variable
+<TT>OOMMF_HOSTPORT</TT>.
+
+<P>
+In batch-mode settings, however, it can occur that one wants to run
+multiple concurrent but independent OOMMF sessions on a single
+machine.  One way to accomplish this is to set the environment
+variable <TT>OOMMF_HOSTPORT</TT> to distinct values in each session.
+A difficulty here is the bookkeeping necessary to insure that each
+session really gets a distinct value.  Using <B>launchhost</B> with
+<TT>port</TT> set to zero provides a straightforward solution to this
+problem.  For example, consider the Bourne shell script:
+<PRE>
+   #!/bin/sh
+   OOMMF_HOSTPORT=`tclsh oommf.tcl launchhost 0`
+   export OOMMF_HOSTPORT
+   tclsh oommf.tcl mmArchive
+   tclsh oommf.tcl boxsi sample.mif
+   tclsh oommf.tcl killoommf all
+</PRE>
+The second line (<TT>OOMMF_HOSTPORT=...</TT>) launches the host server
+on a random port; the port selected is printed to stdout by
+<B>launchhost</B> and sets the environment variable
+<TT>OOMMF_HOSTPORT</TT>.  (Note in particular the backticks around the
+<B>launchhost</B> command, which invoke command execution.)  The
+subsequent commands launch an instance of <B>mmArchive</B> in the
+background, and run <B>boxsi</B> on the problem described by
+<TT><B>sample.mif</B></TT>.  (By default, <B>boxsi</B> runs in the foreground.)
+When <B>boxsi</B> returns, the <B>killoommf</B> command is used to
+terminate all OOMMF processes in this session.  (Alternatively, the
+<B>boxsi</B> command option <TT>-kill</TT> may be used to the same effect
+as <B>killoommf</B>.)  For <B>csh</B> and derivatives, use
+<PRE>
+   setenv OOMMF_HOSTPORT `tclsh oommf.tcl launchhost 0`
+</PRE>
+in place of the two <TT>OOMMF_HOSTPORT</TT> commands in the above
+example.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html667"
+  HREF="Calculating_H_Fields_from_M.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html663"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html657"
+  HREF="Killing_OOMMF_Processes_kil.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html670"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html665"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

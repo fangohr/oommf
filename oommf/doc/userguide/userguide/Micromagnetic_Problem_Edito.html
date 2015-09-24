@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Micromagnetic Problem Editor: mmProbEd</TITLE>
+<META NAME="description" CONTENT="Micromagnetic Problem Editor: mmProbEd">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Micromagnetic_Problem_File_.html">
+<LINK REL="previous" HREF="OOMMF_eXtensible_Solver.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="Micromagnetic_Problem_File_.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html378"
+  HREF="Micromagnetic_Problem_File_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html374"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html368"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html380"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html376"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html379"
+  HREF="Micromagnetic_Problem_File_.html">Micromagnetic Problem File Source:</A>
+<B> Up:</B> <A NAME="tex2html375"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html369"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00090000000000000000"></A><A NAME="sec:mmprobed"></A>
+<BR>
+Micromagnetic Problem Editor: mmProbEd
+</H1>
+
+<P>
+<DIV ALIGN="CENTER">
+<IMG ALT="mmProbEd Screen Shot" SRC="../giffiles/mmprobed-ss.gif">
+
+</DIV>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Overview</B></FONT>
+<BR>
+The application <B>mmProbEd</B><A NAME="10305"></A> provides a
+user interface for creating and editing micromagnetic problem
+descriptions in the <A HREF="MIF_1.1.html#sec:mif1format"
+ NAME="10310">MIF&nbsp;1.1</A> and
+<A HREF="MIF_1.2.html#sec:mif12format"
+ NAME="10315">MIF&nbsp;1.2</A> formats.  <B>mmProbEd</B>
+also acts as a server, supplying problem descriptions to running
+<B>mmSolve2D</B> micromagnetic solvers.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Launching</B></FONT>
+<BR><B>mmProbEd</B> may be started either by selecting the
+<FONT COLOR="#800000"><B>mmProbEd</B></FONT> button on <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>, or from the
+command line via
+<PRE>
+tclsh oommf.tcl mmProbEd [standard options] [-net &lt;0|1&gt;]
+</PRE>
+
+<P>
+<DL>
+<DT><STRONG><TT><B>-net <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Disable or enable a server which provides problem descriptions
+  to other applications.  By default, the server is enabled.  When
+  the server is disabled, <B>mmProbEd</B> is only useful for editing
+  problem descriptions and saving them to files.
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Inputs</B></FONT>
+<BR>
+The menu selection <FONT COLOR="#800000"><B>File|Open...</B></FONT> displays a dialog box
+for selecting a file from which to load a MIF problem 
+description.  Several example files are included in the 
+OOMMF release in the directory <TT><B>oommf/app/mmpe/examples</B></TT>.
+At startup, <B>mmProbEd</B> loads the problem contained in
+<TT><B>oommf/app/mmpe/init.mif</B></TT> as an initial problem.  Note: When loading
+a file, <B>mmProbEd</B> discards comments and moves records it does not
+understand to the bottom of its output file.  Use the
+<A HREF="Micromagnetic_Problem_File_.html#sec:filesource"><B>FileSource</B> application</A> to serve unmodified problem descriptions.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Outputs</B></FONT>
+<BR>
+The menu selection <FONT COLOR="#800000"><B>File|Save as...</B></FONT> displays a dialog box for
+selecting/entering a file in which the problem description currently
+held by <B>mmProbEd</B> is to be saved.  Because the internal data format
+use by <B>mmProbEd</B> is an unordered array that does not include
+comments (or unrecognized records), the simple operation of reading in a
+MIF file and then writing it back out may alter the file.
+
+<P>
+Each instance of <B>mmProbEd</B> contains exactly one problem description
+at a time.  When the option <TT>-net 1</TT> is active (the default), each also
+services requests from client applications
+(typically solvers) for the problem description it contains.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Controls</B></FONT>
+<BR>
+The <FONT COLOR="#800000"><B>Options</B></FONT> menu allows selection of MIF output format; either
+MIF&nbsp;1.1 or MIF&nbsp;1.2 may be selected.  This affects both
+<FONT COLOR="#800000"><B>File|Save as...</B></FONT> file and <B>mmSolve2D</B> server
+output.  See the <A HREF="MIF_1.2.html#sec:mif12format">MIF&nbsp;1.2</A> format documentation
+for details on the differences between these formats.
+
+<P>
+The main panel in the <B>mmProbEd</B> window contains buttons
+corresponding to the sections in a MIF&nbsp;1.x problem description.
+Selecting a button brings up another window through which the contents
+of that section may be edited.  The MIF sections and the elements they
+contain are described in detail in the
+<A HREF="MIF_1.1.html#sec:mif1format">MIF&nbsp;1.1</A> and
+<A HREF="MIF_1.2.html#sec:mif12format">MIF&nbsp;1.2</A> documentation.
+Only one editing window is displayed at a time.  The windows may be
+navigated in order using their <FONT COLOR="#800000"><B>Next</B></FONT> or
+<FONT COLOR="#800000"><B>Previous</B></FONT> buttons.
+
+<P>
+The <FONT COLOR="#800000"><B>Material Parameters</B></FONT> edit window includes a pull-down list of
+pre-configured material settings.  <B>NOTE:</B> These values should
+<I>not</I> be taken as standard reference values for these materials.
+The values are only approximate, and are included for convenience,
+and as examples for users who wish to supply their own material types
+with symbolic names.  To introduce additional material types, edit the
+<TT>Material</TT> <TT>Name</TT>, <TT>Ms</TT>, <TT>A</TT>, <TT>K1</TT>, and
+<TT>Anisotropy</TT> <TT>Type</TT> values as desired, and hit the <FONT COLOR="#800000"><B>Add</B></FONT>
+button.  (The <TT>Damp</TT> <TT>Coef</TT> and <TT>Anistropy</TT>
+<TT>Init</TT> settings are not affected by the Material Types
+selection.)  The Material Name entry will appear in red if it does not
+match any name in the Material Types list, or if the name matches but
+one or more of the material values differs from the corresponding value
+as stored in the Material Types list.  You can manage the Material Types
+list with the <FONT COLOR="#800000"><B>Replace</B></FONT> and <FONT COLOR="#800000"><B>Delete</B></FONT> buttons, or by directly
+editing the file <TT><B>oommf/app/mmpe/local/materials</B></TT>; follow the format
+of other entries in that file.  The format is the same as in the default
+<TT><B>oommf/app/mmpe/materials</B></TT> file included with the OOMMF distribution.
+
+<P>
+The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT> terminates the
+<B>mmProbEd</B> application.  The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides
+the usual help facilities.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html378"
+  HREF="Micromagnetic_Problem_File_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html374"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html368"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html381"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html376"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

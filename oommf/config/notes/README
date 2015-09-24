@@ -1,0 +1,10 @@
+This directory includes scripts and sample C programs that can be
+used to diagnose configuration problems on some platforms.  They
+are meant to be distributed so that when users report problems
+configuring, building, or using OOMMF, we can make use of these
+scripts and programs in our instructions on how to better diagnose
+and correct the situation.
+
+See documentation at the beginning of each file to learn what it
+does.
+

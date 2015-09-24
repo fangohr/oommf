@@ -1,0 +1,208 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>OOMMF Architecture Overview</TITLE>
+<META NAME="description" CONTENT="OOMMF Architecture Overview">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Command_Line_Launching.html">
+<LINK REL="previous" HREF="quickstart.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="Command_Line_Launching.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html265"
+  HREF="Command_Line_Launching.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html261"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html255"
+  HREF="quickstart.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html267"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html263"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html266"
+  HREF="Command_Line_Launching.html">Command Line Launching</A>
+<B> Up:</B> <A NAME="tex2html262"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html256"
+  HREF="quickstart.html">Quick Start: Example OOMMF</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00050000000000000000"></A><A NAME="sec:arch"></A><A NAME="3179"></A>
+<BR>
+OOMMF Architecture Overview
+</H1>
+
+<P>
+Before describing each of the applications which comprise
+the OOMMF software, it is helpful to understand how these
+applications work together.  OOMMF is not structured as
+a single program.  Instead it is a collection of programs,
+each specializing in some task needed as part of a
+micromagnetic simulation system.  An advantage of this modular
+architecture is that each program may be improved or even replaced 
+without a need to redesign the entire system.
+
+<P>
+The OOMMF  programs work together by providing services<A NAME="3180"></A>
+to one another.  
+The programs communicate over Internet
+(TCP/IP<A NAME="3181"></A>) connections,
+even when the programs are running on a common host.  An advantage
+of this design is that distributed operation of OOMMF programs
+over a networked collection of hosts is supported in the basic
+design, and will be available in a future release.  
+
+<P>
+<A NAME="3182"></A>
+When two OOMMF applications are in
+the relationship that one is requesting a service from the other,
+it is convenient to introduce some clarifying terminology.  Let
+us refer to the application that is providing a service as
+the ``server application<A NAME="3183"></A>'' and the application requesting the
+service as the ``client application<A NAME="3184"></A>.''  
+Note that a single application
+can be both a server application in one service relationship and a 
+client application in another service relationship.  
+<A NAME="3185"></A>
+
+<P>
+<A NAME="3186"></A>
+Each server application provides its services on a particular
+Internet port, and needs to inform potential client applications 
+how to obtain its service.  Each client application needs to be able
+to look up possible providers of the service it needs.  The
+intermediary which brings server applications and client applications
+together is another application called the 
+``account service directory.''
+There may be at most one account service directory application 
+running under the user ID<A NAME="3187"></A> of each user account on a host.
+Each account service directory keeps track of all the services provided
+by OOMMF server applications running under its user account on its
+host and the corresponding Internet ports at which those services
+may be obtained.
+OOMMF server applications register their services with
+the corresponding account service directory application.  OOMMF client applications look up service providers running under a 
+particular user ID<A NAME="3188"></A> in the corresponding account server directory 
+application.  
+<A NAME="3189"></A>
+
+<P>
+<A NAME="3190"></A>
+The account service directory applications simplify the problem
+of matching servers and clients, but they do not completely solve
+it.  OOMMF applications still need a mechanism to find out how
+to obtain the service of the account service directory!
+Another application, called the ``host service directory'' serves
+this function.  Only one copy of the host service directory application
+runs on each host.  Its sole purpose is to tell OOMMF applications
+where to obtain the services of account service directories on that
+host.  Because only one copy of this application runs per host,
+it can provide its service on a well-known port which is
+configured into the OOMMF software.  By default, this is port 15136.
+OOMMF software can be 
+<A HREF="Advanced_Installation.html#sec:custom"
+ NAME="3195">customized</A>
+to use a different port number.
+<A NAME="3196"></A>
+
+<P>
+<A NAME="3197"></A>
+The account service directory applications perform another task
+as well.  They launch other programs under the user ID<A NAME="3198"></A> for which
+they manage service registration.  The user controls the launching
+of programs through the interface provided by the application
+<A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>, but it is the account service directory
+application that actually spawns a subprocess for the new application.
+Because of this architecture, most OOMMF applications are launched
+as child processes of an account service directory application.  These
+child processes inherit their 
+environment
+from their parent account
+service directory application, including their working directory, and
+other key environment 
+variables<A NAME="3203"></A>, 
+such as <TT>DISPLAY</TT><A NAME="3205"></A>. 
+Each account
+service directory application sets its 
+working directory<A NAME="3206"></A>
+to the root
+directory of the OOMMF distribution.  Future releases of OOMMF software will likely be based on a revised architecture which
+alleviates these restrictions.
+<A NAME="3207"></A>
+
+<P>
+<A NAME="3208"></A>
+<A NAME="3209"></A>
+These service directory applications are vitally important to the
+operation of the total OOMMF micromagnetic simulation system.
+However, it would be easy to overlook them.  They act entirely ``behind
+the scenes'' without a user interface window.  Furthermore, they are
+never launched by the user.  When any server application needs to
+register its service, if it finds that these service directory
+applications are not running, it launches new copies of them.  In this
+way the user can be sure that if any OOMMF server applications are
+running, then so are the service directory applications needed to direct
+clients to its service.  After all server applications terminate, and
+there are no longer any services registered with a service directory
+application, it terminates as well.  Similarly, when all service
+directory applications terminate, the host service directory application
+exits.
+<A NAME="3210"></A>
+<A NAME="3211"></A>
+<A NAME="3212"></A>
+<A NAME="3213"></A>
+
+<P>
+In the sections which follow, the OOMMF applications are
+described in terms of the services they provide and the services
+they require.  
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html265"
+  HREF="Command_Line_Launching.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html261"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html255"
+  HREF="quickstart.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html268"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html263"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

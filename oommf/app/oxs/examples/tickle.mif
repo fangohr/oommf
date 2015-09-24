@@ -1,0 +1,83 @@
+# MIF 2.1
+# MIF Example File: tickle.mif
+# Description: Example with ac applied field, along the (0,1,0) axis.
+#  The field is concentrated on the left and right edges, with opposite
+#  sign on each side.  Compare to acsample.mif.
+#
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter cellsize 3e-9
+
+Parameter amp 100   ;# Amplitude of the applied field, in mT
+Parameter freq 1.0  ;# Frequency of applied field, in GHz
+
+# Convert field amplitude from mT to A/m
+set amp [expr {$amp*0.001/$mu0}]
+
+# Convert freq from GHz to natural frequency in rad/sec
+set freq [expr {$freq*1e9*2*$pi}]
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 180e-9}
+  yrange {0  90e-9}
+  zrange {0   6e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_CubicAnisotropy {
+  K1  -4.5e3
+  axis1 {1 0 0}
+  axis2 {0 1 0}
+}
+
+Specify Oxs_UniformExchange {
+  A  9e-12
+}
+
+# Spatial shape of the applied field
+proc CosineShape { x y z } {
+   global pi
+   return [list 0 [expr {cos($x*$pi)}] 0]
+}
+Specify Oxs_ScriptVectorField:CosineShape {
+  atlas :atlas
+  script CosineShape
+}
+
+# Temporal signature of applied field
+proc SineTransform { total_time } {
+   global amp freq
+   set Ay [expr {$amp*sin($freq*$total_time)}]
+   set dAy [expr {$amp*$freq*cos($freq*$total_time)}]
+   return [list 0 $Ay 0 0 $dAy 0]
+}
+
+# Combine Cosine shape and SineTransform
+Specify Oxs_TransformZeeman {
+   field CosineShape
+   type diagonal
+   script SineTransform
+   script_args total_time
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_RungeKuttaEvolve:evolve {}
+
+Specify Oxs_TimeDriver [subst {
+ basename tickle
+ evolver :evolve
+ comment {run for 20 ns total, with a stage event triggered every 0.25 ns.}
+ stopping_time 0.25e-9
+ stage_count 80
+ mesh :mesh
+ Ms 800e3
+ m0 { 1 0.02 0.01 }
+}]

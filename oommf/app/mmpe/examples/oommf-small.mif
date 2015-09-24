@@ -1,0 +1,24 @@
+# MIF 1.1
+ms:485E3
+a:8E-12
+k1:-4.5E3
+anisotropy type:cubic
+anisotropy dir1:1 0 0
+anisotropy dir2:0 1 0
+demag type:constmag
+part height:580E-9
+part width:1440E-9
+part thickness:100e-9
+part shape:mask app/mmpe/examples/oommf-small.bmp
+cell size:20.0e-9
+init mag:random
+base output filename:oommf-small
+log level:0
+randomizer seed:1
+user interaction level:1
+user report code:30
+converge mxh value:.0001
+randomizer seed:1
+field range: 0. 0.0 0 0.05 0.001 0 25
+field range: 0.05 0.001 0 -0.05 -0.001 0 50
+field range: -0.05 -0.001 0.0 0.05 0.001 0 50

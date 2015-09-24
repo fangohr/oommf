@@ -1,0 +1,39 @@
+# MIF 1.1
+#
+# Timing test case, based on muMag Standard Problem #1
+#
+# Run with
+#
+#    tclsh oommf.tcl batchsolve -interface 0 timetest.mif
+#
+####################### MATERIAL PARAMETERS ############################
+Ms= 800e3     # Saturation magnetization in A/m.
+A=13e-12      # Exchange stiffness in J/m.
+K1=  0.5e3    # Anisotropy constant in J/m^3.
+Anisotropy Type:uniaxial     # One of <uniaxial|cubic>.
+Anisotropy Dir1: 0 1 0    # Directional cosines wrt to coordinate axes
+
+####################### DEMAG SPECIFICATION ############################
+Demag Type: ConstMag
+
+########################## PART GEOMETRY ###############################
+Part Width: 1e-6     # Nominal part width in m, adjusted by Cell Size.
+Part Height: 2e-6    # Nominal part height in m, adjusted by Cell Size.
+Part Thickness: 20e-9 # Part thickness in m. Required for 2d- and 3d-
+                      # Slab models.
+Cell Size: 20e-9     # Cell size in m. Required.  The part width
+                     # and height are adjusted to an integral multiple
+                     # of the cell size.
+
+###################### INITIAL MAGNETIZATION ###########################
+Init Mag: uniform 90 89 # Inital magnetization routine and parameters
+
+###################### EXPERIMENT PARAMETERS ###########################
+Field Range:  0.1 0.0 0.0   0.0 0.0 0.0  4  -iteration 200
+
+###################### OUTPUT SPECIFICATIONS ###########################
+Base Output Filename: timetest  # Character string; Required
+
+########################## MISCELLANEOUS ###############################
+Randomizer seed: 1   # Value to seed random number generator with.
+

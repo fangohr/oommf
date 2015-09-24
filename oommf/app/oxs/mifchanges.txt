@@ -1,0 +1,85 @@
+
+           -------------------------------------------
+           MIF 2.0 UPGRADE GUIDE, OOMMF 1.2a0 -> 1.2a1
+           -------------------------------------------
+
+As part of the alpha development of the OOMMF 1.2 Oxs program, changes
+have been made that render 1.2a0 MIF 2.0 files invalid in 1.2a1.  While
+the overall structure of the MIF 2.0 format (i.e., a Tcl script with a
+collection of Specify blocks) is unchanged, some of the Oxs_Ext classes
+(and their corresponding Specify blocks) have been renamed or removed,
+and the Specify block internal structure has changed for others.  The
+most significant changes are highlighted below.  The reader should refer
+to the "Standard Oxs_Ext Child Classes" section of the Oxsii
+documentation in the OOMMF User's Guide for further details.
+
+1) Most notably, the Oxs_Region and Oxs_RectangularRegion classes have
+   been renamed Oxs_Section and Oxs_RectangularSection, and their role
+   as descriptions for the overall problem geometry is now served by the
+   new Oxs_Atlas/Oxs_SectionAtlas classes.  In particular, the
+   Oxs_RectangularMesh class now takes a reference to an Oxs_Atlas
+   rather than to an Oxs_Region.  For example, in the 1.2a0 release a
+   MIF segment like this:
+
+	-----------------------------------------------
+	 OLD  1.2a0  OLD  1.2a0  OLD  1.2a0  OLD  1.2a0
+	-----------------------------------------------
+	 Specify Oxs_RectangularRegion:World {
+	   xrange {0 310e-9}
+	   yrange {0 310e-9}
+	   zrange {0 40e-9}
+	 }
+
+	 Specify Oxs_RectangularMesh:mesh {
+	   cellsize {10e-9 10e-9 10e-9}
+	   region Oxs_RectangularRegion:World
+	 }
+	-----------------------------------------------
+	1.2a0  OLD  1.2a0  OLD  1.2a0  OLD  1.2a0  OLD
+	-----------------------------------------------
+
+   is changed in the 1.2a1 release to:
+
+	-----------------------------------------------
+	 NEW  1.2a1  NEW  1.2a1  NEW  1.2a1  NEW  1.2a1
+	-----------------------------------------------
+	 Specify Oxs_SectionAtlas:atlas {
+	    world { Oxs_RectangularSection {
+	      xrange {0 310e-9}
+	      yrange {0 310e-9}
+	      zrange {0 40e-9}
+	    }   }
+	 }
+
+	 Specify Oxs_RectangularMesh:mesh {
+	   cellsize {10e-9 10e-9 10e-9}
+	   atlas Oxs_SectionAtlas:atlas
+	 }
+	-----------------------------------------------
+	1.2a1  NEW  1.2a1  NEW  1.2a1  NEW  1.2a1  NEW
+	-----------------------------------------------
+
+   The immediate benefits of the introduction of the Oxs_Atlas class are
+   new atlas-based scalar and vector field initializers.  See the User's
+   guide for details.
+
+
+2) Several of 1.2a0 the Oxs_Energy terms required an Oxs_Mesh reference
+   in their Specify blocks: Oxs_SimpleDemag, Oxs_Demag,
+   Oxs_Exchange6Ngbr.  This is no longer true.  The only 1.2a1 Specify
+   block that requires (or allows) a mesh reference is the
+   Oxs_StandardDriver block.
+
+
+3) The 1.2a0 Oxs_Exchange6Ngbr class has been renamed
+   Oxs_UniformExchange in 1.2a1.  There is now a new Oxs_Exchange6Ngbr
+   class in 1.2a1 that has a completely different Specify block that
+   supports spatially varying exchange coefficient A.
+
+
+4) The units on the dm/dt stopping criterion in the Oxs_StandardDriver
+   Specify block have been changed from radians/second to
+   degrees/nanosecond.
+
+
+-mjd, 23-Jan-2001

@@ -1,0 +1,22 @@
+# MIF 2.1
+# MIF Example File: tiny.mif
+# Description: Just about the smallest valid MIF 2.1 file
+# Note: No energy terms!
+
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver {
+ evolver Oxs_CGEvolve
+ stopping_mxHxm 0.01
+ mesh { Oxs_RectangularMesh {
+    cellsize {5e-9 5e-9 5e-9}
+    atlas { Oxs_BoxAtlas {
+      xrange {0 200e-9}
+      yrange {0 100e-9}
+      zrange {0   5e-9}
+    }}
+ }}
+ Ms 8.6e5
+ m0 {10 1 0}
+ report_max_spin_angle 1
+}

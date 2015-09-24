@@ -1,0 +1,104 @@
+# MIF 2.1
+# MIF Example File: luigiproc.mif
+# Description: Example similar to luigi.mif example, but using
+#              MIF procs with the ReadFile command to load and
+#              manipulate import image, instead of using the
+#              Oxs_ImageScalarField class.
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 550e-9}
+  yrange {0 670e-9}
+  zrange {0 30e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {10e-9 10e-9 10e-9}
+  atlas :atlas
+}
+
+Specify Oxs_UniformExchange:NiFe {
+  A  13e-12
+}
+
+Specify Oxs_UZeeman "
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+     {     0  0  0   1000  0  0   10 }
+     {  1000  0  0  -1000  0  0   20 }
+     { -1000  0  0   1000  0  0   20 }
+  }
+"
+
+Specify Oxs_Demag {}
+
+Specify Oxs_EulerEvolve:evolver {
+  alpha 0.5
+  start_dm 0.01
+}
+
+Specify Oxs_TimeDriver {
+ basename luigi
+ evolver :evolver
+ comment {1 deg/ns = 17453293 rad/sec; If Ms=8.6e5, and lambda is small,
+         then mxh=1e-6 translates into dm/dt = 2e5 rad/sec = 0.01 deg/ns}
+ mesh :mesh
+ stopping_dm_dt {1 2.3d5 {3 49} :expand:}
+ stopping_time {1.1e-9 1.2e-9 {2.1e-9 2.2e-9 3}  {3.1e-9 3.2e-9 1}
+                {3.2e-9 41} :expand:}
+ stage_iteration_limit {{10 20 30 2} 40 {5 44} :expand:}
+ stage_count 51
+ Ms { Oxs_ScriptScalarField {
+    atlas :atlas
+    script {ImageMag 8e5}
+ }}
+ m0 { Oxs_ScriptVectorField {
+     atlas :atlas
+     norm 1.0
+     script ColorField
+ }}
+}
+
+set image [ReadFile luigi.gif image]
+set imagewidth [lindex $image 0]
+set imageheight [lindex $image 1]
+set imagedepth [lindex $image 2]
+
+set grayimage {}
+set colorimage {}
+set i 3 ;# Skip header
+set istop [expr {3+3*$imagewidth*$imageheight}]
+while {$i<$istop} {
+    set r [expr {double([lindex $image $i])/$imagedepth}] ; incr i
+    set g [expr {double([lindex $image $i])/$imagedepth}] ; incr i
+    set b [expr {double([lindex $image $i])/$imagedepth}] ; incr i
+    lappend colorimage $r $g $b
+    lappend grayimage [expr {($r+$g+$b)/3.}]
+}
+unset imagedepth
+unset image
+
+proc ImageMag { scale x y z } {
+     global grayimage imagewidth imageheight
+     set i [expr {int(floor(double($x)*$imagewidth))}]
+     if {$i>=$imagewidth} {set i [expr {$imagewidth-1}]}
+     set j [expr {int(floor(double(1-$y)*$imageheight))}]
+     if {$j>=$imageheight} {set j [expr {$imageheight-1}]}
+     set index [expr {$j*$imagewidth+$i}]
+     return [expr {$scale*[lindex $grayimage $index]}]
+}
+
+proc ColorField { x y z } {
+     global colorimage imagewidth imageheight
+     set i [expr {int(floor(double($x)*$imagewidth))}]
+     if {$i>=$imagewidth} {set i [expr {$imagewidth-1}]}
+     set j [expr {int(floor(double(1-$y)*$imageheight))}]
+     if {$j>=$imageheight} {set j [expr {$imageheight-1}]}
+     set index [expr {3*($j*$imagewidth+$i)}]
+     set vx [expr {[lindex $colorimage $index]}] ; incr index  ;# Red
+     set vy [expr {[lindex $colorimage $index]}] ; incr index  ;# Green
+     set vz [expr {[lindex $colorimage $index]}] ; incr index  ;# Blue
+     return [list $vx $vy $vz]
+}

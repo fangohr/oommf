@@ -1,0 +1,64 @@
+# MIF 2.1
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+Parameter itlimit 200
+
+Parameter code "new"  ;# "new" or "old"
+
+Parameter cellsize 5 ;# Cell size in nm
+set cellsize [expr {$cellsize*1e-9}] ;# Convert to meters
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 1000e-9}
+  yrange {0  500e-9}
+  zrange {0   20e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_UniaxialAnisotropy {
+  K1 0.5e3
+  axis {1 0 0}
+}
+
+if {[string match "new" $code]} {
+   Specify Oxs_Demag {}
+} else {
+   Specify Oxs_DemagOld {}
+}
+
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+     { 50  0.87275325  0  -50 -0.87275325 0   100 }
+  }
+}]
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+ basename demagtest
+ evolver :evolve
+ stopping_mxHxm 0.01
+ mesh :mesh
+ Ms 8.6e5
+ m0 {10 1 0}
+ normalize_aveM_output 0
+ total_iteration_limit $itlimit
+}]
+
+Destination table   mmDataTable:demagtest-$code
+Schedule DataTable table Step 5
+Schedule DataTable table Stage 1
+
+#Destination archive mmArchive
+#Schedule DataTable archive Stage 1

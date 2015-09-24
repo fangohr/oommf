@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>ODT Column Extraction: odtcols</TITLE>
+<META NAME="description" CONTENT="ODT Column Extraction: odtcols">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="OOMMF_Process_ID_Informatio.html">
+<LINK REL="previous" HREF="mifconvert.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="OOMMF_Process_ID_Informatio.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html709"
+  HREF="OOMMF_Process_ID_Informatio.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html705"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html699"
+  HREF="mifconvert.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html711"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html707"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html710"
+  HREF="OOMMF_Process_ID_Informatio.html">OOMMF and Process ID</A>
+<B> Up:</B> <A NAME="tex2html706"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html700"
+  HREF="mifconvert.html">MIF Format Conversion: mifconvert</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION0001712000000000000000"></A><A NAME="sec:odtcols"></A>
+<BR>
+ODT Column Extraction: odtcols
+</H2><A NAME="17104"></A>
+
+<P>
+The <B>odtcols</B><A NAME="17106"></A> utility extracts column
+subsets from <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT</A> data
+table files.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>odtcols</B> launch command is:
+<PRE>
+tclsh oommf.tcl odtcols [standard options] [-f format] \
+   [-m missing] [-q] [-s] [-S] [-t output_type] [-w colwidth] \
+   [col ...] &lt;infile &gt;outfile
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-f format</B></TT></STRONG></DT>
+<DD>C printf-style format string for each output item.  Optional.  The
+  default format string is <code>"%-${colwidth}s"</code>.
+</DD>
+<DT><STRONG><TT><B>-m missing</B></TT></STRONG></DT>
+<DD>String used on output to designate a missing value.  Default
+  is the two character open-close curly brace pair,  { }, as
+  specified by the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT file format</A>.
+</DD>
+<DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
+<DD>Silences some meaningless error messages, such as "broken pipe" when
+  using the Unix head or tail utilities.
+</DD>
+<DT><STRONG><TT><B>-s</B></TT></STRONG></DT>
+<DD>Produces a file summary instead of column extraction.  Output includes
+  table titles, column and row counts, and the header for each specified
+  column.  If no columns are specified, then the headers for all the
+  columns are listed.
+</DD>
+<DT><STRONG><TT><B>-S</B></TT></STRONG></DT>
+<DD>Same as  <TT>-s</TT> option, except the column list is ignored;
+  headers for all columns are reported.
+</DD>
+<DT><STRONG><TT><B>-t output_type</B></TT></STRONG></DT>
+<DD>Specify the output format.  Here output_type should be one of the
+  strings <TT>odt</TT>, <TT>csv</TT>, or <TT>bare</TT>.  The default is <TT>odt</TT>,
+  the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT file format</A>.  Selecting <TT>csv</TT> will yield a
+  ``Comma-Separated Values'' (CSV) file, which can be read by many
+  spreadsheet programs.  The <TT>bare</TT> selection produces space separated
+  numeric output, with no ODT header, trailer, or comment lines.  The
+  latter two options are intended as aids for transferring data to third
+  party programs; in particular, such output is not in ODT format, and
+  there is no support in OOMMF for translating back from CSV or bare
+  format to ODT format.
+</DD>
+<DT><STRONG><TT><B>-w colwidth</B></TT></STRONG></DT>
+<DD>Minimum horizontal spacing to provide for each column on output.
+  Optional.  Default value is 15.
+</DD>
+<DT><STRONG><TT><B>col ...</B></TT></STRONG></DT>
+<DD>Output column selections.  These may either be integers representing
+  the position of the column in the input data (with the first column
+  numbered as 0), or else arbitrary strings used for case-insensitive
+  glob-style matching against the column headers.  The columns are
+  output in match order, obtained by processing the column selections
+  from left to right.  If no columns are specified then by default all
+  columns are selected.
+</DD>
+<DT><STRONG><TT><B><TT><B>&lt;</B></TT>infile</B></TT></STRONG></DT>
+<DD>Odtcols reads its input from stdin.  Use the redirection operator
+  ``<TT><B>&lt;</B></TT>'' to read input from a file.
+</DD>
+<DT><STRONG><TT><B><TT><B>&gt;</B></TT>outfile</B></TT></STRONG></DT>
+<DD>Odtcols writes its output to stdout.  Use the redirection operator
+  ``<TT><B>&gt;</B></TT>'' to send the output to a file.
+</DD>
+</DL>
+Commonly the <TT><B>-s</B></TT> switch is used in a first pass, to
+reveal the column headers; specific column selections may then be made
+in a second, separate invocation.  If no options or columns are
+specified, then the help message is displayed.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html709"
+  HREF="OOMMF_Process_ID_Informatio.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html705"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html699"
+  HREF="mifconvert.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html712"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html707"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

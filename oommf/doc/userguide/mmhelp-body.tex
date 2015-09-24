@@ -1,0 +1,117 @@
+\section{Documentation Viewer: mmHelp}\label{sec:mmhelp}
+\index{application!mmHelp}
+
+\begin{center}
+\includepic{mmhelp-ss}{mmHelp Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application {\bf mmHelp} manages the display and navigation of
+hypertext (HTML) help files\index{file!HTML}.  
+It presents an interface similar
+to that of World Wide Web browsers\index{application!web~browser}.
+
+Although {\bf mmHelp} is patterned after World
+Wide Web browsers, it does not have all of their capabilities.
+{\bf mmHelp} displays only a simplified form of hypertext
+required to display the \OOMMF\ help pages.
+It is not able to display many of
+the advanced hypertext features provided by modern World Wide Web
+browsers.  In the current release, {\bf mmHelp} is not able to 
+follow {\tt http:} URLs.  It only follows {\tt file:} URLs\index{URL},
+such as
+\begin{center}
+file:/path/to/oommf/doc/userguide/userguide/Documentation\_Viewer\_mmHelp.html
+\end{center}
+\OOMMF\ software can be \hyperrefhtml{customized}{customized (See
+Sec.~}{)}{sec:custom} to use another program to display the HTML help
+files\index{customize!help~file~browser}.
+
+\ssechead{Launching}
+{\bf mmHelp} may be launched from the command line via
+\begin{verbatim}
+tclsh oommf.tcl mmHelp [standard options] [URL]
+\end{verbatim}
+The command line argument {\tt URL} is the URL of the first
+page (home page) to be displayed.  If no URL is specified,
+{\bf mmHelp} displays the Table of Contents of the {\em \OOMMF\ User's
+Guide} by default.
+
+\ssechead{Controls}
+Each page of hypertext is displayed in the main {\bf mmHelp} window.
+Words which are underlined and colored blue are hyperlinks which {\bf
+mmHelp} knows how to follow.  Words which are underlined and colored red
+are hyperlinks which {\bf mmHelp} does not know how to follow.  Moving
+the mouse over a hyperlink displays the target URL of the hyperlink in
+the \btn{Link:} line above the display window.  Clicking on a blue
+hyperlink will follow the hyperlink and display a new page of hypertext.
+
+{\bf mmHelp} keeps a list of the viewed pages in order of view.
+Using the \btn{Back} and \btn{Forward} buttons, 
+the user may move backward and forward through 
+this list of pages.
+The \btn{Home} button causes the first page to be displayed, 
+allowing the user to start again from the beginning.  These
+three buttons have corresponding entries in the 
+\btn{Navigate} menu.
+
+Use the menu selection \btn{File\pipe Open} to directly select
+a file from the file system to be displayed by {\bf mmHelp}.
+
+The menu selection \btn{File\pipe Refresh}, or 
+the \btn{Refresh} button causes {\bf mmHelp} to reload and
+redisplay the current
+page.  This may be useful if the display becomes corrupted,
+or for repeatedly loading a hypertext file which is being
+edited.
+
+When {\bf mmHelp} encounters hypertext elements it does not
+recognize, it will attempt to work around the problem.  
+However, in some cases it will not be able to make sense of 
+the hypertext, and will display an error message.  Documentation
+authors should take care to use only the hypertext elements
+supported by {\bf mmHelp} in their documentation files.  Users
+should never see such an error message.
+
+{\bf mmHelp} displays error messages in one of two ways: 
+within the display window, or in a separate window.  
+Errors reported in the display window replace the display 
+of the page of hypertext.
+They usually indicate that the hypertext page could not be
+retrieved, or that its contents are not hypertext.  File
+permission errors are also reported in this way.
+
+Errors reported in a separate window are usually due to a
+formatting error within the page of hypertext.  Selecting the 
+\btn{Continue} button of the error window instructs {\bf mmHelp} to 
+attempt to resume display of the hypertext page beyond the error.  
+Selecting \btn{Abort} abandons further display.  
+
+The menu selection \btn{Options\pipe Font scale...} brings up a
+dialog box through which the user may select the scale of
+the fonts to use in the display window, relative to their
+initial size.
+
+\blackhole{
+The menu selection \btn{Options\pipe Strict} should not
+normally be enabled.  Enabling it causes {\bf mmHelp} to
+become much more finicky about the correctness of the HTML
+in the pages it displays.  The main consequence of enabling
+this option is that {\bf mmHelp} will display more error
+messages.  This option is primarily useful when \OOMMF\
+documentation writers are writing HTML files directly,
+and wish to check their work.
+} % end-blackhole
+
+The menu selection \btn{File\pipe Exit} or the \btn{Exit} button
+terminates the {\bf mmHelp} application.  
+The menu \btn{Help} provides the usual help facilities.
+
+\ssechead{Known Bugs}
+\app{mmHelp} is pretty slow.  You may be happier using
+\hyperrefhtml{local customization}{local
+customization (Sec.~}{)}{sec:custom} methods to replace it
+with another more powerful HTML browser.  Also, we have noticed that the
+underscore character in the italic font is not displayed (or is
+displayed as a space) at some font sizes on some platforms.
+

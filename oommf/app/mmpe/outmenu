@@ -1,0 +1,55 @@
+Name of Window: .outs
+Number of Commands: 1
+#######################################################################
+# The commands that construct each widget used in the menu are given   #
+# below.  The widgets are numbered from 0 and interlayed with          #
+# placement info that decribes how the widgets are to be integrated    #
+# with the rest of the menu. Comments for the widgets are in dmif.tcl  #
+#######################################################################
+0:label+entry $buttonname $label 28  "-textvar vals($ButtonNow)" \
+	      "NewVal $ButtonNow"
+0:-side left
+##########################################################################
+#The remainder of the file gives the labeling for each widget and defines
+#the mif file entry that the widget controls.
+#Consider the following mif file fragment,
+#...
+#ms:800E3
+#a:13E-12
+#demag type: 3dslab
+#...
+#The data on the left of the colon in the above example is known as a
+#mif entry.  The fields on the right of the colon can equal many things.
+#For example, demag type can be set to 3dslab, 3dcharge, etc.
+#Each thing that the mif entry can be changed to is called a choice.
+#Note that some entries, such as ms, can only be set to one type of
+#data so those entries will only have one choice defined.
+#The format for the remainder of the file is:
+#Number of Mif entries: a number equal the number of entries
+#                        changed by menu e.g.: 5
+# Data Change: defines the mif entry, e.g.: demag type, that is
+#              changed by the widget.
+# Number of choices: Total number of data types that are defined for a
+#              given mif entry.
+# 0:the specification of the choice's properties. using the format
+# number:choice name!command number!displayed label i.e.
+# Choice Number:$title!widget number (see above)!$label
+# this structure repeats for all mif entries
+##########################################################################
+Number of Mif file entries changed by this window: 3
+Data Change: base output filename
+Number of Choices: 1
+0:base output filename!0!Base Output Filename
+
+Data Change: magnetization output format
+Number of Choices: 1
+1:Magnetization Output Format!0!Magnetization Output Format
+
+Data Change: total field output format
+Number of Choices: 1
+2:Total Field Output Format!0!Total Field Output Format
+#
+#Data Change: data table output format
+#Number of Choices: 1
+#3:Data Table Output Format!0!Data Table Output Format
+#

@@ -1,0 +1,438 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Vector Field File Format Conversion: avf2ovf</TITLE>
+<META NAME="description" CONTENT="Vector Field File Format Conversion: avf2ovf">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Making_Bitmaps_from_Vector_.html">
+<LINK REL="previous" HREF="Making_Data_Tables_from_Vec.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Making_Bitmaps_from_Vector_.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html583"
+  HREF="Making_Bitmaps_from_Vector_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html579"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html573"
+  HREF="Making_Data_Tables_from_Vec.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html585"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html581"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html584"
+  HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
+<B> Up:</B> <A NAME="tex2html580"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html574"
+  HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000173000000000000000"></A><A NAME="sec:avf2ovf"></A>
+<BR>
+Vector Field File Format Conversion:
+          avf2ovf
+</H2><A NAME="16520"></A><A NAME="16521"></A><A NAME="16522"></A><A NAME="16523"></A>
+The <B>avf2ovf</B> program converts vector field files from any of the
+<A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
+(OVF, VIO) into the OVF 1.0 format.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>avf2ovf</B> launch command is:
+<PRE>
+tclsh oommf.tcl avf2ovf [standard options] \
+   [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
+   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] \
+   [-mag] [-pertran xoff yoff zoff] [-q] [-rpertran rxoff ryoff rzoff] \
+   [-subsample period] [infile [outfile]]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-clip xmin ymin zmin xmax ymax zmax</B></TT></STRONG></DT>
+<DD>The 6 arguments specify the vertices of a bounding clip box.  Only mesh
+  points inside the clip box are brought over into the output file.  Any
+  of the arguments may be set to ``-'' to use the corresponding value
+  from the input file, i.e., to not clip along that box face.
+</DD>
+<DT><STRONG><TT><B>-flip flipstr</B></TT></STRONG></DT>
+<DD>Provides an axis coordinate transformation.  Flipstr has the form
+  A:B:C, where A, B, C is a permutation of <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+, with an
+  optional minus sign on each entry.  The first component A denotes the
+  axis to which <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+ is mapped, B where <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ is mapped, and <B><I>C</I></B>
+<!-- MATHEND
+ 
+ -->
+ where <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+  is mapped.  The default is the identity map, <TT>x:y:z</TT>.  To rotate
+  <B>90<SUP><TT>o</TT></SUP></B>
+<!-- MATHEND
+ 
+ -->
+ about the <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+-axis, use ``-flip y:-x:z'', which sends <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+  to the <B>+ <I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ axis, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ to the -<B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+ axis, and leaves <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+ unchanged.
+</DD>
+<DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>text|b4|b8<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify output data format.  The default is ASCII <TT>text</TT>; <TT>b4</TT> selects
+  4-byte binary, <TT>b8</TT> selects 8-byte binary.  (The OVF format has an
+  ASCII text header in all cases.)
+</DD>
+<DT><STRONG><TT><B>-grid <TT><B>&lt;</B></TT>rect|irreg<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify output grid<A NAME="16541"></A> structure.  The default is <TT>rect</TT>,
+  which will output a regular rectangular grid if the input is recognized
+  as a regular rectangular grid.  The option ``-grid irreg'' forces
+  irregular mesh style output.
+</DD>
+<DT><STRONG><TT><B>-info</B></TT></STRONG></DT>
+<DD>Instead of converting the file, print information about the file, such
+  as size, range, and descriptive text from the file header.
+</DD>
+<DT><STRONG><TT><B>-keepbb</B></TT></STRONG></DT>
+<DD>If the <TT>-clip</TT> option is used, then normally the spatial extent,
+  i.e., the boundary, of the output is clipped to the specified clip
+  box.  If <TT>-keepbb</TT> (keep bounding box) is given, then the spatial
+  extent of the output file is taken directly from the input file.
+  Clipping is still applied to the data vectors; <TT>-keepbb</TT> affects
+  only the action of the clip box on the boundary.
+</DD>
+<DT><STRONG><TT><B>-mag</B></TT></STRONG></DT>
+<DD>Write out a scalar valued field instead of a vector value field, where
+  the scalar values are the magnitude <B>| <I>v</I>(<I>r</I>)|</B>
+<!-- MATHEND
+ 
+ -->
+ of the vector values at
+  each point <B><I>r</I></B>
+<!-- MATHEND
+ 
+ -->
+.
+</DD>
+<DT><STRONG><TT><B>-pertran xoff yoff zoff</B></TT></STRONG></DT>
+<DD>Translates field with respect to location coordiates, by amount
+  <!-- MATH
+ $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$
+ -->
+<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B>
+<!-- MATHEND
+ 
+ -->
+, in a periodic
+  fashion.  For example, if 
+  <!-- MATH
+ $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$
+ -->
+<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B>
+<!-- MATHEND
+ 
+ -->
+ is <!-- MATH
+ $(\mbox{50e-9},0,0)$
+ -->
+<B>(50e-9, 0, 0)</B>
+<!-- MATHEND
+ 
+ -->
+,
+  then a vector <B><I>v</I></B>
+<!-- MATHEND
+ 
+ -->
+ at position
+  <!-- MATH
+ $(\mathit{rx},\mathit{ry},\mathit{rz})$
+ -->
+<B>(<I>rx</I>, <I>ry</I>, <I>rz</I>)</B>
+<!-- MATHEND
+ 
+ -->
+  in the original file is positioned instead at
+  <!-- MATH
+ $(\mathit{rx} + \mbox{50e-9},\mathit{ry},\mathit{rz})$
+ -->
+<B>(<I>rx</I> + 50e-9, <I>ry</I>, <I>rz</I>)</B>
+<!-- MATHEND
+ 
+ -->
+  in the output file.  If the spatial extent of the
+  <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+ coordinate in the input file runs from <!-- MATH
+ $\mathit{xmin}$
+ -->
+<B><I>xmin</I></B>
+<!-- MATHEND
+ 
+ -->
+ to
+  <!-- MATH
+ $\mathit{xmax}$
+ -->
+<B><I>xmax</I></B>
+<!-- MATHEND
+ 
+ -->
+, and if
+  <!-- MATH
+ $\mathit{rx} +\mbox{50e-9}$
+ -->
+<B><I>rx</I> + 50e-9</B>
+<!-- MATHEND
+ 
+ -->
+ is larger than <!-- MATH
+ $\mathit{xmax}$
+ -->
+<B><I>xmax</I></B>
+<!-- MATHEND
+ 
+ -->
+, then <B><I>v</I></B>
+<!-- MATHEND
+ 
+ -->
+  will be placed at
+  <!-- MATH
+ $\mathit{rx} + \mbox{50e-9} - \mathit{xmax} + \mathit{xmin}$
+ -->
+<B><I>rx</I> + 50e-9 - <I>xmax</I> + <I>xmin</I></B>
+<!-- MATHEND
+ 
+ -->
+  instead.  Translations are rounded to the
+  nearest full step; aside from any clipping, the output file has the
+  exact same spatial extent and sample locations as the original file.
+  If both translation and clipping are requested, then the clipping is
+  applied after the translation.
+</DD>
+<DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
+<DD>Quiet operation -- don't print informational messages.
+</DD>
+<DT><STRONG><TT><B>-rpertran rxoff ryoff rzoff</B></TT></STRONG></DT>
+<DD>Similar to -pertran, except the offsets
+  <!-- MATH
+ $(\mathit{rxoff},\mathit{ryoff},\mathit{rzoff})$
+ -->
+<B>(<I>rxoff</I>, <I>ryoff</I>, <I>rzoff</I>)</B>
+<!-- MATHEND
+ 
+ -->
+ are
+  interpreted as offsets in the range <B>[0, 1]</B>
+<!-- MATHEND
+ 
+ -->
+ taken relative to the
+  spatial extents of the <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+, and <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+ coordinates.  For example, if
+  <!-- MATH
+ $\mathit{xmax} - \mathit{xmin} = \mbox{500e-9}$
+ -->
+<B><I>xmax</I> - <I>xmin</I> = 500e-9</B>
+<!-- MATHEND
+ 
+ -->
+, then an
+  <!-- MATH
+ $\mathit{rxoff}$
+ -->
+<B><I>rxoff</I></B>
+<!-- MATHEND
+ 
+ -->
+ value of 0.1 is equivalent 
+  to an <!-- MATH
+ $\mathit{xoff}$
+ -->
+<B><I>xoff</I></B>
+<!-- MATHEND
+ 
+ -->
+ value of 50e-9.
+</DD>
+<DT><STRONG><TT><B>-subsample period</B></TT></STRONG></DT>
+<DD>Reduce point density in output by subsampling input with specified
+  period along <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+, and <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+ axes.  For example, if period is 2,
+  then the output will have only 1/8th as many points as the input.
+  This control is only available for input files having a rectangular
+  grid structure.  Default value is 1, i.e., no subsampling.
+</DD>
+<DT><STRONG><TT><B>infile</B></TT></STRONG></DT>
+<DD>Name of input file to process.  Must be one of the recognized formats,
+  OVF 0.0, OVF 1.0, or VIO.  If no file is specified, reads from
+  stdin.
+</DD>
+<DT><STRONG><TT><B>outfile</B></TT></STRONG></DT>
+<DD>Name of output file.  If no file is specified, writes to stdout.
+</DD>
+</DL>
+
+<P>
+The <TT>-clip</TT> option is useful when one needs to do analysis on a
+small piece of a large simulation.  The <TT>-info</TT> option is helpful
+here to discover the extents of the original mesh.
+
+<P>
+The <TT>-flip</TT> option can change be used to align different simulations
+to the same orientation.  It can also be used to change a file into its
+mirror image; for example, ``-flip&nbsp;-x:y:z'' reflects the mesh through
+the <B><I>yz</I></B>
+<!-- MATHEND
+ 
+ -->
+-plane.
+
+<P>
+If both <TT>clip</TT> and <TT>-flip</TT> options are specified, then clipping is
+applied first, using the original coordinates.
+
+<P>
+The <TT>-format text</TT> and <TT>-grid irreg</TT> options are handy for
+preparing files for import into non-OOMMF applications, since all
+non-data lines are readily identified by a leading ``<code>#</code>,'' and
+each data line is a 6-tuple consisting of the node location and vector
+value.  Pay attention, however, to the scaling of the vector value as
+specified by ``<code># valueunit</code>'' and ``<code># valuemultiplier</code>''
+header lines.
+
+<P>
+For output format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
+description</A>.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Known Bugs</B></FONT>
+<BR>
+If the input file contains an explicit boundary polygon (cf. the
+<TT>boundary</TT> entry in the <A HREF="OVF_1.0_format.html#sec:ovfsegmentheader">Segment Header
+block</A> subsection of the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
+description</A>) then the
+output file will also contain an explicit boundary polygon.  If clipping
+is active, then the output boundary polygon is formed by moving the
+vertices from the input boundary polygon as necessary to bring them into
+the clipping region.  This is arguably not correct, in particular for
+boundary edges that don't run parallel to a coordinate axis.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html583"
+  HREF="Making_Bitmaps_from_Vector_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html579"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html573"
+  HREF="Making_Data_Tables_from_Vec.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html586"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html581"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

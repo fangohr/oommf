@@ -1,0 +1,7 @@
+Material Parameters   : EntryChange : matmenu   : matmenu
+Simulation Details    : EntryChange : sdmenu	: sdmenu12
+Part Geometry         : EntryChange : geommenu	: geommenu12
+Initial Mag           : EntryChange : initmenu	: initmenu
+Experiment Parameters : EntryChange : fieldmenu	: fieldmenu
+Output Specifications : EntryChange : outmenu	: outmenu
+Miscellaneous         : EntryChange : miscmenu  : miscmenu

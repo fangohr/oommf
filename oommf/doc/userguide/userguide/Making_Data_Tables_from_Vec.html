@@ -1,0 +1,448 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Making Data Tables from Vector Fields: avf2odt</TITLE>
+<META NAME="description" CONTENT="Making Data Tables from Vector Fields: avf2odt">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Vector_Field_File_Format_Co.html">
+<LINK REL="previous" HREF="Bitmap_File_Format_Conversi.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Vector_Field_File_Format_Co.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html569"
+  HREF="Vector_Field_File_Format_Co.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html565"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html559"
+  HREF="Bitmap_File_Format_Conversi.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html571"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html567"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html570"
+  HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
+<B> Up:</B> <A NAME="tex2html566"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html560"
+  HREF="Bitmap_File_Format_Conversi.html">Bitmap File Format Conversion:</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000172000000000000000"></A><A NAME="sec:avf2odt"></A>
+<BR>
+Making Data Tables from Vector Fields:
+          avf2odt
+</H2><A NAME="16355"></A><A NAME="16356"></A><A NAME="16357"></A><A NAME="16358"></A><A NAME="16359"></A>
+The <B>avf2odt</B> program converts <I>rectangularly</I> meshed vector field
+files in any of the <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
+(OVF, VIO) into the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT&nbsp;1.0</A> data table format.  (Irregular meshes are
+not supported by this command.  Note that any OVF file using the
+``irregular'' meshtype is considered to be using an irregular mesh, even
+if the mesh nodes do in fact lie on a rectangular grid.)
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>avf2odt</B> launch command is:
+<PRE>
+tclsh oommf.tcl avf2odt [standard options] \
+   [-average &lt;space|plane|line|point|ball&gt;] [-axis &lt;x|y|z&gt;] \
+   [-ball_radius brad] [-defaultvals &lt;0|1&gt;] [-filesort method] \
+   [-headers &lt;full|collapse|none&gt;] [-index label units valexpr] \
+   [-ipat pattern] [-normalize &lt;0|1&gt;] [-numfmt fmt] \
+   [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
+   [-region xmin ymin zmin xmax ymax zmax] \
+   [-rregion rxmin rymin rzmin rxmax rymax rzmax] \
+   [-truncate &lt;0|1&gt;] [-v level] [-valfunc label units fcnexpr] \
+   [infile ...]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-average <TT><B>&lt;</B></TT>space|plane|line|point|
+    ball<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify type of averaging.  Selection of <TT>Space</TT> averaging
+  results in the output of one data line (per input file) consisting
+  of the average <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ field values in the selected
+  region (see <TT>-region</TT> option below).  For example, in
+  magnetization files, <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ correspond to <B><I>M</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+,
+  <B><I>M</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>M</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+.  If <TT>plane</TT> or <TT>line</TT> is selected, then the
+  output data table consists of multiple lines with 4 or 5 columns per
+  line, respectively.  The last 3 columns in both cases are the <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+,
+  <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ averaged over the specified axes-parallel affine
+  subspace (i.e., plane or line).  In the <TT>plane</TT> case, the first
+  column specifies the averaging plane offset along the coordinate
+  axis normal to the plane (see <TT>-axis</TT> option below).  In the
+  <TT>line</TT> case, the first 2 columns specify the offset of the
+  averaging line in the coordinate plane perpendicular to the line.
+  If the averaging type is <TT>point</TT>, then no averaging is done, and
+  the output consists of lines of 6 column data, one line for each
+  point in the selected region, where the first 3 columns are the
+  point coordinates, and the last 3 are the <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+  values at the point.  If the type is <TT>ball</TT>, then one line is
+  output for each sample point for which a ball of radius <TT>brad</TT>
+  (see <TT>-ball_radius</TT> option) centered about that point lies
+  entirely inside the selected region.  The output values consist of 6
+  columns: the ball center point location and the <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and
+  <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ values averaged across the ball.  As a special case, if the
+  spatial extent of the selected region is two-dimensional (e.g., all
+  the sample locations have the same <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+-coordinate), then the
+  averaging region is taken to be a disk instead of a ball.
+  Similarly, if the spatial extent of the selected region is
+  one-dimensional, then the averaging region is reduced to a
+  one-dimensional line segment.  (Note: The output columns described
+  above may be suppressed by the <TT>-defaultpos</TT> and
+  <TT>-defaultvals</TT> options.  Additional columns may be introduced by
+  the <TT>-index</TT> and <TT>-valfunc</TT> options.)  The default averaging
+  type is <TT>space</TT>.
+</DD>
+<DT><STRONG><TT><B>-axis <TT><B>&lt;</B></TT>x|y|z<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>For the <TT>-average plane</TT> and <TT>-average line</TT> averaging types,
+  selects which subset of affine subspaces the averaging will be
+  performed over.  In the <TT>plane</TT> case, the <TT>-axis</TT> represents
+  the normal direction to the planes, while for <TT>line</TT> it is the
+  direction parallel to the lines.  This parameter is ignored if
+  <TT>-average</TT> is not either <TT>plane</TT> or <TT>line</TT>.  Default value
+  is <TT>x</TT>.
+</DD>
+<DT><STRONG><TT><B>-ball_radius brad</B></TT></STRONG></DT>
+<DD>This option is required if <TT>-average</TT> is <TT>ball</TT>, in which case
+  <TT>brad</TT> specifies the radius of the averaging ball in problem
+  units (e.g., meters).  If  <TT>-average</TT> is not <TT>ball</TT>, then this
+  option is ignored.
+</DD>
+<DT><STRONG><TT><B>-defaultpos <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>By default, the output data columns are as described in the
+  description of the <TT>-average</TT> option above.  However,
+  <TT>-defaultpos 0</TT> may be used to omit the columns indicating the
+  averaging position.
+</DD>
+<DT><STRONG><TT><B>-defaultvals <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>By default, the output data columns are as described in the
+  description of the <TT>-average</TT> option above.  However,
+  <TT>-defaultvals 0</TT> may be used to omit the columns containing the
+  averaged <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ values.  In particular, this may be
+  useful in conjunction with the <TT>-valfunc</TT> option.
+</DD>
+<DT><STRONG><TT><B>-filesort method</B></TT></STRONG></DT>
+<DD>Specifies the sorting order to apply to the input file list.  This
+  order is important when using the <TT>-onefile</TT> option, since it
+  controls the order in which the rows from the various input files
+  are concatenated.  Method should be either the keyword ``none'', or
+  else a valid option string for the Tcl command <TT>lsort</TT>, e.g.,
+  ``-ascii -decreasing''.  Note that the <TT>lsort</TT> sort options all
+  begin with a hyphen, ``-'', and that if you want to use multiple
+  options they must be grouped as one element to <TT>filesort</TT> (by,
+  for example, placing quotes around the list).  The default value is
+  ``-dictionary'' if the <TT>-ipat</TT> option is specified, or ``none''
+  otherwise.
+</DD>
+<DT><STRONG><TT><B>-headers <TT><B>&lt;</B></TT>full|collapse|none<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Determines the style of headers written to the output ODT file(s).
+  The full style (default) provides the standard headers, as described
+  in the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT documentation</A>.  Specifying ``none'' produces raw data
+  lines without any headers.  The collapse style is used with multiple
+  input files and the <TT>-onefile</TT> output option to concatenate
+  output with no ODT header information between the segments.
+</DD>
+<DT><STRONG><TT><B>-index label units valexpr</B></TT></STRONG></DT>
+<DD>Adds an input file based index column to the output, where label is
+  the column header, units is a string displayed as the column units
+  header, and valexpr is a Tcl <TT>expr</TT> expression that may include
+  the special variables <TT>$i</TT>, <TT>$f1</TT>, <TT>$f2</TT>, ..., <TT>$d1</TT>,
+  <TT>$d2</TT>, ...; here <TT>$i</TT> is the 0-based index of
+  the file in the list of input files, <TT>$f1</TT> is the first number
+  appearing in the input filename, <TT>$f2</TT> is the second number
+  appearing in the input filename, <TT>$d1</TT> is the first number
+  appearing in the ``Desc'' fields in the header of the input file,
+  etc.  For example, if there are two input files named
+  <TT><B>foo-100.ovf</B></TT> and and <TT><B>foo-101.ovf</B></TT>, then setting valexpr to
+  <TT>abs($f1)+1</TT> would yield a column with the value 101 for all lines
+  coming from <TT><B>foo-100.ovf</B></TT>, and the value 102 for all lines coming
+  from  <TT><B>foo-101.ovf</B></TT>.  (We use the Tcl <TT>expr</TT> function
+  <TT>abs</TT> because the leading hyphen in <TT><B>foo-100.ovf</B></TT> gets
+  interpreted as a minus sign, so <TT>$f1</TT> is extracted as -100.)
+  On Unix systems, the valexpr string should be surrounding by single
+  quotes in order to forestall interpolation of the special variables
+  by the shell.  On Windows, the valexpr string should be surrounded
+  by double quotes as usual to protect embedded spaces.
+  Multiple instances of the <TT>-index</TT> option on the command line
+  will result in multiple columns in the output file, in the order
+  specified.  The index columns, if any, will be the first columns in
+  the output file.
+</DD>
+<DT><STRONG><TT><B>-ipat pattern</B></TT></STRONG></DT>
+<DD>Specify input files using a pattern with ``glob-style'' wildcards.
+  Especially useful in DOS.  Files must meet the <TT>infile</TT>
+  requirements (see below).
+</DD>
+<DT><STRONG><TT><B>-normalize <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>If 1, then the default averaged output values <B><I>v</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>v</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>v</I><SUB>z</SUB></B>
+<!-- MATHEND
+ 
+ -->
+  are divided by the maximum magnitude that would occur if all the
+  vectors in the averaging manifold are aligned.  (In particular, the
+  maximum magnitude of the output vector is 1.)  This option should
+  be used carefully because the normalization is done independently for
+  each output row.  For <TT>-normalize 0</TT>
+  (the default), averaged output values are in file units.
+</DD>
+<DT><STRONG><TT><B>-numfmt fmt</B></TT></STRONG></DT>
+<DD>C-style output format for numeric data in the body of the output
+  table.  Default value is ``<code>%- #20.15g</code>''.
+</DD>
+<DT><STRONG><TT><B>-onefile outfile</B></TT></STRONG></DT>
+<DD>Generally a <B>avf2odt</B> writes its output to a collection of files
+  with names generated using the <TT>-opatexp</TT> and <TT>-opatsub</TT>
+  specifications.  This option overrides that behavior and sends all
+  output to one place.  If outfile is ``-'', then the output is sent
+  to standard output, otherwise outfile is the name of the output file.
+</DD>
+<DT><STRONG><TT><B>-opatexp regexp</B></TT></STRONG></DT>
+<DD>Specify the ``regular expression'' applied to input filenames to
+  determine portion to be replaced in generation of output filenames.
+  The default regular expression is: <code>(\.[^.]?[^.]?[^.]?$|$)</code>
+</DD>
+<DT><STRONG><TT><B>-opatsub sub</B></TT></STRONG></DT>
+<DD>The string with which to replace the portion of input filenames
+  matched by the <TT>-opatexp regexp</TT> during output filename
+  generation.  The default is <code>.odt</code>.
+</DD>
+<DT><STRONG><TT><B>-region xmin ymin zmin xmax ymax zmax</B></TT></STRONG></DT>
+<DD>Axes-parallel rectangular box denoting region in the vector field
+  file over which data is to be collected.  The locations are in
+  problem units (typically meters).  A single hyphen, ``-'', may be
+  specified for any of the box corner coordinates, in which case the
+  corresponding extremal value from the input file is used.  Optional;
+  the default, <TT>-region - - - - - -</TT>, selects the entire input file.
+</DD>
+<DT><STRONG><TT><B>-rregion rxmin rymin rzmin rxmax rymax rzmax</B></TT></STRONG></DT>
+<DD>This option is the same as <TT>-region</TT>, except that the locations
+  are specified in relative units, between 0 and 1.
+</DD>
+<DT><STRONG><TT><B>-truncate <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>When opening an existing file for output, the new output can either be
+  appended to the file (<TT>-truncate 0</TT>), or else the existing data
+  can be discarded (<TT>-truncate 1</TT>).  The default is <TT>-truncate 0</TT>.
+</DD>
+<DT><STRONG><TT><B>-v level</B></TT></STRONG></DT>
+<DD>Verbosity (informational message) level, with 0 generating only
+  error messages, and larger numbers generating additional information.
+  The <TT>level</TT> value is an integer, defaulting to 1.
+</DD>
+<DT><STRONG><TT><B>-valfunc label units fcnexpr</B></TT></STRONG></DT>
+<DD>Similar to the <TT>-index</TT> option, <TT>-valfunc</TT> adds an additional
+  column to the output with label and units as the column header, and
+  fcnexpr is a Tcl <TT>expr</TT> expression that may include special
+  variables.  Here, however, the allowed special variables are
+  <TT>$x</TT>, <TT>$y</TT>, <TT>$z</TT>, <TT>$r</TT>,
+  <TT>$vx</TT>, <TT>$vy</TT>, <TT>$vz</TT>, <TT>$vmag</TT>, where 
+  <TT>$x</TT>, <TT>$y</TT>, <TT>$z</TT>, and <TT>$r</TT> are sample location and
+  magnitude, respectively (<!-- MATH
+ $r = \sqrt{x^2+y^2+z^2}$
+ -->
+<B><I>r</I> = <IMG
+ WIDTH="105" HEIGHT="36" ALIGN="MIDDLE" BORDER="0"
+ SRC="img68.gif"
+ ALT="$ \sqrt{{x^2+y^2+z^2}}$"></B>
+<!-- MATHEND
+ 
+ -->
+), and
+  <TT>$vx</TT>, <TT>$vy</TT>, <TT>$vz</TT> and <TT>$vmag</TT> are vector component
+  values and magnitude.  The output is the value of fcnexpr averaged
+  across the manifold selected by the <TT>-average</TT> option.  A couple
+  of examples are
+  <PRE>
+     -valfunc Ms   A/m '$vmag'
+     -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
+</PRE>
+  As with the valexpr string for <TT>-index</TT>, the fcnexpr string
+  should be surrounding by single quotes on Unix in order to
+  forestall interpolation of the special variables by the shell.  On
+  Windows, the fcnexpr string should be surrounded by double quotes as
+  usual to protect embedded spaces.
+  The output value is not affected by the <TT>-normalize</TT> option.
+  Multiple instances of the
+  <TT>-valfunc</TT> option on the command line will result in multiple
+  columns in the output file, in the order specified.  These
+  additional columns will be append to the right of all other columns in
+  the output file.
+</DD>
+<DT><STRONG><TT><B>infile ...</B></TT></STRONG></DT>
+<DD>Input file list.  Files must be one of the recognized
+  formats,  OVF 1.0 or VIO, in a rectangular mesh subformat.
+</DD>
+</DL>
+
+<P>
+The file specification options require some explanation.  Input files
+may be specified either by an explicit list (<TT>infile ...</TT>),
+or by giving a wildcard pattern, e.g., <TT>-ipat *.omf</TT>, which is
+expanded in the usual way by <B>avf2odt</B> (using the Tcl command
+<TT>glob</TT>).   Unix shells (sh, csh, etc.) automatically expand
+wildcards before handing control over to the invoked application, so the
+<TT>-ipat</TT> option is not usually needed--although it is useful in case of a
+``command-line too long'' error.  DOS does not do this expansion, so
+you must use <TT>-ipat</TT> to get wildcard
+expansion<A NAME="16506"></A> in Windows.
+The resulting file list is sorted  based on the <TT>-filesort</TT>
+specification as described above.
+
+<P>
+If <TT>-onefile</TT> is not requested, then as each input file is
+processed, a name for the corresponding output file is produced from
+the input filename by rules determined by handing the <TT>-opatexp</TT>
+and <TT>-opatsub</TT> expressions to the Tcl <TT>regsub</TT> command.  Refer
+to the Tcl <TT>regsub</TT> documentation for details, but essentially
+whatever portion of the input filename is matched by the <TT>-opatexp</TT>
+expression is removed and replaced by the <TT>-opatsub</TT> string.  The
+default <TT>-opatexp</TT> expression matches against any filename
+extension of up to 3 characters, and the default <TT>-opatsub</TT> string
+replaces this with the extension <TT><B>.odt</B></TT>.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html569"
+  HREF="Vector_Field_File_Format_Co.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html565"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html559"
+  HREF="Bitmap_File_Format_Conversi.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html572"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html567"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

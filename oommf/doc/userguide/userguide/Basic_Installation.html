@@ -1,0 +1,566 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Basic Installation</TITLE>
+<META NAME="description" CONTENT="Basic Installation">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Advanced_Installation.html">
+<LINK REL="previous" HREF="Requirements.html">
+<LINK REL="up" HREF="Installation.html">
+<LINK REL="next" HREF="Advanced_Installation.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html183"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html179"
+  HREF="Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html173"
+  HREF="Requirements.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html185"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html181"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html184"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Up:</B> <A NAME="tex2html180"
+  HREF="Installation.html">Installation</A>
+<B> Previous:</B> <A NAME="tex2html174"
+  HREF="Requirements.html">Requirements</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html187"
+  HREF="Basic_Installation.html#SECTION00032100000000000000">Download</A>
+<LI><A NAME="tex2html188"
+  HREF="Basic_Installation.html#SECTION00032200000000000000">Check Your Platform Configuration</A>
+<UL>
+<LI><A NAME="tex2html189"
+  HREF="Basic_Installation.html#SECTION00032210000000000000">Additional Configuration Issues on Windows</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html190"
+  HREF="Basic_Installation.html#SECTION00032300000000000000">Compiling and Linking</A>
+<LI><A NAME="tex2html191"
+  HREF="Basic_Installation.html#SECTION00032400000000000000">Installing</A>
+<LI><A NAME="tex2html192"
+  HREF="Basic_Installation.html#SECTION00032500000000000000">Using OOMMF Software</A>
+<LI><A NAME="tex2html193"
+  HREF="Basic_Installation.html#SECTION00032600000000000000">Reporting Problems</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H2><A NAME="SECTION00032000000000000000">
+Basic Installation</A>
+</H2>
+
+<P>
+Follow the instructions in the following sections, in order,
+to prepare OOMMF software for use on your computer.
+
+<P>
+
+<H3><A NAME="SECTION00032100000000000000"></A>
+<A NAME="800"></A>
+<BR>
+Download
+</H3>
+
+<P>
+The latest release of the OOMMF software may be retrieved from the
+<A NAME="tex2html16"
+  HREF="http://math.nist.gov/oommf/software.html">OOMMF download
+page</A>.  Each release is
+available in two formats.  The first format is a gzipped tar file
+containing an archive of all the OOMMF source code.  The second format
+is a <TT><B>.zip</B></TT> compressed archive containing source code and
+pre-compiled executables for Microsoft Windows.  Each Windows binary
+distribution is compatible with only a particular sequence of releases
+of Tcl/Tk.  For example, a Windows binary release for Tcl/Tk 8.3.x
+is compatible with Tcl/Tk 8.3.0, 8.3.1, ....  Other release
+formats, e.g., pre-compiled executables for Microsoft
+Windows&nbsp;NT running on a Compaq Alpha Systems RISC-based microprocessor
+system, and/or compatible with older versions of Tcl/Tk, may be made
+available upon request.
+
+<P>
+For the first format, unpack the distribution archive using gunzip and
+tar:
+<PRE>
+gunzip -c oommf12a4_20040908.tar.gz | tar xvf -
+</PRE>
+
+<P>
+For the other format(s), you will need a utility program to unpack the
+<TT><B>.zip</B></TT> archive.  This program must preserve the directory structure
+of the files in the archive, and it must be able to generate files with
+names not limited to the old MSDOS 8.3 format.  Some very old
+versions of the pkzip utility do not have these properties.  One utility
+program which is known to work is
+<A NAME="tex2html17"
+  HREF="http://www.info-zip.org/pub/infozip/UnZip.html">UnZip</A>.
+
+<P>
+Using your utility, unpack the <TT><B>.zip</B></TT> archive, e.g.
+<PRE>
+unzip oommf12a4_20040908_84.zip
+</PRE>
+
+<P>
+For either distribution format, the unpacking sequence creates a
+subdirectory <TT><B>oommf</B></TT> which contains all the files and directories
+of the OOMMF distribution.  If a subdirectory named <TT><B>oommf</B></TT>
+already existed (say, from an earlier OOMMF release), then
+files in the new distribution overwrite those of the same name already
+on the disk.  Some care may be needed in that circumstance to be
+sure that the resulting mix of files from an old and a new 
+OOMMF distribution combine to create a working set of files.
+
+<P>
+
+<H3><A NAME="SECTION00032200000000000000"></A>
+<A NAME="815"></A>
+<BR>
+Check Your Platform Configuration
+</H3>
+
+<P>
+After downloading and unpacking the OOMMF software distribution, all
+the OOMMF software is contained in a subdirectory named <TT><B>oommf</B></TT>.
+Start a command line interface (a shell on Unix, or the MS-DOS Prompt 
+on Microsoft Windows), and change the 
+working directory<A NAME="817"></A> to the 
+directory <TT><B>oommf</B></TT>.  
+Find the Tcl shell program installed as part of your Tcl/Tk 
+installation.  In this manual we call the Tcl shell program
+<TT><B>tclsh</B></TT>, but the actual name of the executable depends
+on the release of Tcl/Tk and your platform type.  Consult
+your Tcl/Tk documentation.
+
+<P>
+In the root directory of the OOMMF distribution is a file
+named <TT><B>oommf.tcl</B></TT>.  It is the 
+<A HREF="Command_Line_Launching.html#sec:cll">bootstrap application</A>
+which is used to launch all OOMMF software.  With the command line
+argument <TT>+platform</TT>, 
+it will print a summary of your
+platform configuration when it is evaluated by <TT><B>tclsh</B></TT>.
+This summary describes your platform type, your C++ compiler,
+and your Tcl/Tk installation.  As an example, 
+here is the typical output on a Linux/x86_64 system:
+<PRE>
+$ tclsh8.4 oommf.tcl +platform
+oommf.tcl 1.2.0.4  info:
+OOMMF release 1.2.0.4
+Platform Name:          linux-x86_64
+Tcl name for OS:        Linux 2.6.18-274.7.1.el5
+C++ compiler:           /usr/bin/g++ 
+ Version string:         g++ (GCC) 4.1.2 20080704 (Red Hat 4.1.2-51)
+Shell details ---
+ tclsh (running):       /usr/bin/tclsh8.4
+                         --&gt; Version 8.4.13, 64 bit, threaded
+ tclsh (OOMMF):         /usr/bin/tclsh8.4
+                         --&gt; Version 8.4.13, 64 bit, threaded
+ filtersh:              /usr/local/oommf/app/omfsh/linux-x86_64/filtersh
+                         --&gt; Version 8.4.13, 64 bit, threaded
+ tclConfig.sh:          /usr/lib64/tclConfig.sh
+                         --&gt; Version 8.4.13
+ wish (OOMMF):          /usr/bin/wish8.4
+                         --&gt; Version 8.4.13, Tk 8.4.13, 64 bit, threaded
+ tkConfig.sh:           /usr/lib64/tkConfig.sh
+                         --&gt; Tk Version 8.4.13
+OOMMF threads:          Yes
+  Default thread count:   4
+  NUMA support:           No
+Temp file directory:    /tmp
+</PRE>
+
+<P>
+If <TT>oommf.tcl +platform</TT> doesn't print a summary similar to the
+above, it should instead print an error message describing why it can't.
+For example, if your Tcl installation is older than release 7.5, the
+error message will report that fact.  Follow the instructions provided
+and repeat until <TT>oommf.tcl +platform</TT> successfully prints a summary
+of the platform configuration information.
+
+<P>
+<A NAME="831"></A>
+The first line of the example summary reports that OOMMF recognizes
+the platform by the name <TT>linux-x86_64</TT>.  OOMMF software recognizes many
+of the more popular computing platforms, and assigns each a platform
+name.  The platform name is used by OOMMF in index and configuration
+files and to name directories so that a single OOMMF installation can
+support multiple platform types.  If <TT>oommf.tcl +platform</TT> reports
+the platform name to be ``unknown'', then you will need to add some
+configuration files to help OOMMF assign a name to your platform type,
+and associate with that name some of the key features of your computer.
+See the section on
+<A HREF="Advanced_Installation.html#sec:platformNames">Managing OOMMF platform names</A>
+for further instructions.
+<A NAME="838"></A>
+
+<P>
+The second line reports the operating system version, which is mainly
+useful to OOMMF developers when fielding bug reports.  The third line
+reports what C++ compiler will be used to build OOMMF from its C++
+source code.  If you downloaded an OOMMF release with pre-compiled
+binaries for your platform, you may ignore this line.  Otherwise, if
+this line reports ``none selected'', or if it reports a compiler other
+than the one you wish to use, then you will need to tell OOMMF what
+compiler to use.  To do that, you must edit the appropriate
+configuration file for your platform.  Continuing the example above, one
+would edit the file
+<TT><B>config/platforms/linux-x86_64.tcl</B></TT><A NAME="840"></A>.
+Editing instructions are contained within the file.  On other platforms
+the name <TT><B>linux-x86_64</B></TT> in <TT><B>config/platforms/linux-x86_64.tcl</B></TT>
+should be replaced with the platform name OOMMF reports for your
+platform.  For example, on a 32-bit Windows machine using an x86
+processor, the corresponding configuration file is
+<TT><B>config/platforms/wintel.tcl</B></TT>.
+
+<P>
+<A NAME="844"></A>
+The next group of lines describe the Tcl configuration OOMMF finds
+on your platform.  The first couple of lines, ``tclsh (running)'',
+describe the Tcl shell running the oommf.tcl script.  After that, the
+``tclsh (OOMMF)'' subgroup describes the Tcl shell that OOMMF will
+launch when it needs to run vanilla Tcl scripts.  If the OOMMF binaries
+have been built, then there will also be a <TT>filtersh</TT> subgroup, which
+describes the augmented Tcl shell used to run many of the
+OOMMF support scripts.  All of these shells should report the same
+version, bitness, and threading information.  If OOMMF can't find
+<TT>tclsh</TT>, or if it finds the wrong one, you can correct this by
+setting the environment variable
+OOMMF_TCLSH<A NAME="847"></A> to the absolute
+location of <TT>tclsh</TT>.  (For information about setting environment
+variables, see your operating system documentation.)
+
+<P>
+Following the Tcl shell information, the <TT>tclConfig.sh</TT> lines
+report the name of the configuration file installed as part of Tcl, if
+any.  Conventional Tcl installations on Unix systems and within the
+Cygwin environment<A NAME="850"></A> on
+Windows have such a file, usually named <TT><B>tclConfig.sh</B></TT>.  The
+Tcl configuration file records details about how Tcl was built and
+where it was installed.  On Windows platforms, this information is
+recorded in the
+Windows registry<A NAME="852"></A>, so
+it is normal to have <TT>oommf.tcl +platform</TT> report ``none found''.  If
+<TT>oommf.tcl +platform</TT> reports ``none found'', but you know that an
+appropriate Tcl configuration file is present on your system, you can
+tell OOMMF where to find the file by setting the environment variable
+OOMMF_TCL_CONFIG<A NAME="855"></A> to
+its absolute filename.  In unusual circumstances, OOMMF may find a
+Tcl configuration file which doesn't correctly describe your
+Tcl installation.  In that case, use the environment variable
+OOMMF_TCL_CONFIG to instruct OOMMF to use a different file that you
+specify, and, if necessary, edit that file to include a correct
+description of your Tcl installation.
+
+<P>
+Next, the <TT>oommf.tcl +platform</TT> reports similar information about the
+<TT>wish</TT> and Tk configuration.  The environment variables
+<TT>OOMMF_TK_CONFIG</TT><A NAME="859"></A>
+and <TT>OOMMF_WISH</TT><A NAME="861"></A> may be
+used to tell OOMMF where to find the Tk configuration file and the
+<TT><B>wish</B></TT> program, respectively.
+
+<P>
+<A NAME="863"></A>
+Following the Tk information are some lines reporting ``thread'' build
+and run status. Threads are used by OOMMF to implement parallelism in
+the Oxs (<TT>oxsii</TT> and <TT>boxsi</TT>) 3D solvers on
+multi-processor/multi-core shared memory machines.  In order to build or
+run a parallel version of OOMMF, you must have a thread-enabled version
+of Tcl.  The Tcl thread status is indicated on the first thread
+status line.  If Tcl is thread enabled, then the default OOMMF build
+process will create a threaded version of OOMMF.  You can override this
+behavior if you wish to build a non-parallel version of OOMMF by
+editing the
+<TT>oommf_threads</TT><A NAME="867"></A> value in
+the <TT><B>config/platforms/</B></TT> file for your platform.
+
+<P>
+If Tcl and OOMMF threads are enabled, then the next line will show
+the default number of threads run by the Oxs solvers.  (This value may
+vary between machines, depending on the number of processors in the
+machine.)  You can change this by setting the
+<TT>thread_count</TT><A NAME="870"></A> value in
+the <TT><B>config/platforms/</B></TT> file for your platform.  The default can be
+overridden at run time by the environment variable
+<TT>OOMMF_THREADS</TT><A NAME="873"></A>, or by
+the <TT>oxsii</TT>/<TT>boxsi</TT> command line option <TT>-threads</TT>.  If
+NUMA<A NAME="877"></A> support is possible on your platform (see
+<A HREF="Advanced_Installation.html#sec:parallel">below</A>),
+then the next line of thread info will indicate whether or not the build
+process will create NUMA-aware Oxs solvers.
+<A NAME="882"></A>
+
+<P>
+After the thread info, <TT>oommf.tcl +platform</TT> reports the directory
+that OOMMF will use to write temporary files<A NAME="884"></A>.
+This directory is used, for example, to transfer magnetization data from
+the micromagnetic solvers to the <B>mmDisp</B> display module.  You must
+have write access to this directory.  If you don't like the
+OOMMF default, you may change it via the
+<TT>path_directory_temporary</TT><A NAME="887"></A>
+setting in the <TT><B>config/platforms/</B></TT> file for your platform.  Or you
+can set the environment variable
+<TT>OOMMF_TEMP</TT><A NAME="890"></A>, which will
+override all other settings.
+
+<P>
+If any environment variables relevant to OOMMF are set, then
+<TT>oommf.tcl +platform</TT> will report these next, followed finally by any
+warnings about possible problems with your Tcl/Tk installation, such
+as if you are missing important header files.
+
+<P>
+If <TT>oommf.tcl +platform</TT> indicates problems with your Tcl/Tk installation,
+it may be easiest to re-install Tcl/Tk taking care to perform a
+conventional installation.  OOMMF deals best with conventional
+Tcl/Tk installations.  If you do not have the power to re-install
+an existing broken Tcl/Tk installation (perhaps you are not
+the sysadmin of your machine), you might still install your own
+copy of Tcl/Tk in your own user space.  In that case, if your
+private Tcl/Tk installation makes use of shared libraries,
+take care that you do whatever is necessary on your platform to
+be sure that your private <TT><B>tclsh</B></TT> and <TT><B>wish</B></TT> 
+find and use your private
+shared libraries instead of those from the system Tcl/Tk installation.
+This might involve setting an environment variable (such as 
+LD_LIBRARY_PATH<A NAME="895"></A>).
+If you use a private Tcl/Tk installation, you also want to be sure
+that there are no environment variables like 
+TCL_LIBRARY<A NAME="896"></A>
+or TK_LIBRARY<A NAME="897"></A>
+that still refer to the system Tcl/Tk installation.
+<A NAME="898"></A>
+
+<P>
+
+<H4><A NAME="SECTION00032210000000000000">
+Additional Configuration Issues on Windows</A>
+</H4>
+
+<P>
+<A NAME="900"></A>
+A few other configurations should be checked on Windows platforms.
+<A NAME="901"></A>
+First, note that absolute filenames on Windows makes use of the
+backslash (<TT>&#92;</TT>) to separate directory names.  On Unix and
+within Tcl the forward slash (<TT>/</TT>) is used to separate directory
+names in an absolute filename.  In this manual we usually use the
+Tcl convention of forward slash as separator.  In portions of the
+manual pertaining only to MS Windows we use the backslash as
+separator.  There may be instructions in this manual which do not
+work exactly as written on Windows platforms.  You may need to
+replace forward slashes with backward slashes in pathnames when
+working on Windows.
+<A NAME="902"></A>
+
+<P>
+<A NAME="903"></A>
+OOMMF software needs networking support that recognizes
+the host name <TT>localhost</TT>.  It may be necessary
+to edit a file which records that <TT>localhost</TT> is a synonym
+for the loopback interface (127.0.0.1).  If a file named <TT><B>hosts</B></TT>
+exists in your system area (for example, <TT><B>C:<TT>&#92;</TT>Windows<TT>&#92;</TT>hosts</B></TT>),
+be sure it includes an entry mapping 127.0.0.1 to <TT>localhost</TT>.
+If no <TT><B>hosts</B></TT> file exists, but a <TT><B>hosts.sam</B></TT> file exists,
+make a copy of <TT><B>hosts.sam</B></TT> with the name <TT><B>hosts</B></TT>, and edit
+the copy to have the <TT><B>localhost</B></TT> entry.
+<A NAME="914"></A>
+
+<P>
+The directory that holds the <TT><B>tclsh</B></TT> and <TT><B>wish</B></TT> programs also
+holds several <TT><B>*.dll</B></TT> files that OOMMF software needs to find to
+run properly.  Normally when the <A HREF="Command_Line_Launching.html#sec:cll">OOMMF bootstrap
+  application</A> or
+<A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A> is
+used to launch OOMMF programs, they take care of making sure the
+necessary <TT><B>*.dll</B></TT> files can be found.  As an additional measure,
+you might want to add the directory which holds the <TT><B>tclsh</B></TT> and
+<TT><B>wish</B></TT> programs to the list of directories stored in the
+PATH<A NAME="929"></A> environment variable.  All the
+directories in the PATH are searched for <TT><B>*.dll</B></TT> files needed when
+starting an executable.  <A NAME="931"></A>
+
+<P>
+
+<H3><A NAME="SECTION00032300000000000000"></A><A NAME="sec:install.compile"></A>
+<BR>
+Compiling and Linking
+</H3>
+
+<P>
+If you downloaded a distribution with pre-compiled executables, you may
+skip this section.
+
+<P>
+When building OOMMF software from source code, be sure the C++
+compiler reported by <TT>oommf.tcl +platform</TT> is properly configured.
+In particular, if you are running on a Windows system, please read
+carefully the notes in the
+<A HREF="Platform_Specific_Installat.html#sec:install.windows">Advanced Installation</A> section pertaining to your
+compiler.
+
+<P>
+The compiling and linking of the C++ portions of OOMMF software 
+are guided by the application
+<A HREF="Platform-Independent_Make_p.html#sec:pimake"
+ NAME="945">pimake</A>
+(``Platform Independent Make'') which 
+is distributed as part of the OOMMF release.
+To begin building OOMMF software with <TT><B>pimake</B></TT>, first change
+your working directory<A NAME="947"></A>
+to the root directory of the OOMMF distribution:
+<PRE>
+cd .../path/to/oommf
+</PRE>
+
+<P>
+If you unpacked the new OOMMF release into a directory <TT><B>oommf</B></TT>
+which contained an earlier OOMMF release, 
+use <TT><B>pimake</B></TT> to build the target <TT>upgrade</TT>
+to clear away any source code files which were 
+in a former distribution but are not part of the latest distribution:
+<PRE>
+tclsh oommf.tcl pimake upgrade
+</PRE>
+
+<P>
+Next, build the target <TT>distclean</TT> to clear away any old executables
+and object files which are left behind from the compilation of the
+previous distribution:
+<PRE>
+tclsh oommf.tcl pimake distclean
+</PRE>
+
+<P>
+Next, to build all the OOMMF software, run <TT><B>pimake</B></TT> without
+specifying a target:
+<PRE>
+tclsh oommf.tcl pimake
+</PRE>
+On some platforms, you cannot successfully compile OOMMF software if
+there are OOMMF programs running.  Check that all OOMMF programs
+have terminated (including those in the background) before trying to
+compile and link OOMMF.
+
+<P>
+When <TT><B>pimake</B></TT> calls on a compiler or other software development
+utility, the command line is printed, so that you may monitor the build
+process.  
+Assuming a proper configuration for your platform, <TT><B>pimake</B></TT> should be
+able to compile and link all the OOMMF software without error.  If
+<TT><B>pimake</B></TT> reports errors, please first consult 
+<A HREF="Troubleshooting.html#sec:trouble">Troubleshooting</A>
+to see if a fix is already documented.
+If not, please send both the <EM>complete</EM> output 
+from <TT><B>pimake</B></TT> and the output from <TT>oommf.tcl +platform</TT>
+to the OOMMF developers when you e-mail to ask for help.
+
+<P>
+
+<H3><A NAME="SECTION00032400000000000000">
+Installing</A>
+</H3>
+
+<P>
+The current OOMMF release does not support an installation procedure.
+For now, simply run the executables from the directories in which they
+were unpacked/built.
+
+<P>
+
+<H3><A NAME="SECTION00032500000000000000">
+Using OOMMF Software</A>
+</H3>
+
+<P>
+To start using OOMMF software, run the 
+<A HREF="Command_Line_Launching.html#sec:cll">OOMMF bootstrap application</A>. This may be launched from the command
+line interface:
+<PRE>
+tclsh oommf.tcl
+</PRE>
+
+<P>
+If you prefer, you may launch the OOMMF bootstrap application
+<TT><B>oommf.tcl</B></TT> using whatever graphical ``point and click''
+interface your operating system provides.  By default, the OOMMF bootstrap application will start up a copy of the OOMMF application
+<A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A> in a
+new window.
+
+<P>
+If you publish material created with the aid of OOMMF, please refer to
+<A HREF="Credits.html#sec:credits">Credits</A>
+for citation information.
+
+<P>
+
+<H3><A NAME="SECTION00032600000000000000">
+Reporting Problems</A>
+</H3>
+
+<P>
+If you encounter problems when installing or using OOMMF, please report
+them to the OOMMF developers.  The <TT>oommf.tcl +platform</TT> command
+has been designed in large part to help OOMMF developers debug
+installation problems, so <B>PLEASE</B> be sure to include the
+complete output from <TT>oommf.tcl&nbsp;+platform</TT> in your report.  See also
+the section on
+<A HREF="Troubleshooting.html#sec:trouble">troubleshooting</A>
+for additional instructions.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html183"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html179"
+  HREF="Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html173"
+  HREF="Requirements.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html186"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html181"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

@@ -1,0 +1,28 @@
+# MIF 1.1
+# material name:Custom
+ms:1000e3
+k1:0
+anisotropy type:uniaxial
+anisotropy dir1:0 0 1
+demag type:constmag
+
+part height:5e-6
+part width:1e-6
+part thickness:100e-9
+part shape:rectangle
+cell size:20e-9
+
+init mag:uniform 85.0 63.8
+randomizer seed:1
+
+default control point spec: -torque 1e-5
+field range: .1 .1 .1 0.01 0.01 0.01 9
+field range: 0.01 0.01 0.01 0. 0. 0. 10 -torque 1e-6
+field range: 0 0 0 -.03 -.03 -.03 6
+field range: -.03 -.03 -.03 -.045 -.045 -.045 30 -torque 1e-6
+field range: -.045 -.045 -.045 -.05 -.05 -.05 1
+field range: -.05 -.05 -.05 -.1 -.1 -.1 5
+
+a:2.7925268e-9
+base output filename: prob2dlex15-cellsize20
+user comment: muMag Problem 2, d/lex=15, cellsize=20 nm

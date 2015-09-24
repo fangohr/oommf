@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML Strict Level 1//EN">
+<HTML>
+<HEAD>
+<TITLE>mmHelp Programmer's Reference</TITLE>
+</HEAD>
+<BODY>
+<H1>mmHelp Programmer's Reference</H1>
+<H2>Contents</H2>
+<OL>
+<LI><A HREF="#overview">Overview</A>
+<LI><A HREF="#capabilities">mmHelp Display Capabilities</A>
+<LI><A HREF="#urls">Help Files and URLs</A>
+<LI><A HREF="#testing">Writing and Testing Your Help Files</A>
+<LI><A HREF="#call">Calling mmHelp</A>
+</OL>
+
+<H2><A NAME="overview">Overview</A></H2>
+<p><strong>mmHelp</strong> provides a standard way for OOMMF application
+programmers to provide help to the users of their applications.  
+<strong>mmHelp</strong> displays pages of help information written in
+either plain text or hypertext.  This reference describes how to
+create help pages to be displayed by <strong>mmHelp</strong> and how
+to call <strong>mmHelp</strong> from within your OOMMF application.
+
+<H2><A NAME="capabilities">Help Browser Display Capabilities</A></H2>
+<p><strong>mmHelp</strong> displays two types of pages, plain text
+and hypertext.  Each page displayed by <strong>mmHelp</strong> 
+is stored as a file.  <strong>mmHelp</strong> uses the file extension
+to determine what type of page is stored in that file.  Files with the
+extensions <tt>.html</tt>, <tt>.htm</tt>, or <tt>.htl</tt> are displayed
+as hypertext pages.  Files with the extensions <tt>.txt</tt>, <tt>.text</tt>,
+<tt>.c</tt>, <tt>.cc</tt>, <tt>.c++</tt>, <tt>.cpp</tt>, <tt>.h</tt>,
+<tt>.hh</tt>, <tt>.java</tt>, <tt>.l</tt>, <tt>.pl</tt>, <tt>.sty</tt>,
+<tt>.y</tt>, and with no extension are displayed as plain text pages.  Files 
+with the extension <tt>.gif</tt> contain GIF images which may be embedded
+within hypertext pages.  Files with other extensions are not
+displayable by <strong>mmHelp</strong>.  The mapping of file extensions
+to content type within <strong>mmHelp</strong> is not case-sensitive.
+
+<H3>Plain Text Page Display</H3>
+<P>When <strong>mmHelp</strong> determines the contents of a file to
+be plain text, based on the file's extension, it displays the contents
+of that file as text in the display window using a fixed-width font.  
+Of course if the file does not actually contain text, the display may
+be nothing but garbage.  Take care to only view files which actually
+contain text with <strong>mmHelp</strong>.
+
+<H3>Hypertext Page Display</H3>
+<P>When <strong>mmHelp</strong> determines the contents of a file to
+be hypertext, based on the file's extension, it interprets the contents
+of that file as a simplified subset of HyperText Markup Language (HTML).
+The HTML elements supported by <strong>mmHelp</strong> are demonstrated
+in a sample page available both as 
+<A HREF="example.html">hypertext</A> and as
+<A HREF="example.txt">plain text</A>.
+When confronted with unsupported elements, <strong>mmHelp</strong> makes 
+an attempt to display something reasonable, but pages written for
+<strong>mmHelp</strong> should try to stick to the supported elements.
+
+<p>When rendering an image element, denoted by the <tt>&lt;IMG&gt;</tt> tag,
+<strong>mmHelp</strong> is only able to display images in the GIF format.
+Images in other formats will not be displayed.  The alternate
+text supplied by the <tt>ALT</tt> attribute of the <tt>&lt;IMG&gt;</tt>
+tag, if any, will be displayed instead.
+
+<H2><A NAME="urls">Help Files and URLs</A></H2>
+
+<p>Each page of help information is stored as a separate file.
+Files are identified by filenames.  Within HTML, sources of
+data are more generally called resources and are identified 
+by Uniform Resource Locators (URLs).  URLs are used to 
+indicate the destination of a hyperlink (the <tt>HREF</tt> attribute 
+of an <tt>&lt;A&gt;</tt> tag) and the source of an image (the 
+<tt>SRC</tt> attribute of an <tt>&lt;IMG&gt;</tt> tag).
+
+<p>The specification of URL syntax is found in RFC 1738 and 
+RFC 1808.  The first part of a URL, up to the first colon, is called
+the <em>scheme</em>.  For example, in the URL 
+<TT>http://math.nist.gov/oommf/</tt>, the scheme is <tt>http</tt>.
+The current version of <strong>mmHelp</strong> supports only URLs
+with the scheme <tt>file</tt>.  Such URLs are used to access files
+on the local disk.  Future versions of <strong>mmHelp</strong> may
+add support for other URL schemes so that help files may be retrieved
+over a network.
+
+<p>Filenames have two forms, absolute and relative.  For example,
+a file with the absolute filename <tt>C:\TCL\BIN\TCLSH76.EXE</tt>
+is also known by the relative filename <TT>TCLSH76.EXE</TT> when
+the current directory is <tt>C:\TCL\BIN</tt>.  Likewise, URLs have
+absolute and relative forms.  The absolute form includes all parts
+of the URL, beginning with the scheme.  Relative URLs are expressed
+relative to the current URL, which is the URL of the document which
+contains the relative URL.  For more details, see RFC 1808.
+
+<p>Within help files, only relative URLs should be used in <tt>&lt;A&gt;</tt>
+and <tt>&lt;IMG&gt;</tt> elements.  Then as the help files are moved
+from directory to directory as part of the usual software installation
+process, navigation from one help page to another will continue to work.
+Absolute URLs should only be required for one purpose, the identification
+of the home page when <strong>mmHelp</strong> is first called.
+For more information, see the section on 
+<A HREF="#call">calling <strong>mmHelp</strong></A>.
+
+<H2><A NAME="testing">Writing and Testing Your Help Files</A></H2>
+
+<p>The creation of text files containing plain text and hypertext help pages
+may be accomplished with any text editor.  HTML markup is not difficult.
+There are many sources of documentation on HTML available.
+You may wish to use a special-purpose editor which generates HTML
+markup.  If so, be sure that the editor is able to output HTML restricted
+to the limited set of elements recognized by <strong>mmHelp</strong>.
+
+<p>While editing help files, it is useful to frequently test that they
+can be viewed with <strong>mmHelp</strong>.  See the section on
+<A HREF="#call">calling <strong>mmHelp</strong></A> for instructions.
+
+<p>When testing help files, it is recommended that documentation authors
+check the <strong>Strict</strong> option under
+<strong>mmHelp</strong>'s <strong>Options</strong> menu.  
+The default behavior 
+of <strong>mmHelp</strong> is to silently recover 
+from invalid markup as best it can.
+When testing with the <strong>Strict</strong> option enabled,
+<strong>mmHelp</strong> responds to invalid markup by displaying an error
+message which should help the author correct the markup.  (Note: This
+option disabled on 1-Oct-1998, because documention is being generated
+through LaTeX2HTML, which does not follow the "Strict" rules.)
+
+<H2><A NAME="call">Calling <strong>mmHelp</strong></A></H2>
+
+<p><strong>mmHelp</strong> is a separate application launched with the
+Exec subcommand of the Oc_Application class.
+<blockquote>
+<pre>
+Oc_Application Exec mmHelp $url<BR>
+</pre>
+</blockquote>
+<p>where <i>url</i> contains the absolute URL
+of the table of contents page to be displayed first in the display
+window.  
+
+<p> The usual method to generate the absolute URL for a  particular file
+is to use the subcommands and methods of the Oc_Url class to convert 
+an absolute filename to an equivalent absolute URL.
+<blockquote>
+<pre>
+set url [[Oc_Url FromFilename $filename] ToString]
+</pre>
+</blockquote>
+
+</BODY>
+</HTML>

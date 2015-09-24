@@ -1,0 +1,260 @@
+# MIF 2.1
+# MIF Example File: yoyo.mif
+# Description: Head-to-head domain wall motion in an infinite strip.
+#    Used in conjunction with:
+#
+#        yoyo_edgefield.mif
+#        yoyo_leftedge_15x5.ohf
+#        yoyo_start.omf.
+#
+#    This MIF file actually encodes two separate but related problems.
+# The main problem, selected by setting relax to 0, applies a smooth
+# field step to a long strip with a head-to-head domain wall.  As the
+# system evolves in time, the domain wall rotates about the long axis of
+# the strip and translates along the strip.  Initially the translational
+# motion is in the direction of the applied field, but after a period of
+# time this motion slows down, stops, and reverses.  This "yoyo" motion
+# repeats until either the wall falls off the strip or the motion is
+# damped out by alpha.
+#   If relax is set to 1, then instead of the dynamic problem described
+# above, a straight energy minimization is performed to find an
+# equilibrium remanent state.  The end state from the minimization is
+# used as the initial state for the relax=0 dynamic problem.
+#    An infinitely long strip is simulated by applying edge correction
+# fields.  One is included in the OOMMF distribution for a 15 nm x 5 nm
+# cross-section with 5 nm cubic cells (yoyo_leftedge_15x5.ohf).  For
+# other geometries, use the included yoyo_edgefield.mif file to compute
+# the stray field from the missing half-infinite strip.  Then run this
+# file (yoyo.mif) with relax set to 1 to compute new equilibrium initial
+# state.  Finally, the fresh edge field and equilibrium state can be
+# used as input to yoyo.mif with relax set to 0.
+#   For additional details about this simulation, see
+#
+#  D. G. Porter and M. J. Donahue, "Velocity of Transverse Domain Wall
+#  Motion Along Thin, Narrow Strips," Journal of Applied Physics, 95,
+#  6729-6731 (2004).
+#
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+RandomSeed 10
+
+Parameter relax 0  ;# Should be either 0 or 1
+
+# Strip geometry
+Parameter thickness       5e-9
+Parameter width          15e-9
+Parameter length       1250e-9
+
+# Simulation cellsize
+Parameter cellsize        2.5e-9
+
+# Saturation magnetization
+Parameter Ms 8e5         ;# In A/m
+
+# Zhang-Zhang damping?
+Parameter zhang_damping 0.0 ;# Try 5e-19 for Py
+
+if {$zhang_damping == 0.0} {
+   set zhang_damping {}
+} else {
+   set zhang_damping "zhang_damping $zhang_damping"
+}
+
+if {$relax == 0} {
+   # Parameters for dynamic simulation; these values are not
+   # used in the relax==1 energy minimization problem variant.
+   Parameter stage_time   5e-12
+   Parameter run_time      5e-9
+   set number_of_stages [expr {round($run_time/$stage_time)}]
+
+   # Applied field parameters.  NOTE: rise_time gets rounded
+   # to the nearest stage.
+   Parameter step_height    25   ;# in mT
+   Parameter rise_time     500   ;# in ps
+
+   # Damping parameter
+   Parameter alpha 0.01
+
+   # Initial magnetization configuration
+   Parameter start_m0 yoyo_start.omf
+}
+
+# Main atlas
+Specify Oxs_BoxAtlas:atlas [subst {
+   xrange {0 $length}
+   yrange {0 $width}
+   zrange {0 $thickness}
+}]
+
+# Supplemental atlas, used to specify fixed spins
+Specify Oxs_MultiAtlas:Edges [subst {
+   atlas {Oxs_BoxAtlas:left_edge {
+      xrange {0 $cellsize}
+      yrange {0 $width}
+      zrange {0 $thickness}
+   }}
+   atlas {Oxs_BoxAtlas:right_edge {
+      xrange {[expr {$length-$cellsize}] $length}
+      yrange {0 $width}
+      zrange {0 $thickness}
+   }}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+# Exchange
+Specify Oxs_UniformExchange {
+  A   1.3e-11
+}
+
+# Demag
+Parameter asymptotic_radius 32  ;# Units are (max) cell width
+Specify Oxs_Demag [subst {
+  asymptotic_radius $asymptotic_radius
+}]
+
+# Fields to offset edge demag.  These fields are pre-computed using the
+# yoyo_edgefield.mif problem description, and stored in *.ohf files.
+# They vary by cross-sectional aspect ratio.  The code below selects the
+# appropriate file, and is set up for both 7:1 (35x5) and 3:1 (15x5)
+# cases.  However, only the 15x5 is included in the standard OOMMF
+# distribution.  The 35x5 code block is included as an example for
+# end-user extension.
+if {abs($width/$thickness - 7.0) < 1e-8} {
+ Specify Oxs_FileVectorField:leftedge {
+   file yoyo_leftedge_35x5.ohf
+   spatial_scaling {1 1 1}
+   spatial_offset  {0 0 0}
+ }
+} elseif {abs($width/$thickness - 3.0) < 1e-8} {
+ Specify Oxs_FileVectorField:leftedge {
+   file yoyo_leftedge_15x5.ohf
+   spatial_scaling {1 1 1}
+   spatial_offset  {0 0 0}
+ }
+} elseif {abs($width/$thickness - 16.0) < 1e-8} {
+ Specify Oxs_FileVectorField:leftedge {
+   file yoyo_leftedge_80x5.ohf
+   spatial_scaling {1 1 1}
+   spatial_offset  {0 0 0}
+ }
+} else {
+ Report "No edge field for width/thickness ratio: $width/$thickness"
+ error "No edge field for w/t: $width/$thickness"
+}
+
+# Field from the left edge
+Specify Oxs_FixedZeeman:leftadj { 
+   field :leftedge
+   multiplier -1
+}
+
+# Field from the right edge.  This is the same as the left edge field,
+# but rotated about the origin via the 'M -1' entry (the *.ohf fields
+# are located in the first octant), and translated into position with
+# the offset entry.
+Specify Oxs_FixedZeeman:rightadj [subst { 
+   field { Oxs_AffineOrientVectorField {
+      field :leftedge
+      M -1
+      offset { $length $width $thickness }
+   }}
+}]
+
+if {$relax==0} {
+   #####################################################################
+   ### Applied field, evolver and driver for dynamic (relax=0) problem
+
+   # Time varying applied field, step with a sinusoidal smooth edge.
+   Specify Oxs_ScriptUZeeman [subst {
+      script_args total_time
+      script {SmoothStep $step_height [expr {$rise_time*1e-12}]}
+      multiplier [expr 0.001/$mu0]
+   }]
+   proc SmoothStep { Hnom risetime t } {
+      set t [expr {$t/$risetime}]
+      if {$t<=0.0} {
+	 set g 0.0
+	 set gp 0.0
+      } elseif {$t>=1.0} {
+         set g  $Hnom
+         set gp 0.0
+      } else {
+	 global pi
+	 set g [expr {0.5*$Hnom*(1-cos($pi*$t))}]
+	 set gp [expr {0.5*$Hnom*$pi*sin($pi*$t)/$risetime}]
+      }
+      return [list $g 0 0 $gp 0 0]
+   }
+
+   # Evolver
+   Specify Oxs_RungeKuttaEvolve [subst {
+      alpha $alpha
+      relative_step_error 0.001
+      fixed_spins {
+         :Edges left_edge right_edge
+      }
+      $zhang_damping
+   }]
+
+   # Driver
+   Specify Oxs_TimeDriver [subst {
+      evolver Oxs_RungeKuttaEvolve
+      mesh :mesh
+      Ms $Ms
+      m0 { Oxs_FileVectorField {
+         file  [list $start_m0]
+         atlas :atlas
+         norm  1
+      } }
+      stopping_time  { { $stage_time $number_of_stages } :expand: }
+      basename [format "yoyo_%gwx%gt_%02dmT_%04dps_%.3falpha" \
+                   [expr {$width*1e9}] [expr {$thickness*1e9}] \
+                   $step_height $rise_time $alpha]
+   }]
+
+
+   # Sample Destination and Schedule commands.  Uncomment and
+   # modify as desired.
+   #
+   #Destination archive mmArchive
+   #Schedule DataTable archive Stage 1
+   #Schedule Oxs_TimeDriver::Magnetization archive stage 9
+
+} else {
+   #####################################################################
+   ### Evolver and driver for energy minimization (relax=1) problem
+   # Evolver
+   Specify Oxs_CGEvolve:evolve {}
+
+   # Driver
+   Specify Oxs_MinDriver [subst {
+      evolver :evolve
+      mesh :mesh
+      Ms $Ms
+      m0 { Oxs_ScriptVectorField {
+         script HeadToHead
+         atlas :atlas
+         norm 1.0
+      } }
+      stopping_mxHxm 0.001
+      basename yoyo_relaxed
+   }]
+
+   proc HeadToHead { x y z } {
+      # (x,y,z) are relative components, each in range [0,1]
+      set centerpt 0.1661972
+      set mx [expr {-1*tanh(12.0*($x-$centerpt)/double($centerpt))}]
+      set my [expr {sqrt(1.0-$mx*$mx)}]
+      set mz 0.01 ;# Just to break xy-plane symmetry
+      return [list $mx $my $mz]
+   }
+
+   # Output
+   Destination archive mmArchive
+   Schedule Oxs_MinDriver::Spin archive stage 1
+}

@@ -1,0 +1,124 @@
+\input{../common/oommfhead}
+\usepackage{l2hbugs}
+
+%\HTMLset{toppage}{userguide.html}
+%\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{userguide.html}}
+
+\begin{document}
+
+\nocite{*}  % Include all entries from .bib file.  Putting this at the
+	    % top retains the .bib file ordering.
+
+
+\pagenumbering{roman}
+\begin{titlepage}
+\label{page:contents}
+\par
+\vspace*{\fill}
+\begin{center}
+\Large\bf
+\OOMMF\\
+User's Guide\\[2ex]
+\large
+{\today}
+{}\\[2ex]
+This manual documents release 1.2a4.\\[1ex]
+WARNING: In this alpha release, the
+documentation may not be up to date.
+
+\end{center}
+\vspace{10\baselineskip}
+\begin{abstract}
+This manual describes \OOMMF\ (Object Oriented Micromagnetic Framework),
+a public domain micromagnetics program developed at the
+\htmladdnormallink{National Institute of Standards and Technology}
+{http://www.nist.gov/}.  The program is designed
+to be portable, flexible, and extensible, with a user-friendly graphical
+interface.  The code is written in C++ and Tcl/Tk. Target systems
+include a wide range of \Unix\ platforms, \Windows~NT, and
+\Windows~9X.
+\end{abstract}
+\vspace*{\fill}
+\par
+\end{titlepage}
+
+\begin{latexonly}
+\tableofcontents
+\end{latexonly}
+
+% Index cross-references; if these are moved to the bottom of this file
+% then two LaTeX passes are required to get them in the .idx file.
+% See, however, ``seealso'' entries at below.
+\index{bitmap~files|see{file,bitmap}}
+\index{Borland~C++|see{platform,Windows,Borland~C++}}
+\index{bug~reports|see{reporting~bugs}}
+\index{control~points|see{simulation,control~point}}
+\index{Cygwin|see{platform,Windows,Cygwin~environment}}
+\index{decompress|see{compressed~files}}
+\index{file!hosts|see{platform,Windows,hosts~file}}
+\index{file!odt|see{file,data~table}}
+\index{file!omf|see{file,magnetization}}
+\index{file!obf|see{file,vector~field}}
+\index{file!ohf|see{file,vector~field}}
+\index{file!ovf|see{file,vector~field}}
+\index{Internet|see{TCP/IP}}
+\index{Landau-Lifshitz|see{ODE,Landau-Lifshitz}}
+\index{mask~file|see{file,mask}}
+\index{mesh|see{grid}}
+\index{MIF|see{file,mif}}
+\index{movies|see{animations}}
+\index{mxh|see{simulation,mxh}}
+\index{network~socket!bug|see{platform,Windows,network~socket~bug}}
+\index{OBS|see{application,OOMMF~Batch~System}}
+\index{batch processing|see{application,OOMMF~Batch~System}}
+\index{requirement!application~version|see{launch,version~requirement}}
+\index{self-magnetostatic|see{demagnetization}}
+\index{threads,~parallel|see{parallelization}}
+\index{torque|see{simulation,mxh}}
+\index{total~field|see{field,effective}}
+\index{Xvfb|see{application,Xvfb}}
+
+\newpage
+\input{../common/disclaimer-body}
+\newpage
+
+\pagenumbering{arabic}
+
+\include{overview-body}
+
+\include{install-body}
+\include{quickstart-body}
+\include{arch-body}
+\include{cllaunch-body}
+\include{mmlaunch-body}
+\include{oxs-body}
+\include{mmprobed-body}
+\include{filesource-body}
+\include{mmsolve-body}
+\include{mmdatatable-body}
+\include{mmgraph-body}
+\include{mmdisp-body}
+\include{mmarchive-body}
+\include{mmhelp-body}
+\include{cmdutils-body}
+\include{fileformats-body}
+
+\include{trouble-body}
+
+% Apparently ``seealso'' needs to go after references, assuming you want
+% the ``see also'' after the numeric listings.
+\index{parallelization|seealso{NUMA}}
+\index{NUMA|seealso{parallelization}}
+
+%\include{biblio}
+%\bibliographystyle{osa}
+%\bibliographystyle{ieeetr}
+%\bibliographystyle{acm}
+\bibliographystyle{../common/oommf}
+\bibliography{oommf}
+
+\include{credits-body}
+
+\printindex
+
+\end{document}

@@ -1,0 +1,56 @@
+# MIF 2.1
+# MIF Example File: yoyo_edgefield.mif
+# Description: Creates edge field used by yoyo.mif (q.v.).
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+Parameter Ms 8e5         ;# In A/m
+
+# Set the width,thickness and cellsize values to agree with that desired
+# in the yoyo.mif simulation.  The length value should be significantly
+# longer (say 10 times) than the yoyo.mif length, so that effects from
+# the opposite edge are essentially null.  The resulting .ohf file can
+# be used in the yoyo.mif file as-is, or may be truncated via the
+# avf2ovf OOMMF command line tool to the length actually used (e.g.,
+# keep only the leftmost one tenth).
+Parameter thickness        5e-9
+Parameter width           15e-9
+Parameter length       12500e-9
+#Parameter length       125000e-9
+
+Parameter cellsize        2.5e-9
+
+Specify Oxs_BoxAtlas:atlas [subst {
+   xrange {0 $length}
+   yrange {0 $width}
+   zrange {0 $thickness}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+# Demag
+Specify Oxs_Demag {}
+
+# Dummy evolver; not actually used.
+Specify Oxs_EulerEvolve:evolve {}
+
+# Driver
+Specify Oxs_TimeDriver [subst {
+ evolver :evolve
+ mesh :mesh
+ Ms $Ms
+ m0 { 1 0 0 }
+ stage_iteration_limit 1
+ stage_count 1
+ basename yoyo_edgefield
+ report_max_spin_angle 1
+}]
+
+Destination archive mmArchive
+Schedule Oxs_Demag::Field archive step 10000 ;# Since the entire
+# simulation is limited to 1 step, this effectively outputs only
+# the initial state

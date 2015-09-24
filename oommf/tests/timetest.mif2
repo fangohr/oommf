@@ -1,0 +1,68 @@
+# MIF 2.1
+
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+RandomSeed 1
+
+Parameter xycellsize  5e-9
+Parameter  zcellsize  5e-9
+Parameter itcount 10
+
+Parameter id
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 2e-6}
+  yrange {0 1e-6}
+  zrange {0 20e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xycellsize $xycellsize $zcellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy {
+  K1  0.5e3
+  axis { Oxs_UniformVectorField {
+    norm 1
+    vector {1 0 0}
+  }  }
+}
+
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UZeeman:extfield0 [subst {
+  comment {Field values in Tesla; scale to A/m}
+  multiplier [expr {1/$MU0}]
+  Hrange {
+    {0.0 0.1 0.0 0.0 0.0 0.0 2}
+  }
+}]
+
+Specify Oxs_RungeKuttaEvolve:evolver {
+  do_precess 1
+  gamma_LL 2.21e5
+  alpha 0.5
+}
+
+Specify Oxs_TimeDriver [subst {
+  basename timetest-$id
+  evolver :evolver
+  mesh :mesh
+  stage_iteration_limit $itcount
+  Ms 800e3
+  m0 {0.99984769515639127 0.017452406437283376 0.0 }
+}]
+
+#Destination archive mmArchive new
+#Destination archive mmArchive
+#Schedule DataTable archive Stage 1
+
+Destination table mmDataTable
+#Schedule DataTable table Step  5
+Schedule DataTable table Stage 1

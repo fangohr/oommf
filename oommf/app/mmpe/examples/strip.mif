@@ -1,0 +1,23 @@
+# MIF 1.1
+# material name:Permalloy
+ms:800e3
+a:13e-12
+k1:0.5e3
+damp coef:0.1
+anisotropy type:uniaxial
+anisotropy dir1:0 1 0
+demag type:3dcharge
+part height:1250e-9
+part width:150e-9
+part thickness:25e-9
+part shape:mask app/mmpe/examples/strip.gif
+cell size:5e-9
+init mag:avffile app/mmpe/examples/strip0.omf
+base output filename:strip
+log level:1
+randomizer seed:1
+user interaction level:1
+user report code:500
+converge mxh value:1e-6
+field range count:1
+field range: 0 0 0 0.001 0.02 0 10

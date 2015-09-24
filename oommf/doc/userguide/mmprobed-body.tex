@@ -1,0 +1,99 @@
+\section{Micromagnetic Problem Editor: mmProbEd}\label{sec:mmprobed}
+
+\begin{center}
+\includepic{mmprobed-ss}{mmProbEd Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{mmProbEd}\index{application!mmProbEd} provides a
+user interface for creating and editing micromagnetic problem
+descriptions in the \hyperrefhtml{\MIF~1.1}{\MIF~1.1 (Sec.~}{,
+page~\pageref{sec:mif1format})}{sec:mif1format}\index{file!MIF~1.1} and
+\hyperrefhtml{\MIF~1.2}{\MIF~1.2
+(Sec.~}{)}{sec:mif12format}\index{file!MIF~1.2} formats.  \app{mmProbEd}
+also acts as a server, supplying problem descriptions to running
+\app{mmSolve2D} micromagnetic solvers.
+
+\ssechead{Launching}
+\app{mmProbEd} may be started either by selecting the
+\btn{mmProbEd} button on \htmlref{\app{mmLaunch}}{sec:mmlaunch}, or from the
+command line via
+\begin{verbatim}
+tclsh oommf.tcl mmProbEd [standard options] [-net <0|1>]
+\end{verbatim}
+
+\begin{description}
+\item[\optkey{-net \boa 0\pipe 1\bca}]
+  Disable or enable a server which provides problem descriptions
+  to other applications.  By default, the server is enabled.  When
+  the server is disabled, \app{mmProbEd} is only useful for editing
+  problem descriptions and saving them to files.
+\end{description}
+
+\ssechead{Inputs}
+The menu selection \btn{File\pipe Open...} displays a dialog box
+for selecting a file from which to load a \MIF\ problem 
+description.  Several example files are included in the 
+\OOMMF\ release in the directory \fn{oommf/app/mmpe/examples}.
+At startup, \app{mmProbEd} loads the problem contained in
+\fn{oommf/app/mmpe/init.mif} as an initial problem.  Note: When loading
+a file, \app{mmProbEd} discards comments and moves records it does not
+understand to the bottom of its output file.  Use the
+\hyperrefhtml{\app{FileSource} application}{{\bf FileSource} application
+(Sec.}{)}{sec:filesource} to serve unmodified problem descriptions.
+
+\ssechead{Outputs}
+The menu selection \btn{File\pipe Save as...} displays a dialog box for
+selecting/entering a file in which the problem description currently
+held by \app{mmProbEd} is to be saved.  Because the internal data format
+use by \app{mmProbEd} is an unordered array that does not include
+comments (or unrecognized records), the simple operation of reading in a
+\MIF\ file and then writing it back out may alter the file.
+
+Each instance of \app{mmProbEd} contains exactly one problem description
+at a time.  When the option \cd{-net 1} is active (the default), each also
+services requests from client applications
+(typically solvers) for the problem description it contains.
+
+\ssechead{Controls}
+The \btn{Options} menu allows selection of \MIF\ output format; either
+\MIF~1.1 or \MIF~1.2 may be selected.  This affects both
+\btn{File\pipe Save as...} file and \app{mmSolve2D} server
+output.  See the \hyperrefhtml{\MIF~1.2}{\MIF~1.2 (Sec.~}{,
+page~\pageref{sec:mif12format})}{sec:mif12format} format documentation
+for details on the differences between these formats.
+
+The main panel in the \app{mmProbEd} window contains buttons
+corresponding to the sections in a \MIF~1.x problem description.
+Selecting a button brings up another window through which the contents
+of that section may be edited.  The \MIF\ sections and the elements they
+contain are described in detail in the
+\htmlref{\MIF~1.1}{sec:mif1format} and
+\htmlref{\MIF~1.2}{sec:mif12format} documentation.
+Only one editing window is displayed at a time.  The windows may be
+navigated in order using their \btn{Next} or
+\btn{Previous} buttons.
+
+The \btn{Material Parameters} edit window includes a pull-down list of
+pre-configured material settings.  \textbf{NOTE:} These values should
+\textit{not} be taken as standard reference values for these materials.
+The values are only approximate, and are included for convenience,
+and as examples for users who wish to supply their own material types
+with symbolic names.  To introduce additional material types, edit the
+\texttt{Material} \texttt{Name}, \texttt{Ms}, \texttt{A}, \texttt{K1}, and
+\texttt{Anisotropy} \texttt{Type} values as desired, and hit the \btn{Add}
+button.  (The \texttt{Damp} \texttt{Coef} and \texttt{Anistropy}
+\texttt{Init} settings are not affected by the Material Types
+selection.)  The Material Name entry will appear in red if it does not
+match any name in the Material Types list, or if the name matches but
+one or more of the material values differs from the corresponding value
+as stored in the Material Types list.  You can manage the Material Types
+list with the \btn{Replace} and \btn{Delete} buttons, or by directly
+editing the file \fn{oommf/app/mmpe/local/materials}; follow the format
+of other entries in that file.  The format is the same as in the default
+\fn{oommf/app/mmpe/materials} file included with the \OOMMF\ distribution.
+
+The menu selection \btn{File\pipe Exit} terminates the
+\app{mmProbEd} application.  The menu \btn{Help} provides
+the usual help facilities.
+

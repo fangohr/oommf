@@ -1,0 +1,73 @@
+# Gnuplot script
+# runtime = 100e-12 seconds
+
+# Analytic results for runtime = 100e-12, alpha=0.1
+mx=0.9844231152486121
+my=0.1749340009278501
+mz=0.01758480831833474
+
+
+set style data points
+set pointsize 2
+set logscale xy
+
+set term postscript eps enh color solid "TimesRoman" 14
+
+set xlabel "Time step (s)"
+set ylabel "Error"
+
+#plot [1e-12:200e-12][1e-16:1e-8] "rkf54-results.dat" \
+#     using 1:(abs($2-mx)) t "rkf54 m_x" lt 1, 2e-5*(1e9*x)**5 lt 1, \
+#  "" using 1:(abs($3-my)) t "rkf54 m_y" lt 1,  \
+#  "" using 1:(abs($4-mz)) t "rkf54 m_z" lt 3, 1e-7*(1e9*x)**5 lt 3
+
+f(x,y,z) = sqrt((x-mx)**2+(y-my)**2+(z-mz)**2)
+
+
+set key top left spacing 1.5
+set output "rkf54-graphs.eps"
+plot [1e-12:100e-12][1e-18:1e-8] \
+                          2e-5*(1e9*x)**5 t "2x10^5 (10^9x)^5" lt 1, \
+   "rkf54-results.dat"  using 1:(f($2,$3,$4)) t "rkf54" lt 1, \
+   "rkf54s-results.dat" using 1:(f($2,$3,$4)) t "rkf54s" lt 2, \
+   "rkf54m-results.dat" using 1:(f($2,$3,$4)) t "rkf54m" lt 3
+
+
+
+set key bottom right spacing 1.5
+set output "rk-graphs.eps"
+plot [1e-12:100e-12][1e-16:1e-3] \
+                          4e-2*(1e9*x)**2 t "4x10^{-2} (10^9x)^2" lt 3, \
+   "rk2heun-results.dat" using 1:(f($2,$3,$4)) t "rk2heun" lt 3, \
+   "rk2-results.dat" using 1:(f($2,$3,$4)) t "rk2" lt 2, \
+                          3e-4*(1e9*x)**4 t "3x10^{-4} (10^9x)^4" lt 1, \
+   "rk4-results.dat" using 1:(f($2,$3,$4)) t "rk4" lt 1
+
+
+set key top left spacing 1.5
+set output "srkf54-graphs.eps"
+plot [1e-12:100e-12][1e-18:1e-8] \
+                          2e-5*(1e9*x)**5 t "2x10^5 (10^9x)^5" lt 1, \
+   "srkf54-results.dat" using  1:(f($2,$3,$4)) t "srkf54" lt 1, \
+   "srkf54s-results.dat" using 1:(f($2,$3,$4)) t "srkf54s" lt 2, \
+   "srkf54m-results.dat" using 1:(f($2,$3,$4)) t "srkf54m" lt 3
+
+
+
+set key bottom right spacing 1.5
+set output "srk-graphs.eps"
+plot [1e-12:100e-12][1e-16:1e-3] \
+                          4e-2*(1e9*x)**2 t "4x10^{-2} (10^9x)^2" lt 3, \
+   "srk2heun-results.dat" using 1:(f($2,$3,$4)) t "srk2heun" lt 3, \
+   "srk2-results.dat" using 1:(f($2,$3,$4)) t "srk2" lt 2, \
+                          3e-4*(1e9*x)**4 t "3x10^{-4} (10^9x)^4" lt 1, \
+   "srk4-results.dat" using 1:(f($2,$3,$4)) t "srk4" lt 1
+
+
+set key bottom right spacing 1.5
+set output "euler-graph.eps"
+plot [1e-12:100e-12] \
+                          0.2*(1e9*x)**2 t "0.2 (10^9x)**2" lt 1, \
+   "euler-results.dat" using 1:(f($2,$3,$4)) t "Euler" lt 1
+
+

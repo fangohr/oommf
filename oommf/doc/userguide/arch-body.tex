@@ -1,0 +1,128 @@
+
+\section{OOMMF Architecture Overview}\label{sec:arch}
+\index{architecture}
+
+Before describing each of the applications which comprise
+the \OOMMF\ software, it is helpful to understand how these
+applications work together.  \OOMMF\ is not structured as
+a single program.  Instead it is a collection of programs,
+each specializing in some task needed as part of a
+micromagnetic simulation system.  An advantage of this modular
+architecture is that each program may be improved or even replaced 
+without a need to redesign the entire system.
+
+The \OOMMF\  programs work together by providing services\index{services}
+to one another.  
+The programs communicate over Internet
+(TCP/IP\index{TCP/IP}) connections,
+even when the programs are running on a common host.  An advantage
+of this design is that distributed operation of \OOMMF\ programs
+over a networked collection of hosts is supported in the basic
+design, and will be available in a future release.  
+
+%Each \OOMMF\ application that provides a service to other applications
+%contains a server which listens on a network port for service
+%requests from other applications.  
+%
+\index{client-server~architecture|(}
+When two \OOMMF\ applications are in
+the relationship that one is requesting a service from the other,
+it is convenient to introduce some clarifying terminology.  Let
+us refer to the application that is providing a service as
+the ``server application\index{server}'' and the application requesting the
+service as the ``client application\index{client}.''  
+Note that a single application
+can be both a server application in one service relationship and a 
+client application in another service relationship.  
+\index{client-server~architecture|)}
+
+\index{account~service~directory|(}
+Each server application provides its services on a particular
+Internet port, and needs to inform potential client applications 
+how to obtain its service.  Each client application needs to be able
+to look up possible providers of the service it needs.  The
+intermediary which brings server applications and client applications
+together is another application called the 
+``account service directory.''
+There may be at most one account service directory application 
+running under the user ID\index{user~ID} of each user account on a host.
+Each account service directory keeps track of all the services provided
+by \OOMMF\ server applications running under its user account on its
+host and the corresponding Internet ports at which those services
+may be obtained.
+\OOMMF\ server applications register their services with
+the corresponding account service directory application.  \OOMMF\
+client applications look up service providers running under a 
+particular user ID\index{user~ID} in the corresponding account server directory 
+application.  
+\index{account~service~directory|)}
+
+\index{host~service~directory|(}
+The account service directory applications simplify the problem
+of matching servers and clients, but they do not completely solve
+it.  \OOMMF\ applications still need a mechanism to find out how
+to obtain the service of the account service directory!
+Another application, called the ``host service directory'' serves
+this function.  Only one copy of the host service directory application
+runs on each host.  Its sole purpose is to tell \OOMMF\ applications
+where to obtain the services of account service directories on that
+host.  Because only one copy of this application runs per host,
+it can provide its service on a well-known port which is
+configured into the \OOMMF\ software.  By default, this is port 15136.
+\OOMMF\ software can be 
+\hyperrefhtml{customized}{customized (Sec.~}{)}{sec:custom}
+\index{customize!host~server~port}
+to use a different port number.
+\index{host~service~directory|)}
+
+\index{launch!by~account~service~directory|(}
+The account service directory applications perform another task
+as well.  They launch other programs under the user ID\index{user~ID} for which
+they manage service registration.  The user controls the launching
+of programs through the interface provided by the application
+\hyperrefhtml{{\bf mmLaunch}}{{\bf mmLaunch} (See
+Sec.~}{)}{sec:mmlaunch}, but it is the account service directory
+application that actually spawns a subprocess for the new application.
+Because of this architecture, most \OOMMF\ applications are launched
+as child processes of an account service directory application.  These
+child processes inherit their 
+environment
+from their parent account
+service directory application, including their working directory, and
+other key environment 
+variables\index{environment~variables!inherited~from~parent~process}, 
+such as {\tt DISPLAY}\index{environment~variables!DISPLAY}. 
+Each account
+service directory application sets its 
+working directory\index{working~directory}
+to the root
+directory of the \OOMMF\ distribution.  Future releases of \OOMMF\
+software will likely be based on a revised architecture which
+alleviates these restrictions.
+\index{launch!by~account~service~directory|)}
+
+\index{host~service~directory!launching~of|(}
+\index{account~service~directory!launching~of|(}
+These service directory applications are vitally important to the
+operation of the total \OOMMF\ micromagnetic simulation system.
+However, it would be easy to overlook them.  They act entirely ``behind
+the scenes'' without a user interface window.  Furthermore, they are
+never launched by the user.  When any server application needs to
+register its service, if it finds that these service directory
+applications are not running, it launches new copies of them.  In this
+way the user can be sure that if any \OOMMF\ server applications are
+running, then so are the service directory applications needed to direct
+clients to its service.  After all server applications terminate, and
+there are no longer any services registered with a service directory
+application, it terminates as well.  Similarly, when all service
+directory applications terminate, the host service directory application
+exits.
+\index{host~service~directory!expires}
+\index{account~service~directory!expires}
+\index{host~service~directory!launching~of|)}
+\index{account~service~directory!launching~of|)}
+
+In the sections which follow, the \OOMMF\ applications are
+described in terms of the services they provide and the services
+they require.  
+

@@ -1,0 +1,59 @@
+# MIF 1.1
+#
+# Example from the OOMMF User's Guide.
+#
+# All units are SI.
+#
+################# MATERIAL PARAMETERS ######################
+Ms:  800e3                # Saturation magnetization in A/m.
+A:   13e-12               # Exchange stiffness in J/m.
+K1:  0.5e3                # Anisotropy constant in J/m^3.
+Anisotropy Type: uniaxial # One of <uniaxial|cubic>.
+Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
+                          # coordinate axes
+
+################# DEMAG SPECIFICATION ######################
+Demag Type: ConstMag # One of <ConstMag|3dSlab|2dSlab
+                     #         |3dCharge|FastPipe|None>.
+
+#################### PART GEOMETRY #########################
+Part Width:     0.25e-6    # Nominal part width in m
+Part Height:    1.0e-6     # Nominal part height in m
+Part Thickness: 1e-9       # Part thickness in m.
+Cell Size:      7.8125e-9  # Cell size in m.
+#Part Shape:    # One of <Rectangle|Ellipse|Oval|Mask>.
+                # Optional.
+
+################ INITIAL MAGNETIZATION #####################
+Init Mag: Uniform 90 45 # Initial magnetization routine
+                        # and parameters
+
+################ EXPERIMENT PARAMETERS #####################
+# Field Range:  Start_field  Stop_field  Steps
+Field Range: -.05 -.01 0.  .05  .01 0. 100
+Field Range:  .05  .01 0. -.05 -.01 0. 100
+Field Type: Multi 4 \
+ 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
+ 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
+ 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
+ 1 Uniform
+# The above positions ribbons of positive charge along the
+# upper and lower edges with strength Ms, applies a large
+# (100 Ms) field to the center cells, and also applies a
+# uniform field across the sample stepped from
+# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
+# approximately 0.001 T steps.
+
+Default Control Point Spec: -torque 1e-6
+# Assume equilibrium has been reached, and step the applied
+# field, when the reduced torque |mxh| drops below 1e-6.
+
+################ OUTPUT SPECIFICATIONS #####################
+Base Output Filename: samplerun
+Magnetization Output Format: binary 8 # Save magnetization
+# states in binary format with full (8-byte) precision.
+
+#################### MISCELLANEOUS #########################
+Randomizer Seed: 1   # Random number generator seed.
+User Comment: Example MIF 1.1 file, with lots of comments.
+

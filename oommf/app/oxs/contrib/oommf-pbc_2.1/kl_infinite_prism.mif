@@ -1,0 +1,85 @@
+# MIF 2.1
+# Description: Infinite prism (no anisotropy) oriented in the (0,0,1) direction
+# Please remember, that available theoretical models exist for circular rods.
+
+# Material parameters somehow resemble nickel. They lead to 
+# the exchange length (difining region of curling-coherent states transition)
+# equal to: l_exch=R_0=20e-9
+
+# We simulate here the r=2R_0 case
+
+RandomSeed 1
+
+Parameter cellsize 		4.43125e-9;	 
+
+Parameter tubelength		4.43125e-9;	 
+Parameter tuberadius_ext	35.45e-9;	
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {-$tuberadius_ext 	$tuberadius_ext}
+  yrange {-$tuberadius_ext 	$tuberadius_ext}
+  zrange {0 			$tubelength}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+########## energies ################
+
+Specify Oxs_UZeeman [subst {
+  comment {Set units to mT}  
+  multiplier 795.77472
+  Hrange {
+    {	0 0	1000		0 0	  -1000	  200}
+    {	0 0	-1000		0 0	  1000	  200}
+  }
+}]
+
+# offset field. Must be present...
+Specify Oxs_FixedZeeman {
+  comment {Set units to mT}  
+  multiplier 795.77472
+  field { Oxs_RandomVectorField {
+   min_norm  1
+   max_norm  1
+  }}
+}
+
+Specify Klm_Demag_PBC [subst {
+  tensor_file_name    "/tmp/demag_tensor/"  
+  progress_script     {[OOMMFRootDir]/app/oxs/local/kl_progress.tcl}
+}]
+
+Specify Klm_UniformExchange {
+  A  		  9.604e-12
+  kernel	"6ngbrzperiod"
+}
+
+########## default outputs ###################
+
+Destination viewer 	mmDataTable
+Destination hystograph 	mmGraph:Hysteresis
+
+Schedule DataTable 			viewer		Step 100
+Schedule DataTable 			viewer		Stage 1
+Schedule DataTable 			hystograph	Stage 1
+
+########## evolver and driver ################
+
+Specify Oxs_CGEvolve {
+}
+
+Specify Oxs_MinDriver [subst {
+ stopping_mxHxm .5
+ evolver Oxs_CGEvolve
+ mesh :mesh
+ normalize_aveM_output 1
+ Ms 490e3
+ m0 { Oxs_RandomVectorField {
+   min_norm  1
+   max_norm  1
+ }}
+}]
+

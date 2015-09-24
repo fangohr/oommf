@@ -1,0 +1,412 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Data Graph Display: mmGraph</TITLE>
+<META NAME="description" CONTENT="Data Graph Display: mmGraph">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Vector_Field_Display_mmDisp.html">
+<LINK REL="previous" HREF="Data_Table_Display_mmDataTa.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="Vector_Field_Display_mmDisp.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html470"
+  HREF="Vector_Field_Display_mmDisp.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html466"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html460"
+  HREF="Data_Table_Display_mmDataTa.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html472"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html468"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html471"
+  HREF="Vector_Field_Display_mmDisp.html">Vector Field Display: mmDisp</A>
+<B> Up:</B> <A NAME="tex2html467"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html461"
+  HREF="Data_Table_Display_mmDataTa.html">Data Table Display: mmDataTable</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION000130000000000000000"></A><A NAME="sec:mmgraph"></A>
+<BR>
+Data Graph Display: mmGraph
+</H1><A NAME="13323"></A>
+
+<P>
+<DIV ALIGN="CENTER">
+<IMG ALT="mmGraph Screen Shot" SRC="../giffiles/mmgraph-ss.gif">
+
+</DIV>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Overview</B></FONT>
+<BR>
+The application <B>mmGraph</B> provides a data display service similar to
+that of <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
+ NAME="13334"><B>mmDataTable</B></A>.  The usual
+data source is a running solver, but rather than the textual output
+provided by <B>mmDataTable</B>, <B>mmGraph</B> produces 2D line plots.
+<B>mmGraph</B> also stores the data it receives, so it can produce
+multiple views of the data and can save the data to disk.  Postscript
+output is also supported.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Launching</B></FONT>
+<BR><B>mmGraph</B> may be started either by selecting the <FONT COLOR="#800000"><B>mmGraph</B></FONT>
+button on <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A> or from the command
+line via
+<PRE>
+tclsh oommf.tcl mmGraph [standard options] [-net &lt;0|1&gt;] [loadfile ...]
+</PRE>
+
+<P>
+<DL>
+<DT><STRONG><TT><B>-net <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Disable or enable a server which allows the data displayed by
+  <B>mmGraph</B> to be updated by another application.
+  By default, the server is enabled.  When the server is disabled,
+  <B>mmGraph</B> may only input data from a file.
+</DD>
+<DT><STRONG><TT><B>loadfile ...</B></TT></STRONG></DT>
+<DD>Optional list of data (ODT) files to preload.
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Inputs</B></FONT>
+<BR>
+Input to <B>mmGraph</B> may come from either a file in the 
+<A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
+ NAME="13357">ODT format</A>, 
+or when <TT>-net 1</TT> (the default) is active, from a client application
+(typically a running solver).  The
+<FONT COLOR="#800000"><B>File|Open...</B></FONT> dialog box is used to select an input file.
+Receipt of data from client applications is the same as for
+<A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
+ NAME="13364"><B>mmDataTable</B></A>.  In either
+case, input data are appended to any previously held data.
+
+<P>
+When reading from a file, <B>mmGraph</B> will automatically
+decompress<A NAME="13366"></A>
+data using the <A HREF="Advanced_Installation.html#sec:custom"
+ NAME="13371">local customization</A>
+``Nb_InputFilter decompress'' option to <TT>Oc_Option</TT>.  For details,
+see the discussion on file translation in the Inputs section of the 
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp</B> documentation</A>.
+
+<P>
+Curve breaks<A NAME="13377"></A> (i.e., separation of a curve into
+disjoint segments) are recorded in the data storage buffer via <EM>curve break records.</EM>  These records are generated whenever a new data
+table is detected by <B>mmGraph</B>, or when requested by the user using
+the <B>mmGraph</B> <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> menu option.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Outputs</B></FONT>
+<BR>
+<P>
+Unlike <B>mmDataTable</B><A NAME="13384"></A>, <B>mmGraph</B>
+internally stores the data sent to it.  These data may be written to
+disk via the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box.  If the file
+specified already exists, then <B>mmGraph</B> output is appended to that
+file.  The output is in the tabular <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
+ NAME="13392">ODT format</A>.  The
+data are segmented into separate <TT>Table Start/Table End</TT> blocks
+across each curve break record.
+
+<P>
+By default, all data currently held by <B>mmGraph</B> is written, but the
+<FONT COLOR="#800000"><B>Save: Selected Data</B></FONT> option presented in the <FONT COLOR="#800000"><B>File|Save
+As...</B></FONT> dialog box causes the output to be restricted to those curves
+currently selected for display.  In either case, the graph display
+limits do <EM>not</EM> affect the output.
+
+<P>
+The save operation<A NAME="13398"></A> writes records that are held by
+<B>mmGraph</B> at the time the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box
+<FONT COLOR="#800000"><B>OK</B></FONT> button is invoked.  Additionally, the <FONT COLOR="#800000"><B>Auto Save</B></FONT> option in
+this dialog box may be used to automatically append to the specified
+file each new data record as it is received by <B>mmGraph</B>.  The
+appended fields will be those chosen at the time of the save operation,
+i.e., subsequent changing of the curves selected for display does not
+affect the automatic save operation.  The automatic save operation
+continues until either a new output file is specified, the
+<FONT COLOR="#800000"><B>Options|Stop Autosave</B></FONT> control is invoked, or <B>mmGraph</B> is
+terminated.
+
+<P>
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="13407"></A> dialog is used to
+produce a Postscript file of the current graph.  On Unix systems, the
+output may be sent directly to a 
+printer<A NAME="13408"></A> 
+by filling the <FONT COLOR="#800000"><B>Print to:</B></FONT>
+entry with the appropriate pipe command, e.g., <TT>|lpr</TT>.  (The
+exact form is system dependent.)
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Controls</B></FONT>
+<BR>
+Graphs are constructed by selecting any one item off the
+<FONT COLOR="#800000"><B>X</B></FONT>-axis menu, and any number of items off the <FONT COLOR="#800000"><B>Y1</B></FONT>-axis and
+<FONT COLOR="#800000"><B>Y2</B></FONT>-axis menus.  The y1-axis is marked on the left side of the
+graph; the y2-axis on the right.  These menus may be detached by
+selecting the dashed rule at the top of the list.  Sample results are
+shown in the figure at the start of this section.
+
+<P>
+When <B>mmGraph</B> is first launched, all the axis menus are empty.
+They are dynamically built based on the data received by <B>mmGraph</B>.
+By default, the graph limits and labels are automatically set based on
+the data.  The x-axis label is set using the selected item data label
+and measurement unit (if any).  The y-axes labels are the measurement
+unit of the first corresponding y-axis item selected.
+
+<P>
+The <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box allows the user to
+override default settings.  To change the graph title, simply enter
+the desired title into the <FONT COLOR="#800000"><B>Title</B></FONT> field.  To set the axis labels,
+deselect the <FONT COLOR="#800000"><B>Auto Label</B></FONT> option in this dialog box, and fill in the
+<FONT COLOR="#800000"><B>X Label</B></FONT>, <FONT COLOR="#800000"><B>Y1 Label</B></FONT> and <FONT COLOR="#800000"><B>Y2 Label</B></FONT> fields as desired.
+The axis limits can be set in a similar fashion.  In addition, if an
+axis limit is left empty, a default value (based on all selected data)
+will be used.  Select the <FONT COLOR="#800000"><B>Auto Scale</B></FONT> option to have the axis
+ranges automatically adjust to track incoming data.
+
+<P>
+Use the <FONT COLOR="#800000"><B>Auto Offset Y1</B></FONT> and <FONT COLOR="#800000"><B>Auto Offset Y2</B></FONT> to automatically
+translate each curve plotted against the specified axis up or down so
+that the first point on the curve has a y-value of zero.  This feature
+is especially useful for comparing variations between different energy
+curves, because for these curves one is typically interested in
+changes is values rather than the absolute energy value itself.
+
+<P>
+The size of the margin surrounding the plot region is computed
+automatically.  Larger margins may be specified by filling in the
+appropriate fields in the <FONT COLOR="#800000"><B>Margin Requests</B></FONT> section.  Units are
+pixels.  Requested values smaller than the computed (default) values are
+ignored.
+
+<P>
+The initial curve width is determined by the <TT>Ow_GraphWin
+default_curve_width</TT> setting in the <TT><B>config/options.tcl</B></TT> and
+<TT><B>config/local/options.tcl</B></TT> files, following the usual method of
+<A HREF="Advanced_Installation.html#sec:custom"
+ NAME="13434">local customization</A>.  The current curve
+width can be changed by specifying the desired width in the <FONT COLOR="#800000"><B>Curve
+Width</B></FONT> entry in the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
+The units are pixels.  Long curves will be rendered more quickly,
+especially on Windows, if the curve width is set to 1.
+
+<P>
+As mentioned earlier, <B>mmGraph</B> stores in memory all data it
+receives.  Over the course of a long run, the amount of data stored can
+grow to many megabytes<A NAME="13438"></A>.  This storage can be limited
+by specifying a positive (<B>&gt; 0</B>
+<!-- MATHEND
+ 
+ -->
+) value for the <FONT COLOR="#800000"><B>Point buffer size</B></FONT>
+entry in the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.  The oldest
+records are removed as necessary to keep the total number of records
+stored under the specified limit.  A zero value for <FONT COLOR="#800000"><B>Point buffer
+size</B></FONT> is interpreted as no limit.  (The storage size of an individual
+record depends upon several factors, including the number of items in
+the record and the version of Tcl being used.)  Data erasures may not
+be immediately reflected in the graph display.  At any time, the point
+buffer storage may be completely emptied with the <FONT COLOR="#800000"><B>Options|
+clear Data</B></FONT> command.  The <FONT COLOR="#800000"><B>Options|Stop Autosave</B></FONT> selection
+will turn off the auto save feature, if currently active.
+
+<P>
+Also on this menu is <FONT COLOR="#800000"><B>Options|Rescale</B></FONT>, which autoscales the
+graph axis limits from the selected data.  This command ignores but does
+not reset the <FONT COLOR="#800000"><B>Auto Scale</B></FONT> setting in the <FONT COLOR="#800000"><B>Options|
+Configure...</B></FONT> dialog box.  The Rescale command may also be invoked by
+pressing the <TT><B>Home</B></TT> key.
+
+<P>
+The <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> item inserts a curve break record
+into the point buffer, causing a break in each curve after the current
+point.  This option may be useful if <B>mmGraph</B> is being fed data
+from multiple sources.
+
+<P>
+The <FONT COLOR="#800000"><B>Options|Key</B></FONT> selection toggles the key (legend) display on
+and off.  The key may also be repositioned by dragging with the left
+mouse button.  If curves are selected off both the y1 and y2 menus, then
+a horizontal line in the key separates the two sets of curves, with the
+labels for the y1 curves on top.
+
+<P>
+If the <FONT COLOR="#800000"><B>Options|Auto Reset</B></FONT> selection is enabled, then when a
+new table is detected all previously existing axis menu labels that are
+not present in the column list of the new data set are deleted, along
+with their associated data.  <B>mmGraph</B> will detect a new table when
+results from a new problem are received, or when data is input from a
+file.  If <FONT COLOR="#800000"><B>Options|Auto Reset</B></FONT> is not selected, then no data or
+axis menu labels are deleted, and the axes menus will show the union of
+the old column label list and the new column label list.  If the axes
+menus grow too long, the user may manually apply the
+<FONT COLOR="#800000"><B>File|Reset</B></FONT> command to clear them.
+
+<P>
+The last command on the options menu is <FONT COLOR="#800000"><B>Options|Smooth</B></FONT>.  If
+smoothing is disabled, then the data points are connected by straight
+line segments.  If enabled, then each curve is rendered as a set of
+parabolic splines, which do not in general pass through the data points.
+This is implemented using the <TT>-smooth 1</TT> option to the
+Tcl <TT>canvas create line</TT> command; see that documentation for
+details.
+
+<P>
+A few controls are available only using the mouse.  If the mouse pointer
+is positioned over a drawn item in the graph, holding down the
+<TT><B>Control</B></TT> key and the left mouse button will bring up the
+coordinates of that point, with respect to the y1-axis.  Similarly,
+depressing the <TT><B>Control</B></TT> key and the right mouse button, or
+alternatively holding down the <TT><B>Control</B></TT>+<TT><B>Shift</B></TT> keys while
+pressing the left mouse button will bring up the coordinates of the
+point with respect to the y2-axis.  The coordinates displayed are the
+coordinates of a point on a drawn line, which are not necessarily the
+coordinates of a plotted data point.  (The data points are plotted at
+the endpoints of each line segment.)  The coordinate display is cleared
+when the mouse button is released while the <TT><B>Control</B></TT> key is down.
+
+<P>
+One vertical and one horizontal rule (line) are also available.
+Initially, these rules are tucked and hidden against the left and bottom
+graph axes, respectively.  Either may be repositioned by dragging with
+the left or right mouse button.  The coordinates of the cursor are
+displayed while dragging the rules.  The displayed y-coordinate
+corresponds to the y1-axis if the left mouse button is used, or the
+y2-axis if the right mouse button or the <TT><B>Shift</B></TT> key with the left
+mouse button are engaged.
+
+<P>
+The graph extents may be changed by selecting a ``zoom box'' with the
+mouse.  This is useful for examining a small portion of the graph in
+more detail.  This feature is activated by clicking and dragging the
+left or right mouse button.  A rectangle will be displayed that changes
+size as the mouse is dragged.  If the left mouse button is depressed,
+then the x-axis and y1-axis are rescaled to just match the extents of
+the displayed rectangle.  If the right mouse button, or alternatively
+the shift key + left mouse button, is used, then the x-axis and y2-axis
+are rescaled.  An arrow is drawn against the rectangle indicating which
+y-axis will be rescaled.  The rescaling may be canceled by positioning
+the mouse pointer over the initial point before releasing the mouse
+button.  The zoom box feature is similar to the mouse zoom control in
+the
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
+ NAME="13468"><B>mmDisp</B></A> application, except
+that here there is no ``un-zooming'' mouse control.
+
+<P>
+The <TT><B>PageUp</B></TT> and <TT><B>PageDown</B></TT> keys may also be used to zoom the
+display in and out.  Use in conjuction with the <TT><B>Shift</B></TT> key to jump
+by larger steps, or with the <TT><B>Control</B></TT> key for finer control.  The
+<FONT COLOR="#800000"><B>Options|Rescale</B></FONT> command or the
+<FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box may also be used to reset the
+graph extents.
+
+<P>
+If <B>mmGraph</B> is being used to display data from a running solver,
+and if <FONT COLOR="#800000"><B>Auto Scale</B></FONT> is selected in the
+<FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box, then the graph extents
+may be changed automatically when a new data point is received.  This is
+inconvenient if one is simultaneously using the zoom feature to examine
+some portion of the graph.  In this case, one might prefer to disable
+the <FONT COLOR="#800000"><B>Auto Scale</B></FONT> feature, and manually pan the display using the
+keyboard arrow keys.  Each key press will translate the display one half
+frame in the indicated direction.  The <TT><B>Shift</B></TT> key used in
+combination with an arrow keys double the pan step size, while the
+<TT><B>Control</B></TT> key halves it.
+
+<P>
+The menu selection <FONT COLOR="#800000"><B>File|Reset</B></FONT> reinitializes the
+<B>mmGraph</B> application to its original state, releasing all data and
+clearing the axis menus.  The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT>
+terminates the application.  The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides the usual help
+facilities.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Details</B></FONT>
+<BR>
+The axes menus are configured based on incoming data.  As a result,
+these menus are initially empty.  If a graph widget is scheduled to
+receive data only upon control point or stage done events in the solver,
+it may be a long time after starting a problem in the solver before the
+graph widget can be configured.  Because <B>mmGraph</B> keeps all data up
+to the limit imposed by the <TT>Point buffer size</TT>, data loss is usually
+not a problem.  Of more importance is the fact that automatic data
+saving<A NAME="13488"></A> can not be set up until the first data point is
+received.  As a workaround, the solver initial state may be sent
+interactively as a dummy point to initialize the graph widget axes
+menus.  Select the desired quantities off the axes menus, and use the
+<FONT COLOR="#800000"><B>Options|clear Data</B></FONT> command to remove the dummy point from
+<B>mmGraph</B>'s memory.  The <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box may
+then be used--with the <FONT COLOR="#800000"><B>Auto Save</B></FONT> option enabled--to write out
+an empty table with proper column header information.  Subsequent data
+will be written to this file as they arrive.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html470"
+  HREF="Vector_Field_Display_mmDisp.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html466"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html460"
+  HREF="Data_Table_Display_mmDataTa.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html473"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html468"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

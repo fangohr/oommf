@@ -1,0 +1,70 @@
+OOMMF DOCUMENTATION README
+
+The documentation source files in this directory are LaTeX *.tex files,
+using the LaTeX2HTML extension.  Version 98.2 beta 8 (or later?) of
+LaTeX2HTML is required.  The latest development releases of 
+latex2html are at <http://saftsack.fs.uni-bayreuth.de/%7Elatex2ht/>.
+
+The 2000-02-09 version of these files has been built with LaTeX2HTML
+versions 99.1 and 99.2.
+
+The bibliography uses the osa.bst style file from the revtex3.1 package.
+
+The application screenshots are captured against a white background that
+is cropped to just hold the desired windows.  The program
+
+xsetroot -solid White
+
+can be used to change the X background color.  Use any of the colors
+defined in rgb.txt (on Linux, this is in /usr/X11/lib/X11/), for
+example, SteelBlue.
+
+The screenshots are stored at natural size, with 8-bit color, in the
+directories giffiles/ (GIF format) and pngfiles/ (PNG format), with
+names of the form mmdatatable-ss.gif and mmdatatable-ss.png,
+respectively ("ss" for "ScreenShot").  They are converted to
+"compressed, reduced-color postscript" files at 200% resolution with
+zero offset from the origin, and stored in the psfiles/ directory.  The
+postscript files have the same base name as the source gif file, but are
+given the *.ps extension.  Using "compressed postscript," the file size
+is not affected strongly by resolution.  If along the processing chain
+an "uncompressed" version is needed or results, and size is a problem,
+the resolution can be cut to 100% without much loss of detail in the
+printed version.  The GIF files are used in the document HTML output,
+PNG files in the document PDF output, and the postscript files in the
+document dvi/ps output.
+
+The LaTeX command "\includepic" is defined in oommfhead.tex to simplify
+graphics inclusion.  Example usage is
+
+\includepic{mmdatatable-ss}{mmDataTable Screen Shot}
+
+The first parameter is the graphics file
+base name, expanded to "psfiles/#1.ps" under LaTeX, "pngfiles/#1.png
+under pdfLaTeX, and "../giffiles/#1.gif" in the LaTeX2Html produced
+*.html files.  The last parameter is a string for the ALT= tag in HTML.
+At present, the last parameter is only used in the HTML code.
+
+26-July-1999
+
+------------------------------------------------------------------------
+
+pdfLaTex (pdfTeX, Version 3.14159-0.12h (Web2C 7.2)) is sometimes
+confused by the construct
+
+             \section{Foo\label{bar}}
+use
+             \section{Foo}\label{bar}
+instead.
+
+The LaTeX packages "hyperref" and "html" both define \hyperref, and do
+so in conflicting ways.  We want the html version, so use \hyperrefhtml
+instead.
+
+LaTeX and pdfLaTeX produce different .aux and .toc files.  LaTeX2HTML
+doesn't seem to like the ones produced by pdfLaTeX, so it is important
+to produce the .pdf, .ps, .html output in that order.
+
+11-Aug-1999
+
+------------------------------------------------------------------------

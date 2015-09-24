@@ -1,0 +1,46 @@
+# OOMMF: rectangular mesh v0.99
+# Segment count: 1
+# Begin: Segment
+# Begin: Header
+# Title: small.omf
+# Desc: Omf file created from vio file by viotoomf
+# meshunit: unknown
+# xbase: 0
+# ybase: 0
+# zbase: 0
+# xstepsize: 1
+# ystepsize: 1
+# zstepsize: 1
+# xnodes: 5
+# ynodes: 3
+# znodes: 1
+# xmin: -0.5
+# ymin: -0.5
+# zmin: -0.5
+# xmax: 4.5
+# ymax: 2.5
+# zmax:  0.5
+# valueunit: A/m
+# valuemultiplier: 1e6
+# ValueRangeMaxMag:  1.5
+# ValueRangeMinMag:  1e-8
+# End: Header
+# Begin: data text
+-0.89075911    -0.45418781     0.01617681   
+-0.70800066    -0.70620048     0.0040030247 
+ 0.0056123389  -0.99991298    -0.011937469  
+ 0.70163423    -0.71172452    -0.03402308   
+ 0.89402729    -0.44801155    -0.00091720372
+-0.99999404    -0.0033836823  -0.00064429955
+-0.99999797     0.0016781855   0.0011029566 
+ 0.001040911   -0.0025831943  -1.4999916
+ 0.9998607      0.0094554396   0.01375324   
+ 0.99999934     4.6176629e-05 -0.0011426229 
+-0.89428002     0.44689652    -0.023381919  
+-0.6997996      0.71402872    -0.021059323  
+-0.00086398522  0.99999022    -0.004340359  
+ 0.69828767     0.71574134    -0.010423753  
+ 0.0 1.5 0.0
+# End: data text
+# 0.89136052     0.45329353    -0.0011876966 
+# End: segment

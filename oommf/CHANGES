@@ -1,0 +1,574 @@
+========== OOMMF 1.2a4 released 2004/09/08 ==========
+Significant changes since 1.2a3:
+
+  * New applications:
+	- avf2ps: generate PostScript display of a vector field
+	- crc32: generate a checksum of a file
+
+  * New features
+	- any2ppm: -f and -format options; support for 24bit BMP format
+	- avf2odt: many new options
+	- avf2ovf: -keepbb option
+	- mifConvert: -fmt and -nostagecheck options
+	- mmDisp: -config option; more color scales.
+	- mmGraph: can specify *.odt files to display on command line
+	- mmProbEd: can generate new file format MIF 1.2
+	- mmSolve: can read new file format MIF 1.2, within its constraints
+	- odtcols: -b, -S, and -m options
+	- Oxs: can read new file format MIF 1.2
+	- oxsii|bosxi: -restart option
+	- a tests directory with samples for debugging
+
+  * New Oxs extension components
+	- Oxs_AffineOrientScalarField
+	- Oxs_AffineOrientVectorField
+	- Oxs_AffineTransformScalarField
+	- Oxs_AffineTransformVectorField
+	- Oxs_EllipsoidAtlas
+	- Oxs_RungeKuttaEvolve
+	- Oxs_ScriptOrientScalarField
+	- Oxs_ScriptOrientVectorField
+	- Oxs_VecMagScalarField
+
+  * New Oc extension features/incompatibilities
+	- [Oc_TempName] syntax changed for improved security.
+	- new command [Oc_OpenUniqueFile] improves temp file security
+
+  * New Ow extension features/incompatibilities
+	- "Smart menus" in dialog boxes
+
+  * New Nb extension features/incompatibilities
+	- Nb_FOpen() for more flexible opening of files by name.
+
+  * New Vf extension features/incompatibilities
+	- WriteMesh methods take Tcl_Channel argument, not FILE *.
+
+  * Bug fixes
+	- floating point exceptions due to exp() and pow() underflow
+	- floating point exceptions due to atan2(0, 0)
+	- Boxsi failure to launch
+
+========== OOMMF 1.2a3 released 2002/10/30 ==========
+Significant changes since 1.2a2:
+ 
+  * New applications:
+	- Boxsi: A batch-mode driver for Oxs, the OOMMF eXtensible Solver.
+
+  * Incompatibilities:
+	- new input file format, MIF 2.1, see mifConvert application.
+
+  * New features
+	- bootstrap: +out and +err options for redirecting launched apps
+	- mmArchive: Improved graphical interface using menus.
+	- mmDataTable: Labels auto-removed on input problem change.
+	- mmDisp: View axis selection
+	- avf2odt: -average option replaced -type
+	- avf2ovf: new options -clip, -flip  and -info
+	- mmLaunch: "Exit All OOMMF" menu option
+	- mmSolve2D: added warnings when solver results appear to be bogus.
+	- mifConvert: handles conversion to new MIF 2.1 format.  More
+            complete coverage of MIF 1.1 format.
+	- Oxsii: dropped -problem option; optional MIF file needs no switch
+	- Oxsii: Stage slider interface properly limited.
+	- Oxs: new options -pause, -nice, -parameters
+	- Oxs: "Clear Schedule" menu option
+	- Oxs: [Schedule] and [Destination] commands in MIF 2.1 format
+	- Oxs: New/Revised Oxs_Ext classes (all with Oxs_ prefix)
+	    BoxAtlas, CGEvolve, Demag, ExchangePtWise, ImageAtlas,
+	    LinearScalarField, MinDriver, MultiAtlas, RandomScalarField,
+	    RandomSiteExchange, ScriptUZeeman, StageZeeman,
+	    TransformZeeman, TwoSurfaceExchange, UniformScalarField,
+	    UniformVectorField, LabelValue
+	- Oxs: Removed Oxs_Ext classes:
+	    RectangularSection, SectionAtlas: convert to BoxAtlas, MultiAtlas
+	    StandardDriver: renamed to TimeDriver
+	    AtlasScalarFieldInit: renamed to AtlasScalarField
+	    AtlasVectorFieldInit: renamed to AtlasVectorField
+	    FileVectorFieldInit: renamed to FileVectorField
+	    PlaneRandomVectorFieldInit: renamed to PlaneRandomVectorField
+	    RandomVectorFieldInit: Renamed to RandomVectorField
+	    ScriptScalarFieldInit: renamed to ScriptScalarField
+	    ScriptVectorFieldInit: renamed to ScriptVectorField
+	    UniformScalarFieldInit: renamed to UniformScalarField
+	    UniformVectorFieldInit: renamed to UniformVectorField
+	- pimake: new option -out for sending output to a file
+	- security improvements in the Net library
+	- renamed the port.h header file to ocport.h
+	- support for Tcl/Tk up through release 8.4.1
+	
+========== OOMMF 1.2a2 released 2001/05/29 ==========
+Significant changes since 1.2a1:
+
+  * New features
+	- pimake: [Platform Intermediate] for cleaning up intermediate files
+	- pimake; [Platform Compile -def ...]
+	- mmDispSh: anti-alias support in plot_config
+	- avf2ppm: respects datascale value in plot_config
+	- mmSolve: revised nonuniform thickness effect on exchange
+	- mifConvert: handles random seed
+	- Oxsii: -problem and -exitondone command line options
+	- Oxsii: Removed Step and Stage monitors in interface
+	- Oc: enabled C writing to "stdout" console channel (Tcl 8.2+)
+	- Oc_AutoBuf: now reclaims buffer space when it's very big
+	- Oxs_CubicAnisotropy: revised calculation
+	- Oxs_EulerEvolve: rewrite of timestep size control
+	- Oxs_UniformExchange: improved performance and precision
+	- Oxs_UniaxialAnisotropy: separate handling of K >0 and K < 0.
+	- Oxs_StandardDriver: Offers delta_E output.
+	- Oxs_FFT, Oxs_Demag, Oxs_SimpleDemag: substantial rewrite,
+		especially of the FFT routines for greatly improved
+		performance and memory usage.
+
+  * Bug fixes
+	- bootstrap: removed senseless options +console and +cwd
+	- mmDisp: lots of dead code removed
+	- any2ppm: can now specify output file using -o $filename
+	- mmSolve: workaround Tcl bug in reading of PPM mask files
+	- mmGraph (Ow_GraphWin): Key box upward creep, auto-limit 
+	- Ow_EntryBox: Less shimmering - better precision
+	- Oc_Class: [uplevel 1] for less shimmering/better precision
+	- Oc: Rewrote several Tcl 7.x compatibility procs (fcopy)
+	- Net_Link: handle immediate closing of socket
+	- Net_Connection: Timeouts extended to 100 minutes to avoid
+		timing out during long solver initializations
+
+  * New interfaces
+	- renamed class MyComplex -> Oxs_Complex
+	- Oxs_Ext::GetUIntInitValue()
+	- Oxs_ThreeVector::MakeUnit()
+
+========== OOMMF 1.2a1 released 2001/01/22 ==========
+Significant changes since 1.2a0:
+
+  * MIF 2.0 format changes.  1.2a0 files are not valid in 1.2a1.
+
+  * New applications:
+	- avfdiff - compute differences of vector fields
+	- avf2odt - extract features of vector fields (formerly avf2ave)
+
+  * New documentation
+	- New directory config/notes contains test scripts and configuration
+	  notes helpful in debugging OOMMF problems
+
+  * Expanded platform support
+	- Added configure tests for needed network support
+	- Work around for broken map<> in some STLs.
+
+  * New features
+	- mmDisp: File|Open menu item
+	- mmDataTable: File|Reset menu item
+	- Oxsii: Closing interface using [X] button now exits solver
+
+========== OOMMF 1.2a0 released 2000/11/18 ==========
+Significant changes since 1.1b0:
+
+  * New applications:
+	- Oxs - the OOMMF eXtensible Solver
+	- Oxsi - OOMMF eXtensible Solver Interactive Interface
+
+  * New documentation
+	- User manual updated
+	- Programmer manual begun
+	- Notes on mmSolve memory usage: app/mmsolve/memusage.txt
+
+  * General cleanup/improvements
+	- directory "ext" renamed to "pkg" to minimize confusion
+	  	with the directory app/oxs/ext
+	- doc/*.tex moved to doc/userguide/*.tex, separate from
+		doc/progman/*.tex
+
+  * Expanded Tcl/Tk support
+	- 8.3.2 
+
+  * Expanded platform support
+	- VisualAge C++ compiler for AIX: xlC
+	- COMPAQ C++ compiler: cxx
+
+  * New features
+	- mmDisp: display selection by "z-slice" (3rd dimension)
+	- mmDisp: coloring by "z-slice" (3rd dimension)
+	- mmDisp: added color maps
+	- mmDispSh: new commands: [GetMeshZRange], [GetMeshCellSize],
+		[GetZSliceLevels], [GetZSliceCount]
+	- mmHelp: uses Img package (if installed) to display PNG images 
+	- mmLaunch: offers program Oxsii
+	- mmProbEd: new shape option: Ellipsoid
+	- mmProbEd: passes through unrecognized fields
+	- mmSolve: approximations for non-uniform thickness
+	- mmSolve: new part shape: pyramid
+	- mmSolve: new material parameter: Edge K1 (surface anisotropy)
+	- mmSolve: changed uniaxial anisotropy energy offset when K1 > 0
+	- mmSolve: several improvements in numerical precision
+	- mmSolve: new mms_Grid2D methods: GetEdgeK1, SetEdgeK1,
+		GetFieldComponentNorm, RoughenBoundaryThickness
+	- mmSolve: new mms_solver methods: GetFieldComponentNorm,
+		GetComponentEnergyDensity
+	- mag2hfield: new options: -data, -energyfmt
+	- omfsh: tries to load Img package rather than If
+	- pimake: CSourceFile constructor accepts -inc option to
+		specify search path for #includes (used by oxs)
+	- pimake: [return -code continue] from sourcing a makerules
+		file disables default rules.  Breaks recursions.
+		Can be used to prune branches of a build.
+	- All shells now open a console when started without a script
+
+  * New Oc extension features/incompatibilities
+	- now self-bootstaps its tclIndex file.
+	- Oc_AutoBuf::SetLength()
+	- active console is always default destination for stderr messages
+	- support for catching C++ exceptions
+
+  * New Nb extension features
+	- moved list.h,cc -> dlist.h,cc, vector.h,cc -> floatvec.h,cc
+	- renamed UnifRand() -> Oc_UnifRand(), swap() -> Nb_Swap()
+	- new command: [Oc_Times]
+	- new functions: Nb_IsFinite(), Nb_WriteChannel(), Nb_FprintfChannel()
+		degcossin()
+
+  * New Net extension features/incompatibilities
+	- Net_ThreadWish: better environment for remote GUIs
+	- host and account servers time out immediately
+
+  * New Vf extension features
+	- Vf_GridVec3f::GetZslice(), Vf_GeneralMesh3f::GetZslice()
+
+  * Bug fixes
+	- mmDispSh: plugged memory leak in [Bitmap]
+	- mmDispSh: corrected command buffer overwrite
+	- mmProbEd: corrected handling of "* Output Format" 
+	- mmSolve: corrected improper mask scaling when # cells > # pixels
+	- Net_Account: corrected handling of [socket -async] failure
+	- Oc: corrected handling of console filename with space in path
+	- Oc: removed recursion in [Oc_Main Exit]
+	- Oc: Oc_Init() safe for slave interps
+
+========== OOMMF 1.1b0 released 2000/04/04 ==========
+Significant changes since 1.1a2:
+
+  * Expanded Tcl/Tk support
+	- 8.3.0 
+	- [fcopy] emulation in Tcl 7.x
+
+  * New applications:
+	- mag2hfield
+
+  * Bug fixes
+	- mmLaunch - launches mmarchive with -tk 0
+	- apps failed when launched like sdf/sdf/../foo.tcl
+	- Oc_DirectPathname now handles strange case when
+	  [cd] into a directory succeeds, but [pwd] fails.
+	- mmSolve2D: fixed logging of bad MIF input
+	- mmHelp: bad line breaking near empty anchors
+
+  * New features
+	- mmGraph: displays two vertical axes
+	- mmDisp: Data scale slider
+	- omfsh: includes Nb extension
+	- mmProbEd: default demagnetization kernel is now ConstMag
+	- mmProbEd: oval part shape
+	- mmSolve: raises error when cell size does not divide part size
+	- pimake: user documentation; default target 'help'
+	- host and account servers: die when app servers die.
+	- some sanity checks/warnings in oommf.tcl +platform
+	- shells given no scripts automatically display console
+
+  * Incompatibilities with prior releases
+	- Many command line options renamed for standardization.
+
+  * General cleanup/improvements
+	- All apps are now Tcl scripts evaluated by shells
+	- All apps use common facility for command line processing
+	- All apps now register their +fg/+bg and -tk preferences
+	- Renamed .omfExport.tcl --> omfExport.tcl
+
+  * New Oc extension features/incompatibilities
+	- Oc_Config compiletime_* constants
+        - New C++ APIs: Oc_Atan2()
+        - Removed C++ APIs: Oc_AppendUsageInfo(), Oc_GetUsageInfo()
+        - Removed Tcl commands: Oc_AppendUsageInfo, Oc_GetUsageInfo
+	- New procs/methods: [$Oc_Config Features]
+	   
+  * New Nb extension features
+	- New C++ APIs: Nb_RatApprox()
+	- New Tcl commands: [Nb_Gcd] [Nb_RatApprox]
+
+  * New Ow extension features
+	- New Tcl commands: [Ow_IsPosFloat]
+	- New procs/methods:
+		[$Ow_EntryScale AdjustRange]
+		[$Ow_GraphWin SetMargins]
+	- New configuration options
+		[$Ow_EntryBox Configure -hardmax -hardmin]
+		[$Ow_EntryScale Configure -scalemin -logscale -rangemin
+			-rangemax -autorange -hardmax -hardmin -displayfmt
+			-marklist -markcolor -markwidth]
+		[$Ow_GraphWin Configure -y2label]
+	- Dialogs: Cancel buttons --> Close buttons
+	- GraphWin: Second vertical axis
+	
+
+  * New Net extension features
+	- New procs/methods: [$Net_Link Pause] [$Net_Link Resume]
+
+  * New Vf extension features
+	- New C++ APIs: Vf_Mesh::GetMaxMag()
+
+========== OOMMF 1.1a2 released 1999/10/29 ==========
+Significant changes since 1.1a1:
+
+  * Expanded Tcl/Tk support
+	- 8.2.0 through 8.2.3
+	- Some fixes for 7.5 support
+
+  * Expanded platform support
+	- Better checking for cygwin platform -- $env(OSTYPE)
+	- Support for Compaq/Digital C++ compiler, cxx
+	- Support for HP's aCC compiler
+	- Support -n32 libraries on SGI by default 
+		agrees with Tcl/Tk 8.0.3 and later.
+	- optional optimization flags in config/cache/*.tcl comments
+	- GNU compiler g++ selected instead of gcc or egcs
+
+  * New features
+	- avf2ppm: supports writing of Microsoft BMP files
+	- mmGraph: New Option: "Smooth" - crude curve fitting to data
+	- mmGraph: New Option: "Break" - add break in curve (lift pencil)
+	- mmSolve2D: "Loading from..." indicator in interface
+	- mmSolve2D: Zeeman Energy offset changed 
+		- zero energy when M and H are orthogonal
+	- Open and Save File dialogs check their file types
+	- support for asynchronous connection of client sockets
+	- support for specifying output formats of "binary 8", "binary 4",
+	  and "text"
+
+  * Bug fixes
+	- pimake: find extension header files relative to target, not pimake
+	- pimake: support tcl.h and tk.h in different directories
+	- mmHelp: [string match " " "\n"] instead of "==" to fix infinite
+		loop on Tru64 unix 
+	- mmGraph: Proper handling of escaped newlines in .odt files
+	- mmGraph: Proper handling of too long and too short rows in .odt files
+	- Release number taken from Oc extension, not hard coded
+	- mmSolve2D: LoadProblem bug was loading from all MIF input source
+		which had ever been selected.
+	- mmSolve2D: Fixed coordinate errors in Ribbon Field Type
+	- Launching of apps with embedded spaces in their path names 
+		did not work
+	- Fixed timeout expiration event error in account server
+	- Events generated from within Oc_Class constructors were not handled
+	- Use higher precision computing orthogonal anisotropy axes.
+	- [auto_execok] returns a list.  Corrected code which assumed a string.
+	- Revised search path for *Config.sh
+	- Lots of "lint" improvements -- mostly bracing of [expr]
+        - Oc_DirectPathname now handles strange case when
+          [cd] into a directory succeeds, but [pwd] fails.
+
+  * General cleanup/improvements
+	- User manual in PDF format
+	- BIBTeX used to generate references in user manual
+	- Index added to user manual
+	- Many tweaks for improved numerical accuracy
+	- Better values for example materials
+	- Cleaner network protocol between mmLaunch and account server
+	- Distributed template repositories; no "build" directory
+	- support for config/cache/local files
+	- Warning about bad OOMMF_ROOT value
+	- Complete elimination of the old "em" extension
+	- eliminated extern "C" static functions for compiler portability
+
+========== OOMMF 1.1a1 released 1999/08/10 ==========
+Significant changes since 1.1a0:
+
+  * Expanded Tcl/Tk support
+        - 8.1.0
+        - 8.1.1
+
+  * New Platforms supported
+	- more centralized support for OOMMF configuration on Windows
+		-- less burden on the config/cache/win*.tcl files
+	- improved configuration for -32, -n32, -o32 builds on IRIX systems
+
+  * New mmSolve/mmSolve2D features
+	- Solver keeps a log while it solves
+	- mmSolve2D supports a -restart option which will continue
+	  the solving of the problem from the last saved state in
+	  the log file instead of from the beginning.
+
+  * Rewrite of mmArchive
+	- Doesn't require a window system/display
+		- can keep running as long as mmSolve2D
+	- Accepts and archives DataTable data
+	- Can be launched from the command line
+
+  * New mmLaunch features
+	- User interface windows for other apps
+		- Inputs and Outputs displayed only if relevant
+		- Status line
+
+  * New Oc extension features
+	- New Tcl commands
+		- Oc_IsClass
+		- Oc_SetPanicHeader
+	- New Oc_Class procs/methods
+		- Oc_Config TkVersion
+		- Oc_Config Tclsh
+		- Oc_Config Wish
+		- Oc_Config Summary
+
+  * New environment variables
+	- OOMMF_TCL_CONFIG, OOMMF_TK_CONFIG, OOMMF_TCLSH, OOMMF_WISH
+
+  * General cleanup/improvements
+	- updated documentation
+	- fixed syntactic sugar in "Define" procs
+	- more informative platform configuration checks
+
+========== OOMMF 1.1a0 released 1999/04/28 ==========
+Significant changes since 1.0b1:
+
+  * New apps
+        - avftoppm -- generate PPM files representing vector fields
+        - mmDispSh -- shell with mmDisp support commands.
+        - filtersh -- basic omfsh-like shell which supports filtering
+                through standard channels on MS Windows
+
+  * Renamed and now bootstrappable apps:
+        - avftoave --> avf2ave
+        - avftoovf --> avf2ovf
+        - avftovio --> avf2vio
+        - gif2ppm  --> any2ppm
+
+  * New extensions
+        - If (Image formats) -- supports use of Windows bitmaps as mask files
+
+  * New oommf (bootstrap) features
+        - Revised command line option parsing
+                run 'oommf.tcl -help' for a usage summary
+        - New -command option
+        - Stdout and stderr available immediately even when blocking
+
+  * New mmDataTable features
+        - more display options
+
+  * New mmDisp features
+        - Colorwheel-type display
+        - New color maps
+
+  * New mmProbEd features
+        - ConstMag demag routine
+        - Anisotropy axes initializer
+        - More initial mag states
+        - user comments, min and max time steps
+
+  * New mmSolve features
+        - Log files added
+        - ConstMag demagnetization kernel
+        - Support for generalized control points
+                - stop on iteration count, or elapsed simulation time,
+                  as well as maximum torque below a threshold.
+        - Removed exchange and anisotropy fields from zero-moment cells
+
+  * New mmSolve2D features
+        - <Equilibrium> event replaced by <ControlPoint> event
+
+  * New Nb extension features/incompatibilities
+        - New C++ APIs
+                - Nb_DString::AppendArgs()
+                - Nb_List<T>::GetFirst(), Nb_List<T>::GetNext()
+        - Removed C++ APIs
+                - Omf_SetPatchLevel, Omf_ComparePatchLevel
+                        - use Tcl_Pkg* routines
+                - CullZombies
+                        - use Tcl_ReapDetachedProcs
+        - Removed macros
+                - TCLCMD  -- use Tcl's Tcl_CmdProc instead
+        
+  * New Oc extension features/incompatibilities
+        - New C++ APIs
+                - Oc_InitScript()
+                        - C API to find and source initializing Tcl script
+                - Oc_AppendUsageInfo(), Oc_GetUsageInfo()
+                        - support standard processing of argv, etc.
+        - Changed C++ APIs
+                - Oc_Main() -> Oc_AppMain() rename
+                - Oc_SetUseTkFlag() -> Oc_SetDefaultTkFlag()
+                        - also -tk/-notk options --> -tk 0/1
+                          and handled by Oc.
+        - New macros
+                - OC_MAKEVERSION
+        - New Tcl commands
+                - Oc_AppendUsageInfo, Oc_GetUsageInfo
+                        - support standard processing of argv, etc.
+                - Oc_UniqueFilename
+        - Removed Oc_Classes
+                - em_eventHandler - use Oc_EventHandler
+        - New Oc_Class procs/methods
+                - Oc_Application CommandLine
+                
+  * Relocation of files, restructuring, etc.
+        - Promotion of mmarchive from "net thread" to app
+        - bootstrap program available in root directory
+        - mmDisp is now a script evaluated by shell program, mmdispsh
+        - use of version.h files
+
+  * General cleanup/improvements
+        - Improved documentation
+        - More informative title bars and error messages
+
+  * Expanded Tcl/Tk support
+        - 8.0.4
+        - 8.0.5
+        - Tk4.x - Forward compatibility support for the [grid],
+                [destroy], and [menu] commands.
+
+  * New Platforms supported
+        - Cygwin environment on Windows
+
+  * New mmDisp features
+        - Divergence display
+
+  * New mmHelp features
+        - Can load Binary files
+        - Handles block-level IMG tag according to HTML 3.2 spec
+        - Rudimentary table support (alignment)
+        
+  * New Oc extension features
+        - New macro OC_STRINGIFY
+        - New Tcl commands
+                - Oc_CheckTclIndex
+        - New Oc_Class procs/methods
+                - Oc_Main GetInstanceName
+
+  * Bug fixes
+        - DString memory leaks
+        - Runtime checks for tclIndex files
+        - Improved exit handling (mmGraph) -- window existence checked
+        - Clone protocols dependence on parents enforced
+        - Oc_Class option 'enforcePrivate' is now honored.
+
+  * General cleanup/improvements
+        - removed deprecated direct accesses to interp->result
+        - Improved error messages and stack traces.
+        - revised LICENSE language
+        - Account server/.omfexport.tcl
+                - now use Oc_Application directly, no spawn of bootstrap
+
+========== OOMMF 1.0b1 released 1998/11/05 ==========
+Significant changes since 1.0b0:
+
+  * Support for Tcl/Tk 8.0.3 on Windows platforms.  A workaround for
+    the previous trouble with socket responsiveness was found.
+
+  * Support for use of the .svf file format to specify an initial
+    magnetization state in a problem description.
+
+  * Fixed bug in mmGraph which prevented it from exiting and deregistering
+    when exited by using the window manager to destroy its window.
+
+  * Enhanced Tcl/Tk version checking in configuration/build steps.
+
+  * Improvements to User Manual.
+
+  * Clarified several error messages.
+
+========== OOMMF 1.0b0 released 1998/10/20 ==========

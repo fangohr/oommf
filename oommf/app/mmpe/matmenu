@@ -1,0 +1,98 @@
+ Name of Window: .mats
+ Number of different widgets used in window: 7
+########################################################################
+# The commands that construct each widget used in the menu are given   #
+# below.  The widgets are numbered from 0 and interlayed with          #
+# placement info that decribes how the widgets are to be integrated    #
+# with the rest of the menu. Comments for the widgets are in mmpe.tcl  #
+########################################################################
+# NOTE: The resulting widget names are hardcoded into the
+# <mmpe.tcl:ListButtons> proc.  Changes to this file may need to
+# be reflected there.  (See "GIANT KLUDGE" comment.)
+#
+  0:label+entry $buttonname $label 20 "-textvar vals($ButtonNow)" \
+     "NewVal $ButtonNow"
+  0:-side top -fill x
+  1:radiomultientrybutton  $buttonname $label 4 $name $title 5 \
+     "NewVal2 $ButtonNow $offset $a.$ButtonNow.$name.entry"
+  1:-side top -fill x
+  2:labelandradiobutton $buttonname $tag $label $title \
+     "ChangeMif2 $title $ButtonNow $NULL; SyncMatDisplay" \
+     selectedButton_anistype
+  2:-side left -fill x
+  3:radiobuttonandpack $buttonname $label $title \
+     "ChangeMif2 $title $ButtonNow $NULL; SyncMatDisplay" \
+     selectedButton_anistype
+  3:-side left -fill x
+  4:ListButtons $buttonname  materials
+  4:-side left -fill x
+  5:labelandradiobutton $buttonname $tag $label $title \
+     "ChangeMif2 $title $ButtonNow $NULL " selectedButton_anisinit
+  5:-side left -fill x
+  6:radiobuttonandpack $buttonname $label $title \
+     "ChangeMif2 $title $ButtonNow $NULL " selectedButton_anisinit
+  6:-side left -fill x
+##########################################################################
+#The remainder of the file gives the labeling for each widget and defines
+#the mif file entry that the widget controls.
+#Consider the following mif file fragment,
+#...
+#ms:800E3
+#a:13E-12
+#demag type: 3dslab
+#...
+#The data on the left of the colon in the above example is known as a
+#mif entry.  The fields on the right of the colon can equal many things.
+#For example, demag type can be set to 3dslab, 3dcharge, etc.
+#Each thing that the mif entry can be changed to is called a choice.
+#Note that some entries, such as ms, can only be set to one type of
+#data so those entries will only have one choice defined.
+#The format for the remainder of the file is:
+#Number of Mif entries: a number equal the number of entries
+#                        changed by menu e.g.: 5
+# Data Change: defines the mif entry, e.g.: demag type, that is
+#              changed by the widget.
+# Number of choices: Total number of data types that are defined for a
+#              given mif entry.
+# 0:the specification of the choice's properties. using the format
+# number:choice name!command number!displayed label i.e.
+# Choice Number:$title!widget number (see above)!$label
+# this structure repeats for all mif entries
+##########################################################################
+ Number of Mif file entries changed by this window: 10
+ #order:choice name!command number!displayed label
+ #Choice Number:$title!widget number (see above)!$label
+  Data Change: none
+   Number of Choices: 1
+    0:ether!4
+  Data Change:material name
+   Number of Choices: 1
+    0:material name!0!Material Name
+  Data Change:ms
+   Number of Choices: 1
+    0:ms!0!Ms (A/m)
+  Data Change:a
+   Number of Choices: 1
+    0:a!0!A (J/m)
+  Data Change: k1
+   Number of Choices: 1
+    0:k1!0!K1 (J/m^3)
+  Data Change: damp coef
+   Number of Choices: 1
+    0:damp coef!0!Damp Coef
+  Data Change:anisotropy type
+   Number of Choices: 2
+    0:uniaxial!2!Uniaxial
+    1:cubic!3!Cubic
+  Data Change:anisotropy init
+   Number of Choices: 3
+    0:constant!5!Constant
+    1:uniformxy!6!Uniform XY
+    2:uniforms2!6!Uniform S2
+  Data Change:anisotropy dir1
+   Number of Choices: 1
+    0:anistropy dir1!1!  Dir 1   x, y, z
+  Data Change:anisotropy dir2
+   Number of Choices: 1
+    0:anistropy dir2!1!  Dir 2   x, y, z
+ #end of data changes

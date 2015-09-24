@@ -1,0 +1,98 @@
+\section{Data Archive: mmArchive}\label{sec:mmarchive}%
+\index{application!mmArchive}\index{data!save}
+
+\begin{center}
+\includepic{mmarchive-ss}{mmArchive Screen Shot}
+\end{center}
+
+\ssechead{Overview}
+The application \app{mmArchive} provides automated vector field and data
+table storage services.  Although
+\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}
+and
+\hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+(Sec.~}{)}{sec:mmgraph}\index{application!mmGraph}
+are able to save such data under the direction of the user, there are
+situations where it is more convenient to write data to disk without
+interactive control.
+
+\app{mmArchive} does not present a user interface window of its own,
+but like the {\hyperrefhtml{\app{Oxs solvers}}{\app{Oxs solvers}
+(Sec.~}{)}{sec:oxs}}\index{application!Oxs}
+relies on {\hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
+(Sec.~}{)}{sec:mmlaunch}}\index{mmLaunch~user~interface} to
+provide an interface on its behalf.  Because \app{mmArchive} does not
+require a window, it is possible on \Unix\ systems to bring down the X
+(window) server\index{platform!Unix!X~server} and still keep
+\app{mmArchive} running in the background.
+
+\ssechead{Launching}
+\app{mmArchive} may be started either by selecting the
+\btn{mmArchive} button on \app{mmLaunch}
+by \app{Oxsii/Boxsi} via a
+\htmlonlyref{\cd{Destination}}{html:destinationCmd}
+command in a 
+{\hyperrefhtml{\MIF~2 file}{\MIF~2 file
+(Sec.~}{)}{sec:mif2format}}\index{Destination~command~(MIF)},
+or from the command line via
+\begin{verbatim}
+tclsh oommf.tcl mmArchive [standard options]
+\end{verbatim}
+
+When the \btn{mmArchive} button of \app{mmLaunch} is invoked,
+\app{mmArchive} is launched with the {{\tt -tk 0}} option.
+This allows \app{mmArchive} to continue running if the X
+window server is killed.  The {{\tt -tk 1}} option is useful
+only for enabling the {{\tt -console}} option for debugging.
+
+As noted above, \app{mmArchive} depends upon
+\app{mmLaunch}\index{mmLaunch~user~interface} to provide an interface.
+The entry for an instance of \app{mmArchive} in the
+\btn{Threads} column of any running copy of \app{mmLaunch} has a
+checkbutton next to it.  This button toggles the presence of a user
+interface window through which the user may control that instance of
+\app{mmArchive}.
+
+\ssechead{Inputs}
+\app{mmArchive} accepts vector field and data table style input from
+client applications (typically running solvers) on its network (socket)
+interface.
+
+\ssechead{Outputs}\index{data!save}
+The client applications that send data to \app{mmArchive} control the
+flow of data.  \app{mmArchive} copies the data it receives into files
+specified by the client.  There is no interactive control to select the
+names of these output files.  A simple status line shows the most recent
+vector file save, or data table file open/close event.
+
+For data table output, if the output file already exists then the new
+data is appended to the end of the file.  The data records for each
+session are sandwiched between ``Table Start'' and ``Table End''
+records.  See the \hyperrefhtml{ODT format documentation}{ODT format
+documentation (Sec.~}{)}{sec:odtformat}\index{file!data~table} for
+explanation of the data table file structure.  It is the
+responsibility of the user to insure that multiple data streams are
+not directed to the same data table file at the same time.
+
+For vector field output, if the output file already exists then the
+old data is deleted and replaced with the current data.  See the
+\hyperrefhtml{OVF documentation}{OVF documentation
+(Sec.~}{)}{sec:vfformats}\index{file!vector~field} for information
+about the vector field output format.
+
+\ssechead{Controls}
+The \btn{Exit} in the \app{mmLaunch}-supplied user interface terminates
+\app{mmArchive}.  Simply closing the user interface window does not
+terminate \app{mmArchive}, but only hides the control window.  To kill
+\app{mmArchive} the \btn{Exit} button must be pressed.
+
+\ssechead{Known Bugs}
+\app{mmArchive} appends data table output to the file specified by the
+source client application (e.g., a running solver).  If, at the same
+time, more than one source specifies the same file, or if the the same
+source sends data table output to more than one instance of
+\app{mmArchive}, then concurrent writes to the same file may corrupt the
+data in that file.  It is the responsibility of the user to ensure this
+does not happen; there is at present no file locking mechanism in
+\OOMMF\ to protect against this situation.

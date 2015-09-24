@@ -1,0 +1,87 @@
+# MIF 2.1
+# MIF Example File: spinvalve.mif
+# Description: Spin valve example, with no exchange coupling between the
+#  layers.
+#
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+Specify Oxs_BoxAtlas:top {
+   xrange {0 400e-9}
+   yrange {0 200e-9}
+   zrange {6e-9 9e-9}
+}
+
+Specify Oxs_MultiAtlas:atlas {
+   atlas :top
+   atlas { Oxs_BoxAtlas:spacer {
+       xrange {0 400e-9}
+       yrange {0 200e-9}
+       zrange {3e-9 6e-9}
+   }   }
+   atlas { Oxs_BoxAtlas:bottom {
+       xrange {0 400e-9}
+       yrange {0 200e-9}
+       zrange {0 3e-9}
+   }   }
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 3e-9}
+  atlas :atlas
+}
+
+Specify Oxs_Exchange6Ngbr {
+  atlas :atlas
+  default_A 30e-12
+  A {
+    spacer spacer 0
+    spacer top 0
+    spacer bottom 0
+  }
+}
+
+# Add biasing field to bottom layer. 40 kA/m is approximately 500 Oe.
+Specify Oxs_FixedZeeman:Bias {
+  field { Oxs_AtlasVectorField {
+    atlas :atlas
+    default_value {0. 0. 0.}
+    values {
+	bottom  {39.78874e3 0. 0.}
+    }
+  }}
+}
+
+# Stepped applied field
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+     {    0  0  0   500  5  0   25 }
+     {  500  5  0  -500 -5  0   25 }
+     { -500 -5  0   500  5  0   25 }
+  }
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_RungeKuttaEvolve:evolve {
+  alpha 0.5
+}
+
+Specify Oxs_TimeDriver {
+ basename spinvalve
+ evolver :evolve
+ comment {1 deg/ns = 17453293 rad/sec; If Ms=8.6e5, and lambda is small,
+         then mxh=1e-6 translates into dm/dt = 2e5 rad/sec = 0.01 deg/ns}
+ stopping_dm_dt .01
+ mesh :mesh
+ Ms  { Oxs_AtlasScalarField {
+     atlas :atlas
+     default_value 0
+     values {
+        top 1400e3
+        bottom 1400e3
+     }
+ }}
+ m0 {10 1 0}
+}

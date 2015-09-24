@@ -1,0 +1,9 @@
+# ODT 1.0
+# Table Start
+# Title: mmArchive Data Table, Thu Dec 15 01:32:46 EST 2011
+# Columns: {UHH_ThetaEvolve::Total energy} {UHH_ThetaEvolve::Energy calc count} {UHH_ThetaEvolve::Max dm/dt} UHH_ThetaEvolve::dE/dt {UHH_ThetaEvolve::Delta E} Oxs_TimeDriver::Iteration {Oxs_TimeDriver::Stage iteration} Oxs_TimeDriver::Stage Oxs_TimeDriver::mx   Oxs_TimeDriver::my   Oxs_TimeDriver::mz   {Oxs_TimeDriver::Last time step} {Oxs_TimeDriver::Simulation time}
+# Units:                  J                                 {}                             deg/ns                     J/s                       J                         {}                            {}                          {}                   {}                   {}                   {}                          s                                 s                
+                 0                                  1                                75398.830585813499        0                        0                         0                             0                           0                     1                    0                    0                          0                                0                         
+                 0                                  2                                71077.833537837098        0                        0                         1                             1                           0                     0.99653189508451701  0.000116005451070735 -1.84479246755074e-06        2.0000000000000001e-13              2.0000000000000001e-13       
+                 0                                  3                                78711.989151014393        0                        0                         2                             2                           0                     0.99307933771777701  0.00060118379840722698 -0.00066781241076135705        2.0000000000000001e-13              4.0000000000000001e-13       
+# Table End

@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Vector Field File Format (OVF)</TITLE>
+<META NAME="description" CONTENT="Vector Field File Format (OVF)">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Troubleshooting.html">
+<LINK REL="previous" HREF="Data_Table_File_Format_ODT.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="OVF_1.0_format.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html886"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html882"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html876"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html888"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html884"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html887"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<B> Up:</B> <A NAME="tex2html883"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html877"
+  HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION000200000000000000000"></A><A NAME="sec:vfformats"></A>
+<BR>
+Vector Field File Format (OVF)
+</H1>
+Vector field files<A NAME="19882"></A> specify vector quantities
+(e.g., magnetization or magnetic flux density) as a function of spatial
+position.  The <I>OOMMF Vector Field</I> (OVF) format is the output
+vector field file format used by both the
+<A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve">2D</A> and
+<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">3D</A>
+micromagnetic solvers.  It is also the input data type read by
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp</B></A>.  There
+are three versions of the OVF format supported by OOMMF.  The
+OVF&nbsp;1.0 and 2.0 formats are preferred formats and the only ones
+written by OOMMF software.  They support both rectangular and
+irregular meshes, in binary and ASCII text.
+
+<P>
+The OVF&nbsp;0.0 format (formerly SVF<A NAME="19896"></A>)
+is an older, simpler format that can be useful for importing
+three-dimensional vector
+field data into OOMMF from other programs.  (A fourth format, the
+<I>VecFil<A NAME="19897"></A></I> or <I>Vector Input/Output</I>
+(VIO<A NAME="19899"></A>) format, was used by some precursors to the OOMMF code.  Although OOMMF is able to read the VIO format, its use is
+deprecated.)
+
+<P>
+In all these formats, the field domain (i.e., the spatial extent) lies
+across three dimensions, with units typically expressed in meters or
+nanometers.  In all the formats except the OVF&nbsp;2.0 format, the field
+values are also three dimensional; the value units are more varied, but
+are most often Tesla or A/m.  The OVF&nbsp;2.0 format is more general, in
+that the field values can be of any arbitrary dimension <B><I>N</I> &gt; 0</B>
+<!-- MATHEND
+ 
+ -->
+.  (This
+dimension, however, is fixed within the file.)  If <B><I>N</I> = 3</B>
+<!-- MATHEND
+ 
+ -->
+, then the
+OVF&nbsp;2.0 format supports the same types of data as the OVF&nbsp;1.0
+format, but another common case is <B><I>N</I> = 1</B>
+<!-- MATHEND
+ 
+ -->
+, which represents scalar
+fields, such as energy density (in say, J/m<B><SUP>3</SUP></B>
+<!-- MATHEND
+ 
+ -->
+).
+
+<P>
+The recommended file extensions for OVF files are <TT><B>.omf</B></TT> for
+magnetization files, <TT><B>.ohf</B></TT> for magnetic field (<B>H</B>) files, <TT><B>.obf</B></TT> 
+for magnetic flux density (<B>B</B>) files,  <TT><B>.oef</B></TT> for energy density
+files, or <TT><B>.ovf</B></TT> for generic files.  
+
+<P>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html890"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<UL>
+<LI><A NAME="tex2html891"
+  HREF="OVF_1.0_format.html#SECTION000201100000000000000">Segment Header block</A>
+<LI><A NAME="tex2html892"
+  HREF="OVF_1.0_format.html#SECTION000201200000000000000">Data block</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html893"
+  HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
+<LI><A NAME="tex2html894"
+  HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html886"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html882"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html876"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html889"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html884"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

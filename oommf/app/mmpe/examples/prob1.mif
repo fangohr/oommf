@@ -1,0 +1,20 @@
+# MIF 1.1
+ms:800e3
+a:13e-12
+k1:0.5e3
+anisotropy type:uniaxial
+anisotropy dir1:0 1 0
+demag type:constmag
+part height:2e-6
+part width:1e-6
+part thickness:20e-9
+cell size:20e-9
+init mag:uniform 90 89
+base output filename:prob1
+log level:1
+randomizer seed:1
+user interaction level:1
+user report code:500
+converge mxh value:1e-5
+randomizer seed:1
+field range: 0.0008728 .05 0  -0.0008728 -.05 0  50

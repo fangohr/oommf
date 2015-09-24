@@ -1,0 +1,9 @@
+# OOMMF: irregular mesh v0.0
+## Applied field input file, used by sliding.mif example; Index 2/4.
+## Boundary-XY: 0.0 0.0  2.0 0.0  2.0 1.0  0.0 1.0  0.0 0.0
+## Grid step: .25 1 0
+#  x      y      z        m_x      m_y      m_z
+  0.25   0.5    0.0       0.0      0.0      0.0
+  0.75   0.5    0.0       0.0      1.0      0.0
+  1.25   0.5    0.0       0.0      0.0      0.0
+  1.75   0.5    0.0       0.0      0.0      0.0

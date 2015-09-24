@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Documentation Viewer: mmHelp</TITLE>
+<META NAME="description" CONTENT="Documentation Viewer: mmHelp">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Command_Line_Utilities.html">
+<LINK REL="previous" HREF="Data_Archive_mmArchive.html">
+<LINK REL="up" HREF="userguide.html">
+<LINK REL="next" HREF="Command_Line_Utilities.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html512"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html508"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html502"
+  HREF="Data_Archive_mmArchive.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html514"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html510"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html513"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Up:</B> <A NAME="tex2html509"
+  HREF="userguide.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html503"
+  HREF="Data_Archive_mmArchive.html">Data Archive: mmArchive</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION000160000000000000000"></A><A NAME="sec:mmhelp"></A><A NAME="16046"></A>
+<BR>
+Documentation Viewer: mmHelp
+</H1>
+
+<P>
+<DIV ALIGN="CENTER">
+<IMG ALT="mmHelp Screen Shot" SRC="../giffiles/mmhelp-ss.gif">
+
+</DIV>
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Overview</B></FONT>
+<BR>
+The application <B>mmHelp</B> manages the display and navigation of
+hypertext (HTML) help files<A NAME="16053"></A>.  
+It presents an interface similar
+to that of World Wide Web browsers<A NAME="16054"></A>.
+
+<P>
+Although <B>mmHelp</B> is patterned after World
+Wide Web browsers, it does not have all of their capabilities.
+<B>mmHelp</B> displays only a simplified form of hypertext
+required to display the OOMMF help pages.
+It is not able to display many of
+the advanced hypertext features provided by modern World Wide Web
+browsers.  In the current release, <B>mmHelp</B> is not able to 
+follow <TT>http:</TT> URLs.  It only follows <TT>file:</TT> URLs<A NAME="16060"></A>,
+such as
+<DIV ALIGN="CENTER">
+file:/path/to/oommf/doc/userguide/userguide/Documentation_Viewer_mmHelp.html
+
+</DIV>
+OOMMF software can be <A HREF="Advanced_Installation.html#sec:custom">customized</A> to use another program to display the HTML help
+files<A NAME="16067"></A>.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Launching</B></FONT>
+<BR><B>mmHelp</B> may be launched from the command line via
+<PRE>
+tclsh oommf.tcl mmHelp [standard options] [URL]
+</PRE>
+The command line argument <TT>URL</TT> is the URL of the first
+page (home page) to be displayed.  If no URL is specified,
+<B>mmHelp</B> displays the Table of Contents of the <EM>OOMMF User's
+Guide</EM> by default.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Controls</B></FONT>
+<BR>
+Each page of hypertext is displayed in the main <B>mmHelp</B> window.
+Words which are underlined and colored blue are hyperlinks which <B>mmHelp</B> knows how to follow.  Words which are underlined and colored red
+are hyperlinks which <B>mmHelp</B> does not know how to follow.  Moving
+the mouse over a hyperlink displays the target URL of the hyperlink in
+the <FONT COLOR="#800000"><B>Link:</B></FONT> line above the display window.  Clicking on a blue
+hyperlink will follow the hyperlink and display a new page of hypertext.
+
+<P>
+<B>mmHelp</B> keeps a list of the viewed pages in order of view.
+Using the <FONT COLOR="#800000"><B>Back</B></FONT> and <FONT COLOR="#800000"><B>Forward</B></FONT> buttons, 
+the user may move backward and forward through 
+this list of pages.
+The <FONT COLOR="#800000"><B>Home</B></FONT> button causes the first page to be displayed, 
+allowing the user to start again from the beginning.  These
+three buttons have corresponding entries in the 
+<FONT COLOR="#800000"><B>Navigate</B></FONT> menu.
+
+<P>
+Use the menu selection <FONT COLOR="#800000"><B>File|Open</B></FONT> to directly select
+a file from the file system to be displayed by <B>mmHelp</B>.
+
+<P>
+The menu selection <FONT COLOR="#800000"><B>File|Refresh</B></FONT>, or 
+the <FONT COLOR="#800000"><B>Refresh</B></FONT> button causes <B>mmHelp</B> to reload and
+redisplay the current
+page.  This may be useful if the display becomes corrupted,
+or for repeatedly loading a hypertext file which is being
+edited.
+
+<P>
+When <B>mmHelp</B> encounters hypertext elements it does not
+recognize, it will attempt to work around the problem.  
+However, in some cases it will not be able to make sense of 
+the hypertext, and will display an error message.  Documentation
+authors should take care to use only the hypertext elements
+supported by <B>mmHelp</B> in their documentation files.  Users
+should never see such an error message.
+
+<P>
+<B>mmHelp</B> displays error messages in one of two ways: 
+within the display window, or in a separate window.  
+Errors reported in the display window replace the display 
+of the page of hypertext.
+They usually indicate that the hypertext page could not be
+retrieved, or that its contents are not hypertext.  File
+permission errors are also reported in this way.
+
+<P>
+Errors reported in a separate window are usually due to a
+formatting error within the page of hypertext.  Selecting the 
+<FONT COLOR="#800000"><B>Continue</B></FONT> button of the error window instructs <B>mmHelp</B> to 
+attempt to resume display of the hypertext page beyond the error.  
+Selecting <FONT COLOR="#800000"><B>Abort</B></FONT> abandons further display.  
+
+<P>
+The menu selection <FONT COLOR="#800000"><B>Options|Font scale...</B></FONT> brings up a
+dialog box through which the user may select the scale of
+the fonts to use in the display window, relative to their
+initial size.
+
+<P>
+ 
+<P>
+The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT> or the <FONT COLOR="#800000"><B>Exit</B></FONT> button
+terminates the <B>mmHelp</B> application.  
+The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides the usual help facilities.
+
+<P>
+
+<P>
+<FONT SIZE="+2"><B>Known Bugs</B></FONT>
+<BR><B>mmHelp</B> is pretty slow.  You may be happier using
+<A HREF="Advanced_Installation.html#sec:custom">local customization</A> methods to replace it
+with another more powerful HTML browser.  Also, we have noticed that the
+underscore character in the italic font is not displayed (or is
+displayed as a space) at some font sizes on some platforms.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html512"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html508"
+  HREF="userguide.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html502"
+  HREF="Data_Archive_mmArchive.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html515"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html510"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

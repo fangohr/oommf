@@ -1,0 +1,114 @@
+\section{\OOMMF\ Variable Types and Macros}\label{sec:vartypes}
+{%
+The following typedefs are defined in the
+\fn{oommf/pkg/oc/{\it{platform}}/ocport.h} header file; this file is
+created by the \app{pimake} build process (see
+\fn{oommf/pkg/oc/procs.tcl}), and contains platform and machine
+specific information.
+\newcommand{\gbs}{\hspace{0.5em}}
+\begin{itemize}
+\item{\texttt{OC\_BOOL}} \gbs Boolean type, unspecified width.
+\item{\texttt{OC\_BYTE}} \gbs Unsigned integer type exactly one byte wide.
+\item{\texttt{OC\_CHAR}} \gbs Character type, may be signed or unsigned.
+\item{\texttt{OC\_UCHAR}} \gbs Unsigned character type.
+\item{\texttt{OC\_SCHAR}} \gbs Signed character type.  If \texttt{signed char}
+  is not supported by a given compiler, then this falls back to a
+  plain \texttt{char}, so use with caution.
+\item{\texttt{OC\_INT2, OC\_INT4}} \gbs Signed integer with width of
+  exactly 2, respectively 4, bytes.
+\item{\texttt{OC\_INT2m, OC\_INT4m}} \gbs Signed integer with width of
+  at least 2, respectively 4, bytes.  A type wider than the minimum
+  may be specified if the wider type is handled faster by the
+  particular machine.
+\item{\texttt{OC\_UINT2, OC\_UINT4, OC\_UINT2m, OC\_UINT4m}} \gbs Unsigned
+  integer versions of the preceding.
+\item{\texttt{OC\_REAL4, OC\_REAL8}} \gbs Four byte, respectively eight
+  byte, floating point variable.  Typically corresponds to \Cplusplus\
+  ``float'' and ``double'' types.
+\item{\texttt{OC\_REAL4m, OC\_REAL8m}} \gbs Floating point variable with
+  width of at least 4, respectively 8, bytes.  A type wider than the minimum
+  may be specified if the wider type is handled faster by the
+  particular machine.
+\item{\texttt{OC\_REALWIDE}} \gbs Widest type natively supported by the
+  underlying hardware.  This is usually the \Cplusplus\ ``long
+  double'' type, but may be overridden by the
+\begin{center}
+  \texttt{program\_compiler\_c++\_typedef\_realwide}
+\end{center}
+  option in the \fn{oommf/config/platform/{\it{platform}}.tcl} file.
+\end{itemize}
+
+The \fn{oommf/pkg/oc/{\it{platform}}/ocport.h} header file also
+defines the following macros for use with the floating point variable
+types:
+\begin{itemize}
+\item{\texttt{OC\_REAL8m\_IS\_DOUBLE}} \gbs True if \texttt{OC\_REAL8m} type
+  corresponds to the \Cplusplus\ ``double'' type.
+\item{\texttt{OC\_REAL8m\_IS\_REAL8}} \gbs True if \texttt{OC\_REAL8m} and
+  \texttt{OC\_REAL8} refer to the same type.
+\item{\texttt{OC\_REAL4\_EPSILON}} \gbs The smallest value that can be added to
+  a \texttt{OC\_REAL4} value of ``1.0'' and yield a value different from
+  ``1.0''.  For IEEE 754 compatible floating point, this should be
+  \texttt{1.1920929e-007}.
+\item{\texttt{OC\_SQRT\_REAL4\_EPSILON}}
+    \gbs Square root of the preceding.
+\item{\texttt{OC\_REAL8\_EPSILON}} \gbs The smallest value that can be added to
+  a \texttt{OC\_REAL8} value of ``1.0'' and yield a value different from
+  ``1.0''.  For IEEE 754 compatible floating point, this should be
+  \texttt{2.2204460492503131e-016}.
+\item{\texttt{OC\_SQRT\_REAL8\_EPSILON, OC\_CUBE\_ROOT\_REAL8\_EPSILON}}
+    \gbs Square and cube roots of the preceding.
+\item{\texttt{OC\_FP\_REGISTER\_EXTRA\_PRECISION}} \gbs True if
+  intermediate floating point operations use a wider precision than
+  the floating point variable type; notably, this occurs with some
+  compilers on x86 hardware.
+\end{itemize}
+
+Note that all of the above macros have a leading ``\texttt{OC\_}''
+prefix.  The prefix is intended to protect against possible name
+collisions with system header files.  Versions of some of these macros
+are also defined without the prefix; these definitions represent
+backward support for existing \OOMMF\ extensions.  All new code
+should use the versions with the ``\texttt{OC\_}'' prefix, and old code
+should be updated where possible.  The complete list of deprecated
+macros is:
+\begin{quote}
+\texttt{BOOL, UINT2m, INT4m, UINT4m,
+    REAL4, REAL4m, REAL8, REAL8m, REALWIDE,
+    REAL4\_EPSILON, REAL8\_EPSILON,
+    SQRT\_REAL8\_EPSILON, CUBE\_ROOT\_REAL8\_EPSILON,
+    FP\_REGISTER\_EXTRA\_PRECISION
+}
+\end{quote}
+
+Macros for system identification:
+\begin{itemize}
+\item{\texttt{OC\_SYSTEM\_TYPE}} \gbs One of \texttt{OC\_UNIX} or
+  \texttt{OC\_WINDOWS}.
+\item{\texttt{OC\_SYSTEM\_SUBTYPE}} \gbs For unix systems, this is
+    either \texttt{OC\_VANILLA} (general unix) or \texttt{OC\_DARWIN}
+    (Mac OS X).  For Windows systems, this is generally
+    \texttt{OC\_WINNT}, unless one is running out of a Cygwin shell,
+    in which case the value is \texttt{OC\_CYGWIN}.
+\end{itemize}
+
+Additional macros and typedefs:
+\begin{itemize}
+\item{\texttt{OC\_POINTERWIDTH}} \gbs Width of pointer type, in bytes.
+\item{\texttt{OC\_INDEX}} \gbs Typedef for signed array index type;
+  typically the width of this (integer) type matches the width of the
+  pointer type, but is in any event at least four bytes wide and not
+  narrower than the pointer type.
+\item{\texttt{OC\_UINDEX}} \gbs Typedef for unsigned version of
+  OC\_INDEX.  It is intended for special-purpose use only.  In general,
+  use OC\_INDEX where possible.
+\item{\texttt{OC\_INDEX\_WIDTH}} \gbs Width of \texttt{OC\_INDEX} type.
+\item{\texttt{OC\_BYTEORDER}} Either ``4321'' for little endian machines,
+  or ``1234'' for big endian.
+\item{\texttt{OC\_THROW(x)}} \gbs Throws a \Cplusplus\ exception with
+  value ``x''.
+\item{\texttt{OOMMF\_THREADS}} \gbs True threaded (multi-processing) builds.
+\item{\texttt{OC\_USE\_NUMA}} \gbs If true, then NUMA (non-uniform memory
+  access) libraries are available.
+\end{itemize}
+}

@@ -1,0 +1,254 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>The OVF 2.0 format</TITLE>
+<META NAME="description" CONTENT="The OVF 2.0 format">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="OVF_0.0_format.html">
+<LINK REL="previous" HREF="OVF_1.0_format.html">
+<LINK REL="up" HREF="Vector_Field_File_Format_OV.html">
+<LINK REL="next" HREF="OVF_0.0_format.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html921"
+  HREF="OVF_0.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html917"
+  HREF="Vector_Field_File_Format_OV.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html911"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html923"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html919"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html922"
+  HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
+<B> Up:</B> <A NAME="tex2html918"
+  HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
+<B> Previous:</B> <A NAME="tex2html912"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000202000000000000000"></A><A NAME="sec:ovf20format"></A>
+<BR>
+The OVF 2.0 format
+</H2>
+
+<A NAME="pt:ovf20format"></A>
+The OVF&nbsp;2.0 format is a modification to the OVF&nbsp;1.0 format that also
+supports fields across three spatial dimensions but having values of
+arbitrary (but fixed) dimension.  In the OVF&nbsp;2.0 format:
+
+<OL>
+<LI>The first line reads: <code># OOMMF OVF 2.0</code> for both
+regular and irregular meshes.
+</LI>
+<LI>In the Segment Header block, the new record <TT>valuedim</TT> is
+required.  This must specify an integer value, <B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+, bigger or equal to
+one.
+</LI>
+<LI>In the Segment Header block, the new <TT>valueunits</TT> record
+replaces the <TT>valueunit</TT> record of OVF&nbsp;1.0.  Instead of a single
+unit value, <TT>valueunits</TT> should be a (Tcl) list of value units, each
+treated as an unparsed label.  The list should either have length <B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+(as specified by <TT>valuedim</TT>), in which case each element denotes
+the units for the corresponding dimension index, or else the list
+should have length one, in which case the single element is applied to
+all dimension indexes.  The old <TT>valueunit</TT> record is not allowed
+in OVF&nbsp;2.0 files.
+</LI>
+<LI>In the Segment Header block, the new <TT>valuelabels</TT> record is
+required.  This should be an <B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+-item (Tcl) list of value labels, one
+for each value dimension.  The labels identify the quantity in each
+dimension.  For example, in an energy density file, <B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+ would be 1,
+<TT>valueunits</TT> could be J/m<B><SUP>3</SUP></B>
+<!-- MATHEND
+ 
+ -->
+, and <TT>valuelabels</TT> might be
+``Exchange energy density''.
+</LI>
+<LI>In the Segment Header block, the records
+<TT>valuemultiplier</TT>, <TT>boundary</TT>, <TT>ValueRangeMaxMag</TT> and
+<TT>ValueRangeMinMag</TT> of the OVF&nbsp;1.0 format are not supported.
+</LI>
+<LI>In the Data block, for regular meshes each record consists of
+<B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+ values, where <B><I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+ is the value dimension as specified by the
+<TT>valuedim</TT> record in the Segment Header.  The node ordering is
+the same as for the OVF&nbsp;1.0 format.  For irregular meshes, each
+record consists of <B><I>N</I> + 3</B>
+<!-- MATHEND
+ 
+ -->
+ values, where the first three values are the
+<B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+ and <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+ components of the node position.  For data blocks
+using text representation with <B><I>N</I> = 3</B>
+<!-- MATHEND
+ 
+ -->
+, the Data block in
+OVF&nbsp;1.0 and OVF&nbsp;2.0 files are exactly the same.
+</LI>
+<LI>The data layout for data blocks using binary representation is
+also the same as in OVF&nbsp;1.0 files, except that all binary values are
+written in a little endian (LSB) order, as compared to the MSB order
+used in the OVF&nbsp;1.0 format.  This includes the initial check value
+(IEEE floating point value 1234567.0 for 4-byte format, corresponding
+to the LSB hex byte sequence 38 B4 96 49, and 123456789012345.0 for
+8-byte format, corresponding to the LSB hex byte sequence 40 DE 77 83
+21 12 DC 42) as well as the subsequent data records.
+</LI>
+</OL>
+In all other respects, the OVF&nbsp;1.0 and OVF&nbsp;2.0 are the same.  An
+example OVF&nbsp;2.0 file for an irregular mesh with <B><I>N</I> = 2</B>
+<!-- MATHEND
+ 
+ -->
+<A HREF="#fig:ovf20sample">follows</A>.
+
+<P>
+<A NAME="fig:ovf20sample"></A>  
+  
+  <BR CLEAR="ALL">
+<HR><PRE>
+# OOMMF OVF 2.0
+#
+# Segment count: 1
+#
+# Begin: Segment
+# Begin: Header
+#
+# Title: Long file name or title goes here
+#
+# Desc: Optional description line 1.
+# Desc: Optional description line 2.
+# Desc: ...
+#
+## Fundamental mesh measurement unit.  Treated as a label:
+# meshunit: nm
+#
+# meshtype: irregular
+# pointcount: 5      ## Number of nodes in mesh
+#
+# xmin:    0.    ## Corner points defining mesh bounding box in
+# ymin:    0.    ## 'meshunit'.  Floating point values.
+# zmin:    0.
+# xmax:   10.
+# ymax:    5.
+# zmax:    1.
+#
+# valuedim: 2    ## Value dimension
+#
+## Fundamental field value units, treated as labels (i.e., unparsed).
+## In general, there should be one label for each value dimension.
+# valueunits:  J/m^3  A/m
+# valuelabels: "Zeeman energy density"  "Anisotropy field"
+#
+# End: Header
+#
+## Each data records consists of N+3 values: the (x,y,z) node
+## location, followed by the N value components.  In this example,
+## N+3 = 5, the two value components are in units of J/m^3 and A/m,
+## corresponding to Zeeman energy density and a magneto-crystalline
+## anisotropy field, respectively.
+#
+# Begin: data text
+0.5 0.5 0.5  500.  4e4
+9.5 0.5 0.5  300.  5e3
+0.5 4.5 0.5  400.  4e4
+9.5 4.5 0.5  200.  5e3
+5.0 2.5 0.5  350.  2.1e4
+# End: data text
+# End: segment
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 12:
+    Commented OVF&nbsp;2.0 sample
+file.
+    <A HREF="#sec:ovf20format">(Description.)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html921"
+  HREF="OVF_0.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html917"
+  HREF="Vector_Field_File_Format_OV.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html911"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html924"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html919"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

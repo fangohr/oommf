@@ -1,0 +1,77 @@
+Name of Window: .simdetails 
+#######################################################################
+# The commands that construct each widget used in the menu are given   #
+# below.  The widgets are numbered from 0 and interlayed with          #
+# placement info that decribes how the widgets are to be integrated    #
+# with the rest of the menu. Comments for the widgets are in dmif.tcl  #
+#######################################################################
+#commands; commands are numbered from 0 and interlayed with placement info
+Number of Commands: 5 # the total number of commands used by the menu
+#$buttonname is the tk path to the created widget 
+#label is the text of the button
+#title is the mif name of what the button is changing
+0:radiobuttonandpack  $buttonname $label $title \
+		      "ChangeMif2 $title $ButtonNow $NULL"  \
+                      selectedButton_demagtype
+0:-side left -fill x -expand 1
+1:labelandradiobutton $buttonname $tag $label $title \
+		      "ChangeMif2 $title $ButtonNow $NULL" \
+                      selectedButton_demagtype
+1:-side left -fill x -expand 1
+2:radiobuttonandpack  $buttonname $label $title \
+		      "ChangeMif2 $title $ButtonNow $NULL" \
+                      selectedButton_demagtype "-state disabled"
+2:-side left -fill x -expand 1
+3:radiobuttonandpack  $buttonname $label $title \
+		      "ChangeMif2 $title $ButtonNow $NULL"  \
+                      selectedButton_solvertype
+3:-side left -fill x -expand 1
+4:labelandradiobutton $buttonname $tag $label $title \
+		      "ChangeMif2 $title $ButtonNow $NULL" \
+                      selectedButton_solvertype
+4:-side left -fill x -expand 1
+#end of commands
+##########################################################################
+#The remainder of the file gives the labeling for each widget and defines  
+#the mif file entry that the widget controls.                             
+#Consider the following mif file fragment,                               
+#...                                                                     
+#ms:800E3                                                                
+#a:13E-12                                                                
+#demag type: 3dslab                                                      
+#...                                                                    
+#The data on the left of the colon in the above example is known as a
+#mif entry.  The fields on the right of the colon can equal many things.
+#For example, demag type can be set to 3dslab, 3dcharge, etc.
+#Each thing that the mif entry can be changed to is called a choice.
+#Note that some entries, such as ms, can only be set to one type of
+#data so those entries will only have one choice defined.
+#The format for the remainder of the file is:
+#Number of Data Changes: a number equal the number of entries
+#                        changed by menu e.g.: 5
+# Data Change: defines the mif entry, e.g.: demag type, that is
+#              changed by the widget.
+# Number of choices: Total number of data types that are defined for a
+#              given mif entry.
+# 0:the specification of the choice's properties. using the format
+# number:choice name!command number!displayed label i.e.
+# Choice Number:$title!widget number (see above)!$label
+# this structure repeats for all mif entries
+##########################################################################
+Number of Data Changes: 2 #the total number of data changes that can
+                          #be made by the window
+Data Change: demag type #changes the demag mif field
+Number of Choices: 5 #list of choices for given Data Change
+0:constmag!1!ConstMag
+1:3dslab!2!3dSlab
+2:3dcharge!2!3dCharge
+3:fastpipe!2!FastPipe
+4:none!0!None
+Data Change: solver type #changes the demag mif field
+Number of Choices: 5 #list of choices for given Data Change
+0:euler!4!Euler
+1:rk2!3!RK 2
+2:rk4!3!RK 4
+3:rkf54!3!RKF 5(4)
+4:cg!3!Conjugate-Gradient
+#end of the file

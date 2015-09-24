@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Vector Field File Difference: avfdiff</TITLE>
+<META NAME="description" CONTENT="Vector Field File Difference: avfdiff">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Cyclic_Redundancy_Check_crc.html">
+<LINK REL="previous" HREF="Making_PostScript_from_Vect.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Cyclic_Redundancy_Check_crc.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html625"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html621"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html615"
+  HREF="Making_PostScript_from_Vect.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html627"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html623"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html626"
+  HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
+<B> Up:</B> <A NAME="tex2html622"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html616"
+  HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000176000000000000000"></A><A NAME="sec:avfdiff"></A>
+<BR>
+Vector Field File Difference:
+          avfdiff
+</H2><A NAME="16877"></A><A NAME="16878"></A><A NAME="16879"></A><A NAME="16880"></A><A NAME="16881"></A>
+The <B>avfdiff</B> program computes differences between vector field files
+in any of the <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
+(OVF, VIO).  The input data must lie on rectangular meshes with
+identical dimensions.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>avfdiff</B> launch command is:
+<PRE>
+tclsh oommf.tcl avfdiff [standard options] [info] file-0 file-1 [... file-n]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-info</B></TT></STRONG></DT>
+<DD>Prints statistics on file differences.  If this option is selected
+  then no output files are created.
+</DD>
+<DT><STRONG><TT><B>file-0</B></TT></STRONG></DT>
+<DD>Name of input file to subtract from other files.  Must be either
+  an OVF 1.0 file in the rectangular mesh subformat, or an VIO   file.  Required.
+</DD>
+<DT><STRONG><TT><B>file-1</B></TT></STRONG></DT>
+<DD>Name of first input file from which <TT>file-0</TT> is to be subtracted.
+  Must also be either an OVF 1.0 file in the rectangular mesh
+  subformat, or an VIO file, and must have the same dimensions as
+  <TT>file-0</TT>.  Required.
+</DD>
+<DT><STRONG><TT><B>... file-n</B></TT></STRONG></DT>
+<DD>Optional additional files from which <TT>file-0</TT> is to be
+  subtracted, with the same requirements as <TT>file-1</TT>.
+</DD>
+</DL>
+
+<P>
+For each input file <TT>file-1</TT> through <TT>file-n</TT>, a separate output
+file is generated, in the OVF 1.0 format.  Each output file has a
+name based on the name of corresponding input file, with a <TT>-diff</TT>
+suffix.  If a file with the same name already exists, it will be
+overwritten.
+
+<P>
+For output file format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
+description</A>.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html625"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html621"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html615"
+  HREF="Making_PostScript_from_Vect.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html628"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html623"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

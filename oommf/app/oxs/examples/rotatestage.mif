@@ -1,0 +1,78 @@
+# MIF 2.1
+# MIF Example File: rotatestage.mif
+# Description: Uniform rotating applied field.  Quasi-static simulation
+#     of an angular hysteresis loop.
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+RandomSeed 1
+
+Parameter Happ  100 ;# Applied field strength, in mT
+Parameter Stages 37 ;# Number of stages.  Stage step is 360/($Stages-1)
+                    ## degrees.
+
+Parameter cellsize 5e-9
+
+# Convert Happ from mT to A/m
+set Happ [expr {$Happ*0.001/$mu0}]
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {0  20e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy {
+  K1  5e3
+  axis {0 1 0}
+}
+
+Specify Oxs_UniformExchange {
+  A  12e-12
+}
+
+proc AppFieldSpec { stage_total stage } {
+   # Compute field direction
+   global pi
+   set angle [expr {2*$pi*double($stage)/double($stage_total-1)}]
+   set Hx [expr {cos($angle)}]
+   set Hy [expr {sin($angle)}]
+   set Hz 0.0
+
+   # Construct field object.
+   set spec [subst {Oxs_UniformVectorField {
+      vector {$Hx $Hy $Hz}
+   }}]
+   ## Actually, just
+   ##    set spec [list $Hx $Hy $Hz]
+   ## would suffice since a 3-element list implicitly
+   ## defines an Oxs_UniformVectorField.
+
+   return $spec
+}
+
+
+Specify Oxs_StageZeeman [subst {
+ script {AppFieldSpec $Stages}
+ multiplier $Happ
+ stage_count $Stages
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+ basename rotatestage
+ evolver :evolve
+ stopping_mxHxm 0.1
+ mesh :mesh
+ Ms 800e3
+ m0 { 1 0.02 0.01 }
+}]

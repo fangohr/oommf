@@ -1,0 +1,75 @@
+========== PBC module 2.1 ==========
+Significant changes since 2.0:
+
+  * Changes:
+
+  * New features
+	- lex parameter in klm_uniformexchange, lex = sqrt(2A/mu0*Ms^2)
+	  Works simirarly as in standard Oxs_UniformExchange class 
+	  (in the newest snapshot of OOMMF).
+	  See: M.J. Donahue and R.D. McMichael, "Micromagnetics on curved geometries
+          using rectangular cells: error correction and analysis," IEEE
+          Transactions on Magnetics, 43, 2878-2880 (Jun 2007). (More details are in the 
+          presentation given by Mike in Bonn in 2006 or 2007.)
+	  
+========== PBC module 2.0 ==========
+Significant changes since 1.3:
+
+  * Changes:
+	- Code cleaning according to MD advices. 
+	- Change of file names (kl_ prefix).
+	- Changes in the help file.
+	- Some paraters have different name. 
+	- Infinity-tail is calculated according to the paper.
+	  This improves the results (a bug was present?)
+	- Infinity-tail error is calculated according to the paper.
+	  I see no remarkable influence.
+	- p (power) is not a paremeter any more.
+	  It is fixed to be 3 or -7.
+
+  * New features
+	- Turbo parameter. So far, only for SimpleDemag case.
+	  This leads to calculation speed-up and lower memory consumption. 
+	- Fidelity level parameter is introduced.
+	  
+========== PBC module 1.4 ==========
+Significant changes since 1.3:
+
+  * Changes:
+	- MD corrections: the progress related errors are non-fatal 
+	  (e.g. if no X11 server is present). Also:
+	  such a situation is appriopriately detected.	  
+
+========== PBC module 1.3 ==========
+Significant changes since 1.2:
+
+  * Changes:
+	- Code cleaning according to MD advices. 
+	  Change of file names (kl_ prefix).
+	  Changes in the help file.
+	
+========== PBC module 1.2 ==========
+Significant changes since 1.1:
+
+  * Changes:
+	- Code cleaning to remove compiler warnings.
+
+  * New features
+	- Turbo parameter. So far, only for SimpleDemag case.
+	  This leads to calculation speed-up and lower memory consumption. 
+
+========== PBC module 1.1 released ... ==========
+Significant changes since 1.1:
+
+  * Changes:
+	- zPeriod no more in cell units. Now, it is set in meters.
+	- tensor file name contains zPeriod. In addition to xdim, ydim, & zdim.
+
+  * New features
+	- error estimations written to tensor file (only SimpleDemag case).
+	- parameters are written to the tensor file as part title. This concerns only parameters
+	  that may influence the tensor values. 
+
+  * Bug fixes
+	- error estimations
+

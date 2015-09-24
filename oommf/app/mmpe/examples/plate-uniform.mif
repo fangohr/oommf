@@ -1,0 +1,20 @@
+# MIF 1.1
+ms:800e3
+a:13e-12
+k1:0.5e3
+anisotropy type:uniaxial
+anisotropy dir1:0 1 0
+demag type:fastpipe
+part height:70e-9
+part width:700e-9
+part thickness:10e-9
+cell size:10e-9
+part shape:rectangle
+init mag:uniform 90.0 90.0
+base output filename:plate-uniform
+log level:0
+randomizer seed:1
+user interaction level:1
+user report code:30
+converge mxh value:1e-6
+field type: onefile app/mmpe/examples/plate-uniform.obf -1

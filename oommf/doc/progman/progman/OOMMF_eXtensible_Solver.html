@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>OOMMF eXtensible Solver</TITLE>
+<META NAME="description" CONTENT="OOMMF eXtensible Solver">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="bibliography.html">
+<LINK REL="previous" HREF="OOMMF_Variable_Types_Macros.html">
+<LINK REL="up" HREF="progman.html">
+<LINK REL="next" HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html96"
+  HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html92"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html86"
+  HREF="OOMMF_Variable_Types_Macros.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html98"
+  HREF="progman.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html94"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html97"
+  HREF="Sample_TT_Oxs_Energy_TT_Cla.html">Sample Oxs_Energy Class</A>
+<B> Up:</B> <A NAME="tex2html93"
+  HREF="progman.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html87"
+  HREF="OOMMF_Variable_Types_Macros.html">OOMMF Variable Types and</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00050000000000000000"></A><A NAME="sec:oxs"></A>
+<BR>
+OOMMF eXtensible Solver
+</H1>
+
+<P>
+The OOMMF eXtensible Solver (OXS) top level architecture is shown in
+<A HREF="#fig:oxsclass">the class diagram below</A>.
+The ``Tcl Control Script'' block represents the user interface and
+associated control code, which is written in Tcl.  The
+micromagnetic problem input file is the content of the ``Problem
+Specification'' block.  The input file should be a valid MIF&nbsp;2.0 file
+(see the OOMMF User's Guide for details on the MIF file formats),
+which also happens to be a valid Tcl script.  The rest of the
+architecture diagram represents C++ classes.
+
+<P>
+<DIV ALIGN="CENTER">
+<A NAME="fig:oxsclass"></A> <B>Figure 1: OXS
+top-level class diagram.</B>
+<BR> <IMG ALT="OXS top-level class diagram" SRC="../giffiles/oxsclass.gif">
+
+</DIV>
+
+<P>
+All interactions between the Tcl script level and the core solver are
+routed through the Director object.  Aside from the Director, all other
+classes in this diagram are examples of <TT>Oxs_Ext</TT>
+objects--technically, C++ child classes of the abstract
+<TT>Oxs_Ext</TT> class.  OXS is designed to be extended primarily by the
+addition of new <TT>Oxs_Ext</TT> child classes.
+
+<P>
+The general steps involved in adding an <TT>Oxs_Ext</TT> child class to OXS
+are:
+
+<OL>
+<LI>Add new source code files to <TT><B>oommf/app/oxs/local</B></TT> containing
+your class definitions.  The C++ non-header source code file(s)
+must be given the <TT>.cc</TT> extension.  (Header files are typically
+denoted with the <TT>.h</TT> extension, but this is not mandatory.)
+</LI>
+<LI>Run <B>pimake</B> to compile your new code and link it in to the OXS
+executable.
+</LI>
+<LI>Add the appropriate <TT>Specify</TT> blocks to your input MIF&nbsp;2.0
+files.
+</LI>
+</OL>
+The source code can usually be modeled after an existing <TT>Oxs_Ext</TT>
+object.  Refer to the Oxsii section of the OOMMF User's Guide for a
+description of the standard <TT>Oxs_Ext</TT> classes, or
+<A HREF="Sample_TT_Oxs_Energy_TT_Cla.html#sec:energyexample">below</A> for an annotated example of
+an <TT>Oxs_Energy</TT> class.  Base details on adding a new energy term are
+<A HREF="Writing_New_TT_Oxs_Energy_T.html#sec:energynew">also presented below</A>.
+
+<P>
+The <B>pimake</B> application automatically detects all files in the
+<TT><B>oommf/app/oxs/local</B></TT> directory with the <TT>.cc</TT> extension, and searches
+them for <TT><TT>#</TT>include</TT> requests to construct a build dependency tree.
+Then <B>pimake</B> compiles and links them together with the rest of the
+OXS files into the <B>oxs</B> executable.  Because of the automatic file
+detection, no modifications are required to any files of the standard
+OOMMF distribution in order to add local extensions.
+
+<P>
+Local extensions are then activated by <TT>Specify</TT> requests in the
+input MIF&nbsp;2.0 files.  The object name prefix in the <TT>Specify</TT> block
+is the same as the C++ class name.  All <TT>Oxs_Ext</TT> classes in
+the standard distribution are distinguished by an <TT>Oxs_</TT> prefix.  It
+is recommended that local extensions use a local prefix to avoid name
+collisions with standard OXS objects.  (C++ namespaces are not
+currently used in OOMMF for compatibility with some older C++ compilers.)  The <TT>Specify</TT> block initialization string format is
+defined by the <TT>Oxs_Ext</TT> child class itself; therefore, as the
+extension writer, you may choose any format that is convenient.
+However, it is recommended that you follow the conventions laid out in
+the MIF&nbsp;2.0 file format section of the OOMMF User's Guide.
+
+<P>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html100"
+  HREF="Sample_TT_Oxs_Energy_TT_Cla.html">Sample <TT>Oxs_Energy</TT> Class</A>
+<LI><A NAME="tex2html101"
+  HREF="Writing_New_TT_Oxs_Energy_T.html">Writing a New <TT>Oxs_Energy</TT> Extension</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html96"
+  HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html92"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html86"
+  HREF="OOMMF_Variable_Types_Macros.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html99"
+  HREF="progman.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html94"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>

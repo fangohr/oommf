@@ -1,0 +1,71 @@
+\input{../common/oommfhead}
+\usepackage{l2hbugs}
+
+%\HTMLset{toppage}{progman.html}
+%\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{progman.html}}
+
+\begin{document}
+
+\nocite{*}  % Include all entries from .bib file.  Putting this at the
+	    % top retains the .bib file ordering.
+
+
+\pagenumbering{roman}
+\begin{titlepage}
+\label{page:contents}
+\par
+\vspace*{\fill}
+\begin{center}
+\Large\bf
+\OOMMF\\
+Programming Manual\\[2ex]
+\large
+{\today}
+{}\\[2ex]
+This manual documents release 1.2a3.\\[1ex]
+WARNING: In this alpha release, the
+documentation may not be up to date.\\[1ex]
+WARNING: This document in under construction.
+
+\end{center}
+\vspace{10\baselineskip}
+\begin{abstract}
+This manual provides source code level information on \OOMMF\ (Object Oriented Micromagnetic Framework),
+a public domain micromagnetics program developed at the
+\htmladdnormallink{National Institute of Standards and Technology}
+{http://www.nist.gov/}.  Refer to the \OOMMF\ User's Guide for an
+overview of the project and end-user details.
+\end{abstract}
+\vspace*{\fill}
+\par
+\end{titlepage}
+
+\begin{latexonly}
+\tableofcontents
+\end{latexonly}
+
+% Index cross-references; if these are moved to the bottom of this file
+% then two LaTeX passes are required to get them in the .idx file.
+
+\newpage
+\input{../common/disclaimer-body}
+\newpage
+
+\pagenumbering{arabic}
+
+\include{overview-body}
+\include{pimake-body}
+\include{general-body}
+\include{oxs-body}
+
+%\include{biblio}
+%\bibliographystyle{osa}
+\bibliographystyle{../common/oommf}
+\bibliography{pmbiblio}
+
+\include{credits-body}
+
+
+\printindex
+
+\end{document}

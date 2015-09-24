@@ -1,0 +1,174 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>MIF 1.2</TITLE>
+<META NAME="description" CONTENT="MIF 1.2">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="MIF_1.1.html">
+<LINK REL="up" HREF="Problem_Specification_File_.html">
+<LINK REL="next" HREF="Data_Table_File_Format_ODT.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html858"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html854"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html850"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html860"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html856"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html859"
+  HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
+<B> Up:</B> <A NAME="tex2html855"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
+<B> Previous:</B> <A NAME="tex2html851"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000184000000000000000"></A><A NAME="sec:mif12format"></A>
+<BR>
+MIF 1.2
+</H2>
+
+<A NAME="pt:mif12format"></A>
+The MIF&nbsp;1.2 format is a minor modification to the MIF&nbsp;1.1 format,
+which supports limited 3D problem specification.  It can be read by the
+Oxs 3D solvers, and, with certain restrictions, by the mmSolve 2D
+solvers as well.  The <B>mmProbEd</B> problem editor can read and
+write this format.  The
+<A HREF="mifconvert.html#sec:mifconvert"><B>mifconvert</B></A> command line tool can be used to convert
+between the MIF&nbsp;1.1 and MIF&nbsp;1.2 formats, and to convert from the
+MIF&nbsp;1.x formats to the Oxs MIF&nbsp;2.1 format.  <B>mifconvert</B> is also
+called automatically by Oxs solvers when a MIF&nbsp;1.x file is input to
+them, so questions about the details of Oxs interpretation of MIF&nbsp;1.x
+files can be answered by running <B>mifconvert</B> separately on the
+input MIF&nbsp;1.x file.
+
+<P>
+There are four differences between the MIF&nbsp;1.1 and 1.2 formats.  In
+the MIF&nbsp;1.2 format:
+
+<OL>
+<LI>The first line reads: <code># MIF 1.2</code>
+</LI>
+<LI>The <TT>CellSize</TT> record takes three parameters:
+      <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension, <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension, and <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension (in meters).
+</LI>
+<LI>The <TT>3dSlab</TT>, <TT>2dSlab</TT>, <TT>3dCharge</TT>, and
+      <TT>FastPipe</TT> parameters of the <TT>DemagType</TT> record
+      are deprecated.
+</LI>
+<LI>The new record <TT>SolverType</TT> is introduced.  Valid values
+      are <TT>Euler</TT>, <TT>RK2</TT>, <TT>RK4</TT>, <TT>RKF54</TT>,
+      and <TT>CG</TT>, requesting a first order Euler, second order
+      Runge-Kutta, fourth order Runge-Kutta, fifth(+fourth) order
+      Runge-Kutta-Fehlberg, and Conjugate-Gradient solvers,
+      respectively.  This record is optional, with default value of
+      <TT>RKF54</TT>.
+</LI>
+</OL>
+If the <TT>CellSize</TT> record has only one parameter, then it is
+interpreted in the same manner as in the MIF&nbsp;1.1 format, i.e., the
+parameter is taken as the <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+- and <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension of the computation
+cell, and the <B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension is set to the part thickness.
+
+<P>
+The mmSolve 2D solvers will accept files in the MIF&nbsp;1.2 format provided
+the <TT>CellSize</TT> record meets the restrictions of those solvers,
+namely, the <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+- and <B><I>y</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimensions must be the same, and the
+<B><I>z</I></B>
+<!-- MATHEND
+ 
+ -->
+-dimension must equal the part thickness.  The <TT>SolverType</TT>
+record, if any, is ignored.
+
+<P>
+The Oxs 3D solvers will read files in the MIF&nbsp;1.2 format, but support
+only the <TT>ConstMag</TT> and <TT>None</TT> demagnetization kernels.
+All other <TT>DemagType</TT> records are silently converted
+to <TT>ConstMag</TT>.  The <TT>SolverType</TT> record is converted into
+the appropriate solver+driver pair.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html858"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html854"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html850"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html861"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html856"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+</BODY>
+</HTML>
