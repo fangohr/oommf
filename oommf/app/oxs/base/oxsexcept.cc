@@ -5,6 +5,7 @@
  */
 
 #include <iostream>
+#include <stdlib.h>
 
 #include "oxsexcept.h"
 
@@ -19,6 +20,7 @@ Oxs_Exception::Oxs_Exception(const String& text)
 {
 #ifndef NDEBUG
     cerr << "DEBUG EXCEPTION: " <<  text << '\n';
+    abort();
 #endif
 }
 
@@ -35,6 +37,7 @@ Oxs_Exception::Oxs_Exception
 {
 #ifndef NDEBUG
     cerr << "DEBUG EXCEPTION: " <<  text << '\n';
+    abort();
 #endif
 }
 

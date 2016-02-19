@@ -5,13 +5,27 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-07-16 23:49:46 $
+ * Last modified on: $Date: 2015/07/17 22:47:46 $
  * Last modified by: $Author: donahue $
  */
+
+#include <stdlib.h>
 
 #include "xpfloat.h"
 
 /* End includes */     
+
+
+int Nb_Xpfloat::Test() {
+  // Test that Accum() code works as designed.
+  /// Returns 0 on success, 1 on error.
+  NB_XPFLOAT_TYPE a,b;
+  Nb_Xpfloat test = 1.0 + (rand()-1)/RAND_MAX;  // Dummy zero value
+  test += pow(2.,-80); /// designed so compiler can't eat whole test.
+  test.GetValue(a,b);
+  if(b==0.0) return 1;
+  return 0;
+}
 
 #if !NB_XPFLOAT_USE_SSE
 void Nb_Xpfloat::Accum(const Nb_Xpfloat &y)

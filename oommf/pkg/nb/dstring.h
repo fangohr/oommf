@@ -4,7 +4,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-11-09 00:50:01 $
+ * Last modified on: $Date: 2013/05/22 07:15:32 $
  * Last modified by: $Author: donahue $
  */
 
@@ -25,22 +25,22 @@ class Nb_DString
 {
   friend OC_INT4m StringCompare(const Nb_DString &,
 			     const Nb_DString &); // Replicates strcmp
-  friend size_t StringSpan(const Nb_DString &,
+  friend OC_INDEX StringSpan(const Nb_DString &,
 			   const char *); // Replicates strspn
   friend Nb_DString operator+(const Nb_DString& a,
 			      const Nb_DString& b);
 private:
   static const ClassDoc class_doc;
-  size_t bufsize;  // Length of buffer pointed to by str.
+  OC_INDEX bufsize;  // Length of buffer pointed to by str.
   char *str;
   void Empty(void);
-  void ExtendBuf(size_t newsize);
+  void ExtendBuf(OC_INDEX newsize);
 public:
   Nb_DString(void);                       // Default constructor
   Nb_DString(const Nb_DString &copyobj);  // Copy constructor
   Nb_DString(const char *cptr);
 
-  Nb_DString(size_t _bufsize);  // Allocates buffer of length _bufsize,
+  Nb_DString(OC_INDEX _bufsize);  // Allocates buffer of length _bufsize,
   /// and puts a null string in it. NOTE: A string of length "n"
   /// requires a buffer of length "n+1".
   Nb_DString& Dup(const char *cptr);
@@ -60,12 +60,12 @@ public:
 
   const char* GetStr(void) const { return (const char *)str; }
 
-  char& operator[](int offset) {
-    if(offset>0 && (unsigned int)offset+1>bufsize) ExtendBuf(offset+1);
+  char& operator[](OC_INDEX offset) {
+    if(offset>0 && offset+1>bufsize) ExtendBuf(offset+1);
     return str[offset];
   }
   // The following [] operator can be used on 'const Nb_DString' objects.
-  const char& operator[](int offset) const { return str[offset]; }
+  const char& operator[](OC_INDEX offset) const { return str[offset]; }
 
   operator const char*() const { return (const char *)str; }
   // Note: In the last 3 functions, the returned pointer may become
@@ -73,16 +73,21 @@ public:
   //  are called.
 
   // Length *not* including trailing null character.
-  size_t Length() const { return strlen(str); }
+  OC_INDEX Length() const {
+    size_t size = strlen(str);
+    OC_INDEX result = static_cast<OC_INDEX>(size);
+    assert(result>=0 && size == size_t(result));
+    return result;
+  }
 
-  size_t GetCapacity() const { return bufsize; } // For debugging
+  OC_INDEX GetCapacity() const { return bufsize; } // For debugging
 
   // Append functions; grows str as needed.  The char version appends
   // up to the first '\0' character or maxlen, which ever happens first.
   // (Set maxlen=0 to remove maxlen check.) Either way the last char in
   // this->str is set to '\0'.  Both functions return *this.
   Nb_DString& Append(const Nb_DString& appendstr);
-  Nb_DString& Append(const char *appendarr,size_t maxlen=0);
+  Nb_DString& Append(const char *appendarr,OC_INDEX maxlen=0);
 
   Nb_DString& operator+=(const Nb_DString& appendstr) {
     return Append(appendstr);

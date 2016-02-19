@@ -2,7 +2,7 @@
  *
  * Classes for searching unordered lists of points in space.
  *
- * Last modified on: $Date: 2010-07-16 22:34:02 $
+ * Last modified on: $Date: 2013/05/22 07:15:38 $
  * Last modified by: $Author: donahue $
  */
 
@@ -49,10 +49,10 @@ class Vf_Box {
 private:
   static const ClassDoc class_doc;
   OC_REAL8 xmin,ymin,xmax,ymax;  // Box extents
-  Nb_List<Vf_BoxElt *> *list;       // Comparison list
+  Nb_List<Vf_BoxElt *> *list;    // Comparison list
   void FillList(Nb_List<Vf_BoxElt *> *biglist); // Fills "list" with a refined
   /// version of biglist using both Sup & L2 norms; also sets incount.
-  OC_INT4m incount;              // Number of elements of list inside box
+  OC_INDEX incount;              // Number of elements of list inside box
   OC_BOOL IsIn2D(OC_REAL8 x,OC_REAL8 y) const;
 public:
   Vf_Box() { list=NULL; xmin=ymin=xmax=ymax=(OC_REAL8)0.0; incount=0; }
@@ -65,7 +65,7 @@ public:
 
   void Init(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 _ymax,
 	    Vf_Box &bigbox);
-  /// Called by Vf_BoxList::Refine(OC_INT4m), this routine first deletes
+  /// Called by Vf_BoxList::Refine(OC_INDEX), this routine first deletes
   /// Nb_List<Vf_BoxElt *> list, if it exists, and then copies those
   /// elements of Nb_List<Vf_BoxElt *> biglist that could be "closest
   /// 2D position" to current box, as defined by above box extents.
@@ -74,10 +74,10 @@ public:
   OC_BOOL IsIn2D(const Nb_Vec3<OC_REAL8> &pos) const; /// True if pos is inside box
 
   OC_REAL8m GetBoxArea() const;   // Returns (xmax-xmin)*(ymax-ymin)
-  OC_INT4m GetSpaceWaste() const; // Returns size of unused list space (bytes)
+  OC_INDEX GetSpaceWaste() const; // Returns size of unused list space (bytes)
 
-  int InCount(void) const { return incount; }
-  int ListCount(void) const { return list->GetSize(); }
+  OC_INDEX InCount(void) const { return incount; }
+  OC_INDEX ListCount(void) const { return list->GetSize(); }
   Vf_BoxElt* GetClosest2D(const Nb_Vec3<OC_REAL8> &pos);
 };
 
@@ -97,7 +97,7 @@ class Vf_BoxList
 private:
   static const ClassDoc class_doc;
   OC_REAL8 xmin,ymin,xmax,ymax; // Whole box region
-  OC_INT4m Nx,Ny;               // Subbox counts, x & y
+  OC_INDEX Nx,Ny;               // Subbox counts, x & y
   OC_REAL8 xdelta,ydelta;       // Box cell dimensions
   Vf_Box* box;                  // Array, size=Nx*Ny
   OC_BOOL box_valid;            // True if current box refinement is valid.
@@ -116,11 +116,13 @@ public:
   Vf_BoxList();
   ~Vf_BoxList();
 
-  OC_INT4m GetSize() const { return wholelist->GetSize(); }
+  OC_INDEX GetSize() const {
+    return wholelist->GetSize();
+  }
   OC_REAL8 GetAveInCount() { MakeBoxValid(); return aveincount; }
   OC_REAL8 GetAveListCount() { MakeBoxValid(); return avelistcount; }
-  OC_INT4m GetBoxCount() const { return Nx*Ny; }
-  OC_INT4m GetSpaceWaste() const;
+  OC_INDEX GetBoxCount() const { return Nx*Ny; }
+  OC_INDEX GetSpaceWaste() const;
 
   void AddPoint(const Nb_LocatedVector<OC_REAL8> &lv);
   /// Vf_BoxList forms an internal list (wholelist) of each
@@ -133,7 +135,8 @@ public:
   ///  call SetBoxRegion after all calls to AddPoint if it
   ///  desires different behavior.
 
-  void GetBoxRegion(OC_REAL8 &_xmin,OC_REAL8 &_ymin,OC_REAL8 &_xmax,OC_REAL8 &_ymax) const
+  void GetBoxRegion(OC_REAL8 &_xmin,OC_REAL8 &_ymin,
+                    OC_REAL8 &_xmax,OC_REAL8 &_ymax) const
   {
     _xmin=xmin; _xmax=xmax; _ymin=ymin; _ymax=ymax;
   }
@@ -149,11 +152,13 @@ public:
     AddMarginBoxRegion(OC_REAL8((xnewsize-xoldsize)/2.),
 		       OC_REAL8((ynewsize-yoldsize)/2.));
   }
-  void SetBoxRegion(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 _ymax) {
+  void SetBoxRegion(OC_REAL8 _xmin,OC_REAL8 _ymin,
+                    OC_REAL8 _xmax,OC_REAL8 _ymax) {
     xmin=_xmin; xmax=_xmax; ymin=_ymin; ymax=_ymax;
     box_valid=0;
   }
-  void ExpandBoxRegion(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 _ymax) {
+  void ExpandBoxRegion(OC_REAL8 _xmin,OC_REAL8 _ymin,
+                       OC_REAL8 _xmax,OC_REAL8 _ymax) {
     if(_xmin<xmin) xmin=_xmin;
     if(_xmax>xmax) xmax=_xmax;
     if(_ymin<ymin) ymin=_ymin;
@@ -164,7 +169,7 @@ public:
   void DeleteRefinement();
   /// Pitches any existing *box array, and marks box_valid=1.
 
-  OC_INT4m Refine(OC_INT4m refinelevel=VF_BOX_REFINELEVEL);
+  OC_INDEX Refine(OC_INDEX refinelevel=VF_BOX_REFINELEVEL);
   ///  If box_valid=1, then refines existing *box structure refinelevel
   /// times.  This will usually increase the number of boxes in *box by
   /// a factor of 4**refinelevel.
@@ -173,12 +178,13 @@ public:
   /// large) to aid program efficiency development.
   ///  In all cases, box_valid is set to 1 upon exit.
   /// The return value is the total number of boxes Nx*Ny, which with
-  /// luck will fit inside an OC_INT4m.  Overflow of OC_INT4m will likely
-  /// occur at refinelevel of about 16, at which point you are probably
-  /// out of memory; if not, everything will break down as the indexing
-  /// into box[] fails.
+  /// luck will fit inside an OC_INDEX.  Overflow of a 4-byte index
+  /// will likely occur at refinelevel of about 16, at which point you
+  /// are probably out of memory; if not, everything will break down
+  /// as the indexing into box[] fails.
 
-  OC_INT4m Refine(OC_INT4m boxcount,OC_REAL8m ave_incount,OC_REAL8m ave_listcount);
+  OC_INDEX Refine(OC_INDEX boxcount,
+                  OC_REAL8m ave_incount,OC_REAL8m ave_listcount);
   /// An adaptive interface to the RefineOnce routine.  Does successive
   /// refinements until one of the following conditions is met:
   ///        number of boxes (=Nx*Ny) >= import boxcount 
@@ -218,13 +224,14 @@ public:
   // field of each entry of ::wholelist by one.  Returns 0 on success,
   // 1 on end-of-list or other error.
   void ResetWholeAccess();
-  int  GetWholeNext(Nb_LocatedVector<OC_REAL8>& lv);
+  OC_INT4m GetWholeNext(Nb_LocatedVector<OC_REAL8>& lv);
 
   // Key-based index into wholelist.  These routines do not adjust
   // select count.
   const Nb_LocatedVector<OC_REAL8>* GetFirst(Vf_BoxList_Index& key) const;
   const Nb_LocatedVector<OC_REAL8>* GetNext(Vf_BoxList_Index& key) const;
-  int SetValue(const Vf_BoxList_Index& key,const Nb_Vec3<OC_REAL8>& value);
+  OC_INT4m SetValue(const Vf_BoxList_Index& key,
+                    const Nb_Vec3<OC_REAL8>& value);
 };
 
 // USUAL Vf_BoxList USAGE:

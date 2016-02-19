@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-03-11 05:05:40 $
+ * Last modified on: $Date: 2015/04/02 05:59:01 $
  * Last modified by: $Author: donahue $
  */
 
@@ -91,8 +91,8 @@ void* Omf_AsciiPtr::AsciiToPtr(const char* buf)
   void* ptr;
   unsigned char* cptr = (unsigned char *)(&ptr);
   for(unsigned int i=0;i<sizeof(void*);++i) {
-    cptr[i] = (unsigned char)buf[2*i] - 'A'
-            + ((unsigned char)buf[2*i+1] - 'A')*16;
+    cptr[i] = static_cast<unsigned char>
+      ((unsigned char)buf[2*i] - 'A' + ((unsigned char)buf[2*i+1] - 'A')*16);
   }
   return ptr;
 #undef MEMBERNAME
@@ -107,39 +107,12 @@ const ClassDoc Oc_TimeVal::class_doc("Oc_TimeVal",
 
 void Oc_TimeVal::Print(FILE* fptr)
 { // For debugging
-#if (TCL_MAJOR_VERSION < 8) || \
-     (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4)
-  // Tcl_WideUInt type and friends first appear in Tcl 8.4.
-  // For older versions, print as double, which provides 52
-  // bits in the mantissa.
-  fprintf(fptr," ticks_per_second=%.0f\n",
-          OC_TIMEVAL_TO_DOUBLE(ticks_per_second));
-  fprintf(fptr,"        max_ticks=%.0f\n",
-          OC_TIMEVAL_TO_DOUBLE(max_ticks));
-  fprintf(fptr,"            ticks=%.0f\n",
-          OC_TIMEVAL_TO_DOUBLE(ticks));
-  fprintf(fptr,"         overflow=%.0f\n",
-          OC_TIMEVAL_TO_DOUBLE(overflow));
+  fprintf(fptr," ticks_per_second=%" OC_TIMEVAL_TICK_TYPE_MOD "u\n",
+          ticks_per_second);
+  fprintf(fptr,"        max_ticks=%" OC_TIMEVAL_TICK_TYPE_MOD "u\n",max_ticks);
+  fprintf(fptr,"            ticks=%" OC_TIMEVAL_TICK_TYPE_MOD "u\n",ticks);
+  fprintf(fptr,"         overflow=%" OC_TIMEVAL_TICK_TYPE_MOD "u\n",overflow);
   fflush(fptr);
-#else // Tcl 8.4 or later
-  // Note: Tcl_WideUInt type is unsigned integer at least 64-bits
-  //  wide.  The TCL_LL_MODIFIER macro is magic string to get proper
-  //  format modifier.  These work across a variety of C compilers
-  //  supported by Tcl.  (See tcl.h for details.)  In principle C++
-  //  may be different in this regard (for example, "long long" types
-  //  are part of C99 spec but not officially part of C++ as of this
-  //  date (May 2008)), but in practice C++ compilers are largely built
-  //  on top of C compilers, and share much of C99 as extensions.
-  fprintf(fptr," ticks_per_second=%" TCL_LL_MODIFIER "u\n",
-          static_cast<Tcl_WideUInt>(ticks_per_second));
-  fprintf(fptr,"        max_ticks=%" TCL_LL_MODIFIER "u\n",
-          static_cast<Tcl_WideUInt>(max_ticks));
-  fprintf(fptr,"            ticks=%" TCL_LL_MODIFIER "u\n",
-          static_cast<Tcl_WideUInt>(ticks));
-  fprintf(fptr,"         overflow=%" TCL_LL_MODIFIER "u\n",
-          static_cast<Tcl_WideUInt>(overflow));
-  fflush(fptr);
-#endif
 }
 
 OC_BOOL Oc_TimeVal::IsValid() const
@@ -364,41 +337,10 @@ Oc_TimeVal GetSmaller(const Oc_TimeVal& time1,const Oc_TimeVal& time2)
 //   If suitable system timing call(s) can't be determined, then this
 // routine will return 0('s).
 //
-// For Unix platforms, use the following macros:
-//   HAS_TIMES
-//   HAS_CLOCK
-//   HAS_GETTIMEOFDAY
-// If HAS_TIMES is defined, then Oc_Times will use the system times()
-// command.  Otherwise, if HAS_CLOCK is defined, then clock() will be
-// used to determine the cpu time; if HAS_GETTIMEOFDAY is defined, then
-// gettimeofday() will be used to set the wall (elapsed) time.
-// On Windows platforms, clock() and GetTickCount() are used.
-// Alternately, define
-//   NO_CLOCKS
-// to have these routines always return 0.  This always overrides the
-// other macros.
-
-///// TEMPORARY MACROS, TO BE FIXED UP BY DGP ////////////////////
-#if !defined(NO_CLOCKS) && (OC_SYSTEM_TYPE != OC_WINDOWS)
-#  ifndef CLK_TCK
-#    ifdef _SC_CLK_TCK
-#      define CLK_TCK sysconf(_SC_CLK_TCK)
-#    elif defined(HZ)
-#      define CLK_TCK HZ
-#    endif
-#  endif
-#  ifdef CLK_TCK
-#    define HAS_TIMES
-#  endif
-#  ifdef CLOCKS_PER_SEC
-#    define HAS_CLOCK
-#  endif
-#  define HAS_GETTIMEOFDAY
-#endif
 //////////////////////////////////////////////////////////////////
 
 #ifdef NO_CLOCKS
-void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time)
+void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time, OC_BOOL)
 {
   cpu_time.Reset();  wall_time.Reset();  // Return zeros
 }
@@ -415,7 +357,7 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     }
 
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
-#ifdef HAS_GETPROCESSTIMES
+#ifdef OC_HAS_GETPROCESSTIMES
     // Use GetProcessTimes if available, because the clock() function
     // appears to return wall time on Win2K.  Note: The tick interval
     // for GetProcessTimes is 100 ns.
@@ -449,7 +391,7 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     wall_now.ticks=GetTickCount();
     wall_now.overflow=wall_last.overflow;
     if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
-#else // !HAS_GETPROCESSTIMES
+#else // !OC_HAS_GETPROCESSTIMES
     // Use clock() to get cpu time, GetTickCount() to get wall time.
     // GetTickCount() is in the Windows API; it returns number of ms
     // since Windows was started
@@ -472,18 +414,18 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
     wall_now.overflow=wall_last.overflow;
     if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
-#endif // HAS_GETPROCESSTIMES
+#endif // OC_HAS_GETPROCESSTIMES
 #else // OC_SYSTEM_TYPE != OC_WINDOWS
     // gettimeofday tends to have better resolution than times()
     // so use gettimeofday if possible.
 
-#if defined(HAS_TIMES) && (!defined(HAS_GETTIMEOFDAY) || !defined(HAS_CLOCK))
+#if defined(OC_HAS_TIMES) && (!defined(OC_HAS_GETTIMEOFDAY) || !defined(OC_HAS_CLOCK))
     // We are going to use these below:
     static const long clktck = CLK_TCK;
     static struct tms buf;
 #endif
 
-# if defined(HAS_GETTIMEOFDAY)
+# if defined(OC_HAS_GETTIMEOFDAY)
     // Store microseconds in .tick, seconds in .overflow
     static Oc_TimeVal wall_accum(1000000,999999);
     static Oc_TimeVal wall_last(1000000,999999);
@@ -495,7 +437,7 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     gettimeofday(&tv,NULL);
     wall_now.overflow=tv.tv_sec;  // Seconds
     wall_now.ticks=tv.tv_usec;    // Microseconds
-# elif defined(HAS_TIMES)
+# elif defined(OC_HAS_TIMES)
     // Use the Unix times(2) call
     static Oc_TimeVal wall_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
     static Oc_TimeVal wall_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
@@ -506,11 +448,11 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     wall_now.ticks = (OC_TIMEVAL_TICK_TYPE)times(&buf);
     wall_now.overflow=wall_last.overflow;
     if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
-# else // !HAS_GETTIMEOFDAY
+# else // !OC_HAS_GETTIMEOFDAY
     static Oc_TimeVal wall_accum,wall_last,wall_now;
-# endif // HAS_GETTIMEOFDAY
+# endif // OC_HAS_GETTIMEOFDAY
 
-# ifdef HAS_CLOCK
+# ifdef OC_HAS_CLOCK
     static Oc_TimeVal cpu_accum(CLOCKS_PER_SEC,
                                 (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
     static Oc_TimeVal cpu_last(CLOCKS_PER_SEC,
@@ -523,7 +465,7 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     cpu_now.ticks=clock();
     cpu_now.overflow=cpu_last.overflow;
     if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
-# elif defined(HAS_TIMES)
+# elif defined(OC_HAS_TIMES)
     // Use the Unix times(2) call
     static Oc_TimeVal cpu_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
     static Oc_TimeVal cpu_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
@@ -534,9 +476,9 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
     cpu_now.ticks=(OC_TIMEVAL_TICK_TYPE)(buf.tms_utime+buf.tms_stime);
     cpu_now.overflow=cpu_last.overflow;
     if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
-# else // !HAS_CLOCK
+# else // !OC_HAS_CLOCK
     static Oc_TimeVal cpu_accum,cpu_last,cpu_now;
-# endif // HAS_CLOCK
+# endif // OC_HAS_CLOCK
 
 #endif // ...OC_SYSTEM_TYPE == OC_WINDOWS
     if(!first_time) {
@@ -581,3 +523,26 @@ int OcTimes(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 
   return TCL_OK;
 }
+
+////////////////////////////////////////////////////////////////////////
+// Oc_Ticks support
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+double Oc_Ticks::GetTickPeriod()
+{
+  LARGE_INTEGER freq;
+  QueryPerformanceFrequency(&freq);
+  if(freq.QuadPart<1) freq.QuadPart = 1;
+  return 1.0/double(freq.QuadPart);
+}
+const double Oc_Ticks::CONVERT_TO_SECONDS = GetTickPeriod();
+
+#elif defined(__APPLE__) && defined(__MACH__)
+double Oc_Ticks::GetTickPeriod()
+{
+  mach_timebase_info_data_t scaling;
+  mach_timebase_info(&scaling);
+  return 1e-9*double(scaling.numer)/double(scaling.denom);
+}
+const double Oc_Ticks::CONVERT_TO_SECONDS = GetTickPeriod();
+
+#endif

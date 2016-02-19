@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 8.0
 #
-# Last modified on: $Date: 2000-08-25 17:01:25 $
+# Last modified on: $Date: 2000/08/25 17:01:25 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 8.0 interpreter

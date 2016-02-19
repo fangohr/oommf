@@ -2,7 +2,7 @@
 #
 #	Patches for all Tcl/Tk versions
 #
-# Last modified on: $Date: 2000-08-25 17:01:25 $
+# Last modified on: $Date: 2000/08/25 17:01:25 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which patches or enhances the commands of 

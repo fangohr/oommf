@@ -3,7 +3,7 @@
 # A collection of Tcl procedures (not Oc_Classes) which are part of the
 # Nb extension
 #
-# Last modified on: $Date: 2007-03-21 01:17:02 $
+# Last modified on: $Date: 2007/03/21 01:17:02 $
 # Last modified by: $Author: donahue $
 #
 

@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 8.2
 #
-# Last modified on: $Date: 2009-11-04 22:34:27 $
+# Last modified on: $Date: 2009/11/04 22:34:27 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 8.2 interpreter

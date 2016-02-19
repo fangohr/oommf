@@ -9,7 +9,7 @@
 # to use the new search path convention.  This file serves as the bootstrap
 # by which Tcl 7.5 interpreters may load the Oc extension.
 #
-# Last modified on: $Date: 2007-03-21 01:17:02 $
+# Last modified on: $Date: 2007/03/21 01:17:02 $
 # Last modified by: $Author: donahue $
 
 global tcl_version

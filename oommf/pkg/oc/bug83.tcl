@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 8.3
 #
-# Last modified on: $Date: 2011-07-02 04:46:25 $
+# Last modified on: $Date: 2015/09/08 05:03:51 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 8.3 interpreter
@@ -94,6 +94,25 @@ rename regsub Tcl8.3_regsub
       return $foocopy
    }
    return [uplevel 1 Tcl8.3_regsub $args]
+}
+
+# Tcl command lset was introduced in 8.4.  This old-Tcl equivalent is
+# MUCH slower than the true lset.
+if {![llength [info command lset]]} {
+   proc K_combinator {x y} {set x}
+   proc lset {varname args} {
+      upvar $varname var
+      set newval [lindex $args end]
+      set indices [join [lrange $args 0 [expr {[llength $args]-2}]]]
+      set index [lindex $indices 0]
+      set record [lindex $var $index]
+      if {[llength $indices]>1} {
+         set record [lset record [lrange $indices 1 end] $newval]
+      } else {
+         set record $newval
+      }
+      set var [lreplace [K_combinator $var [set var {}]] $index $index $record]
+   }
 }
 
 

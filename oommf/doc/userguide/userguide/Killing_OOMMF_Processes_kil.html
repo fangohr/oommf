@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,47 +13,47 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
-<LINK REL="next" HREF="Launching_OOMMF_host_server.html">
+<LINK REL="next" HREF="Last_Oxsii_Boxsi_run_lastjo.html">
 <LINK REL="previous" HREF="Cyclic_Redundancy_Check_crc.html">
 <LINK REL="up" HREF="Command_Line_Utilities.html">
-<LINK REL="next" HREF="Launching_OOMMF_host_server.html">
+<LINK REL="next" HREF="Last_Oxsii_Boxsi_run_lastjo.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html653"
-  HREF="Launching_OOMMF_host_server.html">
+<A NAME="tex2html658"
+  HREF="Last_Oxsii_Boxsi_run_lastjo.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html649"
+<A NAME="tex2html654"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html643"
+<A NAME="tex2html648"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html655"
+<A NAME="tex2html660"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html651"
+<A NAME="tex2html656"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html654"
-  HREF="Launching_OOMMF_host_server.html">Launching the OOMMF host</A>
-<B> Up:</B> <A NAME="tex2html650"
+<B> Next:</B> <A NAME="tex2html659"
+  HREF="Last_Oxsii_Boxsi_run_lastjo.html">Last Oxsii/Boxsi run: lastjob</A>
+<B> Up:</B> <A NAME="tex2html655"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html644"
+<B> Previous:</B> <A NAME="tex2html649"
   HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION000178000000000000000"></A><A NAME="sec:killoommf"></A><A NAME="16924"></A><A NAME="16925"></A>
+<H2><A NAME="SECTION000178000000000000000"></A><A NAME="sec:killoommf"></A><A NAME="17297"></A><A NAME="17298"></A>
 <BR>
 Killing OOMMF Processes: killoommf
 </H2>
@@ -69,16 +69,16 @@ The <B>killoommf</B> application terminates running OOMMF processes.
 The <B>killoommf</B> command line is:
 <PRE>
 tclsh oommf.tcl killoommf [standard options] [-account name] \
-   [-hostport port] [-q] [-show] [-shownames] [-test] \
+   [-hostport port] [-pid] [-q] [-show] [-shownames] [-test] \
    [-timeout secs] oid [...]
 </PRE>
 where
 <DL>
 <DT><STRONG><TT><B>-account name</B></TT></STRONG></DT>
-<DD>Specify the account name.  The default is the same used by 
+<DD>Specify the account name.  The default is the same used by
  <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>:
  the current user login name, except on Windows&nbsp;9X, where the dummy
- account ID  ``oommf''<A NAME="16937"></A> may be used
+ account ID  ``oommf''<A NAME="17310"></A> may be used
  instead.
 </DD>
 <DT><STRONG><TT><B>-hostport port</B></TT></STRONG></DT>
@@ -86,6 +86,9 @@ where
  <TT>Net_Host&nbsp;port</TT> setting in <TT><B>oommf/config/options.tcl</B></TT>, or by
  the environment variable <TT>OOMMF_HOSTPORT</TT> (which, if set,
  overrides the former).  The standard setting is 15136.
+</DD>
+<DT><STRONG><TT><B>-pid</B></TT></STRONG></DT>
+<DD>Select processes by system pid rather than OOMMF oid.
 </DD>
 <DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
 <DD>Quiet; don't print informational messages.
@@ -109,7 +112,9 @@ where
 <DT><STRONG><TT><B>oid ...</B></TT></STRONG></DT>
 <DD>List of one or more oids (OOMMF ID's), application names,
  nicknames, or the keyword ``all''.  Glob-style wildcards may also be
- used.  This field is required (there are no default kill targets).
+ used.  This field is required (there are no default kill targets).  If
+ the <TT>-pid</TT> option is specified then numbers are interpreted as
+ referring to system process ID's rather than OOMMF ID's.
 </DD>
 </DL>
 The <B>killoommf</B> command affects processes that listen to OOMMF message traffic.  These are the same applications that are listed in
@@ -134,22 +139,22 @@ Windows).
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html653"
-  HREF="Launching_OOMMF_host_server.html">
+<A NAME="tex2html658"
+  HREF="Last_Oxsii_Boxsi_run_lastjo.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html649"
+<A NAME="tex2html654"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html643"
+<A NAME="tex2html648"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html656"
+<A NAME="tex2html661"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html651"
+<A NAME="tex2html656"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

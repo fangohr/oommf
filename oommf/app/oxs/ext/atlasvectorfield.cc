@@ -53,7 +53,7 @@ Oxs_AtlasVectorField::Oxs_AtlasVectorField(
   }
 
   // Set up value array.
-  values.SetSize(OC_INDEX(atlas_obj->GetRegionCount()));
+  values.SetSize(atlas_obj->GetRegionCount());
 
   // Get and fill value vector with non-default values
   size_t i;
@@ -69,7 +69,7 @@ Oxs_AtlasVectorField::Oxs_AtlasVectorField(
   }
   for(i=0;i<params.size();i+=2) {
     const String& region_name = params[i];
-    OC_INT4m region_id = atlas_obj->GetRegionId(region_name);
+    OC_INDEX region_id = atlas_obj->GetRegionId(region_name);
     if(region_id<0) {
       char item[275];  // Safety
       item[250]='\0';
@@ -90,7 +90,7 @@ Oxs_AtlasVectorField::Oxs_AtlasVectorField(
       }
       throw Oxs_ExtError(this,msg);
     }
-    if(values[OC_INDEX(region_id)].value_is_set) {
+    if(values[region_id].value_is_set) {
       char item[275];  // Safety
       item[250]='\0';
       Oc_Snprintf(item,sizeof(item),"%.252s",region_name.c_str());
@@ -106,8 +106,8 @@ Oxs_AtlasVectorField::Oxs_AtlasVectorField(
     field_paramlist.Split(params[i+1]);
     field_paramlist.FillParams(field_params);
     OXS_GET_EXT_OBJECT(field_params,Oxs_VectorField,
-                       values[OC_INDEX(region_id)].field_init);
-    values[OC_INDEX(region_id)].value_is_set = 1;
+                       values[region_id].field_init);
+    values[region_id].value_is_set = 1;
   }
   DeleteInitValue("values");
 
@@ -120,9 +120,9 @@ Oxs_AtlasVectorField::Value
  ThreeVector& export_value) const
 {
   const Oxs_Atlas* atlas = atlas_key.GetPtr();
-  OC_INT4m id = atlas->GetRegionId(pt);
-  if(values[OC_INDEX(id)].value_is_set) {
-    values[OC_INDEX(id)].field_init->Value(pt,export_value);
+  OC_INDEX id = atlas->GetRegionId(pt);
+  if(values[id].value_is_set) {
+    values[id].field_init->Value(pt,export_value);
   } else if(default_value.value_is_set) {
     default_value.field_init->Value(pt,export_value);
   } else {

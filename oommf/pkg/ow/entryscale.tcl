@@ -2,7 +2,7 @@
 #
 # Entry box + scale dialog sub-widget
 #
-# Last modified on: $Date: 2010-08-23 23:36:08 $
+# Last modified on: $Date: 2010/08/23 23:36:08 $
 # Last modified by: $Author: donahue $
 #
 #   Use the method call "ReadEntryString" to get the value

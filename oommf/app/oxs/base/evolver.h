@@ -25,7 +25,7 @@ class Oxs_Evolver : public Oxs_Ext {
 private:
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
   Oxs_ConstKey<Oxs_Atlas> atlas_key;
-  vector<OC_INT4m> fixed_region_ids;
+  vector<OC_INDEX> fixed_region_ids;
   OC_UINT4m mesh_id;
   vector<OC_INDEX> fixed_spin_list; // Holds a list of
   // indices to spins that should be held constant.  The indexing

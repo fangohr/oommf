@@ -52,42 +52,45 @@ tclsh oommf.tcl
   \end{itemize}
   \item \quickstartitemlabel{Gain access to other useful windows.}
   \begin{itemize}
-    \item On the \app{mmLaunch} window, check the \btn{localhost} box,
+    \item In the \app{mmLaunch} window, check the box for your host
+	  (very likely the only choice available),
           causing a menu of user account boxes to appear.  Check
-          the box corresponding to the account you want to compute on.
-          (On \Windows~9X systems, the user account list may consist of
-          only the faux ``oommf'' user account.)  This gives a menu of
-          options:
+          the box corresponding to the account you want to compute on
+	  (also very likely only one choice available).
+          This gives a menu of options:
     \begin{itemize}
-       \item {\bf{mmArchive:}}\index{application!mmArchive}
+       \item {\htmlonlyref{\bf{mmArchive:}}{sec:mmarchive}}\index{application!mmArchive}
                    to auto-save scalar and vector field data
-       \item {\bf{mmDataTable:}}\index{application!mmDataTable}
+       \item {\htmlonlyref{\bf{mmDataTable:}}{sec:mmdatatable}}\index{application!mmDataTable}
                    to display current values of scalar outputs
-       \item {\bf{mmDisp:}}\index{application!mmDisp}
+       \item {\htmlonlyref{\bf{mmDisp:}}{sec:mmdisp}}\index{application!mmDisp}
                    to display vector fields
-       \item {\bf{mmGraph:}}\index{application!mmGraph}
+       \item {\htmlonlyref{\bf{mmGraph:}}{sec:mmgraph}}\index{application!mmGraph}
                    to form x-y plots
-       \item {\bf{mmProbEd:}}\index{application!mmProbEd}
-                   to grab/modify a problem for \app{mmSolve2D}
+       \item {\htmlonlyref{\bf{mmProbEd:}}{sec:mmprobed}}\index{application!mmProbEd}
+                   to view or modify a problem for \app{mmSolve2D}
                    or \app{Oxsii}
-       \item {\bf{mmSolve2D:}}\index{application!mmSolve2D}
+       \item {\htmlonlyref{\bf{mmSolve2D:}}{sec:mmsolve2d}}\index{application!mmSolve2D}
                    to control the 2D solver
-       \item {\bf{Oxsii:}}\index{application!Oxsii}
+       \item {\htmlonlyref{\bf{Oxsii:}}{sec:oxsii}}\index{application!Oxsii}
                    to control the 3D solver
     \end{itemize}
     \item Click on \btn{mmDisp}, \btn{mmGraph}, and/or
           \btn{mmDataTable}, depending on what form of output you
-          want.  Use \btn{mmArchive} to save data to disk.
+          want to view.  Use \btn{mmArchive} to save data to disk.
   \end{itemize}
   \item \quickstartitemlabelsubstart{Run a 2D problem.}
     \begin{description}
     \item[Load problem:]\blankspace
     \begin{itemize}
-      \item On the \app{mmLaunch} window, click on the \btn{mmProbEd}
-         button.
-      \item On the \app{mmProbEd} window, make menu selection
+      \item In the \app{mmLaunch} window, click on the \btn{mmProbEd}
+            button. 
+      \item In the
+            \hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
+              (Sec.~}{)}{sec:mmprobed}\index{application!mmProbEd}
+            window, make menu selection
             \btn{File\pipe Open\ldots}  An \btn{Open File} dialog window
-            will appear.  On this window:
+            will appear.  In this window:
       \begin{itemize}
         \item Double click in the \btn{Path} subwindow to change
               directories.  Several sample problems can be found in
@@ -105,15 +108,16 @@ tclsh oommf.tcl
     \end{itemize}
     \item[Initialize solver:]\blankspace
     \begin{itemize}
-      \item On the \app{mmLaunch} window, click on the \btn{mmSolve2D}
+      \item In the \app{mmLaunch} window, click on the \btn{mmSolve2D}
             button to launch an instance of the program
-            \app{mmSolve2D}\index{application!mmSolve2D}.
+            \hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
+              (Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}.
       \item Wait for the new solver instance to appear in the 
           \btn{Threads} column in the \app{mmLaunch} window.
       \item Check the box next to the \app{mmSolve2D} entry in the
           \btn{Threads}\index{threads} column.  A window containing an
           \app{mmSolve2D} interface will appear.
-      \item On the \app{mmSolve2D} window:
+      \item In the \app{mmSolve2D} window:
       \begin{itemize}
         \item Check \btn{Problem Description} under \btn{Inputs}.
         \item Check \btn{mmProbEd} under \btn{Source Threads}.
@@ -143,28 +147,36 @@ tclsh oommf.tcl
     \end{itemize}
     \item[Start calculation:]\blankspace
     \begin{itemize}
-      \item On the \app{mmSolve2D} window, start the calculation with
+      \item In the \app{mmSolve2D} window, start the calculation with
             \btn{Run} (which runs until problem completion) or
             \btn{Relax} (which runs until the next control point is
             reached)\index{simulation~2D!interactive~control}.
       \item If you requested mmDataTable output, check the boxes for the
             desired quantities on the
-            \app{mmDataTable}\index{application!mmDataTable} window under
+            \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+              (Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}
+            window under
             the \btn{Data} menu, so that they appear and are updated as
             requested in your schedule.
       \item Similarly, check the box for the desired X, Y1, and Y2
-            quantities on the \app{mmGraph}\index{application!mmGraph}
+            quantities on the
+            \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+              (Sec.~}{)}{sec:mmgraph}\index{application!mmGraph}
             window(s) under the \btn{X}, \btn{Y1} and \btn{Y2} menus.
     \end{itemize}
-    \item[Save results:]\index{data!save}\blankspace
+    \item[Save and/or display results:]\index{data!save}\blankspace
     \begin{itemize}
       \item Vector field data (magnetization and effective field) may be
-            interactively written to disk\index{file!vector~field} using
-            \app{mmDisp}\index{application!mmDisp}, or may be
-            automatically saved via scheduled output to
-            \app{mmArchive}\index{application!mmArchive}.  For example, to
-            save the magnetization state at each control point, start up
-            an instance of \app{mmArchive} and select the {\bf
+            viewed using \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+              (Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}.  You can
+            manually save data to disk\index{file!vector~field} using
+            the \btn{File\pipe Save as\ldots} menu option in
+            \app{mmDisp}, or you can send scheduled output to
+            \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+              (Sec.~}{)}{sec:mmarchive}\index{application!mmArchive} for
+            automatic storage.  For example, to save the magnetization
+            state at the end of each control point, start up an instance
+            of \app{mmArchive} and select the {\bf
             ControlPoint}\index{simulation~2D!control~point} check box for
             \app{mmArchive} on the \btn{Magnetization} schedule in the
             solver.  This may be done before starting the calculation.
@@ -173,27 +185,28 @@ tclsh oommf.tcl
             equilibrium\index{simulation~2D!equilibrium} states, but
             depending on the input \fn{*.mif} file, may be triggered by
             elapsed simulation time or iteration count.)
-      \item \btn{DataTable} data\index{file!data~table} may be saved by
+      \item Tabular data\index{file!data~table} may be saved by
             sending scheduled output\index{output~schedule} from the
             solver to \app{mmArchive}\index{application!mmArchive},
-            which will automatically save all the data it receives.
-            Alternatively, \app{mmGraph}\index{application!mmGraph}
-            can perform this function.  Schedule output to
-            \app{mmGraph} as desired, and use either the
-            interactive or automated save functionality of
-            \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-            (Sec.~}{)}{sec:mmgraph}.  You can setup the solver data
-            scheduling before the calculation is started, but must wait
-            for the first data point to configure \app{mmGraph} before
-            saving any data.  As a workaround, you may configure
-            \app{mmGraph} by sending it the initial solver state
-            interactively, and then use the {\btn{Options\pipe clear
-            Data}} menu item in \app{mmGraph} to remove the
-            initializing data point.
+            which automatically saves all the data it receives.
+            Alternatively, \app{mmGraph} can be used to save a subset of
+            the data: schedule output to \app{mmGraph} as desired, and
+            use either the interactive or automated save functionality
+            of \app{mmGraph}.  You can set up the solver data scheduling
+            before the calculation is started, but you must wait for the
+            first data point to configure \app{mmGraph} before saving
+            any data.  As a workaround, you may configure \app{mmGraph}
+            by sending it the initial solver state interactively, and
+            then use the {\btn{Options\pipe clear Data}} menu item in
+            \app{mmGraph} to remove the initializing data point.  If you
+            want to inspect explict numeric values, use
+            \app{mmDataTable}\index{application!mmDataTable}, which
+            displays single sets of values in a tabular format.
+            \app{mmDataTable} has no data save functionality.
     \end{itemize}
     \item[Midcourse control:]\blankspace
     \begin{itemize}
-      \item On the \app{mmSolve2D} window, buttons can stop and restart the
+      \item In the \app{mmSolve2D} window, buttons can stop and restart the
             calculation\index{simulation~2D!interactive~control}:
       \begin{itemize}
         \item {\bf Reset:}  Return to beginning of problem.
@@ -207,15 +220,19 @@ tclsh oommf.tcl
         \item {\bf\boldmath Field$+$:} Apply the next field in the list.
       \end{itemize}
       \item Output options can be changed and new output windows opened.
+      \item When the stopping criteria for the final control point are
+            reached, \app{mmSolve2D} will pause to allow the user to
+            interactively output final results.
     \end{itemize}
   \end{description}
   \item \quickstartitemlabelsubincr{Run a 3D problem.}
   \begin{description}
     \item[Launch solver:]\blankspace
     \begin{itemize}
-      \item On the \app{mmLaunch} window, click on the \btn{Oxsii}
+      \item In the \app{mmLaunch} window, click on the \btn{Oxsii}
             button to launch an instance of the program
-            \app{Oxsii}\index{application!Oxsii}.
+            \hyperrefhtml{\app{Oxsii}}{\app{Oxsii}
+             (Sec.~}{)}{sec:oxsii}\index{application!oxsii}.
       \item Wait for the new solver instance to appear in the 
           \btn{Threads} column in the \app{mmLaunch} window.
       \item Check the box next to the \app{Oxsii} entry in the
@@ -224,7 +241,7 @@ tclsh oommf.tcl
     \end{itemize}
     \item[Load problem:]\blankspace
     \begin{itemize}
-      \item On the \app{Oxsii} window, select the
+      \item In the \app{Oxsii} window, select the
         \btn{File\pipe Load\ldots} menu option.  A \btn{Load Problem}
         dialog box will appear.  On this window:
         \begin{itemize}
@@ -245,10 +262,15 @@ tclsh oommf.tcl
         format using the command line tool
         \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
         (Sec.~}{)}{sec:mifconvert}\index{application!mifconvert}.
-        \app{mmProbEd} also supports an extension to the \MIF~1.1
+        \hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
+          (Sec.~}{)}{sec:mmprobed}\index{application!mmProbEd}
+        also supports an extension to the \MIF~1.1
         format, namely \MIF~1.2, which provides limited 3D
         functionality.  \MIF~1.2 files may also be read directly by
-        \app{Oxsii}.
+        \app{Oxsii}.  Either way, to run in \app{Oxsii} a problem
+        created by \app{mmProbEd}, the problem must first be saved to
+        disk via the \btn{File\pipe Save as\ldots} menu option in
+        \app{mmProbEd}.
       \item The status line in the \app{Oxsii} interface window will
         indicate the problem is loading. 
       \item When the problem is fully loaded, the status line will
@@ -272,54 +294,65 @@ tclsh oommf.tcl
     \end{itemize}
     \item[Start calculation:]\blankspace
     \begin{itemize}
-       \item On the \app{Oxsii} window, start the calculation with
+       \item In the \app{Oxsii} window, start the calculation with
          \btn{Run}, \btn{Relax}, or
          \btn{Step}\index{simulation~3D!interactive~control}.
        \item If you requested mmDataTable output, check the boxes for the
          desired quantities on the
-         \app{mmDataTable}\index{application!mmDataTable} window under
+         \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+           (Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}
+         window under
          the \btn{Data} menu, so that they appear and are updated as
          requested in your schedule.
        \item Similarly, check the box for the desired X, Y1, and Y2
-         quantities on the \app{mmGraph}\index{application!mmGraph}
+         quantities on the
+         \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+           (Sec.~}{)}{sec:mmgraph}\index{application!mmGraph}
          window(s) under the \btn{X}, \btn{Y1} and \btn{Y2} menus.
     \end{itemize}
-    \item[Save results:]\index{data!save}\blankspace
+    \item[Save and/or display results:]\index{data!save}\blankspace
     \begin{itemize}
-      \item Vector field data (magnetization and effective field) may be
-        interactively written to disk\index{file!vector~field} using
-        \app{mmDisp}\index{application!mmDisp}, or may be
-        automatically saved via scheduled output to
-        \app{mmArchive}\index{application!mmArchive}.  For example, to
-        save the magnetization state at the end of each problem
-        stage, start up an instance of \app{mmArchive} and select
-        the {\bf Stage}\index{simulation~3D!stage} check box for
+      \item Vector field data (magnetization and fields) may be
+        viewed using
+        \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+          (Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}.
+        You can 
+        manually save data to disk\index{file!vector~field} using
+        the \btn{File\pipe Save as\ldots} menu option in \app{mmDisp},
+        or you can send scheduled output to
+        \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+          (Sec.~}{)}{sec:mmarchive}\index{application!mmArchive} for
+        automatic storage.  For example, to save the magnetization state
+        at the end of each problem  stage, start up an instance of
+        \app{mmArchive} and select the
+        {\bf Stage}\index{simulation~3D!stage} check box for 
         the \cd{Magnetization} output, \cd{mmArchive} destination pair.
         (Stages denote points in the simulation where some
          significant event occurs, such as when an equilibrium is
          reached or some preset simulation time index is met.
          These criteria are set by the input \MIF\ file.)
-      \item Tabular data\index{file!data~table} may be saved by
-        sending scheduled output\index{output~schedule} from the
-        solver to \app{mmArchive}\index{application!mmArchive},
-        which will automatically save all the data it receives.
-        Alternatively, \app{mmGraph}\index{application!mmGraph}
-        can perform this function.  Schedule output to
-        \app{mmGraph} as desired, and use either the
-        interactive or automated save functionality of
-        \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-        (Sec.~}{)}{sec:mmgraph}.  You can setup the solver data
-        scheduling before the calculation is started, but must wait
-        for the first data point to configure \app{mmGraph} before
-        saving any data.  As a workaround, you may configure
-        \app{mmGraph} by sending it the initial solver state
-        interactively, and then use the {\btn{Options\pipe clear
-        Data}} menu item in \app{mmGraph} to remove the
-        initializing data point.
+      \item Tabular data\index{file!data~table} may be saved by sending
+         scheduled output\index{output~schedule} from the solver to
+         \app{mmArchive}\index{application!mmArchive}, which
+         automatically saves all the data it receives.  Alternatively,
+         \app{mmGraph} can be used to save a subset of the data:
+         schedule output to \app{mmGraph} as desired, and use either the
+         interactive or automated save functionality of \app{mmGraph}.
+         You can set up the solver data scheduling before the
+         calculation is started, but you must wait for the first data
+         point to configure \app{mmGraph} before saving any data.  As a
+         workaround, you may configure \app{mmGraph} by sending it the
+         initial solver state interactively, and then use the
+         {\btn{Options\pipe clear Data}} menu item in \app{mmGraph} to
+         remove the initializing data point.  If you want to inspect
+         explict numeric values, use
+         \app{mmDataTable}\index{application!mmDataTable}, which
+         displays single sets of values in a tabular format.
+         \app{mmDataTable} has no data save functionality.
       \end{itemize}
     \item[Midcourse control:]\blankspace
     \begin{itemize}
-       \item On the \app{Oxsii} window, buttons can stop and restart the
+       \item In the \app{Oxsii} window, buttons can stop and restart the
              calculation\index{simulation~3D!interactive~control}:
        \begin{itemize}
          \item {\bf Reload:} Reload the same file from disk.
@@ -340,6 +373,14 @@ tclsh oommf.tcl
              opened.  The \btn{Send} button in the \app{Oxsii} Schedule
              subwindow is used to interactively send output to the
              selected Output + Destination pair.
+       \item When the stage termination (stopping) criteria of the
+             final stage are met, \app{Oxsii} will pause to allow the
+             user to interactively output final results via the
+             \btn{Send} button.  The batch interface 
+            \hyperrefhtml{\app{Boxsi}}{\app{Boxsi}
+              (Sec.~}{)}{sec:boxsi}\index{application!Boxsi}
+             terminates automatically when the termination criteria for
+             the final stage are met.
     \end{itemize}
   \end{description}
   \item \quickstartitemlabel{Exit \OOMMF.}
@@ -352,7 +393,7 @@ tclsh oommf.tcl
        applications.  However, those applications will continue to run
        in the background, and their interfaces may be re-displayed by
        starting a new \app{mmLaunch} instance.
-    \item To automatically kill all \OOMMF\ applications, select the
+    \item To kill all \OOMMF\ applications, select the
        \btn{File\pipe Exit All OOMMF} option from the \app{mmLaunch}
        menu bar.
   \end{itemize}

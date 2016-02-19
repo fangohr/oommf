@@ -26,10 +26,11 @@ exec tclsh "$0" ${1+"$@"}
 # catches it's own errors and reports them to support older Tcl
 # releases.
 #
-# The following [catch] command catches any errors which arise in the
-# main body of this script.
+# The contents of the following "script" variable are run inside a
+# [catch] command that catches any errors arising in the main body
+# of the script.
 #
-set code [catch {
+set script {
 
 if {[catch {package require Tcl 8}]} {
     if {[catch {package require Tcl 7.5}]} {
@@ -125,7 +126,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName oommf.tcl
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for
@@ -171,14 +172,14 @@ Oc_CommandLine Option platform {} {
       }
       exit 1
    }
-    set snapshot [$runplatform SnapshotDate]
-    if {![string match {} $snapshot]} {
-       set snapshot ", snapshot $snapshot"
-    }
-    Oc_Log Log "OOMMF release\
+   set snapshot [$runplatform SnapshotDate]
+   if {![string match {} $snapshot]} {
+      set snapshot ", snapshot $snapshot"
+   }
+   Oc_Log Log "OOMMF release\
             [package provide Oc]$snapshot\n[$runplatform \
 	    Summary]" info
-    exit
+   exit
 } "Print platform summary and exit"
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
@@ -264,9 +265,23 @@ if {$bg} {
 ########################################################################
 ########################################################################
 
-# The following line is the end of the [catch] command which encloses the
-# entire main body of this script.
-} msg]
+# The following line is the end of the [set script] command which
+# encloses the entire main body of this script.
+}
+
+if {[catch {package require Tcl 8.5-}]} {
+    set code [catch $script msg]
+} else {
+    # Really old releases of Tcl were really dumb in their failed
+    # efforts to compile [catch], so we do a dumb thing to work around it.
+    set catch catch
+    set code [$catch $script msg o]
+    if {$code in {1 2}} {
+        set errorCode [dict get $o -errorcode]
+    }
+    unset o
+}
+
 #
 ########################################################################
 

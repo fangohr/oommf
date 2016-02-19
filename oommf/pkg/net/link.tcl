@@ -7,14 +7,11 @@
 #
 # The Tcl event loop must be running for this event-driven object to function.
 #
-# Last modified on: $Date: 2008-05-22 23:56:16 $
+# Last modified on: $Date: 2015/09/30 07:41:35 $
 # Last modified by: $Author: donahue $
 #
 
 Oc_Class Net_Link {
-
-    # A maximum backlog on the queue, for detecting possible bugs
-    common maxQueueLength 10000
 
     # The socket through which we communicate to the host.
     const public variable socket
@@ -28,11 +25,13 @@ Oc_Class Net_Link {
     # line read from socket
     private variable lineFromSocket
 
-    # queue of messages to write to socket
-    private variable putQueue = {}
-
     # Has there been an error on the socket?
-    private variable error = 0
+    private variable read_error = 0
+    private variable write_error = 0
+
+    # Disable writes.  Reading can be disabled by deleting the readable
+    # event handler.
+    private variable write_disabled = 0
 
     # Identity checks.
 
@@ -101,7 +100,7 @@ Oc_Class Net_Link {
 
                   set event [after 0 $this ConfigureSocket]
                   Oc_EventHandler New _ $this Delete \
-                     [list after cancel $event] \
+                     [list after cancel $event] -oneshot 1 \
                      -groups [list $this-ConfigureSocket $this]
                   return
                # }
@@ -120,7 +119,7 @@ Oc_Class Net_Link {
            foreach {_ hostname port} [fconfigure $socket -peername] {break}
            set event [after 0 $this ConfigureSocket]
            Oc_EventHandler New _ $this Delete \
-              [list after cancel $event] \
+              [list after cancel $event] -oneshot 1 \
               -groups [list $this-ConfigureSocket $this]
 	}
     }
@@ -134,7 +133,7 @@ Oc_Class Net_Link {
 	if {![catch {fconfigure $socket -error} msg]} {
 	    # -error recognized
 	    if {![string match {} $msg]} {
-		set msg "Can't connect to $hostname:$port:\n\t$msg"
+		set msg "$this: Can't connect to $hostname:$port:\n\t$msg"
 		Oc_Log Log $msg status $class
 		$this Delete
 		return
@@ -143,7 +142,7 @@ Oc_Class Net_Link {
 	# Also check that we can actually write...
 	if {[catch {puts -nonewline $socket ""} msg]} {
 	    # Write failed
-	    set msg "Can't write to $hostname:$port:\n\t$msg"
+	    set msg "$this: Can't write to $hostname:$port:\n\t$msg"
 	    Oc_Log Log $msg status $class
 	    $this Delete
 	    return
@@ -155,7 +154,7 @@ Oc_Class Net_Link {
 	if {[catch {
 		foreach {_ hostname port} [fconfigure $socket -peername] {break}
 		} msg]} {
-	    set msg "Not connected to $hostname:$port\n\t:$msg"
+	    set msg "$this: Not connected to $hostname:$port\n\t:$msg"
 	    Oc_Log Log $msg status $class
 	    $this Delete
 	    return
@@ -164,7 +163,7 @@ Oc_Class Net_Link {
         # Identity check.  This also involves blocking calls to fconfigure.
         if {![$this UserIdentityCheck $socket]} {
            unset socket
-           set msg "User identity check failed on $hostname:$port"
+           set msg "$this: User identity check failed on $hostname:$port"
            Oc_Log Log $msg status $class
            $this Delete
            return
@@ -194,7 +193,7 @@ Oc_Class Net_Link {
         Oc_EventHandler DeleteGroup $this-ConfigureSocket
         fconfigure $socket -blocking 0 -buffering line -translation {auto crlf}
         fileevent $socket readable [list $this Receive]
-        Oc_Log Log "Connected to $hostname:$port" status $class
+        Oc_Log Log "$this: Connected to $hostname:$port" status $class
         Oc_EventHandler Generate $this Ready
     }
 
@@ -208,9 +207,9 @@ Oc_Class Net_Link {
 
     # handler called when there is data available from the host
     # It invokes other events describing what it receives.
-    method Receive {} {
+    method Receive {} {socket lineFromSocket} {
         if {[catch {gets $socket line} readCount]} {
-            $this SocketError $readCount
+            $this SocketError 1 0 $readCount
             return
         }
         if {$readCount < 0} {
@@ -227,82 +226,79 @@ Oc_Class Net_Link {
         Oc_EventHandler Generate $this Readable
     }
 
-    private method SocketError { msg } {
-        fileevent $socket readable {}
-        fileevent $socket writable {}
-        Oc_Log Log "socket error in connection $this to\
+    private method SocketError { eread ewrite msg } {
+       if {![info exists socket]} { return }
+       fileevent $socket readable {}
+       fileevent $socket writable {}
+       if {$ewrite} {
+          set write_error 1
+          set write_disabled 1
+          Oc_Log Log "$this: socket write error in connection to\
 		$hostname:$port:\n\t$msg" status $class
-	set error 1
-        $this Delete
-        return
+       }
+       if {$eread} {
+          set read_error 1
+          Oc_Log Log "$this: socket read error in connection to\
+		$hostname:$port:\n\t$msg" status $class
+       } else {
+          # Error occured during write --- other end of socket probably
+          # closed.  But there may be valid data waiting in input
+          # buffer, so drain it:
+          while {1} {
+             if {[catch {gets $socket line} readCount]} {
+                set read_error 1
+                break
+             }
+             if {$readCount < 0} {
+                if {[fblocked $socket]} {
+                   # 'gets' call is blocked until a whole line is available
+                   after 500
+                   continue
+                }
+                # Otherwise eof
+                Oc_Log Log \
+                   "$this: detected socket close by $hostname:$port" \
+                   status $class
+                break
+             }
+             set lineFromSocket [Oc_Url Unescape $line]
+             Oc_EventHandler Generate $this Readable
+          }
+       }
+       $this Delete
+       return
     }
 
     private method SocketEOF {} {
         fileevent $socket readable {}
 	catch { puts $socket "" } ;# For some reason, this seems to
 	## help close the network connection on the other end.
-	## -mjd, 98-10-09
-        Oc_Log Log "socket closed by $hostname:$port in $this" status $class
+	## -mjd, 1998-10-09
+        Oc_Log Log "$this: socket closed by $hostname:$port" status $class
         $this Delete
         return
     }
 
-    method Get {} {
+    method Get {} {lineFromSocket} {
         return $lineFromSocket
     }
 
-    method Put { msg } {
+    method Put { msg } {write_disabled socket} {
+        if {$write_disabled} { return }
+
         # Escape the newlines in the string -- a mini version of
         # 'Oc_Url Escape'
         regsub -all % $msg %25 msg
         regsub -all "\n" $msg %0a msg
-        lappend putQueue $msg
 
-        # Use event-driven writing of message to socket, if possible.
-        # Unfortunately the [fileevent ? writable] command is broken
-        # on Windows platforms in pre-8.0 versions of Tcl.  See the
-        # file ./fewtest.tcl for more information.
-        #
-        global tcl_platform
-        if {[string match windows $tcl_platform(platform)] \
-                && [package vsatisfies [package provide Tcl] 7]} {
-            $this Send
-        } else {
-            fileevent $socket writable [list $this Send]
-            if {[llength $putQueue] > $maxQueueLength} {
-                # will this message ever be seen?
-                Oc_Log Log "Maximum queue length exceeded in link\
-			$this:\n\tPossibly a socket error?" warning $class
-		$this Flush
-            }
-        }
-    }
-
-    method Send {} {
-        # This won't block, but could leave data backed up in an internal
-        # Tcl buffer.  That's unlikely since we're waiting for a writable
-        # socket.
-        if {[catch {puts $socket [lindex $putQueue 0]} msg]} {
-	    $this SocketError $msg
+        if {[catch {puts $socket $msg} errmsg]} {
+	    $this SocketError 0 1 $errmsg
 	    return
 	}
-        set putQueue [lrange $putQueue 1 end]
-        if {![llength $putQueue]} {
-            fileevent $socket writable {}
-        }
     }
 
-    method Drain {} {
-        # Flush the queue
-	if {$error} return
-        while {[info exists putQueue] && [llength $putQueue]} {
-            $this Send
-        }
-    }
-
-    method Flush {} {
-	$this Drain
-        if {[info exists socket] && !$error} {
+    method Flush {} {socket} {
+        if {[info exists socket] && !$write_error} {
 	    # Non-blocking sockets on Windows don't seem to flush
 	    # properly (Tcl Bug 1329754).  As a workaround force
 	    # the socket to blocking configuration before flushing 
@@ -312,14 +308,9 @@ Oc_Class Net_Link {
 	}
     }
 
-    method Close {} {
-        #if {[info exists socket] && !$error} {
-        #     $this Flush
-        # }
-	$this Drain
+    method Close {} {socket} {
         if {[info exists socket]} {
-            Oc_Log Log "Closing socket $socket in $this" status $class
-
+            Oc_Log Log "$this: Closing socket $socket" status $class
 	    # The [catch] here should not be needed, but we've received
 	    # several reports of the following [close] throwing an error
 	    # which we have not been able to duplicate.  A [catch] will
@@ -331,6 +322,9 @@ Oc_Class Net_Link {
     }
 
     Destructor {
+        # Disable I/O.  Necessary lest event handlers be naughty.
+        fileevent $socket readable {}
+        set write_disabled 1
         Oc_EventHandler Generate $this Delete
         Oc_EventHandler DeleteGroup $this
         if {[info exists socket]} {

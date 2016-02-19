@@ -7,6 +7,7 @@
 #ifndef _OXS_DIRECTOR
 #define _OXS_DIRECTOR
 
+#include <list>
 #include <map>
 #include <string>
 #include <vector>
@@ -41,6 +42,8 @@ class Oxs_Ext;       // Forward declarations
 class Oxs_Energy;
 class Oxs_Driver;
 class Oxs_Output;
+class Oxs_BaseScalarOutput;
+class Oxs_BaseChunkScalarOutput;
 
 // KLUDGE KLUDGE KLUDGE
 // Oxs_ProbRelease should be declared using the Tcl_CmdProc
@@ -108,9 +111,24 @@ private:
   /// restart flag to specify whether CRC checking is performed
   /// to validate correspondence between MIF and restart files.
 
+  String restart_file_directory; // Default directory where checkpoint
+  /// files are written.  This will be ignored if checkpoint file name
+  /// (which can be set from the MIF file) is an absolute path.  Empty
+  /// string is equivalent to ".", which uses the directory holding
+  /// the problem MIF file.
+
   // MIF object, which holds mif_interp, a slave of interp.  This is
-  // created inside ProbInit(), and is held until Release()
+  // created inside ProbInit(), and is held until Release().  The
+  // MIF CRC and Parameters string are also determined at this time,
+  // and cached so that they are accessible without going through
+  // the global Tcl interp --- this allows the values to be used in
+  // child threads such as the one that handles saving checkpoints.
   String mif_object;
+  String mif_parameters;
+  OC_UINT4m mif_crc;
+
+  OC_UINT4m ComputeMifCrc();
+  String ReadMifParameters();
 
   // Problem release/director reset routines.
   void ForceRelease();
@@ -151,7 +169,18 @@ private:
   /// a different indexing scheme should replace this.  Perhaps a hash
   /// lookup?
 
-  const char* MakeOutputToken(unsigned long index,unsigned long probid) const;
+  std::list<Oxs_BaseScalarOutput*> scalar_output_obj; // Sorted list of
+  // all registered scalar output objects.
+
+  std::vector<Oxs_BaseChunkScalarOutput*> chunk_output_compute_obj;
+  void CreateChunkOutputComputeList();
+  /// List of chunk output objects sufficient to compute all chunk
+  /// outputs.  This is a subset of scalar_output_obj, and potentially a
+  /// subset of all Oxs_BaseChunkScalarOutput objects, since the compute
+  /// routines of one chunk output object may compute the values for
+  /// other chunk outputs as well.
+
+  const char* MakeOutputToken(OC_INDEX index,OC_UINT4m probid) const;
   Oxs_Output* InterpretOutputToken(const char* token) const;
 
   Oxs_Driver* driver; // Unique driver object.  This can be changed
@@ -206,13 +235,23 @@ public:
   /// Oxs_ExtError or Oxs_Exception errors, the bad_specs list is
   /// appended to the error message and the exception is re-thrown.
 
-  int ProbInit(const char* filename,const char* mif_parameters);
+  int IsProblemLoaded() { return (problem_id == 0 ? 0 : 1); }
+
+  int ProbInit(const char* filename,const char* mif_params);
 
   const char* GetProblemName() const { return problem_name.c_str(); }
 
   int SetRestartFlag(int flag);
   int GetRestartFlag() const { return restart_flag; }
   /// See explanation of restart_flag above.
+
+  void SetRestartFileDir(const char* dirname) {
+    restart_file_directory = dirname;
+  }
+  const char* GetRestartFileDir() const {
+    return restart_file_directory.c_str();
+  }
+  /// Default directory to use for storing restart (checkpoint) files
 
   int ProbReset();
 
@@ -224,13 +263,14 @@ public:
   /// Fills results with event list.  Throws an exception on error.
 
 
-  // GetIteration, GetStage, GetNumberOfStages, and SetStage
-  // all throw exceptions on error.  SetStage returns the
-  // actual stage number.
+  // GetIteration, GetStage, GetNumberOfStages, SetStage, and
+  // GetCurrentStateId all throw exceptions on error.  SetStage
+  // returns the actual stage number.
   int GetIteration();
   int GetStage();
   int GetNumberOfStages();
   int SetStage(int requestedStage);
+  OC_UINT4m GetCurrentStateId();
 
   String GetMifHandle() const;
   Tcl_Interp* GetMifInterp() const;
@@ -265,6 +305,9 @@ public:
   const Oxs_Driver* GetDriver() const {
     return driver;
   }
+  Oxs_Driver* GetDriver() {
+    return driver;
+  }
 
   int StoreExtObject(Oxs_OwnedPointer<Oxs_Ext>& obj);
   /// Stores *obj in the ext_obj array and registers it in ext_map.  On
@@ -291,11 +334,15 @@ public:
   /// indicates that the failure was caused by a naming conflict in
   /// ext_map, i.e., the instance name was already registered.
 
-  Oxs_Ext* FindExtObject(const String& id) const;
+  Oxs_Ext* FindExtObject(const String& id,OC_UINT4m& match_count) const;
   /// Returns a pointer to the element of ext_map with instance id
-  /// 'id'.  Returns NULL if the requested object is not
+  /// 'id'.  Returns NULL if the requested object is not (uniquely)
   /// found.  For convenience, some partial matches are allowed.  See
   /// the routine implementation for details.
+  ///    The "match_count" export reports the number of matches found.
+  ///  if the return is non-NULL, then match_count is set to 1.
+  ///  Otherwise match_count will be 0 if no matches where found, or >1
+  ///  if multiple matches were found.
   ///    It is recommended that the client place a dep lock on the
   /// object if it is to be used for an extended period.  All such locks
   /// must be released before the corresponding object in ext_map can be
@@ -326,6 +373,10 @@ public:
   /// Fills export "names" with, in order, owner_name, output_name,
   /// output_type, and output_units, for output object associated
   /// with output_token.
+
+  void GetAllScalarOutputs(vector<String>& triples);
+  /// Returns a flat list of triples, (output name, units, value), for
+  /// each registered scalar output.
 
   Oxs_Output* FindOutputObject(const char* regexp) const;
   /// C++ interface for searching the output object list.  This routine

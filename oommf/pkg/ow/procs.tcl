@@ -3,7 +3,7 @@
 # A collection of Tcl procedures (not Oc_Classes) which are part of the
 # Ow extension
 #
-# Last modified on: $Date: 2012-06-26 21:11:27 $
+# Last modified on: $Date: 2012/06/26 21:11:27 $
 # Last modified by: $Author: donahue $
 
 ########################################################################

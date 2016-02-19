@@ -439,20 +439,20 @@ when one copy of \app{mmLaunch} is used to load a problem and start a
 solver, and later a second copy of \app{mmLaunch} is used to monitor the
 status of that running solver.
 
-\index{platform!Windows!network socket bug|(}
-A bug in the network traffic handling code\index{network~socket} of
-\Tcl\ on \Windows~9X systems can sometimes interfere
-with communications between the control interface of \app{mmSolve2D} and
-the actual computation engine.  If \app{mmSolve2D} is sending out data
-to two or more data display services every iteration, the resulting
-network traffic can ``crowd out'' the receipt of control messages from
-the control interface.  You may observe this as a long delay between the
-time you click the \btn{Pause} button and the time the solver stops
-iterating.  This bug first appeared in \Tcl\ release 8.0.3, and remained
-through \Tcl\ release 8.1.1.  It is fixed in
-\Tcl\ releases 8.2 and later, which we recommend for \OOMMF\ users on
-\Windows~9X systems.  Other platforms do not have this problem.
-\index{platform!Windows!network socket bug|)}
+%\index{platform!Windows!network socket bug|(}
+%A bug in the network traffic handling code\index{network~socket} of
+%\Tcl\ on \Windows~9X systems can sometimes interfere
+%with communications between the control interface of \app{mmSolve2D} and
+%the actual computation engine.  If \app{mmSolve2D} is sending out data
+%to two or more data display services every iteration, the resulting
+%network traffic can ``crowd out'' the receipt of control messages from
+%the control interface.  You may observe this as a long delay between the
+%time you click the \btn{Pause} button and the time the solver stops
+%iterating.  This bug first appeared in \Tcl\ release 8.0.3, and remained
+%through \Tcl\ release 8.1.1.  It is fixed in
+%\Tcl\ releases 8.2 and later, which we recommend for \OOMMF\ users on
+%\Windows~9X systems.  Other platforms do not have this problem.
+%\index{platform!Windows!network socket bug|)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{\OOMMF\ 2D Micromagnetic Solver Batch System}\label{sec:obs}

@@ -8812,7 +8812,7 @@ void Oxs_FFTStrided::FillPreorderTraversalStateArray()
   }
   for(i=0;i<ptsRadix4_size;++i) {
     OC_INDEX rs  = ptsRadix4[i].stride; // "real" (versus complex) stride
-    ptsRadix4[i].stride *= rstride/2;
+    ptsRadix4[i].stride = (rs/2)*rstride; // Note: rstride might be odd
     OC_INDEX k = ptsRadix4[i].uoff;
     ptsRadix4[i].uoff = (2*fftsize + 6 + 3*k) - (4*rs + 3*log2fftsize);
     /// The 3*k term is because we don't store the k==0 terms in

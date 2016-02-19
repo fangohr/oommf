@@ -9,7 +9,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ppm
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 Oc_CommandLine Option console {} {}
 
@@ -41,11 +41,20 @@ Oc_CommandLine Option config {file} {
 	global configFiles; lappend configFiles $file
 } "Append file to list of configuration files"
 
+set inputPattern [list]
 Oc_CommandLine Option ipat {
 	{pattern {} {is in glob-style}}
     } {
-	global inputPattern; set inputPattern $pattern
-} {Pattern specifying input files}
+	global inputPattern tcl_platform
+	if {[string compare windows $tcl_platform(platform)]==0} {
+	    # Convert to canonical form, replacing backslashes with
+	    # forward slashes, so pattern can be fed to glob.
+	    if {![catch {file join $pattern} xpat]} {
+		set pattern $xpat
+	    }
+	}
+	lappend inputPattern $pattern
+    } {Pattern specifying input files} multi
 
 Oc_CommandLine Option opatexp {
 	{regexp {} {is a regular expression}}
@@ -78,25 +87,28 @@ foreach c $configFiles {
 
 # Turn -ipat pattern into list of input files
 set inGlob [list]
-if {[info exists inputPattern]} {
-    set inGlob [lsort -dictionary [glob -nocomplain -- $inputPattern]]
+if {[llength $inputPattern]>0} {
+   foreach pat $inputPattern {
+      set inGlob [concat $inGlob [lsort -dictionary [glob -nocomplain -- $pat]]]
+   }
 } else {
-    # -ipat not specified.  On Windows, check infile for wildcards.
-    # (Unix shells automatically expand wildcards, Windows does not.)
-    set inputPattern {}
-    if {[string match windows $tcl_platform(platform)]} {
-       set nowild {}
-       foreach f $infile {
-          if {([string first "*" $f]>=0 || [string first "?" $f]>=0) \
+   # -ipat not specified.  On Windows, check infile for wildcards.
+   # (Unix shells automatically expand wildcards, Windows does not.)
+   if {[string match windows $tcl_platform(platform)]} {
+      set nowild {}
+      foreach f $infile {
+	 if {([string first "*" $f]>=0 || [string first "?" $f]>=0) \
                  && ![file exists $f]} {
-             set inGlob [concat $inGlob [glob -nocomplain -- $f]]
-          } else {
-             lappend nowild $f
-          }
-       }
-       set infile $nowild
-       set inGlob [lsort -dictionary -unique $inGlob]
-    }
+	    # Convert any '\' to '/' before feeding to glob
+	    if {![catch {file join $f} xf]} {set f $xf}
+	    set inGlob [concat $inGlob [glob -nocomplain -- $f]]
+	 } else {
+	    lappend nowild $f
+	 }
+      }
+      set infile $nowild
+      set inGlob [lsort -dictionary -unique $inGlob]
+   }
 }
 
 # Set default output filename substitution
@@ -139,7 +151,9 @@ if {$verbosity >= 3} {
  Autosample: $plot_config(arrow,autosample)
  Subsample: $plot_config(arrow,subsample)
  Size: $plot_config(arrow,size)
- Antialias: $plot_config(arrow,antialias)"
+ Antialias: $plot_config(arrow,antialias)
+ Outline width: $plot_config(arrow,outlinewidth)
+ Outline color: $plot_config(arrow,outlinecolor)"
     puts stderr "Pixel Configuration---
  Display: $plot_config(pixel,status)
  Colormap name: $plot_config(pixel,colormap)
@@ -258,14 +272,13 @@ proc ReadFile { filename } {
 ########################################################################
 
 # Loop through input files
-set input_file_list [concat $infile $inGlob]
+set input_file_list [concat $inGlob $infile]
 if {[llength $input_file_list]<1} {
     Oc_Log Log [Oc_CommandLine Usage] info
     puts stderr "\nERROR: No input files"
     exit
 }
 foreach in $input_file_list {
-
     if {[regsub -- $opatexp $in $opatsub out] != 1} {
 	set out $in$opatsub
     }
@@ -276,14 +289,16 @@ foreach in $input_file_list {
     } else {
 	set outChan [open $out w]
     }
+    fconfigure $outChan -translation binary -buffersize 10000
     if {[info exists filter]} {
 	# Note: $filter might itself be a pipeline, or a command
 	# with arguments.  Either way, we need the open eval to
 	# interpret $filter as multiple command words, i.e., we
 	# don't want to wrap $filter up inside a list.
-	set outChan [open "| 2>@stderr $filter >@ $outChan" w]
+        set endChan $outChan
+	set outChan [open "| 2>@stderr $filter >@ $endChan" w]
+        fconfigure $outChan -translation binary -buffersize 10000
     }
-    fconfigure $outChan -translation binary -buffersize 10000
 
     # Read input file into frame
     if {[catch {ReadFile $in} bbox]} {
@@ -312,6 +327,11 @@ foreach in $input_file_list {
     Bitmap Delete myBitmap
     if {[catch {close $outChan} msg]} {
 	return -code error $msg
+    }
+    if {[info exists filter]} {
+       if {[catch {close $endChan} msg]} {
+          return -code error $msg
+       }
     }
 }
 

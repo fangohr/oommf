@@ -41,11 +41,6 @@
 
 /* End includes */
 
-#if 1 // For debugging
-extern OC_INDEX SDA00_count;
-extern OC_INDEX SDA01_count;
-#endif
-
 // If OXS_DEMAG_REAL_ASYMP is anything other than OC_REAL8m,
 // then OXS_DEMAG_ASYMP_USE_SSE should be forced to 0
 typedef OC_REAL8m OXS_DEMAG_REAL_ASYMP;
@@ -63,6 +58,26 @@ typedef OC_REAL8m OXS_DEMAG_REAL_ASYMP;
 
 OC_REALWIDE Oxs_Newell_f(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z);
 OC_REALWIDE Oxs_Newell_g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z);
+
+inline OC_REALWIDE Oxs_Newell_f_xx(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_f(x,y,z);
+}
+inline OC_REALWIDE Oxs_Newell_f_yy(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_f(y,x,z);
+}
+inline OC_REALWIDE Oxs_Newell_f_zz(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_f(z,y,x);
+}
+inline OC_REALWIDE Oxs_Newell_g_xy(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_g(x,y,z);
+}
+inline OC_REALWIDE Oxs_Newell_g_xz(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_g(x,z,y);
+}
+inline OC_REALWIDE Oxs_Newell_g_yz(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z) {
+  return Oxs_Newell_g(y,z,x);
+}
+
 
 OC_REALWIDE
 Oxs_CalculateSDA00(OC_REALWIDE x, OC_REALWIDE y, OC_REALWIDE z,
@@ -357,7 +372,7 @@ inline void OxsDemagNabData::SetPair
 
 ////////////////////////////////////////////////////////////////////////
 // High-order asymptotic approximations
-const OXS_DEMAG_REAL_ASYMP OXS_DEMAG_ASYMPTOTIC_DEFAULT_REFINE_RATIO = 1.5;
+#define OXS_DEMAG_ASYMPTOTIC_DEFAULT_REFINE_RATIO 1.5
 struct OxsDemagAsymptoticRefineData {
 public:
   OxsDemagAsymptoticRefineData(OXS_DEMAG_REAL_ASYMP in_dx,
@@ -859,6 +874,7 @@ OxsDemagNttIntegralZ<T>::Compute(const OxsDemagNabPairData& ptdata) const
 typedef OxsDemagNttIntegralZ<OxsDemagNxxIntegralZBase> OxsDemagNxxIntegralZ;
 typedef OxsDemagNttIntegralZ<OxsDemagNxyIntegralZBase> OxsDemagNxyIntegralZ;
 
+#undef OXS_DEMAG_ASYMPTOTIC_DEFAULT_REFINE_RATIO
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////

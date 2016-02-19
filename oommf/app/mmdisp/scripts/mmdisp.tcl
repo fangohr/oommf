@@ -14,10 +14,10 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:51 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 06:19:10 $} _ date
 Oc_Main SetDate [string trim $date]
-# regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
+# regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
 Oc_Main SetAuthor [Oc_Person Lookup donahue]
 Oc_Main SetExtraInfo "Built against Tcl\
@@ -68,7 +68,7 @@ if {$enableServer} {
         # CAUTION!!! -- The command [AsyncTempFileDisplayRequest]
         # re-enters the event loop, so when an instance of Net_Connection
         # calls this proc via a call to [$net_protocol Reply], it can
-        # be re-entered, and do such nasty things as destroy itself.
+        # be re-entered, and do such nasty things such as destroy itself.
         AsyncTempFileDisplayRequest $fnlist
         return [list start [list 0]]
     }
@@ -148,6 +148,21 @@ proc AsyncTempFileDisplayRequest { fnlist } {
     }  ;# End of semaphore-set catch
     set _mmdispcmds(atfdr_procsem) 0     ;# Release semaphore
 }
+
+proc mmDispShutdownCleanup {} {
+   global _mmdispcmds
+   # Delete any (temporary) file on display request stack.  In
+   # practice this doesn't always catch everything.  Work is needed to
+   # determine if the lost files are "owned" by this process or the
+   # caller, and to take steps to delete those too.
+   foreach namepair $_mmdispcmds(atfdr_filelist) {
+      catch {file delete [lindex $namepair 0]}
+   }
+   set _mmdispcmds(atfdr_filelist) {}
+}
+Oc_EventHandler New _ Oc_Main Shutdown \
+    [list mmDispShutdownCleanup] -oneshot 1
+
 
 ########################### GLOBAL VARIABLES ########################
 # It would probably be better to have many of these sitting inside the
@@ -1561,7 +1576,7 @@ proc SaveFileCallback { widget } {
         set omfspec([string range $name 1 end]) $value
     }
 
-    # Check to see if file already exits
+    # Check to see if file already exists
     if { [file exists $filename] } {
         set answer [Ow_Dialog 1 "File Save: File exists" question \
                 "File $filename already exists.\nOverwrite?" \
@@ -1676,7 +1691,7 @@ proc WriteConfigFileCallback { widget } {
     # Get filename
     set filename [$widget GetFilename]
 
-    # Check to see if file already exits
+    # Check to see if file already exists
     if { [file exists $filename] } {
         set answer [Ow_Dialog 1 "File Save: File exists" question \
                 "File $filename already exists.\nOverwrite?" \
@@ -2220,7 +2235,7 @@ proc UpdateCoordDisplay { newrot } {
     ShowCoords $win $newrot $plot_config(viewaxis)
 }
 trace variable DisplayRotation w DisplayRotationTrace
-bind $coords_win <Button-1> {
+bind $coords_win <<Ow_LeftButton>> {
     set temp [expr {(round($DisplayRotation/90.)+1)%%4}]
     set DisplayRotation [expr {$temp*90}]
 }
@@ -2229,7 +2244,7 @@ bind $coords_win <Key-Left> {
     set temp [expr {(round($DisplayRotation/90.)+1)%%4}]
     set DisplayRotation [expr {$temp*90}]
 }
-bind $coords_win <Button-3> {
+bind $coords_win <<Ow_RightButton>> {
     set temp [expr {(round($DisplayRotation/90.)-1)%%4}]
     set DisplayRotation [expr {$temp*90}]
 }
@@ -3542,38 +3557,22 @@ proc CenterScreenView { vx vy } {
     global canvas
     CenterPlotView [$canvas canvasx $vx] [$canvas canvasy $vy]
 }
-bind $canvas <Button-1> { OMF_InitZoomBox %x %y 1 }
-bind $canvas <Button-3> { OMF_InitZoomBox %x %y -1 }
-bind $canvas <Button1-Motion> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
-bind $canvas <Button3-Motion> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+bind $canvas <<Ow_LeftButton>> { OMF_InitZoomBox %x %y 1 }
+bind $canvas <<Ow_RightButton>> { OMF_InitZoomBox %x %y -1 }
+bind $canvas <<Ow_LeftButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+bind $canvas <<Ow_RightButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
 bind $canvas <ButtonRelease> { OMF_DoZoom %x %y }
-bind $canvas <ButtonRelease-2> { CancelZoom ; CenterScreenView %x %y }
-bind $canvas <Shift-ButtonRelease-1> { CancelZoom ; CenterScreenView %x %y }
-bind $canvas <Button-2> { continue }       ;# Make these nops so they don't
-bind $canvas <Shift-Button-1> { continue } ;# interact with other bindings.
-
-if {[Ow_IsAqua]} {
-   # Macs have only one button, so use "Command" modifier key with
-   # button 1 as a stand-in for Button-3.  Tk registers the Command key
-   # as Mod1, but on Windows Tk associates Mod1 with the NumLock key.
-   # Some laptop keyboards lack a NumLock key, in which case the system
-   # may report NumLock as always on.  This wrecks havoc with other
-   # Button-1 bindings, so only add these binding on the Mac.
-   bind $canvas <Mod1-Button-1> { OMF_InitZoomBox %x %y -1 }
-   bind $canvas <Mod1-Button1-Motion> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+bind $canvas <<Ow_ShiftLeftButtonRelease>> { CancelZoom }
+bind $canvas <<Ow_ShiftRightButtonRelease>> { CancelZoom }
+bind $canvas <<Ow_MiddleButtonRelease>> { CancelZoom ; CenterScreenView %x %y }
+bind $canvas <<Ow_MiddleButton>> {
+   continue ;# Make this a nop so is doesn't interact with other bindings.
 }
-# If using OS X + X11, then the "Command" key maps to "Meta" (instead of
-# Mod1).  Since I'm not currently able to find any other systems that
-# bind anything to Meta, it is probably(?) okay to make these bindings
-# always.
-bind $canvas <Meta-Button-1> { OMF_InitZoomBox %x %y -1 }
-bind $canvas <Meta-Button1-Motion> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+bind $canvas <<Ow_ShiftLeftButton>> { OMF_ShowPosition %x %y }
+bind $canvas <<Ow_ShiftRightButton>> { OMF_ShowPosition %x %y 1 }
+bind $canvas <<Ow_ShiftLeftButtonRelease>> +OMF_UnshowPosition
+bind $canvas <<Ow_ShiftRightButtonRelease>> +OMF_UnshowPosition
 
-# Vector value display
-bind $canvas <Control-Button-1> { OMF_ShowPosition %x %y }
-bind $canvas <Shift-Control-Button-1> { OMF_ShowPosition %x %y 1 }
-bind $canvas <Control-ButtonRelease-1> { OMF_UnshowPosition }
-bind $canvas <Shift-Control-ButtonRelease-1> { OMF_UnshowPosition }
 proc OMF_ShowPosition { wx wy {verbose 0}} {
     set boxmargin 5
     set dotrad 2

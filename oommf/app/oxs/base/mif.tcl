@@ -21,8 +21,6 @@
 Oc_Class Oxs_Mif {
     private variable speckeys           ;# Ordered list of keys
     private array variable spec
-    private variable misckeys = {}      ;# Ordered list of keys
-    private array variable misc
     private variable destkeys = {}      ;# Ordered list of keys
     private array variable dest
     private array variable extra
@@ -30,6 +28,8 @@ Oc_Class Oxs_Mif {
     private array variable assigned
     private array variable schedule
     private variable random_seed = {}
+
+    private array variable oid_wait     ;# PIDs awaiting OID assignment
 
     # mif_interp is slave interpreter in which the MIF file is
     # eval'ed.  Normally this slave is deleted along with Oxs_Mif
@@ -142,42 +142,21 @@ Oc_Class Oxs_Mif {
         ##    accordingly.
     }
 
-    method KillApps {killtags} {
-        if {([llength $killtags] == 1)
-                && [string match all [lindex $killtags 0]]} {
-            set killtags [array names assign]
-        }
-        foreach tag $killtags {
-            if {[catch {set assign($tag)} oid]} {
-                Oc_Log Log "No such tag: $tag\nTags are:\
+    method KillOids {killtags} {
+       if {([llength $killtags] == 1)
+           && [string match all [lindex $killtags 0]]} {
+          set killtags [array names assign]
+       }
+       set oidlist {}
+       foreach tag $killtags {
+          if {[catch {set assign($tag)} oid]} {
+             Oc_Log Log "No such tag: $tag\nTags are:\
                         [array names assign]" warning
-                continue
-            }
-
-            # How do we kill an application, given its OID?
-            # Maybe the "right" way is to involve the account server?
-            # A hack is to loop over the known Net_Threads and send
-            # the "exit" message to the first one that has a service
-            # ID of the proper form?
-
-            foreach t [Net_Thread Instances] {
-                if {[string match $oid:* [$t Cget -pid]]} {
-                    if {[$t Ready]} {
-                        $t Send exit
-                    } else {
-			Oc_Main BlockShutdown
-                        Oc_EventHandler New _ $t Ready \
-				[list $this DelayedAppKill $t]
-                    }
-                    break
-                }
-            }
-        }
-    }
-
-    callback method DelayedAppKill {t} {
-	$t Send exit
-	Oc_Main AllowShutdown
+          } else {
+             lappend oidlist $oid
+          }
+       }
+       return $oidlist
     }
 
     callback method Status {m} {
@@ -231,7 +210,7 @@ Oc_Class Oxs_Mif {
         set extra($tag) $args
     }
 
-    method Schedule {o d e f} {
+    method Schedule {o d e {f {}} } {
         # Establish an initial schedule to set output named $o to destination
         # with tag $d on the event $e with frequency $f.  This amounts to
         # setting up for the creation of an Oxs_Schedule instance.
@@ -243,12 +222,19 @@ Oc_Class Oxs_Mif {
         }
         set e [string toupper \
                 [string index $e 0]][string tolower [string range $e 1 end]]
-        if {[lsearch -exact {Step Stage} $e] == -1} {
+        if {[lsearch -exact {Step Stage Done} $e] == -1} {
             return -code error "Unknown Event \"$e\""
         }
-        if {[catch {incr f 0}] || ($f < 0)} {
-            return -code error "Frequency must be a non-negative integer,\
-                    not\"$f\""
+        if {[string compare Done $e] == 0 && [string match {} $f]} {
+           set f 1  ;# Done event doesn't require a frequency count
+        }
+        if {[catch {incr f 0}] || ($f < 1)} {
+            return -code error "Frequency must be a positive integer,\
+                    not \"$f\""
+        }
+        if {[string compare Done $e] == 0 && ($f > 1)} {
+            return -code error "Frequency for Done event must have value 1,\
+                    not \"$f\""
         }
         # Only one schedule per (output, dest, event) triple.
         if {[info exists schedule($o,$d,$e)]} {
@@ -349,6 +335,10 @@ Oc_Class Oxs_Mif {
             return
         }
         Oc_EventHandler DeleteGroup NotifyNewOid-$pid
+        unset oid_wait($pid)
+        if {[array size oid_wait] == 0} {
+           Oc_EventHandler DeleteGroup AccountServerReset-$this
+        }
 
         # If we claimed a name, make that association
         set oid [lindex $reply 3]
@@ -364,6 +354,28 @@ Oc_Class Oxs_Mif {
         return -code return
     }
 
+    method AccountServerReset { acct } {
+       # If account server crashes, then this method resets
+       # NotifyNewOid requests for launched PIDs still awaiting OID
+       # assignment.
+       #   If the account server goes down again time while this
+       # method is still resetting from a previous account server
+       # crash, then this routine may be recursively called.  It's not
+       # clear if that is a problem or not...
+       if {[array size oid_wait]==0} { return }
+       array set oid_wait_copy [array get oid_wait]
+       unset oid_wait ;# GetOidReply may be called while this
+                      ## method is running.
+       foreach pid [array names oid_wait_copy] {
+          Oc_EventHandler DeleteGroup [list NotifyNewOid-$pid]
+          foreach {tag claim} $oid_wait_copy($pid) break
+          set qid [$acct Send getoid $pid]
+          Oc_EventHandler New _ $acct Reply$qid \
+              [list $this GetOidReply $acct $tag $pid $claim] -oneshot 1 \
+              -groups [list $this $acct]
+       }
+    }
+
     method GetOidReply {acct tag pid claim} {
         set reply [$acct Get]
         if {[lindex $reply 0]} {
@@ -372,7 +384,15 @@ Oc_Class Oxs_Mif {
             # up to receive that notification
             Oc_EventHandler New _ $acct Readable \
                     [list $this NotifyNewOid $acct $tag $pid $claim] \
-                    -groups [list NotifyNewOid-$pid]
+                    -groups [list $this NotifyNewOid-$pid]
+            if {[array size oid_wait]==0} {
+               # Register handler for account server crash.
+               Oc_EventHandler New _ $acct NewAccountServer \
+                   [list $this AccountServerReset $acct] \
+                   -groups [list $this AccountServerReset-$this $acct] \
+                   -oneshot 1
+            }
+            set oid_wait($pid) [list $tag $claim]
         } else {
             # We got the OID
             set oid [lindex $reply 1]
@@ -459,8 +479,8 @@ Oc_Class Oxs_Mif {
                 if {![catch {$this Assign $tag $oid}]} {break}
             }
             if {![info exists assign($tag)]} {
-                # None of them worked.  Launch a new one instead
-                # If the name was specific, we should claim the name
+                # None of them worked.  Launch a new one instead.
+                # If the name was specific, we should claim the name.
                 # If not, then there's just no app of the right kind
                 # running and we should launch one.
                 if {[string length $n]} {
@@ -1040,6 +1060,12 @@ Oc_Class Oxs_Mif {
        #   1) Clear any mif-specified output destination and schedules
        #   2) Make an archive destination
        #   3) Introduce a per-step DataTable output.
+       #   4) Initialize random number stream to a fixed value.
+       #
+       # The last won't work as intended if the random number stream is
+       # used during the parsing of the MIF file.  The only workaround
+       # would appear to be to initialize RandomSeed and then disable
+       # the interface before the MIF file is loaded.
        #
        # For all non-zero level, then run basename (as used for
        #  mmArchive output) is set to
@@ -1057,6 +1083,7 @@ Oc_Class Oxs_Mif {
           catch {unset extra}
           $this Destination archive mmArchive
           $this Schedule DataTable archive Step 1
+          $this RandomSeed 73
        }
        $this SetOptions [list basename $regressiontest_basename]
     }

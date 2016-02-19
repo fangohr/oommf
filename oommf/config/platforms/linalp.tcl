@@ -218,7 +218,7 @@ if {[string match g++ $ccbasename]} {
     # set opts [list -O0]
     # set opts [list -O6]
     # set opts [list -O6 -ffast-math -funroll-loops -fomit-frame-pointer -mcpu=21264]
-    set opts [list -O3 -ffast-math -funroll-loops -fomit-frame-pointer -fstrict-aliasing]
+    set opts [list -O2 -funroll-loops -fomit-frame-pointer -fstrict-aliasing]
     # Default warnings disable
     set nowarn [list -Wno-non-template-friend]
     if {[info exists nowarn] && [llength $nowarn]>0} {
@@ -256,7 +256,9 @@ if {[string match g++ $ccbasename]} {
 	-Wno-uninitialized -Wno-unused-function"}
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories
@@ -289,7 +291,9 @@ if {[string match g++ $ccbasename]} {
     # Widest natively support floating point type.  (On Tru64 unix,
     # cxx supports a long double type, but this isn't supported on
     # linux/axp at this time (9-May-2000).)
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 }
 
 # The program to run on this platform to link together object files and

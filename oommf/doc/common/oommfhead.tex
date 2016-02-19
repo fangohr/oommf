@@ -122,6 +122,23 @@
 % (well at least pdflatex Version 3.14159-13d (Web2C 7.3.1) does).
 }
 
+% A solution to the ``set marker at arbitrary point on a page'' problem:
+\newcounter{arblinkcounter}
+\newcommand{\arblink}[1]{\refstepcounter{arblinkcounter}\label{#1}}
+% Access this from html as \htmlref{whatever link text you want}{label}
+% or from latex as ``... page~\pageref{label}''.
+%
+% In principle it seems like it should suffice to drop an index link,
+% which is generally reasonable since if the point is important enough
+% to be linked to from elsewhere in the document, then it probably
+% belongs in the index too.  If you try, for example,
+% fubar\index{foo!bar}\label{geronimo} then \htmlref works okay, and
+% \pageref prints the right page number, but pdflatex
+% (3.1415926-2.5-1.40.14 (TeX Live 2013)) links back to some earlier
+% counter on a potentially differet page.  So the best workaround seems
+% to be to use \arblink and \index.
+
+
 \setlength{\textwidth}{6.5in}
 \setlength{\oddsidemargin}{0in}
 \setlength{\textheight}{8.5in}
@@ -130,6 +147,8 @@
 \HTMLset{myTODAY}{\today}
 \usepackage{localmods}
 \end{htmlonly}
+
+\usepackage{upquote} % Use upright quotes in verbatim environments
 
 \newcommand{\myimage}[2]{\HTMLcode[#1 #2]{IMG}}
 
@@ -167,6 +186,7 @@
 \newcommand{\munaught}{\latex{$\mu_0$}\html{\begin{rawhtml}&micro;<SUB>0</SUB>\end{rawhtml}}}
 \newcommand{\SI}{SI}     % as in SI units
 \newcommand{\ASCII}{ASCII}
+\newcommand{\emdash}{\latex{---}\html{\begin{rawhtml}&mdash;\end{rawhtml}}}
 
 \newcommand{\oxslabel}[1]{\textbf{#1}}
 % Use \oxslabel to refer to Oxs Specify block labels the first time
@@ -220,6 +240,7 @@
 \newcommand{\vm}{\textbf{m}}
 \newcommand{\vh}{\textbf{h}}
 \newcommand{\vx}{\textbf{x}}
+\newcommand{\vu}{\textbf{u}}
 
 \newcommand{\lb}{\texttt{\#}}  % "Pound" symbol
 \newcommand{\pipe}{\latex{{\tt|}}\html{|}} % "Pipe" symbol
@@ -232,6 +253,11 @@
 \newcommand{\ocb}{\textrm{\{}}
 \newcommand{\ccb}{\textrm{\}}}
 % \ocb is open curly brace, \ccb is close curly brace.
+
+% O open and close angle brackets (aka less-than and greater-than
+% symbols)
+\newcommand{\oab}{\latex{{$<$}}\html{\texttt{<}}}
+\newcommand{\cab}{\latex{{$>$}}\html{\texttt{>}}}
 
 % Bold open and close angle brackets (aka less-than and greater-than
 % symbols)
@@ -320,11 +346,16 @@
 %   giffiles/basename.gif under html.
 %     Altstring it a string to be passed to the ALT= tag
 %   in HTML.  It is not used in the LaTeX code.
+% Note: The "0.5" scaling for psfiles provides excellent onscreen
+%   rendering in ghostview if scaling is set to 4.0 "pixel-based".
+%   This images, however, are slightly larger than in the PDF output.
+%   If you want the sizes to match, set the scaling for ps files to
+%   0.462
 %begin{latexonly}
 \newcommand{\includepic}[2]{%
-\scalebox{0.3333}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
+\scalebox{0.5}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
 \renewcommand{\includepic}[2]{%
-\scalebox{0.75}{\includegraphics{pngfiles/#1.png}} } }
+\scalebox{1.0}{\includegraphics{pngfiles/#1.png}} } }
 %end{latexonly}
 \begin{htmlonly}
 \newcommand{\includepic}[2]{%

@@ -3,19 +3,30 @@
  * Oxs_MeshValue templated class, intended for use with the
  * Oxs_Mesh family.
  *
- * Most of the definitions for this templated class are in
- * the header file meshvalue.h, q.v.  The exception being
- * specializations below, for which we need to arrange only
- * one copy to be instantiated.
+ * The definitions for the templated Oxs_MeshValue and related class
+ * are in the header file meshvalue.h, q.v. The two non-templated
+ * overloaded Oxs_MeshValueOutputField functions can be defined either
+ * in this file or as inlined objects in meshvalue.h.  Most compilers
+ * accept Oxs_MeshValueOutputField definitions in either place, but
+ * the Digital Mars version 8.57 compiler fails with an unresolved external
+ * error at link time if the definitions are in this file, whereas the
+ * Borland C++ 5.82 compiler (2005) fails with the same problem if the
+ * Oxs_MeshValueOutputField definitions are inlined in the header.
  *
- * Incidentally, even without the specializations, this file
- * is needed to make some pre-linkers happy.
+ * So, to make everybody happy, the definitions are in both places,
+ * with macros to select exactly one of the definitions at compiler
+ * time.
  *
- * See the file key.h for a discussion on the reasons for
- * putting all template definitions in the header file.
+ * BIG FAT NOTE: Any changes to the Oxs_MeshValueOutputField functions
+ * need to be duplicated in *BOTH* places.
+ *
  */
 
 #include "meshvalue.h"
+
+/* End includes */
+
+#if !OXS_MESHVALUEOUTPUTFIELD_IN_HEADER
 
 // Routines for Oxs_MeshValue<OC_REAL8m> output
 void Oxs_MeshValueOutputField
@@ -112,3 +123,4 @@ void Oxs_MeshValueOutputField
   fileheader.WriteData(channel,datastyle,textfmt,mesh,
                        data_info,!do_headers);
 }
+#endif // !OXS_MESHVALUEOUTPUTFIELD_IN_HEADER

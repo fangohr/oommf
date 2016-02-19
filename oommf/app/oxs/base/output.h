@@ -77,6 +77,8 @@ protected:
   // Registers with director.  Automatic deregistration is set up
   // in ~Oxs_Output.
 
+  void Deregister();
+
 public:
   Oxs_Output();
   virtual ~Oxs_Output(); // Deregisters
@@ -116,7 +118,6 @@ public:
     // Kludge added to support user output initialization protocol.
     output_units = new_units;
   }
-
 
 };
 

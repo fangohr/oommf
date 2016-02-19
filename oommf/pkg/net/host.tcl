@@ -4,7 +4,7 @@
 #
 # The Tcl event loop must be running for this event-driven object to function.
 #
-# Last modified on: $Date: 2011-09-30 19:12:55 $
+# Last modified on: $Date: 2015/09/30 07:41:34 $
 # Last modified by: $Author: donahue $
 #
 
@@ -82,7 +82,7 @@ Oc_Class Net_Host {
     # id, the Ready method of that instance will return a boolean indicating
     # whether the object is ready.  If not, then when it becomes ready, it
     # will generate an event with id 'Ready'.  If the object cannot become
-    # ready, it will delete itself, generating an event with is 'delete'.
+    # ready, it will delete itself, generating an event with it's 'delete'.
     # Users of instances of this class should set up to handle those two
     # events, when the Ready method returns false.
     #
@@ -108,7 +108,31 @@ Oc_Class Net_Host {
         incr refCount
     }
 
+    public method HostConnection {} {
+       # This method used by account server to check when it has
+       # no non-host connections.
+       if {![info exists connection]} {
+          return {}
+       }
+       return $connection
+    }
+
     method Connect {args} {
+       # The first pass (which has $args == {}) tries to connect to a
+       # pre-existing host server.  If that fails then the
+       # StartLocalHost method is called to start a new server.  The
+       # child process tries to open a server on the host port and
+       # pings back to here regardless of whether or not it succeeded
+       # in grabbing the host port.  The second pass through this
+       # method ($args != {}) should succeed by connecting to either
+       # the host server launch by $this or else to a host server
+       # launched by some other process.  Aside from abnormal
+       # conditions such as a foreign process sitting on the host
+       # server port, the only anticipated failure mode is a race
+       # condition where a new host server is bought up after the
+       # first call to Connect, which then dies after the child host
+       # server tries to grab the server port but before the second
+       # Connect pass tries to connect.
         if {[llength $args]} {
             Oc_Log Log "Received ping!" status $class
         }
@@ -205,19 +229,27 @@ Oc_Class Net_Host {
     private method StartLocalHost {} {
         set hostthread [file join $dir threads host.tcl]
         if {[file readable $hostthread]} {
-            # Set up to receive ping from host thread or timeout
-            set listensocket [socket -server [list $this Connect] \
+           # Set up to receive ping from host thread or timeout
+           # Note: listensocket and timeoutevent should not exist
+           # coming into StartLocalHost, but handle just in case
+           # program flow is changed in the future.
+           if {[info exists listensocket]} {
+              catch {close $listensocket}
+           }
+           set listensocket [socket -server [list $this Connect] \
 		    -myaddr localhost 0]  ;# Force to localhost for now
-            set listenport [lindex [fconfigure $listensocket -sockname] 2]
-            set timeoutevent [after $startWait $this StartTimeout]
-            Oc_Log Log "Starting OOMMF host server on localhost" status $class
-            # Ought to redirect std channels somewhere
-            Oc_Application Exec {omfsh 1.1} \
+           set listenport [lindex [fconfigure $listensocket -sockname] 2]
+           if {![info exists timeoutevent]} {
+              set timeoutevent [after $startWait $this StartTimeout]
+           }
+           Oc_Log Log "Starting OOMMF host server on localhost" status $class
+           # Ought to redirect std channels somewhere
+           Oc_Application Exec {omfsh 1.1} \
                $hostthread -tk 0 $port $listenport \
                > [[Oc_Config RunPlatform] GetValue path_device_null] \
-               2> [[Oc_Config RunPlatform] GetValue path_device_null] &
+              2> [[Oc_Config RunPlatform] GetValue path_device_null] &
         } else {
-            error "Installation error: No OOMMF host server available to start"
+           error "Installation error: No OOMMF host server available to start"
         }
     }
 
@@ -254,14 +286,20 @@ Oc_Class Net_Host {
     }
 
     private method Resend { x argList } {
-        Oc_EventHandler DeleteGroup $this-$x
-        set qid [eval $connection Query $argList]
-        Oc_EventHandler New _ $connection Reply$qid [list $this Receive $x] \
-                -groups [list $this-$x $this]
-        Oc_EventHandler New _ $connection Timeout$qid [list $this Timeout $x] \
-                -groups [list $this-$x $this]
-	Oc_EventHandler New _ $this Ready [list $this Resend $x $argList] \
-                -groups [list $this-$x $this]
+       Oc_EventHandler DeleteGroup $this-$x
+       set qid [eval $connection Query $argList]
+       if {[info exists connection]} {
+          # In principle, the preceding $connection Query may result
+          # in a $this Delete call.
+          Oc_EventHandler New _ $connection Reply$qid \
+              [list $this Receive $x] \
+              -groups [list $this-$x $this]
+          Oc_EventHandler New _ $connection Timeout$qid \
+              [list $this Timeout $x] \
+              -groups [list $this-$x $this]
+          Oc_EventHandler New _ $this Ready [list $this Resend $x $argList] \
+              -groups [list $this-$x $this]
+       }
     }
 
     method Ready {} {
@@ -296,7 +334,7 @@ Oc_Class Net_Host {
             after cancel $timeoutevent
         }
         if {[info exists listensocket]} {
-            close $listensocket
+           catch {close $listensocket}
         }
         if {[info exists myWidget]} {
             $this Configure -gui 0

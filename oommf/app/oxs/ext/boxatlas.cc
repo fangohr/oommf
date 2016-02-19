@@ -41,7 +41,7 @@ Oxs_BoxAtlas::Oxs_BoxAtlas
   VerifyAllInitArgsUsed();
 }
 
-OC_BOOL Oxs_BoxAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
+OC_BOOL Oxs_BoxAtlas::GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const
 { // If id is 0 or 1, sets mybox to world and returns 1.
   // If id > 1, leaves mybox untouched and returns 0.
   if(id>=GetRegionCount()) return 0;
@@ -49,7 +49,7 @@ OC_BOOL Oxs_BoxAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
   return 1;
 }
 
-OC_INT4m Oxs_BoxAtlas::GetRegionId(const ThreeVector& point) const
+OC_INDEX Oxs_BoxAtlas::GetRegionId(const ThreeVector& point) const
 { // Returns the id number for the region containing point.
   // The return value is 0 if the point is not contained in
   // the atlas, i.e., belongs to the "universe" region.
@@ -57,7 +57,7 @@ OC_INT4m Oxs_BoxAtlas::GetRegionId(const ThreeVector& point) const
   return 1; // Oxs_BoxAtlas only has one region.
 }
 
-OC_INT4m Oxs_BoxAtlas::GetRegionId(const String& name) const
+OC_INDEX Oxs_BoxAtlas::GetRegionId(const String& name) const
 { // Given a region id string (name), returns
   // the corresponding region id index.  If
   // "name" is not included in the atlas, then
@@ -68,7 +68,7 @@ OC_INT4m Oxs_BoxAtlas::GetRegionId(const String& name) const
   return -1;
 }
 
-OC_BOOL Oxs_BoxAtlas::GetRegionName(OC_UINT4m id,String& name) const
+OC_BOOL Oxs_BoxAtlas::GetRegionName(OC_INDEX id,String& name) const
 { // Given an id number, fills in "name" with
   // the corresponding region id string.  Returns
   // 1 on success, 0 if id is invalid.  If id is 0,

@@ -4,6 +4,7 @@
  *
  */
 
+#include <limits>
 #include <string>
 
 #include "oc.h"
@@ -213,7 +214,7 @@ Oxs_UniaxialAnisotropy::GetMultiplier
 
 void Oxs_UniaxialAnisotropy::RectIntegEnergy
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop
  ) const
@@ -333,7 +334,7 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
 
 void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber

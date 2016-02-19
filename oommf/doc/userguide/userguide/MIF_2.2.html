@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,41 +13,40 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
-<LINK REL="next" HREF="MIF_1.1.html">
 <LINK REL="previous" HREF="MIF_2.1.html">
 <LINK REL="up" HREF="Problem_Specification_File_.html">
-<LINK REL="next" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Data_Table_File_Format_ODT.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html822"
-  HREF="MIF_1.1.html">
+<A NAME="tex2html930"
+  HREF="Data_Table_File_Format_ODT.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html818"
+<A NAME="tex2html926"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html812"
+<A NAME="tex2html922"
   HREF="MIF_2.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html824"
+<A NAME="tex2html932"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html820"
+<A NAME="tex2html928"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html823"
-  HREF="MIF_1.1.html">MIF 1.1</A>
-<B> Up:</B> <A NAME="tex2html819"
+<B> Next:</B> <A NAME="tex2html931"
+  HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
+<B> Up:</B> <A NAME="tex2html927"
   HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
-<B> Previous:</B> <A NAME="tex2html813"
+<B> Previous:</B> <A NAME="tex2html923"
   HREF="MIF_2.1.html">MIF 2.1</A>
 <BR>
 <BR>
@@ -56,17 +55,17 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html826"
-  HREF="MIF_2.2.html#SECTION000182100000000000000">Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats</A>
-<LI><A NAME="tex2html827"
-  HREF="MIF_2.2.html#SECTION000182200000000000000">MIF&nbsp;2.2 New Extension Commands</A>
-<LI><A NAME="tex2html828"
-  HREF="MIF_2.2.html#SECTION000182300000000000000">Sample MIF&nbsp;2.2 File</A>
+<LI><A NAME="tex2html934"
+  HREF="MIF_2.2.html#SECTION000184100000000000000">Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats</A>
+<LI><A NAME="tex2html935"
+  HREF="MIF_2.2.html#SECTION000184200000000000000">MIF&nbsp;2.2 New Extension Commands</A>
+<LI><A NAME="tex2html936"
+  HREF="MIF_2.2.html#SECTION000184300000000000000">Sample MIF&nbsp;2.2 File</A>
 </UL>
 <!--End of Table of Child-Links-->
 <HR>
 
-<H2><A NAME="SECTION000182000000000000000"></A><A NAME="sec:mif22format"></A>
+<H2><A NAME="SECTION000184000000000000000"></A><A NAME="sec:mif22format"></A>
 <BR>
 MIF 2.2
 </H2>
@@ -77,7 +76,7 @@ modification to the MIF&nbsp;2.1 format.  MIF&nbsp;2.2 provides a few additional
 commands, and is mostly backwards compatible with MIF&nbsp;2.1, except as
 detailed below.
 
-<H3><A NAME="SECTION000182100000000000000"></A><A NAME="sec:mif22diffs"></A>
+<H3><A NAME="SECTION000184100000000000000"></A><A NAME="sec:mif22diffs"></A>
 <BR>
 Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats
 </H3>
@@ -102,26 +101,22 @@ Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats
  replaced with a one pass mode, where <TT>Oxs_Ext</TT> objects are created
  at the time that the <TT>Specify</TT> commands are parsed.  This processing
  model is more intuitive for MIF file authors, but has two main
- consequences.  The first is that in MIF&nbsp;2.1 format files, Tclprocs that
+ consequences.  The first is that in MIF&nbsp;2.1 format files, Tcl procs that
  are used only inside <TT>Specify</TT> commands can be placed anywhere inside
  the MIF file (for example, commonly at the end), because they won't be
  called during the first pass.  As long as they are defined at any point
  during the first pass, they will be available for use in the second
- pass.  In contrast, in the MIF&nbsp;2.2 format, Tclprocs definitions must
+ pass.  In contrast, in the MIF&nbsp;2.2 format, Tcl procs definitions must
  generally be moved forward, before any references in <TT>Specify</TT>
  blocks.  The second consequence is that <TT>Oxs_Ext</TT> objects defined by
  <TT>Specify</TT> commands are available for use inside the MIF file.  This
- allows support for the two new commands discussed next.
-</LI>
-<LI>Two new top-level extension commands are supported in the MIF&nbsp;2.2
- format, <TT>EvalScalarField</TT> and <TT>EvalVectorField</TT>.  These commands
- are described in detail below.
+ allows support for the new commands discussed next.
 </LI>
 </OL>
 
 <P>
 
-<H3><A NAME="SECTION000182200000000000000"></A><A NAME="sec:mif22ExtensionCommands"></A><A NAME="19449"></A>
+<H3><A NAME="SECTION000184200000000000000"></A><A NAME="sec:mif22ExtensionCommands"></A><A NAME="20845"></A>
 <BR>
 MIF&nbsp;2.2 New Extension Commands
 </H3>
@@ -140,14 +135,14 @@ and <A HREF="#html:mif2GetAtlasRegionByPosition"><TT>GetAtlasRegionByPosition</T
 <P>
 <DL>
 <DT><STRONG>GetMifFilename<A NAME="html:mif2GetMifFilename"></A></STRONG></DT>
-<DD><A NAME="19472"></A>
+<DD><A NAME="20868"></A>
 The <TT>GetMifFilename</TT> command returns the full (absolute) name of the
 MIF file being read.  This command takes no parameters.
 
 <P>
 </DD>
 <DT><STRONG>GetMifParameters<A NAME="html:mif2GetMifParameters"></A></STRONG></DT>
-<DD><A NAME="19475"></A>
+<DD><A NAME="20871"></A>
 This command takes no parameters, and returns an even numbered list of
 ``Parameter'' label + value pairs as set on the command line or in the
 Load Problem dialog box.  If no parameters were specified, then the return
@@ -163,7 +158,7 @@ numbered list of label + value pairs.
 <P>
 </DD>
 <DT><STRONG>SetOptions<A NAME="html:mif2SetOptions"></A></STRONG></DT>
-<DD><A NAME="19480"></A>
+<DD><A NAME="20876"></A>
 In MIF&nbsp;2.1 files, the output basename and output file formats are
 specified inside the driver's Specify block.  In MIF&nbsp;2.2 these
 specifications are moved to a separate <TT>SetOptions</TT> block.  This
@@ -197,9 +192,9 @@ optional, with default value ``<TT>%.17g</TT>''.  The values associated with
 <TT>vector_field_output_format</TT> should be two element lists
 that specify the style and precision for scalar and vector field
 output sent to <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="19501"><B>mmDisp</B></A> and
+ NAME="20897"><B>mmDisp</B></A> and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="19506"><B>mmArchive</B></A>.  The first
+ NAME="20902"><B>mmArchive</B></A>.  The first
 element in the list should be one of <TT>binary</TT> or <TT>text</TT>, specifying
 the output style.  If binary output is selected, then the second element
 specifying precision should be either 4 or 8, denoting component binary
@@ -244,7 +239,7 @@ SetOptions {
 <P>
 </DD>
 <DT><STRONG>EvalScalarField<A NAME="html:mif2EvalScalarField"></A></STRONG></DT>
-<DD><A NAME="19527"></A>
+<DD><A NAME="20923"></A>
 This command allows access in a MIF file to values from a scalar field
 defined in a preceding <TT>Specify</TT> block.  For example,
 <BLOCKQUOTE>
@@ -269,7 +264,7 @@ space, i.e., in meters.
 <P>
 </DD>
 <DT><STRONG>EvalVectorField<A NAME="html:mif2EvalVectorField"></A></STRONG></DT>
-<DD><A NAME="19534"></A>
+<DD><A NAME="20930"></A>
 This command is the same as the <TT>EvalScalarField</TT> command, except
 that the field reference is to a vector field, and the return value is a
 three item list representing the three components of the vector field at
@@ -311,7 +306,7 @@ usage:
 
 <P>
 
-<H3><A NAME="SECTION000182300000000000000"></A><A NAME="sec:mif22sample"></A>
+<H3><A NAME="SECTION000184300000000000000"></A><A NAME="sec:mif22sample"></A>
 <BR>
 Sample MIF&nbsp;2.2 File
 </H3>
@@ -512,7 +507,7 @@ Specify Oxs_MinDriver [subst {
 }]
 </PRE>
   <DIV ALIGN="CENTER">
-Figure 8:
+Figure 9:
     Example MIF&nbsp;2.2 file.
     <A HREF="#pt:mif22format">(Description.)</A>
   
@@ -523,22 +518,22 @@ Figure 8:
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html822"
-  HREF="MIF_1.1.html">
+<A NAME="tex2html930"
+  HREF="Data_Table_File_Format_ODT.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html818"
+<A NAME="tex2html926"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html812"
+<A NAME="tex2html922"
   HREF="MIF_2.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html825"
+<A NAME="tex2html933"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html820"
+<A NAME="tex2html928"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

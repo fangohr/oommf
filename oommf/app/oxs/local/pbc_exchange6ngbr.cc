@@ -76,7 +76,7 @@ PBC_Exchange6Ngbr_2D::PBC_Exchange6Ngbr_2D(
 		  (unsigned int)params.size());
       throw Oxs_Ext::Error(this,buf);
   }
-  for(i=0;i<params.size();i+=3) {
+  for(i=0;i<static_cast<OC_INDEX>(params.size());i+=3) {
     OC_INT4m i1 = atlas->GetRegionId(params[i]);
     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
     if(i1<0 || i2<0) {
@@ -144,7 +144,8 @@ void PBC_Exchange6Ngbr_2D::GetEnergy
  ) const
 {
   // See if mesh and/or atlas has changed.
-  if(mesh_id !=  state.mesh->Id() || !atlaskey.SameState()) {
+  if(static_cast<OC_UINDEX>(mesh_id) !=  state.mesh->Id()
+     || !atlaskey.SameState()) {
     // Setup region mapping
     mesh_id = 0; // Safety
     OC_INDEX size = state.mesh->Size();

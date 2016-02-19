@@ -13,8 +13,8 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-10-24 21:23:49 $
- * Last modified by: $Author: donahue $
+ * Last modified on: $Date: 2015/04/17 17:17:03 $
+ * Last modified by: $Author: dgp $
  */
 
 #ifndef _NB_CHANWRAP
@@ -92,72 +92,6 @@ private:
   // Disable copy constructor and assignment operator
   Nb_InputChannel(const Nb_InputChannel&);
   Nb_InputChannel& operator=(const Nb_InputChannel&);
-};
-
-////////////////////////////////////////////////////////////////////////
-// Wrapper for write-access Tcl channels
-//
-// WARNING: THIS CODE IS COMPLETELY UNUSED AND UNTESTED!
-//                                      17-Mar-2007, mjd
-//
-#define NB_OUTPUTCHANNEL_BUFSIZE 65536
-class Nb_OutputChannel {
-public:
-  Nb_OutputChannel();
-
-  ~Nb_OutputChannel() { Close(); }
-
-  void OpenFile(const char* filename,const char* translation);
-
-  void AttachChannel(const Tcl_Channel& newchan,const char* description) {
-    Close();
-    chan = newchan;
-    file_descriptor.Dup(description);
-  }
-
-  void DetachChannel() {
-    if(chan==NULL)return;
-    WriteBuf();
-    chan=NULL;
-    buf_offset = 0;
-    file_descriptor.Dup("");
-  }
-
-  int Close(Tcl_Interp* interp=NULL) {
-    int errcode = TCL_OK;
-    if(chan!=NULL) {
-      WriteBuf();
-      errcode = Tcl_Close(interp,chan);
-    }
-    chan=NULL;
-    buf_offset = 0;
-    file_descriptor.Dup("");
-    return errcode;
-  }
-
-  int WriteChar(int byte) {
-    char ch = static_cast<char>(byte);
-    buf[buf_offset] = ch; // Assumes buf_offset < NB_OUTPUT_CHANNEL_BUFSIZE
-    if( (++buf_offset) < NB_OUTPUTCHANNEL_BUFSIZE ) {
-      return static_cast<int>(static_cast<unsigned char>(ch));
-    }
-    int checkcode = WriteBuf();
-    buf_offset=0; // Safety
-    if(checkcode<0) return checkcode;
-    return static_cast<int>(static_cast<unsigned char>(ch));
-  }
-
-private:
-  Oc_AutoBuf file_descriptor;
-  Tcl_Channel chan;
-  int buf_offset;
-  Oc_AutoBuf buf;
-
-  int WriteBuf();
-
-  // Disable copy constructor and assignment operator
-  Nb_OutputChannel(const Nb_OutputChannel&);
-  Nb_OutputChannel& operator=(const Nb_OutputChannel&);
 };
 
 ////////////////////////////////////////////////////////////////////////

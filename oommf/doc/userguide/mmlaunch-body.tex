@@ -30,14 +30,16 @@ tclsh oommf.tcl mmLaunch [standard options]
 Upon startup, \app{mmLaunch} displays a panel of checkbuttons, one for
 each host service directory\index{host~service~directory}
 to which it is connected.  In the current
-release of \OOMMF\ there is only one checkbutton---\btn{localhost}.
-Future releases of \app{mmLaunch} will be able to connect to remote
-hosts as well.  If there is no host service directory running on the
+release of \OOMMF\ there is only one checkbutton, named for the host on
+which \app{mmLaunch} is running.
+%Future releases of \app{mmLaunch} will be able to connect to remote
+%hosts as well.  
+If there is no host service directory running on the
 localhost when \app{mmLaunch} is launched,
 \app{mmLaunch} will start one.  In that circumstance, there may be 
-some delay before the \btn{localhost} check button appears.
+some delay before the host checkbutton appears.
 
-Toggling the \btn{localhost} checkbutton toggles the display of an
+Toggling the host checkbutton toggles the display of an
 interface to the host service directory.  The host service directory
 interface consists of a row of checkbuttons, one for each account
 service directory\index{account~service~directory}
@@ -45,10 +47,13 @@ registered with the host service directory.  Each
 checkbutton is labeled with the user ID\index{user~ID}
 of the corresponding account
 service directory.  For most users, there will be only one
-checkbutton, labeled with the user's own account ID, except on
-\Windows~9X, where the dummy account ID 
-``oommf''\index{platform!Windows!dummy~user~ID} may be displayed
-instead.  If there is no account service directory running for the
+checkbutton, labeled with the user's own account
+ID.
+%ID, except on
+%\Windows~9X, where the dummy account ID 
+%``oommf''\index{platform!Windows!dummy~user~ID} may be displayed
+%instead.
+If there is no account service directory running for the
 account under which {\bf mmLaunch} was launched, \app{mmLaunch} will
 start one.  In that circumstance, there may be some delay before the
 account checkbutton appears.

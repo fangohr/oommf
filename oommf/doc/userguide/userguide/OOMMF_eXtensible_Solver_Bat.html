@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H2><A NAME="SECTION00082000000000000000"></A><A NAME="sec:boxsi"></A>
 <BR>
 OOMMF eXtensible Solver Batch Interface: boxsi
-</H2><A NAME="4067"></A><A NAME="4068"></A>
+</H2><A NAME="4205"></A><A NAME="4206"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -81,7 +81,7 @@ application. It is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Boxsi</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="4086"><B>mmLaunch</B></A>.  It is through
+ NAME="4224"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Boxsi</B>.
 
@@ -98,9 +98,11 @@ converted to the MIF&nbsp;2 format by an automatic call to
 <FONT SIZE="+2"><B>Launching</B></FONT>
 <BR><B>Boxsi</B> must be started from the command line.  The syntax is
 <PRE>
-tclsh oommf.tcl boxsi [standard options] [-exitondone &lt;0|1&gt;] \
-   [-kill tags] [-nice &lt;0|1&gt;] [-parameters params] [-pause &lt;0|1&gt;] \
-   [-restart &lt;0|1|2&gt;]  [-threads &lt;count&gt;] [-numanodes &lt;nodes&gt;] miffile
+tclsh oommf.tcl boxsi [standard options] [-exitondone &lt;0|1&gt;] [-kill tags] \
+   [-logfile logname] [-loglevel level] [-nice &lt;0|1&gt;] [-nocrccheck &lt;0|1&gt;] \
+   [-numanodes nodes] [-parameters params] [-pause &lt;0|1&gt;] \
+   [-regression_test flag] [-regression_testname basename] \
+   [-restart &lt;0|1|2&gt;] [-restartfiledir dir] [-threads count] miffile
 </PRE>
 where
 <DL>
@@ -116,62 +118,30 @@ where
   <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT> commands</A>) from the input MIF   file, or else the keyword <TT>all</TT>, which is interpreted to mean all
   the destination tags.
 </DD>
+<DT><STRONG><TT><B>-logfile logname</B></TT></STRONG></DT>
+<DD>Write log and error messages to file <I>logname</I>.  The default log
+  file is <TT><B>oommf/boxsi.errors</B></TT>.
+</DD>
+<DT><STRONG><TT><B>-loglevel level</B></TT></STRONG></DT>
+<DD>Controls the detail level of log messages, with larger values of
+  <I>level</I> producing more output.  Default value is 1.
+</DD>
 <DT><STRONG><TT><B>-nice <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>If enabled (i.e., 1), then the program will drop its scheduling
   priority after startup.  The default is 0, i.e., to retain its
   original scheduling priority.
 </DD>
-<DT><STRONG><TT><B>-parameters params</B></TT></STRONG></DT>
-<DD>Sets <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> file
-  parameters.  The <I>params</I> argument should be a list with an
-  even number of arguments, corresponding to name + value pairs.  Each
-  ``name'' must appear in a
-  <A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A>
-  statement in the input
-  MIF file.  The entire name + value list must be quoted so it is
-  presented to <B>Boxsi</B> as a single item on the command line.  For
-  example, if <TT>A</TT> and <TT>Ms</TT> appeared in <TT>Parameter</TT> statements
-  in the MIF file, then an option like
-  <PRE>   -parameters "A 13e-12 Ms 800e3"
-</PRE>
-  could be used to set <TT>A</TT> to 13e-12 and Ms to 800e3.  The quoting
-  mechanism is shell/operating system specific; refer to your system
-  documentation for details.
-</DD>
-<DT><STRONG><TT><B>-pause <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>If enabled (i.e., 1), then the program automatically pauses after
-  loading the specified problem file.  The default is 0, i.e., to
-  automatically move into ``Run'' mode once the problem is loaded.
-</DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="6689"></A></B></TT></STRONG></DT>
-<DD>If the restart option is 0 (the default), then the problem loads and
-  runs from the beginning.  If set to 1, then when loading the problem a
-  check is made for a pre-existing restart (checkpoint) file.  If one is
-  found, then the problem resumes from the state saved in that file.  If
-  no checkpoint file is found, then an error is raised.  If the restart
-  option is set to 2, then a checkpoint file is used if one can be
-  found, but if not then the problem loads and runs from the beginning
-  without raising an error.  See the
-  <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsDrivers">Oxs_Driver documentation</A> for
-  information on checkpoint files.
-</DD>
-<DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4133"></A>
-  The option is available on
-  <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
-  The <I>count</I> parameter is the number of threads to run.  The
-  default count value is set by the <TT>oommf_thread_count</TT> value in
-  the <TT><B>config/platforms/</B></TT> file for your platform, but may be
-  overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="4142"></A>
-  environment variable or this
-  command line option.  In most cases the default count value will
-  equal the number of processing cores on the system; this can be
-  checked via the command <TT>tclsh oommf.tcl +platform</TT>.
+<DT><STRONG><TT><B>-nocrccheck <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>On simulation restarts, the CRC
+  <A HREF="Cyclic_Redundancy_Check_crc.html#sec:crc32">CRC</A>
+  of the MIF file is normally compared against the CRC of the original
+  MIF file as recorded in the restart file.  If the CRCs don't match then
+  an error is thrown to alert the user that the MIF file has changed.  If
+  this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4145"></A>
-  <A NAME="4146"></A>
+<DD><A NAME="4259"></A>
+  <A NAME="4260"></A>
   This option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
   Oxs.  The <I>nodes</I> parameter must be either a comma separated
@@ -213,10 +183,82 @@ The default value for <I>nodes</I> is ``none'', which allows the
   explicit nodes list.
 
 <P>
-The environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4170"></A>
-  may be used to override the default ``none'' setting, but is
-  subordinate to the command line setting, if any.<A NAME="4171"></A>
+The default behavior is modified (in increasing order of priority) by the
+  <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
+  file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
+  or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
+  <TT>OOMMF_NUMANODES</TT><A NAME="4289"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4291"></A>
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-parameters params</B></TT></STRONG></DT>
+<DD>Sets <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> file
+  parameters.  The <I>params</I> argument should be a list with an
+  even number of arguments, corresponding to name + value pairs.  Each
+  ``name'' must appear in a
+  <A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A>
+  statement in the input
+  MIF file.  The entire name + value list must be quoted so it is
+  presented to <B>Boxsi</B> as a single item on the command line.  For
+  example, if <TT>A</TT> and <TT>Ms</TT> appeared in <TT>Parameter</TT> statements
+  in the MIF file, then an option like
+<PRE>
+   -parameters "A 13e-12 Ms 800e3"
+</PRE>
+  could be used to set <TT>A</TT> to 13e-12 and Ms to 800e3.  The quoting
+  mechanism is specific to the shell/operating system; refer to your system
+  documentation for details.
+</DD>
+<DT><STRONG><TT><B>-pause <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>If enabled (i.e., 1), then the program automatically pauses after
+  loading the specified problem file.  The default is 0, i.e., to
+  automatically move into ``Run'' mode once the problem is loaded.
+</DD>
+<DT><STRONG><TT><B>-regression_test flag</B></TT></STRONG></DT>
+<DD>This option is used internally by the 
+  <A HREF="Oxs_regression_tests_oxsreg.html#sec:oxsregression"><B>oxsregression</B></A>
+  command line utility to run regression tests.  Default value is 0 (no
+  test).
+</DD>
+<DT><STRONG><TT><B>-regression_testname basename</B></TT></STRONG></DT>
+<DD>This option is used internally by the 
+  <A HREF="Oxs_regression_tests_oxsreg.html#sec:oxsregression"><B>oxsregression</B></A>
+  command line utility to control temporary file names during regression
+  testing.
+</DD>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="7084"></A></B></TT></STRONG></DT>
+<DD>If the restart option is 0 (the default), then the problem loads and
+  runs from the beginning.  If set to 1, then when loading the problem a
+  check is made for a pre-existing restart (checkpoint) file.  If one is
+  found, then the problem resumes from the state saved in that file.  If
+  no checkpoint file is found, then an error is raised.  If the restart
+  option is set to 2, then a checkpoint file is used if one can be
+  found, but if not then the problem loads and runs from the beginning
+  without raising an error.
+  
+  See the Oxs_Driver documentation for information on
+  <A HREF="Standard_Oxs_Ext_Child_Clas.html#html:oxsdrivercheckpoint">checkpoint files.</A>
+</DD>
+<DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
+<DD>Specifies the directory where restart files are written.  Default is the
+  directory holding the MIF file.  You may want to change this to a local
+  temporary directory (e.g., <TT><B>/tmp</B></TT>), especially if the MIF file
+  directory is a network mount.
+</DD>
+<DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD><A NAME="4327"></A>
+  The option is available on
+  <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
+  The <I>count</I> parameter is the number of threads to run.  The
+  default count value is set by the <TT>oommf_thread_count</TT> value in
+  the <TT><B>config/platforms/</B></TT> file for your platform, but may be
+  overridden by the
+  <TT>OOMMF_THREADS</TT><A NAME="4336"></A>
+  environment variable or this
+  command line option.  In most cases the default count value will
+  equal the number of processing cores on the system; this can be
+  checked via the command <TT>tclsh oommf.tcl +platform</TT>.
 </DD>
 <DT><STRONG><TT><B>miffile</B></TT></STRONG></DT>
 <DD>Load and solve the problem found in <EM>miffile</EM>, which must be
@@ -226,12 +268,12 @@ The environment variable
 </DL>
 
 <P>
-Although <B>Boxsi</B><A NAME="4178"></A> cannot be
-launched by <B>mmLaunch</B><A NAME="4180"></A>, nonetheless
+Although <B>Boxsi</B><A NAME="4344"></A> cannot be
+launched by <B>mmLaunch</B><A NAME="4346"></A>, nonetheless
 a limited graphical interactive interface for <B>Boxsi</B> is provided
 through <B>mmLaunch</B>, in the same manner as is done for <B>Oxsii</B>.
 Each running instance of <B>Boxsi</B> is included in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4186"></A> list of <B>mmLaunch</B>, along with a
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4352"></A> list of <B>mmLaunch</B>, along with a
 checkbutton.  This button toggles the presence of a user interface
 window.
 
@@ -307,17 +349,17 @@ The <FONT COLOR="#800000"><B>Help</B></FONT> menu provides the usual help facili
 
 <P>
 The row of buttons immediately below the menu bar provides simulation
-progress control.  These buttons--<FONT COLOR="#800000"><B>Run</B></FONT>, <FONT COLOR="#800000"><B>Relax</B></FONT>, <FONT COLOR="#800000"><B>Step</B></FONT> and
-<FONT COLOR="#800000"><B>Pause</B></FONT>--become active once the micromagnetic problem has been
-initialized. These buttons allow the user to change the run state of the
-solver.  In the Pause state, the solver sits idle awaiting further
-instructions.  If <FONT COLOR="#800000"><B>Step</B></FONT> is selected, then the solver will move
-forward one iteration and then Pause.  In Relax mode, the solver takes
-at least one step, and then runs until it reaches a stage boundary, at
-which point the solver is paused.  In Run mode, the solver runs until
-the end of the problem is reached.  When the problem end is reached, the
-solver will either pause or exit, depending upon the setting of the
-<TT>-exitondone</TT> command line option.
+progress control.  These buttons&mdash;<FONT COLOR="#800000"><B>Run</B></FONT>, <FONT COLOR="#800000"><B>Relax</B></FONT>,
+<FONT COLOR="#800000"><B>Step</B></FONT> and <FONT COLOR="#800000"><B>Pause</B></FONT>&mdash;become active once the micromagnetic
+problem has been initialized. These buttons allow the user to change the
+run state of the solver.  In the Pause state, the solver sits idle
+awaiting further instructions.  If <FONT COLOR="#800000"><B>Step</B></FONT> is selected, then the
+solver will move forward one iteration and then Pause.  In Relax mode,
+the solver takes at least one step, and then runs until it reaches a
+stage boundary, at which point the solver is paused.  In Run mode, the
+solver runs until the end of the problem is reached.  When the problem
+end is reached, the solver will either pause or exit, depending upon the
+setting of the <TT>-exitondone</TT> command line option.
 
 <P>
 Normally the solver progresses automatically from problem initialization
@@ -347,7 +389,7 @@ computational details.
 
 <P>
 <FONT SIZE="+2"><B>Threading considerations<A NAME="html:threadconsider"></A></B></FONT>
-<BR><A NAME="4254"></A><A NAME="4255"></A>
+<BR><A NAME="4420"></A><A NAME="4421"></A>
 As an example, suppose you are running on a four dual-core processor
 box, where each of the four processors is connected to a separate memory
 node.  In other words, there are eight cores in total, and each pair of
@@ -363,15 +405,15 @@ operating system to schedule the eight threads among the system's eight
 cores as it sees fit.  Or, you might reduce the thread count to reserve
 one or more cores for other applications.  If the job is long running,
 however, you may find that the operating system tries to run multiple
-threads on a single core--perhaps in order to leave other cores idle so
+threads on a single core&mdash;perhaps in order to leave other cores idle so
 that they can be shut down to save energy.  Or, the operating system may
 move threads away from the memory node where they have allocated memory,
 which effectively reduces memory bandwidth.  In such cases you might want
 to launch <B>Boxsi</B> with the <TT>-numanodes auto</TT> option.  This
 overrides the operating systems preferences, and ties threads to
 particular memory nodes for the lifetime of the process.  (On Linux
-boxes, you should also check the ``cpu frequency governor'' selection
-and settings.)
+boxes, you should also check the ``cpu frequency governor'' and ``huge page
+support'' selection and settings.)
 
 <P>
 If you want to run two instances of <B>Boxsi</B> concurrently, you might
@@ -406,17 +448,20 @@ selecting nodes for the <TT>boxsi -numanodes</TT> option, but in
 practice the distance information reported by <TT>numactl</TT> is often not
 reliable.  For best results one should experiment with different
 settings, or run memory bandwidth tests with different node
-pairs.<A NAME="4278"></A><A NAME="4279"></A>
+pairs.<A NAME="4444"></A><A NAME="4445"></A>
 
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Known Bugs</B></FONT>
-<BR><A NAME="4281"></A>
-<B>Boxsi</B> suffers from the same Windows&nbsp;9X Tcl network traffic bug
-as <B>Oxsii</B>.  OOMMF users on Windows&nbsp;9X systems are encouraged to
-upgrade to Tcl&nbsp;8.2 or later.
-<A NAME="4284"></A>
+<FONT SIZE="+2"><B>Batch Scheduling Systems</B></FONT>
+<BR>
+OOMMF jobs submitted to a batch queuing system (e.g., Condor, PBS,
+NQS) can experience sporadic failures caused by interactions between
+separate OOMMF jobs running simultaneously on the same compute
+node.  These problems can be prevented by using the OOMMF command
+line utility
+<A HREF="Launching_OOMMF_host_server.html#sec:launchhost"><B>launchhost</B></A>
+to isolate each job.
 
 <P>
 <HR>
@@ -438,6 +483,6 @@ upgrade to Tcl&nbsp;8.2 or later.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

@@ -30,7 +30,7 @@ public:
   ~OommfPolygon() {}
   OommfPolygon& operator=(OommfPolygon& poly);
   void Clear(); // Removes all vertices from polygon (does not free memory)
-  int GetVertexCount();
+  OC_INDEX GetVertexCount();
   void AddVertex(const PlanePoint& pt); // Adds a new vertex to polygon
   void GetBounds(OC_REAL8m& xmin,OC_REAL8m& ymin,
                  OC_REAL8m& xmax,OC_REAL8m& ymax) const;
@@ -44,6 +44,10 @@ public:
   /// coordinate
   void AdjustAllToIntegers(); // Rounds position of each vertex
   /// individually to nearest integer.
+
+  void MakeVertexList(Nb_List<PlanePoint>& vlist) const;
+  /// Copies vertex into vlist, repeating the first and last vertex to
+  /// make a closed polyhedron.
 
   void DumpVertices(FILE* fout) const;  // Debugging tool
 };
@@ -130,9 +134,13 @@ public:
   ///////
   void DrawFilledArrow(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
                       OC_REAL8m xcos,OC_REAL8m ycos,OC_REAL8m zcos,
-                      OommfPackedRGB color,OC_BOOL antialias);
+                      OommfPackedRGB color,OC_BOOL antialias,
+                      OC_REAL8m outline_width,
+                      OommfPackedRGB outline_color);
   /// Draws arrow centered at point (xc,yc) in bitmap, of specified size,
   /// with directional cosines xcos,ycos,zcos, in the specified color.
+  /// If outline_width is not zero, then an outline is drawn of the
+  /// specified relative width and color.
 
   void DrawDiamondWithCross(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
 			   OommfPackedRGB outercolor,

@@ -10,6 +10,7 @@
 #include "oc.h"
 #include "director.h"
 #include "threevector.h"
+#include "chunkenergy.h"
 #include "energy.h"
 #include "simstate.h"
 #include "mesh.h"
@@ -19,7 +20,7 @@
 /* End includes */
 
 class Oxs_FixedZeeman
-  : public Oxs_Energy, public Oxs_EnergyPreconditionerSupport  {
+  : public Oxs_ChunkEnergy, public Oxs_EnergyPreconditionerSupport  {
 private:
   mutable OC_UINT4m mesh_id;
   OC_REAL8m field_mult;
@@ -31,7 +32,26 @@ private:
 
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
-			 Oxs_EnergyData& oed) const;
+			 Oxs_EnergyData& oed) const {
+    GetEnergyAlt(state,oed);
+  }
+
+  virtual void ComputeEnergy(const Oxs_SimState& state,
+                             Oxs_ComputeEnergyData& oced) const {
+    ComputeEnergyAlt(state,oced);
+  }
+
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
+  virtual void ComputeEnergyChunk(const Oxs_SimState& state,
+                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+                                  OC_INDEX node_start,OC_INDEX node_stop,
+                                  int threadnumber) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is

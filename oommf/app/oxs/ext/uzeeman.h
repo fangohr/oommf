@@ -51,7 +51,7 @@ protected:
   }
 
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

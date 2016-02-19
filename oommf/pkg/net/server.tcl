@@ -2,7 +2,7 @@
 #
 # A generic server that can be instantiated and customized.
 #
-# Last modified on: $Date: 2011-09-30 19:12:55 $
+# Last modified on: $Date: 2015/09/30 07:41:35 $
 # Last modified by: $Author: donahue $
 #
 
@@ -72,6 +72,7 @@ Oc_Class Net_Server {
     set allow $defaultAllowList
     set deny $defaultDenyList
     set user_id_check $checkUserIdentities
+    set alias [Oc_Main GetAppName]  ;# Default alias is application name
     eval $this Configure $args
     if {![info exists protocol]} {
       # Provide a default protocol
@@ -114,6 +115,12 @@ Oc_Class Net_Server {
      set remoteinfo [fconfigure $accsock -peername]
      set myhostname [lindex $myinfo 1]
      set remotehostname [lindex $remoteinfo 1]
+     if {$forbidServiceStart} {
+        # Server is shutting down --- don't create any new
+        # Net_Connections!
+        $this RefuseConnection $accsock $remotehostname $clientport
+        return
+     }
      if {![string match $myhostname $remotehostname]} {
         if {[string match $clientipaddr $remotehostname]} {
            # Unable to resolve remote hostname
@@ -179,6 +186,7 @@ Oc_Class Net_Server {
     if {![info exists socket]} {
       error "Server not started"
     }
+    Oc_EventHandler DeleteGroup $this-AccountRebirth
     Oc_Log Log "Stopping server $this ..." status $class
     if {$register} {
         set socketinfo [fconfigure $socket -sockname]
@@ -219,7 +227,8 @@ Oc_Class Net_Server {
     method AccountReady {} {
 	regexp _${class}(.*) $this -> mySerial
 	set sid [$account OID]:$mySerial
-        set qid [$account Send register $sid $alias $port]
+        set qid [$account Send register $sid $alias \
+                    $port [$protocol Cget -name]]
         Oc_EventHandler New _ $account Reply$qid \
 	     [list $this RegisterReply $qid] \
              -groups [list $this $this-$qid]
@@ -228,7 +237,7 @@ Oc_Class Net_Server {
              -groups [list $this $this-$qid]
 	# setup to re-register in event of account rebirth
 	Oc_EventHandler New _ $account Ready [list $this AccountReady] \
-		-oneshot 1 -groups [list $this]
+		-oneshot 1 -groups [list $this $this-AccountRebirth]
     }
 
     method RegisterReply {qid} {
@@ -237,6 +246,7 @@ Oc_Class Net_Server {
         switch -- [lindex $reply 0] {
             0 {
                 Oc_Log Log "Server $this registered successfully" status $class
+                Oc_EventHandler Generate $this RegisterSuccess
             }
             default {
                 $this RegisterFail "registration error:\
@@ -246,6 +256,7 @@ Oc_Class Net_Server {
     }
 
     method RegisterFail {msg qid} {
+       Oc_EventHandler Generate $this RegisterFail
         Oc_EventHandler DeleteGroup $this-$qid
         set accountname [Net_Account DefaultAccountName]
         $this Delete

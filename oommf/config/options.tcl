@@ -177,7 +177,7 @@ if {[string match windows $tcl_platform(platform)]} {
 Oc_Option Add * MIFinterp safety custom
 #
 ########################################################################
-# Number of threads to run (per process), for thread enabled builds.
+# Number of threads to run (per process), for thread-enabled builds.
 # Usually, this is set in the applicable oommf/config/platform/ file,
 # but that value may be overridden here.  Additionally, the value
 # here may be overridden by the OOMMF_THREADS environment variable,
@@ -187,7 +187,10 @@ Oc_Option Add * MIFinterp safety custom
 # the generally more reliable oommf/config/platform setting is retained.
 # Oc_Option Add * Threads oommf_thread_count 2
 #
-
+########################################################################
+# Default numanodes setting, for numa-enabled builds.
+# Oc_Option Add * Numa numanodes auto
+#
 ########################################################################
 # Platform-generic default flags for compiling
 # To enable compiler warnings, add '-warn 1'
@@ -219,4 +222,3 @@ if {[file readable $fn]} {
 		$errorInfo $errorCode
     }
 }
-

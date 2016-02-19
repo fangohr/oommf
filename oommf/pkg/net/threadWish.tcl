@@ -1,7 +1,7 @@
 # FILE: threadWish.tcl
 #
-# Last modified on: $Date: 2012-06-26 01:37:52 $
-# Last modified by: $Author: donahue $
+# Last modified on: $Date: 2012/10/04 19:41:16 $
+# Last modified by: $Author: dgp $
 #
 package require Tk
 
@@ -68,9 +68,10 @@ Oc_Class Net_ThreadWish {
 		-groups [list $this]
 
 	# Set slave to identify as the remote app
-	regexp {[0-9]+} [$thread Cget -pid] id
+       regexp {[0-9]+} [$thread Cget -pid] oid
 	$slave eval Oc_Main SetAppName [$thread Cget -alias]
-	$slave eval [list wm title . "<$id> [$thread Cget -alias]"]
+	$slave eval [list wm title . "<$oid> [$thread Cget -alias]"]
+   $slave eval Oc_Main SetOid $oid
 	$slave eval {
 	    package require Ow
 	    wm iconname . [wm title .]

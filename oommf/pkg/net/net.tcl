@@ -5,7 +5,7 @@
 #	This extension provides a set of Oc_Classes which support networking
 # operations.
 #
-# Last modified on: $Date: 2012-09-25 17:12:02 $
+# Last modified on: $Date: 2015/03/25 16:45:08 $
 # Last modified by: $Author: dgp $
 #
 # When this version of the Net extension is selected by the 'package require'
@@ -21,7 +21,7 @@ package require Nb 1.2.0.4  ;# Needed by socket connection access checks
 Oc_CheckTclIndex Net
 
 # CVS 
-package provide Net 1.2.0.5
+package provide Net 1.2.0.6
 
 # Set up for autoloading of Net extension commands
 set _net(library) [file dirname [info script]]

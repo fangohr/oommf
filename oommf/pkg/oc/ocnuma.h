@@ -4,7 +4,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-08-25 00:04:00 $
+ * Last modified on: $Date: 2015/09/08 22:47:41 $
  * Last modified by: $Author: donahue $
  *
  * NOTE: The routines in this file are *not* thread safe, and should be
@@ -36,11 +36,17 @@
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// Used by "vector" template.
 
-// NOTE: The numa_available() function from the NUMA library returns a
-// negative value on error, a 0 or positive value on success.  This
-// is rather non-intuitive; the Oc_NumaAvailable routine and the associated
-// Tcl wrapper return 1 on success, 0 on error (i.e., if NUMA routines
-// are not available).
+// NOTE: The numa_available() function from the system NUMA library
+// initializes the NUMA library and returns a negative value on error, a
+// 0 or positive value on success.  This is rather non-intuitive; the
+// Oc_NumaAvailable routine and the associated Tcl wrapper return 1 on
+// success, 0 on error (i.e., if NUMA routines are not available).
+//   Code should generally call Oc_NumaInit (which calls numa_available)
+// during program initialization if it wishes to use NUMA facilities,
+// and use Oc_NumaReady inside the code so see if numa has been enabled.
+// (Calling Oc_NumaAvailable() directly will initialize the system NUMA
+// library but not the Oc_Numa code; i.e., Oc_NumaReady returns 0 if
+// Oc_NumaInit has not been called.)
 #if OC_USE_NUMA
 inline int  Oc_NumaAvailable() {
   if(numa_available()>=0) return 1;
@@ -65,16 +71,14 @@ int Oc_NumaReady(); // Returns 1 if Oc_NumaInit has been successfully
 void Oc_NumaDisable();
 void Oc_NumaInit(int max_threads,vector<int>& nodes);
 void Oc_NumaRunOnNode(int thread);
+void Oc_NumaRunOnAnyNode();
 void Oc_SetMemoryPolicyFirstTouch(char* start,OC_UINDEX len);
 // Oc_NumaGetRunNode queries the node select array to find out which
 //   node thread "thread" is suppose to run on.
 // Oc_NumaGetLocalNode queries the numa run mask for the current
 //   thread, and returns the lowest numbered node in the mask.
-// Oc_NumaNodeFirstThread returns the threadid for the first thread
-//   in the run node select array that runs on node "node"
 int Oc_NumaGetRunNode(int thread);    // Returns -1 on error
 int Oc_NumaGetLocalNode();            // Returns -1 on error
-int Oc_NumaNodeFirstThread(int node); // Returns -1 on error
 inline int Oc_NumaGetNodeCount() { return numa_max_node()+1; }
 void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab);
 void Oc_NumaGetRunMask(Oc_AutoBuf& ab);
@@ -85,13 +89,10 @@ inline int  Oc_NumaReady() { return 0; }
 inline void Oc_NumaDisable() {}
 inline void Oc_NumaInit(int /* max_threads */, vector<int>& /* nodes */) {}
 inline void Oc_NumaRunOnNode(int /* thread */) {}
+inline void Oc_NumaRunOnAnyNode() {}
 inline int  Oc_NumaGetRunNode(int /* thread */) { return 0; }
 inline void Oc_SetMemoryPolicyFirstTouch(char*,OC_UINDEX) {}
 inline int  Oc_NumaGetLocalNode()               { return 0; }
-inline int  Oc_NumaNodeFirstThread(int node) {
-  if(node==0) return 0;
-  return -1;
-}
 inline int Oc_NumaGetNodeCount() { return 1; }
 inline void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab) { ab = "1"; }
 inline void Oc_NumaGetRunMask(Oc_AutoBuf& ab) { ab = "1"; }

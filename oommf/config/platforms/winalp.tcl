@@ -186,7 +186,9 @@ if {[string match cl [file tail [lindex \
     #  so that the NDEBUG symbol is defined during compile.
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Deletion of an empty STL map<> is broken.
     $config SetValue \

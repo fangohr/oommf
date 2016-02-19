@@ -1,0 +1,100 @@
+# MIF 2.2
+# MIF Example File: stdprob5.mif
+# Description:
+#	Used to calculate the initial magnetization state for muMAG standard
+#	problem number 5 on spin momentum transfer.
+
+set pi [expr {4*atan(1.0)}]
+
+# Geometry
+Parameter length	100e-9	;# m
+Parameter width		100e-9	;# m
+Parameter thickness	 10e-9	;# m
+Parameter R		 10e-9	;# m
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {[expr {-$length/2}] [expr {$length/2}]}
+  yrange {[expr {-$width/2}] [expr {$width/2}]}
+  zrange {[expr {-$thickness/2}] [expr {$thickness/2}]}
+}]
+
+# Simulation parameters
+Parameter initproblem	0	;# 1 = initialization pass; 0 = normal run
+Parameter cellsize	2e-9	;# m
+Parameter stop		0.01	;# rad/ns
+#Parameter stop		20	;# rad/ns
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+# Material parameters
+Parameter Ms	 8.0e5		;# A/m
+Parameter A	 1.3e-11	;# J/m
+#Parameter K	 0
+Parameter alpha	 0.1		;# Gilbert damping
+Parameter gamma	 2.211e5	;# m/C = (rad/s)/(A/m)
+
+# Spin torque parameters
+Parameter P 	1
+Parameter J 	1e12		;# A/m^2
+Parameter xi	0.05		;# degree of non-adiabaticity
+
+SetOptions [subst {
+  basename stdprob5-[expr {$initproblem ? "" : [format %0.3f $xi]}]
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UniformExchange:NiFe [subst {
+  A  $A
+}]
+
+Destination archive mmArchive
+if {$initproblem} {
+    # Compute the initial magnetization state
+    Specify Oxs_RungeKuttaEvolve:evolver [subst {
+	gamma_G $gamma
+	alpha	1
+	method 	rkf54
+    }]
+    proc Vortex { R x y z } {
+	return "[expr {-($y-0e-9)}] [expr {$x-0e-9}] $R"
+    }
+    Specify Oxs_ScriptVectorField:m0 [subst {
+	atlas	:atlas
+	script	{Vortex $R}
+	script_args rawpt
+	norm	1
+    }]
+    Schedule DataTable archive Step 1
+    Schedule DataTable archive Stage 1
+} else {
+    Specify Oxs_SpinXferEvolve:evolver [subst {
+	alpha		$alpha
+	P		$P
+	J		$J
+	eps_prime	[expr {$xi/2}]
+	mp		{1 0 0}
+	propagate_mp	1
+	J_direction	+x
+    }]
+    Specify Oxs_FileVectorField:m0 {
+	file	stdprob5.omf
+	atlas 	:atlas
+    }
+    Schedule DataTable archive Step 1
+    Schedule DataTable archive Stage 1
+}
+
+Specify Oxs_TimeDriver [subst {
+	evolver		:evolver
+	mesh		:mesh
+	Ms		$Ms
+	m0		:m0
+	stopping_dm_dt	[# convert radians to degrees
+			expr {180*$stop/$pi}]
+}]
+Schedule Oxs_TimeDriver::Magnetization archive Stage 1
+

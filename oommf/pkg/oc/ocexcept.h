@@ -4,7 +4,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-08-31 20:06:51 $
+ * Last modified on: $Date: 2015/05/13 02:03:00 $
  * Last modified by: $Author: donahue $
  */
 
@@ -34,7 +34,7 @@
 //
 // The fifth argument to the Oc_Exception constructor, errmsg_size (here
 // 4096), must be large enough to hold the result of evaluating the
-// format string errfmt with the appended arguments.  To is strongly
+// format string errfmt with the appended arguments.  It is strongly
 // recommended that any %s format directives include a precision
 // setting (".3500" in the above example) to protect against overflow
 // in filling the extended error message buffer.

@@ -125,74 +125,55 @@ OommfPSDraw::OommfPSDraw
     OC_REAL8m offset = ArrowOutlineWidth * LineWidth * 2./3.;
     ArrowOutlineColor.Get(red,green,blue);
 
-    // A little trig prep.  This is to get the spacing right
-    // on the front side of the arrow.
-    OC_REAL8m a = ArrowHeadRatio;
-    OC_REAL8m b = 0.4*ArrowHeadRatio - LineWidth/8.;
-    OC_REAL8m h = sqrt(a*a+b*b);
-    OC_REAL8m addx = offset*(h-a)/b;
-
     // PostScript routine for arrow outline
     Nb_WriteChannel(channel,"/MakeStandardArrowOutline {\n",-1);
     Nb_FprintfChannel(channel,NULL,1024,
                       "  %.6g %.6g %.6g setrgbcolor\n",
                       red/255.,green/255.,blue/255.);
     Nb_WriteChannel(channel,"  newpath\n",-1);
+
+    assert(0.4*ArrowHeadRatio > LineWidth/8.);
+    OC_REAL8m tiprat = 1.0/(0.4 - LineWidth/(8.*ArrowHeadRatio));
+    OC_REAL8m tipratx = offset*(sqrt(tiprat*tiprat+1)-tiprat);
+    OC_REAL8m tipraty = offset*(sqrt(tiprat*tiprat+1)-1)/tiprat;
+    OC_REAL8m backarrowx = ArrowLength/2.-ArrowHeadRatio + tipratx;
+    OC_REAL8m tipx = ArrowLength/2. + offset;
+    OC_REAL8m tipy = LineWidth/8. + tipraty;
+
     // Top half
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g moveto\n",
               static_cast<double>(-ArrowLength/2.-offset),
               static_cast<double>(LineWidth/2.+offset));
-    OC_REAL8m indentcheck = ArrowLength/2. - 0.8*ArrowHeadRatio
-                          - offset/(2-2.5*LineWidth/ArrowHeadRatio);
-    if(indentcheck<ArrowLength/2.-ArrowHeadRatio-offset) {
-      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                 static_cast<double>(ArrowLength/2.-ArrowHeadRatio-offset),
-                 static_cast<double>(LineWidth/2.+offset));
-    } else {
-      // Indent around backside of arrowhead
-      OC_REAL8m indentpoint = ArrowLength/2.-ArrowHeadRatio-offset/2.;
-      if(indentpoint>indentcheck) indentpoint = indentcheck;
-      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                 static_cast<double>(indentpoint),
-                 static_cast<double>(LineWidth/2.+offset));
-    }
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-offset),
+              static_cast<double>(ArrowLength/2.-0.8*ArrowHeadRatio-1.5*offset),
+              static_cast<double>(LineWidth/2.+offset));
+    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-1.5*offset),
               static_cast<double>(0.4*ArrowHeadRatio+offset));
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio+addx),
+              static_cast<double>(backarrowx),
               static_cast<double>(0.4*ArrowHeadRatio+offset));
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.+offset+addx),
-              static_cast<double>(LineWidth/8.
-                               + (0.6+LineWidth/(8*ArrowHeadRatio))*offset));
+              static_cast<double>(tipx),
+              static_cast<double>(tipy));
+
     // Bottom half
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.+offset+addx),
-              static_cast<double>(-LineWidth/8.
-                               - (0.6+LineWidth/(8*ArrowHeadRatio))*offset));
+              static_cast<double>(tipx),
+              static_cast<double>(-tipy));
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>( ArrowLength/2.-ArrowHeadRatio+addx),
-                      static_cast<double>(-0.4*ArrowHeadRatio-offset));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-offset),
+              static_cast<double>(ArrowLength/2.-ArrowHeadRatio),
               static_cast<double>(-0.4*ArrowHeadRatio-offset));
-
-    if(indentcheck<ArrowLength/2.-ArrowHeadRatio-offset) {
-      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                 static_cast<double>(ArrowLength/2.-ArrowHeadRatio-offset),
-                 static_cast<double>(-LineWidth/2.-offset));
-    } else {
-      // Indent around backside of arrowhead
-      OC_REAL8m indentpoint = ArrowLength/2.-ArrowHeadRatio-offset/2.;
-      if(indentpoint>indentcheck) indentpoint = indentcheck;
-      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                 static_cast<double>(indentpoint),
-                 static_cast<double>(-LineWidth/2.-offset));
-    }
+    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-1.5*offset),
+              static_cast<double>(-0.4*ArrowHeadRatio-offset));
+    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+              static_cast<double>(ArrowLength/2.-0.8*ArrowHeadRatio-1.5*offset),
+              static_cast<double>(-LineWidth/2.-offset));
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
               static_cast<double>(-ArrowLength/2.-offset),
               static_cast<double>(-LineWidth/2.-offset));
+
     Nb_WriteChannel(channel,"  closepath\n  fill\n} def\n\n",-1);
 
     Nb_WriteChannel(channel,"/MakeStandardArrow { %stack: r g b\n",-1);
@@ -452,7 +433,7 @@ OommfPSDraw::DrawPolyLine
   // unless the last and first point are equal, in which case those ends
   // will be joined using joinstyle.
 
-  OC_INT4m pointcount = vlist.GetSize();
+  OC_INDEX pointcount = vlist.GetSize();
   if(pointcount<2) return; // Nothing to draw
 
   const PlanePoint *pta,*ptb;
@@ -467,7 +448,7 @@ OommfPSDraw::DrawPolyLine
                     static_cast<double>(pta->x),
                     static_cast<double>(pta->y));
 
-  OC_INT4m pointindex=1;
+  OC_INDEX pointindex=1;
   while((ptb=vlist.GetNext(key))!=NULL) {
     ++pointindex;
     if(pointindex==pointcount && (*ptb)==(*pta)) {

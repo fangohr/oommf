@@ -13,7 +13,7 @@ package require If 1.2.0.4
 Oc_ForceStderrDefaultMessage
 
 Oc_Main SetAppName any2ppm
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 Oc_CommandLine Option console {} {}
 

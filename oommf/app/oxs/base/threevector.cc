@@ -36,13 +36,12 @@ void Oxs_ThreeVector::SetMag(OC_REAL8m mag)
 OC_REAL8m Oxs_ThreeVector::MakeUnit()
 { // Conceptually equivalent to SetMag(1.0), but
   // with enhanced accuracy.
-  OC_REAL8m orig_magsq=MagSq();
-  OC_REAL8m magsq = orig_magsq;
-  if(magsq<=0) {
+  OC_REAL8m error = 1.0 - x*x;  error -= y*y;  error -= z*z;
+  OC_REAL8m orig_magsq = 1.0 - error;
+  if(error >= 1.0) {
     Random(1.0);
-    magsq=MagSq();
+    error = 1.0 - x*x;    error -= y*y;    error -= z*z;
   }
-  OC_REAL8m error = 1-magsq;
   if(fabs(error)<=2*OC_REAL8_EPSILON) {
     // In general, we can't do better than this, so we might as
     // well stop.  Moreover, kicking out on this condition helps
@@ -51,21 +50,19 @@ OC_REAL8m Oxs_ThreeVector::MakeUnit()
     // causing (x,y,z) to wander around like a drunk looking for
     // his house keys.
     return orig_magsq;
-  }
-  else if(fabs(error)>OC_CUBE_ROOT_REAL8_EPSILON) {
+  } else if(fabs(error)>OC_CUBE_ROOT_REAL8_EPSILON) {
     // Big error; fall back to making a sqrt evaluation.
     // OC_REAL8_EPSILON is about 2e-16 with IEEE floating pt,
     // so OC_CUBE_ROOT_REAL8_EPSILON is 6e-6.  See mjd NOTES II,
     // 10-Feb-2001, p 91.
-    OC_REAL8m mult = 1.0/sqrt(magsq);
+    OC_REAL8m mult = 1.0/sqrt(1.0-error);
     x*=mult; y*=mult; z*=mult;
-    magsq=MagSq();
-    error = 1-magsq;
+    error = 1.0 - x*x;    error -= y*y;    error -= z*z;
   }
 
-  // Do one Halley step (see mjd's NOTES II, 8-Feb-2001, p82)
-  // to improve accuracy to <= 2*OC_REAL8_EPSILON
-  OC_REAL8m adj = 2*error/(1+3*magsq);
+  // Several terms of 1/sqrt(1-error) - 1 Taylor series
+  OC_REAL8m adj = ((0.3125*error+0.375)*error+0.5)*error;
+
   x += adj*x;   y += adj*y;   z += adj*z;
   /// v += adj*v produces smaller | ||v||^2 - 1 | than
   /// v *= (1+adj).
@@ -100,16 +97,45 @@ void Oxs_ThreeVector::Random(OC_REAL8m mag)
   z=mag*cosphi;
 }
 
+void Oxs_ThreeVector::PerturbDirection(OC_REAL8m eps)
+{ // Perturb the direction of *this by a random amount.  The magnitude
+  // of the perturbation is no more than eps (>=0).  The norm of *this
+  // is unchanged.
+
+  // Note: This code assumes that |*this|^2 and |*this + eps_offset|^2
+  // don't overflow.
+
+  // Dummy implementation.  When possible, redo with proper probability
+  // distribution.
+  OC_REAL8m magsq = MagSq();
+  x += eps*(2*Oc_UnifRand()-1);
+  y += eps*(2*Oc_UnifRand()-1);
+  z += eps*(2*Oc_UnifRand()-1);
+
+  OC_REAL8m newmagsq = MagSq();
+
+  if(newmagsq>=1.0 || OC_REAL8m_MAX*newmagsq>magsq) {
+    OC_REAL8m mult = sqrt(magsq/newmagsq);
+    x*=mult; y*=mult; z*=mult;
+  } else {
+    Random(sqrt(magsq));
+  }
+}
+
+
 #if OC_USE_SSE
 void Oxs_ThreeVectorPairMakeUnit
 (__m128d& tx,__m128d& ty,__m128d& tz,
  OC_REAL8m* magsq0, OC_REAL8m* magsq1)
 {
   __m128d txsq = _mm_mul_pd(tx,tx);
+  __m128d error = _mm_sub_pd(_mm_set1_pd(1.0),txsq);
   __m128d tysq = _mm_mul_pd(ty,ty);
+  error = _mm_sub_pd(error,tysq);
   __m128d tzsq = _mm_mul_pd(tz,tz);
+  error = _mm_sub_pd(error,tzsq);
 
-  __m128d tmagsq = _mm_add_pd(_mm_add_pd(txsq,tysq),tzsq);
+  __m128d tmagsq = _mm_sub_pd(_mm_set1_pd(1.0),error);
 
   if(magsq0) _mm_storel_pd(magsq0,tmagsq);
   if(magsq1) _mm_storeh_pd(magsq1,tmagsq);
@@ -135,14 +161,16 @@ void Oxs_ThreeVectorPairMakeUnit
     }
     tx   = _mm_set_pd(t1.x,t0.x);  // Recompute
     txsq = _mm_mul_pd(tx,tx);
+    error = _mm_sub_pd(_mm_set1_pd(1.0),txsq);
     ty   = _mm_set_pd(t1.y,t0.y);
     tysq = _mm_mul_pd(ty,ty);
+    error = _mm_sub_pd(error,tysq);
     tz   = _mm_set_pd(t1.z,t0.z);
     tzsq = _mm_mul_pd(tz,tz);
-    tmagsq = _mm_add_pd(_mm_add_pd(txsq,tysq),tzsq);
+    error = _mm_sub_pd(error,tzsq);
+    tmagsq = _mm_sub_pd(_mm_set1_pd(1.0),error);
   }
 
-  __m128d error = _mm_sub_pd(_mm_set1_pd(1.0),tmagsq);
   // Compute abs(error) by clearing sign bits.
   OC_SSE_MASK absmask;
   absmask.imask = (~(OC_UINT8(0)))>>1; // 0x7FFFFFFFFFFFFFFF
@@ -151,8 +179,8 @@ void Oxs_ThreeVectorPairMakeUnit
   // cmpA and cmpB below are two-bit masks.  Bit 0 records the state
   // of the lower value comparison (vec0) and bit 1 records the state
   // of the upper value comparison (vec1).
-  int cmpA = _mm_movemask_pd(_mm_cmple_pd(abserror,
-                                         _mm_set1_pd(2*OC_REAL8_EPSILON)));
+  __m128d epsmask = _mm_cmple_pd(abserror,_mm_set1_pd(2*OC_REAL8_EPSILON));
+  int cmpA = _mm_movemask_pd(epsmask);
 
   if(cmpA == 0x3) {
     // In both cases, error<2*OC_REAL8_EPSILON.  In general, we can't do
@@ -187,18 +215,25 @@ void Oxs_ThreeVectorPairMakeUnit
     __m128d wmag = _mm_sqrt_pd(workmagsq);
     __m128d wimag = _mm_div_pd(ones,wmag);
     tx = _mm_mul_pd(tx,wimag);    txsq = _mm_mul_pd(tx,tx);
+    error = _mm_sub_pd(ones,txsq);
     ty = _mm_mul_pd(ty,wimag);    tysq = _mm_mul_pd(ty,ty);
+    error = _mm_sub_pd(error,tysq);
     tz = _mm_mul_pd(tz,wimag);    tzsq = _mm_mul_pd(tz,tz);
-    tmagsq = _mm_add_pd(_mm_add_pd(txsq,tysq),tzsq);
-    error = _mm_sub_pd(_mm_set1_pd(1.0),tmagsq);
+    error = _mm_sub_pd(error,tzsq);
+    tmagsq = _mm_sub_pd(ones,error);
     // Note: abserror not used below
   }
 
-  // Do one Halley step (see mjd's NOTES II, 8-Feb-2001, p82)
-  // to improve accuracy to <= 2*OC_REAL8_EPSILON
-  __m128d denom = _mm_add_pd(_mm_set1_pd(1.0),
-                             _mm_mul_pd(_mm_set1_pd(3.0),tmagsq));
-  __m128d adj = _mm_div_pd(_mm_mul_pd(_mm_set1_pd(2.0),error),denom);
+  // Zero-out error on term (if any) that has initial error
+  // smaller than 2*OC_REAL8_EPSILON.  This reduces chatter
+  error = _mm_andnot_pd(epsmask,error);
+
+  // Several terms of 1/sqrt(1-error) - 1 Taylor series:
+  //    ((0.3125*error+0.375)*error+0.5)*error;
+  __m128d adj = _mm_mul_pd(_mm_set1_pd(0.3125),error);
+  adj = _mm_mul_pd(_mm_add_pd(adj,_mm_set1_pd(0.375)),error);
+  adj = _mm_mul_pd(_mm_add_pd(adj,_mm_set1_pd(0.5)),error);
+
   tx = _mm_add_pd(tx,_mm_mul_pd(tx,adj));
   ty = _mm_add_pd(ty,_mm_mul_pd(ty,adj));
   tz = _mm_add_pd(tz,_mm_mul_pd(tz,adj));
@@ -232,43 +267,59 @@ void Oxs_ThreeVectorPairMakeUnit
  OC_REAL8m* magsq0, OC_REAL8m* magsq1)
 { // Conceptually equivalent to SetMag(1.0), but
   // with enhanced accuracy.
-  Oc_Duet orig_magsq = tx*tx + ty*ty + tz*tz;
-  Oc_Duet magsq = orig_magsq;
+  Oc_Duet error = Oc_Duet(1.0) - tx*tx; error -= ty*ty; error -= tz*tz;
+  Oc_Duet orig_magsq = Oc_Duet(1.0) - error;
 
   if(magsq0) orig_magsq.StoreA(*magsq0);
   if(magsq1) orig_magsq.StoreB(*magsq1);
 
-  if(magsq.GetA()<=0.0) {
+  if(error.GetA()>=1.0) {
     ThreeVector tmp;   tmp.Random(1.0);
     tx.Set(tmp.x,tx.GetB()); ty.Set(tmp.y,ty.GetB()); tz.Set(tmp.z,tz.GetB());
-    magsq.Set(tmp.MagSq(),magsq.GetB());
+    OC_REAL8m terr = 1.0 - tmp.x*tmp.x;
+    terr -= tmp.y*tmp.y;  terr -= tmp.z*tmp.z;
+    error.Set(terr,error.GetB());
   }
-  if(magsq.GetB()<=0.0) {
+  if(error.GetB()>=1.0) {
     ThreeVector tmp;   tmp.Random(1.0);
     tx.Set(tx.GetA(),tmp.x); ty.Set(ty.GetA(),tmp.y); tz.Set(tz.GetA(),tmp.z);
-    magsq.Set(magsq.GetA(),tmp.MagSq());
+    OC_REAL8m terr = 1.0 - tmp.x*tmp.x;
+    terr -= tmp.y*tmp.y;  terr -= tmp.z*tmp.z;
+    error.Set(error.GetA(),terr);
   }
 
-  Oc_Duet error = Oc_Duet(1.0) - magsq;
   if(Oc_Fabs(error.GetA())<=2*OC_REAL8_EPSILON &&
      Oc_Fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
     // In general, it is not possible to do better than 2*eps.
     return;
   }
-  if(Oc_Fabs(error.GetA())>OC_CUBE_ROOT_REAL8_EPSILON ||
-     Oc_Fabs(error.GetB())>OC_CUBE_ROOT_REAL8_EPSILON) {
-    // Big error.  Make a sqrt evaluation.  Since this is a non-sse code
-    // section, we might want to check the A and B terms individually,
-    // and only take sqrt termwise as needed.
-    Oc_Duet mult = Oc_Invert(Oc_Sqrt(magsq));
-    tx *= mult; ty *= mult; tz *= mult;
-    magsq = tx*tx + ty*ty + tz*tz;
-    error = Oc_Duet(1.0) - magsq;
+  if(Oc_Fabs(error.GetA())<=2*OC_REAL8_EPSILON) {
+    // Short-circuit correction; this reduces chatter
+    error.Set(0.0,error.GetB());
+  } else if(Oc_Fabs(error.GetA())>OC_CUBE_ROOT_REAL8_EPSILON) {
+    OC_REAL8m mult = 1.0/sqrt(1.0-error.GetA());
+    OC_REAL8m ax = tx.GetA() * mult;    tx.Set(ax,tx.GetB());
+    OC_REAL8m ay = ty.GetA() * mult;    ty.Set(ay,ty.GetB());
+    OC_REAL8m az = tz.GetA() * mult;    tz.Set(az,tz.GetB());
+    OC_REAL8m aerror = 1.0 - ax*ax;   aerror -= ay*ay;   aerror -= az*az;
+    error.Set(aerror,error.GetB());
+  }
+  if(Oc_Fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
+    // Short-circuit Halley step; this reduces chatter
+    error.Set(error.GetA(),0.0);
+  } else if(Oc_Fabs(error.GetB())>OC_CUBE_ROOT_REAL8_EPSILON) {
+    OC_REAL8m mult = 1.0/sqrt(1.0-error.GetB());
+    OC_REAL8m bx = tx.GetB() * mult;    tx.Set(tx.GetA(),bx); 
+    OC_REAL8m by = ty.GetB() * mult;    ty.Set(ty.GetA(),by);
+    OC_REAL8m bz = tz.GetB() * mult;    tz.Set(tz.GetA(),bz);
+    OC_REAL8m berror = 1.0 - bx*bx;   berror -= by*by;   berror -= bz*bz;
+    error.Set(error.GetA(),berror);
   }
 
-  // Do one Halley step (see mjd's NOTES II, 8-Feb-2001, p82)
-  // to improve accuracy to <= 2*OC_REAL8_EPSILON
-  Oc_Duet adj = 2*error/(Oc_Duet(1.0)+3*magsq);
+  // Several terms of 1/sqrt(1-error) - 1 Taylor series
+  Oc_Duet adj = ((Oc_Duet(0.3125)*error
+                  +Oc_Duet(0.375))*error
+                 +Oc_Duet(0.5))*error;
   tx += adj*tx;   ty += adj*ty;   tz += adj*tz;
   /// v += adj*v produces smaller | ||v||^2 - 1 | than
   /// v *= (1+adj).

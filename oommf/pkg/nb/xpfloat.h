@@ -5,7 +5,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-08-29 22:38:47 $
+ * Last modified on: $Date: 2012/11/20 01:12:44 $
  * Last modified by: $Author: donahue $
  */
 
@@ -103,6 +103,21 @@ typedef double NB_XPFLOAT_TYPE;
 
 #endif
 
+// Some of the code below requires that the compiler respect
+// floating-point operation non-associativity.  Some compilers are
+// sufficiently circumspect wrt optimization either by default or via
+// support code directives that this is not a problem.  For others,
+// achieve this effect by defining OC_COMPILER_NO_ASSOCIATIVITY_CONTROL
+// true which causes some variables to be marked "volatile".
+#ifndef OC_COMPILER_NO_ASSOCIATIVITY_CONTROL
+# define OC_COMPILER_NO_ASSOCIATIVITY_CONTROL 0
+#endif
+#if OC_COMPILER_NO_ASSOCIATIVITY_CONTROL \
+  && !NB_XPFLOAT_USE_SSE && !NB_XPFLOAT_NEEDS_VOLATILE
+# undef  NB_XPFLOAT_NEEDS_VOLATILE
+# define NB_XPFLOAT_NEEDS_VOLATILE 1
+#endif
+
 class Nb_Xpfloat
 {
   friend void Nb_XpfloatDualAccum(Nb_Xpfloat&,NB_XPFLOAT_TYPE,
@@ -118,11 +133,22 @@ class Nb_Xpfloat
 private:
 #if !NB_XPFLOAT_USE_SSE
   NB_XPFLOAT_TYPE x,corr;
+  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
+    big = x; small = corr;
+  }
 #else // NB_XPFLOAT_USE_SSE
   __m128d xpdata;
+  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
+    big = Oc_SseGetLower(xpdata);
+    small = Oc_SseGetUpper(xpdata);
+  }
 #endif // NB_XPFLOAT_USE_SSE
 
 public:
+
+  static int Test(); // Test that code works as designed. In particular,
+  /// see if compiler has broken compensated summation code in Accum().
+  /// Returns 0 on success, 1 on error.
 
 #if !NB_XPFLOAT_USE_SSE
   Nb_Xpfloat() : x(0), corr(0) {}
@@ -141,7 +167,43 @@ public:
   // xpfloat.cc file, allows significant speedups with the g++ compiler.
   // It makes small difference with the Intel C++ compiler (icpc),
   // presumably because of icpc's interprocedural optimization ability?
+  // NB: Compiler-specific #if's restrict optimizer to respect
+  // non-associativity of floating point addition.
+#if defined(__GNUC__) \
+  && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)) \
+  && !defined(__INTEL_COMPILER)
+  void Accum(NB_XPFLOAT_TYPE y) __attribute__((optimize(2,"no-fast-math"))) {
+#else
   void Accum(NB_XPFLOAT_TYPE y) {
+#endif
+#if defined(__INTEL_COMPILER)
+# pragma float_control(precise,on)
+#endif
+
+    // Calculate sum, using compensated (Kahan) summation.
+    //
+    // We try to select NB_XPFLOAT_TYPE so that there is no hidden
+    // precision in intermediate computations.  If this can't be
+    // assured, the fallback is to accumulate all operations into
+    // variables marked "volatile" to insure that no hidden precision is
+    // carried between operations.  This is slow (one test with g++ on
+    // an AMD Athlon 64 x2 showed a factor of 8), and moreover for all
+    // the machines+compilers I know about the "long double" type
+    // carries full precision.
+    //
+    // A second problem is compilers that ignore associativity
+    // restrictions.  At the time of this writing (2012), GCC respects
+    // associativity unless the -ffast-math optimization flag is given
+    // at compile time.  We protect against this by using the
+    // "-no-fast-math" function attribute in the case GCC is detected.
+    // Also at this time, the Intel compile *by default* compiles with
+    // what it calls the "fast=1" floating point model, which ignores
+    // associativity.  This can be changed by adding the switch
+    // "-fp-model precise" to the compile line, or else by adding
+    // "#pragma float_control(precise,on)" inside this function.  The
+    // pragma option operates on a function by function basis, so it is
+    // less global.
+
 # if NB_XPFLOAT_NEEDS_VOLATILE 
     volatile NB_XPFLOAT_TYPE sum1; // Mark as volatile to protect against
     volatile NB_XPFLOAT_TYPE sum2; // problems arising from extra precision.
@@ -241,8 +303,8 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,__m128d y)
   // For implementation notes, see the Nb_Xpfloat::Accum routine above.
   assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
 #if NB_XPFLOAT_USE_SSE
-  __m128d wx   = _mm_unpacklo_pd(xpA.xpdata,xpB.xpdata);
   __m128d sum1 = _mm_add_pd(y,_mm_unpackhi_pd(xpA.xpdata,xpB.xpdata));
+  __m128d wx   = _mm_unpacklo_pd(xpA.xpdata,xpB.xpdata);
   __m128d sum2 = _mm_add_pd(wx,sum1);
   __m128d corrtemp = _mm_add_pd(_mm_sub_pd(wx,sum2),sum1);
   xpA.xpdata = _mm_unpacklo_pd(sum2,corrtemp);
@@ -274,34 +336,10 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,NB_XPFLOAT_TYPE yA,
   assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
 
 #if !NB_XPFLOAT_USE_SSE
-#if NB_XPFLOAT_NEEDS_VOLATILE 
-  volatile NB_XPFLOAT_TYPE sumA1;
-  volatile NB_XPFLOAT_TYPE sumB1;
-  volatile NB_XPFLOAT_TYPE sumA2;
-  volatile NB_XPFLOAT_TYPE sumB2;
-  volatile NB_XPFLOAT_TYPE corrtempA;
-  volatile NB_XPFLOAT_TYPE corrtempB;
-#else
-  NB_XPFLOAT_TYPE sumA1,     sumB1;
-  NB_XPFLOAT_TYPE sumA2,     sumB2;
-  NB_XPFLOAT_TYPE corrtempA, corrtempB;
-#endif
-
-  sumA1=yA+xpA.corr;           sumB1=yB+xpB.corr;
-  sumA2=xpA.x+sumA1;           sumB2=xpB.x+sumB1;
-  corrtempA = xpA.x - sumA2;   corrtempB = xpB.x - sumB2;
-  corrtempA += sumA1;          corrtempB += sumB1;
-
-  xpA.corr = corrtempA;
-  xpA.x=sumA2;
-
-  xpB.corr = corrtempB;
-  xpB.x=sumB2;
-
+    xpA += yA;
+    xpB += yB;
 #else // NB_XPFLOAT_USE_SSE
-
   Nb_XpfloatDualAccum(xpA,xpB,_mm_set_pd(yB,yA));
-
 #endif // NB_XPFLOAT_USE_SSE
 }
 

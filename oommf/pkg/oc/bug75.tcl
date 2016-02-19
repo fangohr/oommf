@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 7.5 / Tk 4.1
 #
-# Last modified on: $Date: 2001-06-28 22:18:47 $
+# Last modified on: $Date: 2001/06/28 22:18:47 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 7.5 interpreter

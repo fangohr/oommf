@@ -26,8 +26,8 @@ Oxs_Atlas::Oxs_Atlas
 void Oxs_Atlas::GetRegionList(vector<String>& regions) const
 {
   regions.clear();
-  const OC_UINT4m count = GetRegionCount();
-  for(OC_UINT4m i=0;i<count;++i) {
+  const OC_INDEX count = GetRegionCount();
+  for(OC_INDEX i=0;i<count;++i) {
     String tmp;
     if(GetRegionName(i,tmp)) regions.push_back(tmp);
   }

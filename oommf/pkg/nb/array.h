@@ -13,7 +13,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-03-23 03:18:35 $
+ * Last modified on: $Date: 2015/07/30 01:18:45 $
  * Last modified by: $Author: donahue $
  */
 
@@ -77,16 +77,19 @@ template<class T> void Nb_Array2D<T>::Allocate(OC_INDEX newdim1,OC_INDEX newdim2
   OC_INDEX i;
   if(data!=(T*)NULL) Deallocate();
   dim1=newdim1; dim2=newdim2;
-  if(dim1<1 || dim2<1 || dim1*dim2<1) // The last is an overflow check
+  // Overflow check
+  if(dim1<1 || dim2<1 || (OC_INDEX_MAX/dim1)<dim2) {
     PlainError(1,"Error in Nb_Array2D::Allocate: %s",ErrBadParam);
+  }
 
   // Allocate one big chunk of memory for the T's
-  if((data=new T[dim1*dim2])==0)
+  if((data=new T[dim1*dim2])==0) {
     PlainError(1,"Error in Nb_Array2D::Allocate: %s",ErrNoMem);
+  }
   // Allocate row pointers
-  if((row=new T*[dim1])==0)
+  if((row=new T*[dim1])==0) {
     PlainError(1,"Error in Nb_Array2D::Allocate: %s",ErrNoMem);
-
+  }
   // Initialize row pointers
   for(i=0;i<dim1;i++) row[i]=data+i*dim2;
 }
@@ -169,6 +172,9 @@ public:
   OC_INDEX GetSize() const { return dim1*dim2*dim3; }
   inline T& operator()(OC_INDEX i1,OC_INDEX i2,OC_INDEX i3);
   inline const T& operator()(OC_INDEX i1,OC_INDEX i2,OC_INDEX i3) const;
+  OC_BOOL IsSameArray(const Nb_Array3D<T>& other) const {
+    return (arr == other.arr);
+  }
 };
 
 template<class T> Nb_Array3D<T>::Nb_Array3D() :
@@ -219,8 +225,9 @@ template<class T> void Nb_Array3D<T>::Deallocate(void)
 #undef MEMBERNAME
 }
 
-template<class T> OC_INDEX Nb_Array3D<T>::Allocate(OC_INDEX newdim1,OC_INDEX newdim2,
-					     OC_INDEX newdim3)
+template<class T>
+OC_INDEX Nb_Array3D<T>::Allocate(OC_INDEX newdim1,OC_INDEX newdim2,
+                                 OC_INDEX newdim3)
 { // Insufficient memory is currently a fatal error.
   //  This may change (but requires careful deallocation). -mjd 12/Dec/96
 #define MEMBERNAME "Allocate"
@@ -231,22 +238,26 @@ template<class T> OC_INDEX Nb_Array3D<T>::Allocate(OC_INDEX newdim1,OC_INDEX new
   if(newdim1==0 || newdim2==0 || newdim3==0) return 0;
 
   OC_INDEX i1,i2,total_size,check;
-  total_size=newdim1*newdim2*newdim3;
-  check = total_size;
-  check /= newdim1;
+  check = OC_INDEX_MAX/newdim1;
   check /= newdim2;
-  check /= newdim3;
-  if(check != 1) FatalError(-1,STDDOC,ErrOverflow); // Overflow check
+  if(check < newdim3) FatalError(-1,STDDOC,ErrOverflow); // Overflow check
+  total_size=newdim1*newdim2*newdim3;
 
   // Allocate memory for plane pointers
-  if((arr=new T**[newdim1])==0) FatalError(-1,STDDOC,ErrNoMem);
+  if((arr=new T**[size_t(newdim1)])==0) {
+    FatalError(-1,STDDOC,ErrNoMem);
+  }
 
   // Allocate memory for row pointers & initialize plane pointers
-  if((arr[0]=new T*[newdim1*newdim2])==0) FatalError(-1,STDDOC,ErrNoMem);
+  if((arr[0]=new T*[size_t(newdim1*newdim2)])==0) {
+    FatalError(-1,STDDOC,ErrNoMem);
+  }
   for(i1=1;i1<newdim1;i1++) arr[i1]=arr[0]+i1*newdim2;
 
   // Allocate memory for individual cells & initialize row pointers
-  if((arr[0][0]=new T[total_size])==0) FatalError(-1,STDDOC,ErrNoMem);
+  if((arr[0][0]=new T[size_t(total_size)])==0) {
+    FatalError(-1,STDDOC,ErrNoMem);
+  }
   for(i1=0;i1<newdim1;i1++) for(i2=0;i2<newdim2;i2++) {
     arr[i1][i2]=arr[0][0]+(i1*newdim2+i2)*newdim3;
   }

@@ -233,8 +233,8 @@ if {[string match g++ $ccbasename]} {
     # Optimization options
     # set opts [list -O0 -ffloat-store]  ;# No optimization
     # set opts [list -O%s]               ;# Minimal
-    set opts [list -O3 -ffast-math -fomit-frame-pointer -fstrict-aliasing]
-    # You can also try adding -malign-double, -funroll-loops
+    set opts [list -O3 -fomit-frame-pointer -fstrict-aliasing]
+    # You can also try adding -malign-double, -funroll-loops, -ffast-math
 
     # Default warnings disable
     set nowarn [list -Wno-non-template-friend]
@@ -272,7 +272,9 @@ if {[string match g++ $ccbasename]} {
 	-Wno-uninitialized -Wno-unused-function"}
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories
@@ -333,7 +335,9 @@ if {[string match g++ $ccbasename]} {
                 -wd1418 -wd1419 -wd1572 -wd1624 -wd2259" }
 
     # Widest natively support floating point type.
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     unset opts fma icpc_version
 }

@@ -214,10 +214,27 @@ Tcl_ThreadDataKey Oxs_ThreadRunObj::thread_data_map;
 // Note: The return type differs by OS; on unix it is void, on
 //       Windows it is unsigned.
 
+#if (OC_SYSTEM_TYPE==OC_WINDOWS)
+#include <signal.h>
+extern "C" {
+void thread_abort_handler(int)
+{
+  signal(SIGABRT,SIG_DFL); // Reset to default handler, to avoid recursion
+  fprintf(stderr,"*** THREAD ABORT (Oxs_BadThread) ***\n");
+  abort();
+}}
+#endif // OC_WINDOWS
+
 Tcl_ThreadCreateProc _Oxs_Thread_threadmain;
 Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
 { // NB: Be careful, this routine and any routine called from inside
   //     must be re-entrant!
+
+#if (OC_SYSTEM_TYPE==OC_WINDOWS)
+  signal(SIGABRT,thread_abort_handler); // "assert" handling
+  /// The above signal usage was put in place to improve assert
+  /// handling with Windows Visual C++
+#endif // OC_WINDOWS
 
   // Cast and dereference clientdata
   // NB: It is assumed that the referenced object remains valid
@@ -248,8 +265,8 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
     Oc_FpuControlData fpu_data;
     fpu_data.ReadData();
     fpu_data.GetDataString(ab);
-    Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
-                     thread_number,ab.GetStr());
+    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+    //                 thread_number,ab.GetStr());
   }
 #endif // OC_CHILD_COPY_FPU_CONTROL_WORD
 
@@ -257,7 +274,7 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
   {
     Oc_AutoBuf runmask;
     Oc_NumaGetRunMask(runmask);
-    Oxs_ThreadPrintf(stderr,"Thread %d nodemask: %s\n",
+    Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
                      thread_number,runmask.GetStr());
   }
 #endif
@@ -287,6 +304,13 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
         }
       }
       runobj->Cmd(thread_number,data);
+    } catch (Oxs_Exception& oxserr) {
+      Oxs_ThreadError::SetError(oxserr.MessageText() + threadstr);
+    } catch (Oc_Exception& ocerr) {
+      Oc_AutoBuf msg;
+      ocerr.ConstructMessage(msg);
+      msg += threadstr;
+      Oxs_ThreadError::SetError(msg.GetStr());
     } catch(String& smsg) {
       Oxs_ThreadError::SetError(smsg + threadstr);
     } catch(const char* cmsg) {
@@ -319,6 +343,67 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
 }
 
 ////////////////////////////////////////////////////////////////////////
+// Support classes for creating and accessing thread timers
+#if OXS_THREAD_TIMER_COUNT
+class _Oxs_ThreadTree_CreateThreadTimers : public Oxs_ThreadRunObj {
+public:
+  _Oxs_ThreadTree_CreateThreadTimers() {}
+  void Cmd(int threadnumber, void* /* data */) {
+
+    Oxs_ThreadMapDataObject* foo
+      = local_locker.GetItem(String(OXS_THREAD_TIMER_NAME));
+    if(!foo) {
+      local_locker.AddItem(String(OXS_THREAD_TIMER_NAME),
+                           new Oxs_ThreadTimers(OXS_THREAD_TIMER_COUNT));
+    } else {
+      Oxs_ThreadTimers* timers = dynamic_cast<Oxs_ThreadTimers*>(foo);
+      if(!timers) {
+        Oxs_ThreadError::SetError(String("Error in"
+           "_Oxs_ThreadTree_CreateThreadTimers::Cmd(): downcast failed."));
+        return;
+      }
+      timers->Reset();
+    }
+  }
+};
+
+class _Oxs_ThreadTree_GetThreadTimers : public Oxs_ThreadRunObj {
+public: 
+  _Oxs_ThreadTree_GetThreadTimers() {}
+  void Cmd(int threadnumber, void* data) {
+    std::vector< std::vector<Nb_WallWatch> > *foo
+      = static_cast< std::vector< std::vector<Nb_WallWatch> > * >(data);
+    if(static_cast<size_t>(threadnumber) >= foo->size()) {
+      Oxs_ThreadError::SetError(String("Error in"
+           "_Oxs_ThreadTree_GetThreadTimers::Cmd(): Short timer vector."));
+      return;
+    }
+    std::vector<Nb_WallWatch>& timercopy = (*foo)[threadnumber];
+
+    Oxs_ThreadTimers* timers = dynamic_cast<Oxs_ThreadTimers*>
+      (local_locker.GetItem(String(OXS_THREAD_TIMER_NAME)));
+    if(!timers) {
+      if(threadnumber>0) {
+        Oxs_ThreadError::SetError(String("Error in"
+           "_Oxs_ThreadTree_GetThreadTimers::Cmd(): timers not found."));
+      }
+      // For thread 0 failure may just mean that the threads weren't
+      // initialized yet; this can happen when the program is first
+      // coming up and calls Oxs_ThreadTree::EndThreads() just for
+      // safety.
+      return;
+    }
+
+    timercopy.resize(OXS_THREAD_TIMER_COUNT);
+    for(int i=0;i<OXS_THREAD_TIMER_COUNT;++i) {
+      timercopy[i] = timers->timers[i];
+    }
+  }
+};
+#endif // OXS_THREAD_TIMER_COUNT
+
+
+////////////////////////////////////////////////////////////////////////
 // Oxs_Thread class, which is control object for actual thread.
 
 Oxs_Thread::Oxs_Thread
@@ -329,7 +414,13 @@ Oxs_Thread::Oxs_Thread
 
 #if OC_CHILD_COPY_FPU_CONTROL_WORD
   fpu_control_data.ReadData(); // Save (current) parent FPU state.
-#endif
+  { // Print FPU state of master thread
+    Oc_AutoBuf ab;
+    fpu_control_data.GetDataString(ab);
+    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+    //                 0,ab.GetStr());
+  }
+#endif // OC_CHILD_COPY_FPU_CONTROL_WORD
 
   start.Lock();
   if(TCL_OK
@@ -436,7 +527,6 @@ void Oxs_ThreadTree::Launch(Oxs_ThreadRunObj& runobj,void* data)
     // the "threads" vector.  (The "threads" vector only holds
     // child threads.)
     threads.push_back(new Oxs_Thread(free_thread+1));
-Oxs_ThreadPrintf(stderr,"Starting child thread #%d\n",free_thread+1); /**/
   }
   ++threads_unjoined;
   ++stop.count;
@@ -504,15 +594,14 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
   // joining of threads.  The number of child threads is set to
   // import_threadcount - 1.  ("-1" accounts for root thread "0" which
   // is not included in child thread lists.
-
 #if OC_CHILD_COPY_FPU_CONTROL_WORD
   {
     Oc_AutoBuf ab;
     Oc_FpuControlData fpu_data;
     fpu_data.ReadData();
     fpu_data.GetDataString(ab);
-    Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
-                     0,ab.GetStr());
+    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+    //                 0,ab.GetStr());
   }
 #endif // OC_CHILD_COPY_FPU_CONTROL_WORD
 
@@ -526,8 +615,18 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
   try {
     // If current number of threads is smaller than requested,
     // then create new threads to match.
+#if OC_USE_NUMA
+    if(threads.size()==0) { // Initial initialize
+      // Print node mask for master thread
+      Oc_AutoBuf runmask;
+      Oc_NumaGetRunMask(runmask);
+      Oxs_ThreadPrintf(stderr,"Thread %2d nodemasK: %s\n",
+                       0,runmask.GetStr());
+    }
+#endif
+
     int it;
-    for(int it=threads.size();it<import_threadcount-1;++it) {
+    for(it=static_cast<int>(threads.size());it<import_threadcount-1;++it) {
       // Note: The thread_number is one larger than the index into
       // the "threads" vector, because thread_number 0 is reserved
       // for the main (parent) thread, which is not referenced in
@@ -547,7 +646,7 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
     // a launch leader, and the rest slaves.  Otherwise, break
     // leader and slaves up so that the number of slaves for
     // each leader roughly matches the number of leaders.
-    if(Oc_NumaAvailable()) {
+    if(Oc_NumaReady()) {
       std::vector< _Oxs_ThreadTree_NodeDistData > nodedist;
       for(int ti=0;ti<import_threadcount;++ti) {
         int runnode = Oc_NumaGetRunNode(ti);
@@ -572,14 +671,14 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
       //       the difference between thread id's and the thread[]
       //       indices.  Thread id 0 refers to the root thread and is is
       //       not included in threads[].
-      for(int ni=1;ni<int(nodedist.size());++ni) {
+      for(int ni=1;ni<static_cast<int>(nodedist.size());++ni) {
         Oxs_Thread* tt = threads[nodedist[ni].threads[0]-1];
         root_launch_threads.push_back(tt);
-        for(int si=1;si<int(nodedist[ni].threads.size());++si) {
+        for(int si=1;si<static_cast<int>(nodedist[ni].threads.size());++si) {
           tt->launch_threads.push_back(threads[nodedist[ni].threads[si]-1]);
         }
       } 
-      for(int si=1;si<int(nodedist[0].threads.size());++si) {
+      for(int si=1;si<static_cast<int>(nodedist[0].threads.size());++si) {
         root_launch_threads.push_back(threads[nodedist[0].threads[si]-1]);
       }
     } else {
@@ -606,9 +705,17 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
   }
   launch_mutex.Unlock();
 
-#if 1 // Debugging
+#if OXS_THREAD_TIMER_COUNT
+  { // Create thread timers in each thread
+    _Oxs_ThreadTree_CreateThreadTimers foo;
+    Oxs_ThreadTree temp;
+    temp.RunOnThreadRange(0,-1,foo,0);
+  }
+#endif // OXS_THREAD_TIMER_COUNT
+
+#if 0 // Debugging
   printf("Multi-level launch lists ---\n");
-  if(Oc_NumaAvailable()) {
+  if(Oc_NumaReady()) {
     printf("Node %2d/",Oc_NumaGetRunNode(0));
   }
   printf("Thread %2d:",0);
@@ -618,7 +725,7 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
   printf("\n");
   for(int mlti=0;mlti<int(threads.size());++mlti) {
     if(threads[mlti]->launch_threads.size()>0) {
-      if(Oc_NumaAvailable()) {
+      if(Oc_NumaReady()) {
         printf("Node %2d/",Oc_NumaGetRunNode(mlti+1));
       }
       printf("Thread %2d:",mlti+1);
@@ -629,8 +736,8 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
     }
   }
   printf("Thread %d runs on node %d\n",0,Oc_NumaGetRunNode(0));
-  for(size_t it=0;it<threads.size();++it) {
-    printf("Thread %d runs on node %d\n",(int)(it+1),Oc_NumaGetRunNode(it+1));
+  for(int it=0;it<static_cast<int>(threads.size());++it) {
+    printf("Thread %d runs on node %d\n",it+1,Oc_NumaGetRunNode(it+1));
   }
 #endif // debugginG
 }
@@ -702,14 +809,14 @@ Oxs_ThreadTree::RunOnThreadRange
   stop.Lock();
 
   // Create new threads as needed.
-  int i = threads.size();
+  int i = static_cast<int>(threads.size());
   while(i<first_thread) {
     threads.push_back(new Oxs_Thread(++i));
   }
   while(i<last_thread) {
     threads.push_back(new Oxs_Thread(++i));
   }
-  if(last_thread == -1) last_thread = threads.size();
+  if(last_thread == -1) last_thread = static_cast<int>(threads.size());
   if(first_thread<0) first_thread = 0;
 
   // Run on child threads
@@ -745,6 +852,7 @@ Oxs_ThreadTree::RunOnThreadRange
   launch_mutex.Unlock();
   if(Oxs_ThreadError::IsError(&errmsg)) OXS_THROW(Oxs_BadThread,errmsg);
 }
+
 
 // Support class for Oxs_ThreadTree::DeleteLockerItem
 class _Oxs_ThreadTree_DLI : public Oxs_ThreadRunObj {
@@ -815,6 +923,82 @@ Oxs_ThreadTree::~Oxs_ThreadTree()
 
 void Oxs_ThreadTree::EndThreads()
 { // Note: This is a static member function of Oxs_ThreadTree
+#if OXS_THREAD_TIMER_COUNT
+  { // Collect and dump thread timer data
+    std::vector< std::vector<Nb_WallWatch> >
+      timer_arrays(threads.size()+1);
+    _Oxs_ThreadTree_GetThreadTimers foo;
+    Oxs_ThreadTree temp;
+    temp.RunOnThreadRange(0,-1,foo,&timer_arrays);
+
+    int max_clock = 0;
+    {
+      // Use array for thread 0 as a proxy for all threads
+      // in determining which timers to report.
+      std::vector<Nb_WallWatch>& timer = timer_arrays[0];
+      for(int iclock=0; iclock<int(timer.size()); ++iclock) {
+        double elapsed_seconds = timer[iclock].GetTime();
+        if(elapsed_seconds>0.0) max_clock = iclock + 1;
+      }
+    }
+    if(max_clock>0) {
+      const int timer_count = OC_MIN(max_clock,OXS_THREAD_TIMER_COUNT);
+      std::vector<double> minval(timer_count);
+      std::vector<double> maxval(timer_count);
+      std::vector<double> sum(timer_count);
+      Oxs_ThreadPrintf(stderr,"*** Thread timer report *******************\n");
+      Oxs_ThreadPrintf(stderr," Thread|Timer");
+      for(int iclock=0;iclock<timer_count-1;++iclock) {
+        Oxs_ThreadPrintf(stderr,"%3d       ",iclock);
+      }
+      Oxs_ThreadPrintf(stderr,"%3d\n",timer_count-1);
+      for(size_t it=0; it<=threads.size(); ++it) {
+        Oxs_ThreadPrintf(stderr," %4d    ",it);
+        std::vector<Nb_WallWatch>& timer = timer_arrays[it];
+        for(int iclock=0;iclock<timer_count;++iclock) {
+          double walltime = timer[iclock].GetTime();
+          Oxs_ThreadPrintf(stderr," %9.3f",walltime);
+          if(it==0) {
+            minval[iclock] = maxval[iclock] = sum[iclock] = walltime;
+          } else {
+            if(walltime<minval[iclock]) minval[iclock] = walltime;
+            if(walltime>maxval[iclock]) maxval[iclock] = walltime;
+            sum[iclock] += walltime;
+          }
+        }
+        Oxs_ThreadPrintf(stderr,"\n");
+      }
+      int iclock;
+      Oxs_ThreadPrintf(stderr,"\n Min:    ");
+      for(iclock=0;iclock<timer_count;++iclock) {
+        Oxs_ThreadPrintf(stderr," %9.3f",minval[iclock]);
+      }
+      Oxs_ThreadPrintf(stderr,"\n Max:    ");
+      for(iclock=0;iclock<timer_count;++iclock) {
+        Oxs_ThreadPrintf(stderr," %9.3f",maxval[iclock]);
+      }
+      Oxs_ThreadPrintf(stderr,"\n Ave:    ");
+      for(iclock=0;iclock<timer_count;++iclock) {
+        Oxs_ThreadPrintf(stderr," %9.3f",sum[iclock]/(1+threads.size()));
+      }
+      Oxs_ThreadPrintf(stderr,"\n Max/Min:");
+      for(iclock=0;iclock<timer_count;++iclock) {
+        if(minval[iclock] > 0.0) {
+          Oxs_ThreadPrintf(stderr," %9.2f",maxval[iclock]/minval[iclock]);
+        } else {
+          Oxs_ThreadPrintf(stderr,"     ---  ");
+        }
+      }
+      Oxs_ThreadPrintf(stderr,"\n        Timer");
+      for(int iclock=0;iclock<timer_count-1;++iclock) {
+        Oxs_ThreadPrintf(stderr,"%3d       ",iclock);
+      }
+      Oxs_ThreadPrintf(stderr,"%3d",timer_count-1);
+      Oxs_ThreadPrintf(stderr,
+                       "\n*******************************************\n");
+    }
+  }
+#endif // OXS_THREAD_TIMER_COUNT
 
   // If one of the child threads throws an exception during
   // deletion, then an exit handler may be called which ends
@@ -831,9 +1015,10 @@ void Oxs_ThreadTree::EndThreads()
   handler_lock.Unlock();
 
   launch_mutex.Lock();
+
   size_t i = threads.size();
   while(i>0) {
-    Oxs_ThreadPrintf(stderr,"Ending child thread #%d\n",i); /**/
+    // Oxs_ThreadPrintf(stderr,"Ending child thread #%d\n",i); /**/
     delete threads[--i];
   }
   threads.clear();
@@ -887,6 +1072,13 @@ Tcl_ThreadCreateType _Oxs_ThreadBush_main(ClientData clientdata)
   // Action loop
   try {
     twig.Task(oc_thread_id);
+  } catch(Oxs_Exception& oxserr) {
+    Oxs_ThreadError::SetError(oxserr.MessageText() + threadstr);
+  } catch(Oc_Exception& ocerr) {
+    Oc_AutoBuf msg;
+    ocerr.ConstructMessage(msg);
+    msg += threadstr;
+    Oxs_ThreadError::SetError(msg.GetStr());
   } catch(String& smsg) {
     Oxs_ThreadError::SetError(smsg + threadstr);
   } catch(const char* cmsg) {
@@ -946,4 +1138,109 @@ void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
   // All done!
 }
 
-#endif
+#endif // OOMMF_THREADS
+
+
+////////////////////////////////////////////////////////////////////////
+// THROWAWAY THREADS ///////////////////////////////////////////////////
+
+#if OOMMF_THREADS
+Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
+{ // Helper function for Oxs_ThreadThrowaway class.  There
+  // is a declaration of this function in oxsthread.h
+
+  // Cast and dereference clientdata
+  // NB: It is assumed that the referenced object remains valid
+  // throughout the life of the thread.
+  Oxs_ThreadThrowaway& obj
+    = *static_cast<Oxs_ThreadThrowaway *>(clientdata);
+  String threadstr = "\nException thrown in thread ";
+  threadstr += obj.name;
+  try {
+    if(Oc_NumaReady()) {
+      Oc_NumaRunOnAnyNode();
+    }
+    obj.Task();
+  } catch(Oxs_Exception& oxserr) {
+    Oxs_ThreadError::SetError(oxserr.MessageText() + threadstr);
+  } catch(Oc_Exception& ocerr) {
+    Oc_AutoBuf msg;
+    ocerr.ConstructMessage(msg);
+    msg += threadstr;
+    Oxs_ThreadError::SetError(msg.GetStr());
+  } catch(String& smsg) {
+    smsg += threadstr;
+    Oxs_ThreadError::SetError(smsg);
+  } catch(const char* cmsg) {
+    String errstr = cmsg;
+    errstr += threadstr;
+    Oxs_ThreadError::SetError(errstr);
+  } catch(...) {
+    String errstr = "\nUnrecognized exception thrown in thread ";
+    errstr += obj.name;
+    Oxs_ThreadError::SetError(errstr);
+  }
+
+  // All done.
+  obj.mutex.Lock();
+  try {
+    if(obj.active_thread_count>0) {
+      --obj.active_thread_count;
+    } else {
+      String errstr = "\nActive thread count error in thread ";
+      errstr += obj.name;
+      Oxs_ThreadError::SetError(errstr);
+    }
+  }
+  catch(...) {}
+  obj.mutex.Unlock();
+
+  Tcl_ExitThread(TCL_OK);
+
+  TCL_THREAD_CREATE_RETURN; // pro forma
+}
+
+void Oxs_ThreadThrowaway::Launch()
+{
+  Tcl_ThreadId tcl_id;  // Not used
+  mutex.Lock();
+  ++active_thread_count;
+  mutex.Unlock();
+  if(TCL_OK
+     != Tcl_CreateThread(&tcl_id, _Oxs_ThreadThrowaway_main, this,
+                         TCL_THREAD_STACK_DEFAULT, TCL_THREAD_NOFLAGS)) {
+    mutex.Lock();
+    --active_thread_count;
+    mutex.Unlock();
+    OXS_THROW(Oxs_BadResourceAlloc,
+              "Thread creation failed in ThreadThrowaway::Launch()."
+              "(Is the Tcl library thread enabled?)");
+  }
+}
+
+OC_INDEX Oxs_ThreadThrowaway::ActiveThreadCount() const
+{
+  OC_INDEX count;
+  mutex.Lock();
+  count = active_thread_count;
+  mutex.Unlock();
+  return count;
+}
+
+Oxs_ThreadThrowaway::~Oxs_ThreadThrowaway()
+{
+  // Wait for all threads to finish
+  const OC_INDEX sleep = 500;  // Sleep time, in milliseconds
+  OC_INDEX timeout = 100; // Timeout, in seconds
+  timeout *= (1000/sleep);
+  mutex.Lock();
+  while(timeout>0 && active_thread_count>0) {
+    mutex.Unlock();
+    Oc_MilliSleep(sleep);
+    timeout -= sleep;
+    mutex.Lock();
+  }
+  mutex.Unlock();
+}
+
+#endif // OOMMF_THREADS

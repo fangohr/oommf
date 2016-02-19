@@ -2,14 +2,14 @@
 #
 #	Pure Tcl commands supporting mmDisp
 #
-# Last modified on: $Date: 2012-09-25 17:11:49 $
+# Last modified on: $Date: 2015/03/25 16:43:14 $
 # Last modified by: $Author: dgp $
 
 # Verify that C++ portion of this version of the Mmdispcmds extension 
 # has been initialized
 #
 # NOTE: version number below must match that in ./mmdispcmds.h
-package require -exact Mmdispcmds 1.2.0.5
+package require -exact Mmdispcmds 1.2.0.6
 
 Oc_CheckTclIndex Mmdispcmds
 

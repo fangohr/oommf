@@ -88,6 +88,7 @@ OC_BOOL Oxs_MinDriver::Init()
     throw Oxs_ExtError(this,msg.c_str());
   }
 
+  // Get pointer to output object providing total energy
   output_name = String(evolver->InstanceName());
   output_name += String(":Total energy");
   total_energy_output_obj_ptr
@@ -179,24 +180,19 @@ void Oxs_MinDriver::FillStateMemberData
   new_state.last_timestep      = old_state.last_timestep;
 }
 
-void Oxs_MinDriver::FillStateDerivedData
-(const Oxs_SimState& old_state,
- const Oxs_SimState& new_state) const
+OC_REAL8m
+Oxs_MinDriver::GetTotalEnergy(const Oxs_SimState& tstate) const
 {
-  Oxs_Driver::FillStateDerivedData(old_state,new_state);
-
-  // Keep track of energy from previous state.  This is used
-  // by "Delta E" output.
-  OC_REAL8m old_energy;
-  if(!old_state.GetDerivedData("Total energy",old_energy)) {
-    // Energy field not filled in old state.  Try calling output
+  OC_REAL8m tenergy;
+  if(!tstate.GetDerivedData("Total energy",tenergy)) {
+    // Energy field not filled in tstate.  Try calling output
     // object, which should call necessary update functions.
     Tcl_Interp* mif_interp = director->GetMifInterp();
     if(total_energy_output_obj_ptr == NULL ||
-       total_energy_output_obj_ptr->Output(&old_state,mif_interp,0,NULL)
+       total_energy_output_obj_ptr->Output(&tstate,mif_interp,0,NULL)
        != TCL_OK) {
       String msg =
-	String("Error in FillState:"
+	String("Error in Oxs_MinDriver::GetTotalEnergy:"
 	       " Unable to obtain \"Total energy\" output: ");
       if(total_energy_output_obj_ptr==NULL) {
 	msg += String("PROGRAMMING ERROR:"
@@ -208,14 +204,26 @@ void Oxs_MinDriver::FillStateDerivedData
       throw Oxs_ExtError(this,msg.c_str());
     }
     OC_BOOL err;
-    old_energy = Nb_Atof(Tcl_GetStringResult(mif_interp),err);
+    tenergy = Nb_Atof(Tcl_GetStringResult(mif_interp),err);
     if(err) {
-      String msg=String("Error detected in FillState method"
+      String msg=String("Error detected in Oxs_MinDriver::GetTotalEnergy"
 			" --- Invalid \"Total energy\" output: ");
       msg += String(Tcl_GetStringResult(mif_interp));
       throw Oxs_ExtError(this,msg.c_str());
     }
   }
+  return tenergy;
+ }
+
+void Oxs_MinDriver::FillStateDerivedData
+(const Oxs_SimState& old_state,
+ const Oxs_SimState& new_state) const
+{
+  Oxs_Driver::FillStateDerivedData(old_state,new_state);
+
+  // Keep track of energy from previous state.  This is used
+  // by "Delta E" output.
+  OC_REAL8m old_energy = GetTotalEnergy(old_state);
   new_state.AddDerivedData("Last energy",old_energy);
 }
 
@@ -226,35 +234,7 @@ void Oxs_MinDriver::FillNewStageStateDerivedData
 {
   Oxs_Driver::FillNewStageStateDerivedData(old_state,new_stage_number,
                                            new_state);
-  OC_REAL8m old_energy;
-  if(!old_state.GetDerivedData("Total energy",old_energy)) {
-    // Energy field not filled in old state.  Try calling output
-    // object, which should call necessary update functions.
-    Tcl_Interp* mif_interp = director->GetMifInterp();
-    if(total_energy_output_obj_ptr == NULL ||
-       total_energy_output_obj_ptr->Output(&old_state,mif_interp,0,NULL)
-       != TCL_OK) {
-      String msg =
-	String("Error in FillNewStageState:"
-	       " Unable to obtain \"Total energy\" output: ");
-      if(total_energy_output_obj_ptr==NULL) {
-	msg += String("PROGRAMMING ERROR:"
-		      " total_energy_output_obj_ptr not set."
-		      " Driver Init() probably not called.");
-      } else {
-	msg += String(Tcl_GetStringResult(mif_interp));
-      }
-      throw Oxs_ExtError(this,msg.c_str());
-    }
-    OC_BOOL err;
-    old_energy = Nb_Atof(Tcl_GetStringResult(mif_interp),err);
-    if(err) {
-      String msg=String("Error detected in FillNewStageState method"
-			" --- Invalid \"Total energy\" output: ");
-      msg += String(Tcl_GetStringResult(mif_interp));
-      throw Oxs_ExtError(this,msg.c_str());
-    }
-  }
+  OC_REAL8m old_energy = GetTotalEnergy(old_state);
   new_state.AddDerivedData("Last energy",old_energy);
 }
 

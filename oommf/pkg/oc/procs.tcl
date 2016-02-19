@@ -5,8 +5,8 @@
 #
 # Need to split this into files likely to load together
 #
-# Last modified on: $Date: 2012-09-27 20:58:35 $
-# Last modified by: $Author: dgp $
+# Last modified on: $Date: 2015/09/30 06:21:20 $
+# Last modified by: $Author: donahue $
 
 # Returns the absolute, direct pathname of its argument
 # Note: This code has been "borrowed" into the mifconvert
@@ -166,13 +166,38 @@ proc Oc_MakeHeaderWrappers {outdir} {
     return $errcount
 }
 
-# The next proc is used in oommf/config/names/cygtel.tcl to determine
-# the OOMMF platform name, and further below in this file to set the
-# OC_SYSTEM_TYPE and OC_SYSTEM_SUBTYPE macros for ocport.h.
+# The next two procs are used in oommf/config/names/cygtel.tcl and
+# oommf/config/names/cygwin-x86_64.tcl to determine the OOMMF platform
+# name, and further below in this file to set the OC_SYSTEM_TYPE and
+# OC_SYSTEM_SUBTYPE macros for ocport.h.
 proc Oc_IsCygwinPlatform {} {
    global tcl_platform env
    if {![string match intel $tcl_platform(machine)] &&
        ![string match i?86  $tcl_platform(machine)]} {
+      return 0
+   }
+   if {[string match cygwin* [string tolower $tcl_platform(os)]]} {
+      return 1
+   }
+   if {[info exists env(OSTYPE)] && 
+       [string match cygwin* [string tolower $env(OSTYPE)]]} {
+      return 1
+   }
+   if {[string match cyg* [file tail [info nameofexecutable]]]} {
+      return 1
+   }
+   if {![catch {exec uname} osname] &&
+       [regexp -nocase -- cygwin $osname]} {
+      return 1
+   }
+
+   return 0
+}
+proc Oc_IsCygwin64Platform {} {
+   global tcl_platform env
+   if {![string match x86_64 $tcl_platform(machine)]
+       || ![info exists tcl_platform(pointerSize)]
+       || $tcl_platform(pointerSize) != 8} {
       return 0
    }
    if {[string match cygwin* [string tolower $tcl_platform(os)]]} {
@@ -212,7 +237,7 @@ proc Oc_MakePortHeader {varinfo outfile} {
 		set systemsubtype darwin
 	    }
 	} elseif {[string compare $tcl_platform(platform) "windows"] == 0} {
-	    if {[Oc_IsCygwinPlatform]} {
+           if {[Oc_IsCygwinPlatform] || [Oc_IsCygwin64Platform]} {
 		# Building under the cygwin toolkit
 		set systemtype unix
                 set systemsubtype cygwin
@@ -251,6 +276,10 @@ proc Oc_MakePortHeader {varinfo outfile} {
 
     set varinttypelist {char short int long {long long} __int64}
     set varfloattypelist {float double {long double}}
+    set varvectortypelist {
+       two_vector_float two_vector_double two_vector_long_double
+       three_vector_float three_vector_double three_vector_long_double
+    }
     foreach vartype [concat $varinttypelist $varfloattypelist] {
 	set varsize($vartype)  -1   ;# Safety
 	set varorder($vartype) -1
@@ -258,24 +287,50 @@ proc Oc_MakePortHeader {varinfo outfile} {
         "Type *$vartype *is *(\[0-9\]*) bytes wide *Byte order: *(\[0-9\]*)" \
            $varlist tempmatch varsize($vartype) varorder($vartype)
     }
+    foreach vartype $varvectortypelist {
+	set varsize($vartype)  -1   ;# Safety
+	regexp \
+        "Type *$vartype *is *(\[0-9\]*) bytes wide" \
+           $varlist tempmatch varsize($vartype) varorder($vartype)
+    }
     set varsize(pointer) -1
-    regexp {void \* is *([0-9]*)} $varlist tempmatch varsize(pointer)
+    if {[regexp {void \* is *([0-9]*)} $varlist tempmatch varsize(pointer)]} {
+       if {[info exists tcl_platform(pointerSize)] &&
+	   $tcl_platform(pointerSize) != $varsize(pointer)} {
+           error "Compiler pointer size ($varsize(pointer))\
+                  != Tcl pointer size ($tcl_platform(pointerSize))"
+       }
+    }
 
-    foreach varwidth {FLT DBL} {
+    foreach varwidth {FLT DBL LDBL} {
         regexp "\n${varwidth}_EPSILON: (\[^\n\]+)" \
                 $varlist tempmatch vareps($varwidth)
         regexp "\nSQRT_${varwidth}_EPSILON: (\[^\n\]+)" \
                 $varlist tempmatch vareps(SQRT_$varwidth)
+        regexp "\nCUBE_ROOT_${varwidth}_EPSILON: (\[^\n\]+)" \
+                $varlist tempmatch vareps(CUBE_ROOT_$varwidth)
+        regexp "\n${varwidth}_MANT_DIG: (\[^\n\]+)" \
+           $varlist tempmatch vardig($varwidth) ;# bits of precision
     }
-    regexp "\nLDBL_EPSILON: (\[^\n\]+)" \
-            $varlist tempmatch vareps(LDBL)
-    regexp "\nCUBE_ROOT_DBL_EPSILON: (\[^\n\]+)" \
-	    $varlist tempmatch vareps(CUBE_ROOT_DBL)
-    regexp "\nCalculated Double Epsilon: (\[^\n\]+)" \
+    regexp "\nCalculated double epsilon: (\[^\n\]+)" \
 	    $varlist tempmatch vareps(COMPUTED_DBL)
-    regexp "\nCalculated HUGEFLOAT Epsilon: (\[^\n\]+)" \
-	    $varlist tempmatch vareps(COMPUTED_HUGE)
+    if {[regexp "(^|\n)HUGEFLOATTYPE:(\[^\n\]+)" \
+          $varlist tempmatch dummy HFT]} {
+       set HFT [string trim $HFT]
+       regexp [format "\nCalculated %s epsilon: (\[^\n\]+)" $HFT] \
+             $varlist tempmatch vareps(COMPUTED_HUGE)
+    }
 
+    foreach varwidth {FLT DBL LDBL} {
+        regexp "\n${varwidth}_MIN: (\[^\n\]+)" \
+                $varlist tempmatch varmin($varwidth)
+        regexp "\nSQRT_${varwidth}_MIN: (\[^\n\]+)" \
+                $varlist tempmatch varmin(SQRT_$varwidth)
+        regexp "\n${varwidth}_MAX: (\[^\n\]+)" \
+                $varlist tempmatch varmax($varwidth)
+        regexp "\nSQRT_${varwidth}_MAX: (\[^\n\]+)" \
+                $varlist tempmatch varmax(SQRT_$varwidth)
+    }
 
     if {[catch {
 	$config GetValue program_compiler_c++_property_strict_atan2
@@ -342,11 +397,20 @@ proc Oc_MakePortHeader {varinfo outfile} {
           $cache_linesize
     }
 
-    # Dump header info
+    # Dump header info.
+    # Note: Some versions of g++ on Windows don't process the printf
+    # format variable type modifiers (e.g., OC_INT8_MOD) properly if
+    # stdio.h is #include'd after a C++-style include file, or, for that
+    # matter, if stdio.h is #include'd as <cstdio>.  This is either a
+    # bug in g++, its headers, or else it is improper to use the "I64"
+    # modifier in C++.  (The macro TCL_LL_MODIFIER in tcl.h has "I64" as
+    # one possible setting, but then tcl.h is unabashedly C, not C++.)
     set porth [subst \
 {/* FILE: ocport.h             -*-Mode: c++-*-
  *
  * Machine specific #define's and typedef's, generated by \[Oc_MakePortHeader\]
+ *
+ * This is a machine-generated file.  DO NOT EDIT!
  *
  */
 
@@ -355,6 +419,7 @@ proc Oc_MakePortHeader {varinfo outfile} {
 
 #define OOMMF_API_INDEX [$config OommfApiIndex]
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>}]
 
@@ -384,12 +449,12 @@ proc Oc_MakePortHeader {varinfo outfile} {
     } _] || !$_} {
 	append porth {
 
-// See Stroustrup, Section 16.1.3.
-#include <exception>		// The base class std::exception and the
-				// standard exception std::bad_exception
-#include <new>			// The standard exception std::bad_alloc
-#include <typeinfo>		// The standard exceptions std::bad_cast
-				// and std::bad_typeid
+/* See Stroustrup, Section 16.1.3. */
+#include <exception>         /* The base class std::exception and the  */
+                             /*  standard exception std::bad_exception */
+#include <new>               /* The standard exception std::bad_alloc  */
+#include <typeinfo>          /* The standard exceptions std::bad_cast  */
+                             /*  and std::bad_typeid                   */
 #define OC_THROW(x) throw x
 }
     } else {
@@ -490,7 +555,12 @@ proc Oc_MakePortHeader {varinfo outfile} {
     } _] && $_} {
 	append porth "
 /* Substitute domain checked atan2 */
+#define OC_DOMAIN_CHECK_ATAN2 1
 #define atan2(y,x) Oc_Atan2((y),(x))\n"
+    } else {
+	append porth "
+/* System atan2 returns a finite results to (0,0) input. */
+#define OC_DOMAIN_CHECK_ATAN2 0\n"
     }
 
     # Does compiler have bad long double -> to integer routines?
@@ -624,7 +694,7 @@ inline int Oc_GetPid() { return getpid(); }\n"
  * supported (at least from some key types).  Define a macro for
  * workaround code.
  */
-#define OC_STL_MAP_BROKEN_CONST_KEY
+#define OC_STL_MAP_BROKEN_CONST_KEY 1
 }
     }
 
@@ -672,10 +742,21 @@ inline int Oc_GetPid() { return getpid(); }\n"
 		program_compiler_c++_no_placment_new_array
     } _] && $_} {
 	append porth {
-/* The compiler is missing placement new[] (for arrays).  Use
- * the single item placement new as a workaround.
+/* The compiler is missing or has a broken placement new[] (for arrays).
+ * Use the single item placement new as a workaround.
  */
 #define OC_NO_PLACEMENT_NEW_ARRAY
+}
+    }
+
+    # Does compiler not support partial instantiation of template classes?
+    if {![catch {
+	$config GetValue program_compiler_c++_no_partial_instantiation
+    } _] && $_} {
+	append porth {
+/* The compiler doesn't support partial template */
+/* instantiation.  Implement workarounds.        */
+#define OC_NO_PARTIAL_TEMPLATE_INSTANTIATION
 }
     }
 
@@ -683,7 +764,8 @@ inline int Oc_GetPid() { return getpid(); }\n"
     set missing_protos \
 	[$config Features program_compiler_c++_prototype_supply_*] 
     if {[llength $missing_protos]>0} {
-       append porth "\n/* Function prototypes requested by config/platforms */\n"
+       append porth \
+           "\n/* Function prototypes requested by config/platforms */\n"
        foreach func $missing_protos {
 	   set proto [$config GetValue $func]
 	   if {![regexp ";\[ \n\]*$" $proto]} {
@@ -696,8 +778,8 @@ inline int Oc_GetPid() { return getpid(); }\n"
 
     # Write universal (I hope!) typedef's
     append porth {
-/* Variable type declarations.  The '****#m' */
-/* types are at *least* '#' bytes wide.      */
+/* Integer variable type declarations.  The       */
+/* '****#m' types are at *least* '#' bytes wide.  */
 typedef  int                OC_BOOL;
 typedef  unsigned char      OC_BYTE;
 typedef  char               OC_CHAR;
@@ -710,42 +792,157 @@ typedef  unsigned char      OC_UCHAR;
        append porth "typedef  char               OC_SCHAR;\n"
     }
 
-    # Write float typedef's
+    # Write integer typedef's
+    set int_type_widths {}
+    set imodstr {}
     append porth "\n"
+    if { $varsize(short) < $varsize(int) } {
+       append porth "typedef  short              OC_INT$varsize(short);\n"
+       append porth "typedef  unsigned short     OC_UINT$varsize(short);\n"
+       append imodstr "#define OC_INT$varsize(short)_MOD \"h\"\n"
+       lappend int_type_widths $varsize(short)
+    }
+    append porth "typedef  int                OC_INT$varsize(int);\n"
+    append porth "typedef  unsigned int       OC_UINT$varsize(int);\n"
+    append imodstr "#define OC_INT$varsize(int)_MOD \"\"\n"
+    lappend int_type_widths $varsize(int)
+    if { $varsize(long) > $varsize(int) } {
+	append porth "typedef  long               OC_INT$varsize(long);\n"
+	append porth "typedef  unsigned long      OC_UINT$varsize(long);\n"
+        append imodstr "#define OC_INT$varsize(long)_MOD \"l\"\n"
+        lappend int_type_widths $varsize(long)
+    }
+    if {[string compare $systemtype windows] == 0 \
+           && $varsize(long) < 8} {
+       append porth "typedef  __int64            OC_INT8;\n"
+       append porth "typedef  unsigned __int64   OC_UINT8;\n"
+       append imodstr "#define OC_INT8_MOD \"I64\"\n"
+       lappend int_type_widths 8
+    } elseif { $varsize(long) < $varsize(long\ long)} {
+	append porth \
+           "typedef  long long          OC_INT$varsize(long\ long);\n"
+	append porth \
+           "typedef  unsigned long long OC_UINT$varsize(long\ long);\n"
+        append imodstr "#define OC_INT$varsize(long\ long)_MOD \"ll\"\n"
+        lappend int_type_widths $varsize(long\ long)
+    }
+    foreach msize { 2 4 8 16 } {
+	if { $varsize(int) >= $msize } {
+	    # Use type "int" if possible, as this is likely
+	    # to be the preferred machine word size
+	    append porth "typedef  int                OC_INT${msize}m;\n"
+	    append porth "typedef  unsigned int       OC_UINT${msize}m;\n"
+            append imodstr "#define OC_INT${msize}m_MOD \"\"\n"
+            set varsize(INT${msize}m) $varsize(int)
+	} elseif { $varsize(long) >=$msize } {
+	    # Otherwise, fall back on long type
+	    append porth "typedef  long               OC_INT${msize}m;\n"
+	    append porth "typedef  unsigned long      OC_UINT${msize}m;\n"
+            append imodstr "#define OC_INT${msize}m_MOD \"l\"\n"
+            set varsize(INT${msize}m) $varsize(long)
+        } elseif {[string compare $systemtype windows] == 0 \
+                  && $msize == 8} {
+	    append porth "typedef  __int64            OC_INT8m;\n"
+	    append porth "typedef  unsigned __int64   OC_UINT8m;\n"
+            append imodstr "#define OC_INT8m_MOD \"I64\"\n"
+            set varsize(INT8m) 8
+	} elseif { $varsize(long\ long) >=$msize } {
+	    append porth "typedef  long long          OC_INT${msize}m;\n"
+	    append porth "typedef  unsigned long long OC_UINT${msize}m;\n"
+            append imodstr "#define OC_INT${msize}m_MOD \"ll\"\n"
+            set varsize(INT${msize}m) $varsize(long\ long)
+        }
+    }
+    append porth "\n"
+    foreach vs { 2 4 8 16 } {
+       if {[lsearch -exact $int_type_widths $vs] >= 0} {
+          append porth "#define OC_HAS_INT$vs 1\n"
+       } else {
+          append porth "#define OC_HAS_INT$vs 0\n"
+       }
+    }
+    unset int_type_widths
+
+    append porth "\n/* Width of integer types */\n"
+    if {[info exists varsize(int)]} {
+       append porth "#define OC_INT_WIDTH $varsize(int)\n"
+    }
+    if {[info exists varsize(long)]} {
+       append porth "#define OC_LONG_WIDTH $varsize(long)\n"
+    }
+    if {[info exists varsize(INT4m)]} {
+       append porth "#define OC_INT4m_WIDTH $varsize(INT4m)\n"
+    }
+    if {[info exists varsize(INT8m)]} {
+       append porth "#define OC_INT8m_WIDTH $varsize(INT8m)\n"
+    }
+
+    append porth "\n/* printf format modifiers for integer types */\n"
+    append porth "/* unsigned types use corresponding signed modifier */\n"
+    append porth $imodstr
+
+    # Write float typedef's
+    append porth "\n
+/* Floating point variable type declarations.  The */
+/* '****#m' types are at *least* '#' bytes wide.   */\n"
+    set fmodstr {}
     if { $varsize(float) != $varsize(double) } {
 	append porth "typedef  float              OC_REAL$varsize(float);\n"
-        if {$varsize(float) == 8} { set real8type "float" }
+        append fmodstr "#define OC_REAL$varsize(float)_MOD \"\"\n"
+        set real${varsize(float)}type "float"
     }
     append porth "typedef  double             OC_REAL$varsize(double);\n"
-    if {$varsize(double) == 8} { set real8type "double" }
+    append fmodstr "#define OC_REAL$varsize(double)_MOD \"\"\n"
+    set real${varsize(double)}type "double"
 
     if {![catch {$config GetValue program_compiler_c++_typedef_real4m} \
          real4mtype]} {
-           append porth [format "typedef  %-18s OC_REAL4m;\n" $real4mtype]
+       append porth [format "typedef  %-18s OC_REAL4m;\n" $real4mtype]
+       if {[string match "*long*" $real4mtype]} {
+          append fmodstr "#define OC_REAL4m_MOD \"L\"\n"
+       } else {
+          append fmodstr "#define OC_REAL4m_MOD \"\"\n"
+       }
     } else {
        if { $varsize(float) >= 4 } {
-	   append porth "typedef  float              OC_REAL4m;\n"
+          append porth "typedef  float              OC_REAL4m;\n"
+          append fmodstr "#define OC_REAL4m_MOD \"\"\n"
        }
+       set real4mtype "float"
     }
     if {![catch {$config GetValue program_compiler_c++_typedef_real8m} \
          real8mtype]} {
-           append porth [format "typedef  %-18s OC_REAL8m;\n" $real8mtype]
+       append porth [format "typedef  %-18s OC_REAL8m;\n" $real8mtype]
+       if {[string match "*long*" $real8mtype]} {
+          append fmodstr "#define OC_REAL8m_MOD \"L\"\n"
+       } else {
+          append fmodstr "#define OC_REAL8m_MOD \"\"\n"
+       }
     } else {
        if { $varsize(float) >= 8 } {
-           append porth "typedef  float              OC_REAL8m;\n"
-           set real8mtype "float"
+          append porth "typedef  float              OC_REAL8m;\n"
+          append fmodstr "#define OC_REAL8m_MOD \"\"\n"
+          set real8mtype "float"
        } elseif { $varsize(double) >= 8 } {
-           append porth "typedef  double             OC_REAL8m;\n"
-           set real8mtype "double"
+          append porth "typedef  double             OC_REAL8m;\n"
+          append fmodstr "#define OC_REAL8m_MOD \"\"\n"
+          set real8mtype "double"
        }
     }
     if {[catch {$config GetValue program_compiler_c++_typedef_realwide} \
-	    widetype]} {
-	set widetype "OC_REAL8m"
+     realwidetype] || [string compare OC_REAL8m $realwidetype]==0} {
+       set realwidetype $real8mtype
     }
     append porth [format \
 	    "typedef  %-18s OC_REALWIDE;  /* Widest native float */\n" \
-	    $widetype]
+	    $realwidetype]
+    if {[string compare $real8mtype $realwidetype]==0} {
+       append fmodstr "#define OC_REALWIDE_MOD OC_REAL8m_MOD\n"
+    } elseif {[string match "*long*" $realwidetype]} {
+       append fmodstr "#define OC_REALWIDE_MOD \"L\"\n"
+    } else {
+       append fmodstr "#define OC_REALWIDE_MOD \"\"\n"
+    }
 
     # The following code breaks if real8mtype is another typedef,
     # but to handle that case it seems we would need to run the
@@ -760,205 +957,146 @@ typedef  unsigned char      OC_UCHAR;
        set real8m_is_real8 0
     }
     set realwide_is_real8 0
-    if {[string match "OC_REAL8" $widetype] ||
-        ([string match "double" $widetype] && $varsize(double)==8) ||
-        ([string match "OC_REAL8m" $widetype] && $real8m_is_real8)} {
+    if {[string compare $real8type $realwidetype]==0 ||
+        [string match "OC_REAL8" $realwidetype] ||
+        ([string match "double" $realwidetype] && $varsize(double)==8) ||
+        ([string match "OC_REAL8m" $realwidetype] && $real8m_is_real8)} {
        set realwide_is_real8 1
-   }
-
-    append porth [format \
-            "#define OC_REAL8m_IS_DOUBLE %d\n" $real8m_is_double]
-    append porth [format \
-            "#define OC_REAL8m_IS_REAL8 %d\n" $real8m_is_real8]
-    append porth [format \
-            "#define OC_REALWIDE_IS_REAL8 %d\n" $realwide_is_real8]
-
-    append porth "
-#define OC_REAL4_EPSILON       $vareps(FLT)
-#define OC_SQRT_REAL4_EPSILON  $vareps(SQRT_FLT)
-#define OC_REAL8_EPSILON       $vareps(DBL)
-#define OC_SQRT_REAL8_EPSILON  $vareps(SQRT_DBL)
-#define OC_CUBE_ROOT_REAL8_EPSILON $vareps(CUBE_ROOT_DBL)\n\n"
-
-
-    if {![catch {$config GetValue \
-          program_compiler_c++_property_fp_double_extra_precision} _]} {
-       if {$_} {
-          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 1\n"
-       } else {
-          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 0\n"
-       }
-    } else {
-       # Guess based on data from varinfo
-       if {$vareps(COMPUTED_DBL)<0.55*$vareps(DBL) ||
-           ([info exists vareps(LDBL)] &&
-            10*$vareps(LDBL)<$vareps(DBL) &&
-            10000*$vareps(LDBL)>$vareps(DBL))} {
-          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 1\n"
-       } else {
-          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 0\n"
-       }
     }
-    if {![catch {$config GetValue \
+
+    if {[string match "float" $real4mtype]} {
+       append porth "\n#define OC_REAL4m_WIDTH $varsize(float)\n"
+       append porth "#define OC_TWO_VECTOR_REAL4m_WIDTH $varsize(two_vector_float)\n"
+       append porth "#define OC_THREE_VECTOR_REAL4m_WIDTH $varsize(three_vector_float)\n"
+    } elseif {[string match "double" $real4mtype]} {
+       append porth "\n#define OC_REAL4m_WIDTH $varsize(double)\n"
+       append porth "#define OC_TWO_VECTOR_REAL4m_WIDTH $varsize(two_vector_double)\n"
+       append porth "#define OC_THREE_VECTOR_REAL4m_WIDTH $varsize(three_vector_double)\n"
+    } elseif {[string match "long double" $real4mtype]} {
+        append porth \n"#define OC_REAL4m_WIDTH $varsize(long\ double)\n"
+       append porth "#define OC_TWO_VECTOR_REAL4m_WIDTH $varsize(two_vector_long_double)\n"
+       append porth "#define OC_THREE_VECTOR_REAL4m_WIDTH $varsize(three_vector_long_double)\n"
+    }
+    if {[string match "float" $real8mtype]} {
+       append porth "\n#define OC_REAL8m_WIDTH $varsize(float)\n"
+       append porth "#define OC_TWO_VECTOR_REAL8m_WIDTH $varsize(two_vector_float)\n"
+       append porth "#define OC_THREE_VECTOR_REAL8m_WIDTH $varsize(three_vector_float)\n"
+    } elseif {[string match "double" $real8mtype]} {
+       append porth "\n#define OC_REAL8m_WIDTH $varsize(double)\n"
+       append porth "#define OC_TWO_VECTOR_REAL8m_WIDTH $varsize(two_vector_double)\n"
+       append porth "#define OC_THREE_VECTOR_REAL8m_WIDTH $varsize(three_vector_double)\n"
+    } elseif {[string match "long double" $real8mtype]} {
+        append porth "\n#define OC_REAL8m_WIDTH $varsize(long\ double)\n"
+       append porth "#define OC_TWO_VECTOR_REAL8m_WIDTH $varsize(two_vector_long_double)\n"
+       append porth "#define OC_THREE_VECTOR_REAL8m_WIDTH $varsize(three_vector_long_double)\n"
+    }
+    if {[string match "float" $realwidetype]} {
+       append porth "\n#define OC_REALWIDE_WIDTH $varsize(float)\n"
+       append porth "#define OC_TWO_VECTOR_REALWIDE_WIDTH $varsize(two_vector_float)\n"
+       append porth "#define OC_THREE_VECTOR_REALWIDE_WIDTH $varsize(three_vector_float)\n"
+    } elseif {[string match "double" $realwidetype]} {
+       append porth "\n#define OC_REALWIDE_WIDTH $varsize(double)\n"
+       append porth "#define OC_TWO_VECTOR_REALWIDE_WIDTH $varsize(two_vector_double)\n"
+       append porth "#define OC_THREE_VECTOR_REALWIDE_WIDTH $varsize(three_vector_double)\n"
+    } elseif {[string match "long double" $realwidetype]} {
+       append porth "\n#define OC_REALWIDE_WIDTH $varsize(long\ double)\n"
+       append porth "#define OC_TWO_VECTOR_REALWIDE_WIDTH $varsize(two_vector_long_double)\n"
+       append porth "#define OC_THREE_VECTOR_REALWIDE_WIDTH $varsize(three_vector_long_double)\n"
+    }
+    if {$vardig(LDBL) == 24} {
+       append porth "#define OC_REALWIDE_INTRINSIC_WIDTH 4\n"
+    } elseif {$vardig(LDBL) == 53} {
+       append porth "#define OC_REALWIDE_INTRINSIC_WIDTH 8\n"
+    } elseif {$vardig(LDBL) == 64} {
+       append porth "#define OC_REALWIDE_INTRINSIC_WIDTH 10\n"
+    } elseif {$vardig(LDBL) == 112} {
+       append porth "#define OC_REALWIDE_INTRINSIC_WIDTH 16\n"
+    }
+
+   append porth [format \
+           "\n#define OC_REAL8m_IS_DOUBLE %d\n" $real8m_is_double]
+   append porth [format \
+           "#define OC_REAL8m_IS_REAL8 %d\n" $real8m_is_real8]
+   append porth [format \
+           "#define OC_REALWIDE_IS_REAL8 %d\n" $realwide_is_real8]
+
+   append porth "\n/* printf format modifiers for floating point types */\n"
+   append porth $fmodstr
+
+   array set varmap { float FLT double DBL "long double" LDBL }
+
+   append porth "
+/* Smallest value eps such that 1 + eps != 1 */
+#define OC_REAL4_EPSILON    $vareps($varmap($real4type))
+#define OC_REAL4m_EPSILON   $vareps($varmap($real4mtype))
+#define OC_REAL8_EPSILON    $vareps($varmap($real8type))
+#define OC_REAL8m_EPSILON   $vareps($varmap($real8mtype))
+#define OC_REALWIDE_EPSILON $vareps($varmap($realwidetype))
+
+#define OC_SQRT_REAL4_EPSILON    $vareps(SQRT_$varmap($real4type))
+#define OC_SQRT_REAL4m_EPSILON   $vareps(SQRT_$varmap($real4mtype))
+#define OC_SQRT_REAL8_EPSILON    $vareps(SQRT_$varmap($real8type))
+#define OC_SQRT_REAL8m_EPSILON   $vareps(SQRT_$varmap($real8mtype))
+#define OC_SQRT_REALWIDE_EPSILON $vareps(SQRT_$varmap($realwidetype))
+
+#define OC_CUBE_ROOT_REAL4_EPSILON    $vareps(CUBE_ROOT_$varmap($real4type))
+#define OC_CUBE_ROOT_REAL4m_EPSILON   $vareps(CUBE_ROOT_$varmap($real4mtype))
+#define OC_CUBE_ROOT_REAL8_EPSILON    $vareps(CUBE_ROOT_$varmap($real8type))
+#define OC_CUBE_ROOT_REAL8m_EPSILON   $vareps(CUBE_ROOT_$varmap($real8mtype))
+#define OC_CUBE_ROOT_REALWIDE_EPSILON $vareps(CUBE_ROOT_$varmap($realwidetype))\n"
+
+   append porth "
+/* Range limits, analogous to C language DBL_MIN and DBL_MAX macros */
+#define OC_REAL4_MIN      $varmin($varmap($real4type))
+#define OC_SQRT_REAL4_MIN $varmin(SQRT_$varmap($real4type))
+#define OC_REAL4_MAX      $varmax($varmap($real4type))
+#define OC_SQRT_REAL4_MAX $varmax(SQRT_$varmap($real4type))
+#define OC_REAL4m_MIN     $varmin($varmap($real4mtype))
+#define OC_REAL4m_MAX     $varmax($varmap($real4mtype))
+#define OC_REAL8_MIN      $varmin($varmap($real8type))
+#define OC_SQRT_REAL8_MIN $varmin(SQRT_$varmap($real8type))
+#define OC_REAL8_MAX      $varmax($varmap($real8type))
+#define OC_SQRT_REAL8_MAX $varmax(SQRT_$varmap($real8type))
+#define OC_REAL8m_MIN     $varmin($varmap($real8mtype))
+#define OC_REAL8m_MAX     $varmax($varmap($real8mtype))
+#define OC_REALWIDE_MIN   $varmin($varmap($realwidetype))
+#define OC_REALWIDE_MAX   $varmax($varmap($realwidetype))\n\n"
+
+   if {![catch {$config GetValue \
+         program_compiler_c++_property_fp_double_extra_precision} _]} {
+      if {$_} {
+         append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 1\n"
+      } else {
+         append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 0\n"
+      }
+   } else {
+      # Guess based on data from varinfo.  If the comparison between
+      # DBL_EPS and LDBL_EPS below succeeds, then the code assumes
+      # that an x87-style fpu is available and may be used, so
+      # to be safe extra precision is assumed true.
+      #   Note: $vareps(LDBL) may have a trailing "L" indicating it is
+      # a long double value.  Use scan to convert it to a Tcl floating
+      # point value --- this will probably lose precision, but the
+      # long double value for epsilon should nonetheless lie inside
+      # the Tcl floating point value range.
+      catch {scan $vareps(LDBL) %g ldbl_eps}
+      if {$vareps(COMPUTED_DBL)<0.55*$vareps(DBL) ||
+           ([info exists ldbl_eps] &&
+            10*$ldbl_eps<$vareps(DBL) &&
+            $vareps(DBL)<10000*$ldbl_eps)} {
+          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 1\n"
+       } else {
+          append porth "#define OC_FP_DOUBLE_EXTRA_PRECISION 0\n"
+       }
+   }
+   if {![catch {$config GetValue \
           program_compiler_c++_property_fp_long_double_extra_precision} _] \
         && $_} {
        append porth "#define OC_FP_LONG_DOUBLE_EXTRA_PRECISION 1\n\n"
-    } else {
+   } else {
        # Default guess is that long double does not have extra precision
        append porth "#define OC_FP_LONG_DOUBLE_EXTRA_PRECISION 0\n\n"
-    }
-
-    # Write integer typedef's
-    set int_type_widths {}
-    if { $varsize(short) < $varsize(int) } {
-       append porth "typedef  short              OC_INT$varsize(short);\n"
-       append porth "typedef  unsigned short     OC_UINT$varsize(short);\n"
-       lappend int_type_widths $varsize(short)
-    }
-    append porth "typedef  int                OC_INT$varsize(int);\n"
-    append porth "typedef  unsigned int       OC_UINT$varsize(int);\n"
-    lappend int_type_widths $varsize(int)
-    if { $varsize(long) > $varsize(int) } {
-	append porth "typedef  long                OC_INT$varsize(long);\n"
-	append porth "typedef  unsigned long       OC_UINT$varsize(long);\n"
-        lappend int_type_widths $varsize(long)
-    }
-    if {[string compare $systemtype windows] == 0 \
-           && $varsize(long) < 8} {
-       append porth "typedef  __int64            OC_INT8;\n"
-       append porth "typedef  unsigned __int64   OC_UINT8;\n"
-       lappend int_type_widths 8
-    } elseif { $varsize(long) < $varsize(long\ long)} {
-	append porth \
-           "typedef  long long          OC_INT$varsize(long\ long);\n"
-	append porth \
-           "typedef  unsigned long long OC_UINT$varsize(long\ long);\n"
-        lappend int_type_widths $varsize(long\ long)
-    }
-    foreach msize { 2 4 8 16 } {
-	if { $varsize(int) >= $msize } {
-	    # Use type "int" if possible, as this is likely
-	    # to be the preferred machine word size
-	    append porth "typedef  int                OC_INT${msize}m;\n"
-	    append porth "typedef  unsigned int       OC_UINT${msize}m;\n"
-            set varsize(INT${msize}m) $varsize(int)
-	} elseif { $varsize(long) >=$msize } {
-	    # Otherwise, fall back on long type
-	    append porth "typedef  long               OC_INT${msize}m;\n"
-	    append porth "typedef  unsigned long      OC_UINT${msize}m;\n"
-            set varsize(INT${msize}m) $varsize(long)
-        } elseif {[string compare $systemtype windows] == 0 \
-                  && $msize == 8} {
-	    append porth "typedef  __int64            OC_INT8m;\n"
-	    append porth "typedef  unsigned __int64   OC_UINT8m;\n"
-            set varsize(INT8m) 8
-	} elseif { $varsize(long\ long) >=$msize } {
-	    append porth "typedef  long long          OC_INT${msize}m;\n"
-	    append porth "typedef  unsigned long long OC_UINT${msize}m;\n"
-            set varsize(INT${msize}m) $varsize(long\ long)
-        }
-    }
-    foreach vs { 2 4 8 16 } {
-       if {[lsearch -exact $int_type_widths $vs] >= 0} {
-          append porth "#define OC_HAS_INT$vs 1\n"
-       } else {
-          append porth "#define OC_HAS_INT$vs 0\n"
-       }
-    }
-    unset int_type_widths
-
-    append porth "\n/* Width of integer types */\n"
-    if {[info exists varsize(int)]} {
-	append porth "#define OC_INT_WIDTH $varsize(int)\n"
-    }
-    if {[info exists varsize(long)]} {
-	append porth "#define OC_LONG_WIDTH $varsize(long)\n"
-    }
-    if {[info exists varsize(INT4m)]} {
-	append porth "#define OC_INT4m_WIDTH $varsize(INT4m)\n"
-    }
-    if {[info exists varsize(INT8m)]} {
-	append porth "#define OC_INT8m_WIDTH $varsize(INT8m)\n"
-    }
-
-    # Pointers
-    append porth "\n/* Width of pointer type */\n"
-    append porth "#define OC_POINTER_WIDTH $varsize(pointer)\n"
-
-    # Indexes into arrays
-    append porth "\n/* OC_INDEX is the suggested type for array indices.  */\n"
-    append porth   "/*   It is a signed int type that is at least 4 bytes */\n"
-    append porth   "/*   wide and not narrower than the pointer type.     */\n"
-    append porth   "/* OC_UINDEX is the unsigned version of OC_INDEX.  It */\n"
-    append porth   "/*   is intended for special-purpose use only; use    */\n"
-    append porth   "/*   OC_INDEX where possible.                         */\n"  
-    if {![catch {
-       $config GetValue program_compiler_c++_oc_index_type
-    } oc_index_type_data]} {
-       # oc_index types specified in platform file.  This should be a
-       # three item list: the OC_INDEX type, the OC_UINDEX type, and the
-       # width in bytes of these types.  (Presumably OC_INDEX and
-       # OC_UINDEX are the same width.  If not, the small amount of code
-       # that actually uses OC_UINDEX will probably die horribly.)
-       if {[llength $oc_index_type_data]!=3} {
-          error "Invalid oc_index_type_data: $oc_index_type_data"
-       }
-       set oc_index_type  [lindex $oc_index_type_data 0]
-       set oc_uindex_type [lindex $oc_index_type_data 1]
-       set oc_index_width [lindex $oc_index_type_data 2]
-       if {![regexp {^[0-9]+$} $oc_index_width]} {
-          error "Invalid oc_index_width value: $oc_index_width"
-       }
-    } else {
-       # oc_index types not specified in platform files;
-       # use automated setting.
-       if {$varsize(pointer) < 4} {
-          # Unlikely case, and would probably break lots of other
-          # stuff, but cover it here anyway.
-          set oc_index_type OC_INT4
-          set oc_uindex_type OC_UINT4
-          set oc_index_width 4
-       } elseif {$varsize(pointer) <= $varsize(int)} {
-          set oc_index_type int
-          set oc_uindex_type {unsigned int}
-          set oc_index_width $varsize(int)
-       } elseif {[string compare $systemtype windows] == 0 \
-                    && $varsize(pointer) > $varsize(long) \
-                    && $varsize(pointer) == 8} {
-          # Use __int64 type
-          set oc_index_type __int64
-          set oc_uindex_type {unsigned __int64}
-          set oc_index_width 8
-       } else { 
-          # If the above don't work, fallback is long
-          set oc_index_type long
-          set oc_uindex_type {unsigned long}
-          set oc_index_width $varsize(long)
-       }
-    }
-    append porth "typedef $oc_index_type OC_INDEX;\n"
-    append porth "typedef $oc_uindex_type OC_UINDEX;\n"
-    append porth "#define OC_INDEX_WIDTH $oc_index_width\n"
-
-    if {![catch {
-       $config GetValue program_compiler_c++_oc_index_checks
-    } oc_index_checks]} {
-       # Note: If enabled, OC_INDEX_CHECKS will probably break most
-       # third-party extensions.  This macro is intended primarily
-       # for internal development work.
-       append porth "#define OC_INDEX_CHECKS $oc_index_checks\n"
-    } else {
-       append porth "#define OC_INDEX_CHECKS 0\n"
-    }
-
-
-    # Byte order.  For now just use 4-byte wide ordering
-    foreach vartype { int long short float double } {
-	if { $varsize($vartype) == 4 } {
-	    append porth "\n#define OC_BYTEORDER $varorder($vartype)\n"
-	    break
-	}
-    }
+   }
 
    # Use the legacy x86 fpu (i.e., the x87?)
    global tcl_platform
@@ -968,6 +1106,7 @@ typedef  unsigned char      OC_UCHAR;
        || [string compare "amd64" $tcl_platform(machine)] == 0 \
        || [string compare "intel" $tcl_platform(machine)] == 0 } {
       append porth {
+/* Use legacy x86 floating point */
 #define OC_USE_X87 1
 }  }
 
@@ -1008,11 +1147,11 @@ typedef  unsigned char      OC_UCHAR;
       }
       if {$_} {
          append porth {
-// SSE intrinsic _mm_cvtsd_f64 not provided by compiler
+/* SSE intrinsic _mm_cvtsd_f64 not provided by compiler */
 #define OC_COMPILER_HAS_MM_CVTSD_F54 0
 }     } else {
          append porth {
-// SSE intrinsic _mm_cvtsd_f64 provided by compiler
+/* SSE intrinsic _mm_cvtsd_f64 provided by compiler */
 #define OC_COMPILER_HAS_MM_CVTSD_F54 1
 }}
 
@@ -1023,13 +1162,138 @@ typedef  unsigned char      OC_UCHAR;
       if {$_} {
          # _mm_storel_pd broken (or missing).  Provide workaround.
          append porth {
-// Wrapper replacing SSE2 intrinsic _mm_storel_pd calls with the equivalent
-// SSE2 intrinsic _mm_store_sd.  (_mm_storel_pd implementation is broken
-// on some compilers.)
+/* Wrapper replacing SSE2 intrinsic _mm_storel_pd calls with the */
+/* equivalent SSE2 intrinsic _mm_store_sd.  (_mm_storel_pd       */
+/* implementation is broken on some compilers.)                  */
 #define _mm_storel_pd(x,y)  _mm_store_sd(x,y)
 }
       }
    }
+
+   # Alignment issues?  AFAIK this is only a problem when using
+   # SSE on 32-bit Windows.
+   if {![catch {$config GetValue program_compiler_c++_stack_alignment} \
+              _]} {
+      append porth [subst {
+/* Stack alignment.  This can interact with SSE variables that */
+/* require 16-byte alignment                                   */
+#define OC_COMPILER_STACK_ALIGNMENT $_
+}]
+   }
+
+   # Fused multiply-add (FMA)?
+   if {[catch {$config GetValue fma_type} fma_type]} {
+      set fma_type 0   ;# Default
+   }
+   if {$fma_type == 3} {
+      append porth [subst {
+/* Use 3 argument fused multiply-add (FMA) intrinsics */
+#define OC_FMA_TYPE 3
+}] } elseif {$fma_type == 4} {
+      append porth [subst {
+/* Use 4 argument fused multiply-add (FMA) intrinsics */
+#define OC_FMA_TYPE 4
+}] } else {
+      append porth [subst {
+/* No fused multiply-add (FMA) support */
+#define OC_FMA_TYPE 0
+}] }
+
+
+
+
+   # Pointers
+   append porth "\n/* Width of pointer type */\n"
+   append porth "#define OC_POINTER_WIDTH $varsize(pointer)\n"
+
+   # Indexes into arrays
+   append porth "\n/* OC_INDEX is the suggested type for array indices.  */\n"
+   append porth   "/*   It is a signed int type that is at least 4 bytes */\n"
+   append porth   "/*   wide and not narrower than the pointer type.     */\n"
+   append porth   "/* OC_UINDEX is the unsigned version of OC_INDEX.  It */\n"
+   append porth   "/*   is intended for special-purpose use only; use    */\n"
+   append porth   "/*   OC_INDEX where possible.                         */\n"  
+   if {![catch {
+      $config GetValue program_compiler_c++_oc_index_type
+   } oc_index_type_data]} {
+      # oc_index types specified in platform file.  This should be a
+      # three item list: the OC_INDEX type, the OC_UINDEX type, and the
+      # width in bytes of these types.  (Presumably OC_INDEX and
+      # OC_UINDEX are the same width.  If not, the small amount of code
+      # that actually uses OC_UINDEX will probably die horribly.)
+      if {[llength $oc_index_type_data]!=3} {
+         error "Invalid oc_index_type_data: $oc_index_type_data"
+      }
+      set oc_index_type  [lindex $oc_index_type_data 0]
+      set oc_uindex_type [lindex $oc_index_type_data 1]
+      set oc_index_width [lindex $oc_index_type_data 2]
+      if {![regexp {^[0-9]+$} $oc_index_width]} {
+         error "Invalid oc_index_width value: $oc_index_width"
+      }
+   } else {
+      # oc_index types not specified in platform files;
+      # use automated setting.
+      if {$varsize(pointer) < 4} {
+         # Unlikely case, and would probably break lots of other
+         # stuff, but cover it here anyway.
+         set oc_index_type OC_INT4
+         set oc_uindex_type OC_UINT4
+         set oc_index_width 4
+      } elseif {$varsize(pointer) <= $varsize(int)} {
+         set oc_index_type int
+         set oc_uindex_type {unsigned int}
+         set oc_index_width $varsize(int)
+      } elseif {[string compare $systemtype windows] == 0 \
+                   && $varsize(pointer) > $varsize(long) \
+                   && $varsize(pointer) == 8} {
+         # Use __int64 type
+         set oc_index_type __int64
+         set oc_uindex_type {unsigned __int64}
+         set oc_index_width 8
+      } else { 
+         # If the above don't work, fallback is long
+         set oc_index_type long
+         set oc_uindex_type {unsigned long}
+         set oc_index_width $varsize(long)
+      }
+   }
+   # Compute maximum positive value that can be stored in an OC_INDEX.
+   # This computation is designed to not overflow an signed OC_INDEX
+   # type variable; presumably this won't overflow the Tcl int type,
+   # especially since moderately modern Tcl's have arbitrarily large
+   # int's.  The C spec says that integer constants are assigned a type
+   # large enough to hold them, so in principle is shouldn't be
+   # necessary to add a type suffix, but keep an eye out for failures.
+   # An alternative would be to just embed the computing expression into
+   # the OC_INDEX_MAX macro.
+   set oc_index_max [expr {2*((1<<(8*$oc_index_width-2))-1)+1}]
+   append porth "typedef $oc_index_type OC_INDEX;\n"
+   append porth "typedef $oc_uindex_type OC_UINDEX;\n"
+   append porth "#define OC_INDEX_WIDTH $oc_index_width\n"
+   append porth "#define OC_INDEX_MAX $oc_index_max\n"
+   append porth "#define OC_UINDEX_MAX (2*OC_UINDEX($oc_index_max)+1)\n"
+   append porth "#define OC_INDEX_MOD OC_INT${oc_index_width}_MOD\n"
+
+   if {![catch {
+      $config GetValue program_compiler_c++_oc_index_checks
+   } oc_index_checks]} {
+      # Note: If enabled, OC_INDEX_CHECKS will probably break most
+      # third-party extensions.  This macro is intended primarily
+      # for internal development work.
+      append porth "#define OC_INDEX_CHECKS $oc_index_checks\n"
+   } else {
+      append porth "#define OC_INDEX_CHECKS 0\n"
+   }
+
+
+    # Byte order.  For now just use 4-byte wide ordering
+    foreach vartype { int long short float double } {
+	if { $varsize($vartype) == 4 } {
+	    append porth "\n#define OC_BYTEORDER $varorder($vartype)\n"
+	    break
+	}
+    }
+
 
     # Compile in thread support?
     if {![catch {$config GetValue oommf_threads} _] && $_} {
@@ -1041,11 +1305,13 @@ typedef  unsigned char      OC_UCHAR;
           program_compiler_c++_property_init_thread_fpu_control_word} _] \
            && $_} {
           append porth {
-/* Child threads need to have floating point control word explicitly set. */
+/* Child threads need to have floating point */
+/* control word explicitly set.              */
 #define OC_CHILD_COPY_FPU_CONTROL_WORD 1
 }      } else {
           append porth {
-/* Child threads don't need to have floating point control word explicitly set. */
+/* Child threads don't need to have floating point */
+/* control word explicitly set.                    */
 #define OC_CHILD_COPY_FPU_CONTROL_WORD 0
 }}  } else {
        append porth {
@@ -1168,6 +1434,26 @@ typedef int Tcl_ThreadDataKey;
     set OSMAJOR $OSVERSION
     regexp {([^.]*).*} $OSVERSION match OSMAJOR
 
+    # On Windows 7 and later, the task bar identifier can be set by
+    # the application at runtime --- provided the compiler has the
+    # right headers and libraries:
+    if {![catch {$config GetValue program_compiler_c++_set_taskbar_id} _] \
+        && $_ } {
+       append porth {
+/* Set task bar identifiers to group together all OOMMF apps */
+#define OC_SET_TASKBAR_ID 1
+}}
+
+    # Experimental code for Mac OS X to set the application name; the
+    # appname is used in several spots, most notably as the title of
+    # the first application menubar menu.
+    if {![catch {$config GetValue program_compiler_c++_set_macosx_appname} _] \
+        && $_ } {
+       append porth {
+/* Enable code to set application name (MAC OS X; experimental) */
+#define OC_SET_MACOSX_APPNAME 1
+}}
+
 # Random number generator protoypes
 #   NOTE: The default random number generator comes from Oc_Random,
 #         which has a max value of Oc_Random::MaxValue().
@@ -1243,20 +1529,16 @@ typedef void(*omf_sighandler)(int);             /* ANSI version */
 	   || [string compare $systemsubtype winnt] != 0} {
        append porth {
 /* Definitions for Oc_TimeVal class */
-typedef unsigned long OC_TIMEVAL_TICK_TYPE;
+typedef OC_UINT8m OC_TIMEVAL_TICK_TYPE;
+#define OC_TIMEVAL_TICK_TYPE_MOD OC_INT8m_MOD
 #define OC_TIMEVAL_TO_DOUBLE(x) double(x)
 }
    } else {
        append porth {
-/* Definitions for Oc_TimeVal class.
- *  NOTE: For most compilers, DWORDLONG is defined in Windows header
- *        files as unsigned __int64.  Adjust as necessary to get
- *        unsigned 64 bit integer.  Alternatively, don't define the
- *        HAS_GETPROCESSTIMES to use the clock() call, and set
- *        OC_TIMEVAL_TICK_TYPE to unsigned long.
- */
-#define HAS_GETPROCESSTIMES
-typedef DWORDLONG OC_TIMEVAL_TICK_TYPE;}
+/* Definitions for Oc_TimeVal class */
+#define OC_HAS_GETPROCESSTIMES
+typedef OC_UINT8 OC_TIMEVAL_TICK_TYPE;
+#define OC_TIMEVAL_TICK_TYPE_MOD OC_INT8_MOD}
 
        if {[catch {
           $config GetValue program_compiler_c++_uint64_to_double
@@ -1269,7 +1551,7 @@ typedef DWORDLONG OC_TIMEVAL_TICK_TYPE;}
 }
        } else {
           append porth {
-#define OC_TIMEVAL_TO_DOUBLE(x) (double(__int64(x/2))*2.+double(__int64(x&1)))
+#define OC_TIMEVAL_TO_DOUBLE(x) (double(OC_INT8(x/2))*2.+double(OC_INT8(x&1)))
 }
       }
 }
@@ -1511,6 +1793,12 @@ proc Oc_OpenUniqueFile {args} {
     set serial [format -%0${N}d $i]
     set fn $pfx$sep1$serial$sep2$sfx
     while {[set code [catch {open $fn {CREAT EXCL RDWR}} handle]]} {
+       if {![string match {*file already exists} $handle] \
+            && ![string match {*permission denied} $handle]} {
+          # Windows is very prickly on permission wrt accessing
+          # files held open by another process.
+	  error $handle $handle
+       }
 	incr i
 	if {$i >= $max} {
 	    set i 0
@@ -1640,7 +1928,20 @@ proc Oc_FixupConfigBadDouble { value } {
     }
 }
 
-
+# Unbiased, linear-time list shuffle routine, based on
+# Knuth-Fisher-Yates.  Uses lset, which was introduced in Tcl 8.4.
+# Earlier versions of Tcl will fall back to the lset replacement in
+# bug83.tcl, which is about 10 times slower.
+proc Oc_ShuffleList { data } {
+   set i [llength $data]
+   while {$i>1} {
+      set j [expr {int($i*rand())}]
+      set tmp [lindex $data [incr i -1]]
+      lset data $i [lindex $data $j]
+      lset data $j $tmp
+   }
+   return $data
+}
 
 if {![llength [info commands Oc_SetPanicHeader]]} {
 proc Oc_SetPanicHeader {msg} {}

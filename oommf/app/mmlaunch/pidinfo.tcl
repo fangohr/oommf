@@ -117,6 +117,7 @@ proc PidReport { pidreply portsreply nicknames } {
              puts -nonewline [format "%s" Ports]
              if {$donicknames} {
                 set spaces [expr {$maxportcount*($portlength+1)}]
+                if { $spaces < 6 } { set spaces 6 }
                 # Note: Actual space count should be as above
                 #  minus [string length "Ports"]
                 #  plus  [string length "Names"]
@@ -164,7 +165,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName pidinfo
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}

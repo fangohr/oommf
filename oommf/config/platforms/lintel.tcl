@@ -139,6 +139,10 @@ $config SetValue program_compiler_c++ {g++ -c}
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
          cpuguess-lintel.tcl]
 
+# Load routine to determine glibc version
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         glibc-support.tcl]
+
 ########################################################################
 # LOCAL CONFIGURATION
 #
@@ -210,10 +214,26 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
-## Extra libs to throw on the link line
-# $config SetValue program_linker_extra_libs -lfftw3 
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
 # 
-###################
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -327,25 +347,9 @@ if {[string match g++* $ccbasename]} {
    # You may want to try appending to opts
    #    -parallel -par-threshold49 -par-schedule-runtime
 
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-
    # Uncomment the following two lines to remove SSE enabling flags.
    # regsub -all -- {^-mfpmath=sse\s+|\s+-mfpmath=sse(?=\s|$)} $opts {} opts
    # regsub -all -- {^-msse\d*\s+|\s+-msse\d*(?=\s|$)} $opts {} opts
-
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
 
    # Disable some default warnings in the opts switch, as opposed
    # to the warnings switch below, so that these warnings are always
@@ -359,6 +363,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -395,7 +415,9 @@ if {[string match g++* $ccbasename]} {
    # but provides the x86 native floating point format having approx.
    # 19 decimal digits precision as opposed to 16 for double.)
    # Default is "double".
-   $config SetValue program_compiler_c++_typedef_realwide "long double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
@@ -464,17 +486,17 @@ if {[string match g++* $ccbasename]} {
     # Template handling for libraries
     # lappend opts --one_instantiation_per_object
 
+    # Make user requested tweaks to compile line
     if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
        foreach elt $extraflags {
-          if {[lsearch -exact $opts $elt]<0} {
-             lappend opts $elt
-          }
+	  if {[lsearch -exact $opts $elt]<0} {
+	     lappend opts $elt
+	  }
        }
     }
-
     if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
        foreach elt $noflags {
-          regsub -all -- $elt $opts {} opts
+	  regsub -all -- $elt $opts {} opts
        }
        regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
        regsub -- {\s*$} $opts {} opts
@@ -597,6 +619,14 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
+   # Default warnings disable
+   set nowarn [list -wd1572,1624]
+   if {[info exists nowarn] && [llength $nowarn]>0} {
+      set opts [concat $opts $nowarn]
+   }
+   catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
       foreach elt $extraflags {
          if {[lsearch -exact $opts $elt]<0} {
@@ -604,7 +634,6 @@ if {[string match g++* $ccbasename]} {
          }
       }
    }
-
    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
       foreach elt $noflags {
          regsub -all -- $elt $opts {} opts
@@ -612,13 +641,6 @@ if {[string match g++* $ccbasename]} {
       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
       regsub -- {\s*$} $opts {} opts
    }
-
-   # Default warnings disable
-   set nowarn [list -wd1572,1624]
-   if {[info exists nowarn] && [llength $nowarn]>0} {
-      set opts [concat $opts $nowarn]
-   }
-   catch {unset nowarn}
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
@@ -684,7 +706,6 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
-
    # Disable some default warnings in the opts switch, as opposed
    # to the warnings switch below, so that these warnings are always
    # muted, even if '-warn' option in file options.tcl is disabled.
@@ -696,6 +717,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -740,7 +777,9 @@ if {[string match g++* $ccbasename]} {
    # minimal on this platform, but YMMV.
    # Default is "double" (because on some platforms "long double"
    # is a wide type simulated via software and is very slow).
-   $config SetValue program_compiler_c++_typedef_realwide "long double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
@@ -893,18 +932,22 @@ if {$major>8 || ($major==8 && $minor>=3)} {
 unset major ; unset minor ; unset serial
 
 ########################################################################
-#$config SetValue TCL_LIBS [concat -lfftw3 [$config GetValue TCL_LIBS]]
-#$config SetValue TK_LIBS [concat -lfftw3 [$config GetValue TK_LIBS]]
-
+if {[catch {$config GetValue program_linker_extra_libs} extra_libs]} {
+   set extra_libs {}
+}
+foreach {glibc_major glibc_minor} [GetGlibcVersion] break
+if {$glibc_major<2 || ($glibc_major==2 && $glibc_minor<17)} {
+   # The realtime extensions library is needed for glibc prior
+   # to 2.17 for clock_gettime() support.
+   lappend extra_libs -lrt
+}
 if {![catch {$config GetValue use_numa} _] && $_} {
    # Include NUMA (non-uniform memory access) library
-   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] -lnuma]
-   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] -lnuma]
+   lappend extra_libs -lnuma
 }
-
-if {![catch {$config GetValue program_linker_extra_libs} libs]} {
-   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] $libs]
-   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] $libs]
+if {[llength $extra_libs]>0} {
+   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] $extra_libs]
+   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] $extra_libs]
 }
 
 ########################################################################

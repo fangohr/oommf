@@ -11,10 +11,12 @@
 #   initscript   Script to run before build, to initialize environment
 #   compiler     compiler strings, as used in platform files
 #   cpuarch      usually two values, generic and host
+#   real8m       double or long double
+#   realwide     double or long double
 #   dothreads    0 or 1
 #   donuma       0 or 1
 #   sselevel     {} or level
-#   numanodes    Node list, none or all
+#   numanodes    Node list, none or auto
 #   threadcount  List of thread counts
 #
 # The platforms file for the platform should have the following lines at
@@ -66,7 +68,19 @@ if {$build_only_index>=0} {
    set argv [lreplace $argv $build_only_index $build_only_index]
 }
 
-set test_requests $argv
+set test_requests {}
+foreach elt $argv {
+   if {[regexp -- {^([0-9]+)-([0-9]+)$} $elt dummy start end] \
+          && $start <= $end} {
+      # Range request
+      for {set i $start} {$i<=$end} {incr i} {
+         lappend test_requests $i
+      }
+   } else {
+      lappend test_requests $elt
+   }
+}
+
 
 if {![regexp -- {^[0-9]*$} [join $test_requests {}]]} {
    puts stderr "Invalid test request."
@@ -178,7 +192,7 @@ if {![info exists buildtest_values]} {
 
 # Check that test labels match known labels
 set known_labels [list tclsh initscript compiler cpuarch \
-                     dothreads donuma numanodes threadcount sselevel]
+                     real8m realwide dothreads donuma numanodes threadcount sselevel]
 foreach label $buildtest_labels {
    if {[lsearch -exact $known_labels $label]<0} {
       puts stderr "ERROR: Unknown test label: \"$label\""
@@ -201,7 +215,7 @@ proc DoInit { initscript } {
 
    if {[string compare windows $tcl_platform(platform)]==0} {
       # Windows environment
-      set cmd [list $env(ComSpec) /c [list $initscript >nul: && set]]
+      set cmd [list $env(ComSpec) /c [list $initscript >nul: 2>nul: && set]]
 
       if {[catch {eval exec $cmd $ERR_REDIRECT} result]} {
          puts stderr "Error running environment initialization script\
@@ -260,9 +274,21 @@ proc DoBuild {} {
    set oommfroot [file dir $OOMMF]
    set touchfile [file join $oommfroot config platforms buildtest.tcl-touch]
 
-   set result [exec $TCLSH $OOMMF pimake -cwd $oommfroot \
-                  distclean $ERR_REDIRECT]
-   if {$VERBOSE} { puts $result ; flush stdout }
+   for {set attempt 0} {$attempt<5} {incr attempt} {
+      set catchcode [catch {exec $TCLSH $OOMMF pimake -cwd $oommfroot \
+                               distclean $ERR_REDIRECT} result]
+      if {$VERBOSE} { puts $result ; flush stdout }
+      if {$catchcode} {
+         after 5000  ;# Distclean failed.  On Windows this probably means
+         ## application shutdown from previous regression test hasn't
+         ## completed.  Wait 5 seconds and try again.
+      } else {
+         break  ;# Distclean succeeded.
+      }
+   }
+   if {$attempt >= 5} {
+      return -code error "PIMAKE DISTCLEAN FAILED: $result"
+   }
    if {![file exists $touchfile] || [file mtime $touchfile]<$touchtime} {
       puts stderr "ERROR: buildtest.tcl not sourced by pimake distclean"
       puts "Touchtime 1: [clock format $touchtime -format %H:%M:%S]"
@@ -348,6 +374,8 @@ set tcv(tclsh)        {}      ;# default is DEFAULT_TCLSH
 set tcv(initscript)   {}
 set tcv(compiler)     "g++ -c"
 set tcv(cpuarch)      "generic"
+set tcv(real8m)       "double"
+set tcv(realwide)     "long double"
 set tcv(dothreads)    0
 set tcv(donuma)       0
 set tcv(numanodes)    {}      ;# default depending on tcv(donuma)
@@ -403,6 +431,8 @@ foreach test $buildtest_values {
    # Setup environment variables used for communication with children
    set env(OOMMF_BUILDTEST_COMPILER) $tcv(compiler)
    set env(OOMMF_BUILDTEST_CPUARCH)  $tcv(cpuarch)
+   set env(OOMMF_BUILDTEST_REAL8m)   $tcv(real8m)
+   set env(OOMMF_BUILDTEST_REALWIDE) $tcv(realwide)
    set env(OOMMF_BUILDTEST_THREADS)  $tcv(dothreads)
    set env(OOMMF_BUILDTEST_NUMA)     $tcv(donuma)
    if {![string match {} $tcv(numanodes)]} {

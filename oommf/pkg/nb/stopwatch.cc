@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:58 $
+ * Last modified on: $Date: 2015/03/31 21:51:35 $
  * Last modified by: $Author: donahue $
  */
 
@@ -87,3 +87,12 @@ void Nb_StopWatch::ThreadAccum(const Nb_StopWatch& other)
 #endif
   wall_total = GetBigger(wall_total,other_wall);
 }
+
+
+//////////////////////////////////////////////////////////////////////////
+// Nb_WallWatch timing class
+//
+const ClassDoc Nb_WallWatch::class_doc("Nb_WallWatch",
+	      "Michael J. Donahue (michael.donahue@nist.gov)",
+	      "1.0.0","Mar-2015");
+

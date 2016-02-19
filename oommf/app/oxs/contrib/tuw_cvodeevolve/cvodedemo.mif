@@ -68,6 +68,7 @@ switch $EvolverType {
 	    ode_style $EvolverType
 	    alpha $alpha
 	    exact_report_period 1
+            abstol 1e-9
 	}]
     }
     rk { Specify Oxs_RungeKuttaEvolve:evolver [subst { alpha $alpha }] }

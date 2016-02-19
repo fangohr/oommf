@@ -2,8 +2,8 @@
 #
 #	OOMMF core provided customizations to Tcl/Tk
 #
-# Last modified on: $Date: 2011-11-01 21:16:16 $
-# Last modified by: $Author: donahue $
+# Last modified on: $Date: 2014/02/21 21:36:25 $
+# Last modified by: $Author: dgp $
 #
 # This file provides some customization/extensions to Tcl/Tk that
 # are common across the OOMMF project.
@@ -164,7 +164,7 @@ if {[llength [info commands interp]]} {
 		$result eval [list set argv0 $argv0]
 	    }
             # Tcl expr fixes and extras
-            Oc_AddTclExprExtensions $result
+            catch {Oc_AddTclExprExtensions $result}
 	}
 	return -code $code $result
     }

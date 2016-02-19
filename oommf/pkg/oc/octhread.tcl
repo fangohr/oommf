@@ -3,9 +3,9 @@
 #
 proc Oc_GetDefaultThreadCount {} {
    # Default thread request count.  This may be overridden by
-   # application (for example, using a value from the command line).
-   # The default may be set in any of the following four ways, listed
-   # in order of increasing priority:
+   # application --- for example, by using a value from the command
+   # line.  The default may be set in any of the following four ways,
+   # listed in order of increasing priority:
    # 
    #   Global default value is 2 threads.
    # 
@@ -18,7 +18,7 @@ proc Oc_GetDefaultThreadCount {} {
    #   From the shell environment variable,
    #      OOMMF_THREADS
    global env
-   set otc -1
+   set otc 2  ;# Global default
    if {[info exists env(OOMMF_THREADS)]} {
       # Set from environment
       set otc $env(OOMMF_THREADS)
@@ -28,12 +28,13 @@ proc Oc_GetDefaultThreadCount {} {
    } elseif {![catch {[Oc_Config RunPlatform] GetValue thread_count} val]} {
       # Set from RunPlatform value
       set otc $val
-   } else {
-      # Last change default
-      set otc 2
    }
    if {$otc<1} {
-      set otc 1 ;# Safety
+      puts stderr "\n************************************************"
+      puts stderr "ERROR: Bad setting for thread_count: $otc"
+      puts stderr "   Overriding to 1"
+      puts stderr "************************************************"
+      set otc 1
    }
    return $otc
 }

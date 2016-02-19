@@ -4,12 +4,13 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-11-09 00:50:02 $
+ * Last modified on: $Date: 2015/07/23 20:28:04 $
  * Last modified by: $Author: donahue $
  */
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -29,6 +30,21 @@
 #  undef WIN32_LEAN_AND_MEAN
 # endif
 #endif
+
+#if (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
+// Header files for stat and other low level C I/O.
+# include <unistd.h>
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+#endif
+
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+# include <io.h> // Header file for _access
+# include <sys/types.h> // Header files for _stat
+# include <sys/stat.h>
+#endif
+
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// This insures standard math functions like floor, ceil, sqrt
@@ -54,18 +70,7 @@ void Nb_NOP() {}
 void Nb_NOP(OC_REAL8m) {}
 void Nb_NOP(void*) {}
 
-//////////////////////////////////////////////////////////////////////////
-// Greatest common divisor via Euclid's algorithm
-int Nb_Gcd(int m,int n)
-{
-  m=abs(m); n=abs(n);
-  if(n==0) return 0;
-  int temp;
-  while((temp=(m%n))>0) { m=n; n=temp; }
-  return n;
-}
-
-// Tcl wrapper for the above
+// Tcl wrapper for Nb_Gcd
 int NbGcdCmd(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 {
   char buf[1024];
@@ -76,17 +81,17 @@ int NbGcdCmd(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
-  int n=atoi(argv[1]);
-  int m=atoi(argv[2]);
+  long int n=atol(argv[1]);
+  long int m=atol(argv[2]);
 
   if(m<1 || n<1) {
     Oc_Snprintf(buf,sizeof(buf),"Nb_Gcd input must be two positive integers"
-	    " (got %d, %d)", n,m);
+	    " (got %ld, %ld)", n,m);
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
 
-  Oc_Snprintf(buf,sizeof(buf),"%d",Nb_Gcd(m,n));
+  Oc_Snprintf(buf,sizeof(buf),"%ld",Nb_Gcd(m,n));
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
 }
@@ -108,7 +113,7 @@ OC_REALWIDE Nb_GcdRW(OC_REALWIDE m,OC_REALWIDE n)
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Simple continued fraction like rational approximator.  Unlike the usual
+// Simple continued fraction-like rational approximator.  Unlike the usual
 // continued fraction expansion, here we allow +/- on each term (rounds to
 // nearest integer rather than truncating).  This converges faster (by
 // producing fewer terms).
@@ -124,7 +129,7 @@ void Nb_RatApprox(double x,int steps,int &num,int &denom)
   int xsign = 1;
   if(x<0) { xsign = -1; x*=-1; }
   if(steps<1) steps=1;
-  int *coef=new int[steps];
+  int *coef=new int[size_t(steps)];
   coef[0]=int(OC_ROUND(x));
   double remainder=fabs(x)-fabs(double(coef[0]));
   // Expand
@@ -252,16 +257,14 @@ double Nb_Atof(const char *nptr)
   // temporary storage just large enough to hold the string.  The
   // latter is a performance hit, so if it happens frequently one
   // should enlarge the size of statbuf.
-  size_t exp_off=cptr-nptr;
-  static char statbuf[256]; // I don't expect many numeric strings this long
+  size_t exp_off=static_cast<size_t>(cptr-nptr);
+  char statbuf[256]; // I don't expect many numeric strings this long
   char *buf=statbuf;
   size_t num_len=strlen(nptr)+1;
   if(num_len>sizeof(statbuf)) buf=new char[num_len];
-
   strcpy(buf,nptr);
   buf[exp_off]='e';         // Replace 'd' or 'D' with 'e'
   double result=atof(buf);
-
   if(buf!=statbuf) delete[] buf;
   return result;
 }
@@ -270,12 +273,12 @@ double Nb_Atof(const char *nptr)
 double Nb_Strtod(const char *nptr,char **endptr)
 {
   // Replace first 'd' or 'D', if any, with 'e'
-  static char statbuf[1024]; // I don't expect many num. strs this long
+  char statbuf[256]; // I don't expect many num. strs this long
   char *buf=statbuf;
   const char *cptr;
   if((cptr=strchr(nptr,'d'))!=NULL ||
      (cptr=strchr(nptr,'D'))!=NULL  ) {
-    size_t exp_off=cptr-nptr;
+    size_t exp_off=static_cast<size_t>(cptr-nptr);
     size_t num_len=strlen(nptr)+1;
     if(num_len>sizeof(statbuf)) buf=new char[num_len];
     strcpy(buf,nptr);
@@ -287,6 +290,9 @@ double Nb_Strtod(const char *nptr,char **endptr)
 
   // Convert to double
   double result=strtod(cptr,endptr);
+  if(*endptr != NULL && cptr != nptr) {
+    *endptr = const_cast<char*>(nptr) + (*endptr - const_cast<char*>(cptr));
+  }
 
   // If extra buffer space was allocated above, then release it
   if(buf!=statbuf) delete[] buf;
@@ -370,7 +376,7 @@ void degcossin(double angle,double& cosine,double& sine)
 // Routines to detect IEEE floating point NAN's and infinities.
 // Note: The C99 spec includes an isfinite() function --- part of
 //       the fpclassify package --- that can be used instead.
-//       However, some compiler vendors have been a slow to comply,
+//       However, some compiler vendors have been slow to comply,
 //       and anyway C99 is not C++.  So, for portability, we define
 //       our own.
 //       Of course, the code below ONLY WORKS FOR IEEE FLOATING POINT!
@@ -403,6 +409,28 @@ int Nb_IsFinite(OC_REAL8 x)
   code &= mask;
   return (code!=mask);
 }
+
+#if !OC_REALWIDE_IS_REAL8
+int Nb_IsFinite(OC_REALWIDE x)
+{
+#if OC_REALWIDE_INTRINSIC_WIDTH != 10 && OC_REALWIDE_INTRINSIC_WIDTH != 16
+# error Unsupported OC_REALWIDE floating point type
+#endif
+  // For both 80-bit extended precision and 128-bit quad precision IEEE
+  // formats, Inf's and nan's are indicated by all 15 exponent bits
+  // being set.  (The top bit is the sign bit.)
+  unsigned char *cptr = (unsigned char *)(&x);
+#if (OC_BYTEORDER == 4321)  // Little endian
+  unsigned int code = (((unsigned int)cptr[OC_REALWIDE_INTRINSIC_WIDTH-1])<<8)
+    + ((unsigned int)cptr[OC_REALWIDE_INTRINSIC_WIDTH-2]);
+#else // Otherwise assume big endian
+  unsigned int code = (((unsigned int)cptr[0])<<8) + ((unsigned int)cptr[1]);
+#endif
+  unsigned mask = 0x7FFF;
+  code &= mask;
+  return (code!=mask);
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // Routine to detect string containing nothing but whitespace.
@@ -477,7 +505,7 @@ OC_BOOL Nb_GetColor(const char* color,
       ++cptr2;
     }
   } while(ch!='\0');
-  size = cptr2 - buf - 1; // Resize
+  size = static_cast<size_t>(cptr2 - buf) - 1; // Resize
 
   OC_BOOL success=0;
 
@@ -695,33 +723,56 @@ void Nb_TclNativeFilename(Nb_DString &filename)
 }
 #endif // OCT2007_CHINESE_DEBUG
 
-// C++ interface to the Tcl 'file exists' functionality.
+// C++ alternative to Tcl 'file exists'
 OC_BOOL Nb_FileExists(const char *path)
 {
-  Nb_DString argv[3];
+  OC_BOOL success = 0;
+  Nb_DString filename(path);
+  Nb_TclNativeFilename(filename);
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+  if(_access(filename.GetStr(),0)==0) success = 1;
+#else // Add more tests if an extant unix variant turns up w/o access()
+  if(access(filename.GetStr(),F_OK)==0) success = 1;
+#endif
+  return success;
+}
+
+// C++ interface to the Tcl 'file join' command.
+Nb_DString Nb_TclFileJoin(const Nb_List<Nb_DString>& parts)
+{
+  const OC_INDEX argc = parts.GetSize() + 2;
+  Nb_DString* argv = new Nb_DString[size_t(argc)];
   argv[0] = "file";
-  argv[1] = "exists";
-  argv[2] = path;
+  argv[1] = "join";
+  int i=1;
+  Nb_List_Index<Nb_DString> key;
+  const Nb_DString* elt = parts.GetFirst(key);
+  while(elt != NULL) {
+    argv[++i] = *elt;
+    elt = parts.GetNext(key);
+  }
   Nb_DString cmd;
-  cmd.MergeArgs(sizeof(argv)/sizeof(argv[0]),argv);
+  assert(argc <= INT_MAX);
+  cmd.MergeArgs(static_cast<int>(argc),argv);
+  delete[] argv;
   Tcl_Interp* interp=Oc_GlobalInterpreter();
   if(interp==NULL) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,NULL,
-                          "Nb_FileExists",NB_FUNCTIONS_ERRBUFSIZE,
+                          "Nb_TclFileJoin",NB_FUNCTIONS_ERRBUFSIZE,
                           "No Tcl interpreter available"));
   }
   Tcl_SavedResult saved;
   Tcl_SaveResult(interp, &saved);
   if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.GetStr())) != TCL_OK) {
     Oc_Exception foo(__FILE__,__LINE__,NULL,
-                     "Nb_FileExists",2001,
+                     "Nb_TclFileJoin",2001,
                      "%.2000s",Tcl_GetStringResult(interp));
     Tcl_DiscardResult(&saved);
     OC_THROW(foo);
   }
-  int result = atoi(Tcl_GetStringResult(interp));
+  Nb_DString result = Tcl_GetStringResult(interp);
   Tcl_RestoreResult(interp, &saved);
-  return static_cast<OC_BOOL>(result);
+  return result;
 }
 
 // C++ interface to the Tcl 'glob' command.
@@ -730,7 +781,7 @@ OC_BOOL Nb_FileExists(const char *path)
 // included by default.  The export results is a (possibly empty) list
 // of matching files, sorted by lsort.  The return value is the number
 // of elements in the list.
-OC_INT4m
+OC_INDEX
 Nb_TclGlob(const char* options,const char* globstr,
            Nb_List<Nb_DString>& results)
 {
@@ -761,7 +812,11 @@ Nb_TclGlob(const char* options,const char* globstr,
 }
 
 //////////////////////////////////////////////////////////////////////////
-// C++ interface to Oc_TempName
+// C++ interface to Oc_TempName.  NB: This uses the global Tcl interp,
+// so it can only be called from the main thread.  The returned Nb_DString
+// references a newly created, empty file, but the handle used to open
+// the file has been closed.  It is the responsibility of the caller to
+// delete this file.
 Nb_DString Nb_TempName
 (const char* baseprefix,
  const char* suffix,
@@ -903,6 +958,177 @@ Nb_Rename(const char *oldpath,const char* newpath)
   Tcl_RestoreResult(interp, &saved);
 }
 
+void
+Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
+{ // The Nb_Rename function above runs through the global Tcl interp,
+  // and so can only be called from the main thread.  This version uses
+  // system calls and so can be called from any thread.  The sync
+  // parameter determines whether or not this all blocks until the data
+  // is flushed to disk (sync == 1 == blocks, sync == 0 == don't block).
+  //
+  // This routine throws an exception if an error occurs.
+  //
+  // On some platforms the sync parameter may be ignored.
+  //
+  // On Windows, the MoveFileEx function is used instead of the ANSI C
+  // rename to allow overwrite of an existing file.  This also allows
+  // moving between volumes.
+  //
+  // Beginning with Tcl 8.4, the Tcl C library has a number of Tcl_FS*
+  // calls that provide cross-platform filesystem access, such as
+  // Tcl_FSRenameFile and Tcl_FSCopyFile.  However, according to the
+  // docs these routines only work if the source and target are on the
+  // same filesystem; it is also not clear what happens if the target
+  // exists, and depending on the filesystem these routines might not
+  // even be implemented.  The Tcl_FS* routines are virtual filesystem
+  // aware, so they may be useful in that circumstance.
+
+  // Checks for case where oldpath and newpath point to the same file:
+  // 1) Catch simplest case where strings are identical
+  if(strcmp(oldpath,newpath)==0) return; // Nothing to do
+  Nb_DString oldname(oldpath);  Nb_TclNativeFilename(oldname);
+  Nb_DString newname(newpath);  Nb_TclNativeFilename(newname);
+  if(strcmp(oldname.GetStr(),newname.GetStr())==0) return;
+
+  // On Windows, one can use the GetFileInformationByHandle call and
+  // check the VolumeSerialNumber and FileIndex in the
+  // BY_HANDLE_FILE_INFORMATION structure to see if oldpath and newpath
+  // point to the same file.  But tests indicate (on Win 8.1, at least)
+  // that if oldpath and newpath point to the same file, then MoveFileEx
+  // will report success but not change anything.  Since MoveFileEx does
+  // what we want, we don't bother with identity checks on Windows.
+
+  // On unix systems, if oldpath and newpath resolve to the same file,
+  // then one expects the C rename function to do the right thing, and
+  // it does so on all the systems I've tested --- but there is no
+  // guarantee in the C spec so it seems best to make an explicit test
+  // using stat().  (BTW, the stat() call is supported in Windows, but
+  // the st_ino field is meaningless on Windows so stat() can't be used
+  // to test identity on Windows.)
+
+#if (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
+  /// Add more tests if an extant unix variant turns up w/o stat
+  struct stat old_statbuf;
+  if(stat(oldname.GetStr(),&old_statbuf)!=0) {
+      Oc_Exception foo(__FILE__,__LINE__,NULL,
+                       "Nb_RenameNoInterp",1200,
+                       "Error; can't stat source file %.1000s",
+                       oldname.GetStr());
+      OC_THROW(foo);
+  }
+  struct stat new_statbuf;
+  if(stat(newname.GetStr(),&new_statbuf)==0) {
+    // If stat fails on newpath, assume newpath does not exist.
+    if(old_statbuf.st_ino == new_statbuf.st_ino
+       && old_statbuf.st_dev == new_statbuf.st_dev) {
+      return;  // Same file; nothing to do
+    }
+  }
+#elif (OC_SYSTEM_TYPE == OC_WINDOWS)
+  // Windows has several _stat calls, but Windows file systems don't
+  // do inodes so you can't do inode comparison as above.  One way is
+  // to check to see if the files are the same is to open both files
+  // and call GetFileInformationByHandle().  Compare the values of
+  // dwVolumeSerialNumber, nFileIndexLow, and nFileIndexHigh.  But
+  // hopefully MoveFileEx can figure this out and do the right thing.
+  // Instead, just check that the source file exists.
+  if(!Nb_FileExists(oldname.GetStr())) {
+      Oc_Exception foo(__FILE__,__LINE__,NULL,
+                       "Nb_RenameNoInterp",1200,
+                       "Source file %.1000s does not exist",
+                       oldname.GetStr());
+      OC_THROW(foo);
+  }
+#endif
+
+  int errorcode = 0;
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+  BOOL result = MoveFileEx(oldname.GetStr(),newname.GetStr(),
+                           MOVEFILE_COPY_ALLOWED
+                           | MOVEFILE_REPLACE_EXISTING
+                           | (sync ? MOVEFILE_WRITE_THROUGH : 0));
+  if(result == 0) errorcode = 1; // Failure
+#else 
+  errorcode = rename(oldname.GetStr(),newname.GetStr());
+#endif
+  if(errorcode != 0) {
+    // Some some failure occurred.  In particular, the ANSI C rename
+    // call can fail if the paths are on different volumes.  Fall back
+    // to a brute-force copy and delete.  (Note: Don't open the
+    // target for writing if source doesn't exist; that case is an
+    // error in which case we don't want the target truncated.)
+    errorcode = 1;
+    FILE* fin = fopen(oldname.GetStr(),"rb");
+    FILE* fout = (fin!=0 ? fopen(newname.GetStr(),"wb") : 0);
+    if(fin!=0 && fout!=0) {
+      const unsigned int BSIZE = 32768;
+      char buf[BSIZE];
+      size_t count,recount;
+      while(1) {
+        count = fread(buf,1,BSIZE,fin);
+        recount = fwrite(buf,1,count,fout);
+        if(recount == BSIZE) continue;
+        if(recount != count) break; // Write error
+        if(feof(fin)) errorcode=0;
+        break;
+      }
+    }
+    if(fin) fclose(fin);
+    if(fout) fclose(fout);
+    if(errorcode == 0) {
+      // Copy was successful.  Remove original file
+      errorcode = remove(oldname.GetStr());
+    }
+    if(errorcode) {
+      Oc_Exception foo(__FILE__,__LINE__,NULL,
+                       "Nb_RenameNoInterp",2200,
+                       "Error moving file %.1000s to %.1000s",
+                       oldpath,newpath);
+      OC_THROW(foo);
+    }
+  }
+
+  if(sync) {
+    errorcode = 0;
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+    // Note: CreateFile() supports longer file names than OpenFile().
+    HANDLE hFile = CreateFile(newname.GetStr(),GENERIC_WRITE,0,0,
+                              OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
+    if(hFile == INVALID_HANDLE_VALUE) {
+      ++errorcode;
+    } else {
+      if(!FlushFileBuffers(hFile)) {
+        ++errorcode;
+      }
+      if(!CloseHandle(hFile)) {
+        ++errorcode;
+      }
+    }
+#elif (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
+    /// Add more tests if an extant unix variant turns up w/o fsync
+    int fd = open(newname.GetStr(),O_RDWR);
+    /// Note: O_APPEND not directly supported on NFS.
+    if(fd == -1) {
+      ++errorcode;
+    } else {
+      if(fsync(fd)!=0) {
+        ++errorcode;
+      }
+      if(close(fd)!=0) {
+        ++errorcode;
+      }
+    }
+#endif
+    if(errorcode) {
+      Oc_Exception foo(__FILE__,__LINE__,NULL,
+                       "Nb_RenameNoInterp",1200,
+                       "Error syncing file %.1000s",
+                       newname.GetStr());
+      OC_THROW(foo);
+    }
+  }
+}
+
 // Interfaces to Tcl_Write.  The first is intended mainly
 // as an interface layer in case we decide in the future to
 // use Tcl_WriteObj in place of Tcl_Write.  NB: The buffer
@@ -940,7 +1166,7 @@ Nb_WriteChannel(Tcl_Channel channel,const char* buf,OC_INDEX bytecount)
 OC_INDEX
 Nb_FprintfChannel(Tcl_Channel channel,char* buf,OC_INDEX bufsize,
 		      const char* format, ...)
-{  // NOTE: This code is not re-entrant if buf==NULL.
+{ // NOTE: This code is not re-entrant if buf==NULL.
   // If buf==NULL, then use local buffer.
   static char* localbuf=NULL;
   static OC_INDEX localbuf_size=0;
@@ -951,7 +1177,7 @@ Nb_FprintfChannel(Tcl_Channel channel,char* buf,OC_INDEX bufsize,
       // Allocate new buffer
       if(localbuf!=NULL) delete[] localbuf;
       localbuf_size=worksize;
-      localbuf = new char[localbuf_size];
+      localbuf = new char[size_t(localbuf_size)];
     }
     buf=localbuf;
   }
@@ -959,7 +1185,7 @@ Nb_FprintfChannel(Tcl_Channel channel,char* buf,OC_INDEX bufsize,
   // Fill buf with formatted string
   va_list arg_ptr;
   va_start(arg_ptr,format);
-  OC_INDEX len = Oc_Vsnprintf(buf,bufsize,format,arg_ptr);
+  OC_INDEX len = Oc_Vsnprintf(buf,static_cast<size_t>(bufsize),format,arg_ptr);
   va_end(arg_ptr);
   if(len<0 || len>=bufsize) {
     /// NOTE: According to the Linux sprintf man page, as of glibc 2.1 the

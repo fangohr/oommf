@@ -112,15 +112,15 @@ Oxs_MultiAtlas::Oxs_MultiAtlas
       // up the global_id mapping for newatlas.
       String temp_name;
       Oxs_Box temp_box;
-      for(OC_UINT4m j=0;j<newatlas.atlas->GetRegionCount();j++) {
+      for(OC_INDEX j=0;j<newatlas.atlas->GetRegionCount();j++) {
 	// Note: j==0 should always be "universe"
 	newatlas.atlas->GetRegionName(j,temp_name);
 	newatlas.atlas->GetRegionExtents(j,temp_box);
-	OC_UINT4m k;
-	for(k=0;k<region_name.size();k++) {
+	OC_INDEX k;
+	for(k=0;k<static_cast<OC_INDEX>(region_name.size());k++) {
 	  if(temp_name.compare(region_name[k])==0) break;
 	}
-	if(k==region_name.size()) {
+	if(k==static_cast<OC_INDEX>(region_name.size())) {
 	  // New region.  Expand multiatlas data structures
 	  region_name.push_back(temp_name);
 	  region_bbox.push_back(temp_box);
@@ -154,7 +154,7 @@ Oxs_MultiAtlas::Oxs_MultiAtlas
   }
 }
 
-OC_BOOL Oxs_MultiAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
+OC_BOOL Oxs_MultiAtlas::GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const
 { // If 0<id<GetRegionCount, then sets mybox to bounding box
   // for the specified region, and returns 1.  If id is 0,
   // sets mybox to atlas bounding box (which is region_bbox[0]),
@@ -164,7 +164,7 @@ OC_BOOL Oxs_MultiAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
   return 1;
 }
 
-OC_INT4m Oxs_MultiAtlas::GetRegionId(const ThreeVector& point) const
+OC_INDEX Oxs_MultiAtlas::GetRegionId(const ThreeVector& point) const
 { // Returns the id number for the region containing point.
   // The return value is 0 if the point is not contained in
   // the atlas, i.e., belongs to the "universe" region.
@@ -180,27 +180,27 @@ OC_INT4m Oxs_MultiAtlas::GetRegionId(const ThreeVector& point) const
   // Iterate through subatlas list, stopping at first atlas
   // that claims "point".
   for(OC_INDEX i=0;i<subatlas.GetSize();i++) {
-    OC_INT4m id = subatlas[i].atlas->GetRegionId(point);
+    OC_INDEX id = subatlas[i].atlas->GetRegionId(point);
     if(id>0) return subatlas[i].global_id[id];
   }
 
   return 0; // Point not claimed by any subatlas.
 }
 
-OC_INT4m Oxs_MultiAtlas::GetRegionId(const String& name) const
+OC_INDEX Oxs_MultiAtlas::GetRegionId(const String& name) const
 { // Given a region id string (name), returns
   // the corresponding region id index.  If
   // "name" is not included in the atlas, then
   // -1 is returned.  Note: If name == "universe",
   // then the return value will be 0.
-  OC_UINT4m count = GetRegionCount();
-  for(OC_UINT4m i=0;i<count;i++) {
+  OC_INDEX count = GetRegionCount();
+  for(OC_INDEX i=0;i<count;i++) {
     if(region_name[i].compare(name)==0) return i;
   }
   return -1;
 }
 
-OC_BOOL Oxs_MultiAtlas::GetRegionName(OC_UINT4m id,String& name) const
+OC_BOOL Oxs_MultiAtlas::GetRegionName(OC_INDEX id,String& name) const
 { // Given an id number, fills in "name" with
   // the corresponding region id string.  Returns
   // 1 on success, 0 if id is invalid.  If id is 0,

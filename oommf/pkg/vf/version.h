@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-25 17:12:03 $
+ * Last modified on: $Date: 2015/03/25 16:45:21 $
  * Last modified by: $Author: dgp $
  */
 
@@ -24,7 +24,7 @@
 #define VF_MAJOR_VERSION	1
 #define VF_MINOR_VERSION	2
 #define VF_RELEASE_LEVEL	0
-#define VF_RELEASE_SERIAL	5
+#define VF_RELEASE_SERIAL	6
 
 #define VF_VERSION OC_MAKE_VERSION(VF)
 

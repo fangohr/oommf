@@ -18,7 +18,7 @@
 #
 # Binding tags and event id's may be any non-empty string.
 #
-# Last modified on: $Date: 2007-03-21 01:02:40 $
+# Last modified on: $Date: 2015/09/11 03:09:45 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Oc_EventHandler {
@@ -77,6 +77,19 @@ Oc_Class Oc_EventHandler {
                     # one handler in the list may have the effect of deleting
                     # a later handler in the list.
                     if {![catch {$handler Script} script]} {
+                        # If -oneshot is true, then delete handler
+                        # before running it --- else the handler may
+                        # loop back and re-trigger before it is
+                        # deleted.
+                        if {[$handler Cget -oneshot]} {
+                           if {[catch {$handler Delete} dmsg]} {
+                              global errorInfo
+                              append errorInfo "\n    (deleting -oneshot\
+                                        $class)\n    ($class for\
+                                        (tag,event): '($tag,$event)')"
+                              bgerror $dmsg
+                           }
+                        }
                         # Percent substitutions
                         if {[regexp % $script]} {
                             regsub -all {[\$]} $script {\\&} _
@@ -102,17 +115,6 @@ Oc_Class Oc_EventHandler {
                         if {$code == 1} {
                             global errorInfo errorCode
                             foreach {ei ec} [list $errorInfo $errorCode] {}
-                        }
-                        # Have to check existence of handler, because eval-ing
-                        # the script above may have the effect of deleting it.
-                        if {![catch {$handler Cget -oneshot} _] && $_} {
-                            if {[catch {$handler Delete} dmsg]} {
-                                global errorInfo
-                                append errorInfo "\n    (deleting -oneshot\
-                                        $class)\n    ($class for\
-                                        (tag,event): '($tag,$event)')"
-                                bgerror $dmsg
-                            }
                         }
                         switch -exact -- $code {
                             0 {;# ok

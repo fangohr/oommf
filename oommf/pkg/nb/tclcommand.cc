@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-12-24 06:36:32 $
+ * Last modified on: $Date: 2013/05/22 16:25:54 $
  * Last modified by: $Author: donahue $
  */
 
@@ -71,23 +71,32 @@ String Nb_MergeList(const vector<String>* args)
   if(args==NULL || args->empty()) {
     return result; // Return empty string
   }
+  int argc = static_cast<int>(args->size());
+  assert(argc>0 && args->size() == size_t(argc)); // Overflow check
 
+#if TCL_MAJOR_VERSION<8 || (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4)
   // Life would be so much simpler if Tcl would use const char*
   // instead of char* in parameter lists.  Sigh...
-  int argc = static_cast<int>(args->size());
-  Oc_AutoBuf* mybuf = new Oc_AutoBuf[argc];
-  char **argv = new char*[argc];
+  Oc_AutoBuf* mybuf = new Oc_AutoBuf[size_t(argc)];
+  char **argv = new char*[size_t(argc)];
   for(int i=0;i<argc;i++) {
-    mybuf[i].Dup((*args)[i].c_str());
+    mybuf[i].Dup((*args)[size_t(i)].c_str());
     argv[i] = mybuf[i].GetStr();
   }
-
   char* merged_string = Tcl_Merge(argc,argv);
   result = merged_string; // Copy into result string
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
-
   delete[] argv;
   delete[] mybuf;
+#else // TCL version
+  // Yeah!  Life is easier.
+  const char* *argv =  new const char*[size_t(argc)];
+  for(int i=0;i<argc;i++) argv[i] = (*args)[i].c_str();
+  char* merged_string = Tcl_Merge(argc,argv);
+  result = merged_string; // Copy into result string
+  Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
+  delete[] argv;
+#endif // TCL version
 
   return result;
 }
@@ -101,26 +110,35 @@ String Nb_MergeList(const vector<String>& args)
 String Nb_MergeList(const Nb_TclObjArray& arr)
 {
   String result;
-  int argc = arr.Size();
-  if(argc<1) {
+  if(arr.Size()<1) {
     return result; // Return empty string
   }
+  int argc = static_cast<int>(arr.Size());
+  assert(argc>0 && arr.Size() == argc); // Overflow check
 
+#if TCL_MAJOR_VERSION<8 || (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4)
   // Life would be so much simpler if Tcl would use const char*
   // instead of char* in parameter lists.  Sigh...
-  Oc_AutoBuf* mybuf = new Oc_AutoBuf[argc];
-  char **argv = new char*[argc];
+  Oc_AutoBuf* mybuf = new Oc_AutoBuf[size_t(argc)];
+  char **argv = new char*[size_t(argc)];
   for(int i=0;i<argc;i++) {
     mybuf[i].Dup(arr.GetString(i).c_str());
     argv[i] = mybuf[i].GetStr();
   }
-
   char* merged_string = Tcl_Merge(argc,argv);
   result = merged_string; // Copy into result string
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
-
   delete[] argv;
   delete[] mybuf;
+#else // TCL version
+  // Yeah!  Life is easier.
+  const char* *argv =  new const char*[size_t(argc)];
+  for(int i=0;i<argc;i++) argv[i] = arr.GetString(i).c_str();
+  char* merged_string = Tcl_Merge(argc,argv);
+  result = merged_string; // Copy into result string
+  Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
+  delete[] argv;
+#endif // TCL version
 
   return result;
 }

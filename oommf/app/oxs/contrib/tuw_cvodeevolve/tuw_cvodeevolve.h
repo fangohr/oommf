@@ -19,10 +19,10 @@
 #include "timedriver.h"
 #include "timeevolver.h"
 
-/* End includes */
-
 // cvode stuff
-#include "cvode/cvode.h"
+#include <cvode/cvode.h>
+
+/* End includes */
 
 typedef realtype real; 
 typedef int integer;

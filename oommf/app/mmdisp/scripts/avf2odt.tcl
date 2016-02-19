@@ -54,7 +54,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2odt
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 Oc_CommandLine Option console {} {}
 
@@ -120,21 +120,36 @@ Oc_CommandLine Option valfunc {
 
 set wma(defaultpos) 1
 Oc_CommandLine Option defaultpos {
-    {flag {expr {![catch {expr {$flag && $flag}}]}} "= 0 (default) or 1"}
+    {flag {expr {![catch {expr {$flag && $flag}}]}} "= 0 or 1 (default)"}
    } { global wma; set wma(defaultpos) $flag
 } {Include (1) or exclude (0) default point positions}
 
 set wma(defaultvals) 1
 Oc_CommandLine Option defaultvals {
-    {flag {expr {![catch {expr {$flag && $flag}}]}} "= 0 (default) or 1"}
+    {flag {expr {![catch {expr {$flag && $flag}}]}} "= 0 or 1 (default)"}
    } { global wma; set wma(defaultvals) $flag
 } {Include (1) or exclude (0) default output values}
 
+set wma(extravals) 0
+Oc_CommandLine Option extravals {
+    {flag {expr {![catch {expr {$flag && $flag}}]}} "= 0 (default) or 1"}
+   } { global wma; set wma(extravals) $flag
+} {Include (1) or exclude (0) extra output values (L1, L2, abs min and max)}
+
+set inputPattern [list]
 Oc_CommandLine Option ipat {
 	{pattern {} {is in glob-style}}
     } {
-	global inputPattern; set inputPattern $pattern
-} {Pattern specifying input files}
+	global inputPattern tcl_platform
+	if {[string compare windows $tcl_platform(platform)]==0} {
+	    # Convert to canonical form, replacing backslashes with
+	    # forward slashes, so pattern can be fed to glob.
+	    if {![catch {file join $pattern} xpat]} {
+		set pattern $xpat
+	    }
+	}
+	lappend inputPattern $pattern
+} {Pattern specifying input files} multi
 
 Oc_CommandLine Option opatexp {
 	{regexp {} {is a regular expression}}
@@ -148,6 +163,7 @@ Oc_CommandLine Option opatsub {sub} {
 } {Replacement in input filename to get output name} 
 set opatsub .odt
 
+set filesort none
 Oc_CommandLine Option filesort {
     {method {
 	expr [string match none $method] || ![catch "lsort $method {}"]
@@ -178,6 +194,7 @@ Oc_CommandLine Option normalize {
 } {
     global wma; set wma(normalize) $flag
 } {Output in file units (0) or normalized (1)}
+set wma(normalize) 0
 
 Oc_CommandLine Option numfmt {
     {fmt {expr {![catch {format $fmt 1.2}]}} "a C-style format string"}
@@ -205,31 +222,36 @@ if {[string match "ball" $wma(average)]} {
 
 # Turn -ipat pattern into list of input files
 set inGlob [list]
-if {[info exists inputPattern]} {
-    set inGlob [glob -nocomplain -- $inputPattern]
+if {[llength $inputPattern]>0} {
+   foreach pat $inputPattern {
+      set inGlob [concat $inGlob [lsort -dictionary [glob -nocomplain -- $pat]]]
+   }
 } else {
-    set inputPattern ""
+   # -ipat not specified.  On Windows, check infile for wildcards.
+   # (Unix shells automatically expand wildcards, Windows does not.)
+   if {[string match windows $tcl_platform(platform)]} {
+      set nowild {}
+      foreach f $infile {
+         if {([string first "*" $f]>=0 || [string first "?" $f]>=0) \
+                 && ![file exists $f]} {
+            # Convert any '\' to '/' before feeding to glob
+            if {![catch {file join $f} xf]} {set f $xf}
+            set inGlob [concat $inGlob \
+                            [lsort -dictionary [glob -nocomplain -- $f]]]
+         } else {
+            lappend nowild $f
+         }
+      }
+      set infile $nowild
+   }
 }
+
 
 # Form complete input file list
 set infilelist [concat $inGlob $infile]
 if {[llength $infilelist]<1} {
     puts stderr "ERROR: Empty input file list"
     exit 1
-}
-
-# Default processing for filesort
-if {![info exists filesort]} {
-    # filesort not specified on command line.  Provide default value
-    if {[llength $inputPattern]<1} {
-	set filesort "none"         ;# No -ipat
-    } else {
-	set filesort "-dictionary"  ;# -ipat specified
-    }
-} else {
-    if {[string match {} $filesort]} {
-	set filesort "none"
-    }
 }
 
 # Sort input file list
@@ -278,8 +300,8 @@ proc ConvertToEng { z sigfigs } {
     return [format "%se%d" $mantissa $exp2]
 }
 
-# Routine to extract numbers embedded in a text string.
-# Return value is the list of extracted numbers.
+# Routine to extract numbers embedded in a text string.  Return value is
+# the list of extracted numbers. (There is similar code in avfdiff.tcl.)
 proc ExtractNumbers { x } {
     set pat1 {-?[0-9]+\.?[0-9]*((e|E)(-|\+)?[0-9]+)?}
     set pat2 {-?[0-9]*\.?[0-9]+((e|E)(-|\+)?[0-9]+)?}
@@ -290,7 +312,6 @@ proc ExtractNumbers { x } {
 	    set neg 1
 	    set n [string range $n 1 end]
 	}
-
 	# Trim leading zeros.  Is this necessary if there is a
 	# leading minus sign?  If there is a leading minus sign
 	# and then also unnecessary zeros, perhaps the minus sign
@@ -300,26 +321,23 @@ proc ExtractNumbers { x } {
 	if {[string match ".*" $n] || [string length $n]==0} {
 	    set n "0$n"  ;# Affix leading zero
 	}
-
 	if {$n!=0 && $neg} { set n "-$n" }
-
 	lappend nlst $n
     }
     return $nlst
 }
 
 
-# Construct an value to put into the index column of the ODT
-# output file.  This is built using an expr command with
-# numeric data derived from the file index number, filename,
-# and description field in the input vector field file.  The
-# index number is referenced in the expr command by the variable
-# $i.  The first number embedded in the filename is $f1, the
+# Construct a value to put into the index column of the ODT output file.
+# This is built using an expr command with numeric data derived from the
+# file index number, filename, and description field in the input vector
+# field file.  The index number is referenced in the expr command by the
+# variable $i.  The first number embedded in the filename is $f1, the
 # second is $f2, etc.  Similarly, numbers embedded in the file
-# description field are referenced as $d1, $d2, ...  The variable
-# $f is the same as $f1 if the latter is defined, 0 otherwise.
-# Likewise $d is an alias for $d1, or 0 if there are no numbers
-# found in the description field.
+# description field are referenced as $d1, $d2, ...  The variable $f is
+# the same as $f1 if the latter is defined, 0 otherwise.  Likewise $d is
+# an alias for $d1, or 0 if there are no numbers found in the
+# description field.  (There is similar code in avfdiff.tcl.)
 proc ConstructIndexValue { valexpr fileno filename description } {
     set nameseq [ExtractNumbers $filename]
     set descseq [ExtractNumbers $description]

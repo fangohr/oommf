@@ -2,7 +2,7 @@
 #
 # Information about characters
 #
-# Last modified on: $Date: 2007-03-21 01:17:07 $
+# Last modified on: $Date: 2007/03/21 01:17:07 $
 # Last modified by: $Author: donahue $
 
 # NOTE: It appears that the SELECT callback must return an empty string

@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html583"
+<A NAME="tex2html588"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html579"
+<A NAME="tex2html584"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html573"
+<A NAME="tex2html578"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html585"
+<A NAME="tex2html590"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html581"
+<A NAME="tex2html586"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html584"
+<B> Next:</B> <A NAME="tex2html589"
   HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
-<B> Up:</B> <A NAME="tex2html580"
+<B> Up:</B> <A NAME="tex2html585"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html574"
+<B> Previous:</B> <A NAME="tex2html579"
   HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from</A>
 <BR>
 <BR>
@@ -57,7 +57,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Vector Field File Format Conversion:
           avf2ovf
-</H2><A NAME="16520"></A><A NAME="16521"></A><A NAME="16522"></A><A NAME="16523"></A>
+</H2><A NAME="16837"></A><A NAME="16838"></A><A NAME="16839"></A><A NAME="16840"></A>
 The <B>avf2ovf</B> program converts vector field files from any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
 (OVF, VIO) into the OVF 1.0 format.
@@ -71,9 +71,9 @@ The <B>avf2ovf</B> launch command is:
 <PRE>
 tclsh oommf.tcl avf2ovf [standard options] \
    [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] \
-   [-mag] [-pertran xoff yoff zoff] [-q] [-rpertran rxoff ryoff rzoff] \
-   [-subsample period] [infile [outfile]]
+   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] [-mag] \
+   [-pertran xoff yoff zoff] [-q] [-resample xstep ystep zstep order] \
+   [-rpertran rxoff ryoff rzoff] [-subsample period] [infile [outfile]]
 </PRE>
 where
 <DL>
@@ -152,7 +152,7 @@ where
   ASCII text header in all cases.)
 </DD>
 <DT><STRONG><TT><B>-grid <TT><B>&lt;</B></TT>rect|irreg<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>Specify output grid<A NAME="16541"></A> structure.  The default is <TT>rect</TT>,
+<DD>Specify output grid<A NAME="16858"></A> structure.  The default is <TT>rect</TT>,
   which will output a regular rectangular grid if the input is recognized
   as a regular rectangular grid.  The option ``-grid irreg'' forces
   irregular mesh style output.
@@ -192,7 +192,7 @@ where
  
  -->
 , in a periodic
-  fashion.  For example, if 
+  fashion.  For example, if
   <!-- MATH
  $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$
  -->
@@ -284,6 +284,16 @@ where
 <DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
 <DD>Quiet operation -- don't print informational messages.
 </DD>
+<DT><STRONG><TT><B>-resample xstep ystep zstep <TT><B>&lt;</B></TT>0|1|3<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Resample grid using specified step sizes.  Each step size must exactly
+  divide the grid extent in the corresponding direction, after any
+  clipping.  (That is, the export mesh consists of full cells only.)
+  The last argument specifies the polynomial interpolation order: 0 for
+  nearest value, 1 for trilinear interpolation, or 3 for fitting with
+  tricubic Catmull-Rom splines.  This control is only available for
+  input files having a rectangular grid structure.  Default is no
+  resampling.
+</DD>
 <DT><STRONG><TT><B>-rpertran rxoff ryoff rzoff</B></TT></STRONG></DT>
 <DD>Similar to -pertran, except the offsets
   <!-- MATH
@@ -327,7 +337,7 @@ where
 <!-- MATHEND
  
  -->
- value of 0.1 is equivalent 
+ value of 0.1 is equivalent
   to an <!-- MATH
  $\mathit{xoff}$
  -->
@@ -369,10 +379,11 @@ where
 <P>
 The <TT>-clip</TT> option is useful when one needs to do analysis on a
 small piece of a large simulation.  The <TT>-info</TT> option is helpful
-here to discover the extents of the original mesh.
+here to discover the extents of the original mesh.  The <TT>-clip</TT>
+option can also be used with <TT>-resample</TT> to enlarge the mesh.
 
 <P>
-The <TT>-flip</TT> option can change be used to align different simulations
+The <TT>-flip</TT> option can be used to align different simulations
 to the same orientation.  It can also be used to change a file into its
 mirror image; for example, ``-flip&nbsp;-x:y:z'' reflects the mesh through
 the <B><I>yz</I></B>
@@ -382,8 +393,8 @@ the <B><I>yz</I></B>
 -plane.
 
 <P>
-If both <TT>clip</TT> and <TT>-flip</TT> options are specified, then clipping is
-applied first, using the original coordinates.
+If multiple operations are specified, then the operation order is
+clip, resample, subsample, flip, and translate.
 
 <P>
 The <TT>-format text</TT> and <TT>-grid irreg</TT> options are handy for
@@ -417,22 +428,22 @@ boundary edges that don't run parallel to a coordinate axis.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html583"
+<A NAME="tex2html588"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html579"
+<A NAME="tex2html584"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html573"
+<A NAME="tex2html578"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html586"
+<A NAME="tex2html591"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html581"
+<A NAME="tex2html586"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

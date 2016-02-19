@@ -2,7 +2,7 @@
  *
  * Abstract mesh class and children
  *
- * Last modified on: $Date: 2011-06-30 07:29:35 $
+ * Last modified on: $Date: 2015/08/04 21:55:17 $
  * Last modified by: $Author: donahue $
  */
 
@@ -83,8 +83,8 @@ protected:
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
   // or out-of-bounds.
-  virtual int SetNodeValue(const Vf_Mesh_Index* key,
-			   const Nb_Vec3<OC_REAL8>& value) = 0;
+  virtual OC_BOOL SetNodeValue(const Vf_Mesh_Index* key,
+                               const Nb_Vec3<OC_REAL8>& value) = 0;
 
   void FillDataBoundaryList
   (Nb_List< Nb_Vec3<OC_REAL8> > &boundary_list) const;
@@ -106,7 +106,7 @@ public:
   const char* GetValueUnit() const;
   OC_REAL8m GetValueMultiplier() const { return ValueMultiplier; }
   OC_REAL8m GetDisplayValueScale() const { return DisplayValueScale; }
-  OC_INT4m SetDisplayValueScale(OC_REAL8m newscale) {
+  OC_BOOL SetDisplayValueScale(OC_REAL8m newscale) {
     if(newscale<=0.0) return 1;  // Bad value
     DisplayValueScale=newscale;
     return 0;
@@ -179,53 +179,49 @@ public:
 
   virtual const char* GetMeshType() const =0;
 
-  OC_INT4m GetRange(Nb_BoundingBox<OC_REAL4> &range) const;
-  virtual OC_INT4m GetPreciseRange(Nb_BoundingBox<OC_REAL8> &range) const =0;
+  void GetRange(Nb_BoundingBox<OC_REAL4> &range) const;
+  virtual void GetPreciseRange(Nb_BoundingBox<OC_REAL8> &range) const =0;
   /// Data + boundary range.  Tightness not required, but should
   /// be close.
 
-  OC_INT4m GetDataRange(Nb_BoundingBox<OC_REAL4> &range) const;
-  virtual OC_INT4m GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &range) const =0;
+  void GetDataRange(Nb_BoundingBox<OC_REAL4> &range) const;
+  virtual void GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &range) const =0;
   /// Data range only, no boundary.  Tightness not required, but
   /// should be close.
 
 
 #if !OC_REAL8m_IS_REAL8
-  OC_INT4m GetPreciseRange(Nb_BoundingBox<OC_REAL8m> &range) const {
+  void GetPreciseRange(Nb_BoundingBox<OC_REAL8m> &range) const {
     Nb_BoundingBox<OC_REAL8> range8;
-    OC_INT4m result = GetPreciseRange(range8);
+    GetPreciseRange(range8);
     range = range8;
-    return result;
   }
-  OC_INT4m GetPreciseDataRange(Nb_BoundingBox<OC_REAL8m> &range) const {
+  void GetPreciseDataRange(Nb_BoundingBox<OC_REAL8m> &range) const {
     Nb_BoundingBox<OC_REAL8> range8;
-    OC_INT4m result = GetPreciseDataRange(range8);
+    GetPreciseDataRange(range8);
     range = range8;
-    return result;
   }
 #elif !OC_REAL8m_IS_DOUBLE
-  OC_INT4m GetPreciseDataRange(Nb_BoundingBox<double> &range) const {
+  void GetPreciseDataRange(Nb_BoundingBox<double> &range) const {
     Nb_BoundingBox<OC_REAL8> range8;
-    OC_INT4m result = GetPreciseDataRange(range8);
+    GetPreciseDataRange(range8);
     range = range8;
-    return result;
   }
-  OC_INT4m GetPreciseRange(Nb_BoundingBox<double> &range) const {
+  void GetPreciseRange(Nb_BoundingBox<double> &range) const {
     Nb_BoundingBox<OC_REAL8> range8;
-    OC_INT4m result = GetPreciseRange(range8);
+    GetPreciseRange(range8);
     range = range8;
-    return result;
   }
 #endif
 
 
-  OC_INT4m GetBoundaryList(Nb_List< Nb_Vec3<OC_REAL4> > &boundary_list) const;
-  virtual OC_INT4m
+  void GetBoundaryList(Nb_List< Nb_Vec3<OC_REAL4> > &boundary_list) const;
+  virtual void
   GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> > &boundary_list) const =0;
   /// Used to draw outline polygon in display.  Should probably enclose
   /// all data points.
 
-  virtual OC_INT4m IsBoundaryFromData() const =0; // Should return 0
+  virtual OC_BOOL IsBoundaryFromData() const =0; // Should return 0
   /// if boundary was explicitly specified, 1 if it was generated
   /// by the mesh from data.
 
@@ -241,7 +237,7 @@ public:
   /// irregular meshes, a smaller value may make perfect sense.
   /// GetSubsampleGrit() should return a value >0 and <=1.
 
-  virtual OC_INT4m ColorQuantityTypes(Nb_List<Nb_DString> &types) const {
+  virtual OC_INDEX ColorQuantityTypes(Nb_List<Nb_DString> &types) const {
     types.Clear();
     return 0;
   }
@@ -252,7 +248,7 @@ public:
   // The next function is an aid for external routines working with
   // transformations and Vf_Mesh::GetDisplayList.  Return value is 1
   // if a change occurred, 0 othersize.
-  virtual OC_INT4m ColorQuantityTransform
+  virtual OC_BOOL ColorQuantityTransform
   (const Nb_DString /* flipstr */,
    const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
    Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out) const {
@@ -283,7 +279,7 @@ public:
   /// GetDisplayList is required.
 
 
-  virtual OC_INT4m GetDisplayList(OC_REAL4m &xstep_request,
+  virtual OC_INDEX GetDisplayList(OC_REAL4m &xstep_request,
 			       OC_REAL4m &ystep_request,
 			       OC_REAL4m &zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &range,
@@ -331,8 +327,8 @@ public:
   virtual void GetZsliceParameters(OC_REAL8m& zslicebase,
                                    OC_REAL8m& zstep) =0;
 
-  virtual OC_INT4m FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
-				   Nb_LocatedVector<OC_REAL8> &lv) =0;
+  virtual OC_BOOL FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
+                                     Nb_LocatedVector<OC_REAL8> &lv) =0;
   // Finds closest vector in mesh to location loc;  The return value
   // is non-zero on error, which probably means the point is outside
   // the range of the mesh.  NOTE: This routine is likely not optimized
@@ -341,8 +337,8 @@ public:
   // NOTE 2: The return lv.value is the value as stored in the mesh.
   // To get the "true" value in ValueUnit's, multipy by ValueMultiplier.
 
-  OC_INT4m FindClosest(const Nb_Vec3<OC_REAL4> &pos,
-		    Nb_LocatedVector<OC_REAL4> &lv);
+  OC_BOOL FindClosest(const Nb_Vec3<OC_REAL4> &pos,
+                      Nb_LocatedVector<OC_REAL4> &lv);
   // Low precision version of the previous.
 
   // Base constructor
@@ -382,12 +378,12 @@ public:
   // is responsible for calling the destructor on 'key' when finished.
   // NOTE: Unlike some other generic Vf_Mesh functions, these return
   //       OC_REAL8 vectors.
-  virtual int
+  virtual OC_BOOL
   GetFirstPt(Vf_Mesh_Index* &index,Nb_LocatedVector<OC_REAL8> &) const {
     index=NULL;
     return 0;
   }
-  virtual int
+  virtual OC_BOOL
   GetNextPt(Vf_Mesh_Index* &index,Nb_LocatedVector<OC_REAL8> &) const {
     index=NULL;
     return 0;
@@ -395,7 +391,12 @@ public:
 
   // Subtracts the values in specified mesh from *this.  Returns 0 on
   // success. Returns 1 if meshes aren't compatible.
-  virtual int SubtractMesh(const Vf_Mesh& other);
+  virtual OC_BOOL SubtractMesh(const Vf_Mesh& other);
+
+  // Computes *this x other -> *this, where 'x' is the pointwise vector
+  // (cross) product.  Returns 0 on success. Returns 1 if meshes aren't
+  // compatible.
+  virtual OC_BOOL CrossProductMesh(const Vf_Mesh& other);
 
 };
 
@@ -416,7 +417,7 @@ protected:
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
   // or out-of-bounds.
-  virtual int SetNodeValue(const Vf_Mesh_Index*,
+  virtual OC_BOOL SetNodeValue(const Vf_Mesh_Index*,
 			   const Nb_Vec3<OC_REAL8>&) {
     return 1; // All indexes are out-of-bounds
   }
@@ -426,25 +427,24 @@ public:
 
   Vf_EmptyMesh():Vf_Mesh("<empty>") {}
 
-  OC_INT4m GetPreciseRange(Nb_BoundingBox<OC_REAL8> &range) const {
-    range=empty_range; return 0;
+  void GetPreciseRange(Nb_BoundingBox<OC_REAL8> &range) const {
+    range=empty_range;
   }
-  OC_INT4m GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &range) const {
-    return GetPreciseRange(range);
+  void GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &range) const {
+    GetPreciseRange(range);
   }
-  OC_INT4m
+  void
   GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> > &boundary_list) const {
     boundary_list=empty_boundary_list;
-    return 0;
   }
 
-  OC_INT4m IsBoundaryFromData() const { return 0; }
+  OC_BOOL IsBoundaryFromData() const { return 0; }
 
   Nb_Vec3<OC_REAL4>  GetApproximateCellDimensions() const {
     return Nb_Vec3<OC_REAL4>(OC_REAL4(1.),OC_REAL4(1.),OC_REAL4(1.));
   }
   OC_REAL4m GetSubsampleGrit(void) const { return OC_REAL4m(1.); }
-  OC_INT4m GetDisplayList(OC_REAL4m &,OC_REAL4m &,OC_REAL4m &,
+  OC_INDEX GetDisplayList(OC_REAL4m &,OC_REAL4m &,OC_REAL4m &,
 		       const Nb_BoundingBox<OC_REAL4>&,
 		       const char *,
 		       OC_REAL8m,OC_BOOL,
@@ -463,8 +463,8 @@ public:
     zslicebase=0.0; zstep=1.0;
   }
 
-  virtual OC_INT4m FindPreciseClosest(const Nb_Vec3<OC_REAL8> &,
-				   Nb_LocatedVector<OC_REAL8> &) {
+  virtual OC_BOOL FindPreciseClosest(const Nb_Vec3<OC_REAL8> &,
+                                     Nb_LocatedVector<OC_REAL8> &) {
     return 1;  // Not supported.
   }
   virtual OC_INDEX GetSize() const { return 0; }
@@ -531,7 +531,7 @@ protected:
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
   // or out-of-bounds.
-  virtual int SetNodeValue(const Vf_Mesh_Index* key,
+  virtual OC_BOOL SetNodeValue(const Vf_Mesh_Index* key,
 			   const Nb_Vec3<OC_REAL8>& value);
 
 public:
@@ -540,6 +540,8 @@ public:
     return grid.GetSize(ksize,jsize,isize);
   }
   virtual OC_INDEX GetSize() const { return grid.GetSize(); }
+
+  // Default (empty) constructor
   Vf_GridVec3f():Vf_Mesh("Vf_GridVec3f",NULL,NULL) {}
 
   // The following constructor should be called from file input functions.
@@ -581,6 +583,16 @@ public:
   Vf_GridVec3f(const Vf_GridVec3f& import_mesh,
                OC_INDEX ioff,OC_INDEX joff,OC_INDEX koff);
 
+  // Copy with resampling from another mesh.  The new mesh has extent
+  // described by import newrange.  The number of cells along the x, y,
+  // and z axes are icount, jcount, and kcount, respectively.  The
+  // method order specifies the interpolation method; it should be
+  // either 0 (nearest), 1 (trilinear) or 3 (tricubic).
+  void ResampleCopy(const Vf_GridVec3f& other_mesh,
+                    const Nb_BoundingBox<OC_REAL8> &newrange,
+                    OC_INDEX icount,OC_INDEX jcount,OC_INDEX kcount,
+                    int method_order);
+
   inline Nb_Vec3<OC_REAL8>& GridVec(OC_INDEX i,OC_INDEX j,OC_INDEX k) {
     return grid(k,j,i);
   }
@@ -599,15 +611,14 @@ public:
     return NodalToProblemCoords(Nb_Vec3<OC_REAL8>(OC_REAL8(i),
                                                   OC_REAL8(j),OC_REAL8(k)));
   }
-  OC_INT4m GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
-  OC_INT4m GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
-  virtual OC_INT4m GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> >
-				       &boundary_list) const {
+  void GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
+  void GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
+  virtual void GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> >
+                                      &boundary_list) const {
     boundary_list=boundary;
-    return 0;
   }
 
-  OC_INT4m IsBoundaryFromData() const { return boundary_from_data; }
+  OC_BOOL IsBoundaryFromData() const { return boundary_from_data; }
 
   Nb_Vec3<OC_REAL4>  GetApproximateCellDimensions() const {
     return Nb_Vec3<OC_REAL4>(OC_REAL4(fabs(coords_step.x)),
@@ -615,15 +626,15 @@ public:
 			  OC_REAL4(fabs(coords_step.z)));
   }
   OC_REAL4m GetSubsampleGrit(void) const { return 1.0; }
-  virtual OC_INT4m ColorQuantityTypes(Nb_List<Nb_DString> &types) const;
-  virtual OC_INT4m ColorQuantityTransform
+  virtual OC_INDEX ColorQuantityTypes(Nb_List<Nb_DString> &types) const;
+  virtual OC_BOOL ColorQuantityTransform
   (const Nb_DString flipstr,
    const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
    Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out) const;
   virtual OC_REAL4m GetVecShade(const char* colorquantity,
 			     OC_REAL8m phase,OC_BOOL invert,
 			     const Nb_Vec3<OC_REAL4>& v) const;
-  virtual OC_INT4m GetDisplayList(OC_REAL4m &xstep_request,
+  virtual OC_INDEX GetDisplayList(OC_REAL4m &xstep_request,
 			       OC_REAL4m &ystep_request,
 			       OC_REAL4m &zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &dsprange,
@@ -640,14 +651,14 @@ public:
 
   virtual void GetZsliceParameters(OC_REAL8m& zslicebase,OC_REAL8m& zstep);
 
-  virtual OC_INT4m FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
-				   Nb_LocatedVector<OC_REAL8> &lv);
+  virtual OC_BOOL FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
+                                     Nb_LocatedVector<OC_REAL8> &lv);
   virtual ~Vf_GridVec3f(void) {}
 
-  virtual int
+  virtual OC_BOOL
   GetFirstPt(Vf_Mesh_Index* &key,Nb_LocatedVector<OC_REAL8> &lv) const;
 
-  virtual int
+  virtual OC_BOOL
   GetNextPt(Vf_Mesh_Index* &key,Nb_LocatedVector<OC_REAL8> &lv) const;
 
 };
@@ -699,8 +710,8 @@ protected:
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
   // or out-of-bounds.
-  virtual int SetNodeValue(const Vf_Mesh_Index* key,
-			   const Nb_Vec3<OC_REAL8>& value);
+  virtual OC_BOOL SetNodeValue(const Vf_Mesh_Index* key,
+                               const Nb_Vec3<OC_REAL8>& value);
 
 public:
 
@@ -732,11 +743,11 @@ public:
   virtual ~Vf_GeneralMesh3f(void) {}
 
   OC_INDEX GetSize() const { return mesh.GetSize();  }
-  OC_INT4m GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
-  OC_INT4m GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
-  virtual OC_INT4m GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> >
-				       &boundary_list) const;
-  OC_INT4m IsBoundaryFromData() const { return boundary_from_data; }
+  void GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
+  void GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const;
+  virtual void GetPreciseBoundaryList(Nb_List< Nb_Vec3<OC_REAL8> >
+                                      &boundary_list) const;
+  OC_BOOL IsBoundaryFromData() const { return boundary_from_data; }
 
   Nb_Vec3<OC_REAL4>  GetApproximateCellDimensions() const;
 
@@ -745,15 +756,15 @@ public:
   /// period relative to cellsize.  This should probably be set to the
   /// smallest neighbor distance in the mesh, but for now we'll just
   /// use 0.1.
-  virtual OC_INT4m ColorQuantityTypes(Nb_List<Nb_DString> &types) const;
-  virtual OC_INT4m ColorQuantityTransform
+  virtual OC_INDEX ColorQuantityTypes(Nb_List<Nb_DString> &types) const;
+  virtual OC_BOOL ColorQuantityTransform
   (const Nb_DString flipstr,
    const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
    Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out) const;
   virtual OC_REAL4m GetVecShade(const char* colorquantity,
 			     OC_REAL8m phase,OC_BOOL invert,
 			     const Nb_Vec3<OC_REAL4>& v) const;
-  virtual OC_INT4m GetDisplayList(OC_REAL4m &xstep_request,
+  virtual OC_INDEX GetDisplayList(OC_REAL4m &xstep_request,
 			       OC_REAL4m & ystep_request,
 			       OC_REAL4m & zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &range_request,
@@ -768,8 +779,8 @@ public:
 
   virtual void GetZsliceParameters(OC_REAL8m& zslicebase,OC_REAL8m& zstep);
 
-  virtual OC_INT4m FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
-				   Nb_LocatedVector<OC_REAL8> &lv);
+  virtual OC_BOOL FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
+                                     Nb_LocatedVector<OC_REAL8> &lv);
 
   ////////////// Vf_GeneralMesh3f specific functions ///////////////////
   void ResetMesh(); // Resets data w/o changing filename, title or desc.
@@ -805,10 +816,10 @@ public:
   void SetApproximateStepHints();
   void SetStepHints(const Nb_Vec3<OC_REAL8> &_step);
   Nb_Vec3<OC_REAL8> GetStepHints() const { return step_hints; }
-  virtual int
+  virtual OC_BOOL
   GetFirstPt(Vf_Mesh_Index* &key,Nb_LocatedVector<OC_REAL8> &lv) const;
 
-  virtual int
+  virtual OC_BOOL
   GetNextPt(Vf_Mesh_Index* &key,Nb_LocatedVector<OC_REAL8> &lv) const;
 
 };

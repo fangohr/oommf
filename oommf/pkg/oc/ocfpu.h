@@ -2,9 +2,9 @@
  *
  *	Floating point unit control
  *
- * NOTICE: Plase see the file ../../LICENSE
+ * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-19 22:54:04 $
+ * Last modified on: $Date: 2014/03/02 05:36:38 $
  * Last modified by: $Author: donahue $
  *
  */
@@ -35,19 +35,21 @@ class Oc_FpuControlData {
   void ReadData();  // Fills class data from thread FPU control registers
   void WriteData(); // Sets FPU control registers from class data
   void GetDataString(Oc_AutoBuf& buf);
+  static void MaskExceptions(); // Disables floating-point exceptions.
+  /// This allows for rolling infs and NaNs.
 
  private:
 
 #if OC_USE_X87
   OC_UINT2 x87_data;
-  void Setx87ControlWord (OC_UINT2 mode);
-  OC_UINT2 Getx87ControlWord();
+  static void Setx87ControlWord (OC_UINT2 mode);
+  static OC_UINT2 Getx87ControlWord();
 #endif
 
 #if OC_USE_SSE
   OC_UINT2 sse_data;
-  void SetSSEControlWord (OC_UINT2 mode);
-  OC_UINT2 GetSSEControlWord();
+  static void SetSSEControlWord (OC_UINT2 mode);
+  static OC_UINT2 GetSSEControlWord();
 #endif
 };
 

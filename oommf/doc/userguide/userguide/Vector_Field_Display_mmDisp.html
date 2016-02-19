@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000140000000000000000"></A><A NAME="sec:mmdisp"></A>
 <BR>
 Vector Field Display: mmDisp
-</H1><A NAME="14054"></A>
+</H1><A NAME="14611"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -69,13 +69,14 @@ Vector Field Display: mmDisp
 <P>
 <FONT SIZE="+2"><B>Overview</B></FONT>
 <BR>
-The application <B>mmDisp</B> displays two-dimensional spatial
-distributions of three-dimensional vectors (i.e., vector fields).  It
-can load vector fields from files in a variety of formats, or it can
-accept vector field data from a client application, typically a running
-solver.  <B>mmDisp</B> offers a rich interface for
-controlling the display of vector field data, and can also save the data
-to a file and produce Postscript print output.
+The application <B>mmDisp</B> displays two-dimensional slices of
+three-dimensional spatial distributions of vector fields.  <B>mmDisp</B>
+currently supports display of 1D (i.e., scalar) and 3D vector data.  It
+can load field data from files in a variety of formats, or it can accept
+data from client applications, such as a running solver.  <B>mmDisp</B>
+offers a rich interface for controlling the display of vector field
+data, and can also save the data to a file or produce PostScript print
+output.
 
 <P>
 
@@ -116,7 +117,7 @@ That file will be opened on startup.
 Input to <B>mmDisp</B> may come from either a file or from a client
 application (typically a running solver), in any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats"
- NAME="14084">OOMMF vector field formats</A>.
+ NAME="14642">OOMMF vector field formats</A>.
 Other file formats can also be supported if a translation filter program
 is available.
 
@@ -138,7 +139,7 @@ display window size), or whether their values should be held constant
 while loading the file.
 
 <P>
-<A NAME="14091"></A>
+<A NAME="14649"></A>
 
 <P>
 <B>mmDisp</B> permits local customization allowing for automatic
@@ -153,9 +154,9 @@ format from standard input and writes to standard output the same data
 in one of the formats supported by <B>mmDisp</B>.  In its default
 configuration, <B>mmDisp</B> recognizes the patterns <TT>.gz</TT>, <TT>.z</TT>,
 and <TT>.zip</TT>, and invokes the translation
-program <TT>gzip -dc</TT><A NAME="14107"></A> to perform the
+program <TT>gzip -dc</TT><A NAME="14665"></A> to perform the
 ``translation.''  In this way, support for reading
-compressed<A NAME="14108"></A> files is
+compressed<A NAME="14666"></A> files is
 ``built in'' to <B>mmDisp</B> on any platform where the <B>gzip</B>
 program is installed.
 
@@ -163,7 +164,7 @@ program is installed.
 There are two categories of translations supported: decompression and
 format conversion.  Both are modified by the usual method of
 <A HREF="Advanced_Installation.html#sec:custom"
- NAME="14115">local customization</A>.  The
+ NAME="14673">local customization</A>.  The
 command governing decompression in the customization file is of the form
 <BLOCKQUOTE><PRE>
 Oc_Option Add * Nb_InputFilter decompress {{.gz .zip} {gzip -dc}}
@@ -199,7 +200,7 @@ Oc_Option Add * Nb_InputFilter ovf {.bar foo}
 This assumes that the program <TT>foo</TT> accepts input of the form
 <TT><B>.bar</B></TT> on standard input and writes the translated results to
 standard output.
-<A NAME="14135"></A>
+<A NAME="14693"></A>
 
 <P>
 
@@ -207,32 +208,32 @@ standard output.
 <FONT SIZE="+2"><B>Outputs</B></FONT>
 <BR>
 The vector field displayed by <B>mmDisp</B> may be saved to disk via the
-<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="14139"></A> dialog box.  The output
+<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="14697"></A> dialog box.  The output
 is in the <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="14144">OVF format</A>.  The OVF file
+ NAME="14702">OVF format</A>.  The OVF file
 options may be set by selecting the appropriate radio buttons in the
 OVF File Options panel.  The <FONT COLOR="#800000"><B>Title</B></FONT> and <FONT COLOR="#800000"><B>Desc</B></FONT> fields may be
 edited before saving.  Enabling the <FONT COLOR="#800000"><B>Browse</B></FONT> button allows for
 saving multiple files without closing the ``Save File'' dialog box.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14149"></A> dialog is used to
-produce a Postscript file of the current display.  On Unix systems, the
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14707"></A> dialog is used to
+produce a PostScript file of the current display.  On Unix systems, the
 output may be sent directly to a
-printer<A NAME="14150"></A> by filling the
+printer<A NAME="14708"></A> by filling the
 <FONT COLOR="#800000"><B>Print to:</B></FONT> entry with the appropriate pipe command, e.g.,
 |<TT>lpr</TT>.  (The exact form is system dependent.)  The other
 print dialog box options are described in the
 <A HREF="#sec:mmdispconfig">configuration files</A> section below.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="14156"></A> dialog
+The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="14714"></A> dialog
 allows one to save to disk a configuration file holding the current
 display parameters.  This file can be used to affect startup display
 parameters, or used as input to the <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="14161">avf2ppm</A> and
+ NAME="14719">avf2ppm</A> and
 <A HREF="Making_PostScript_from_Vect.html#sec:avf2ps"
- NAME="14166">avf2ps</A> command line utilities
+ NAME="14724">avf2ps</A> command line utilities
 that convert files from the OVF format into bitmap images and
 PostScript printer files, respectively.  (mmDisp does not provide
 direct support for writing bitmap files.)  Details of the configuration
@@ -282,7 +283,7 @@ display.
 <P>
 Columns 2-4 in the Configure dialog box control the use of color.  Both
 arrows and pixels may be independently colored to indicate some
-quantity<A NAME="14188"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
+quantity<A NAME="14746"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
 controls which scalar quantity the color of the arrow or pixel
 represents.  Available color quantities include vector <B><I>x</I></B>
 <!-- MATHEND
@@ -302,7 +303,7 @@ divergence is also available for display.
 
 <P>
 The assignment of a color to a quantity value is determined by the
-<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="14191"></A> selected.  Colormaps are labeled by a
+<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="14749"></A> selected.  Colormaps are labeled by a
 sequence of colors that are mapped across the range of the selected
 quantity.  For example, if the ``Red-Black-Blue'' colormap is applied to
 the <FONT COLOR="#800000"><B>Color Quantity</B></FONT> ``z'', then vectors pointing into the
@@ -374,11 +375,11 @@ request arrows or pixels larger or smaller than the default size.
 
 <P>
 Below the Arrow and Pixel Controls are several additional controls.  The
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14202"></A><A NAME="html:mmdispdatascale"></A> entry
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14760"></A><A NAME="html:mmdispdatascale"></A> entry
 affects the data value scaling.  As described above, all arrows are
 displayed with length between zero and full-scale.  The full-scale arrow
 length corresponds to some scalar value of the magnitude of the vector
-field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14205"></A> entry allows the user to
+field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14763"></A> entry allows the user to
 set the value at which the drawn arrow length goes full-scale.  Any
 vectors in the vector field with magnitude equal to or greater than the
 data scale value will be represented by arrows drawn at full scale.
@@ -386,7 +387,7 @@ Other vectors will be represented by shorter arrows with length
 determined by a linear scale between zero and the data scale value.
 Similarly, the data scale value controls the range of values spanned by
 the colormap used to color pixels.  The usual use of the
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14207"></A> entry is to reduce the data
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14765"></A> entry is to reduce the data
 scale value so that more detail can be seen in those portions of
 the vector field which have magnitude less than other parts of the
 vector field.
@@ -400,7 +401,7 @@ value.  The initial (default) data scale value is usually the maximum
 vector magnitude in the field, so at this setting no arrows are
 truncated.  Entering <TT><B>0</B></TT> into the data scale box will cause the data
 scale to be reset to the default value.  (For <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="14213">OVF files</A>,
+ NAME="14771">OVF files</A>,
 the default data scale value is set from the <TT>ValueRangeMaxMag</TT>
 header line.  This is typically set to the maximum vector magnitude, but
 this is not guaranteed.)  The data scale control is intended primarily
@@ -409,7 +410,7 @@ may also be used to adjust the pixel display contrast for any field
 type.
 
 <P>
-The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="14216"></A> entry controls the spatial scaling of
+The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="14774"></A> entry controls the spatial scaling of
 the display.  The value roughly corresponds to the number of pixels per
 vector in the fully-sampled vector field.  (This value is not affected
 by the subsampling rate.)
@@ -419,7 +420,7 @@ The <FONT COLOR="#800000"><B>Margin</B></FONT> entry specifies the margin size, 
 maintained around the vector field.
 
 <P>
-The next row of entry boxes control slice<A NAME="14218"></A>
+The next row of entry boxes control slice<A NAME="14776"></A>
 display.  Slice selection allows display of that subset of the data
 that is within a specified distance of a plane running perpendicular
 to the view axis.  The location of that plane with respect to the view
@@ -438,7 +439,7 @@ documentation for more on mesh spatial units.)
 
 <P>
 Below the slice contols are controls to specify whether or not a
-bounding polygon<A NAME="14226"></A> is displayed, and the background
+bounding polygon<A NAME="14784"></A> is displayed, and the background
 color for the display window.
 
 <P>
@@ -513,7 +514,7 @@ This is a limited ``Undo'' feature.
 
 <P>
 Below the data scale and zoom controls in the control bar is the slice
-center selection control<A NAME="14238"></A>.  This will be
+center selection control<A NAME="14796"></A>.  This will be
 labeled <FONT COLOR="#800000"><B>Z-slice</B></FONT>, <FONT COLOR="#800000"><B>X-slice</B></FONT>, or <FONT COLOR="#800000"><B>Y-slice</B></FONT>, depending on
 which view axis is selected.  The thickness of the slice can be set
 from the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
@@ -543,10 +544,10 @@ key combinations are active:
 <LI><TT><B>CTRL-o</B></TT> - same as menu selection <FONT COLOR="#800000"><B>File|Open...</B></FONT>
 </LI>
 <LI><TT><B>CTRL-s</B></TT> - same as menu selection 
-                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="14254"></A>
+                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="14812"></A>
 </LI>
 <LI><TT><B>CTRL-p</B></TT> - same as menu selection
-                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14257"></A>
+                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14815"></A>
 </LI>
 <LI><TT><B>CTRL-c</B></TT> - same as menu selection
         <FONT COLOR="#800000"><B>Options|Configure...</B></FONT>
@@ -676,7 +677,7 @@ the <TT>plot_config</TT> array:
 <DD>Set to 1 to display arrows, 0 to not draw arrows.
 </DD>
 <DT><STRONG><TT><B>arrow,autosample</B></TT></STRONG></DT>
-<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="14330"></A> and
+<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="14888"></A> and
  automatically determine a ``reasonable'' subsampling rate for the
  arrows.  Set to 0 to turn off this feature.
 </DD>
@@ -691,12 +692,12 @@ the <TT>plot_config</TT> array:
   <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog.
 </DD>
 <DT><STRONG><TT><B>arrow,colorcount</B></TT></STRONG></DT>
-<DD>Number of discretization<A NAME="14338"></A> levels to use
+<DD>Number of discretization<A NAME="14896"></A> levels to use
   from the colormap.  A value of zero will color all arrows with the
   first color in the colormap.
 </DD>
 <DT><STRONG><TT><B>arrow,quantity</B></TT></STRONG></DT>
-<DD>Scalar quantity the arrow color<A NAME="14340"></A> is to represent.
+<DD>Scalar quantity the arrow color<A NAME="14898"></A> is to represent.
  Supported values include <TT>x</TT>, <TT>y</TT>, <TT>z</TT>, <TT>xy-angle</TT>,
  <TT>xz-angle</TT>, <TT>yz-angle</TT>, and <TT>slice</TT>.  The
  <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog presents the complete list of
@@ -741,7 +742,7 @@ the <TT>plot_config</TT> array:
 <DD>Specify the background color.
 </DD>
 <DT><STRONG><TT><B>misc,drawboundary</B></TT></STRONG></DT>
-<DD>If 1, then draw the bounding polygon<A NAME="14370"></A>, if any, as
+<DD>If 1, then draw the bounding polygon<A NAME="14928"></A>, if any, as
  specified in the input vector field file.
 </DD>
 <DT><STRONG><TT><B>misc,boundarycolor</B></TT></STRONG></DT>
@@ -751,7 +752,7 @@ the <TT>plot_config</TT> array:
 <DD>Width of the bounding polygon, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,margin</B></TT></STRONG></DT>
-<DD>The size of the border margin<A NAME="14374"></A>, in pixels.
+<DD>The size of the border margin<A NAME="14932"></A>, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,defaultwindowwidth</B></TT>, <TT><B>misc,defaultwindowheight</B></TT></STRONG></DT>
 <DD>Width and height of initial display viewport, in pixels.
@@ -762,7 +763,7 @@ the <TT>plot_config</TT> array:
  ignored during <B>mmDisp</B> initialization, but are written out by the
  <FONT COLOR="#800000"><B>File|Write config...</B></FONT> command as a convenience for the
  <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="14385">avf2ppm</A> command line
+ NAME="14943">avf2ppm</A> command line
  utility.
 </DD>
 <DT><STRONG><TT><B>misc,rotation</B></TT></STRONG></DT>
@@ -824,7 +825,7 @@ the <TT>plot_config</TT> array:
 
 <P>
 The <TT>print_config</TT> array controls printing defaults, as displayed in
-the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14418"></A> dialog box:
+the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14976"></A> dialog box:
 <DL>
 <DT><STRONG><TT><B>orient</B></TT></STRONG></DT>
 <DD>Paper orientation, either landscape or portrait.
@@ -914,7 +915,7 @@ file <TT><B>mmdisp.config</B></TT>.
 <P>
 The selection of vectors for display determined by the
 <FONT COLOR="#800000"><B>Subsample</B></FONT> value differs depending on whether or not the data
-lie on a regular grid<A NAME="14443"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
+lie on a regular grid<A NAME="15001"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
 values and determines the ratio of data points to displayed points.  For
 example, a value of 5 means that every fifth vector on the grid is
 displayed.  This means that the number of vectors displayed is 25 times
@@ -931,128 +932,6 @@ location in the irregular grid, not at the center of the square
 grid cell.  As the subsample rate changes, the set of displayed
 vectors also changes, which can in some circumstances substantially
 change the appearance of the displayed vector field.
-
-<P>
-
-<A NAME="pt:wwwhelpersetup"></A>
-
-<P>
-<FONT SIZE="+2"><B>Using <B>mmDisp</B> as a WWW browser helper application</B></FONT>
-<BR>
-<P>
-You may configure your web browser<A NAME="14447"></A> to
-automatically launch <B>mmDisp</B> when downloading an OVF file.  The
-exact means to do this depends on your browser, but a couple of examples
-are presented below.
-
-<P>
-In Netscape Navigator 4.X<A NAME="14449"></A>, bring up the
-<FONT COLOR="#800000"><B>Edit|Preferences...</B></FONT> dialog box, and select the
-<TT>Category</TT> <FONT COLOR="#800000"><B>Navigator|Applications</B></FONT> subwindow.  Create a
-<FONT COLOR="#800000"><B>New Type</B></FONT>, with the following fields:
-<DL>
-<DT><STRONG>Description of type:</STRONG></DT>
-<DD>OOMMF Vector Field
-</DD>
-<DT><STRONG>MIME Type:</STRONG></DT>
-<DD>application/x-oommf-vf
-</DD>
-<DT><STRONG>Suffixes:</STRONG></DT>
-<DD>ovf,omf,ohf,obf
-</DD>
-<DT><STRONG>Application:</STRONG></DT>
-<DD><EM>tclsh</EM> <EM>oommfroot</EM>/oommf.tcl +fg mmDisp -net 0 ``<EM>arg</EM>''
-</DD>
-</DL>
-
-<P>
-On Windows platforms, the <TT>Suffixes</TT> field is labeled
-<TT>File Extension</TT>, and only one file extension may be entered.
-Files downloaded from a web server are handled according to their
-MIME Type, rather than their file extension, so that restriction
-isn't important when web browsing.  If you wish to have files on the
-local disk with all the above file extensions recognized as
-OOMMF Vector Field<A NAME="14463"></A> files, you must repeat the
-<FONT COLOR="#800000"><B>New Type</B></FONT> entry for each file extension.  In the <TT>Application</TT>
-field, the values of <EM>tclsh</EM>, <EM>oommfroot</EM>, and <EM>arg</EM> vary
-with your platform configuration.  The value of <EM>tclsh</EM> is the full
-path to the <B>tclsh</B> application on your platform (see
-<A HREF="Command_Line_Launching.html#sec:cll">Command Line Launching</A>).  On Unix
-systems, <EM>tclsh</EM> may be omitted, assuming that the
-<TT><B>oommf.tcl</B></TT> script is executable.  If <EM>tclsh</EM> is not omitted
-on Unix systems, Netscape may issue a security warning each time it
-opens an OOMMF Vector Field file.  The value of <EM>oommfroot</EM> should
-be the full path to the root directory of your OOMMF installation.
-The value of <EM>arg</EM> should be ``%1'' on Windows and ``%s'' on
-Unix.  The MIME type ``application/x-oommf-vf'' must be configured on
-any HTTP server which provides OOMMF Vector Field files as well.
-
-<P>
-For Microsoft Internet
-Explorer<A NAME="14480"></A>&nbsp;3.X, bring up the
-<FONT COLOR="#800000"><B>View|Options...</B></FONT> dialog box, and select the
-<FONT COLOR="#800000"><B>Program</B></FONT> tab.  Hit the
-<FONT COLOR="#800000"><B>File Types...</B></FONT> button, followed by the
-<FONT COLOR="#800000"><B>New Type...</B></FONT> button. Fill the resulting dialog box with
-<DL>
-<DT><STRONG>Description of type:</STRONG></DT>
-<DD>OOMMF Vector Field
-</DD>
-<DT><STRONG>Associated extension:</STRONG></DT>
-<DD>ovf
-</DD>
-<DT><STRONG>Content type (MIME):</STRONG></DT>
-<DD>application/x-oommf-vf
-</DD>
-</DL>
-You may also disable the <FONT COLOR="#800000"><B>Confirm open after download</B></FONT> checkbutton
-if you want.  Then hit the <FONT COLOR="#800000"><B>New...</B></FONT> button below the
-<TT>Actions:</TT> window, and in the pop-up fill in
-<DL>
-<DT><STRONG>Action:</STRONG></DT>
-<DD>open
-</DD>
-<DT><STRONG>Application used to perform action:</STRONG></DT>
-<DD> 
-<BR><EM>tclsh</EM> <EM>oommfroot</EM>/oommf.tcl +fg mmDisp -net 0 ``%1''
-</DD>
-</DL>
-Hit <FONT COLOR="#800000"><B>OK</B></FONT>, <FONT COLOR="#800000"><B>Close</B></FONT>, <FONT COLOR="#800000"><B>Close</B></FONT> and <FONT COLOR="#800000"><B>OK</B></FONT>.  Replace <EM>tclsh</EM>
-and <EM>oommfroot</EM> with the appropriate paths on your system
-(cf. <A HREF="Command_Line_Launching.html#sec:cll">Command Line Launching</A>).  This will
-set up an association on files with the .ovf extension. Internet
-Explorer 3.X apparently ignores the HTML Content Type field, so you must
-repeat this process for each file extension (.ovf, .omf, .ohf, .obf and
-.svf) that you want to recognize.  This means, however, that Internet
-Explorer will make the appropriate association even if the HTML server
-does not properly set the HTML Content Type field.
-
-<P>
-Microsoft Internet Explorer 4.X is integrated with the Windows operating
-system.  Internet Explorer 4.X doesn't offer any means to set up
-associations between particular file types and the applications which
-should be used to open them.  Instead, this association is configured
-within the Windows operating system.
-To set up associations for the
-OOMMF Vector Field file type on Windows&nbsp;95 or Windows&nbsp;NT,
-select <FONT COLOR="#800000"><B>Settings|Control Panel</B></FONT> from the <FONT COLOR="#800000"><B>Start</B></FONT> menu.
-The Control Panel window appears.  Select <FONT COLOR="#800000"><B>View|Options...</B></FONT>
-to display a dialog box.
-A Windows&nbsp;98 shortcut to the same dialog box is to select
-<FONT COLOR="#800000"><B>Settings|Folder Options...</B></FONT> from the <FONT COLOR="#800000"><B>Start</B></FONT> menu.
-Select the <FONT COLOR="#800000"><B>File Types</B></FONT> tab and proceed as
-described above for Internet Explorer 3.X.
-Depending on the exact release/service patch of your Windows operating
-system, the exact instructions may vary.
-
-<P>
-Once you have your browser configured, you can test with the following
-URL:
-<DIV ALIGN="CENTER">
-<A NAME="tex2html24"
-  HREF="http://math.nist.gov/~MDonahue/cubevortex.ovf">http://math.nist.gov/~MDonahue/cubevortex.ovf</A>
-
-</DIV>
 
 <P>
 
@@ -1080,6 +959,6 @@ meshes.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

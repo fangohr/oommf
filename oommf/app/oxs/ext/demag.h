@@ -41,26 +41,35 @@
 class Oxs_Demag
   : public Oxs_Energy, public Oxs_EnergyPreconditionerSupport {
 
+#if OOMMF_THREADS
   friend class Oxs_FFTLocker;
   friend class _Oxs_DemagFFTxThread;
   friend class _Oxs_DemagiFFTxDotThread;
-  friend class _Oxs_DemagFFTyThread;
-  friend class _Oxs_DemagFFTyConvolveThread;
-  friend class _Oxs_DemagFFTzConvolveThread;
   friend class _Oxs_DemagFFTyzConvolveThread;
+#endif // OOMMF_THREADS
+
 public:
   // Sun CC, Forte Developer 7 C++ 5.4 2002/03/09, complains inside
   // Oxs_FFTLocker about A_coefs not being accessible if this declaration
   // is inside private: block.  OK, fine...
+  // More recently, this struct is referenced by thread classes in
+  // demag-threaded.cc
   struct A_coefs {
+  public:
     OXS_FFT_REAL_TYPE A00;
     OXS_FFT_REAL_TYPE A01;
     OXS_FFT_REAL_TYPE A02;
     OXS_FFT_REAL_TYPE A11;
     OXS_FFT_REAL_TYPE A12;
     OXS_FFT_REAL_TYPE A22;
+    A_coefs() {}
+    A_coefs(OXS_FFT_REAL_TYPE iA00,OXS_FFT_REAL_TYPE iA01,
+            OXS_FFT_REAL_TYPE iA02,OXS_FFT_REAL_TYPE iA11,
+            OXS_FFT_REAL_TYPE iA12,OXS_FFT_REAL_TYPE iA22)
+      : A00(iA00), A01(iA01), A02(iA02), A11(iA11), A12(iA12), A22(iA22) {}
   };
 
+#if OOMMF_THREADS
   // Sun CC, Forte Developer 7 C++ 5.4 2002/03/09, complains inside
   // Oxs_FFTLocker about Oxs_FFTLocker_Info not being accessible if
   // this declaration is inside private: block.  OK, fine...
@@ -73,8 +82,9 @@ public:
     OC_INDEX cdimx;
     OC_INDEX cdimy;
     OC_INDEX cdimz;
+    OC_INDEX Hxfrm_jstride;
+    OC_INDEX Hxfrm_kstride;
     OC_INDEX embed_block_size;
-    OC_INDEX embed_yzblock_size;
     String name; // In use, we just set this to
     /// "InstanceName() + this_addr", so that each
     /// Oxs_Demag object gets a separate locker.
@@ -83,48 +93,52 @@ public:
     Oxs_FFTLocker_Info()
       : rdimx(0), rdimy(0), rdimz(0),
         cdimx(0), cdimy(0), cdimz(0),
-        embed_block_size(0), embed_yzblock_size(0) {}
+        Hxfrm_jstride(0),Hxfrm_kstride(0),
+        embed_block_size(0) {}
 
     Oxs_FFTLocker_Info(OC_INDEX in_rdimx,OC_INDEX in_rdimy,OC_INDEX in_rdimz,
                        OC_INDEX in_cdimx,OC_INDEX in_cdimy,OC_INDEX in_cdimz,
+                       OC_INDEX in_Hxfrm_jstride,OC_INDEX in_Hxfrm_kstride,
                        OC_INDEX in_embed_block_size,
-                       OC_INDEX in_embed_yzblock_size,
                        const char* in_name)
       : rdimx(in_rdimx), rdimy(in_rdimy), rdimz(in_rdimz),
         cdimx(in_cdimx), cdimy(in_cdimy), cdimz(in_cdimz),
-        embed_block_size(in_embed_block_size),
-        embed_yzblock_size(in_embed_yzblock_size), name(in_name) {}
+        Hxfrm_jstride(in_Hxfrm_jstride),Hxfrm_kstride(in_Hxfrm_kstride),
+        embed_block_size(in_embed_block_size), name(in_name) {}
+
     void Set(OC_INDEX in_rdimx,OC_INDEX in_rdimy,OC_INDEX in_rdimz,
              OC_INDEX in_cdimx,OC_INDEX in_cdimy,OC_INDEX in_cdimz,
+             OC_INDEX in_Hxfrm_jstride,OC_INDEX in_Hxfrm_kstride,
              OC_INDEX in_embed_block_size,
-             OC_INDEX in_embed_yzblock_size,
              const String& in_name) {
       rdimx = in_rdimx;      rdimy = in_rdimy;      rdimz = in_rdimz;
       cdimx = in_cdimx;      cdimy = in_cdimy;      cdimz = in_cdimz;
+      Hxfrm_jstride = in_Hxfrm_jstride;
+      Hxfrm_kstride = in_Hxfrm_kstride;
       embed_block_size = in_embed_block_size;
-      embed_yzblock_size = in_embed_yzblock_size;
       name = in_name;
     }
     // Default copy constructor and assignment operator are okay.
   };
+#endif // OOMMF_THREADS
 
 private:
 #if REPORT_TIME
-  mutable Nb_StopWatch inittime;
+  mutable Nb_Timer inittime;
 
-  mutable Nb_StopWatch fftforwardtime;
-  mutable Nb_StopWatch fftxforwardtime;
-  mutable Nb_StopWatch fftyforwardtime;
+  mutable Nb_Timer fftforwardtime;
+  mutable Nb_Timer fftxforwardtime;
+  mutable Nb_Timer fftyforwardtime;
 
-  mutable Nb_StopWatch fftinversetime;
-  mutable Nb_StopWatch fftxinversetime;
-  mutable Nb_StopWatch fftyinversetime;
+  mutable Nb_Timer fftinversetime;
+  mutable Nb_Timer fftxinversetime;
+  mutable Nb_Timer fftyinversetime;
 
-  mutable Nb_StopWatch convtime;
-  mutable Nb_StopWatch dottime;
+  mutable Nb_Timer convtime;
+  mutable Nb_Timer dottime;
 
   enum { dvltimer_number = 10 };
-  mutable Nb_StopWatch dvltimer[dvltimer_number];
+  mutable Nb_Timer dvltimer[dvltimer_number];
 #endif // REPORT_TIME
 
   mutable OC_INDEX rdimx; // Natural size of real data
@@ -143,6 +157,14 @@ private:
   mutable int yperiodic;  // periodic in indicated direction.
   mutable int zperiodic;
 
+
+#if OOMMF_THREADS
+  mutable OC_INDEX Hxfrm_jstride;
+  mutable OC_INDEX Hxfrm_kstride;
+  mutable Oxs_FFTLocker_Info locker_info; // Wraps most of the above
+  /// info, for easy access by threads.
+#endif // OOMMF_THREADS
+
   mutable OC_UINT4m mesh_id;
 
   // The A## arrays hold demag coefficients, transformed into
@@ -153,9 +175,15 @@ private:
   // used as intermediary storage for the A## values, which
   // for convenience are computed at full size before being
   // transfered to the 1/8-sized A## storage arrays.
-  //   All of these arrays are actually arrays of complex-valued
-  // three vectors, but are handled as simple REAL arrays.
-  mutable A_coefs* A;
+  //   The frequency domain data (i.e., FFT images) are in truth arrays
+  // of complex-valued three vectors, but are handled as REAL arrays of
+  // six vectors --- with the exception of the transform of the A_coefs
+  // data, which due to symmetry has imaginary part = 0 in both space
+  // and frequency domains.
+  mutable Oxs_StripedArray<A_coefs> A; // For single threaded code,
+  /// indexing order or (x=i,y=j,z=k) increments i fastest and k
+  /// slowest.  Multi-threaded code flips this so that j increments
+  /// fastest and i slowest.
 
 #if !OOMMF_THREADS
   mutable OXS_FFT_REAL_TYPE *Hxfrm;
@@ -163,8 +191,6 @@ private:
   // In the threaded code, the memory pointed to by Hxfrm
   // is managed by an Oxs_StripedArray object
   mutable Oxs_StripedArray<OXS_FFT_REAL_TYPE> Hxfrm_base;
-  mutable Oxs_StripedArray<OXS_FFT_REAL_TYPE> Hxfrm_base_yz;
-  /// Hxfrm_base_yz is used with the FFTyz+embedded convolution code
 #endif
 
   OC_REAL8m asymptotic_radius;
@@ -172,10 +198,11 @@ private:
   /// are computed using asymptotic (dipolar and higher) approximation
   /// instead of Newell's analytic formulae.
 
+#if !OOMMF_THREADS
   mutable OXS_FFT_REAL_TYPE *Mtemp;  // Temporary space to hold
-  /// Ms[]*m[].  The plan is to make this space unnecessary
-  /// by introducing FFT functions that can take Ms as input
-  /// and do the multiplication on the fly.
+  /// Ms[]*m[].  Not needed if using FFT routines that can take Ms as
+  /// input and do the multiplication on the fly.
+#endif
 
   // Object to perform FFTs.  All transforms are the same size, so we
   // only need one Oxs_FFT3DThreeVector object.  (Note: A
@@ -200,30 +227,34 @@ private:
   const int MaxThreadCount;
   mutable Oxs_ThreadTree threadtree;
 
-  // FFT objects for non-threaded access
-  mutable Oxs_FFT1DThreeVector fftx;
-  mutable Oxs_FFTStrided ffty;
-  mutable Oxs_FFTStrided fftz;
-
+  // Thread-specific data
   class Oxs_FFTLocker : public Oxs_ThreadMapDataObject {
   public:
     Oxs_FFT1DThreeVector fftx;
     Oxs_FFTStrided ffty;
     Oxs_FFTStrided fftz;
-    OXS_FFT_REAL_TYPE* ifftx_scratch;
-    OXS_FFT_REAL_TYPE* fftz_Hwork;
-    OXS_FFT_REAL_TYPE* fftyz_Hwork;
-    char* fftyz_Hwork_base; // Block used for aligning fftyz_Hwork
-    OXS_FFT_REAL_TYPE* fftyconvolve_Hwork;
-    A_coefs* A_copy;
-    size_t ifftx_scratch_size;
-    size_t fftz_Hwork_size;
-    size_t fftyz_Hwork_size;      // In OXS_FFT_REAL_TYPE units
-    size_t fftyz_Hwork_base_size; // For alignment; count in bytes
-    size_t fftyconvolve_Hwork_size;
-    size_t A_copy_size;
 
-    Oxs_FFTLocker(const Oxs_FFTLocker_Info& info);
+    OXS_FFT_REAL_TYPE* fftx_scratch;
+    char*  fftx_scratch_base; // Block used for aligning fftx_scratch
+    size_t fftx_scratch_size;
+    size_t fftx_scratch_base_size;
+
+    OXS_FFT_REAL_TYPE* ffty_Hwork;
+    char*  ffty_Hwork_base; // Block used for aligning ffty_Hwork
+    OC_INDEX ffty_Hwork_zstride;  // In OXS_FFT_REAL_TYPE units
+    OC_INDEX ffty_Hwork_xstride;
+    OC_INDEX ffty_Hwork_size;
+    OC_INDEX ffty_Hwork_base_size; // For alignment; count in bytes
+
+    OXS_FFT_REAL_TYPE* fftz_Hwork;
+    char*  fftz_Hwork_base; // Block used for aligning fftz_Hwork
+    OC_INDEX fftz_Hwork_zstride;  // In OXS_FFT_REAL_TYPE units
+    OC_INDEX fftz_Hwork_size;
+    OC_INDEX fftz_Hwork_base_size; // For alignment; count in bytes
+
+    const int threadnumber;
+
+    Oxs_FFTLocker(const Oxs_FFTLocker_Info& info,int in_threadnumber);
     ~Oxs_FFTLocker();
 
   private:
@@ -244,8 +275,7 @@ private:
 
 #endif
   mutable OC_INDEX embed_block_size;
-  mutable OC_INDEX embed_yzblock_size;
-  OC_INDEX cache_size; // Cache size in bytes.  Used to select
+  OC_INDEX cache_size; // Cache size in bytes.  Used in selecting
                        // embed_block_size.
 
   OC_INT4m zero_self_demag;
@@ -287,5 +317,11 @@ public:
   virtual OC_INT4m IncrementPreconditioner(PreconditionerData& pcd);
 };
 
+inline bool operator==(const Oxs_Demag::A_coefs& lhs,
+                       const Oxs_Demag::A_coefs& rhs) {
+  return (lhs.A00 == rhs.A00) && (lhs.A01 == rhs.A01)
+    && (lhs.A02 == rhs.A02) && (lhs.A11 == rhs.A11)
+    && (lhs.A12 == rhs.A12) && (lhs.A22 == rhs.A22);
+}
 
 #endif // _OXS_DEMAG

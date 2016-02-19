@@ -6,13 +6,14 @@
 \end{center}
 
 \ssechead{Overview}
-The application \app{mmDisp} displays two-dimensional spatial
-distributions of three-dimensional vectors (i.e., vector fields).  It
-can load vector fields from files in a variety of formats, or it can
-accept vector field data from a client application, typically a running
-solver.  \app{mmDisp} offers a rich interface for
-controlling the display of vector field data, and can also save the data
-to a file and produce Postscript print output.
+The application \app{mmDisp} displays two-dimensional slices of
+three-dimensional spatial distributions of vector fields.  \app{mmDisp}
+currently supports display of 1D (i.e., scalar) and 3D vector data.  It
+can load field data from files in a variety of formats, or it can accept
+data from client applications, such as a running solver.  \app{mmDisp}
+offers a rich interface for controlling the display of vector field
+data, and can also save the data to a file or produce \postscript\ print
+output.
 
 \ssechead{Launching}
 \app{mmDisp} may be started either by selecting the \btn{mmDisp} button
@@ -155,7 +156,7 @@ edited before saving.  Enabling the \btn{Browse} button allows for
 saving multiple files without closing the ``Save File'' dialog box.
 
 The \btn{File\pipe Print\ldots}\index{data!print} dialog is used to
-produce a Postscript file of the current display.  On Unix systems, the
+produce a \postscript\ file of the current display.  On Unix systems, the
 output may be sent directly to a
 printer\index{platform!Unix!PostScript~to~printer} by filling the
 \btn{Print to:} entry with the appropriate pipe command, e.g.,
@@ -721,101 +722,101 @@ grid cell.  As the subsample rate changes, the set of displayed
 vectors also changes, which can in some circumstances substantially
 change the appearance of the displayed vector field.
 
-\begin{rawhtml}
-<A NAME="pt:wwwhelpersetup"></A>
-\end{rawhtml}
-\ssechead{Using \app{mmDisp} as a WWW browser helper application}
-
-You may configure your web browser\index{application!web~browser} to
-automatically launch \app{mmDisp} when downloading an \OVF\ file.  The
-exact means to do this depends on your browser, but a couple of examples
-are presented below.
-
-In Netscape Navigator 4.X\index{application!Netscape}, bring up the
-\btn{Edit\pipe Preferences\ldots} dialog box, and select the
-\cd{Category} \btn{Navigator\pipe Applications} subwindow.  Create a
-\btn{New Type}, with the following fields:
-\begin{description}
-\item[Description of type:] \OOMMF\ Vector Field
-\item[MIME Type:] application/x-oommf-vf
-\item[Suffixes:] ovf,omf,ohf,obf
-\item[Application:]
-{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``{\em arg}''
-\end{description}
-
-On \Windows\ platforms, the \cd{Suffixes} field is labeled
-\cd{File Extension}, and only one file extension may be entered.
-Files downloaded from a web server are handled according to their
-MIME Type, rather than their file extension, so that restriction
-isn't important when web browsing.  If you wish to have files on the
-local disk with all the above file extensions recognized as
-\OOMMF\ Vector Field\index{file!vector~field} files, you must repeat the
-\btn{New Type} entry for each file extension.  In the \cd{Application}
-field, the values of {\em tclsh}, {\em oommfroot}, and {\em arg} vary
-with your platform configuration.  The value of {\em tclsh} is the full
-path to the \app{tclsh} application on your platform (see
-\hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  On Unix
-systems, {\em tclsh} may be omitted, assuming that the
-\fn{oommf.tcl} script is executable.  If {\em tclsh} is not omitted
-on Unix systems, Netscape may issue a security warning each time it
-opens an \OOMMF\ Vector Field file.  The value of {\em oommfroot} should
-be the full path to the root directory of your \OOMMF\ installation.
-The value of {\em arg} should be ``\%1'' on \Windows\ and ``\%s'' on
-Unix.  The MIME type ``application/x-oommf-vf'' must be configured on
-any HTTP server which provides \OOMMF\ Vector Field files as well.
-
-For Microsoft Internet
-Explorer\index{application!Internet~Explorer}~3.X, bring up the
-\btn{View\pipe Options\ldots} dialog box, and select the
-\btn{Program} tab.  Hit the
-\btn{File Types\ldots}\ button, followed by the
-\btn{New Type\dots} button. Fill the resulting dialog box with
-\begin{description}
-\item[Description of type:] \OOMMF\ Vector Field
-\item[Associated extension:] ovf
-\item[Content type (MIME):] application/x-oommf-vf
-\end{description}
-You may also disable the \btn{Confirm open after download} checkbutton
-if you want.  Then hit the \btn{New\ldots}\ button below the
-{\cd{Actions:}} window, and in the pop-up fill in
-\begin{description}
-\item[Action:] open
-\item[Application used to perform action:]\ \\
-{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``\%1''
-\end{description}
-Hit \btn{OK}, \btn{Close}, \btn{Close} and \btn{OK}.  Replace {\em tclsh}
-and {\em oommfroot} with the appropriate paths on your system
-(cf.\ \hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  This will
-set up an association on files with the .ovf extension. Internet
-Explorer 3.X apparently ignores the HTML Content Type field, so you must
-repeat this process for each file extension (.ovf, .omf, .ohf, .obf and
-.svf) that you want to recognize.  This means, however, that Internet
-Explorer will make the appropriate association even if the HTML server
-does not properly set the HTML Content Type field.
-
-Microsoft Internet Explorer 4.X is integrated with the \Windows\ operating
-system.  Internet Explorer 4.X doesn't offer any means to set up
-associations between particular file types and the applications which
-should be used to open them.  Instead, this association is configured
-within the \Windows\ operating system.
-To set up associations for the
-\OOMMF\ Vector Field file type on \Windows~95 or \Windows~NT,
-select \btn{Settings\pipe Control Panel} from the \btn{Start} menu.
-The Control Panel window appears.  Select \btn{View\pipe Options\ldots}
-to display a dialog box.
-A \Windows~98 shortcut to the same dialog box is to select
-\btn{Settings\pipe Folder Options\ldots} from the \btn{Start} menu.
-Select the \btn{File Types} tab and proceed as
-described above for Internet Explorer 3.X.
-Depending on the exact release/service patch of your \Windows\ operating
-system, the exact instructions may vary.
-
-Once you have your browser configured, you can test with the following
-URL:
-\begin{center}
-\ifnotpdf{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}}
-\pdfonly{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\%7EMDonahue/cubevortex.ovf}}
-\end{center}
+%\begin{rawhtml}
+%<A NAME="pt:wwwhelpersetup"></A>
+%\end{rawhtml}
+%\ssechead{Using \app{mmDisp} as a WWW browser helper application}
+%
+%You may configure your web browser\index{application!web~browser} to
+%automatically launch \app{mmDisp} when downloading an \OVF\ file.  The
+%exact means to do this depends on your browser, but a couple of examples
+%are presented below.
+%
+%In Netscape Navigator 4.X\index{application!Netscape}, bring up the
+%\btn{Edit\pipe Preferences\ldots} dialog box, and select the
+%\cd{Category} \btn{Navigator\pipe Applications} subwindow.  Create a
+%\btn{New Type}, with the following fields:
+%\begin{description}
+%\item[Description of type:] \OOMMF\ Vector Field
+%\item[MIME Type:] application/x-oommf-vf
+%\item[Suffixes:] ovf,omf,ohf,obf
+%\item[Application:]
+%{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``{\em arg}''
+%\end{description}
+%
+%On \Windows\ platforms, the \cd{Suffixes} field is labeled
+%\cd{File Extension}, and only one file extension may be entered.
+%Files downloaded from a web server are handled according to their
+%MIME Type, rather than their file extension, so that restriction
+%isn't important when web browsing.  If you wish to have files on the
+%local disk with all the above file extensions recognized as
+%\OOMMF\ Vector Field\index{file!vector~field} files, you must repeat the
+%\btn{New Type} entry for each file extension.  In the \cd{Application}
+%field, the values of {\em tclsh}, {\em oommfroot}, and {\em arg} vary
+%with your platform configuration.  The value of {\em tclsh} is the full
+%path to the \app{tclsh} application on your platform (see
+%\hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  On Unix
+%systems, {\em tclsh} may be omitted, assuming that the
+%\fn{oommf.tcl} script is executable.  If {\em tclsh} is not omitted
+%on Unix systems, Netscape may issue a security warning each time it
+%opens an \OOMMF\ Vector Field file.  The value of {\em oommfroot} should
+%be the full path to the root directory of your \OOMMF\ installation.
+%The value of {\em arg} should be ``\%1'' on \Windows\ and ``\%s'' on
+%Unix.  The MIME type ``application/x-oommf-vf'' must be configured on
+%any HTTP server which provides \OOMMF\ Vector Field files as well.
+%
+%For Microsoft Internet
+%Explorer\index{application!Internet~Explorer}~3.X, bring up the
+%\btn{View\pipe Options\ldots} dialog box, and select the
+%\btn{Program} tab.  Hit the
+%\btn{File Types\ldots}\ button, followed by the
+%\btn{New Type\dots} button. Fill the resulting dialog box with
+%\begin{description}
+%\item[Description of type:] \OOMMF\ Vector Field
+%\item[Associated extension:] ovf
+%\item[Content type (MIME):] application/x-oommf-vf
+%\end{description}
+%You may also disable the \btn{Confirm open after download} checkbutton
+%if you want.  Then hit the \btn{New\ldots}\ button below the
+%{\cd{Actions:}} window, and in the pop-up fill in
+%\begin{description}
+%\item[Action:] open
+%\item[Application used to perform action:]\ \\
+%{\em tclsh} {\em oommfroot}/oommf.tcl {+fg} mmDisp {-net} 0 ``\%1''
+%\end{description}
+%Hit \btn{OK}, \btn{Close}, \btn{Close} and \btn{OK}.  Replace {\em tclsh}
+%and {\em oommfroot} with the appropriate paths on your system
+%(cf.\ \hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  This will
+%set up an association on files with the .ovf extension. Internet
+%Explorer 3.X apparently ignores the HTML Content Type field, so you must
+%repeat this process for each file extension (.ovf, .omf, .ohf, .obf and
+%.svf) that you want to recognize.  This means, however, that Internet
+%Explorer will make the appropriate association even if the HTML server
+%does not properly set the HTML Content Type field.
+%
+%Microsoft Internet Explorer 4.X is integrated with the \Windows\ operating
+%system.  Internet Explorer 4.X doesn't offer any means to set up
+%associations between particular file types and the applications which
+%should be used to open them.  Instead, this association is configured
+%within the \Windows\ operating system.
+%To set up associations for the
+%\OOMMF\ Vector Field file type on \Windows~95 or \Windows~NT,
+%select \btn{Settings\pipe Control Panel} from the \btn{Start} menu.
+%The Control Panel window appears.  Select \btn{View\pipe Options\ldots}
+%to display a dialog box.
+%A \Windows~98 shortcut to the same dialog box is to select
+%\btn{Settings\pipe Folder Options\ldots} from the \btn{Start} menu.
+%Select the \btn{File Types} tab and proceed as
+%described above for Internet Explorer 3.X.
+%Depending on the exact release/service patch of your \Windows\ operating
+%system, the exact instructions may vary.
+%
+%Once you have your browser configured, you can test with the following
+%URL:
+%\begin{center}
+%\ifnotpdf{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}}
+%\pdfonly{\htmladdnormallink{http://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{http://math.nist.gov/\%7EMDonahue/cubevortex.ovf}}
+%\end{center}
 
 \ssechead{Known Bugs}
 The slice selection feature does not work properly with irregular

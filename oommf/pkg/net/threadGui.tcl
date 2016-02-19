@@ -1,6 +1,6 @@
 # FILE: threadGui.tcl
 #
-# Last modified on: $Date: 2010-06-25 00:04:46 $
+# Last modified on: $Date: 2010/06/25 00:04:46 $
 # Last modified by: $Author: donahue $
 #
 package require Tk

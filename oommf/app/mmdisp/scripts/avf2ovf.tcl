@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 Oc_CommandLine Option console {} {}
 
@@ -84,6 +84,20 @@ proc IsFloat { x } {
         if {![catch {expr $x}]} { return 1 }
     }
     return 0
+}
+
+proc IsPosFloat { x } {
+   if {[IsFloat $x] && $x>0.0} {
+      return 1
+   }
+   return 0
+}
+
+proc IsNonNegativeInteger { x } {
+   if {[regexp -- {^[0-9]+$} $x]} {
+      return 1
+   }
+   return 0
 }
 
 proc ClipItemCheck { item } {
@@ -176,6 +190,16 @@ Oc_CommandLine Option subsample {
 } {Subsampling period (default is 1 = no subsampling)}
 set subsample 1
 
+Oc_CommandLine Option resample {
+   {xstep { IsPosFloat $xstep } {is x-step}}
+   {ystep { IsPosFloat $ystep } {is y-step}}
+   {zstep { IsPosFloat $zstep } {is z-step}}
+   {order { IsNonNegativeInteger $order } {is interpolation order (0, 1 or 3)}}
+} {
+   global resample
+   set resample [list $xstep $ystep $zstep $order]
+} "\n\tResample grid"
+set resample {}
 
 Oc_CommandLine Option pertran {
     {xoff { IsFloat $xoff } {is x-offset}}
@@ -301,6 +325,58 @@ if {!$quiet} {
 	    field in the output by hand."
 }
 
+if {[llength $resample]==4} {
+   foreach {xstep ystep zstep method_order} $resample break
+   if {$xstep<=0 || $ystep<=0 || $zstep<0} {
+      puts stderr "ERROR: resampling step sizes must be positive"
+      exit 41
+   }
+   if {$method_order!=0 && $method_order!=1 && $method_order!=3} {
+      puts stderr "ERROR: resampling interpolation order must be 0, 1 or 3"
+      exit 43
+   }
+   if {[llength $clipstr]!=6} {
+      set xmin [set ymin [set zmin -]]
+      set xmax [set ymax [set zmax -]]
+   } else {
+      foreach {xmin ymin zmin xmax ymax zmax} $clipstr break
+   }
+   foreach {cxmin cymin czmin cxmax cymax czmax} [GetMeshRange] break
+
+   if {[string compare "-" $xmin]==0} { set xmin $cxmin }
+   if {[string compare "-" $ymin]==0} { set ymin $cymin }
+   if {[string compare "-" $zmin]==0} { set zmin $czmin }
+   if {[string compare "-" $xmax]==0} { set xmax $cxmax }
+   if {[string compare "-" $ymax]==0} { set ymax $cymax }
+   if {[string compare "-" $zmax]==0} { set zmax $czmax }
+
+   set xcount [expr {($xmax-$xmin)/$xstep}]
+   set ycount [expr {($ymax-$ymin)/$ystep}]
+   set zcount [expr {($zmax-$zmin)/$zstep}]
+   if {$xcount<0.9 || $ycount<0.9 || $zcount<0.9} {
+      puts stderr "ERROR: resampling step sizes must be smaller than\
+                   output mesh dimensions"
+      puts stderr "$xcount $ycount $zcount"
+      exit 45
+   }
+   set icount [expr {int(round($xcount))}]
+   set jcount [expr {int(round($ycount))}]
+   set kcount [expr {int(round($zcount))}]
+   if {abs($xcount-$icount)>1e-8
+       || abs($ycount-$jcount)>1e-8
+       || abs($zcount-$kcount)>1e-8} {
+      puts stderr \
+        "ERROR: Resample step sizes must evenly divide output mesh dimensions."
+      puts stderr [format " Try -resample %.9g %.9g %.9g" \
+                      [expr {($xmax-$xmin)/$icount}] \
+                      [expr {($ymax-$ymin)/$jcount}] \
+                      [expr {($zmax-$zmin)/$kcount}]]
+      exit 47
+   }
+   Resample 0 0 $xmin $ymin $zmin $xmax $ymax $zmax \
+      $icount $jcount $kcount $method_order
+}
+
 if {![string match "x:y:z" $flipstr] || ![string match {} $clipstr]
     || ($subsample != 1 && $subsample != 0)} {
     # Perform coordinate transform, clipping, and/or subsampling
@@ -311,7 +387,6 @@ if {$tx!=0.0 || $ty!=0.0 || $tz!=0.0} {
    # Perform periodic translation
    PeriodicTranslate 0 0 $tx $ty $tz
 }
-
 
 # $filename == "" --> write to stdout
 if {!$writemags} {

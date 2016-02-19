@@ -4,10 +4,11 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-12-24 06:36:33 $
+ * Last modified on: $Date: 2013/05/22 07:15:35 $
  * Last modified by: $Author: donahue $
  */
 
+#include <assert.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
@@ -81,7 +82,7 @@ Oc_EllipsizeMessage(char* buf,OC_INDEX bufsize,const char* msg)
                           "Import bufsize must not be smaller than 5."));
   }
   buf[bufsize-1] = '\0';
-  strncpy(buf,msg,bufsize);
+  strncpy(buf,msg,size_t(bufsize));
   if(buf[bufsize-1]!='\0') { // Overflow
     strcpy(buf+bufsize-4,"...");
   }
@@ -232,7 +233,8 @@ Oc_InitPanic(const char *nameOfExecutable)
 void
 Oc_BytesToAscii(const unsigned char *bytes,OC_INDEX len,Oc_AutoBuf& result)
 {
-  result.SetLength(2*len);
+  assert(len>=0);
+  result.SetLength(2*size_t(len));
   char* outbuf = result.GetStr();
   for(OC_INDEX i=0;i<len;++i) {
     sprintf(outbuf,"%02X",bytes[i]);

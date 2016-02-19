@@ -4,7 +4,7 @@
  *
  */
 
-
+#include <limits>
 #include <string>
 
 #include "oc.h"
@@ -155,7 +155,7 @@ ThreeVector Oxs_UZeeman::GetAppliedField(OC_UINT4m stage_number) const
 
 void Oxs_UZeeman::ComputeEnergyChunk
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,

@@ -129,9 +129,9 @@ Oxs_ScriptScalarField::Oxs_ScriptScalarField(
   }
   command_options.push_back(Nb_TclCommandLineOption("rawpt",3));
   command_options.push_back(Nb_TclCommandLineOption("scalars",
-					     scalarfields.GetSize()));
+                             static_cast<int>(scalarfields.GetSize())));
   command_options.push_back(Nb_TclCommandLineOption("vectors",
-					     3*vectorfields.GetSize()));
+                             static_cast<int>(3*vectorfields.GetSize())));
 
   String runscript = GetStringInitValue("script");
 
@@ -191,15 +191,15 @@ Oxs_ScriptScalarField::Value
   }
   index = command_options[5].position; // scalars
   if(index>=0) {
-    for(OC_INDEX i=0;i<scalarfields.GetSize();i++) {
-      cmd.SetCommandArg(index+i,scalarfields[i]->Value(pt));
+    for(int i=0; i < static_cast<int>(scalarfields.GetSize()); i++) {
+      cmd.SetCommandArg(index+i,scalarfields[OC_INDEX(i)]->Value(pt));
     }
   }
   index = command_options[6].position; // vectors
   if(index>=0) {
-    for(OC_INDEX i=0;i<vectorfields.GetSize();i++) {
+    for(int i=0; i < static_cast<int>(vectorfields.GetSize()); i++) {
       ThreeVector val;
-      vectorfields[i]->Value(pt,val);
+      vectorfields[OC_INDEX(i)]->Value(pt,val);
       cmd.SetCommandArg(index+3*i,val.x);
       cmd.SetCommandArg(index+3*i+1,val.y);
       cmd.SetCommandArg(index+3*i+2,val.z);

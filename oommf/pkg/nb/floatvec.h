@@ -5,7 +5,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-07-02 01:23:17 $
+ * Last modified on: $Date: 2015/08/04 21:55:17 $
  * Last modified by: $Author: donahue $
  */
 
@@ -19,7 +19,8 @@
 
 /////////////////// 3D Vector Template Declaration ////////////////////
 // NOTE: "T" should a be floating point type
-template<class T> class Nb_Vec3 {
+
+template<typename T> class Nb_Vec3 {
 public:
   T x,y,z;  // Components
   void Set(T nx,T ny,T nz) { x=nx; y=ny; z=nz; }
@@ -53,10 +54,28 @@ public:
     return (x>=v.x  && y>=v.y && z>=v.z);
   }
   T MagSq() const { return x*x+y*y+z*z; }
-  T Mag() const { return (T)Oc_Sqrt(MagSq()); }
+  T Mag() const {
+    // Using scaling to provide some protection against overflow.
+    // Underflow protection is not provided.  To make this operation
+    // bulletproof, see James L. Blue, "A Portable Fortran Program to
+    // Find the Euclidean Norm of a Vector," ACM Transactions on
+    // Mathematical Software, 4, 15-23 (1978).
+    T ax = abs(x);
+    T ay = abs(y);
+    T az = abs(z);
+    T scale = ax + ay + az;
+    if(scale < OC_SQRT_REAL4_MAX/4.0) {
+      // Hopefully this is the usual branch.
+      return (T)Oc_Sqrt(ax*ax + ay*ay + az*az);
+    }
+    // Might want to check for scale == infinity
+    ax /= scale;  ay /= scale;  az /= scale;
+    return (T)(Oc_Sqrt(ax*ax + ay*ay + az*az)*scale);
+  }
   Nb_Vec3<T> & operator+=(const Nb_Vec3<T>& v);
   Nb_Vec3<T> & operator-=(const Nb_Vec3<T>& v);
   Nb_Vec3<T> & operator*=(T a);
+  Nb_Vec3<T> & operator^=(const Nb_Vec3<T>& v);  // Cross product
 
   // Define the following friend functions here to avoid instantiation
   // problems.
@@ -70,6 +89,19 @@ public:
     temp.x=v.x-w.x;  temp.y=v.y-w.y;  temp.z=v.z-w.z;
     return temp;
   }
+
+  friend Nb_Vec3<T> operator^(const Nb_Vec3<T>& v,const Nb_Vec3<T>& w) {
+    // Cross product
+    Nb_Vec3<T> temp;
+    temp.z = v.x*w.y;
+    temp.y = v.x*w.z;
+    temp.x = v.y*w.z;
+    temp.z -= v.y*w.x;
+    temp.y = v.z*w.x - temp.y;
+    temp.x -= v.z*w.y;
+    return temp;
+  }
+
   friend Nb_Vec3<T> operator*(T a,const Nb_Vec3<T>& v) {
     Nb_Vec3<T> temp;
     temp.x=a*v.x;  temp.y=a*v.y;  temp.z=a*v.z;
@@ -108,6 +140,16 @@ template<class T> Nb_Vec3<T> & Nb_Vec3<T>::operator-=(const Nb_Vec3<T>& v)
   x-=v.x; y-=v.y; z-=v.z; return *this;
 }
 
+template<class T> Nb_Vec3<T> & Nb_Vec3<T>::operator^=(const Nb_Vec3<T>& v)
+{
+  T p12 = x*v.y;  T p13 = x*v.z;  T p23 = y*v.z;
+  p12 -= y*v.x;
+  y = z*v.x - p13;
+  x = p23 - z*v.y;
+  z = p12;
+  return *this;
+}
+
 template<class T> Nb_Vec3<T> & Nb_Vec3<T>::operator*=(T a)
 {
   x*=a; y*=a; z*=a; return *this;
@@ -141,6 +183,7 @@ public:
 // Bounding Box
 template<class T> class Nb_BoundingBox
 { // Note: Empty boxes are well-defined.  See Empty() function below.
+private:
   Nb_Vec3<T> bbmin;
   Nb_Vec3<T> bbmax;
 public:

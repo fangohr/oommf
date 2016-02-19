@@ -2,7 +2,7 @@
 #
 # Tcl/Tk routines for vector file input
 #
-# Last modified on: $Date: 2007-03-21 01:17:11 $
+# Last modified on: $Date: 2007/03/21 01:17:11 $
 # Last modified by: $Author: donahue $
 #
 

@@ -101,7 +101,8 @@ if {[catch {$config GetValue program_compiler_c++_override} _] || \
          set ccstr {CC -o32 -LANG:std:libc_in_namespace_std=OFF -c}
       }
    } else {
-      set ccstr {CC -64 -LANG:std:libc_in_namespace_std=OFF -c}
+      # set ccstr {CC -64 -LANG:std:libc_in_namespace_std=OFF -c}
+      set ccstr {CC -64 -LANG:std -c}
    }
    $config SetValue program_compiler_c++ $ccstr
    if {![catch {$config GetValue program_compiler_c++_override}]} {
@@ -249,7 +250,7 @@ if {[string match CC $ccbasename]} {
     # Disable certain spurious warnings.
     # Warning 3896: non-template friend to templated entity
     # Warning 3970: conversion from pointer to same-sized integral type
-    lappend opts -woff 3896,3970
+    # lappend opts -woff 3896,3970
 
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
     # NOTE: If you want good performance, be sure to edit ../options.tcl

@@ -1,0 +1,15 @@
+# FILE: fftwdemag.rules
+# External libraries needed by the fftwdemag extension package
+set Oxs_external_libs fftw3
+
+# Note: If FFTW include files and libraries are not in the standard
+# compiler/linker search path, then add appropriate
+#
+#  $config SetValue program_compiler_extra_include_dirs <dirs>
+#
+# and
+#
+#  $config SetValue program_linker_extra_lib_dirs <dirs>
+#
+# commands to your oommf/config/platforms/local/<platform>.tcl
+# file.

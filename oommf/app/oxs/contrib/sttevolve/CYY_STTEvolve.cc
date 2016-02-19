@@ -11,6 +11,12 @@
  2011 Dec. 13 by Chun-Yeol You (cyyou@inha.ac.kr)
   */
 
+/* 
+22 July 2013, Important correction: The direction of the STT for the polarizer layer is corrected.
+If you download previous version, please replace it with this file, and recompile
+*/
+
+
 #include <float.h>
 #include <string>
 
@@ -561,8 +567,8 @@ void CYY_STTEvolve::Calculate_dm_dt
 	OC_REAL8m aJ_s, aJ_p;
     
 	aJ_s = Jmult*hbar/(2*el*mu0)*eta0/(Ms_[i]*mesh->EdgeLengthZ());  
-	aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms_[i]*mesh->EdgeLengthZ());  
-
+//	aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms_[i]*mesh->EdgeLengthZ());  
+	aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms_[j]*mesh->EdgeLengthZ());  
 
 	ThreeVector STT_paralle_s = spin_[i];
 	STT_paralle_s ^= spin_[j];			// M_switch x M_pol
@@ -574,9 +580,9 @@ void CYY_STTEvolve::Calculate_dm_dt
 
 	ThreeVector STT_paralle_p = spin_[j];
 	STT_paralle_p ^= spin_[i];			// M_pol x M_switch 
-	STT_paralle_p ^= spin_[j];			// M_pol x (M_pol x M_switch)
-	STT_paralle_p *= -init_Jcurr;				// aJ*M_switchx(M_switch x M_pol), aJ is field unit, A/m 
-	STT_paralle_p *= aJ_p;
+	STT_paralle_p ^= spin_[j];			// -M_pol x (M_pol x M_switch)
+	STT_paralle_p *= -init_Jcurr;				// aJ*M_pol x (M_pol x M_switch), aJ is field unit, A/m 
+	STT_paralle_p *= -aJ_p;				// July 22, 2013 change the sign
 
 	scratch3p = -gamma[j]*STT_paralle_p;	// STT for polarizer layer
 
@@ -588,8 +594,8 @@ void CYY_STTEvolve::Calculate_dm_dt
 	
 	ThreeVector STT_perp_p = spin_[j];
 	STT_perp_p ^= spin_[i];				//  M_pol x M_switch
-	STT_perp_p *= (bJ0 + bJ1*init_Jcurr + bJ2*init_Jcurr*init_Jcurr);
-
+//	STT_perp_p *= (bJ0 + bJ1*init_Jcurr + bJ2*init_Jcurr*init_Jcurr);
+	STT_perp_p *= (bJ0 - bJ1*init_Jcurr + bJ2*init_Jcurr*init_Jcurr);   // // July 22, 2013 change the sign of the linear term
 	scratch4p = gamma[i]*Jmult*STT_perp_p;
 
 	dm_dt_[i] += (scratch3 + scratch4);

@@ -1,6 +1,6 @@
 # fewtest.tcl
 #
-# Last modified on: $Date: 2007-03-21 01:17:04 $
+# Last modified on: $Date: 2007/03/21 01:17:04 $
 # Last modified by: $Author: donahue $
 # 
 # This file contains a Tk script which demonstrates a bug in the Tcl

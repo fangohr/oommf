@@ -132,6 +132,7 @@ int Tcl_AppInit(Tcl_Interp *interp)
         Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR("error"));
         Tcl_Eval(interp, Tcl_DStringValue(&buf));
         Tcl_DStringFree(&buf);
+        Tcl_Exit(1);
     }
     Tcl_StaticPackage(interp, OC_CONST84_CHAR("Nb"), Nb_Init, NULL);
 
@@ -142,6 +143,7 @@ int Tcl_AppInit(Tcl_Interp *interp)
         Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR("error"));
         Tcl_Eval(interp, Tcl_DStringValue(&buf));
         Tcl_DStringFree(&buf);
+        Tcl_Exit(1);
     }
     Tcl_StaticPackage(interp, OC_CONST84_CHAR("Vf"), Vf_Init, NULL);
 

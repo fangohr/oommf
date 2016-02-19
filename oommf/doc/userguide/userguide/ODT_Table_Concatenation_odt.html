@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2008 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>ODT Table Concatenation: odtcat</TITLE>
+<META NAME="description" CONTENT="ODT Table Concatenation: odtcat">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="ODT_Column_Extraction_odtco.html">
+<LINK REL="previous" HREF="ODT_Derived_Quantity_Calcul.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="ODT_Column_Extraction_odtco.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html756"
+  HREF="ODT_Column_Extraction_odtco.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html752"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html746"
+  HREF="ODT_Derived_Quantity_Calcul.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html758"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html754"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html757"
+  HREF="ODT_Column_Extraction_odtco.html">ODT Column Extraction: odtcols</A>
+<B> Up:</B> <A NAME="tex2html753"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html747"
+  HREF="ODT_Derived_Quantity_Calcul.html">ODT Derived Quantity Calculator:</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION0001715000000000000000"></A><A NAME="sec:odtcat"></A>
+<BR>
+ODT Table Concatenation: odtcat
+</H2><A NAME="17590"></A>
+
+<P>
+The <B>odtcat</B><A NAME="17592"></A> utility reads an
+<A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT</A> file on stdin that
+contains one or more tables, and concatenates them together into a
+single table, creating a new ODT file consisting of a single table.
+When successive tables are joined, the tail of the first is truncated as
+necessary so that the specified control column is monotonic across the
+seam.
+
+<P>
+This tool is useful for fixing up ODT output from a simulation that
+was interrupted and restarted from checkpoint data one or more times.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>odtcat</B> launch command is:
+<PRE>
+tclsh oommf.tcl odtcat [standard options] [-b overlap_lines] \
+   [-c control_column] [-o order] [-q] &lt;infile &gt;outfile
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-b overlap_lines</B></TT></STRONG></DT>
+<DD>Overlap window size.  This is the maximum number of lines to retain
+  when looking for overlap between two adjacent tables.  This is also
+  the upper limit on the number of lines that may be removed when
+  two tables are joined.  The default value is 100.
+</DD>
+<DT><STRONG><TT><B>-c control_column</B></TT></STRONG></DT>
+<DD>Specifies control column, either by number or glob-string.  Default
+  is the glob string
+  <TT> {Oxs_TimeDriver:*:Simulation time } Oxs_MinDriver:*:Iteration</TT>.
+</DD>
+<DT><STRONG><TT><B>-o order</B></TT></STRONG></DT>
+<DD>Order selection: one of <TT>increase</TT>, <TT>decrease</TT>, <TT>auto</TT>
+  (default), or <TT>none</TT>.
+</DD>
+<DT><STRONG><TT><B>-q</B></TT></STRONG></DT>
+<DD>Quiet; don't write informational messages to stderr.
+</DD>
+<DT><STRONG><TT><B><TT><B>&lt;</B></TT>infile</B></TT></STRONG></DT>
+<DD><B>odtcat</B> reads its input from stdin.  Use the redirection operator
+  ``<TT><B>&lt;</B></TT>'' to read input from a file.
+</DD>
+<DT><STRONG><TT><B><TT><B>&gt;</B></TT>outfile</B></TT></STRONG></DT>
+<DD><B>odtcat</B> writes its output to stdout.  Use the redirection operator
+  ``<TT><B>&gt;</B></TT>'' to send output to a file.
+</DD>
+</DL>
+The first table header is examined and compared against the control
+column specification to identify the control column.  If multiple
+columns match the control column specification, then an error is
+reported and the process exits.  The OOMMF command line utility
+<A HREF="ODT_Column_Extraction_odtco.html#sec:odtcols"><B>odtcols</B></A>
+with the <TT><B>-s</B></TT> command line switch can be used to view
+column headers before running <B>odtcat</B>.
+
+<P>
+Each table in the input stream is assumed to have the same layout as
+the first; header information between tables is summarily eliminated.
+As each table is encountered, a check is made that the new table has
+the same number of columns as the first.  If not, an error is reported
+and processing is halted.
+
+<P>
+When subsequent table headers are encountered, the values in the
+control column in the tail of the preceding table and the head of the
+succeeding table are compared.  The order selection is used to
+determine the position of the start of the latter table inside the
+tail of the former.  If the data are not compatible with the specified
+ordering, then an error is reported an the program aborts.  If
+identical values are discovered, then the matching lines in the
+earlier table are excluded from the output stream.
+
+<P>
+If the <TT><B>-q</B></TT> flag is not specified, then after
+processing is complete a report is written to stderr detailing the
+number of tables merged and the number of data lines eliminated.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html756"
+  HREF="ODT_Column_Extraction_odtco.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html752"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html746"
+  HREF="ODT_Derived_Quantity_Calcul.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html759"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html754"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+</BODY>
+</HTML>

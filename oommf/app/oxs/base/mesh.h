@@ -185,9 +185,10 @@ public:
   // neighboring vectors across the mesh, for all those vectors for
   // which the corresponding entry in zero_check is non-zero.
   // NB: These routines are likely sensitive to boundary conditions.
-  virtual OC_REAL8m MaxNeighborAngle(const Oxs_MeshValue<ThreeVector>& vec,
-                                 const Oxs_MeshValue<OC_REAL8m>& zero_check)
-    const =0;
+  virtual OC_REAL8m MaxNeighborAngle
+  (const Oxs_MeshValue<ThreeVector>& vec,
+   const Oxs_MeshValue<OC_REAL8m>& zero_check,
+   OC_INDEX node_start,OC_INDEX node_stop) const =0;
 };
 
 #endif // _OXS_MESH

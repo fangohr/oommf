@@ -3,7 +3,7 @@
  *	Replacement implementations for missing Tcl/Tk APIs
  * in old Tcl/Tk releases.
  *
- * Last modified on: $Date: 2012-08-28 14:37:26 $
+ * Last modified on: $Date: 2015/07/17 22:45:44 $
  * Last modified by: $Author: donahue $
  */
 
@@ -323,10 +323,10 @@ Oc_TclWrappedAtan2(ClientData, Tcl_Interp *interp,
 // is probably fast and more accurate than the version below,
 // so should probably change the code to use that if available.
 double Oc_Log1p(double x)
-{ if(fabs(x)>0.5) return log(1.0+x);
+{ if(fabs(x)>=0.5) return log(1.0+x);
   // Otherwise, use little trick.  One should check that
   // compiler doesn't screw this up with "extra" precision.
-  double y1 = 1.0 + x;
+  double y1 = Oc_Nop(1.0 + x);
   if(y1 == 1.0) return x;
   double y2 = y1 - 1.0;
   double rat = log(y1)/y2;
@@ -336,7 +336,7 @@ double Oc_Log1p(double x)
 OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x)
 { // OC_REALWIDE version
   if(Oc_FabsRW(x)>0.5) return Oc_LogRW(1.0+x);
-  OC_REALWIDE y1 = 1.0 + x;
+  OC_REALWIDE y1 = Oc_Nop(1.0 + x);
   if(y1 == OC_REALWIDE(1.0)) return x;
   OC_REALWIDE y2 = y1 - OC_REALWIDE(1.0);
   OC_REALWIDE rat = Oc_LogRW(y1)/y2;
@@ -581,7 +581,6 @@ void Oc_AddTclExprExtensions(Tcl_Interp* interp) {
     Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("atan2"),2,argTypes,
                        Oc_TclWrappedAtan2,NULL);
   }
-
 }
 
 int OcAddTclExprExtensions(ClientData,Tcl_Interp *interp,

@@ -2,7 +2,7 @@
 #
 #	OOMMF core
 #
-# Last modified on: $Date: 2012-09-25 17:12:02 $
+# Last modified on: $Date: 2015/03/25 16:45:12 $
 # Last modified by: $Author: dgp $
 #
 # When this version of the Oc extension is selected by the 'package require'
@@ -51,7 +51,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 1.2.0.5
+package provide Oc 1.2.0.6
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]

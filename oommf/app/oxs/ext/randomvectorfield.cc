@@ -60,42 +60,68 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
   // Pre-compute for convenience.  (Assume no overflow.)
   mincubed = min_norm*min_norm*min_norm;
   maxcubed = max_norm*max_norm*max_norm;
-}
 
+  if(use_cache) {
+    // Fill map here (as opposed to a lazy fill), so that concurrent
+    // accesses are supported.
+    const OC_INDEX count = cache_mesh->Size();
+    if(count<1) {
+      throw Oxs_ExtError(this,"Empty mesh");
+    }
+    results_cache.reserve(count);
+    ThreeVector value;
+    if(min_norm == max_norm) {
+      // No spread in magnitudes
+      for(OC_INDEX i=0;i<count;++i) {
+        value.Random(max_norm);
+        results_cache.push_back(value);
+      }
+    } else {
+      // Vary both direction and magnitude.  Magnitude needs to be
+      // adjusted on a cube scale to get uniform sampling by volume.
+      for(OC_INDEX i=0;i<count;++i) {
+        OC_REAL8m randval = Oc_UnifRand();
+        OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
+                            OC_REAL8m(1.)/OC_REAL8m(3.));
+        value.Random(mag);
+        results_cache.push_back(value);
+      }
+    }
+  } // use_cache
+}
 
 void
 Oxs_RandomVectorField::Value
 (const ThreeVector& pt,
  ThreeVector& value) const
 {
-  OC_UINT4m key=0; // Initialize to quiet compiler warnings; it is used
-  // iff use_cache is true, in which case it gets set two lines below.
   if(use_cache) {
-    key = cache_mesh->FindNearestIndex(pt);
-    map<OC_UINT4m,ThreeVector>::iterator it = results_cache.find(key);
-    if(it != results_cache.end()) {
-      // Import "pt" already mapped
-      value = it->second;
-      return;
+    OC_INDEX index = cache_mesh->FindNearestIndex(pt);
+    if(size_t(index)>results_cache.size()) {
+      String msg = String("Import pt not mapped, indicating that mesh \"");
+      msg += String(cache_mesh->InstanceName());
+      msg += String("\" has changed since initialization of Oxs_RandomVectorField \"");
+      msg += String(InstanceName());
+      msg += String("\"");
+      throw Oxs_ExtError(this,msg);
     }
-  }
-
-  // Either cache not used, or else no match found in cache.
-  // Create new value.
-  if(min_norm == max_norm) {
-    // No spread in magnitudes
-    value.Random(max_norm);
+    value = results_cache[index];
   } else {
-    // Vary both direction and magnitude.
-    // Magnitude needs to be adjusted on a cube scale
-    // to get uniform sampling by volume.
-    OC_REAL8m randval = Oc_UnifRand();
-    OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
-                     OC_REAL8m(1.)/OC_REAL8m(3.));
-    value.Random(mag);
-  }
-
-  if(use_cache) {
-    results_cache[key] = value;
+    // Cache not in use, so compute and return random value.  Note that
+    // if this is called from multithreaded code, then results will vary
+    // from run to run depending on thread run ordering.  Oc_UnifRand is
+    // mutex locked, so results will be valid, though perhaps slow.
+    if(min_norm == max_norm) {
+      // No spread in magnitudes
+      value.Random(max_norm);
+    } else {
+      // Vary both direction and magnitude.
+      // Magnitude needs to be adjusted on a cube scale
+      // to get uniform sampling by volume.
+      OC_REAL8m randval = Oc_UnifRand();
+      OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
+                          OC_REAL8m(1.)/OC_REAL8m(3.));
+      value.Random(mag);
+    }
   }
 }

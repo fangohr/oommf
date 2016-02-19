@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 7.6 / Tk 4.2
 #
-# Last modified on: $Date: 2002-10-25 05:22:21 $
+# Last modified on: $Date: 2002/10/25 05:22:21 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 7.6 interpreter

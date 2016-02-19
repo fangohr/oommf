@@ -30,13 +30,12 @@ public:
     myred=red; mygreen=green; myblue=blue;
   }
 
-  OC_BOOL Set(const char* tkcolorstr); // tkcolorstr *must* be
-  /// in Tk numeric format, e.g., #FFFFFF.  Return value is
-  /// one on success.
-
-  OC_BOOL Set(Tcl_Interp *interp,const char* req_color);
-  // Sets red,green,blue to requested color, using
-  // Nb_GetColor.
+  OC_BOOL Set(const char* color_req);
+  /// Uses Nb_GetColor to convert color_req into an rgb triplet.  If
+  /// color_req is in Tk numeric format, e.g. #FFFFFF, then Nb_GetColor
+  /// does the conversion directly.  Otherwise, Nb_GetColor uses the
+  /// global Tcl interpreter to access the nbcolordatabase array defined
+  /// in oommf/config/colors.config.
 
   OC_BOOL Set(unsigned int new_red,unsigned int new_green,
 	   unsigned int new_blue) {

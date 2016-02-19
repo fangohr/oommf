@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-25 17:12:01 $
+ * Last modified on: $Date: 2015/03/25 16:45:04 $
  * Last modified by: $Author: dgp $
  */
 
@@ -19,6 +19,6 @@
 #define NB_MAJOR_VERSION	1
 #define NB_MINOR_VERSION	2
 #define NB_RELEASE_LEVEL	0
-#define NB_RELEASE_SERIAL	5
+#define NB_RELEASE_SERIAL	6
 
 #endif /* _NB_VERSION */

@@ -108,9 +108,9 @@ private:
     String tensor_file_name;
     mutable OC_BOOL load_from_file_success;
     OC_REAL8m pbc_2d_error;
-    mutable OC_UINT4m xdim;
-    mutable OC_UINT4m ydim;
-    mutable OC_UINT4m zdim;
+    mutable OC_INDEX xdim;
+    mutable OC_INDEX ydim;
+    mutable OC_INDEX zdim;
     OC_UINT4m sample_repeat_nx;
     OC_UINT4m sample_repeat_ny;
     OC_REAL8m asymptotic_radius;

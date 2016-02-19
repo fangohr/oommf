@@ -12,7 +12,7 @@
 # The Tcl event loop must be running in order for non-blocking socket
 # communications to work.
 #
-# Last modified on: $Date: 2012-06-28 21:04:08 $
+# Last modified on: $Date: 2015/09/30 07:41:34 $
 # Last modified by: $Author: donahue $
 #
 
@@ -24,6 +24,10 @@ Oc_Class Net_Account {
 
     private variable oid
     private variable lastoid
+
+    # send_stack is a holding area for outgoing messages received
+    # during a account server reset.
+    private variable send_stack = {}
 
     # The command line -nickname option (in the Net option set) loads
     # nickname strings into the Oc_Option database, which in turn
@@ -111,6 +115,9 @@ Oc_Class Net_Account {
     public variable startWait = 60000
     # The ID of the current timeout (returned from 'after' command)
     private variable timeoutevent
+    # Brake on host+account server restarts
+    private variable do_restarts = 1
+    private variable shutdownHandler
 
     # The host which on which this account resides
     private variable host
@@ -170,7 +177,7 @@ Oc_Class Net_Account {
     # id, the Ready method of that instance will return a boolean indicating
     # whether the object is ready.  If not, then when it becomes ready, it
     # will generate an event with id 'Ready'.  If the object cannot become
-    # ready, it will delete itself, generating an event with is 'delete'.
+    # ready, it will delete itself, generating an event with its 'delete'.
     # Users of instances of this class should set up to handle those two
     # events, when the Ready method returns false.
     #
@@ -191,33 +198,74 @@ Oc_Class Net_Account {
             return $existingaccount
         }
         array set index [list $hostname,$accountname $this]
-	$this Restart
+        Oc_EventHandler New shutdownHandler Oc_Main Shutdown \
+            [list $this PrepareShutdown] -oneshot 1 -groups [list $this]
+
+ 	$this Restart
     }
 
-    method Restart {} {
-	set ready 0
-        if {[catch {Net_Host New host -hostname $hostname} msg]} {
-            catch {unset host}
-            set msg "Can't construct host object.\n$msg"
-            error $msg $msg
-        } else {
-            Oc_EventHandler New hostDeathHandler $host Delete \
-		    [list $this FatalError "Lost connection to host\
-		    $hostname"] -oneshot 1 -groups [list $this]
-	    $this HandlePing
-        }
+    method StartTimeout {} {
+        $this FatalError "Timed out waiting for OOMMF account server\
+		connection\nfor $accountname on localhost"
+    }
+
+    method PrepareShutdown {} {
+       if {[info exists do_restarts]} {
+          set do_restarts 0
+          Oc_EventHandler DeleteGroup $this-Restart
+       }
+    }
+
+    method Restart {{msg {}}} {
+       if {![string match {} $msg]} {
+          Oc_Log Log "$this Restart: $msg" status $class
+       }
+       Oc_EventHandler DeleteGroup $this-Restart
+       if {![info exists do_restarts] || !$do_restarts} { return }
+
+       if {![info exists timeoutevent]} {
+          set timeoutevent [after $startWait $this StartTimeout]
+          # This time is started when we begin to try to connect to
+          # the account server.  It is only retired by a successful
+          # GetAccountPort call.
+       } else {
+          # Pause some random time before restart retry
+          after [expr {int(100*rand())}]
+       }
+
+       if {[info exists listensocket]} {
+          close $listensocket
+          unset listensocket
+       }
+       if {[info exists connection]} {
+          catch {$connection Delete}
+          unset connection
+       }
+
+       set ready 0
+       if {[catch {Net_Host New host -hostname $hostname} msg]} {
+          catch {unset host}
+          after idle [list $this Restart "Can't construct host object.\n$msg"]
+       } else {
+          Oc_EventHandler New hostDeathHandler $host Delete \
+              [list after idle \
+                   [list $this Restart "Lost connection to host $hostname"]] \
+              -oneshot 1 -groups [list $this $this-Restart]
+          $this HandlePing
+       }
     }
 
     private method HandlePing {args} {
         if {[llength $args]} {
-            Oc_Log Log "$this: Received ping!" status $class
+            Oc_Log Log "$this: Received ping from account server!" \
+                status $class
             close [lindex $args 0]
         }
         if {[$host Ready]} {
 	    $this LookupAccountPort
         } else {
 	    Oc_EventHandler New _ $host Ready [list $this LookupAccountPort] \
-		    -oneshot 1 -groups [list $this]
+		    -oneshot 1 -groups [list $this $this-Restart]
         }
     }
 
@@ -225,74 +273,98 @@ Oc_Class Net_Account {
         set qid [$host Send lookup $accountname]
         Oc_EventHandler New _ $host Reply$qid \
                 [list $this GetAccountPort $qid] \
-                -groups [list $this $this-$qid]
+                -groups [list $this $this-Restart $this-$qid]
         Oc_EventHandler New _ $host Timeout$qid \
                 [list $this NoAnswerFromHost $qid] \
-                -groups [list $this $this-$qid]
+                -groups [list $this $this-Restart $this-$qid]
     }
 
     method GetAccountPort { qid } {
-        Oc_EventHandler DeleteGroup $this-$qid
-        set reply [$host Get]
-        if {[llength $reply] < 2} {
-            set msg "Bad reply from host $hostname: $reply"
-            error $msg $msg
-        }
-        switch -- [lindex $reply 0] {
-            0 {
-                set port [lindex $reply 1]
-                if {[info exists listensocket]} {
-                    close $listensocket
-                    unset listensocket
-                }
-                if {[info exists timeoutevent]} {
-                    after cancel $timeoutevent
-                    unset timeoutevent
-                }
-                $this Connect
-            }
-            default {
-                # Host returns an error - assume that means lookup failed
-                if {[string match localhost [$host Cget -hostname]]} {
-                    if {![info exists listensocket]} {
-                        $this StartLocalAccount
-                    }
-                } else {
-                    $this FatalError "No account $accountname registered\
+       Oc_EventHandler DeleteGroup $this-$qid
+       set reply [$host Get]
+       if {[llength $reply] < 2} {
+          set msg "Bad reply from host $hostname: $reply"
+          if {[info exists hostDeathHandler]} {
+             $hostDeathHandler Delete  ; unset hostDeathHandler
+          }
+          catch {$host Delete}
+          after idle [list $this Restart $msg]
+          return
+       }
+       switch -- [lindex $reply 0] {
+          0 {
+             set port [lindex $reply 1]
+             $this Connect
+          }
+          default {
+             # Host returns an error - assume that means lookup failed
+             if {[string match localhost [$host Cget -hostname]]} {
+                # Try starting or restarting account server.  One case
+                # where multiple retries happen is this race condition:
+                #    1) Two processes, A & B, find no account server
+                #       registered with host server, so both start one.
+                #    2) Account server A wins the race.  Both A & B
+                #       ping their creators and then server B exits.
+                #    3) Process and account server A exit.
+                #    4) Process B queries host server for account server
+                #       port.  If 4 happens before 3 then the port for account
+                #       A will be returned.  But if 4 happens after 3 then
+                #       the host server reports (again) that there is no
+                #       account registered.
+                # Presumably we want process B to try launching another
+                # account server, i.e., call $this StartLocalAccount as
+                # below.  But how many times to retry?  Rather than
+                # count, we rely on the startWait timeout to pull the
+                # plug.  Note that the startWait timer is started on the
+                # first pass, and not reset until a successful account
+                # connection is made.
+                $this StartLocalAccount
+             } else {
+                $this FatalError "No account $accountname registered\
 			    with host [$host Cget -hostname]"
-                }
-            }
-        }
+             }
+          }
+       }
     }
 
     method NoAnswerFromHost { qid } {
-        Oc_EventHandler DeleteGroup $this-$qid
-        # Host not responding -- give up.
-        $this FatalError "No reply from host [$host Cget -hostname]"
+       Oc_Log Log "$this: NoAnswerFromHost $qid" status $class
+       Oc_EventHandler DeleteGroup $this-$qid
+       # Host not responding.
+       set msg "No reply from host"
+       catch {append msg " [$host Cget -hostname]"}
+       if {[info exists hostDeathHandler]} {
+          $hostDeathHandler Delete  ; unset hostDeathHandler
+       }
+       catch {$host Delete}
+       unset host
+       $this Restart $msg
     }
 
-    # Launch an OOMMF host server on localhost
+    # Launch an OOMMF account server on localhost
     private method StartLocalAccount {} {
         set acctthread [file join $dir threads account.tcl]
         if {[file readable $acctthread]} {
             # Set up to receive ping from account thread or timeout
+            if {[info exists listensocket]} {
+               catch {close $listensocket}
+            }
             set listensocket [socket -server [list $this HandlePing] \
 		    -myaddr localhost 0]  ;# Force localhost for now
             set listenport [lindex [fconfigure $listensocket -sockname] 2]
-            set timeoutevent [after $startWait $this StartTimeout]
             Oc_Log Log "Starting OOMMF account server for $accountname\
 		    on localhost" status $class
             # Ought to redirect std channels somewhere
 	    if {[info exists lastoid]} {
-		Oc_Application Exec {omfsh 1.1} \
-		$acctthread -tk 0 0 $listenport $lastoid \
-		> [[Oc_Config RunPlatform] GetValue path_device_null]  \
-		2> [[Oc_Config RunPlatform] GetValue path_device_null] &
+               Oc_Application Exec {omfsh 1.1} \
+                    $acctthread -tk 0 0 $listenport $lastoid \
+                    > [[Oc_Config RunPlatform] GetValue path_device_null]  \
+                   2> [[Oc_Config RunPlatform] GetValue path_device_null] &
 	    } else {
-		Oc_Application Exec {omfsh 1.1} \
-		$acctthread -tk 0 0 $listenport \
-		> [[Oc_Config RunPlatform] GetValue path_device_null]  \
-		2> [[Oc_Config RunPlatform] GetValue path_device_null] &
+               Oc_Application Exec {omfsh 1.1} \
+                    $acctthread -tk 0 0 $listenport \
+                    > [[Oc_Config RunPlatform] GetValue path_device_null]  \
+                   2> [[Oc_Config RunPlatform] GetValue path_device_null] &
 	    }
         } else {
             set msg "Install error: No OOMMF account server available to start"
@@ -300,80 +372,112 @@ Oc_Class Net_Account {
         }
     }
 
-    method StartTimeout {} {
-        $this FatalError "Timed out waiting for OOMMF account server\
-		to start\nfor $accountname on localhost"
-    }
-
     method Connect {} {
-        if {[catch {
-                Net_Connection New connection -hostname $hostname -port $port
-                } msg]} {
-            catch {unset connection}
-            $this DeregisterBadAccount "Can't create connection:\n$msg"
-        } else {
-	    # Using [socket -async], it's possible that we haven't really
-	    # yet established a valid connection.  So, until the connection
-	    # is "Ready", handle all Net_Connection destruction as though
-	    # caused by failure to connect.
-            set h [Oc_EventHandler New _ $connection Delete \
-		    [list $this DeregisterBadAccount \
-		    "Connection to $hostname:$port failed"] \
-                    -oneshot 1 -groups [list $this]]
-            Oc_EventHandler New _ $connection Ready \
-                    [list $this ConnectionReady $h] -oneshot 1 \
-		    -groups [list $this]
-        }
+       if {[catch {
+          Net_Connection New connection -hostname $hostname -port $port
+       } msg]} {
+          catch {unset connection}
+          $this DeregisterBadAccount "Can't create connection:\n$msg"
+       } else {
+          # Using [socket -async], it's possible that we haven't really
+          # yet established a valid connection.  So, until the connection
+          # is "Ready", handle all Net_Connection destruction as though
+          # caused by failure to connect.
+          set h1 [Oc_EventHandler New _ $connection Delete \
+                      [list $this ConnectDelete \
+                           "Connection to $hostname:$port failed"] \
+                      -oneshot 1 \
+                      -groups [list $this $this-Restart $this-ConnectDelete]]
+
+          set h2 [Oc_EventHandler New _ $connection SafeClose \
+                      [list $this ConnectDelete \
+                           "Connection to $hostname:$port failed"] \
+                      -oneshot 1 \
+                      -groups [list $this $this-Restart $this-ConnectDelete]]
+
+          Oc_EventHandler New _ $connection Ready \
+              [list $this ConnectionReady $h1 $h2] -oneshot 1 \
+              -groups [list $this $this-Restart]
+       }
     }
 
-    method ConnectionReady {handler} {
-	$handler Delete
-	Oc_EventHandler New _ $connection Delete [list $this Restart] \
-		-oneshot 1 -groups [list $this]
-        Oc_EventHandler New _ $connection Readable \
-                [list $this VerifyOOMMFAccount] -oneshot 1 -groups [list $this]
+    method ConnectionReady {handler1 handler2} {
+       $handler1 Delete
+       $handler2 Delete
+       Oc_EventHandler New _ $connection Delete [list $this Restart] \
+           -oneshot 1 -groups [list $this]
+       Oc_EventHandler New _ $connection SafeClose [list $this Restart] \
+           -oneshot 1 -groups [list $this]
+       Oc_EventHandler New _ $connection Readable \
+           [list $this VerifyOOMMFAccount] -oneshot 1 \
+           -groups [list $this $this-Restart]
     }
 
     method VerifyOOMMFAccount {} {
-        if {![regexp {OOMMF account protocol ([0-9.]+)} [$connection Get] \
-                match version]} {
-            # Not an OOMMF account
-            $this DeregisterBadAccount \
-                    "No OOMMF account server answering on $hostname:$port"
-            return
-        }
-        set protocolversion $version
-	# Update when account server protocol version changes!
-	if {![package vsatisfies $protocolversion 1]} {
-	    # Old version of account server running!
-            $this DeregisterBadAccount \
-                    "Incompatible OOMMF account server is running\
+       if {![regexp {OOMMF account protocol ([0-9.]+)} [$connection Get] \
+                 match version]} {
+          # Not an OOMMF account
+          $this FatalError \
+              "No OOMMF account server answering on $hostname:$port"
+       }
+       set protocolversion $version
+       # Update when account server protocol version changes!
+       if {![package vsatisfies $protocolversion 1]} {
+          # Old version of account server running!
+          $this FatalError \
+              "Incompatible OOMMF account server is running\
 		    at $hostname:$port."
-            return
-	}
-        Oc_Log Log "OOMMF account $hostname:$accountname ready" status $class
-        Oc_EventHandler New _ $connection Readable [list $this Hear] \
-                -groups [list $this]
-        set ready 1
-	# Once we've connected to the account server, we don't need the
-	# host server anymore.  Let it die and release its sockets.
-        $hostDeathHandler Delete
-        $host Delete
-	unset host
+       }
+       Oc_Log Log "OOMMF account $hostname:$accountname ready" status $class
+       Oc_EventHandler New _ $connection Readable [list $this Hear] \
+           -groups [list $this]
+       set ready 1
 
-	# Now get an OOMMF Id from the account server to represent our
-	# application
-	if {[info exists oid]} {
-	    set qid [$connection Query \
-		    newoid [Oc_Main GetAppName] [pid] [Oc_Main GetStart] $oid]
-	} else {
-	    set qid [$connection Query \
-		    newoid [Oc_Main GetAppName] [pid] [Oc_Main GetStart]]
-	}
-        Oc_EventHandler New _ $connection Reply$qid [list $this Getoid $qid] \
-                -oneshot 1 -groups [list $this $this-$qid]
-        Oc_EventHandler New _ $connection Timeout$qid [list $this Nooid $qid] \
-                -oneshot 1 -groups [list $this $this-$qid]
+       # Looks like we have a valid connection.  Wrap up the server
+       # start-up sequence.
+       if {[info exists timeoutevent]} {
+          after cancel $timeoutevent
+          unset timeoutevent
+       }
+       # Once we've connected to the account server, we don't need the
+       # host server anymore.  Let it die and release its sockets.
+       $hostDeathHandler Delete  ; unset hostDeathHandler
+       $host Delete              ; unset host
+       Oc_EventHandler DeleteGroup $this-Restart
+
+
+       # Now get an OOMMF Id from the account server to represent our
+       # application
+       if {[info exists oid]} {
+          set qid [$connection Query \
+                       newoid [Oc_Main GetAppName] \
+                       [pid] [Oc_Main GetStart] $oid]
+       } else {
+          set qid [$connection Query \
+                       newoid [Oc_Main GetAppName] [pid] [Oc_Main GetStart]]
+       }
+       if {[info exists connection]} {
+          # In principle, the preceding $connection Query may result
+          # in a $this Delete call.
+          Oc_EventHandler New _ $connection Reply$qid \
+              [list $this Getoid $qid] \
+              -oneshot 1 -groups [list $this $this-$qid]
+          Oc_EventHandler New _ $connection Timeout$qid \
+              [list $this Nooid $qid] \
+              -oneshot 1 -groups [list $this $this-$qid]
+          # Advise any interested parties that a (new) account server
+          # is being used.
+          Oc_Log Log "$this: New account server" status $class
+          Oc_EventHandler Generate $this NewAccountServer
+
+          # Process any messages in send_stack
+          set stack_copy $send_stack
+          set send_stack {}
+          foreach pair $stack_copy {
+             foreach {id args} $pair break
+             $this Resend $id $args
+          }
+       }
     }
 
     method OID {} {
@@ -468,13 +572,13 @@ Oc_Class Net_Account {
                 # Error
                 set msg "Registration for nickname \"[lindex $names 0]\"\
                       to oid $oid failed: [lindex $answer 1]"
-                Oc_Log Log "$this: $msg" warning $class
+                Oc_Log Log "$this: $msg" info $class
              }
           } elseif {[string compare timeout $mode]==0} {
              # Timeout
              set msg "Registration for nickname \"[lindex $names 0]\"\
                       to oid $oid failed: timeout"
-             Oc_Log Log "$this: $msg" warning $class
+             Oc_Log Log "$this: $msg" info $class
           }
           # For any case other than first pass, remove top name from list
           set names [lrange $names 1 end]
@@ -500,34 +604,45 @@ Oc_Class Net_Account {
 	$this FatalError "No response to OID request"
     }
 
+    method ConnectDelete {msg} {
+       Oc_EventHandler DeleteGroup $this-ConnectDelete
+       unset connection
+       $this DeregisterBadAccount $msg
+    }
+
     method DeregisterBadAccount {msg} {
         Oc_Log Log "Sending deregistration request for non-answering account" \
-		status $class
+            status $class
         set qid [$host Send deregister $accountname $port]
         Oc_EventHandler New _ $host Reply$qid \
                 [list $this DeregisterBadAccountReply $msg $id] \
-                -groups [list $this $this-$qid]
+                -groups [list $this $this-Restart $this-$qid]
         Oc_EventHandler New _ $host Timeout$qid \
                 [list $this NoAnswerFromHost $qid] \
-                -groups [list $this $this-$qid]
+                -groups [list $this $this-Restart $this-$qid]
     }
 
     method DeregisterBadAccountReply {msg qid} {
-        Oc_EventHandler DeleteGroup $this-$qid
-        set reply [$host Get]
-        switch -- [lindex $reply 0] {
-            0 {
-                if {[string match localhost [$host Cget -hostname]]} {
-                    $this StartLocalAccount
-                } else {
-                    $this FatalError $msg
-                }
-            }
-            default {
-                $this FatalError "Unable to correct bad account server\
+       Oc_EventHandler DeleteGroup $this-$qid
+       set reply [$host Get]
+       switch -- [lindex $reply 0] {
+          0 {
+             if {[string match localhost [$host Cget -hostname]]} {
+                $this StartLocalAccount
+             } else {
+                $this FatalError $msg
+             }
+          }
+          default {
+             set msg "Unable to correct bad account server\
 			registration after:\n$msg"
-            }
-        }
+             if {[info exists hostDeathHandler]} {
+                $hostDeathHandler Delete  ; unset hostDeathHandler
+             }
+             catch {$host Delete}
+             after idle [list $this Restart $msg]
+          }
+       }
     }
 
     # Handle 'tell' messages from connection
@@ -559,6 +674,7 @@ Oc_Class Net_Account {
                 lappend nicknames $tempname
              }
           }
+          die { after 0 exit }
        }
     }
 
@@ -572,26 +688,35 @@ Oc_Class Net_Account {
         return $reply
     }
 
-    # Send a command to the host
+    # Send a command to the account server
     method Send { args } {
-        if {!$ready} {
-            set msg "account $hostname:$accountname not ready"
-            error $msg $msg
-        }
         incr id
-	$this Resend $id $args
+        if {!$ready} {
+           lappend send_stack [list $id $args]
+        } else {
+           $this Resend $id $args
+        }
         return $id
     }
 
     private method Resend { x argList } {
-        Oc_EventHandler DeleteGroup $this-$x
-        set qid [eval $connection Query $argList]
-        Oc_EventHandler New _ $connection Reply$qid [list $this Receive $x] \
-                -oneshot 1 -groups [list $this $this-$x]
-        Oc_EventHandler New _ $connection Timeout$qid [list $this Timeout $x] \
-                -oneshot 1 -groups [list $this $this-$x]
-        Oc_EventHandler New _ $this Ready [list $this Resend $x $argList] \
-                -oneshot 1 -groups [list $this $this-$x]
+       if {[catch {eval $connection Query $argList} qid]} {
+          lappend send_stack [list $x $argList]
+       } else {
+          Oc_EventHandler DeleteGroup $this-$x
+          if {[info exists connection]} {
+             # The preceding $connection Query command may result in
+             # $this being destroyed.
+             Oc_EventHandler New _ $connection Reply$qid \
+                 [list $this Receive $x] \
+                 -oneshot 1 -groups [list $this $this-$x]
+             Oc_EventHandler New _ $connection Timeout$qid \
+                 [list $this Timeout $x] \
+                 -oneshot 1 -groups [list $this $this-$x]
+             Oc_EventHandler New _ $this Ready [list $this Resend $x $argList] \
+                 -oneshot 1 -groups [list $this $this-$x]
+          }
+       }
     }
 
     # This routine silently cleans up after a query to the account server
@@ -606,34 +731,57 @@ Oc_Class Net_Account {
     }
 
     method FatalError { msg } {
-        global errorInfo
-        set errorInfo "No stack available"
-        Oc_Log Log "$this: $msg" warning $class
-        $this Delete
+       global errorInfo
+       set errorInfo "No stack available"
+       Oc_Log Log "$this: $msg" warning $class
+       error $msg
     }
  
     Destructor {
         set ready 0
+        if {[info exists timeoutevent]} {
+           after cancel $timeoutevent
+           unset timeoutevent
+        }
+        if {[info exists hostDeathHandler]} {
+           if {[llength [info commands $hostDeathHandler]]} {
+              # hostDeathHandler is -oneshot; if we get here due to it
+              # being triggered then the command will already be deleted.
+              $hostDeathHandler Delete
+           }
+           unset hostDeathHandler
+        }
+        if {[info exists shutdownHandler]} {
+           if {[llength [info commands $shutdownHandler]]} {
+              $shutdownHandler Delete
+           }
+           unset shutdownHandler
+        }
+
         Oc_EventHandler Generate $this Delete
         Oc_EventHandler DeleteGroup $this
 	if {[info exists oid]} {
-	    if {[llength [info commands wm]]} {
-		wm title . [Oc_Main GetInstanceName]
-		wm iconname . [wm title .]
-	    }
-	    set qid [$connection Query freeoid $oid]
-	    Oc_EventHandler New _ $connection Reply$qid \
-		    [list $connection Delete] -groups [list $connection]
-	    Oc_EventHandler New _ $connection Timeout$qid \
-		    [list $connection Delete] -groups [list $connection]
+           if {[llength [info commands wm]]} {
+              wm title . [Oc_Main GetInstanceName]
+              wm iconname . [wm title .]
+           }
+           set oid_copy $oid
+           unset oid
+           set qid [$connection Query freeoid $oid_copy]
+           if {[info exists connection]} {
+              # $connection Query may generate a recursive call into
+              # this destructor.
+              Oc_EventHandler New _ $connection Reply$qid \
+                  [list $connection Delete] -groups [list $connection]
+              Oc_EventHandler New _ $connection Timeout$qid \
+                  [list $connection Delete] -groups [list $connection]
+           }
         } elseif {[info exists connection]} {
-            $connection Delete
-        }
-        if {[info exists timeoutevent]} {
-            after cancel $timeoutevent
+           $connection Delete
         }
         if {[info exists listensocket]} {
-            close $listensocket
+           catch {close $listensocket}
+           unset listensocket
         }
         if {[info exists myWidget]} {
             $this Configure -gui 0

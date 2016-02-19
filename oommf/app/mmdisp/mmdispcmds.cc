@@ -4,13 +4,16 @@
  *
  */
 
-#include <string.h>     /* strncpy(), ... */
+#include "mmdispcmds.h"
 
 #include "oc.h"
 #include "nb.h"
 #include "vf.h"
 
-#include "mmdispcmds.h"
+#include <assert.h>
+#include <limits.h>
+#include <string.h>     /* strncpy(), ... */
+
 #include "display.h"    /* DisplayFrame, CoordinateSystem */
 #include "bitmap.h"
 
@@ -40,7 +43,7 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 OC_REAL4m SetZoom(OC_REAL4m zoom);
 OC_REAL4m SetZoom(Tcl_Interp *interp,OC_REAL4m width,OC_REAL4m height);
 
-#define MY_MESH_ARRAY_SIZE 2
+#define MY_MESH_ARRAY_SIZE 3
 static Vf_Mesh* myMeshArray[MY_MESH_ARRAY_SIZE];
 static int activeMeshId = 0;
 static DisplayFrame myFrame;
@@ -355,6 +358,132 @@ int PeriodicTranslate(ClientData,Tcl_Interp *interp,
   if(activeMeshId == newmeshId) {
     myFrame.SetMesh(ngrid);
   }
+
+  return TCL_OK;
+}
+
+int Resample(ClientData,Tcl_Interp *interp,
+             int argc,CONST84 char** argv)
+{
+  Tcl_ResetResult(interp);
+  if(argc!=13) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Resample must be called with 12 arguments: "
+                "original mesh id, new mesh id, "
+                "xmin, ymin, zmin, xmax, ymax, zmax, "
+                "icount, jcount, kcount, method_order "
+                "(%d arguments passed)",
+                argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  int origmeshId = atoi(argv[1]);
+  if(origmeshId<0 || origmeshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Invalid mesh id request: %d; should be between 0 and %d",
+                origmeshId,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  int newmeshId = atoi(argv[2]);
+  if(newmeshId<0 || newmeshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Invalid mesh id request: %d; should be between 0 and %d",
+                newmeshId,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  Nb_Vec3<OC_REAL8> corner1(Nb_Atof(argv[3]),
+                            Nb_Atof(argv[4]),
+                            Nb_Atof(argv[5]));
+  Nb_Vec3<OC_REAL8> corner2(Nb_Atof(argv[6]),
+                            Nb_Atof(argv[7]),
+                            Nb_Atof(argv[8]));
+  Nb_BoundingBox<OC_REAL8> newrange;
+  newrange.SortAndSet(corner1,corner2); 
+
+  OC_INDEX icount = static_cast<OC_INDEX>(atol(argv[9]));
+  OC_INDEX jcount = static_cast<OC_INDEX>(atol(argv[10]));
+  OC_INDEX kcount = static_cast<OC_INDEX>(atol(argv[11]));
+  int method_order = atoi(argv[12]);
+
+  // Rectangular mesh is required
+  if(strcmp(myMeshArray[origmeshId]->GetMeshType(),"Vf_GridVec3f")!=0) {
+    Oc_Snprintf(buf,sizeof(buf),"Invalid mesh type: %s\n",
+                myMeshArray[origmeshId]->GetMeshType());
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  Vf_GridVec3f* origgrid =
+    dynamic_cast<Vf_GridVec3f*>(myMeshArray[origmeshId]);
+  if(origgrid==0) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Downcast of input mesh to Vf_GridVec3f failed.\n");
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  // Create new mesh
+  Vf_GridVec3f* ngrid = new Vf_GridVec3f();
+  ngrid->ResampleCopy(*origgrid,newrange,icount,jcount,kcount,method_order);
+
+  // Put new mesh into myMeshArray.  Note that this works
+  // including the case where newmeshId == origmeshId.
+  if(myMeshArray[newmeshId]!=NULL) delete myMeshArray[newmeshId];
+  myMeshArray[newmeshId] = ngrid;
+
+  if(activeMeshId == newmeshId) {
+    myFrame.SetMesh(ngrid);
+  }
+
+  return TCL_OK;
+}
+
+int CrossProductMesh(ClientData,Tcl_Interp *interp,
+                     int argc,CONST84 char** argv)
+{
+  Tcl_ResetResult(interp);
+
+  if(argc<2 || argc>3) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "CrossProductMesh must be called with 1 or 2 arguments:"
+                " ?meshA? meshB (%d arguments passed)\n",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  int meshA = activeMeshId;
+  int meshB = atoi(argv[1]);
+  if(argc>2) {
+    meshA = meshB;
+    meshB = atoi(argv[2]);
+  }
+  if(meshA<0 || meshA>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "Invalid meshA request: %d; should be between 0 and %d",
+            meshA,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  if(meshB<0 || meshB>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "Invalid meshB request: %d; should be between 0 and %d",
+            meshB,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  // Take pointwise cross product of meshes here
+  if((*myMeshArray[meshA]).CrossProductMesh(*myMeshArray[meshB])!=0) {
+    Oc_Snprintf(buf,sizeof(buf),"Meshes aren't compatible");
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  // Update maghints
+  OC_REAL8m minmag, maxmag;
+  myMeshArray[meshA]->GetNonZeroValueMagSpan(minmag,maxmag);
+  myMeshArray[meshA]->SetMagHints(minmag,maxmag);
 
   return TCL_OK;
 }
@@ -968,20 +1097,29 @@ int GetMeshSpatialUnitString(ClientData,Tcl_Interp *interp,
 }
 
 int GetMeshRange(ClientData,Tcl_Interp *interp,
-                  int argc,CONST84 char** /* argv */)
+                  int argc,CONST84 char** argv)
 { // Returns 6-tuple: xmin ymin zmin xmax ymax zmax, in mesh units.
   Tcl_ResetResult(interp);
-  if(argc!=1) {
+  if(argc<1 || argc>2) {
     Oc_Snprintf(buf,sizeof(buf),
-            "GetMeshRange must be called with"
-            " no arguments (%d arguments passed).",argc-1);
+            "GetMeshRange must be called with 0 or 1 argument:"
+                " ?meshId? (%d arguments passed)",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  int meshId = activeMeshId;
+  if(argc>1) meshId = atoi(argv[1]);
+  if(meshId<0 || meshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "Invalid mesh id request: %d; should be between 0 and %d",
+            meshId,MY_MESH_ARRAY_SIZE-1);
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
 
   Nb_Vec3<OC_REAL8> minpt,maxpt;
   Nb_BoundingBox<OC_REAL8> range;
-  myMeshArray[activeMeshId]->GetPreciseRange(range);
+  myMeshArray[meshId]->GetPreciseRange(range);
   range.GetExtremes(minpt,maxpt);
   Oc_Snprintf(buf,sizeof(buf),"%.17g %.17g %.17g %.17g %.17g %.17g",
               static_cast<double>(minpt.x),
@@ -1356,6 +1494,15 @@ int UpdatePlotConfiguration(ClientData,Tcl_Interp *interp,
                    TCL_GLOBAL_ONLY);
   if(!Nb_StrIsSpace(cptr)) arrow_config.antialias=atoi(cptr);
 
+  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
+                   OC_CONST84_CHAR("arrow,outlinewidth"),
+                   TCL_GLOBAL_ONLY);
+  if(!Nb_StrIsSpace(cptr)) arrow_config.outlinewidth=Nb_Atof(cptr);
+  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
+                   OC_CONST84_CHAR("arrow,outlinecolor"),
+                   TCL_GLOBAL_ONLY);
+  if(!Nb_StrIsSpace(cptr)) arrow_config.outlinecolor.Set(cptr);
+
   // Pixel plot configuration
   cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
                    OC_CONST84_CHAR("pixel,status"),
@@ -1451,16 +1598,17 @@ int UpdatePlotConfiguration(ClientData,Tcl_Interp *interp,
   // Get and set quantity type list
   Nb_DString* sp;
   Nb_List<Nb_DString> cqtypes;
-  int cqtypec=myFrame.GetColorQuantityTypes(cqtypes);
+  assert(myFrame.GetColorQuantityTypes(cqtypes)<INT_MAX);
+  int cqtypec = static_cast<int>(myFrame.GetColorQuantityTypes(cqtypes));
   if (cqtypec>0) {
     char **cqtypev=new char*[cqtypec];
-    int i;
+    OC_INDEX i;
     for(i=0, sp=cqtypes.GetFirst() ;
         sp!=NULL && i<cqtypec ; i++,sp=cqtypes.GetNext()) {
       cqtypev[i]=new char[sp->Length()+1];
       strcpy(cqtypev[i],sp->GetStr());
     }
-    int itop=i;
+    OC_INDEX itop=i;
     char *cqlist=Tcl_Merge(cqtypec,cqtypev);
     Tcl_SetVar2(interp,OC_CONST84_CHAR("plot_config"),
                 OC_CONST84_CHAR("quantitylist"),
@@ -1626,10 +1774,10 @@ int GetDefaultColorMapList(ClientData,Tcl_Interp *interp,
   }
   Nb_List<const char*> maps;
   DisplayColorMap::DefaultColorMapList(maps);
-  OC_INT4m mapcount = maps.GetSize();
+  OC_INDEX mapcount = maps.GetSize();
   if(mapcount>0) {
     char **mapv=new char*[mapcount];
-    int i;
+    OC_INDEX i;
     const char** cpp;
     Nb_List_Index<const char*> key;
     for(i=0, cpp=maps.GetFirst(key);
@@ -1638,7 +1786,8 @@ int GetDefaultColorMapList(ClientData,Tcl_Interp *interp,
       mapv[i] = new char[strlen(*cpp)+1];
       strcpy(mapv[i],*cpp);
     }
-    char* maplist=Tcl_Merge(mapcount,mapv);
+    assert(mapcount<=INT_MAX);
+    char* maplist=Tcl_Merge(static_cast<int>(mapcount),mapv);
     Tcl_AppendResult(interp,maplist,(char *)NULL);
     Tcl_Free(maplist);
     while(i>0) delete[] mapv[--i];
@@ -1745,36 +1894,37 @@ int WriteMeshUsingDeprecatedVIOFormat(ClientData,Tcl_Interp *interp,
   // Open file
   Tcl_Channel channel;
   Tcl_DString saveTranslation;
-  if (argv[1][0] == '\0') {
+  Tcl_DStringInit(&saveTranslation);
+
+  const OC_BOOL use_stdout = (argv[1][0] == '\0');
+  if (use_stdout) {
     int mode;
     channel = Tcl_GetChannel(interp, OC_CONST84_CHAR("stdout"), &mode);
-    Tcl_DStringInit(&saveTranslation);
     Tcl_GetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
                          &saveTranslation);
   } else {
     channel = Tcl_OpenFileChannel(interp, argv[1], OC_CONST84_CHAR("w"), 0666);
   }
-  if (channel == NULL) {
-    return TCL_ERROR;
-  }
+  if (channel == NULL) return TCL_ERROR;
+
   Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
                        OC_CONST84_CHAR("lf"));
-
   Vf_VioFileOutput vfo;
   if(vfo.WriteMesh(myMeshArray[activeMeshId],channel,NULL)!=0) {
       Oc_Snprintf(buf,sizeof(buf),"WriteMeshDeprecatedVIOFormat error");
       Tcl_AppendResult(interp,buf,(char *)NULL);
       errcode=TCL_ERROR;
   }
-  if (argv[1][0] != '\0') {
-    Tcl_Close(NULL, channel);
-  } else {
+
+  if (use_stdout) {
     Tcl_Flush(channel);
     Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
         Tcl_DStringValue(&saveTranslation));
-    Tcl_DStringFree(&saveTranslation);
+  } else {
+    Tcl_Close(NULL, channel);
   }
 
+  Tcl_DStringFree(&saveTranslation);
   return errcode;
 }
 
@@ -1788,6 +1938,13 @@ int WriteMesh(ClientData,Tcl_Interp *interp,
             " <rectangular|irregular> [title] [description]"
             " (%d arguments passed)",argc-1);
     Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  // Special case handling
+  if(dynamic_cast<Vf_EmptyMesh*>(myMeshArray[activeMeshId])) {
+    Oc_AutoBuf errmsg = "No data to output.";
+    Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
     return TCL_ERROR;
   }
 
@@ -1806,12 +1963,14 @@ int WriteMesh(ClientData,Tcl_Interp *interp,
 
   // Open file
   Tcl_Channel channel;
-  Tcl_DString saveTranslation;
   const char* filename = NULL;
-  if (argv[1][0] == '\0') {
+  Tcl_DString saveTranslation;
+  Tcl_DStringInit(&saveTranslation);
+
+  const OC_BOOL use_stdout = (argv[1][0] == '\0');
+  if (use_stdout) {
     int mode;
     channel = Tcl_GetChannel(interp, OC_CONST84_CHAR("stdout"), &mode);
-    Tcl_DStringInit(&saveTranslation);
     Tcl_GetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
                          &saveTranslation);
     filename = "stdout";
@@ -1819,9 +1978,8 @@ int WriteMesh(ClientData,Tcl_Interp *interp,
     channel = Tcl_OpenFileChannel(interp, argv[1], OC_CONST84_CHAR("w"), 0666);
     filename = argv[1];
   }
-  if (channel == NULL) {
-    return TCL_ERROR;
-  }
+  if (channel == NULL) return TCL_ERROR;
+
   Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
                        OC_CONST84_CHAR("lf"));
 
@@ -1835,22 +1993,31 @@ int WriteMesh(ClientData,Tcl_Interp *interp,
   }
   if(writecheck != 0) {
     Oc_AutoBuf errmsg;
-    errmsg.SetLength(sizeof(filename)+256);
-    Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
-                "WriteMesh error writing to \"%s\"; device full?",
-                filename);
+    if(writecheck == -1) {
+      const Vf_Mesh* mesh = myMeshArray[activeMeshId];
+      errmsg.SetLength(sizeof(filename)+sizeof(mesh->GetMeshType())+256);
+      Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
+                  "WriteMesh error writing to \"%s\";"
+                  " output not supported for mesh type %s",
+                  filename,mesh->GetMeshType());
+    } else {
+      errmsg.SetLength(sizeof(filename)+256);
+      Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
+                  "WriteMesh error writing to \"%s\"; device full?",
+                  filename);
+    }
     Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
     errcode=TCL_ERROR;
   }
-  if (argv[1][0] != '\0') {
-    Tcl_Close(NULL, channel);
-  } else {
+  if (use_stdout) {
     Tcl_Flush(channel);
     Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
         Tcl_DStringValue(&saveTranslation));
-    Tcl_DStringFree(&saveTranslation);
+  } else {
+    Tcl_Close(NULL, channel);
   }
 
+  Tcl_DStringFree(&saveTranslation);
   return errcode;
 }
 
@@ -2410,15 +2577,27 @@ char* WriteCenteredLabels
   return bufptr;
 }
 
+// Tcl_Write to stdout broken in Tcl 8.5 and 8.6.  Use Obj interface
+// instead.
+#if TCL_MAJOR_VERSION >= 8
+# define WMA_USE_OBJ 1
+#else
+# define WMA_USE_OBJ 0
+#endif
+
+// #define WMA_DEFAULT_NUM_FMT "%- #24.17g"
+#define WMA_DEFAULT_NUM_FMT "%- #20.15g"
+
 int
 WriteMeshAverages(ClientData, Tcl_Interp *interp,
-                  int argc, CONST84 char** argv)
+                    int argc, CONST84 char** argv)
 {
-// #define DEFAULT_NUM_FMT "%- #24.17g"
-# define DEFAULT_NUM_FMT "%- #20.15g"
   Tcl_Channel channel;
   int mode;
   const char* cptr;
+#if WMA_USE_OBJ
+  Tcl_Obj* tmpobj;
+#endif
   // Import config array:
   //   average  -- one of (space|plane|line|point|ball) (required)
   //   axis     -- one of (x|y|z)                       (required)
@@ -2434,7 +2613,7 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   //        the magnitude of the output vectors are all <=1.
   //   header   -- one of (fullhead|shorthead|nohead) (required)
   //   trailer  -- one of (tail|notail)               (required)
-  //   numfmt   -- Format for numeric output default is DEFAULT_NUM_FMT
+  //   numfmt   -- Format for numeric output default is WMA_DEFAULT_NUM_FMT
   //   descript -- description string
   //   index    -- list of triplets; each triplet is: label units value
   //   vallab   -- Value label.  Default is "M".
@@ -2456,7 +2635,12 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   //        are automatically included in output table.  If 0, then
   //        these values are not automatically output, but may be
   //        included as desired through the valfuncs functionality.
-
+  //
+  //   extravals -- 1 or 0.  If 1, then columns for L1, L2 norms
+  //        and min and max absolute component values are included.
+  //        L1 column is (\sum_i |vx|+|vy|+|vz|)/point_count,
+  //        L2 column is sqrt((\sum_i v*v)/point_count).
+  //
   // The active volume is set from range, if set.  Otherwise,
   // rrange is used.  If neither is set, the default is the
   // entire mesh volume.
@@ -2480,7 +2664,6 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
-
 
   // Averaging type
   cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR(argv[2]),
@@ -2670,7 +2853,7 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   // Data table numeric format
   const char* numfmt = Tcl_GetVar2(interp,OC_CONST84_CHAR(argv[2]),
                                    OC_CONST84_CHAR("numfmt"),0);
-  if(numfmt==NULL) numfmt = DEFAULT_NUM_FMT;
+  if(numfmt==NULL) numfmt = WMA_DEFAULT_NUM_FMT;
 
   // Determine base numeric format width
   Oc_Snprintf(buf,sizeof(buf),numfmt,1.0);
@@ -2694,6 +2877,15 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   OC_INDEX value_column_count = ( defaultvals ? 3 : 0 );
   /// value_column_count is the number of output columns, excluding the
   /// index column (if any), and the x/y/z position columns (if any).
+
+  // Extra outputs?
+  OC_BOOL extravals = 0;
+  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR(argv[2]),
+                   OC_CONST84_CHAR("extravals"),0);
+  if(cptr!=NULL) {
+    if(atoi(cptr)) extravals=1;
+  }
+  value_column_count += ( extravals ? 4 : 0 );
 
   // User-supplied index columns
   Nb_ArrayWrapper<Nb_DString> index_labels,index_units,index_values;
@@ -2839,8 +3031,15 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   if(xmin>xmax || ymin>ymax || zmin>zmax) {
     // Nothing to do.
     if(headtype != nohead) {
+#if WMA_USE_OBJ
+      tmpobj = Tcl_NewStringObj("## Empty range\n",-1);
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Oc_Snprintf(buf,sizeof(buf),"## Empty range\n");
       Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
     }
     return TCL_OK;
     /// NOTE: Checking here on the ?min/?max float values
@@ -2888,8 +3087,15 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
 
   if(icount<1 || jcount<1 || kcount<1) {
     // Nothing to do
-    Oc_Snprintf(buf,sizeof(buf),"## Empty range\n");
-    Tcl_Write(channel, buf, int(strlen(buf)));
+#if WMA_USE_OBJ
+      tmpobj = Tcl_NewStringObj("## Empty range\n",-1);
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
+      Oc_Snprintf(buf,sizeof(buf),"## Empty range\n");
+      Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
     return TCL_OK;
   }
   const OC_INDEX volume_point_count = icount*jcount*kcount;
@@ -2999,21 +3205,39 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
 
   if(headtype != nohead) {
     // Print ODT file header
+#if WMA_USE_OBJ
+    tmpobj = Tcl_NewStringObj("# ODT 1.0\n",-1);
+    Tcl_IncrRefCount(tmpobj);
+    Tcl_WriteObj(channel,tmpobj);
+    Tcl_DecrRefCount(tmpobj);
+#else
     Oc_Snprintf(buf,sizeof(buf),"# ODT 1.0\n");
     Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
 
     cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR(argv[2]),
                      OC_CONST84_CHAR("descript"),0);
     if(cptr!=NULL) {
+#if WMA_USE_OBJ
+      tmpobj = Tcl_ObjPrintf("## Desc: %s\n",cptr);
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Oc_Snprintf(buf,sizeof(buf),"## Desc: %s\n",cptr);
       Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
     }
 
     if(headtype == fullhead) {
+#if WMA_USE_OBJ
+      tmpobj = Tcl_ObjPrintf(
+#else
       Oc_Snprintf(buf,sizeof(buf),
+#endif
         "## Active volume: (%.15g,%.15g,%.15g) x (%.15g,%.15g,%.15g)\n"
         "## Cell size: %.15g x %.15g x %.15g\n"
-        "## Cells in active volume: %u\n",
+        "## Cells in active volume: %" OC_INDEX_MOD "d\n",
         static_cast<double>(xmin),
         static_cast<double>(ymin),
         static_cast<double>(zmin),
@@ -3024,11 +3248,23 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         static_cast<double>(fabs(step.y)),
         static_cast<double>(fabs(step.z)),
         volume_point_count);
+#if WMA_USE_OBJ
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
     }
-
+#if WMA_USE_OBJ
+    tmpobj = Tcl_NewStringObj("#\n# Table Start\n",-1);
+    Tcl_IncrRefCount(tmpobj);
+    Tcl_WriteObj(channel,tmpobj);
+    Tcl_DecrRefCount(tmpobj);
+#else
     Oc_Snprintf(buf,sizeof(buf),"#\n# Table Start\n");
     Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
   }
 
   char* bufptr=NULL;
@@ -3036,10 +3272,17 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
   if(avetype==space) {
     // Volume average
     if(headtype != nohead) {
+#if WMA_USE_OBJ
+      tmpobj
+        = Tcl_NewStringObj("# Title: Average across active volume\n",-1);
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Oc_Snprintf(buf,sizeof(buf),
                   "# Title: Average across active volume\n");
       Tcl_Write(channel, buf, int(strlen(buf)));
-
+#endif
       // Column headers
       bufptr = buf;
       bufptr += Oc_Snprintf(buf,sizeof(buf),"# Columns:\\\n#");
@@ -3057,13 +3300,34 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         *(bufptr++) = ' ';
         bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                     colwidth,zlab.GetStr());
+        if(extravals || user_labels.GetSize()>0) *(bufptr++) = ' ';
+      }
+      if(extravals) {
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,"L1");
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,"L2");
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,"Min abs");
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,"Max abs");
         if(user_labels.GetSize()>0) *(bufptr++) = ' ';
       }
       bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                    colwidth,user_labels);
       *(bufptr++) = '\n';
       *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+      tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
 
       // Unit headers
       bufptr = buf;
@@ -3082,38 +3346,83 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         *(bufptr++) = ' ';
         bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                     colwidth,valueunit.GetStr());
+        if(extravals || user_units.GetSize()>0) *(bufptr++) = ' ';
+      }
+      if(extravals) {
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,valueunit.GetStr());
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,valueunit.GetStr());
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,valueunit.GetStr());
+        *(bufptr++) = ' ';
+        bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                    colwidth,valueunit.GetStr());
         if(user_units.GetSize()>0) *(bufptr++) = ' ';
       }
       bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                    colwidth,user_units);
       *(bufptr++) = '\n';
       *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+      tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+      Tcl_IncrRefCount(tmpobj);
+      Tcl_WriteObj(channel,tmpobj);
+      Tcl_DecrRefCount(tmpobj);
+#else
       Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
     }
 
-    int user_col_offset = 0;
-    if(defaultvals) {
+    OC_INDEX user_col_offset = 0;
+    if(defaultvals || extravals) {
       Nb_Xpfloat mx, my, mz, magsum;
+      Nb_Xpfloat L1,L2;
+      OC_REAL8m minval,maxval;
+      minval = maxval = abs(grid(imin,jmin,kmin).x);
       for(k=kmin;k<kmax;k++) for(j=jmin;j<jmax;j++) for(i=imin;i<imax;i++) {
         Nb_Vec3<OC_REAL8m>  v  = grid(i,j,k);
         mx += v.x;
         my += v.y;
         mz += v.z;
         if(normalize) magsum += v.Mag();
+        if(extravals) {
+          OC_REAL8m ax = abs(v.x);
+          if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+          L1 += ax;   L2 += ax*ax;
+          OC_REAL8m ay = abs(v.y);
+          if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+          L1 += ay;   L2 += ay*ay;
+          OC_REAL8m az = abs(v.z);
+          if(az>maxval) maxval=az;  if(az<minval) minval=az;
+          L1 += az;   L2 += az*az;
+        }
       }
-      if(normalize && magsum.GetValue()>0.0) {
-        m.Set(mx.GetValue()/magsum.GetValue(),
-              my.GetValue()/magsum.GetValue(),
-              mz.GetValue()/magsum.GetValue());
-      } else {
-        m.Set(mx.GetValue()*scale/double(volume_point_count),
-              my.GetValue()*scale/double(volume_point_count),
-              mz.GetValue()*scale/double(volume_point_count));
+      if(defaultvals) {
+        if(normalize && magsum.GetValue()>0.0) {
+          m.Set(mx.GetValue()/magsum.GetValue(),
+                my.GetValue()/magsum.GetValue(),
+                mz.GetValue()/magsum.GetValue());
+        } else {
+          m.Set(mx.GetValue()*scale/OC_REAL8m(volume_point_count),
+                my.GetValue()*scale/OC_REAL8m(volume_point_count),
+                mz.GetValue()*scale/OC_REAL8m(volume_point_count));
+        }
+        value_column_results[OC_INDEX(0)] = m.x;
+        value_column_results[OC_INDEX(1)] = m.y;
+        value_column_results[OC_INDEX(2)] = m.z;
+        user_col_offset += 3;
       }
-      value_column_results[OC_INDEX(0)] = m.x;
-      value_column_results[OC_INDEX(1)] = m.y;
-      value_column_results[OC_INDEX(2)] = m.z;
-      user_col_offset = 3;
+      if(extravals) {
+        value_column_results[user_col_offset++]
+          = L1.GetValue()*scale/OC_REAL8m(volume_point_count);
+        value_column_results[user_col_offset++]
+          = sqrt(L2.GetValue()/OC_REAL8m(volume_point_count))*scale;
+        value_column_results[user_col_offset++] = minval*scale;
+        value_column_results[user_col_offset++] = maxval*scale;
+      }
     }
     for(ielt=0;ielt<user_funcs.GetSize();ielt++) {
       Nb_Xpfloat sum;
@@ -3143,7 +3452,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
     }
     *(bufptr++) = '\n';
     *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+    tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+    Tcl_IncrRefCount(tmpobj);
+    Tcl_WriteObj(channel,tmpobj);
+    Tcl_DecrRefCount(tmpobj);
+#else
     Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
   } else {
     // Plane averages
     TripleIndex triple_index(imin,imax,isize,
@@ -3175,8 +3491,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                         jcount*kcount);
           }
           triple_index.ResetYZX();
-          if(defaultvals) tripstep = &TripleIndex::StepYZX;
-          else            tripstep = &TripleIndex::PlaneStepYZX;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepYZX;
+          else                    tripstep = &TripleIndex::PlaneStepYZX;
           linear_index.SetStepYZX();
           manifold_size = jcount*kcount;
           base_a = base.x;
@@ -3190,8 +3506,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                         icount*kcount);
           }
           triple_index.ResetXZY();
-          if(defaultvals) tripstep = &TripleIndex::StepXZY;
-          else            tripstep = &TripleIndex::PlaneStepXZY;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepXZY;
+          else                    tripstep = &TripleIndex::PlaneStepXZY;
           linear_index.SetStepXZY();
           manifold_size = icount*kcount;
           base_a = base.y;
@@ -3205,8 +3521,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                         icount*jcount);
           }
           triple_index.ResetXYZ();
-          if(defaultvals) tripstep = &TripleIndex::StepXYZ;
-          else            tripstep = &TripleIndex::PlaneStepXYZ;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepXYZ;
+          else                    tripstep = &TripleIndex::PlaneStepXYZ;
           linear_index.SetStepXYZ();
           manifold_size = icount*jcount;
           base_a = base.z;
@@ -3219,7 +3535,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           return TCL_ERROR;
       }
       if(headtype != nohead) {
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,-1);
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, int(strlen(buf))); // Title
+#endif
         // Column headers
         bufptr = buf;
         bufptr += Oc_Snprintf(buf,sizeof(buf),"# Columns:\\\n#");
@@ -3243,13 +3566,35 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,zlab.GetStr());
+          if(extravals || user_labels.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L1");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L2");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Min abs");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Max abs");
           if(user_labels.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_labels);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
 
         // Unit headers
         bufptr = buf;
@@ -3273,46 +3618,91 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,valueunit.GetStr());
+          if(extravals || user_units.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
           if(user_units.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_units);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
-      if(defaultvals) stepcontrol = (triple_index.*tripstep)();
-      else            stepcontrol = 0;
+      if(defaultvals || extravals) stepcontrol = (triple_index.*tripstep)();
+      else                         stepcontrol = 0;
       linear_index.Step();
       while(stepcontrol<3) {
-        int user_col_offset = 0;
+        OC_INDEX user_col_offset = 0;
         OC_REAL8m position = base_a+double(*a_index_ptr)*step_a;
         /// Note: This is a bit of a hack.  In the !defaultvals case,
         /// the triple_index pointer is one back from the working
         /// location.  But that difference affects only the averaging
         /// variable, so doesn't influence this "position".
-        if(defaultvals) {
+        if(defaultvals || extravals) {
           Nb_Xpfloat mx, my, mz, magsum;
+          Nb_Xpfloat L1,L2;
+          OC_REAL8m minval,maxval;
+          minval = maxval = abs(grid(iref,jref,kref).x);
           do {
             Nb_Vec3<OC_REAL8m>  v  = grid(iref,jref,kref);
             mx += v.x;
             my += v.y;
             mz += v.z;
             if(normalize) magsum += v.Mag();
+            if(extravals) {
+              OC_REAL8m ax = abs(v.x);
+              if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+              L1 += ax;   L2 += ax*ax;
+              OC_REAL8m ay = abs(v.y);
+              if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+              L1 += ay;   L2 += ay*ay;
+              OC_REAL8m az = abs(v.z);
+              if(az>maxval) maxval=az;  if(az<minval) minval=az;
+              L1 += az;   L2 += az*az;
+            }
           } while((stepcontrol=(triple_index.*tripstep)())<2);
-          if(normalize && magsum.GetValue()>0.0) {
-            m.Set(mx.GetValue()/magsum.GetValue(),
-                  my.GetValue()/magsum.GetValue(),
-                  mz.GetValue()/magsum.GetValue());
-          } else {
-            m.Set(mx.GetValue()*scale/double(manifold_size),
-                  my.GetValue()*scale/double(manifold_size),
-                  mz.GetValue()*scale/double(manifold_size));
+          if(defaultvals) {
+            if(normalize && magsum.GetValue()>0.0) {
+              m.Set(mx.GetValue()/magsum.GetValue(),
+                    my.GetValue()/magsum.GetValue(),
+                    mz.GetValue()/magsum.GetValue());
+            } else {
+              m.Set(mx.GetValue()*scale/OC_REAL8m(manifold_size),
+                    my.GetValue()*scale/OC_REAL8m(manifold_size),
+                    mz.GetValue()*scale/OC_REAL8m(manifold_size));
+            }
+            value_column_results[OC_INDEX(0)] = m.x;
+            value_column_results[OC_INDEX(1)] = m.y;
+            value_column_results[OC_INDEX(2)] = m.z;
+            user_col_offset = 3;
           }
-          value_column_results[OC_INDEX(0)] = m.x;
-          value_column_results[OC_INDEX(1)] = m.y;
-          value_column_results[OC_INDEX(2)] = m.z;
-          user_col_offset = 3;
+          if(extravals) {
+            value_column_results[user_col_offset++]
+              = L1.GetValue()*scale/OC_REAL8m(manifold_size);
+            value_column_results[user_col_offset++]
+              = sqrt(L2.GetValue()/OC_REAL8m(manifold_size))*scale;
+            value_column_results[user_col_offset++] = minval*scale;
+            value_column_results[user_col_offset++] = maxval*scale;
+          }
         } else {
           stepcontrol = (triple_index.*tripstep)();
         }
@@ -3343,7 +3733,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         }
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
       break;
     case line:
@@ -3370,8 +3767,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             }
           }
           triple_index.ResetXYZ();
-          if(defaultvals) tripstep = &TripleIndex::StepXYZ;
-          else            tripstep = &TripleIndex::LineStepXYZ;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepXYZ;
+          else                     tripstep = &TripleIndex::LineStepXYZ;
           linear_index.SetStepXYZ();
           manifold_size = icount;
           base_a = base.y;   step_a = step.y;   a_index_ptr = &jref;
@@ -3399,8 +3796,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             }
           }
           triple_index.ResetYXZ();
-          if(defaultvals) tripstep = &TripleIndex::StepYXZ;
-          else            tripstep = &TripleIndex::LineStepYXZ;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepYXZ;
+          else                     tripstep = &TripleIndex::LineStepYXZ;
           linear_index.SetStepYXZ();
           manifold_size = jcount;
           base_a = base.x;   step_a = step.x;   a_index_ptr = &iref;
@@ -3428,8 +3825,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             }
           }
           triple_index.ResetZXY();
-          if(defaultvals) tripstep = &TripleIndex::StepZXY;
-          else            tripstep = &TripleIndex::LineStepZXY;
+          if(defaultvals || extravals) tripstep = &TripleIndex::StepZXY;
+          else                     tripstep = &TripleIndex::LineStepZXY;
           linear_index.SetStepZXY();
           manifold_size = kcount;
           base_a = base.x;   step_a = step.x;   a_index_ptr = &iref;
@@ -3451,6 +3848,20 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,zlab.GetStr());
+          if(extravals || user_labels.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L1");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L2");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Min abs");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Max abs");
           if(user_labels.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
@@ -3458,8 +3869,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
         // Write title and column headers
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
-
+#endif
         // Unit headers
         bufptr = buf;
         bufptr += Oc_Snprintf(buf,sizeof(buf),"#   Units:\\\n#");
@@ -3485,6 +3902,20 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,valueunit.GetStr());
+          if(extravals || user_units.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
           if(user_units.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
@@ -3492,41 +3923,72 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
         // Write units line to table
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
-      if(defaultvals) stepcontrol = (triple_index.*tripstep)();
-      else            stepcontrol = 0;
+      if(defaultvals || extravals) stepcontrol = (triple_index.*tripstep)();
+      else                         stepcontrol = 0;
       linear_index.Step();
       while(stepcontrol<3) {
-        int user_col_offset = 0;
+        OC_INDEX user_col_offset = 0;
         OC_REAL8m position_a = base_a+double(*a_index_ptr)*step_a;
         OC_REAL8m position_b = base_b+double(*b_index_ptr)*step_b;
         /// Note: This is a bit of a hack.  In the !defaultvals case,
         /// the triple_index pointer is one back from the working
         /// location.  But that difference affects only the averaging
         /// variable, so doesn't influence this "position".
-        if(defaultvals) {
+        if(defaultvals || extravals) {
           Nb_Xpfloat mx, my, mz, magsum;
+          Nb_Xpfloat L1,L2;
+          OC_REAL8m minval,maxval;
+          minval = maxval = abs(grid(iref,jref,kref).x);
           do {
             Nb_Vec3<OC_REAL8m>  v  = grid(iref,jref,kref);
             mx += v.x;
             my += v.y;
             mz += v.z;
             if(normalize) magsum += v.Mag();
+            if(extravals) {
+              OC_REAL8m ax = abs(v.x);
+              if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+              L1 += ax;   L2 += ax*ax;
+              OC_REAL8m ay = abs(v.y);
+              if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+              L1 += ay;   L2 += ay*ay;
+              OC_REAL8m az = abs(v.z);
+              if(az>maxval) maxval=az;  if(az<minval) minval=az;
+              L1 += az;   L2 += az*az;
+            }
           } while((stepcontrol=(triple_index.*tripstep)())==0);
-          if(normalize && magsum.GetValue()>0.0) {
-            m.Set(mx.GetValue()/magsum.GetValue(),
-                  my.GetValue()/magsum.GetValue(),
-                  mz.GetValue()/magsum.GetValue());
-          } else {
-            m.Set(mx.GetValue()*scale/double(manifold_size),
-                  my.GetValue()*scale/double(manifold_size),
-                  mz.GetValue()*scale/double(manifold_size));
+          if(defaultvals) {
+            if(normalize && magsum.GetValue()>0.0) {
+              m.Set(mx.GetValue()/magsum.GetValue(),
+                    my.GetValue()/magsum.GetValue(),
+                    mz.GetValue()/magsum.GetValue());
+            } else {
+              m.Set(mx.GetValue()*scale/OC_REAL8m(manifold_size),
+                    my.GetValue()*scale/OC_REAL8m(manifold_size),
+                    mz.GetValue()*scale/OC_REAL8m(manifold_size));
+            }
+            value_column_results[OC_INDEX(0)] = m.x;
+            value_column_results[OC_INDEX(1)] = m.y;
+            value_column_results[OC_INDEX(2)] = m.z;
+            user_col_offset = 3;
           }
-          value_column_results[OC_INDEX(0)] = m.x;
-          value_column_results[OC_INDEX(1)] = m.y;
-          value_column_results[OC_INDEX(2)] = m.z;
-          user_col_offset = 3;
+          if(extravals) {
+            value_column_results[user_col_offset++]
+              = L1.GetValue()*scale/OC_REAL8m(manifold_size);
+            value_column_results[user_col_offset++]
+              = sqrt(L2.GetValue()/OC_REAL8m(manifold_size))*scale;
+            value_column_results[user_col_offset++] = minval*scale;
+            value_column_results[user_col_offset++] = maxval*scale;
+          }
         } else {
           stepcontrol = (triple_index.*tripstep)();
         }
@@ -3560,16 +4022,29 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         }
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
       break;
     case point:
       // Point output (no averaging)
       if(headtype != nohead) {
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj("# Title: Points in specified volume\n",-1);
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Oc_Snprintf(buf,sizeof(buf),
                     "# Title: Points in specified volume\n");
         Tcl_Write(channel, buf, int(strlen(buf)));
-
+#endif
         // Column headers
         bufptr = buf;
         bufptr += Oc_Snprintf(buf,sizeof(buf),"# Columns:\\\n#");
@@ -3598,14 +4073,34 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,zlab.GetStr());
+          if(extravals || user_labels.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L1");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L2");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Min abs");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Max abs");
           if(user_labels.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_labels);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
-
+#endif
         // Unit headers
         bufptr = buf;
         bufptr += Oc_Snprintf(buf,sizeof(buf),"#   Units:\\\n#");
@@ -3634,31 +4129,66 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,valueunit.GetStr());
+          if(extravals || user_units.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
           if(user_units.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_units);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
 
       for(k=kmin;k<kmax;k++) {
         OC_INDEX joffset = (k*jsize + jmin)*isize;
         for(j=jmin;j<jmax;j++,joffset+=isize) for(i=imin;i<imax;i++) {
-          int user_col_offset = 0;
-          if(defaultvals) {
+          OC_INDEX user_col_offset = 0;
+          if(defaultvals || extravals) {
             m=grid(i,j,k);
-            if(normalize) {
-              OC_REAL8m mag = m.Mag();
-              if(mag>0.) { m.x /= mag;  m.y /= mag;  m.z /= mag; }
-            } else {
-              m *= scale;
+            if(defaultvals) {
+              if(normalize) {
+                OC_REAL8m mag = m.Mag();
+                if(mag>0.) { m.x /= mag;  m.y /= mag;  m.z /= mag; }
+              } else {
+                m *= scale;
+              }
+              value_column_results[OC_INDEX(0)] = m.x;
+              value_column_results[OC_INDEX(1)] = m.y;
+              value_column_results[OC_INDEX(2)] = m.z;
+              user_col_offset = 3;
             }
-            value_column_results[OC_INDEX(0)] = m.x;
-            value_column_results[OC_INDEX(1)] = m.y;
-            value_column_results[OC_INDEX(2)] = m.z;
-            user_col_offset = 3;
+            if(extravals) {
+              OC_REAL8m ax = abs(m.x);
+              OC_REAL8m ay = abs(m.y);
+              OC_REAL8m az = abs(m.z);
+              OC_REAL8m minval=(ax<ay ? (ax<az? ax : az) : (ay<az ? ay : az));
+              OC_REAL8m maxval=(ax>ay ? (ax>az? ax : az) : (ay>az ? ay : az));
+              value_column_results[user_col_offset++] = (ax+ay+az)*scale;
+              value_column_results[user_col_offset++]
+                = sqrt(ax*ax+ay*ay+az*az)*scale;
+              value_column_results[user_col_offset++] = minval*scale;
+              value_column_results[user_col_offset++] = maxval*scale;
+            }
           }
           for(ielt=0;ielt<user_funcs.GetSize();ielt++) {
             value_column_results[user_col_offset+ielt]
@@ -3688,7 +4218,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           }
           *(bufptr++) = '\n';
           *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+          tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+          Tcl_IncrRefCount(tmpobj);
+          Tcl_WriteObj(channel,tmpobj);
+          Tcl_DecrRefCount(tmpobj);
+#else
           Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
         }
       }
       break;
@@ -3751,8 +4288,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                       " (1 point per ball)\n",
                       static_cast<double>(ball_radius));
         }
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,-1);
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, int(strlen(buf)));
-
+#endif
         // Column headers
         bufptr = buf;
         bufptr += Oc_Snprintf(buf,sizeof(buf),"# Columns:\\\n#");
@@ -3781,13 +4324,34 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,zlab.GetStr());
+          if(extravals || user_labels.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L1");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"L2");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Min abs");
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,"Max abs");
           if(user_labels.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_labels);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
 
         // Unit headers
         bufptr = buf;
@@ -3817,13 +4381,34 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
           *(bufptr++) = ' ';
           bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                       colwidth,valueunit.GetStr());
+          if(extravals || user_units.GetSize()>0) *(bufptr++) = ' ';
+        }
+        if(extravals) {
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
+          *(bufptr++) = ' ';
+          bufptr = CenterStringOutput(bufptr,sizeof(buf)-(bufptr-buf)-1,
+                                      colwidth,valueunit.GetStr());
           if(user_units.GetSize()>0) *(bufptr++) = ' ';
         }
         bufptr = WriteCenteredLabels(bufptr,sizeof(buf)-(bufptr-buf)-1,
                                      colwidth,user_units);
         *(bufptr++) = '\n';
         *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+        tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+        Tcl_IncrRefCount(tmpobj);
+        Tcl_WriteObj(channel,tmpobj);
+        Tcl_DecrRefCount(tmpobj);
+#else
         Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
       }
 
       // Step through points about which a ball of radius ball_radius
@@ -3831,10 +4416,12 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
       if(ball_point_count>0) {
         for(k=kmin+krad;k<kmax-krad;k++) for(j=jmin+jrad;j<jmax-jrad;j++)
           for(i=imin+irad;i<imax-irad;i++) {
-            int user_col_offset = 0;
-            if(defaultvals) {
+            OC_INDEX user_col_offset = 0;
+            if(defaultvals || extravals) {
               m.Set(0.,0.,0.);
               OC_REAL8m magsum=0.0;
+              Nb_Xpfloat L1,L2;
+              OC_REAL8m minval = OC_REAL8m_MAX, maxval = -1.0;
               for(OC_INDEX k2=k-krad;k2<k+krad+1;k2++) {
                 OC_REAL8m zoff = (k2-k)*step.z;
                 OC_REAL8m zoffsq=zoff*zoff;
@@ -3845,17 +4432,39 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                     OC_REAL8m xoff = (i2-i)*step.x;
                     OC_REAL8m xoffsq=xoff*xoff;
                     if(zoffsq+yoffsq+xoffsq>ball_radsq) continue;
-                    m+=grid(i2,j2,k2);
-                    if(normalize) magsum += grid(i2,j2,k2).Mag();
+                    Nb_Vec3<OC_REAL8m>  v  = grid(i2,j2,k2);
+                    m+=v;
+                    if(normalize) magsum += v.Mag();
+                    if(extravals) {
+                      OC_REAL8m ax = abs(v.x);
+                      if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+                      L1 += ax;   L2 += ax*ax;
+                      OC_REAL8m ay = abs(v.y);
+                      if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+                      L1 += ay;   L2 += ay*ay;
+                      OC_REAL8m az = abs(v.z);
+                      if(az>maxval) maxval=az;  if(az<minval) minval=az;
+                      L1 += az;   L2 += az*az;
+                    }
                   }
                 }
               }
-              if(normalize && magsum>0.0) m *= 1.0/magsum;
-              else                        m *= scale/double(ball_point_count);
-              value_column_results[OC_INDEX(0)] = m.x;
-              value_column_results[OC_INDEX(1)] = m.y;
-              value_column_results[OC_INDEX(2)] = m.z;
-              user_col_offset = 3;
+              if(defaultvals) {
+                if(normalize && magsum>0.0) m *= 1.0/magsum;
+                else m *= scale/OC_REAL8m(ball_point_count);
+                value_column_results[OC_INDEX(0)] = m.x;
+                value_column_results[OC_INDEX(1)] = m.y;
+                value_column_results[OC_INDEX(2)] = m.z;
+                user_col_offset = 3;
+              }
+              if(extravals) {
+                value_column_results[user_col_offset++]
+                  = L1.GetValue()*scale/OC_REAL8m(ball_point_count);
+                value_column_results[user_col_offset++]
+                  = sqrt(L2.GetValue()/OC_REAL8m(ball_point_count))*scale;
+                value_column_results[user_col_offset++] = minval*scale;
+                value_column_results[user_col_offset++] = maxval*scale;
+              }
             }
             for(ielt=0;ielt<user_funcs.GetSize();ielt++) {
               OC_REAL8m sum=0.0;
@@ -3903,7 +4512,14 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             }
             *(bufptr++) = '\n';
             *bufptr = '\0'; // Safety
+#if WMA_USE_OBJ
+            tmpobj = Tcl_NewStringObj(buf,static_cast<int>(bufptr-buf));
+            Tcl_IncrRefCount(tmpobj);
+            Tcl_WriteObj(channel,tmpobj);
+            Tcl_DecrRefCount(tmpobj);
+#else
             Tcl_Write(channel, buf, static_cast<int>(bufptr-buf));
+#endif
           }
         }
       }
@@ -3920,14 +4536,23 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
 
   if(tailtype != notail) {
     // Print ODT file trailer
+#if WMA_USE_OBJ
+    tmpobj = Tcl_NewStringObj("# Table End\n",-1);
+    Tcl_IncrRefCount(tmpobj);
+    Tcl_WriteObj(channel,tmpobj);
+    Tcl_DecrRefCount(tmpobj);
+#else
     Oc_Snprintf(buf,sizeof(buf),"# Table End\n");
     Tcl_Write(channel, buf, int(strlen(buf)));
+#endif
   }
 
   Tcl_Flush(channel);
   return TCL_OK;
-#undef DEFAULT_NUM_FMT
 }
+
+#undef WMA_DEFAULT_NUM_FMT
+#undef WMA_USE_OBJ
 
 int
 BitmapCmd(ClientData clientData, Tcl_Interp *interp,
@@ -5049,6 +5674,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   // Register C/C++ routines with interpreter
   Oc_RegisterCommand(interp,"ChangeMesh",ChangeMesh);
   Oc_RegisterCommand(interp,"CopyMesh",CopyMesh);
+  Oc_RegisterCommand(interp,"CrossProductMesh",CrossProductMesh);
   Oc_RegisterCommand(interp,"DifferenceMesh",DifferenceMesh);
   Oc_RegisterCommand(interp,"DrawFrame",DrawFrame);
   Oc_RegisterCommand(interp,"FindMeshVector",FindMeshVector);
@@ -5082,6 +5708,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"GetZsliceLevels",GetZsliceLevels);
   Oc_RegisterCommand(interp,"IsRectangularMesh",IsRectangularMesh);
   Oc_RegisterCommand(interp,"PeriodicTranslate",PeriodicTranslate);
+  Oc_RegisterCommand(interp,"Resample",Resample);
   Oc_RegisterCommand(interp,"PSWriteMesh",PSWriteMesh);
   Oc_RegisterCommand(interp,"ReportActiveMesh",ReportActiveMesh);
   Oc_RegisterCommand(interp,"SelectActiveMesh",SelectActiveMesh);

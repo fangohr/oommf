@@ -19,8 +19,8 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:54 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:45 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]

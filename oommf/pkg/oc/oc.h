@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-19 21:34:22 $
+ * Last modified on: $Date: 2015/06/26 23:31:40 $
  * Last modified by: $Author: donahue $
  */
 
@@ -110,7 +110,12 @@ unsigned __int64 Oc_Nop(unsigned __int64);
 size_t          Oc_CacheSize(int level=0);
 void            Oc_DirectPathname(const char *nickname,
 				  Oc_AutoBuf& fullname);
-void            Oc_FileDirname(const char* filename,
-                               Oc_AutoBuf& dirname);
+void            Oc_TclFileCmd(const char* subcmd,
+			      const char* filename,
+			      Oc_AutoBuf& result);
+
+typedef void OcSigFunc(int,ClientData); // C++ linkage OK here
+void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData);
+void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData);
 
 #endif /* _OC */

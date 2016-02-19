@@ -251,7 +251,9 @@ if {[string match g++ [file tail [lindex \
     $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories

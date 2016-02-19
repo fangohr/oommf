@@ -8,7 +8,7 @@
  *       *not* thread safe, and should be called *only* from the main
  *       thread, preferably during initialization.
  *
- * Last modified on: $Date: 2011-03-31 22:26:47 $
+ * Last modified on: $Date: 2011/03/31 22:26:47 $
  * Last modified by: $Author: donahue $
  */
 

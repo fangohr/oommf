@@ -2,10 +2,11 @@
  *
  * File input/output routines
  *
- * Last modified on: $Date: 2010-07-16 22:34:01 $
+ * Last modified on: $Date: 2013/05/22 07:15:37 $
  * Last modified by: $Author: donahue $
  */
 
+#include <assert.h>
 #include <string.h>
 #include "oc.h"
 #include "nb.h"
@@ -136,10 +137,11 @@ OC_INT4m Vf_VioFile::FillArray(Vf_GridVec3f &grid)
 	       "  Try using Vf_VioFile::GetDimensions().");
 
   // Read in data, 1 column at a time (vio file is stored columnwise)
-  OC_REAL8 *rowbuf=new OC_REAL8[height*VECDIM];
+  assert(height>=0);
+  OC_REAL8 *rowbuf=new OC_REAL8[size_t(height)*VECDIM];
   if(rowbuf==NULL) FatalError(-1,STDDOC,ErrNoMem);
   for(OC_INDEX k=0;k<depth;k++) for(OC_INDEX i=0;i<width;i++) {
-    if(fread((char *)rowbuf,sizeof(OC_REAL8)*VECDIM,height,fptr)
+    if(fread((char *)rowbuf,sizeof(OC_REAL8)*VECDIM,size_t(height),fptr)
        !=(size_t)height) {
       NonFatalError(STDDOC,"%s (k=%ld, i=%ld)",ErrInputEOF,
                     long(k),long(i));
@@ -153,14 +155,14 @@ OC_INT4m Vf_VioFile::FillArray(Vf_GridVec3f &grid)
     for(OC_INDEX j=0;j<height;j++) {
       // Check for invalid input
       if(!Nb_IsFinite(rowbuf[3*j]) || !Nb_IsFinite(rowbuf[3*j+1])
-	 || !Nb_IsFinite(rowbuf[3*j+2])) {
-	NonFatalError(STDDOC,"Invalid floating point data detected");
-	delete[] rowbuf;
-	return 1;
+         || !Nb_IsFinite(rowbuf[3*j+2])) {
+        NonFatalError(STDDOC,"Invalid floating point data detected");
+        delete[] rowbuf;
+        return 1;
       }
       grid(i,j,k)=Nb_Vec3<OC_REAL8>(OC_REAL8(rowbuf[3*j]),
-				 OC_REAL8(rowbuf[3*j+2]),
-				 -OC_REAL8(rowbuf[3*j+1]));
+                                    OC_REAL8(rowbuf[3*j+2]),
+                                    -OC_REAL8(rowbuf[3*j+1]));
       // vio file   uses x => left, z => up, y => into plane,
       // while grid uses x => left, y => up, z => out of plane.
     }

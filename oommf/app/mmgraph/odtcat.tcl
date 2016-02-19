@@ -12,16 +12,20 @@
 # is made that the new table has the same number of columns as
 # the first.  If not, an error is reported and processing is halted.
 #
-# Example Usage: tclsh odtcols.tcl -c 3 <infile.odt >outfile.odt
+# Example Usage: tclsh odtcat.tcl -c 3 <infile.odt >outfile.odt
 #
 #    v--Edit here if necessary \
 exec tclsh "$0" ${1+"$@"}
 
+set default_control_glob [list {Oxs_TimeDriver:*:Simulation time} \
+                               {Oxs_MinDriver:*:Iteration} ]
+
 proc Usage {} {
+   global default_control_glob
    puts stderr [subst -nocommands {Usage: tclsh odtcat.tcl [-h]\
           [-b overlap_lines] [-c control_column] [-o order] [-q] \\\n\
           \            <infile >outfile}]
-   puts stderr "Defaults: control_column = {}"
+   puts stderr "Defaults: control_column = $default_control_glob"
    puts stderr "           overlap_lines = 100"
    puts stderr "                   order = auto"
    exit
@@ -32,7 +36,7 @@ if {[lsearch -regexp $argv {-+h.*}]>=0} {
    Usage
 }
 
-# Quiet flag?  This suppresses informationatl messages written
+# Quiet flag?  This suppresses informational messages written
 # to stderr.
 set quiet_flag 0
 set cmdindex [lsearch -regexp $argv {-+q.*}]
@@ -251,8 +255,7 @@ if {![regexp {^[0-9]+$} $control_column]} {
    # control_column does not specify a column number
    set control_glob [list $control_column]
    if {[string match {} $control_column]} {
-      set control_glob [list {Oxs_TimeDriver:*:Simulation time}]
-      lappend control_glob {Oxs_MinDriver:*:Iteration}
+      set control_glob $default_control_glob
    }
 }
 while {[ReadLine line]>=0} {
@@ -284,7 +287,7 @@ while {[ReadLine line]>=0} {
          }
          if {[llength $indices]>1} {
             puts stderr "Requested control_column glob-string\
-                        \"$control_glob\" does matches more\
+                        \"$control_glob\" matches more\
                         than one column header:"
             foreach i $indices {
                puts stderr " \"[lindex $ent $i]\""

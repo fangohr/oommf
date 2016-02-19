@@ -39,6 +39,9 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
    source [file join [file dirname [info script]] buildtest.tcl]
 }
 
+## Enable experimental code to set application name in Mac OS X menubar
+$config SetValue program_compiler_c++_set_macosx_appname 1
+
 
 ########################################################################
 # START EDIT HERE
@@ -102,6 +105,9 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
 # <URL:http://egcs.cygnus.com/>
 $config SetValue program_compiler_c++ {g++ -c}
+#
+# The Clang C++ compiler 'clang++'
+#$config SetValue program_compiler_c++ {clang++ -c}
 
 ########################################################################
 # SUPPORT PROCEDURES
@@ -177,7 +183,34 @@ proc GuessGccVersion { gcc } {
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-###################
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
+#
+## Flags to remove from compiler "opts" string:
+# $config SetValue program_compiler_c++_remove_flags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
+# 
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -191,16 +224,28 @@ if {[catch {$config GetValue oommf_threads}]} {
       $config SetValue oommf_threads 0  ;# No threads
    }
 }
-$config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
-## maximum number of "auto" threads to 4.
+set auto_max 8 ;# Arbitrarily limit maximum number of "auto" threads.
 if {[catch {$config GetValue thread_count}]} {
-   # Value not set in platforms/local/darwin.tcl, so use getconf
-   # or sysctl report the number of "online" processors.
-   if {(![catch {set processor_count [exec getconf _NPROCESSORS_ONLN]}] &&
-        [regexp {[0-9]+} $processor_count]) ||
-       (![catch {set processor_count [lindex [exec sysctl hw.availcpu] end]}] &&
-        [regexp {[0-9]+} $processor_count])} {
-      set auto_max [$config GetValue thread_count_auto_max]
+   # Value not set in platforms/local/darwin.tcl, so use sysctl or
+   # system_profiler to get count of physical cores.  If those fail,
+   # then cut auto_max in half and fall back to getconf or sysctl to
+   # get count of logical cores (which may include cores introduced by
+   # hyperthreading).
+   if {[catch {lindex [exec sysctl hw.physicalcpu] end} processor_count] &&
+       ([catch {exec system_profiler SPHardwareDataType} result] ||
+	![regexp {Total Number of Cores: *([0-9]+)} \
+	      $result dummy processor_count])} {
+      # Can't determine physical core count
+      set auto_max [expr {(1+$auto_max)/2}]
+      if {([catch {exec getconf _NPROCESSORS_ONLN} processor_count] ||
+	   ![regexp {[0-9]+} $processor_count]) &&
+	  ([catch {lindex [exec sysctl hw.availcpu] end} processor_count] ||
+	   ![regexp {[0-9]+} $processor_count])} {
+	 # Sorry, no clue on core count
+	 set processor_count 0
+      }
+   }
+   if {$processor_count>0} {
       if {$processor_count>$auto_max} {
          # Limit automatically set thread count to auto_max
          set processor_count $auto_max
@@ -208,6 +253,8 @@ if {[catch {$config GetValue thread_count}]} {
       $config SetValue thread_count $processor_count
    }
 }
+$config SetValue thread_count_auto_max $auto_max
+
 if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
     $config SetValue program_compiler_c++ $compiler
 }
@@ -220,18 +267,36 @@ if {[string match g++ [file tail [lindex \
         [$config GetValue program_compiler_c++] 0]]]} {
    # ...for GNU g++ C++ compiler
 
+   if {![info exists gcc_is_clang]} {
+      set gcc_is_clang 0
+   }
    if {![info exists gcc_version]} {
       set gcc_version [GuessGccVersion \
                           [lindex [$config GetValue program_compiler_c++] 0]]
+      if {[string match {} $gcc_version]} {
+	 set gcc_version [GuessClangVersion \
+                          [lindex [$config GetValue program_compiler_c++] 0]]
+	 set gcc_is_clang 1  ;# gcc is actually clang
+      }
    }
-   $config SetValue program_compiler_c++_banner_cmd \
-      [list GetGccBannerVersion  \
-          [lindex [$config GetValue program_compiler_c++] 0]]
+   if {!$gcc_is_clang} {
+      $config SetValue program_compiler_c++_banner_cmd \
+	 [list GetGccBannerVersion  \
+	     [lindex [$config GetValue program_compiler_c++] 0]]
+   } else {
+      $config SetValue program_compiler_c++_banner_cmd \
+	 [list GetClangBannerVersion  \
+	     [lindex [$config GetValue program_compiler_c++] 0]]
+   }
 
    # Optimization options
    # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
    # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetGccGeneralOptFlags $gcc_version]
+   if {!$gcc_is_clang} {
+      set opts [GetGccGeneralOptFlags $gcc_version]
+   } else {
+      set opts [GetClangGeneralOptFlags $gcc_version]
+   }
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.  CPU
    # specific opts are introduced below.
@@ -256,7 +321,11 @@ if {[string match g++ [file tail [lindex \
       if {[string match host $cpu_arch]} {
          set cpu_arch [GuessCpu]
       }
-      set cpuopts [GetGccCpuOptFlags $gcc_version $cpu_arch]
+      if {!$gcc_is_clang} {
+	 set cpuopts [GetGccCpuOptFlags $gcc_version $cpu_arch]
+      } else {
+	 set cpuopts [GetClangCpuOptFlags $gcc_version $cpu_arch]
+      }
    }
    unset cpu_arch
    # You can override the above results by directly setting or
@@ -279,17 +348,44 @@ if {[string match g++ [file tail [lindex \
    #   {^-fprefetch-loop-arrays\s+|\s+-fprefetch-loop-arrays(?=\s|$)} $opts {} opts
 
    # 32 or 64 bit?
-   switch -exact $tcl_platform(wordSize) {
-      4 { lappend opts -m32 }
-      8 { lappend opts -m64 }
+   if {[info exists tcl_platform(pointerSize)]} {
+      switch -exact $tcl_platform(pointerSize) {
+         4 { lappend opts -m32 }
+         8 { lappend opts -m64 }
+      }
+   } else {
+      switch -exact $tcl_platform(wordSize) {
+         4 { lappend opts -m32 }
+         8 { lappend opts -m64 }
+      }
    }
 
    # Default warnings disable
-   set nowarn [list -Wno-non-template-friend]
+   set nowarn {}
+   if {!$gcc_is_clang} {
+       # clang doesn't support the -Wno-non-template-friend option.
+       lappend nowarn -Wno-non-template-friend
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
@@ -316,13 +412,117 @@ if {[string match g++ [file tail [lindex \
         -Wno-unused-function"}
 
    # Widest natively support floating point type
-   $config SetValue program_compiler_c++_typedef_realwide "double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
+
+   # Mac OS X 10.9 uses libc++ rather than libstdc++ by default, and
+   # its libc++ doesn't like const keys in maps.  The workaround
+   # shouldn't hurt, so apply it in all cases:
+   $config SetValue program_compiler_c++_property_stl_map_broken_const_key 1
 
    # Directories to exclude from explicit include search path, i.e.,
    # the -I list.  Some versions of gcc complain if "system" directories
    # appear in the -I list.
    $config SetValue \
       program_compiler_c++_system_include_path [list /usr/include]
+
+} elseif {[string match clang++ [file tail [lindex \
+        [$config GetValue program_compiler_c++] 0]]]} {
+   # ...for Clang C++ compiler
+
+   if {![info exists clang_version]} {
+      set clang_version [GuessClangVersion \
+                          [lindex [$config GetValue program_compiler_c++] 0]]
+   }
+   $config SetValue program_compiler_c++_banner_cmd \
+      [list GetClangBannerVersion  \
+          [lindex [$config GetValue program_compiler_c++] 0]]
+
+   # Optimization options
+   # set opts [list -O0]  ;# No optimization
+   # set opts [list -O%s]                      ;# Minimal optimization
+   set opts [GetClangGeneralOptFlags $clang_version]
+   # Aggressive optimization flags, some of which are specific to
+   # particular clang versions, but are all processor agnostic.  CPU
+   # specific opts are introduced below.
+
+   # CPU model architecture specific options.  To override, set value
+   # program_compiler_c++_cpu_arch in
+   # oommf/config/platform/local/darwin.tcl.  See note about SSE
+   # below.
+   if {[catch {$config GetValue program_compiler_c++_cpu_arch} cpu_arch]} {
+      set cpu_arch generic
+   }
+   set cpuopts {}
+   if {![string match generic [string tolower $cpu_arch]]} {
+      # Arch specific build.  If cpu_arch is "host", then try to
+      # guess.  Otherwise, assume user knows what he is doing and has
+      # inserted an appropriate cpu_arch string, i.e., one that
+      # matches the format and known types as returned from GuessCpu.
+      if {[string match host $cpu_arch]} {
+         set cpu_arch [GuessCpu]
+      }
+      set cpuopts [GetClangCpuOptFlags $clang_version $cpu_arch]
+   }
+   unset cpu_arch
+   # You can override the above results by directly setting or
+   # unsetting the cpuopts variable, e.g.,
+   #
+   #    set cpuopts [list -march=core2]
+   # or
+   #    unset cpuopts
+   #
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+   }
+
+   # 32 or 64 bit?
+   if {[info exists tcl_platform(pointerSize)]} {
+      switch -exact $tcl_platform(pointerSize) {
+         4 { lappend opts -m32 }
+         8 { lappend opts -m64 }
+      }
+   } else {
+      switch -exact $tcl_platform(wordSize) {
+         4 { lappend opts -m32 }
+         8 { lappend opts -m64 }
+      }
+   }
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
+
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+
+   $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
+   $config SetValue program_compiler_c++_option_src {format \"%s\"}
+   $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
+   $config SetValue program_compiler_c++_option_debug {format "-g"}
+   $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
+
+   # Widest natively support floating point type
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
+
+   # Mac OS X 10.9 uses libc++ rather than libstdc++ by default, and
+   # its libc++ doesn't like const keys in maps.  The workaround
+   # shouldn't hurt, so apply it in all cases:
+   $config SetValue program_compiler_c++_property_stl_map_broken_const_key 1
 }
 
 # The program to run on this platform to link together object files and
@@ -340,6 +540,38 @@ if {[string match g++ [file tail [lindex \
       4 { lappend linkcmdline -m32 }
       8 { lappend linkcmdline -m64 }
    }
+   # Extra flags
+   if {![catch {$config GetValue program_linker_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	   if {[lsearch -exact $linkcmdline $elt]<0} {
+	       lappend linkcmdline $elt
+	   }
+       }
+   }
+   $config SetValue program_linker $linkcmdline
+   unset linkcmdline
+   $config SetValue program_linker_option_obj {format \"%s\"}
+   $config SetValue program_linker_option_out {format "-o \"%s\""}
+   $config SetValue program_linker_option_lib {format \"%s\"}
+   $config SetValue program_linker_uses_-L-l {1}
+} elseif {[string match clang++ [file tail [lindex \
+        [$config GetValue program_compiler_c++] 0]]]} {
+   # ...for Clang clang++ as linker
+   set linkcmdline [lindex \
+                       [$config GetValue program_compiler_c++] 0]
+   # 32 or 64 bit?
+   switch -exact $tcl_platform(wordSize) {
+      4 { lappend linkcmdline -m32 }
+      8 { lappend linkcmdline -m64 }
+   }
+   # Extra flags
+   if {![catch {$config GetValue program_linker_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	   if {[lsearch -exact $linkcmdline $elt]<0} {
+	       lappend linkcmdline $elt
+	   }
+       }
+   }
    $config SetValue program_linker $linkcmdline
    unset linkcmdline
    $config SetValue program_linker_option_obj {format \"%s\"}
@@ -347,6 +579,7 @@ if {[string match g++ [file tail [lindex \
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_uses_-L-l {1}
 }
+
 
 # The program to run on this platform to create a single library file out
 # of many object files.
@@ -378,4 +611,5 @@ $config SetValue script_filename_object {format %s.o}
 $config SetValue script_filename_static_library {format lib%s.a}
 
 ########################################################################
+
 unset config

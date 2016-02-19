@@ -1,0 +1,89 @@
+# MIF 2.1
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+#Initialize random number generators with seed=1
+RandomSeed 1
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0  20e-9}
+  yrange {0  10e-9}
+  zrange {0  5e-9}
+}
+
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :atlas
+}
+
+
+# Demag
+Specify PBC_Demag_2D {
+ sample_repeat_nx 1
+ sample_repeat_ny 0
+ tensor_file_name trivial_test_1
+}
+
+# Exchange
+Specify PBC_Exchange_2D {
+  A   13e-12
+}
+
+Specify Oxs_ExchangePtwise {
+ A { Oxs_ScriptScalarField {
+    atlas :atlas
+    script {pt_wise_exchange 13e-12}
+    script_args rawpt
+ } }
+}
+
+Specify PBC_ExchangePtwise_2D {
+ A { Oxs_ScriptScalarField {
+    atlas :atlas
+    script {pt_wise_exchange 13e-12}
+    script_args rawpt
+ } }
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_RungeKuttaEvolve:evolver {
+   alpha 0.1
+   method rkf54
+}
+
+# Driver
+Specify Oxs_TimeDriver {
+ evolver :evolver
+ basename ./pbc_test_pt_exch
+ stopping_time 1e-12
+ stage_count 20
+ mesh :mesh
+ Ms 860e3
+ m0 { Oxs_ScriptVectorField {
+      atlas :atlas
+      script_args {rawpt} 
+      script  init_m0
+      norm  1
+     }
+   }
+
+}
+
+
+proc init_m0 { x y z} {
+     if { $x < 10e-9 } {	
+     	return "1 1 1"
+     } else {
+       return "1 0 0"
+     }
+}
+
+proc pt_wise_exchange {A x y z } {
+    return $A
+}
+
+Destination archive mmArchive
+Schedule DataTable archive Stage 1
+Schedule Oxs_TimeDriver::Magnetization archive Stage 10

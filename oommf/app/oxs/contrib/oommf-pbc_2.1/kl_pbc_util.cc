@@ -14,8 +14,8 @@
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.1 $",
-   "$Date: 2010-07-17 06:57:13 $",
+   "$Revision: 1.2 $",
+   "$Date: 2015/09/29 20:55:45 $",
    "$Author: donahue $",
    "Kristof M. Lebecki (lebecki(ot)ifpan.edu.pl)");
 

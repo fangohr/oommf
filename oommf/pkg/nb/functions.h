@@ -4,7 +4,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-11-09 00:50:02 $
+ * Last modified on: $Date: 2015/07/23 20:28:05 $
  * Last modified by: $Author: donahue $
  */
 
@@ -29,10 +29,21 @@ void Nb_NOP(OC_REAL8m);
 void Nb_NOP(void*);
 
 // Sign function
-inline int Nb_Signum(double x) { return (x>0 ? 1 : (x<0 ? -1 : 0)); }
+template<class T> T Nb_Signum(T x) { return (x>0 ? 1 : (x<0 ? -1 : 0)); }
 
-// Greatest Common Divisor
-int Nb_Gcd(int m,int n);
+// Greatest common divisor, computed via Euclid's algorithm
+template<class T> T Nb_Gcd(T x,T y);
+/// Explicit, separate declaration to help HP CC auto-instantiation.
+template<class T> T Nb_Gcd(T m,T n)
+{ // Include definition in header to aid GCC's auto-instantiation.
+  if(n==0) return 0;
+  if(n<0) n *= -1;
+  if(m<0) m *= -1;
+  T temp;
+  while((temp=(m%n))>0) { m=n; n=temp; }
+  return n;
+}
+
 Tcl_CmdProc NbGcdCmd;
 
 // Greatest Common Divisor, OC_REALWIDE version
@@ -64,6 +75,9 @@ void degcossin(double angle,double& cosine,double& sine);
 // Routines to detect IEEE floating point NAN's and infinities.
 int Nb_IsFinite(OC_REAL4 x);
 int Nb_IsFinite(OC_REAL8 x);
+#if !OC_REALWIDE_IS_REAL8
+int Nb_IsFinite(OC_REALWIDE x);
+#endif
 
 // Routine to detect string containing nothing but whitespace.
 int Nb_StrIsSpace(const char* str);
@@ -88,16 +102,20 @@ void Nb_TclNativeFilename(Nb_DString &filename);
 // C++ interface to the Tcl 'file exists' functionality.
 OC_BOOL Nb_FileExists(const char *path);
 
+// C++ interface to the Tcl 'file join' command.
+Nb_DString Nb_TclFileJoin(const Nb_List<Nb_DString>& parts);
+
 // C++ interface to the Tcl 'glob' command.
 // Import "options" is a string of glob options (multiple options
 // allowed), and globstr is the glob string.  Option -nocomplain is
 // included by default.  The export results is a (possibly empty) list
 // of matching files, sorted by lsort.  The return value is the number
 // of elements in the list.
-OC_INT4m Nb_TclGlob(const char* options,const char* globstr,
+OC_INDEX Nb_TclGlob(const char* options,const char* globstr,
                     Nb_List<Nb_DString>& results);
 
-// C++ interface to Oc_TempName
+// C++ interface to Oc_TempName.  NB: This uses the global Tcl interp,
+// so it can only be called from the main thread.
 Nb_DString Nb_TempName(const char* baseprefix = "_",
 		       const char* suffix = "",
 		       const char* basedir = "");
@@ -106,11 +124,21 @@ Nb_DString Nb_TempName(const char* baseprefix = "_",
 // a convenience pointer to the buffer area of required import ab.
 const char* Nb_GetOOMMFRootDir(Oc_AutoBuf& ab);
 
-// Versions of fopen, remove, and rename that pass file names
-// through Nb_TclNativeFilename().
+// Versions of fopen, remove, and rename that pass file names through
+// Nb_TclNativeFilename().  The macro NB_RENAMENOINTERP_IS_ATOMIC is 1
+// is the rename operation in Nb_RenameNoInterp is atomic; 0 indicates
+// non-atomic or unknown behavior.  This macro can be used by client
+// code to determine how careful it needs with critical file rename
+// operations.
 FILE *Nb_FOpen(const char *path,const char *mode);
 int Nb_Remove(const char *path);
 void Nb_Rename(const char *oldpath,const char* newpath);
+void Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync);
+#if defined(__linux__) || defined(_WIN32)
+# define NB_RENAMENOINTERP_IS_ATOMIC 1
+#else
+# define NB_RENAMENOINTERP_IS_ATOMIC 0
+#endif
 
 // Interfaces to Tcl_Write.  The first is intended mainly
 // as an interface layer in case we decide in the future to

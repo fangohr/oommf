@@ -32,8 +32,8 @@ OXS_EXT_REGISTER(Oxs_ExchangePtwise);
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.19 $",
-   "$Date: 2012-09-07 02:44:31 $",
+   "$Revision: 1.20 $",
+   "$Date: 2013/05/22 07:15:20 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -315,7 +315,7 @@ void Oxs_ExchangePtwise::GetEnergy
   String smsa_name = StageMaxSpinAngleStateName();
   String rmsa_name = RunMaxSpinAngleStateName();
   if(state.previous_state_id &&
-     (oldstate
+     0 != (oldstate
       = director->FindExistingSimulationState(state.previous_state_id)) ) {
     if(oldstate->stage_number != state.stage_number) {
       stage_maxang = 0.0;

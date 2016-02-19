@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 8.1
 #
-# Last modified on: $Date: 2000-12-15 23:06:54 $
+# Last modified on: $Date: 2000/12/15 23:06:54 $
 # Last modified by: $Author: dgp $
 #
 # This file contains Tcl code which when sourced in a Tcl 8.1 interpreter

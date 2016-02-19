@@ -4,7 +4,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-07 15:50:15 $
+ * Last modified on: $Date: 2015/03/09 04:51:08 $
  * Last modified by: $Author: donahue $
  *
  */
@@ -15,6 +15,15 @@
 #if OC_USE_SSE
 
 #include <emmintrin.h>
+
+#if OC_FMA_TYPE
+# ifdef _MSC_VER
+#  include <intrin.h>
+# else
+#  include <x86intrin.h>
+# endif
+#endif
+
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -65,7 +74,9 @@ enum Oc_PrefetchDirective {
 
 inline void Oc_Prefetch(const void* addr,Oc_PrefetchDirective hint)
 {
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__INTEL_COMPILER)
+  _mm_prefetch((const char *)(addr),_mm_hint(hint));
+#elif defined(__PGIC__) // Portland group compiler
   _mm_prefetch((const char *)(addr),_mm_hint(hint));
 #elif defined(_MSC_VER)
   // The Visual C++ headers say second parameter to _mm_prefetch is int,
@@ -126,8 +137,8 @@ public:
   Oc_Duet(const Oc_Duet& other) : value(other.value) {}
   Oc_Duet() {}
 
-  Oc_Duet& operator=(const Oc_Duet &other) { value = other.value; return *this; }
-
+  Oc_Duet& operator=(const Oc_Duet &other)
+  { value = other.value; return *this; }
 
   Oc_Duet& SetZero() { value = _mm_setzero_pd(); return *this; }
 
@@ -208,6 +219,9 @@ public:
   friend const Oc_Duet operator/(OC_REAL8 x,const Oc_Duet& w);
   friend const Oc_Duet operator/(const Oc_Duet& w,OC_REAL8 x);
 
+  friend const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
+                              const Oc_Duet& w3); // w1*w2+w3
+
   friend const Oc_Duet Oc_Sqrt(const Oc_Duet& w);
   friend const Oc_Duet Oc_Invert(const Oc_Duet& w); // 1.0/w
 
@@ -245,6 +259,17 @@ inline const Oc_Duet operator/(OC_REAL8 x,const Oc_Duet& w)
 inline const Oc_Duet operator/(const Oc_Duet& w,OC_REAL8 x)
 { return Oc_Duet(_mm_div_pd(w.value,_mm_set1_pd(x))); }
 
+inline const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
+                            const Oc_Duet& w3)
+{ // Fused multiply-add
+#if OC_FMA_TYPE == 3
+  return Oc_Duet(_mm_fmadd_pd(w1.value,w2.value,w3.value));
+#elif OC_FMA_TYPE == 4
+  return Oc_Duet(_mm_macc_pd(w1.value,w2.value,w3.value));
+#else
+  return w1*w2 + w3;
+#endif
+}
 
 inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)
 { return Oc_Duet(_mm_sqrt_pd(w.value)); }
@@ -361,6 +386,9 @@ public:
   friend const Oc_Duet operator/(OC_REAL8m x,const Oc_Duet& w);
   friend const Oc_Duet operator/(const Oc_Duet& w,OC_REAL8m x);
 
+  friend const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
+                              const Oc_Duet& w3); // w1*w2+w3
+
   friend const Oc_Duet Oc_Sqrt(const Oc_Duet& w);
   friend const Oc_Duet Oc_Invert(const Oc_Duet& w); // 1.0/w
 
@@ -420,6 +448,12 @@ inline const Oc_Duet operator/(OC_REAL8m x,const Oc_Duet& w)
 inline const Oc_Duet operator/(const Oc_Duet& w,OC_REAL8m x)
 {
   return Oc_Duet(w.v0/x,w.v1/x);
+}
+
+inline const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
+                            const Oc_Duet& w3)
+{ // Fused multiply-add
+  return Oc_Duet(w1.v0*w2.v0+w3.v0,w1.v1*w2.v1+w3.v1);
 }
 
 inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)

@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html597"
+<A NAME="tex2html602"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html593"
+<A NAME="tex2html598"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html587"
+<A NAME="tex2html592"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html599"
+<A NAME="tex2html604"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html595"
+<A NAME="tex2html600"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html598"
+<B> Next:</B> <A NAME="tex2html603"
   HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector</A>
-<B> Up:</B> <A NAME="tex2html594"
+<B> Up:</B> <A NAME="tex2html599"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html588"
+<B> Previous:</B> <A NAME="tex2html593"
   HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
 <BR>
 <BR>
@@ -57,16 +57,16 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Making Bitmaps from Vector Fields:
             avf2ppm
-</H2><A NAME="16608"></A><A NAME="16609"></A><A NAME="16610"></A><A NAME="16611"></A>
+</H2><A NAME="16926"></A><A NAME="16927"></A><A NAME="16928"></A><A NAME="16929"></A>
 
 <P>
-The <B>avf2ppm</B><A NAME="16613"></A> utility converts a
+The <B>avf2ppm</B><A NAME="16931"></A> utility converts a
 collection of vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>) into color
 bitmaps suitable for inclusion into documents or collating into movies.
 The command line arguments control filename and format selection, while
 plain-text configuration files, modeled after the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="16620"><B>mmDisp</B></A> configuration dialog
+ NAME="16938"><B>mmDisp</B></A> configuration dialog
 box, specify display parameters.
 
 <P>
@@ -100,9 +100,9 @@ where
 </DD>
 <DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>P3|P6|B24<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>Specify the output image file format.  Currently supported formats are
-  the true color <EM>Portable Pixmap</EM> (PPM)<A NAME="16641"></A> formats P3
+  the true color <EM>Portable Pixmap</EM> (PPM)<A NAME="16959"></A> formats P3
   (ASCII text) and P6 (binary), and the uncompressed Windows
-  BMP<A NAME="16642"></A> 24 bits-per-pixel format.  The default is P6.
+  BMP<A NAME="16960"></A> 24 bits-per-pixel format.  The default is P6.
 </DD>
 <DT><STRONG><TT><B>-ipat pattern</B></TT></STRONG></DT>
 <DD>Specify input files using a pattern with ``glob-style'' wildcards.
@@ -139,7 +139,7 @@ wildcards before handing control over to the invoked application, so the
 <TT>-ipat</TT> option is not needed (although it is useful in case of a
 ``command-line too long'' error).  DOS does not do this expansion, so
 you must use <TT>-ipat</TT> to get
-wildcard expansion<A NAME="16660"></A> in Windows.
+wildcard expansion<A NAME="16978"></A> in Windows.
 
 <P>
 As each input file is processed, a name for the output file is produced
@@ -154,13 +154,13 @@ default <TT>-opatsub</TT> string replaces this with the extension
 
 <P>
 If you have command line image processing ``filter'' programs, e.g.,
-<B>ppmtogif</B><A NAME="16672"></A> (part of the
-NetPBM<A NAME="16673"></A> package), then you can use the <TT>-filter</TT>
+<B>ppmtogif</B><A NAME="16990"></A> (part of the
+NetPBM<A NAME="16991"></A> package), then you can use the <TT>-filter</TT>
 option to pipe the output of <B>avf2ppm</B> through that filter before it
 is written to the output file specified by the <TT>-opat*</TT>
 expressions.  If the processing changes the format of the file, (e.g.,
-<B>ppmtogif</B> converts from PPM<A NAME="16678"></A> to
-GIF<A NAME="16679"></A>), then you will likely want to specify a
+<B>ppmtogif</B> converts from PPM<A NAME="16996"></A> to
+GIF<A NAME="16997"></A>), then you will likely want to specify a
 <TT>-opatsub</TT> different from the default.
 
 <P>
@@ -173,7 +173,7 @@ tclsh oommf.tcl avf2ppm -ipat *.omf -opatsub .gif -filter ppmtogif
 (On Unix, either drop the <TT>-ipat</TT> flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
 <TT>-ipat '*.omf'</TT>.)  You may also pipe together multiple filters, e.g.,
-<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="16689"></A>.
+<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="17007"></A>.
 
 <P>
 
@@ -182,10 +182,10 @@ the input file specification string from expansion by the shell, as in
 <P>
 <FONT SIZE="+1"><B>Configuration
 files<A NAME="sec:avf2ppmconfig"></A></B></FONT>
-<BR><A NAME="16691"></A>
+<BR><A NAME="17009"></A>
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration 
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration
 files</A>.
 
 <P>
@@ -209,13 +209,24 @@ documentation, except that <B>avf2ppm</B> ignores the
 parameters, and the following additional parameters are available:
 <DL>
 <DT><STRONG><TT><B>arrow,antialias</B></TT></STRONG></DT>
-<DD>If 1<A NAME="16713"></A>, then each pixel along the edge of an arrow is
+<DD>If 1<A NAME="17031"></A>, then each pixel along the edge of an arrow is
  drawn not with the color of the arrow, but with a mixture of the arrow
  color and the background color.  This makes arrow boundaries appear
  less jagged, but increases computation time.  Also, the colors used in
  the anti-aliased pixels are not drawn from the arrow or pixel colormap
  discretizations, so color allocation in the output bitmap may increase
  dramatically.
+</DD>
+<DT><STRONG><TT><B>arrow,outlinewidth</B></TT></STRONG></DT>
+<DD>Width of a colored outline around each arrow; this can improve
+ visibility of an arrow when it is overlayed against a background with
+ color similar to that of the arrow.  Default value is zero, meaning no
+ outline.  A value of 1 produces an outline with a recommended width,
+ and other positive values are scaled relative to this.
+</DD>
+<DT><STRONG><TT><B>arrow,outlinecolor</B></TT></STRONG></DT>
+<DD>If <TT>arrow,outlinewidth</TT> is positive, then this is the color of the
+ arrow outline.
 </DD>
 <DT><STRONG><TT><B>misc,boundarypos</B></TT></STRONG></DT>
 <DD>Placement of the bounding polygon, either <TT>back</TT> or <TT>front</TT>,
@@ -265,29 +276,29 @@ value set for each entry taking precedence.
   <BR CLEAR="ALL">
 <HR><PRE>
 array set plot_config {
-  arrow,status       1                  misc,background     #FFFFFF
-  arrow,colormap     Black-Gray-White   misc,drawboundary   1
-  arrow,colorcount   0                  misc,boundarywidth  1
-  arrow,quantity     z                  misc,boundarycolor  #000000
-  arrow,colorphase   0.                 misc,boundarypos    front
-  arrow,colorinvert  0                  misc,matwidth       0
-  arrow,autosample   1                  misc,matcolor       #FFFFFF
-  arrow,subsample    10                 misc,margin         10
-  arrow,size         1                  misc,width          640
-  arrow,antialias    1                  misc,height         480
-                                        misc,crop           1
-  pixel,status       1                  misc,zoom           0
-  pixel,colormap     Teal-White-Red     misc,rotation       0
-  pixel,colorcount   225                misc,datascale      0
-  pixel,opaque       1                  misc,relcenterpt {0.5 0.5 0.5}
-  pixel,quantity     x
-  pixel,colorphase   0.                 viewaxis            +z
-  pixel,colorinvert  0                  viewaxis,xarrowspan {}
-  pixel,autosample   1                  viewaxis,xpixelspan {}
-  pixel,subsample    0                  viewaxis,yarrowspan {}
-  pixel,size         1                  viewaxis,ypixelspan {}
-                                        viewaxis,zarrowspan {}
-                                        viewaxis,zpixelspan {}
+    arrow,status       1                misc,background    #FFFFFF
+    arrow,antialias    1                misc,drawboundary  1
+    arrow,outlinewidth 0.0              misc,boundarywidth 1
+    arrow,outlinecolor #000000          misc,boundarycolor #000000
+    arrow,colormap     Red-Black-Blue   misc,boundarypos   front
+    arrow,colorcount   100              misc,matwidth      0
+    arrow,quantity     z                misc,matcolor      #FFFFFF
+    arrow,colorphase   0                misc,margin        10
+    arrow,colorreverse 0                misc,width         640
+    arrow,autosample   1                misc,height        480
+    arrow,subsample    10               misc,crop          1
+    arrow,size         1                misc,zoom          0
+                                        misc,rotation      0
+    pixel,status       1                misc,datascale     0
+    pixel,colormap     Teal-White-Red   misc,relcenterpt   {0.5 0.5 0.5}
+    pixel,colorcount   100
+    pixel,opaque       1                viewaxis            +z
+    pixel,quantity     x                viewaxis,xarrowspan {}
+    pixel,colorphase   0                viewaxis,xpixelspan {}
+    pixel,colorreverse 0                viewaxis,yarrowspan {}
+    pixel,autosample   1                viewaxis,ypixelspan {}
+    pixel,subsample    0                viewaxis,zarrowspan {}
+    pixel,size         1                viewaxis,zpixelspan {}
 }
 </PRE>
   <DIV ALIGN="CENTER">
@@ -303,22 +314,22 @@ file <TT><B>avf2ppm.config</B></TT>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html597"
+<A NAME="tex2html602"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html593"
+<A NAME="tex2html598"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html587"
+<A NAME="tex2html592"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html600"
+<A NAME="tex2html605"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html595"
+<A NAME="tex2html600"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

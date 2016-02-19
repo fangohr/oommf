@@ -34,7 +34,7 @@ OC_BOOL
 Oxs_ImageAtlas::FindBestMatchRegion
 (OC_REAL8m r, OC_REAL8m g, OC_REAL8m b,
  const vector<OxsImageAtlasColorData>& color_data,
- OC_UINT4m& match_id, OC_REAL8m& match_distsq)
+ OC_INDEX& match_id, OC_REAL8m& match_distsq)
 { // Returns 0 if color_data is empty.
   // Otherwise sets match_id and match_distsq to best
   // fit, and returns 1.
@@ -60,7 +60,7 @@ Oxs_ImageAtlas::FillPixels
 (const char* filename,
  vector<OxsImageAtlasColorData>& color_data,
  OC_REAL8m match_error,
- OC_UINT4m default_id,
+ OC_INDEX default_id,
  int autocolor)
 {
   // Note: The last parameter, autocolor, is a temporary hack for large
@@ -76,10 +76,10 @@ Oxs_ImageAtlas::FillPixels
   image.LoadFile(filename);
 
   // Read and categorize pixels
-  image_width = static_cast<OC_UINT4m>(image.Width());
-  image_height = static_cast<OC_UINT4m>(image.Height());
+  image_width = image.Width();
+  image_height = image.Height();
   OC_REAL8m invmaxvalue = 1.0/static_cast<OC_REAL8m>(image.MaxValue());
-  OC_UINT4m pixelcount = image_width*image_height;
+  OC_INDEX pixelcount = image_width*image_height;
   if(pixelcount<1) { // This check insures image width & height > 0.
     msg = String("Input image file ")
       + String(filename) + String(" is an empty image");
@@ -95,20 +95,20 @@ Oxs_ImageAtlas::FillPixels
   }
 
   OC_REAL8m distcheck = match_error+5*OC_REAL8_EPSILON; distcheck *= distcheck;
-  for(OC_UINT4m i=0;i<image_height;++i) {
-    OC_UINT4m base_offset = (image_height-1-i)*image_width;
-    for(OC_UINT4m j=0;j<image_width;++j) {
+  for(OC_INDEX i=0;i<image_height;++i) {
+    OC_INDEX base_offset = (image_height-1-i)*image_width;
+    for(OC_INDEX j=0;j<image_width;++j) {
       OC_INT4m rcomp,gcomp,bcomp;
-      image.PixelValue(static_cast<OC_INT4m>(i),
-                       static_cast<OC_INT4m>(j),rcomp,gcomp,bcomp);
+      image.PixelValue(static_cast<OC_INT4m>(i),static_cast<OC_INT4m>(j),
+                       rcomp,gcomp,bcomp);
       OC_REAL8m red   = static_cast<OC_REAL8m>(rcomp)*invmaxvalue;
       OC_REAL8m green = static_cast<OC_REAL8m>(gcomp)*invmaxvalue;
       OC_REAL8m blue  = static_cast<OC_REAL8m>(bcomp)*invmaxvalue;
       // Image is read in from upper lefthand corner, in normal English
       // reading order.  Pixel coords are based at bottom lefthand corner.
       // The "offset" calculation here accounts for these differences.
-      OC_UINT4m offset = base_offset + j;
-      OC_UINT4m id;
+      OC_INDEX offset = base_offset + j;
+      OC_INDEX id;
       OC_REAL8m distsq;
       if(!FindBestMatchRegion(red,green,blue,color_data,id,distsq)
          || distsq>distcheck) {
@@ -116,7 +116,7 @@ Oxs_ImageAtlas::FillPixels
           id = default_id;
         } else {
           // Autocolor; add new region
-          id = region_name.size();
+          id = static_cast<OC_INDEX>(region_name.size());
           int r = (int)floor(red   * 256); if(r>255) r = 255;
           int g = (int)floor(green * 256); if(g>255) g = 255;
           int b = (int)floor(blue  * 256); if(b>255) b = 255;
@@ -151,18 +151,18 @@ Oxs_ImageAtlas::InitializeRegionBBoxes(const Oxs_Box& world)
   region_bbox.push_back(world); // Set "universe" region to world
 
   // Initialize all non-universe region bboxes to empty boxes
-  OC_UINT4m id;
+  OC_INDEX id;
   Oxs_Box empty_box;
-  for(id=1;id<region_name.size();id++) {
+  for(id=1;id<static_cast<OC_INDEX>(region_name.size());id++) {
     region_bbox.push_back(empty_box);
   }
 
   // For each point in pixel array, expand corresponding region
   // the point in pixel coords.
-  OC_UINT4m index=0;
-  for(OC_UINT4m j=0;j<image_height;j++) {
-    for(OC_UINT4m i=0;i<image_width;i++) {
-      OC_UINT4m tempid = static_cast<OC_UINT4m>(pixel[index]);
+  OC_INDEX index=0;
+  for(OC_INDEX j=0;j<image_height;j++) {
+    for(OC_INDEX i=0;i<image_width;i++) {
+      OC_INDEX tempid = pixel[index];
       if(tempid>0) { // Skip points in "universe" region.
 	region_bbox[tempid].Expand(static_cast<OC_REAL8m>(i),
 				   static_cast<OC_REAL8m>(j),
@@ -178,7 +178,7 @@ Oxs_ImageAtlas::InitializeRegionBBoxes(const Oxs_Box& world)
   // Now convert from pixel coords to atlas coords.
   OC_REAL8m cmult = 1.0/column_scale;
   OC_REAL8m rmult = 1.0/row_scale;
-  for(id=1;id<region_bbox.size();id++) {
+  for(id=1;id<static_cast<OC_INDEX>(region_bbox.size());id++) {
     OC_REAL8m cmin = region_bbox[id].GetMinX();
     OC_REAL8m cmax = region_bbox[id].GetMaxX()+1.0; // Pad to full pixel
     OC_REAL8m rmin = region_bbox[id].GetMinY();
@@ -248,7 +248,7 @@ Oxs_ImageAtlas::Oxs_ImageAtlas
 
   // Parse colormap info from Specify block
   vector<OxsImageAtlasColorData> color_data;
-  OC_UINT4m default_id=0;
+  OC_INDEX default_id=0;
   region_name.push_back("universe"); // Required special region, id 0.
   int autocolor = 0;
   if(!HasInitValue("colorfunction") && !HasInitValue("colormap")) {
@@ -277,14 +277,14 @@ Oxs_ImageAtlas::Oxs_ImageAtlas
                   (unsigned int)colormap.size());
       throw Oxs_ExtError(this,buf);
     }
-    for(OC_UINT4m i=0;i<colormap.size();i+=2) {
+    for(OC_INDEX i=0;i<static_cast<OC_INDEX>(colormap.size());i+=2) {
       // Is label already defined?
       const String& label = colormap[i+1];
-      OC_UINT4m id;
-      for(id=0;id<region_name.size();id++) {
+      OC_INDEX id;
+      for(id=0;id<static_cast<OC_INDEX>(region_name.size());id++) {
         if(region_name[id].compare(label)==0) break;
       }
-      if(id>=region_name.size()) {
+      if(id>=static_cast<OC_INDEX>(region_name.size())) {
         region_name.push_back(label); // New label
       }
       // id is the index of the label specified by colormap[i+1]
@@ -308,8 +308,8 @@ Oxs_ImageAtlas::Oxs_ImageAtlas
         color_data.push_back(tempcolor); // Add color mapping to color_data
       }
     }
-    unsigned long maxsize
-      = (( 1UL <<(8*sizeof(OxsImageAtlasPixelType)-1))-1)*2+1;
+    size_t maxsize
+      = (( size_t(1) <<(8*sizeof(OxsImageAtlasPixelType)-1))-1)*2+1;
     if(region_name.size()-1 > maxsize) {
       // Note: the "-1" in the previous line accounts for the
       // "universe" region; since this region is generally not
@@ -317,8 +317,10 @@ Oxs_ImageAtlas::Oxs_ImageAtlas
       // in the following error message.
       char buf[1024];
       Oc_Snprintf(buf,sizeof(buf),
-                  "Too many regions: %lu (max allowed is %lu)",
-                  (unsigned long)region_name.size()-1,maxsize);
+                  "Too many regions: %" OC_INDEX_MOD "u "
+                  "(max allowed is %" OC_INDEX_MOD "u)",
+                  (OC_UINDEX)(region_name.size()-1),
+                  (OC_UINDEX)maxsize);
       throw Oxs_ExtError(this,buf);
     }
     DeleteInitValue("colormap");
@@ -370,7 +372,7 @@ Oxs_ImageAtlas::~Oxs_ImageAtlas()
   if(pixel!=NULL) delete[] pixel;
 }
 
-OC_BOOL Oxs_ImageAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
+OC_BOOL Oxs_ImageAtlas::GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const
 { // If 0<id<GetRegionCount, then sets mybox to bounding box
   // for the specified region, and returns 1.  If id is 0,
   // sets mybox to atlas bounding box, and returns 1.
@@ -380,7 +382,7 @@ OC_BOOL Oxs_ImageAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
   return 1;
 }
 
-OC_INT4m Oxs_ImageAtlas::GetRegionId(const ThreeVector& point) const
+OC_INDEX Oxs_ImageAtlas::GetRegionId(const ThreeVector& point) const
 { // Returns the id number for the region containing point.
   // The return value is 0 if the point is not contained in
   // the atlas, i.e., belongs to the "universe" region.
@@ -395,18 +397,18 @@ OC_INT4m Oxs_ImageAtlas::GetRegionId(const ThreeVector& point) const
   }
   
   OC_REAL8m tempc = floor((mapx-column_offset)*column_scale);
-  OC_UINT4m column_index = 0;
+  OC_INDEX column_index = 0;
   if(tempc>=image_width) column_index = image_width-1;
-  else if(tempc>0) column_index = static_cast<OC_UINT4m>(tempc);
+  else if(tempc>0) column_index = static_cast<OC_INDEX>(tempc);
 
   OC_REAL8m tempr = floor((mapy-row_offset)*row_scale);
-  OC_UINT4m row_index = 0;
+  OC_INDEX row_index = 0;
   if(tempr>=image_height) row_index = image_height-1;
-  else if(tempr>0) row_index = static_cast<OC_UINT4m>(tempr);
+  else if(tempr>0) row_index = static_cast<OC_INDEX>(tempr);
 
-  OC_UINT4m index = row_index*image_width+column_index;
+  OC_INDEX index = row_index*image_width+column_index;
 
-  OC_UINT4m id = pixel[index];
+  OC_INDEX id = pixel[index];
   if(id>=GetRegionCount()) {
     char buf[1024];
     Oc_Snprintf(buf,sizeof(buf),
@@ -417,23 +419,23 @@ OC_INT4m Oxs_ImageAtlas::GetRegionId(const ThreeVector& point) const
     throw Oxs_ExtError(this,buf);
   }
 
-  return static_cast<OC_INT4m>(id);
+  return id;
 }
 
-OC_INT4m Oxs_ImageAtlas::GetRegionId(const String& name) const
+OC_INDEX Oxs_ImageAtlas::GetRegionId(const String& name) const
 { // Given a region id string (name), returns
   // the corresponding region id index.  If
   // "name" is not included in the atlas, then
   // -1 is returned.  Note: If name == "universe",
   // then the return value will be 0.
-  OC_UINT4m count = GetRegionCount();
-  for(OC_UINT4m i=0;i<count;i++) {
+  OC_INDEX count = GetRegionCount();
+  for(OC_INDEX i=0;i<count;i++) {
     if(region_name[i].compare(name)==0) return i;
   }
   return -1;
 }
 
-OC_BOOL Oxs_ImageAtlas::GetRegionName(OC_UINT4m id,String& name) const
+OC_BOOL Oxs_ImageAtlas::GetRegionName(OC_INDEX id,String& name) const
 { // Given an id number, fills in "name" with
   // the corresponding region id string.  Returns
   // 1 on success, 0 if id is invalid.  If id is 0,

@@ -12,8 +12,8 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:59 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
@@ -31,6 +31,17 @@ Oc_CommandLine Option restart {
 set restart_flag 0
 Oxs_SetRestartFlag $restart_flag
 trace variable restart_flag w {Oxs_SetRestartFlag $restart_flag ;# }
+
+Oc_CommandLine Option restartfiledir {
+    {dir {expr {![string match {} $dir]}}}
+   } {
+      global restart_file_directory;  set restart_file_directory $dir
+   } {Directory for restart files (default is MIF file directory)}
+set restart_file_directory {}
+# Note: At present, the restart file dir is set from the command line
+# at problem start and never changed.  Trying to change this once a
+# problem is loaded is problematic, because we want any droppings in
+# the old directory cleaned-up before using the new directory.
 
 Oc_CommandLine Option nocrccheck {
 	{flag {expr {$flag==0 || $flag==1}} {= 0 (default) or 1}}
@@ -69,6 +80,13 @@ Oc_CommandLine Option nice {
 } {1 => Drop priority after starting}
 set nice 1
 
+Oc_CommandLine Option logfile {
+    {name {expr {![string match {} $name]}}}
+   } {
+      global logfile;  set logfile $name
+   } {Name of log file (default is oommf/oxsii.errors)}
+set logfile [file join [Oc_Main GetOOMMFRootDir] oxsii.errors]
+
 Oc_CommandLine Option loglevel {
       {level {expr {[regexp {^[0-9]+$} $level]}}}
    } {
@@ -80,9 +98,9 @@ set loglevel 1
 if {[Oc_HaveThreads]} {
    set threadcount_request [Oc_GetMaxThreadCount]
    Oc_CommandLine Option threads {
-      {number {expr {[regexp {^[0-9]+$} $number] && $number>0}}}
+      {count {expr {[regexp {^[0-9]+$} $count] && $count>0}}}
    } {
-      global threadcount_request;  set threadcount_request $number
+      global threadcount_request;  set threadcount_request $count
    } [subst {Number of concurrent threads (default is $threadcount_request)}]
 } else {
    set threadcount_request 1  ;# Safety
@@ -91,22 +109,11 @@ if {[Oc_HaveThreads]} {
 # NUMA (non-uniform memory access) support
 set numanode_request none
 if {[Oc_NumaAvailable]} {
-   if {[info exists env(OOMMF_NUMANODES)]} {
-      set nodes $env(OOMMF_NUMANODES)
-      if {![regexp {^([0-9 ,]*|auto|none)$} $nodes]} {
-         puts stderr "\n************************************************"
-         puts stderr "ERROR: Bad environment variable setting:\
-                   OOMMF_NUMANODES=$nodes"
-         puts stderr "   Overriding to \"$numanode_request\""
-         puts stderr "************************************************"
-      } else {
-         set numanode_request $nodes
-      }
-   }
+   set numanode_request [Oc_GetDefaultNumaNodes]
    Oc_CommandLine Option numanodes {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
-      global numanode_request;
+      global numanode_request
       set numanode_request $nodes
    } [subst {NUMA memory and run nodes (or "auto" or "none")\
                 (default is "$numanode_request")}]
@@ -128,6 +135,11 @@ Oc_CommandLine Option [Oc_CommandLine Switch] {
 # Parse commandline and initialize threading
 ##########################################################################
 Oc_CommandLine Parse $argv
+
+if {[catch {Oxs_SetRestartFileDir $restart_file_directory} msg]} {
+   Oc_Log Log $msg error
+   exit 1
+}
 
 proc SetupThreads {} {
    if {[Oc_HaveThreads]} {
@@ -205,7 +217,7 @@ trace variable update_extra_info w { Oc_Main SetExtraInfo $update_extra_info ;# 
 append gui "[list Oc_Main SetPid [pid]]\n"
 append gui {
 
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:59 $} _ date
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
 Oc_Main SetDate [string trim $date]
 
 # This won't cross different OOMMF installations nicely
@@ -251,11 +263,6 @@ catch {
                           [Oc_Main GetOOMMFRootDir] doc userguide userguide \
                           OOMMF_eXtensible_Solver_Int.html]]
    Oc_Main SetHelpURL [Oc_Url FromFilename $oxsii_doc_section]
-   proc SetOidCallback {code result args} {
-      if {$code == 0} {Oc_Main SetOid $result}
-      rename SetOidCallback {}
-   }
-   remote -callback SetOidCallback serveroid
    if {[Ow_IsAqua]} {
       # Add some padding to allow space for Aqua window resize
       # control in lower righthand corner
@@ -280,10 +287,13 @@ $fmenu add command -label "Show Console" -command { console show } -underline 0
 $fmenu add command -label "Close Interface" -command closeGui -underline 0
 $fmenu add separator
 $fmenu add command -label "Exit [Oc_Main GetAppName]" -command exit -underline 1
+$fmenu add command -label "Checkpoint & Exit" \
+   -command GuiCheckpointExit -underline 4
 $omenu add command -label "Clear Schedule" -underline 0 -command ClearSchedule
 $omenu add separator
 $omenu add checkbutton -label "Restart flag" -underline 0 \
     -variable restart_flag
+share checkpoint_exit_request
 share restart_flag
 share threadcount_request  ;# Set from command line or File|Load dialog
 share numanode_request     ;# Ditto
@@ -569,27 +579,32 @@ grid [label $sframe.l -text Schedule -relief groove] - -sticky new
 grid columnconfigure $sframe 0 -pad 15
 grid columnconfigure $sframe 1 -weight 1
 grid [button $sframe.send -command \
-	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0]} \
+	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0] 1} \
 	-text Send] - -sticky new
 #
 # FOR NOW JUST HACK IN THE EVENTS WE SUPPORT
 #	eventually this may be driver-dependent
-set events [list Step Stage]
+set events [list Step Stage Done]
 set schedwidgets [list $sframe.send]
 foreach event $events {
-    set active [checkbutton $sframe.a$event -text $event -anchor w \
-	    -variable Schedule---activeA($event)]
-    $active configure -command [subst -nocommands \
-		{Schedule Active [$active cget -variable] $event}]
-    Ow_EntryBox New frequency $sframe.f$event -label every \
-	    -autoundo 0 -valuewidth 4 \
-	    -variable Schedule---frequencyA($event) \
-	    -callback [list EntryCallback $event] \
-	    -foreground Black -disabledforeground #a3a3a3 \
-	    -valuetype posint -coloredits 1 -writethrough 0 \
-	    -outer_frame_options "-bd 0"
-    grid $active [$frequency Cget -winpath] -sticky nw
-    lappend schedwidgets $active $frequency
+   set active [checkbutton $sframe.a$event -text $event -anchor w \
+                  -variable Schedule---activeA($event)]
+   $active configure -command [subst -nocommands \
+                 {Schedule Active [$active cget -variable] $event}]
+   if {[string compare Done $event]==0} {
+      grid $active -sticky nw
+      lappend schedwidgets $active
+   } else {
+      Ow_EntryBox New frequency $sframe.f$event -label every \
+         -autoundo 0 -valuewidth 4 \
+         -variable Schedule---frequencyA($event) \
+         -callback [list EntryCallback $event] \
+         -foreground Black -disabledforeground #a3a3a3 \
+         -valuetype posint -coloredits 1 -writethrough 0 \
+         -outer_frame_options "-bd 0"
+      grid $active [$frequency Cget -winpath] -sticky nw
+      lappend schedwidgets $active $frequency
+   }
 }
 
 grid rowconfigure $sframe [expr {[lindex [grid size $sframe] 1] - 1}] -weight 1
@@ -691,9 +706,30 @@ proc ClearSchedule {} {
 	foreach d $destList {
 	    remote Oxs_Schedule Set $o $d Active Stage 0
 	    remote Oxs_Schedule Set $o $d Active Step 0
+	    remote Oxs_Schedule Set $o $d Active Done 0
 	}
     }
 }
+
+proc GuiCheckpointExit {} {
+   global checkpoint_exit_request  ;# shared variable
+   set checkpoint_exit_request 1
+   # Trace on checkpoint_exit_request on app side triggers
+   # exit.
+}
+
+# Override default window delete handling
+proc DeleteVerify {} {
+   set response [Ow_Dialog 1 "Exit [Oc_Main GetInstanceName]?" \
+                    warning "Are you *sure* you want to exit \
+			[Oc_Main GetInstanceName]?" {} 2 Exit "Checkpoint\n& Exit" Cancel]
+   if {$response == 0} {
+      after 10 exit
+   } elseif {$response == 1} {
+      GuiCheckpointExit
+   }
+}
+wm protocol . WM_DELETE_WINDOW DeleteVerify
 
 pack $oframe -side top -fill both -expand 1
 
@@ -717,20 +753,24 @@ if {[Oc_Main HasTk]} {
     # otherwise exports to be displayed remotely?
 }
 
-# Set up to write log messages to oommf/oxsii.errors.
-FileLogger SetFile [file join [Oc_Main GetOOMMFRootDir] oxsii.errors]
-Oc_Log SetLogHandler [list FileLogger Log] panic Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] error Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] warning Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] info Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] panic
-Oc_Log SetLogHandler [list FileLogger Log] error
-Oc_Log SetLogHandler [list FileLogger Log] warning
-Oc_Log SetLogHandler [list FileLogger Log] info
+# Set up to write log messages to oommf/oxsii.errors (or alternative).
+Oc_FileLogger SetFile $logfile
+Oc_Log SetLogHandler [list Oc_FileLogger Log] panic Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] error Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] warning Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] info Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
+Oc_Log SetLogHandler [list Oc_FileLogger Log] error
+Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
+Oc_Log SetLogHandler [list Oc_FileLogger Log] info
 
 Oc_Log AddType infolog ;# Record in log file only
 if {$loglevel>0} {
-   Oc_Log SetLogHandler [list FileLogger Log] infolog
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] infolog
+}
+if {$loglevel>1} {
+   # Dump status messages too
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] status
 }
 
 # Create a new Oxs_Destination for each Net_Thread that becomes Ready
@@ -741,7 +781,6 @@ Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
 # and the set of Tcl commands provided by OXS
 ##########################################################################
 # OXS provides the following classes:
-#	FileLogger
 #	Oxs_Mif
 # and the following operations:
 #	Oxs_ProbInit $file $params	: Calls Oxs_ProbRelease.  Reads
@@ -829,7 +868,9 @@ proc ChangeStatus {old args} {
               Oc_Log Log "Done \"[file tail $problem]\"" infolog
            }
            if {$exitondone} {
-              exit	;# will trigger ReleaseProblem, etc.
+              after idle exit  ;# will trigger ReleaseProblem, etc.
+              # Put this on after idle list so that any pending events
+              # have an opportunity to process.
            } else {
               # do nothing ?
            }
@@ -869,11 +910,25 @@ proc ReleaseProblem {} {
 	Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
 	exit
     }
-    global problem
+    global problem checkpoint_exit
     if {[info exists problem]} {
-       Oc_Log Log "End \"[file tail $problem]\"" infolog
+       if {$checkpoint_exit} {
+          Oc_Log Log "Checkpoint exit \"[file tail $problem]\"" infolog
+       } else {
+          Oc_Log Log "End \"[file tail $problem]\"" infolog
+       }
     }
     set status ""
+}
+
+set checkpoint_exit 0
+trace variable checkpoint_exit_request w {CheckpointPrepareExit ;# }
+proc CheckpointPrepareExit {} {
+   # Adjust flags to write and keep last state as checkpoint file
+   Oxs_ForceFinalCheckpoint
+   global checkpoint_exit
+   set checkpoint_exit 1
+   exit
 }
 
 proc MeshGeometry {} {
@@ -885,6 +940,38 @@ proc MeshGeometry {} {
       regsub {([0-9]+) cells$} $geostr "$cellcount cells" geostr
    }
    return $geostr
+}
+
+proc ProbOptions {} {
+   # Returns a list of options in effect for currently loaded problem
+   global argv MIF_params
+   # Arguments from the command line
+   for {set i 0} {$i<[llength $argv]-1} {incr i} {
+      if {[regexp {^-+(.*)} [lindex $argv $i] dummy elt]} {
+         if {[string match {} $elt]} { break }
+         set elt [string trimleft $elt "-"]
+         set opts($elt) [lindex $argv [incr i]]
+      }
+   }
+   # Current MIF parameters override command line parameters (if any)
+   if {[llength $MIF_params]} {
+      set opts(parameters) $MIF_params
+   }
+   # Likewise, current thread and numanodes settings override command
+   # line settings.
+   if {[Oc_HaveThreads]} {
+      global threadcount_request
+      set opts(threads) $threadcount_request
+      if {[Oc_NumaAvailable]} {
+         global numanode_request
+         set opts(numanodes) $numanode_request
+      }
+   }
+   set optlist {}
+   foreach elt [lsort [array names opts]] {
+      lappend optlist "-$elt" $opts($elt)
+   }
+   return $optlist
 }
 
 set workdir [Oc_DirectPathname "."]  ;# Initial working directory
@@ -914,21 +1001,17 @@ proc LoadProblem {fname} {
       cd $newdir
       set workdir $newdir
    } msg] || [catch {
-      global MIF_params
-      if {![catch {Oxs_GetMif} mif]} {
+      if {[Oxs_IsProblemLoaded] && ![catch {Oxs_GetMif} mif]} {
+         # Close log on previously loaded problem
          set pf [file tail [$mif GetFilename]]
          Oc_Log Log "End \"$pf\"" infolog
       }
-      if {[llength $MIF_params]} {
-         set ps "Params: $MIF_params"
-      } else {
-         set ps "no params"
-      }
-      Oc_Log Log "Start \"$f\", $ps" infolog
+      set opts [ProbOptions]
+      Oc_Log Log "Start: \"$f\"\nOptions: $opts" infolog
       Oxs_ProbRelease
       SetupThreads
+      global MIF_params update_extra_info
       Oxs_ProbInit $f $MIF_params
-      global update_extra_info
       append update_extra_info "\nMesh geometry: [MeshGeometry]"
       Oc_Main SetExtraInfo $update_extra_info
    } msg] || [catch {
@@ -1080,8 +1163,9 @@ Oc_EventHandler New _ Oxs Step {
 			}
 		    } ;#}
 
-# Terminate Loop when solver is Done
-Oc_EventHandler New _ Oxs Done [list set status Done]
+# Terminate Loop when solver is Done. Put this on the after idle list so
+# that all other Done event handlers have an opportunity to fire first.
+Oc_EventHandler New _ Oxs Done [list after idle set status Done]
 
 # All problem releases should request cleanup first
 Oc_EventHandler New _ Oxs Release [list Oc_EventHandler Generate Oxs Cleanup]
@@ -1094,6 +1178,24 @@ Net_Server New server -alias [Oc_Main GetAppName] \
 		Oxs_Output Oxs_Schedule
 	}]
 $server Start 0
+Oc_EventHandler New register_failure $server RegisterFail \
+    [list error "Failure to register with account server"]] \
+    -oneshot 1 -groups [list $server]
+Oc_EventHandler New _ $server RegisterSuccess \
+    [list $register_failure Delete] -oneshot 1 -groups [list $server]
+# One observed failure mode: Oxsii starts, launches an account server,
+# registers with it and gets back OID 0.  Then oxsii launches an
+# mmArchive instance.  mmArchive comes up but something crashes the
+# account server before mmAchive can register with it.  mmArchive is
+# unaware of this situation, however, and starts up an account server
+# in the normal fashion.  At this time oxsii realizes that the account
+# server is down and starts another one.  Suppose now that the account
+# server started by mmArchive wins the race to be the one and only
+# account server, and suppose further that mmArchive registers with it
+# before oxsii finds it.  Not knowing any better, this new account
+# server gives out OID 0 to mmArchive.  What happens when oxsii hooks
+# up with the new account server and tells the account server that it,
+# oxsii, have already been assigned OID 0???
 
 ##########################################################################
 # Track the threads known to the account server
@@ -1132,8 +1234,8 @@ proc GetThreadsReply { acct } {
     # Create a Net_Thread instance for each element of the returned
     # thread list
     if {![lindex $threads 0]} {
-        foreach triple [lrange $threads 1 end] {
-	    NewThread $acct [lindex $triple 1]
+        foreach quartet [lrange $threads 1 end] {
+	    NewThread $acct [lindex $quartet 1]
         }
     }
 }
@@ -1152,6 +1254,11 @@ proc HandleAccountTell { acct } {
             } else {
                 Oc_EventHandler New _ $t Ready [list $t Send bye]
             }
+        }
+        notify -
+        newoid -
+        deleteoid {
+           # Ignore notifications and OID info
         }
         default {
           Oc_Log Log "Bad message from account $acct:\n\t$message" status
@@ -1176,7 +1283,3 @@ if {[$a Ready]} {
 }
 
 vwait forever
-
-
-
-

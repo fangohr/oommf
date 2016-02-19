@@ -4,7 +4,7 @@
  *
  * NOTICE: Plase see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-19 22:54:03 $
+ * Last modified on: $Date: 2014/10/27 21:44:21 $
  * Last modified by: $Author: donahue $
  *
  * NOTE: Code which requires tcl.h or tk.h should *not* #include
@@ -283,11 +283,11 @@ EXTERN void Tk_InitConsoleChannels _ANSI_ARGS_((Tcl_Interp *));
 #define Tcl_Main Tk_Main
 #endif
 
-/* End includes */     /* Optional directive to pimake */
-
 #ifdef __cplusplus
 }	/* end of extern "C" */
 #endif
+
+/* End includes */     /* Optional directive to pimake */
 
 /*
  * Utility routines
@@ -392,7 +392,12 @@ inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)
 inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabsl(x); }
 inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atanl(x); }
 inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x)
-{ return atan2l(y,x); }
+{
+#if OC_DOMAIN_CHECK_ATAN2
+  if(x==0.0 && y==0.0) return OC_REALWIDE(0.0);
+#endif
+  return atan2l(y,x);
+}
 
 /* Wrappers that self-select by type */
 inline long double Oc_Sqrt(long double x) { return sqrtl(x); }
@@ -403,9 +408,11 @@ inline long double Oc_Pow(long double x,long double y) { return powl(x,y); }
 inline long double Oc_Fabs(long double x) { return fabsl(x); }
 inline long double Oc_Atan(long double x) { return atanl(x); }
 inline long double Oc_Invert(long double x) { return 1.0L/x; }
-inline long double Oc_Atan2(long double y,long double x) // Domain-checked
+inline long double Oc_Atan2(long double y,long double x)
 {
-  if(x==0.0 && y==0.0) return 0.0;
+#if OC_DOMAIN_CHECK_ATAN2
+  if(x==0.0 && y==0.0) return 0.0L;
+#endif
   return atan2l(y,x);
 }
 
@@ -419,7 +426,12 @@ inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)
 inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabs(x); }
 inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atan(x); }
 inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x)
-{ return atan2(y,x); }
+{
+#if OC_DOMAIN_CHECK_ATAN2
+  if(x==0.0 && y==0.0) return 0.0;
+#endif
+  return atan2(y,x);
+}
 # endif // OC_REALWIDE == double?
 OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x);
 

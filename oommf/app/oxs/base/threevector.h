@@ -66,16 +66,31 @@ public:
     x = p23 - z*w.y;
     z = p12;
 #endif
-
     return *this;
   }
 
   Oxs_ThreeVector& operator*=(OC_REAL8m a) { x*=a; y*=a; z*=a; return *this; }
 
+#ifdef OC_NO_PARTIAL_TEMPLATE_INSTANTIATION
+  // The Oxs_MeshValue template has operator *= and /= member
+  // functions.  These are not used with template type
+  // Oxs_ThreeVector, but implement a workaround for compilers that
+  // don't support partial template class instantiation.
+  Oxs_ThreeVector& operator*=(const Oxs_ThreeVector&) {
+    throw "Invalid Oxs_ThreeVector operation: *=";
+    return *this;
+  }
+  Oxs_ThreeVector& operator/=(const Oxs_ThreeVector&) {
+    throw "Invalid Oxs_ThreeVector operation: /=";
+    return *this;
+  }
+#endif
+
+
+
   Oxs_ThreeVector Accum(OC_REAL8m a,const Oxs_ThreeVector& v) {
     x+=a*v.x;  y+=a*v.y;  z+=a*v.z;  return *this;
   }
-
 
   Oxs_ThreeVector& wxvxw(const Oxs_ThreeVector& w) {
     // Performs w x *this x w
@@ -96,6 +111,9 @@ public:
   OC_REAL8m TaxicabNorm() const { return fabs(x)+fabs(y)+fabs(z); }  // aka L1-norm
   void SetMag(OC_REAL8m mag);  // Adjusts size to "mag"
   void Random(OC_REAL8m mag);  // Makes a random vector of size "mag"
+  void PerturbDirection(OC_REAL8m eps); // Perturb the direction of
+  /// *this by a random amount.  The magnitude of the perturbation
+  /// is no more than eps (>=0).  The norm of *this is unchanged.
   OC_REAL8m MakeUnit(); // High-precision version of SetMag(1.0).
   /// Return value is original MagSq(), i.e., on entry.
 };

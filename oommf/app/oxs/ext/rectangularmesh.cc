@@ -330,7 +330,7 @@ Oxs_CommonRectangularMesh::BoundaryList
 
   Oxs_Box world_box,work_box;
   GetBoundingBox(world_box);
-  const OC_INT4m region_id = atlas.GetRegionId(region_name);
+  const OC_INDEX region_id = atlas.GetRegionId(region_name);
   if(region_id<0) {
     String msg=String("Region name ")
       + region_name
@@ -992,7 +992,8 @@ void Oxs_RectangularMesh::MakeRefinedMesh
 // is non-zero.
 OC_REAL8m Oxs_RectangularMesh::MaxNeighborAngle
 (const Oxs_MeshValue<ThreeVector>& vec,
- const Oxs_MeshValue<OC_REAL8m>& zero_check) const
+ const Oxs_MeshValue<OC_REAL8m>& zero_check,
+ OC_INDEX node_start,OC_INDEX node_stop) const
 {
   if(!vec.CheckMesh(this)) {
     throw Oxs_ExtError(this,
@@ -1002,151 +1003,45 @@ OC_REAL8m Oxs_RectangularMesh::MaxNeighborAngle
   }
   if(Size()<2) return 0.0;
   
-  OxsRectangularMeshAngle maxang1(0.0); // Minimal angle
-  OxsRectangularMeshAngle maxang2(0.0);
-
-  // Process in 3 passes.  First pass compare neighbors along
-  // x-axis direction, 2nd do neighbors along y-axis direction,
-  // and last do neighbors along z-axis direction.  On a machine
-  // with good cache control, all 3 passes take similar time.
-  //   The code below tries to store one of the ThreeVectors in
-  // cpu registers to cut down on memory loads.  This is done by
-  // comparing forward and backwards and then hopping by 2.  This
-  // technique appears to give some efficiency gains; this has not
-  // been widely checked, however, and one expects it to be a win
-  // only on machines that are floating-point register rich.  If
-  // successful, this method cuts down memory loads from 6n
-  // to 4.5n, where n is the number of cells.  It is possible to
-  // cut this down farther to 3.5n by using a 1-pass checkerboard
-  // access pattern, but the edge cases look to make a messy
-  // implementation.
-  //   Another approach to speed up this computation is to prune
-  // some of the angles by using a triangle inequality.
-  // For example, the angle between spins A and C will not be more
-  // than the sum of the angles A to B and B to C.  So, given
-  // A to B and B to C, one may be able to infer that A to C
-  // is smaller than current max ang without explicit calculation.
-  // Whether this approach could be done in an efficient enough
-  // manner to beat the exhaustive search method remains to be
-  // seen.  Also not clear to me if something like a triangle
-  // inequality holds for arbitrary vectors, or only for case
-  // where all spins are the same size.
+  OxsRectangularMeshAngle maxangX(0.0); // 0.0 is min possible angle
+  OxsRectangularMeshAngle maxangY(0.0);
+  OxsRectangularMeshAngle maxangZ(0.0);
 
   const OC_INDEX xdim = DimX();  // For convenience
   const OC_INDEX ydim = DimY();  // For convenience
   const OC_INDEX zdim = DimZ();  // For convenience
   const OC_INDEX xydim = xdim*ydim;
 
-  // First check angles for x-neighbors
-  if(xdim>1) {
-    OC_INDEX index=0;
-    OC_INDEX row,row_count = ydim*zdim;
-    for(row=0;row<row_count;row++) {
-      const OC_INDEX index_stop = index + xdim - 2;
-      while(index<index_stop) {
-        // index, index+1, and index+2 are always valid indices
-        if(zero_check[index+1]!=0.0) {
-          if(zero_check[index]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index+1],vec[index]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          if(zero_check[index+2]!=0.0) {
-            OxsRectangularMeshAngle test2(vec[index+1],vec[index+2]);
-            if(test2>maxang2) maxang2 = test2;
-          }
-        }
-        index+=2;
+  OC_INDEX ix,iy,iz;
+  GetCoords(node_start,ix,iy,iz);
+
+  for(OC_INDEX index=node_start;index<node_stop;++index) {
+    if(zero_check[index]!=0.0) {
+      if(ix+1<xdim && zero_check[index+1]!=0.0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+1]);
+        if(test>maxangX) maxangX = test;
       }
-      if(xdim%2==0) { // If xdim is even, then there are an odd
-        /// number of neighbor pairs in a row, so there will be
-        /// one left over from the above x-loop.
-        if(zero_check[index]!=0.0 && zero_check[index+1]!=0.0) {
-          OxsRectangularMeshAngle test1(vec[index+1],vec[index]);
-          if(test1>maxang1) maxang1 = test1;
-        }
-        index+=2; // Wrap around to next row.
-      } else {
-        ++index; // Wrap around to next row
+      if(iy+1<ydim && zero_check[index+xdim]!=0.0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+xdim]);
+        if(test>maxangY) maxangY = test;
+      }
+      if(iz+1<zdim && zero_check[index+xydim]!=0.0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+xydim]);
+        if(test>maxangZ) maxangZ = test;
+      }
+    }
+    if(++ix >= xdim) {
+      ix=0;
+      if(++iy >= ydim) {
+        iy=0; ++iz;
       }
     }
   }
 
-  // Next check angles for y-neighbors
-  if(ydim>1) {
-    OC_INDEX x,y,z,index=0;
-    for(z=0;z<zdim;z++) {
-      index+=xdim; // Skip over first row.
-      for(y=1;y<ydim-1;y+=2) {
-        // Here y-1, y and y+1 are always valid indices
-        for(x=0;x<xdim;x++) {
-          if(zero_check[index]!=0.0) {
-            if(zero_check[index-xdim]!=0.0) {
-              OxsRectangularMeshAngle test1(vec[index],vec[index-xdim]);
-              if(test1>maxang1) maxang1 = test1;
-            }
-            if(zero_check[index+xdim]!=0.0) {
-              OxsRectangularMeshAngle test2(vec[index],vec[index+xdim]);
-              if(test2>maxang2) maxang2 = test2;
-            }
-          }
-          index++;
-        }
-        index+=xdim; // Jump over already processed row.
-      }
-      if(ydim%2==0) { // If ydim is even, then there are an odd
-        /// number of neighbor pairs in a y-column, so there will
-        /// be one row left over after the above y-loop.
-        for(x=0;x<xdim;x++) {
-          if(zero_check[index]!=0.0 && zero_check[index-xdim]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-xdim]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          index++;
-        }
-      }
-    }
-  }
+  if(maxangY > maxangX) maxangX = maxangY;
+  if(maxangZ > maxangX) maxangX = maxangZ;
 
-  // Finally check angles for z-neighbors
-  if(zdim>1) {
-    OC_INDEX p,z,index=0;
-    for(z=1;z<zdim-1;z+=2) {
-      index += xydim; // Jump over one plane
-      // Here z-1, z and z+1 are always valid indices
-      for(p=0;p<xydim;p++) {
-        if(zero_check[index]!=0.0) {
-          if(zero_check[index-xydim]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-xydim]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          if(zero_check[index+xydim]!=0.0) {
-            OxsRectangularMeshAngle test2(vec[index],vec[index+xydim]);
-            if(test2>maxang2) maxang2 = test2;
-          }
-        }
-        ++index;
-      }
-    }
-    if(zdim%2==0) {
-      // Process top two layers.
-      // Note: Because xydim isn't added to index after
-      //   last pass through above loop, index points to
-      //   layer zdim-2 instead of zdim-1; thus the proper
-      //   indices are "index" and "index+xydim", *not*
-      //   "index-xydim".
-      for(p=0;p<xydim;p++) {
-        if(zero_check[index]!=0.0 && zero_check[index+xydim]!=0.0) {
-          OxsRectangularMeshAngle test1(vec[index],vec[index+xydim]);
-          if(test1>maxang1) maxang1 = test1;
-        }
-        ++index;
-      }
-    }
-  }
-
-  const OC_REAL8m maxang
-    = (maxang2>maxang1 ? maxang2.GetAngle() : maxang1.GetAngle());
-  return maxang;
+  return maxangX.GetAngle();
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1194,7 +1089,8 @@ Oxs_PeriodicRectangularMesh::Oxs_PeriodicRectangularMesh
 // is non-zero.
 OC_REAL8m Oxs_PeriodicRectangularMesh::MaxNeighborAngle
 (const Oxs_MeshValue<ThreeVector>& vec,
- const Oxs_MeshValue<OC_REAL8m>& zero_check) const
+ const Oxs_MeshValue<OC_REAL8m>& zero_check,
+ OC_INDEX node_start,OC_INDEX node_stop) const
 {
   if(!vec.CheckMesh(this)) {
     throw Oxs_ExtError(this,
@@ -1204,175 +1100,57 @@ OC_REAL8m Oxs_PeriodicRectangularMesh::MaxNeighborAngle
   }
   if(Size()<2) return 0.0;
   
-  OxsRectangularMeshAngle maxang1(0.0); // Minimal angle
-  OxsRectangularMeshAngle maxang2(0.0);
-
-  // Process in 3 passes.  First pass compare neighbors along
-  // x-axis direction, 2nd do neighbors along y-axis direction,
-  // and last do neighbors along z-axis direction.  On a machine
-  // with good cache control, all 3 passes take similar time.
-  //   The code below tries to store one of the ThreeVectors in
-  // cpu registers to cut down on memory loads.  This is done by
-  // comparing forward and backwards and then hopping by 2.  This
-  // technique appears to give some efficiency gains; this has not
-  // been widely checked, however, and one expects it to be a win
-  // only on machines that are floating-point register rich.  If
-  // successful, this method cuts down memory loads from 6n
-  // to 4.5n, where n is the number of cells.  It is possible to
-  // cut this down farther to 3.5n by using a 1-pass checkerboard
-  // access pattern, but the edge cases look to make a messy
-  // implementation.
-  //   Another approach to speed up this computation is to prune
-  // some of the comparisons by using a triangle inequality.
-  // For example, the angle between spins A and C will not be more
-  // than the sum of the angles A to B and B to C.  So, given
-  // A to B and B to C, one may be able to infer that A to C
-  // is smaller than current max ang without explicit calculation.
-  // Whether this approach could be done in an efficient enough
-  // manner to beat the exhaustive search method remains to be
-  // seen.  Also not clear to me if something like a triangle
-  // inequality holds for arbitrary vectors, or only for case
-  // where all spins are the same size.
+  OxsRectangularMeshAngle maxangX(0.0); // 0.0 is min possible angle
+  OxsRectangularMeshAngle maxangY(0.0);
+  OxsRectangularMeshAngle maxangZ(0.0);
 
   const OC_INDEX xdim = DimX();  // For convenience
   const OC_INDEX ydim = DimY();  // For convenience
   const OC_INDEX zdim = DimZ();  // For convenience
   const OC_INDEX xydim = xdim*ydim;
+  const OC_INDEX zwrap = (zdim-1)*xydim;
 
-  // First check angles for x-neighbors
-  if(xdim>1) {
-    OC_INDEX index=0;
-    OC_INDEX row,row_count = ydim*zdim;
-    for(row=0;row<row_count;row++) {
-      ++index; // Skip past first cell in each row
-      for(OC_INDEX x=1;x<xdim-1;x+=2) {
-        // Here x-1, x and x+1 are always valid indices
-        if(zero_check[index]!=0.0) {
-          if(zero_check[index-1]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-1]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          if(zero_check[index+1]!=0.0) {
-            OxsRectangularMeshAngle test2(vec[index],vec[index+1]);
-            if(test2>maxang2) maxang2 = test2;
-          }
+  OC_INDEX ix,iy,iz;
+  GetCoords(node_start,ix,iy,iz);
+
+  for(OC_INDEX index=node_start;index<node_stop;++index) {
+    if(zero_check[index]!=0.0) {
+      if(ix+1<xdim) {
+        if(zero_check[index+1]!=0.0) {
+          OxsRectangularMeshAngle test(vec[index],vec[index+1]);
+          if(test>maxangX) maxangX = test;
         }
-        index+=2;
+      } else if(xperiodic && zero_check[index+1-xdim]!=0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+1-xdim]);
+        if(test>maxangX) maxangX = test;
       }
-      if(xdim%2==0) { // If xdim is even, then there are an odd
-        /// number of neighbor pairs in a row, so there will be
-        /// one left over from the above x-loop.
-        if(zero_check[index]!=0.0 && zero_check[index-1]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-1]);
-            if(test1>maxang1) maxang1 = test1;
+      if(iy+1<ydim) {
+        if(zero_check[index+xdim]!=0.0) {
+          OxsRectangularMeshAngle test(vec[index],vec[index+xdim]);
+          if(test>maxangY) maxangY = test;
         }
-        ++index; // Wrap around to next row.
+      } else if(yperiodic && zero_check[index+xdim-xydim]!=0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+xdim-xydim]);
+        if(test>maxangY) maxangY = test;
       }
-      if(xperiodic) { 
-        if(zero_check[index-1]!=0.0 && zero_check[index-xdim]!=0) {
-          // Check wrapped pair from just-processed row
-          OxsRectangularMeshAngle test1(vec[index-1],vec[index-xdim]);
-          if(test1>maxang1) maxang1 = test1;
+      if(iz+1<zdim) {
+        if(zero_check[index+xydim]!=0.0) {
+          OxsRectangularMeshAngle test(vec[index],vec[index+xydim]);
+          if(test>maxangZ) maxangZ = test;
         }
+      } else if(zperiodic && zero_check[index-zwrap]!=0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index-zwrap]);
+        if(test>maxangZ) maxangZ = test;
+      }
+    }
+    if(++ix >= xdim) {
+      ix=0;
+      if(++iy >= ydim) {
+        iy=0; ++iz;
       }
     }
   }
-
-  // Next check angles for y-neighbors
-  if(ydim>1) {
-    OC_INDEX index=0;
-    for(OC_INDEX z=0;z<zdim;z++) {
-      index+=xdim; // Skip over first row.
-      for(OC_INDEX y=1;y<ydim-1;y+=2) {
-        // Here y-1, y and y+1 are always valid indices
-        for(OC_INDEX x=0;x<xdim;x++) {
-          if(zero_check[index]!=0.0) {
-            if(zero_check[index-xdim]!=0.0) {
-              OxsRectangularMeshAngle test1(vec[index],vec[index-xdim]);
-              if(test1>maxang1) maxang1 = test1;
-            }
-            if(zero_check[index+xdim]!=0.0) {
-              OxsRectangularMeshAngle test2(vec[index],vec[index+xdim]);
-              if(test2>maxang2) maxang2 = test2;
-            }
-          }
-          index++;
-        }
-        index+=xdim; // Jump over already processed row.
-      }
-      if(ydim%2==0) { // If ydim is even, then there are an odd
-        /// number of neighbor pairs in a y-column, so there will
-        /// be one row left over after the above y-loop.
-        for(OC_INDEX x=0;x<xdim;x++) {
-          if(zero_check[index]!=0.0 && zero_check[index-xdim]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-xdim]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          index++;
-        }
-      }
-      if(yperiodic) {
-        // Compare first and last rows of current z-slice.
-        for(OC_INDEX x=0;x<xdim;x++) {
-          if(zero_check[index-xdim+x]!=0.0
-             && zero_check[index-xydim+x]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index-xdim+x],
-                                          vec[index-xydim+x]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-        }
-      }
-    }
-  }
-
-  // Finally check angles for z-neighbors
-  if(zdim>1) {
-    OC_INDEX index=0;
-    for(OC_INDEX z=1;z<zdim-1;z+=2) {
-      index += xydim; // Jump over one plane
-      // Here z-1, z and z+1 are always valid indices
-      for(OC_INDEX p=0;p<xydim;p++) {
-        if(zero_check[index]!=0.0) {
-          if(zero_check[index-xydim]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index-xydim]);
-            if(test1>maxang1) maxang1 = test1;
-          }
-          if(zero_check[index+xydim]!=0.0) {
-            OxsRectangularMeshAngle test2(vec[index],vec[index+xydim]);
-            if(test2>maxang2) maxang2 = test2;
-          }
-        }
-        ++index;
-      }
-    }
-    if(zdim%2==0) {
-      // Process top two layers.
-      // Note: Because xydim isn't added to index after
-      //   last pass through above loop, index points to
-      //   layer zdim-2 instead of zdim-1; thus the proper
-      //   indices are "index" and "index+xydim", *not*
-      //   "index-xydim".
-      for(OC_INDEX p=0;p<xydim;p++) {
-        if(zero_check[index]!=0.0 && zero_check[index+xydim]!=0.0) {
-            OxsRectangularMeshAngle test1(vec[index],vec[index+xydim]);
-            if(test1>maxang1) maxang1 = test1;
-        }
-        ++index;
-      }
-    }
-    if(zperiodic) {
-      // Compare top and bottom planes
-      const OC_INDEX jump = Size() - xydim;
-      for(OC_INDEX p=0;p<xydim;++p) {
-        if(zero_check[p]!=0.0 && zero_check[jump+p]!=0.0) {
-          OxsRectangularMeshAngle test1(vec[p],vec[jump+p]);
-          if(test1>maxang1) maxang1 = test1;
-        }
-      }
-    }
-  }
-
-  const OC_REAL8m maxang
-    = (maxang2>maxang1 ? maxang2.GetAngle() : maxang1.GetAngle());
-  return maxang;
+  if(maxangY > maxangX) maxangX = maxangY;
+  if(maxangZ > maxangX) maxangX = maxangZ;
+  return maxangX.GetAngle();
 }

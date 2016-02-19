@@ -2,13 +2,13 @@
 #
 #	Master Tcl file for the oxs shell
 #
-# Last modified on: $Date: 2004-09-02 21:45:08 $
-# Last modified by: $Author: dgp $
+# Last modified on: $Date: 2015/02/18 02:39:47 $
+# Last modified by: $Author: donahue $
 
 Oc_CheckTclIndex Oxs
 
 # NOTE: version number below must match that in ./oxs.h
-package require -exact Oxs 1.2.0.4
+package require -exact Oxs 1.2.0.6
 
 # Bind any events from "source" Oxs to the tag "Oxs"
 Oc_EventHandler Bindtags Oxs [list Oxs]

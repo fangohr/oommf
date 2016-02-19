@@ -25,6 +25,597 @@ command line utility \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
 aid in converting \MIF~1.1 files to the \MIF~2.1 format.  For all
 versions it is recommended that \MIF\ files be given names ending with
 the \fn{.mif} file extension.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{\MIF\ 1.1}\label{sec:mif1format}
+\begin{rawhtml}
+<A NAME="pt:mif1format"></A>
+\end{rawhtml}
+The \MIF~1.1 format is an older micromagnetic problem specification
+format used by the mmSolve 2D solvers.  It is not compatible with the
+\MIF~2.1 format used by the Oxs 3D solvers.  However, the command line tool
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert} may be used as a conversion aid;
+\app{mifconvert} is also called automatically by Oxs solvers when a
+\MIF~1.x file is input to them.
+
+A sample \MIF~1.1 file is \hyperrefhtml{included below}{presented in
+Fig.~}{}{fig:mif1sample}.  The first line of a \MIF\ file must be of the
+form ``\verb+#+ MIF x.y'', where x.y represents the format revision
+number.  (The predecessor \MIF~1.0 format was not included in any
+released version of \OOMMF.)  
+
+After the format identifier line, any line ending in a backslash,
+`\bs', is joined to the succeeding line before any other processing
+is performed.  Lines beginning with a `\verb+#+' character are comments
+and are ignored.  Blank lines are also ignored.
+
+All other lines must consist of a {\em Record Identifier} followed by
+a parameter list.  The Record Identifier is separated from the
+parameter list by one or more `:' and/or `=' characters.  Whitespace
+and case is ignored in the Record Identifier field.
+
+The parameter list must be a proper \Tcl\ list\index{Tcl~list}.  The
+parameters are parsed (broken into separate elements) following normal
+\Tcl\ rules; in short, items are separated by whitespace, except as
+grouped by double quotes and curly braces.  Opening braces and quotes
+must be whitespace separated from the preceding text.  The grouping
+characters are removed during parsing.  Any `\lb' character that is
+found outside of any grouping mechanism is interpreted as a comment
+start character.  The `\lb' and all following characters on that line
+are interpreted as a comment.
+
+Order of the records in a \MIF~1.1 file is unimportant, except as
+explicitly stated below.  If two or more lines contain the same Record
+Identifier\index{record~identifier}, then the last one takes precedence,
+with the exception of Field Range records, of which there may be several
+active.  All records are required unless listed as optional.  Some of
+these record types are not supported by \app{mmProbEd}, however you
+may modify a \MIF~1.1 file using any plain text editor and supply it to
+\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
+(Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}
+using 
+\hyperrefhtml{\app{FileSource}}{\app{FileSource}
+(Sec.~}{)}{sec:filesource}\index{application!FileSource}.
+
+For convenience, the Record Identifier tags are organized into several
+groups; these groups correspond to the top-level buttons presented by
+\app{mmProbEd}.  We follow this convention below.
+
+\subsubsection{Material parameters}\index{materials}
+\begin{itemize}
+\item {\bf\lb\ Material Name:} This is a convenience entry for
+   \app{mmProbEd}; inside the \MIF~1.1 file it is a comment line.  It
+   relates a symbolic name (e.g., Iron) to specific values to the next
+   4 items.  Ignored by solvers.
+\item {\bf Ms:} Saturation magnetization\index{saturation~magnetization}
+   in A/m.
+\item {\bf A:} Exchange stiffness\index{exchange~stiffness} in J/m.
+\item {\bf K1:} Crystalline
+ anisotropy\index{crystalline~anisotropy}\index{energy!crystalline~anisotropy}
+   constant in J/m${}^3$.  If $K1>0$, then the anisotropy axis (or axes)
+   is an easy axis; if $K1<0$ then the anisotropy axis is a hard axis.
+\item {\bf Anisotropy Type:} Crystalline anisotropy type; One of
+\texttt{<uniaxial|cubic>}.
+\item {\bf Anisotropy Dir1:} Directional cosines of first crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 1 0 0 (x-axis).
+\item {\bf Anisotropy Dir2:} Directional cosines of second crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 0 1 0 (y-axis).
+   \html{\\}\latex{\par}
+   For uniaxial materials it suffices to specify only Anisotropy
+   Dir1.  For cubic materials one must also specify Anisotropy
+   Dir2; the third axis direction will be calculated as the cross
+   product of the first two.  The anisotropy directions will be
+   automatically normalized if necessary, so for example 1 1 1 is
+   valid input (it will be modified to .5774 .5774 .5774).  For cubic
+   materials, Dir2 will be adjusted to be perpendicular to Dir1 (by
+   subtracting out the component parallel to Dir1).
+\item {\bf Anisotropy Init:}
+   Method to use to set up directions of anisotropy axes, as a function
+   of spatial location; This is a generalization of the Anisotropy
+   Dir1/2 records.  The value for this record should be one of
+   \texttt{<Constant|UniformXY|UniformS2>}.  \texttt{Constant} uses the
+   values specified for Anisotropy Dir1 and Dir2, with no dispersion.
+   \texttt{UniformXY} ignores the values given for Anisotropy Dir1 and
+   Dir2, and randomly varies the anisotropy directions uniformly in the
+   xy-plane.  \texttt{UniformS2} is similar, but randomly varies the
+   anisotropy directions uniformly on the unit sphere ($S^2$).  This
+   record is optional; the default value is \texttt{Constant}.
+\item {\bf Edge K1:}  Anisotropy
+   constant\index{edge~anisotropy}\index{energy!edge~anisotropy}
+   similar to crystalline anisotropy constant K1 described above, but
+   applied only along the edge surface of the part.  This is a uniaxial
+   anisotropy, directed along the normal to the boundary surface.  Units
+   are J/m${}^3$, with positive values making the surface normal an easy
+   axis, and negative values making the surface an easy plane.  The
+   default value for Edge K1 is 0, which disables the term.
+\item {\bf Do Precess:}
+   If 1, then enable the precession\index{precession} term in the
+   Landau-Lifshitz ODE\index{ODE!Landau-Lifshitz}.  If 0, then do pure
+   damping only.  (Optional; default value is 1.)
+\item {\bf Gyratio:}
+   The Landau-Lifshitz gyromagnetic ratio\index{gyromagnetic ratio}, in
+   m/(A.s).  This is optional, with default value of \latex{$2.21\times
+   10^5$}\html{2.21e5}.  See the discussion of the Landau-Lifshitz ODE
+   under the Damp~Coef record identifier description.
+\item {\bf Damp Coef:}
+   The ODE solver in \OOMMF\ integrates the Landau-Lifshitz
+   equation\index{ODE!Landau-Lifshitz}~\cite{gilbert55,landau35},
+   written as
+\begin{displaymath}
+\htmlimage{antialias}
+  \frac{d\vM}{dt} = -|\bar{\gamma}|\,\vM\times\vH_{\rm eff}
+   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
+     \vM\times\left(\vM\times\vH_{\rm eff}\right),
+\end{displaymath}
+where
+\latex{
+\begin{eqnarray*}
+  \bar{\gamma}  && \mbox{is the Landau-Lifshitz gyromagnetic ratio
+    (m/(A$\cdot$s)),} \\
+  \alpha    && \mbox{is the damping coefficient (dimensionless).}
+\end{eqnarray*}
+} % close latex
+% Use BLOCKQUOTE until mmHelp supports tables.
+\html{
+\begin{quotation}
+  \abovemath{\bar{\gamma}} is the Landau-Lifshitz gyromagnetic ratio
+                        (m/(A.s)),\\
+  $\alpha$           is the damping coefficient (dimensionless).
+\end{quotation}
+} % close html
+  \latex{(Compare to (\ref{eq:oxsllode}), page~\pageref{eq:oxsllode}.)}%
+  \html{(See also the discussion of the \htmlref{Landau-Lifshitz-Gilbert
+  equations}{eq:oxsllode} in the Oxs documentation.)}  Here $\alpha$ is
+  specified by the ``Damp Coef'' entry in the \MIF~1.1 file.  If not
+  specified, a default value of 0.5 is used, which allows the solver to
+  converge in a reasonable number of iterations.  Physical materials
+  will typically have a damping coefficient in the range 0.004 to
+  0.15.  The 2D solver engine
+  \hyperrefhtml{\app{mmSolve}}{\app{mmSolve}
+  (Sec.~}{)}{sec:mmsolve}\index{application!mmSolve} requires a
+  non-zero damping coefficient.
+\end{itemize}
+
+\subsubsection{Demag specification}\label{sec:mifdemagspec}
+\begin{itemize}
+   \item {\bf Demag Type:} Specify algorithm and demagnetization kernel
+      used to calculate self-magnetostatic
+      (demagnetization\index{demagnetization}) field.  Must be one of 
+      \begin{itemize}
+         \item {\bf ConstMag:} Calculates the {\em average} field in
+            each cell under the assumption that the magnetization is
+            constant in each cell, using formulae from \cite{newell93}.
+            (The other demag options calculate the field at the center
+            of each cell.)
+         \item {\bf 3dSlab:}  Calculate the in-plane field components
+            using offset blocks of constant (volume) charge.  Details
+            are given in \cite{berkov93}. Field components parallel to
+            the $z$-axis are calculated using squares of constant
+            (surface) charge on the upper and lower surfaces of the
+            sample.
+         \item {\bf 3dCharge:} Calculate the in-plane field component
+            using rectangles of constant (surface) charge on each cell.
+            This is equivalent to assuming constant magnetization in
+            each cell.  The $z$-components of the field are calculated
+            in the same manner as for the 3dSlab approach.
+         \item {\bf FastPipe:} Algorithm suitable for simulations that
+            have infinite extent in the $z$-direction.  This is a 2D
+            version of the 3dSlab algorithm.
+        \item {\bf None:} No demagnetization.  Fastest but least
+            accurate method.  \verb+:-}+    %\html{ :-\}}
+    \end{itemize}
+
+    All of these algorithms except FastPipe and None require that the
+    Part Thickness (cf.\ the \htmlref{Part Geometry}{sec:partgeometry}
+    section) be set.  Fast Fourier Transform (FFT)\index{FFT} techniques
+    are used to accelerate the calculations.
+
+\end{itemize}
+
+\subsubsection{Part geometry}\label{sec:partgeometry}\index{part~geometry}
+\begin{itemize}
+   \item {\bf Part Width:} Nominal part width ($x$-dimension) in
+      meters.  Should be an integral multiple of Cell~Size.
+   \item {\bf Part Height:} Nominal part height ($y$-dimension) in
+      meters.  Should be an integral multiple of Cell~Size.
+   \item {\bf Part~Thickness:} Part thickness ($z$-dimension) in meters.
+      Required for all demag types except FastPipe and None.
+   \item {\bf Cell Size:}\index{cell~size} In-plane ($xy$-plane) edge
+      dimension of base calculation cell.  This cell is a rectangular
+      brick, with square in-plane cross-section and thickness given by
+      Part~Thickness.  N.B.: Part~Width and Part~Height should be
+      integral multiples of Cell~Size.  Part~Width and Part~Height will
+      be automatically adjusted slightly (up to 0.01\%) to meet this
+      condition (affecting a small change to the problem), but if the
+      required adjustment is too large then the problem specification is
+      considered to be invalid, and the solver will signal an error.
+   \item {\bf Part Shape:} Optional.  Part shape in the $xy$-plane;
+      must be one of the following:
+   \begin{itemize}
+      \item {\bf Rectangle}\\
+         The sample fills the area specified by Part Width and Part
+         Height. (Default.) 
+      \item {\bf Ellipse}\\
+         The sample (or the magnetically active
+         portion thereof) is an ellipse inscribed into the rectangular
+         area specified by Part Width and Part Height.
+      \item {\bf Ellipsoid}\\
+         Similar to the Ellipse shape, but the part thickness is
+         varied to simulate an ellipsoid, with axis lengths of
+         Part Width, Part Height and Part Thickness.
+      \item {\bf Oval r}\\
+         Shape is a rounded rectangle, where each
+         corner is replaced by a quarter circle with radius $r$, where
+         \latex{$0\leq r\leq 1$}\html{$0 <= r <= 1$}
+         is relative to the half-width of the rectangle.
+      \item {\bf Pyramid overhang}\\
+         Shape is a truncated pyramid, with ramp transition base
+         width (overhang) specified in meters.
+      \item {\bf Mask filename}\index{file!mask}\index{file!bitmap}%
+         \label{html:mifvariablethickness}\\
+         Shape and thickness are determined by a bitmap file, the name
+         of which is specified as the second parameter.  The overall
+         size of the simulation is still determined by Part Width and
+         Part Height (above); the bitmap is spatially scaled to fit
+         those dimensions.  Note that this scaling will not be square if
+         the aspect ratio of the part is different from the aspect ratio
+         of the bitmap.
+
+         The given filename must be accessible to the solver
+         application.  At present the bitmap file must be in either the
+         PPM\index{file!ppm} (portable pixmap), GIF\index{file!gif}, or
+         BMP\index{file!bmp} formats.  (Formats other than the PPM P3
+         (text) format may be handled by spawning an
+         {\hyperrefhtml{\app{any2ppm}}{\app{any2ppm}
+         (Sec.~}{)}{sec:any2ppm}}
+         subprocess\index{application!any2ppm}.)
+
+         White areas of the bitmap are interpreted as being non-magnetic
+         (or having 0 thickness); all other areas are assumed to be
+         composed of the material specified in the ``Material
+         Parameters'' section.  Thickness is determined by the relative
+         darkness of the pixels in the bitmap.  Black pixels are given
+         full nominal thickness (specified by the ``Part Thickness''
+         parameter above), and gray pixels are linearly mapped to a
+         thickness between the nominal thickness and 0.  In general,
+         bitmap pixel values are converted to a thickness relative to
+         the nominal thickness by the formula 1-(R+G+B)/(3M), where R, G
+         and B are the magnitudes of the red, green and blue components,
+         respectively, and M is the maximum allowed component magnitude.
+         For example, black has R=G=B=0, so the relative thickness is 1,
+         and white has R=G=B=M, so the relative thickness is 0.
+   \end{itemize}
+   The code does not perform a complete 3D evaluation of thickness
+   effects.  Instead, the approximation discussed in \cite{porter01} is
+   implemented.
+\end{itemize}
+
+\subsubsection{Initial magnetization}\index{magnetization~initial}
+\begin{itemize}
+   \item {\bf Init Mag:} Name of routine to use to initialize the
+   simulation magnetization directions (as a function of position), and
+   routine parameters, if any.  Optional, with default Random.  The list
+   of routines is long, and it is easy to add new ones.  See the file
+   \fn{oommf/app/mmsolve/maginit.cc} for details.  A few of the more
+   useful routines are:
+   \begin{itemize}
+      \item {\bf Random}\\
+         Random directions on the unit sphere.  This
+         is somewhat like a quenched thermal demagnetized state.
+      \item {\bf Uniform \latex{\boldmath$\theta$ $\phi$}\html{theta phi}}\\
+         Uniform magnetization in the direction
+         indicated by the two additional parameters, \latex{$\theta$ and
+         $\phi$}\html{theta and phi}, where the first is the angle
+         from the $z$-axis (in degrees), and the second is the angle
+         from the $x$-axis (in degrees) of the projection onto the
+         $xy$-plane.
+      \item {\bf Vortex}\\
+         Fits an idealized vortex\index{vortex} about the center of the
+         sample.
+      \item {\bf avfFile filename}\\
+         The second parameter specifies an OVF/VIO (i.e., ``any''
+         vector field) file\index{file!vector~field}\index{file!vio} to use to
+         initialize the magnetization. The grid in the input file will
+         be scaled as necessary to fit the grid in the current
+         simulation.  The file must be accessible to the intended solver
+         application.
+   \end{itemize}
+\end{itemize}
+
+\subsubsection{Experiment parameters}\label{sec:expparams}
+The following records specify the applied field schedule:
+\begin{itemize}
+   \item {\bf Field Range:}\index{field~range} Specifies a range of
+      applied fields that are stepped though in a linear manner.  The
+      parameter list should be 7 numbers, followed by optional control
+      point (stopping criteria) specifications.  The 7 required fields
+      are the begin field Bx By Bz in Tesla, the end field Bx By Bz in
+      Tesla, and an integer number of steps (intervals) to take between
+      the begin and end fields (inclusive).  Use as many Field Range
+      records as necessary---they will be stepped through in order of
+      appearance.  If the step count is 0, then the end field is ignored
+      and only the begin field is applied.  If the step count is larger
+      than 0, and the begin field is the same as the last field from the
+      previous range, then the begin field is not repeated.
+
+      The optional control point\index{simulation~2D!control~point} specs
+      determine the conditions that cause the applied field to be
+      stepped, or more precisely, end the simulation of the
+      magnetization evolution for the current applied field.  The
+      control point specs are specified as {\em --type value} pairs.
+      There are 3 recognized control point types:
+      {\bf --torque}\index{simulation~2D!mxh},
+      {\bf --time}\index{simulation~2D!time}, and
+      {\bf --iteration}\index{simulation~2D!iteration}.  If a --torque pair
+      is given, then the simulation at the current applied field is
+      ended when {\html{$|\vm\times\vh|$\ (i.e.,
+      $|\vM\times\vH|/M_s^2$)}} {\latex{$\|\vm\times\vh\|$ (i.e.,
+      $\|\vM\times\vH\|/M_s^2$)}} at all spins in the simulation is
+      smaller than the specified --torque value (dimensionless).  If a
+      --time pair is given, then the simulation at the current field is
+      ended when the elapsed simulation time {\em for the current field
+      step} reaches the specified --time value (in seconds).  Similarly,
+      an --iteration pair steps the applied field when the iteration
+      count for the current field step reaches the --iteration value.
+      If multiple control point specs are given, then the applied field
+      is advanced when any one of the specs is met.  If no control point
+      specs are given on a range line, then the {\bf Default Control
+      Point Spec} is used.
+
+      For example, consider the following Field Range line:
+\begin{verbatim}
+   Field Range: 0 0 0 .05 0 0  5  -torque 1e-5 -time 1e-9
+\end{verbatim}
+      This specifies 6 applied field values, (0,0,0), (0.01,0,0),
+      (0.02,0,0), \ldots, (0.05,0,0) (in Tesla), with the advancement
+      from one to the next occurring whenever
+      {\html{$|\vm\times\vh|$}}{\latex{$\|\vm\times\vh\|$}}
+      is smaller than 1e-5 for all spins,
+      or when 1 nanosecond (simulation time) has elapsed at the current
+      field. (If --torque was not specified, then the applied field
+      would be stepped at 1, 2, 3 4 and 5~ns in simulation time.)
+
+      The Field Range record is optional, with a default value of 0 0 0
+      0 0 0 0.
+
+   \item {\bf Default Control Point Spec:} List of control
+      point\index{simulation~2D!control~point} {\em --type value} pairs to
+      use as stepping criteria for any field range with no control point
+      specs.  This is a generalization of and replacement for the {\em
+      Converge $|$mxh$|$ Value} record.  Optional, with default
+      ``\cd{-torque~1e-5}.''
+
+   \item {\bf Field Type:} Applied (external) field\index{field!applied}
+     routine and parameters, if any. This is optional, with default
+     Uniform.  At most one record of this type is allowed, but the Multi
+     type may be used to apply a collection of fields.  The nominal
+     applied field (NAF) is stepped through the Field Ranges described
+     above, and is made available to the applied field routines which
+     use or ignore it as appropriate.  \html{\\}\latex{\par} The
+     following Field Type routines are available:
+     \begin{itemize}
+        \item {\bf Uniform}\\
+          Applied field is uniform with value specified by the NAF.
+        \item {\bf Ribbon relcharge x0 y0 x1 y1 height}\\
+          Charge ``Ribbon,'' lying perpendicular to the $xy$-plane.
+          Here relcharge is the charge strength relative to Ms, and
+          (x0,y0), (x1,y1) are the endpoints of the ribbon (in
+          meters).  The ribbon extends height/2 above and below the
+          calculation plane.  This routine ignores the NAF.
+        \item {\bf Tie rfx rfy rfz x0 y0 x1 y1 ribwidth}\\
+          The points (x0,y0) and (x1,y1) define (in meters) the
+          endpoints of the center spine of a rectangular ribbon of
+          width ribwidth lying in the $xy$-plane.  The cells with
+          sample point inside this rectangle see an applied field of
+          (rfx,rfy,rfz), in units relative to Ms.  (If the field is
+          large, then the magnetizations in the rectangle will be
+          ``tied'' to the direction of that field.)  This routine
+          ignores the NAF.
+        \item {\bf OneFile filename multiplier}\\
+          Read B field (in Tesla) in from a file.  Each value in the
+          file is multiplied by the ``multiplier'' value on input.  This
+          makes it simple to reverse field direction (use -1 for the
+          multiplier), or to convert H fields to B fields (use
+          1.256637e-6).  The input file may be any of the vector field
+          file types recognized by \app{mmDisp}.  The input dimensions
+          will be scaled as necessary to fit the simulation grid, with
+          zeroth order interpolation as necessary.  This routine ignores
+          the NAF.
+        \item {\bf FileSeq filename procname multiplier}\\
+          This is a generalization of the OneFile routine that reads in
+          fields from a sequence of files.  Here ``filename'' is the
+          name of a file containing Tcl code to be sourced during
+          problem initialization, and ``procname'' is the name of a Tcl
+          procedure defined in filename, which takes the nominal B field
+          components (in Tesla) and field step count values as imports
+          (4 values total), and returns the name of the vector field
+          file that should be used as the applied B field for that field
+          step.  The B field units in the vector field file should be
+          Tesla.
+        \item {\bf Multi routinecount \bs\\
+                   param1count name1 param1 param2 \ldots \bs\\
+                   param2count name2 param1 param2 \ldots \bs\\
+                   \ldots}\\
+          Allows a conglomeration of several field type routines.  All
+          entries must be on the same logical line, i.e., end physical
+          lines with '\bs' continuation characters as necessary.
+          Here routinecount is the number of routines, and param1count
+          is the number parameters (including name1) needed by the
+          first routine, etc.
+     \end{itemize}
+     Note that all lengths are in meters.  The coordinates in the
+     simulation lie in the first octant, running from (0,0,0) to
+     (Part~Width, Part~Height, Part~Thickness).
+\end{itemize}
+
+\subsubsection{Output specification}\label{sec:mif1outspec}
+\begin{itemize}
+   \item {\bf Base Output Filename:} Default base name used to
+      construct output filenames.
+   \item {\bf Magnetization Output Format:}\index{file!magnetization}
+      Format to use in the \hyperrefhtml{\OVF}{\OVF\
+      (Sec.~}{)}{sec:ovfformat} data block for exported magnetization
+      files.  Should be one of ``binary~4'' (default), ``binary 8'', or
+      ``text {\em format-spec}'', where {\em format-spec} is a C
+      \cd{printf}-style format code, such as ``\cd{\%\lb~.17g}''.
+       Optional.
+   \item {\bf Total Field Output Format:}\index{file!vector~field}
+      Analogous to the Magnetization Output Format, but for total field
+      output files.  Optional, with default ``binary~4''.
+   \item {\bf Data Table Output Format:}\index{file!data~table}
+      Format to use when producing data table style scalar output, such
+      as that sent to
+      \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
+      (Sec.~}{)}{sec:mmdatatable},
+      \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+      (Sec.~}{)}{sec:mmgraph}, and
+      \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+      (Sec.~}{)}{sec:mmarchive}.
+      Should specify a C \cd{printf}-style format code, such as the
+      default ``\cd{\%.16g}''.  Optional.
+\end{itemize}
+
+\subsubsection{Miscellaneous}\label{sec:mifmisc}
+\begin{itemize}
+   \item {\bf\boldmath Converge $|$mxh$|$ Value:}\index{simulation~2D!mxh}
+      Nominal value to use as a stopping criterion: When
+      {\html{$|\vm\times\vh|$\ (i.e., $|\vM\times\vH|/M_s^2$)}}
+      {\latex{$\|\vm\times\vh\|$ (i.e., $\|\vM\times\vH\|/M_s^2$)}}
+      at all spins in the simulation is smaller than this value, it is
+      assumed that a relaxed (equilibrium) state has been reached for
+      the current applied field.  This is a dimensionless value.\\
+      {\bf NOTE:} This Record Identifier is deprecated.  Use {\em
+      Default Control Point Spec} instead.
+  \item {\bf Randomizer Seed:} Value with which to seed random
+      number\index{random~numbers} generator.  Optional.  Default value
+      is 0, which uses the system clock to generate a semi-random seed.
+  \item {\bf Max Time Step:} Limit the maximum ODE step
+      size\index{ODE!step~size} to no larger than this amount, in
+      seconds.  Optional.
+  \item {\bf Min Time Step:} Limit the minimum ODE step size to no
+      less than this amount, in seconds.  Optional.
+  \item {\bf User Comment:} Free-form comment string that may be used
+      for problem identification.  Optional.
+\end{itemize}
+
+\begin{codelisting}{p}{fig:mif1sample}{Example \MIF~1.1 file.}{pt:mif1format}
+\begin{verbatim}
+# MIF 1.1
+#
+# Example from the OOMMF User's Guide.
+#
+# All units are SI.
+#
+################# MATERIAL PARAMETERS ######################
+Ms:  800e3                # Saturation magnetization in A/m.
+A:   13e-12               # Exchange stiffness in J/m.
+K1:  0.5e3                # Anisotropy constant in J/m^3.
+Anisotropy Type: uniaxial # One of <uniaxial|cubic>.
+Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
+                          # coordinate axes
+
+################# DEMAG SPECIFICATION ######################
+Demag Type: ConstMag # One of <ConstMag|3dSlab|2dSlab
+                     #         |3dCharge|FastPipe|None>.
+
+#################### PART GEOMETRY #########################
+Part Width:     0.25e-6    # Nominal part width in m
+Part Height:    1.0e-6     # Nominal part height in m
+Part Thickness: 1e-9       # Part thickness in m.
+Cell Size:      7.8125e-9  # Cell size in m.
+#Part Shape:    # One of <Rectangle|Ellipse|Oval|Mask>.
+                # Optional.
+
+################ INITIAL MAGNETIZATION #####################
+Init Mag: Uniform 90 45 # Initial magnetization routine
+                        # and parameters
+
+################ EXPERIMENT PARAMETERS #####################
+# Field Range:  Start_field  Stop_field  Steps
+Field Range: -.05 -.01 0.  .05  .01 0. 100
+Field Range:  .05  .01 0. -.05 -.01 0. 100
+Field Type: Multi 4 \
+ 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
+ 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
+ 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
+ 1 Uniform
+# The above positions ribbons of positive charge along the
+# upper and lower edges with strength Ms, applies a large
+# (100 Ms) field to the center cells, and also applies a
+# uniform field across the sample stepped from
+# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
+# approximately 0.001 T steps.
+
+Default Control Point Spec: -torque 1e-6
+# Assume equilibrium has been reached, and step the applied
+# field, when the reduced torque |mxh| drops below 1e-6.
+
+################ OUTPUT SPECIFICATIONS #####################
+Base Output Filename: samplerun
+Magnetization Output Format: binary 8 # Save magnetization
+# states in binary format with full (8-byte) precision.
+
+#################### MISCELLANEOUS #########################
+Randomizer Seed: 1   # Random number generator seed.
+User Comment: Example MIF 1.1 file, with lots of comments.
+\end{verbatim}
+\end{codelisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{\MIF\ 1.2}\label{sec:mif12format}
+\begin{rawhtml}
+<A NAME="pt:mif12format"></A>
+\end{rawhtml}
+The \MIF~1.2 format is a minor modification to the \MIF~1.1 format,
+which supports limited 3D problem specification.  It can be read by the
+Oxs 3D solvers, and, with certain restrictions, by the mmSolve 2D
+solvers as well.  The \app{mmProbEd} problem editor can read and
+write this format.  The
+\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
+(Sec.~}{)}{sec:mifconvert} command line tool can be used to convert
+between the \MIF~1.1 and \MIF~1.2 formats, and to convert from the
+\MIF~1.x formats to the Oxs \MIF~2.1 format.  \app{mifconvert} is also
+called automatically by Oxs solvers when a \MIF~1.x file is input to
+them, so questions about the details of Oxs interpretation of \MIF~1.x
+files can be answered by running \app{mifconvert} separately on the
+input \MIF~1.x file.
+
+There are four differences between the \MIF~1.1 and 1.2 formats.  In
+the \MIF~1.2 format:
+\begin{enumerate}
+\item The first line reads: \verb+# MIF 1.2+
+\item The \texttt{CellSize} record takes three parameters:
+      $x$-dimension, $y$-dimension, and $z$-dimension (in meters).
+\item The \texttt{3dSlab}, \texttt{2dSlab}, \texttt{3dCharge}, and
+      \texttt{FastPipe} parameters of the \texttt{DemagType} record
+      are deprecated.
+\item The new record \texttt{SolverType} is introduced.  Valid values
+      are \texttt{Euler}, \texttt{RK2}, \texttt{RK4}, \texttt{RKF54},
+      and \texttt{CG}, requesting a first order Euler, second order
+      Runge-Kutta, fourth order Runge-Kutta, fifth(+fourth) order
+      Runge-Kutta-Fehlberg, and Conjugate-Gradient solvers,
+      respectively.  This record is optional, with default value of
+      \texttt{RKF54}.
+\end{enumerate}
+If the \texttt{CellSize} record has only one parameter, then it is
+interpreted in the same manner as in the \MIF~1.1 format, i.e., the
+parameter is taken as the $x$- and $y$-dimension of the computation
+cell, and the $z$-dimension is set to the part thickness.
+
+The mmSolve 2D solvers will accept files in the \MIF~1.2 format provided
+the \texttt{CellSize} record meets the restrictions of those solvers,
+namely, the $x$- and $y$-dimensions must be the same, and the
+$z$-dimension must equal the part thickness.  The \texttt{SolverType}
+record, if any, is ignored.
+
+The Oxs 3D solvers will read files in the \MIF~1.2 format, but support
+only the \texttt{ConstMag} and \texttt{None} demagnetization kernels.
+All other \texttt{DemagType} records are silently converted
+to \texttt{ConstMag}.  The \texttt{SolverType} record is converted into
+the appropriate solver+driver pair.
 
 \subsection{\MIF\ 2.1}\label{sec:mif2format}
 \begin{rawhtml}
@@ -592,15 +1183,17 @@ time the \MIF\ file is composed.  In fact, some of the applications may
 be launched by \cd{Destination} commands, and so don't even have OID's
 at the time the \cd{Destination} command is processed.
 
-The \textit{event} parameter should be one of the keywords \cd{Step} or
-\cd{Stage}, and the \textit{frequency} parameter should be a positive integer,
-representing with what frequency of the specified event should output be
-dispatched.  For example, if \cd{Step 5} is given, then on every fifth
-step of the solver output of the indicated type will be sent to the
-selected destination.  Set \textit{frequency} to 1 to send output each
-time the event occurs.
-
-All of the parameters to the \cd{Schedule} command are required.
+The \textit{event} parameter should be one of the keywords \cd{Step},
+\cd{Stage}, or \cd{Done}.  For \cd{Step} and \cd{Stage} events the
+\textit{frequency} parameter should be a positive integer, representing
+with what frequency of the specified event should output be dispatched.
+For example, if \cd{Step 5} is given, then on every fifth step of the
+solver output of the indicated type will be sent to the selected
+destination.  Set \textit{frequency} to 1 to send output each time the
+event occurs.  The \cd{Done} event occurs at the successful completion
+of a simulation; as such, there is at most one ``Done'' event per
+simulation.  Accordingly, the \textit{frequency} parameter for \cd{Done}
+events is optional; if present it should be the value 1.
 
 There are examples of scheduling with the \cd{Destination} and
 \cd{Schedule} commands in the \hyperrefhtml{sample \MIF~2.1
@@ -696,7 +1289,7 @@ Specify Oxs\_RectangularMesh:mymesh \ocb \\
 \begin{rawhtml}<BLOCKQUOTE><DL><DT>
 <TT>Specify Oxs_BoxAtlas:myatlas {</TT>
 <DD>...
-<DT><TT>}</TT>
+<DT><TT>}</TT><P>
 <DT><DT><TT>Specify Oxs_RectangularMesh:mymesh {</TT>
 <DD><TT>cellsize { 5e-9 5e-9 5e-9 }</TT>
 <DD><TT>atlas Oxs_BoxAtlas:myatlas</TT>
@@ -965,6 +1558,7 @@ Specify Oxs_LabelValue:probdata {
   alpha 0.5
   start_dm 0.01
 }
+
 Specify Oxs_EulerEvolve {
   attributes :probdata
 }
@@ -1040,14 +1634,15 @@ as seen in this example:
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
+proc SatMag { x y z } {
+   if {$z < 20e-9} {return 8e5}
+   return 5e5
+}
+
 Specify ScriptScalarField:Ms {
    atlas :atlas
    script_args { rawpt }
    script SatMag
-}
-proc SatMag { x y z } {
-   if {$z < 20e-9} {return 8e5}
-   return 5e5
 }
 \end{verbatim}
 %begin{latexonly}
@@ -1060,15 +1655,19 @@ vectors\ccb}, as explained in the
 \htmlonlyref{\cd{Oxs\_ScriptScalarField}}{item:ScriptScalarField}
 documentation\latex{ (page~\pageref{item:ScriptScalarField})}.  Here
 \cd{rawpt} provides the point representation in problem coordinates,
-i.e., in meters.  Other \cd{Oxs\_Ext} objects support a different list of
-allowed \cd{script\_args} values.  Check the documentation of the
+i.e., in meters.  Other \cd{Oxs\_Ext} objects support a different list
+of allowed \cd{script\_args} values.  Check the documentation of the
 \cd{Oxs\_Ext} object in question for details.  Please note that the
 names used in the proc argument lists above are for exposition purposes
 only.  You may use other names as you wish.  It is the order of the
-arguments that is important, not their names.  Also, because the \MIF\
-file is parsed first in toto before the Specify blocks are evaluated,
-the support procs may be placed anywhere in the \MIF\ file, regardless
-of the location of the referencing Specify blocks.
+arguments that is important, not their names.  Also, \MIF~2.1 files are
+parsed first in toto before the Specify blocks are evaluated, so the
+support procs may be placed anywhere in a \MIF~2.1 file, regardless of
+the location of the referencing Specify blocks.  Conversely,
+\hyperrefhtml{\MIF~2.2}{\MIF~2.2 (Sec.~}{)}{sec:mif22format}
+files are parsed in a single pass, with Specify blocks evaluated as they
+are read.  Therefore for \MIF~2.2 files it is generally best to place
+proc definitions ahead of Specify blocks in which they are referenced.
 
 The command call to the \Tcl\ support proc is actually built up by
 appending to the \cd{script} value the arguments as specified by the
@@ -1082,13 +1681,14 @@ preceding example:
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-Specify ScriptScalarField:Ms {
-   script_args { rawpt }
-   script {SatMag 20e-9 8e5 5e5}
-}
 proc SatMag { zheight Ms1 Ms2 x y z } {
    if {$z < $zheight} {return $Ms1}
    return $Ms2
+}
+
+Specify ScriptScalarField:Ms {
+   script_args { rawpt }
+   script {SatMag 20e-9 8e5 5e5}
 }
 \end{verbatim}
 %begin{latexonly}
@@ -1127,6 +1727,7 @@ set mask {
    1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
    1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1
 }
+
 proc MyShape { xrel yrel znotused } {
    global mask  ;# Make mask accessible inside proc
    set Ms 8e5   ;# Saturation magnetization of element
@@ -1187,15 +1788,19 @@ Specify blocks.  The format is:
       \end{rawhtml}
 The first parameter, \oxslabel{name}, specifies the label attached to
 this output in the DataTable results; the full name will be the Specify
-block instance name, followed by \oxsval{:output\_name}.  The second
-parameter, \oxslabel{source\_field}, specifies the vector field output
-that the output is derived from.  The \oxsval{source} value should
-match the label for the source field output as displayed in the ``Output'' pane
-of the Oxsii or Boxsi interactive interface; this can also be found in the
-documentation for the source field \cd{Oxs\_Ext} class.  If the source
-field is from the same class as the user output, then \oxsval{source}
-can use the short form of the name (i.e., the component following the
-last ``:''); otherwise the full name must be used.
+block instance name, followed by \oxsval{:output\_name}.  This label
+must follow the rules for \ODT\ column labels; in particular, embedded
+newlines and carriage returns are not allowed.
+
+The second parameter, \oxslabel{source\_field}, specifies the vector
+field output that the output is derived from.  The \oxsval{source} value
+should match the label for the source field output as displayed in the
+``Output'' pane of the Oxsii or Boxsi interactive interface; this can
+also be found in the documentation for the source field \cd{Oxs\_Ext}
+class.  If the source field is from the same class as the user output,
+then \oxsval{source} can use the short form of the name (i.e., the
+component following the last ``:''); otherwise the full name must be
+used.
 
 The third parameter, \oxslabel{select\_field}, references a field that
 is used to weight the source field to create the scalar output.  The
@@ -1235,9 +1840,10 @@ user to define a constant factor that is multiplied against the result
 of (\ref{eq:UserScalarOutput}).  This can be used, for example, in
 conjuction with the \oxslabel{units} parameter to implement unit
 conversion.  The \oxsval{units} value is an arbitrary string (for
-example, A/m) that is placed in the DataTable output.  If \oxsval{units}
-is not set, then the units string is copied from the units for the
-source field.
+example, A/m) that is placed in the DataTable output.  This label must
+follow the rules for \ODT\ unit labels; in particular, embedded newlines
+and carriage returns are not allowed.  If \oxsval{units} is not set,
+then the units string is copied from the units for the source field.
 
 The following is a simple example showing two user outputs based
 off the demagnetization field:
@@ -1279,7 +1885,8 @@ Specify Oxs_Demag {
      source_field Field
      select_field :octant_field_y
   }
-}\end{verbatim}
+}
+\end{verbatim}
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
@@ -1299,7 +1906,10 @@ averaging volume and component selection are defined by the
 octant and $(0,0,0)$ everywhere else.
 
 The source code for user defined scalar outputs can be found in the
-files \fn{ext.h} and \fn{ext.cc} in the directory \fn{oommf/app/oxs/base/}.
+files \fn{ext.h} and \fn{ext.cc} in the directory
+\fn{oommf/app/oxs/base/}.  Example \MIF\ files include \fn{cube.mif},
+\fn{pbcbrick.mif}, and \fn{stdprob2.mif} in the directory
+\fn{oommf/app/oxs/examples/}.
 
 \subsubsection{Variable Substitution}%
 \label{sec:varSubst}\index{variable~substitution~(MIF)}
@@ -1499,6 +2109,8 @@ Specify Oxs_TimeDriver {
         atlas :WorldAtlas
  } }
  basename example
+ comment {If you don't specify basename, then the default
+          is taken from the MIF filename.}
 }
 
 # Default outputs
@@ -1543,19 +2155,19 @@ detailed below.
  replaced with a one pass mode, where \cd{Oxs\_Ext} objects are created
  at the time that the \cd{Specify} commands are parsed.  This processing
  model is more intuitive for \MIF\ file authors, but has two main
- consequences.  The first is that in \MIF~2.1 format files, \Tcl procs that
+ consequences.  The first is that in \MIF~2.1 format files, \Tcl\ procs that
  are used only inside \cd{Specify} commands can be placed anywhere inside
  the \MIF\ file (for example, commonly at the end), because they won't be
  called during the first pass.  As long as they are defined at any point
  during the first pass, they will be available for use in the second
- pass.  In contrast, in the \MIF~2.2 format, \Tcl procs definitions must
+ pass.  In contrast, in the \MIF~2.2 format, \Tcl\ procs definitions must
  generally be moved forward, before any references in \cd{Specify}
  blocks.  The second consequence is that \cd{Oxs\_Ext} objects defined by
  \cd{Specify} commands are available for use inside the \MIF\ file.  This
- allows support for the two new commands discussed next.
-\item Two new top-level extension commands are supported in the \MIF~2.2
- format, \cd{EvalScalarField} and \cd{EvalVectorField}.  These commands
- are described in detail below.
+ allows support for the new commands discussed next.
+%\item Two new top-level extension commands are supported in the \MIF~2.2
+% format, \cd{EvalScalarField} and \cd{EvalVectorField}.  These commands
+% are described in detail below.
 \end{enumerate}
 
 \subsubsection{\MIF~2.2 New Extension Commands}%
@@ -1938,595 +2550,6 @@ Specify Oxs_MinDriver [subst {
 \end{verbatim}
 \end{codelisting}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsection{\MIF\ 1.1}\label{sec:mif1format}
-\begin{rawhtml}
-<A NAME="pt:mif1format"></A>
-\end{rawhtml}
-The \MIF~1.1 format is an older micromagnetic problem specification
-format used by the mmSolve 2D solvers.  It is not compatible with the
-\MIF~2.1 format used by the Oxs 3D solvers.  However, the command line tool
-\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
-(Sec.~}{)}{sec:mifconvert} may be used as a conversion aid;
-\app{mifconvert} is also called automatically by Oxs solvers when a
-\MIF~1.x file is input to them.
-
-A sample \MIF~1.1 file is \hyperrefhtml{included below}{presented in
-Fig.~}{}{fig:mif1sample}.  The first line of a \MIF\ file must be of the
-form ``\verb+#+ MIF x.y'', where x.y represents the format revision
-number.  (The predecessor \MIF~1.0 format was not included in any
-released version of \OOMMF.)  
-
-After the format identifier line, any line ending in a backslash,
-`\bs', is joined to the succeeding line before any other processing
-is performed.  Lines beginning with a `\verb+#+' character are comments
-and are ignored.  Blank lines are also ignored.
-
-All other lines must consist of a {\em Record Identifier} followed by
-a parameter list.  The Record Identifier is separated from the
-parameter list by one or more `:' and/or `=' characters.  Whitespace
-and case is ignored in the Record Identifier field.
-
-The parameter list must be a proper \Tcl\ list\index{Tcl~list}.  The
-parameters are parsed (broken into separate elements) following normal
-\Tcl\ rules; in short, items are separated by whitespace, except as
-grouped by double quotes and curly braces.  Opening braces and quotes
-must be whitespace separated from the preceding text.  The grouping
-characters are removed during parsing.  Any `\lb' character that is
-found outside of any grouping mechanism is interpreted as a comment
-start character.  The `\lb' and all following characters on that line
-are interpreted as a comment.
-
-Order of the records in a \MIF~1.1 file is unimportant, except as
-explicitly stated below.  If two or more lines contain the same Record
-Identifier\index{record~identifier}, then the last one takes precedence,
-with the exception of Field Range records, of which there may be several
-active.  All records are required unless listed as optional.  Some of
-these record types are not supported by \app{mmProbEd}, however you
-may modify a \MIF~1.1 file using any plain text editor and supply it to
-\hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
-(Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}
-using 
-\hyperrefhtml{\app{FileSource}}{\app{FileSource}
-(Sec.~}{)}{sec:filesource}\index{application!FileSource}.
-
-For convenience, the Record Identifier tags are organized into several
-groups; these groups correspond to the top-level buttons presented by
-\app{mmProbEd}.  We follow this convention below.
-
-\subsubsection{Material parameters}\index{materials}
-\begin{itemize}
-\item {\bf\lb\ Material Name:} This is a convenience entry for
-   \app{mmProbEd}; inside the \MIF~1.1 file it is a comment line.  It
-   relates a symbolic name (e.g., Iron) to specific values to the next
-   4 items.  Ignored by solvers.
-\item {\bf Ms:} Saturation magnetization\index{saturation~magnetization}
-   in A/m.
-\item {\bf A:} Exchange stiffness\index{exchange~stiffness} in J/m.
-\item {\bf K1:} Crystalline
- anisotropy\index{crystalline~anisotropy}\index{energy!crystalline~anisotropy}
-   constant in J/m${}^3$.  If $K1>0$, then the anisotropy axis (or axes)
-   is an easy axis; if $K1<0$ then the anisotropy axis is a hard axis.
-\item {\bf Anisotropy Type:} Crystalline anisotropy type; One of
-\texttt{<uniaxial|cubic>}.
-\item {\bf Anisotropy Dir1:} Directional cosines of first crystalline
-   anisotropy axis, taken with respect to the coordinate axes (3
-   numbers).  Optional; Default is 1 0 0 (x-axis).
-\item {\bf Anisotropy Dir2:} Directional cosines of second crystalline
-   anisotropy axis, taken with respect to the coordinate axes (3
-   numbers).  Optional; Default is 0 1 0 (y-axis).
-   \html{\\}\latex{\par}
-   For uniaxial materials it suffices to specify only Anisotropy
-   Dir1.  For cubic materials one must also specify Anisotropy
-   Dir2; the third axis direction will be calculated as the cross
-   product of the first two.  The anisotropy directions will be
-   automatically normalized if necessary, so for example 1 1 1 is
-   valid input (it will be modified to .5774 .5774 .5774).  For cubic
-   materials, Dir2 will be adjusted to be perpendicular to Dir1 (by
-   subtracting out the component parallel to Dir1).
-\item {\bf Anisotropy Init:}
-   Method to use to set up directions of anisotropy axes, as a function
-   of spatial location; This is a generalization of the Anisotropy
-   Dir1/2 records.  The value for this record should be one of
-   \texttt{<Constant|UniformXY|UniformS2>}.  \texttt{Constant} uses the
-   values specified for Anisotropy Dir1 and Dir2, with no dispersion.
-   \texttt{UniformXY} ignores the values given for Anisotropy Dir1 and
-   Dir2, and randomly varies the anisotropy directions uniformly in the
-   xy-plane.  \texttt{UniformS2} is similar, but randomly varies the
-   anisotropy directions uniformly on the unit sphere ($S^2$).  This
-   record is optional; the default value is \texttt{Constant}.
-\item {\bf Edge K1:}  Anisotropy
-   constant\index{edge~anisotropy}\index{energy!edge~anisotropy}
-   similar to crystalline anisotropy constant K1 described above, but
-   applied only along the edge surface of the part.  This is a uniaxial
-   anisotropy, directed along the normal to the boundary surface.  Units
-   are J/m${}^3$, with positive values making the surface normal an easy
-   axis, and negative values making the surface an easy plane.  The
-   default value for Edge K1 is 0, which disables the term.
-\item {\bf Do Precess:}
-   If 1, then enable the precession\index{precession} term in the
-   Landau-Lifshitz ODE\index{ODE!Landau-Lifshitz}.  If 0, then do pure
-   damping only.  (Optional; default value is 1.)
-\item {\bf Gyratio:}
-   The Landau-Lifshitz gyromagnetic ratio\index{gyromagnetic ratio}, in
-   m/(A.s).  This is optional, with default value of \latex{$2.21\times
-   10^5$}\html{2.21e5}.  See the discussion of the Landau-Lifshitz ODE
-   under the Damp~Coef record identifier description.
-\item {\bf Damp Coef:}
-   The ODE solver in \OOMMF\ integrates the Landau-Lifshitz
-   equation\index{ODE!Landau-Lifshitz}~\cite{gilbert55,landau35},
-   written as
-\begin{displaymath}
-\htmlimage{antialias}
-  \frac{d\vM}{dt} = -|\bar{\gamma}|\,\vM\times\vH_{\rm eff}
-   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
-     \vM\times\left(\vM\times\vH_{\rm eff}\right),
-\end{displaymath}
-where
-\latex{
-\begin{eqnarray*}
-  \bar{\gamma}  && \mbox{is the Landau-Lifshitz gyromagnetic ratio
-    (m/(A$\cdot$s)),} \\
-  \alpha    && \mbox{is the damping coefficient (dimensionless).}
-\end{eqnarray*}
-} % close latex
-% Use BLOCKQUOTE until mmHelp supports tables.
-\html{
-\begin{quotation}
-  \abovemath{\bar{\gamma}} is the Landau-Lifshitz gyromagnetic ratio
-                        (m/(A.s)),\\
-  $\alpha$           is the damping coefficient (dimensionless).
-\end{quotation}
-} % close html
-  \latex{(Compare to (\ref{eq:oxsllode}), page~\pageref{eq:oxsllode}.)}%
-  \html{(See also the discussion of the \htmlref{Landau-Lifshitz-Gilbert
-  equations}{eq:oxsllode} in the Oxs documentation.)}  Here $\alpha$ is
-  specified by the ``Damp Coef'' entry in the \MIF~1.1 file.  If not
-  specified, a default value of 0.5 is used, which allows the solver to
-  converge in a reasonable number of iterations.  Physical materials
-  will typically have a damping coefficient in the range 0.004 to
-  0.15.  The 2D solver engine
-  \hyperrefhtml{\app{mmSolve}}{\app{mmSolve}
-  (Sec.~}{)}{sec:mmsolve}\index{application!mmSolve} requires a
-  non-zero damping coefficient.
-\end{itemize}
-
-\subsubsection{Demag specification}\label{sec:mifdemagspec}
-\begin{itemize}
-   \item {\bf Demag Type:} Specify algorithm and demagnetization kernel
-      used to calculate self-magnetostatic
-      (demagnetization\index{demagnetization}) field.  Must be one of 
-      \begin{itemize}
-         \item {\bf ConstMag:} Calculates the {\em average} field in
-            each cell under the assumption that the magnetization is
-            constant in each cell, using formulae from \cite{newell93}.
-            (The other demag options calculate the field at the center
-            of each cell.)
-         \item {\bf 3dSlab:}  Calculate the in-plane field components
-            using offset blocks of constant (volume) charge.  Details
-            are given in \cite{berkov93}. Field components parallel to
-            the $z$-axis are calculated using squares of constant
-            (surface) charge on the upper and lower surfaces of the
-            sample.
-         \item {\bf 3dCharge:} Calculate the in-plane field component
-            using rectangles of constant (surface) charge on each cell.
-            This is equivalent to assuming constant magnetization in
-            each cell.  The $z$-components of the field are calculated
-            in the same manner as for the 3dSlab approach.
-         \item {\bf FastPipe:} Algorithm suitable for simulations that
-            have infinite extent in the $z$-direction.  This is a 2D
-            version of the 3dSlab algorithm.
-        \item {\bf None:} No demagnetization.  Fastest but least
-            accurate method.  \verb+:-}+    %\html{ :-\}}
-    \end{itemize}
-
-    All of these algorithms except FastPipe and None require that the
-    Part Thickness (cf.\ the \htmlref{Part Geometry}{sec:partgeometry}
-    section) be set.  Fast Fourier Transform (FFT)\index{FFT} techniques
-    are used to accelerate the calculations.
-
-\end{itemize}
-
-\subsubsection{Part geometry}\label{sec:partgeometry}\index{part~geometry}
-\begin{itemize}
-   \item {\bf Part Width:} Nominal part width ($x$-dimension) in
-      meters.  Should be an integral multiple of Cell~Size.
-   \item {\bf Part Height:} Nominal part height ($y$-dimension) in
-      meters.  Should be an integral multiple of Cell~Size.
-   \item {\bf Part~Thickness:} Part thickness ($z$-dimension) in meters.
-      Required for all demag types except FastPipe and None.
-   \item {\bf Cell Size:}\index{cell~size} In-plane ($xy$-plane) edge
-      dimension of base calculation cell.  This cell is a rectangular
-      brick, with square in-plane cross-section and thickness given by
-      Part~Thickness.  N.B.: Part~Width and Part~Height should be
-      integral multiples of Cell~Size.  Part~Width and Part~Height will
-      be automatically adjusted slightly (up to 0.01\%) to meet this
-      condition (affecting a small change to the problem), but if the
-      required adjustment is too large then the problem specification is
-      considered to be invalid, and the solver will signal an error.
-   \item {\bf Part Shape:} Optional.  Part shape in the $xy$-plane;
-      must be one of the following:
-   \begin{itemize}
-      \item {\bf Rectangle}\\
-         The sample fills the area specified by Part Width and Part
-         Height. (Default.) 
-      \item {\bf Ellipse}\\
-         The sample (or the magnetically active
-         portion thereof) is an ellipse inscribed into the rectangular
-         area specified by Part Width and Part Height.
-      \item {\bf Ellipsoid}\\
-         Similar to the Ellipse shape, but the part thickness is
-         varied to simulate an ellipsoid, with axis lengths of
-         Part Width, Part Height and Part Thickness.
-      \item {\bf Oval r}\\
-         Shape is a rounded rectangle, where each
-         corner is replaced by a quarter circle with radius $r$, where
-         \latex{$0\leq r\leq 1$}\html{$0 <= r <= 1$}
-         is relative to the half-width of the rectangle.
-      \item {\bf Pyramid overhang}\\
-         Shape is a truncated pyramid, with ramp transition base
-         width (overhang) specified in meters.
-      \item {\bf Mask filename}\index{file!mask}\index{file!bitmap}%
-         \label{html:mifvariablethickness}\\
-         Shape and thickness are determined by a bitmap file, the name
-         of which is specified as the second parameter.  The overall
-         size of the simulation is still determined by Part Width and
-         Part Height (above); the bitmap is spatially scaled to fit
-         those dimensions.  Note that this scaling will not be square if
-         the aspect ratio of the part is different from the aspect ratio
-         of the bitmap.
-
-         The given filename must be accessible to the solver
-         application.  At present the bitmap file must be in either the
-         PPM\index{file!ppm} (portable pixmap), GIF\index{file!gif}, or
-         BMP\index{file!bmp} formats.  (Formats other than the PPM P3
-         (text) format may be handled by spawning an
-         {\hyperrefhtml{\app{any2ppm}}{\app{any2ppm}
-         (Sec.~}{)}{sec:any2ppm}}
-         subprocess\index{application!any2ppm}.)
-
-         White areas of the bitmap are interpreted as being non-magnetic
-         (or having 0 thickness); all other areas are assumed to be
-         composed of the material specified in the ``Material
-         Parameters'' section.  Thickness is determined by the relative
-         darkness of the pixels in the bitmap.  Black pixels are given
-         full nominal thickness (specified by the ``Part Thickness''
-         parameter above), and gray pixels are linearly mapped to a
-         thickness between the nominal thickness and 0.  In general,
-         bitmap pixel values are converted to a thickness relative to
-         the nominal thickness by the formula 1-(R+G+B)/(3M), where R, G
-         and B are the magnitudes of the red, green and blue components,
-         respectively, and M is the maximum allowed component magnitude.
-         For example, black has R=G=B=0, so the relative thickness is 1,
-         and white has R=G=B=M, so the relative thickness is 0.
-   \end{itemize}
-   The code does not perform a complete 3D evaluation of thickness
-   effects.  Instead, the approximation discussed in \cite{porter01} is
-   implemented.
-\end{itemize}
-
-\subsubsection{Initial magnetization}\index{magnetization~initial}
-\begin{itemize}
-   \item {\bf Init Mag:} Name of routine to use to initialize the
-   simulation magnetization directions (as a function of position), and
-   routine parameters, if any.  Optional, with default Random.  The list
-   of routines is long, and it is easy to add new ones.  See the file
-   \fn{oommf/app/mmsolve/maginit.cc} for details.  A few of the more
-   useful routines are:
-   \begin{itemize}
-      \item {\bf Random}\\
-         Random directions on the unit sphere.  This
-         is somewhat like a quenched thermal demagnetized state.
-      \item {\bf Uniform \latex{\boldmath$\theta$ $\phi$}\html{theta phi}}\\
-         Uniform magnetization in the direction
-         indicated by the two additional parameters, \latex{$\theta$ and
-         $\phi$}\html{theta and phi}, where the first is the angle
-         from the $z$-axis (in degrees), and the second is the angle
-         from the $x$-axis (in degrees) of the projection onto the
-         $xy$-plane.
-      \item {\bf Vortex}\\
-         Fits an idealized vortex\index{vortex} about the center of the
-         sample.
-      \item {\bf avfFile filename}\\
-         The second parameter specifies an OVF/VIO (i.e., ``any''
-         vector field) file\index{file!vector~field}\index{file!vio} to use to
-         initialize the magnetization. The grid in the input file will
-         be scaled as necessary to fit the grid in the current
-         simulation.  The file must be accessible to the intended solver
-         application.
-   \end{itemize}
-\end{itemize}
-
-\subsubsection{Experiment parameters}\label{sec:expparams}
-The following records specify the applied field schedule:
-\begin{itemize}
-   \item {\bf Field Range:}\index{field~range} Specifies a range of
-      applied fields that are stepped though in a linear manner.  The
-      parameter list should be 7 numbers, followed by optional control
-      point (stopping criteria) specifications.  The 7 required fields
-      are the begin field Bx By Bz in Tesla, the end field Bx By Bz in
-      Tesla, and an integer number of steps (intervals) to take between
-      the begin and end fields (inclusive).  Use as many Field Range
-      records as necessary---they will be stepped through in order of
-      appearance.  If the step count is 0, then the end field is ignored
-      and only the begin field is applied.  If the step count is larger
-      than 0, and the begin field is the same as the last field from the
-      previous range, then the begin field is not repeated.
-
-      The optional control point\index{simulation~2D!control~point} specs
-      determine the conditions that cause the applied field to be
-      stepped, or more precisely, end the simulation of the
-      magnetization evolution for the current applied field.  The
-      control point specs are specified as {\em --type value} pairs.
-      There are 3 recognized control point types:
-      {\bf --torque}\index{simulation~2D!mxh},
-      {\bf --time}\index{simulation~2D!time}, and
-      {\bf --iteration}\index{simulation~2D!iteration}.  If a --torque pair
-      is given, then the simulation at the current applied field is
-      ended when {\html{$|\vm\times\vh|$\ (i.e.,
-      $|\vM\times\vH|/M_s^2$)}} {\latex{$\|\vm\times\vh\|$ (i.e.,
-      $\|\vM\times\vH\|/M_s^2$)}} at all spins in the simulation is
-      smaller than the specified --torque value (dimensionless).  If a
-      --time pair is given, then the simulation at the current field is
-      ended when the elapsed simulation time {\em for the current field
-      step} reaches the specified --time value (in seconds).  Similarly,
-      an --iteration pair steps the applied field when the iteration
-      count for the current field step reaches the --iteration value.
-      If multiple control point specs are given, then the applied field
-      is advanced when any one of the specs is met.  If no control point
-      specs are given on a range line, then the {\bf Default Control
-      Point Spec} is used.
-
-      For example, consider the following Field Range line:
-\begin{verbatim}   Field Range: 0 0 0 .05 0 0  5  -torque 1e-5 -time 1e-9\end{verbatim}
-      This specifies 6 applied field values, (0,0,0), (0.01,0,0),
-      (0.02,0,0), \ldots, (0.05,0,0) (in Tesla), with the advancement
-      from one to the next occurring whenever
-      {\html{$|\vm\times\vh|$}}{\latex{$\|\vm\times\vh\|$}}
-      is smaller than 1e-5 for all spins,
-      or when 1 nanosecond (simulation time) has elapsed at the current
-      field. (If --torque was not specified, then the applied field
-      would be stepped at 1, 2, 3 4 and 5~ns in simulation time.)
-
-      The Field Range record is optional, with a default value of 0 0 0
-      0 0 0 0.
-
-   \item {\bf Default Control Point Spec:} List of control
-      point\index{simulation~2D!control~point} {\em --type value} pairs to
-      use as stepping criteria for any field range with no control point
-      specs.  This is a generalization of and replacement for the {\em
-      Converge $|$mxh$|$ Value} record.  Optional, with default
-      ``\cd{-torque~1e-5}.''
-
-   \item {\bf Field Type:} Applied (external) field\index{field!applied}
-     routine and parameters, if any. This is optional, with default
-     Uniform.  At most one record of this type is allowed, but the Multi
-     type may be used to apply a collection of fields.  The nominal
-     applied field (NAF) is stepped through the Field Ranges described
-     above, and is made available to the applied field routines which
-     use or ignore it as appropriate.  \html{\\}\latex{\par} The
-     following Field Type routines are available:
-     \begin{itemize}
-        \item {\bf Uniform}\\
-          Applied field is uniform with value specified by the NAF.
-        \item {\bf Ribbon relcharge x0 y0 x1 y1 height}\\
-          Charge ``Ribbon,'' lying perpendicular to the $xy$-plane.
-          Here relcharge is the charge strength relative to Ms, and
-          (x0,y0), (x1,y1) are the endpoints of the ribbon (in
-          meters).  The ribbon extends height/2 above and below the
-          calculation plane.  This routine ignores the NAF.
-        \item {\bf Tie rfx rfy rfz x0 y0 x1 y1 ribwidth}\\
-          The points (x0,y0) and (x1,y1) define (in meters) the
-          endpoints of the center spine of a rectangular ribbon of
-          width ribwidth lying in the $xy$-plane.  The cells with
-          sample point inside this rectangle see an applied field of
-          (rfx,rfy,rfz), in units relative to Ms.  (If the field is
-          large, then the magnetizations in the rectangle will be
-          ``tied'' to the direction of that field.)  This routine
-          ignores the NAF.
-        \item {\bf OneFile filename multiplier}\\
-          Read B field (in Tesla) in from a file.  Each value in the
-          file is multiplied by the ``multiplier'' value on input.  This
-          makes it simple to reverse field direction (use -1 for the
-          multiplier), or to convert H fields to B fields (use
-          1.256637e-6).  The input file may be any of the vector field
-          file types recognized by \app{mmDisp}.  The input dimensions
-          will be scaled as necessary to fit the simulation grid, with
-          zeroth order interpolation as necessary.  This routine ignores
-          the NAF.
-        \item {\bf FileSeq filename procname multiplier}\\
-          This is a generalization of the OneFile routine that reads in
-          fields from a sequence of files.  Here ``filename'' is the
-          name of a file containing Tcl code to be sourced during
-          problem initialization, and ``procname'' is the name of a Tcl
-          procedure defined in filename, which takes the nominal B field
-          components (in Tesla) and field step count values as imports
-          (4 values total), and returns the name of the vector field
-          file that should be used as the applied B field for that field
-          step.  The B field units in the vector field file should be
-          Tesla.
-        \item {\bf Multi routinecount \bs\\
-                   param1count name1 param1 param2 \ldots \bs\\
-                   param2count name2 param1 param2 \ldots \bs\\
-                   \ldots}\\
-          Allows a conglomeration of several field type routines.  All
-          entries must be on the same logical line, i.e., end physical
-          lines with '\bs' continuation characters as necessary.
-          Here routinecount is the number of routines, and param1count
-          is the number parameters (including name1) needed by the
-          first routine, etc.
-     \end{itemize}
-     Note that all lengths are in meters.  The coordinates in the
-     simulation lie in the first octant, running from (0,0,0) to
-     (Part~Width, Part~Height, Part~Thickness).
-\end{itemize}
-
-\subsubsection{Output specification}\label{sec:mif1outspec}
-\begin{itemize}
-   \item {\bf Base Output Filename:} Default base name used to
-      construct output filenames.
-   \item {\bf Magnetization Output Format:}\index{file!magnetization}
-      Format to use in the \hyperrefhtml{\OVF}{\OVF\
-      (Sec.~}{)}{sec:ovfformat} data block for exported magnetization
-      files.  Should be one of ``binary~4'' (default), ``binary 8'', or
-      ``text {\em format-spec}'', where {\em format-spec} is a C
-      \cd{printf}-style format code, such as ``\cd{\%\lb~.17g}''.
-       Optional.
-   \item {\bf Total Field Output Format:}\index{file!vector~field}
-      Analogous to the Magnetization Output Format, but for total field
-      output files.  Optional, with default ``binary~4''.
-   \item {\bf Data Table Output Format:}\index{file!data~table}
-      Format to use when producing data table style scalar output, such
-      as that sent to
-      \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
-      (Sec.~}{)}{sec:mmdatatable},
-      \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-      (Sec.~}{)}{sec:mmgraph}, and
-      \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
-      (Sec.~}{)}{sec:mmarchive}.
-      Should specify a C \cd{printf}-style format code, such as the
-      default ``\cd{\%.16g}''.  Optional.
-\end{itemize}
-
-\subsubsection{Miscellaneous}\label{sec:mifmisc}
-\begin{itemize}
-   \item {\bf\boldmath Converge $|$mxh$|$ Value:}\index{simulation~2D!mxh}
-      Nominal value to use as a stopping criterion: When
-      {\html{$|\vm\times\vh|$\ (i.e., $|\vM\times\vH|/M_s^2$)}}
-      {\latex{$\|\vm\times\vh\|$ (i.e., $\|\vM\times\vH\|/M_s^2$)}}
-      at all spins in the simulation is smaller than this value, it is
-      assumed that a relaxed (equilibrium) state has been reached for
-      the current applied field.  This is a dimensionless value.\\
-      {\bf NOTE:} This Record Identifier is deprecated.  Use {\em
-      Default Control Point Spec} instead.
-  \item {\bf Randomizer Seed:} Value with which to seed random
-      number\index{random~numbers} generator.  Optional.  Default value
-      is 0, which uses the system clock to generate a semi-random seed.
-  \item {\bf Max Time Step:} Limit the maximum ODE step
-      size\index{ODE!step~size} to no larger than this amount, in
-      seconds.  Optional.
-  \item {\bf Min Time Step:} Limit the minimum ODE step size to no
-      less than this amount, in seconds.  Optional.
-  \item {\bf User Comment:} Free-form comment string that may be used
-      for problem identification.  Optional.
-\end{itemize}
-
-\begin{codelisting}{p}{fig:mif1sample}{Example \MIF~1.1 file.}{pt:mif1format}
-\begin{verbatim}
-# MIF 1.1
-#
-# Example from the OOMMF User's Guide.
-#
-# All units are SI.
-#
-################# MATERIAL PARAMETERS ######################
-Ms:  800e3                # Saturation magnetization in A/m.
-A:   13e-12               # Exchange stiffness in J/m.
-K1:  0.5e3                # Anisotropy constant in J/m^3.
-Anisotropy Type: uniaxial # One of <uniaxial|cubic>.
-Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
-                          # coordinate axes
-
-################# DEMAG SPECIFICATION ######################
-Demag Type: ConstMag # One of <ConstMag|3dSlab|2dSlab
-                     #         |3dCharge|FastPipe|None>.
-
-#################### PART GEOMETRY #########################
-Part Width:     0.25e-6    # Nominal part width in m
-Part Height:    1.0e-6     # Nominal part height in m
-Part Thickness: 1e-9       # Part thickness in m.
-Cell Size:      7.8125e-9  # Cell size in m.
-#Part Shape:    # One of <Rectangle|Ellipse|Oval|Mask>.
-                # Optional.
-
-################ INITIAL MAGNETIZATION #####################
-Init Mag: Uniform 90 45 # Initial magnetization routine
-                        # and parameters
-
-################ EXPERIMENT PARAMETERS #####################
-# Field Range:  Start_field  Stop_field  Steps
-Field Range: -.05 -.01 0.  .05  .01 0. 100
-Field Range:  .05  .01 0. -.05 -.01 0. 100
-Field Type: Multi 4 \
- 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
- 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
- 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
- 1 Uniform
-# The above positions ribbons of positive charge along the
-# upper and lower edges with strength Ms, applies a large
-# (100 Ms) field to the center cells, and also applies a
-# uniform field across the sample stepped from
-# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
-# approximately 0.001 T steps.
-
-Default Control Point Spec: -torque 1e-6
-# Assume equilibrium has been reached, and step the applied
-# field, when the reduced torque |mxh| drops below 1e-6.
-
-################ OUTPUT SPECIFICATIONS #####################
-Base Output Filename: samplerun
-Magnetization Output Format: binary 8 # Save magnetization
-# states in binary format with full (8-byte) precision.
-
-#################### MISCELLANEOUS #########################
-Randomizer Seed: 1   # Random number generator seed.
-User Comment: Example MIF 1.1 file, with lots of comments.
-\end{verbatim}
-\end{codelisting}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{\MIF\ 1.2}\label{sec:mif12format}
-\begin{rawhtml}
-<A NAME="pt:mif12format"></A>
-\end{rawhtml}
-The \MIF~1.2 format is a minor modification to the \MIF~1.1 format,
-which supports limited 3D problem specification.  It can be read by the
-Oxs 3D solvers, and, with certain restrictions, by the mmSolve 2D
-solvers as well.  The \app{mmProbEd} problem editor can read and
-write this format.  The
-\hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
-(Sec.~}{)}{sec:mifconvert} command line tool can be used to convert
-between the \MIF~1.1 and \MIF~1.2 formats, and to convert from the
-\MIF~1.x formats to the Oxs \MIF~2.1 format.  \app{mifconvert} is also
-called automatically by Oxs solvers when a \MIF~1.x file is input to
-them, so questions about the details of Oxs interpretation of \MIF~1.x
-files can be answered by running \app{mifconvert} separately on the
-input \MIF~1.x file.
-
-There are four differences between the \MIF~1.1 and 1.2 formats.  In
-the \MIF~1.2 format:
-\begin{enumerate}
-\item The first line reads: \verb+# MIF 1.2+
-\item The \texttt{CellSize} record takes three parameters:
-      $x$-dimension, $y$-dimension, and $z$-dimension (in meters).
-\item The \texttt{3dSlab}, \texttt{2dSlab}, \texttt{3dCharge}, and
-      \texttt{FastPipe} parameters of the \texttt{DemagType} record
-      are deprecated.
-\item The new record \texttt{SolverType} is introduced.  Valid values
-      are \texttt{Euler}, \texttt{RK2}, \texttt{RK4}, \texttt{RKF54},
-      and \texttt{CG}, requesting a first order Euler, second order
-      Runge-Kutta, fourth order Runge-Kutta, fifth(+fourth) order
-      Runge-Kutta-Fehlberg, and Conjugate-Gradient solvers,
-      respectively.  This record is optional, with default value of
-      \texttt{RKF54}.
-\end{enumerate}
-If the \texttt{CellSize} record has only one parameter, then it is
-interpreted in the same manner as in the \MIF~1.1 format, i.e., the
-parameter is taken as the $x$- and $y$-dimension of the computation
-cell, and the $z$-dimension is set to the part thickness.
-
-The mmSolve 2D solvers will accept files in the \MIF~1.2 format provided
-the \texttt{CellSize} record meets the restrictions of those solvers,
-namely, the $x$- and $y$-dimensions must be the same, and the
-$z$-dimension must equal the part thickness.  The \texttt{SolverType}
-record, if any, is ignored.
-
-The Oxs 3D solvers will read files in the \MIF~1.2 format, but support
-only the \texttt{ConstMag} and \texttt{None} demagnetization kernels.
-All other \texttt{DemagType} records are silently converted
-to \texttt{ConstMag}.  The \texttt{SolverType} record is converted into
-the appropriate solver+driver pair.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Data Table File Format (\ODT)}\label{sec:odtformat}
@@ -2562,12 +2585,13 @@ data, or any of the following 5 recognized descriptor tag lines:
 \item {\bf\ \lb\ Title:} Optional; everything after the colon is
    interpreted as a title for the table.
 \item {\bf\ \lb\ Columns:} Required.  One parameter per column,
-   designating the label for that column.  Spaces may be embedded in a
-   column label by using the normal \Tcl\ grouping mechanisms (i.e.,
-   double-quotes and braces).
+   designating the label header for that column.  Spaces may be embedded
+   in a column label by using the normal \Tcl\ grouping mechanisms
+   (i.e., double-quotes and braces).
 \item {\bf\ \lb\ Units:} Optional.  If given, it should have one
    parameter for each column, giving a unit label for the
-   corresponding column.
+   corresponding column.  Spaces may be embedded in the unit labels, in
+   the same manner as for column headers.
 \item {\bf\ \lb\ Table End}: Optional, no parameters.  Should be paired
    with a corresponding Table Start record.
 \end{itemize}
@@ -2576,6 +2600,9 @@ and before any Table End line, with one record per line.
 The data should be numeric values separated by whitespace.  The two
 character open-close curly brace pair, \ocb\ccb, is used to indicate
 a missing value.
+
+Embedded newlines and carriage returns are not allowed in the title,
+columns, or units records.
 
 The command line utility, 
 \hyperrefhtml{\app{odtcols}}{\app{odtcols} (Sec.~}{)}{sec:odtcols},
@@ -2639,6 +2666,92 @@ The recommended file extensions for \OVF\ files are \fn{.omf} for
 magnetization files, \fn{.ohf} for magnetic field (\vH) files, \fn{.obf} 
 for magnetic flux density (\vB) files,  \fn{.oef} for energy density
 files, or \fn{.ovf} for generic files.  
+
+\subsection{The \OVF\ 0.0 format}\label{sec:svfformat}
+
+The \OVF\ 0.0 format\index{file!vector~field} is a simple \ASCII\ text
+format supporting irregularly sampled data.  It is intended as an aid
+for importing data from non-\OOMMF\ programs, and is backwards
+compatible with the format used for problem submissions for the
+\ifnotpdf{\htmladdnormallinkfoot{first \mumag\ standard
+problem}{http://www.ctcms.nist.gov/\~{}rdm/stdprob\_1.html}.}
+\pdfonly{\htmladdnormallinkfoot{first \mumag\ standard
+problem}{http://www.ctcms.nist.gov/\%7Erdm/stdprob\_1.html}.}
+
+Users of early releases of \OOMMF\ may recognize the \OVF\ 0.0 format
+by its previous name, the Simple Vector Field (\SVF)\index{file!svf}
+format.  It came to the attention of the \OOMMF\ developers that the
+file extension \fn{.svf} was already registered in several MIME systems
+to indicate the
+\htmladdnormallinkfoot{Simple Vector Format}{http://www.softsource.com/svf/},
+a vector graphics format.  To avoid conflict, we have stopped using
+the name Simple Vector Field format, although \OOMMF\ software still
+recognizes the \fn{.svf} extension and you may still find example
+files and other references to the \SVF\ format.
+
+A sample \OVF\ 0.0 file is shown \hyperrefhtml{below}{in
+Fig.~}{}{fig:svfsample}.  Any line beginning with a `\lb' character is
+a comment, all others are data lines.  Each data line is a whitespace
+separated list of 6 elements: the $x$, $y$ and $z$ components of a
+node position, followed by the $x$, $y$ and $z$ components of the
+field at that position.  Input continues until the end of the file is
+reached.
+
+It is recommended (but not required) that the first line of an \OVF\
+file be
+\begin{verbatim}
+# OOMMF: irregular mesh v0.0
+\end{verbatim}
+This will aid automatic file type detection.  Also, three special
+(extended) comments in \OVF\ 0.0 files are recognized by \app{mmDisp}:
+\begin{verbatim}
+## File: <filename or extended filename>
+## Boundary-XY: <boundary vertex pairs>
+## Grid step: <cell dimension triple>
+\end{verbatim}
+All these lines are optional.  The ``File'' provides a preferred
+(possibly extended) filename to use for display identification.  The
+``Boundary-XY'' line specifies the ordered vertices of a bounding
+polygon in the $xy$-plane.  If given, \app{mmDisp} will draw a frame
+using those points to ostensibly indicate the edges of the simulation
+body.  Lastly, the ``Grid step'' line provides three values
+representing the average $x$, $y$ and $z$ dimensions of the volume
+corresponding to an individual node (field sample).  It is used by
+\app{mmDisp} to help scale the display.
+
+Note that the data section of an \OVF\ 0.0 file takes the simple
+form of columns of \ASCII\ formatted numbers.  Columns of whitespace
+separated numbers expressed in \ASCII\ are easy to import
+into other programs that process numerical datasets, and
+are easy to generate, so the \OVF\ 0.0 file format is useful for
+exchanging vector field data between \OOMMF\ and non-\OOMMF\ programs.
+Furthermore, the data section of an \OVF\ 0.0 file is consistent
+with the data section of an \OVF\ 1.0 file that has been saved
+as an irregular mesh using text data representation.  This means that
+even though \OOMMF\ software now writes only the \OVF\ 1.0 format
+for vector field data, simple interchange of vector field data
+with other programs is still supported.
+
+\begin{codelisting}{f}{fig:svfsample}{Example \OVF\ 0.0 file.}{sec:svfformat}
+\begin{verbatim}
+# OOMMF: irregular mesh v0.0
+## File: sample.ovf
+## Boundary-XY: 0.0 0.0 1.0 0.0 1.0 2.0 0.0 2.0 0.0 0.0
+## Grid step: .25 .5 0
+#  x      y      z        m_x      m_y      m_z
+  0.01   0.01   0.01   -0.35537  0.93472 -0.00000
+  0.01   1.00   0.01   -0.18936  0.98191 -0.00000
+  0.01   1.99   0.01   -0.08112  0.99670 -0.00000
+  0.50   0.50   0.01   -0.03302  0.99945 -0.00001
+  0.99   0.05   0.01   -0.08141  0.99668 -0.00001
+  0.75   1.50   0.01   -0.18981  0.98182 -0.00000
+  0.99   1.99   0.01   -0.35652  0.93429 -0.00000
+\end{verbatim}
+\end{codelisting}
+
+%begin{latexonly}
+\setcounter{secnumdepth}{\value{ffoldsecnumdepth}}
+%end{latexonly}
 
 \subsection{The \OVF\ 1.0 format}\label{sec:ovfformat}
 A commented sample \OVF\ 1.0 file is provided
@@ -2979,88 +3092,3 @@ file.}{sec:ovf20format}
 \end{codelisting}
 
 
-\subsection{The \OVF\ 0.0 format}\label{sec:svfformat}
-
-The \OVF\ 0.0 format\index{file!vector~field} is a simple \ASCII\ text
-format supporting irregularly sampled data.  It is intended as an aid
-for importing data from non-\OOMMF\ programs, and is backwards
-compatible with the format used for problem submissions for the
-\ifnotpdf{\htmladdnormallinkfoot{first \mumag\ standard
-problem}{http://www.ctcms.nist.gov/\~{}rdm/stdprob\_1.html}.}
-\pdfonly{\htmladdnormallinkfoot{first \mumag\ standard
-problem}{http://www.ctcms.nist.gov/\%7Erdm/stdprob\_1.html}.}
-
-Users of early releases of \OOMMF\ may recognize the \OVF\ 0.0 format
-by its previous name, the Simple Vector Field (\SVF)\index{file!svf}
-format.  It came to the attention of the \OOMMF\ developers that the
-file extension \fn{.svf} was already registered in several MIME systems
-to indicate the
-\htmladdnormallinkfoot{Simple Vector Format}{http://www.softsource.com/svf/},
-a vector graphics format.  To avoid conflict, we have stopped using
-the name Simple Vector Field format, although \OOMMF\ software still
-recognizes the \fn{.svf} extension and you may still find example
-files and other references to the \SVF\ format.
-
-A sample \OVF\ 0.0 file is shown \hyperrefhtml{below}{in
-Fig.~}{}{fig:svfsample}.  Any line beginning with a `\lb' character is
-a comment, all others are data lines.  Each data line is a whitespace
-separated list of 6 elements: the $x$, $y$ and $z$ components of a
-node position, followed by the $x$, $y$ and $z$ components of the
-field at that position.  Input continues until the end of the file is
-reached.
-
-It is recommended (but not required) that the first line of an \OVF\
-file be
-\begin{verbatim}
-# OOMMF: irregular mesh v0.0
-\end{verbatim}
-This will aid automatic file type detection.  Also, three special
-(extended) comments in \OVF\ 0.0 files are recognized by \app{mmDisp}:
-\begin{verbatim}
-## File: <filename or extended filename>
-## Boundary-XY: <boundary vertex pairs>
-## Grid step: <cell dimension triple>
-\end{verbatim}
-All these lines are optional.  The ``File'' provides a preferred
-(possibly extended) filename to use for display identification.  The
-``Boundary-XY'' line specifies the ordered vertices of a bounding
-polygon in the $xy$-plane.  If given, \app{mmDisp} will draw a frame
-using those points to ostensibly indicate the edges of the simulation
-body.  Lastly, the ``Grid step'' line provides three values
-representing the average $x$, $y$ and $z$ dimensions of the volume
-corresponding to an individual node (field sample).  It is used by
-\app{mmDisp} to help scale the display.
-
-Note that the data section of an \OVF\ 0.0 file takes the simple
-form of columns of \ASCII\ formatted numbers.  Columns of whitespace
-separated numbers expressed in \ASCII\ are easy to import
-into other programs that process numerical datasets, and
-are easy to generate, so the \OVF\ 0.0 file format is useful for
-exchanging vector field data between \OOMMF\ and non-\OOMMF\ programs.
-Furthermore, the data section of an \OVF\ 0.0 file is consistent
-with the data section of an \OVF\ 1.0 file that has been saved
-as an irregular mesh using text data representation.  This means that
-even though \OOMMF\ software now writes only the \OVF\ 1.0 format
-for vector field data, simple interchange of vector field data
-with other programs is still supported.
-
-\begin{codelisting}{f}{fig:svfsample}{Example \OVF\ 0.0 file.}{sec:svfformat}
-\begin{verbatim}
-# OOMMF: irregular mesh v0.0
-## File: sample.ovf
-## Boundary-XY: 0.0 0.0 1.0 0.0 1.0 2.0 0.0 2.0 0.0 0.0
-## Grid step: .25 .5 0
-#  x      y      z        m_x      m_y      m_z
-  0.01   0.01   0.01   -0.35537  0.93472 -0.00000
-  0.01   1.00   0.01   -0.18936  0.98191 -0.00000
-  0.01   1.99   0.01   -0.08112  0.99670 -0.00000
-  0.50   0.50   0.01   -0.03302  0.99945 -0.00001
-  0.99   0.05   0.01   -0.08141  0.99668 -0.00001
-  0.75   1.50   0.01   -0.18981  0.98182 -0.00000
-  0.99   1.99   0.01   -0.35652  0.93429 -0.00000
-\end{verbatim}
-\end{codelisting}
-
-%begin{latexonly}
-\setcounter{secnumdepth}{\value{ffoldsecnumdepth}}
-%end{latexonly}

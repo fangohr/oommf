@@ -2,11 +2,11 @@
 # MIF Example File: stdprob3.mif
 # Description: Sample problem description for muMAG Standard Problem #3
 
-set pi [expr 4*atan(1.0)]
-set mu0 [expr 4*$pi*1e-7]
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
 
 Parameter seed 0
-eval RandomSeed $seed  ;# Initialize seed to {} to get a seed
+RandomSeed $seed  ;# Initialize seed to {} to get a seed
 ## value from the system clock.
 
 
@@ -19,6 +19,8 @@ Parameter initial_state "random" ;# Initial state should be
 ## one of "uniform", "vortex", "cantedvortex", "twisted", "random"
 ## or "file <filename>"; in the last case <filename> is the name
 ## of a file to use as the initial configuration.
+
+Parameter stop 1e-3
 
 ########################################################################
 # Auxiliary variables:
@@ -137,6 +139,22 @@ proc CantedVortexInit { vec } {
 
 ########################################################################
 
+proc Vortex { x y z } {
+   set yrad [expr {2.*$y-1.}]
+   set zrad [expr {2.*$z-1.}]
+   set normsq [expr {$yrad*$yrad+$zrad*$zrad}]
+   if {$normsq <= 0.05} {return "1 0 0"}
+   return [list 0.0 $zrad [expr {-1*$yrad}]]
+}
+
+proc Twisted { x y z } {
+   global pi
+   set vx 0
+   set vy [expr {sin(($pi/2.)*($x-0.5))}]
+   set vz [expr {cos(($pi/2.)*($x-0.5))}]
+   return [list $vx $vy $vz]
+}
+
 switch [string tolower [lindex $initial_state 0]] {
    "uniform" {
       set m0 {0 0 1}
@@ -223,28 +241,15 @@ Specify Oxs_Demag {}
 Specify Oxs_CGEvolve {}
 
 # Driver
+set basename [format {sp3-%s-seed%04d} $initial_state $seed]
 Specify Oxs_MinDriver [subst {
-   basename [list sp3_$initial_state]
+   basename [list $basename]
    evolver Oxs_CGEvolve
-   stopping_mxHxm 0.01
+   stopping_mxHxm $stop
    mesh :mesh
    Ms $Ms
    m0 [list $m0]
 }]
 
-proc Vortex { x y z } {
-   set yrad [expr {2.*$y-1.}]
-   set zrad [expr {2.*$z-1.}]
-   set normsq [expr {$yrad*$yrad+$zrad*$zrad}]
-   if {$normsq <= 0.05} {return "1 0 0"}
-   return [list 0.0 $zrad [expr {-1*$yrad}]]
-}
-
-proc Twisted { x y z } {
-   global pi
-   set vx 0
-   set vy [expr {sin(($pi/2.)*($x-0.5))}]
-   set vz [expr {cos(($pi/2.)*($x-0.5))}]
-   return [list $vx $vy $vz]
-}
-
+Destination archive mmArchive
+Schedule DataTable archive Stage 1

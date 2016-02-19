@@ -138,9 +138,9 @@ Oxs_ScriptVectorField::Oxs_ScriptVectorField(
   }
   command_options.push_back(Nb_TclCommandLineOption("rawpt",3));
   command_options.push_back(Nb_TclCommandLineOption("scalars",
-					     scalarfields.GetSize()));
+                                 static_cast<int>(scalarfields.GetSize())));
   command_options.push_back(Nb_TclCommandLineOption("vectors",
-					     3*vectorfields.GetSize()));
+                                 static_cast<int>(3*vectorfields.GetSize())));
 
   String runscript = GetStringInitValue("script");
 

@@ -2,7 +2,7 @@
  *
  * Classes for searching unordered lists of points in space.
  *
- * Last modified on: $Date: 2010-07-16 22:34:02 $
+ * Last modified on: $Date: 2013/05/22 07:15:38 $
  * Last modified by: $Author: donahue $
  */
 
@@ -53,7 +53,7 @@ OC_REAL8m Vf_Box::GetBoxArea() const
   return (xmax-xmin)*(ymax-ymin);
 }
 
-OC_INT4m Vf_Box::GetSpaceWaste() const
+OC_INDEX Vf_Box::GetSpaceWaste() const
 {
   if(list==NULL) return 0;
   return list->GetSpaceWaste();
@@ -117,19 +117,19 @@ void Vf_Box::FillList(Nb_List<Vf_BoxElt *> *biglist)
     FatalError(-1,STDDOC,"::list member variable not initialized");
   list->Clear();
 
-  int isize=biglist->GetSize();
+  OC_INDEX isize = biglist->GetSize();
   if(isize<1) {
     NonFatalError(STDDOC,"Empty biglist import");
     return;
   }
   struct Vf_BoxEltWork { Vf_BoxElt* bep; OC_REAL8 distsq; };
-  Vf_BoxEltWork *bed=new Vf_BoxEltWork[isize];
+  Vf_BoxEltWork *bed=new Vf_BoxEltWork[size_t(isize)];
   /// Performance note: If there are many box list refinements, then
   /// this memory allocation gets done a lot.  We might want to move
   /// it into static storage, or pass workspace on the parameter list.
 
   // Find point Q from biglist closest to box center C.
-  int i,qi=0;  OC_REAL8 temp_distsq,qdistsq=(OC_REAL8)0.0;
+  OC_INDEX i,qi=0;  OC_REAL8 temp_distsq,qdistsq=(OC_REAL8)0.0;
   Nb_Vec3<OC_REAL8> box_center(OC_REAL8((xmin+xmax)/2.),
 			    OC_REAL8((ymin+ymax)/2.),OC_REAL8(0.));
   biglist->RestartGet();
@@ -209,7 +209,7 @@ void Vf_Box::InitNoRefine(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 
 
 void Vf_Box::Init(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 _ymax,
 	       Vf_Box &bigbox)
-{ // Called by Vf_BoxList::Refine(OC_INT4m), this routine first clears existing
+{ // Called by Vf_BoxList::Refine(OC_INDEX), this routine first clears existing
   // Nb_List<Vf_BoxElt *> list, if any, and then copies those elements of
   // Nb_List<Vf_BoxElt *> biglist that could be "closest 2D position" to
   // current box, as defined by above box extents.
@@ -257,7 +257,8 @@ void Vf_Box::Init(OC_REAL8 _xmin,OC_REAL8 _ymin,OC_REAL8 _xmax,OC_REAL8 _ymax,
     /// Note: One can try replace 1.0 in the last line with 1.2
     ///   (or similar), as suggested in the THEORY paragraph above.
   }
-  OC_INT4m this_length=OC_MAX(1,OC_INT4m(ceil(bigbox.ListCount()/length_frac)));
+  OC_INDEX this_length
+    = OC_MAX(1,OC_INDEX(ceil(bigbox.ListCount()/length_frac)));
   this_length=OC_MAX(1,(this_length+1)/2);
   /// This halving of the block size is optional if one exaggerates
   /// the base length by enough to include _most_ lists in 1 block.
@@ -388,7 +389,7 @@ void Vf_BoxList::RefineOnce()
 {
 #define MEMBERNAME "RefineOnce"
 { // Refines list of boxes by halving cell dimension(s)
-  OC_INT4m newNx=Nx,newNy=Ny,bxstep=1,bystep=1;
+  OC_INDEX newNx=Nx,newNy=Ny,bxstep=1,bystep=1;
   OC_REAL8 newxdelta=xdelta,newydelta=ydelta;
   if(xdelta>1.5*ydelta) { // Cut x dimension
     newNx*=2; newxdelta/=2; bxstep=2;
@@ -409,11 +410,11 @@ void Vf_BoxList::RefineOnce()
   //       because the length of the box array grows exponentially.
 
   Vf_Box *newbox,*boxptr,*newboxptr;
-  newbox = new Vf_Box[newNx*newNy];
+  newbox = new Vf_Box[size_t(newNx)*size_t(newNy)];
 
   // Initialize new boxes
-  long intotal=0,listtotal=0; // Temps. to store box incounts and listcounts
-  OC_INT4m i,j;
+  OC_INDEX intotal=0,listtotal=0; // Tmps storing box incounts and listcounts
+  OC_INDEX i,j;
   OC_REAL8 x1,x2,y1,y2;
   x1=xmin; boxptr= &(box[0]); newboxptr= &(newbox[0]);
   for(i=0;i<newNx;i++) {
@@ -445,7 +446,7 @@ void Vf_BoxList::RefineOnce()
   /// For distinct boxes, this value is computable; But there is a small
   /// chance that an input point falls on the exact bdry of two boxes,
   /// and so gets included in both boxes.
-  /// NOTE: The ave* values will be wrong if Nx*Ny overflows an OC_INT4m.
+  /// NOTE: The ave* values will be wrong if Nx*Ny overflows an OC_INDEX.
 
   box_valid=1;
 }
@@ -467,9 +468,9 @@ void Vf_BoxList::DeleteRefinement()
 }
 
 
-OC_INT4m Vf_BoxList::Refine(OC_INT4m refinelevel)
+OC_INDEX Vf_BoxList::Refine(OC_INDEX refinelevel)
 {
-#define MEMBERNAME "Refine(OC_INT4m)"
+#define MEMBERNAME "Refine(OC_INDEX)"
   if(!box_valid && box!=NULL) {
     // Current refinement is invalid, so we pitch any existing refinement.
 #if DEBUGLVL>9
@@ -483,8 +484,8 @@ OC_INT4m Vf_BoxList::Refine(OC_INT4m refinelevel)
 #undef MEMBERNAME
 }
 
-OC_INT4m Vf_BoxList::Refine(OC_INT4m boxcount,OC_REAL8m ave_incount,
-		      OC_REAL8m ave_listcount)
+OC_INDEX Vf_BoxList::Refine(OC_INDEX boxcount,OC_REAL8m ave_incount,
+                            OC_REAL8m ave_listcount)
 { // An adaptive interface to the RefineOnce routine.  Does successive
   // refinements until one of the following conditions is met:
   //        number of boxes (=Nx*Ny) >= import boxcount 
@@ -500,7 +501,7 @@ OC_INT4m Vf_BoxList::Refine(OC_INT4m boxcount,OC_REAL8m ave_incount,
   //   You may turn off any of these checks by setting the
   // corresponding import to 0.  Setting all 3 to 0 raises an error.
   //   The return value is final boxcount (=Nx*Ny).
-#define MEMBERNAME "Refine(OC_INT4m,OC_REAL8m,OC_REAL8m)"
+#define MEMBERNAME "Refine(OC_INDEX,OC_REAL8m,OC_REAL8m)"
   if(boxcount<=0 && ave_incount<=0. && ave_listcount) {
     FatalError(-1,STDDOC,
 	       "At least one termination check must be activated");
@@ -546,9 +547,9 @@ OC_INT4m Vf_BoxList::GetClosest2D(const Nb_Vec3<OC_REAL8> &pos,
     FatalError(-1,STDDOC,"Point request (%f,%f,%f) made to empty box",
 	       pos.x,pos.y,pos.z);
   }
-  OC_INT4m i,j;
-  i=(OC_INT4m)floor((pos.x-xmin)/xdelta);
-  j=(OC_INT4m)floor((pos.y-ymin)/ydelta);
+  OC_INDEX i,j;
+  i=(OC_INDEX)floor((pos.x-xmin)/xdelta);
+  j=(OC_INDEX)floor((pos.y-ymin)/ydelta);
   if(i<0 || i>=Nx || j<0 || j>=Ny) {
     // Cf. note to preceding error message.
     FatalError(-1,STDDOC,"Input point outsize refinement boundary:\n"
@@ -567,7 +568,7 @@ void Vf_BoxList::ResetWholeAccess()
   wholelist->RestartGet();
 }
 
-int Vf_BoxList::GetWholeNext(Nb_LocatedVector<OC_REAL8>& lv)
+OC_INT4m Vf_BoxList::GetWholeNext(Nb_LocatedVector<OC_REAL8>& lv)
 {
   Vf_BoxElt* bep=wholelist->GetNext();
   if(bep==NULL) return 1;
@@ -594,7 +595,7 @@ Vf_BoxList::GetNext(Vf_BoxList_Index& index) const
   return &(bep->lv);
 }
 
-int
+OC_INT4m
 Vf_BoxList::SetValue(const Vf_BoxList_Index& index,
 		     const Nb_Vec3<OC_REAL8>& value)
 {
@@ -605,10 +606,12 @@ Vf_BoxList::SetValue(const Vf_BoxList_Index& index,
 }
 
 
-OC_INT4m Vf_BoxList::GetSpaceWaste() const
+OC_INDEX Vf_BoxList::GetSpaceWaste() const
 {
-  OC_INT4m wasted_space=0;
-  if(wholelist!=NULL) wasted_space+=wholelist->GetSpaceWaste();
-  for(OC_INT4m i=0;i<Nx*Ny;i++) wasted_space+=box[i].GetSpaceWaste();
+  OC_INDEX wasted_space=0;
+  if(wholelist!=NULL) {
+    wasted_space+=wholelist->GetSpaceWaste();
+  }
+  for(OC_INDEX i=0;i<Nx*Ny;i++) wasted_space+=box[i].GetSpaceWaste();
   return wasted_space;
 }

@@ -83,6 +83,18 @@ Oxs_DemagOld::Oxs_DemagOld(
     throw Oxs_ExtError(this,msg);
   }
   VerifyAllInitArgsUsed();
+
+#if (2*OC_REAL8m_WIDTH) != OC_TWO_VECTOR_REAL8m_WIDTH
+# error Oxs_Complex structure packing failure detected
+#endif
+  if(sizeof(Oxs_Complex)!= 2*sizeof(OXS_COMPLEX_REAL_TYPE)) {
+    // Some of the code in Oxs_DemagOld relies on being able to
+    // access an array of Oxs_Complex as an array of the underlying
+    // floating point type.  This punning will fail if Oxs_Complex
+    // is not tight packed.
+    String msg = String("Oxs_Complex structure packing failure detected");
+    throw Oxs_ExtError(this,msg);
+  }
 }
 
 Oxs_DemagOld::~Oxs_DemagOld() {
@@ -223,9 +235,9 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
     throw Oxs_ExtError(this,msg);
   }
 
-  OC_REALWIDE *rxcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(xcomp));
-  OC_REALWIDE *rycomp = static_cast<OC_REALWIDE*>(static_cast<void*>(ycomp));
-  OC_REALWIDE *rzcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(zcomp));
+  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
+  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
+  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
   OC_INDEX rstridey=2*cstridey;
   OC_INDEX rstridez=2*cstridez;
 
@@ -493,9 +505,9 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
       for(i=0;i<rdimx;i++) {
         // This loop tweaked to work around an optimization bug
         // in icpc v10.0 on itanium.
-	OC_REALWIDE& xtemp = rxcomp[i+jkindex];
-	OC_REALWIDE& ytemp = rycomp[i+jkindex];
-	OC_REALWIDE& ztemp = rzcomp[i+jkindex];
+	OXS_COMPLEX_REAL_TYPE& xtemp = rxcomp[i+jkindex];
+	OXS_COMPLEX_REAL_TYPE& ytemp = rycomp[i+jkindex];
+	OXS_COMPLEX_REAL_TYPE& ztemp = rzcomp[i+jkindex];
 	if(i>0) {
 	  OC_INDEX tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
 	  rxcomp[tindex]=xtemp;
@@ -968,9 +980,9 @@ void Oxs_DemagOld::FillCoefficientArraysStandard(const Oxs_Mesh* genmesh) const
     throw Oxs_ExtError(this,msg);
   }
 
-  OC_REALWIDE *rxcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(xcomp));
-  OC_REALWIDE *rycomp = static_cast<OC_REALWIDE*>(static_cast<void*>(ycomp));
-  OC_REALWIDE *rzcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(zcomp));
+  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
+  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
+  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
   OC_INDEX rstridey=2*cstridey;
   OC_INDEX rstridez=2*cstridez;
 

@@ -54,6 +54,8 @@ public:
   // Generic interface
   virtual Oxs_ConstKey<Oxs_SimState> GetInitialState() const;
 
+  OC_REAL8m GetTotalEnergy(const Oxs_SimState& tstate) const;
+  /// Support function for Fill*StateDerivedData members
 
   virtual void FillStateMemberData(const Oxs_SimState& old_state,
                                    Oxs_SimState& new_state) const;

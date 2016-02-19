@@ -15,15 +15,17 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-27 23:06:52 $
+ * Last modified on: $Date: 2015/09/30 02:36:11 $
  * Last modified by: $Author: donahue $
  */
 
 /* Header files for standard libraries */
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* Header file for this extension */
 #include "autobuf.h"
@@ -32,6 +34,17 @@
 /* Implementation-defined limits (ANSI C) */
 #include <limits.h>
 #include <float.h>
+
+#if defined(OC_SET_TASKBAR_ID) && OC_SET_TASKBAR_ID
+# include <Shobjidl.h>  // For SetCurrentProcessExplicitAppUserModelId
+#endif
+
+#if defined(OC_SET_MACOSX_APPNAME) && OC_SET_MACOSX_APPNAME
+# include <CoreFoundation/CoreFoundation.h>
+#endif
+
+#include <algorithm>
+#include <list>
 
 OC_USE_STD_NAMESPACE;
 OC_USE_EXCEPTION;
@@ -282,7 +295,8 @@ Oc_RegisterObjCommand(Tcl_Interp* interp, const char* name,
 }
 #endif
 
-// C++ interface to the Oc_DirectPathname Tcl command
+// C++ interface to the Oc_DirectPathname Tcl command.  NB: This uses
+// the global Tcl interp, so it can only be called from the main thread.
 void Oc_DirectPathname(const char *nickname,Oc_AutoBuf& fullname)
 {
   Tcl_Interp* interp=Oc_GlobalInterpreter();
@@ -307,28 +321,29 @@ void Oc_DirectPathname(const char *nickname,Oc_AutoBuf& fullname)
   Tcl_SavedResult saved;
   Tcl_SaveResult(interp, &saved);
   if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
-    // Here "foo" needs to be static so the const char* to
-    // its data remains valid throughout exception unwinding.
-    static Oc_AutoBuf foo;
+    Oc_AutoBuf msg;
     const char* errfmt = "Error in Oc_DirectPathname:\n"
       "Command: %s\nError: %s";
-    foo.SetLength(strlen(errfmt)+strlen(cmd.GetStr())
+    msg.SetLength(strlen(errfmt)+strlen(cmd.GetStr())
                   +strlen(Tcl_GetStringResult(interp)));
-    Oc_Snprintf(foo.GetStr(),foo.GetLength(),
+    Oc_Snprintf(msg.GetStr(),msg.GetLength(),
                 errfmt,cmd.GetStr(),Tcl_GetStringResult(interp));
     Tcl_DiscardResult(&saved);
-    OC_THROW(foo.GetStr());
+    OC_THROW(msg); // Don't throw msg.GetStr(), because msg gets
+    /// deleted out-of-scope and the pointer to its character string
+    /// becomes invalid.
   }
   fullname.Dup(Tcl_GetStringResult(interp));
   Tcl_RestoreResult(interp, &saved);
 }
 
-// C++ interface to 'file dirname' Tcl command 
-void Oc_FileDirname(const char* filename,Oc_AutoBuf& dirname)
+// C++ interface to 'file' Tcl command.
+// Example: Oc_TclFileCmd("dirname",fullname,dirname);
+void Oc_TclFileCmd(const char* subcmd,const char* filename,Oc_AutoBuf& result)
 {
   Tcl_Interp* interp=Oc_GlobalInterpreter();
   if(interp==NULL) {
-    OC_THROW("No Tcl interpreter available (Oc_FileDirname)");
+    OC_THROW("No Tcl interpreter available (Oc_TclFileCmd)");
   }
 
   // Construct a command to call file dirname,
@@ -337,7 +352,7 @@ void Oc_FileDirname(const char* filename,Oc_AutoBuf& dirname)
   Oc_AutoBuf mybuf[3];
   char* argv[3];
   mybuf[0].Dup("file");
-  mybuf[1].Dup("dirname");
+  mybuf[1].Dup(subcmd);
   mybuf[2].Dup(filename);
   argv[0]=mybuf[0].GetStr();
   argv[1]=mybuf[1].GetStr();
@@ -350,19 +365,19 @@ void Oc_FileDirname(const char* filename,Oc_AutoBuf& dirname)
   Tcl_SavedResult saved;
   Tcl_SaveResult(interp, &saved);
   if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
-    // Here "foo" needs to be static so the const char* to
-    // its data remains valid throughout exception unwinding.
-    static Oc_AutoBuf foo;
-    const char* errfmt = "Error in Oc_FileDirname:\n"
+    Oc_AutoBuf msg;
+    const char* errfmt = "Error in Oc_TclFileCmd:\n"
       "Command: %s\nError: %s";
-    foo.SetLength(strlen(errfmt)+strlen(cmd.GetStr())
+    msg.SetLength(strlen(errfmt)+strlen(cmd.GetStr())
                   +strlen(Tcl_GetStringResult(interp)));
-    Oc_Snprintf(foo.GetStr(),foo.GetLength(),
+    Oc_Snprintf(msg.GetStr(),msg.GetLength(),
                 errfmt,cmd.GetStr(),Tcl_GetStringResult(interp));
     Tcl_DiscardResult(&saved);
-    OC_THROW(foo.GetStr());
+    OC_THROW(msg); // Don't throw msg.GetStr(), because msg gets
+    /// deleted out-of-scope and the pointer to its character string
+    /// becomes invalid.
   }
-  dirname.Dup(Tcl_GetStringResult(interp));
+  result.Dup(Tcl_GetStringResult(interp));
   Tcl_RestoreResult(interp, &saved);
 }
 
@@ -386,7 +401,7 @@ void Oc_FileDirname(const char* filename,Oc_AutoBuf& dirname)
  *  2) SIGINT       4) SIGILL       8) SIGFPE      11) SIGSEGV
  * 15) SIGTERM     21) SIGBREAK    22) SIGABRT
  *
- * Note 1) The first five Windows signals match the Unix assignements.
+ * Note 1) The first five Windows signals match the Unix assignments.
  *         SIGBREAK and SIGABRT are not in the Unix list, but are
  *         assigned the values of SIGTTIN and SIGTTOU, respectively.
  * Note 2) The SIGBREAK macro is defined in the current (Jan 2006)
@@ -394,12 +409,39 @@ void Oc_FileDirname(const char* filename,Oc_AutoBuf& dirname)
  *         that it corresponds to the Ctrl-Break sequence.  However,
  *         SIGBREAK is not mentioned in the Microsoft VC++ 8
  *         documentation for signal().
+ *
+ * Observed behavior on Windows 7 (June 2015): Ctrl-C sends a SIGINT,
+ *         Ctrl-Break sends a SIGBREAK.  Closing the console window
+ *         sends a SIGBREAK, and then five seconds later the
+ *         application is forcibly closed.  If a signal is raised
+ *         twice, the second instance will not be handled unless the
+ *         handler is reset between the two occurrences.
+ *
+ *         Alternatively, on Windows the SetConsoleCtrlHandler()
+ *         routine can be used to set handlers for Ctrl-C, Ctrl-Break,
+ *         and window close messages.  As the DWORD import to the
+ *         handler, Ctrl-C generates a ctrltype value of 0, Ctrl-Break
+ *         generates a 1, and closing the console window generates a
+ *         2.  As in the signal() case, 5 seconds after sending a
+ *         close message the application is forcibly closed.  Handlers
+ *         set via SetConsoleCtrlHandler() remain in place between
+ *         messages (so two successive messages will call the handler
+ *         twice).  However, handlers have a BOOL return type that
+ *         affects behavior.  If the return value is TRUE then the
+ *         message is treated as handled and processing for that
+ *         message stops.  If the return value is FALSE then the next
+ *         handler is called --- multiple calls to
+ *         SetConsoleCtrlHandler() places the handlers into a FILO
+ *         stack.
+ *
+ *         With either method, the handler is run in a separate
+ *         thread.  If both signal() and SetConsoleCtrlHandler() are
+ *         used, then the signal handlers are called.
  */
 
 extern "C" void DisableStdio(int);
 void DisableStdio(int)
 { // Redirects stdio channels to NULL
-
   // Get name of NULL device
   Tcl_Eval(globalInterp,
      OC_CONST84_CHAR("[Oc_Config RunPlatform] GetValue path_device_null"));
@@ -707,7 +749,104 @@ Oc_IgnoreSignal(ClientData, Tcl_Interp *interp, int argc, char **argv)
   return IgnoreSignal(sigcode);
 }
 
+// SIGTERM handlers.  Sets up a FILO stack of handlers for clean
+// shutdown on reception of a SIGTERM signal on posix, or
+// Ctrl-C/Ctrl-Break/Window close on Windows.  These routines use the
+// cross-platform signal() call, as opposed to sigaction().  One of
+// the knocks against signal() is that a handler that is registered is
+// called once when a signal is raised; subsequent instances of that
+// signal go to the default handler unless the registered handler
+// re-registers itself inside the handler --- but even if the
+// re-registration occurs first thing in the handler there is still a
+// small window of time during which the handler is not registered, so
+// if two instances of a signal are raised rapidly enough then the
+// second will not be handled.  This should not be a major problem in
+// this setting, however, because OcSigTermHandler is intended for
+// shutdown clean-up, and therefore isn't designed for repeated calls
+// anyway.
+extern "C" { void OcSigTermHandler(int); }
+extern "C" { typedef void ocsighandler_type(int); }
+static ocsighandler_type *OcSavedTermHandler = SIG_DFL;
+static std::list< pair<OcSigFunc*,ClientData> > sigterm_handlers;
+#if OOMMF_THREADS
+// Without this #if test, in the no-threads case g++ complains
+// 'ocsigtermhandler_mutex' defined but not used.
+static Tcl_Mutex ocsigtermhandler_mutex = 0;
+#endif
 
+void OcSigTermHandler(int signo)
+{ // On unix, signo should be SIGTERM (from kill) or SIGINT (from
+  // Ctrl-C); on Windows it may be SIGINT (from Ctrl-C), SIGBREAK (from
+  // Ctrl-Break/Pause, or window close).
+  try {
+    Tcl_MutexLock(&ocsigtermhandler_mutex);
+    // Loop through handlers, from back (last registered) to
+    // front(first registered).
+    for(std::list< pair<OcSigFunc*,ClientData> >::reverse_iterator rit
+          = sigterm_handlers.rbegin();
+        rit != sigterm_handlers.rend(); ++rit) {
+      try {
+        OcSigFunc* handler = rit->first;
+        handler(signo,rit->second);
+      } catch(...) {}
+    }
+  } catch(...) {
+    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+    // Note: OcSigTermHandler is extern "C" type, and shouldn't throw
+    // exceptions.
+  }
+  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+  // Note that OcSavedTermHandler may be SIG_IGN or SIG_DFL
+  signal(signo,OcSavedTermHandler);
+  raise(signo);
+}
+
+void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData cd)
+{
+  try {
+    Tcl_MutexLock(&ocsigtermhandler_mutex);
+    sigterm_handlers.push_back(pair<OcSigFunc*,ClientData>(handler,cd));
+    if(sigterm_handlers.size()==1) {
+#if (OC_SYSTEM_TYPE==OC_WINDOWS)
+      OcSavedTermHandler = signal(SIGINT,OcSigTermHandler);
+      signal(SIGBREAK,OcSigTermHandler); // Should we save SIGBREAK
+      signal(SIGTERM,OcSigTermHandler);  // handler too?
+#else
+      OcSavedTermHandler = signal(SIGTERM,OcSigTermHandler);
+      signal(SIGINT,OcSigTermHandler); // Save?
+#endif
+    }
+  } catch(...) {
+    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+    throw;
+  }
+  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+}
+void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData cd)
+{
+  try {
+    Tcl_MutexLock(&ocsigtermhandler_mutex);
+    std::list< pair<OcSigFunc*,ClientData> >::iterator it
+      = std::find(sigterm_handlers.begin(),
+                  sigterm_handlers.end(),
+                  pair<OcSigFunc*,ClientData>(handler,cd));
+    if(it != sigterm_handlers.end()) {
+      sigterm_handlers.erase(it);
+      if(sigterm_handlers.size()==0) {
+#if (OC_SYSTEM_TYPE==OC_WINDOWS)
+        signal(SIGINT,OcSavedTermHandler);
+#else
+        signal(SIGTERM,OcSavedTermHandler);
+#endif
+        OcSavedTermHandler = SIG_DFL;
+      }
+    }
+  } catch(...) {
+    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+    throw;
+  }
+  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
+}
 
 
 static int
@@ -950,7 +1089,7 @@ int &consoleRequested)
 
   // No argv?  Then no argument strings.
   Tcl_SplitList(interp,OC_CONST84_CHAR(tk_usage_info),&tkuic,&tkuiv);
-  _Option_Info *oi=new _Option_Info[tkuic];
+  _Option_Info *oi=new _Option_Info[size_t(tkuic)];
   for(j=0;j<tkuic;j++) {
     int optionc; CONST84 char ** optionv;
     // Split option list into 3 components: name, type(s), description
@@ -980,8 +1119,8 @@ int &consoleRequested)
     return TCL_ERROR;
   }
 
-  int tc; CONST84 char ** tv=new CONST84 char *[wc];  // Tk's arg list
-  int ac; CONST84 char ** av=new CONST84 char *[wc];  // App's arg list
+  int tc; CONST84 char ** tv=new CONST84 char *[size_t(wc)];  // Tk's arg list
+  int ac; CONST84 char ** av=new CONST84 char *[size_t(wc)];  // App's arg list
 
   i=tc=ac=0;
   int opts_done=0;  // Terminate options processing, due to "--" flag.
@@ -1460,7 +1599,7 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
   // work at all.  If the user wants interactivity, they need Tk.
   //
   if ((argc == 1) || (argv[1][0] == '-')) {
-    my_argv = new char*[argc+3];
+    my_argv = new char*[size_t(argc+3)];
     for (int i=0; i<argc; i++) my_argv[i] = argv[i];
     my_argv[argc] = new char[4];
     strcpy(my_argv[argc++],"-tk");
@@ -1475,6 +1614,76 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
     // anything about this, however, because the Tk_Main call
     // below doesn't return.
   }
+
+# if defined(OC_SET_MACOSX_APPNAME) && OC_SET_MACOSX_APPNAME
+  // The title on the application menu (in Tk this is the .apple
+  // menu, which is not to be confused with the leftmost item on the
+  // toplevel menubar titled with a bitten apple icon) uses the
+  // value of the CFBundleName key in the main bundle info
+  // dictionary.  This key is typically set by the Info.plist file
+  // in the app's framework.  If, like OOMMF, there is no
+  // Info.plist, then (apparently) the CFBundleName is left unset
+  // and the application name is derived from the name of the
+  // executable.  On Mac OS X, the app name in the menu bar is one
+  // of the primary signals notifying the user which application has
+  // the focus, so we really would like that name to identify the
+  // application, as opposed to being a generic name pointing to the
+  // script language interpreter executable (such as Wish or omfsh).
+  //
+  // A "proper" way to do this is via an Info.plist file.  Is there
+  // a straightforward way to implement that in the OOMMF
+  // environment?  An alternative, used here, is to modify the main
+  // bundle dictionary.  Note that this requires a const_cast to the
+  // dictionary pointer, because the return type from
+  // CFBundleGetInfoDictionary is CFDictionaryRef, which is a const*
+  // type.  So clearly this code is improper.  Is it dangerous?
+  // BTW, presumably if this is to work at all the CFBundleName key
+  // needs to be set early in the application initialization; it seems
+  // the application name is initialized at some point from CFBundleName
+  // (if set), but is afterwards stored elsewhere.
+  CFBundleRef mainBundle = CFBundleGetMainBundle();
+  if (!mainBundle) {
+    panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+	  "Unable to get main bundle.");
+  }
+  CFDictionaryRef bundleInfoDict = CFBundleGetInfoDictionary(mainBundle);
+  if (!bundleInfoDict) {
+    panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+	  "Unable to get main bundle dictionary.");
+  }
+  CFStringRef key = CFStringCreateWithCString(NULL,"CFBundleName",
+					      kCFStringEncodingUTF8);
+  Oc_AutoBuf progname;
+  if (argc>1 && argv[1][0] != '-') {
+    size_t namelen = strlen(argv[1]);
+    size_t i = namelen;
+    while(i>0) {
+      if(argv[1][i-1] == '/') break;  // Dir separator on OS X is '/'
+      --i;
+    }
+    progname = argv[1]+i;
+    namelen -= i;
+    for(i=0;i<namelen;++i) {
+      if(progname[i]=='.') { // Truncate extension, if any
+	progname.SetLength(i);
+	break;
+      }
+    }
+  } else {
+    progname = "OOMMF";
+  }
+  CFStringRef val = CFStringCreateWithCString(NULL,progname,
+					      kCFStringEncodingUTF8);
+  if(key && val) {
+    CFDictionarySetValue(const_cast<CFMutableDictionaryRef>(bundleInfoDict),
+			 key,val);
+    // The CFBundleName key is expected to be not set, so either
+    // CFDictionarySetValue or CFDictionaryAddValue may be used.
+  }
+  if(key) CFRelease(key);
+  if(val) CFRelease(val);
+#endif // OC_SET_MACOSX_APPNAME
+
   try {
     Tk_Main(argc,argv,appinit);
   }
@@ -1548,14 +1757,28 @@ NullifyTclStandardChannel(int type) {
  */
 void
 CommonMain(CONST char* exename) {
-    // Initialize the panic() function to use our customized
-    // message display routines.
-    Oc_InitPanic(exename);
+  // Mask floating-point exceptions to allow rolling Infs and NaNs.
+  Oc_FpuControlData::MaskExceptions();
 
-    // Tcl_FindExecutable does some double-secret special
-    // initializations without which some Tcl C APIs (like
-    // Tcl_CreateChannel()) will crash.  So, call it here.
-    Tcl_FindExecutable(OC_CONST84_CHAR(exename));
+
+#if (OC_SYSTEM_TYPE==OC_WINDOWS)
+  // Disable some Windows system error dialog boxes.  Instead, let
+  // OOMMF handle error reporting.
+#ifdef _MSC_VER
+  _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#endif // _MSC_VER
+  DWORD dwMode = SetErrorMode(SEM_NOGPFAULTERRORBOX|SEM_FAILCRITICALERRORS);
+  SetErrorMode(dwMode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
+#endif // OC_WINDOWS
+
+  // Initialize the panic() function to use our customized
+  // message display routines.
+  Oc_InitPanic(exename);
+
+  // Tcl_FindExecutable does some double-secret special
+  // initializations without which some Tcl C APIs (like
+  // Tcl_CreateChannel()) will crash.  So, call it here.
+  Tcl_FindExecutable(OC_CONST84_CHAR(exename));
 }
 
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
@@ -1614,10 +1837,32 @@ VerifyWindowsTclStandardChannel(int type) {
 /*
  * The main entry point for OOMMF applications on Windows platforms.
  */
+
+#if defined(_MSC_VER)
+// Headers for changing default error handling in Windows
+# include <crtdbg.h>
+#endif
+
 int APIENTRY 
 WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
         LPSTR lpszCmdLine, int /* nCmdShow */)
 {
+#if defined(_MSC_VER)
+  // Send error messages handled by the CRT debug report mechanism
+  // to stderr.  The default handling produces sundry annoying
+  // pop-ups.  (Note: This interface appears to go back to Win95.)
+  // BTW, the Digital Mars Compiler 8.57 (macro identifier __DMC__)
+  // includes a crtdbg.h header and recognizes the following
+  // _CrtSetReport functions and macros, but default behavior is to
+  // not open a dialog box on error anyway.
+  _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
+  _CrtSetReportFile( _CRT_WARN, _CRTDBG_FILE_STDERR );
+  _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_FILE );
+  _CrtSetReportFile( _CRT_ERROR, _CRTDBG_FILE_STDERR );
+  _CrtSetReportMode( _CRT_ASSERT, _CRTDBG_MODE_FILE );
+  _CrtSetReportFile( _CRT_ASSERT, _CRTDBG_FILE_STDERR );
+#endif // _MSC_VER
+
     // Windows doesn't pass the application name as the first word on the
     // command line like Unix does.  Instead a system call provides the
     // application name (as a full pathname).
@@ -1642,6 +1887,22 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
 
     CommonMain(exename);
 
+    // Control task bar grouping.  Docs say 
+    //
+    //  Minimum supported client: Windows 7 [desktop apps only]
+    //  Minimum supported server: Windows Server 2008 R2 [desktop apps only]
+    //                    Header: Shobjidl.h
+    //                   Library: Shell32.lib
+    //                       DLL: Shell32.dll (version 6.1 or later)
+    //
+    // Windows 7 and Windows Server 2008 both use "subsystem version"
+    // code 6.01 (Vista is 6.00, Windows 8 is 6.02).  These can be
+    // set in the executable header (see output of Visual C++ tool
+    // "dumpbin /header foo.exe".
+#if defined(OC_SET_TASKBAR_ID) && OC_SET_TASKBAR_ID
+    SetCurrentProcessExplicitAppUserModelID(Oc_AutoWideBuf("NIST.OOMMF.oc"));
+#endif
+
     // Setup standard channels
     if(!VerifyWindowsTclStandardChannel(TCL_STDIN)) {
       NullifyTclStandardChannel(TCL_STDIN);
@@ -1662,8 +1923,9 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     panic(OC_CONST84_CHAR("Bad command line: %s"),lpszCmdLine);
   }
   if(size_t(argc+1)>sizeof(argv)/sizeof(argv[0])) {
-    panic(OC_CONST84_CHAR("Too many command line parameters: %d>%d"),
-              argc+1,sizeof(argv)/sizeof(argv[0]));
+    panic(OC_CONST84_CHAR("Too many command line parameters: %d>%lu"),
+          argc+1,
+          static_cast<unsigned long>(sizeof(argv)/sizeof(argv[0])));
   }
 
   // Copy split string out of temporary memory, and setup
@@ -1675,8 +1937,8 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     argv[i+1]=cmdline+total_length;
     total_length+=strlen(argv_temp[i])+1;
     if(total_length>sizeof(cmdline)) {
-      panic(OC_CONST84_CHAR("Parsed command line too long (%d)"),
-	    sizeof(cmdline));
+      panic(OC_CONST84_CHAR("Parsed command line too long (%lu)"),
+	    static_cast<unsigned long>(sizeof(cmdline)));
     }
     strcpy(argv[i+1],argv_temp[i]);
   }

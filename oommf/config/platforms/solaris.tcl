@@ -184,10 +184,23 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
 set ccbasename [file tail [lindex [$config GetValue program_compiler_c++] 0]]
 if {[string match CC $ccbasename]} {
     # ...for Sun WorkShop C++ compiler
-    # $config SetValue program_compiler_c++_option_opt {format "\"-O%s\""}
-    $config SetValue program_compiler_c++_option_opt {format "-fast"}
+    # set opts [list -O%s] ;# Minimal optimization
+    set opts -fast         ;# Maximal optimization
     # NOTE: If you want good performance, be sure to edit ../options.tcl
     #  or ../local/options.tcl to include the line
+
+    # 64-bit?
+    if {[info exists tcl_platform(pointerSize)]
+        && $tcl_platform(pointerSize)>4} {
+       # NOTE: The -xarch option has to come AFTER -xtarget, -fast, or
+       # any other option that sets -xarch.
+       lappend opts "-xarch=v9"
+       lappend linkopts "-xarch=v9"
+    }
+
+    # Finish compiler options setting
+    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+
     #    Oc_Option Add * Platform cflags {-def NDEBUG}
     #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
@@ -202,7 +215,9 @@ if {[string match CC $ccbasename]} {
     $config SetValue program_compiler_c++_option_warn {format "-xwe"}
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Prototype for math function hypot(x,y) may be missing from
     # system <cmath> include file.  Any one of the following three
@@ -279,7 +294,9 @@ if {[string match CC $ccbasename]} {
     $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories
@@ -300,21 +317,27 @@ set lbasename [file tail [lindex [$config GetValue program_linker] 0]]
 if {[string match CC $lbasename]} {
     # ...for Sun CC as linker
     #
-    # NOTE: We had to add the following option to get OOMMF to compile
-    # on Solaris 2.7 (SunOS 5.7) with the compiler Sun WorkShop 6,
-    # 2000/04/07 C++ 5.1.  If you have trouble compiling OOMMF, try
-    # commenting out the following line.
-$config SetValue program_linker [linsert [$config GetValue program_linker] end -staticlib=Crun]
+    set linkprog [$config GetValue program_linker]
+    if {[info exists linkopts]} { lappend linkprog $linkopts}
 
+    # NOTE: We had to add the following option to get OOMMF to build
+    # on Solaris 2.7 (SunOS 5.7) with the compiler Sun WorkShop 6,
+    # 2000/04/07 C++ 5.1.  If you have trouble building OOMMF, try
+    # commenting out the following line:
+    lappend linkprog "-staticlib=Crun"
+
+    $config SetValue program_linker $linkprog
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
+    $config SetValue program_linker_rpath {format "-R %s"}
     $config SetValue program_linker_uses_-L-l {1}
 } elseif {[string match g++ $lbasename]} {
     # ...for GNU g++ as linker
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
+    $config SetValue program_linker_rpath {format "-Wl,-rpath=%s"}
     $config SetValue program_linker_uses_-L-l {1}
 }
 unset lbasename

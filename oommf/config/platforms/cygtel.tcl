@@ -1,6 +1,7 @@
 # FILE: cygtel.tcl
 #
-# Configuration feature definitions for the configuration 'cygtel'
+# Configuration feature definitions for the configuration 'cygtel',
+# which is 32-bit Cygwin on Windows.
 #
 # Editing instructions begin at "START EDIT HERE" below.
 
@@ -153,7 +154,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-###################
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
+#
+## Flags to remove from compiler "opts" string:
+# $config SetValue program_compiler_c++_remove_flags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
+# 
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -261,7 +289,6 @@ if {[string match g++* $ccbasename]} {
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
-
    # gcc 3.x has some problems with SSE instructions
    # (STATUS_ACCESS_VIOLATION), at least when built against the
    # ActiveTcl libraries.  This probably arises from data alignment
@@ -282,6 +309,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -315,7 +358,9 @@ if {[string match g++* $ccbasename]} {
    # Wide floating point type.
    # At this time cygwin uses the Windows math libraries,
    # which don't provide long double support
-   $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
    $config SetValue program_compiler_c++_property_floorl_flag -DNO_FLOORL_CHECK
 
    # Directories to exclude from explicit include search path, i.e.,
@@ -450,13 +495,11 @@ if {[regexp -nocase -- windows $tcl_platform(platform)]} {
 #$config SetValue TCL_LIBS {-luser32}
 #$config SetValue TK_LIBS {-luser32}
 
-# Safety: Make sure TCL_LIBS and TK_LIBS are defined.
-if {[catch {$config GetValue TCL_LIBS}]} {
-   $config SetValue TCL_LIBS {}
-}
-if {[catch {$config GetValue TK_LIBS}]} {
-   $config SetValue TK_LIBS {}
-}
+# The tclConfig and tkConfig files on Cygwin can include libraries not
+# available on a standard install, so just empty these.  Tweak as
+# necessary.
+$config SetValue TCL_LIBS {}
+$config SetValue TK_LIBS {}
 
 # Workaround for bad TK_BUILD_INCLUDES in tkConfig.sh, Cygwin Tcl/Tk
 # package 20001125-1, concurrent with Cygwin DLL release 1.3.13-2.

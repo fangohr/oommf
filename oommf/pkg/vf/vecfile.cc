@@ -2,10 +2,11 @@
  *
  * Main source file for vector field file I/O.
  *
- * Last modified on: $Date: 2012-09-04 14:14:33 $
+ * Last modified on: $Date: 2014/10/22 21:25:33 $
  * Last modified by: $Author: donahue $
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
@@ -225,12 +226,31 @@ Vf_FileInput *Vf_FileInput::NewReader(const char *new_file,
   Tcl_RestoreResult(interp, &saved);
   const char *mychannelName=Tcl_GetChannelName(mychannel);
 
+  // Check that this is not an empty file (special case)
+  char empty_check;
+  if(Tcl_Read(mychannel,&empty_check,1) != 1) {
+    if(errmsg==NULL) {
+      ClassMessage(STDDOC,"File \"%s\" is empty or unreadable",new_file);
+    } else {
+      *errmsg = "File \"";
+      *errmsg += new_file;
+      *errmsg += "\" is empty or unreadable";
+    }
+    if(fptr!=NULL)      fclose(fptr);
+    if(mychannel!=NULL) Tcl_UnregisterChannel(interp, mychannel);
+    return NULL;
+  }
+
   // Determine file type
   Vf_FileInputID *id_ptr;
-  for(id_ptr=child_list.GetFirst(); id_ptr!=NULL;
-      id_ptr=child_list.GetNext()) {
-    rewind(fptr);  Tcl_Seek(mychannel,0,SEEK_SET);  // Rewind both streams
-    if((id_ptr->pIsType)(new_file,fptr,mychannel,mychannelName)) break;
+  try {
+    for(id_ptr=child_list.GetFirst(); id_ptr!=NULL;
+        id_ptr=child_list.GetNext()) {
+      rewind(fptr);  Tcl_Seek(mychannel,0,SEEK_SET);  // Rewind both streams
+      if((id_ptr->pIsType)(new_file,fptr,mychannel,mychannelName)) break;
+    }
+  } catch(...) {
+    id_ptr = NULL;
   }
 
   if(id_ptr==NULL) {
@@ -317,7 +337,8 @@ Vf_OvfFileVersion Vf_OvfFileFormatSpecs::GetFileVersion(const char *test)
 OC_INT4m Vf_OvfFileFormatSpecs::ReadBinary(FILE *infile,OC_REAL4 *buf,
                                          OC_INDEX count)
 {
-  if(fread((char *)buf,sizeof(OC_REAL4),count,infile)
+  assert(count>=0);
+  if(fread((char *)buf,sizeof(OC_REAL4),size_t(count),infile)
                                    != static_cast<size_t>(count))
     return 1;
 #if (OC_BYTEORDER == 4321)  // Flip bytes from MSB to LSB on input
@@ -329,7 +350,8 @@ OC_INT4m Vf_OvfFileFormatSpecs::ReadBinary(FILE *infile,OC_REAL4 *buf,
 OC_INT4m Vf_OvfFileFormatSpecs::ReadBinary(FILE *infile,OC_REAL8 *buf,
                                         OC_INDEX count)
 {
-  if(fread((char *)buf,sizeof(OC_REAL8),count,infile)
+  assert(count>=0);
+  if(fread((char *)buf,sizeof(OC_REAL8),size_t(count),infile)
                                    != static_cast<size_t>(count))
     return 1;
 #if (OC_BYTEORDER == 4321)  // Flip bytes from MSB to LSB on input
@@ -341,7 +363,8 @@ OC_INT4m Vf_OvfFileFormatSpecs::ReadBinary(FILE *infile,OC_REAL8 *buf,
 OC_INT4m Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(FILE *infile,OC_REAL4 *buf,
                                          OC_INDEX count)
 {
-  if(fread((char *)buf,sizeof(OC_REAL4),count,infile)
+  assert(count>=0);
+  if(fread((char *)buf,sizeof(OC_REAL4),size_t(count),infile)
                                    != static_cast<size_t>(count))
     return 1;
 #if (OC_BYTEORDER == 1234)  // Flip bytes from LSB to MSB on input
@@ -353,7 +376,8 @@ OC_INT4m Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(FILE *infile,OC_REAL4 *buf,
 OC_INT4m Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(FILE *infile,OC_REAL8 *buf,
                                         OC_INDEX count)
 {
-  if(fread((char *)buf,sizeof(OC_REAL8),count,infile)
+  assert(count>=0);
+  if(fread((char *)buf,sizeof(OC_REAL8),size_t(count),infile)
                                    != static_cast<size_t>(count))
     return 1;
 #if (OC_BYTEORDER == 1234)  // Flip bytes from LSB to MSB on input
@@ -365,11 +389,12 @@ OC_INT4m Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(FILE *infile,OC_REAL8 *buf,
 OC_INT4m Vf_OvfFileFormatSpecs::WriteBinary(FILE *outfile,OC_REAL4 *buf,
                                          OC_INDEX count)
 {
+  assert(count>=0);
   char *cptr=(char *)buf;
 #if (OC_BYTEORDER == 4321)  // Flip bytes from LSB to MSB on output
   Oc_SwapBuf(cptr,sizeof(OC_REAL4),count);
 #endif
-  if(fwrite(cptr,sizeof(OC_REAL4),count,outfile)
+  if(fwrite(cptr,sizeof(OC_REAL4),size_t(count),outfile)
                              != static_cast<size_t>(count))
     return 1;
   return 0;
@@ -378,11 +403,12 @@ OC_INT4m Vf_OvfFileFormatSpecs::WriteBinary(FILE *outfile,OC_REAL4 *buf,
 OC_INT4m Vf_OvfFileFormatSpecs::WriteBinary(FILE *outfile,OC_REAL8 *buf,
                                          OC_INDEX count)
 {
+  assert(count>=0);
   char *cptr=(char *)buf;
 #if (OC_BYTEORDER == 4321)  // Flip bytes from LSB to MSB on output
   Oc_SwapBuf(cptr,sizeof(OC_REAL8),count);
 #endif
-  if(fwrite(cptr,sizeof(OC_REAL8),count,outfile)
+  if(fwrite(cptr,sizeof(OC_REAL8),size_t(count),outfile)
                              != static_cast<size_t>(count))
     return 1;
   return 0;
@@ -531,8 +557,9 @@ OC_BOOL Vf_OvfSegmentHeader::ValidSet(void) const
     if(!valuedim_bool) {
       set_code = 0;
     } else {
-      const OC_INT4m listlen = valueunits_list.GetSize();
-      if(listlen != valuedim && listlen != 1) {
+      const OC_INDEX listlen = valueunits_list.GetSize();
+      assert(listlen == OC_INDEX(OC_INT4(listlen)));
+      if(static_cast<OC_INT4>(listlen) != valuedim && listlen != 1) {
         set_code = 0;
       }
     }
@@ -637,7 +664,7 @@ void Vf_OvfSegmentHeader::SetFieldValue(const Nb_DString &field,
     zmax=Nb_Atof((const char *)value); zmax_bool=1;
   }
   else if(strcmp((const char *)field,"boundary")==0) {
-    char *work=new char[value.Length()+1];
+    char *work=new char[static_cast<size_t>(value.Length())+1];
     strcpy(work,(const char *)value);
     Nb_Vec3<OC_REAL8> point;
     char *nexttoken = work;
@@ -972,7 +999,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
     }
     if(count<Nin) {
       // Skip extra values in input file.
-      if(fseek(infile,(Nin-count)*sizeof(OC_REAL4),SEEK_CUR)!=0) {
+      if(fseek(infile,(Nin-count)*(long int)sizeof(OC_REAL4),SEEK_CUR)!=0) {
         return 1; // Presumably EOF
       }
     }
@@ -994,7 +1021,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
     }
     if(count<Nin) {
       // Skip extra values in input file.
-      if(fseek(infile,(Nin-count)*sizeof(OC_REAL8),SEEK_CUR)!=0) {
+      if(fseek(infile,(Nin-count)*(long int)sizeof(OC_REAL8),SEEK_CUR)!=0) {
         return 1; // Presumably EOF
       }
     }
@@ -1036,7 +1063,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
     }
     if(count<Nin) {
       // Skip extra values in input file.
-      if(fseek(infile,(Nin-count)*sizeof(OC_REAL4),SEEK_CUR)!=0) {
+      if(fseek(infile,(Nin-count)*(long int)sizeof(OC_REAL4),SEEK_CUR)!=0) {
         return 1; // Presumably EOF
       }
     }
@@ -1058,7 +1085,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
     }
     if(count<Nin) {
       // Skip extra values in input file.
-      if(fseek(infile,(Nin-count)*sizeof(OC_REAL8),SEEK_CUR)!=0) {
+      if(fseek(infile,(Nin-count)*(long int)sizeof(OC_REAL8),SEEK_CUR)!=0) {
         return 1; // Presumably EOF
       }
     }
@@ -1478,7 +1505,7 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
     delete mesh;
     return new Vf_EmptyMesh();
   }
-  if(!strcmp(value,datastylestring)==0) {
+  if(strcmp(value,datastylestring)!=0) {
     ClassMessage(STDDOC,"Data end marker wrong type in file %s "
                  "(->%s<- instead of ->%s<-)",
                  (const char *)filename,
@@ -2237,7 +2264,7 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
     // LocatedVector and stick it into mesh.  These should be in the
     // order "x y z mx my mz", but some older files (version Svf-01)
     // may have only "x y mx my mz".
-    static Nb_LocatedVector<OC_REAL8> lv;
+    Nb_LocatedVector<OC_REAL8> lv;
     if(i==5) {
       lv.location.Set(OC_REAL8(data[0]),OC_REAL8(data[1]),OC_REAL8(0.0));
       lv.value.Set(OC_REAL8(data[2]),OC_REAL8(data[3]),OC_REAL8(data[4]));
@@ -2258,7 +2285,7 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
       return TCL_ERROR;
     }
 
-    static Nb_LocatedVector<OC_REAL8> lv;
+    Nb_LocatedVector<OC_REAL8> lv;
     lv.location.x=OC_REAL8(Nb_Atof(argv[3]));
     lv.location.y=OC_REAL8(Nb_Atof(argv[4]));
     lv.location.z=OC_REAL8(Nb_Atof(argv[5]));
@@ -2300,7 +2327,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
         else {
           Tcl_Free(pointstr);
           sprintf(buf,"setbdry subcommand requires x y pairs;"
-                  " %d values passed.",2*boundary_list.GetSize()+1);
+                  " %" OC_INDEX_MOD "d values passed.",
+                  2*boundary_list.GetSize()+1);
           Tcl_AppendResult(interp,buf,(char *)NULL);
           return TCL_ERROR;
         }
@@ -2421,7 +2449,8 @@ OC_BOOL Vf_Ovf20FileHeader::IsValid() const
 
 OC_BOOL Vf_Ovf20FileHeader::IsValid(String& errmsg) const
 {
-  errmsg.clear();
+  errmsg.erase();  // Some older C++ compilers don't know
+  /// the newer .clear() member function.
 
   // File version set?
   if(ovfversion == vf_ovf_invalid) {
@@ -3042,7 +3071,7 @@ Vf_Ovf20FileHeader::ReadData
     const OC_INDEX reclen = veclen
       + (input_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX inwords = reclen*stride;
-    OC_INDEX inbytes = inwords*sizeof(OC_REAL4);
+    OC_INDEX inbytes = inwords*OC_INDEX(sizeof(OC_REAL4));
 
     Oc_AutoBuf workbuf; // Workspace.  Tweak to insure good alignment
     workbuf.SetLength(inbytes+sizeof(OC_REAL4)-1 + 10000);
@@ -3055,7 +3084,7 @@ Vf_Ovf20FileHeader::ReadData
       if(node+stride>nodecount) {
         record_count = nodecount-node;
         inwords = reclen * record_count;
-        inbytes = inwords * sizeof(OC_REAL4);
+        inbytes = inwords * OC_INDEX(sizeof(OC_REAL4));
       }
       if(inbytes>INT_MAX) {
         OC_THROW(Oc_Exception(__FILE__,__LINE__,
@@ -3135,7 +3164,7 @@ Vf_Ovf20FileHeader::ReadData
     const OC_INDEX reclen = veclen
       + (input_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX inwords = reclen*stride;
-    OC_INDEX inbytes = inwords*sizeof(OC_REAL8);
+    OC_INDEX inbytes = inwords*OC_INDEX(sizeof(OC_REAL8));
 
     Oc_AutoBuf workbuf; // Workspace.  Tweak to insure good alignment
     workbuf.SetLength(inbytes+sizeof(OC_REAL8)-1 + 10000);
@@ -3148,7 +3177,7 @@ Vf_Ovf20FileHeader::ReadData
       if(node+stride>nodecount) {
         record_count = nodecount-node;
         inwords = reclen * record_count;
-        inbytes = inwords * sizeof(OC_REAL8);
+        inbytes = inwords * OC_INDEX(sizeof(OC_REAL8));
       }
       if(inbytes>INT_MAX) {
         OC_THROW(Oc_Exception(__FILE__,__LINE__,
@@ -3282,9 +3311,11 @@ Vf_Ovf20FileHeader::WriteHeader
 
   if(ovfversion == vf_ovf_10) {
     if(meshtype.Value() == vf_ovf20mesh_rectangular) {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# OOMMF: rectangular mesh v1.0\n");
+      Nb_FprintfChannel(outchan, NULL, 1024,
+                        "# OOMMF: rectangular mesh v1.0\n");
     } else {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# OOMMF: irregular mesh v1.0\n");
+      Nb_FprintfChannel(outchan, NULL, 1024,
+                        "# OOMMF: irregular mesh v1.0\n");
     }
   } else {
     Nb_FprintfChannel(outchan, NULL, 1024, "# OOMMF OVF 2.0\n");
@@ -3336,30 +3367,32 @@ Vf_Ovf20FileHeader::WriteHeader
         const vector<String>& vu = valueunits.Value();
         size_t namelen = strlen("valueunit");
         size_t valuelen = vu[0].size();
-        Nb_FprintfChannel(outchan, NULL, namelen+valuelen+32,
-                          "# valueunit: %s\n",
-                          vu[0].c_str());
+        Nb_FprintfChannel(outchan, NULL,
+                          static_cast<OC_INDEX>(namelen+valuelen+32),
+                          "# valueunit: %s\n",vu[0].c_str());
         continue;
       }
     }
       
     size_t namelen = strlen((*it)->GetName());
     size_t valuelen = valuebuf.size();
+    size_t nbufsize = namelen + valuelen + 32;
+    assert(OC_INDEX(nbufsize)>=0 && nbufsize == size_t(OC_INDEX(nbufsize)));
     if((*it)->GetNameString().compare("title")==0) {
       // Special case handling for "prettier" output that
       // helps backwards compatibility with broken parsers.
-      Nb_FprintfChannel(outchan, NULL, namelen+valuelen+32,
+      Nb_FprintfChannel(outchan, NULL, OC_INDEX(nbufsize),
                         "# %s: %s\n","Title",valuebuf.c_str());
     } else if((*it)->GetNameString().compare("desc")==0) {
       // Special case handling for "prettier" output that
       // helps backwards compatibility with broken parsers.
       // Note that this should agree with the "record_leader"
       // value above for multiple-line desc records.
-      Nb_FprintfChannel(outchan, NULL, namelen+valuelen+32,
+      Nb_FprintfChannel(outchan, NULL, OC_INDEX(nbufsize),
                         "# %s: %s\n","Desc",valuebuf.c_str());
     } else {
       // General case --- field names are written all lowercase
-      Nb_FprintfChannel(outchan, NULL, namelen+valuelen+32,
+      Nb_FprintfChannel(outchan, NULL, OC_INDEX(nbufsize),
                         "# %s: %s\n",(*it)->GetName(),valuebuf.c_str());
     }
   }
@@ -3488,7 +3521,7 @@ Vf_Ovf20FileHeader::WriteData
     const OC_INDEX reclen = veclen
       + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX outwords = reclen*stride;
-    OC_INDEX outbytes = outwords*sizeof(OC_REAL4);
+    OC_INDEX outbytes = outwords*OC_INDEX(sizeof(OC_REAL4));
 
     Oc_AutoBuf workbuf; // Workspace.  Tweak to insure good alignment
     workbuf.SetLength(outbytes+sizeof(OC_REAL4)-1 + 10000);
@@ -3502,7 +3535,7 @@ Vf_Ovf20FileHeader::WriteData
       if(node+stride>nodecount) {
         record_count = nodecount-node;
         outwords = reclen * record_count;
-        outbytes = outwords * sizeof(OC_REAL4);
+        outbytes = outwords * OC_INDEX(sizeof(OC_REAL4));
       }
 
       if(output_meshtype == vf_ovf20mesh_irregular) {
@@ -3564,7 +3597,7 @@ Vf_Ovf20FileHeader::WriteData
     const OC_INDEX reclen = veclen
       + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX outwords = reclen*stride;
-    OC_INDEX outbytes = outwords*sizeof(OC_REAL8);
+    OC_INDEX outbytes = outwords*OC_INDEX(sizeof(OC_REAL8));
 
 #if (OC_BYTEORDER == 4321)  // Input is LSB; flip may not be required
     if(output_meshtype != vf_ovf20mesh_irregular
@@ -3574,7 +3607,7 @@ Vf_Ovf20FileHeader::WriteData
       const char *cptr=reinterpret_cast<const char *>(data);
       for(OC_INDEX node=0;node<nodecount;node+=stride) {
         if(node+stride>nodecount) {
-          outbytes = reclen * (nodecount-node) * sizeof(OC_REAL8);
+          outbytes = reclen * (nodecount-node) * OC_INDEX(sizeof(OC_REAL8));
         }
         if(Nb_WriteChannel(outchan,cptr,outbytes) != outbytes) {
           OC_THROW(Oc_Exception(__FILE__,__LINE__,
@@ -3599,7 +3632,7 @@ Vf_Ovf20FileHeader::WriteData
         if(node+stride>nodecount) {
           record_count = nodecount-node;
           outwords = reclen * record_count;
-          outbytes = outwords * sizeof(OC_REAL8);
+          outbytes = outwords * OC_INDEX(sizeof(OC_REAL8));
         }
 
         if(output_meshtype == vf_ovf20mesh_irregular) {
@@ -3768,7 +3801,7 @@ Vf_Ovf20FileHeader::WriteData
     const OC_INDEX reclen = veclen
       + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX outwords = reclen*stride;
-    OC_INDEX outbytes = outwords*sizeof(OC_REAL4);
+    OC_INDEX outbytes = outwords*OC_INDEX(sizeof(OC_REAL4));
 
     Oc_AutoBuf workbuf; // Workspace.  Tweak to insure good alignment
     workbuf.SetLength(outbytes+sizeof(OC_REAL4)-1 + 10000);
@@ -3781,7 +3814,7 @@ Vf_Ovf20FileHeader::WriteData
       if(node+stride>nodecount) {
         record_count = nodecount-node;
         outwords = reclen * record_count;
-        outbytes = outwords * sizeof(OC_REAL4);
+        outbytes = outwords * OC_INDEX(sizeof(OC_REAL4));
       }
       if(output_meshtype == vf_ovf20mesh_irregular) {
         OC_REAL4* dout = d4buf - 1;
@@ -3853,7 +3886,7 @@ Vf_Ovf20FileHeader::WriteData
     const OC_INDEX reclen = veclen
       + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
     OC_INDEX outwords = reclen*stride;
-    OC_INDEX outbytes = outwords*sizeof(OC_REAL8);
+    OC_INDEX outbytes = outwords*OC_INDEX(sizeof(OC_REAL8));
 
     Oc_AutoBuf workbuf; // Workspace.  Tweak to insure good alignment
     workbuf.SetLength(outbytes+sizeof(OC_REAL8)-1 + 10000);
@@ -3866,7 +3899,7 @@ Vf_Ovf20FileHeader::WriteData
       if(node+stride>nodecount) {
         record_count = nodecount-node;
         outwords = reclen * record_count;
-        outbytes = outwords * sizeof(OC_REAL8);
+        outbytes = outwords * OC_INDEX(sizeof(OC_REAL8));
       }
       if(output_meshtype == vf_ovf20mesh_irregular) {
         OC_REAL8* dout = d8buf - 1;

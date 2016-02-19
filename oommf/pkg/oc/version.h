@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2004-09-01 15:48:49 $
+ * Last modified on: $Date: 2015/03/25 16:45:14 $
  * Last modified by: $Author: dgp $
  */
 
@@ -21,6 +21,6 @@
 #define OC_MAJOR_VERSION	1
 #define OC_MINOR_VERSION	2
 #define OC_RELEASE_LEVEL	0
-#define OC_RELEASE_SERIAL	4
+#define OC_RELEASE_SERIAL	6
 
 #endif /* _OC_VERSION */

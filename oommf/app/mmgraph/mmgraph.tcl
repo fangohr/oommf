@@ -28,10 +28,10 @@ package require Nb 1.2.0.4	;# [Nb_InputFilter]
 wm withdraw .
 
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:51 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/06/03 19:30:04 $} _ date
 Oc_Main SetDate [string trim $date]
-# regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
+# regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
 Oc_Main SetAuthor [Oc_Person Lookup donahue]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
@@ -701,7 +701,7 @@ Ow_StdHelpMenu $helpmenu
 
 global dialog
 proc SetPlotConfiguration { pscvar }  {
-   global _mmgpsc graph
+   global _mmgpsc graph data_base_value
    upvar $pscvar psc
    # Array elements: title,
    #            autolabel,xlabel,ylabel,y2label,
@@ -722,6 +722,9 @@ proc SetPlotConfiguration { pscvar }  {
    }
    array set _mmgpsc [array get psc]
    if {$offset_change} {
+      if {[info exists data_base_value]} {
+         unset data_base_value
+      }
       RefreshGraphData
    }
    $graph Configure -title \
@@ -1023,25 +1026,17 @@ foreach prefix {Key Shift-Key Control-Key} fstep {0.5 1.0 0.25} {
     }
 }
 
-proc ScrollGraph { xstep ystep } {
-   set xstep [expr {($xstep/120)*0.125}]
-   set ystep [expr {($ystep/120)*0.125}]
-   SchedPan $xstep $ystep $ystep
+proc ScrollWheelHandler { wFired D horizontal } {
+   set D [expr {double($D)*2.*0.0009765625}]  ;# 0.0009765625 = 1./1024.
+   if {$horizontal} {
+      SchedPan $D 0 0
+   } else {
+      SchedPan 0 $D $D
+   }
 }
 
-if {[Oc_Application CompareVersions [info tclversion] 8.1]>=0} {
-   # MouseWheel event introduced in Tk 8.1
-   if {[Ow_IsX11]} {
-      # Support for mousewheels on Linux/Unix commonly comes through
-      # mapping the wheel to the extended buttons.
-      bind [$graph GetCanvas] <4> [list ScrollGraph 0 120]
-      bind [$graph GetCanvas] <5> [list ScrollGraph 0 -120]
-      bind [$graph GetCanvas] <Shift-4> [list ScrollGraph  120 0]
-      bind [$graph GetCanvas] <Shift-5> [list ScrollGraph -120 0]
-   }
-   bind [$graph GetCanvas] <MouseWheel> [list ScrollGraph  0 %D]
-   bind [$graph GetCanvas] <Shift-MouseWheel> [list ScrollGraph %D 0]
-}
+Ow_BindMouseWheelHandler [$graph GetCanvas] ScrollWheelHandler
+
 bind . <Control-ButtonRelease> UpdateLimits
 
 # Proc to reset graph limits, and redraw graph
@@ -1867,7 +1862,7 @@ proc RefreshGraphData {} {
    return
 }
 
-proc ThinData { skip } {
+proc ThinDataRaw { skip } {
    # Index through data_value array, keeping only every "$skip" element.
    # A complication here is that we want to retain the first and last
    # element of each curve segment.  (Breaks in curves are marked by
@@ -1910,6 +1905,88 @@ proc ThinData { skip } {
    RefreshGraphData
 }
 
+proc ThinDataIteration { skip } {
+   # Similar to proc ThinDataRaw, but tries to maintain equal spacing
+   # based on Iteration counts.  For dynamic simulations We might want
+   # to consider an alternative thinning option indexed off of time.
+   global data_value data_index
+   set iteration_index -1
+   set index_check [lsearch -all -regexp $data_index(all) {:Iteration$}]
+   if {[llength $index_check]==1} {
+      set iteration_index [lindex $index_check 0]
+      set istart $data_value(count,start)
+      set ita [lindex $data_value($istart) $iteration_index]
+      set istop  $data_value(count,end)
+      set itb [lindex $data_value([expr {$istop-1}]) $iteration_index]
+      if {![regexp {^[0-9]+$} $ita] || ![regexp {^[0-9]+$} $itb] \
+             || $ita >= $itb} {
+         set iteration_index -1  ;# Bad data
+      }
+   }
+   if {$iteration_index < 0} {
+      # No unique, valid iteration index found.  Fall back to
+      # raw record filtering:
+      return [ThinDataRaw $skip]
+   }
+   set record_count [expr {$istop-$istart}]
+   set it_skip [expr {$skip*($itb-$ita)/double($record_count)}]
+   ## Note that it_skip might not be an integer
+   if {$it_skip<=1.0} {
+      # Bail
+      return [ThinDataRaw $skip]
+   }
+
+   # After thinning, the difference in iteration count between two
+   # successive records should be approximately it_skip.  But also
+   # preserve the first and last record in each curve.
+   set j 0  ;# Index into rebuilt data_value array.
+   set k -1.0 ;# Next iteration to not skip
+   set skipped_record {}
+   for {set i $istart} {$i<$istop} {incr i} {
+      set record $data_value($i)
+      unset data_value($i)
+      if {[string match {} $record]} {
+         # Blank record, which is used as a marker for
+         # curve breaks.  Retain this marker.
+         if {![string match {} $skipped_record]} {
+            set data_value($j) $skipped_record
+            incr j
+            set skipped_record {}
+         }
+         set data_value($j) {}
+         incr j
+         set k -1.0 ;# Very next iteration is not skipped
+      } else {
+         set test_it [lindex $record $iteration_index]
+         if {[catch {expr {$test_it + $it_skip}} test_k]} {
+            # Apparently iteration count in this record is not an
+            # integer; punt
+            set data_value($j) $record
+            incr j
+            set skipped_record {}
+         } elseif {$test_it>=$k} {
+            set data_value($j) $record
+            incr j
+            set skipped_record {}
+            if {$k>=0} {
+               set k [expr {$k+$it_skip}]
+            } else {
+               set k $test_k
+            }
+         } else {
+            set skipped_record $record
+         }
+      }
+   }
+   if {![string match {} $skipped_record]} {
+      set data_value($j) $skipped_record
+      incr j
+   }
+   set data_value(count,start) 0
+   set data_value(count,end) $j
+   RefreshGraphData
+}
+
 proc ThinDataInteractive { skip } {
    if {$skip<2} {
       return ;# Nothing to do
@@ -1938,7 +2015,7 @@ proc ThinDataInteractive { skip } {
                     "Are you *sure* want to thin all data stored\
 	    in this graph widget, keeping only every $ordinal point?" \
                     {} 1 "Yes" "No"]
-   if { $response == 0 } { ThinData $skip }
+   if { $response == 0 } { ThinDataIteration $skip }
 }
 
 proc UpdateBaseValues {} {

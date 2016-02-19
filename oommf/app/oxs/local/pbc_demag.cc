@@ -1378,7 +1378,7 @@ void PBC_Demag_2D::CalculateDemagTensors(
 
     OC_REALWIDE x, y, z;
 
-    int gxx, gyy, gzz;
+    int gxx, gyy /*, gzz */;
 
 
     gxx = sample_repeat_nx;
@@ -1408,7 +1408,7 @@ void PBC_Demag_2D::CalculateDemagTensors(
     } else {
         gxx = FindG(xx, dx * dy*dz, xdim*dx, ydim * dy);
         gyy = FindG(yy, dx * dy*dz, xdim*dx, ydim * dy);
-        gzz = FindG(zz, dx * dy*dz, xdim*dx, ydim * dy);
+        // gzz = FindG(zz, dx * dy*dz, xdim*dx, ydim * dy);
 
 
         OC_INDEX index, i, j, k;

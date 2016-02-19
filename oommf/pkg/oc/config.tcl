@@ -1,7 +1,7 @@
 # FILE: config.tcl
 #
-# Last modified on: $Date: 2012-09-28 15:03:47 $
-# Last modified by: $Author: dgp $
+# Last modified on: $Date: 2015/08/13 20:23:19 $
+# Last modified by: $Author: donahue $
 
 Oc_Class Oc_Config {
 
@@ -69,8 +69,8 @@ Oc_Class Oc_Config {
                      [array names env TCL*] [array names env TK*] \
                      [array names env OSTYPE] ]
         # NOTE: env(OSTYPE) is used in some of the cygwin environment
-        #       discovery code;  See the Oc_IsCygwinPlatform proc in
-        #       oommf/pkg/oc/procs.tcl.
+        #       discovery code; See the Oc_IsCygwinPlatform and
+        #       Oc_IsCygwin64Platform procs in oommf/pkg/oc/procs.tcl.
 	$runPlatform RecordTclTkConfiguration
 	$runPlatform FindTclTkIncludes 
 
@@ -255,7 +255,7 @@ Oc_Class Oc_Config {
        # If not a snapshot release, return empty string.
        # Otherwise, return string of the form yyyy.mm.dd
        # return "2009.10.15"
-       return {2012.09.28}
+       return {2015.03.25}
     }
 
     method OommfApiIndex {} {
@@ -263,7 +263,7 @@ Oc_Class Oc_Config {
        # primarily by external extension writers.  This value is
        # echoed in the ocport.h header by the Oc_MakePortHeader proc
        # in oc/procs.tcl. Format is "yyyymmdd".
-       return 20120928
+       return 20150129
     }
 
     method Summary {} {
@@ -524,12 +524,11 @@ Oc_Class Oc_Config {
 
         append ret    "\nOOMMF threads:         \t"
         if {[$this GetValue oommf_threads]} {
-           append ret "Yes"
-           append ret "\n  Default thread count:\t  [Oc_GetDefaultThreadCount]"
+           append ret "Yes: Default thread count = [Oc_GetDefaultThreadCount]"
            if {![catch {$this GetValue use_numa} use_numa]} {
-           append ret "\n  NUMA support:        \t  "
+           append ret "\n  NUMA support:        \t "
               if {$use_numa} {
-                 append ret "Yes"
+                 append ret "Yes: Default nodes = [Oc_GetDefaultNumaNodes]"
               } else {
                  append ret "No"
               }
@@ -540,8 +539,9 @@ Oc_Class Oc_Config {
 
         append ret "\nOOMMF API index:       \t[$this OommfApiIndex]"
 
-        set tmpfile [Oc_TempName]
-        append ret "\nTemp file directory: \t[file dirname $tmpfile]"
+	Oc_TempFile New xxx
+	append ret "\nTemp file directory: \t[$xxx Cget -directory]"
+	$xxx Delete
 
 	if {[llength $predefinedEnvVars]} {
 	    append ret "\n\nRelevant environment variables:"
@@ -847,319 +847,470 @@ Oc_Class Oc_Config {
 	}
     }
 
+    private method CheckTclIncludeVersion { filename } {
+       # Import is the name of a tcl.h file.
+       # Returns 1 if a TCL_VERSION record can be identified inside the
+       # file and the version string matches [info tclversion]
+       # Otherwise return 0.  Also returns 0 if the file cannot be
+       # opened for reading.
+       if {[catch {open $filename} f]} {
+          return 0  ;# Can't open file
+       }
+       gets $f line
+       while {![eof $f] && ![string match "#define*TCL_VERSION*" $line]} {
+          gets $f line	    
+       }
+       close $f
+       if {![regexp {TCL_VERSION[^0-9.]*([0-9.]+)[^0-9.]*$} \
+                $line dummy verno]} {
+          # Bad record format
+          return 0
+       }
+       if {[string compare [info tclversion] $verno]!=0} {
+          return 0  ;# Mismatch
+       }
+       return 1 ;# Version strings match
+    }
+
+    private method CheckTkIncludeVersion { filename } {
+       # Import is the name of a tk.h file.
+       # Returns 1 if a TK_VERSION record can be identified inside the
+       # file and the version string matches [info tclversion]
+       # Otherwise return 0.  Also returns 0 if the file cannot be
+       # opened for reading.
+       if {[catch {open $filename} f]} {
+          return 0  ;# Can't open file
+       }
+       gets $f line
+       while {![eof $f] && ![string match "#define*TK_VERSION*" $line]} {
+          gets $f line	    
+       }
+       close $f
+       if {![regexp {TK_VERSION[^0-9.]*([0-9.]+)[^0-9.]*$} \
+                $line dummy verno]} {
+          # Bad record format
+          return 0
+       }
+       set checkver [info tclversion]
+       if {$checkver < 8.0} {
+          set checkver [format "%g" [expr {$checkver - 3.4}]]
+          ## Round slightly
+       }
+       if {[string compare $checkver $verno]!=0} {
+          return 0  ;# Mismatch
+       }
+       return 1 ;# Version strings match
+    }
+
     private method FindTclTkIncludes {} {
-	global env tcl_platform tcl_version
-	if {[info exists env(OOMMF_TCL_INCLUDE_DIR)]} {
-	    if {![file readable \
-		    [file join $env(OOMMF_TCL_INCLUDE_DIR) tcl.h]]} {
-		set msg "Error in environment\
+       global env tcl_platform tcl_version
+       if {[info exists env(OOMMF_TCL_INCLUDE_DIR)]} {
+          if {![file readable \
+                   [file join $env(OOMMF_TCL_INCLUDE_DIR) tcl.h]]} {
+             set msg "Error in environment\
 			variable:\nOOMMF_TCL_INCLUDE_DIR =\
 			$env(OOMMF_TCL_INCLUDE_DIR)\ntcl.h\
 			not found there, or not readable"
-		error $msg $msg
-	    }
-	} else {
-	    set search [list]
-	    if {[string match Darwin $tcl_platform(os)]} {
-		lappend search /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version/Headers
-		lappend search /Library/Frameworks/Tcl.framework/Versions/$tcl_version/Headers
-		lappend search /System/Library/Frameworks/Tcl.framework/Headers
-		lappend search /Library/Frameworks/Tcl.framework/Headers
-	    }
-	    if {![catch {$this GetValue TCL_INC_DIR} incdir]} {
-		lappend search $incdir
-	    }
-	    if {![catch {$this GetValue TCL_PREFIX} tp]} {
-		lappend search [file join $tp include]
-		lappend search \
-			[file join $tp include tcl[$this GetValue TCL_VERSION]]
-	    }
-	    foreach dir $search {
-		if {[file readable [file join $dir tcl.h]]} {
-		    set env(OOMMF_TCL_INCLUDE_DIR) $dir
-		    break
-		}
-	    }
-	}
-	if {[info exists env(OOMMF_TK_INCLUDE_DIR)]} {
-	    if {![file readable \
-		    [file join $env(OOMMF_TK_INCLUDE_DIR) tk.h]]} {
-		set msg "Error in environment\
+             error $msg $msg
+          }
+       } else {
+          set search [list]
+          if {[catch {::tcl::pkgconfig get includedir,runtime} idir] == 0} {
+             lappend search $idir
+          }
+          if {[string match Darwin $tcl_platform(os)]} {
+             lappend search /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version/Headers
+             lappend search /Library/Frameworks/Tcl.framework/Versions/$tcl_version/Headers
+             lappend search /System/Library/Frameworks/Tcl.framework/Headers
+             lappend search /Library/Frameworks/Tcl.framework/Headers
+          }
+          if {![catch {$this GetValue TCL_INC_DIR} incdir]} {
+             lappend search $incdir
+          }
+          if {![catch {$this GetValue TCL_PREFIX} tp]} {
+             lappend search [file join $tp include]
+             lappend search \
+                [file join $tp include tcl[$this GetValue TCL_VERSION]]
+          }
+          foreach dir $search {
+             set ifile [file join $dir tcl.h]
+             if {[file readable $ifile] \
+                    && [$this CheckTclIncludeVersion $ifile]} {
+                set env(OOMMF_TCL_INCLUDE_DIR) $dir
+                break
+             }
+          }
+       }
+       if {[info exists env(OOMMF_TK_INCLUDE_DIR)]} {
+          if {![file readable \
+                   [file join $env(OOMMF_TK_INCLUDE_DIR) tk.h]]} {
+             set msg "Error in environment\
 			variable:\nOOMMF_TK_INCLUDE_DIR =\
 			$env(OOMMF_TK_INCLUDE_DIR)\ntk.h\
 			not found there, or not readable"
-		error $msg $msg
-	    }
-	} else {
-	    set search [list]
-	    if {[string match Darwin $tcl_platform(os)]} {
-		lappend search /System/Library/Frameworks/Tk.framework/Versions/$tcl_version/Headers
-		lappend search /Library/Frameworks/Tk.framework/Versions/$tcl_version/Headers
-		lappend search /System/Library/Frameworks/Tk.framework/Headers
-		lappend search /Library/Frameworks/Tk.framework/Headers
-	    }
-	    if {![catch {$this GetValue TK_INC_DIR} incdir]} {
-		lappend search $incdir
-	    }
-	    if {![catch {$this GetValue TK_PREFIX} tp]} {
-		lappend search [file join $tp include]
-		lappend search \
-			[file join $tp include tk[$this GetValue TK_VERSION]]
-		lappend search \
-			[file join $tp include tcl[$this GetValue TCL_VERSION]]
-	    }
-	    foreach dir $search {
-		if {[file readable [file join $dir tk.h]]} {
-		    set env(OOMMF_TK_INCLUDE_DIR) $dir
-		    break
-		}
-	    }
-	}
+             error $msg $msg
+          }
+       } else {
+          set search [list]
+          if {[catch {::tcl::pkgconfig get includedir,runtime} idir] == 0} {
+             lappend search $idir
+          }
+          if {[string match Darwin $tcl_platform(os)]} {
+             lappend search /System/Library/Frameworks/Tk.framework/Versions/$tcl_version/Headers
+             lappend search /Library/Frameworks/Tk.framework/Versions/$tcl_version/Headers
+             lappend search /System/Library/Frameworks/Tk.framework/Headers
+             lappend search /Library/Frameworks/Tk.framework/Headers
+          }
+          if {![catch {$this GetValue TK_INC_DIR} incdir]} {
+             lappend search $incdir
+          }
+          if {![catch {$this GetValue TK_PREFIX} tp]} {
+             lappend search [file join $tp include]
+             lappend search \
+                [file join $tp include tk[$this GetValue TK_VERSION]]
+             lappend search \
+                [file join $tp include tcl[$this GetValue TCL_VERSION]]
+          }
+          foreach dir $search {
+             set ifile [file join $dir tk.h]
+             if {[file readable $ifile] \
+                    && [$this CheckTkIncludeVersion $ifile]} {
+                set env(OOMMF_TK_INCLUDE_DIR) $dir
+                break
+             }
+          }
+       }
+    }
+
+    private method CheckTclConfigVersion { filename } {
+       # Import is the name of a tclConfig.sh file.
+       # Returns 1 if a TCL_VERSION record can be identified inside the
+       # file and the version string matches [info tclversion]
+       # Otherwise return 0.  Also returns 0 if the file cannot be
+       # opened for reading.
+       if {[catch {open $filename} f]} {
+          return 0  ;# Can't open file
+       }
+       gets $f line
+       while {![eof $f] && ![string match "TCL_VERSION=*" $line]} {
+          gets $f line	    
+       }
+       close $f
+       if {![regexp {^TCL_VERSION=[^0-9.]*([0-9.]+)[^0-9.]*$} \
+                $line dummy verno]} {
+          # Bad record format
+          return 0
+       }
+       if {[string compare [info tclversion] $verno]!=0} {
+          return 0  ;# Mismatch
+       }
+       return 1 ;# Version strings match
     }
 
     private method FindTclConfig {} {
-	# If tcl_pkgPath isn't broken :( ...
-	global tcl_pkgPath tcl_platform tcl_version
-	if {[info exists tcl_pkgPath]} {
-	    foreach libdir $tcl_pkgPath {
-		if {[file readable [file join $libdir tclConfig.sh]]} {
-		    return [file join $libdir tclConfig.sh]
-		}
-	    }
-	    # No joy?  Check for tcl* subdirectories in each of the above.
-	    foreach {tclmajor tclminor} [split [info tclversion] "."] break
-	    foreach libdir $tcl_pkgPath {
-		foreach trydir [glob -nocomplain [file join $libdir tcl*]] {
-		    if {[file isdirectory $trydir]} {
-			if {[regexp {^tcl[^0-9]*([0-9]+)[^0-9]*([0-9]*)} \
-				[file tail $trydir] dummy major minor]} {
-			    if {$tclmajor != $major} { break }
-			    if {[string match {} $minor] || $tclminor == $minor} {
-				set test [file join $trydir tclConfig.sh]
-				if {[file readable $test]} {
-				    return $test
-				}
-			    }
-			} else {
-			    # No numbers embedded in directory name.  Try anyway?!
-			    set test [file join $trydir tclConfig.sh]
-			    if {[file readable $test]} {
-				return $test
-			    }
-			}
-		    }
-		}
-	    }
-	} 
-	# The framework installs of Tcl/Tk on Mac OSX are different from
-	# anything else:
-	if {[string match Darwin $tcl_platform(os)]} {
-           set chklist {}
-           if {[info exists tcl_pkgPath]} {
-              foreach elt $tcl_pkgPath {
-                 if {[regexp {^(.*)/Resources/Scripts} $elt dummy prefix]} {
-                    lappend chklist $prefix
-                 } else {
-                    lappend chklist $elt
-                 }
-              }
-           }
-           lappend chklist \
-		    /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version \
-		    /Library/Frameworks/Tcl.framework/Versions/$tcl_version \
-		    /System/Library/Frameworks/Tcl.framework \
-		    /Library/Frameworks/Tcl.framework
-	    foreach libdir $chklist {
-		if {[file readable [file join $libdir tclConfig.sh]]} {
-		    return [file join $libdir tclConfig.sh]
-		}
-	    }
-	}
-	# Some systems (notably Debian) modify Tcl installations to
-	# store tclConfig.sh in [info library], apparently so as to
-	# avoid conflict between multiple Tcl versions.
-	if {[file readable [file join [info library] tclConfig.sh]]} {
-	    return [file join [info library] tclConfig.sh]
-	}
-	# Some 64-bit systems stick packages under lib/, but put
-	# tclConfig.sh next to libtcl in lib64/
-	set testname [file join [file dirname [info library]] tclConfig.sh]
-	if {[file readable $testname]} {
-	    return $testname
-	}
-	set exec [file tail [info nameofexecutable]]
-	# If we're running tclsh...
-	if {[regexp -nocase tclsh $exec]} {
-	    set cf [$this RelToExec [info nameofexecutable] tclConfig.sh]
-	    if {[file readable $cf]} {
-		return $cf
-	    }
-	}
-	# Not in usual places, go searching for tclsh...
-	set candshells [list]
-	if {[regsub -nocase wish [file tail $exec] tclsh shell]} {
-	    lappend candshells [file join [file dirname $exec] $shell]
-	    lappend candshells $shell
-	}
-	if {![regexp {^([^.]*(.[^.]*|$))} [package provide Tcl] dummy majmin]} {
-	    set majmin [info tclversion]
-	}
-	if {[string compare $majmin [package provide Tcl]]!=0} {
-	    lappend candshells tclsh[package provide Tcl]
-	    lappend candshells tclsh[join [split [package provide Tcl] .] ""]
-	}
-	lappend candshells tclsh$majmin
-	lappend candshells tclsh[join [split $majmin .] ""]
-	lappend candshells tclsh ;# Last resort
-	foreach shell $candshells {
-	    set shell [auto_execok $shell]
-	    if {[llength $shell]} {
-		set cf [$this RelToExec [lindex $shell 0] tclConfig.sh]
-		if {[file readable $cf]} {
-		    return $cf
-		}
+       global tcl_pkgPath tcl_platform tcl_version
+       set searchdirs {}
+       # In Tcl 8.5 and later, libdir,runtime is first place to look
+       if {[catch {::tcl::pkgconfig get libdir,runtime} libdir] == 0} {
+          lappend searchdirs $libdir
+       }
+       # If tcl_pkgPath isn't broken :( ...
+       if {[info exists tcl_pkgPath]} {
+          set searchdirs [concat $searchdirs $tcl_pkgPath]
+       }
+       # Some systems (notably Debian) modify Tcl installations to
+       # store tclConfig.sh in [info library], apparently so as to
+       # avoid conflict between multiple Tcl versions.  Check parent
+       # directory of this too.
+       lappend searchdirs [info library] [file dirname [info library]]
 
-	    }
-	}
-	return -code error "tclConfig.sh not found"
+       # Look
+       foreach libdir $searchdirs {
+          set cf [file join $libdir tclConfig.sh]
+          if {[file readable $cf] && [$this CheckTclConfigVersion $cf]} {
+             return $cf
+          }
+       }
+       # No joy?  Check for tcl* subdirectories
+       if {![regexp {^([^.]*(.[^.]*|$))} [package provide Tcl] dummy majmin]} {
+          set majmin [info tclversion]
+       }
+       foreach {tclmajor tclminor} [split $majmin "."] break
+       foreach libdir $searchdirs {
+          foreach trydir [glob -nocomplain [file join $libdir tcl*]] {
+             if {[file isdirectory $trydir]} {
+                if {[regexp {^tcl[^0-9]*([0-9]+)[^0-9]*([0-9]*)} \
+                        [file tail $trydir] dummy major minor]} {
+                   if {$tclmajor != $major} { break }
+                   if {[string match {} $minor] || $tclminor == $minor} {
+                      set cf [file join $trydir tclConfig.sh]
+                      if {[file readable $cf] \
+                             && [$this CheckTclConfigVersion $cf]} {
+                         return $cf
+                      }
+                   }
+                } else {
+                   # No numbers embedded in directory name.  Try anyway?!
+                   set cf [file join $trydir tclConfig.sh]
+                   if {[file readable $cf] \
+                          && [$this CheckTclConfigVersion $cf]} {
+                      return $cf
+                   }
+                }
+             }
+          }
+       }
+
+       # The framework installs of Tcl/Tk on Mac OSX are different from
+       # anything else:
+       if {[string match Darwin $tcl_platform(os)]} {
+          set chklist {}
+          foreach elt $searchdirs {
+             if {[regexp {^(.*)/Resources/Scripts} $elt dummy prefix]} {
+                lappend chklist $prefix
+             } else {
+                lappend chklist $elt
+             }
+          }
+          lappend chklist \
+             /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version \
+             /Library/Frameworks/Tcl.framework/Versions/$tcl_version \
+             /System/Library/Frameworks/Tcl.framework \
+             /Library/Frameworks/Tcl.framework
+          foreach libdir $chklist {
+             set cf [file join $libdir tclConfig.sh]
+             if {[file readable $cf] \
+                    && [$this CheckTclConfigVersion $cf]} {
+                return $cf
+             }
+          }
+       }
+
+       # Try looking relative to tclsh executable
+       set exec [file tail [info nameofexecutable]]
+       # If we're running tclsh...
+       if {[regexp -nocase tclsh $exec]} {
+          set cf [$this RelToExec [info nameofexecutable] tclConfig.sh]
+          if {[file readable $cf] && [$this CheckTclConfigVersion $cf]} {
+             return $cf
+          }
+       }
+       # Go searching for tclsh...
+       set candshells [list]
+       if {[regsub -nocase wish [file tail $exec] tclsh shell]} {
+          lappend candshells [file join [file dirname $exec] $shell]
+          lappend candshells $shell
+       }
+       if {[string compare $majmin [package provide Tcl]]!=0} {
+          lappend candshells tclsh[package provide Tcl]
+          lappend candshells tclsh[join [split [package provide Tcl] .] ""]
+       }
+       lappend candshells tclsh$majmin
+       lappend candshells tclsh[join [split $majmin .] ""]
+       lappend candshells tclsh ;# Last resort
+       foreach shell $candshells {
+          set shell [auto_execok $shell]
+          if {[llength $shell]} {
+             set cf [$this RelToExec [lindex $shell 0] tclConfig.sh]
+             if {[file readable $cf] && [$this CheckTclConfigVersion $cf]} {
+                return $cf
+             }
+          }
+       }
+       return -code error "tclConfig.sh not found"
+    }
+
+    private method CheckTkConfigVersion { filename } {
+       # Import is the name of a tkConfig.sh file.
+       # Returns 1 if a TK_VERSION record can be identified inside the
+       # file and the version string matches [info tclversion]
+       # Otherwise return 0.  Also returns 0 if the file cannot be
+       # opened for reading.
+       if {[catch {open $filename} f]} {
+          return 0  ;# Can't open file
+       }
+       set f [open $filename]
+       gets $f line
+       while {![eof $f] && ![string match "TK_VERSION=*" $line]} {
+          gets $f line	    
+       }
+       close $f
+       if {![regexp {^TK_VERSION=[^0-9.]*([0-9.]+)[^0-9.]*$} \
+                $line dummy verno]} {
+          # Bad record format
+          return 0
+       }
+       set checkver [info tclversion]
+       if {$checkver < 8.0} {
+          set checkver [format "%g" [expr {$checkver - 3.4}]]
+          ## Round slightly
+       }
+       if {[string compare $checkver $verno]!=0} {
+          return 0  ;# Mismatch
+       }
+       return 1 ;# Version strings match
     }
 
     private method FindTkConfig {} {
-	# If Tk is installed where Tcl can find it...
-	global tcl_pkgPath tcl_platform tcl_version
-	if {[info exists tcl_pkgPath]} {
-	    foreach libdir $tcl_pkgPath {
-		if {[file readable [file join $libdir tkConfig.sh]]} {
-		    return [file join $libdir tkConfig.sh]
-		}
-	    }
-	}
-	# If Tk is installed where Tcl is...
-	if {![catch {$this GetValue TCL_EXEC_PREFIX} epfx]} {
-           set cf [$this RelToDir $epfx tkConfig.sh]
-           if {[file readable $cf]} {
-              return $cf
-           }
-	}
-        # If we found tclConfig.sh, check for tkConfig.sh in same or
-        # parallel location
-        global env
-	if {[info exists env(OOMMF_TCL_CONFIG)]} {
-           set cf [file join [file dirname $env(OOMMF_TCL_CONFIG)] tkConfig.sh]
-           if {[file readable $cf]} {
-              return $cf
-           }
-           # On Darwin Framework builds, tkConfig.sh is in a parallel directory
-           if {[regsub {Tcl\.framework} $env(OOMMF_TCL_CONFIG) Tk.framework cf]} {
-              set cf [file join [file dirname $cf] tkConfig.sh]
-              if {[file readable $cf]} {
-                 return $cf
-              }
-           }
-        }
-	# The framework installs of Tcl/Tk on Mac OSX are different from
-	# anything else:
-	if {[string match Darwin $tcl_platform(os)]} {
-           set chklist {}
-           if {[info exists tcl_pkgPath]} {
-              foreach elt $tcl_pkgPath {
-                 if {[regexp {^(.*)/Resources/Scripts} $elt dummy prefix]} {
-                    set elt $prefix
-                 }
-                 regsub {Tcl\.framework} $elt Tk.framework elt
-                 lappend chklist $elt
-              }
-           }
-           lappend chklist \
-		    /System/Library/Frameworks/Tk.framework/Versions/$tcl_version \
-		    /Library/Frameworks/Tk.framework/Versions/$tcl_version \
-		    /System/Library/Frameworks/Tk.framework \
-		    /Library/Frameworks/Tk.framework
-	    foreach libdir $chklist {
-		if {[file readable [file join $libdir tkConfig.sh]]} {
-		    return [file join $libdir tkConfig.sh]
-		}
-	    }
-	}
-	# Some systems (notably Debian) modify Tk installations to
-	# store tkConfig.sh in $::tk_library, apparently so as to
-	# avoid conflict between multiple Tk versions.
-	global tk_library
-	if {[info exists tk_library]} {
-	    if {[file readable [file join $tk_library tkConfig.sh]]} {
-		return [file join $tk_library tkConfig.sh]
-	    }
-	    # Some 64-bit systems stick packages under lib/, but
-	    # put tkConfig.sh next to libtk in lib64/
-	    set testname [file join [file dirname $tk_library] tkConfig.sh]
-	    if {[file readable $testname]} {
-		return $testname
-	    }
-	}
-	# Without Tk, ::tk_library does not exist, so make a guess that
-	# Tk and Tcl are installed under the same prefix.
-	if {![catch {$this GetValue TCL_EXEC_PREFIX} epfx]} {
-           set cf [$this RelToDir $epfx \
-                      [file join tk[$class TkVersion] tkConfig.sh]]
-           if {[file readable $cf]} {
-              return $cf
-           }
-	}
-	# If we've already found tclConfig, then tkConfig might live
-	# next door.
-	global env
-	if {[info exists env(OOMMF_TCL_CONFIG)]} {
-	    set cf [file join [file dirname $env(OOMMF_TCL_CONFIG)] \
-                       tkConfig.sh]
-	    if {[file readable $cf]} {
-		return $cf
-	    }
-	}
-	# If we're running wish...
-        set exec [info nameofexecutable]
-        catch {set exec [Oc_ResolveLink $exec]}
-        set exec [Oc_DirectPathname $exec]
-        if {[regexp -nocase wish [file tail $exec]]} {
-            # This check wrt the absolute, resolved path.  There
-            # is a check farther below wrt just the tail.
-            set cf [$this RelToExec $exec tkConfig.sh]
-            if {[file readable $cf]} {
+       # If we found tclConfig.sh, check for tkConfig.sh in same or
+       # parallel location
+       global env
+       if {[info exists env(OOMMF_TCL_CONFIG)]} {
+          set cdir [file dirname $env(OOMMF_TCL_CONFIG)]
+          lappend checkdirs $cdir
+          # On Darwin Framework builds, tkConfig.sh is in a parallel directory
+          if {[regsub {Tcl\.framework} $cdir Tk.framework td]} {
+             lappend checkdirs $td
+          }
+          # If last component in cdir has form "tcl*", then replace
+          # "tcl" with "tk"
+          set lc [file tail $cdir]
+          if {[string match tcl* $lc]} {
+             regsub {^tcl} $lc tk lc
+             lappend checkdirs [file join [file dirname $cdir] $lc]
+          }
+          foreach td $checkdirs {
+             set cf [file join $td tkConfig.sh]
+             if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
                 return $cf
-            }
-	}
-	# Not in usual places, go searching for wish...
-        set candshells [list]
-        if {[regsub -nocase tclsh [file tail $exec] wish shell]} {
-            lappend candshells [file join [file dirname $exec] $shell]
-	    lappend candshells $shell
-        }
+             }
+          }
+       }
+       # Try TCL_EXEC_PREFIX too
+       if {![catch {$this GetValue TCL_EXEC_PREFIX} epfx]} {
+          set cf [$this RelToDir $epfx \
+                     [file join tk[$class TkVersion] tkConfig.sh]]
+          if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
+             return $cf
+          }
+       }
 
-	if {![regexp {^([^.]*(.[^.]*|$))} [$class TkVersion] dummy majmin]} {
-           set majmin [info tclversion] ;# Fallback
-	}
-	if {[string compare $majmin [$class TkVersion]]!=0} {
-           lappend candshells wish[$class TkVersion]
-           lappend candshells wish[join [split [$class TkVersion] .] ""]
-	}
-	lappend candshells wish$majmin
-	lappend candshells wish[join [split $majmin .] ""]
-        if {[regexp -nocase wish [file tail $exec]]} {
-            lappend candshells [file tail $exec]
-        }
-	lappend candshells wish ;# Last resort
-	foreach shell $candshells {
-	    set shell [auto_execok $shell]
-	    if {[llength $shell]} {
-                set checkexec [lindex $shell 0]
-                catch {set checkexec [Oc_ResolveLink $checkexec]}
-		set cf [$this RelToExec $checkexec tkConfig.sh]
-		if {[file readable $cf]} {
-		    return $cf
-		}
+       # Otherwise, hunt around as in FindTclConfig
+       global tcl_pkgPath tcl_platform tcl_version
+       set searchdirs {}
+       # In Tcl 8.5 and later, libdir,runtime is first place to look
+       if {[catch {::tcl::pkgconfig get libdir,runtime} libdir] == 0} {
+          lappend searchdirs $libdir
+       }
+       # If tcl_pkgPath isn't broken :( ...
+       if {[info exists tcl_pkgPath]} {
+          set searchdirs [concat $searchdirs $tcl_pkgPath]
+       }
+       # Some systems (notably Debian) modify Tcl installations to
+       # store config files in [info library], apparently so as to
+       # avoid conflict between multiple Tcl versions.  Check parent
+       # directory of this too.
+       lappend searchdirs [info library] [file dirname [info library]]
+       # Some systems (notably Debian) modify Tk installations to
+       # store tkConfig.sh in $::tk_library, apparently so as to
+       # avoid conflict between multiple Tk versions.
+       global tk_library
+       if {[info exists tk_library]} {
+          lappend searchdirs $tk_library [file dirname $tk_library]
+       }
 
-	    }
-	}
-	return -code error "tkConfig.sh not found"
+       # Look
+       foreach libdir $searchdirs {
+          set cf [file join $libdir tkConfig.sh]
+          if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
+             return $cf
+          }
+       }
+       # No joy?  Check for tcl* subdirectories
+       if {![regexp {^([^.]*(.[^.]*|$))} [package provide Tcl] dummy majmin]} {
+          set majmin [info tclversion]
+       }
+       foreach {tclmajor tclminor} [split $majmin "."] break
+       foreach libdir $searchdirs {
+          foreach trydir [glob -nocomplain [file join $libdir tk*] \
+                             [file join $libdir tcl*]] {
+             if {[file isdirectory $trydir]} {
+                if {[regexp {^(tcl|tk)[^0-9]*([0-9]+)[^0-9]*([0-9]*)} \
+                        [file tail $trydir] dummy prefix major minor]} {
+                   if {$tclmajor != $major} { break }
+                   if {[string match {} $minor] || $tclminor == $minor} {
+                      set cf [file join $trydir tkConfig.sh]
+                      if {[file readable $cf] \
+                             && [$this CheckTkConfigVersion $cf]} {
+                         return $cf
+                      }
+                   }
+                } else {
+                   # No numbers embedded in directory name.  Try anyway?!
+                   set cf [file join $trydir tkConfig.sh]
+                   if {[file readable $cf] \
+                          && [$this CheckTkConfigVersion $cf]} {
+                      return $cf
+                   }
+                }
+             }
+          }
+       }
+
+       # The framework installs of Tcl/Tk on Mac OSX are different from
+       # anything else:
+       if {[string match Darwin $tcl_platform(os)]} {
+          set chklist {}
+          foreach elt $searchdirs {
+             if {[regexp {^(.*)/Resources/Scripts} $elt dummy prefix]} {
+                lappend elt $prefix
+             }
+             regsub {Tcl\.framework} $elt Tk.framework elt
+             lappend chklist $elt
+          }
+          lappend chklist \
+             /System/Library/Frameworks/Tk.framework/Versions/$tcl_version \
+             /Library/Frameworks/Tk.framework/Versions/$tcl_version \
+             /System/Library/Frameworks/Tk.framework \
+             /Library/Frameworks/Tk.framework
+          foreach libdir $chklist {
+             set cf [file join $libdir tkConfig.sh]
+             if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
+                return $cf
+             }
+          }
+       }
+
+       # If we're running wish...
+       set exec [info nameofexecutable]
+       catch {set exec [Oc_ResolveLink $exec]}
+       set exec [Oc_DirectPathname $exec]
+       if {[regexp -nocase wish [file tail $exec]]} {
+          # This check wrt the absolute, resolved path.  There
+          # is a check farther below wrt just the tail.
+          set cf [$this RelToExec $exec tkConfig.sh]
+          if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
+             return $cf
+          }
+       }
+       # Not in usual places, go searching for wish...
+       set candshells [list]
+       if {[regsub -nocase tclsh [file tail $exec] wish shell]} {
+          lappend candshells [file join [file dirname $exec] $shell]
+          lappend candshells $shell
+       }
+       if {[string compare $majmin [$class TkVersion]]!=0} {
+          lappend candshells wish[$class TkVersion]
+          lappend candshells wish[join [split [$class TkVersion] .] ""]
+       }
+       lappend candshells wish$majmin
+       lappend candshells wish[join [split $majmin .] ""]
+       if {[regexp -nocase wish [file tail $exec]]} {
+          lappend candshells [file tail $exec]
+       }
+       lappend candshells wish ;# Last resort
+       foreach shell $candshells {
+          set shell [auto_execok $shell]
+          if {[llength $shell]} {
+             set checkexec [lindex $shell 0]
+             catch {set checkexec [Oc_ResolveLink $checkexec]}
+             set cf [$this RelToExec $checkexec tkConfig.sh]
+             if {[file readable $cf] && [$this CheckTkConfigVersion $cf]} {
+                return $cf
+             }
+          }
+       }
+       return -code error "tkConfig.sh not found"
     }
 
     private method RelToDir {dir cf} {

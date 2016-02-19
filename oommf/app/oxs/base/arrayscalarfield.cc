@@ -69,7 +69,7 @@ Oxs_ArrayScalarField::Oxs_ArrayScalarField(
 
 void
 Oxs_ArrayScalarField::InitArray
-(OC_INT4m xdim,OC_INT4m ydim,OC_INT4m zdim,
+(OC_INDEX xdim,OC_INDEX ydim,OC_INDEX zdim,
  const Oxs_Box& range)
 {
   if(xdim<1 || ydim<1 || zdim<1) {
@@ -114,9 +114,9 @@ OC_REAL8m
 Oxs_ArrayScalarField::Value
 (const ThreeVector& pt) const
 {
-  OC_INT4m ix = static_cast<OC_INT4m>(floor((pt.x-offset.x)*scale.x));
-  OC_INT4m iy = static_cast<OC_INT4m>(floor((pt.y-offset.y)*scale.y));
-  OC_INT4m iz = static_cast<OC_INT4m>(floor((pt.z-offset.z)*scale.z));
+  OC_INDEX ix = static_cast<OC_INDEX>(floor((pt.x-offset.x)*scale.x));
+  OC_INDEX iy = static_cast<OC_INDEX>(floor((pt.y-offset.y)*scale.y));
+  OC_INDEX iz = static_cast<OC_INDEX>(floor((pt.z-offset.z)*scale.z));
 
   if(0<=ix && ix<array.GetDim3() &&
      0<=iy && iy<array.GetDim2() &&

@@ -1,0 +1,40 @@
+This is a demonstration implementation of an Oxs_Ext object computing
+the demag field using the FFTW library (version 3).
+
+Version 3.x of FFTW, including development files, must be installed to
+build and run this module.  In particular, the include file "fftw3.h"
+must be installed in either one of the standard places your C++
+compiler looks for include files, or else you must modify your
+oommf/config/platform/local/<platform>.tcl file to define the location
+of this directory, e.g.,
+
+   $config SetValue program_compiler_extra_include_dirs \
+         [list "/opt/local/include"]
+
+The fftwdemag module also requires a library with the stem name "fftw3".
+On Unix systems the full name of this library will be something like
+"libfftw3.a".  On Windows the linker will be looking for a file named
+"fftw3.lib".  If the library filename follows a different naming
+convention, then modify the oommf/config/platform/local/<platform>.tcl
+file to define an alternate naming scheme; for example, if the library
+file was actually named fftw3-bc.lib, use
+
+   $config SetValue program_linker_extra_lib_scripts \
+       [list {format "%s-bc.lib"}]
+
+As with the include file, if the library file is not in one of the
+standard places the linker looks for library files, then modify the
+oommf/config/platform/local/<platform>.tcl file to define the location
+of this directory, e.g.,
+
+   $config SetValue program_compiler_extra_lib_dirs \
+         [list "/opt/local/lib"]
+
+If the library has a dynamic (shared) component loaded at run-time,
+then the run-time loader will have to be able to find that as well.
+On Windows that means that the corresponding .dll needs to be in a
+directory in the PATH environment variable.  On Unix you may need to
+modify your LD_LIBRARY_PATH environment variable or take other
+measures.
+
+-Michael Donahue, 23-Feb-2014
