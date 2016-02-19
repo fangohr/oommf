@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html123"
+<A NAME="tex2html122"
   HREF="Installation.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html119"
+<A NAME="tex2html118"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html113"
+<A NAME="tex2html112"
   HREF="Disclaimer.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html125"
+<A NAME="tex2html124"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html121"
+<A NAME="tex2html120"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html124"
+<B> Next:</B> <A NAME="tex2html123"
   HREF="Installation.html">Installation</A>
-<B> Up:</B> <A NAME="tex2html120"
+<B> Up:</B> <A NAME="tex2html119"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html114"
+<B> Previous:</B> <A NAME="tex2html113"
   HREF="Disclaimer.html">Disclaimer</A>
 <BR>
 <BR>
@@ -61,7 +61,7 @@ The goal of the
 <A NAME="tex2html4"
   HREF="http://math.nist.gov/oommf/">OOMMF</A>
 (Object
-Oriented Micromagnetic Framework) project in the
+Oriented MicroMagnetic Framework) project in the
 <A NAME="tex2html5"
   HREF="http://www.itl.nist.gov/">Information Technology
 Laboratory</A>
@@ -71,10 +71,11 @@ Laboratory</A>
 Technology</A>
 (NIST)
 is to develop a portable, extensible public domain micromagnetic
-program and associated tools.  This code will form a completely
-functional micromagnetics package, but will also have a well
-documented, flexible programmer's interface so that people developing
-new code can swap their own code in and out as desired.  The main
+program and associated tools.  This code forms a completely
+functional micromagnetics package, with the additional capability to
+be extended by other programmers so that people developing
+new code can build on the OOMMF foundation.
+The main
 contributors to OOMMF are
 <A NAME="tex2html7"
   HREF="http://math.nist.gov/~MDonahue">Mike Donahue</A>
@@ -83,19 +84,15 @@ and
   HREF="http://math.nist.gov/~DPorter">Don Porter</A>.
 
 <P>
-In order to allow a programmer not familiar with the code as a whole
-to add modifications and new functionality, we feel that an object
-oriented approach is critical, and have settled on C++ as a good
-compromise with respect to availability, functionality, and
-portability.  In order to allow the code to run on a wide variety of
-systems, we are writing the interface and glue code in Tcl/Tk.  This
-enables our code to operate across a wide range of Unix platforms,
-Windows&nbsp;NT, and Windows&nbsp;9X.
+OOMMF is written in C++, a widely-available, object-oriented language
+that can produce programs with good performance as well as extensibility.
+For portable user interfaces, we make use of Tcl/Tk so that OOMMF 
+operates across a wide range of Unix, Windows, and Mac OS X platforms.
 
 <P>
-The code may be modified at 3 distinct levels.  At the top level,
+The code may be modified at three distinct levels.  At the top level,
 individual programs interact via well-defined protocols across network
-sockets<A NAME="651"></A>.  One may connect these modules together
+sockets<A NAME="720"></A>.  One may connect these modules together
 in various ways from the user interface, and new modules speaking the
 same protocol can be transparently added.  The second level of
 modification is at the Tcl/Tk script level.  Some modules allow
@@ -106,50 +103,18 @@ present the documentation for this is incomplete (cf. the ``OOMMF
 Programming Manual'').
 
 <P>
-The first portion of OOMMF released was a magnetization file display
-program called
-<A NAME="tex2html9"
-  HREF="http://math.nist.gov/oommf/mmdisp/mmdisp.html"><B>mmDisp</B></A><A NAME="654"></A>.
-A <A NAME="tex2html10"
-  HREF="http://math.nist.gov/oommf/software.html">working
-release</A>
-of the complete OOMMF
-project was first released in October, 1998.  It included a problem
-editor, a 2D micromagnetic solver<A NAME="657"></A>, and several
-display widgets, including an updated version of <B>mmDisp</B>.  The
-solver can be controlled by an <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d">interactive
-interface</A>, or through
-a sophisticated <A HREF="OOMMF_2D_Micromagnetic_Solv.html#sec:obs">batch control system</A>.  This solver was originally based on a
-micromagnetic code that
-<A NAME="tex2html11"
-  HREF="http://math.nist.gov/~MDonahue">Mike Donahue</A>
-and
-<A NAME="tex2html12"
-  HREF="mailto:rmcmichael@nist.gov">Bob McMichael</A>
-had previously developed.  It utilizes a Landau-Lifshitz
-ODE<A NAME="673"></A> solver to relax 3D spins on a 2D
-mesh<A NAME="674"></A> of square cells, using FFT's<A NAME="675"></A> to compute the
-self-magnetostatic (demag) field<A NAME="676"></A>.  Anisotropy,
-applied field<A NAME="677"></A>, and initial
-magnetization<A NAME="678"></A> can be varied pointwise, and
-arbitrarily shaped elements<A NAME="679"></A> can be modeled.  
-
-<P>
 The current development version, OOMMF 1.2, includes Oxs, the
 OOMMF eXtensible Solver.  Oxs offers users of OOMMF the ability
-to extend Oxs with their own modules.  The details of programming
-an Oxs extension module are found in the
-<A NAME="tex2html13"
-  HREF="http://math.nist.gov/oommf/doc/">OOMMF Programming Manual
-</A>.  The extensible nature of the Oxs
+to extend Oxs with their own modules.  
+The extensible nature of the Oxs
 solver means that its capabilities may be varied as necessary for the
-problem to be solved.  Oxs modules distributed as part of OOMMF support full 3D<A NAME="682"></A> simulations suitable for modeling
+problem to be solved.  Oxs modules distributed as part of OOMMF support full 3D<A NAME="721"></A> simulations suitable for modeling
 layered materials.
 
 <P>
-If you want to receive e-mail<A NAME="683"></A>
-notification<A NAME="684"></A> of updates to this project, register
-your e-mail address with the ``muMAG Announcement'' mailing list:
+If you want to receive e-mail<A NAME="722"></A>
+notification<A NAME="723"></A> of updates to this project, register
+your e-mail address with the ``muMAG'' mailing list:
 <DIV ALIGN="CENTER">
 <A NAME="tex2html3"
   HREF="http://www.ctcms.nist.gov/~rdm/email-list.html">http://www.ctcms.nist.gov/~rdm/email-list.html</A>.
@@ -165,22 +130,22 @@ referencing OOMMF.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html123"
+<A NAME="tex2html122"
   HREF="Installation.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html119"
+<A NAME="tex2html118"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html113"
+<A NAME="tex2html112"
   HREF="Disclaimer.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html126"
+<A NAME="tex2html125"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html121"
+<A NAME="tex2html120"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

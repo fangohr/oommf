@@ -111,7 +111,7 @@ OC_BOOL Oxs_CubicAnisotropy::Init()
 
 void Oxs_CubicAnisotropy::ComputeEnergyChunk
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,

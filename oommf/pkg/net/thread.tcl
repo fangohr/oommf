@@ -5,7 +5,7 @@
 # The Tcl event loop must be running in order for non-blocking socket
 # communications to work.
 #
-# Last modified on: $Date: 2007-03-21 01:17:06 $
+# Last modified on: $Date: 2015/09/30 07:41:35 $
 # Last modified by: $Author: donahue $
 #
 
@@ -35,6 +35,9 @@ Oc_Class Net_Thread {
     # Port on host on which the thread server listens
     private variable port
     
+    # Protocol which thread server uses
+    private variable protocol
+
     # Send id
     private variable id = 0
 
@@ -43,6 +46,7 @@ Oc_Class Net_Thread {
 
     # Is object ready to relay messages to and from the thread?
     private variable ready = 0
+    private variable write_disabled = 0
 
     private variable protocolname
     private variable protocolversion
@@ -128,7 +132,7 @@ Oc_Class Net_Thread {
             error "Can't construct account object.\n$msg"
         } else {
             Oc_EventHandler New _ $account Delete [list $this Delete] \
-                    -groups [list $this]
+                    -oneshot 1 -groups [list $this]
             if {[$account Ready]} {
                 $this LookupThreadPort
             } else {
@@ -157,6 +161,7 @@ Oc_Class Net_Thread {
             0 {
                 set port [lindex $reply 1]
                 set alias [lindex $reply 2]
+                set protocol [lindex $reply 3]
                 $this Connect
             }
             default {
@@ -186,10 +191,15 @@ Oc_Class Net_Thread {
         if {[catch {
                 Net_Connection New connection -hostname $hostname -port $port
                 }]} {
+            catch {unset connection}
             $this Delete
         } else {
-             Oc_EventHandler New _ $connection Delete [list $this Delete] \
-                     -groups [list $this]
+             Oc_EventHandler New _ $connection Delete \
+                 [list $this ConnectionDelete] \
+                 -oneshot 1 -groups [list $this $this-ConnectionDelete]
+             Oc_EventHandler New connection_safeclose_handler \
+                 $connection SafeClose \
+                 [list $this SafeClose] -groups [list $this]
              Oc_EventHandler New _ $connection Ready \
                      [list $this ConnectionReady] -oneshot 1 \
                      -groups [list $this]
@@ -287,6 +297,11 @@ Oc_Class Net_Thread {
         if {!$ready} {
             error "thread $hostname:$pid not ready"
         }
+        if {$write_disabled} {
+           # Safe shutdown request from this side of the connection;
+           # eat output.
+           return -1
+        }
         incr id
         set qid [eval $connection Query $args]
         Oc_EventHandler New _ $connection Reply$qid [list $this \
@@ -305,19 +320,69 @@ Oc_Class Net_Thread {
         return $ready
     }
 
+    private variable inside_SafeClose = 0
+    method SafeClose {} {
+       if {![info exists inside_SafeClose] ||
+           $inside_SafeClose} {
+          return ;# Recursive callback.
+       }
+       set inside_SafeClose 1
+       if {[info exists connection_safeclose_handler]} {
+          $connection_safeclose_handler Delete
+          unset connection_safeclose_handler
+       }
+       Oc_EventHandler Generate $this SafeClose
+       set write_disabled 1
+       if {[info exists connection]} {
+          $connection SafeClose
+       }
+       # When $connection SafeClose completes it calls the $connection
+       # destructor, which will generate a $connection Delete event
+       # that will in turn trigger a call to $this destructor.
+    }
+
+    method ConnectionDelete {} {
+       # This is the handler for the $connection Delete event.  In
+       # this code path the $this Destructor doesn't need to call the
+       # $connection destructor (since that is the event being
+       # handled), which we insure by unsetting connection before
+       # calling $this Delete.
+       catch {unset connection}
+       $this Delete
+    }
+
+    # Variables used to insure that events are generated exactly once.
+    # When Destructor is exited all instance variables are
+    # automatically deleted.
+    private variable this_Delete = 1
+    private variable this_DeleteEnd = 1
     Destructor {
         set ready 0
-        Oc_EventHandler Generate $this Delete
-        Oc_EventHandler DeleteGroup $this
+        if {[info exists write_disabled]} {
+           set write_disabled 1
+        }
+        if {[info exists this_Delete]} {
+           unset this_Delete
+           Oc_EventHandler Generate $this Delete
+        }
         if {[info exists connection]} {
-            $connection Delete
+           Oc_EventHandler DeleteGroup $this-ConnectionDelete
+           $connection Delete
+           unset connection
         }
         if {[info exists myWidget]} {
             $this Configure -gui 0
         }
         if {[info exists hostname] && [info exists pid]} {
-            unset index($hostname,$pid)
+           catch {unset index($hostname,$pid)}
         }
+        if {[info exists this_DeleteEnd]} {
+           unset this_DeleteEnd
+           Oc_EventHandler Generate $this DeleteEnd
+        }
+        # SafeClose clients should use the DeleteEnd event to
+        # determine when close is complete.
+        Oc_EventHandler DeleteGroup $this
     }
 
 }

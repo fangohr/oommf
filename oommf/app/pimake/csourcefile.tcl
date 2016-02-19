@@ -97,7 +97,6 @@ Oc_Class CSourceFile {
                 }
             }
             foreach npp [$index($newpath) DepPath] {
-
 		if {![CSourceFile PathMatch $npp $deppath] && \
 			![CSourceFile PathMatch $npp $sysdeppath]} {
                     lappend deppath $npp
@@ -233,7 +232,9 @@ $searchpath"
                 }
 		if {[lsearch -exact $deppath $includeDir] == -1 && \
 			[lsearch -exact $sysdeppath $includeDir] == -1} {
-                    lappend deppath $includeDir
+		   # Be aggressive about putting Tcl and Tk directories
+		   # at front of include list
+		   set deppath [linsert $deppath 0 $includeDir]
 		}
                 if {[string match tk.h $newfile]} {
                     set xinc [$configuration GetValue TK_XINCLUDES]
@@ -246,7 +247,6 @@ $searchpath"
 				&& [string length $npp]} {
 			    lappend deppath $npp
 			}
-
 		    }
 		}
 	    } elseif {[regexp -nocase \
@@ -255,6 +255,37 @@ $searchpath"
 	        # The above is a liberal match against lines including
 	        # the sequence '/* End includes */'
 	        break
+            } elseif {[regexp "^\[ \t\]*#\[ \t\]*include\[ \t\]+<(\[^>\]+)>" \
+			   $line match newfile]} {
+	       # Still no match found.  Try adding in "extra" include
+	       # directories.  We add these only as a last resort, and
+	       # at the end, to minimize risk of interference with
+	       # system include directories (in particular, we don't
+	       # want to look for Tcl/Tk headers in these
+	       # directories).
+	       if {![catch {$configuration GetValue \
+				program_compiler_extra_include_dirs} idirs]} {
+		  set newpath {}
+		  foreach npp $idirs {
+                     set npp [Oc_DirectPathname $npp]
+		     regsub -- {^-I} $npp {} npp
+		     set npp [string trim $npp \"]
+		     if {[lsearch -exact $deppath $npp] == -1 \
+			     && [lsearch -exact $sysdeppath $npp] == -1 \
+			     && ![string match #* $npp] \
+			     && [string length $npp]} {
+			set newpath [file join $npp $newfile]
+			$this AddDependency $newpath break
+			set newpath [file join $npp $platformName $newfile]
+			$this AddDependency $newpath break
+		     }
+		  }
+		  if {[string length $newpath] && \
+			  [info exists index($newpath)]} {
+		     # Found it
+		     lappend deppath $npp
+		  }
+	       }
 	    }
         }
         } msg]

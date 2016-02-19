@@ -2,7 +2,7 @@
 #
 # Tcl/Tk script for print dialog box
 #
-# Last modified on: $Date: 2010-06-25 00:04:47 $
+# Last modified on: $Date: 2010/06/25 00:04:47 $
 # Last modified by: $Author: donahue $
 #
 

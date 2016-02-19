@@ -9,13 +9,14 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:53 $
+ * Last modified on: $Date: 2013/05/22 07:15:30 $
  * Last modified by: $Author: donahue $
  */
 
 #include <assert.h>
-#include <stdio.h>
 #include <ctype.h>
+#include <limits>
+#include <stdio.h>
 #include <string.h>
 
 #define USE_OLD_IMAGE
@@ -50,8 +51,8 @@ int If_RGBQuad::MSFill32(Tcl_Channel chan)
   char carr[4];
   int count=Tcl_Read(chan,carr,4);
   if(count!=4) return 0;
-  Blue=carr[0];    Green=carr[1];
-  Red=carr[2];     Reserved=carr[3];
+  Blue=static_cast<OC_BYTE>(carr[0]);    Green=static_cast<OC_BYTE>(carr[1]);
+  Red =static_cast<OC_BYTE>(carr[2]); Reserved=static_cast<OC_BYTE>(carr[3]);
   return count;
 }
 
@@ -141,7 +142,7 @@ private:
   // For Win95, the only supported format masks are RGB555
   // and RGB565 for 16bpp, and RGB888 for 32bpp.
 
-  int AllocPalette(int size); // Returns 1 on success
+  int AllocPalette(OC_UINT4 size); // Returns 1 on success
   void FreePalette();
 
   int FillHeader(Tcl_Channel chan,OC_BOOL fillpalette);
@@ -191,11 +192,11 @@ public:
   // 24 bits-per-pixel format.
 };
 
-int If_MSBitmap::AllocPalette(int size)
+int If_MSBitmap::AllocPalette(OC_UINT4 size)
 {
   FreePalette();
   if((Palette=new If_RGBQuad[size])!=NULL) {
-    PaletteSize=OC_UINT4(size);
+    PaletteSize=size;
     return 1;
   }
   return 0;
@@ -317,7 +318,7 @@ int If_MSBitmap::FillHeader(Tcl_Channel chan,OC_BOOL fillpalette)
     // Position at end of BITMAPINFOHEADER
     Tcl_Seek(chan,bmistart+BmiSize,SEEK_SET);
 
-    int palsize=ClrUsed;
+    OC_UINT4 palsize=ClrUsed;
     if(palsize==0) {
       switch(BitCount)
 	{
@@ -331,7 +332,7 @@ int If_MSBitmap::FillHeader(Tcl_Channel chan,OC_BOOL fillpalette)
     }
     if(palsize>0 &&
        AllocPalette(palsize)!=0) {
-      for(int i=0;i<palsize;i++)
+      for(OC_UINT4m i=0;i<palsize;i++)
 	Palette[i].MSFill32(chan);
     }
   }
@@ -450,9 +451,9 @@ int If_MSBitmap::ReadCheck(Tcl_Channel chan,
      DataConvert==BmpConvert(NULL)) { // Bits per pixel check
     return 0;
   }
-
-  imagewidth=Width;
-  imageheight=Height;
+  assert(Width<=INT_MAX && Height<=INT_MAX);
+  imagewidth=static_cast<int>(Width);
+  imageheight=static_cast<int>(Height);
 
   return 1;
 }
@@ -486,27 +487,29 @@ If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
   }
 
   // Deduce working control parameters
-  int stoprow  = Height - srcY;
+  assert(Height<=INT_MAX);
+  int stoprow  = static_cast<int>(Height) - srcY;
   int startrow = stoprow - reqheight;
   if(startrow<0) { reqheight += startrow; startrow=0; }
-  if(OC_UINT4(stoprow)>Height) {
+  if(stoprow > static_cast<int>(Height)) {
     reqheight -= stoprow-Height;   // Safety
-    stoprow = Height;
+    stoprow = static_cast<int>(Height);
   }
   int startcol = srcX;
   int stopcol = startcol+reqwidth;
   if(startcol<0) { reqwidth += startcol; startcol=0; }
-  if(OC_UINT4(stopcol)>Width) {
+  assert(Width<=INT_MAX);
+  if(stopcol>static_cast<int>(Width)) {
     reqwidth -= stopcol-Width;
-    stopcol = Width;
+    stopcol = static_cast<int>(Width);
   }
   if(startrow>=stoprow || startcol>=stopcol) {
     return TCL_OK; // Nothing to do
   }
 
-  // 
+  assert(reqwidth>=0);
   unsigned char *read_buf=new unsigned char[FileRowSize];
-  If_RGBQuad *pix=new If_RGBQuad[reqwidth];
+  If_RGBQuad *pix=new If_RGBQuad[size_t(reqwidth)];
 
   Tk_PhotoImageBlock pib;
   pib.pixelPtr=(unsigned char *)pix;
@@ -525,16 +528,19 @@ If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
 
   // Skip unrequested leading rows
   Tcl_Seek(chan,OffBits+startrow*FileRowSize,SEEK_SET);
-
-  for(OC_UINT4 i= OC_UINT4(startrow);i<OC_UINT4(stoprow);i++) {
-    if(Tcl_Read(chan,(char *)read_buf,FileRowSize)==-1) {
+  assert(FileRowSize <= INT_MAX);
+  for(int i= startrow;i<stoprow;i++) {
+    if(Tcl_Read(chan,(char *)read_buf,static_cast<int>(FileRowSize))==-1) {
       Tcl_ResetResult(interp);
       Tcl_AppendResult(interp,"Input error during read of"
                        " Microsoft .bmp file ",fileName,
                        " bitmap.",(char *)NULL);
       return TCL_ERROR;
     }
-    switch((this->*DataConvert)(read_buf,pix,OC_UINT4(startcol),OC_UINT4(stopcol)))
+    assert(0<=startcol && startcol==int(OC_UINT4(startcol)));
+    assert(0<=stopcol  &&  stopcol==int(OC_UINT4(stopcol)));
+    switch((this->*DataConvert)(read_buf,pix,
+                                OC_UINT4(startcol),OC_UINT4(stopcol)))
       {
       case 0:  break;
       default:
@@ -546,7 +552,7 @@ If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
 	return TCL_ERROR;
       }
     Tk_PhotoPutBlock(imageHandle,&pib,destX,destY+stoprow-i-1,
-		     reqwidth,1);
+                     reqwidth,1);
   }
   delete[] pix;
   delete[] read_buf;
@@ -583,14 +589,18 @@ int If_MSBitmap::WritePhoto
 
   // Fill BMP header
   const int headsize=54; // Header size; Don't use sizeof(head) because
-  /// that can influenced by machine-specific alignment restrictions
+  /// that can be influenced by machine-specific alignment restrictions
+  assert(blockPtr->width>=0
+         && blockPtr->width == int(OC_UINT4(blockPtr->width)));
+  assert(blockPtr->height>=0 &&
+         blockPtr->height == int(OC_UINT4(blockPtr->height)));
+  Width     = static_cast<OC_UINT4>(blockPtr->width);
+  Height    = static_cast<OC_UINT4>(blockPtr->height);
   Type[0]='B';  Type[1]='M';
-  FileSize  = headsize + blockPtr->height*(3*blockPtr->width + padsize);
+  FileSize = (OC_UINT4(headsize) + Height*(3*Width + OC_UINT4(padsize)));
   Reserved1 = Reserved2 = 0;
   OffBits   = headsize;
   BmiSize   = headsize-14;
-  Width     = blockPtr->width;
-  Height    = blockPtr->height;
   Planes    = 1;
   BitCount  = 24;
   Compression = 0;
@@ -643,9 +653,9 @@ int If_MSBitmap::WritePhoto
   for(int i = blockPtr->height;i>0;i--) {
     int pixoff = (i-1) * blockPtr->pitch;
     for(int j=0;j<blockPtr->width;j++,pixoff+=blockPtr->pixelSize) {
-      bgr[0] = blockPtr->pixelPtr[pixoff+blockPtr->offset[2]]; // blue
-      bgr[1] = blockPtr->pixelPtr[pixoff+blockPtr->offset[1]]; // green
-      bgr[2] = blockPtr->pixelPtr[pixoff+blockPtr->offset[0]]; // red
+      bgr[0] = (char)blockPtr->pixelPtr[pixoff+blockPtr->offset[2]]; // blue
+      bgr[1] = (char)blockPtr->pixelPtr[pixoff+blockPtr->offset[1]]; // green
+      bgr[2] = (char)blockPtr->pixelPtr[pixoff+blockPtr->offset[0]]; // red
       if(Tcl_Write(chan,bgr,3)==-1) {
 	Tcl_ResetResult(interp);
 	Tcl_AppendResult(interp,"Output error writing"
@@ -892,7 +902,8 @@ int If_PPM::FillPhoto
   }
 
   // Setup Tk_PhotoImageBlock for writing data
-  unsigned char* pix=new unsigned char[3*width];
+  assert(width>=0);
+  unsigned char* pix=new unsigned char[3*size_t(width)];
   Tk_PhotoImageBlock pib;
   pib.pixelPtr=(unsigned char *)pix;
   pib.width=width;
@@ -1014,7 +1025,7 @@ int If_PPM::FillPhoto
   }
 
   // Setup Tk_PhotoImageBlock for writing data
-  unsigned char* pix=new unsigned char[3*width];
+  unsigned char* pix=new unsigned char[3*size_t(width)];
   Tk_PhotoImageBlock pib;
   pib.pixelPtr=(unsigned char *)pix;
   pib.width=width;
@@ -1113,7 +1124,7 @@ int If_PPM::SprintColorValues(unsigned char* buf,
   *(cptr++) = static_cast<unsigned char>('0' + bo);
   *(cptr++) = '\n';
 
-  return (cptr-buf);
+  return static_cast<int>(cptr-buf);
 }
 
 int If_PPM::WritePhoto
@@ -1151,9 +1162,9 @@ int If_PPM::WritePhoto
 # define IF_PPM_WPBUFSIZE (4096*IF_PPM_MAXCHUNKSIZE)
   unsigned char buf[IF_PPM_WPBUFSIZE+1];
   /// Space for minimum of IF_PPM_WPBUFSIZE/IF_PPM_MAXCHUNKSIZE pixels,
-  /// + 1 (safety),
-  assert(IF_PPM_WPBUFSIZE>IF_PPM_MAXCHUNKSIZE); // Otherwise ::SprintColorValues will
-  /// overflow buffer.
+  /// + 1 (safety).
+  assert(IF_PPM_WPBUFSIZE>IF_PPM_MAXCHUNKSIZE); // Otherwise
+  /// ::SprintColorValues will overflow buffer.
 
   // Header info
   int width  = blockPtr->width;
@@ -1161,9 +1172,11 @@ int If_PPM::WritePhoto
   int maxval = 255; // Assumed
 
   // Write header
+  size_t buf_strlen = strlen((char *)buf);
+  assert(buf_strlen<=INT_MAX);
   Oc_Snprintf((char*)buf,sizeof(buf),"P3\n%d %d\n%d\n",
 	      width,height,maxval);
-  if(Tcl_Write(chan,(char*)buf,strlen((char*)buf))==-1) {
+  if(Tcl_Write(chan,(char*)buf,static_cast<int>(buf_strlen))==-1) {
     Tcl_ResetResult(interp);
     Tcl_AppendResult(interp,"Output error writing"
 		     " PPM P3 file: \"",filename,
@@ -1231,8 +1244,8 @@ int If_PPM::WritePhoto
   int maxval = 255; // Assumed
 
   // Write header
-  outlen = Oc_Snprintf(buf,sizeof(buf),"P3\n%d %d\n%d\n",
-		    width,height,maxval);
+  outlen = (int)Oc_Snprintf(buf,sizeof(buf),"P3\n%d %d\n%d\n",
+                            width,height,maxval);
   Tcl_DStringInit(dataPtr);
   Tcl_DStringAppend(dataPtr,buf,outlen);
 
@@ -1243,7 +1256,7 @@ int If_PPM::WritePhoto
       int red   = blockPtr->pixelPtr[pixoff+blockPtr->offset[0]];
       int green = blockPtr->pixelPtr[pixoff+blockPtr->offset[1]];
       int blue  = blockPtr->pixelPtr[pixoff+blockPtr->offset[2]];
-      outlen = SprintColorValues((unsigned char*)buf,red,green,blue);
+      outlen = (int)SprintColorValues((unsigned char*)buf,red,green,blue);
       Tcl_DStringAppend(dataPtr,buf,outlen);
     }
   }

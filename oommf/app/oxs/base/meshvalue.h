@@ -61,7 +61,7 @@ void Oxs_MeshValueOutputField
  OC_BOOL do_headers,        // If false, then output only raw data
  const char* title,      // Long filename or title
  const char* desc,       // Description to embed in output file
- vector<String>& valuelabels, // Value label, such as "Exchange energy density"
+ vector<String>& valuelabels, // Value label, e.g. "Exchange energy density"
  vector<String>& valueunits,  // Value units, such as "J/m^3".
  Vf_Ovf20_MeshType meshtype,   // Either rectangular or irregular
  Vf_OvfDataStyle datastyle,   // vf_oascii, vf_obin4, or vf_obin8
@@ -76,7 +76,7 @@ void Oxs_MeshValueOutputField
  OC_BOOL do_headers,        // If false, then output only raw data
  const char* title,      // Long filename or title
  const char* desc,       // Description to embed in output file
- vector<String>& valuelabels, // Value label, such as "Exchange energy density"
+ vector<String>& valuelabels, // Value label, e.g. "Exchange energy density"
  vector<String>& valueunits,  // Value units, such as "J/m^3".
  Vf_Ovf20_MeshType meshtype,   // Either rectangular or irregular
  Vf_OvfDataStyle datastyle,   // vf_oascii, vf_obin4, or vf_obin8
@@ -100,7 +100,7 @@ void Oxs_MeshValueOutputField
  OC_BOOL do_headers,        // If false, then output only raw data
  const char* title,      // Long filename or title
  const char* desc,       // Description to embed in output file
- vector<String>& valuelabels, // Value label, such as "Exchange energy density"
+ vector<String>& valuelabels, // Value label, e.g. "Exchange energy density"
  vector<String>& valueunits,  // Value units, such as "J/m^3".
  Vf_Ovf20_MeshType meshtype,   // Either rectangular or irregular
  Vf_OvfDataStyle datastyle,   // vf_oascii, vf_obin4, or vf_obin8
@@ -202,7 +202,7 @@ public:
 
   // The +=, -=, *=, and /= operators can only be used with
   // types T that support the corresponding operator at the
-  // indivicual T-element level.
+  // individual T-element level.
   Oxs_MeshValue<T>& operator+=(const Oxs_MeshValue<T> &other);
   Oxs_MeshValue<T>& operator-=(const Oxs_MeshValue<T> &other);
   Oxs_MeshValue<T>& operator*=(const Oxs_MeshValue<T> &other);
@@ -590,5 +590,129 @@ Oxs_MeshValue<T>::HornerStep
   }
   return *this;
 }
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+// Should definitions for the two non-templated
+// Oxs_MeshValueOutputField functions be in this header or in the
+// meshvalue.cc source file?  See the top of meshvalue.cc for a
+// discussion of this problem.  Bottom line is that we put definitions
+// in both places, and select one via macros at compile time.
+// BIG FAT NOTE: Any changes to the Oxs_MeshValueOutputField functions
+// need to be duplicated in *BOTH* places.
+#if defined(__DMC__)
+# define OXS_MESHVALUEOUTPUTFIELD_IN_HEADER 1
+#else
+# define OXS_MESHVALUEOUTPUTFIELD_IN_HEADER 0
+#endif 
+
+#if OXS_MESHVALUEOUTPUTFIELD_IN_HEADER
+// The following two overloaded, non-template functions are
+// defined in this header rather than in meshvalue.cc as a
+// sop to the Digital Marc C++ version 8.57 compiler, which
+// otherwise gets confused and fails at the link stage.
+
+// Routines for Oxs_MeshValue<OC_REAL8m> output
+inline void Oxs_MeshValueOutputField
+(Tcl_Channel channel,    // Output channel
+ OC_BOOL do_headers,     // If false, then output only raw data
+ const char* title,      // Long filename or title
+ const char* desc,       // Description to embed in output file
+ vector<String>& valuelabels, // Value label, such as "Exchange energy density"
+ vector<String>& valueunits,  // Value units, such as "J/m^3".
+ Vf_Ovf20_MeshType meshtype,   // Either rectangular or irregular
+ Vf_OvfDataStyle datastyle,   // vf_oascii, vf_obin4, or vf_obin8
+ const char* textfmt,  // vf_oascii output only, printf-style format
+ const Vf_Ovf20_MeshNodes* mesh,    // Mesh
+ const Oxs_MeshValue<OC_REAL8m>* val,  // Scalar array
+ Vf_OvfFileVersion ovf_version)
+{
+  Vf_Ovf20FileHeader fileheader;
+
+  // Fill header
+  mesh->DumpGeometry(fileheader,meshtype);
+  fileheader.title.Set(String(title));
+  fileheader.valuedim.Set(1);  // Scalar field
+  fileheader.valuelabels.Set(valuelabels);
+  fileheader.valueunits.Set(valueunits);
+  fileheader.desc.Set(String(desc));
+  fileheader.ovfversion = ovf_version;
+  if(!fileheader.IsValid()) {
+    OXS_THROW(Oxs_ProgramLogicError,"Oxs_MeshValueOutputField(T=OC_REAL8m)"
+              " failed to create a valid OVF fileheader.");
+  }
+
+  // Write header
+  if(do_headers) fileheader.WriteHeader(channel);
+
+  // Write data
+  Vf_Ovf20VecArrayConst data_info(1,val->Size(),val->arr);
+  fileheader.WriteData(channel,datastyle,textfmt,mesh,
+                       data_info,!do_headers);
+}
+
+// For Oxs_MeshValue<ThreeVector> output
+inline void Oxs_MeshValueOutputField
+(Tcl_Channel channel,    // Output channel
+ OC_BOOL do_headers,        // If false, then output only raw data
+ const char* title,      // Long filename or title
+ const char* desc,       // Description to embed in output file
+ vector<String>& valuelabels, // Value label, such as "Exchange energy density"
+ vector<String>& valueunits,  // Value units, such as "J/m^3".
+ Vf_Ovf20_MeshType meshtype,   // Either rectangular or irregular
+ Vf_OvfDataStyle datastyle,   // vf_oascii, vf_obin4, or vf_obin8
+ const char* textfmt,  // vf_oascii output only, printf-style format
+ const Vf_Ovf20_MeshNodes* mesh,    // Mesh
+ const Oxs_MeshValue<ThreeVector>* val,  // Scalar array
+ Vf_OvfFileVersion ovf_version)
+{
+  Vf_Ovf20FileHeader fileheader;
+
+  // Fill header
+  mesh->DumpGeometry(fileheader,meshtype);
+  fileheader.title.Set(String(title));
+  fileheader.valuedim.Set(3);  // Vector field
+  fileheader.valuelabels.Set(valuelabels);
+  fileheader.valueunits.Set(valueunits);
+  fileheader.desc.Set(String(desc));
+  fileheader.ovfversion = ovf_version;
+  if(!fileheader.IsValid()) {
+    OXS_THROW(Oxs_ProgramLogicError,"Oxs_MeshValueOutputField(T=ThreeVector)"
+              " failed to create a valid OVF fileheader.");
+  }
+
+  // Write header
+  if(do_headers) fileheader.WriteHeader(channel);
+
+  const OC_REAL8m* arrptr = NULL;
+  Nb_ArrayWrapper<OC_REAL8m> rbuf;
+  if(sizeof(ThreeVector) == 3*sizeof(OC_REAL8m)) {
+    // Use MeshValue array directly
+    arrptr = reinterpret_cast<const OC_REAL8m*>(val->arr);
+  } else {
+    // Need intermediate buffer space
+    const OC_INDEX valsize = val->Size();
+    rbuf.SetSize(3*valsize);
+    for(OC_INDEX i=0;i<valsize;++i) {
+      rbuf[3*i]   = val->arr[i].x;
+      rbuf[3*i+1] = val->arr[i].y;
+      rbuf[3*i+2] = val->arr[i].z;
+    }
+    arrptr = rbuf.GetPtr();
+  }
+
+
+  // Write data
+  Vf_Ovf20VecArrayConst data_info(3,val->Size(),arrptr);
+  fileheader.WriteData(channel,datastyle,textfmt,mesh,
+                       data_info,!do_headers);
+}
+#endif // OXS_MESHVALUEOUTPUTFIELD_IN_HEADER
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 
 #endif // _OXS_MESHVALUE

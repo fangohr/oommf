@@ -5,7 +5,7 @@
  * computation on only a specified subrange of the elements (cells) in
  * the state mesh.  These routines reduce memory bandwidth use by
  * sequentially running each chunk energy on the same range of cells,
- * and also allow multiple threads to run concurrently, with each thread
+ * and also allows multiple threads to run concurrently, with each thread
  * claiming a separate cell range.
  *
  * Note: The friend function Oxs_ComputeEnergies() is declared in the
@@ -90,7 +90,9 @@ struct Oxs_ComputeEnergyDataThreadedAux {
 
   // Timing data; one per thread
 #if REPORT_TIME
+# if 0
   Nb_StopWatch energytime;
+# endif
 #endif
 
   Oxs_ComputeEnergyDataThreadedAux()
@@ -158,19 +160,19 @@ protected:
   // and *Finalize are NOPs.
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& /* state */,
-   Oxs_ComputeEnergyDataThreaded& /* ocedt */,
-   Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+   const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+   vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
    int /* number_of_threads */) const {}
 
   virtual void ComputeEnergyChunkFinalize
   (const Oxs_SimState& /* state */,
    const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
-   const Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+   const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
    int /* number_of_threads */) const {}
 
   virtual void
   ComputeEnergyChunk(const Oxs_SimState& state,
-                     Oxs_ComputeEnergyDataThreaded& ocedt,
+                     const Oxs_ComputeEnergyDataThreaded& ocedt,
                      Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                      OC_INDEX node_start,OC_INDEX node_stop,
                      int threadnumber) const = 0;
@@ -188,7 +190,7 @@ protected:
   // NOTE: This routine must be thread safe.  Mostly this is handled
   // by partitioning array access by range (node_start to node_stop)
   // per thread, and also by having separate ocedtaux structs for each
-  // threa.  However, if an Oxs_ChunkEnergy child class requires
+  // thread.  However, if an Oxs_ChunkEnergy child class requires
   // initialization inside the ComputeEnergyChunk function that
   // extends beyond the [node_start,node_stop) range, or sets any
   // other resource shared between threads, then the child class must
@@ -221,15 +223,15 @@ protected:
     chunktime.Start();
 #endif
     Oxs_ComputeEnergyDataThreaded ocedt(oced);
-    Oxs_ComputeEnergyDataThreadedAux ocedtaux;
+    vector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux(1);
 
-    ComputeEnergyChunkInitialize(state,ocedt,ocedtaux,1);
-    ComputeEnergyChunk(state,ocedt,ocedtaux,0,state.mesh->Size(),0);
+    ComputeEnergyChunkInitialize(state,ocedt,thread_ocedtaux,1);
+    ComputeEnergyChunk(state,ocedt,thread_ocedtaux[0],0,state.mesh->Size(),0);
     // "Main" thread is presumed; thread_number for main thread is 0.
-    ComputeEnergyChunkFinalize(state,ocedt,ocedtaux,1);
+    ComputeEnergyChunkFinalize(state,ocedt,thread_ocedtaux,1);
 
-    oced.energy_sum = ocedtaux.energy_total_accum;
-    oced.pE_pt = ocedtaux.pE_pt_accum;
+    oced.energy_sum = thread_ocedtaux[0].energy_total_accum;
+    oced.pE_pt = thread_ocedtaux[0].pE_pt_accum;
 #if REPORT_TIME
     chunktime.Stop();
 #endif

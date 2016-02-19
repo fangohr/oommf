@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -15,7 +15,7 @@ Oxsii">
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -59,7 +59,7 @@ Oxsii">
 <BR>
 OOMMF eXtensible Solver Interactive Interface:
 Oxsii
-</H2><A NAME="3824"></A><A NAME="3825"></A>
+</H2><A NAME="3959"></A><A NAME="3960"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -79,7 +79,7 @@ application. <B>Oxsii</B> is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Oxsii</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="3843"><B>mmLaunch</B></A>.  It is through
+ NAME="3978"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Oxsii</B>.
 
@@ -111,8 +111,9 @@ automatically passed to <A HREF="mifconvert.html#sec:mifconvert"><B>mifconvert</
 command line via
 <PRE>
 tclsh oommf.tcl oxsii [standard options] [-exitondone &lt;0|1&gt;] \
-   [-nice &lt;0|1&gt;] [-parameters params] [-pause &lt;0|1&gt;] \
-   [-restart &lt;0|1&gt;] [-threads &lt;count&gt;] [-numanodes &lt;nodes&gt;] [miffile]
+   [-logfile logname] [-loglevel level] [-nice &lt;0|1&gt;] [-nocrccheck &lt;0|1&gt;] \
+   [-numanodes nodes] [-parameters params] [-pause &lt;0|1&gt;] \
+   [-restart &lt;0|1|2&gt;] [-restartfiledir dir] [-threads count] [miffile]
 </PRE>
 where
 <DL>
@@ -121,58 +122,30 @@ where
   Default is to simply await the interactive selection
   of another problem to be solved.
 </DD>
+<DT><STRONG><TT><B>-logfile logname</B></TT></STRONG></DT>
+<DD>Write log and error messages to file <I>logname</I>.  The default log
+  file is <TT><B>oommf/oxsii.errors</B></TT>.
+</DD>
+<DT><STRONG><TT><B>-loglevel level</B></TT></STRONG></DT>
+<DD>Controls the detail level of log messages, with larger values of
+  <I>level</I> producing more output.  Default value is 1.
+</DD>
 <DT><STRONG><TT><B>-nice <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>If enabled (i.e., 1), then the program will drop its scheduling
   priority after startup.  The default is 1, i.e., to yield scheduling
   priority to other applications.
 </DD>
-<DT><STRONG><TT><B>-parameters params</B></TT></STRONG></DT>
-<DD>Sets <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> file
-  parameters.  The <I>params</I> argument should be a list with an
-  even number of arguments, corresponding to name + value pairs.  Each
-  ``name'' must appear in a
-  <A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A>
-  statement in the input
-  MIF file.  The entire name + value list must be quoted so it is
-  presented to <B>Oxsii</B> as a single item on the command line.  For
-  example, if <TT>A</TT> and <TT>Ms</TT> appeared in <TT>Parameter</TT> statements
-  in the MIF file, then an option like
-  <PRE>   -parameters "A 13e-12 Ms 800e3"
-</PRE>
-  could be used to set <TT>A</TT> to 13e-12 and Ms to 800e3.  The quoting
-  mechanism is shell/operating system specific; refer to your system
-  documentation for details.
-</DD>
-<DT><STRONG><TT><B>-pause <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>If disabled (i.e., 0), then the program automatically shifts into
-  ``Run'' mode after loading the specified <I>miffile</I>. The default
-  is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
-  no effect if miffile is not specified.
-</DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6359"></A></B></TT></STRONG></DT>
-<DD>Controls the initial setting of the restart flag, and thereby 
-  the load restart behavior of any <TT>miffile</TT> specified on the command
-  line.  The restart flag is described in the
-  <A HREF="#html:oxsiirestartflag">Controls section below</A>.
-  The default value is 0, i.e., no restart.
-</DD>
-<DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="3893"></A>
-  The option is available on
-  <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
-  The <I>count</I> parameter is the number of threads to run.  The
-  default count value is set by the <TT>oommf_thread_count</TT> value in
-  the <TT><B>config/platforms/</B></TT> file for your platform, but may be
-  overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="3902"></A>
-  environment variable or this command line option.  In most cases the
-  default count value will equal the number of processing cores on the
-  system; this can be checked via the command
-  <TT>tclsh oommf.tcl +platform</TT>.
+<DT><STRONG><TT><B>-nocrccheck <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>On simulation restarts, the CRC
+  <A HREF="Cyclic_Redundancy_Check_crc.html#sec:crc32">CRC</A>
+  of the MIF file is normally compared against the CRC of the original
+  MIF file as recorded in the restart file.  If the CRCs don't match then
+  an error is thrown to alert the user that the MIF file has changed.  If
+  this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="3905"></A>
-  <A NAME="3906"></A>
+<DD><A NAME="4016"></A>
+  <A NAME="4017"></A>
   This option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
   Oxs.  The <I>nodes</I> parameter must be either a comma separated
@@ -214,10 +187,63 @@ The default value for <I>nodes</I> is ``none'', which allows the
   explicit nodes list.
 
 <P>
-The environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="3930"></A>
-  may be used to override the default ``none'' setting, but is
-  subordinate to the command line setting, if any.<A NAME="3931"></A>
+The default behavior is modified (in increasing order of priority) by the
+  <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
+  file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
+  or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
+  <TT>OOMMF_NUMANODES</TT><A NAME="4046"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4048"></A>
+</DD>
+<DT><STRONG><TT><B>-parameters params</B></TT></STRONG></DT>
+<DD>Sets <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> file
+  parameters.  The <I>params</I> argument should be a list with an
+  even number of arguments, corresponding to name + value pairs.  Each
+  ``name'' must appear in a
+  <A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A>
+  statement in the input
+  MIF file.  The entire name + value list must be quoted so it is
+  presented to <B>Oxsii</B> as a single item on the command line.  For
+  example, if <TT>A</TT> and <TT>Ms</TT> appeared in <TT>Parameter</TT> statements
+  in the MIF file, then an option like
+<PRE>
+   -parameters "A 13e-12 Ms 800e3"
+</PRE>
+  could be used to set <TT>A</TT> to 13e-12 and Ms to 800e3.  The quoting
+  mechanism is specific to the shell/operating system; refer to your system
+  documentation for details.
+</DD>
+<DT><STRONG><TT><B>-pause <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>If disabled (i.e., 0), then the program automatically shifts into
+  ``Run'' mode after loading the specified <I>miffile</I>. The default
+  is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
+  no effect if miffile is not specified.
+</DD>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6728"></A></B></TT></STRONG></DT>
+<DD>Controls the initial setting of the restart flag, and thereby 
+  the load restart behavior of any <TT>miffile</TT> specified on the command
+  line.  The restart flag is described in the
+  <A HREF="#html:oxsiirestartflag">Controls section below</A>.
+  The default value is 0, i.e., no restart.
+</DD>
+<DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
+<DD>Specifies the directory where restart files are written.  Default is the
+  directory holding the MIF file.  You may want to change this to a local
+  temporary directory (e.g., <TT><B>/tmp</B></TT>), especially if the MIF file
+  directory is a network mount.
+</DD>
+<DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD><A NAME="4074"></A>
+  The option is available on
+  <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
+  The <I>count</I> parameter is the number of threads to run.  The
+  default count value is set by the <TT>oommf_thread_count</TT> value in
+  the <TT><B>config/platforms/</B></TT> file for your platform, but may be
+  overridden by the
+  <TT>OOMMF_THREADS</TT><A NAME="4083"></A>
+  environment variable or this command line option.  In most cases the
+  default count value will equal the number of processing cores on the
+  system; this can be checked via the command
+  <TT>tclsh oommf.tcl +platform</TT>.
 </DD>
 <DT><STRONG><TT><B>miffile</B></TT></STRONG></DT>
 <DD>Load and solve the problem found in <I>miffile</I>, which must be
@@ -228,11 +254,11 @@ The environment variable
 All the above switches are optional.
 
 <P>
-Since <B>Oxsii</B><A NAME="3938"></A> does not present
+Since <B>Oxsii</B><A NAME="4091"></A> does not present
 any user interface window of its own, it depends on
-<B>mmLaunch</B><A NAME="3940"></A> to provide an interface on
+<B>mmLaunch</B><A NAME="4093"></A> to provide an interface on
 its behalf.  The entry for an instance of <B>Oxsii</B> in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="3943"></A> column of any running copy of
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4096"></A> column of any running copy of
 <B>mmLaunch</B> has a checkbutton next to it.  This button toggles the
 presence of a user interface window through which the user may control
 that instance of <B>Oxsii</B>.
@@ -284,11 +310,11 @@ When the <TT>DataTable</TT> entry is selected, the Destination box will
 list all OOMMF applications accepting datatable-style input, i.e., all
 currently running
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="3990"><B>mmDataTable</B></A>,
+ NAME="4143"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="3995"><B>mmGraph</B></A>, and
+ NAME="4148"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4000"><B>mmArchive</B></A> processes.
+ NAME="4153"><B>mmArchive</B></A> processes.
 
 <P>
 The vector field outputs include pointwise magnetization, various total
@@ -297,9 +323,9 @@ outputs, the vector field outputs are listed individually in the Output
 scroll box.  Allowed destinations for vector field output are running
 instances of
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="4005"><B>mmDisp</B></A> and
+ NAME="4158"><B>mmDisp</B></A> and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4010"><B>mmArchive</B></A>.  Caution is
+ NAME="4163"><B>mmArchive</B></A>.  Caution is
 advised when scheduling vector field output, especially with large
 problems, because the output may run many megabytes.
 
@@ -342,9 +368,10 @@ file.  If the checkpoint file is not found, then an error is raised.
 Otherwise, the information in the checkpoint file is used to resume the
 problem from the state saved in that file.  The restart flag can be set
 from the Options menu, the <TT>File|Load</TT> dialog box, or from the
-command line.  See the <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsDrivers">Oxs_Driver
-documentation</A> for information on
-checkpoint files.
+command line.
+
+See the Oxs_Driver documentation for information on
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#html:oxsdrivercheckpoint">checkpoint files.</A>
 
 <P>
 The <FONT COLOR="#800000"><B>Help</B></FONT> menu provides the usual help facilities.
@@ -397,35 +424,6 @@ Refer to the appropriate Oxs_Ext class documentation for simulation and
 computational details.
 
 <P>
-
-<P>
-<FONT SIZE="+2"><B>Known Bugs</B></FONT>
-<BR><A NAME="4051"></A>
-A bug in the network traffic handling code<A NAME="4052"></A> of
-Tcl on Windows&nbsp;9X systems can sometimes interfere
-with communications between the control interface of <B>Oxsii</B> and
-the actual computation engine.  If <B>Oxsii</B> is sending out data
-to two or more data display services every iteration, the network
-traffic from that data can ``crowd out'' the receipt of
-control messages from the control interface.  You may observe this as a
-long delay between the time you click the <FONT COLOR="#800000"><B>Pause</B></FONT> button and the
-time the solver stops iterating.  This bug first appeared in Tcl release 8.0.3, and remained through Tcl release 8.1.1.  It is fixed in
-Tcl releases 8.2 and later, which we recommend for OOMMF users on
-Windows&nbsp;9X systems.  Other platforms do not have this problem.
-<A NAME="4056"></A>
-
-<P>
-If Tcl version 7.5 is in use, and <B>Oxsii</B> processes
-a <TT>Destination</TT> command in a MIF file, and in response
-launches another application, then <B>Oxsii</B> will not be
-able to fully terminate until the launched application also
-terminates.  You might notice this in <B>mmLaunch</B> where
-an <B>Oxsii</B> will remain in the <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4063"></A> column
-long after it has apparently exited.  This glitch is due to a
-bug in Tcl's <TT>exec</TT> command in version 7.5 that has long
-been fixed.  Use a more recent Tcl release to avoid the problem.
-
-<P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
@@ -445,6 +443,6 @@ been fixed.  Use a more recent Tcl release to avoid the problem.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

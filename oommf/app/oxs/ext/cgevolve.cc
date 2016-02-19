@@ -43,6 +43,10 @@ OXS_EXT_REGISTER(Oxs_CGEvolve);
 // #define TS(x) fprintf(stderr,OC_STRINGIFY(x)"\n"); x
 #define TS(x) x
 
+#ifndef NDEBUG
+# define NDEBUG 0  // Turn on debug checks
+#endif
+
 /*****************
 Can't tell the players without a program:
 
@@ -113,12 +117,6 @@ Mepuche cache size: 8MB/processor x 2 processors
 *****************/
 
 
-#if 0
-#ifndef NDEBUG
-# define NDEBUG    // Turn on asserts
-#endif
-#endif
-
 // Wrapper around tolower, to make it the right type for use in
 // std::transform with strings.  Most compilers figure this out, but
 // Borland C++ 5.5.1 needs this help.
@@ -127,8 +125,8 @@ static char convert_char_to_lowercase(char ch) { return (char)tolower(ch); }
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.134 $",
-   "$Date: 2012-09-07 02:44:30 $",
+   "$Revision: 1.164 $",
+   "$Date: 2015/09/30 07:29:29 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -147,9 +145,15 @@ Oxs_CGEvolve::Oxs_CGEvolve(
     bracket_count(0),
     line_minimum_count(0),
     conjugate_cycle_count(0),
+    gradient_reset_score(0.0),
+    gradient_reset_wgt(31./32.),
+    gradient_reset_angle_cotangent(0.0),
+    gradient_reset_trigger(0.5),
+    kludge_adjust_angle_cos(0.0),
     preconditioner_type(Oxs_EnergyPreconditionerSupport::NONE),
     preconditioner_weight(0.5),
     preconditioner_mesh_id(0),
+    sum_error_estimate(0),
     temp_id(0)
 {
   // Check code assumptions, if any
@@ -179,12 +183,19 @@ Oxs_CGEvolve::Oxs_CGEvolve(
 
   // Process arguments
 
-  // gradient_reset_angle is input in degrees, but then converted to cos
-  // of that value, for ease of use inside ::SetBasePoint().
-  gradient_reset_angle_cos = GetRealInitValue("gradient_reset_angle",80);
-  gradient_reset_angle_cos = cos(gradient_reset_angle_cos*PI/180.);
+  // gradient_reset_angle is input in degrees, but then converted to
+  // cotangent of that value, for ease of use inside ::SetBasePoint().
+  gradient_reset_angle_cotangent
+    = GetRealInitValue("gradient_reset_angle",87.5);
+  gradient_reset_angle_cotangent
+    = tan(fabs(90.0-gradient_reset_angle_cotangent)*PI/180.);
 
-  gradient_reset_count = GetUIntInitValue("gradient_reset_count",50);
+  gradient_reset_count = GetUIntInitValue("gradient_reset_count",5000);
+
+  // kludge_adjust_angle is input in degrees, but then converted to cos
+  // of that value, for ease of use inside ::SetBasePoint().
+  kludge_adjust_angle_cos = GetRealInitValue("kludge_adjust_angle",89.2);
+  kludge_adjust_angle_cos = cos(kludge_adjust_angle_cos*PI/180.);
 
   OC_REAL8m min_ang = GetRealInitValue("minimum_bracket_step",0.05);
   min_ang *= PI/180.; // Convert from degrees to radians
@@ -200,7 +211,7 @@ Oxs_CGEvolve::Oxs_CGEvolve(
   }
 
   bracket.angle_precision
-    = GetRealInitValue("line_minimum_angle_precision",5);
+    = GetRealInitValue("line_minimum_angle_precision",1);
   // Convert from degrees to sin(angle).  We want sin(angle)
   // instead of cos(angle) because we are interested in differences
   // from 90 degrees (use angle-sum formula on sin(90-acos(dot))).
@@ -209,7 +220,7 @@ Oxs_CGEvolve::Oxs_CGEvolve(
   bracket.relative_minspan
     = GetRealInitValue("line_minimum_relwidth",1);
 
-  bracket.energy_precision = GetRealInitValue("energy_precision",1e-10);
+  bracket.energy_precision = GetRealInitValue("energy_precision",1e-14);
 
   String method_name = GetStringInitValue("method","Fletcher-Reeves");
   if(method_name.compare("Fletcher-Reeves")==0) {
@@ -416,6 +427,7 @@ OC_BOOL Oxs_CGEvolve::Init()
   bracket_count=0;
   line_minimum_count=0;
   conjugate_cycle_count=0;
+  gradient_reset_score=0.0;
   basept.Init();
   bestpt.Init();
   bracket.Init();
@@ -538,7 +550,6 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state->Ms);
   const Oxs_Mesh* mesh = state->mesh;
   const OC_INDEX size = mesh->Size();
-
   preconditioner_Ms_V.AdjustSize(mesh);
   preconditioner_Ms2_V2.AdjustSize(mesh);
   Ms_V.AdjustSize(mesh);
@@ -611,7 +622,7 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
   }
 
 # if 1 // For debugging
-  OC_REAL8m minval = DBL_MAX;
+  OC_REAL8m minval = OC_REAL8m_MAX;
   if(init_ok) {
     for(OC_INDEX i=0;i<size;++i) {
       ThreeVector v = preconditioner_Ms_V[i];
@@ -624,7 +635,8 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
       if(0<v.z && v.z<minval) minval = v.z;
     }
     fprintf(stderr,
-            "Min/Max pre-preconditioner values: %g / %g\n",
+            "Min/Max pre-preconditioner values: %"
+            OC_REAL8m_MOD "g / %" OC_REAL8m_MOD "g\n",
             minval,maxval);
   }
 # endif
@@ -634,10 +646,14 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
     // If pw<>1, implement "blended" preconditioner
     const OC_REAL8m pw = preconditioner_weight;
     const OC_REAL8m cpw = 1 - pw;
+    OC_REAL8m err_mxHxm_sumsq = 0.0;
+    OC_REAL8m err_dir_sumsq = 0.0;
     for(OC_INDEX i=0;i<size;++i) {
       OC_REAL8m scale = Ms[i]*mesh->Volume(i);
+      OC_REAL8m errtmp = Ms[i]*scale;
+      err_mxHxm_sumsq += errtmp*errtmp;
       Ms_V[i] = scale;
-      if(scale<1 && maxvalMsV>DBL_MAX*scale) {
+      if(scale<1 && maxvalMsV>OC_REAL8m_MAX*scale) {
         // Assumes that m[i] is ignored if Ms[i] is zero.
         preconditioner_Ms_V[i].x
           = preconditioner_Ms_V[i].y = preconditioner_Ms_V[i].z
@@ -646,28 +662,34 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
       } else {
         OC_REAL8m c0 = maxvalMsV*cpw/scale;
         OC_REAL8m cx =  c0 + pw*preconditioner_Ms_V[i].x;
-        if(cx>=1.0 || maxval<DBL_MAX*cx) cx = maxval/cx;
+        if(cx>=1.0 || maxval<OC_REAL8m_MAX*cx) cx = maxval/cx;
         else cx = 1.0; // Safety
         OC_REAL8m cy =  c0 + pw*preconditioner_Ms_V[i].y;
-        if(cy>=1.0 || maxval<DBL_MAX*cy) cy = maxval/cy;
+        if(cy>=1.0 || maxval<OC_REAL8m_MAX*cy) cy = maxval/cy;
         else cy = 1.0; // Safety
         OC_REAL8m cz =  c0 + pw*preconditioner_Ms_V[i].z;
-        if(cz>=1.0 || maxval<DBL_MAX*cz) cz = maxval/cz;
+        if(cz>=1.0 || maxval<OC_REAL8m_MAX*cz) cz = maxval/cz;
         else cz = 1.0; // Safety
         preconditioner_Ms_V[i].Set(cx,cy,cz);
         preconditioner_Ms2_V2[i].Set(scale*cx,scale*cy,scale*cz);
+        OC_REAL8m errdirtmp = Ms[i]*(cx+cy+cz); // Divide by 3 => average c.
+        err_dir_sumsq += errdirtmp*errdirtmp;
       }
     }
   } else {
     // Initialization failed; take instead C^-2 = 1 (no preconditioning)
+    OC_REAL8m err_mxHxm_sumsq = 0.0;
     for(OC_INDEX i=0;i<size;++i) {
       const OC_REAL8m scale = Ms[i]*mesh->Volume(i);
+      OC_REAL8m errtmp = Ms[i]*scale;
+      err_mxHxm_sumsq += errtmp*errtmp;
       Ms_V[i] = scale;
       preconditioner_Ms_V[i].Set(scale,scale,scale);
       const OC_REAL8m scalesq = scale*scale;
       preconditioner_Ms2_V2[i].Set(scalesq,scalesq,scalesq);
     }
   }
+  sum_error_estimate = OC_REAL8m_EPSILON*sqrt(static_cast<OC_REAL8m>(size));
 
   preconditioner_mesh_id = mesh->Id();
 }
@@ -738,8 +760,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
     OC_INDEX j;
     for(j=0;j<jbreak;++j) {
       const ThreeVector& dvec = scratch_direction[j];
-      ThreeVector temp = scratch_best_spin[j];
       OC_REAL8m dsq = dvec.MagSq();
+      ThreeVector temp = scratch_best_spin[j];
       temp *= sqrt(1+tsq*dsq);
       temp.Accum(dvec_scale,dvec);
       temp.MakeUnit();
@@ -780,8 +802,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
 
     for(;j<jsize;++j) {
       const ThreeVector& dvec = scratch_direction[j];
-      ThreeVector temp = scratch_best_spin[j];
       OC_REAL8m dsq = dvec.MagSq();
+      ThreeVector temp = scratch_best_spin[j];
       temp *= sqrt(1+tsq*dsq);
       temp.Accum(dvec_scale,dvec);
       temp.MakeUnit();
@@ -1097,6 +1119,11 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadA::Cmd(int threadnumber,
 #if OC_USE_SSE
     assert(OC_UINDEX(sP)%ALIGNMENT == OC_UINDEX(sbest_mxHxm)%ALIGNMENT);
 #endif
+    // This alignment trick requires sizeof(ThreeVector) to be a
+    // multiple of 8, so that OC_UINDEX(sdir)%ALIGNMENT is 0 or 8.
+    // This is true if we are using SSE, since then OC_REAL8m is an
+    // 8-byte double.  It is also only under SSE that we need this
+    // restriction.
 
     OC_INDEX jsize = istop - istart;
 
@@ -1114,11 +1141,13 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadA::Cmd(int threadnumber,
         work_g_sum_sq.Accum(sbest_mxHxm[j].z*sbest_mxHxm[j].z*sP[j].z);
         // preconditioner has (Ms[i]*mesh->Volume(i))^2 built in.
       }
+#if OC_USE_SSE
       assert(OC_UINDEX(sbest_mxHxm+j)%ALIGNMENT == 0);
       assert(OC_UINDEX(sP+j)%ALIGNMENT == 0);
+#endif
       const OC_INDEX STRIDE = 4;
       Oc_Duet a0,b0,a1,b1,a2,b2,a3,b3,a4,b4,a5,b5;
-      while(j+2*STRIDE-1<jsize) { // asdf 2*STRIDE-1
+      while(j+2*STRIDE-1<jsize) {
 #if OC_USE_SSE
         _mm_prefetch((const char *)(sbest_mxHxm+j)+4*64,_MM_HINT_T0);
         _mm_prefetch((const char *)(sbest_mxHxm+j)+5*64,_MM_HINT_T0);
@@ -1190,6 +1219,7 @@ public:
   static Oxs_Mutex result_mutex;
   static Nb_Xpfloat normsumsq; // Export --- use result_mutex
   static Nb_Xpfloat Ep;        // Export --- use result_mutex
+  static Nb_Xpfloat gradsumsq; // Export --- use result_mutex
   static OC_REAL8m maxmagsq;   // Export --- use result_mutex
 
   // Imports
@@ -1215,6 +1245,7 @@ public:
     maxmagsq = 0.0;
     normsumsq = 0.0;
     Ep = 0.0;
+    gradsumsq = 0.0;
     result_mutex.Unlock();
   }
 
@@ -1226,6 +1257,7 @@ Oxs_Mutex _Oxs_CGEvolve_SetBasePoint_ThreadB::result_mutex;
 OC_REAL8m  _Oxs_CGEvolve_SetBasePoint_ThreadB::maxmagsq = 0.0;
 Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadB::normsumsq = 0.0;
 Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadB::Ep = 0.0;
+Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadB::gradsumsq = 0.0;
 
 void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
                                              void* /* data */)
@@ -1233,6 +1265,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
   OC_REAL8m maxmagsq0=0.0;
   Nb_Xpfloat normsumsq0=0.0, normsumsq1=0.0;
   Nb_Xpfloat Ep0=0.0, Ep1=0.0;
+  Nb_Xpfloat gradsumsq0=0.0, gradsumsq1=0.0;
   Oc_Duet maxmagsq_pair(0,0);
 
   while(1) {
@@ -1252,6 +1285,11 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
 
     const size_t ALIGNMENT = 16;  // In bytes
     const OC_INDEX jbreak  = (OC_UINDEX(sdir)%ALIGNMENT)/8;
+    // This alignment trick requires sizeof(ThreeVector) to be a
+    // multiple of 8, so that OC_UINDEX(sdir)%ALIGNMENT is 0 or 8.
+    // This is true if we are using SSE, since then OC_REAL8m is an
+    // 8-byte double.  It is also only under SSE that we need this
+    // restriction.
 
     for(j=0;j<jbreak;++j) {
       ThreeVector temp = smxHxm[j];
@@ -1272,13 +1310,16 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
       if(magsq>maxmagsq0) maxmagsq0 = magsq;
       normsumsq0 += magsq;
       Ep0 += (temp * smxHxm[j]) * sMs_V[j];
+      gradsumsq0 += (smxHxm[j].MagSq()*sMs_V[j]*sMs_V[j]);
       /// See mjd's NOTES II, 29-May-2002, p156.
     }
+#if OC_USE_SSE
     assert(OC_UINDEX(smxHxm+j)%ALIGNMENT == 0);
     assert(OC_UINDEX(sP+j)%ALIGNMENT == 0);
     assert(OC_UINDEX(sdir+j)%ALIGNMENT == 0);
     assert(OC_UINDEX(sspin+j)%ALIGNMENT == 0);
     assert(OC_UINDEX(sMs_V+j)%ALIGNMENT == 0);
+#endif
     for(;j+1<jsize;j+=2) { // asdf +1
       Oc_Duet tqx,tqy,tqz;
       Oxs_ThreeVectorPairLoadAligned(&(smxHxm[j]),tqx,tqy,tqz);
@@ -1311,7 +1352,9 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
 
       Oc_Duet MsV; MsV.LoadAligned(sMs_V[j]);
       Oc_Duet sum = (tx*tqx + ty*tqy + tz*tqz) * MsV;
+      Oc_Duet gsum = (tqx*tqx + tqy*tqy + tqz*tqz) * MsV * MsV;
       Nb_XpfloatDualAccum(Ep0,Ep1,sum);
+      Nb_XpfloatDualAccum(gradsumsq0,gradsumsq1,gsum);
     }
     for(;j<jsize;++j) {
       ThreeVector temp = smxHxm[j];
@@ -1323,6 +1366,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
       if(magsq>maxmagsq0) maxmagsq0 = magsq;
       normsumsq0 += magsq;
       Ep0 += (temp * smxHxm[j]) * sMs_V[j];
+      gradsumsq0 += (smxHxm[j].MagSq()*sMs_V[j]*sMs_V[j]);
     }
   }
 
@@ -1335,11 +1379,13 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
 
   normsumsq0.Accum(normsumsq1);
   Ep0.Accum(Ep1);
+  gradsumsq0.Accum(gradsumsq1);
 
   result_mutex.Lock();
   if(maxmagsq0>maxmagsq) maxmagsq = maxmagsq0;
   normsumsq.Accum(normsumsq0);
   Ep.Accum(Ep0);
+  gradsumsq.Accum(gradsumsq0);
   result_mutex.Unlock();
 }
 
@@ -1348,9 +1394,10 @@ class _Oxs_CGEvolve_SetBasePoint_ThreadC : public Oxs_ThreadRunObj {
 public:
   static Oxs_JobControl<OC_REAL8m> job_basket;
   static Oxs_Mutex result_mutex;
-  static Nb_Xpfloat sumsq;    // Export --- use result_mutex
-  static Nb_Xpfloat Ep;       // Export --- use result_mutex
-  static OC_REAL8m maxmagsq;  // Export --- use result_mutex
+  static Nb_Xpfloat sumsq;     // Export --- use result_mutex
+  static Nb_Xpfloat Ep;        // Export --- use result_mutex
+  static Nb_Xpfloat gradsumsq; // Export --- use result_mutex
+  static OC_REAL8m maxmagsq;   // Export --- use result_mutex
 
   // Imports
   const Oxs_MeshValue<ThreeVector>* preconditioner_Ms_V;
@@ -1370,6 +1417,7 @@ public:
     result_mutex.Lock();
     sumsq = 0.0;
     Ep = 0.0;
+    gradsumsq = 0.0;
     maxmagsq = 0.0;
     result_mutex.Unlock();
   }
@@ -1381,6 +1429,7 @@ Oxs_JobControl<OC_REAL8m> _Oxs_CGEvolve_SetBasePoint_ThreadC::job_basket;
 Oxs_Mutex _Oxs_CGEvolve_SetBasePoint_ThreadC::result_mutex;
 Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadC::sumsq = 0.0;
 Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadC::Ep = 0.0;
+Nb_Xpfloat _Oxs_CGEvolve_SetBasePoint_ThreadC::gradsumsq = 0.0;
 OC_REAL8m _Oxs_CGEvolve_SetBasePoint_ThreadC::maxmagsq = 0.0;
 
 void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
@@ -1388,6 +1437,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
 {
   Nb_Xpfloat sumsq_0 = 0.0, sumsq_1 = 0.0;
   Nb_Xpfloat Ep_0 = 0.0, Ep_1 = 0.0;
+  Nb_Xpfloat gradsumsq0=0.0, gradsumsq1=0.0;
   OC_REAL8m maxmagsq_local(0.0);
   Oc_Duet maxmagsq_pair(0.0,0.0);
 
@@ -1417,6 +1467,8 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       sbase_direction[j].y *= sP[j].y; // Ms[i]*mesh->Volume(i)
       sbase_direction[j].z *= sP[j].z; // built in.
       Ep_0 += (sbase_direction[j] * sbest_mxHxm[j]) * sMs_V[j];
+      gradsumsq0 += (sbest_mxHxm[j].MagSq()*sMs_V[j]*sMs_V[j]);
+
       OC_REAL8m magsq = sbase_direction[j].MagSq();
       if(magsq>maxmagsq_local) maxmagsq_local = magsq;
       sumsq_0.Accum(sbase_direction[j].x*sbase_direction[j].x);
@@ -1439,6 +1491,10 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       _mm_prefetch((const char *)(sMs_V+j+8),_MM_HINT_T0);
 # endif
       Oc_Duet tx=Ntx, ty=Nty, tz=Ntz;
+      Oc_Duet msv=Nmsv;
+      Oc_Duet gsum = (tx*tx + ty*ty + tz*tz) * msv * msv;
+      Nb_XpfloatDualAccum(gradsumsq0,gradsumsq1,gsum);
+
       Oxs_ThreeVectorPairLoadAligned(sbest_mxHxm+j+2,Ntx,Nty,Ntz);
 
       Oc_Duet sx=Nsz, sy=Nsy, sz=Nsz;
@@ -1447,7 +1503,6 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       sx *= tx;  sy *= ty;  sz *= tz;
       tx *= sx;  ty *= sy;  tz *= sz;
 
-      Oc_Duet msv=Nmsv;
       Nmsv.LoadAligned(sMs_V[j+2]);
 
       Oc_Duet esummand = (tx+ty+tz)*msv;
@@ -1468,6 +1523,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       sbase_direction[j].y *= sP[j].y; // Ms[i]*mesh->Volume(i)
       sbase_direction[j].z *= sP[j].z; // built in.
       Ep_0 += (sbase_direction[j] * sbest_mxHxm[j]) * sMs_V[j];
+      gradsumsq0 += (sbest_mxHxm[j].MagSq()*sMs_V[j]*sMs_V[j]);
       OC_REAL8m magsq = sbase_direction[j].MagSq();
       if(magsq>maxmagsq_local) maxmagsq_local = magsq;
       sumsq_0.Accum(sbase_direction[j].x*sbase_direction[j].x);
@@ -1479,6 +1535,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
 
   sumsq_0.Accum(sumsq_1);
   Ep_0.Accum(Ep_1);
+  gradsumsq0.Accum(gradsumsq1);
 
   if(maxmagsq_pair.GetA()>maxmagsq_local) {
     maxmagsq_local = maxmagsq_pair.GetA();
@@ -1490,6 +1547,7 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
   result_mutex.Lock();
   sumsq.Accum(sumsq_0);
   Ep.Accum(Ep_0);
+  gradsumsq.Accum(gradsumsq0);
   if(maxmagsq_local>maxmagsq) maxmagsq = maxmagsq_local;
   result_mutex.Unlock();
 }
@@ -1543,7 +1601,6 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
 
   // For convenience
   const Oxs_Mesh* mesh = state->mesh;
-  const OC_INDEX vecsize = mesh->Size();
 
   // Set up energy computation output data structure
   Oxs_ComputeEnergyData oced(*state);
@@ -1552,9 +1609,9 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
   oced.energy_accum   = &export_energy;
   oced.H_accum        = export_Hptr;
   oced.mxH_accum      = 0;  // Fill export_mxHxm instead
-  oced.energy         = NULL;
-  oced.H              = NULL;
-  oced.mxH            = NULL;
+  oced.energy         = 0;
+  oced.H              = 0;
+  oced.mxH            = 0;
 
   UpdateFixedSpinList(mesh);
   Oxs_ComputeEnergyExtraData oceed(GetFixedSpinList(),
@@ -1603,49 +1660,13 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
   // Fill supplemental derived data.
   state->AddDerivedData("Max mxHxm",oceed.max_mxH);
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#if 0
-  { // asdfasdf
-    // Flush all cpu caches
-#   define FLUSH_COUNT 8
-    static Oxs_MeshValue<OC_REAL8m> flusher[FLUSH_COUNT];
-    if(flusher[0].Size()==0) {
-      for(int i=0;i<FLUSH_COUNT;++i) {
-        flusher[i].AdjustSize(mesh);
-        for(OC_INDEX k=0;k<mesh->Size();++k) {
-          flusher[i][k] = 1.7e-15;
-        }
-      }
-    }
-
-    Oxs_ThreadTree threadtree;
-    const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-    vector<_Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC> threadC;
-    threadC.resize(MaxThreadCount);
-
-    _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::Init(MaxThreadCount,
-                                         export_energy.GetArrayBlock());
-
-    for(int i=0;i<FLUSH_COUNT;++i) {
-      for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-        threadC[ithread].id = ithread;
-        threadC[ithread].mesh = mesh;
-        // threadC[ithread].energy = &export_energy;
-        threadC[ithread].energy = &flusher[i];
-        if(ithread>0) threadtree.Launch(threadC[ithread],0);
-      }
-      threadtree.LaunchRoot(threadC[0],0);
-    }
-  }
-#endif
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 #if REPORT_TIME_CGDEVEL
 TS(timer[8].Start()); /**/ // 2 secs
 #endif // REPORT_TIME_CGDEVEL
 
 #if !OOMMF_THREADS
   Nb_Xpfloat total_energy = 0.0;
+  const OC_INDEX vecsize = mesh->Size();
   for(OC_INDEX i=0;i<vecsize;++i) {
     total_energy.Accum(export_energy[i] * mesh->Volume(i));
   }
@@ -1670,7 +1691,7 @@ TS(timer[8].Start()); /**/ // 2 secs
 
 #if REPORT_TIME_CGDEVEL
 TS(timer[8].Stop()); /**/
-timer_counts[8].Increment(timer[8],vecsize*(1*sizeof(OC_REAL8m)));
+timer_counts[8].Increment(timer[8],mesh->Size()*(1*sizeof(OC_REAL8m)));
 /// Volume(i) call can be done w/o main memory access
 #endif // REPORT_TIME_CGDEVEL
 
@@ -1684,6 +1705,7 @@ timer_counts[8].Increment(timer[8],vecsize*(1*sizeof(OC_REAL8m)));
   TS(getenergyandmxHxmtime.Stop());
 #endif // REPORT_TIME_CGDEVEL
 }
+
 
 void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
  const Oxs_SimState* state, // Import
@@ -1707,9 +1729,6 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
 
   // Set up some convenience variables
   const Oxs_Mesh* mesh = state->mesh; // For convenience
-  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state->Ms);
-
-  const OC_INDEX vecsize = mesh->Size();
 
 #if REPORT_TIME_CGDEVEL
 TS(timer[1].Start()); /**/ // 2secs
@@ -1718,6 +1737,7 @@ TS(timer[1].Start()); /**/ // 2secs
 #if !OOMMF_THREADS
   OC_INDEX i;
   Nb_Xpfloat etemp = 0.0;
+  const OC_INDEX vecsize = mesh->Size();
   for(i=0;i<vecsize;++i) {
     etemp.Accum((temp_energy[i] - bestpt.energy[i]) * mesh->Volume(i));
   }
@@ -1727,8 +1747,7 @@ TS(timer[1].Start()); /**/ // 2secs
   OC_REAL8m offset_sq = offset*offset;
   for(i=0;i<vecsize;++i) {
     const ThreeVector& vtemp = basept.direction[i];
-    OC_REAL8m scale_adj = Ms[i]*mesh->Volume(i)
-      /sqrt(1+offset_sq * vtemp.MagSq());
+    OC_REAL8m scale_adj = Ms_V[i]/sqrt(1+offset_sq * vtemp.MagSq());
     dtemp.Accum((temp_mxHxm[i]*vtemp)*scale_adj);
     stemp.Accum(temp_mxHxm[i].MagSq()*scale_adj*scale_adj);
   }
@@ -1740,6 +1759,7 @@ TS(timer[1].Start()); /**/ // 2secs
   /// the derivation of the scale_adj term above.
 #else // OOMMF_THREADS
       {
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(state->Ms);
         _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Init(Oc_GetMaxThreadCount(),
                                                       Ms.GetArrayBlock());
         _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB threadB;
@@ -1770,13 +1790,14 @@ TS(timer[1].Start()); /**/ // 2secs
 #if REPORT_TIME_CGDEVEL
 TS(timer[1].Stop()); /**/
 timer_counts[1].Increment(timer[1],
-                vecsize*(3*sizeof(OC_REAL8m)+2*sizeof(ThreeVector)));
+                mesh->Size()*(3*sizeof(OC_REAL8m)+2*sizeof(ThreeVector)));
 #endif // REPORT_TIME_CGDEVEL
 
   state->AddDerivedData("Relative energy",relenergy);
   state->AddDerivedData("Energy best state id",
 			static_cast<OC_REAL8m>(bestpt.key.ObjectId()));
 }
+
 
 void Oxs_CGEvolve::FillBracket(OC_REAL8m offset,
 			       const Oxs_SimState* oldstateptr,
@@ -1793,7 +1814,6 @@ void Oxs_CGEvolve::FillBracket(OC_REAL8m offset,
     Oxs_MeshValue<ThreeVector>& spin = workstate.spin;
     const Oxs_MeshValue<ThreeVector>& best_spin
       = bestpt.key.GetPtr()->spin;
-    OC_INDEX vecsize = workstate.mesh->Size();
     OC_REAL8m t1sq = bestpt.offset*bestpt.offset;
 
 #if REPORT_TIME_CGDEVEL
@@ -1801,12 +1821,14 @@ TS(timer[0].Start()); /**/ // 7 secs
 #endif // REPORT_TIME_CGDEVEL
 
 #if !OOMMF_THREADS
+    OC_INDEX vecsize = workstate.mesh->Size();
+    const OC_REAL8m dvec_scale = offset - bestpt.offset;
     for(OC_INDEX i=0;i<vecsize;i++) {
       const ThreeVector& dvec = basept.direction[i];
       OC_REAL8m dsq = dvec.MagSq();
       ThreeVector temp = best_spin[i];
       temp *= sqrt(1+t1sq*dsq);
-      temp.Accum((offset-bestpt.offset),dvec);
+      temp.Accum(dvec_scale,dvec);
       temp.MakeUnit();
       Nb_NOP(&temp);  // Safety; icpc optimizer showed problems
       spin[i] = temp; // with this stanza in some circumstances.
@@ -1829,7 +1851,8 @@ TS(timer[0].Start()); /**/ // 7 secs
 
 #if REPORT_TIME_CGDEVEL
 TS(timer[0].Stop()); /**/
-timer_counts[0].Increment(timer[0],vecsize*(3*sizeof(ThreeVector)));
+timer_counts[0].Increment(timer[0],
+                          workstate.mesh->Size()*(3*sizeof(ThreeVector)));
 #endif // REPORT_TIME_CGDEVEL
 
     workstate.iteration_count = oldstateptr->iteration_count + 1;
@@ -1857,6 +1880,7 @@ timer_counts[0].Increment(timer[0],vecsize*(3*sizeof(ThreeVector)));
 #endif
 }
 
+
 void
 Oxs_CGEvolve::UpdateBrackets
 (Oxs_ConstKey<Oxs_SimState> tstate_key,
@@ -1868,6 +1892,11 @@ Oxs_CGEvolve::UpdateBrackets
   // be modified.
   //  If force_bestpt is true, and temp_id agrees with
   // tstate_key, then tstate is made new "bestpt"
+  //  Also updates data in extra_bracket.
+
+  OC_REAL8m energy_slack = bracket.energy_precision
+    * (fabs(basept.total_energy)
+       + fabs(bracket.left.E) + fabs(bracket.right.E));
 
   // Manage brackets
   if(tbracket.offset>bracket.right.offset) {
@@ -1876,13 +1905,12 @@ Oxs_CGEvolve::UpdateBrackets
        && bracket.right.Ep<0) { // This should always be
       /// true, since otherwise (left,right] already bracketed the
       /// minimum, but check anyway for robustness.
+      extra_bracket = bracket.left;
       bracket.left=bracket.right;
     }
     bracket.right = tbracket;
   } else {
     // Collapse brackets
-    OC_REAL8m energy_slack
-      = bracket.energy_precision * fabs(basept.total_energy);
     OC_REAL8m tlspan = tbracket.offset - bracket.left.offset;
     if(tbracket.Ep<0
        && (tbracket.E<=bracket.right.E || bracket.right.Ep>=0)
@@ -1898,18 +1926,31 @@ Oxs_CGEvolve::UpdateBrackets
 	/// old leftpt to new leftpt.  This increases
 	/// bestpt E by at most energy_slack.
       }
+      if( fabs(extra_bracket.offset - bracket.right.offset) > tlspan) {
+        extra_bracket = bracket.left; // Otherwise extra_bracket
+        /// was already closer than bracket.left, so don't change it.
+      }
       bracket.left=tbracket;
     } else if(tbracket.E>bracket.left.E || tbracket.Ep>=0) {
       // Keep left interval
+      if( fabs(bracket.left.offset - extra_bracket.offset)
+          > bracket.right.offset - tbracket.offset) {
+        extra_bracket = bracket.right; // Otherwise extra_bracket
+        /// was already closer than bracket.right, so don't change it.
+      }
       bracket.right=tbracket;
     } else {
       // Keep right interval
+      if( fabs(extra_bracket.offset - bracket.right.offset) > tlspan) {
+        extra_bracket = bracket.left;
+      }
       bracket.left=tbracket;
     }
   }
 
   // Update bestpt
-  if((force_bestpt || tbracket.E<=0)
+  if((force_bestpt || tbracket.E<=0
+      || (tbracket.E<energy_slack && fabs(tbracket.Ep) <= fabs(bestpt.Ep)))
      && temp_id==tstate_key.ObjectId()) {
     // New best point found
     temp_id=bestpt.key.ObjectId();
@@ -1923,73 +1964,111 @@ Oxs_CGEvolve::UpdateBrackets
     bracket.left.E -= tbracket.E;
     bracket.right.E -= tbracket.E;
   }
-
 }
+
+OC_REAL8m Oxs_CGEvolve::EstimateQuadraticMinimum
+(OC_REAL8m wgt,
+ OC_REAL8m h,
+ OC_REAL8m f0,    // f(0)
+ OC_REAL8m fh,    // f(h)
+ OC_REAL8m fp0,   // f'(0)
+ OC_REAL8m fph)   // f'(h)
+{ // Performs a least-squares fit of the input data to a quadratic,
+  // and returns the position of the minimum of that quadratic.  If
+  // the fit quadratic is actually linear or concave down (so there is
+  // no minimum), then OC_REAL8m_MAX is returned.
+  //   The import "wgt" adjusts the weighting between the direct f
+  // data and the derivative data (more or less).  If wgt==0 then f0
+  // and fp are ignored.  For details see NOTES VII, 18-Mar-2014, pp
+  // 14-15, and in particular (15).
+
+  //   Import wgt is assumed to be in the range [0,1], and h is
+  // assumed>0.
+  assert(0.0<=wgt && wgt<=1.0 && h>0.0);
+
+  OC_REAL8m fdiff  = fh - f0;
+  OC_REAL8m fpdiff = fph - fp0;
+
+  // Coefficient on x^2 term is 0.5*h*fpdiff, so the quadratic has
+  // a proper minimum iff fpdiff>0.
+  if(fpdiff<=0.0) return OC_REAL8m_MAX;
+
+  OC_REAL8m numer = wgt*(0.5*fpdiff - h*fdiff) - 4.*(1.-wgt)*fp0;
+  OC_REAL8m denom = (wgt*h*h + 4.*(1.-wgt))*fpdiff;
+
+  assert(fabs(h*numer)<=OC_REAL8m_MAX);
+
+  OC_REAL8m offset = OC_REAL8m_MAX;
+  if(denom>=1.0 || h*numer < OC_REAL8m_MAX*denom) {
+    offset = numer/denom;
+    offset *= h; // Doing the h multiply last may slightly improve
+                /// numerics for wgt=0 case.
+  } 
+
+  return offset;
+}
+
 
 void Oxs_CGEvolve::FindBracketStep(const Oxs_SimState* oldstate,
 				   Oxs_Key<Oxs_SimState>& statekey)
 { // Takes one step; assumes right.offset >= left.offset and
   // minimum to be bracketed is to the right of right.offset
-  assert(bracket.right.offset>=bracket.left.offset && bracket.left.Ep<0.0);
+
+  assert(bracket.right.offset>=bracket.left.offset && bracket.left.Ep<=0.0);
+
+  if(bracket.left.Ep == 0.0) { // Special case handling
+    bracket.min_bracketed=1;
+    return;
+  }
+
   ++bracket_count;
-  OC_REAL8m offset = bracket.right.offset;
 #ifndef NDEBUG
-  const OC_REAL8m starting_offset = offset;
+  const OC_REAL8m starting_offset = bracket.right.offset;
 #endif
-  if(offset < bracket.start_step) {
-    offset = bracket.start_step;
+
+  OC_REAL8m offset = 0.0;
+  const OC_REAL8m h = bracket.right.offset - bracket.left.offset;
+  const OC_REAL8m maxoff
+    = OC_MAX(bracket.left.offset,bracket.scaled_maxstep);
+  const OC_REAL8m minoff
+    = OC_MIN(OC_MAX(bracket.start_step,2*bracket.right.offset),maxoff);
+
+  if(h<=0.0) {
+    offset = minoff;
   } else {
-    if(offset<bracket.left.offset+bracket.scaled_minstep) {
-      offset = bracket.left.offset*2 + bracket.scaled_minstep;
-    } else {
-      // Try to use derivative information at existing endpoints
-      // to estimate location of minimum.
-      OC_REAL8m temp1 = (bracket.left.offset-bracket.right.offset)
-	*bracket.left.Ep;
-      OC_REAL8m temp2 = bracket.right.Ep-bracket.left.Ep;
-      if(temp2<=0) {
-	offset *=4; // Aiee! We're rolling off a cliff!
-      } else {
-	OC_REAL8m temp3 = 8*bracket.right.offset-bracket.left.offset;
-	if(2*temp1 < temp3*temp2) { // Overflow check
-	  offset = bracket.left.offset + 2*temp1/temp2;
-	} else {
-	  offset = 8*bracket.right.offset;
-	}
-      }
-    }
-  }
-  if(offset < 2*bracket.right.offset) {
-    offset = 2*bracket.right.offset;
-  }
-  if(offset > bracket.scaled_maxstep) {
-    offset = bracket.scaled_maxstep;
+    const OC_REAL8m wgt = 0.5;  // Weighting for EstimateQuadraticMinimum
+    offset = bracket.left.offset
+      + 1.75*EstimateQuadraticMinimum(wgt,h,
+                                      bracket.left.E,bracket.right.E,
+                                      bracket.left.Ep,bracket.right.Ep);
+    if(offset<minoff) offset = minoff;
+    if(offset>maxoff) offset = maxoff;
   }
 
   // Zero span check
   if(offset <= bracket.right.offset) {
     // Proposed bracket span increase is floating point 0.
     if(bracket.right.offset>0) {
-      offset = bracket.right.offset*(1+16*OC_REAL8_EPSILON);
+      offset = bracket.right.offset*(1+16*OC_REAL8m_EPSILON);
     } else {
       if(bracket.scaled_maxstep>0) {
 	offset = bracket.scaled_maxstep;
       } else {
 	// Punt
-	offset = OC_REAL8_EPSILON;
+	offset = OC_REAL8m_EPSILON;
       }
     }
   }
   if(fabs(offset-bestpt.offset)*basept.direction_max_mag
-     <16*OC_REAL8_EPSILON) {
-    // If LHS above is smaller that OC_REAL8_EPSILON, and we assume
+     <16*OC_REAL8m_EPSILON) {
+    // If LHS above is smaller that OC_REAL8m_EPSILON, and we assume
     // that the bestpt spins are unit vectors, then there is a
     // good chance that the proposed offset won't actually
     // change any of the discretized spins.  For bracketing
     // purposes, it shouldn't hurt to bump this up a bit.
     if(basept.direction_max_mag >= 0.5 ||
-       DBL_MAX*basept.direction_max_mag > 16*OC_REAL8_EPSILON) {
-      offset += 16*OC_REAL8_EPSILON/basept.direction_max_mag;
+       OC_REAL8m_MAX*basept.direction_max_mag > 16*OC_REAL8m_EPSILON) {
+      offset += 16*OC_REAL8m_EPSILON/basept.direction_max_mag;
     }
   }
 
@@ -2005,8 +2084,9 @@ void Oxs_CGEvolve::FindBracketStep(const Oxs_SimState* oldstate,
   //          ==> Minimum is bracketed
   //  2) temppt.E<=bracket.left.E+energy_slack and temppt.Ep<0
   //          ==> Minimum not bracketed
-  OC_REAL8m energy_slack
-    = bracket.energy_precision * fabs(basept.total_energy);
+  OC_REAL8m energy_slack = bracket.energy_precision
+    * (fabs(basept.total_energy)
+       + fabs(bracket.left.E) + fabs(bracket.right.E));
   if(temppt.E<=bracket.left.E+energy_slack && temppt.Ep<0) {
     // Minimum not bracketed.
     bracket.min_bracketed=0; // Safety
@@ -2030,8 +2110,8 @@ void Oxs_CGEvolve::FindBracketStep(const Oxs_SimState* oldstate,
     // Minimum is bracketed.
     bracket.min_bracketed=1;
     bracket.stop_span = bracket.relative_minspan*bracket.right.offset;
-    if(bracket.stop_span*basept.direction_max_mag < 4*OC_REAL8_EPSILON) {
-      bracket.stop_span = 4*OC_REAL8_EPSILON/basept.direction_max_mag;
+    if(bracket.stop_span*basept.direction_max_mag < 4*OC_REAL8m_EPSILON) {
+      bracket.stop_span = 4*OC_REAL8m_EPSILON/basept.direction_max_mag;
       /// This is a reasonable guess at the smallest variation in
       /// offset that leads to a detectable (i.e., discretizational)
       /// change in spins.
@@ -2044,7 +2124,6 @@ void Oxs_CGEvolve::FindBracketStep(const Oxs_SimState* oldstate,
 #endif
 }
 
-
 void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
 				       Oxs_Key<Oxs_SimState>& statekey)
 { // Compresses bracket span.
@@ -2053,25 +2132,29 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
   assert(bracket.left.Ep<=0.0
 	 && (bracket.right.E>bracket.left.E || bracket.right.Ep>=0));
   OC_REAL8m span = bracket.right.offset - bracket.left.offset;
-  OC_REAL8m energy_slack
-    = bracket.energy_precision * fabs(basept.total_energy);
+  OC_REAL8m energy_slack = bracket.energy_precision
+    * (fabs(basept.total_energy)
+       + fabs(bracket.left.E) + fabs(bracket.right.E));
+  OC_REAL8m min_use_energy_span = 0.0;
+  if(-1*bracket.left.Ep >= 1.0
+     || energy_slack < -1*bracket.left.Ep*OC_REAL8m_MAX) {
+    min_use_energy_span = -1*energy_slack/bracket.left.Ep;
+  }
 
-  OC_REAL8m nudge = DBL_MAX/2;
+  OC_REAL8m nudge = OC_REAL8m_MAX/2;
   if(basept.direction_max_mag>=1.
-     || OC_REAL8_EPSILON<nudge*basept.direction_max_mag) {
-    nudge = OC_REAL8_EPSILON/basept.direction_max_mag;
-    /// nudge is a reasonable guess at the smallest variation in
-    /// offset that leads to a detectable (i.e., discretizational)
-    /// change in spins.
-    if(nudge>=0.5*span*(1-OC_REAL8_EPSILON) && nudge<=span*(1+OC_REAL8_EPSILON)) {
-      // fudge nudge.  Strictly speaking, if nudge really represented
-      // the numerically smallest possible non-zero spin tweak, and if
-      // also span/2<nudge<span, then no tweaking could help, because
-      // all points between the brackets numerically match one end or
-      // the other.  In truth, however, nudge is probably not tight, so
-      // if nudge is inside (span/2,span), round it down to span/2 and
-      // give FindLineMinimumStep() one more shot.
-      nudge = 0.5*span*(1-OC_REAL8_EPSILON);
+     || OC_REAL8m_EPSILON<nudge*basept.direction_max_mag) {
+    nudge = OC_REAL8m_EPSILON/basept.direction_max_mag;
+    /// nudge is a upper bound on the smallest variation in offset
+    /// that leads to a detectable (i.e., discretizational) change in
+    /// spins.
+    if(nudge >= 0.125*span
+       && bracket.right.Ep > bracket.left.Ep*(1-OC_REAL8m_EPSILON)) {
+      // If span is small relative to nudge, but there are discernible
+      // differences in Ep at the two bracket endpoints, then the
+      // nudge upper bound is presumably loose, so we allow additional
+      // reduction to span.
+      nudge = 0.125*span;
     }
   } else {
     // Degenerate case.  basept.direction_max_mag must be exactly
@@ -2093,11 +2176,13 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
   // from that used in SetBasePoint().
   //   The last test group are sanity checks, and the obsoleted span
   // size control.
+
   if(fabs(bestpt.Ep)
      < MU0*bestpt.grad_norm*basept.direction_norm*bracket.angle_precision
-     && bestpt.Ep<=MU0*basept.g_sum_sq
-     && (bestpt.Ep==0 || span<=bracket.stop_span || nudge>=span)) {
-
+          *(1+2*sum_error_estimate)
+     && (bestpt.Ep==0 || bestpt.Ep > basept.Ep)
+     && (bestpt.Ep==0 || span<=bracket.stop_span || nudge>=span))
+  {
     // Minimum found
     bracket.min_found=1;
     bestpt.is_line_minimum=1; // Good gradient info
@@ -2108,7 +2193,7 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
     return;
   }
 
-  if(bracket.left.Ep>=0. || nudge>=span*(1-OC_REAL8_EPSILON)
+  if(bracket.left.Ep>=0. || nudge>=span*(1-OC_REAL8m_EPSILON)
      || bracket.right.Ep==0.) {
     /// left.Ep==0 means minimum found. >0 is an error, but included
     ///    anyway for robustness.
@@ -2116,7 +2201,7 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
     ///    change any spins, so we might as well stop.
     /// right.Ep can have either sign, but regardless exact 0
     ///    indicate minimum.
-    if(nudge>=span*(1-OC_REAL8_EPSILON)) {
+    if(nudge>=span*(1-OC_REAL8m_EPSILON)) {
       // Don't reset CG procedure just because of this...
       bestpt.is_line_minimum=1;
     } else {
@@ -2151,8 +2236,8 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
     return;
   }
 
-  if(fabs(Ediff)>energy_slack && rEp>=0.) {
-    // Cubic fit.  See mjd's NOTES II, 1-Sep-2001, p134-136.
+  if(span > min_use_energy_span && rEp>=0.) {
+    // Cubic fit using E and Ep.  See mjd's NOTES II, 1-Sep-2001, p134-136.
     OC_REAL8m a = -2*Ediff +   lEp + rEp;
     OC_REAL8m b =  3*Ediff - 2*lEp - rEp;
     OC_REAL8m c = lEp;
@@ -2174,14 +2259,79 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
       }
     }
   } else if(rEp>=0.) {
-    // E data looks iffy, so just use derivative information,
-    // i.e., quadratic fit.
-    OC_REAL8m Ep_diff = bracket.right.Ep - bracket.left.Ep;
-    /// Since left.Ep<0,/ Ep_diff = |right.Ep| + |left.Ep|.
-    lambda = -bracket.left.Ep/Ep_diff;
-    // Provided Ep_diff is a valid floating point number,
-    // then lambda should not overflow, and in fact must
-    // lay inside [0,1].
+    // E data looks iffy, so just use derivative information.
+    // If we have a valid "extra_bracket", then use the Ep data
+    // at the three bracket points to fit a quadratic.  Otherwise,
+    // use a linear fit through the two main bracket Ep values.
+    // See NOTES VII, 27-Mar-2014, p24 for details of quadratic fit.
+    lambda = -1.0;
+    if(0.0<=extra_bracket.offset &&
+       extra_bracket.offset < bracket.left.offset*(1-OC_REAL8m_EPSILON)) {
+      // Extra bracket to left of main brackets
+      OC_REAL8m lspan = bracket.left.offset - extra_bracket.offset;
+      OC_REAL8m rspan = span;
+      OC_REAL8m tspan = bracket.right.offset - extra_bracket.offset;
+
+      OC_REAL8m A = extra_bracket.Ep;
+      OC_REAL8m B = bracket.left.Ep;
+      OC_REAL8m C = bracket.right.Ep;
+
+      OC_REAL8m a = (lspan*C+rspan*A-tspan*B)*tspan/(lspan*rspan);
+      OC_REAL8m b = (tspan*tspan*B-lspan*lspan*C-rspan*(tspan+lspan)*A)
+                     /(lspan*rspan);
+      OC_REAL8m c = A;
+
+      OC_REAL8m disc = b*b-4*a*c;
+      lambda = -1.0;
+      if(disc >= 0.0) {
+        disc = sqrt(disc);
+        if(b>=0.0) {
+          lambda = -2*c/(b+disc);
+        } else {
+          lambda = 0.5*(disc-b)/a;
+        }
+        // The computed lambda is across tspan.  Subsequent
+        // code wants lambda across [left.offset,right.offset].
+        lambda = (lambda*tspan - lspan)/rspan;
+      }
+    } else if(bracket.right.offset*(1+OC_REAL8m_EPSILON)<extra_bracket.offset) {
+      // Extra bracket to right of main brackets
+      OC_REAL8m lspan = span;
+      OC_REAL8m rspan = extra_bracket.offset - bracket.right.offset;
+      OC_REAL8m tspan = extra_bracket.offset - bracket.left.offset;
+
+      OC_REAL8m A = bracket.left.Ep;
+      OC_REAL8m B = bracket.right.Ep;
+      OC_REAL8m C = extra_bracket.Ep;
+
+      OC_REAL8m a = (lspan*C+rspan*A-tspan*B)*tspan/(lspan*rspan);
+      OC_REAL8m b = (tspan*tspan*B-lspan*lspan*C-rspan*(tspan+lspan)*A)
+                     /(lspan*rspan);
+      OC_REAL8m c = A;
+
+      OC_REAL8m disc = b*b-4*a*c;
+      lambda = -1.0;
+      if(disc >= 0.0) {
+        disc = sqrt(disc);
+        if(b>=0.0) {
+          lambda = -2*c/(b+disc);
+        } else {
+          lambda = 0.5*(disc-b)/a;
+        }
+        // The computed lambda is across tspan.  Subsequent
+        // code wants lambda across [left.offset,right.offset].
+        lambda *= tspan/lspan;
+      }
+    }
+    if(lambda<=0.0 || 1.0<=lambda) {
+      // Fallback to linear fit
+      OC_REAL8m Ep_diff = bracket.right.Ep - bracket.left.Ep;
+      /// Since left.Ep<0,/ Ep_diff = |right.Ep| + |left.Ep|.
+      lambda = -bracket.left.Ep/Ep_diff;
+      // Provided Ep_diff is a valid floating point number,
+      // then lambda should not overflow, and in fact must
+      // lay inside [0,1].
+    }
   } else {
     // Overly large bracket, or bad rightpt.Ep.
     // Guess at minpt using leftpt.E/Ep and rightpt.E
@@ -2217,15 +2367,15 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
   if(last_reduce<max_reduce) max_reduce=last_reduce;
   if(next_to_last_reduce<max_reduce) max_reduce=next_to_last_reduce;
   max_reduce *= max_reduce;
-  if(span*max_reduce < OC_REAL8_EPSILON * bracket.right.offset) {
-    OC_REAL8m temp = OC_REAL8_EPSILON * bracket.right.offset;
+  if(span*max_reduce < OC_REAL8m_EPSILON * bracket.right.offset) {
+    OC_REAL8m temp = OC_REAL8m_EPSILON * bracket.right.offset;
     if(temp<0.5*span) max_reduce = temp/span;
     else              max_reduce = 0.5;
   }
   if(/* span>256*nudge && */ span*max_reduce<nudge) max_reduce = nudge/span;
   /// There are some difficulties with the above nudge barrier control.
   /// In particular, even if the difference in offset values between
-  /// test_offset and left/right.offset is less than OC_REAL8_EPSILON,
+  /// test_offset and left/right.offset is less than OC_REAL8m_EPSILON,
   /// the difference in the spin configuration at the test point may
   /// be different than the spin configuration at the closer endpt
   /// because of roundoff errors.  Some tests have appeared to indicate
@@ -2284,8 +2434,11 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
   // additional details.
   if(fabs(bestpt.Ep)
      < MU0*bestpt.grad_norm*basept.direction_norm*bracket.angle_precision
-     && bestpt.Ep>MU0*basept.g_sum_sq
-     && (bestpt.Ep==0 || newspan<=bracket.stop_span || nudge>=newspan)) {
+          *(1+2*sum_error_estimate)
+     && (bestpt.Ep==0 || bestpt.Ep > basept.Ep)
+     && (bestpt.Ep==0 || span<=bracket.stop_span
+         || (nudge>=span && bracket.right.Ep <= bracket.left.Ep)))
+  {
     bracket.min_found=1;
     bestpt.is_line_minimum=1; // Here and in the up-front check at the
     /// top of this routine should be the only two places where
@@ -2296,10 +2449,115 @@ void Oxs_CGEvolve::FindLineMinimumStep(const Oxs_SimState* oldstate,
 	 && (bracket.right.E>bracket.left.E || bracket.right.Ep>=0));
 }
 
+ void Oxs_CGEvolve::AdjustDirection(const Oxs_SimState* cstate,
+                                    OC_REAL8m gamma,
+                                    OC_REAL8m& maxmagsq,
+                                    Nb_Xpfloat& work_normsumsq,
+                                    Nb_Xpfloat& work_gradsumsq,
+                                    Nb_Xpfloat& work_Ep)
+{ //   Performs operation direction = torque + gamma*old_direction,
+  // and returns some related values.  Intended solely for internal
+  // use by Oxs_CGEvolve::SetBasePoint method.
+  //   This code is not threaded, but it would be straightforward to
+  // make it so.
+  const Oxs_MeshValue<ThreeVector>& spin = cstate->spin;
+  const Oxs_Mesh* mesh = cstate->mesh;
+  const OC_INDEX size = mesh->Size();
+
+  maxmagsq = 0.0;
+  work_normsumsq = 0.0;
+  work_gradsumsq = 0.0;
+  work_Ep = 0.0;
+  for(OC_INDEX i=0;i<size;++i) {
+    const ThreeVector& pc = preconditioner_Ms_V[i];
+    ThreeVector temp = bestpt.mxHxm[i];
+    temp.x *= pc.x;  temp.y *= pc.y;  temp.z *= pc.z;
+    /// Preconditioner has Ms[i]*mesh->Volume(i) built in.
+    temp.Accum(gamma,basept.direction[i]);
+    // Make temp orthogonal to spin[i].  If the angle between
+    // temp and spin[i] is larger than about 45 degrees, then
+    // it may be beneficial to divide by spin[i].MagSq(),
+    // to offset effects of non-unit spin.  For small angles
+    // it appears to be better to leave out this adjustment.
+    // Or, better still, use temp -= (temp.m)m formulation
+    // for large angles, w/o size correction.
+    // NOTE: This code assumes |spin[i]| == 1.
+    temp.Accum(-1*(temp*spin[i]),spin[i]);
+    basept.direction[i] = temp;
+
+    OC_REAL8m magsq = temp.MagSq();
+    if(magsq>maxmagsq) maxmagsq = magsq;
+    work_normsumsq.Accum(temp.x*temp.x);
+    work_normsumsq.Accum(temp.y*temp.y);
+    work_normsumsq.Accum(temp.z*temp.z);
+    Nb_Xpfloat work_temp = temp.x * bestpt.mxHxm[i].x;
+    work_temp.Accum(temp.y * bestpt.mxHxm[i].y);
+    work_temp.Accum(temp.z * bestpt.mxHxm[i].z);
+    work_temp *= Ms_V[i];
+    work_Ep.Accum(work_temp);
+    /// See mjd's NOTES II, 29-May-2002, p156.
+    work_gradsumsq.Accum(bestpt.mxHxm[i].MagSq()*Ms_V[i]*Ms_V[i]);
+  }
+}
+
+ void Oxs_CGEvolve::KludgeDirection(const Oxs_SimState* cstate,
+                                    OC_REAL8m kludge,
+                                    OC_REAL8m& maxmagsq,
+                                    Nb_Xpfloat& work_normsumsq,
+                                    Nb_Xpfloat& work_gradsumsq,
+                                    Nb_Xpfloat& work_Ep)
+ { // Similar to AdjustDirection, but performs
+   //   new_direction = old_direction + kludge*torque
+   // instead of
+   //   new_direction = gamma*old_direction + torque
+   // Intended solely for internal use by Oxs_CGEvolve::SetBasePoint
+   // method.  See NOTES VII, 16_may-2014, p 26-29.
+   //   This code is not threaded, but it would be straightforward to
+   // make it so.
+  const Oxs_MeshValue<ThreeVector>& spin = cstate->spin;
+  const Oxs_Mesh* mesh = cstate->mesh;
+  const OC_INDEX size = mesh->Size();
+
+  maxmagsq = 0.0;
+  work_normsumsq = 0.0;
+  work_gradsumsq = 0.0;
+  work_Ep = 0.0;
+  for(OC_INDEX i=0;i<size;++i) {
+    const ThreeVector& pc = preconditioner_Ms_V[i];
+    ThreeVector temp = bestpt.mxHxm[i];
+    temp.x *= kludge*pc.x;  temp.y *= kludge*pc.y;  temp.z *= kludge*pc.z;
+    /// Preconditioner has Ms[i]*mesh->Volume(i) built in.
+    temp += basept.direction[i];
+    // Make temp orthogonal to spin[i].  If the angle between
+    // temp and spin[i] is larger than about 45 degrees, then
+    // it may be beneficial to divide by spin[i].MagSq(),
+    // to offset effects of non-unit spin.  For small angles
+    // it appears to be better to leave out this adjustment.
+    // Or, better still, use temp -= (temp.m)m formulation
+    // for large angles, w/o size correction.
+    // NOTE: This code assumes |spin[i]| == 1.
+    temp.Accum(-1*(temp*spin[i]),spin[i]);
+    basept.direction[i] = temp;
+
+    OC_REAL8m magsq = temp.MagSq();
+    if(magsq>maxmagsq) maxmagsq = magsq;
+    work_normsumsq.Accum(temp.x*temp.x);
+    work_normsumsq.Accum(temp.y*temp.y);
+    work_normsumsq.Accum(temp.z*temp.z);
+    Nb_Xpfloat work_temp = temp.x * bestpt.mxHxm[i].x;
+    work_temp.Accum(temp.y * bestpt.mxHxm[i].y);
+    work_temp.Accum(temp.z * bestpt.mxHxm[i].z);
+    work_temp *= Ms_V[i];
+    work_Ep.Accum(work_temp);
+    /// See mjd's NOTES II, 29-May-2002, p156.
+    work_gradsumsq.Accum(bestpt.mxHxm[i].MagSq()*Ms_V[i]*Ms_V[i]);
+  }
+}
+
 void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
 {
   const Oxs_SimState* cstate = cstate_key.GetPtr();
-  if(cstate->Id() == basept.id) {
+  if(cstate->Id() == basept.id && basept.valid) {
     return;  // Already set
   }
 
@@ -2311,18 +2569,25 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
   ++cycle_sub_count;
   cstate->AddDerivedData("Cycle count",
                          OC_REAL8m(cycle_count));
-  cstate->AddDerivedData("Cycle sub count",
-                         OC_REAL8m(cycle_sub_count));
+  // cycle_sub_count will change if conjugate direction is reset to
+  // gradient below.  So wait to set "Cycle sub count" derived data.
 
+  extra_bracket.offset = -1;  // Mark as not set
 
   // Some convenience variables
-  const Oxs_MeshValue<ThreeVector>& spin = cstate->spin;
   const Oxs_Mesh* mesh = cstate->mesh;
-  const OC_INDEX size = mesh->Size();
   OC_REAL8m Ep = 0.0;
-  OC_REAL8m last_scaling = basept.direction_max_mag;
-  OC_REAL8m last_step = bestpt.offset;
-  OC_BOOL   last_step_is_minimum = bestpt.is_line_minimum;
+  // const OC_REAL8m last_scaling = basept.direction_max_mag;
+  OC_REAL8m next_step_guess = bestpt.offset;
+  if(bestpt.is_line_minimum && bracket.left.Ep<0 && bracket.right.Ep>0) {
+    // Compute improved estimate of minimum, via linear fit to last Ep data
+    next_step_guess = (bracket.right.Ep*bracket.left.offset
+                       - bracket.left.Ep*bracket.right.offset)
+                     / (bracket.right.Ep - bracket.left.Ep);
+  }
+  OC_BOOL last_step_is_minimum = bestpt.is_line_minimum;
+
+  const OC_REAL8m last_direction_norm = basept.direction_norm;
 
   // cstate and bestpt should be same
   if(!bestpt.key.SameState(cstate_key)) {
@@ -2331,7 +2596,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
     bestpt.key.GetReadReference(); // Set read lock
     GetEnergyAndmxHxm(cstate,bestpt.energy,bestpt.mxHxm,NULL);
     last_step_is_minimum = 0;
-    /// Should last_step be set to 0 in this case???
+    /// Should next_step_guess be set to 0 in this case???
   }
   bestpt.offset=0.0; // Position relative to basept
   bestpt.is_line_minimum=0; // Presumably not minimum wrt new direction
@@ -2351,8 +2616,8 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
     //              n = cycle count
     //              k = cell index
     //         g_n[k] = V[k]*Ms[k]*mxHxm_n[k]
-    //     gamma = (g_n^T P g_n)/(g_(n-1)^T P g_(n-1))        (Fletcher-Reeves)
-    // or  gamma = (g_n^T P (g_n-g_(n-1))/(g_(n-1)^T P g_(n-1)) (Polak-Ribiere)
+    //    gamma = (g_n^T P g_n)/(g_(n-1)^T P g_(n-1))      (Fletcher-Reeves)
+    // or gamma = (g_n^T P (g_n-g_(n-1))/(g_(n-1)^T P g_(n-1)) (Polak-Ribiere)
     //    Direction_n = (P g_n)+gamma*direction_(n-1).
     // where matrix P is the preconditioner.
     // Note that the g_(n-1) (or equivalently, mxHxm[n-1]) array is only
@@ -2373,6 +2638,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
 
     OC_REAL8m gamma, new_g_sum_sq;
 #if !OOMMF_THREADS
+    const OC_INDEX size = mesh->Size();
     OC_INDEX i;
     gamma = new_g_sum_sq = 0.0;
     if(basept.method != Basept_Data::POLAK_RIBIERE) {
@@ -2443,64 +2709,26 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
 #if REPORT_TIME_CGDEVEL
 TS(timer[3].Stop()); /**/
 if(basept.method != Basept_Data::POLAK_RIBIERE) {
-  timer_counts[3].Increment(timer[3],size*(2*sizeof(ThreeVector)));
+  timer_counts[3].Increment(timer[3],mesh->Size()*(2*sizeof(ThreeVector)));
 } else {
-  timer_counts[3].Increment(timer[3],size*(4*sizeof(ThreeVector)));
+  timer_counts[3].Increment(timer[3],mesh->Size()*(4*sizeof(ThreeVector)));
 }
 #endif // REPORT_TIME_CGDEVEL
-
 
 #if REPORT_TIME_CGDEVEL
 TS(timer[5].Start()); /**/ // asdf
 #endif // REPORT_TIME_CGDEVEL
 
-#if !OOMMF_THREADS /////////////////////////////////////////////////////
-    OC_REAL8m maxmagsq = 0.0;
-    Nb_Xpfloat work_normsumsq = 0.0;
-    Nb_Xpfloat work_Ep = 0.0;
-    for(i=0;i<size;++i) {
-      const ThreeVector& pc = preconditioner_Ms_V[i];
-      ThreeVector temp = bestpt.mxHxm[i];
-      temp.x *= pc.x;  temp.y *= pc.y;  temp.z *= pc.z;
-      /// Preconditioner has Ms[i]*mesh->Volume(i) built in.
-      temp.Accum(gamma,basept.direction[i]);
-      // Make temp orthogonal to spin[i].  If the angle between
-      // temp and spin[i] is larger than about 45 degrees, then
-      // it may be beneficial to divide by spin[i].MagSq(),
-      // to offset effects of non-unit spin.  For small angles
-      // it appears to be better to leave out this adjustment.
-      // Or, better still, use temp -= (temp.m)m formulation
-      // for large angles, w/o size correction.
-      // NOTE: This code assumes |spin[i]| == 1.
-#if 0
-      temp.wxvxw(spin[i]);
-#else
-      temp.Accum(-1*(temp*spin[i]),spin[i]);
-#endif
-
-      basept.direction[i] = temp;
-
-      OC_REAL8m magsq = temp.MagSq();
-      if(magsq>maxmagsq) maxmagsq = magsq;
-      work_normsumsq.Accum(temp.x*temp.x);
-      work_normsumsq.Accum(temp.y*temp.y);
-      work_normsumsq.Accum(temp.z*temp.z);
-#if 0
-      work_Ep.Accum.Accum( (temp*bestpt.mxHxm[i])*Ms_V[i] );
-#else
-      Nb_Xpfloat work_temp = temp.x * bestpt.mxHxm[i].x;
-      work_temp.Accum(temp.y * bestpt.mxHxm[i].y);
-      work_temp.Accum(temp.z * bestpt.mxHxm[i].z);
-      work_temp *= Ms_V[i];
-      work_Ep.Accum(work_temp);
-#endif
-      /// See mjd's NOTES II, 29-May-2002, p156.
-    }
-    OC_REAL8m normsumsq = work_normsumsq.GetValue();
+    OC_REAL8m maxmagsq, normsumsq;
+#if !OOMMF_THREADS
+    Nb_Xpfloat work_normsumsq,work_Ep,work_gradsumsq;
+    AdjustDirection(cstate,gamma,maxmagsq,work_normsumsq,work_gradsumsq,work_Ep);
+    normsumsq = work_normsumsq.GetValue();
+    bestpt.grad_norm = sqrt(work_gradsumsq.GetValue());
     Ep = work_Ep.GetValue();
 #else // OOMMF_THREADS /////////////////////////////////////////////////
-    OC_REAL8m maxmagsq, normsumsq;
     {
+      const Oxs_MeshValue<ThreeVector>& spin = cstate->spin;
       _Oxs_CGEvolve_SetBasePoint_ThreadB threadB;
       _Oxs_CGEvolve_SetBasePoint_ThreadB::Init(Oc_GetMaxThreadCount(),
                                                Ms_V.GetArrayBlock());
@@ -2520,45 +2748,82 @@ TS(timer[5].Start()); /**/ // asdf
       maxmagsq = _Oxs_CGEvolve_SetBasePoint_ThreadB::maxmagsq;
       normsumsq = _Oxs_CGEvolve_SetBasePoint_ThreadB::normsumsq.GetValue();
       Ep = _Oxs_CGEvolve_SetBasePoint_ThreadB::Ep.GetValue();
+      bestpt.grad_norm
+        = sqrt(_Oxs_CGEvolve_SetBasePoint_ThreadB::gradsumsq.GetValue());
       _Oxs_CGEvolve_SetBasePoint_ThreadB::result_mutex.Unlock();
     }
 #endif // OOMMF_THREADS ////////////////////////////////////////////////
 
-
 #if REPORT_TIME_CGDEVEL
 TS(timer[5].Stop()); /**/
 timer_counts[5].Increment(timer[5],
-                size*(sizeof(OC_REAL8m)+5*sizeof(ThreeVector)));
+                mesh->Size()*(sizeof(OC_REAL8m)+5*sizeof(ThreeVector)));
 #endif // REPORT_TIME_CGDEVEL
 
-    basept.direction_max_mag = sqrt(maxmagsq);
-    basept.direction_norm = sqrt(normsumsq);
-    basept.g_sum_sq = new_g_sum_sq;
-    OC_REAL8m direction_slope = Ep;
-    Ep *= -MU0; // See mjd's NOTES II, 29-May-2002, p156.
-    bestpt.Ep = Ep;
+    if(bestpt.grad_norm
+       < gamma*last_direction_norm*gradient_reset_angle_cotangent) {
+      // If new gradient were exactly orthogonal to last direction
+      // (as it would be if minimization results were exact), then
+      // new direction (not including the preconditioner, if any)
+      // is less than gradient_reset_angle from last direction.
+      // Count this as evidence towards the need for a CG reset.
+      gradient_reset_score = gradient_reset_wgt*gradient_reset_score
+        + (1-gradient_reset_wgt)*1.0;
+    } else {
+      gradient_reset_score *= gradient_reset_wgt;
+    }
 
-    // Ep is derivative of energy in basept.direction.  If this
-    // is not negative (presumably because the previous line
-    // minimization did a poor job), then pitch current CG
-    // data and restart using the pure gradient as the search
-    // direction.  (See next code block.)
-    basept.valid=0; // Use gradient unless following test is passed.
-    const OC_REAL8m maxdot = basept.direction_norm*bestpt.grad_norm;
-    if(direction_slope < -maxdot*sqrt(double(size))*OC_REAL8_EPSILON*8) {
-      static Oxs_WarningMessage foo(3);
-      foo.Send(revision_info,OC_STRINGIFY(__LINE__),
-               "Bad line direction selection; poor line minimization?"
-               "  If convergence is slow, try reducing the"
-               " line_minimum_angle_precision setting in the"
-               " Oxs_CGEvolve Specify block.");
-    } else if(direction_slope > gradient_reset_angle_cos*maxdot) {
-      // New direction slope is not small compared to what it would be
-      // if pure gradient direction were used.  Interpret failure of
-      // this test as a sign that the conjugate-gradient algorithm has
-      // gone astray, in which case we leave basept.valid=0 and reset
-      // direction to pure gradient (next code block).
-      basept.valid=1;
+    if(gradient_reset_score>=gradient_reset_trigger) {
+      basept.valid=0;
+    } else {
+      // Kludge for case direction*torque<=0
+      if(Ep <= kludge_adjust_angle_cos*sqrt(normsumsq)
+         *bestpt.grad_norm*(1+8*OC_REAL8m_EPSILON)) {
+        // See NOTES VII, 16-May-2014, p 26-29.
+        OC_REAL8m Tsq = bestpt.grad_norm*bestpt.grad_norm;
+        OC_REAL8m betasq = kludge_adjust_angle_cos*kludge_adjust_angle_cos
+          * (1+8*OC_REAL8m_EPSILON);
+        OC_REAL8m A = (1-betasq)*Tsq*Tsq;
+        OC_REAL8m B = 2*(1-betasq)*Ep*Tsq;
+        OC_REAL8m C = Ep*Ep-betasq*normsumsq*Tsq;
+        OC_REAL8m Delta = B*B - 4*A*C;
+        OC_REAL8m alpha = 0.0;
+        if(Delta>0.0) {
+          if(B>=0.0) {
+            alpha = -2*C/(sqrt(Delta)+B);
+          } else {
+            alpha = (sqrt(Delta)-B)/(2*A);
+          }
+        } else {
+          // According to (9) in NOTES VII, 16-May-2014, p 27, Delta
+          // should be strictly positive unless P and T are parallel,
+          // in which case Delta is zero.  What to do in case Delta
+          // evaluates under floating-point computations to <= 0?  As
+          // a first guess just force Delta to 0 and throw in some fudge
+          if(B>0.0) {
+            alpha = -2*C/B;
+          } else {
+            alpha = -B/(2*A);
+          }
+          alpha *= (1.0 + 1024*OC_REAL8m_EPSILON);
+        }
+        Nb_Xpfloat work_normsumsq,work_Ep,work_gradsumsq;
+        KludgeDirection(cstate,alpha,maxmagsq,work_normsumsq,
+                        work_gradsumsq,work_Ep);
+        normsumsq = work_normsumsq.GetValue();
+        bestpt.grad_norm = sqrt(work_gradsumsq.GetValue());
+        Ep = work_Ep.GetValue();
+      }
+      basept.direction_max_mag = sqrt(maxmagsq);
+      basept.direction_norm = sqrt(normsumsq);
+      basept.g_sum_sq = new_g_sum_sq;
+      Ep *= -MU0; // See mjd's NOTES II, 29-May-2002, p156.
+      basept.Ep = bestpt.Ep = Ep;
+      if(Ep < 0.0) { // Safety
+        basept.valid=1;
+      } else {
+        basept.valid=0;
+      }
     }
   }
 
@@ -2570,30 +2835,38 @@ TS(timer[6].Start()); /**/
     basept.direction.AdjustSize(mesh);
     cycle_sub_count=0;
     ++conjugate_cycle_count;
+    gradient_reset_score=0.0;
 #if !OOMMF_THREADS
+    const OC_INDEX size = mesh->Size();
     OC_REAL8m maxmagsq = 0.0;
     OC_REAL8m sumsq = 0.0;
-    Ep = 0.0;
+    Nb_Xpfloat work_Ep = 0.0;
     Nb_Xpfloat work_sumsq = 0.0;
+    Nb_Xpfloat work_gradsumsq = 0.0;
     for(OC_INDEX i=0;i<size;i++) {
       basept.direction[i] = bestpt.mxHxm[i];
       basept.direction[i].x *= preconditioner_Ms_V[i].x;
       basept.direction[i].y *= preconditioner_Ms_V[i].y;
       basept.direction[i].z *= preconditioner_Ms_V[i].z;
       // Note: Preconditioner has Ms[i]*mesh->Volume(i) built in.
-      Ep += (basept.direction[i]*bestpt.mxHxm[i])*Ms_V[i];
+
+      Nb_Xpfloat work_temp = basept.direction[i].x * bestpt.mxHxm[i].x;
+      work_temp.Accum(basept.direction[i].y * bestpt.mxHxm[i].y);
+      work_temp.Accum(basept.direction[i].z * bestpt.mxHxm[i].z);
+      work_temp *= Ms_V[i];
+      work_Ep.Accum(work_temp);
+      work_gradsumsq.Accum(bestpt.mxHxm[i].MagSq()*Ms_V[i]*Ms_V[i]);
+
       OC_REAL8m magsq = basept.direction[i].MagSq();
       if(magsq>maxmagsq) maxmagsq = magsq;
-#if 0
-      sumsq += magsq;
-#else
       work_sumsq.Accum(basept.direction[i].x*basept.direction[i].x);
       work_sumsq.Accum(basept.direction[i].y*basept.direction[i].y);
       work_sumsq.Accum(basept.direction[i].z*basept.direction[i].z);
-#endif
       /// See mjd's NOTES II, 29-May-2002, p156.
     }
     sumsq = work_sumsq.GetValue();
+    Ep = work_Ep.GetValue();
+    bestpt.grad_norm = sqrt(work_gradsumsq.GetValue());
 #else // !OOMMF_THREADS
     OC_REAL8m maxmagsq, sumsq;
     {
@@ -2613,6 +2886,8 @@ TS(timer[6].Start()); /**/
       maxmagsq = _Oxs_CGEvolve_SetBasePoint_ThreadC::maxmagsq;
       sumsq = _Oxs_CGEvolve_SetBasePoint_ThreadC::sumsq.GetValue();
       Ep = _Oxs_CGEvolve_SetBasePoint_ThreadC::Ep.GetValue();
+      bestpt.grad_norm
+        = sqrt(_Oxs_CGEvolve_SetBasePoint_ThreadC::gradsumsq.GetValue());
       _Oxs_CGEvolve_SetBasePoint_ThreadC::result_mutex.Unlock();
     }
 #endif // !OOMMF_THREADS
@@ -2621,17 +2896,19 @@ TS(timer[6].Start()); /**/
     basept.g_sum_sq = sumsq;
     basept.direction_norm = sqrt(sumsq);
     Ep *= -MU0; // See mjd's NOTES II, 29-May-2002, p156.
-    bestpt.Ep = Ep;
+    basept.Ep = bestpt.Ep = Ep;
     bestpt.offset = 0.0;
     bestpt.is_line_minimum = 0;
     basept.valid=1;
 #if REPORT_TIME_CGDEVEL
 TS(timer[6].Stop()); /**/
 timer_counts[6].Increment(timer[6],
-                size*(sizeof(OC_REAL8m)+3*sizeof(ThreeVector)));
+                mesh->Size()*(sizeof(OC_REAL8m)+3*sizeof(ThreeVector)));
 #endif // REPORT_TIME_CGDEVEL
   }
 
+  cstate->AddDerivedData("Cycle sub count",
+                         OC_REAL8m(cycle_sub_count));
   cstate->AddDerivedData("Conjugate cycle count",
                          OC_REAL8m(conjugate_cycle_count));
 
@@ -2649,13 +2926,13 @@ timer_counts[6].Increment(timer[6],
   bracket.min_found=0;
 
   if(basept.direction_max_mag>=1.0
-     || bracket.maxstep<basept.direction_max_mag*DBL_MAX) {
+     || bracket.maxstep<basept.direction_max_mag*OC_REAL8m_MAX) {
     bracket.scaled_minstep=bracket.minstep/basept.direction_max_mag;
     bracket.scaled_maxstep=bracket.maxstep/basept.direction_max_mag;
   } else {
     // Safety
     if(bracket.maxstep>0.0) {
-      bracket.scaled_maxstep = 0.5*DBL_MAX;
+      bracket.scaled_maxstep = 0.5*OC_REAL8m_MAX;
       bracket.scaled_minstep
 	= bracket.scaled_maxstep*(bracket.minstep/bracket.maxstep);
     } else {
@@ -2667,15 +2944,14 @@ timer_counts[6].Increment(timer[6],
   // Size initial step to match that from previous
   // line minimization, if applicable
   bracket.start_step = bracket.scaled_minstep;
-  if(last_step_is_minimum && last_step>0.0) {
-    OC_REAL8m scaling_ratio = 1.0;
-    if(basept.direction_max_mag>=1.0
-       || last_scaling<basept.direction_max_mag*DBL_MAX) {
-      scaling_ratio = last_scaling/basept.direction_max_mag;
-    }
-    if(scaling_ratio<=1.0
-       || last_step<DBL_MAX/scaling_ratio) {
-      bracket.start_step = last_step*scaling_ratio;
+  if(next_step_guess>0.0) {
+    OC_REAL8m scaling_ratio = 1.25;
+    // The 1.25 adjusment increases odds that first step will
+    // bracket the minimum.  This is mostly helpful in the large
+    // |mxHxm| regime, where line minimization largely doesn't come
+    // into play.
+    if(next_step_guess<OC_REAL8m_MAX/scaling_ratio) {
+      bracket.start_step = next_step_guess*scaling_ratio;
     }
     if(bracket.start_step>bracket.scaled_maxstep) {
       bracket.start_step = bracket.scaled_maxstep;
@@ -2695,6 +2971,40 @@ timer_counts[6].Increment(timer[6],
   bracket.left.Ep     = bracket.right.Ep     = Ep;
 }
 
+void Oxs_CGEvolve::RuffleBasePoint(const Oxs_SimState* oldstate,
+                                   Oxs_Key<Oxs_SimState>& statekey)
+{ // Tweak all the spins in oldstate by epsilon, storing result in
+  // statekey.  The new state is then set as the new base point.  It is
+  // difficult to write a regression test for this bit of code because
+  // the nudge amount depends on sizeof(OC_REAL8m) --- specifically
+  // OC_REAL8m_EPSILON.
+  try {
+    const Oxs_MeshValue<ThreeVector>& oldspin = oldstate->spin;
+    Oxs_SimState& workstate
+      = statekey.GetWriteReference(); // Write lock
+    Oxs_MeshValue<ThreeVector>& workspin = workstate.spin;
+
+    const OC_INDEX vecsize = oldspin.Size();
+    for(OC_INDEX i=0;i<vecsize;i++) {
+      // The tweaking is not uniform on the sphere, but do we care?
+      workspin[i].x = oldspin[i].x + (2*Oc_UnifRand()-1)*OC_REAL8m_EPSILON;
+      workspin[i].y = oldspin[i].y + (2*Oc_UnifRand()-1)*OC_REAL8m_EPSILON;
+      workspin[i].z = oldspin[i].z + (2*Oc_UnifRand()-1)*OC_REAL8m_EPSILON;
+      workspin[i].MakeUnit();
+    }
+    workstate.iteration_count = oldstate->iteration_count + 1;
+    workstate.stage_iteration_count
+      = oldstate->stage_iteration_count + 1;
+    statekey.GetReadReference(); // Release write lock
+  }
+  catch (...) {
+    statekey.GetReadReference(); // Release write lock
+    throw;
+  }
+  basept.valid=0;
+  SetBasePoint(statekey);
+}
+
 void Oxs_CGEvolve::NudgeBestpt(const Oxs_SimState* oldstate,
 			       Oxs_Key<Oxs_SimState>& statekey)
 { // Line minimization didn't change state, which is
@@ -2702,7 +3012,7 @@ void Oxs_CGEvolve::NudgeBestpt(const Oxs_SimState* oldstate,
   // the base-direction code may re-generate the same
   // direction, in which case the algorithm gets
   // stuck.  So, we nudge.
-  assert(bracket.left.Ep<0.0
+  assert(bracket.left.Ep<=0.0
 	 && (bracket.right.E>bracket.left.E || bracket.right.Ep>=0));
   {
     char warnbuf[1024];
@@ -2715,25 +3025,25 @@ void Oxs_CGEvolve::NudgeBestpt(const Oxs_SimState* oldstate,
     static Oxs_WarningMessage foo(3);
     foo.Send(revision_info,OC_STRINGIFY(__LINE__),warnbuf);
   }
-  OC_REAL8m nudge = DBL_MAX/2;
-  if(basept.direction_max_mag>1.
-     || 4*OC_REAL8_EPSILON<nudge*basept.direction_max_mag) {
-    nudge = 4*OC_REAL8_EPSILON/basept.direction_max_mag;
-    /// nudge is a reasonable guess at the smallest variation in
-    /// offset that leads to a detectable (i.e., discretizational)
-    /// change in spins.
-  } else {
-    // Degenerate case.  basept.direction_max_mag must be exactly
-    // or very nearly zero.  Punt.
-    nudge = 1.0;
+  OC_REAL8m nudge = OC_REAL8m_MAX/2;
+  if(basept.direction_max_mag<1.
+     && nudge*basept.direction_max_mag<4*OC_REAL8m_EPSILON) {
+    // Degenerate case.  basept.direction_max_mag must be exactly or
+    // very nearly zero.  Twiddle each spin by epsilon and punt.
+    RuffleBasePoint(oldstate,statekey);
+    return;
   }
 
+  nudge = 4*OC_REAL8m_EPSILON/basept.direction_max_mag;
+  /// nudge is a reasonable guess at the smallest variation in
+  /// offset that leads to a detectable (i.e., discretizational)
+  /// change in spins.
   OC_REAL8m test_offset = 0.5;
   if(bracket.right.Ep>0.) {
     if(-bracket.left.Ep
        < test_offset*(bracket.right.Ep-bracket.left.Ep)) {
       test_offset
-	= -bracket.left.Ep/(bracket.right.Ep-bracket.left.Ep);
+        = -bracket.left.Ep/(bracket.right.Ep-bracket.left.Ep);
     }
   } else {
     // Ep data is not informative
@@ -2849,7 +3159,12 @@ OC_BOOL Oxs_CGEvolve::Step(const Oxs_MinDriver* driver,
 #endif // REPORT_TIME_CGDEVEL
     FindLineMinimumStep(cstate,next_state_key);
     if(bracket.min_found && bestpt.offset==0.0) {
-      NudgeBestpt(cstate,next_state_key);
+      if(cycle_sub_count==0) {
+        NudgeBestpt(cstate,next_state_key);
+      } else {
+        basept.valid = 0;
+        SetBasePoint(current_state_key);
+      }
     }
 #if REPORT_TIME_CGDEVEL
   TS(findlinemintime.Stop());
@@ -2861,32 +3176,6 @@ OC_BOOL Oxs_CGEvolve::Step(const Oxs_MinDriver* driver,
 
   // Finish filling in next_state structure
   driver->FillStateDerivedData(*cstate,*nstate);
-
-#if defined(TRACK_STEPSIZE)
-  {
-    OC_REAL8m maxdot = 0.0;
-    const OC_INDEX meshsize = cstate->mesh->Size();
-    const Oxs_MeshValue<ThreeVector>& cspin = cstate->spin;
-    const Oxs_MeshValue<ThreeVector>& nspin = nstate->spin;
-    for(OC_INDEX i=0;i<meshsize;++i) {
-      OC_REAL8m dot = (cspin[i]-nspin[i]).MagSq();
-      if(dot>maxdot) maxdot = dot;
-    }
-    const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);
-    const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
-    OC_REAL8m maxang_allowed = atan(bracket.maxstep)*180./PI;
-    if(maxang>maxang_allowed) {
-      fprintf(stderr,"MAX ANGLE VIOLATION: %g > %g\n",
-              static_cast<double>(maxang),
-              static_cast<double>(maxang_allowed));
-      fprintf(stderr," cstate: %u/%u/%u   nstate: %u/%u/%u\n",
-              cstate->Id(),cstate->iteration_count,
-              cstate->stage_iteration_count,
-              nstate->Id(),nstate->iteration_count,
-              nstate->stage_iteration_count);
-    }
-  }
-#endif // TRACK_STEPSIZE
 
 #if REPORT_TIME
   TS(steponlytime.Stop());

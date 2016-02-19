@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html625"
+<A NAME="tex2html630"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html621"
+<A NAME="tex2html626"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html615"
+<A NAME="tex2html620"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html627"
+<A NAME="tex2html632"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html623"
+<A NAME="tex2html628"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html626"
+<B> Next:</B> <A NAME="tex2html631"
   HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
-<B> Up:</B> <A NAME="tex2html622"
+<B> Up:</B> <A NAME="tex2html627"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html616"
+<B> Previous:</B> <A NAME="tex2html621"
   HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector</A>
 <BR>
 <BR>
@@ -57,7 +57,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Vector Field File Difference:
           avfdiff
-</H2><A NAME="16877"></A><A NAME="16878"></A><A NAME="16879"></A><A NAME="16880"></A><A NAME="16881"></A>
+</H2><A NAME="17198"></A><A NAME="17199"></A><A NAME="17200"></A><A NAME="17201"></A><A NAME="17202"></A>
 The <B>avfdiff</B> program computes differences between vector field files
 in any of the <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
 (OVF, VIO).  The input data must lie on rectangular meshes with
@@ -70,13 +70,79 @@ identical dimensions.
 <BR>
 The <B>avfdiff</B> launch command is:
 <PRE>
-tclsh oommf.tcl avfdiff [standard options] [info] file-0 file-1 [... file-n]
+tclsh oommf.tcl avfdiff [standard options] [-cross] [-filesort method] \
+   [-info] [-numfmt fmt] [-odt label units valexpr] \
+   [-resample fileselect interp_order] file-0 file-1 [... file-n]
 </PRE>
 where
 <DL>
+<DT><STRONG><TT><B>-cross</B></TT></STRONG></DT>
+<DD>Compute the pointwise vector cross product
+  of each <TT>file-k</TT> against <TT>file-0</TT> instead of subtraction.
+</DD>
+<DT><STRONG><TT><B>-filesort method</B></TT></STRONG></DT>
+<DD>Specifies the sorting order to apply to the target file list,
+  <TT>file-1</TT> through <TT>file-n</TT>.  The order is important when using
+  the <TT>-odt</TT> option, because it controls the order of the rows in the
+  output.  Parameter <TT>method</TT> should be a valid option string for the
+  Tcl command <TT>lsort</TT>, e.g., ``-ascii -decreasing''.  Note that the
+  <TT>lsort</TT> sort options all begin with a hyphen, ``-'', and that if
+  you want to use multiple options they must be grouped as one element
+  to <TT>-filesort</TT> (by, for example, placing quotes around the list).
+  If this option is not specified then the order is as presented on the
+  command line (or as produced by wildcard expansion).
+</DD>
 <DT><STRONG><TT><B>-info</B></TT></STRONG></DT>
 <DD>Prints statistics on file differences.  If this option is selected
   then no output files are created.
+</DD>
+<DT><STRONG><TT><B>-numfmt fmt</B></TT></STRONG></DT>
+<DD>Parameter <TT>fmt</TT> specifies a C-style output format for numeric data if
+  <TT>-info</TT> or <TT>-odt</TT> is selected.  Default value is
+  ``<code>%- #20.15g</code>''.
+</DD>
+<DT><STRONG><TT><B>-odt label units valexpr</B></TT></STRONG></DT>
+<DD>Computes the file differences, but instead of writing difference files
+  to disk this option writes OOMMF Data Table
+  <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">(ODT)</A> output to
+  stdout.  The ODT output consists of eight columns.  The first column
+  is an index column identifying the target file (<TT>file-1</TT> through
+  <TT>file-n</TT>).  The <TT>label</TT> parameter is a string specifying the
+  label for this column, and likewise the <TT>units</TT> parameter is a
+  string specifying the units for the column.  The third parameter,
+  <TT>valexpr</TT>, is any valid Tcl <TT>expr</TT> expression that may
+  include the special variables <TT>$i</TT>, <TT>$f1</TT>, <TT>$f2</TT>, ...,
+  <TT>$d1</TT>, <TT>$d2</TT>, ...; here <TT>$i</TT> is the 0-based index of
+  the file in the target file list (<TT>file-1</TT> is index 0, <TT>file-2</TT>
+  is index 1, etc.), <TT>$f1</TT> is the first number appearing in the
+  target filename, <TT>$f2</TT> is the second number appearing in the target
+  filename, <TT>$d1</TT> is the first number appearing in the ``Desc''
+  fields in the header of the target file, etc.  This control is
+  analogous to the <TT>-index</TT> option to 
+  <A HREF="Making_Data_Tables_from_Vec.html#sec:avf2odt"><TT>avf2odt</TT></A>.
+  The next three columns are the sum of each of the vector components in
+  the difference.  The last four columns are the averaged <B><I>L</I><SUP>1</SUP></B>
+<!-- MATHEND
+ 
+ -->
+ norm,
+  the normalized <B><I>L</I><SUP>2</SUP></B>
+<!-- MATHEND
+ 
+ -->
+ norm, minimum component absolute value, and
+  maximum component absolute value of the difference; these columns
+  correspond to those produced by the <TT>-extravals</TT> option to
+  <A HREF="Making_Data_Tables_from_Vec.html#sec:avf2odt"><TT>avf2odt</TT></A>.
+</DD>
+<DT><STRONG><TT><B>-resample <TT><B>&lt;</B></TT>0|n<TT><B>&gt;</B></TT>  <TT><B>&lt;</B></TT>0|1|3<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Resample either the base file (<TT>file-0</TT>) to match the resolutions of
+  the target files (<TT>file-1</TT> through <TT>file-n</TT>), or resample each
+  target file to match the resolution of the base file.  Set
+  <TT>fileselect</TT> to 0 for the former, to n for the latter.  The second
+  argument specifies the polynomial interpolation order: 0 for
+  nearest value, 1 for trilinear interpolation, or 3 for fitting with
+  tricubic Catmull-Rom splines.  Default is no resampling.
 </DD>
 <DT><STRONG><TT><B>file-0</B></TT></STRONG></DT>
 <DD>Name of input file to subtract from other files.  Must be either
@@ -95,11 +161,11 @@ where
 </DL>
 
 <P>
-For each input file <TT>file-1</TT> through <TT>file-n</TT>, a separate output
-file is generated, in the OVF 1.0 format.  Each output file has a
-name based on the name of corresponding input file, with a <TT>-diff</TT>
-suffix.  If a file with the same name already exists, it will be
-overwritten.
+If neither <TT>-info</TT> nor <TT>-odt</TT> are specified, then for each target
+file <TT>file-1</TT> through <TT>file-n</TT> a separate output file is
+generated, in the OVF 1.0 format.  Each output file has a name based
+on the name of corresponding input file, with a <TT>-diff</TT> suffix.  If a
+file with the same name already exists, it will be overwritten.
 
 <P>
 For output file format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
@@ -109,22 +175,22 @@ description</A>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html625"
+<A NAME="tex2html630"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html621"
+<A NAME="tex2html626"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html615"
+<A NAME="tex2html620"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html628"
+<A NAME="tex2html633"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html623"
+<A NAME="tex2html628"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

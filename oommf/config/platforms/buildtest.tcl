@@ -14,6 +14,8 @@
 # The following environment variables may optionally be set before
 # sourcing thie file:
 #
+#   OOMMF_BUILDTEST_REAL8m
+#   OOMMF_BUILDTEST_REALWIDE
 #   OOMMF_BUILDTEST_SSELEVEL
 #
 # Also, the "config" variable should be set to [Oc_Config RunPlatform]
@@ -31,6 +33,18 @@ $config SetValue program_compiler_c++_override $env(OOMMF_BUILDTEST_COMPILER)
 $config SetValue program_compiler_c++_cpu_arch $env(OOMMF_BUILDTEST_CPUARCH)
 $config SetValue oommf_threads $env(OOMMF_BUILDTEST_THREADS)
 $config SetValue use_numa $env(OOMMF_BUILDTEST_NUMA)
+
+if {[info exists env(OOMMF_BUILDTEST_REAL8m)] && \
+       ![string match {} $env(OOMMF_BUILDTEST_REAL8m)]} {
+   $config SetValue program_compiler_c++_typedef_real8m \
+       $env(OOMMF_BUILDTEST_REAL8m)
+}
+if {[info exists env(OOMMF_BUILDTEST_REALWIDE)] && \
+       ![string match {} $env(OOMMF_BUILDTEST_REALWIDE)]} {
+   $config SetValue program_compiler_c++_typedef_realwide \
+       $env(OOMMF_BUILDTEST_REALWIDE)
+}
+
 if {[info exists env(OOMMF_BUILDTEST_SSELEVEL)] && \
        ![string match {} $env(OOMMF_BUILDTEST_SSELEVEL)]} {
    $config SetValue sse_level $env(OOMMF_BUILDTEST_SSELEVEL)

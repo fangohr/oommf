@@ -2,7 +2,7 @@
 #
 # Generic file dialog box
 #
-# Last modified on: $Date: 2010-06-25 00:04:46 $
+# Last modified on: $Date: 2010/06/25 00:04:46 $
 # Last modified by: $Author: donahue $
 
 # NOTE: It appears that the SELECT callback must return an empty string

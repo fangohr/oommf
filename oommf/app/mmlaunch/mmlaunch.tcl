@@ -3,7 +3,7 @@
 # An application which presents an interface for launching and 
 # interconnecting other OOMMF applications.
 #
-# Last modified on: $Date: 2012-09-25 17:11:53 $
+# Last modified on: $Date: 2015/03/25 16:43:38 $
 # Last modified by: $Author: dgp $
 
 # Support libraries
@@ -16,8 +16,8 @@ if {[catch {package require Tk 8}]} {
 wm withdraw .
 
 Oc_Main SetAppName mmLaunch
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:53 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:38 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
@@ -150,8 +150,8 @@ proc GetThreadsReply { acct qid } {
     # Create a Net_Thread instance for each element of the returned
     # thread list
     if {![lindex $threads 0]} {
-        foreach triple [lrange $threads 1 end] {
-	    NewThread $acct [lindex $triple 1]
+        foreach quartet [lrange $threads 1 end] {
+	    NewThread $acct [lindex $quartet 1]
         }
     }
 }

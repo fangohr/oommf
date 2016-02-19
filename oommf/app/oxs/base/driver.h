@@ -35,111 +35,18 @@ public:
     : total_attempt_count(tc),current_attempt_count(ac) {}
 };
 
+void OxsDriverCheckpointShutdownHandler(int,ClientData);
+
 class Oxs_Driver: public Oxs_Ext {
-private:
-#if REPORT_TIME
-  // driversteptime records time (cpu and wall) spent in the driver's
-  // Step function.  This information is reported to stderr when
-  // Oxs_Driver is re-initialized or destroyed.  NOTE: This does NOT
-  // include time spent in Stage processing, In particular, stage end
-  // output may include calls to the various energy computation
-  // routines that can soak up a lot of cpu cycles that will not be
-  // reflected in the driversteptime stopwatch.  If, for example,
-  // demag initialization occurs during stage processing, then that
-  // time will not be included either.
-  Nb_StopWatch driversteptime;
-#endif // REPORT_TIME
-
-  Oxs_ConstKey<Oxs_SimState> current_state;
-
-  Oxs_DriverStepInfo step_info;
-
-  Oxs_OwnedPointer<Oxs_Mesh> mesh_obj; // Mesh basket
-  Oxs_ConstKey<Oxs_Mesh> mesh_key;
-
-  Oxs_MeshValue<OC_REAL8m> Ms;  // Saturation magnetization
-  Oxs_MeshValue<OC_REAL8m> Ms_inverse;  // 1/Ms
-  Oxs_OwnedPointer<Oxs_VectorField> m0; // Initial spin configuration
-
-  // State-based outputs, maintained by the driver.  These are
-  // conceptually public, but are specified private to force
-  // clients to use the output_map interface in Oxs_Director.
-#define OSO_DECL(name) \
-void Fill__##name##_output(const Oxs_SimState&); \
-Oxs_ScalarOutput<Oxs_Driver> name##_output
-  OSO_DECL(iteration_count);
-  OSO_DECL(stage_iteration_count);
-  OSO_DECL(stage_number);
-  Oxs_VectorFieldOutput<Oxs_Driver> spin_output;
-  void Fill__spin_output(const Oxs_SimState&);
-  Oxs_VectorFieldOutput<Oxs_Driver> magnetization_output;
-  void Fill__magnetization_output(const Oxs_SimState&);
-  Oxs_ScalarOutput<Oxs_Driver> aveMx_output;
-  Oxs_ScalarOutput<Oxs_Driver> aveMy_output;
-  Oxs_ScalarOutput<Oxs_Driver> aveMz_output;
-  void Fill__aveM_output(const Oxs_SimState&);
-
-  struct OxsDriverProjectionOutput {
-  public:
-    Oxs_ScalarOutput<Oxs_Driver> output;
-    Oxs_MeshValue<ThreeVector> trellis;
-    OC_BOOL normalize;
-    OC_REAL8m scaling; // For use with regular meshes (includes user_scaling)
-    OC_REAL8m user_scaling;
-    String name;
-    String units;
-    vector<String> trellis_init;
-    OxsDriverProjectionOutput()
-      : normalize(1), scaling(0.), user_scaling(1.) {}
-  private:
-    // Disable copy constructor and assignment operators by
-    // declaring them w/o providing definition.
-    OxsDriverProjectionOutput(const OxsDriverProjectionOutput&);
-    OxsDriverProjectionOutput& operator=(const OxsDriverProjectionOutput&);
-  };
-  Nb_ArrayWrapper<OxsDriverProjectionOutput> projection_output;
-  void Fill__projection_outputs(const Oxs_SimState&);
-
-  OC_BOOL report_max_spin_angle;
-  Oxs_ScalarOutput<Oxs_Driver> maxSpinAng_output;
-  Oxs_ScalarOutput<Oxs_Driver> stage_maxSpinAng_output;
-  Oxs_ScalarOutput<Oxs_Driver> run_maxSpinAng_output;
-  void UpdateSpinAngleData(const Oxs_SimState& state) const;
-  void Fill__maxSpinAng_output(const Oxs_SimState&);
-
-  OC_BOOL normalize_aveM;
-  OC_REAL8m scaling_aveM; // For use with regular meshes
-
-#undef OSO_DECL
-
-  vector<OC_UINT4m> stage_iteration_limit; // Counts; 0 => no limit
-  OC_UINT4m total_iteration_limit; // 0 => no limit
-  OC_UINT4m stage_count_request;   // 0 => unlimited
-  OC_UINT4m number_of_stages;      // 0 => unlimited
-  /// stage_count_request is set in Specify block via
-  /// stage_count parameter.  number_of_stages is set
-  /// via call to Oxs_Director::ExtObjStageRequestCounts().
-
-  OC_INT4m stage_count_check; // 1 => raise error if
-  /// stage counts across Oxs_Ext objects aren't compatible.
-
-  OC_UINT4m report_stage_number; // See Run member for details.
-
-  // Restart file and save interval.
-  String checkpoint_file;     // Name of checkpoint file
-  OC_UINT4m checkpoint_id;       // Id of checkpointed state
-  OC_UINT4m checkpoint_writes;   // Number of checkpoint files written
-  double checkpoint_interval; // In wall-clock seconds.
-  Oc_TimeVal checkpoint_time; // Time of last checkpoint save.
-  enum OxsDriverCheckpointCleanupTypes {
-    OXSDRIVER_CCT_INVALID, OXSDRIVER_CCT_NORMAL,
-    OXSDRIVER_CCT_DONE_ONLY, OXSDRIVER_CCT_NEVER } checkpoint_cleanup;
+public:
   enum OxsDriverProblemStatus {
     OXSDRIVER_PS_INVALID,OXSDRIVER_PS_STAGE_START,
     OXSDRIVER_PS_INSIDE_STAGE,OXSDRIVER_PS_STAGE_END,
-    OXSDRIVER_PS_DONE } problem_status;
+    OXSDRIVER_PS_DONE };
   OxsDriverProblemStatus FloatToProblemStatus(OC_REAL8m ps_float);
   OC_REAL8m ProblemStatusToFloat(OxsDriverProblemStatus ps_enum);
+private:
+  OxsDriverProblemStatus problem_status;
   // Problem Status description
   //
   // STAGE_START: Current state holds magnetization and energy/field
@@ -169,6 +76,248 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
   // problem_status is also used in conjuction with checkpoint_cleanup
   // to decide checkpoint file disposal inside ~Oxs_Driver().
   //
+
+private:
+#if REPORT_TIME
+  // driversteptime records time (cpu and wall) spent in the driver's
+  // Step function.  This information is reported to stderr when
+  // Oxs_Driver is re-initialized or destroyed.  NOTE: This does NOT
+  // include time spent in Stage processing, In particular, stage end
+  // output may include calls to the various energy computation
+  // routines that can soak up a lot of cpu cycles that will not be
+  // reflected in the driversteptime stopwatch.  If, for example,
+  // demag initialization occurs during stage processing, then that
+  // time will not be included either.
+  Nb_StopWatch driversteptime;
+#endif // REPORT_TIME
+
+  Oxs_ConstKey<Oxs_SimState> current_state;
+
+  Oxs_DriverStepInfo step_info;
+
+  Oxs_OwnedPointer<Oxs_Mesh> mesh_obj; // Mesh basket
+  Oxs_ConstKey<Oxs_Mesh> mesh_key;
+
+  Oxs_MeshValue<OC_REAL8m> Ms;  // Saturation magnetization
+  Oxs_MeshValue<OC_REAL8m> Ms_inverse;  // 1/Ms
+  Oxs_OwnedPointer<Oxs_VectorField> m0; // Initial spin configuration
+  OC_REAL8m m0_perturb;  // Amount to perturb initial spin configuration
+
+  // State-based outputs, maintained by the driver.  These are
+  // conceptually public, but are specified private to force
+  // clients to use the output_map interface in Oxs_Director.
+#define OSO_DECL(name) \
+void Fill__##name##_output(const Oxs_SimState&); \
+Oxs_ScalarOutput<Oxs_Driver> name##_output
+  OSO_DECL(iteration_count);
+  OSO_DECL(stage_iteration_count);
+  OSO_DECL(stage_number);
+  Oxs_VectorFieldOutput<Oxs_Driver> spin_output;
+  void Fill__spin_output(const Oxs_SimState&);
+  Oxs_VectorFieldOutput<Oxs_Driver> magnetization_output;
+  void Fill__magnetization_output(const Oxs_SimState&);
+  Oxs_ChunkScalarOutput<Oxs_Driver> aveMx_output;
+  Oxs_ChunkScalarOutput<Oxs_Driver> aveMy_output;
+  Oxs_ChunkScalarOutput<Oxs_Driver> aveMz_output;
+  void Fill__aveM_output_init(const Oxs_SimState&,int);
+  void Fill__aveM_output(const Oxs_SimState&,OC_INDEX,OC_INDEX,int);
+  void Fill__aveM_output_fini(const Oxs_SimState&,int);
+  void Fill__aveM_output_shares(std::vector<Oxs_BaseChunkScalarOutput*>&);
+  std::vector<ThreeVector> fill_aveM_output_storage; // Temp storage for
+  /// chunk computation; each entry holds the sum for one thread.
+
+  struct OxsDriverProjectionOutput {
+  public:
+    Oxs_ScalarOutput<Oxs_Driver> output;
+    Oxs_MeshValue<ThreeVector> trellis;
+    OC_BOOL normalize;
+    OC_REAL8m scaling; // For use with regular meshes (includes user_scaling)
+    OC_REAL8m user_scaling;
+    String name;
+    String units;
+    vector<String> trellis_init;
+    OxsDriverProjectionOutput()
+      : normalize(1), scaling(0.), user_scaling(1.) {}
+  private:
+    // Disable copy constructor and assignment operators by
+    // declaring them w/o providing definition.
+    OxsDriverProjectionOutput(const OxsDriverProjectionOutput&);
+    OxsDriverProjectionOutput& operator=(const OxsDriverProjectionOutput&);
+  };
+  Nb_ArrayWrapper<OxsDriverProjectionOutput> projection_output;
+  void Fill__projection_outputs(const Oxs_SimState&);
+
+  // Max angle reporting.  Ideally this is reported by the exchange
+  // term, which can determine the max angle for almost free as a
+  // natural part of the exchange computations.  But as a fall-back,
+  // the user may request the driver to compute and report this
+  // infomation.  There are two interfaces: UpdateSpinAngleData which
+  // can be called by code outside the normal output call chain, and
+  // Fill_maxSpinAng_output(_init//_fini) which is called as part of
+  // the chunk scalar output call chain.  The former runs in parallel,
+  // but the latter is generally more efficient because it runs not
+  // only in parallel but also in chunks mated with other chunk
+  // outputs.  The latter interface will set both the cache value in
+  // the output objects and the derived data values in the state.  The
+  // UpdateSpinAngleData interface sets the derived data values in the
+  // state only if they aren't already set.  The output cache values
+  // are not set, in keeping with UpdateSpinAngleData() being a const
+  // member function.
+  OC_BOOL report_max_spin_angle;
+  void UpdateSpinAngleData(const Oxs_SimState& state) const;
+  Oxs_ChunkScalarOutput<Oxs_Driver> maxSpinAng_output;
+  Oxs_ChunkScalarOutput<Oxs_Driver> stage_maxSpinAng_output;
+  Oxs_ChunkScalarOutput<Oxs_Driver> run_maxSpinAng_output;
+  void Fill__maxSpinAng_output_init(const Oxs_SimState&,int);
+  void Fill__maxSpinAng_output(const Oxs_SimState&,OC_INDEX,OC_INDEX,int);
+  void Fill__maxSpinAng_output_fini(const Oxs_SimState&,int);
+  void Fill__maxSpinAng_output_shares
+  (std::vector<Oxs_BaseChunkScalarOutput*>&);
+  std::vector<OC_REAL8m> fill_maxSpinAng_output_storage; // Temp storage for
+  /// chunk computation; each entry holds the max angle for one thread.
+
+  OC_BOOL normalize_aveM;
+  OC_REAL8m scaling_aveM; // For use with regular meshes
+
+#undef OSO_DECL
+
+  vector<OC_UINT4m> stage_iteration_limit; // Counts; 0 => no limit
+  OC_UINT4m total_iteration_limit; // 0 => no limit
+  OC_UINT4m stage_count_request;   // 0 => unlimited
+  OC_UINT4m number_of_stages;      // 0 => unlimited
+  /// stage_count_request is set in Specify block via
+  /// stage_count parameter.  number_of_stages is set
+  /// via call to Oxs_Director::ExtObjStageRequestCounts().
+
+  OC_INT4m stage_count_check; // 1 => raise error if
+  /// stage counts across Oxs_Ext objects aren't compatible.
+
+  OC_UINT4m report_stage_number; // See Run member for details.
+
+  //////////////////////////////////////////////////////////////////////
+  // CHECKPOINTING /////////////////////////////////////////////////////
+  // Class for background checkpointing
+  friend void OxsDriverCheckpointShutdownHandler(int,ClientData);
+  class BackgroundCheckpoint : public Oxs_ThreadThrowaway
+  {
+    friend void OxsDriverCheckpointShutdownHandler(int,ClientData);
+    /// WaitForBackupThread is private to BackgroundCheckpoint, so we
+    /// need to friend OxsDriverCheckpointShutdownHandler to it.  But
+    /// BackgroundCheckpoint is private to Oxs_Driver, so we need to
+    /// friend OxsDriverCheckpointShutdownHandler to Oxs_Driver as
+    /// well.
+  private:
+    Oxs_Mutex mutex;
+    OC_INDEX checkpoint_writes; // Number of successful backup requests.
+    Oxs_ConstKey<Oxs_SimState> backup_request;  // Holding pen
+    Oxs_ConstKey<Oxs_SimState> backup_inprogress; // Active backup.
+    enum OxsDriverCheckpointModeTypes {
+      OXSDRIVER_CMT_INVALID,   // Invalid
+      OXSDRIVER_CMT_ENABLED,   // Normal, operating state
+      OXSDRIVER_CMT_DISABLED,  // Paused, backup queue dropped
+      OXSDRIVER_CMT_FLUSHED,   // Paused, backup queue flushed to disk
+      OXSDRIVER_CMT_SHUTDOWN   // Same as DISABLED, but can't be re-ENABLED.
+    } checkpoint_mode;
+    /// NB: No code should modify backup_inprogress other than Task().
+    /// checkpoint_writes, backup_request, backup_inprogress, and
+    /// checkpoint_mode should only be accessed through mutex.
+
+    OC_BOOL WaitForBackupThread(unsigned int timeout,
+                                OxsDriverCheckpointModeTypes newmode);
+    /// Wait for up to "timeout" seconds for backup thread, if any, to
+    /// finish.  The checkpoint_mode is set to the import newmode,
+    /// which must be either OXSDRIVER_CMT_DISABLED (for temporary
+    /// disabling) or OXSDRIVER_CMT_SHUTDOWN (for permanent closure).
+    /// Return value is true on success, false if a backup thread is
+    /// either running or stalled.
+
+    Oxs_Director* const director;
+    String checkpoint_filename;
+    String checkpoint_filename_full; // Full name with path
+    String checkpoint_filename_tmpA; // Temp file names.  Note that the same
+    String checkpoint_filename_tmpB; // temp files are used for all saves.
+    double checkpoint_interval; // In wall-clock seconds.
+    Oc_Ticks checkpoint_time;   // Time of last checkpoint commit.
+    OC_UINT4m checkpoint_id;    // Id of last checkpoint commit.
+
+    enum OxsDriverCheckpointCleanupTypes {
+      OXSDRIVER_CCT_INVALID, OXSDRIVER_CCT_NORMAL,
+      OXSDRIVER_CCT_DONE_ONLY, OXSDRIVER_CCT_NEVER,
+      OXSDRIVER_CCT_FORCEFINAL
+    } checkpoint_cleanup;
+
+    // Declare but don't define the following members
+    BackgroundCheckpoint(const BackgroundCheckpoint&);
+    BackgroundCheckpoint& operator=(const BackgroundCheckpoint&);
+
+  protected:
+    void Task();
+
+  public:
+    // Maximum number of simstates that may be held by this class at one
+    // time.
+    int ReserveStateCount() const { return 2; }
+
+    BackgroundCheckpoint(Oxs_Director* in_dtr)
+      : Oxs_ThreadThrowaway("Oxs_Driver::BackgroundCheckpoint"),
+        checkpoint_writes(0), checkpoint_mode(OXSDRIVER_CMT_INVALID),
+        director(in_dtr),
+        checkpoint_interval(0),checkpoint_id(0),
+        checkpoint_cleanup(OXSDRIVER_CCT_INVALID) {
+      director->ReserveSimulationStateRequest(ReserveStateCount());
+      checkpoint_time.ReadWallClock();
+    }
+
+    ~BackgroundCheckpoint();
+
+    void ForceFinalCheckpoint() {
+      checkpoint_cleanup = OXSDRIVER_CCT_FORCEFINAL;
+    }
+    OC_BOOL IsForceFinalCheckpoint() const {
+      return (OXSDRIVER_CCT_FORCEFINAL == checkpoint_cleanup);
+    }
+
+    void Init(const String& in_filename,
+              double in_interval,const String& in_cleanup);
+
+    void Reset(const Oxs_SimState* start_state) {
+      Oc_RemoveSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
+      WaitForBackupThread(100,OXSDRIVER_CMT_DISABLED);
+      mutex.Lock();
+      // Note: The following resets might not "take" if
+      // WaitForBackupThread failed.  But this is probably not worth
+      // worrying about.
+      checkpoint_writes = 0;
+      if(checkpoint_mode != OXSDRIVER_CMT_DISABLED) {
+        throw Oxs_BadCode("checkpoint_mode in improper state");
+      }
+      checkpoint_mode = OXSDRIVER_CMT_ENABLED;
+      mutex.Unlock();
+      if(start_state) {
+        // Insure that the start state is not saved as a checkpoint.
+        checkpoint_id = start_state->Id();
+      }
+      checkpoint_time.ReadWallClock();
+      Oc_AppendSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
+    }
+
+    void WrapUp(OxsDriverProblemStatus probstatus);
+
+    const char* CheckpointFilename() const {
+      return checkpoint_filename.c_str();
+    }
+
+    // RequestBackup queues state onto backup stack unconditionally, and
+    // does not adjust checkpoint_time or checkpoint_id.  UpdateBackup
+    // checks checkpoint_time and checkpoint_id; if sufficient time has
+    // elapsed and the id has changed, then checkpoint_time and
+    // checkpoint_id are updated and the state is sent to RequestBackup.
+    void RequestBackup(Oxs_ConstKey<Oxs_SimState>& statekey);
+    void UpdateBackup(Oxs_ConstKey<Oxs_SimState>& statekey);
+  }  bgcheckpt;  // Restart file control
+
+  // CHECKPOINTING /////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////
 
   // Internal "Run" interface.  The difference with the external
   // interface is that the internal version includes a stage_increment
@@ -240,19 +389,28 @@ public:
     // stage increment (==1).
   }
 
-  // GetIteration, SetStage and GetStage throw exceptions on errors.
+  // GetIteration, GetCurrentStateId, SetStage and GetStage throw
+  // exceptions on errors.
   OC_UINT4m GetIteration() const;
+  OC_UINT4m GetCurrentStateId() const;
   void SetStage(OC_UINT4m requestedStage);
   OC_UINT4m GetStage() const;
   OC_UINT4m GetNumberOfStages() const { return number_of_stages; }
 
+  void ForceFinalCheckpoint() {
+    bgcheckpt.ForceFinalCheckpoint();
+  }
+  OC_BOOL IsForceFinalCheckpoint() const {
+    return bgcheckpt.IsForceFinalCheckpoint();
+  }
+
   // Special setup for MIF load tests.  (This is part of the regression
-  // test harness.)  Limit all stages to 3 steps, and total step limit
-  // to 20.
+  // test harness.)  Limit all stages to 5 steps, and total step limit
+  // to 35.
   void LoadTestSetup() {
     stage_iteration_limit.clear();
-    stage_iteration_limit.push_back(3);
-    total_iteration_limit = 20;
+    stage_iteration_limit.push_back(5);
+    total_iteration_limit = 35;
   }
 
   virtual void FillStateMemberData(const Oxs_SimState& old_state,

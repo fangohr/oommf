@@ -11,9 +11,9 @@
 exec tclsh "$0" ${1+"$@"}
 
 proc Usage {} {
-   puts stderr [subst -nocommands {Usage: tclsh odtcols.tcl [-h]\
+   puts stderr [subst -nocommands {Usage: odtcols [-h]\
           [-f format] [-m missing] [-q] [-s] [-S] [-t output_type]\\\n\
-          \           [-table select] [-no-table select] [-w colwidth]\
+          \           [-table select] [-no-table deselect] [-w colwidth]\
           col [col ...] \
           <infile >outfile}]
    exit
@@ -24,8 +24,19 @@ if {[llength $argv]<1 || [lsearch -regexp $argv {^-+h.*}]>=0} {
    Usage
 }
 
-# Quiet flag?  This suppresses most errors, in particular writing to
-# a "broken pipe" when using the unix "head" or "tail" utilities.
+# Version of puts that exits quietly on "broken pipe" errors
+proc quiet_puts { args } {
+   if {[catch {eval puts $args} errmsg]} {
+      if {[regexp {^error writing [^:]+: broken pipe} $errmsg]} {
+         # Ignore broken pipe and exit
+         exit
+      } else {
+         error $errmsg
+      }
+   }
+}
+
+# Quiet flag?  Suppresses most errors.
 set quiet_flag 0
 set cmdindex [lsearch -regexp $argv {^-+q.*}]
 if {$cmdindex>=0} {
@@ -69,15 +80,15 @@ while {[set table_index [lsearch -regexp $argv {^-+ta.*}]]>=0} {
 set no_table_select_ranges {}
 while {[set no_table_index [lsearch -regexp $argv {^-+no-ta.*}]]>=0} {
    if {$no_table_index+1>=[llength $argv]} { Usage }
-   set select_str [lindex $argv [expr $no_table_index+1]]
+   set deselect_str [lindex $argv [expr $no_table_index+1]]
    set argv [lreplace $argv $no_table_index [expr $no_table_index+1]]
-   foreach item [split $select_str ","] {
+   foreach item [split $deselect_str ","] {
       set pair [split $item ":"]
       if {[llength $pair]==1} { lappend pair [lindex $pair 0] }
       if {[llength $pair]!= 2 \
              || ![regexp {^[0-9]+$} [lindex $pair 0]] \
              || ![regexp {^[0-9]+$} [lindex $pair 1]] } {
-         puts stderr "ERROR Invalid no-table select spec: \"$select_str\""
+         puts stderr "ERROR Invalid no-table deselect spec: \"$deselect_str\""
          puts stderr "      should be like 0 or 3:6 or 2:4,7,9:12"
          exit 1
       }
@@ -341,30 +352,30 @@ if {$show_summary} {
 proc ColumnDump { list {leader " "}} {
     global colwidth
     global type_csv
-    puts -nonewline $leader
+    quiet_puts -nonewline $leader
     if {$type_csv} {
         set columns_remaining [llength $list]
         foreach elt $list {
             incr columns_remaining -1
             # Does field need to be quoted?
             if {[regexp -- "\[,\r\n\",]" $elt]} {
-                regsub -all -- {"} $elt {""} elt
+                regsub -all -- \" $elt {""} elt
                 set elt "\"$elt\""
             }
             if {$columns_remaining>0} {append elt ","}
-            puts -nonewline [format " %-${colwidth}s" $elt]
+            quiet_puts -nonewline [format " %-${colwidth}s" $elt]
         }
     } else { 
         foreach elt $list {
-            puts -nonewline [format " %-${colwidth}s" [list $elt]]
+            quiet_puts -nonewline [format " %-${colwidth}s" [list $elt]]
         }
     }
-    puts {}
+    quiet_puts {}
 }
 
 proc ColumnDumpCSV { column_select column_list unit_list} {
     global colwidth
-    puts -nonewline " "
+    quiet_puts -nonewline " "
     set columns_remaining [llength $column_select]
     foreach i $column_select {
         incr columns_remaining -1
@@ -377,20 +388,20 @@ proc ColumnDumpCSV { column_select column_list unit_list} {
         }
         # Does field need to be quoted?
         if {[regexp -- "\[,\r\n\",]" $field]} {
-            regsub -all -- {"} $field {""} field
+            regsub -all -- \" $field {""} field
             set field "\"$field\""
         }
         if {$columns_remaining>0} {append field ","}
-        puts -nonewline [format " %-${colwidth}s" $field]
+        quiet_puts -nonewline [format " %-${colwidth}s" $field]
     }
-    puts {}
+    quiet_puts {}
 }
 
 
 proc ColumnDataDump { list {leader " "}} {
     global colwidth data_format missing_data_string
     global type_csv
-    puts -nonewline $leader
+    quiet_puts -nonewline $leader
     set columns_remaining [llength $list]
     foreach elt $list {
         incr columns_remaining -1
@@ -400,7 +411,7 @@ proc ColumnDataDump { list {leader " "}} {
         } else {
             if {[catch {set entry [format $data_format $elt]}]} {
                 # Bad data.  Fill field with stars
-                puts stderr "ERROR Data doesn't match format: \"$elt\""
+                quiet_puts stderr "ERROR Data doesn't match format: \"$elt\""
                 set entry {}
                 for {set i 0} {$i<$colwidth} {incr i} {append entry "*"}
             }
@@ -409,9 +420,9 @@ proc ColumnDataDump { list {leader " "}} {
             # Add separating commas for CSV format
             regsub -- {( |)( *)$} $entry {,\2} entry
         }
-        puts -nonewline [format " %-${colwidth}s" $entry]
+        quiet_puts -nonewline [format " %-${colwidth}s" $entry]
     }
-    puts {}
+    quiet_puts {}
 }
 
 proc TableSelected { tableno } {
@@ -484,7 +495,7 @@ proc ProcessInput {} {
         # Process current line
         if {[string match {} $line]} {
            # Blank line
-           if {$print_table} { puts {} }
+           if {$print_table} { quiet_puts {} }
         } elseif {[string match "#" [string index $line 0]]} {
             # Comment line
             if {[regexp -nocase -- \
@@ -501,7 +512,7 @@ proc ProcessInput {} {
                         foreach i $columns {
                             lappend outlist [lindex $unit_entries $i]
                         }
-                        puts "# Units: \\"
+                        quiet_puts "# Units: \\"
                         ColumnDump $outlist "#"
                         unset unit_entries
                     }
@@ -510,7 +521,7 @@ proc ProcessInput {} {
                         lappend outlist [lindex $entries $i]
                     }
                     if {$type_odt} {
-                        puts "# Columns: \\"
+                        quiet_puts "# Columns: \\"
                         ColumnDump $outlist "#"
                     } else {
                         ColumnDump $outlist ""
@@ -535,7 +546,7 @@ proc ProcessInput {} {
                         foreach i $columns {
                             lappend outlist [lindex $entries $i]
                         }
-                        puts "# Units: \\"
+                        quiet_puts "# Units: \\"
                         ColumnDump $outlist "#"
                     }
                 } elseif {$type_csv} {
@@ -555,17 +566,17 @@ proc ProcessInput {} {
                       if {!$type_odt && $tables_printed>1} {
                          # In non-odt formats, separate tables
                          # with a blank line
-                         puts {}
+                         quiet_puts {}
                       }
                    }
                 }
                 if {$print_table && $type_odt} {
-                   puts $line
+                   quiet_puts $line
                 }
             } else {
                 # Plain comment line
                 if {$print_table && $type_odt} {
-                    puts $line
+		   quiet_puts $line
                 }
             }
         } else {

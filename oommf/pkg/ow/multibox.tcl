@@ -2,7 +2,7 @@
 #
 # Multi-entry box dialog sub-widget
 #
-# Last modified on: $Date: 2007-03-21 01:17:09 $
+# Last modified on: $Date: 2007/03/21 01:17:09 $
 # Last modified by: $Author: donahue $
 #
 # debugging enable/disable/level

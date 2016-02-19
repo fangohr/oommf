@@ -64,11 +64,11 @@ Oxs_PlaneRandomVectorField::Value
 (const ThreeVector& pt,
  ThreeVector& value) const
 {
-  OC_UINT4m key=0; // Initialize to quiet compiler warnings; it is used
+  OC_INDEX key=0; // Initialize to quiet compiler warnings; it is used
   // iff use_cache is true, in which case it gets set two lines below.
   if(use_cache) {
     key = cache_mesh->FindNearestIndex(pt);
-    map<OC_UINT4m,ThreeVector>::iterator it = results_cache.find(key);
+    map<OC_INDEX,ThreeVector>::iterator it = results_cache.find(key);
     if(it != results_cache.end()) {
       // Import "pt" already mapped
       value = it->second;

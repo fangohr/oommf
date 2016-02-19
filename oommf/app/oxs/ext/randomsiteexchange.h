@@ -25,7 +25,7 @@ OC_USE_STD_NAMESPACE;
 // vector template types.  So, we just define this
 // outside, with a really long name. <g>
 struct Oxs_RandomSiteExchangeLinkParams {
-  OC_UINT4m index1,index2;  // Offsets into mesh to cells in pair
+  OC_INDEX index1,index2;  // Offsets into mesh to cells in pair
   OC_REAL8m Acoef;          // A * (directional cellsize)^-2
 };
 

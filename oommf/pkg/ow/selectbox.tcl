@@ -2,7 +2,7 @@
 #
 # Selection box dialog sub-widget
 #
-# Last modified on: $Date: 2007-03-21 01:17:10 $
+# Last modified on: $Date: 2007/03/21 01:17:10 $
 # Last modified by: $Author: donahue $
 #
 #   This subwidget provides a wrapper around a 2-entry multiwidget,

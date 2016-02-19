@@ -4,11 +4,12 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-11-09 00:50:01 $
+ * Last modified on: $Date: 2013/05/22 07:15:32 $
  * Last modified by: $Author: donahue $
  */
 
 #include <ctype.h>
+#include <limits.h>
 #include <string.h>
 
 #include "dstring.h"
@@ -28,7 +29,7 @@ void Nb_DString::Empty()
 #define MEMBERNAME "Empty"
   if(str!=NULL) delete[] str;
   bufsize=1;
-  str=new char[bufsize];
+  str=new char[size_t(bufsize)];
   if(str==0) FatalError(-1,STDDOC,"No memory");
   str[0]='\0';
 #undef MEMBERNAME
@@ -45,9 +46,14 @@ Nb_DString::Nb_DString()
 Nb_DString::Nb_DString(const char *cptr)
 {
 #define MEMBERNAME "Nb_DString(const char *cptr)"
-  if(cptr==NULL) bufsize=1;
-  else           bufsize=strlen(cptr)+1;
-  str=new char[bufsize];
+  if(cptr==NULL) {
+    bufsize=1;
+  } else {
+    size_t size = strlen(cptr);
+    bufsize=static_cast<OC_INDEX>(size+1);
+    assert(size < size_t(-1) && bufsize>0 && size+1 == size_t(bufsize));
+  }
+  str=new char[size_t(bufsize)];
   if(str==0) FatalError(-1,STDDOC,"No memory");
   if(cptr==NULL) str[0]='\0';
   else           strcpy(str,cptr);
@@ -58,18 +64,19 @@ Nb_DString::Nb_DString(const Nb_DString &rhs)
 {
 #define MEMBERNAME "Nb_DString(const String &)"
   bufsize=rhs.Length()+1;
-  str=new char[bufsize];
+  assert(bufsize>0);
+  str=new char[size_t(bufsize)];
   if(str==0) FatalError(-1,STDDOC,"No memory");
   strcpy(str,rhs.str);
 #undef MEMBERNAME
 }
 
-Nb_DString::Nb_DString(size_t _bufsize)
+Nb_DString::Nb_DString(OC_INDEX _bufsize)
 { // Allocates buffer of length _bufsize and fills with a null string.
-#define MEMBERNAME "Nb_DString(size_t)"
+#define MEMBERNAME "Nb_DString(OC_INDEX)"
   if(_bufsize<1) bufsize=1;
   else           bufsize=_bufsize;
-  str=new char[bufsize];
+  str=new char[size_t(bufsize)];
   if(str==0) FatalError(-1,STDDOC,"No memory");
   str[0]='\0';
 #undef MEMBERNAME
@@ -88,15 +95,18 @@ Nb_DString& Nb_DString::Dup(const char *cptr)
 #define MEMBERNAME "Dup(const char *)"
   if(cptr==NULL) FatalError(-1,STDDOC,"Null pointer passed (cptr)");
   if(cptr==str) return *this;  // Nothing to do!
-  size_t new_length=strlen(cptr);
+  size_t stringsize = strlen(cptr);
+  OC_INDEX new_length=static_cast<OC_INDEX>(stringsize);
+  assert(new_length>=0 && stringsize == size_t(new_length));
   if(new_length>=bufsize) {
     // Old buffer too small; throw it away and allocate new one
     delete[] str;
     bufsize=new_length+2;    // Safety
-    str=new char[bufsize];
+    assert(bufsize>1);
+    str=new char[size_t(bufsize)];
     if(str==0) FatalError(-1,STDDOC,"No memory");
   }
-  strncpy(str,cptr,new_length);   // Safety
+  strncpy(str,cptr,size_t(new_length));   // Safety
   str[new_length]='\0';           // Safety
   return *this;
 #undef MEMBERNAME
@@ -120,19 +130,21 @@ Nb_DString& Nb_DString::operator=(const char *cptr)
 #undef MEMBERNAME
 }
 
-void Nb_DString::ExtendBuf(size_t newsize)
+void Nb_DString::ExtendBuf(OC_INDEX newsize)
 {
-#define MEMBERNAME "ExtendBuf(size_t)"
+#define MEMBERNAME "ExtendBuf(OC_INDEX)"
+  assert(newsize>=0);
   if(bufsize>=newsize) return; // Nothing to do
-  size_t addsize = newsize-bufsize;
+  OC_INDEX addsize = newsize-bufsize;
   if(addsize<64) addsize+=8;
   if(addsize<16) addsize=16;
-  char* newstr=new char[bufsize+addsize];
+  char* newstr=new char[size_t(bufsize+addsize)];
   if(newstr==0) FatalError(-1,STDDOC,"No memory");
-  memcpy(newstr,str,bufsize);
+  memcpy(newstr,str,static_cast<size_t>(bufsize));
   delete[] str;
   str=newstr;
   bufsize+=addsize;
+  assert(bufsize>=addsize); // Overflow check
 #undef MEMBERNAME
 }
 
@@ -144,48 +156,53 @@ Nb_DString& Nb_DString::Append(const Nb_DString& appendstr)
 #define MEMBERNAME "Append(const Nb_DString&)"
   // This routine should work OK if appendstr==*this.
   if(appendstr.str[0]=='\0') return *this; // Nothing to do.
-  size_t len1=Length();
-  size_t len2=appendstr.Length();
-  size_t len3=len1+len2;
+  OC_INDEX len1=Length();
+  OC_INDEX len2=appendstr.Length();
+  OC_INDEX len3=len1+len2;
+  assert(len3>=0);
   if(len3>=bufsize) {
     // Old buffer too small; throw it away and allocate new one
     bufsize=len3+1;
-    char *newstr=new char[bufsize];
+    assert(bufsize>0);
+    char *newstr=new char[size_t(bufsize)];
     if(newstr==0) FatalError(-1,STDDOC,"No memory");
-    memcpy(newstr,str,len1);
+    memcpy(newstr,str,size_t(len1));
     delete[] str;
     str=newstr;
   }
-  memcpy(str+len1,appendstr,len2);
+  memcpy(str+len1,appendstr,size_t(len2));
   str[len3]='\0';
   return *this;
 #undef MEMBERNAME
 }
 
-Nb_DString& Nb_DString::Append(const char *appendarr,size_t maxlen)
+Nb_DString& Nb_DString::Append(const char *appendarr,OC_INDEX maxlen)
 {
-#define MEMBERNAME "Append(const char*,size_t)"
+#define MEMBERNAME "Append(const char*,OC_INDEX)"
   // Determine length of string to append
-  size_t len2=0;
+  OC_INDEX len2=0;
   if(maxlen>1) {
     while(len2<maxlen && appendarr[len2]!='\0') len2++;
   } else {
-    len2=strlen(appendarr);
+    size_t appendsize = strlen(appendarr);
+    len2=static_cast<OC_INDEX>(appendsize);
+    assert(len2>=0 && appendsize == size_t(len2));
   }
   if(len2<1) return *this; // Nothing to do.
-  size_t len1=Length();
-  size_t len3=len1+len2;
+  OC_INDEX len1=Length();
+  OC_INDEX len3=len1+len2;
   char *dummy_str=NULL;  // To handle case when appendarr points into str[]
   if(len3>=bufsize) {
     // Old buffer too small; throw it away and allocate new one
     bufsize=len3+1;
-    char *newstr=new char[bufsize];
+    assert(bufsize>0);
+    char *newstr=new char[size_t(bufsize)];
     if(newstr==0) FatalError(-1,STDDOC,"No memory");
-    memcpy(newstr,str,len1);
+    memcpy(newstr,str,static_cast<size_t>(len1));
     dummy_str=str;
     str=newstr;
   }
-  memcpy(str+len1,appendarr,len2);
+  memcpy(str+len1,appendarr,static_cast<size_t>(len2));
   str[len3]='\0';
   if(dummy_str!=NULL) delete[] dummy_str;
   return *this;
@@ -198,17 +215,19 @@ Nb_DString& Nb_DString::AppendArgs(int argc,const char **argv)
 {
   if(argc<1) return *this; // Nothing to do
   int i;
-  size_t appendlen=0;
-  for(i=0;i<argc;i++) appendlen+=strlen(argv[i]);
+  OC_INDEX appendlen=0;
+  for(i=0;i<argc;i++) appendlen += static_cast<OC_INDEX>(strlen(argv[i]));
+  assert(appendlen>=0);
 
   // Add space for separating spaces
-  size_t curlen=Length();
+  OC_INDEX curlen=Length();
   int leadspace=1; // Set to 1 if we need a leading space before argv[0]
   if(curlen<1 || isspace(str[curlen-1])) leadspace=0;
   if(leadspace) appendlen+=argc; 
   else          appendlen+=(argc-1);
-  size_t newbufsize=curlen+appendlen+1;
-  char *newstr=new char[newbufsize];
+  OC_INDEX newbufsize=curlen+appendlen+1;
+  assert(newbufsize>0);
+  char *newstr=new char[size_t(newbufsize)];
   strcpy(newstr,str);
   if(leadspace) strcat(newstr," ");
   for(i=0;i<argc;i++) {
@@ -227,17 +246,18 @@ Nb_DString& Nb_DString::AppendArgs(int argc,const Nb_DString *argv)
 {
   if(argc<1) return *this; // Nothing to do
   int i;
-  size_t appendlen=0;
+  OC_INDEX appendlen=0;
   for(i=0;i<argc;i++) appendlen+=argv[i].Length();
 
   // Add space for separating spaces
-  size_t curlen=Length();
+  OC_INDEX curlen=Length();
   int leadspace=1; // Set to 1 if we need a leading space before argv[0]
   if(curlen<1 || isspace(str[curlen-1])) leadspace=0;
   if(leadspace) appendlen+=argc;
   else          appendlen+=(argc-1);
-  size_t newbufsize=curlen+appendlen+1;
-  char *newstr=new char[newbufsize];
+  OC_INDEX newbufsize=curlen+appendlen+1;
+  assert(newbufsize>0);
+  char *newstr=new char[size_t(newbufsize)];
   strcpy(newstr,str);
   if(leadspace) strcat(newstr," ");
   for(i=0;i<argc;i++) {
@@ -257,12 +277,13 @@ Nb_DString& Nb_DString::MergeArgs(int argc,const Nb_DString *argv)
 {
   // Copy Nb_DString argv into array of char*'s.
   int i;
-  size_t totalsize;
+  OC_INDEX totalsize;
   for(i=0,totalsize=0;i<argc;i++) totalsize+=argv[i].Length()+1;
+  assert(totalsize>0);
   char **cargv = 0;
   try {
-    cargv=new char*[argc];
-    cargv[0]=new char[totalsize];
+    cargv=new char*[size_t(argc)];
+    cargv[0]=new char[size_t(totalsize)];
     strcpy(cargv[0],argv[0].GetStr());
     for(i=1;i<argc;i++) {
       cargv[i]=cargv[i-1]+argv[i-1].Length()+1;
@@ -290,16 +311,17 @@ Nb_DString& Nb_DString::MergeArgs(const Nb_List<Nb_DString>& argv)
 {
   // Copy argv into array of char*'s.
   Nb_List_Index<Nb_DString> key;
-  const OC_INT4m argc = argv.GetSize();
-  size_t totalsize=0;
+  OC_INDEX argc = argv.GetSize();
+  OC_INDEX totalsize=0;
   const Nb_DString* argptr;
   for(argptr=argv.GetFirst(key); argptr!=NULL; argptr=argv.GetNext(key)) {
     totalsize += argptr->Length() + 1;
   }
-  Oc_AutoBuf buf(totalsize);
+  assert(totalsize>=argc);
+  Oc_AutoBuf buf(static_cast<size_t>(totalsize));
   char **cargv = 0;
   try {
-    cargv=new char*[argc];
+    cargv=new char*[size_t(argc)];
     int i=0;
     for(argptr=argv.GetFirst(key); argptr!=NULL; argptr=argv.GetNext(key)) {
       if(i==0) {
@@ -312,7 +334,8 @@ Nb_DString& Nb_DString::MergeArgs(const Nb_List<Nb_DString>& argv)
     }
 
     // Call Tcl_Merge to form proper list.
-    char* cptr=Tcl_Merge(argc,cargv);
+    assert(argc<INT_MAX);
+    char* cptr=Tcl_Merge(static_cast<int>(argc),cargv);
     if(cptr!=NULL) {
       Dup(cptr);
       Tcl_Free(cptr);
@@ -354,8 +377,8 @@ Nb_DString& Nb_DString::TrimLeft()
 
 Nb_DString& Nb_DString::TrimRight()
 {
-  size_t i=Length();
-  size_t newend=0;
+  OC_INDEX i=Length();
+  OC_INDEX newend=0;
   while(i>0) {
     if(!isspace(str[--i])) {
       newend=i+1;
@@ -378,7 +401,7 @@ Nb_DString& Nb_DString::Trim()
 // function and member function versions.
 void CollapseStr(char *str)
 {
-  size_t i1,i2,lastblank;  char ch;
+  OC_INDEX i1,i2,lastblank;  char ch;
   for(i1=i2=0,lastblank=1;str[i2]!='\0';i2++) {
     if(isspace(ch=str[i2])) {
       if(!lastblank) { str[i1++]=' '; lastblank=1; }
@@ -429,9 +452,12 @@ OC_INT4m StringCompare(const Nb_DString &a,const Nb_DString &b)
   return strcmp(a.str,b.str);
 }
 
-size_t StringSpan(const Nb_DString &a,const char *b)
+OC_INDEX StringSpan(const Nb_DString &a,const char *b)
 { // Replicates strspn
-  return strspn(a.str,b);
+  size_t span = strspn(a.str,b);
+  OC_INDEX result = static_cast<OC_INDEX>(span);
+  assert(result>=0 && span == size_t(result));
+  return result;
 }
 
 Nb_DString operator+(const Nb_DString& a,const Nb_DString& b)

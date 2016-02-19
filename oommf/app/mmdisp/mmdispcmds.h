@@ -20,7 +20,7 @@
 #define MMDISPCMDS_MAJOR_VERSION        1
 #define MMDISPCMDS_MINOR_VERSION        2
 #define MMDISPCMDS_RELEASE_LEVEL        0
-#define MMDISPCMDS_RELEASE_SERIAL       5
+#define MMDISPCMDS_RELEASE_SERIAL       6
 
 #define MMDISPCMDS_VERSION OC_MAKE_VERSION(MMDISPCMDS)
 
@@ -63,6 +63,7 @@ Tcl_CmdProc GetZsliceCount;
 Tcl_CmdProc GetZsliceLevels;
 Tcl_CmdProc IsRectangularMesh;
 Tcl_CmdProc PeriodicTranslate;
+Tcl_CmdProc Resample;
 Tcl_CmdProc PSWriteMesh;
 Tcl_CmdProc ReportActiveMesh;
 Tcl_CmdProc SelectActiveMesh;

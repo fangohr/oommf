@@ -115,7 +115,7 @@ Oxs_ScriptAtlas::~Oxs_ScriptAtlas()
 {}
 
 
-OC_BOOL Oxs_ScriptAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
+OC_BOOL Oxs_ScriptAtlas::GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const
 { // Fills mybox with bounding box for region with specified
   // id number.  Return value is 0 iff id is invalid.  At present,
   // given a valid id number, just returns the world bounding
@@ -126,7 +126,7 @@ OC_BOOL Oxs_ScriptAtlas::GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const
   return 1;
 }
 
-OC_INT4m Oxs_ScriptAtlas::GetRegionId(const ThreeVector& point) const
+OC_INDEX Oxs_ScriptAtlas::GetRegionId(const ThreeVector& point) const
 { // Appends point & bounding box to "script" from the Specify
   // block, and evaluates the resulting command in the MIF
   // interpreter.  The script should return the 1-based index
@@ -163,11 +163,11 @@ OC_INT4m Oxs_ScriptAtlas::GetRegionId(const ThreeVector& point) const
     cmd.RestoreInterpResult();
     throw Oxs_ExtError(this,msg.c_str());
   }
-  OC_INT4m id;
+  OC_INT4m id; // GetResultListItem wants an OC_INT4m type
   cmd.GetResultListItem(0,id);
   cmd.RestoreInterpResult();
 
-  if(id < 0 || static_cast<OC_UINT4m>(id) >= GetRegionCount()) {
+  if(id < 0 || id >= GetRegionCount()) {
     char buf[512];
     Oc_Snprintf(buf,sizeof(buf),
 		"Region id value %d returned by script is out of range.",
@@ -177,26 +177,26 @@ OC_INT4m Oxs_ScriptAtlas::GetRegionId(const ThreeVector& point) const
   return id;
 }
 
-OC_INT4m Oxs_ScriptAtlas::GetRegionId(const String& name) const
+OC_INDEX Oxs_ScriptAtlas::GetRegionId(const String& name) const
 { // Given a region id string (name), returns
   // the corresponding region id index.  If
   // "name" is not included in the atlas, then
   // -1 is returned.  Note: If name == "universe",
   // then the return value will be 0.
-  OC_UINT4m count = OC_UINT4m(region_name_list.size());
-  for(OC_UINT4m i=0;i<count;i++) {
+  OC_INDEX count = static_cast<OC_INDEX>(region_name_list.size());
+  for(OC_INDEX i=0;i<count;i++) {
     if(region_name_list[i].compare(name)==0) return i;
   }
   return -1;
 }
 
-OC_BOOL Oxs_ScriptAtlas::GetRegionName(OC_UINT4m id,String& name) const
+OC_BOOL Oxs_ScriptAtlas::GetRegionName(OC_INDEX id,String& name) const
 { // Given an id number, fills in "name" with
   // the corresponding region id string.  Returns
   // 1 on success, 0 if id is invalid.  If id is 0,
   // then name is set to "universe", and the return
   // value is 1.
-  if(id>=region_name_list.size()) return 0;
+  if(id>=static_cast<OC_INDEX>(region_name_list.size())) return 0;
   name = region_name_list[id];
   return 1;
 }

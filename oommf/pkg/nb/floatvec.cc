@@ -1,9 +1,8 @@
 /* FILE: floatvec.cc                 -*-Mode: c++-*-
- * At minimum, this file must exist to quiet HP's CC pre-linker.
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:55 $
+ * Last modified on: $Date: 2014/10/22 07:52:43 $
  * Last modified by: $Author: donahue $
  */
 #include "floatvec.h"

@@ -79,7 +79,7 @@ void PBC_ExchangePtwise_2D::GetEnergy
   OC_INDEX zdim = mesh->DimZ();
   OC_INDEX xydim = xdim*ydim;
 
-  if(mesh_id != state.mesh->Id()) {
+  if(static_cast<OC_UINDEX>(mesh_id) != state.mesh->Id()) {
     // This is either the first pass through, or else mesh
     // has changed.
     mesh_id = 0;

@@ -22,7 +22,7 @@ const ClassDoc PlotConfiguration::class_doc("PlotConfiguration",
                     "1.0.1","16-Jul-1998");
 PlotConfiguration::PlotConfiguration()
   : displaystate(1),autosample(0),subsample(0.),size(1.),
-    antialias(0),stipple(""),phase(0.),invert(0)
+    antialias(0),outlinewidth(0),stipple(""),phase(0.),invert(0)
 {}
 
 PlotConfiguration& PlotConfiguration::operator=(const PlotConfiguration& pc)
@@ -32,6 +32,8 @@ PlotConfiguration& PlotConfiguration::operator=(const PlotConfiguration& pc)
   subsample=pc.subsample;
   size=pc.size;
   antialias=pc.antialias;
+  outlinewidth=pc.outlinewidth;
+  outlinecolor=pc.outlinecolor;
   stipple=pc.stipple;
   colorquantity=pc.colorquantity;
   phase=pc.phase;
@@ -43,6 +45,7 @@ PlotConfiguration& PlotConfiguration::operator=(const PlotConfiguration& pc)
 PlotConfiguration::PlotConfiguration(const PlotConfiguration& pc)
   : displaystate(pc.displaystate),autosample(pc.autosample),
     subsample(pc.subsample),size(pc.size),antialias(pc.antialias),
+    outlinewidth(pc.outlinewidth),outlinecolor(pc.outlinecolor),
     stipple(pc.stipple),
     colorquantity(pc.colorquantity),phase(pc.phase),invert(pc.invert),
     colormap(pc.colormap)
@@ -663,8 +666,8 @@ DisplayFrame::SetDrawArrowBaseCmd
   String buf; // Work space
 
   Nb_TclCommand& arrowcmd     = draw_data.arrowcmd;  // For convenience
-  Nb_TclCommand& inarrowcmdA  = draw_data.inarrowcmdA; 
-  Nb_TclCommand& inarrowcmdB  = draw_data.inarrowcmdB; 
+  Nb_TclCommand& inarrowcmdA  = draw_data.inarrowcmdA;
+  Nb_TclCommand& inarrowcmdB  = draw_data.inarrowcmdB;
   Nb_TclCommand& outarrowcmdA = draw_data.outarrowcmdA;
   Nb_TclCommand& outarrowcmdB = draw_data.outarrowcmdB;
 
@@ -772,8 +775,8 @@ DisplayFrame::DrawArrow
   const Nb_Vec3<OC_REAL4> *vtemp;
 
   Nb_TclCommand& arrowcmd     = draw_data.arrowcmd;  // For convenience
-  Nb_TclCommand& inarrowcmdA  = draw_data.inarrowcmdA; 
-  Nb_TclCommand& inarrowcmdB  = draw_data.inarrowcmdB; 
+  Nb_TclCommand& inarrowcmdA  = draw_data.inarrowcmdA;
+  Nb_TclCommand& inarrowcmdB  = draw_data.inarrowcmdB;
   Nb_TclCommand& outarrowcmdA = draw_data.outarrowcmdA;
   Nb_TclCommand& outarrowcmdB = draw_data.outarrowcmdB;
   char* slicetag = draw_data.slicetag;
@@ -828,6 +831,13 @@ DisplayFrame::DrawArrow
   const char* pcolor1=arrow_config.Color(dspvec.shade);
 
   // Slice
+  // Note: Testing (Apr-2015) indicates that outside of the .Eval()
+  //       calls, about 20% of the runtime of this function is spent in
+  //       the Oc_Snprintf call, so time improvement could be made by
+  //       using a fast itoa-like substitute.  OTOH, this same testing
+  //       indicates that 98% of the function runtime is tied up in the
+  //       .Eval() calls, so the Oc_Sprintf overhead is rather
+  //       meaningless unless the .Eval() calls can be made faster.
   Oc_Snprintf(slicetag,DrawArrowData::SCRATCHSIZE,
               "arrows a%d",dspvec.zslice);
 
@@ -836,9 +846,11 @@ DisplayFrame::DrawArrow
     r1=int(OC_ROUND(x1));     r2=int(OC_ROUND(x2));
     y1=(postemp->y)-dely/2;   y2=y1+dely;
     c1=int(OC_ROUND(y1));     c2=int(OC_ROUND(y2));
-    
-    arrowcmd.SetCommandArg(0,r1);  arrowcmd.SetCommandArg(1,c1);
-    arrowcmd.SetCommandArg(2,r2);  arrowcmd.SetCommandArg(3,c2);
+
+    arrowcmd.SetCommandArg(0,OC_REAL8m(r1));
+    arrowcmd.SetCommandArg(1,OC_REAL8m(c1));
+    arrowcmd.SetCommandArg(2,OC_REAL8m(r2));
+    arrowcmd.SetCommandArg(3,OC_REAL8m(c2));
     arrowcmd.SetCommandArg(5,slicetag);
 
     // Arrowhead shape
@@ -868,8 +880,10 @@ DisplayFrame::DrawArrow
       r2=r0+ioff;  c2=c0+ioff;
 
       // Draw outer rectangle
-      inarrowcmdA.SetCommandArg(0,r1);  inarrowcmdA.SetCommandArg(1,c1);
-      inarrowcmdA.SetCommandArg(2,r2);  inarrowcmdA.SetCommandArg(3,c2);
+      inarrowcmdA.SetCommandArg(0,OC_REAL8m(r1));
+      inarrowcmdA.SetCommandArg(1,OC_REAL8m(c1));
+      inarrowcmdA.SetCommandArg(2,OC_REAL8m(r2));
+      inarrowcmdA.SetCommandArg(3,OC_REAL8m(c2));
       inarrowcmdA.SetCommandArg(5,slicetag);
       inarrowcmdA.SetCommandArg(7,pcolor1);
       inarrowcmdA.SetCommandArg(9,pcolor1);
@@ -880,8 +894,10 @@ DisplayFrame::DrawArrow
         ioff=(int)OC_ROUND(OC_REAL4m(a3)/6.);
         r1=r0-ioff;  c1=c0-ioff;
         r2=r0+ioff;  c2=c0+ioff;
-        inarrowcmdB.SetCommandArg(0,r1);  inarrowcmdB.SetCommandArg(1,c1);
-        inarrowcmdB.SetCommandArg(2,r2);  inarrowcmdB.SetCommandArg(3,c2);
+        inarrowcmdB.SetCommandArg(0,OC_REAL8m(r1));
+        inarrowcmdB.SetCommandArg(1,OC_REAL8m(c1));
+        inarrowcmdB.SetCommandArg(2,OC_REAL8m(r2));
+        inarrowcmdB.SetCommandArg(3,OC_REAL8m(c2));
         inarrowcmdB.SetCommandArg(5,slicetag);
         inarrowcmdB.SetCommandArg(7,pcolor2);
         inarrowcmdB.Eval();
@@ -892,10 +908,14 @@ DisplayFrame::DrawArrow
       r2=r0+ioff;  c2=c0+ioff;
 
       // Draw diamond
-      outarrowcmdA.SetCommandArg(0,r1);  outarrowcmdA.SetCommandArg(1,c0);
-      outarrowcmdA.SetCommandArg(2,r0);  outarrowcmdA.SetCommandArg(3,c2);
-      outarrowcmdA.SetCommandArg(4,r2);  outarrowcmdA.SetCommandArg(5,c0);
-      outarrowcmdA.SetCommandArg(6,r0);  outarrowcmdA.SetCommandArg(7,c1);
+      outarrowcmdA.SetCommandArg(0,OC_REAL8m(r1));
+      outarrowcmdA.SetCommandArg(1,OC_REAL8m(c0));
+      outarrowcmdA.SetCommandArg(2,OC_REAL8m(r0));
+      outarrowcmdA.SetCommandArg(3,OC_REAL8m(c2));
+      outarrowcmdA.SetCommandArg(4,OC_REAL8m(r2));
+      outarrowcmdA.SetCommandArg(5,OC_REAL8m(c0));
+      outarrowcmdA.SetCommandArg(6,OC_REAL8m(r0));
+      outarrowcmdA.SetCommandArg(7,OC_REAL8m(c1));
       outarrowcmdA.SetCommandArg(9,slicetag);
       outarrowcmdA.SetCommandArg(11,pcolor1);
       outarrowcmdA.SetCommandArg(13,pcolor1);
@@ -903,14 +923,18 @@ DisplayFrame::DrawArrow
       outarrowcmdA.Eval();
       if(a3>6) {
         // Draw a "+" in center of diamond
-        outarrowcmdB.SetCommandArg(0,r1);  outarrowcmdB.SetCommandArg(1,c0);
-        outarrowcmdB.SetCommandArg(2,r2);  outarrowcmdB.SetCommandArg(3,c0);
+        outarrowcmdB.SetCommandArg(0,OC_REAL8m(r1));
+        outarrowcmdB.SetCommandArg(1,OC_REAL8m(c0));
+        outarrowcmdB.SetCommandArg(2,OC_REAL8m(r2));
+        outarrowcmdB.SetCommandArg(3,OC_REAL8m(c0));
         outarrowcmdB.SetCommandArg(5,slicetag);
         outarrowcmdB.SetCommandArg(7,pcolor2);
         outarrowcmdB.SetCommandArg(9,linewidth/3);
         outarrowcmdB.Eval();
-        outarrowcmdB.SetCommandArg(0,r0);  outarrowcmdB.SetCommandArg(1,c2);
-        outarrowcmdB.SetCommandArg(2,r0);  outarrowcmdB.SetCommandArg(3,c1);
+        outarrowcmdB.SetCommandArg(0,OC_REAL8m(r0));
+        outarrowcmdB.SetCommandArg(1,OC_REAL8m(c2));
+        outarrowcmdB.SetCommandArg(2,OC_REAL8m(r0));
+        outarrowcmdB.SetCommandArg(3,OC_REAL8m(c1));
         outarrowcmdB.Eval();
       }
     }
@@ -982,14 +1006,14 @@ OC_INT4m DisplayFrame::DrawLine(const char* canvas_name,
   return Tcl_Eval(tcl_interp,buf);
 }
 
-OC_BOOL DisplayFrame::SetCoordinates(CoordinateSystem new_coords) 
+OC_BOOL DisplayFrame::SetCoordinates(CoordinateSystem new_coords)
 {
     if(new_coords==coords) return 0;
     coords=new_coords;
     arrow_valid=pixel_valid=boundary_valid=0;
     return 1;
 }
- 
+
 const char* DisplayFrame::GetVecColor(const Nb_Vec3<OC_REAL4>& v) const
 {
   // Access to the underlying Vf_Mesh::GetVecShade function.  See that
@@ -1331,7 +1355,9 @@ DisplayFrame::FillBitmap(const Nb_BoundingBox<OC_REAL4>& arrow_box,
           bitmap.DrawFilledArrow(xpos,ypos,
                                  arrowsize*arrmag,xcos,ycos,zcos,
                                  arrow_config.PackedColor(dspvec->shade),
-                                 arrow_config.antialias);
+                                 arrow_config.antialias,
+                                 arrow_config.outlinewidth,
+                                 arrow_config.outlinecolor);
         } else {
           OC_REAL4m foreshade=dspvec->shade;
           OC_REAL4m backshade=foreshade+0.5f;   // Maybe there's a better way

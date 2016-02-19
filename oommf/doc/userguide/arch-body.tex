@@ -18,7 +18,8 @@ The programs communicate over Internet
 even when the programs are running on a common host.  An advantage
 of this design is that distributed operation of \OOMMF\ programs
 over a networked collection of hosts is supported in the basic
-design, and will be available in a future release.  
+%design, and will be available in a future release.  
+design, though it is not fully realized in the current release.  
 
 %Each \OOMMF\ application that provides a service to other applications
 %contains a server which listens on a network port for service
@@ -37,7 +38,7 @@ client application in another service relationship.
 \index{client-server~architecture|)}
 
 \index{account~service~directory|(}
-Each server application provides its services on a particular
+Each server application provides its service on a particular
 Internet port, and needs to inform potential client applications 
 how to obtain its service.  Each client application needs to be able
 to look up possible providers of the service it needs.  The
@@ -96,9 +97,10 @@ Each account
 service directory application sets its 
 working directory\index{working~directory}
 to the root
-directory of the \OOMMF\ distribution.  Future releases of \OOMMF\
-software will likely be based on a revised architecture which
-alleviates these restrictions.
+directory of the \OOMMF\ distribution.  
+%Future releases of \OOMMF\
+%software will likely be based on a revised architecture which
+%alleviates these restrictions.
 \index{launch!by~account~service~directory|)}
 
 \index{host~service~directory!launching~of|(}

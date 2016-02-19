@@ -2,11 +2,12 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-08-31 20:06:50 $
+ * Last modified on: $Date: 2014/02/22 23:12:30 $
  * Last modified by: $Author: donahue $
  */
 
 /* Standard libraries */
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -157,14 +158,20 @@ void Oc_AutoBuf::SetLength(size_t newlength)
   // char otherwise.)
 void Oc_AutoWideBuf::Set(const char* const_str)
 {
-  if(bufsize>0) delete[] wstr;
-  int bufsize = MultiByteToWideChar(CP_ACP,0,const_str,-1,NULL,0);
-  if(bufsize==0) {
+  size_t chkbufsize
+    = static_cast<size_t>(MultiByteToWideChar(CP_ACP,0,const_str,-1,NULL,0));
+  if(chkbufsize==0) {
     panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
-  wstr = new WCHAR[bufsize];
+  if(chkbufsize>bufsize || 8*chkbufsize<bufsize) {
+    delete[] wstr;
+    bufsize = chkbufsize;
+    wstr = new WCHAR[chkbufsize];
+  }
   if(wstr==0) panic((char *)"No memory in Oc_AutoWideBuf::Set");
-  if(MultiByteToWideChar(CP_ACP,0,const_str,-1,wstr,bufsize)==0) {
+  assert(bufsize<=INT_MAX); // Note: bufsize is unsigned
+  if(MultiByteToWideChar(CP_ACP,0,const_str,-1,wstr,
+                         static_cast<int>(bufsize))==0) {
     panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
 }

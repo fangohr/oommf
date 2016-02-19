@@ -64,7 +64,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName killoommf
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}

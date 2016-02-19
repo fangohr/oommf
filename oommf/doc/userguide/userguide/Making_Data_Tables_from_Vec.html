@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html569"
+<A NAME="tex2html574"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html565"
+<A NAME="tex2html570"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html559"
+<A NAME="tex2html564"
   HREF="Bitmap_File_Format_Conversi.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html571"
+<A NAME="tex2html576"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html567"
+<A NAME="tex2html572"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html570"
+<B> Next:</B> <A NAME="tex2html575"
   HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
-<B> Up:</B> <A NAME="tex2html566"
+<B> Up:</B> <A NAME="tex2html571"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html560"
+<B> Previous:</B> <A NAME="tex2html565"
   HREF="Bitmap_File_Format_Conversi.html">Bitmap File Format Conversion:</A>
 <BR>
 <BR>
@@ -57,7 +57,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Making Data Tables from Vector Fields:
           avf2odt
-</H2><A NAME="16355"></A><A NAME="16356"></A><A NAME="16357"></A><A NAME="16358"></A><A NAME="16359"></A>
+</H2><A NAME="16669"></A><A NAME="16670"></A><A NAME="16671"></A><A NAME="16672"></A><A NAME="16673"></A>
 The <B>avf2odt</B> program converts <I>rectangularly</I> meshed vector field
 files in any of the <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
 (OVF, VIO) into the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT&nbsp;1.0</A> data table format.  (Irregular meshes are
@@ -74,10 +74,10 @@ The <B>avf2odt</B> launch command is:
 <PRE>
 tclsh oommf.tcl avf2odt [standard options] \
    [-average &lt;space|plane|line|point|ball&gt;] [-axis &lt;x|y|z&gt;] \
-   [-ball_radius brad] [-defaultvals &lt;0|1&gt;] [-filesort method] \
-   [-headers &lt;full|collapse|none&gt;] [-index label units valexpr] \
-   [-ipat pattern] [-normalize &lt;0|1&gt;] [-numfmt fmt] \
-   [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
+   [-ball_radius brad] [-defaultpos &lt;0|1&gt;] [-defaultvals &lt;0|1&gt;] \
+   [-extravals flag] [-filesort method] [-headers &lt;full|collapse|none&gt;] \
+   [-index label units valexpr] [-ipat pattern] [-normalize &lt;0|1&gt;] \
+   [-numfmt fmt] [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
    [-region xmin ymin zmin xmax ymax zmax] \
    [-rregion rxmin rymin rzmin rxmax rymax rzmax] \
    [-truncate &lt;0|1&gt;] [-v level] [-valfunc label units fcnexpr] \
@@ -237,6 +237,46 @@ where
  values.  In particular, this may be
   useful in conjunction with the <TT>-valfunc</TT> option.
 </DD>
+<DT><STRONG><TT><B>-extravals <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify <TT>-extravals 1</TT> to augment the output with columns
+  for the average <B><I>L</I><SUP>1</SUP></B>
+<!-- MATHEND
+ 
+ -->
+ norm
+  <!-- MATH
+ $\sum\left(|v_x| + |v_y| + |v_z|\right)/N$
+ -->
+<B><IMG
+ WIDTH="19" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img73.gif"
+ ALT="$ \sum$"><IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img74.gif"
+ ALT="$ \left(\vphantom{\vert v_x\vert + \vert v_y\vert + \vert v_z\vert}\right.$">| <I>v</I><SUB>x</SUB>| + | <I>v</I><SUB>y</SUB>| + | <I>v</I><SUB>z</SUB>|<IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img75.gif"
+ ALT="$ \left.\vphantom{\vert v_x\vert + \vert v_y\vert + \vert v_z\vert}\right)$">/<I>N</I></B>
+<!-- MATHEND
+ 
+ -->
+, the normalized <B><I>L</I><SUP>2</SUP></B>
+<!-- MATHEND
+ 
+ -->
+  norm <!-- MATH
+ $\sqrt{\sum v^2/N}$
+ -->
+<B><IMG
+ WIDTH="73" HEIGHT="43" ALIGN="MIDDLE" BORDER="0"
+ SRC="img76.gif"
+ ALT="$ \sqrt{{\sum v^2/N}}$"></B>
+<!-- MATHEND
+ 
+ -->
+, the minimum component absolute value,
+  and the maximum component absolute value.
+</DD>
 <DT><STRONG><TT><B>-filesort method</B></TT></STRONG></DT>
 <DD>Specifies the sorting order to apply to the input file list.  This
   order is important when using the <TT>-onefile</TT> option, since it
@@ -358,14 +398,14 @@ where
   fcnexpr is a Tcl <TT>expr</TT> expression that may include special
   variables.  Here, however, the allowed special variables are
   <TT>$x</TT>, <TT>$y</TT>, <TT>$z</TT>, <TT>$r</TT>,
-  <TT>$vx</TT>, <TT>$vy</TT>, <TT>$vz</TT>, <TT>$vmag</TT>, where 
+  <TT>$vx</TT>, <TT>$vy</TT>, <TT>$vz</TT>, <TT>$vmag</TT>, where
   <TT>$x</TT>, <TT>$y</TT>, <TT>$z</TT>, and <TT>$r</TT> are sample location and
   magnitude, respectively (<!-- MATH
  $r = \sqrt{x^2+y^2+z^2}$
  -->
 <B><I>r</I> = <IMG
  WIDTH="105" HEIGHT="36" ALIGN="MIDDLE" BORDER="0"
- SRC="img68.gif"
+ SRC="img77.gif"
  ALT="$ \sqrt{{x^2+y^2+z^2}}$"></B>
 <!-- MATHEND
  
@@ -375,9 +415,9 @@ where
   values and magnitude.  The output is the value of fcnexpr averaged
   across the manifold selected by the <TT>-average</TT> option.  A couple
   of examples are
-  <PRE>
-     -valfunc Ms   A/m '$vmag'
-     -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
+<PRE>
+   -valfunc Ms   A/m '$vmag'
+   -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
 </PRE>
   As with the valexpr string for <TT>-index</TT>, the fcnexpr string
   should be surrounding by single quotes on Unix in order to
@@ -407,7 +447,7 @@ wildcards before handing control over to the invoked application, so the
 <TT>-ipat</TT> option is not usually needed--although it is useful in case of a
 ``command-line too long'' error.  DOS does not do this expansion, so
 you must use <TT>-ipat</TT> to get wildcard
-expansion<A NAME="16506"></A> in Windows.
+expansion<A NAME="16823"></A> in Windows.
 The resulting file list is sorted  based on the <TT>-filesort</TT>
 specification as described above.
 
@@ -427,22 +467,22 @@ replaces this with the extension <TT><B>.odt</B></TT>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html569"
+<A NAME="tex2html574"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html565"
+<A NAME="tex2html570"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html559"
+<A NAME="tex2html564"
   HREF="Bitmap_File_Format_Conversi.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html572"
+<A NAME="tex2html577"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html567"
+<A NAME="tex2html572"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

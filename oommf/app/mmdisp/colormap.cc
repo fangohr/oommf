@@ -65,10 +65,11 @@ void OommfPackedRGB::Blend(OC_REAL8m wgt1,OommfPackedRGB color1,
   else                     blue=(unsigned char)OC_ROUND(newblue);
 }
 
-OC_BOOL OommfPackedRGB::Set(const char* req_color)
-{ // Converts req_color to rgb format, using Nb_GetColor
+OC_BOOL OommfPackedRGB::Set(const char* color_req)
+{ // Converts color_req to rgb format, using Nb_GetColor.
+  // Note that Nb_GetColor may call into the global Tcl interp.
   OC_REAL8m r,g,b;
-  if(!Nb_GetColor(req_color,r,g,b)) return 0;
+  if(!Nb_GetColor(color_req,r,g,b)) return 0;
   if(r>=1.0) red=255;
   else       red=static_cast<unsigned char>(floor(r*256.));
   if(g>=1.0) green=255;

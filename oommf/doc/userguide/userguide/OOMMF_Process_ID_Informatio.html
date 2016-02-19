@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,54 +13,54 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
-<LINK REL="next" HREF="Process_Nicknames_nickname.html">
-<LINK REL="previous" HREF="ODT_Column_Extraction_odtco.html">
+<LINK REL="next" HREF="Platform-Independent_Make_p.html">
+<LINK REL="previous" HREF="Oxs_regression_tests_oxsreg.html">
 <LINK REL="up" HREF="Command_Line_Utilities.html">
-<LINK REL="next" HREF="Process_Nicknames_nickname.html">
+<LINK REL="next" HREF="Platform-Independent_Make_p.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html723"
-  HREF="Process_Nicknames_nickname.html">
+<A NAME="tex2html812"
+  HREF="Platform-Independent_Make_p.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html719"
+<A NAME="tex2html808"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html713"
-  HREF="ODT_Column_Extraction_odtco.html">
+<A NAME="tex2html802"
+  HREF="Oxs_regression_tests_oxsreg.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html725"
+<A NAME="tex2html814"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html721"
+<A NAME="tex2html810"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html724"
-  HREF="Process_Nicknames_nickname.html">Process Nicknames: nickname</A>
-<B> Up:</B> <A NAME="tex2html720"
+<B> Next:</B> <A NAME="tex2html813"
+  HREF="Platform-Independent_Make_p.html">Platform-Independent Make: pimake</A>
+<B> Up:</B> <A NAME="tex2html809"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html714"
-  HREF="ODT_Column_Extraction_odtco.html">ODT Column Extraction: odtcols</A>
+<B> Previous:</B> <A NAME="tex2html803"
+  HREF="Oxs_regression_tests_oxsreg.html">Oxs regression tests: oxsregression</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION0001713000000000000000"></A><A NAME="sec:pidinfo"></A><A NAME="17144"></A><A NAME="17145"></A><A NAME="17146"></A>
+<H2><A NAME="SECTION0001719000000000000000"></A><A NAME="sec:pidinfo"></A><A NAME="17786"></A><A NAME="17787"></A><A NAME="17788"></A>
 <BR>
 OOMMF and Process ID Information: pidinfo
 </H2>
 
 <P>
-The <B>pidinfo</B> command returns the mapping of OOMMF ID's (OID's)
-to system process ID's (PID's).
+The <B>pidinfo</B> command prints a table mapping OOMMF ID's (OID's)
+to system process ID's (PID's) and application names.
 
 <P>
 
@@ -70,16 +70,16 @@ to system process ID's (PID's).
 The <B>pidinfo</B> command line is:
 <PRE>
 tclsh oommf.tcl pidinfo [standard options] [-account name] \
-   [-hostport port] [-names] [-noheader] [-ports] [-timeout secs] \
-   [-v] [oid ...]
+   [-hostport port] [-names] [-noheader] [-pid] [-ports] \
+   [-timeout secs] [-wait secs] [-v] [oid ...]
 </PRE>
 where
 <DL>
 <DT><STRONG><TT><B>-account name</B></TT></STRONG></DT>
-<DD>Specify the account name.  The default is the same used by 
+<DD>Specify the account name.  The default is the same used by
  <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>:
  the current user login name, except on Windows&nbsp;9X, where the dummy
- account ID  ``oommf''<A NAME="17158"></A> may be used
+ account ID  ``oommf''<A NAME="17800"></A> may be used
  instead.
 </DD>
 <DT><STRONG><TT><B>-hostport port</B></TT></STRONG></DT>
@@ -89,13 +89,16 @@ where
  overrides the former).  The standard setting is 15136.
 </DD>
 <DT><STRONG><TT><B>-names</B></TT></STRONG></DT>
-<DD><A NAME="17165"></A>
+<DD><A NAME="17807"></A>
  Display application nicknames, which are used by the MIF 2.1
  <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A>
  command.
 </DD>
 <DT><STRONG><TT><B>-noheader</B></TT></STRONG></DT>
 <DD>Don't print column headers.
+</DD>
+<DT><STRONG><TT><B>-pid</B></TT></STRONG></DT>
+<DD>Select processes by system pid rather than OOMMF oid.
 </DD>
 <DT><STRONG><TT><B>-ports</B></TT></STRONG></DT>
 <DD>Display active server ports for each application.
@@ -107,9 +110,14 @@ where
 <DT><STRONG><TT><B>-v</B></TT></STRONG></DT>
 <DD>Display information about the host and account servers.
 </DD>
+<DT><STRONG><TT><B>-wait secs</B></TT></STRONG></DT>
+<DD>If no match is found, then retry for up to <TT>secs</TT> seconds.  Default
+ is zero seconds, i.e., try once.
+</DD>
 <DT><STRONG><TT><B>oid ...</B></TT></STRONG></DT>
 <DD>List of OOMMF ID's to display information about.  Default is all
- current applications.
+ current applications.  If the <TT>-pid</TT> option is specified then this
+ selection is by system process ID's rather than OOMMF ID's.
 </DD>
 </DL>
 The title bar of running OOMMF applications typically displays the
@@ -126,22 +134,22 @@ utilities.  The PID may also be needed to invoke the operating system
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html723"
-  HREF="Process_Nicknames_nickname.html">
+<A NAME="tex2html812"
+  HREF="Platform-Independent_Make_p.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html719"
+<A NAME="tex2html808"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html713"
-  HREF="ODT_Column_Extraction_odtco.html">
+<A NAME="tex2html802"
+  HREF="Oxs_regression_tests_oxsreg.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html726"
+<A NAME="tex2html815"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html721"
+<A NAME="tex2html810"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

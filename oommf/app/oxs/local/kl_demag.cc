@@ -191,6 +191,14 @@ Klm_Demag_PBC::Klm_Demag_PBC(
   // KL(m) end
   
   VerifyAllInitArgsUsed();
+  if(sizeof(Oxs_Complex)!=2*sizeof(OXS_COMPLEX_REAL_TYPE)) {
+    // Some of the code below relies on being able to access an array
+    // of Oxs_Complex as an array of the underlying floating point
+    // type.  This punning will fail if Oxs_Complex is not tight
+    // packed.
+    String msg = String("Oxs_Complex structure packing failure detected");
+    throw Oxs_ExtError(this,msg);
+  }
 }
 
 Klm_Demag_PBC::~Klm_Demag_PBC() {
@@ -325,9 +333,9 @@ void Klm_Demag_PBC::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
     throw Oxs_Ext::Error(this,msg);
   }
 
-  OC_REALWIDE *rxcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(xcomp));
-  OC_REALWIDE *rycomp = static_cast<OC_REALWIDE*>(static_cast<void*>(ycomp));
-  OC_REALWIDE *rzcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(zcomp));
+  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
+  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
+  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
   OC_INDEX rstridey=2*cstridey;
   OC_INDEX rstridez=2*cstridez;
 
@@ -1031,9 +1039,9 @@ void Klm_Demag_PBC::FillCoefficientArraysStandard(const Oxs_Mesh* genmesh) const
     throw Oxs_Ext::Error(this,msg);
   }
 
-  OC_REALWIDE *rxcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(xcomp));
-  OC_REALWIDE *rycomp = static_cast<OC_REALWIDE*>(static_cast<void*>(ycomp));
-  OC_REALWIDE *rzcomp = static_cast<OC_REALWIDE*>(static_cast<void*>(zcomp));
+  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
+  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
+  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
   OC_INDEX rstridey=2*cstridey;
   OC_INDEX rstridez=2*cstridez;
 

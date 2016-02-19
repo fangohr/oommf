@@ -13,6 +13,11 @@ Oc_Class Oxs_Output {
         DataTable       DataTable
     }
 
+    # The last_id array records the state id last written to each
+    # "destination,output" pair.  This is used to protect against
+    # sending duplicate data.
+    private array common last_id
+
     # We assume that all Oxs_Output objects existing at the same time
     # are provided by the same loaded problem, i.e. the same MIF,
     # so all scalars should be gathered into one DataTable, and one
@@ -127,26 +132,14 @@ Oc_Class Oxs_Output {
         return $directory($n)
     }
     private proc SendDataTable {thread extra} {
-	array set custom $extra
-	if {[info exists custom(-basename)]} {
-            set triples [list [list @Filename:$custom(-basename).odt {} 0]]
-	} else {
-            set triples [list [list @Filename:$basename.odt {} 0]]
-	}
-        foreach on $scalars {
-            set o $directory($on)
-            set n [$o Cget -name]
-            set u [$o Cget -units]
-            set h [$o Cget -handle]
-            set data [Oxs_OutputGet $h]
-            ### KLUDGE KLUDGE KLUDGE ###
-            if {[catch {expr {1.0*$data}}]} {
-                # Assume this is an underflow bug
-                set data 0.0
-            }
-            ### KLUDGE KLUDGE KLUDGE ###
-            lappend triples [list $n $u $data]
-        }
+        set triples [Oxs_GetAllScalarOutputs]
+ 	array set custom $extra
+ 	if {[info exists custom(-basename)]} {
+            set header [list @Filename:$custom(-basename).odt {} 0]
+ 	} else {
+            set header [list @Filename:$basename.odt {} 0]
+ 	}
+        set triples [linsert $triples 0 $header]
         # We're sending DataTable data.  Set up an event to guarantee
         # the table gets closed when the problem ends.
         if {![info exists closers($thread)]} {
@@ -157,22 +150,35 @@ Oc_Class Oxs_Output {
         }
         return [$thread Send DataTable $triples]
     }
-    proc Send {n dest} {
-        if {[catch {set directory($n)} output]} {
-            return -code error -errorcode OxsUnknownOutput \
-               "Unknown output: $n"
-        }
-        if {[catch {Oxs_Destination Thread $dest} thread]} {
-            return -code error -errorcode OxsUnknownDestination \
-               "Unknown destination: $dest"
-        }
+    proc Send {n dest {interactive 0}} {
+       # Protect against sending duplicates
+       set id [Oxs_GetCurrentStateId]
+       if {!$interactive} {
+          if {[catch {set last_id($n,$dest)} checkid]} {
+             set checkid 0
+          }
+          if {$id == $checkid} {
+             return -1   ;# Data already sent.  Otherwise, the return
+             ## value is the Net_Thread id.
+          }
+          set last_id($n,$dest) $id ;# Record current data id
+       }
 
-        # DataTable output gets special handling
-        if {[string compare DataTable $output]==0} {
-	    set extra [[Oxs_Destination Lookup $dest] Retrieve]
-            return [$class SendDataTable $thread $extra]
-        }
-        return [$output Send $thread]
+       if {[catch {set directory($n)} output]} {
+          return -code error -errorcode OxsUnknownOutput \
+              "Unknown output: $n"
+       }
+       if {[catch {Oxs_Destination Thread $dest} thread]} {
+          return -code error -errorcode OxsUnknownDestination \
+              "Unknown destination: $dest"
+       }
+
+       # DataTable output gets special handling
+       if {[string compare DataTable $output]==0} {
+          set extra [[Oxs_Destination Lookup $dest] Retrieve]
+          return [$class SendDataTable $thread $extra]
+       }
+       return [$output Send $thread]
     }
     method Protocol {} {
         if {[info exists protocol($type)]} {

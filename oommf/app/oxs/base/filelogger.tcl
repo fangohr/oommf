@@ -4,19 +4,28 @@ Oc_Class FileLogger {
     common filename ""
 
     proc Log {msg type src} {
-       global errorInfo errorCode
+       global errorInfo errorCode tcl_platform
        # Note: In Tcl 8.5.7 (others?), the clock format command
        # below may reset errorInfo.  So make a copy.
        set ei $errorInfo
        set ec $errorCode
        regsub -- "\n+\$" $msg {} msg ;# Strip trailing newlines, if any.
 
+       regsub {[.].*$} [info hostname] {} hostname
+       if {[catch {set tcl_platform(user)} username]} {
+          set username {}
+       } else {
+          set username "-[string trim $username]"
+       }
        set instanceinfo [Oc_Main GetInstanceName]
-       set iipid "[lindex $instanceinfo 0]<[pid]>"
-       set iiname [lrange $instanceinfo 1 end]
+       set iipid "[lindex $instanceinfo 0]<[pid]-$hostname$username>"
+       set iiver [lrange $instanceinfo 1 end]
        set st [string trim "$src $type"]
-
-       if {![string match infolog $type]} {
+       if {![string match infolog $type] && ![string match status $type]} {
+          # If we're not logging from an error, errorInfo and errorCode
+          # will be detritus from some previous command, likely from
+          # inside a catch.  We might want to find a better way to
+          # filter the following error output.
           catch {
              set text "\n----------- "
              append text [clock format [clock seconds] -format "%Y-%b-%d %T"]
@@ -37,7 +46,7 @@ Oc_Class FileLogger {
        } else {
           catch {
              puts $chanid "\n\[$iipid [clock format [clock seconds] \
-			-format %H:%M:%S\ %Y-%m-%d]\] $iiname $st:\n$msg"
+			-format %H:%M:%S\ %Y-%m-%d]\] $iiver $st:\n$msg"
              if {![string match info* $type]} {
                 set text "-----------\n"
                 append text "Stack:\n$ei\n-----------\n"

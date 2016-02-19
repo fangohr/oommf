@@ -4,6 +4,10 @@
  *
  */
 
+#include <stdio.h> // For some versions of g++ on Windows, if stdio.h is
+/// #include'd after a C++-style header, then printf format modifiers
+/// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
+
 #include <string>
 
 #include "nb.h"  // For constants PI and SQRT1_2
@@ -29,26 +33,28 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 
 ////////////////////////////////////////////////////////////////////////
 // 1D Complex FFT
-int Oxs_FFT::PackCheck()
+OC_BOOL Oxs_FFT::PackCheck()
 { // Routine to check Oxs_Complex packing restriction.  Much of the
-  // FFT code relies on tight packing of two reals as 1 complex.  It
-  // is hard to imagine this ever failing, but better safe than sorry.
-  // This routine returns 0 on success.
-  return (sizeof(Oxs_Complex)!=2*sizeof(OXS_FFT_REAL_TYPE));
+  // FFT code relies on tight packing of two reals as 1 complex.
+  // Packing failure has been observed when OXS_FFT_REAL_TYPE is a
+  // long double with a compiler (such as Borland C++ 5.5) that stores
+  // a long double with a short word (e.g., 10 bytes).  This routine
+  // returns 0 on success.
+  return (sizeof(Oxs_Complex)!=2*sizeof(OXS_COMPLEX_REAL_TYPE));
 }
 
 void Oxs_FFT::ReleaseMemory() const
 {
   if(vecsize>0) {
-    if(Uforward!=(Oxs_Complex *)NULL)  delete[] Uforward;
-    if(Uinverse!=(Oxs_Complex *)NULL)  delete[] Uinverse;
-    if(permindex!=(int *)NULL)         delete[] permindex;
+    if(Uforward!=(Oxs_Complex *)NULL)       delete[] Uforward;
+    if(Uinverse!=(Oxs_Complex *)NULL)       delete[] Uinverse;
+    if(permindex!=(OXS_FFT_INT_TYPE *)NULL) delete[] permindex;
   }
   vecsize=0;
   vecsize_normalization=0.; // Dummy value
   log2vecsize=-1;    // Dummy value
   Uforward=Uinverse=(Oxs_Complex *)NULL;
-  permindex=(int *)NULL;
+  permindex=(OXS_FFT_INT_TYPE *)NULL;
   if(realdata_vecsize>0) {
     if(realdata_wforward!=(Oxs_Complex *)NULL) delete[] realdata_wforward;
     if(realdata_winverse!=(Oxs_Complex *)NULL) delete[] realdata_winverse;
@@ -74,7 +80,7 @@ Oxs_FFT::~Oxs_FFT()
   ReleaseMemory();
 }
 
-void Oxs_FFT::InitializeRealDataTransforms(int size) const
+void Oxs_FFT::InitializeRealDataTransforms(OXS_FFT_INT_TYPE size) const
 { // Import size is the desired value for realdata_vecsize.
   // This function is conceptually const.
   if(realdata_vecsize==size) return;
@@ -87,16 +93,16 @@ void Oxs_FFT::InitializeRealDataTransforms(int size) const
   if(size>=4) {
     if((realdata_winverse=new Oxs_Complex[size/4])==0) {
       OXS_THROW(Oxs_NoMem,"Out of memory error in "
-	       "Oxs_FFT::InitializeRealDataTransforms(int)");
+	       "Oxs_FFT::InitializeRealDataTransforms(OXS_FFT_INT_TYPE)");
     }
     if((realdata_wforward=new Oxs_Complex[size/4])==0) {
       OXS_THROW(Oxs_NoMem,"Out of memory error in "
-	       "Oxs_FFT::InitializeRealDataTransforms(int)");
+	       "Oxs_FFT::InitializeRealDataTransforms(OXS_FFT_INT_TYPE)");
     }
     realdata_wforward[0].Set(0.5,0);
     realdata_winverse[0].Set(1,0);
     double baseang = -2*WIDE_PI/double(size);
-    for(int k=1;k<size/8;k++) {
+    for(OXS_FFT_INT_TYPE k=1;k<size/8;k++) {
       double angle=k*baseang;
       double y=sin(angle);
       double x=cos(angle);
@@ -113,11 +119,11 @@ void Oxs_FFT::InitializeRealDataTransforms(int size) const
   }
 }
 
-void Oxs_FFT::FillRootsOfUnity(int size,
+void Oxs_FFT::FillRootsOfUnity(OXS_FFT_INT_TYPE size,
 			       Oxs_Complex* fwdroot,
 			       Oxs_Complex* invroot) const
 {
-  for(int k=1;k<size/8;k++) {
+  for(OXS_FFT_INT_TYPE k=1;k<size/8;k++) {
     double angle = (double(-2*k)/double(size))*WIDE_PI;
     double y=sin(angle);
     double x=cos(angle);
@@ -148,22 +154,22 @@ void Oxs_FFT::FillRootsOfUnity(int size,
   }
 }
 
-void Oxs_FFT::Setup(int size) const
+void Oxs_FFT::Setup(OXS_FFT_INT_TYPE size) const
 {
   if(size<1) {
     char buf[512];
-    sprintf(buf,"Error in Oxs_FFT::Setup(int): "
-		"Requested length (%d) must be >0",size);
+    sprintf(buf,"Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
+		"length (%" OXS_FFT_INT_MOD "d) must be >0",size);
     OXS_THROW(Oxs_BadParameter,buf);
   }
-  int k;
-  int power_count=0;
+  OXS_FFT_INT_TYPE k;
+  OXS_FFT_INT_TYPE power_count=0;
   // Check that size is power of 2
   for(k=size;k>=2;k/=2) {
     if(k%2!=0) {
       char buf[512];
-      sprintf(buf,"Error in Oxs_FFT::Setup(int): "
-	       "Requested length (%d) is not a power of 2",size);
+      sprintf(buf,"Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
+	       "length (%" OXS_FFT_INT_MOD "d) is not a power of 2",size);
       OXS_THROW(Oxs_BadParameter,buf);
     }
     power_count++;
@@ -181,10 +187,11 @@ void Oxs_FFT::Setup(int size) const
   FillRootsOfUnity(size,Uforward,Uinverse);
 
   // Allocate and setup (bit-reversal) permutation index
-  if((permindex=new int[size])==0)
+  if((permindex=new OXS_FFT_INT_TYPE[size])==0)
     OXS_THROW(Oxs_NoMem,"Out of memory error in Oxs_FFT::Setup");
   permindex[0]=0;
-  int m,n;    // The following code relies heavily on size==2^log2vecsize
+  OXS_FFT_INT_TYPE m,n; // The following code relies heavily on
+                       /// size==2^log2vecsize
   for(k=1,n=size>>1;k<size;k++) {
     // At each step, n is bit-reversed pattern of k
     if(n>k) permindex[k]=n;  // Swap index
@@ -196,7 +203,8 @@ void Oxs_FFT::Setup(int size) const
   }
 }
 
-void Oxs_FFT::ForwardDecFreqRealDataNoScale(int size,void *vec) const
+void Oxs_FFT::ForwardDecFreqRealDataNoScale(OXS_FFT_INT_TYPE size,
+                                            void *vec) const
 { // Performs FFT on a real sequence.  size must be a positive power of
   // two.  The calculation is done in-place, where on return the array
   // should be interpreted as a complex array with real and imaginary
@@ -214,7 +222,7 @@ void Oxs_FFT::ForwardDecFreqRealDataNoScale(int size,void *vec) const
   //
   // for size/2<k<size.
 
-  int csize=size/2;
+  OXS_FFT_INT_TYPE csize=size/2;
   if(csize!=vecsize) Setup(csize);
 
   if(size>8) {
@@ -229,7 +237,7 @@ void Oxs_FFT::ForwardDecFreqRealDataNoScale(int size,void *vec) const
     OXS_FFT_REAL_TYPE b=cvec[0].im;
     cvec[0].Set(a+b,a-b);
     cvec[csize/2].im *= -1;
-    int k=csize/2-1;
+    OXS_FFT_INT_TYPE k=csize/2-1;
     do {
       OXS_FFT_REAL_TYPE resum  = 0.5 * (cvec[k].re + cvec[csize-k].re);
       OXS_FFT_REAL_TYPE rediff =       (cvec[k].re - cvec[csize-k].re);
@@ -284,19 +292,20 @@ void Oxs_FFT::ForwardDecFreqRealDataNoScale(int size,void *vec) const
   } else if(size==1) { // NOP
   } else { // size<2
     String msg="Invalid array dimensions in "
-      "Oxs_FFT::ForwardDecFreqRealDataNoScale(int,void*) const";
+      "Oxs_FFT::ForwardDecFreqRealDataNoScale(OXS_FFT_INT_TYPE,void*) const";
     OXS_THROW(Oxs_BadParameter,msg.c_str());
   }
 }
 
-void Oxs_FFT::InverseDecTime(int size,Oxs_Complex *vec) const
+void Oxs_FFT::InverseDecTime(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const
 {
   // Do InverseDecTime with default scaling, which is 1.0/size;
   InverseDecTimeNoScale(size,vec);
-  for(int k=0;k<size;k++) vec[k]*=vecsize_normalization;
+  for(OXS_FFT_INT_TYPE k=0;k<size;k++) vec[k]*=vecsize_normalization;
 }
 
-void Oxs_FFT::InverseDecTimeRealDataNoScale(int size,void *vec) const 
+void Oxs_FFT::InverseDecTimeRealDataNoScale(OXS_FFT_INT_TYPE size,
+                                            void *vec) const 
 { // Performs iFFT on a conjugate symmetric complex sequence.  The
   // import size should be the size of then entire sequence, and
   // must be a positive power of two.  It is assumed that vec on
@@ -305,20 +314,20 @@ void Oxs_FFT::InverseDecTimeRealDataNoScale(int size,void *vec) const
   // vec[size/2], if the sequence were extended (both vec[0] and
   // vec[size/2] are real, if vec is conj. symm.).  This packing
   // is consistent with the output from
-  //    Oxs_FFT::ForwardDecFreq(int,void*,OXS_FFT_REAL_TYPE)
+  //    Oxs_FFT::ForwardDecFreq(OXS_FFT_INT_TYPE,void*,OXS_FFT_REAL_TYPE)
   // See the documentation for that function for additional details.
   //   The iFFT calculation is done in-place, and on return the array
   // 'vec' should be interpreted as a real array of length size.
   //   See mjd's NOTES II, 4-Apr-2001, p 105 and NOTES I, 5-Nov-1996,
   // p. 86.
 
-  int csize=size/2;
+  OXS_FFT_INT_TYPE csize=size/2;
   if(csize!=vecsize) Setup(csize);
 
   if(size<2) {
     if(size==1) return; // NOP
     String msg="Invalid array dimensions in "
-      "Oxs_FFT::InverseDecTimeRealDataNoScale(int,void*) const";
+      "Oxs_FFT::InverseDecTimeRealDataNoScale(OXS_FFT_INT_TYPE,void*) const";
     OXS_THROW(Oxs_BadParameter,msg.c_str());
   }
 
@@ -330,7 +339,7 @@ void Oxs_FFT::InverseDecTimeRealDataNoScale(int size,void *vec) const
   if(size>8) {
     // General case.
     if(realdata_vecsize!=size) InitializeRealDataTransforms(size);
-    int k=0;
+    OXS_FFT_INT_TYPE k=0;
     while((++k)<csize/2) {
       OXS_FFT_REAL_TYPE resum  = (cvec[k].re + cvec[csize-k].re);
       OXS_FFT_REAL_TYPE rediff = (cvec[k].re - cvec[csize-k].re);
@@ -373,22 +382,23 @@ void Oxs_FFT::InverseDecTimeRealDataNoScale(int size,void *vec) const
   // size==2 involves only edge elements, which are already handled.
 }
 
-void Oxs_FFT::InverseDecTimeRealData(int size,void *vec) const
+void Oxs_FFT::InverseDecTimeRealData(OXS_FFT_INT_TYPE size,void *vec) const
 { // Performs iFFT on a conjugate symmetric complex sequence with
   // default scaling, which is 1.0/size.  To specify a different,
-  // explicit scaling, use the companion InverseDecTimeRealData(int,
-  // void *,OXS_FFT_REAL_TYPE) routine.
+  // explicit scaling, use the companion
+  // InverseDecTimeRealData(OXS_FFT_INT_TYPE, void*,
+  // OXS_FFT_REAL_TYPE) routine.
   InverseDecTimeRealDataNoScale(size,vec);
   OXS_FFT_REAL_TYPE *rvec=static_cast<OXS_FFT_REAL_TYPE *>(vec);
   if(size==2) {
-    for(int k=0;k<size;k++) rvec[k]*=0.5;
+    for(OXS_FFT_INT_TYPE k=0;k<2;k++) rvec[k]*=0.5;
   } else if(size==4) {
-    for(int k=0;k<size;k++) rvec[k]*=0.25;
+    for(OXS_FFT_INT_TYPE k=0;k<4;k++) rvec[k]*=0.25;
   } else if(size>4) {
     OXS_FFT_REAL_TYPE scale=vecsize_normalization*0.5;
     /// vecsize_normalization = 1.0/vecsize, where vecsize is the
     /// length of the computed iFFT, which is size/2.
-    for(int k=0;k<size;k++) rvec[k]*=scale;
+    for(OXS_FFT_INT_TYPE k=0;k<size;k++) rvec[k]*=scale;
   }
 }
 
@@ -397,7 +407,7 @@ inline static void Swap(Oxs_Complex &a,Oxs_Complex &b)
 
 void Oxs_FFT::Permute(Oxs_Complex *vec) const
 { /* Bit reversal permutation */
-  int i,j;
+  OXS_FFT_INT_TYPE i,j;
   for(i=1;i<vecsize-1;i++) {
     // vec[0] is always fixed, so start at 1.
     // vec[vecsize-1] is also always fixed (at least for
@@ -433,13 +443,13 @@ void Oxs_FFT::BaseDecFreqForward(Oxs_Complex *vec) const
   OXS_COMPLEX_REAL_TYPE const *const U=(OXS_COMPLEX_REAL_TYPE *)Uforward;
 
   // Blocksize>8
-  int blocksize,blockcount;
+  OXS_FFT_INT_TYPE blocksize,blockcount;
   for(blocksize=vecsize,blockcount=1;blocksize>8;
       blocksize/=4,blockcount*=4) {
     // Loop through double-step matrix multiplications
-    int halfbs=blocksize/2;
-    int threehalfbs=blocksize+halfbs;
-    int block,offset,uoff1;
+    OXS_FFT_INT_TYPE halfbs=blocksize/2;
+    OXS_FFT_INT_TYPE threehalfbs=blocksize+halfbs;
+    OXS_FFT_INT_TYPE block,offset,uoff1;
     OXS_COMPLEX_REAL_TYPE *v;
     for(block=0,v=dvec;block<blockcount;block++,v+=2*blocksize) {
       for(offset=0;offset<halfbs;offset+=2) {
@@ -489,7 +499,7 @@ void Oxs_FFT::BaseDecFreqForward(Oxs_Complex *vec) const
   // code block.
   if(blocksize==8) {
     blockcount=vecsize/8;
-    int block;
+    OXS_FFT_INT_TYPE block;
     OXS_COMPLEX_REAL_TYPE *v;
     for(block=0,v=dvec;block<blockcount;block++,v+=16) {
       // w = 1
@@ -519,7 +529,7 @@ void Oxs_FFT::BaseDecFreqForward(Oxs_Complex *vec) const
   // Do smallest blocks; size is either 4 or 2
   if(blocksize==4) {
     blockcount=vecsize/4;
-    int block;
+    OXS_FFT_INT_TYPE block;
     OXS_COMPLEX_REAL_TYPE *v;
     for(block=0,v=dvec;block<blockcount;block++,v+=8) {
       OXS_FFT_REAL_TYPE x0,y0,x1,y1,x2,y2,x3,y3;
@@ -602,9 +612,9 @@ void Oxs_FFT::BaseDecTimeInverse(Oxs_Complex *vec) const
   }
 
   // Else vecsize>2
-  int blocksize=4;
-  int blockcount=vecsize/4;
-  int block;
+  OXS_FFT_INT_TYPE blocksize=4;
+  OXS_FFT_INT_TYPE blockcount=vecsize/4;
+  OXS_FFT_INT_TYPE block;
   OXS_COMPLEX_REAL_TYPE *v;
   for(block=0,v=dvec;block<blockcount;++block,v+=8) {
     OXS_FFT_REAL_TYPE x0=v[0];
@@ -680,9 +690,9 @@ void Oxs_FFT::BaseDecTimeInverse(Oxs_Complex *vec) const
   OXS_COMPLEX_REAL_TYPE const *const U=(OXS_COMPLEX_REAL_TYPE *)Uinverse;
   for(;blockcount>0;blocksize*=4,blockcount/=4) {
     // Loop through double-step matrix multiplications
-    int halfbs=blocksize/2;  // Half blocksize
-    int threehalfbs=blocksize+halfbs; // 3/2 blocksize
-    int offset,uoff1;
+    OXS_FFT_INT_TYPE halfbs=blocksize/2;  // Half blocksize
+    OXS_FFT_INT_TYPE threehalfbs=blocksize+halfbs; // 3/2 blocksize
+    OXS_FFT_INT_TYPE offset,uoff1;
     for(block=0,v=dvec;block<blockcount;block++,v+=2*blocksize) {
       for(offset=0,uoff1=0;offset<halfbs;offset+=2,uoff1+=2*blockcount) {
 	OXS_FFT_REAL_TYPE m1x,m1y,m2x,m2y,m3x,m3y;
@@ -761,7 +771,8 @@ void Oxs_FFT::BaseDecTimeInverse(Oxs_Complex *vec) const
 
 }
 
-void Oxs_FFT::UnpackRealPairImage(int size, Oxs_Complex *cvec) const
+void Oxs_FFT::UnpackRealPairImage(OXS_FFT_INT_TYPE size,
+                                  Oxs_Complex *cvec) const
 { // Given complex sequence cvec[] which is the FFT image of
   // f[]+i.g[], where f[] and g[] are real sequences, unpacks
   // in-place to yield half of each of the conjugate symmetric
@@ -782,8 +793,8 @@ void Oxs_FFT::UnpackRealPairImage(int size, Oxs_Complex *cvec) const
   // G[k] = conj(G[size-k]).
 
   // Refer to mjd NOTES I, 4-Nov-1996, p84.
-  for(int k=1;k<size/2;k++) {
-    int negk=size-k;
+  for(OXS_FFT_INT_TYPE k=1;k<size/2;k++) {
+    OXS_FFT_INT_TYPE negk=size-k;
     double x1=cvec[k].re;
     double y1=cvec[k].im;
     double x2=cvec[negk].re;
@@ -797,10 +808,12 @@ void Oxs_FFT::UnpackRealPairImage(int size, Oxs_Complex *cvec) const
   // Note that cvec[0] and cvec[size/2] are correct on entry.
 }
 
-void Oxs_FFT::RepackRealPairImage(int size, Oxs_Complex *cvec) const
-{ // Reverses the operation of UnpackRealPairImage(int,Oxs_Complex).
-  for(int k=1;k<size/2;k++) {
-    int negk=size-k;
+void Oxs_FFT::RepackRealPairImage(OXS_FFT_INT_TYPE size,
+                                  Oxs_Complex *cvec) const
+{ // Reverses the operation of
+  // UnpackRealPairImage(OXS_FFT_INT_TYPE,Oxs_Complex).
+  for(OXS_FFT_INT_TYPE k=1;k<size/2;k++) {
+    OXS_FFT_INT_TYPE negk=size-k;
     double fx=cvec[k].re;
     double fy=cvec[k].im;
     double gx=cvec[negk].re;
@@ -997,7 +1010,7 @@ Oxs_FFT3D::Forward(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	else                            block_stop=xsize-i;
 	offset=0;
 	for(j=0;j<ysize;j++) {
-	  int j2;
+	  OXS_FFT_INT_TYPE j2;
 	  for(block=0,j2=j;block<block_stop;block++,j2+=ysize) {
 	    // Copy from arr into scratch buffer
 	    scratch[j2] = aptr[offset+block];
@@ -1010,7 +1023,7 @@ Oxs_FFT3D::Forward(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	}
 	offset=0;
 	for(j=0;j<ysize;j++) {
-	  int j2;
+	  OXS_FFT_INT_TYPE j2;
 	  for(block=0,j2=j;block<block_stop;block++,j2+=ysize) {
 	    // Copy from arr into scratch buffer
 	    aptr[offset+block] = scratch[j2];
@@ -1031,7 +1044,7 @@ Oxs_FFT3D::Forward(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	else                            block_stop=xsize-i;
 	offset=0;
 	for(k=0;k<zsize;k++) {
-	  int k2;
+	  OXS_FFT_INT_TYPE k2;
 	  for(block=0,k2=k;block<block_stop;block++,k2+=zsize) {
 	    // Copy from arr into scratch buffer
 	    scratch[k2] = aptr[offset+block];
@@ -1044,7 +1057,7 @@ Oxs_FFT3D::Forward(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	}
 	offset=0;
 	for(k=0;k<zsize;k++) {
-	  int k2;
+	  OXS_FFT_INT_TYPE k2;
 	  for(block=0,k2=k;block<block_stop;block++,k2+=zsize) {
 	    // Copy from arr into scratch buffer
 	    aptr[offset+block] = scratch[k2];
@@ -1088,7 +1101,7 @@ Oxs_FFT3D::Inverse(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	else                            block_stop=xsize-i;
 	offset=0;
 	for(k=0;k<zsize;k++) {
-	  int k2;
+	  OXS_FFT_INT_TYPE k2;
 	  for(block=0,k2=k;block<block_stop;block++,k2+=zsize) {
 	    // Copy from arr into scratch buffer
 	    scratch[k2] = aptr[offset+block];
@@ -1101,7 +1114,7 @@ Oxs_FFT3D::Inverse(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	}
 	offset=0;
 	for(k=0;k<zsize;k++) {
-	  int k2;
+	  OXS_FFT_INT_TYPE k2;
 	  for(block=0,k2=k;block<block_stop;block++,k2+=zsize) {
 	    // Copy from arr into scratch buffer
 	    aptr[offset+block] = scratch[k2];
@@ -1122,7 +1135,7 @@ Oxs_FFT3D::Inverse(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	else                            block_stop=xsize-i;
 	offset=0;
 	for(j=0;j<ysize;j++) {
-	  int j2;
+	  OXS_FFT_INT_TYPE j2;
 	  for(block=0,j2=j;block<block_stop;block++,j2+=ysize) {
 	    // Copy from arr into scratch buffer
 	    scratch[j2] = aptr[offset+block];
@@ -1135,7 +1148,7 @@ Oxs_FFT3D::Inverse(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
 	}
 	offset=0;
 	for(j=0;j<ysize;j++) {
-	  int j2;
+	  OXS_FFT_INT_TYPE j2;
 	  for(block=0,j2=j;block<block_stop;block++,j2+=ysize) {
 	    // Copy from arr into scratch buffer
 	    aptr[offset+block] = scratch[j2];
@@ -1730,7 +1743,7 @@ Oxs_FFT3D::RetrievePackedIndex
     OXS_THROW(Oxs_BadIndex,msg.c_str());
   }
 #endif
-  unsigned int take_conjugate=0;
+  OC_BOOL take_conjugate=0;
   if(0<index1 && index1<csize1) {
     return carr[index1 + index2*cstride2 + index3*cstride3];
   } else {

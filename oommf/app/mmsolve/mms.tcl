@@ -2,13 +2,13 @@
 #
 #	Master Tcl file for the mmsolve shell
 #
-# Last modified on: $Date: 2012-09-25 17:11:55 $
+# Last modified on: $Date: 2015/03/25 16:43:48 $
 # Last modified by: $Author: dgp $
 
 Oc_CheckTclIndex mmSolve
 
 # NOTE: version number below must match that in ./mmsolve.h
-package require -exact Mms 1.2.0.5
+package require -exact Mms 1.2.0.6
 
 # Set up for autoloading of Oc extension commands
 set mms(library) [file dirname [info script]]

@@ -3,7 +3,7 @@
 # A collection of Tcl procedures (not Oc_Classes) which are part of the
 # Net extension
 #
-# Last modified on: $Date: 2012-06-26 01:37:52 $
+# Last modified on: $Date: 2015/09/30 07:41:35 $
 # Last modified by: $Author: donahue $
 
 # [Net_GeneralInterfaceProtocol] returns an instance of the Oc_Class
@@ -97,10 +97,12 @@ proc Net_StartCleanShutdown {} {
     proc [lindex [info level 0] 0] {} {}
     # Stop servers, and prevent them from restarting.
     foreach server [Net_Server Instances] {
-	if {[$server IsListening]} {
-	    $server Stop
-	}
-	$server ForbidServiceStart
+       catch {
+          $server ForbidServiceStart
+          if {[$server IsListening]} {
+             $server Stop
+          }
+       } ;# Catch for robust shutdown
     }
     Oc_EventHandler New _ Oc_Main Exit Net_CloseClients
 }
@@ -108,11 +110,13 @@ proc Net_StartCleanShutdown {} {
 proc Net_CloseClients {} {
     # Cleanly shutdown any client sides
     foreach client [Net_Thread Instances] {
-	if {[$client Ready]} {
-	    $client Send bye
-	} else {
-	    Oc_EventHandler New _ $client Ready [list $client Send bye]
-	}
+       catch {
+          if {[$client Ready]} {
+             $client Send bye
+          } else {
+             Oc_EventHandler New _ $client Ready [list $client Send bye]
+          } ;# Catch for robust shutdown
+       }
     }
     if {[llength [Net_Connection Instances]] > 
 	    [llength [concat [Net_Host Instances] [Net_Account Instances]]]} {

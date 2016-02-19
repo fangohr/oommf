@@ -150,6 +150,7 @@ private:
   Oxs_ScalarOutput<UHH_ThetaEvolve> max_dm_dt_output;
   Oxs_ScalarOutput<UHH_ThetaEvolve> dE_dt_output;
   Oxs_ScalarOutput<UHH_ThetaEvolve> delta_E_output;
+  Oxs_ScalarOutput<UHH_ThetaEvolve> temperature_output;
   Oxs_VectorFieldOutput<UHH_ThetaEvolve> dm_dt_output;
   Oxs_VectorFieldOutput<UHH_ThetaEvolve> mxH_output;
 
@@ -178,6 +179,11 @@ public:
 		 Oxs_Director* newdtr, // App director
 		 const char* argstr);  // MIF input block parameters
   virtual ~UHH_ThetaEvolve();
+
+  virtual OC_BOOL
+  InitNewStage(const Oxs_TimeDriver* driver,
+               Oxs_ConstKey<Oxs_SimState> state,
+               Oxs_ConstKey<Oxs_SimState> prevstate);
 
   virtual  OC_BOOL
   Step(const Oxs_TimeDriver* driver,

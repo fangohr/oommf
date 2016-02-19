@@ -2,7 +2,7 @@
 #
 # Directory selection dialog sub-widget
 #
-# Last modified on: $Date: 2008-04-01 22:04:52 $
+# Last modified on: $Date: 2008/04/01 22:04:52 $
 # Last modified by: $Author: donahue $
 #
 # Callbacks: UPDATE -value $value

@@ -67,6 +67,25 @@ set lclobjs {}
 foreach src $lclsrcs {
     lappend lclobjs [file rootname [file tail $src]]
 }
+set lcllibs {}
+foreach src $lclsrcs {
+   # Check src.rules files for external library info. If it exists, the
+   # src.rules file is a Tcl script that sets the variable
+   # Oxs_external_libs to a list of external libraries (stems only)
+   # needed by the extension associated with src.cc.
+   set fn "[file rootname $src].rules"
+   if {[file readable $fn]} {
+      set chan [open $fn r]
+      set contents [read $chan]
+      close $chan
+      set slave [interp create -safe]
+      $slave eval $contents
+      if {![catch {$slave eval set Oxs_external_libs} libs]} {
+	 set lcllibs [concat $lcllibs $libs]
+      }
+      interp delete $slave
+   }
+}
 
 set psrcs [lsort [glob -nocomplain -- [file join preisach *.cc]]]
 set pobjs {}
@@ -101,7 +120,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		1.2.0.5
+                    -version		1.2.0.6
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -124,9 +143,9 @@ MakeRule Define {
 				[file join base tclIndex]]
     -script		[format {
 			    Platform Link -obj {%s %s %s extinit} \
-			            -lib {%s tk} \
+			            -lib {%s %s tk} \
 			            -sub CONSOLE -out oxs
-			} $objects $extobjs $lclobjs $oxslibs]
+			} $objects $extobjs $lclobjs $oxslibs $lcllibs]
 }
 
 MakeRule Define {
@@ -299,4 +318,4 @@ MakeRule Define {
       $objects $extobjs $lclobjs $pobjs $executables]
 }
 
-unset objects extobjs lclobjs pobjs executables oxslibs
+unset objects extobjs lclobjs lcllibs pobjs executables oxslibs

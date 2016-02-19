@@ -34,7 +34,7 @@ OC_USE_STRING;
  */
 
 #ifndef REPORT_TIME
-# define REPORT_TIME 1
+# define REPORT_TIME 0
 #endif
 
 ////////////////////////////////////////////////////////////////////////
@@ -148,7 +148,8 @@ public:
 struct OxsExtUserOutput {
 public:
   Oxs_Director* director;
-  Oxs_ScalarOutput<Oxs_Ext> output;
+  Oxs_ChunkScalarOutput<Oxs_Ext> output;
+  std::vector<OC_REAL8m> chunk_storage;
   String source_field_name;
   Oxs_VectorFieldOutputCache* source_field;
   vector<String> selector_init;
@@ -165,12 +166,10 @@ public:
   String name;
   String units;
   OC_BOOL units_specified;
-  OC_BOOL update_in_progress; // Protection against infinite recursion.
   OxsExtUserOutput()
     : director(0), source_field(0), source_cacheable(0),
       normalize(1), exclude_0_Ms(0),
-      scaling(0.), user_scaling(1.), units_specified(0),
-      update_in_progress(0) {}
+      scaling(0.), user_scaling(1.), units_specified(0) {}
   ~OxsExtUserOutput();
   void LookupSource(const char* instance_name); // Note:
   /// The director field must be set before calling this
@@ -215,8 +214,10 @@ private:
 
   // User defined outputs
   Nb_ArrayWrapper<OxsExtUserOutput> user_output;
-  void Fill__user_outputs(const Oxs_SimState&);
-
+  void Fill__user_outputs_init(const Oxs_SimState&,int);
+  void Fill__user_outputs(const Oxs_SimState&,OC_INDEX,OC_INDEX,int);
+  void Fill__user_outputs_fini(const Oxs_SimState&,int);
+  void Fill__user_outputs_shares(std::vector<Oxs_BaseChunkScalarOutput*>&);
 
 protected:
   Oxs_Director* director;  // Controlling director object

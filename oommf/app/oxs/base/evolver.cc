@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>   // "sort" algorithm used on fixed_spin_list
+#include <assert.h>
 
 #include "director.h"
 #include "evolver.h"
@@ -20,7 +21,7 @@ void Oxs_Evolver::InitFixedRegions(const vector<String> &names)
 
   fixed_region_ids.clear();  // Empty fixed regions list
 
-  OC_UINT4m name_count = static_cast<OC_UINT4m>(names.size());
+  OC_INDEX name_count = static_cast<OC_INDEX>(names.size());
   if(name_count<1) { // Empty name list
     atlas_key.Release();
     return;
@@ -36,8 +37,8 @@ void Oxs_Evolver::InitFixedRegions(const vector<String> &names)
   atlas_key.GetReadReference();
   // Hold read lock until *this is deleted.
 
-  for(OC_UINT4m i=1;i<name_count;i++) {
-    OC_INT4m id = atlas->GetRegionId(names[i]);
+  for(OC_INDEX i=1;i<name_count;i++) {
+    OC_INDEX id = atlas->GetRegionId(names[i]);
     if(id<0) {
       char item[4000];
       Oc_EllipsizeMessage(item,sizeof(item),names[i].c_str());
@@ -67,8 +68,8 @@ void Oxs_Evolver::UpdateFixedSpinList(const Oxs_Mesh* mesh)
   if(mesh_id == mesh->Id()) return; // Mesh already set
   mesh_id = mesh->Id();
   fixed_spin_list.clear();
-  OC_UINT4m fixed_region_count
-    = static_cast<OC_UINT4m>(fixed_region_ids.size());
+  OC_INDEX fixed_region_count = static_cast<OC_INDEX>(fixed_region_ids.size());
+  assert(fixed_region_count>=0);
   OC_INDEX mesh_size = mesh->Size();
   if(atlas_key.GetPtr()==NULL || fixed_region_count==0 || mesh_size==0)
     return; // No fixed spins
@@ -77,10 +78,10 @@ void Oxs_Evolver::UpdateFixedSpinList(const Oxs_Mesh* mesh)
     ThreeVector location;
     mesh->Center(i,location);
     // Find region containing spin i center point
-    OC_INT4m region_id = atlas->GetRegionId(location);
+    OC_INDEX region_id = atlas->GetRegionId(location);
     // Check to see if region_id is a fixed spin region
     if(region_id>=0) {
-      for(OC_UINT4m j=0;j<fixed_region_count;j++) {
+      for(OC_INDEX j=0;j<fixed_region_count;j++) {
         if(region_id==fixed_region_ids[j]) {
           fixed_spin_list.push_back(i); // Record spin i in
           break;                        // fixed spin list.

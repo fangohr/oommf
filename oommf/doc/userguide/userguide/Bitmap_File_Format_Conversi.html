@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html555"
+<A NAME="tex2html560"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html551"
+<A NAME="tex2html556"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html545"
+<A NAME="tex2html550"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html557"
+<A NAME="tex2html562"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html553"
+<A NAME="tex2html558"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html556"
+<B> Next:</B> <A NAME="tex2html561"
   HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from</A>
-<B> Up:</B> <A NAME="tex2html552"
+<B> Up:</B> <A NAME="tex2html557"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html546"
+<B> Previous:</B> <A NAME="tex2html551"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
 <BR>
 <BR>
@@ -57,14 +57,14 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Bitmap File Format Conversion:
           any2ppm
-</H2><A NAME="16311"></A><A NAME="16312"></A><A NAME="16313"></A><A NAME="16314"></A><A NAME="16315"></A><A NAME="16316"></A>
+</H2><A NAME="16625"></A><A NAME="16626"></A><A NAME="16627"></A><A NAME="16628"></A><A NAME="16629"></A><A NAME="16630"></A>
 The <B>any2ppm</B> program converts bitmap files from the Portable Pixmap
 (PPM), Windows BMP, and GIF formats into the Portable Pixmap P3
 (text) format or the uncompressed 24 bits-per-pixel BMP binary format.
-Additional formats may be available if the Tcl/Tk <A NAME="tex2html25"
-  HREF="http://purl.oclc.org/net/nijtmans/img.html"><I>Img</I></A>
+Additional formats may be available if the Tcl/Tk <A NAME="tex2html19"
+  HREF="http://tkimg.sourceforge.net/"><I>Img</I></A>
 package is installed on your system.  (Note: OOMMF support for BMP
-requires Tk 8.0<A NAME="16320"></A> or later.)
+requires Tk 8.0<A NAME="16634"></A> or later.)
 
 <P>
 
@@ -93,7 +93,7 @@ where
 <DT><STRONG><TT><B>-format fmt</B></TT></STRONG></DT>
 <DD>Output file format.  The default is <TT>PPM</TT>, which is the Portable
   Pixmap P3 (text) format.  Setting <TT>fmt</TT> to <TT>BMP</TT> will
-  produce files in the uncompressed Windows BMP<A NAME="16335"></A> 24
+  produce files in the uncompressed Windows BMP<A NAME="16649"></A> 24
   bits-per-pixel format.  If the Tcl/Tk Img package is installed,
   then additional formats, such as PNG, JPEG and TIFF, will be
   available.  The default output file extension depends on the format
@@ -122,14 +122,14 @@ operation the temporary file will be automatically deleted, but this is
 not guaranteed if the program terminates abnormally.
 
 <P>
-<B>Tk Requirement:</B><A NAME="16347"></A> <B>any2ppm</B> uses the
+<B>Tk Requirement:</B><A NAME="16661"></A> <B>any2ppm</B> uses the
 Tk <TT>image</TT> command in its processing.  This requires that Tk be
 properly initialized, which in particular means that a valid display
 must be available.  This is not a problem on Windows, where a desktop
 is always present, but on Unix this means that an X server must be
 running.  The
-<A NAME="tex2html26"
-  HREF="http://www.itworld.com/AppDev/1461/UIR000330xvfb/"><I>Xvfb</I></A><A NAME="16352"></A>
+<A NAME="tex2html20"
+  HREF="http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml"><I>Xvfb</I></A><A NAME="16666"></A>
 virtual framebuffer can be used if desired.  (Xvfb is an X server
 distributed with X11R6 that requires no display hardware or physical
 input devices.)
@@ -138,22 +138,22 @@ input devices.)
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html555"
+<A NAME="tex2html560"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html551"
+<A NAME="tex2html556"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html545"
+<A NAME="tex2html550"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html558"
+<A NAME="tex2html563"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html553"
+<A NAME="tex2html558"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

@@ -2,7 +2,7 @@
  *
  * Abstract mesh class and children
  *
- * Last modified on: $Date: 2012-08-31 20:06:52 $
+ * Last modified on: $Date: 2015/08/04 21:55:17 $
  * Last modified by: $Author: donahue $
  */
 
@@ -62,27 +62,25 @@ const char* Vf_Mesh::GetValueUnit() const {
   return ValueUnit.GetStr(); 
 }
 
-OC_INT4m Vf_Mesh::GetRange(Nb_BoundingBox<OC_REAL4> &range) const
+void Vf_Mesh::GetRange(Nb_BoundingBox<OC_REAL4> &range) const
 {
   Nb_BoundingBox<OC_REAL8> wrange;
-  OC_INT4m code=GetPreciseRange(wrange);
+  GetPreciseRange(wrange);
   Convert(wrange,range);
-  return code;
 }
 
-OC_INT4m Vf_Mesh::GetDataRange(Nb_BoundingBox<OC_REAL4> &range) const
+void Vf_Mesh::GetDataRange(Nb_BoundingBox<OC_REAL4> &range) const
 {
   Nb_BoundingBox<OC_REAL8> wrange;
-  OC_INT4m code=GetPreciseDataRange(wrange);
+  GetPreciseDataRange(wrange);
   Convert(wrange,range);
-  return code;
 }
 
-OC_INT4m
+void
 Vf_Mesh::GetBoundaryList(Nb_List< Nb_Vec3<OC_REAL4> > &boundary_list) const
 {
   Nb_List< Nb_Vec3<OC_REAL8> > precise_boundary;
-  OC_INT4m code=GetPreciseBoundaryList(precise_boundary);
+  GetPreciseBoundaryList(precise_boundary);
   Nb_Vec3<OC_REAL4> newpt;
   const Nb_Vec3<OC_REAL8> *vptr;
   Nb_List_Index< Nb_Vec3<OC_REAL8> > key;
@@ -95,7 +93,6 @@ Vf_Mesh::GetBoundaryList(Nb_List< Nb_Vec3<OC_REAL4> > &boundary_list) const
               static_cast<OC_REAL4>(vptr->z));
     boundary_list.Append(newpt);
   }
-  return code;
 }
 
 void
@@ -164,13 +161,13 @@ void Vf_Mesh::GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
 }
 
 
-OC_INT4m Vf_Mesh::FindClosest(const Nb_Vec3<OC_REAL4> &pos,
-                           Nb_LocatedVector<OC_REAL4> &lv)
+OC_BOOL Vf_Mesh::FindClosest(const Nb_Vec3<OC_REAL4> &pos,
+                             Nb_LocatedVector<OC_REAL4> &lv)
 { // Low-precision version.
   Nb_Vec3<OC_REAL8> spos;
   Nb_LocatedVector<OC_REAL8> slv;
   Convert(pos,spos);
-  OC_INT4m code=FindPreciseClosest(spos,slv);
+  OC_BOOL code=FindPreciseClosest(spos,slv);
   Convert(slv.location,lv.location);
   Convert(slv.value,lv.value);
   return code;
@@ -184,49 +181,168 @@ Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
 {
   Vf_Mesh_Index *key=NULL;
   Nb_LocatedVector<OC_REAL8> vec;
-  OC_REAL8m minmagsq=0.0,maxmagsq=0.0;
+  const OC_REAL8m sqrt3 = sqrt(3.0);
+  const OC_REAL8m sqrt1_3 = 1.0/sqrt(3.0);
+  OC_REAL8m max_a = 0.0, max_b = 0.0;  // Scaling to protect against
+  OC_REAL8m min_a = 0.0, min_b = 0.0;  // over- and underflow
+  // A min or max value is represented by two values, a scale value "a"
+  // and an adjustment "b", computed as follows:
+  //
+  //    Given (x,y,z) != 0.0, let a = max(|x|,|y|,|z|).  Then set
+  //    b = ((x/a)^2 + (y/a)^2 + (z/a)^2).  Note that
+  //
+  //    1 <= b <= 3
+  //    |(x,y,z)| = a*sqrt(b)
+  //    a <= |(x,y,z) <= a*sqrt(3)
+  //
+  // Now, to test if say |(u,v,w)| is larger than |(x,y,z)| we compute
+  // ta = max(|u|,|v|,|w|) and tb = ((u/ta)^2 + (v/ta)^2 + (w/ta)^2),
+  // and compare:
+  //
+  //    if sqrt(3)*ta < a  then |(u,v,w)| is smaller than |(x,y,z)|
+  //    if sqrt(3)*a  < ta then |(u,v,w)| is bigger than |(x,y,z)|
+  //    else compare (a/ta)^2*b < tb iff |(u,v,w)| is bigger than |(x,y,z)|
+  //
+  // To find minimums, just run the tests the other way around.
+
   if(GetFirstPt(key,vec)) {
-    OC_REAL8m magsq = vec.value.MagSq();
-    minmagsq = maxmagsq = magsq;
+    OC_REAL8m tx=abs(vec.value.x);
+    OC_REAL8m ty=abs(vec.value.y);
+    OC_REAL8m tz=abs(vec.value.z);
+    if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
+    if(tx<tz) { OC_REAL8m tmp=tx; tx=tz; tz=tmp; }
+    max_a = min_a = tx;
+    if(tx>0.0) {
+      ty /= tx;  tz /= tx;
+      max_b = min_b = 1 + ty*ty + tz*tz;
+    }
     while(GetNextPt(key,vec)) {
-      magsq=vec.value.MagSq();
-      if(magsq<minmagsq) minmagsq=magsq;
-      if(magsq>maxmagsq) maxmagsq=magsq;
+      tx=abs(vec.value.x); ty=abs(vec.value.y); tz=abs(vec.value.z);
+      if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
+      if(tx<tz) { OC_REAL8m tmp=tx; tx=tz; tz=tmp; }
+      if(tx > sqrt1_3 * max_a) { // vec may be new max
+        ty /= tx;  tz /= tx;
+        OC_REAL8m tb = 1 + ty*ty + tz*tz;
+        if(tx >= sqrt3*max_a) {
+          max_a = tx;  max_b = tb;
+        } else {
+          OC_REAL8m tr = max_a/tx;
+          if(tr*tr*max_b < tb) {
+            max_a = tx;  max_b = tb;
+          }
+        }
+      }
+      if(tx < sqrt3 * max_a) { // vec may be new min
+        if(tx == 0.0) {
+          min_a = min_b = 0.0;
+        } else {
+          ty /= tx;  tz /= tx;
+          OC_REAL8m tb = 1 + ty*ty + tz*tz;
+          if(tx <= sqrt1_3*min_a) {
+            min_a = tx;  min_b = tb;
+          } else {
+            OC_REAL8m tr = min_a/tx;
+            if(tr*tr*min_b > tb) {
+              min_a = tx;  min_b = tb;
+            }
+          }
+        }
+      }
     }
   }
   delete key;
-  min_export = sqrt(minmagsq)*ValueMultiplier;
-  max_export = sqrt(maxmagsq)*ValueMultiplier;
+  min_export = (min_a>0.0 ? min_a*sqrt(min_b)*ValueMultiplier : 0.0);
+  max_export = (max_a>0.0 ? max_a*sqrt(max_b)*ValueMultiplier : 0.0);
 }
 
 // Determine smallest and largest magnitude across all vectors in mesh,
 // *excluding* zero vectors. This does *not* include DisplayValueScale
 // scaling, but does include ValueMultiplier.
 void
-Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
+Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
+                                OC_REAL8m& max_export) const
 {
   Vf_Mesh_Index *key=NULL;
   Nb_LocatedVector<OC_REAL8> vec;
-  OC_REAL8m minmagsq = -1.0,maxmagsq = -1.0;
+  const OC_REAL8m sqrt3 = sqrt(3.0);
+  const OC_REAL8m sqrt1_3 = 1.0/sqrt(3.0);
+  OC_REAL8m max_a = -1.0, max_b = 0.0;  // Scaling to protect against
+  OC_REAL8m min_a = -1.0, min_b = 0.0;  // over- and underflow
+  // A min or max value is represented by two values, a scale value "a"
+  // and an adjustment "b", computed as follows:
+  //
+  //    Given (x,y,z) != 0.0, let a = max(|x|,|y|,|z|).  Then set
+  //    b = ((x/a)^2 + (y/a)^2 + (z/a)^2).  Note that
+  //
+  //    1 <= b <= 3
+  //    |(x,y,z)| = a*sqrt(b)
+  //    a <= |(x,y,z) <= a*sqrt(3)
+  //
+  // Now, to test if say |(u,v,w)| is larger than |(x,y,z)| we compute
+  // ta = max(|u|,|v|,|w|) and tb = ((u/ta)^2 + (v/ta)^2 + (w/ta)^2),
+  // and compare:
+  //
+  //    if sqrt(3)*ta < a  then |(u,v,w)| is smaller than |(x,y,z)|
+  //    if sqrt(3)*a  < ta then |(u,v,w)| is bigger than |(x,y,z)|
+  //    else compare (a/ta)^2*b < tb iff |(u,v,w)| is bigger than |(x,y,z)|
+  //
+  // To find minimums, just run the tests the other way around.
+
   if(GetFirstPt(key,vec)) {
-    OC_REAL8m magsq = vec.value.MagSq();
-    if(magsq>0.0) minmagsq = maxmagsq = magsq;
-    while(maxmagsq<0.0 && GetNextPt(key,vec)) {
-      magsq=vec.value.MagSq();
-      if(magsq>0.0) minmagsq = maxmagsq = magsq;
+    OC_REAL8m tx=abs(vec.value.x);
+    OC_REAL8m ty=abs(vec.value.y);
+    OC_REAL8m tz=abs(vec.value.z);
+    if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
+    if(tx<tz) { OC_REAL8m tmp=tx; tx=tz; tz=tmp; }
+    if(tx>0.0) {
+      max_a = min_a = tx;
+      ty /= tx;  tz /= tx;
+      max_b = min_b = 1 + ty*ty + tz*tz;
     }
-    while(GetNextPt(key,vec)) {
-      magsq=vec.value.MagSq();
-      if(magsq>0.0) {
-        if(magsq<minmagsq) minmagsq=magsq;
-        if(magsq>maxmagsq) maxmagsq=magsq;
+    while(max_a<0.0 && GetNextPt(key,vec)) {
+      tx=abs(vec.value.x); ty=abs(vec.value.y); tz=abs(vec.value.z);
+      if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
+      if(tx<tz) { OC_REAL8m tmp=tx; tx=tz; tz=tmp; }
+      if(tx>0.0) {
+        max_a = min_a = tx;
+        ty /= tx;  tz /= tx;
+        max_b = min_b = 1 + ty*ty + tz*tz;
       }
     }
-
+    while(GetNextPt(key,vec)) {
+      tx=abs(vec.value.x); ty=abs(vec.value.y); tz=abs(vec.value.z);
+      if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
+      if(tx<tz) { OC_REAL8m tmp=tx; tx=tz; tz=tmp; }
+      if(tx == 0.0) continue;
+      if(tx > sqrt1_3 * max_a) { // vec may be new max
+        ty /= tx;  tz /= tx;
+        OC_REAL8m tb = 1 + ty*ty + tz*tz;
+        if(tx >= sqrt3*max_a) {
+          max_a = tx;  max_b = tb;
+        } else {
+          OC_REAL8m tr = max_a/tx;
+          if(tr*tr*max_b < tb) {
+            max_a = tx;  max_b = tb;
+          }
+        }
+      }
+      if(tx < sqrt3 * max_a) { // vec may be new min
+        ty /= tx;  tz /= tx;
+        OC_REAL8m tb = 1 + ty*ty + tz*tz;
+        if(tx <= sqrt1_3*min_a) {
+          min_a = tx;  min_b = tb;
+        } else {
+          OC_REAL8m tr = min_a/tx;
+          if(tr*tr*min_b > tb) {
+            min_a = tx;  min_b = tb;
+          }
+        }
+      }
+    }
   }
   delete key;
-  min_export = (minmagsq>0.0 ? sqrt(minmagsq)*ValueMultiplier : 0.0);
-  max_export = (maxmagsq>0.0 ? sqrt(maxmagsq)*ValueMultiplier : 0.0);
+  min_export = (min_a>0.0 ? min_a*sqrt(min_b)*ValueMultiplier : 0.0);
+  max_export = (max_a>0.0 ? max_a*sqrt(max_b)*ValueMultiplier : 0.0);
 }
 
 // Compute vector mean value.  Each node is weighted equally.  The
@@ -279,21 +395,47 @@ Vf_Mesh::GetValueRMS() const
 }
 
 // Subtract values of one mesh from the other.
-int Vf_Mesh::SubtractMesh(const Vf_Mesh& other)
+OC_BOOL Vf_Mesh::SubtractMesh(const Vf_Mesh& other)
 {
   if(GetSize() != other.GetSize()) {
     return 1; // Meshes aren't the same size
   }
 
-  const OC_REAL8 other_mult = other.GetValueMultiplier();
-  const OC_REAL8 my_divisor = 1.0 / GetValueMultiplier();
+  const OC_REAL8 scale = other.GetValueMultiplier()/GetValueMultiplier();
 
   Vf_Mesh_Index *key1=NULL,*key2=NULL;
   Nb_LocatedVector<OC_REAL8> vec1,vec2;
 
   if( GetFirstPt(key1,vec1) && other.GetFirstPt(key2,vec2) ) {
     do {
-      vec1.value -= (other_mult*vec2.value)*my_divisor;
+      vec1.value -= (scale*vec2.value);
+      SetNodeValue(key1,vec1.value);
+    } while( GetNextPt(key1,vec1) && other.GetNextPt(key2,vec2) );
+  }
+
+  delete key1;
+  delete key2;
+
+  return 0;
+}
+
+// Compute pointwise vector (cross) product of two meshes,
+// storing the results in the first mesh, i.e.,
+//  *this ^= other
+OC_BOOL Vf_Mesh::CrossProductMesh(const Vf_Mesh& other)
+{
+  if(GetSize() != other.GetSize()) {
+    return 1; // Meshes aren't the same size
+  }
+
+  const OC_REAL8 scale = other.GetValueMultiplier()/GetValueMultiplier();
+
+  Vf_Mesh_Index *key1=NULL,*key2=NULL;
+  Nb_LocatedVector<OC_REAL8> vec1,vec2;
+
+  if( GetFirstPt(key1,vec1) && other.GetFirstPt(key2,vec2) ) {
+    do {
+      vec1.value ^= (scale*vec2.value);
       SetNodeValue(key1,vec1.value);
     } while( GetNextPt(key1,vec1) && other.GetNextPt(key2,vec2) );
   }
@@ -307,14 +449,14 @@ int Vf_Mesh::SubtractMesh(const Vf_Mesh& other)
 //////////////////////////////////////////////////////////////////////////
 // Helper function for Vf_Mesh child ::ColorQuantityTransforms(), which
 // meets the needs for the standard color quantities.
-static OC_INT4m ColorQuantityTransformHelper
+static OC_BOOL ColorQuantityTransformHelper
 (const Nb_DString flipstr,
  const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
  Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out)
 {
   // Break flipstr into components
   const char* parsestr=" \t\n:";
-  char* flipbuf = new char[flipstr.Length()+1];
+  char* flipbuf = new char[size_t(flipstr.Length())+1];
   strcpy(flipbuf,flipstr.GetStr());
   char* nexttoken=flipbuf;
   char *token1 = Nb_StrSep(&nexttoken,parsestr);
@@ -335,7 +477,7 @@ static OC_INT4m ColorQuantityTransformHelper
   quantity_out = quantity_in;
   phase_out = phase_in;
   invert_out = invert_in;
-  OC_INT4m change = 1;
+  OC_BOOL change = 1;
   if(strcmp(quantity_in.GetStr(),"x")==0) {
     quantity_out[0]=token1[strlen(token1)-1];
     if(token1[0]=='-') invert_out = !invert_out;
@@ -466,18 +608,16 @@ Vf_GridVec3f::ProblemToNodalCoords(Nb_Vec3<OC_REAL8> const &v_problem)
   return w;
 }
 
-OC_INT4m
+void
 Vf_GridVec3f::GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const
 {
   myrange=range;
-  return 0;
 }
 
-OC_INT4m
+void
 Vf_GridVec3f::GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const
 {
   myrange=data_range;
-  return 0;
 }
 
 OC_REAL8m Vf_GridVec3f::GetStdStep() const
@@ -506,7 +646,7 @@ OC_REAL8m Vf_GridVec3f::GetStdStep() const
   return static_cast<OC_REAL8m>(minstep);
 }
 
-OC_INT4m Vf_GridVec3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
+OC_INDEX Vf_GridVec3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
 {
   types.Clear();
   types.Append(Nb_DString("x"));
@@ -526,7 +666,7 @@ OC_INT4m Vf_GridVec3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
   return types.GetSize();
 }
 
-OC_INT4m Vf_GridVec3f::ColorQuantityTransform
+OC_BOOL Vf_GridVec3f::ColorQuantityTransform
 (const Nb_DString flipstr,
  const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
  Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out) const
@@ -590,7 +730,7 @@ OC_REAL4m Vf_GridVec3f::GetVecShade(const char* colorquantity,
       maxsize = GetDisplayValueScale()*MaxMagHint;
     }
     if(MaxMagHint>MinMagHint) {
-      minsize = MinMagHint/MaxMagHint;
+      minsize = maxsize*MinMagHint/MaxMagHint;
     }
 
     if(minsize>0.0 && fabs(v.x)<minsize
@@ -617,8 +757,8 @@ OC_REAL4m Vf_GridVec3f::GetVecShade(const char* colorquantity,
 }
 
 
-OC_INT4m Vf_GridVec3f::FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
-                                       Nb_LocatedVector<OC_REAL8> &lv)
+OC_BOOL Vf_GridVec3f::FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
+                                         Nb_LocatedVector<OC_REAL8> &lv)
 {
   OC_BOOL inmesh = 1;
   Nb_Vec3<OC_REAL8> npos=ProblemToNodalCoords(pos);
@@ -722,7 +862,7 @@ void Vf_GridVec3f::GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
   if(islicehigh>maxslice)  islicehigh=maxslice;
 }
 
-OC_INT4m Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
+OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
                                    OC_REAL4m &ystep_request,
                                    OC_REAL4m &zstep_request,
                                    const Nb_BoundingBox<OC_REAL4> &dsprange,
@@ -740,7 +880,7 @@ OC_INT4m Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
   // overridden.
 #define MEMBERNAME "GetDisplayList"
   if(xstep_request<0 || ystep_request<0 || zstep_request<0)
-    FatalError(-1,STDDOC,"%s: xstep=%f, ystep=%f, zstep=%d",
+    FatalError(-1,STDDOC,"%s: xstep=%f, ystep=%f, zstep=%f",
                ErrBadParam,xstep_request,ystep_request,zstep_request);
 
   enum Gv3Color { GV3_NONE, GV3_X, GV3_Y, GV3_Z, GV3_ZSLICE,GV3_MAG,
@@ -762,8 +902,9 @@ OC_INT4m Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
   display_list.Clear();
   OC_INDEX isize,jsize,ksize;
   GetDimens(isize,jsize,ksize);
-  if(isize<1 || jsize<1 || ksize<1)
+  if(isize<1 || jsize<1 || ksize<1) {
     return display_list.GetSize(); // Empty grid
+  }
   Nb_Vec3<OC_REAL4> srangemin,srangemax;
   Nb_Vec3<OC_REAL8> rangemin,rangemax;
   dsprange.GetExtremes(srangemin,srangemax);
@@ -788,9 +929,12 @@ OC_INT4m Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
 
   if(ifirst<0 || ilast>isize || jfirst<0 || jlast>jsize ||
      kfirst<0 || klast>ksize) {
-#if DEBUGLVL > 999
-    NonFatalError(STDDOC,"Range box out-of-bounds: (%d,%d,%d) "
-                  "to (%d,%d,%d), not in (0,0,0) to (%d,%d,%d)",
+#if DEBUGLVL > 99
+    NonFatalError(STDDOC,"Range box out-of-bounds: "
+        "(%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d) to "
+        "(%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d), "
+        "not in (0,0,0) to "
+        "(%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d,%" OC_INDEX_MOD "d)",
                   ifirst,jfirst,kfirst,ilast,jlast,klast,
                   isize,jsize,ksize);
 #endif
@@ -1068,8 +1212,8 @@ OC_INT4m Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
 #undef MEMBERNAME
 }
 
-int Vf_GridVec3f::GetFirstPt(Vf_Mesh_Index* &key_export,
-                             Nb_LocatedVector<OC_REAL8> &lv) const
+OC_BOOL Vf_GridVec3f::GetFirstPt(Vf_Mesh_Index* &key_export,
+                                 Nb_LocatedVector<OC_REAL8> &lv) const
 {
   key_export=(Vf_Mesh_Index*)(new Vf_GridVec3f_Index);
   if(GetSize()<=0) return 0;
@@ -1079,8 +1223,8 @@ int Vf_GridVec3f::GetFirstPt(Vf_Mesh_Index* &key_export,
   return 1;
 }
 
-int Vf_GridVec3f::GetNextPt(Vf_Mesh_Index* &key_import,
-                            Nb_LocatedVector<OC_REAL8> &lv) const
+OC_BOOL Vf_GridVec3f::GetNextPt(Vf_Mesh_Index* &key_import,
+                                Nb_LocatedVector<OC_REAL8> &lv) const
 {
   Vf_GridVec3f_Index *key = (Vf_GridVec3f_Index *)key_import;
   OC_INDEX isize,jsize,ksize;
@@ -1101,8 +1245,8 @@ int Vf_GridVec3f::GetNextPt(Vf_Mesh_Index* &key_import,
   return 1;
 }
 
-int Vf_GridVec3f::SetNodeValue(const Vf_Mesh_Index* key_import,
-                               const Nb_Vec3<OC_REAL8>& value)
+OC_BOOL Vf_GridVec3f::SetNodeValue(const Vf_Mesh_Index* key_import,
+                                   const Nb_Vec3<OC_REAL8>& value)
 { // For use by generic Vf_Mesh code for manipulation of
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
@@ -1184,9 +1328,12 @@ Vf_GridVec3f::Vf_GridVec3f
     clipped_import_xdim =
       OC_MIN(OC_INDEX(floor((maxpt.x - xmin)/stepx))+1,import_xdim)
       - clipped_import_xstart;
+    if(clipped_import_xdim % isubsample == 0) {
+      // A whole number of subsample groups fit into clipped region;
+      // shift start point to center samples inside clipped region
+      clipped_import_xstart += (isubsample-1)/2;
+    }
     clipped_import_xdim = (clipped_import_xdim+isubsample-1)/isubsample;
-    // Note: May want to shift clipped_import_xstart to center
-    // samples inside clipped region.  Or not.
     if(clipped_import_xdim<0) clipped_import_xdim=0;
   }
   OC_REAL8m stepy = import_mesh.coords_step.y;
@@ -1200,9 +1347,12 @@ Vf_GridVec3f::Vf_GridVec3f
     clipped_import_ydim =
       OC_MIN(OC_INDEX(floor((maxpt.y - ymin)/stepy))+1,import_ydim)
       - clipped_import_ystart;
+    if(clipped_import_ydim % isubsample == 0) {
+      // A whole number of subsample groups fit into clipped region;
+      // shift start point to center samples inside clipped region
+      clipped_import_ystart += (isubsample-1)/2;
+    }
     clipped_import_ydim = (clipped_import_ydim+isubsample-1)/isubsample;
-    // Note: May want to shift clipped_import_ystart to center
-    // samples inside clipped region.  Or not.
     if(clipped_import_ydim<0) clipped_import_ydim=0;
   }
   OC_REAL8m stepz = import_mesh.coords_step.z;
@@ -1216,9 +1366,12 @@ Vf_GridVec3f::Vf_GridVec3f
     clipped_import_zdim =
       OC_MIN(OC_INDEX(floor((maxpt.z - zmin)/stepz))+1,import_zdim)
       - clipped_import_zstart;
+    if(clipped_import_zdim % isubsample == 0) {
+      // A whole number of subsample groups fit into clipped region;
+      // shift start point to center samples inside clipped region
+      clipped_import_zstart += (isubsample-1)/2;
+    }
     clipped_import_zdim = (clipped_import_zdim+isubsample-1)/isubsample;
-    // Note: May want to shift clipped_import_zstart to center
-    // samples inside clipped region.  Or not.
     if(clipped_import_zdim<0) clipped_import_zdim=0;
   }
   clipped_import_base.Set(import_mesh.coords_base.x
@@ -1250,8 +1403,8 @@ Vf_GridVec3f::Vf_GridVec3f
   char* nexttoken=flipbuf;
   // Component 1
   char *token = Nb_StrSep(&nexttoken,parsestr);
-  int len=0;
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  OC_INDEX len=0;
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);
@@ -1281,7 +1434,7 @@ Vf_GridVec3f::Vf_GridVec3f
   }
   // Component 2
   token = Nb_StrSep(&nexttoken,parsestr);
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);
@@ -1311,7 +1464,7 @@ Vf_GridVec3f::Vf_GridVec3f
   }
   // Component 3
   token = Nb_StrSep(&nexttoken,parsestr);
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);
@@ -1479,6 +1632,405 @@ Vf_GridVec3f::Vf_GridVec3f
 #undef MEMBERNAME
 }
 
+// Copy with resampling from another mesh.  The new mesh has extent
+// described by import newrange.  The number of cells along the x, y,
+// and z axes are icount, jcount, and kcount, respectively.
+void
+Vf_GridVec3f::ResampleCopy
+(const Vf_GridVec3f& import_mesh,
+ const Nb_BoundingBox<OC_REAL8> &newrange,
+ OC_INDEX icount,OC_INDEX jcount,OC_INDEX kcount,
+ int method_order)
+{
+#define MEMBERNAME "ResampleCopy"
+  if(icount<1 || jcount<1 || kcount<1) {
+    FatalError(-1,STDDOC,"%s: icount=%ld, jcount=%ld, kcount=%ld",
+               ErrBadParam,long(icount),long(jcount),long(kcount));
+  }
+  if(method_order != 0 && method_order != 1 && method_order != 3) {
+    FatalError(-1,STDDOC,"%s: method_order=%d (should be 0, 1 or 3)",
+               ErrBadParam,method_order);
+  }
+  assert(import_mesh.coords_step.x>0
+         && import_mesh.coords_step.y>0
+         && import_mesh.coords_step.z>0);
+
+  // Collect grid data from import mesh.  This allows import_mesh
+  // and *this to be the same mesh.
+  OC_INDEX i2max,j2max,k2max;
+  import_mesh.GetDimens(i2max,j2max,k2max); --i2max; --j2max; --k2max;
+  Nb_Vec3<OC_REAL8> import_coords_base = import_mesh.coords_base;
+  Nb_Vec3<OC_REAL8> import_coords_step = import_mesh.coords_step;
+
+  // Copy Vf_Mesh base from import_mesh
+  SetFilename(import_mesh.GetName());
+  SetTitle(import_mesh.GetTitle());
+  SetDescription(import_mesh.GetDescription());
+  SetMeshUnit(import_mesh.GetMeshUnit());
+  SetValueUnit(import_mesh.GetValueUnit());
+  SetDisplayValueScale(import_mesh.GetDisplayValueScale());
+  ValueMultiplier = import_mesh.GetValueMultiplier();
+  import_mesh.GetMagHints(MinMagHint,MaxMagHint);
+
+  // Initialize non-data portions of new grid
+  range = newrange;
+  coords_step.x = range.GetWidth()/icount;
+  coords_step.y = range.GetHeight()/jcount;
+  coords_step.z = range.GetDepth()/kcount;
+  range.GetMinPt(coords_base);
+  coords_base += 0.5*coords_step;
+
+  Nb_Vec3<OC_REAL8> maxpt;
+  range.GetMaxPt(maxpt);
+  maxpt -= 0.5*coords_step;
+  data_range.Set(coords_base,maxpt);
+
+  boundary_from_data = 1;
+  FillDataBoundaryList(boundary); // NB: This routine requires
+  /// that range be already set so that GetPreciseRange returns the
+  /// correct values.
+
+  // Fill new grid by sampling other grid, using 0th-order (closest
+  // point) fit.
+  OC_REAL8 offx
+    = (coords_base.x-import_coords_base.x)/import_coords_step.x;
+  OC_REAL8 offy
+    = (coords_base.y-import_coords_base.y)/import_coords_step.y;
+  OC_REAL8 offz
+    = (coords_base.z-import_coords_base.z)/import_coords_step.z;
+  OC_REAL8 sx = coords_step.x/import_coords_step.x;
+  OC_REAL8 sy = coords_step.y/import_coords_step.y;
+  OC_REAL8 sz = coords_step.z/import_coords_step.z;
+
+  // i<icount on the new mesh maps to a point x2(i) on the import mesh
+  // such that 0 <= x2(i) <=i2max iff ilow <= i < ihigh; in other words,
+  // i<ilow implies x2(i)<0 and i>=ihigh implies x2(i)>i2max.
+  const OC_INDEX ilow  = OC_MIN(OC_INDEX(ceil((-offx)/sx)),icount);
+  const OC_INDEX ihigh = OC_MIN(OC_INDEX(floor((i2max - offx)/sx))+1,icount);
+
+  Nb_Array3D< Nb_Vec3<OC_REAL8> > dummy_grid;
+  const Nb_Array3D< Nb_Vec3<OC_REAL8> >* import_grid = &(import_mesh.grid);
+  if(grid.IsSameArray(import_mesh.grid)) {
+    // Resampling on same grid; create holding space
+    grid.Swap(dummy_grid);
+    import_grid = &dummy_grid;
+  }
+  // NB: Coordinates are reversed when accessing grid directly!
+  grid.Allocate(kcount,jcount,icount);
+  if(method_order==0) {
+    // Nearest neighbor "interpolation"
+    for(OC_INDEX k=0;k<kcount;++k) {
+      OC_INDEX k2 = OC_INDEX(OC_ROUND(offz + k*sz));
+      k2 = (k2<0 ? 0 : (k2>k2max ? k2max : k2));
+      for(OC_INDEX j=0;j<jcount;++j) {
+        OC_INDEX j2 = OC_INDEX(OC_ROUND(offy + j*sy));
+        j2 = (j2<0 ? 0 : (j2>j2max ? j2max : j2));
+        OC_INDEX i = 0;
+        for(;i<ilow;++i) {
+          grid(k,j,i) = (*import_grid)(k2,j2,0);
+        }
+        for(;i<ihigh;++i) {
+          OC_INDEX i2 = OC_INDEX(OC_ROUND(offx + i*sx));
+          grid(k,j,i) = (*import_grid)(k2,j2,i2);
+        }
+        for(;i<icount;++i) {
+          grid(k,j,i) = (*import_grid)(k2,j2,i2max);
+        }
+      }
+    }
+  } else if(method_order==1) {
+    // Trilinear interpolation
+    Nb_Vec3<OC_REAL8> w000,w100,w001,w101,w010,w110,w011,w111;
+    Nb_Vec3<OC_REAL8> v00,v01,v10,v11;
+    Nb_Vec3<OC_REAL8> u0,u1;
+
+    for(OC_INDEX k=0;k<kcount;++k) {
+      OC_REAL8 z = offz + k*sz;
+      OC_INDEX k2a = OC_INDEX(floor(z));
+      OC_INDEX k2b = k2a + 1;
+      if(k2a<0)          { k2a = 0;     k2b = OC_MIN(1,k2max); }
+      else if(k2b>k2max) { k2b = k2max; k2a = OC_MAX(0,k2max-1); }
+      OC_REAL8 tz = z - k2a;
+      tz = (tz<-0.5 ? -0.5 : (tz>1.5 ? 1.5 : tz)); // Limit extrapolation
+
+      for(OC_INDEX j=0;j<jcount;++j) {
+        OC_REAL8 y = offy + j*sy;
+        OC_INDEX j2a = OC_INDEX(floor(y));
+        OC_INDEX j2b = j2a + 1;
+        if(j2a<0)          { j2a = 0;     j2b = OC_MIN(1,j2max); }
+        else if(j2b>j2max) { j2b = j2max; j2a = OC_MAX(0,j2max-1); }
+        OC_REAL8 ty = y - j2a;
+        ty = (ty<-0.5 ? -0.5 : (ty>1.5 ? 1.5 : ty));
+        OC_INDEX i2a = 0;
+        OC_INDEX i2b = OC_MIN(1,i2max);
+        OC_INDEX i=0;
+        if(i<ilow) {
+          // Off left edge of import mesh; x-interpolation uses i2 = 0 and 1
+          w000 = (*import_grid)(k2a,j2a,i2a);
+          w100 = (*import_grid)(k2b,j2a,i2a);
+          v00 = (1.-tz)*w000 + tz*w100;
+          w001 = (*import_grid)(k2a,j2a,i2b);
+          w101 = (*import_grid)(k2b,j2a,i2b);
+          v01 = (1.-tz)*w001 + tz*w101;
+          w010 = (*import_grid)(k2a,j2b,i2a);
+          w110 = (*import_grid)(k2b,j2b,i2a);
+          v10 = (1.-tz)*w010 + tz*w110;
+          w011 = (*import_grid)(k2a,j2b,i2b);
+          w111 = (*import_grid)(k2b,j2b,i2b);
+          v11 = (1.-tz)*w011 + tz*w111;
+          u0 = (1.-ty)*v00 + ty*v10;
+          u1 = (1.-ty)*v01 + ty*v11;
+          for(;i<ilow;++i) {
+            OC_REAL8 tx = OC_MAX(offx + i*sx,-0.5); // Limit extrapolation
+            grid(k,j,i) = (1.-tx)*u0 + tx*u1;
+          }
+        }
+        for(;i<ihigh-1;++i) { // x coord overlaps import mesh
+          OC_REAL8 x = offx + i*sx;
+          i2a = OC_INDEX(floor(x));
+          i2b = i2a + 1;
+          OC_REAL8 tx = x - i2a;
+          w000 = (*import_grid)(k2a,j2a,i2a);
+          w100 = (*import_grid)(k2b,j2a,i2a);
+          v00 = (1.-tz)*w000 + tz*w100;
+          w001 = (*import_grid)(k2a,j2a,i2b);
+          w101 = (*import_grid)(k2b,j2a,i2b);
+          v01 = (1.-tz)*w001 + tz*w101;
+          w010 = (*import_grid)(k2a,j2b,i2a);
+          w110 = (*import_grid)(k2b,j2b,i2a);
+          v10 = (1.-tz)*w010 + tz*w110;
+          w011 = (*import_grid)(k2a,j2b,i2b);
+          w111 = (*import_grid)(k2b,j2b,i2b);
+          v11 = (1.-tz)*w011 + tz*w111;
+          u0 = (1.-ty)*v00 + ty*v10;
+          u1 = (1.-ty)*v01 + ty*v11;
+          grid(k,j,i) = (1.-tx)*u0 + tx*u1;
+        }
+        if(i<icount) {
+          // Off right edge of import mesh; x-interpolation uses
+          // i2 = i2max-1 and i2max
+          i2a = OC_MAX(0,i2max - 1);
+          i2b = i2max;
+          w000 = (*import_grid)(k2a,j2a,i2a);
+          w100 = (*import_grid)(k2b,j2a,i2a);
+          v00 = (1.-tz)*w000 + tz*w100;
+          w001 = (*import_grid)(k2a,j2a,i2b);
+          w101 = (*import_grid)(k2b,j2a,i2b);
+          v01 = (1.-tz)*w001 + tz*w101;
+          w010 = (*import_grid)(k2a,j2b,i2a);
+          w110 = (*import_grid)(k2b,j2b,i2a);
+          v10 = (1.-tz)*w010 + tz*w110;
+          w011 = (*import_grid)(k2a,j2b,i2b);
+          w111 = (*import_grid)(k2b,j2b,i2b);
+          v11 = (1.-tz)*w011 + tz*w111;
+          u0 = (1.-ty)*v00 + ty*v10;
+          u1 = (1.-ty)*v01 + ty*v11;
+          for(;i<icount;++i) {
+            OC_REAL8 tx = OC_MIN(offx - i2a + i*sx,1.5);
+            /// Limit extrapolation
+            grid(k,j,i) = (1.-tx)*u0 + tx*u1;
+          }
+        }
+      }
+    }
+  } else {
+    // Tricubic interpolation.  Two options, controlled by
+    // #if/#else/#endif.  Original option uses interpolating cubics
+    // through four equally spaced points (with panel shifting).  The
+    // alternative uses Catmull–Rom splines in the interior, and an
+    // interpolating quadratic at the boundaries.  The former provides
+    // a continuous interpolation but the first derivative is in
+    // general discontinuous across nodes.  The latter is C^1.
+    Nb_Vec3<OC_REAL8> q[4];
+    Nb_Vec3<OC_REAL8> qq[4][4];
+    for(OC_INDEX k=0;k<kcount;++k) {
+      OC_INDEX k2[4];
+      OC_REAL8 zwa,zwb,zwc,zwd;
+      OC_REAL8 z = offz + k*sz;
+      k2[0] = OC_INDEX(floor(z))-1;
+      if(k2max>=3) { // Cubic interpolation
+        k2[3] = k2[0] + 3;
+        if(k2[0]<0)          { k2[0] = 0;     k2[3] = 3; }
+        else if(k2[3]>k2max) { k2[3] = k2max; k2[0] = k2max-3; }
+        k2[1] = k2[0]+1;  k2[2] = k2[0]+2;
+        OC_REAL8 tz = z - k2[1];
+        tz = (tz<-1.5 ? -1.5 : (tz>2.5 ? 2.5 : tz)); // Limit extrapolation
+#if 0 // Cubic interpolation
+        zwa = (-1./6.)*tz*(tz-1)*(tz-2);
+        zwb = (0.5)*(tz+1)*(tz-1)*(tz-2);
+        zwc = (-0.5)*(tz+1)*tz*(tz-2);
+        zwd = (1./6.)*(tz+1)*tz*(tz-1);
+#else // Spline interpolation
+        if(tz<0) {
+          // At left edge; use quadratic interpolation
+          zwa = 0.5*tz*(tz-1.0);
+          zwb = (1+tz)*(1.0-tz);
+          zwc = 0.5*tz*(1.0+tz);
+          zwd = 0.0;
+        } else if(tz>1) {
+          // At right edge; use quadratic interpolation
+          zwa = 0.0;
+          zwb = 0.5*(tz-1.0)*(tz-2.0);
+          zwc = tz*(2.0-tz);
+          zwd = 0.5*tz*(tz-1.0);
+        } else {
+          // Catmull-Rom cubic spline
+          // Note: The first derivative of the preceding left/right
+          // edge quadratic interpolations match the first derivative
+          // of the adjoining Catmull-Rom cubic spline.
+          zwa = 0.5*(tz*((2-tz)*tz-1));
+          zwb = 0.5*(tz*tz*(3*tz-5)+2);
+          zwc = 0.5*(tz*((4-3*tz)*tz+1));
+          zwd = 0.5*tz*tz*(tz-1);
+        }
+#endif // Cubic/spline interpolation
+      } else if(k2max>=1) { // Linear interpolation
+        k2[3] = (++k2[0]) + 1;
+        if(k2[0]<0)          { k2[0] = 0;     k2[3] = OC_MIN(1,k2max); }
+        else if(k2[3]>k2max) { k2[3] = k2max; k2[0] = OC_MAX(0,k2max-1); }
+        k2[1] = k2[0];    k2[2] = k2[3];
+        OC_REAL8 tz = z - k2[1];
+        tz = (tz<-0.5 ? -0.5 : (tz>1.5 ? 1.5 : tz)); // Limit extrapolation
+        zwb = 1.0-tz;
+        zwc = tz;
+        zwa = zwd = 0.0;
+      } else { // Single point in z direction; use constant value
+        k2[0] = k2[1] = k2[2] = k2[3] = 0;
+        zwb = 1.0;
+        zwa = zwc = zwd = 0.0;
+      }
+
+      for(OC_INDEX j=0;j<jcount;++j) {
+        OC_INDEX j2[4];
+        OC_REAL8 ywa,ywb,ywc,ywd;
+        OC_REAL8 y = offy + j*sy;
+        j2[0] = OC_INDEX(floor(y))-1;
+        if(j2max>=3) { // Cubic interpolation
+          j2[3] = j2[0] + 3;
+          if(j2[0]<0)          { j2[0] = 0;     j2[3] = OC_MIN(3,j2max); }
+          else if(j2[3]>j2max) { j2[3] = j2max; j2[0] = OC_MAX(0,j2max-3); }
+          j2[1] = j2[0]+1;  j2[2] = j2[0]+2;
+          OC_REAL8 ty = y - j2[1];
+          ty = (ty<-1.5 ? -1.5 : (ty>2.5 ? 2.5 : ty)); // Limit extrapolation
+#if 0 // Cubic interpolation
+          ywa = (-1./6.)*ty*(ty-1)*(ty-2);
+          ywb = (0.5)*(ty+1)*(ty-1)*(ty-2);
+          ywc = (-0.5)*(ty+1)*ty*(ty-2);
+          ywd = (1./6.)*(ty+1)*ty*(ty-1);
+#else // Spline interpolation
+          if(ty<0) { // Left edge; use quadratic interpolation
+            ywa = 0.5*ty*(ty-1.0);
+            ywb = (1+ty)*(1.0-ty);
+            ywc = 0.5*ty*(1.0+ty);
+            ywd = 0.0;
+          } else if(ty>1) { // Right edge; use quadratic interpolation
+            ywa = 0.0;
+            ywb = 0.5*(ty-1.0)*(ty-2.0);
+            ywc = ty*(2.0-ty);
+            ywd = 0.5*ty*(ty-1.0);
+          } else { // Catmull-Rom cubic spline
+            ywa = 0.5*(ty*((2-ty)*ty-1));
+            ywb = 0.5*(ty*ty*(3*ty-5)+2);
+            ywc = 0.5*(ty*((4-3*ty)*ty+1));
+            ywd = 0.5*ty*ty*(ty-1);
+          }
+#endif // Cubic/spline interpolation
+        } else if(j2max>=1) { // Linear interpolation
+          j2[3] = (++j2[0]) + 1;
+          if(j2[0]<0)          { j2[0] = 0;     j2[3] = OC_MIN(1,j2max); }
+          else if(j2[3]>j2max) { j2[3] = j2max; j2[0] = OC_MAX(0,j2max-1); }
+          j2[1] = j2[0];    j2[2] = j2[3];
+          OC_REAL8 ty = y - j2[1];
+          ty = (ty<-0.5 ? -0.5 : (ty>1.5 ? 1.5 : ty)); // Limit extrapolation
+          ywb = 1.0-ty;
+          ywc = ty;
+          ywa = ywd = 0.0;
+        } else { // Single point in y direction; use constant value
+          j2[0] = j2[1] = j2[2] = j2[3] = 0;
+          ywb = 1.0;
+          ywa = ywc = ywd = 0.0;
+        }
+
+        for(OC_INDEX i=0;i<icount;++i) {
+          OC_INDEX i2[4];
+          OC_REAL8 xwa,xwb,xwc,xwd;
+          OC_REAL8 x = offx + i*sx;
+          i2[0] = OC_INDEX(floor(x))-1;
+          if(i2max>=3) { // Cubic interpolation
+            i2[3] = i2[0] + 3;
+            if(i2[0]<0)          { i2[0] = 0;     i2[3] = OC_MIN(3,i2max); }
+            else if(i2[3]>i2max) { i2[3] = i2max; i2[0] = OC_MAX(0,i2max-3); }
+            i2[1] = i2[0]+1;  i2[2] = i2[0]+2;
+            OC_REAL8 tx = x - i2[1];
+            tx = (tx<-1.5 ? -1.5 : (tx>2.5 ? 2.5 : tx)); // Limit extrapolation
+#if 0 // Cubic interpolation
+            xwa = (-1./6.)*tx*(tx-1)*(tx-2);
+            xwb = (0.5)*(tx+1)*(tx-1)*(tx-2);
+            xwc = (-0.5)*(tx+1)*tx*(tx-2);
+            xwd = (1./6.)*(tx+1)*tx*(tx-1);
+#else // Spline interpolation
+            if(tx<0) { // Left edge; use quadratic interpolation
+              xwa = 0.5*tx*(tx-1.0);
+              xwb = (1+tx)*(1.0-tx);
+              xwc = 0.5*tx*(1.0+tx);
+              xwd = 0.0;
+            } else if(tx>1) { // Right edge; use quadratic interpolation
+              xwa = 0.0;
+              xwb = 0.5*(tx-1.0)*(tx-2.0);
+              xwc = tx*(2.0-tx);
+              xwd = 0.5*tx*(tx-1.0);
+            } else { // Catmull-Rom cubic spline
+              xwa = 0.5*(tx*((2-tx)*tx-1));
+              xwb = 0.5*(tx*tx*(3*tx-5)+2);
+              xwc = 0.5*(tx*((4-3*tx)*tx+1));
+              xwd = 0.5*tx*tx*(tx-1);
+            }
+#endif // Cubic/spline interpolation
+          } else if(i2max>=1) { // Linear interpolation
+            i2[3] = (++i2[0]) + 1;
+            if(i2[0]<0)          { i2[0] = 0;     i2[3] = OC_MIN(1,i2max); }
+            else if(i2[3]>i2max) { i2[3] = i2max; i2[0] = OC_MAX(0,i2max-1); }
+            i2[1] = i2[0];    i2[2] = i2[3];
+            OC_REAL8 tx = x - i2[1];
+            tx = (tx<-0.5 ? -0.5 : (tx>1.5 ? 1.5 : tx)); // Limit extrapolation
+            xwb = 1.0 - tx;
+            xwc = tx;
+            xwa = xwd = 0.0;
+          } else { // Single point in x direction; use constant value
+            i2[0] = i2[1] = i2[2] = i2[3] = 0;
+            xwb = 1.0;
+            xwa = xwc = xwd = 0.0;
+          }
+
+          // First do cubic interpolations along z
+          OC_INDEX ii,jj;
+          for(jj=0;jj<4;++jj) {
+            for(ii=0;ii<4;++ii) {
+              qq[ii][jj]
+                = zwa*(*import_grid)(k2[0],j2[jj],i2[ii])
+                + zwb*(*import_grid)(k2[1],j2[jj],i2[ii])
+                + zwc*(*import_grid)(k2[2],j2[jj],i2[ii])
+                + zwd*(*import_grid)(k2[3],j2[jj],i2[ii]);
+            }
+          }
+
+          // Next cubic interpolations along y
+          for(ii=0;ii<4;++ii) {
+            q[ii] = ywa*qq[ii][0] + ywb*qq[ii][1]
+                  + ywc*qq[ii][2] + ywd*qq[ii][3];
+          }
+
+          // Finally, cubic interpolation along x
+          grid(k,j,i) = xwa*q[0] + xwb*q[1] + xwc*q[2] + xwd*q[3];
+        }
+      }
+    }
+  }
+
+  // dummy_grid is automatically freed on exit
+#undef MEMBERNAME
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // General (non-regular) 3D mesh of Nb_Vec3<OC_REAL4>'s
@@ -1489,11 +2041,10 @@ const ClassDoc Vf_GeneralMesh3f::class_doc("Vf_GeneralMesh3f",
 const OC_INDEX Vf_GeneralMesh3f::zslice_count=100;  // Number of zslices.
 
 // Generic Mesh functions /////////////////////
-OC_INT4m
+void
 Vf_GeneralMesh3f::GetPreciseRange(Nb_BoundingBox<OC_REAL8> &myrange) const
 {
   myrange = range;
-  return 0;
 }
 
 void Vf_GeneralMesh3f::UpdateRange()
@@ -1512,14 +2063,13 @@ void Vf_GeneralMesh3f::UpdateRange()
   }
 }
 
-OC_INT4m
+void
 Vf_GeneralMesh3f::GetPreciseDataRange(Nb_BoundingBox<OC_REAL8> &myrange) const
 {
   myrange=data_range;
-  return 0;
 }
 
-OC_INT4m
+void
 Vf_GeneralMesh3f::GetPreciseBoundaryList
 (Nb_List< Nb_Vec3<OC_REAL8> > &boundary_list) const {
   if(boundary_from_data) {
@@ -1530,10 +2080,9 @@ Vf_GeneralMesh3f::GetPreciseBoundaryList
   } else {
     boundary_list=boundary;
   }
-  return 0;
 }
 
-OC_INT4m Vf_GeneralMesh3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
+OC_INDEX Vf_GeneralMesh3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
 {
   types.Clear();
   types.Append(Nb_DString("x"));
@@ -1548,7 +2097,7 @@ OC_INT4m Vf_GeneralMesh3f::ColorQuantityTypes(Nb_List<Nb_DString> &types) const
   return types.GetSize();
 }
 
-OC_INT4m Vf_GeneralMesh3f::ColorQuantityTransform
+OC_BOOL Vf_GeneralMesh3f::ColorQuantityTransform
 (const Nb_DString flipstr,
  const Nb_DString& quantity_in,OC_REAL8m phase_in,OC_BOOL invert_in,
  Nb_DString& quantity_out,OC_REAL8m& phase_out,OC_BOOL& invert_out) const
@@ -1612,7 +2161,7 @@ OC_REAL4m Vf_GeneralMesh3f::GetVecShade(const char* colorquantity,
       maxsize = GetDisplayValueScale()*MaxMagHint;
     }
     if(MaxMagHint>MinMagHint) {
-      minsize = MinMagHint/MaxMagHint;
+      minsize = maxsize*MinMagHint/MaxMagHint;
     }
 
     if(minsize>0.0 && fabs(v.x)<minsize
@@ -1639,15 +2188,15 @@ OC_REAL4m Vf_GeneralMesh3f::GetVecShade(const char* colorquantity,
 }
 
 
-OC_INT4m Vf_GeneralMesh3f::FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
-                                           Nb_LocatedVector<OC_REAL8> &lv)
+OC_BOOL Vf_GeneralMesh3f::FindPreciseClosest(const Nb_Vec3<OC_REAL8> &pos,
+                                             Nb_LocatedVector<OC_REAL8> &lv)
 {
   if(GetSize()<1) return 1; // Empty mesh
   OC_INT4m dummy;
   Nb_Vec3<OC_REAL8> work_pos=pos;
   Nb_LocatedVector<OC_REAL8> *lvp;
   data_range.MoveInto(work_pos);
-  OC_INT4m errorcode=mesh.GetClosest2D(work_pos,lvp,dummy);
+  OC_BOOL errorcode=mesh.GetClosest2D(work_pos,lvp,dummy);
   if(errorcode==0) {
     lv=*lvp;
     if(!range.IsIn(pos)) errorcode = 1;
@@ -1705,7 +2254,7 @@ void Vf_GeneralMesh3f::GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
   if(islicehigh<islicelow)    islicehigh=islicelow;
 }
 
-OC_INT4m
+OC_INDEX
 Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
                                  OC_REAL4m &ystep_request,
                                  OC_REAL4m & /* zstep_request */,
@@ -1958,12 +2507,12 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
 
     OC_REAL8m xextent=maxpt.x-minpt.x;
     OC_REAL8m xstep=fabs(xstep_request);
-    OC_INDEX  ixcount=int(floor((xextent*fudge)/xstep))+1;
+    OC_INDEX  ixcount=static_cast<OC_INDEX>(floor((xextent*fudge)/xstep))+1;
     OC_REAL8m xmargin=(xextent-xstep*(ixcount-1))/(2.*fudge);
 
     OC_REAL8m yextent=maxpt.y-minpt.y;
     OC_REAL8m ystep=fabs(ystep_request);
-    OC_INDEX  iycount=int(floor((yextent*fudge)/ystep))+1;
+    OC_INDEX  iycount=static_cast<OC_INDEX>(floor((yextent*fudge)/ystep))+1;
     OC_REAL8m ymargin=(yextent-ystep*(iycount-1))/(2.*fudge);
 
     // If margin is close to an integral multiple of step_hints,
@@ -2140,7 +2689,7 @@ void Vf_GeneralMesh3f::SetApproximateStepHints()
   OC_REAL8m dz=data_range.GetDepth();
 
 
-  OC_INT4m dim_count=0;
+  int dim_count=0;
   if(dx>0) dim_count++;
   if(dy>0) dim_count++;
   if(dz>0) dim_count++;
@@ -2313,10 +2862,10 @@ void Vf_GeneralMesh3f::SortPoints()
 
 #ifndef NDEBUG
   ClassDebugMessage(STDDOC,"Mesh refinement stats:\n"
-          "  Number of subboxes: %d\n"
+          "  Number of subboxes: %" OC_INDEX_MOD "d\n"
           "  Average number of points per box: %.2f\n"
           "  Average box list length:  %.2f\n"
-          "  Memory waste: %d\n",
+          "  Memory waste: %" OC_INDEX_MOD "d\n",
           mesh.GetBoxCount(),mesh.GetAveInCount(),mesh.GetAveListCount(),
           mesh.GetSpaceWaste());
 #endif
@@ -2325,8 +2874,8 @@ void Vf_GeneralMesh3f::SortPoints()
 }
 
 
-int Vf_GeneralMesh3f::GetFirstPt(Vf_Mesh_Index* &key_export,
-                                 Nb_LocatedVector<OC_REAL8> &lv) const
+OC_BOOL Vf_GeneralMesh3f::GetFirstPt(Vf_Mesh_Index* &key_export,
+                                     Nb_LocatedVector<OC_REAL8> &lv) const
 {
   Vf_GeneralMesh3f_Index *index=new Vf_GeneralMesh3f_Index;
   key_export=(Vf_Mesh_Index*)index;
@@ -2336,8 +2885,8 @@ int Vf_GeneralMesh3f::GetFirstPt(Vf_Mesh_Index* &key_export,
   return 1;
 }
 
-int Vf_GeneralMesh3f::GetNextPt(Vf_Mesh_Index* &key_import,
-                                Nb_LocatedVector<OC_REAL8> &lv) const
+OC_BOOL Vf_GeneralMesh3f::GetNextPt(Vf_Mesh_Index* &key_import,
+                                    Nb_LocatedVector<OC_REAL8> &lv) const
 {
   Vf_GeneralMesh3f_Index *index=(Vf_GeneralMesh3f_Index *)key_import;
   const Nb_LocatedVector<OC_REAL8> *lvp=mesh.GetNext(index->key);
@@ -2347,8 +2896,8 @@ int Vf_GeneralMesh3f::GetNextPt(Vf_Mesh_Index* &key_import,
 }
 
 
-int Vf_GeneralMesh3f::SetNodeValue(const Vf_Mesh_Index* key_import,
-                                   const Nb_Vec3<OC_REAL8>& value)
+OC_BOOL Vf_GeneralMesh3f::SetNodeValue(const Vf_Mesh_Index* key_import,
+                                       const Nb_Vec3<OC_REAL8>& value)
 { // For use by generic Vf_Mesh code for manipulation of
   // mesh node values (as opposed to node locations).
   // Returns 0 on success, 1 if the index is invalid
@@ -2402,8 +2951,8 @@ Vf_GeneralMesh3f::Vf_GeneralMesh3f
   char* nexttoken=flipbuf;
   // Component 1
   char *token = Nb_StrSep(&nexttoken,parsestr);
-  int len=0;
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  OC_INDEX len=0;
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);
@@ -2424,7 +2973,7 @@ Vf_GeneralMesh3f::Vf_GeneralMesh3f
   }
   // Component 2
   token = Nb_StrSep(&nexttoken,parsestr);
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);
@@ -2445,7 +2994,7 @@ Vf_GeneralMesh3f::Vf_GeneralMesh3f
   }
   // Component 3
   token = Nb_StrSep(&nexttoken,parsestr);
-  if(token==NULL || (len=static_cast<int>(strlen(token)))<1 || len>2
+  if(token==NULL || (len=static_cast<OC_INDEX>(strlen(token)))<1 || len>2
      || (token[len-1]!='x' && token[len-1]!='y' && token[len-1]!='z')
      || (len==2 && token[0]!='-' && token[0]!='+')) {
     NonFatalError(STDDOC,"Invalid transform flip string: %.200s",flipstr);

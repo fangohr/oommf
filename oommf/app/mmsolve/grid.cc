@@ -363,9 +363,9 @@ void Grid2D::InitEllipse(Nb_DString &)
   if(Nx<2 || Nz<2) return; // Nothing to do
   int i,k; double x,z;
   for(i=0;i<Nx;i++) {
-    x= double(2*i)/double(Nx-1)-1.0;
+    x= double(2*i+1)/double(Nx)-1.0;
     for(k=0;k<Nz;k++) {
-      z= double(2*k)/double(Nz-1)-1.0;
+      z= double(2*k+1)/double(Nz)-1.0;
       if(OC_SQ(x)+OC_SQ(z)>1+OC_SQRT_REAL8_EPSILON)
         m[i][k].SetThickness(0.0);
     }
@@ -378,9 +378,9 @@ void Grid2D::InitEllipsoid(Nb_DString &)
   if(Nx<2 || Nz<2) return; // Nothing to do
   int i,k; double x,z,radsq;
   for(i=0;i<Nx;i++) {
-    x= double(2*i)/double(Nx-1)-1.0;
+    x= double(2*i+1)/double(Nx)-1.0;
     for(k=0;k<Nz;k++) {
-      z= double(2*k)/double(Nz-1)-1.0;
+      z= double(2*k+1)/double(Nz)-1.0;
       radsq=OC_SQ(x)+OC_SQ(z);
       if(radsq>=1.0)  m[i][k].SetThickness(0.0);
       else            m[i][k].SetThickness(float(sqrt(1.0-radsq)));

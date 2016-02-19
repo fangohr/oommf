@@ -1,0 +1,15 @@
+# FILE: tuw_cvodeevolve.rules
+# External libraries needed by the tuw_cvodeevolve extension package
+set Oxs_external_libs [list sundials_cvode sundials_nvecserial]
+
+# Note: If CVODE include files and libraries are not in the standard
+# compiler/linker search path, then add appropriate
+#
+#  $config SetValue program_compiler_extra_include_dirs <dirs>
+#
+# and
+#
+#  $config SetValue program_linker_extra_lib_dirs <dirs>
+#
+# commands to your oommf/config/platforms/local/<platform>.tcl
+# file.

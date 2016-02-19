@@ -8,10 +8,11 @@
  *       called *only* from the main thread, preferably during
  *       initialization.
  *
- * Last modified on: $Date: 2012-09-27 20:58:34 $
- * Last modified by: $Author: dgp $
+ * Last modified on: $Date: 2015/08/13 20:15:12 $
+ * Last modified by: $Author: donahue $
  */
 
+#include <assert.h>
 #include <errno.h>
 
 #include "ocexcept.h"
@@ -94,7 +95,7 @@ void Oc_FreeThreadLocal(void* start,size_t /* size */)
 // address range to mbind is rounded up (rather than down) to a page
 // boundary, and if len is adjusted downwarded to a full page.
 //   On the same platform, numa_alloc_onnode() suffers from what looks
-// like the same bug, but unlike mbind there is not apparent
+// like the same bug, but unlike mbind there is no apparent
 // workaround.  See the follow-on discussion below in
 // Oc_AllocThreadLocal(), but it seems the best course of action is to
 // avoid numa_alloc_onnode and use instead mbind with the above
@@ -149,46 +150,40 @@ void Oc_FreeThreadLocal(void* start,size_t /* size */)
 # define OC_BAD_MBIND_MAXNODE 1
 #endif // OC_BAD_MBIND_MAXNODE
 
-/* The client selects which nodes to interleave memory
- * across by setting the import nodes;  If this list
- * is empty, then the default node#select arrays are
- * used instead.
- *   If import max_threads is >0, then the nodes
- * array is truncated at max_threads entries.
- *   These tables could no doubt be improved, especially
- * for the larger arrays.  It would also be nice if the
- * auto selection code could find out which nodes are
- * loaded (at least on problem initialization time) and
- * assign to less busy nodes.
- *   Addendum: These tables are based on core orderings
- * from AMD Opteron systems in the 2008-2010 time frame.
- * Orderings on Intel systems appear to be significantly
- * different: On AMD, cores on one processor or node are
- * numbered successively, which means for best memory
- * bandwidth one should skip node numbers.  On Intel,
- * successive numbers skip first across processors and
- * then across nodes, so that successive core numbers give
- * good memory through-put and good cache locality, but
- * the mapping is harder to anticipate so automated core
- * selection is harder.
- */
-static int node32select[] = {  8,  9, 10, 11,
-                              12, 13, 14, 15,
-                              16, 17, 18, 19,
-                              20, 21, 22, 23,
-                              28, 29, 30, 31,
-                              24, 25, 26, 27,
-                               4,  5,  6,  7,
-                               1,  2,  3,  0 } ;
-static int node12select[] = { 2, 3, 4, 5, 10, 11, 6, 7, 8, 9, 1, 0} ;
-static int node8select[] = { 2, 3, 4, 7, 5, 6, 1, 0 } ;
-static int node4select[] = { 2, 3, 1, 0 } ;
-static int node2select[] = { 1, 0 } ;
-static int node1select[] = { 0 } ;
+/* The client selects which node each thread runs on via the import
+ * "nodes" to Oc_NumaInit.  If the no nodes are specified, then in the
+ * current implementation the default node list starts in the middle
+ * of the system node range and spirals outward.  For example, for a
+ * system with eight nodes the default nodes list is 4, 3, 5, 2, 6, 1,
+ * 7, 0.  This default may change in the future without notice --- in
+ * particular, it might be good to use node topology information from
+ * numa_distance() or 'numactl --hardware' to let successive threads
+ * lie on nearby nodes.
+ *
+ * If there are more threads than nodes, then successive threads are
+ * grouped together and the groups divided up as equally as possible
+ * among the nodes, with extra threads distributed among the earlier
+ * nodes in the nodes list first.  For example, if the node list is 2,
+ * 1, 3, 0 and 10 threads are requested, then the thread to node
+ * mapping would be
+ *
+ *        Thread   Node      Thread   Node   
+ *           0 ---> 2           5 ---> 1     
+ *           1 ---> 2           6 ---> 3     
+ *           2 ---> 2           7 ---> 3     
+ *           3 ---> 1           8 ---> 0
+ *           4 ---> 1           9 ---> 0     
+ *
+ * so 3 threads map to nodes 2 and 1, and 2 threads to 3 and 0.
+ *
+ * User specified nodes list may repeat nodes in the list.  In
+ * particular, if the length of the import nodes list equals the
+ * number of threads then the list directly specifies the thread to
+ * node mapping.
+*/ 
+
 static vector<int> nodeselect;
-
 static int numa_ready = 0;  // Set to 1 by Oc_NumaInit.
-
 
 void Oc_NumaDisable() {
   numa_ready = 0;
@@ -203,6 +198,7 @@ void Oc_NumaDisable() {
 
 void Oc_NumaInit(int max_threads,vector<int>& nodes) {
   // Init numa library
+  assert(max_threads>0);
   numa_ready = 0;
   if(numa_available() < 0) {
     OC_THROW("ProgramLogicError: NUMA (non-uniform memory access)"
@@ -217,55 +213,38 @@ void Oc_NumaInit(int max_threads,vector<int>& nodes) {
   nodeselect.clear();
   if(nodes.size() == 0) {
     // Use default node list
-    int* ns=NULL;
-    int ns_size=0;
-    switch(numa_max_node()+1) {
-    case 1:
-      ns=node1select;
-      ns_size=1;
-      break;
-    case 2:
-      ns=node2select;
-      ns_size = 2;
-      break;
-    case 4:
-      ns=node4select;
-      ns_size = 4;
-      break;
-    case 8:
-      ns=node8select;
-      ns_size = 8;
-      break;
-    case 12:
-      ns=node12select;
-      ns_size = 12;
-      break;
-    case 32:
-      ns=node32select;
-      ns_size = 32;
-      break;
-    default:
-      OC_THROW(Oc_Exception(__FILE__,__LINE__,"","Oc_NumaInit",1024,
-                  "NUMA (non-uniform memory access) init error;"
-                  " auto-config not supported for %d node machines.",
-                  numa_max_node()+1));
+    int node_count = numa_max_node()+1;
+    int threads_per_node = max_threads/node_count;
+    int leftovers = max_threads - threads_per_node*node_count;
+    int work_node = node_count/2;
+    for(int i=0;i<node_count;++i) {
+      for(int j=0; j<threads_per_node + (i<leftovers ? 1:0); ++j) {
+        nodeselect.push_back(work_node);
+      }
+      if(2*work_node>=node_count) {
+        work_node = node_count - work_node - 1;
+      } else {
+        work_node = node_count - work_node;
+      }
     }
-    if(max_threads>0 && max_threads<ns_size) ns_size=max_threads;
-    for(int i=0;i<ns_size;++i) nodeselect.push_back(ns[i]);
   } else {
-    const int maxnode = numa_max_node();
-    int ns_size = nodes.size();
-    if(max_threads>0 && max_threads<ns_size) ns_size=max_threads;
-    for(int i=0;i<ns_size;++i) {
-      if(nodes[i]<0 || maxnode<nodes[i]) {
+    // Use user supplied node list
+    int node_count = nodes.size();
+    int threads_per_node = max_threads/node_count;
+    int leftovers = max_threads - threads_per_node*node_count;
+    for(int i=0;i<node_count;++i) {
+      if(nodes[i]<0 || nodes[i]>numa_max_node()) {
         OC_THROW(Oc_Exception(__FILE__,__LINE__,"","Oc_NumaInit",1024,
            "NUMA (non-uniform memory access) init error;"
            " requested node (%d) is outside machine node range [0-%d].",
-           nodes[i],maxnode));
+           nodes[i],numa_max_node()));
       }
-      nodeselect.push_back(nodes[i]);
+      for(int j=0; j<threads_per_node + (i<leftovers ? 1:0); ++j) {
+        nodeselect.push_back(nodes[i]);
+      }
     }
   }
+  assert(nodeselect.size() == size_t(max_threads));
 
   // Memory interleaving
 #if defined(LIBNUMA_API_VERSION) && LIBNUMA_API_VERSION>=2
@@ -303,9 +282,29 @@ void Oc_NumaRunOnNode(int thread)
        "NUMA (non-uniform memory access) init error;"
        " numa_run_on_node called w/o NUMA library initialization"));
     }
-    numa_run_on_node(nodeselect[thread % nodeselect.size()]);
+    assert(0<=thread && size_t(thread)<nodeselect.size());
+    if(numa_run_on_node(nodeselect[thread]) != 0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"","Oc_NumaRunOnNode",1024,
+          "Error in numa_run_on_node(%d) call",int(nodeselect[thread])));
+    }
   }
 }
+
+void Oc_NumaRunOnAnyNode()
+{
+  if(!numa_ready) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"","Oc_NumaRunOnAnyNode",
+     1024,
+     "NUMA (non-uniform memory access) init error;"
+     " numa_run_on_node called w/o NUMA library initialization"));
+  }
+  if(numa_run_on_node(-1) != 0) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"","Oc_NumaRunOnAnyNode",
+       1024,
+       "Error in numa_run_on_node(-1) call"));
+  }
+}
+
 
 // Oc_SetMemoryPolicyFirstTouch sets the node allocation policy for
 //  the given memory address range to "First Touch", meaning each page
@@ -396,7 +395,8 @@ void Oc_SetMemoryPolicyFirstTouch(char* start,OC_UINDEX len)
 int Oc_NumaGetRunNode(int thread)
 {
   if(nodeselect.size()>0) {
-    return nodeselect[thread % nodeselect.size()];
+    assert(0<=thread && size_t(thread)<nodeselect.size());
+    return nodeselect[thread];
   }
   return -1;
 }
@@ -435,24 +435,6 @@ int Oc_NumaGetLocalNode()
   }
   return -1;
 #endif
-}
-
-int Oc_NumaNodeFirstThread(int node)
-{ /* Returns the smallest thread number running on node.  This can be
-   * used in conjuction with Oc_NumaGetRunNode to build and access
-   * node-based memory structures.  For example, if you place a copy of
-   * "A" on each node, with an array of pointers, say type* A[n] where n
-   * runs over available nodes, then A[0] points to the copy used by
-   * thread 0 (which resides on node Oc_NumaGetRunNode(0)), and in
-   * general thread k should use the copy stored at A[j] where j =
-   * Oc_NumaNodeFirstThread(Oc_NumaGetRunNode(k)).
-   *   Returns -1 if node is not used by any thread.
-   */
-  const int node_count = nodeselect.size();
-  int i = 0;
-  while(i<node_count && nodeselect[i] != node) ++i;
-  if(i<node_count) return i;
-  return -1;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -558,12 +540,12 @@ void Oc_FreeThreadLocal(void* start,size_t /* size */)
 void Oc_NumaNodemaskStringRep(vector<int>& imask,Oc_AutoBuf& ab)
 { // Converts a vector<int> representing a NUMA interleave
   // mask to a string representation.
-  const int maxnode = imask.size();
+  const int node_count = imask.size();
   unsigned int buf = 0;
   unsigned int bit = 1;
 
   Oc_AutoBuf reverse_ab;
-  for(int i=0;i<=maxnode;++i) {
+  for(int i=0;i<node_count;++i) {
     if(imask[i]) {
       buf |= bit;
     }

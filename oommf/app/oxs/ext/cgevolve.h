@@ -14,13 +14,15 @@
 
 /* End includes */
 
-#define REPORT_TIME_CGDEVEL 1
-
 #if REPORT_TIME
 # ifndef REPORT_TIME_CGDEVEL
 #  define REPORT_TIME_CGDEVEL 1
 # endif
 #endif
+#ifndef REPORT_TIME_CGDEVEL
+# define REPORT_TIME_CGDEVEL 0
+#endif
+
 
 class Oxs_CGEvolve:public Oxs_MinEvolver {
 private:
@@ -62,17 +64,17 @@ private:
   OC_UINT4m line_minimum_count;
   OC_UINT4m conjugate_cycle_count;
 
-  OC_REAL8m gradient_reset_angle_cos; // Re-initialize minimization
-  /// direction from gradient (as opposed to conjugate gradient) if
-  /// angle between conjugate direction and pure gradient is larger than
-  /// this value.  Initially, this value is set from the input MIF file
-  /// in degrees, but is then changed to the cos of that angle (against
-  /// which the actual comparison is made).
-
   OC_UINT4m gradient_reset_count; // Re-initialize minimization
   /// direction from gradient (as opposed to conjugate gradient)
   /// when cycle_sub_count>=gradient_reset_count.
   /// Set from user data: "gradient_reset_count"
+
+  OC_REAL8m gradient_reset_score,gradient_reset_wgt,
+    gradient_reset_angle_cotangent,gradient_reset_trigger;
+
+  OC_REAL8m kludge_adjust_angle_cos; // If angle between new direction
+  /// and mxHxm is bigger than this angle, then call ::KludgeDirection
+  /// member function to adjust new direction to match this angle.
 
   // Internal data structures
   struct Basept_Data {
@@ -83,6 +85,7 @@ private:
     Oxs_MeshValue<ThreeVector> direction;
     OC_REAL8m direction_max_mag; // sup-norm: max_k sqrt(direction[k]^2)
     OC_REAL8m direction_norm;    // L2-norm: sqrt(\sum_k direction[k]^2)
+
     enum Conjugate_Method { FLETCHER_REEVES, POLAK_RIBIERE } method;
     /// "method" is fixed from user data.  Conjugate gradient
     /// direction is calculated via
@@ -98,6 +101,8 @@ private:
     /// memory requirements.
     Oxs_MeshValue<ThreeVector> mxHxm; // Use only if Polak-Ribiere
     OC_REAL8m g_sum_sq;  // (V[k].Ms[k].mxHxm[k])^2
+    OC_REAL8m Ep;
+
     void Init() {
       valid=0; id=0; stage=0;
       total_energy=0.0;
@@ -106,6 +111,7 @@ private:
       direction_norm=0.0;
       mxHxm.Release();
       g_sum_sq = 0.0;
+      Ep = 0.0;
     }
     Basept_Data() : method(FLETCHER_REEVES) { Init(); }
   } basept;
@@ -135,11 +141,12 @@ private:
     OC_REAL8m E;       // Energy relative to best_state
     OC_REAL8m Ep;      // Derivative of E in direction basedir.
     OC_REAL8m grad_norm; // Weighted L2-norm of mxHxm.  By Cauchy-Schwartz,
-    /// |Ep| < basept.direction_norm * grad_norm
+    /// |Ep| < mu0*basept.direction_norm * grad_norm
     void Init() { offset=0.0; E=0.0; Ep=0.0; grad_norm=0.0; }
     Bracket() { Init(); }
   };
 
+  Bracket extra_bracket;
   struct Bracket_Data;
   friend struct Bracket_Data; // Allow access to struct Bracket.
 
@@ -152,7 +159,7 @@ private:
     OC_REAL8m scaled_minstep;
     OC_REAL8m scaled_maxstep;
     OC_REAL8m start_step;
-    OC_REAL8m angle_precision; // From user data: "line_minimum_angle_precision"
+    OC_REAL8m angle_precision; // From user: "line_minimum_angle_precision"
     OC_REAL8m relative_minspan; // From user data: "line_minimum_relwidth"
     OC_REAL8m stop_span; // Calculated using relative_minspan and
     /// initial bracketing interval.
@@ -178,10 +185,11 @@ private:
   // SetBasePoint routine.  See NOTES VI, 18-Jul-2011, pp. 6-9.
   Oxs_EnergyPreconditionerSupport::Preconditioner_Type preconditioner_type;
   OC_REAL8m preconditioner_weight; // In range [0,1]
-  Oxs_MeshValue<ThreeVector> preconditioner_Ms_V;    // C^-2 * Ms * V
-  Oxs_MeshValue<ThreeVector> preconditioner_Ms2_V2;  // C^-2 * Ms^2 * V^2
-  Oxs_MeshValue<OC_REAL8m> Ms_V;                   // Ms * V
+  Oxs_MeshValue<ThreeVector> preconditioner_Ms_V;   // C^-2 * Ms * V
+  Oxs_MeshValue<ThreeVector> preconditioner_Ms2_V2; // C^-2 * Ms^2 * V^2
+  Oxs_MeshValue<OC_REAL8m> Ms_V;                    // Ms * V
   OC_UINT4m preconditioner_mesh_id;
+  OC_REAL8m sum_error_estimate;  // OC_REAL8m_EPSILON*sqrt(# of cells)
   void InitializePreconditioner(const Oxs_SimState* state);
   // The above arrays, preconditioner_Ms_V, preconditioner_Ms2_V2, and
   // Ms_V all depend on Ms and volume V.  These are all set inside
@@ -230,6 +238,14 @@ private:
    OC_REAL8m &derivative,     // Export
    OC_REAL8m &grad_norm);     // Export
 
+  static OC_REAL8m EstimateQuadraticMinimum
+  (OC_REAL8m wgt,
+   OC_REAL8m h,
+   OC_REAL8m f0,    // f(0)
+   OC_REAL8m fh,    // f(h)
+   OC_REAL8m fp0,   // f'(0)
+   OC_REAL8m fph);  // f'(h)
+
   void FillBracket(OC_REAL8m offset,
 		   const Oxs_SimState* oldstate,
 		   Oxs_Key<Oxs_SimState>& statekey,
@@ -245,7 +261,18 @@ private:
   void FindLineMinimumStep(const Oxs_SimState* oldstate,
 			   Oxs_Key<Oxs_SimState>& statekey);
 
+  void AdjustDirection(const Oxs_SimState* cstate,OC_REAL8m gamma,
+                       OC_REAL8m& maxmagsq,Nb_Xpfloat& work_normsumsq,
+                       Nb_Xpfloat& work_gradsumsq,Nb_Xpfloat& work_Ep);
+
+  void KludgeDirection(const Oxs_SimState* cstate,OC_REAL8m kludge,
+                       OC_REAL8m& maxmagsq,Nb_Xpfloat& work_normsumsq,
+                       Nb_Xpfloat& work_gradsumsq,Nb_Xpfloat& work_Ep);
+
   void SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key);
+
+  void RuffleBasePoint(const Oxs_SimState* oldstate,
+                       Oxs_Key<Oxs_SimState>& statekey);
 
   void NudgeBestpt(const Oxs_SimState* oldstate,
 		   Oxs_Key<Oxs_SimState>& statekey);

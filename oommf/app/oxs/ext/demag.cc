@@ -22,6 +22,7 @@
  */
 
 #include "demag.h"  // Includes definition of OOMMF_THREADS macro
+#include "oxsarray.h"  // Oxs_3DArray
 #include "demagcoef.h" // Used by both single-threaded code, and
 /// also common single/multi-threaded code at bottom of this file.
 
@@ -67,11 +68,18 @@ Oxs_Demag::Oxs_Demag(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_Energy(name,newdtr,argstr),
+#if REPORT_TIME
+    inittime("init"),fftforwardtime("f-fft"),
+    fftxforwardtime("f-fftx"),fftyforwardtime("f-ffty"),
+    fftinversetime("i-fft"),fftxinversetime("i-ffx"),
+    fftyinversetime("i-ffty"),
+    convtime("conv"),dottime("dot"),
+#endif // REPORT_TIME
     rdimx(0),rdimy(0),rdimz(0),cdimx(0),cdimy(0),cdimz(0),
     adimx(0),adimy(0),adimz(0),
     xperiodic(0),yperiodic(0),zperiodic(0),
     mesh_id(0),
-    A(0),Hxfrm(0),asymptotic_radius(-1),Mtemp(0),
+    Hxfrm(0),asymptotic_radius(-1),Mtemp(0),
     embed_convolution(0),embed_block_size(0)
 {
   asymptotic_radius = GetRealInitValue("asymptotic_radius",32.0);
@@ -96,82 +104,32 @@ Oxs_Demag::Oxs_Demag(
   /// by a multiple of m, the torque and therefore the magnetization
   /// dynamics are unaffected.
 
+#if REPORT_TIME
+  // Set default names for development timers
+  char buf[256];
+  for(int i=0;i<dvltimer_number;++i) {
+    Oc_Snprintf(buf,sizeof(buf),"dvl[%d]",i);
+    dvltimer[i].name = buf;
+  }
+#endif // REPORT_TIME
   VerifyAllInitArgsUsed();
 }
 
 Oxs_Demag::~Oxs_Demag() {
 #if REPORT_TIME
-  Oc_TimeVal cpu,wall;
-
-  inittime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...   init%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...  f-fft%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...  i-fft%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftxforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... f-fftx%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftxinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... i-fftx%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftyforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... f-ffty%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftyinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... i-ffty%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  convtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...   conv%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  dottime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...    dot%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
+  const char* prefix="      subtime ...";
+  inittime.Print(stderr,prefix,InstanceName());
+  fftforwardtime.Print(stderr,prefix,InstanceName());
+  fftinversetime.Print(stderr,prefix,InstanceName());
+  fftxforwardtime.Print(stderr,prefix,InstanceName());
+  fftxinversetime.Print(stderr,prefix,InstanceName());
+  fftyforwardtime.Print(stderr,prefix,InstanceName());
+  fftyinversetime.Print(stderr,prefix,InstanceName());
+  convtime.Print(stderr,prefix,InstanceName());
+  dottime.Print(stderr,prefix,InstanceName());
   for(int i=0;i<dvltimer_number;++i) {
-    dvltimer[i].GetTimes(cpu,wall);
-    if(double(wall)>0.0) {
-      fprintf(stderr,"      subtime ... dvl[%d]%7.2f cpu /%7.2f wall,"
-              " (%.1000s)\n",
-              i,double(cpu),double(wall),InstanceName());
-    }
+    dvltimer[i].Print(stderr,prefix,InstanceName());
   }
-
 #endif // REPORT_TIME
   ReleaseMemory();
 }
@@ -179,87 +137,25 @@ Oxs_Demag::~Oxs_Demag() {
 OC_BOOL Oxs_Demag::Init()
 {
 #if REPORT_TIME
-  Oc_TimeVal cpu,wall;
-
-  inittime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...   init%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...  f-fft%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...  i-fft%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftxforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... f-fftx%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftxinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... i-fftx%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  fftyforwardtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... f-ffty%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-  fftyinversetime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ... i-ffty%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  convtime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...   conv%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
-  dottime.GetTimes(cpu,wall);
-  if(double(wall)>0.0) {
-    fprintf(stderr,"      subtime ...    dot%7.2f cpu /%7.2f wall,"
-            " (%.1000s)\n",
-            double(cpu),double(wall),InstanceName());
-  }
-
+  const char* prefix="      subtime ...";
+  inittime.Print(stderr,prefix,InstanceName());
+  fftforwardtime.Print(stderr,prefix,InstanceName());
+  fftinversetime.Print(stderr,prefix,InstanceName());
+  fftxforwardtime.Print(stderr,prefix,InstanceName());
+  fftxinversetime.Print(stderr,prefix,InstanceName());
+  fftyforwardtime.Print(stderr,prefix,InstanceName());
+  fftyinversetime.Print(stderr,prefix,InstanceName());
+  convtime.Print(stderr,prefix,InstanceName());
+  dottime.Print(stderr,prefix,InstanceName());
   for(int i=0;i<dvltimer_number;++i) {
-    dvltimer[i].GetTimes(cpu,wall);
-    if(double(wall)>0.0) {
-      fprintf(stderr,"      subtime ... dvl[%d]%7.2f cpu /%7.2f wall,"
-              " (%.1000s)\n",
-              i,double(cpu),double(wall),InstanceName());
-    }
+    dvltimer[i].Print(stderr,prefix,InstanceName());
     dvltimer[i].Reset();
   }
-
   inittime.Reset();
-  fftforwardtime.Reset();
-  fftinversetime.Reset();
-  fftxforwardtime.Reset();
-  fftxinversetime.Reset();
-  fftyforwardtime.Reset();
-  fftyinversetime.Reset();
-  convtime.Reset();
-  dottime.Reset();
+  fftforwardtime.Reset();  fftinversetime.Reset();
+  fftxforwardtime.Reset(); fftxinversetime.Reset();
+  fftyforwardtime.Reset(); fftyinversetime.Reset();
+  convtime.Reset();        dottime.Reset();
 #endif // REPORT_TIME
   mesh_id = 0;
   ReleaseMemory();
@@ -268,13 +164,61 @@ OC_BOOL Oxs_Demag::Init()
 
 void Oxs_Demag::ReleaseMemory() const
 { // Conceptually const
-  if(A!=0) { delete[] A; A=0; }
+  A.Free();
   if(Hxfrm!=0)       { delete[] Hxfrm;       Hxfrm=0;       }
   if(Mtemp!=0)       { delete[] Mtemp;       Mtemp=0;       }
   rdimx=rdimy=rdimz=0;
   cdimx=cdimy=cdimz=0;
   adimx=adimy=adimz=0;
 }
+
+// Given a function f, and an array arr pre-sized to dimensions
+// xdim, ydim+2, zdim+2, computes D6[f] = D2z[D2y[D2x[f]]] across
+// the range [0,xdim-1] x [0,ydim-1] x [0,zdim-1].  The results are
+// stored in arr.  The outer planes j=ydim,ydim+1 and k=zdim,zdim+1
+// are used as workspace.
+void ComputeD6f(OC_REALWIDE (*f)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE),
+                Oxs_3DArray<OC_REALWIDE>& arr,
+                OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
+{
+  const OC_INDEX xdim = arr.GetDim1();
+  const OC_INDEX ydim = arr.GetDim2()-2;
+  const OC_INDEX zdim = arr.GetDim3()-2;
+
+  // Compute f values and D2x
+  for(OC_INDEX k=0;k<zdim+2;++k) {
+    for(OC_INDEX j=0;j<ydim+2;++j) {
+      OC_REALWIDE a0 = f(0.0,(j-1)*dy,(k-1)*dz);
+      OC_REALWIDE b0 = a0 - f(-1*dx,(j-1)*dy,(k-1)*dz);
+      for(OC_INDEX i=0;i<xdim;++i) {
+        OC_REALWIDE a1 = f((i+1)*dx,(j-1)*dy,(k-1)*dz);
+        OC_REALWIDE b1 = a1 - a0;  a0 = a1;
+        arr(i,j,k) = b1 - b0; b0 = b1;
+      }
+    }
+  }
+
+  // Compute D2y.
+  for(OC_INDEX k=0;k<zdim+2;++k) {
+    for(OC_INDEX j=0;j<ydim;++j) {
+      for(OC_INDEX i=0;i<xdim;++i) {
+        arr(i,j,k) = arr(i,j+1,k) - arr(i,j,k);
+        arr(i,j,k) += (arr(i,j+1,k) - arr(i,j+2,k));
+      }
+    }
+  }
+
+  // Compute D2z.
+  for(OC_INDEX k=0;k<zdim;++k) {
+    for(OC_INDEX j=0;j<ydim;++j) {
+      for(OC_INDEX i=0;i<xdim;++i) {
+        arr(i,j,k) = arr(i,j,k+1) - arr(i,j,k);
+        arr(i,j,k) += (arr(i,j,k+1) - arr(i,j,k+2));
+      }
+    }
+  }
+}
+
 
 void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
 { // This routine is conceptually const.
@@ -290,11 +234,21 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   }
 
   // Check periodicity
-  const Oxs_RectangularMesh* rmesh 
-    = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
-  if(pmesh!=NULL) {
+  if(pmesh==NULL) {
+    const Oxs_RectangularMesh* rmesh 
+      = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
+    if (rmesh!=NULL) {
+      // Rectangular, non-periodic mesh
+      xperiodic=0; yperiodic=0; zperiodic=0;
+    } else {
+      String msg=String("Unknown mesh type: \"")
+        + String(ClassName())
+        + String("\".");
+      throw Oxs_ExtError(this,msg.c_str());
+    }
+  } else {
     // Rectangular, periodic mesh
     xperiodic = pmesh->IsPeriodicX();
     yperiodic = pmesh->IsPeriodicY();
@@ -315,14 +269,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
                " at this time.");
       throw Oxs_ExtError(this,msg.c_str());
     }
-  } else if (rmesh!=NULL) {
-    // Rectangular, non-periodic mesh
-    xperiodic=0; yperiodic=0; zperiodic=0;
-  } else {
-    String msg=String("Unknown mesh type: \"")
-      + String(ClassName())
-      + String("\".");
-    throw Oxs_ExtError(this,msg.c_str());
   }
 
   // Clean-up from previous allocation, if any.
@@ -347,31 +293,42 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
                                             (rdimy==1 ? 1 : 2*rdimy),
                                             (rdimz==1 ? 1 : 2*rdimz),
                                             cdimx,cdimy,cdimz);
-  OC_INDEX xfrm_size = ODTV_VECSIZE * 2 * cdimx * cdimy * cdimz;
-  // "ODTV_VECSIZE" here is because we work with arrays if ThreeVectors,
-  // and "2" because these are complex (as opposed to real)
-  // quantities.
-  if(xfrm_size<cdimx || xfrm_size<cdimy || xfrm_size<cdimz ||
-     long(xfrm_size) != 
-     long(2*ODTV_VECSIZE)*long(cdimx)*long(cdimy)*long(cdimz)) {
-    // Partial overflow check
-    char msgbuf[1024];
-    Oc_Snprintf(msgbuf,sizeof(msgbuf),
-                ": Product 2*ODTV_VECSIZE*cdimx*cdimy*cdimz = "
-                "2*%d*%d*%d*%d too big to fit in a OC_INDEX variable",
-                ODTV_VECSIZE,cdimx,cdimy,cdimz);
-    String msg =
-      String("OC_INDEX overflow in ")
-      + String(InstanceName())
-      + String(msgbuf);
-    throw Oxs_ExtError(this,msg);
+
+  // Overflow test; restrict to signed value range
+  {
+    OC_INDEX testval = OC_INDEX_MAX/(2*ODTV_VECSIZE);
+    testval /= cdimx;
+    testval /= cdimy;
+    if(testval<cdimz || cdimx<rdimx || cdimy<rdimy || cdimz<rdimz) {
+      char msgbuf[1024];
+      Oc_Snprintf(msgbuf,sizeof(msgbuf),"Requested mesh size ("
+                  "%" OC_INDEX_MOD "d x "
+                  "%" OC_INDEX_MOD "d x "
+                  "%" OC_INDEX_MOD "d)"
+                  " has too many elements",rdimx,rdimy,rdimz);
+      throw Oxs_ExtError(this,msgbuf);
+    }
   }
 
   Mtemp = new OXS_FFT_REAL_TYPE[ODTV_VECSIZE*rdimx*rdimy*rdimz];
-  /// Temporary space to hold Ms[]*m[].  The plan is to make this space
-  /// unnecessary by introducing FFT functions that can take Ms as input
-  /// and do the multiplication on the fly.
+  /// Temporary space to hold Ms[]*m[].  Now that there are FFT
+  /// functions that can take Ms as input and do the multiplication on
+  /// the fly, the use of this buffer should be removed.
 
+  // Allocate memory for FFT xfrm target H
+  const OC_INDEX xfrm_size = ODTV_VECSIZE * 2 * cdimx * cdimy * cdimz;
+  Hxfrm = new OXS_FFT_REAL_TYPE[xfrm_size];
+  /// "ODTV_VECSIZE" here is because we work with arrays if
+  /// ThreeVectors, and "2" because these are complex (as opposed to
+  /// real) quantities.  (Note: If we embed properly we don't really
+  /// need all this space.)
+
+  if(Mtemp==0 || Hxfrm==0) {
+    // Safety check for those machines on which new[] doesn't throw
+    // BadAlloc.
+    String msg = String("Insufficient memory in Demag setup.");
+    throw Oxs_ExtError(this,msg);
+  }
 
   // The following 3 statements are cribbed from
   // Oxs_FFT3DThreeVector::SetDimensions().  The corresponding
@@ -380,14 +337,14 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   //  Oxs_FFT3DThreeVector fft;
   //  fft.SetDimensions(rdimx,rdimy,rdimz,cdimx,cdimy,cdimz);
   //  fft.GetLogicalDimensions(ldimx,ldimy,ldimz);
-  //
   fftx.SetDimensions(rdimx, (cdimx==1 ? 1 : 2*(cdimx-1)), rdimy);
   ffty.SetDimensions(rdimy, cdimy,
-                     ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                     ODTV_VECSIZE*cdimx);
+                        ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
+                        ODTV_VECSIZE*cdimx);
   fftz.SetDimensions(rdimz, cdimz,
-                     ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                     ODTV_VECSIZE*cdimx*cdimy);
+                        ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
+                        ODTV_VECSIZE*cdimx*cdimy);
+
   OC_INDEX ldimx,ldimy,ldimz; // Logical dimensions
   // The following 3 statements are cribbed from
   // Oxs_FFT3DThreeVector::GetLogicalDimensions()
@@ -395,48 +352,45 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   ldimy = ffty.GetLogicalDimension();
   ldimz = fftz.GetLogicalDimension();
 
+  // Dimensions for the demag tensor A.
   adimx = (ldimx/2)+1;
   adimy = (ldimy/2)+1;
   adimz = (ldimz/2)+1;
 
-#if VERBOSE_DEBUG && !defined(NDEBUG)
-  fprintf(stderr,"RDIMS: (%d,%d,%d)\n",rdimx,rdimy,rdimz); /**/
-  fprintf(stderr,"CDIMS: (%d,%d,%d)\n",cdimx,cdimy,cdimz); /**/
-  fprintf(stderr,"LDIMS: (%d,%d,%d)\n",ldimx,ldimy,ldimz); /**/
-  fprintf(stderr,"ADIMS: (%d,%d,%d)\n",adimx,adimy,adimz); /**/
+#if (VERBOSE_DEBUG && !defined(NDEBUG))
+  fprintf(stderr,"RDIMS: (%ld,%ld,%ld)\n",(long)rdimx,(long)rdimy,(long)rdimz);
+  fprintf(stderr,"CDIMS: (%ld,%ld,%ld)\n",(long)cdimx,(long)cdimy,(long)cdimz);
+  fprintf(stderr,"LDIMS: (%ld,%ld,%ld)\n",(long)ldimx,(long)ldimy,(long)ldimz);
+  fprintf(stderr,"ADIMS: (%ld,%ld,%ld)\n",(long)adimx,(long)adimy,(long)adimz);
 #endif // NDEBUG
 
-  // Dimension of array necessary to hold 3 sets of full interaction
-  // coefficients in real space:
-  OC_INDEX scratch_size = ODTV_VECSIZE * ldimx * ldimy * ldimz;
-  if(scratch_size<ldimx || scratch_size<ldimy || scratch_size<ldimz) {
-    // Partial overflow check
-    String msg =
-      String("OC_INDEX overflow in ")
-      + String(InstanceName())
-      + String(": Product 3*8*rdimx*rdimy*rdimz too big"
-               " to fit in a OC_INDEX variable");
-    throw Oxs_ExtError(this,msg);
+  // Overflow test; restrict to signed value range
+  {
+    OC_INDEX testval = OC_INDEX_MAX/ODTV_VECSIZE;
+    testval /= ldimx;
+    testval /= ldimy;
+    if(ldimx<1 || ldimy<1 || ldimz<1 || testval<ldimz) {
+      String msg =
+        String("OC_INDEX overflow in ")
+        + String(InstanceName())
+        + String(": Product 3*8*rdimx*rdimy*rdimz too big"
+                 " to fit in an OC_INDEX variable");
+      throw Oxs_ExtError(this,msg);
+    }
   }
 
-  // Allocate memory for FFT xfrm target H, and scratch space
-  // for computing interaction coefficients
-  Hxfrm = new OXS_FFT_REAL_TYPE[xfrm_size];
-  OXS_FFT_REAL_TYPE* scratch = new OXS_FFT_REAL_TYPE[scratch_size];
+  OC_INDEX astridey = adimx;
+  OC_INDEX astridez = astridey*adimy;
+  OC_INDEX asize = astridez*adimz;
+  A.SetSize(asize);
 
-  if(Hxfrm==NULL || scratch==NULL) {
-    // Safety check for those machines on which new[] doesn't throw
-    // BadAlloc.
-    String msg = String("Insufficient memory in Demag setup.");
-    throw Oxs_ExtError(this,msg);
-  }
 
   // According (16) in Newell's paper, the demag field is given by
   //                        H = -N*M
   // where N is the "demagnetizing tensor," with components Nxx, Nxy,
   // etc.  With the '-1' in 'scale' we store '-N' instead of 'N',
   // so we don't have to multiply the output from the FFT + iFFT
-  // by -1 GetEnergy() below.
+  // by -1 in GetEnergy() below.
 
   // Fill interaction matrices with demag coefs from Newell's paper.
   // Note that A00, A11 and A22 are even in x,y and z.
@@ -491,8 +445,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   scale *= fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
 
   OC_INDEX i,j,k;
-  OC_INDEX sstridey = ODTV_VECSIZE*ldimx;
-  OC_INDEX sstridez = sstridey*ldimy;
   OC_INDEX kstop=1; if(rdimz>1) kstop=rdimz+2;
   OC_INDEX jstop=1; if(rdimy>1) jstop=rdimy+2;
   OC_INDEX istop=1; if(rdimx>1) istop=rdimx+2;
@@ -507,169 +459,71 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     if(itest<istop) istop = itest;
   }
 
-#if REPORT_TIME
-  dvltimer[0].Start();
-#endif // REPORT_TIME
   if(!xperiodic && !yperiodic && !zperiodic) {
     // Calculate Nxx, Nxy and Nxz in first octant, non-periodic case.
     // Step 1: Evaluate f & g at each cell site.  Offset by (-dx,-dy,-dz)
     //  so we can do 2nd derivative operations "in-place".
-    for(k=0;k<kstop;k++) {
-      OC_INDEX kindex = k*sstridez;
-      OC_REALWIDE z = dz*(k-1);
-      for(j=0;j<jstop;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        OC_REALWIDE y = dy*(j-1);
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-#ifndef NDEBUG
-          if(index>=scratch_size) {
-            String msg = String("Programming error:"
-                                " array index out-of-bounds.");
-            throw Oxs_ExtError(this,msg);
-          }
-#endif // NDEBUG
-          OC_REALWIDE x = dx*(i-1);
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   = scale*Oxs_Newell_f(x,y,z);  // For Nxx
-          scratch[index+1] = scale*Oxs_Newell_g(x,y,z);  // For Nxy
-          scratch[index+2] = scale*Oxs_Newell_g(x,z,y);  // For Nxz
-        }
-      }
-    }
 
-    // Step 2a: Do d^2/dz^2
-    if(kstop==1) {
-      // Only 1 layer in z-direction of f/g stored in scratch array.
-      for(j=0;j<jstop;j++) {
-        OC_INDEX jkindex = j*sstridey;
-        OC_REALWIDE y = dy*(j-1);
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          OC_REALWIDE x = dx*(i-1);
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale*Oxs_Newell_f(x,y,0);
-          scratch[index]   *= 2;
-          scratch[index+1] -= scale*Oxs_Newell_g(x,y,0);
-          scratch[index+1] *= 2;
-          scratch[index+2] = 0;
-        }
-      }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<jstop;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<istop;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+sstridez]
-              + scratch[index+2*sstridez];
-            scratch[index+1] += -2*scratch[index+sstridez+1]
-              + scratch[index+2*sstridez+1];
-            scratch[index+2] += -2*scratch[index+sstridez+2]
-              + scratch[index+2*sstridez+2];
-          }
+    OC_INDEX wdim1 = rdimx;
+    OC_INDEX wdim2 = rdimy;
+    OC_INDEX wdim3 = rdimz;
+    if(scaled_arad>0) {
+      // We don't need to compute analytic formulae outside
+      // asymptotic radius
+      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dx));
+      if(itest<wdim1) wdim1 = itest;
+      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dy));
+      if(jtest<wdim2) wdim2 = jtest;
+      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dz));
+      if(ktest<wdim3) wdim3 = ktest;
+    }
+    Oxs_3DArray<OC_REALWIDE> workspace;
+    workspace.SetDimensions(wdim1,wdim2+2,wdim3+2);
+    ComputeD6f(Oxs_Newell_f_xx,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A00 = scale*workspace(i,j,k);
         }
       }
     }
-    // Step 2b: Do d^2/dy^2
-    if(jstop==1) {
-      // Only 1 layer in y-direction of f/g stored in scratch array.
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        OC_REALWIDE z = dz*k;
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+kindex;
-          OC_REALWIDE x = dx*(i-1);
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale * 
-            ((Oxs_Newell_f(x,0,z-dz)+Oxs_Newell_f(x,0,z+dz))
-             -2*Oxs_Newell_f(x,0,z));
-          scratch[index]   *= 2;
-          scratch[index+1]  = 0.0;
-          scratch[index+2] -= scale * 
-            ((Oxs_Newell_g(x,z-dz,0)+Oxs_Newell_g(x,z+dz,0))
-             -2*Oxs_Newell_g(x,z,0));
-          scratch[index+2] *= 2;
-        }
-      }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<istop;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+sstridey]
-              + scratch[index+2*sstridey];
-            scratch[index+1] += -2*scratch[index+sstridey+1]
-              + scratch[index+2*sstridey+1];
-            scratch[index+2] += -2*scratch[index+sstridey+2]
-              + scratch[index+2*sstridey+2];
-          }
+    ComputeD6f(Oxs_Newell_g_xy,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A01 = scale*workspace(i,j,k);
         }
       }
     }
-
-    // Step 2c: Do d^2/dx^2
-    if(istop==1) {
-      // Only 1 layer in x-direction of f/g stored in scratch array.
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        OC_REALWIDE z = dz*k;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX index = kindex + j*sstridey;
-          OC_REALWIDE y = dy*j;
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale * 
-            ((4*Oxs_Newell_f(0,y,z)
-              +Oxs_Newell_f(0,y+dy,z+dz)+Oxs_Newell_f(0,y-dy,z+dz)
-              +Oxs_Newell_f(0,y+dy,z-dz)+Oxs_Newell_f(0,y-dy,z-dz))
-             -2*(Oxs_Newell_f(0,y+dy,z)+Oxs_Newell_f(0,y-dy,z)
-                 +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz)));
-          scratch[index]   *= 2;                       // For Nxx
-          scratch[index+2]  = scratch[index+1] = 0.0;  // For Nxy & Nxz
+    ComputeD6f(Oxs_Newell_g_xz,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A02 = scale*workspace(i,j,k);
         }
       }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<rdimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+  ODTV_VECSIZE]
-              + scratch[index+2*ODTV_VECSIZE];
-            scratch[index+1] += -2*scratch[index+  ODTV_VECSIZE+1]
-              + scratch[index+2*ODTV_VECSIZE+1];
-            scratch[index+2] += -2*scratch[index+  ODTV_VECSIZE+2]
-              + scratch[index+2*ODTV_VECSIZE+2];
-          }
+    }
+    ComputeD6f(Oxs_Newell_f_yy,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A11 = scale*workspace(i,j,k);
+        }
+      }
+    }
+    ComputeD6f(Oxs_Newell_g_yz,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A12 = scale*workspace(i,j,k);
+        }
+      }
+    }
+    ComputeD6f(Oxs_Newell_f_zz,workspace,dx,dy,dz);
+    for(k=0;k<wdim3;k++) {
+      for(j=0;j<wdim2;j++) {
+        for(i=0;i<wdim1;i++) {
+          A[k*astridez + j*astridey + i].A22 = scale*workspace(i,j,k);
         }
       }
     }
@@ -679,13 +533,18 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     //    scale *= fft.GetScaling();
     const OXS_FFT_REAL_TYPE selfscale
       = -1 * fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    scratch[0] = Oxs_SelfDemagNx(dx,dy,dz);
-    if(zero_self_demag) scratch[0] -= 1./3.;
-    scratch[0] *= selfscale;
-
-    scratch[1] = 0.0;  // Nxy[0] = 0.
-
-    scratch[2] = 0.0;  // Nxz[0] = 0.
+    A[0].A00 = Oxs_SelfDemagNx(dx,dy,dz);
+    A[0].A11 = Oxs_SelfDemagNy(dx,dy,dz);
+    A[0].A22 = Oxs_SelfDemagNz(dx,dy,dz);
+    if(zero_self_demag) {
+      A[0].A00 -= 1./3.;
+      A[0].A11 -= 1./3.;
+      A[0].A22 -= 1./3.;
+    }
+    A[0].A00 *= selfscale;
+    A[0].A11 *= selfscale;
+    A[0].A22 *= selfscale;
+    A[0].A01 = A[0].A02 = A[0].A12 = 0.0;
 
     // Step 2.5: Use asymptotic (dipolar + higher) approximation for far field
     /*   Dipole approximation:
@@ -715,75 +574,39 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
       Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz);
       Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz);
       Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz);
+      Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz);
+      Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz);
+      Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz);
 
       for(k=0;k<rdimz;++k) {
-        OC_INDEX kindex = k*sstridez;
         OXS_DEMAG_REAL_ASYMP z = dz*k;
         OXS_DEMAG_REAL_ASYMP zsq = z*z;
         for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
+          OC_INDEX jkindex = k*astridez + j*astridey;
           OXS_DEMAG_REAL_ASYMP y = dy*j;
           OXS_DEMAG_REAL_ASYMP ysq = y*y;
-
           OC_INDEX istart = 0;
           OXS_DEMAG_REAL_ASYMP test = scaled_arad_sq-ysq-zsq;
-          if(test>0) {
+          if(test>0.0) {
             if(test>xtest) {
-              istart = rdimx+1;
+              istart = rdimx+1;  // No asymptotic
             } else {
               istart = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(test)/dx));
             }
           }
           for(i=istart;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
+            OC_INDEX index = jkindex + i;
             OXS_DEMAG_REAL_ASYMP x = dx*i;
-            scratch[index]   = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
-            scratch[index+1] = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
-            scratch[index+2] = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
+            A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
+            A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
+            A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
+            A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
+            A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
+            A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
           }
         }
       }
-#if 0
-      fprintf(stderr,"ANxx(%d,%d,%d) = %#.16g (non-threaded)\n",
-              int(rdimx-1),int(rdimy-1),int(rdimz-1),
-              (double)ANxx.NxxAsymptotic(dx*(rdimx-1),
-                                         dy*(rdimy-1),dz*(rdimz-1)));
-      OC_INDEX icheck = ODTV_VECSIZE*(rdimx-1)
-        + (rdimy-1)*sstridey + (rdimz-1)*sstridez;
-      fprintf(stderr,"fft_scaling=%g, product=%#.16g\n",
-              (double)fft_scaling,(double)scratch[icheck]);
-#endif
     }
-#if 0
-    {
-      OXS_FFT_REAL_TYPE fft_scaling = -1 *
-        fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-      OXS_DEMAG_REAL_ASYMP gamma
-        = Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
-                 OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
-      fprintf(stderr,"dx=%Lg, dy=%Lg, dz=%Lg\n",dx,dy,dz);
-      OC_INDEX qi,qj,qk,qo;
-      OXS_DEMAG_REAL_ASYMP qd;
-#define FOO(QA,QB,QC) \
-      qi = (OC_INDEX)Oc_Floor(0.5+(QA)*gamma/dx), \
-        qj = (OC_INDEX)Oc_Floor(0.5+(QB)*gamma/dy),   \
-        qk = (OC_INDEX)Oc_Floor(0.5+(QC)*gamma/dz),     \
-        qo = ODTV_VECSIZE*qi + qj*sstridey + qk*sstridez, \
-        qd = Oc_Sqrt((qi*dx)*(qi*dx)+(qj*dy)*(qj*dy)+(qk*dz)*(qk*dz))/gamma; \
-      fprintf(stderr,"Nxx/Nxy(%3ld,%3ld,%3ld) (dist %24.16Le) = %24.16Le    %24.16Le\n", \
-              qi,qj,qk,qd,scratch[qo]/fft_scaling,scratch[qo+1]/fft_scaling)
-      FOO(7,3,2);
-      FOO(15,7,4);
-      FOO(22,10,6);
-      FOO(30,14,8);
-      FOO(45,21,12);
-      FOO(60,28,16);
-      FOO(90,42,24);
-      FOO(120,56,32);
-      FOO(240,112,64);
-      // FOO(480,224,128);
-    }
-#endif
   }
 
   // Step 2.6: If periodic boundaries selected, compute periodic tensors
@@ -791,59 +614,35 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   // NOTE THAT CODE BELOW CURRENTLY ONLY SUPPORTS 1D PERIODIC!!!
   // NOTE 2: Keep this code in sync with that in
   //         Oxs_Demag::IncrementPreconditioner
-#if 1
-SDA00_count = 0;
-SDA01_count = 0;
-#endif
   if(xperiodic) {
     OXS_FFT_REAL_TYPE fft_scaling = -1 *
       fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
     Oxs_DemagPeriodicX pbctensor(dx,dy,dz,rdimx*dx,scaled_arad);
-
     for(k=0;k<rdimz;++k) {
-      OC_INDEX kindex = k*sstridez;
       OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(j=0;j<rdimy;++j) {
-        OC_INDEX jkindex = kindex + j*sstridey;
+        const OC_INDEX jkindex = k*astridez + j*astridey;
         OXS_DEMAG_REAL_ASYMP y = dy*j;
-        OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz;
-
-        i=0;
-        OXS_DEMAG_REAL_ASYMP x = dx*i;
-        OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-        pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-        scratch[index]   = fft_scaling*Nxx;
-        scratch[index+1] = fft_scaling*Nxy;
-        scratch[index+2] = fft_scaling*Nxz;
-
-        for(i=1;2*i<rdimx;++i) {
-          // Interior i; reflect results from left to right half
-          x = dx*i;
-          index = ODTV_VECSIZE*i+jkindex;
-          OC_INDEX rindex = ODTV_VECSIZE*(rdimx-i)+jkindex;
+        for(i=0;i<=(rdimx/2);++i) {
+          OXS_DEMAG_REAL_ASYMP x = dx*i;
+          OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
           pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-          scratch[index]   = fft_scaling*Nxx; // pbctensor computation
-          scratch[index+1] = fft_scaling*Nxy; // *includes* base window
-          scratch[index+2] = fft_scaling*Nxz; // term
-          scratch[rindex]   =    scratch[index];   // Nxx is even
-          scratch[rindex+1] = -1*scratch[index+1]; // Nxy is odd wrt x
-          scratch[rindex+2] = -1*scratch[index+2]; // Nxz is odd wrt x
+          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
+          A[jkindex + i] = Atmp;
+          if(0<i && 2*i<rdimx) {
+            // Interior point.  Reflect results from left half to
+            // right half.  Note that wrt x, Nxy and Nxz are odd,
+            // the other terms are even.
+            Atmp.A01 *= -1.0;
+            Atmp.A02 *= -1.0;
+            A[jkindex + rdimx - i] = Atmp;
+          }
         }
-
-        if(rdimx%2 == 0) { // Do midpoint seperately
-          i = rdimx/2;
-          x = dx*i;
-          index = ODTV_VECSIZE*i+jkindex;
-          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-          scratch[index]   = fft_scaling*Nxx;
-          scratch[index+1] = fft_scaling*Nxy;
-          scratch[index+2] = fft_scaling*Nxz;
-        }
-
       }
     }
   }
@@ -853,694 +652,28 @@ SDA01_count = 0;
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
     Oxs_DemagPeriodicY pbctensor(dx,dy,dz,rdimy*dy,scaled_arad);
-
     for(k=0;k<rdimz;++k) {
-      OC_INDEX kindex = k*sstridez;
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<=rdimy/2;++j) {
-        OC_INDEX jkindex = kindex + j*sstridey;
+      for(j=0;j<=(rdimy/2);++j) {
         OXS_DEMAG_REAL_ASYMP y = dy*j;
-        if(0<j && 2*j<rdimy) {
-          // Interior j; reflect results from lower to upper half
-          OC_INDEX rjkindex = kindex + (rdimy-j)*sstridey;
-          for(i=0;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OC_INDEX rindex = ODTV_VECSIZE*i+rjkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz;
-            pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-            scratch[index]   = fft_scaling*Nxx;
-            scratch[index+1] = fft_scaling*Nxy;
-            scratch[index+2] = fft_scaling*Nxz;
-            scratch[rindex]   =    scratch[index];   // Nxx is even
-            scratch[rindex+1] = -1*scratch[index+1]; // Nxy is odd wrt y
-            scratch[rindex+2] =    scratch[index+2]; // Nxz is even wrt y
-          }
-        } else { // j==0 or midpoint
-          for(i=0;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz;
-            pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-            scratch[index]   = fft_scaling*Nxx;
-            scratch[index+1] = fft_scaling*Nxy;
-            scratch[index+2] = fft_scaling*Nxz;
-          }
-        }
-      }
-    }
-  }
-  if(zperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
-    Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,rdimz*dz,scaled_arad);
-
-    for(k=0;k<=rdimz/2;++k) {
-      OC_INDEX kindex = k*sstridez;
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
-      if(0<k && 2*k<rdimz) {
-        // Interior k; reflect results from lower to upper half
-        OC_INDEX rkindex = (rdimz-k)*sstridez;
-        for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          OC_INDEX rjkindex = rkindex + j*sstridey;
-          OXS_DEMAG_REAL_ASYMP y = dy*j;
-          for(i=0;i<rdimx;++i) {
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OC_INDEX rindex = ODTV_VECSIZE*i+rjkindex;
-            OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz;
-            pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-            scratch[index]   = fft_scaling*Nxx;
-            scratch[index+1] = fft_scaling*Nxy;
-            scratch[index+2] = fft_scaling*Nxz;
-            scratch[rindex]   =    scratch[index];   // Nxx is even
-            scratch[rindex+1] =    scratch[index+1]; // Nxy is even wrt z
-            scratch[rindex+2] = -1*scratch[index+2]; // Nxz is odd wrt z
-          }
-        }
-      } else { // k==0 or midpoint
-        for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          OXS_DEMAG_REAL_ASYMP y = dy*j;
-          for(i=0;i<rdimx;++i) {
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz;
-            pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-            scratch[index]   = fft_scaling*Nxx;
-            scratch[index+1] = fft_scaling*Nxy;
-            scratch[index+2] = fft_scaling*Nxz;
-          }
-        }
-      }
-    }
-  }
-#if REPORT_TIME
-  dvltimer[0].Stop();
-#endif // REPORT_TIME
-#if 1
-    printf("rdimx=%ld, rdimy=%ld, rdimz=%ld,"
-           " SDA00_count = %ld, SDA01_count = %ld\n",
-           (long int)rdimx,(long int)rdimy,(long int)rdimz,
-           (long int)SDA00_count,(long int)SDA01_count);
-#endif
-#if 0
-    for(k=0;k<rdimz;++k) {
-      OC_INDEX kindex = k*sstridez;
-      for(j=0;j<rdimy;++j) {
-        OC_INDEX jkindex = kindex + j*sstridey;
+        const OC_INDEX jkindex = k*astridez + j*astridey;
+        const OC_INDEX mjkindex = k*astridez + (rdimy-j)*astridey;
         for(i=0;i<rdimx;++i) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          printf("A[%2d][%2d][%2d].Nxx=%25.16e"
-                 " Nxy=%25.16e Nxz=%25.16e\n",
-                 i,j,k,
-                 scratch[index],
-                 scratch[index+1],
-                 scratch[index+2]);
-        }
-      }
-    }
-#endif
-
-  // Step 3: Use symmetries to reflect into other octants.
-  //     Also, at each coordinate plane, set to 0.0 any term
-  //     which is odd across that boundary.  It should already
-  //     be close to 0, but will likely be slightly off due to
-  //     rounding errors.
-  // Symmetries: A00, A11, A22 are even in each coordinate
-  //             A01 is odd in x and y, even in z.
-  //             A02 is odd in x and z, even in y.
-  //             A12 is odd in y and z, even in x.
-#if REPORT_TIME
-  dvltimer[1].Start();
-#endif // REPORT_TIME
-  for(k=0;k<rdimz;k++) {
-    OC_INDEX kindex = k*sstridez;
-    for(j=0;j<rdimy;j++) {
-      OC_INDEX jkindex = kindex + j*sstridey;
-      for(i=0;i<rdimx;i++) {
-        OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-
-        if(i==0 || j==0) scratch[index+1] = 0.0;  // A01
-        if(i==0 || k==0) scratch[index+2] = 0.0;  // A02
-
-        OXS_FFT_REAL_TYPE tmpA00 = scratch[index];
-        OXS_FFT_REAL_TYPE tmpA01 = scratch[index+1];
-        OXS_FFT_REAL_TYPE tmpA02 = scratch[index+2];
-        if(i>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*(ldimx-i)+j*sstridey+k*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =  -1*tmpA01;
-          scratch[tindex+2] =  -1*tmpA02;
-        }
-        if(j>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*i+(ldimy-j)*sstridey+k*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =  -1*tmpA01;
-          scratch[tindex+2] =     tmpA02;
-        }
-        if(k>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*i+j*sstridey+(ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =     tmpA01;
-          scratch[tindex+2] =  -1*tmpA02;
-        }
-        if(i>0 && j>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + (ldimy-j)*sstridey + k*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =     tmpA01;
-          scratch[tindex+2] =  -1*tmpA02;
-        }
-        if(i>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + j*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =  -1*tmpA01;
-          scratch[tindex+2] =     tmpA02;
-        }
-        if(j>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*i + (ldimy-j)*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =  -1*tmpA01;
-          scratch[tindex+2] =  -1*tmpA02;
-        }
-        if(i>0 && j>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + (ldimy-j)*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA00;
-          scratch[tindex+1] =     tmpA01;
-          scratch[tindex+2] =     tmpA02;
-        }
-      }
-    }
-  }
-
-  // Step 3.5: Fill in zero-padded overhang
-  for(k=0;k<ldimz;k++) {
-    OC_INDEX kindex = k*sstridez;
-    if(k<rdimz || k>ldimz-rdimz) { // Outer k
-      for(j=0;j<ldimy;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        if(j<rdimy || j>ldimy-rdimy) { // Outer j
-          for(i=rdimx;i<=ldimx-rdimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-          }
-        } else { // Inner j
-          for(i=0;i<ldimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-          }
-        }
-      }
-    } else { // Middle k
-      for(j=0;j<ldimy;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        for(i=0;i<ldimx;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-        }
-      }
-    }
-  }
-
-#if VERBOSE_DEBUG && !defined(NDEBUG)
-  {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    for(k=0;k<ldimz;++k) {
-      for(j=0;j<ldimy;++j) {
-        for(i=0;i<ldimx;++i) {
-          OC_INDEX index = ODTV_VECSIZE*((k*ldimy+j)*ldimx+i);
-          printf("A00[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index]/fft_scaling));
-          printf("A01[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index+1]/fft_scaling));
-          printf("A02[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index+2]/fft_scaling));
-        }
-      }
-    }
-    fflush(stdout);
-  }
-#endif // NDEBUG
-#if REPORT_TIME
-  dvltimer[1].Stop();
-#endif // REPORT_TIME
-
-  // Step 4: Transform into frequency domain.  These lines are cribbed
-  // from the corresponding code in Oxs_FFT3DThreeVector.
-  // Note: Using an Oxs_FFT3DThreeVector fft object, this would be just
-  //    fft.AdjustInputDimensions(ldimx,ldimy,ldimz);
-  //    fft.ForwardRealToComplexFFT(scratch,Hxfrm);
-  //    fft.AdjustInputDimensions(rdimx,rdimy,rdimz); // Safety
-  {
-#if REPORT_TIME
-  dvltimer[2].Start();
-#endif // REPORT_TIME
-    fftx.AdjustInputDimensions(ldimx,ldimy);
-    ffty.AdjustInputDimensions(ldimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(ldimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-
-    OC_INDEX rxydim = ODTV_VECSIZE*ldimx*ldimy;
-    OC_INDEX cxydim = ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy;
-
-    for(OC_INDEX m=0;m<ldimz;++m) {
-      // x-direction transforms in plane "m"
-      fftx.ForwardRealToComplexFFT(scratch+m*rxydim,Hxfrm+m*cxydim);
-      
-      // y-direction transforms in plane "m"
-      ffty.ForwardFFT(Hxfrm+m*cxydim);
-    }
-    fftz.ForwardFFT(Hxfrm); // z-direction transforms
-
-    fftx.AdjustInputDimensions(rdimx,rdimy);   // Safety
-    ffty.AdjustInputDimensions(rdimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(rdimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-
-#if REPORT_TIME
-  dvltimer[2].Stop();
-#endif // REPORT_TIME
-  }
-
-  // Copy results from scratch into A00, A01, and A02.  We only need
-  // store 1/8th of the results because of symmetries.
-#if REPORT_TIME
-  dvltimer[3].Start();
-#endif // REPORT_TIME
-  OC_INDEX astridey = adimx;
-  OC_INDEX astridez = astridey*adimy;
-  OC_INDEX a_size = astridez*adimz;
-  assert(0 == A);
-  A = new A_coefs[a_size];
-
-  OC_INDEX cstridey = 2*ODTV_VECSIZE*cdimx; // "2" for complex data
-  OC_INDEX cstridez = cstridey*cdimy;
-  for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx;i++) {
-    OC_INDEX aindex = i+j*astridey+k*astridez;
-    OC_INDEX hindex = 2*ODTV_VECSIZE*i+j*cstridey+k*cstridez;
-    A[aindex].A00 = Hxfrm[hindex];   // A00
-    A[aindex].A01 = Hxfrm[hindex+2]; // A01
-    A[aindex].A02 = Hxfrm[hindex+4]; // A02
-    // The A## values are all real-valued, so we only need to pull the
-    // real parts out of Hxfrm, which are stored in the even offsets.
-  }
-#if REPORT_TIME
-  dvltimer[3].Stop();
-#endif // REPORT_TIME
-
-#if 0 // TRANSFORM CHECK
-  {
-    fftx.AdjustInputDimensions(ldimx,ldimy);
-    ffty.AdjustInputDimensions(ldimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(ldimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-
-    OC_INDEX rxydim = ODTV_VECSIZE*ldimx*ldimy;
-    OC_INDEX cxydim = ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy;
-
-    fftz.InverseFFT(Hxfrm); // z-direction transforms
-
-    for(OC_INDEX m=0;m<ldimz;++m) {
-      // y-direction transforms in plane "m"
-      ffty.InverseFFT(Hxfrm+m*cxydim);
-
-      // x-direction transforms in plane "m"
-      fftx.InverseComplexToRealFFT(Hxfrm+m*cxydim,scratch+m*rxydim);
-    }
-
-    fftx.AdjustInputDimensions(rdimx,rdimy);   // Safety
-    ffty.AdjustInputDimensions(rdimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(rdimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-  }
-#endif
-
-  // Repeat for Nyy, Nyz and Nzz. //////////////////////////////////////
-
-#if REPORT_TIME
-  dvltimer[4].Start();
-#endif // REPORT_TIME
-  if(!xperiodic && !yperiodic && !zperiodic) {
-    // Step 1: Evaluate f & g at each cell site.  Offset by (-dx,-dy,-dz)
-    //  so we can do 2nd derivative operations "in-place".
-    for(k=0;k<kstop;k++) {
-      OC_INDEX kindex = k*sstridez;
-      OC_REALWIDE z = dz*(k-1);
-      for(j=0;j<jstop;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        OC_REALWIDE y = dy*(j-1);
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          OC_REALWIDE x = dx*(i-1);
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   = scale*Oxs_Newell_f(y,x,z);  // For Nyy
-          scratch[index+1] = scale*Oxs_Newell_g(y,z,x);  // For Nyz
-          scratch[index+2] = scale*Oxs_Newell_f(z,y,x);  // For Nzz
-        }
-      }
-    }
-
-    // Step 2a: Do d^2/dz^2
-    if(kstop==1) {
-      // Only 1 layer in z-direction of f/g stored in scratch array.
-      for(j=0;j<jstop;j++) {
-        OC_INDEX jkindex = j*sstridey;
-        OC_REALWIDE y = dy*(j-1);
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          OC_REALWIDE x = dx*(i-1);
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale*Oxs_Newell_f(y,x,0);  // For Nyy
-          scratch[index]   *= 2;
-          scratch[index+1]  = 0.0;                    // For Nyz
-          scratch[index+2] -= scale*Oxs_Newell_f(0,y,x);  // For Nzz
-          scratch[index+2] *= 2;
-        }
-      }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<jstop;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<istop;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+sstridez]
-              + scratch[index+2*sstridez];
-            scratch[index+1] += -2*scratch[index+sstridez+1]
-              + scratch[index+2*sstridez+1];
-            scratch[index+2] += -2*scratch[index+sstridez+2]
-              + scratch[index+2*sstridez+2];
-          }
-        }
-      }
-    }
-    // Step 2b: Do d^2/dy^2
-    if(jstop==1) {
-      // Only 1 layer in y-direction of f/g stored in scratch array.
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        OC_REALWIDE z = dz*k;
-        for(i=0;i<istop;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+kindex;
-          OC_REALWIDE x = dx*(i-1);
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale * 
-            ((Oxs_Newell_f(0,x,z-dz)+Oxs_Newell_f(0,x,z+dz))
-             -2*Oxs_Newell_f(0,x,z));
-          scratch[index]   *= 2;   // For Nyy
-          scratch[index+1] = 0.0;  // For Nyz
-          scratch[index+2] -= scale * 
-            ((Oxs_Newell_f(z-dz,0,x)+Oxs_Newell_f(z+dz,0,x))
-             -2*Oxs_Newell_f(z,0,x));
-          scratch[index+2] *= 2;   // For Nzz
-        }
-      }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<istop;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+sstridey]
-              + scratch[index+2*sstridey];
-            scratch[index+1] += -2*scratch[index+sstridey+1]
-              + scratch[index+2*sstridey+1];
-            scratch[index+2] += -2*scratch[index+sstridey+2]
-              + scratch[index+2*sstridey+2];
-          }
-        }
-      }
-    }
-    // Step 2c: Do d^2/dx^2
-    if(istop==1) {
-      // Only 1 layer in x-direction of f/g stored in scratch array.
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        OC_REALWIDE z = dz*k;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX index = kindex + j*sstridey;
-          OC_REALWIDE y = dy*j;
-          // Function f is even in each variable, so for example
-          //    f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
-          //        =  2( f(x,y,-dz) - f(x,y,0) )
-          // Function g(x,y,z) is even in z and odd in x and y,
-          // so for example
-          //    g(x,-dz,y) - 2g(x,0,y) + g(x,dz,y)
-          //        =  2g(x,0,y) = 0.
-          // Nyy(x,y,z) = Nxx(y,x,z);  Nzz(x,y,z) = Nxx(z,y,x);
-          // Nxz(x,y,z) = Nxy(x,z,y);  Nyz(x,y,z) = Nxy(y,z,x);
-          scratch[index]   -= scale * 
-            ((4*Oxs_Newell_f(y,0,z)
-              +Oxs_Newell_f(y+dy,0,z+dz)+Oxs_Newell_f(y-dy,0,z+dz)
-              +Oxs_Newell_f(y+dy,0,z-dz)+Oxs_Newell_f(y-dy,0,z-dz))
-             -2*(Oxs_Newell_f(y+dy,0,z)+Oxs_Newell_f(y-dy,0,z)
-                 +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz)));
-          scratch[index]   *= 2;  // For Nyy
-          scratch[index+1] -= scale * 
-            ((4*Oxs_Newell_g(y,z,0)
-              +Oxs_Newell_g(y+dy,z+dz,0)+Oxs_Newell_g(y-dy,z+dz,0)
-              +Oxs_Newell_g(y+dy,z-dz,0)+Oxs_Newell_g(y-dy,z-dz,0))
-             -2*(Oxs_Newell_g(y+dy,z,0)+Oxs_Newell_g(y-dy,z,0)
-                 +Oxs_Newell_g(y,z+dz,0)+Oxs_Newell_g(y,z-dz,0)));
-          scratch[index+1] *= 2;  // For Nyz
-          scratch[index+2] -= scale * 
-            ((4*Oxs_Newell_f(z,y,0)
-              +Oxs_Newell_f(z+dz,y+dy,0)+Oxs_Newell_f(z+dz,y-dy,0)
-              +Oxs_Newell_f(z-dz,y+dy,0)+Oxs_Newell_f(z-dz,y-dy,0))
-             -2*(Oxs_Newell_f(z,y+dy,0)+Oxs_Newell_f(z,y-dy,0)
-                 +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0)));
-          scratch[index+2] *= 2;  // For Nzz
-        }
-      }
-    } else {
-      for(k=0;k<rdimz;k++) {
-        OC_INDEX kindex = k*sstridez;
-        for(j=0;j<rdimy;j++) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          for(i=0;i<rdimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index]   += -2*scratch[index+  ODTV_VECSIZE]
-              + scratch[index+2*ODTV_VECSIZE];
-            scratch[index+1] += -2*scratch[index+  ODTV_VECSIZE+1]
-              + scratch[index+2*ODTV_VECSIZE+1];
-            scratch[index+2] += -2*scratch[index+  ODTV_VECSIZE+2]
-              + scratch[index+2*ODTV_VECSIZE+2];
-          }
-        }
-      }
-    }
-
-    // Special "SelfDemag" code may be more accurate at index 0,0,0.
-    const OXS_FFT_REAL_TYPE selfscale
-      = -1 * fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    scratch[0] = Oxs_SelfDemagNy(dx,dy,dz);
-    if(zero_self_demag) scratch[0] -= 1./3.;
-    scratch[0] *= selfscale;
-
-    scratch[1] = 0.0;  // Nyz[0] = 0.
-
-    scratch[2] = Oxs_SelfDemagNz(dx,dy,dz);
-    if(zero_self_demag) scratch[2] -= 1./3.;
-    scratch[2] *= selfscale;
-
-    // Step 2.5: Use asymptotic (dipolar + higher) approximation for far field
-    /*   Dipole approximation:
-     *
-     *                        / 3x^2-R^2   3xy       3xz    \
-     *             dx.dy.dz   |                             |
-     *  H_demag = ----------- |   3xy   3y^2-R^2     3yz    |
-     *             4.pi.R^5   |                             |
-     *                        \   3xz      3yz     3z^2-R^2 /
-     */
-    // See Notes IV, 26-Feb-2007, p102.
-    if(scaled_arad>=0.0) {
-      // Note that all distances here are in "reduced" units,
-      // scaled so that dx, dy, and dz are either small integers
-      // or else close to 1.0.
-      OXS_DEMAG_REAL_ASYMP scaled_arad_sq = scaled_arad*scaled_arad;
-      OXS_FFT_REAL_TYPE fft_scaling = -1 *
-        fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-      /// Note: Since H = -N*M, and by convention with the rest of this
-      /// code, we store "-N" instead of "N" so we don't have to multiply
-      /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
-      OXS_DEMAG_REAL_ASYMP xtest
-        = static_cast<OXS_DEMAG_REAL_ASYMP>(rdimx)*dx;
-      xtest *= xtest;
-
-      Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz);
-      Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz);
-      Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz);
-
-      for(k=0;k<rdimz;++k) {
-        OC_INDEX kindex = k*sstridez;
-        OXS_DEMAG_REAL_ASYMP z = dz*k;
-        OXS_DEMAG_REAL_ASYMP zsq = z*z;
-        for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          OXS_DEMAG_REAL_ASYMP y = dy*j;
-          OXS_DEMAG_REAL_ASYMP ysq = y*y;
-
-          OC_INDEX istart = 0;
-          OXS_DEMAG_REAL_ASYMP test = scaled_arad_sq-ysq-zsq;
-          if(test>0) {
-            if(test>xtest) {
-              istart = rdimx+1;
-            } else {
-              istart = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(test)/dx));
-            }
-          }
-          for(i=istart;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            scratch[index]   = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
-            scratch[index+1] = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
-            scratch[index+2] = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
-          }
-        }
-      }
-    }
-  }
-
-  // Step 2.6: If periodic boundaries selected, compute periodic tensors
-  // instead.
-  // NOTE THAT CODE BELOW ONLY SUPPORTS 1D PERIODIC!!!
-  // NOTE 2: Keep this code in sync with that in
-  //         Oxs_Demag::IncrementPreconditioner
-  if(xperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
-    Oxs_DemagPeriodicX pbctensor(dx,dy,dz,rdimx*dx,scaled_arad);
-
-    for(k=0;k<rdimz;++k) {
-      OC_INDEX kindex = k*sstridez;
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<rdimy;++j) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
-        OXS_DEMAG_REAL_ASYMP Nyy, Nyz, Nzz;
-
-        i=0;
-        OXS_DEMAG_REAL_ASYMP x = dx*i;
-        OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-        pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-        scratch[index]   = fft_scaling*Nyy;
-        scratch[index+1] = fft_scaling*Nyz;
-        scratch[index+2] = fft_scaling*Nzz;
-
-        for(i=1;2*i<rdimx;++i) {
-          // Interior i; reflect results from left to right half
-          x = dx*i;
-          index = ODTV_VECSIZE*i+jkindex;
-          OC_INDEX rindex = ODTV_VECSIZE*(rdimx-i)+jkindex;
+          OXS_DEMAG_REAL_ASYMP x = dx*i;
+          OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
+          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
           pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-          scratch[index]   = fft_scaling*Nyy;  // pbctensor computation
-          scratch[index+1] = fft_scaling*Nyz;  // *includes* base window
-          scratch[index+2] = fft_scaling*Nzz;  // term
-          scratch[rindex]   = scratch[index];   // Nyy is even
-          scratch[rindex+1] = scratch[index+1]; // Nyz is even wrt x
-          scratch[rindex+2] = scratch[index+2]; // Nzz is even
-        }
-
-        if(rdimx%2 == 0) { // Do midpoint seperately
-          i = rdimx/2;
-          x = dx*i;
-          index = ODTV_VECSIZE*i+jkindex;
-          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-          scratch[index]   = fft_scaling*Nyy;
-          scratch[index+1] = fft_scaling*Nyz;
-          scratch[index+2] = fft_scaling*Nzz;
-        }
-
-      }
-    }
-  }
-  if(yperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
-    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,rdimy*dy,scaled_arad);
-
-    for(k=0;k<rdimz;++k) {
-      OC_INDEX kindex = k*sstridez;
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<=rdimy/2;++j) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
-        if(0<j && 2*j<rdimy) {
-          // Interior j; reflect results from lower to upper half
-          OC_INDEX rjkindex = kindex + (rdimy-j)*sstridey;
-          for(i=0;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OC_INDEX rindex = ODTV_VECSIZE*i+rjkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OXS_DEMAG_REAL_ASYMP Nyy, Nyz, Nzz;
-            pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-            scratch[index]   = fft_scaling*Nyy;
-            scratch[index+1] = fft_scaling*Nyz;
-            scratch[index+2] = fft_scaling*Nzz;
-            scratch[rindex]   =    scratch[index];   // Nyy is even
-            scratch[rindex+1] = -1*scratch[index+1]; // Nyz is odd wrt y
-            scratch[rindex+2] =    scratch[index+2]; // Nzz is even
-          }
-        } else { // j==0 or midpoint
-          for(i=0;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OXS_DEMAG_REAL_ASYMP Nyy, Nyz, Nzz;
-            pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-            scratch[index]   = fft_scaling*Nyy;
-            scratch[index+1] = fft_scaling*Nyz;
-            scratch[index+2] = fft_scaling*Nzz;
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
+          A[jkindex + i] = Atmp;
+          if(0<j && 2*j<rdimy) {
+            // Interior point.  Reflect results from lower half to
+            // upper half.  Note that wrt y, Nxy and Nyz are odd,
+            // the other terms are even.
+            Atmp.A01 *= -1.0;
+            Atmp.A12 *= -1.0;
+            A[mjkindex + i] = Atmp;
           }
         }
       }
@@ -1552,245 +685,187 @@ SDA01_count = 0;
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in GetEnergy() below.
-
     Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,rdimz*dz,scaled_arad);
-
-    for(k=0;k<=rdimz/2;++k) {
-      OC_INDEX kindex = k*sstridez;
+    for(k=0;k<=(rdimz/2);++k) {
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      if(0<k && 2*k<rdimz) {
-        // Interior k; reflect results from lower to upper half
-        OC_INDEX rkindex = (rdimz-k)*sstridez;
-        for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          OC_INDEX rjkindex = rkindex + j*sstridey;
-          OXS_DEMAG_REAL_ASYMP y = dy*j;
-          for(i=0;i<rdimx;++i) {
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OC_INDEX rindex = ODTV_VECSIZE*i+rjkindex;
-            OXS_DEMAG_REAL_ASYMP Nyy, Nyz, Nzz;
-            pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-            scratch[index]   = fft_scaling*Nyy;
-            scratch[index+1] = fft_scaling*Nyz;
-            scratch[index+2] = fft_scaling*Nzz;
-            scratch[rindex]   =    scratch[index];   // Nyy is even
-            scratch[rindex+1] = -1*scratch[index+1]; // Nyz is odd wrt z
-            scratch[rindex+2] =    scratch[index+2]; // Nzz is even
-          }
-        }
-      } else { // k==0 or midpoint
-        for(j=0;j<rdimy;++j) {
-          OC_INDEX jkindex = kindex + j*sstridey;
-          OXS_DEMAG_REAL_ASYMP y = dy*j;
-          for(i=0;i<rdimx;++i) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            OXS_DEMAG_REAL_ASYMP x = dx*i;
-            OXS_DEMAG_REAL_ASYMP Nyy, Nyz, Nzz;
-            pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-            scratch[index]   = fft_scaling*Nyy;
-            scratch[index+1] = fft_scaling*Nyz;
-            scratch[index+2] = fft_scaling*Nzz;
+      for(j=0;j<rdimy;++j) {
+        const OC_INDEX kjindex = k*astridez + j*astridey;
+        const OC_INDEX mkjindex = (rdimz-k)*astridez + j*astridey;
+        OXS_DEMAG_REAL_ASYMP y = dy*j;
+        for(i=0;i<rdimx;++i) {
+          OXS_DEMAG_REAL_ASYMP x = dx*i;
+          OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
+          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
+          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
+          A[kjindex + i] = Atmp;
+          if(0<k && 2*k<rdimz) {
+            // Interior point.  Reflect results from bottom half to
+            // top half.  Note that wrt z, Nxz and Nyz are odd, the
+            // other terms are even.
+            Atmp.A02 *= -1.0;
+            Atmp.A12 *= -1.0;
+            A[mkjindex + i] = Atmp;
           }
         }
       }
     }
   }
-#if REPORT_TIME
-  dvltimer[4].Stop();
-#endif // REPORT_TIME
 
-  // Step 3: Use symmetries to reflect into other octants.
-  //     Also, at each coordinate plane, set to 0.0 any term
-  //     which is odd across that boundary.  It should already
-  //     be close to 0, but will likely be slightly off due to
-  //     rounding errors.
-  // Symmetries: A00, A11, A22 are even in each coordinate
-  //             A01 is odd in x and y, even in z.
-  //             A02 is odd in x and z, even in y.
-  //             A12 is odd in y and z, even in x.
-#if REPORT_TIME
-  dvltimer[5].Start();
-#endif // REPORT_TIME
-  for(k=0;k<rdimz;k++) {
-    OC_INDEX kindex = k*sstridez;
-    for(j=0;j<rdimy;j++) {
-      OC_INDEX jkindex = kindex + j*sstridey;
-      for(i=0;i<rdimx;i++) {
-        OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-
-        if(j==0 || k==0) scratch[index+1] = 0.0;  // A12
-
-        OXS_FFT_REAL_TYPE tmpA11 = scratch[index];
-        OXS_FFT_REAL_TYPE tmpA12 = scratch[index+1];
-        OXS_FFT_REAL_TYPE tmpA22 = scratch[index+2];
-        if(i>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*(ldimx-i)+j*sstridey+k*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =     tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(j>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*i+(ldimy-j)*sstridey+k*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =  -1*tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(k>0) {
-          OC_INDEX tindex = ODTV_VECSIZE*i+j*sstridey+(ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =  -1*tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(i>0 && j>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + (ldimy-j)*sstridey + k*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =  -1*tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(i>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + j*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =  -1*tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(j>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*i + (ldimy-j)*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =     tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-        if(i>0 && j>0 && k>0) {
-          OC_INDEX tindex
-            = ODTV_VECSIZE*(ldimx-i) + (ldimy-j)*sstridey + (ldimz-k)*sstridez;
-          scratch[tindex]   =     tmpA11;
-          scratch[tindex+1] =     tmpA12;
-          scratch[tindex+2] =     tmpA22;
-        }
-      }
-    }
-  }
-
-  // Step 3.5: Fill in zero-padded overhang
-  for(k=0;k<ldimz;k++) {
-    OC_INDEX kindex = k*sstridez;
-    if(k<rdimz || k>ldimz-rdimz) { // Outer k
-      for(j=0;j<ldimy;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        if(j<rdimy || j>ldimy-rdimy) { // Outer j
-          for(i=rdimx;i<=ldimx-rdimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-          }
-        } else { // Inner j
-          for(i=0;i<ldimx;i++) {
-            OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-            scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-          }
-        }
-      }
-    } else { // Middle k
-      for(j=0;j<ldimy;j++) {
-        OC_INDEX jkindex = kindex + j*sstridey;
-        for(i=0;i<ldimx;i++) {
-          OC_INDEX index = ODTV_VECSIZE*i+jkindex;
-          scratch[index] = scratch[index+1] = scratch[index+2] = 0.0;
-        }
-      }
-    }
-  }
-#if REPORT_TIME
-  dvltimer[5].Stop();
-#endif // REPORT_TIME
-
-#if VERBOSE_DEBUG && !defined(NDEBUG)
+  // Step 3: Do FFTs.  We only need store 1/8th of the results because
+  //   of symmetries.  In this computation, make use of the relationship
+  //   between FFTs of symmetric (even or odd) sequences and zero-padded
+  //   sequences, as discussed in NOTES VII, 1-May-2015, p95.  In this
+  //   regard, note that ldim is always >= 2*rdim, so it ldim/2<rdim
+  //   never happens, so the sequence midpoint=ldim/2, can always be
+  //   taken as zero.
+  // Note: In this code STL vector objects are used to acquire scratch
+  //  buffer space, using the &(arr[0]) idiom.  If using C++-11, the
+  //  arr.data() member function could be used instead.
   {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    for(k=0;k<ldimz;++k) {
-      for(j=0;j<ldimy;++j) {
-        for(i=0;i<ldimx;++i) {
-          OC_INDEX index = ODTV_VECSIZE*((k*ldimy+j)*ldimx+i);
-          printf("A11[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index]/fft_scaling));
-          printf("A12[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index+1]/fft_scaling));
-          printf("A22[%02ld][%02ld][%02ld] = %#25.18Le\n",
-                 i,j,k,(long double)(scratch[index+2]/fft_scaling));
+    Oxs_FFT1DThreeVector workfft;
+    vector<OXS_FFT_REAL_TYPE> sourcebuf;
+    vector<OXS_FFT_REAL_TYPE> targetbuf;
+
+    // FFTs in x-direction
+    workfft.SetDimensions(rdimx,ldimx,1);
+    sourcebuf.resize(ODTV_VECSIZE*rdimx);
+    targetbuf.resize(2*ODTV_VECSIZE*adimx);
+    /// "ODTV_VECSIZE" is here because we work with arrays of
+    /// ThreeVectors.  The target buf has a factor of 2 because the
+    /// results are (nominally) complex (as opposed to real) quantities.
+    for(k=0;k<rdimz;++k) {
+      for(j=0;j<rdimy;++j) {
+        const OC_INDEX aoff = k*astridez +j*astridey;
+        for(i=0;i<rdimx;++i) {
+          // Fill sourcebuf, diagonal elts
+          sourcebuf[ODTV_VECSIZE*i]   = A[aoff + i].A00;
+          sourcebuf[ODTV_VECSIZE*i+1] = A[aoff + i].A11;
+          sourcebuf[ODTV_VECSIZE*i+2] = A[aoff + i].A22;
+        }
+        sourcebuf[0] *= 0.5; sourcebuf[1] *= 0.5; sourcebuf[2] *= 0.5;
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(i=0;i<adimx;++i) {
+          // Copy back from targetbuf.  Since A00, A11, and A22 are all
+          // even, we take the real component of the transformed data.
+          A[aoff + i].A00 = targetbuf[2*ODTV_VECSIZE*i];
+          A[aoff + i].A11 = targetbuf[2*ODTV_VECSIZE*i+2];
+          A[aoff + i].A22 = targetbuf[2*ODTV_VECSIZE*i+4];
+        }
+        for(i=0;i<rdimx;++i) {
+          // Fill sourcebuf, off-diagonal elts
+          sourcebuf[ODTV_VECSIZE*i]   = A[aoff + i].A01;
+          sourcebuf[ODTV_VECSIZE*i+1] = A[aoff + i].A02;
+          sourcebuf[ODTV_VECSIZE*i+2] = A[aoff + i].A12;
+        }
+        sourcebuf[0]=0.0; sourcebuf[1]=0.0; sourcebuf[2]*=0.5;
+        // A01 and A02 are odd wrt x, A12 is even.
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(i=0;i<adimx;++i) {
+          // Copy back from targetbuf.  A01 and A02 are odd wrt x, so
+          // take imaginary component for those two.  A12 is even wrt x,
+          // so take the real component for it.
+          A[aoff + i].A01 = targetbuf[2*ODTV_VECSIZE*i+1];
+          A[aoff + i].A02 = targetbuf[2*ODTV_VECSIZE*i+3];
+          A[aoff + i].A12 = targetbuf[2*ODTV_VECSIZE*i+4];
         }
       }
     }
-    fflush(stdout);
-  }
-#endif // NDEBUG
 
-  // Step 4: Transform into frequency domain.  These lines are cribbed
-  // from the corresponding code in Oxs_FFT3DThreeVector.
-  // Note: Using an Oxs_FFT3DThreeVector fft object, this would be just
-  //    fft.AdjustInputDimensions(ldimx,ldimy,ldimz);
-  //    fft.ForwardRealToComplexFFT(scratch,Hxfrm);
-  //    fft.AdjustInputDimensions(rdimx,rdimy,rdimz); // Safety
-  {
-#if REPORT_TIME
-  dvltimer[6].Start();
-#endif // REPORT_TIME
-    fftx.AdjustInputDimensions(ldimx,ldimy);
-    ffty.AdjustInputDimensions(ldimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(ldimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-
-    OC_INDEX rxydim = ODTV_VECSIZE*ldimx*ldimy;
-    OC_INDEX cxydim = ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy;
-
-    for(OC_INDEX m=0;m<ldimz;++m) {
-      // x-direction transforms in plane "m"
-      fftx.ForwardRealToComplexFFT(scratch+m*rxydim,Hxfrm+m*cxydim);
-      
-      // y-direction transforms in plane "m"
-      ffty.ForwardFFT(Hxfrm+m*cxydim);
+    // FFTs in y-direction
+    workfft.SetDimensions(rdimy,ldimy,1);
+    sourcebuf.resize(ODTV_VECSIZE*rdimy);
+    targetbuf.resize(2*ODTV_VECSIZE*adimy);
+    for(k=0;k<rdimz;++k) {
+      for(i=0;i<adimx;++i) {
+        const OC_INDEX aoff = k*astridez + i;
+        for(j=0;j<rdimy;++j) {
+          // Fill sourcebuf, diagonal elts
+          sourcebuf[ODTV_VECSIZE*j]   = A[aoff+j*astridey].A00;
+          sourcebuf[ODTV_VECSIZE*j+1] = A[aoff+j*astridey].A11;
+          sourcebuf[ODTV_VECSIZE*j+2] = A[aoff+j*astridey].A22;
+        }
+        sourcebuf[0] *= 0.5; sourcebuf[1] *= 0.5; sourcebuf[2] *= 0.5;
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(j=0;j<adimy;++j) {
+          // Copy back from targetbuf.  Since A00, A11, and A22 are all
+          // even, we take the real component of the transformed data.
+          A[aoff+j*astridey].A00 = targetbuf[2*ODTV_VECSIZE*j];
+          A[aoff+j*astridey].A11 = targetbuf[2*ODTV_VECSIZE*j+2];
+          A[aoff+j*astridey].A22 = targetbuf[2*ODTV_VECSIZE*j+4];
+        }
+        for(j=0;j<rdimy;++j) {
+          // Fill sourcebuf, off-diagonal elts
+          sourcebuf[ODTV_VECSIZE*j]   = A[aoff+j*astridey].A01;
+          sourcebuf[ODTV_VECSIZE*j+1] = A[aoff+j*astridey].A02;
+          sourcebuf[ODTV_VECSIZE*j+2] = A[aoff+j*astridey].A12;
+        }
+        sourcebuf[0]=0.0; sourcebuf[1]*=0.5; sourcebuf[2]=0.0;
+        // A01 and A12 are odd wrt y, A02 is even.
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(j=0;j<adimy;++j) {
+          // Copy back from targetbuf.  A01 and A12 are odd wrt y, so
+          // take imaginary component for those two.  A02 is even wrt y,
+          // so take the real component for it.
+          A[aoff+j*astridey].A01 = targetbuf[2*ODTV_VECSIZE*j+1];
+          A[aoff+j*astridey].A02 = targetbuf[2*ODTV_VECSIZE*j+2];
+          A[aoff+j*astridey].A12 = targetbuf[2*ODTV_VECSIZE*j+5];
+        }
+      }
     }
-    fftz.ForwardFFT(Hxfrm); // z-direction transforms
 
-    fftx.AdjustInputDimensions(rdimx,rdimy);   // Safety
-    ffty.AdjustInputDimensions(rdimy,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx,
-                               ODTV_VECSIZE*cdimx);
-    fftz.AdjustInputDimensions(rdimz,
-                               ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx*cdimy,
-                               ODTV_VECSIZE*cdimx*cdimy);
-
-#if REPORT_TIME
-  dvltimer[6].Stop();
-#endif // REPORT_TIME
+    // FFTs in z-direction
+    workfft.SetDimensions(rdimz,ldimz,1);
+    sourcebuf.resize(ODTV_VECSIZE*rdimz);
+    targetbuf.resize(2*ODTV_VECSIZE*adimz);
+    for(j=0;j<adimy;++j) {
+      for(i=0;i<adimx;++i) {
+        const OC_INDEX aoff = j*astridey + i;
+        for(k=0;k<rdimz;++k) {
+          // Fill sourcebuf, diagonal elts
+          sourcebuf[ODTV_VECSIZE*k]   = A[aoff+k*astridez].A00;
+          sourcebuf[ODTV_VECSIZE*k+1] = A[aoff+k*astridez].A11;
+          sourcebuf[ODTV_VECSIZE*k+2] = A[aoff+k*astridez].A22;
+        }
+        sourcebuf[0]*=0.5; sourcebuf[1]*=0.5; sourcebuf[2]*=0.5;
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(k=0;k<adimz;++k) {
+          // Copy back from targetbuf.  Since A00, A11, and A22 are all
+          // even, we take the real component of the transformed data.
+          // The "8*" factor accounts for the zero-padded/symmetry
+          // conversion for all the x, y and z transforms.  See NOTES
+          // VII, 1-May-2015, p95 for details.
+          A[aoff+k*astridez].A00 = 8*targetbuf[2*ODTV_VECSIZE*k];
+          A[aoff+k*astridez].A11 = 8*targetbuf[2*ODTV_VECSIZE*k+2];
+          A[aoff+k*astridez].A22 = 8*targetbuf[2*ODTV_VECSIZE*k+4];
+        }
+        for(k=0;k<rdimz;++k) {
+          // Fill sourcebuf, off-diagonal elts
+          sourcebuf[ODTV_VECSIZE*k]   = A[aoff+k*astridez].A01;
+          sourcebuf[ODTV_VECSIZE*k+1] = A[aoff+k*astridez].A02;
+          sourcebuf[ODTV_VECSIZE*k+2] = A[aoff+k*astridez].A12;
+        }
+        sourcebuf[0]*=0.5; sourcebuf[1]=0.0; sourcebuf[2]=0.0;
+        workfft.ForwardRealToComplexFFT(&(sourcebuf[0]),&(targetbuf[0]));
+        for(k=0;k<adimz;++k) {
+          // Copy back from targetbuf.  A02 and A12 are odd wrt z, so
+          // take imaginary component for those two.  A01 is even wrt
+          // z, so take the real component for it.  Like above for the
+          // diagonal components, the "8*" factor accounts for the
+          // zero-padded/symmetry conversion for all the x, y and z
+          // transforms.  Additionally, each odd symmetry induces a
+          // factor of sqrt(-1); each of the off-diagonal terms have
+          // odd symmetry across two axis, so the end result in each
+          // case is a real value but with a -1 factor.
+          A[aoff+k*astridez].A01 = -8*targetbuf[2*ODTV_VECSIZE*k];
+          A[aoff+k*astridez].A02 = -8*targetbuf[2*ODTV_VECSIZE*k+3];
+          A[aoff+k*astridez].A12 = -8*targetbuf[2*ODTV_VECSIZE*k+5];
+        }
+      }
+    }
+    // workfft, sourcebuf, and targetbuf are deleted by end of scope.
   }
-
-  // At this point we no longer need the "scratch" array, so release it.
-  delete[] scratch;
-
-  // Copy results from scratch into A11, A12, and A22.  We only need
-  // store 1/8th of the results because of symmetries.
-#if REPORT_TIME
-  dvltimer[7].Start();
-#endif // REPORT_TIME
-  for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx;i++) {
-    OC_INDEX aindex =   i+j*astridey+k*astridez;
-    OC_INDEX hindex = 2*ODTV_VECSIZE*i+j*cstridey+k*cstridez;
-    A[aindex].A11 = Hxfrm[hindex];   // A11
-    A[aindex].A12 = Hxfrm[hindex+2]; // A12
-    A[aindex].A22 = Hxfrm[hindex+4]; // A22
-    // The A## values are all real-valued, so we only need to pull the
-    // real parts out of Hxfrm, which are stored in the even offsets.
-  }
-#if REPORT_TIME
-  dvltimer[7].Stop();
-#endif // REPORT_TIME
-
 
   // Do we want to embed "convolution" computation inside z-axis FFTs?
   // If so, setup control variables.
@@ -1815,11 +890,6 @@ SDA01_count = 0;
 #if REPORT_TIME
     inittime.Stop();
 #endif // REPORT_TIME
-#if 1
-    printf("FINAL SDA00_count = %ld, SDA01_count = %ld\n",
-           (long int)SDA00_count,(long int)SDA01_count);
-#endif
-
 }
 
 void Oxs_Demag::GetEnergy
@@ -2413,9 +1483,9 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
     throw Oxs_ExtError(this,msg.c_str());
   }
 
-  OC_REAL8m dimx = mesh->DimX();
-  OC_REAL8m dimy = mesh->DimY();
-  OC_REAL8m dimz = mesh->DimZ();
+  OC_REAL8m dimx = static_cast<OC_REAL8m>(mesh->DimX());
+  OC_REAL8m dimy = static_cast<OC_REAL8m>(mesh->DimY());
+  OC_REAL8m dimz = static_cast<OC_REAL8m>(mesh->DimZ());
 
   OC_REAL8m dx = mesh->EdgeLengthX();
   OC_REAL8m dy = mesh->EdgeLengthY();
@@ -2470,7 +1540,9 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
   // Nxx + Nyy + Nzz should equal 1, up to rounding errors.
   // Off-diagonal terms should be zero.
   fprintf(stderr,"Nxx=%g, Nyy=%g, Nzz=%g, Nxy=%g, Nxz=%g, Nyz=%g, sum=%g\n",
-          Nxx,Nyy,Nzz,Nxy,Nxz,Nyz,Nxx+Nyy+Nzz); /**/ // asdf
+          double(Nxx),double(Nyy),double(Nzz),
+          double(Nxy),double(Nxz),double(Nyz),
+          double(Nxx+Nyy+Nzz)); /**/ // asdf
 
   // Nyy + Nzz = Nsum - Nxx where Nsum = Nxx + Nyy + Nzz, etc.
   ThreeVector cvec(MU0*(Nyy+Nzz),MU0*(Nxx+Nzz),MU0*(Nxx+Nyy));

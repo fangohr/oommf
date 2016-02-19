@@ -2,7 +2,7 @@
  *
  * Header file for vector field file I/O.
  *
- * Last modified on: $Date: 2011-10-21 20:17:43 $
+ * Last modified on: $Date: 2013/05/22 07:15:38 $
  * Last modified by: $Author: donahue $
  */
 
@@ -803,22 +803,7 @@ public:
   }
 
   virtual void WriteToString(String& str) const {
-    // Tcl_Merge may want char* instead of const char*, so copy
-    // data to array of Oc_AutoBuf's
-    int argc = static_cast<int>(value.size());
-    Oc_AutoBuf* mybuf = new Oc_AutoBuf[argc];
-    char **argv = new char*[argc];
-    for(int i=0;i<argc;i++) {
-      mybuf[i].Dup(value[i].c_str());
-      argv[i] = mybuf[i].GetStr();
-    }
-
-    char* merged_string = Tcl_Merge(argc,argv);
-    str = merged_string; // Copy result
-    Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
-
-    delete[] argv;
-    delete[] mybuf;
+    str = Nb_MergeList(value);
   }
 
 };

@@ -1,7 +1,7 @@
 %TGIF 4.0.12
 state(0,37,100.000,0,0,2,16,0,9,1,1,1,0,0,0,1,0,'Times-Roman',0,97920,0,0,0,10,0,1,1,1,0,16,0,0,1,1,1,0,1088,1408,0,11520,5760,0).
 %
-% @(#)$Header: /data/donahue/cvsroot/itl/oommf/doc/common/oommficon.obj,v 1.1 2000-08-24 22:41:13 donahue Exp $
+% @(#)$Header: /data/donahue/cvsroot/itl/oommf/doc/common/oommficon.obj,v 1.1 2000/08/24 22:41:13 donahue Exp $
 % %W%
 %
 unit("1 pixel/pixel").

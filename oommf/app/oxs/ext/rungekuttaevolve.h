@@ -23,9 +23,12 @@
 #  define REPORT_TIME_RKDEVEL 1
 # endif
 #endif
+#ifndef REPORT_TIME_RKDEVEL
+# define REPORT_TIME_RKDEVEL 0
+#endif
 
 #if OOMMF_THREADS
-  class _Oxs_RKEvolve_RKFBase54_ThreadA; // Forward references
+  class _Oxs_RKEvolve_Step_ThreadA; // Forward references
   class _Oxs_RKEvolve_RKFBase54_ThreadB;
   class _Oxs_RKEvolve_RKFBase54_ThreadC;
   class _Oxs_RKEvolve_RKFBase54_ThreadD;
@@ -43,8 +46,18 @@
 # define ZHANG_DAMPING 0
 #endif
 
-#if OOMMF_THREADS && ZHANG_DAMPING
-# error Zhang damping not supported for threaded builds
+// Tserkovnyak damping is a damping term added to LLG that depends directly on
+// the local magnetization configuration.  See
+//
+//   Y. Tserkovnyak, E.M. Hankiewicz, G. Vignale, "Transverse spin diffusion in ferromagnets,"
+//   Physical Review B, 79, 094415 (2009).
+//
+#ifndef TSERKOVNYAK_DAMPING
+# define TSERKOVNYAK_DAMPING 0
+#endif
+
+#if OOMMF_THREADS && (ZHANG_DAMPING || TSERKOVNYAK_DAMPING)
+# error Zhang and Tserkovnyak damping not supported for threaded builds
 #endif
 
 class Oxs_RungeKuttaEvolve:public Oxs_TimeEvolver {
@@ -54,7 +67,7 @@ private:
   struct TimerCounts {
   public:
     OC_INT4m pass_count;
-    unsigned long bytes;
+    size_t bytes;
     String name;
     TimerCounts() : pass_count(0), bytes(0) {}
     void Reset() { pass_count = 0; bytes = 0; }
@@ -132,6 +145,11 @@ private:
                      ThreeVector& D3) const;      // Export; 3rd row of Dab
 #endif // ZHANG_DAMPING
 
+#if TSERKOVNYAK_DAMPING
+
+#endif // TSERKOVNYAK_DAMPING
+
+
   // The next timestep is based on the error from the last step.  If
   // there is no last step (either because this is the first step,
   // or because the last state handled by this routine is different
@@ -173,7 +191,6 @@ private:
   Oxs_MeshValue<ThreeVector> vtmpB;
   Oxs_MeshValue<ThreeVector> vtmpC;
   Oxs_MeshValue<ThreeVector> vtmpD;
-  Oxs_MeshValue<ThreeVector> vtmpE; /**/
 
   // Utility functions
   void CheckCache(const Oxs_SimState& cstate);
@@ -325,26 +342,6 @@ private:
 #if OOMMF_THREADS
   // Thread-friendly version of Calculate_dm_dt breaks into
   // three parts: the Initialize and Finalize members here
-  // and the Cmd member of _Oxs_RKEvolve_RKFBase54_ThreadA
-  // (which is defined in rungekuttaevolve.cc).  Used in
-  // ::Step().
-  void Initialize_Threaded_Calculate_dm_dt
-  (const Oxs_SimState& state, // Import
-   const Oxs_MeshValue<ThreeVector>& mxH, // Import
-   Oxs_MeshValue<ThreeVector>& dm_dt,     // Import ptr to export data
-   vector<_Oxs_RKEvolve_RKFBase54_ThreadA>& thread_data); // Export
-
-  void Finalize_Threaded_Calculate_dm_dt
-  (const vector<_Oxs_RKEvolve_RKFBase54_ThreadA>& thread_data, // Import
-   OC_REAL8m pE_pt,         // Import
-   OC_REAL8m& max_dm_dt,    // Export
-   OC_REAL8m& dE_dt,        // Export
-   OC_REAL8m& min_timestep_export); // Export
-#endif // OOMMF_THREADS
-
-#if OOMMF_THREADS
-  // Thread-friendly version of Calculate_dm_dt breaks into
-  // three parts: the Initialize and Finalize members here
   // and the Cmd member of _Oxs_RKEvolve_RKFBase54_ThreadB
   // (which is defined in rungekuttaevolve.cc).  Used in
   // ::RungeKuttaFehlbergBase54().
@@ -353,7 +350,7 @@ private:
    Oxs_SimState& work_state,       // Import and export
    const Oxs_MeshValue<ThreeVector>& mxH, // Import
    Oxs_MeshValue<ThreeVector>& dm_dt,     // Export; may be same as mxH
-   vector<_Oxs_RKEvolve_RKFBase54_ThreadB>& thread_data, // Export
+   _Oxs_RKEvolve_RKFBase54_ThreadB& thread_data, // Export
    OC_REAL8m mstep,
    OC_REAL8m b_dm_dt,
    const vector<OC_REAL8m>& b,
@@ -363,7 +360,7 @@ private:
 
   void Finalize_Threaded_Calculate_dm_dt
   (const Oxs_SimState& base_state, // Import
-   const vector<_Oxs_RKEvolve_RKFBase54_ThreadB>& thread_data, // Import
+   const _Oxs_RKEvolve_RKFBase54_ThreadB& thread_data, // Import
    OC_REAL8m pE_pt,             // Import
    OC_REAL8m hstep,             // Import
    Oxs_SimState& work_state, // Export
@@ -384,7 +381,7 @@ private:
    Oxs_SimState& work_state,       // Import and export
    const Oxs_MeshValue<ThreeVector>& mxH, // Import
    Oxs_MeshValue<ThreeVector>& dm_dt,     // Export; may be same as mxH
-   vector<_Oxs_RKEvolve_RKFBase54_ThreadC>& thread_data, // Export
+   _Oxs_RKEvolve_RKFBase54_ThreadC& thread_data, // Export
    OC_REAL8m mstep,
    OC_REAL8m b1_dm_dt,
    OC_REAL8m b2_dm_dt,
@@ -396,7 +393,7 @@ private:
 
   void Finalize_Threaded_Calculate_dm_dt
   (const Oxs_SimState& base_state, // Import
-   const vector<_Oxs_RKEvolve_RKFBase54_ThreadC>& thread_data, // Import
+   const _Oxs_RKEvolve_RKFBase54_ThreadC& thread_data, // Import
    OC_REAL8m pE_pt,             // Import
    OC_REAL8m hstep,             // Import
    Oxs_SimState& work_state, // Export
@@ -416,12 +413,12 @@ private:
   (const Oxs_SimState& work_state,        // Import
    const Oxs_MeshValue<ThreeVector>& mxH, // Import
    Oxs_MeshValue<ThreeVector>& dm_dt,     // Export
-   vector<_Oxs_RKEvolve_RKFBase54_ThreadD>& thread_data, // Import and export
+   _Oxs_RKEvolve_RKFBase54_ThreadD& thread_data, // Import and export
    OC_REAL8m dc7, // Import
    const Oxs_MeshValue<ThreeVector>& dD13456); // Import
 
   void Finalize_Threaded_Calculate_dm_dt
-  (const vector<_Oxs_RKEvolve_RKFBase54_ThreadD>& thread_data, // Import
+  (const _Oxs_RKEvolve_RKFBase54_ThreadD& thread_data, // Import
    OC_REAL8m pE_pt,          // Import
    OC_REAL8m& max_dm_dt,      // Export
    OC_REAL8m& dE_dt,          // Export

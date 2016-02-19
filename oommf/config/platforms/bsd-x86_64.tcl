@@ -166,9 +166,10 @@ if {[string match g++ $ccbasename]} {
     # set opts [list -O%s]               ;# Minimal
     set opts [list -O2 -ffast-math -fomit-frame-pointer -fstrict-aliasing]
     # You can also try adding -malign-double, and/or replacing -O2 with
-    # -O3.  Optimization on this platform appears a little flaky
-    # for some versions of gcc.  If the above generates an "internal
-    # compiler error," try removing -ffast-math.
+    # -O3.  Optimization on this platform appears a little flaky for
+    # some versions of gcc.  If the above generates an "internal
+    # compiler error," or a test error in Nb_Xpfloat, try removing
+    # -ffast-math.
     #
     # The next block sets cpu-specific options, based on a guess (see
     # GuessCPU proc defined at the top of this file) of the current
@@ -284,7 +285,9 @@ if {[string match g++ $ccbasename]} {
     #   Generally, we expect the speed advantage of using "double" to
     # outweigh the precision advantage of "long double", but YMMV.
     # $config SetValue program_compiler_c++_typedef_realwide "long double"
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories
@@ -350,7 +353,9 @@ if {[string match g++ $ccbasename]} {
     $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
     # Wide floating point type.
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some of the gcc versions don't play well with

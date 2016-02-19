@@ -4,7 +4,7 @@
 # describe how to build the applications and/or extensions produced by
 # the source code in this directory.
 #
-# Last modified on: $Date: 2012-09-19 21:34:21 $
+# Last modified on: $Date: 2012/09/19 21:34:21 $
 # Last modified by: $Author: donahue $
 #
 # Verify that this script is being sourced by pimake

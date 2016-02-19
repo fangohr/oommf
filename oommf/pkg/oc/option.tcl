@@ -2,7 +2,7 @@
 #
 #	An option database for configuring Oc_Classes.
 #
-# Last modified on: $Date: 2000-08-25 17:01:25 $
+# Last modified on: $Date: 2000/08/25 17:01:25 $
 # Last modified by: $Author: donahue $
 #
 # This file defines the Tcl command Oc_Option as the interface to an option

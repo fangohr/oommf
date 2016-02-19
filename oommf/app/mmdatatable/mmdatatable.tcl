@@ -23,8 +23,8 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:48 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:09 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
@@ -581,6 +581,9 @@ proc CopySelected {} {
 	}
     }
 
+    # Remove trailing newline
+    set str [string trimright $str "\n"]
+
     # Copy to clipboard
     clipboard clear
     clipboard append -- $str
@@ -698,4 +701,16 @@ if {!$no_net} {
    package forget Net
 }
 
-if {!$no_event_loop} { vwait forever }
+if {!$no_event_loop} {
+    catch {
+	if {[string match aqua [tk windowingsystem]]} {
+	    # Bring window to front of window manager display stack.
+	    # Otherwise, the new mmDataTable may be hidden by
+	    # mmLaunch.
+	    wm attributes . -topmost 1
+	    after idle {raise . ;  wm attributes . -topmost 0}
+	}
+    }
+    vwait forever
+}
+

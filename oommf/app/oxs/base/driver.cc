@@ -5,6 +5,7 @@
  *
  */
 
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -25,10 +26,356 @@
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.92 $",
-   "$Date: 2012-09-06 23:46:03 $",
+   "$Revision: 1.118 $",
+   "$Date: 2015/08/13 21:56:57 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
+
+//////////////////////////////////////////////////////////////////////
+// CHECKPOINTING /////////////////////////////////////////////////////
+
+void OxsDriverCheckpointShutdownHandler(int,ClientData cd)
+{
+  Oxs_Driver::BackgroundCheckpoint* obj =
+    reinterpret_cast<Oxs_Driver::BackgroundCheckpoint*>(cd);
+  obj->WaitForBackupThread(static_cast<unsigned int>(-1),
+              Oxs_Driver::BackgroundCheckpoint::OXSDRIVER_CMT_SHUTDOWN);
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::Init
+(const String& in_filename,
+ double in_interval,const String& in_cleanup)
+{
+  // Set-up file names.  The Oc_DirectPathname and Nb_TempName routines
+  // call into the global Tcl interp, so can only be called from the
+  // main thread.
+  Oc_AutoBuf full_filename;
+  checkpoint_filename = in_filename;
+  Oc_DirectPathname(checkpoint_filename.c_str(),full_filename);
+  checkpoint_filename_full = full_filename.GetStr();
+
+  Nb_DString tmpchknamA = Nb_TempName(full_filename.GetStr(),
+                                      "-oxs-checkpoint.tmp",".");
+  Nb_DString tmpchknamB = Nb_TempName(full_filename.GetStr(),
+                                      "-oxs-checkpoint.backup",".");
+  Nb_Remove(tmpchknamA.GetStr());
+  Nb_Remove(tmpchknamB.GetStr());
+  /// Nb_TempName creates an empty file.  We don't need to keep these
+  /// around except when we're using them.  Note, however, that once
+  /// these files are deleted subsequent calls to Nb_TempName with the
+  /// same template may repeat the previous name.
+  checkpoint_filename_tmpA = tmpchknamA.GetStr(); // These should be
+  checkpoint_filename_tmpB = tmpchknamB.GetStr(); // absolute paths
+
+  assert(strcmp(checkpoint_filename.c_str(),
+                checkpoint_filename_tmpA.c_str())!=0);
+  assert(strcmp(checkpoint_filename.c_str(),
+                checkpoint_filename_tmpB.c_str())!=0);
+  assert(strcmp(checkpoint_filename_tmpA.c_str(),
+                checkpoint_filename_tmpB.c_str())!=0);
+
+
+  checkpoint_interval = in_interval;
+  checkpoint_time.ReadWallClock();
+  checkpoint_id = 0;
+  mutex.Lock();
+  try {
+    checkpoint_writes = 0;
+    backup_request.Release(); // Release any backup in holding area
+    backup_inprogress.Release();
+    if(checkpoint_mode != OXSDRIVER_CMT_INVALID &&
+       checkpoint_mode != OXSDRIVER_CMT_DISABLED &&
+       checkpoint_mode != OXSDRIVER_CMT_FLUSHED) {
+      throw Oxs_BadCode("checkpoint_mode in improper state");
+    }
+    checkpoint_mode = OXSDRIVER_CMT_ENABLED;
+  } catch(...) {
+    mutex.Unlock();
+    throw;
+  }
+  mutex.Unlock();
+
+  checkpoint_cleanup = OXSDRIVER_CCT_INVALID;
+  if(in_cleanup.compare("normal")==0) {
+    checkpoint_cleanup = OXSDRIVER_CCT_NORMAL;
+  } else if(in_cleanup.compare("done_only")==0) {
+    checkpoint_cleanup = OXSDRIVER_CCT_DONE_ONLY;
+  } else if(in_cleanup.compare("never")==0) {
+    checkpoint_cleanup = OXSDRIVER_CCT_NEVER;
+  } else {
+    String msg=String("Invalid checkpoint_cleanup request: ")
+      + in_cleanup
+      + String("\n Should be one of normal, done_only, or never.");
+    throw Oxs_BadParameter(msg);
+  }
+
+  Oc_AppendSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
+}
+
+OC_BOOL
+Oxs_Driver::BackgroundCheckpoint::WaitForBackupThread
+(unsigned int timeout,OxsDriverCheckpointModeTypes newmode)
+{
+  if(newmode != OXSDRIVER_CMT_DISABLED &&
+     newmode != OXSDRIVER_CMT_FLUSHED &&
+     newmode != OXSDRIVER_CMT_SHUTDOWN) {
+    char msg[256];
+    Oc_Snprintf(msg,sizeof(msg),"Invalid mode import to "
+                "Oxs_Driver::BackgroundCheckpoint::WaitForBackupThread():"
+                " %d; should be one of %d or %d",int(newmode),
+                int(OXSDRIVER_CMT_DISABLED),
+                int(OXSDRIVER_CMT_FLUSHED),
+                int(OXSDRIVER_CMT_SHUTDOWN));
+    throw Oxs_BadCode(msg);
+  }
+
+  // Remove backup request from holding pen, if any
+  mutex.Lock();
+  try {
+    checkpoint_mode = newmode;
+  } catch(...) { mutex.Unlock(); throw; }
+  mutex.Unlock();
+
+  timeout *= 2; // Sleep time is 0.5s
+  OC_BOOL backup_thread_stopped=1;
+  while(ActiveThreadCount()>0) {
+    if(timeout==0) {
+      backup_thread_stopped = 0; // Fail
+      break;
+    }
+    Oc_MilliSleep(500); // Nap for one half second
+    --timeout;
+  }
+  return backup_thread_stopped;
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::WrapUp
+(OxsDriverProblemStatus probstat)
+{ // Remove any queued backup requests and wait for backup thread to
+  // stop.
+  Oc_RemoveSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
+  const int timeout = 100; // Max seconds to wait for backup thread
+  OxsDriverCheckpointModeTypes cmt = OXSDRIVER_CMT_DISABLED;
+  if(OXSDRIVER_CCT_FORCEFINAL == checkpoint_cleanup) {
+    cmt = OXSDRIVER_CMT_FLUSHED;
+  }
+  if(WaitForBackupThread(timeout,cmt) &&
+     director->GetErrorStatus()==0 && checkpoint_writes>0) {
+    // Check that checkpoint_writes is not 0 to insure that a
+    // checkpoint has been written during this run.  This is not to
+    // insure the existence of a checkpoint file (which anyway may
+    // have been removed by a third party), but rather to protect
+    // against the accidental loading of a file w/o the restart_flag
+    // set causing the checkpoint file to be automatically destroyed
+    // when the user tries to reload the problem.
+    static Oxs_WarningMessage noremove(3);
+    switch(checkpoint_cleanup)
+      {
+      case OXSDRIVER_CCT_NORMAL:
+        if(Nb_FileExists(checkpoint_filename_full.c_str())
+           && Nb_Remove(checkpoint_filename_full.c_str())!=0) {
+          String msg = String("Unable to remove checkpoint file \"")
+            + checkpoint_filename_full
+            + String("\".");
+          noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
+        }
+        break;
+      case OXSDRIVER_CCT_DONE_ONLY:
+        if(probstat==OXSDRIVER_PS_DONE) {
+          if(Nb_FileExists(checkpoint_filename_full.c_str())
+             && Nb_Remove(checkpoint_filename_full.c_str())!=0) {
+            String msg = String("Unable to remove checkpoint file \"")
+              + checkpoint_filename_full
+              + String("\".");
+            noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
+          }
+        }
+        break;
+      case OXSDRIVER_CCT_INVALID:
+      case OXSDRIVER_CCT_FORCEFINAL:
+      case OXSDRIVER_CCT_NEVER:
+        break;
+      }
+    checkpoint_writes = 0; // Safety
+  }
+}
+
+Oxs_Driver::BackgroundCheckpoint::~BackgroundCheckpoint()
+{
+  // Ideally, WrapUp should be called by Oxs_Driver and passed the
+  // proper problem_status value.  The call here is just a failsafe.
+  // When CloseDown is called it sets the director member to 0, so
+  // subsequent calls become NOPs.
+  WrapUp(OXSDRIVER_PS_INVALID);
+  if(ActiveThreadCount()==0) {
+    // If a backup thread is running, then it may be holding onto a
+    // state, in which case releasing the simstate reserve requirements
+    // may fail.
+    director->ReserveSimulationStateRequest(-1*ReserveStateCount());
+  }
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::RequestBackup
+(Oxs_ConstKey<Oxs_SimState>& statekey)
+{
+  if(statekey.GetPtr()==NULL) {
+    throw("Invalid checkpoint backup request.");
+  }
+  int dolaunch = 0;
+  mutex.Lock();
+  try {
+    // Ignore request if new state is already last state on stack
+    const OC_UINT4m req_id = statekey.GetPtr()->Id();
+    OC_BOOL do_request = 1;
+    if(backup_request.GetPtr()!=0) {
+      do_request = (req_id != backup_request.GetPtr()->Id());
+    } else if(backup_inprogress.GetPtr()!=0) {
+      do_request = (req_id != backup_inprogress.GetPtr()->Id());
+    } else {
+      do_request = (req_id != checkpoint_id);
+    }
+    if(do_request) {
+      if(backup_request.GetPtr()==0
+         && backup_inprogress.GetPtr()==0) {
+        // Launch new thread.  Otherwise, existing thread will
+        // catch new backup request and handle it.
+        dolaunch = 1;
+      }
+      backup_request = statekey; // This copy automatically releases the
+      /// read lock, if any, on previous backup_request key.
+      backup_request.GetReadReference();
+      checkpoint_id = req_id;
+    }
+  }
+  catch(...) { // Safety
+    mutex.Unlock();
+    throw;
+  }
+  mutex.Unlock();
+  if(dolaunch) Launch();
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::UpdateBackup
+(Oxs_ConstKey<Oxs_SimState>& statekey)
+{ // This routine controls checkpoint requests based on elapsed time.
+  if(statekey.GetPtr()==NULL) {
+    throw("Invalid checkpoint update request.");
+  }
+  if(checkpoint_interval >= 0.0) {
+    Oc_Ticks now;
+    now.ReadWallClock();
+    now -= checkpoint_time;
+    if(now.Seconds()>=checkpoint_interval) {
+      checkpoint_time.ReadWallClock();
+      RequestBackup(statekey);
+    }
+  }
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::Task()
+{
+  while(1) {
+    const Oxs_SimState* ptr = 0;
+    mutex.Lock();
+    try {
+      if(backup_inprogress.GetPtr()!=0) {
+        ++checkpoint_writes;
+        backup_inprogress.Release();
+      }
+      if(checkpoint_mode == OXSDRIVER_CMT_ENABLED ||
+         checkpoint_mode == OXSDRIVER_CMT_FLUSHED) {
+        backup_inprogress.Swap(backup_request);
+      } else {
+        backup_request.Release();
+      }
+      ptr = backup_inprogress.GetPtr();
+    }
+    catch(...) { // Safety
+      mutex.Unlock();
+      throw;
+    }
+    mutex.Unlock();
+
+    if(ptr==0) break;  // Done
+
+    // Error handling
+    char numbuf[256];
+    Oc_Snprintf(numbuf,sizeof(numbuf),"%d",ptr->Id());
+    String errinfo = String("Error saving checkpoint file \"")
+        + checkpoint_filename_full + String("\", state id ")
+        + String(numbuf) + String(": ");
+    try {
+      // Create new checkpoint
+      ptr->SaveState(checkpoint_filename_tmpA.c_str(),
+                     "Checkpoint restart file",director);
+#if NB_RENAMENOINTERP_IS_ATOMIC
+      // System has a safe, atomic rename
+      Nb_RenameNoInterp(checkpoint_filename_tmpA.c_str(),
+                        checkpoint_filename_full.c_str(),1);
+#else // Rename operation may be non-atomic, so dance
+      // Move pre-existing checkpoint, if any, to holding place.
+      if(Nb_FileExists(checkpoint_filename.c_str())) {
+        Nb_RenameNoInterp(checkpoint_filename_full.c_str(),
+                          checkpoint_filename_tmpB.c_str(),1);
+      }
+      // Move new checkpoint to real checkpoint name
+      Nb_RenameNoInterp(checkpoint_filename_tmpA.c_str(),
+                        checkpoint_filename_full.c_str(),1);
+      // Delete old checkpoint
+      if(Nb_FileExists(checkpoint_filename_tmpB.c_str())) {
+        if(Nb_Remove(checkpoint_filename_tmpB.c_str()) != 0) {
+          Oc_Exception foo(__FILE__,__LINE__,NULL,
+                           "Oxs_Driver::BackgroundCheckpoint::Task",1200,
+                           "Error removing temp file %.1000s",
+                           checkpoint_filename_tmpB.c_str());
+          OC_THROW(foo);
+        }
+      }
+      // NOTE: We might want to try catching SIGTERM signal to clean up
+      //       above file dance.  In particular, if checkpoint file
+      //       doesn't exist then we might want to move back the backup
+      //       file checkpoint_filename_tmpB.
+#endif
+    } catch (Oxs_Exception& oxserr) {
+      mutex.Lock();
+      try { backup_inprogress.Release(); } catch(...) {}
+      mutex.Unlock();
+      oxserr.Prepend(errinfo);
+      throw;
+    } catch (Oc_Exception& ocerr) {
+      mutex.Lock();
+      try { backup_inprogress.Release(); } catch(...) {}
+      mutex.Unlock();
+      ocerr.PrependMessage(errinfo.c_str());
+      throw;
+    } catch (const String& errstr) {
+      mutex.Lock();
+      try { backup_inprogress.Release(); } catch(...) {}
+      mutex.Unlock();
+      errinfo += errstr;
+      throw errinfo;
+    } catch (const char* errmsg) {
+      mutex.Lock();
+      try { backup_inprogress.Release(); } catch(...) {}
+      mutex.Unlock();
+      errinfo += errmsg;
+      throw errinfo;
+    } catch (...) {
+      mutex.Lock();
+      try { backup_inprogress.Release(); } catch(...) {}
+      mutex.Unlock();
+      throw;
+    }
+  } // while(1)
+}
+
+// CHECKPOINTING /////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 // Conversion support code for OxsDriverProblemStatus enum
 OC_REAL8m
@@ -101,18 +448,15 @@ Oxs_Driver::Oxs_Driver
   Oxs_Director* newdtr,    // App director
   const char* argstr       // Args
   ) : Oxs_Ext(name,newdtr,argstr),
-      report_max_spin_angle(0),normalize_aveM(1),scaling_aveM(1.0),
-      number_of_stages(1),
-      checkpoint_id(0),checkpoint_writes(0),checkpoint_interval(0.),
-      checkpoint_cleanup(OXSDRIVER_CCT_INVALID),
       problem_status(OXSDRIVER_PS_INVALID),
+      report_max_spin_angle(0),normalize_aveM(1),scaling_aveM(1.0),
+      number_of_stages(1),bgcheckpt(newdtr),
       start_iteration(0),start_stage(0),start_stage_iteration(0),
       start_stage_start_time(0.),start_stage_elapsed_time(0.),
       start_last_timestep(0.)
 {
   // Reserve state space in director
   director->ReserveSimulationStateRequest(2);
-
 
   //////////////////////////////////////////////////////////////////////
   /////////////////////// DEPRECATED FIELDS ////////////////////////////
@@ -137,25 +481,24 @@ Oxs_Driver::Oxs_Driver
   // Restart (checkpoint) file, interval and clean up behavior.
   // The interval time is in minutes.  '0' means save on each
   // step, <0 means no checkpointing.
-  checkpoint_file = GetStringInitValue("checkpoint_file",
-                                       basename + String(".restart"));
-  checkpoint_interval = 60*GetRealInitValue("checkpoint_interval",15.0);
-  /// Convert from minutes to seconds.
-  String cp_cleanup = GetStringInitValue("checkpoint_cleanup",
-                                         "normal");
-  /// Checkpoint cleanup options: normal, done_only, never
-  if(cp_cleanup.compare("normal")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_NORMAL;
-  } else if(cp_cleanup.compare("done_only")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_DONE_ONLY;
-  } else if(cp_cleanup.compare("never")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_NEVER;
-  } else {
-    String msg=String("Invalid checkpoint_cleanup request: ")
-      + cp_cleanup
-      + String("\n Should be one of normal, done_only, or never.");
-    throw Oxs_ExtError(this,msg);
+  String tmp_checkpoint_file = GetStringInitValue("checkpoint_file",
+                                      basename + String(".restart"));
+  const char* tmp_chkptdir = director->GetRestartFileDir();
+  if(tmp_chkptdir!=NULL && tmp_chkptdir[0]!='\0') {
+    // If checkpoint_file path is relative, then slap command
+    // line option "restartfiledir" onto front.
+    Nb_List<Nb_DString> pathparts;
+    pathparts.Append(Nb_DString(tmp_chkptdir));
+    pathparts.Append(Nb_DString(tmp_checkpoint_file.c_str()));
+    Nb_DString foopath = Nb_TclFileJoin(pathparts);
+    tmp_checkpoint_file = foopath.GetStr();
   }
+  double tmp_checkpoint_interval // Convert from minutes to seconds.
+    = 60*GetRealInitValue("checkpoint_interval",15.0);
+  String tmp_checkpoint_cleanup
+    = GetStringInitValue("checkpoint_cleanup","normal");
+  bgcheckpt.Init(tmp_checkpoint_file,tmp_checkpoint_interval,
+                 tmp_checkpoint_cleanup);
 
   OXS_GET_INIT_EXT_OBJECT("mesh",Oxs_Mesh,mesh_obj);
   mesh_key.Set(mesh_obj.GetPtr());  // Sets a dep lock
@@ -164,6 +507,7 @@ Oxs_Driver::Oxs_Driver
   OXS_GET_INIT_EXT_OBJECT("Ms",Oxs_ScalarField,Msinit);
 
   OXS_GET_INIT_EXT_OBJECT("m0",Oxs_VectorField,m0);
+  m0_perturb = GetRealInitValue("m0_perturb",0.0);
 
   // Fill Ms and Ms_inverse array, and verify that Ms is non-negative.
   Msinit->FillMeshValue(mesh_obj.GetPtr(),Ms);
@@ -282,9 +626,9 @@ Oxs_Driver::Oxs_Driver
                   pieces.Count());
       throw Oxs_ExtError(this,temp_buf);
     }
-    const OC_INDEX piece_count = pieces.Count();
+    const int piece_count = pieces.Count();
     if(piece_count>0) {
-      OC_INDEX i;
+      int i;
       OC_INDEX item_index = 0;
       for(i=0;i<piece_count;i+=2) {
         // Ignore "comment" labels
@@ -429,36 +773,58 @@ Oxs_Driver::Oxs_Driver
                              &Oxs_Driver::Fill__magnetization_output);
   if(normalize_aveM) {
     aveMx_output.Setup(this,InstanceName(),"mx","",1,
-                       &Oxs_Driver::Fill__aveM_output);
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
     aveMy_output.Setup(this,InstanceName(),"my","",1,
-                       &Oxs_Driver::Fill__aveM_output);
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
     aveMz_output.Setup(this,InstanceName(),"mz","",1,
-                       &Oxs_Driver::Fill__aveM_output);
-    if(report_max_spin_angle) {
-      maxSpinAng_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
-                              &Oxs_Driver::Fill__maxSpinAng_output);
-    }
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
   } else {
     aveMx_output.Setup(this,InstanceName(),"Mx","A/m",1,
-                       &Oxs_Driver::Fill__aveM_output);
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
     aveMy_output.Setup(this,InstanceName(),"My","A/m",1,
-                       &Oxs_Driver::Fill__aveM_output);
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
     aveMz_output.Setup(this,InstanceName(),"Mz","A/m",1,
-                       &Oxs_Driver::Fill__aveM_output);
-    if(report_max_spin_angle) {
-      maxSpinAng_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
-                              &Oxs_Driver::Fill__maxSpinAng_output);
-    }
-  }
-  if(report_max_spin_angle) {
-    stage_maxSpinAng_output.Setup(this,InstanceName(),
-                                  "Stage Max Spin Ang","deg",1,
-                                  &Oxs_Driver::Fill__maxSpinAng_output);
-    run_maxSpinAng_output.Setup(this,InstanceName(),
-                                "Run Max Spin Ang","deg",1,
-                                &Oxs_Driver::Fill__maxSpinAng_output);
+                       &Oxs_Driver::Fill__aveM_output_init,
+                       &Oxs_Driver::Fill__aveM_output,
+                       &Oxs_Driver::Fill__aveM_output_fini,
+                       &Oxs_Driver::Fill__aveM_output_shares);
   }
 
+  if(report_max_spin_angle) {
+    maxSpinAng_output.Setup(this,InstanceName(),
+                            "Max Spin Ang","deg",1,
+                            &Oxs_Driver::Fill__maxSpinAng_output_init,
+                            &Oxs_Driver::Fill__maxSpinAng_output,
+                            &Oxs_Driver::Fill__maxSpinAng_output_fini,
+                            &Oxs_Driver::Fill__maxSpinAng_output_shares);
+    stage_maxSpinAng_output.Setup(this,InstanceName(),
+                            "Stage Max Spin Ang","deg",1,
+                            &Oxs_Driver::Fill__maxSpinAng_output_init,
+                            &Oxs_Driver::Fill__maxSpinAng_output,
+                            &Oxs_Driver::Fill__maxSpinAng_output_fini,
+                            &Oxs_Driver::Fill__maxSpinAng_output_shares);
+    run_maxSpinAng_output.Setup(this,InstanceName(),
+                            "Run Max Spin Ang","deg",1,
+                            &Oxs_Driver::Fill__maxSpinAng_output_init,
+                            &Oxs_Driver::Fill__maxSpinAng_output,
+                            &Oxs_Driver::Fill__maxSpinAng_output_fini,
+                            &Oxs_Driver::Fill__maxSpinAng_output_shares);
+  }
   iteration_count_output.Register(director,0);
   stage_iteration_count_output.Register(director,0);
   stage_number_output.Register(director,0);
@@ -487,44 +853,10 @@ Oxs_Driver::Oxs_Driver
 //Destructor
 Oxs_Driver::~Oxs_Driver()
 {
-  if(director->GetErrorStatus()==0 && checkpoint_writes!=0) {
-    // Check that checkpoint_writes is not 0 to insure that a checkpoint
-    // has been written during this run.  This is not to insure the
-    // existence of a checkpoint file (which anyway may have failed
-    // to write or been removed by a third party), but rather to
-    // protect against the accidental loading of a file w/o the
-    // restart_flag set causing the checkpoint file to be
-    // automatically destroyed when the user tries to reload the
-    // problem.
-    static Oxs_WarningMessage noremove(3);
-    switch(checkpoint_cleanup) {
-      case OXSDRIVER_CCT_INVALID:
-        break;
-      case OXSDRIVER_CCT_NORMAL:
-        if(Nb_FileExists(checkpoint_file.c_str())
-           && Nb_Remove(checkpoint_file.c_str())!=0) {
-          String msg = String("Unable to remove checkpoint file \"")
-            + checkpoint_file
-            + String("\".");
-          noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
-        }
-        break;
-      case OXSDRIVER_CCT_DONE_ONLY:
-        if(problem_status==OXSDRIVER_PS_DONE) {
-          if(Nb_FileExists(checkpoint_file.c_str())
-             && Nb_Remove(checkpoint_file.c_str())!=0) {
-            String msg = String("Unable to remove checkpoint file \"")
-              + checkpoint_file
-              + String("\".");
-            noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
-          }
-        }
-        break;
-      case OXSDRIVER_CCT_NEVER:
-        break;
-      }
-    checkpoint_writes = 0; // Safety
+  if(IsForceFinalCheckpoint()) {
+    bgcheckpt.RequestBackup(current_state);
   }
+  bgcheckpt.WrapUp(problem_status);
 #if REPORT_TIME
   Oc_TimeVal cpu,wall;
   driversteptime.GetTimes(cpu,wall);
@@ -547,17 +879,17 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
     // then restore state from there.  Otherwise either
     // throw an error if rflag = 1, or else use
     // start (initial) state values.
-    FILE *check = Nb_FOpen(checkpoint_file.c_str(),"r");
+    FILE *check = Nb_FOpen(bgcheckpt.CheckpointFilename(),"r");
     if(check!=NULL) {
       fclose(check);
       String MIF_info;
-      istate.RestoreState(checkpoint_file.c_str(),
+      istate.RestoreState(bgcheckpt.CheckpointFilename(),
                           mesh_key.GetPtr(),&Ms,&Ms_inverse,
                           director,MIF_info);
       fresh_start = 0;
     } else if(rflag==1) {
       char bit[4000];
-      Oc_EllipsizeMessage(bit,sizeof(bit),checkpoint_file.c_str());
+      Oc_EllipsizeMessage(bit,sizeof(bit),bgcheckpt.CheckpointFilename());
       char buf[4500];
       Oc_Snprintf(buf,sizeof(buf),
                   "Unable to open requested checkpoint file"
@@ -579,7 +911,15 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
     m0->FillMeshValue(istate.mesh,istate.spin);
     // Insure that all spins are unit vectors
     OC_INDEX size = istate.spin.Size();
-    for(OC_INDEX i=0;i<size;i++) istate.spin[i].MakeUnit();
+    if(m0_perturb <= 0.0) {
+      // No perturbation
+      for(OC_INDEX i=0;i<size;i++) istate.spin[i].MakeUnit();
+    } else {
+      for(OC_INDEX i=0;i<size;i++) {
+	istate.spin[i].MakeUnit();
+	istate.spin[i].PerturbDirection(m0_perturb);
+      }
+    }
   }
 }
 
@@ -718,9 +1058,8 @@ OC_BOOL Oxs_Driver::Init()
   // Initialize current state from initial state provided by
   // concrete child class.
   problem_status = OXSDRIVER_PS_INVALID;
-  checkpoint_id = 0;
   current_state = GetInitialState();
-  if (current_state.GetPtr() == NULL) {
+  if(current_state.GetPtr() == NULL) {
     success = 0; // Error.  Perhaps an exception throw would be better?
   } else {
     const Oxs_SimState& cstate = current_state.GetReadReference();
@@ -734,13 +1073,10 @@ OC_BOOL Oxs_Driver::Init()
     } else {
       problem_status = OXSDRIVER_PS_STAGE_START;
     }
-    // There is no need (presumably?) to write the initial
-    // state as a checkpoint file, so save the id of it.
-    checkpoint_id = cstate.Id();
   }
 
-  Oc_TimeVal dummy_time;
-  Oc_Times(dummy_time,checkpoint_time,0); // Initialize checkpoint time
+  // Initialize checkpoint time and state id
+  bgcheckpt.Reset(current_state.GetPtr());
 
   return success;
 }
@@ -766,7 +1102,7 @@ OC_BOOL Oxs_Driver::IsStageDone(const Oxs_SimState& state) const
 
   // Check state against parent Oxs_Driver class stage limiters.
   if(total_iteration_limit > 0
-     && state.iteration_count >= total_iteration_limit ) {
+     && state.iteration_count + 1 >= total_iteration_limit ) {
     state.stage_done = Oxs_SimState::DONE;
     return 1;
   }
@@ -805,7 +1141,7 @@ OC_BOOL Oxs_Driver::IsRunDone(const Oxs_SimState& state) const
 
   // Check state against parent Oxs_Driver class run limiters.
   if(total_iteration_limit > 0
-     && state.iteration_count >= total_iteration_limit) {
+     && state.iteration_count + 1 >= total_iteration_limit) {
     state.run_done = Oxs_SimState::DONE;
     return 1;
   }
@@ -1018,6 +1354,19 @@ OC_UINT4m Oxs_Driver::GetIteration() const
   return cstate->iteration_count;
 }
 
+OC_UINT4m Oxs_Driver::GetCurrentStateId() const
+{
+  const Oxs_SimState* cstate = current_state.GetPtr();
+  if(cstate == NULL) {
+    // Current state is not initialized.
+    String msg="Current state in Oxs_Driver is not initialized;"
+      " This is probably the fault of the child class "
+      + String(ClassName());
+    throw Oxs_ExtError(this,msg);
+  }
+  return cstate->Id();
+}
+
 OC_UINT4m Oxs_Driver::GetStage() const
 {
   const Oxs_SimState* cstate = current_state.GetPtr();
@@ -1147,6 +1496,26 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
     if(step_taken) {
       const Oxs_SimState& cstate = current_state.GetReadReference();
       ++step_events;
+      if(report_max_spin_angle) {
+        // Update max spin angle data, as necessary
+        OC_REAL8m angle_data;
+        if(maxSpinAng_output.cache.state_id != cstate.Id()
+           && cstate.GetDerivedData("Max Spin Ang",angle_data)) {
+          maxSpinAng_output.cache.value = angle_data;
+          maxSpinAng_output.cache.state_id = cstate.Id();
+
+        }
+        if(stage_maxSpinAng_output.cache.state_id != cstate.Id()
+           && cstate.GetDerivedData("Stage Max Spin Ang",angle_data)) {
+          stage_maxSpinAng_output.cache.value = angle_data;
+          stage_maxSpinAng_output.cache.state_id = cstate.Id();
+        }
+        if(run_maxSpinAng_output.cache.state_id != cstate.Id()
+           && cstate.GetDerivedData("Run Max Spin Ang",angle_data)) {
+          run_maxSpinAng_output.cache.value = angle_data;
+          run_maxSpinAng_output.cache.state_id = cstate.Id();
+        }
+      }
       problem_status = OXSDRIVER_PS_INSIDE_STAGE;
       if (IsStageDone(cstate)) {
         ++stage_events;
@@ -1190,96 +1559,8 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
     }
 
     // Checkpoint file save
-    if(checkpoint_interval>=0.0
-       && checkpoint_id != current_state.GetPtr()->Id()) {
-      Oc_TimeVal cpu_time,wall_time;
-      Oc_Times(cpu_time,wall_time);
-      wall_time -= checkpoint_time;
-      if(double(wall_time)>=checkpoint_interval) {
-        // Save checkpoint state
-        Oc_AutoBuf full_checkname;  // Full path to checkpoint file
-        Nb_DString tmpchknam;
-        OC_BOOL checkpoint_success = 0;
-        String chkptmsg; // Error message, if any
-        String chkptsrc = "CHECKPOINT"; // Error source, if any
-        String chkptfile = __FILE__;
-        String chkptline = OC_STRINGIFY(__LINE__);
-        try {
-          // Full error recovery might not be possible, depending
-          // on the error, but it seems better to try to continue
-          // than to just abort.
-          Oc_DirectPathname(checkpoint_file.c_str(),full_checkname);
-          checkpoint_id = current_state.GetPtr()->Id();
-          tmpchknam = Nb_TempName(checkpoint_file.c_str(),".tmp",".");
-          current_state.GetPtr()->SaveState(tmpchknam.GetStr(),
-                                            "Checkpoint restart file",
-                                            director);
-          Nb_Rename(tmpchknam.GetStr(),checkpoint_file.c_str());
-          ++checkpoint_writes;
-          checkpoint_success = 1;
-        } catch (Oxs_Exception& err) {
-          // Include filename in error message
-          char numbuf[256];
-          Oc_Snprintf(numbuf,sizeof(numbuf),"%d",checkpoint_id);
-          String msg = String("Error saving checkpoint file \"")
-            + String(full_checkname) + String("\", state id ")
-            + String(numbuf) + String(": ");
-          err.Prepend(msg);
-          // Use directory of temp file as error message subtype
-          Oc_AutoBuf fullname,dirname;
-          Oc_DirectPathname(tmpchknam.GetStr(),fullname);
-          Oc_FileDirname(fullname,dirname);
-          err.SetSubtype(dirname.GetStr());
-          chkptmsg = err.MessageText()
-            + String("\nError   type: ") + err.FullType()
-            + String("\nError source: ") + err.FullSrc();
-          chkptsrc = err.FullSrc();
-          chkptfile = err.MessageFile();
-          Oc_Snprintf(numbuf,sizeof(numbuf),"%d",err.MessageLine());
-          chkptline = numbuf;
-          checkpoint_success = 0;
-        } catch (Oc_Exception& ocerr) {
-          Oc_AutoBuf abuf;
-          ocerr.ConstructMessage(abuf);
-          char numbuf[256];
-          Oc_Snprintf(numbuf,sizeof(numbuf),"%d",checkpoint_id);
-          chkptmsg = String("Error saving checkpoint file \"")
-            + String(full_checkname) + String("\", state id ")
-            + String(numbuf) + String(": ")
-            + String(abuf.GetStr());
-          checkpoint_success = 0;
-        } catch (const char* errmsg) {
-          char numbuf[256];
-          Oc_Snprintf(numbuf,sizeof(numbuf),"%d",checkpoint_id);
-          chkptmsg = String("Error saving checkpoint file \"")
-            + String(full_checkname) + String("\", state id ")
-            + String(numbuf) + String(": ")
-            + String(errmsg)
-            + String("\n Detected in file:") + chkptfile
-            + String("\n          at line:") + chkptline;
-          checkpoint_success = 0;
-        } catch (...) {
-          char numbuf[256];
-          Oc_Snprintf(numbuf,sizeof(numbuf),"%d",checkpoint_id);
-          chkptmsg = String("Unrecognized error saving checkpoint file \"")
-            + String(full_checkname) + String("\", state id ")
-            + String(numbuf)
-            + String("\n Detected in file:") + chkptfile
-            + String("\n          at line:") + chkptline;
-          checkpoint_success = 0;
-        }
-
-        if(!checkpoint_success) {
-          static Oxs_WarningMessage checkpterr(3);
-          chkptmsg += String("\n--------------\nWarning thrown");
-          checkpterr.Send(revision_info,chkptline.c_str(),
-                          chkptmsg.c_str(),chkptsrc.c_str(),
-                          "CHKPT 1");
-        }
-
-        Oc_Times(cpu_time,checkpoint_time); // Reset checkpoint time
-      }
-    }
+    bgcheckpt.UpdateBackup(current_state);
+    
   } // End of 'step_events<max_steps ...' loop
 
   // Currently above block generates at most a single step.  When it
@@ -1334,8 +1615,62 @@ Oxs_Driver::Fill__magnetization_output(const Oxs_SimState& state)
   magnetization_output.cache.state_id=state.Id();
 }
 
-void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+/// UpdateSpinAngleData
+
+class OxsDriverMaxAngleThread : public Oxs_ThreadRunObj {
+public:
+  static Oxs_JobControl<OC_REAL8m> job_basket;
+
+  const Oxs_SimState* state;
+  std::vector<OC_REAL8m>& maxangle;
+
+  OxsDriverMaxAngleThread
+  (const Oxs_SimState* in_state,
+   std::vector<OC_REAL8m>& in_maxangle,
+   int thread_count)
+    : state(in_state), maxangle(in_maxangle) {
+    job_basket.Init(thread_count,state->Ms->GetArrayBlock());
+  }
+
+  void Cmd(int threadnumber, void* data);
+
+  // Note: Disable copy constructor and assignment operator by
+  // declaring w/o implementation.
+  OxsDriverMaxAngleThread(const OxsDriverMaxAngleThread&);
+  OxsDriverMaxAngleThread& operator=(const OxsDriverMaxAngleThread&);
+};
+
+Oxs_JobControl<OC_REAL8m> OxsDriverMaxAngleThread::job_basket;
+
+void
+OxsDriverMaxAngleThread::Cmd
+(int threadnumber,void* /* data */)
 {
+  assert(size_t(threadnumber) < maxangle.size());
+
+  const Oxs_MeshValue<ThreeVector>& spin = state->spin;
+  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state->Ms);
+  const Oxs_Mesh* mesh = state->mesh;
+
+  OC_REAL8m thread_maxangle = 0.0;
+  while(1) {
+    // Claim a chunk
+    OC_INDEX node_start,node_stop;
+    job_basket.GetJob(threadnumber,node_start,node_stop);
+    if(node_start>=node_stop) break;
+
+    OC_REAL8m angle = mesh->MaxNeighborAngle(spin,Ms,node_start,node_stop);
+    if(angle > thread_maxangle) thread_maxangle = angle;
+  } // while(1)
+  maxangle[threadnumber] = thread_maxangle;
+}
+
+void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
+{ // Being a const member function, this routine does not affect the
+  // max angle output caches.  Instead, if necessary, the
+  // max angle output caches are updated in the driver Run function.
   if(!report_max_spin_angle) {
     static Oxs_WarningMessage nocall(3);
     nocall.Send(revision_info,OC_STRINGIFY(__LINE__),
@@ -1343,48 +1678,147 @@ void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
                 " Input MIF file requested no driver spin angle reports,"
                 " but Oxs_Driver::UpdateSpinAngleData is called.");
   }
-  OC_REAL8m maxang,stage_maxang,run_maxang;
-  stage_maxang = run_maxang = -1.0; // Safety init
-  maxang = state.mesh->MaxNeighborAngle(state.spin,*(state.Ms))*(180./PI);
-  state.GetDerivedData("PrevState Stage Max Spin Ang",stage_maxang);
-  state.GetDerivedData("PrevState Run Max Spin Ang",run_maxang);
-  if(maxang>stage_maxang) stage_maxang=maxang;
-  if(maxang>run_maxang)   run_maxang=maxang;
-  state.AddDerivedData("Max Spin Ang",maxang);
-  state.AddDerivedData("Stage Max Spin Ang",stage_maxang);
-  state.AddDerivedData("Run Max Spin Ang",run_maxang);
+  OC_REAL8m maxangle,stage_maxangle,run_maxangle;
+  if(state.GetDerivedData("Max Spin Ang",maxangle)
+     && state.GetDerivedData("Stage Max Spin Ang",stage_maxangle)
+     && state.GetDerivedData("Run Max Spin Ang",run_maxangle)) {
+    return; // Nothing to do
+  }
+  if(maxSpinAng_output.cache.state_id == state.Id()
+     && stage_maxSpinAng_output.cache.state_id == state.Id()
+     && run_maxSpinAng_output.cache.state_id == state.Id()) {
+    // Values computed, just not stored in state
+    maxangle = maxSpinAng_output.cache.value;
+    stage_maxangle = stage_maxSpinAng_output.cache.value;
+    run_maxangle = run_maxSpinAng_output.cache.value;
+    state.AddDerivedData("Max Spin Ang",maxangle);
+    state.AddDerivedData("Stage Max Spin Ang",stage_maxangle);
+    state.AddDerivedData("Run Max Spin Ang",run_maxangle);
+    return;
+  }
+
+  // Otherwise, compute values
+  stage_maxangle = run_maxangle = -1.0; // Safety init
+  { // Compute max angle, in parallel
+    const int threadcount = Oc_GetMaxThreadCount();
+    std::vector<OC_REAL8m> angledata(threadcount);
+    OxsDriverMaxAngleThread maxangle_thread(&state,angledata,threadcount);
+    static Oxs_ThreadTree threadtree;
+    threadtree.LaunchTree(maxangle_thread,0);
+    maxangle = 0.0;
+    for(int i=0;i<threadcount;++i) {
+      if(maxangle<angledata[i]) maxangle = angledata[i];
+    }
+  }
+  maxangle *= (180./PI);
+  state.GetDerivedData("PrevState Stage Max Spin Ang",stage_maxangle);
+  state.GetDerivedData("PrevState Run Max Spin Ang",run_maxangle);
+  if(maxangle>stage_maxangle) stage_maxangle = maxangle;
+  if(maxangle>run_maxangle)   run_maxangle = maxangle;
+  state.AddDerivedData("Max Spin Ang",maxangle);
+  state.AddDerivedData("Stage Max Spin Ang",stage_maxangle);
+  state.AddDerivedData("Run Max Spin Ang",run_maxangle);
 }
 
+/// UpdateSpinAngleData
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+/// maxSpinAngle outputs
+
 void
-Oxs_Driver::Fill__maxSpinAng_output(const Oxs_SimState& state) 
+Oxs_Driver::Fill__maxSpinAng_output_init
+(const Oxs_SimState& /* state */,int number_of_threads)
 {
+  fill_maxSpinAng_output_storage.resize(number_of_threads);
+  for(int i=0;i<number_of_threads;++i) {
+    fill_maxSpinAng_output_storage[i]=0.0;
+  }
   maxSpinAng_output.cache.state_id =
   stage_maxSpinAng_output.cache.state_id =
   run_maxSpinAng_output.cache.state_id = 0;
-
-  OC_REAL8m maxang,stage_maxang,run_maxang;
-  maxang = stage_maxang = run_maxang = -1.0; // Safety init
-
-  if(!state.GetDerivedData("Max Spin Ang",maxang) ||
-     !state.GetDerivedData("Stage Max Spin Ang",stage_maxang) ||
-     !state.GetDerivedData("Run Max Spin Ang",run_maxang)) {
-    UpdateSpinAngleData(state);
-    state.GetDerivedData("Max Spin Ang",maxang);
-    state.GetDerivedData("Stage Max Spin Ang",stage_maxang);
-    state.GetDerivedData("Run Max Spin Ang",run_maxang);
-  }
-  maxSpinAng_output.cache.value=maxang;
-  stage_maxSpinAng_output.cache.value=stage_maxang;
-  run_maxSpinAng_output.cache.value=run_maxang;
-  maxSpinAng_output.cache.state_id =
-  stage_maxSpinAng_output.cache.state_id =
-  run_maxSpinAng_output.cache.state_id = state.Id();
 }
 
 void
-Oxs_Driver::Fill__aveM_output(const Oxs_SimState& state)
-{ // NOTE: This code assumes that the cells in the mesh
-  //       are uniformly sized.
+Oxs_Driver::Fill__maxSpinAng_output
+(const Oxs_SimState& state,
+ OC_INDEX node_start,
+ OC_INDEX node_stop,
+ int threadnumber)
+{
+  assert(size_t(threadnumber) < fill_maxSpinAng_output_storage.size());
+  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+  const Oxs_Mesh* mesh = state.mesh;
+  OC_REAL8m angle = mesh->MaxNeighborAngle(spin,Ms,node_start,node_stop);
+  if(fill_maxSpinAng_output_storage[threadnumber]<angle) {
+    fill_maxSpinAng_output_storage[threadnumber]=angle;
+  }
+}
+
+void
+Oxs_Driver::Fill__maxSpinAng_output_fini
+(const Oxs_SimState& state,int number_of_threads)
+{
+  assert(size_t(number_of_threads) == fill_maxSpinAng_output_storage.size());
+  OC_REAL8m maxangle = 0;
+  for(int i=0;i<number_of_threads;++i) {
+    if(fill_maxSpinAng_output_storage[i] > maxangle) {
+      maxangle = fill_maxSpinAng_output_storage[i];
+    }
+  }
+  maxangle *= (180./PI);
+
+  OC_REAL8m stage_maxangle=0.0,run_maxangle=0.0;
+  state.GetDerivedData("PrevState Stage Max Spin Ang",stage_maxangle);
+  if(maxangle>stage_maxangle) stage_maxangle=maxangle;
+  state.GetDerivedData("PrevState Run Max Spin Ang",run_maxangle);
+  if(maxangle>run_maxangle)   run_maxangle=maxangle;
+  maxSpinAng_output.cache.value=maxangle;
+  stage_maxSpinAng_output.cache.value=stage_maxangle;
+  run_maxSpinAng_output.cache.value=run_maxangle;
+  maxSpinAng_output.cache.state_id =
+  stage_maxSpinAng_output.cache.state_id =
+  run_maxSpinAng_output.cache.state_id = state.Id();
+
+  if(!state.AddDerivedData("Max Spin Ang",maxangle)
+     || !state.AddDerivedData("Stage Max Spin Ang",stage_maxangle)
+     || !state.AddDerivedData("Run Max Spin Ang",run_maxangle)) {
+    static Oxs_WarningMessage multangle(3);
+    multangle.Send(revision_info,OC_STRINGIFY(__LINE__),
+                   "Programming error? Max spin angle computed"
+                   " multiple times for the same state.");
+  }
+}
+
+void
+Oxs_Driver::Fill__maxSpinAng_output_shares
+(std::vector<Oxs_BaseChunkScalarOutput*>& buddy_list)
+{
+  buddy_list.clear();
+  buddy_list.push_back(&maxSpinAng_output);
+  buddy_list.push_back(&stage_maxSpinAng_output);
+  buddy_list.push_back(&run_maxSpinAng_output);
+}
+
+/// maxSpinAngle outputs
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+/// aveM outputs
+
+void
+Oxs_Driver::Fill__aveM_output_init
+(const Oxs_SimState&
+#ifndef NDEBUG
+ state
+#endif
+,int number_of_threads)
+{
 #ifndef NDEBUG
   if(!state.mesh->HasUniformCellVolumes()) {
     throw Oxs_ExtError(this,"NEW CODE REQUIRED: Current Oxs_Driver"
@@ -1393,66 +1827,66 @@ Oxs_Driver::Fill__aveM_output(const Oxs_SimState& state)
                          "Oxs_RectangularMesh.");
   }
 #endif
-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
-  const Oxs_MeshValue<OC_REAL8m>& sMs = *(state.Ms);
-  OC_INDEX size = state.mesh->Size();
-
-  if(aveMx_output.GetCacheRequestCount()>0 &&
-     aveMy_output.GetCacheRequestCount()>0 &&
-     aveMz_output.GetCacheRequestCount()>0) {
-    // Preferred case: All three components desired
-    // This does not appear to be the usual case, however...
-    aveMx_output.cache.state_id=0;
-    aveMy_output.cache.state_id=0;
-    aveMz_output.cache.state_id=0;
-    OC_REAL8m Mx=0.0;
-    OC_REAL8m My=0.0;
-    OC_REAL8m Mz=0.0;
-    for(OC_INDEX i=0;i<size;++i) {
-      OC_REAL8m sat_mag = sMs[i];
-      Mx += sat_mag*(spin[i].x);
-      My += sat_mag*(spin[i].y);
-      Mz += sat_mag*(spin[i].z);
-    }
-    aveMx_output.cache.value=Mx*scaling_aveM;
-    aveMx_output.cache.state_id=state.Id();
-    aveMy_output.cache.value=My*scaling_aveM;
-    aveMy_output.cache.state_id=state.Id();
-    aveMz_output.cache.value=Mz*scaling_aveM;
-    aveMz_output.cache.state_id=state.Id();
-  } else {
-    // Calculate components on a case-by-case basis
-    if(aveMx_output.GetCacheRequestCount()>0) {
-      aveMx_output.cache.state_id=0;
-      OC_REAL8m Mx=0.0;
-      for(OC_INDEX i=0;i<size;++i) {
-        Mx += sMs[i]*(spin[i].x);
-      }
-      aveMx_output.cache.value=Mx*scaling_aveM;
-      aveMx_output.cache.state_id=state.Id();
-    }
-
-    if(aveMy_output.GetCacheRequestCount()>0) {
-      aveMy_output.cache.state_id=0;
-      OC_REAL8m My=0.0;
-      for(OC_INDEX i=0;i<size;++i) {
-        My += sMs[i]*(spin[i].y);
-      }
-      aveMy_output.cache.value=My*scaling_aveM;
-      aveMy_output.cache.state_id=state.Id();
-    }
-
-    if(aveMz_output.GetCacheRequestCount()>0) {
-      aveMz_output.cache.state_id=0;
-      OC_REAL8m Mz=0.0;
-      for(OC_INDEX i=0;i<size;++i) {
-        Mz += sMs[i]*(spin[i].z);
-      }
-      aveMz_output.cache.value=Mz*scaling_aveM;
-      aveMz_output.cache.state_id=state.Id();
-    }
+  fill_aveM_output_storage.resize(number_of_threads);
+  for(int i=0;i<number_of_threads;++i) {
+    fill_aveM_output_storage[i]=ThreeVector(0.,0.,0.);
   }
 }
+
+void
+Oxs_Driver::Fill__aveM_output
+(const Oxs_SimState& state,
+ OC_INDEX node_start,
+ OC_INDEX node_stop,
+ int threadnumber)
+{
+  assert(0<=threadnumber
+         && size_t(threadnumber)<fill_aveM_output_storage.size());
+  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+  const Oxs_MeshValue<OC_REAL8m>& sMs = *(state.Ms);
+  assert(0<=node_start && node_start<=node_stop
+         && node_stop<=state.mesh->Size());
+
+  ThreeVector chunk(0.0,0.0,0.0);
+  for(OC_INDEX i=node_start;i<node_stop;++i) {
+    OC_REAL8m sat_mag = sMs[i];
+    chunk.x += sat_mag*(spin[i].x);
+    chunk.y += sat_mag*(spin[i].y);
+    chunk.z += sat_mag*(spin[i].z);
+  }
+  fill_aveM_output_storage[threadnumber] += chunk;
+}
+
+void
+Oxs_Driver::Fill__aveM_output_fini
+(const Oxs_SimState& state,int number_of_threads)
+{
+  assert(size_t(number_of_threads) == fill_aveM_output_storage.size());
+  ThreeVector sum(0.,0.,0.);
+  for(int i=0;i<number_of_threads;++i) {
+    sum += fill_aveM_output_storage[i];
+  }
+  aveMx_output.cache.value = sum.x * scaling_aveM;
+  aveMy_output.cache.value = sum.y * scaling_aveM;
+  aveMz_output.cache.value = sum.z * scaling_aveM;
+  aveMx_output.cache.state_id
+    = aveMy_output.cache.state_id
+    = aveMz_output.cache.state_id = state.Id();
+}
+
+void
+Oxs_Driver::Fill__aveM_output_shares
+(std::vector<Oxs_BaseChunkScalarOutput*>& buddy_list)
+{
+  buddy_list.clear();
+  buddy_list.push_back(&aveMx_output);
+  buddy_list.push_back(&aveMy_output);
+  buddy_list.push_back(&aveMz_output);
+}
+
+/// aveM outputs
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 
 void
 Oxs_Driver::Fill__projection_outputs(const Oxs_SimState& state)

@@ -92,7 +92,6 @@ Oxs_FileVectorField::Oxs_FileVectorField(
     if(params.size()==1) {
       if(params[0].compare("auto")==0) {
         auto_offset = 1; // Safety
-        DeleteInitValue("spatial_offset");
       } else {
         String initstr;
         FindInitValue("spatial_offset",initstr);
@@ -101,6 +100,7 @@ Oxs_FileVectorField::Oxs_FileVectorField(
           + String("; should be either auto or a three vector.");
         throw Oxs_ExtError(this,msg.c_str());
       }
+      DeleteInitValue("spatial_offset");
     } else {
       offset = GetThreeVectorInitValue("spatial_offset");
       auto_offset = 0;

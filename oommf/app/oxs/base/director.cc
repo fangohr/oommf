@@ -6,9 +6,14 @@
 
 #undef REPORT_CONSTRUCT_TIMES  // #define this to get timing report on stderr
 
+#include <stdio.h> // For some versions of g++ on Windows, if stdio.h is
+/// #include'd after a C++-style header, then printf format modifiers
+/// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
+
 #include <algorithm>
-#include <vector>
+#include <limits>
 #include <string>
+#include <vector>
 #include "oc.h"
 #include "nb.h"
 #include "director.h"
@@ -39,10 +44,11 @@ void Oxs_Director::ExitProc(ClientData clientData)
     fflush(stderr); fflush(stdout);
 }
 
+// Constructor
 Oxs_Director::Oxs_Director(Tcl_Interp *i) 
   : interp(i),
     problem_count(0),problem_id(0),
-    restart_flag(0),restart_crc_check_flag(1),
+    restart_flag(0),restart_crc_check_flag(1),mif_crc(0),
     error_status(0),driver(NULL),
     simulation_state_reserve_count(0)
 {
@@ -51,6 +57,11 @@ Oxs_Director::Oxs_Director(Tcl_Interp *i)
 
   // Make sure tcl_precision is full
   Tcl_Eval(interp,OC_CONST84_CHAR("set tcl_precision 17"));
+
+  if (TCL_OK != Tcl_Eval(interp,
+      OC_CONST84_CHAR("Oc_Main Preload Oc_TempName Oc_TempFile"))) {
+    OXS_THROW(Oxs_IncompleteInitialization,"tempfile support unavilable");
+  }
 }
 
 int Oxs_Director::ProbReset()
@@ -242,6 +253,33 @@ int Oxs_Director::SetStage(int requestedStage)
   return driver->GetStage();
 }
 
+OC_UINT4m Oxs_Director::GetCurrentStateId()
+{
+  if(driver==NULL) {
+    OXS_THROW(Oxs_IncompleteInitialization,"no driver identified");
+  }
+
+  OC_UINT4m id = 0;
+  try {
+    id = driver->GetCurrentStateId();
+  } catch (Oxs_ExtError& err) {
+    String head =
+      String("Oxs_Ext error inside GetCurrentStateId function of driver ")
+      + String(driver->InstanceName())
+      + String(" --- ");
+    err.Prepend(head);
+    throw;
+  } catch (Oxs_Exception& err) {
+    String head =
+      String("Error inside GetCurrentStateId function of driver ")
+      + String(driver->InstanceName()) + String(" --- ");
+    err.Prepend(head);
+    throw;
+  }
+
+  return id;
+}
+
 String Oxs_Director::GetMifHandle() const
 {
   if(problem_id == 0) {
@@ -250,7 +288,7 @@ String Oxs_Director::GetMifHandle() const
   return mif_object;
 }
 
-OC_UINT4m Oxs_Director::GetMifCrc() const
+OC_UINT4m Oxs_Director::ComputeMifCrc()
 { // Returns the CRC of the buffer representation of the MIF file
   // most recently read into the current MIF object.
   // This routine throws an exception if a problem is not loaded.
@@ -284,7 +322,16 @@ OC_UINT4m Oxs_Director::GetMifCrc() const
   return crc;
 }
 
-String Oxs_Director::GetMifParameters() const
+OC_UINT4m Oxs_Director::GetMifCrc() const
+{
+  if(mif_object.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error reading MIF CRC: no MIF object found.");
+  }
+  return mif_crc;
+}
+
+String Oxs_Director::ReadMifParameters()
 { // Returns a string representation of a the "-parameters" list
   // specified on the command line, as stored in the current MIF object.
   // When parsed, this list should have an even number of elements.
@@ -315,6 +362,15 @@ String Oxs_Director::GetMifParameters() const
   orig_result.Restore();
 
   return params;
+}
+
+String Oxs_Director::GetMifParameters() const
+{
+  if(mif_object.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error reading MIF CRC: no MIF object found.");
+  }
+  return mif_parameters;
 }
 
 int Oxs_Director::CheckMifParameters(const String& test_params) const
@@ -496,7 +552,7 @@ int Oxs_Director::ExtCreateAndRegister
 
 
 int Oxs_Director::ProbInit(const char* filename,
-                            const char* mif_parameters)
+                            const char* mif_params)
 { // Creates an Oxs_Mif object in the master interp, and
   // has it source the problem specified by filename, which
   // should be in MIF 2.x format.  The Oxs_Mif object is
@@ -524,6 +580,9 @@ int Oxs_Director::ProbInit(const char* filename,
   }
 #endif
 
+  // Initialize Oxs threads.  This is a NOP on non-threaded builds.
+  Oxs_ThreadTree::InitThreads(Oc_GetMaxThreadCount());
+
   // Create mif object; side effect: creates a slave interpreter
   error_code = Tcl_Eval(interp,OC_CONST84_CHAR("Oxs_Mif New _"));
   if(error_code!=TCL_OK) return error_code;
@@ -542,7 +601,7 @@ int Oxs_Director::ProbInit(const char* filename,
   cmdvec.push_back(mif_object);
   cmdvec.push_back("ReadMif");
   cmdvec.push_back(filename);
-  cmdvec.push_back(mif_parameters);
+  cmdvec.push_back(mif_params);
   cmd = Nb_MergeList(cmdvec);
   cmdvec.clear();
   error_code = Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()));
@@ -551,6 +610,9 @@ int Oxs_Director::ProbInit(const char* filename,
     return error_code;
   }
   Tcl_ResetResult(interp);
+
+  mif_parameters = ReadMifParameters();
+  mif_crc = ComputeMifCrc();
 
   // Note: Once mif_object is set, the Oxs_Director functions
   // GetMifCrc(), GetMifParameters(), and CheckMifParameters()
@@ -568,9 +630,6 @@ int Oxs_Director::ProbInit(const char* filename,
     return TCL_ERROR;
   }
   Tcl_ResetResult(interp);
-
-  // Initialize Oxs threads.  This is a NOP on non-threaded builds.
-  Oxs_ThreadTree::InitThreads(Oc_GetMaxThreadCount());
 
   // Run Init() on all Oxs_Ext's
   if(ProbReset()!=TCL_OK) {
@@ -600,6 +659,8 @@ void Oxs_Director::ForceRelease()
   simulation_state_reserve_count=0;
   mif_object.erase();
   output_obj.clear();
+  scalar_output_obj.clear();
+  chunk_output_compute_obj.clear();
   error_status = 0; // Clear error indicator (if any)
   Oxs_ThreadTree::EndThreads();  // Thread cleanup; NOP if non-threaded.
   fflush(stderr);  fflush(stdout);  // Safety
@@ -661,6 +722,9 @@ void Oxs_Director::Release()
     }
     tcl_state.Restore();
 
+    mif_parameters.erase();
+    mif_crc = 0;
+
     // Check that all output objects have deregistered
     vector<Oxs_Output*>::const_iterator output_it
       = find_if(output_obj.begin(),output_obj.end(),not_null);
@@ -669,6 +733,8 @@ void Oxs_Director::Release()
                 "Not all output objects deregistered upon problem release.");
     }
     output_obj.clear(); // Reset output object registration list
+    scalar_output_obj.clear();
+    chunk_output_compute_obj.clear();
 
     Oxs_ThreadTree::EndThreads();  // Thread cleanup
 
@@ -790,7 +856,9 @@ int Oxs_Director::StoreExtObject(Oxs_OwnedPointer<Oxs_Ext>& obj)
 
 
 Oxs_Ext*
-Oxs_Director::FindExtObject(const String& id) const
+Oxs_Director::FindExtObject
+(const String& id,
+ OC_UINT4m& match_count) const
 { // Tries to find a match of id against entries in ext_map.
   // If "id" contains a ":" at any position other than the
   // first character, then it must match exactly against
@@ -802,7 +870,7 @@ Oxs_Director::FindExtObject(const String& id) const
   // of each key.  An invalid key is returned if a unique
   // match is not obtained.
 
-  OC_UINT4m match_count=0;
+  match_count=0;
   Oxs_Ext* extobj=NULL;
   map<String,Oxs_Ext*>::const_iterator it;
 
@@ -894,96 +962,10 @@ String Oxs_Director::ListEnergyObjects() const
   return result;
 }
 
-// Routines to register and deregister simulation outputs.
-// NOTE: All objects registering output are expected to
-// automatically deregister as a consequence of the object
-// destructions occuring in Oxs_Director::Release().
-void Oxs_Director::RegisterOutput(Oxs_Output* obj)
-{
-  // Check that object not already registered
-  vector<Oxs_Output*>::iterator it
-    = find(output_obj.begin(),output_obj.end(),obj);
-  if(it != output_obj.end()) {
-    // Object already registered
-    String msg = String("Output object <")
-      + obj->OwnerName() + String(",") 
-      + obj->OutputName() + String("> already registered.");
-    OXS_THROW(Oxs_BadIndex,msg.c_str());
-  }
-
-  // Otherwise, append to end of output_obj list
-  output_obj.push_back(obj);
-}
-
-void Oxs_Director::DeregisterOutput(const Oxs_Output* obj)
-{
-  vector<Oxs_Output*>::iterator it
-    = find(output_obj.begin(),output_obj.end(),obj);
-  if(it == output_obj.end()) {
-    OXS_THROW(Oxs_BadIndex,"Attempted deregistration of "
-             "non-registered output object.");
-  }
-  *it = NULL;
-}
-
-OC_BOOL Oxs_Director::IsRegisteredOutput(const Oxs_Output* obj) const
-{
-  vector<Oxs_Output*>::const_iterator it
-    = find(output_obj.begin(),output_obj.end(),obj);
-  if(it == output_obj.end()) return 0;
-  return 1;
-}
-
-const char*
-Oxs_Director::MakeOutputToken(unsigned long index,unsigned long probid) const
-{
-  static Oc_AutoBuf buf;
-  buf.SetLength(4*sizeof(unsigned long)+8);
-  sprintf(static_cast<char *>(buf),"%lX %lX",index,probid);
-  return static_cast<char *>(buf);
-}
-
-Oxs_Output*
-Oxs_Director::InterpretOutputToken(const char* token) const
-{
-  unsigned long index=0,probid=0;
-  char* endptr;
-  index = strtol(token,&endptr,16);
-  if(endptr==NULL || endptr==token) {
-    OXS_THROW(Oxs_BadParameter,
-             "Invalid token passed to"
-             " Oxs_Director::InterpretOutputToken");
-  }
-  if(*endptr != '\0') {
-    probid = strtol(endptr+1,&endptr,16);
-  }
-  if(*endptr != '\0') {
-    OXS_THROW(Oxs_BadParameter,
-             "Invalid token passed to"
-             " Oxs_Director::InterpretOutputToken");
-  }
-  if(probid!=problem_id) {
-    OXS_THROW(Oxs_BadParameter,
-             "Problem ID mismatch on token passed to"
-             " Oxs_Director::InterpretOutputToken");
-  }
-  if(index>=output_obj.size()) {
-    OXS_THROW(Oxs_BadIndex,
-             "Out-of-range index in token passed to"
-             " Oxs_Director::InterpretOutputToken");
-  }
-  Oxs_Output* obj = output_obj[index];
-  if(obj==NULL) {
-    OXS_THROW(Oxs_BadParameter,
-             "Token refers to deregistered output object in"
-             " Oxs_Director::InterpretOutputToken");
-  }
-  return obj;
-}
-
+// OxsDirectorOutputKey defines output sort order
 struct OxsDirectorOutputKey {
 public:
-  size_t index;
+  OC_INDEX index;
   OC_INT4m priority;
   OxsDirectorOutputKey() : index(0), priority(0) {}
   /// Default constructor required by STL containers.
@@ -1001,6 +983,198 @@ bool operator<(const OxsDirectorOutputKey& a,
 // The following 2 functions are declared just to keep MSVC++ 5.0 happy
 bool operator>(const OxsDirectorOutputKey&, const OxsDirectorOutputKey&);
 bool operator==(const OxsDirectorOutputKey&, const OxsDirectorOutputKey&);
+
+
+// Routine to build chunk_output_compute_obj list.  There does not
+// appear to be any simple way to construct this list incrementally,
+// because a compute routine may compute multiple outputs, and some of
+// those outputs might not yet be registered.  For flexibility and
+// robustness, this routine is called by the output registration and
+// deregistration code directly, on each event.  This means that the
+// chunk_output_compute_obj list is formed from scratch on each
+// registration, even though it really only needs to be called once
+// time, after all outputs are registered.  But the performance impact
+// will be tiny, so we ignore the extra expense.
+void Oxs_Director::CreateChunkOutputComputeList()
+{
+  std::vector<int> coverage(scalar_output_obj.size(),0);
+  chunk_output_compute_obj.clear();
+
+  std::vector<Oxs_BaseChunkScalarOutput*> buddy_list;
+
+  std::list<Oxs_BaseScalarOutput*>::iterator bsit;
+  for(bsit=scalar_output_obj.begin();
+      bsit != scalar_output_obj.end(); ++bsit) {
+    Oxs_BaseChunkScalarOutput* bcsptr
+      = dynamic_cast<Oxs_BaseChunkScalarOutput*>(*bsit);
+    if(bcsptr == 0) continue; // Non-chunk output
+
+    buddy_list.clear();
+    bcsptr->ChunkSharedScalarOutputs(buddy_list);
+    std::vector<Oxs_BaseChunkScalarOutput*>::const_iterator buddies;
+    for(buddies=buddy_list.begin();
+        buddies != buddy_list.end(); ++buddies) {
+      std::list<Oxs_BaseScalarOutput*>::iterator findit
+        = std::find(scalar_output_obj.begin(),
+                    scalar_output_obj.end(),*buddies);
+      if(findit != scalar_output_obj.end()) {
+        std::vector<int>::iterator covit
+          = coverage.begin()
+          + std::distance(scalar_output_obj.begin(),findit);
+        if(*covit == 0) break;
+      }
+    }
+    if(buddies != buddy_list.end()) {
+      // This item added coverage; check to make sure there is no
+      // duplicate coverage.
+      for(buddies=buddy_list.begin();
+          buddies != buddy_list.end(); ++buddies) {
+        std::list<Oxs_BaseScalarOutput*>::iterator findit
+          = std::find(scalar_output_obj.begin(),
+                      scalar_output_obj.end(),*buddies);
+        if(findit != scalar_output_obj.end()) {
+          std::vector<int>::iterator covit
+            = coverage.begin()
+            + std::distance(scalar_output_obj.begin(),findit);
+          if(*covit != 0) {
+            String msg = String("Output object ")
+              + bcsptr->LongName()
+              + String(" duplicates evaluation of output ")
+              + (*findit)->LongName();
+            OXS_THROW(Oxs_ProgramLogicError,msg.c_str());
+          }
+          ++(*covit);
+        }
+      }
+      chunk_output_compute_obj.push_back(bcsptr);
+    }
+  }
+}
+
+
+// Routines to register and deregister simulation outputs.
+// NOTE: All objects registering output are expected to
+// automatically deregister as a consequence of the object
+// destructions occuring in Oxs_Director::Release().
+void Oxs_Director::RegisterOutput(Oxs_Output* obj)
+{
+  // Check that object not already registered
+  std::vector<Oxs_Output*>::iterator it
+    = std::find(output_obj.begin(),output_obj.end(),obj);
+  if(it != output_obj.end()) {
+    // Object already registered
+    String msg = String("Output object <")
+      + obj->OwnerName() + String(",") 
+      + obj->OutputName() + String("> already registered.");
+    OXS_THROW(Oxs_BadIndex,msg.c_str());
+  }
+
+  // Otherwise, append to end of output_obj list
+  output_obj.push_back(obj);
+
+  // If obj is a scalar output object, then insert it at the proper
+  // (sorted) place in the scalar_output_obj list.
+  Oxs_BaseScalarOutput* bsobj = dynamic_cast<Oxs_BaseScalarOutput*>(obj);
+  if(bsobj) {
+    OxsDirectorOutputKey bskey(scalar_output_obj.size(),bsobj->Priority());
+    std::list<Oxs_BaseScalarOutput*>::iterator bsit;
+    size_t soo_index;
+    for(bsit=scalar_output_obj.begin(), soo_index=0;
+        bsit != scalar_output_obj.end(); ++bsit, ++soo_index) {
+      OxsDirectorOutputKey testkey(soo_index,(*bsit)->Priority());
+      if(bskey < testkey) {
+        break; // Found spot; bskey goes immediately before testkey
+      }
+    }
+    scalar_output_obj.insert(bsit,bsobj);
+    /// In worst case, bsit == scalar_output_obj.end()
+  }
+  CreateChunkOutputComputeList();
+}
+
+void Oxs_Director::DeregisterOutput(const Oxs_Output* obj)
+{
+  vector<Oxs_Output*>::iterator it
+    = std::find(output_obj.begin(),output_obj.end(),obj);
+  if(it == output_obj.end()) {
+    OXS_THROW(Oxs_BadIndex,"Attempted deregistration of "
+             "non-registered output object.");
+  }
+  *it = NULL;
+  // If obj is a scalar output, then remove it from scalar_output_obj
+  // list too.
+  const Oxs_BaseScalarOutput* bsobj
+    = dynamic_cast<const Oxs_BaseScalarOutput*>(obj);
+  if(bsobj) {
+    std::list<Oxs_BaseScalarOutput*>::iterator bsit
+      = std::find(scalar_output_obj.begin(),scalar_output_obj.end(),bsobj);
+    if(bsit == scalar_output_obj.end()) {
+      OXS_THROW(Oxs_BadCode,"Deregistration of scalar output object failed.");
+    }
+    scalar_output_obj.erase(bsit);
+  }
+  CreateChunkOutputComputeList();
+}
+
+OC_BOOL Oxs_Director::IsRegisteredOutput(const Oxs_Output* obj) const
+{
+  vector<Oxs_Output*>::const_iterator it
+    = std::find(output_obj.begin(),output_obj.end(),obj);
+  if(it == output_obj.end()) return 0;
+  return 1;
+}
+
+const char*
+Oxs_Director::MakeOutputToken(OC_INDEX index,OC_UINT4m probid) const
+{
+  static Oc_AutoBuf buf;
+  buf.SetLength(4*sizeof(unsigned long)+8);
+  sprintf(static_cast<char *>(buf),"%" OC_INDEX_MOD "X %" OC_INT4m_MOD "X",
+          static_cast<OC_UINDEX>(index),probid);
+  return static_cast<char *>(buf);
+}
+
+Oxs_Output*
+Oxs_Director::InterpretOutputToken(const char* token) const
+{
+  // Note: The following code assumes that index and probid are small
+  // enough to fit into an unsigned long so that strtoul can handle
+  // them.  Given the origin of token, this assumption should hold.
+  OC_INDEX index=0;
+  OC_UINT4m probid=0;
+  char* endptr;
+  index = static_cast<OC_INDEX>(strtoul(token,&endptr,16));
+  if(endptr==NULL || endptr==token) {
+    OXS_THROW(Oxs_BadParameter,
+             "Invalid token passed to"
+             " Oxs_Director::InterpretOutputToken");
+  }
+  if(*endptr != '\0') {
+    probid = static_cast<OC_UINT4m>(strtoul(endptr+1,&endptr,16));
+  }
+  if(*endptr != '\0') {
+    OXS_THROW(Oxs_BadParameter,
+             "Invalid token passed to"
+             " Oxs_Director::InterpretOutputToken");
+  }
+  if(probid!=problem_id) {
+    OXS_THROW(Oxs_BadParameter,
+             "Problem ID mismatch on token passed to"
+             " Oxs_Director::InterpretOutputToken");
+  }
+  if(index >= static_cast<OC_INDEX>(output_obj.size())) {
+    OXS_THROW(Oxs_BadIndex,
+             "Out-of-range index in token passed to"
+             " Oxs_Director::InterpretOutputToken");
+  }
+  Oxs_Output* obj = output_obj[index];
+  if(obj==NULL) {
+    OXS_THROW(Oxs_BadParameter,
+             "Token refers to deregistered output object in"
+             " Oxs_Director::InterpretOutputToken");
+  }
+  return obj;
+}
 
 void Oxs_Director::ListOutputObjects(vector<String> &outputs) const
 {
@@ -1191,6 +1365,189 @@ void Oxs_Director::OutputNames(const char* output_token,
   names.push_back(obj->OutputUnits());
 }
 
+class OxsDirectorChunkOutputThread : public Oxs_ThreadRunObj {
+public:
+  static Oxs_JobControl<OC_REAL8m> job_basket;
+
+  const Oxs_SimState* state;
+  std::vector<Oxs_BaseChunkScalarOutput*>& chunk_output_evaluators;
+
+  OC_INDEX cache_blocksize;
+
+  OxsDirectorChunkOutputThread
+  (const Oxs_SimState* in_state,
+   std::vector<Oxs_BaseChunkScalarOutput*>& in_chunk_output_evaluators,
+   OC_INDEX in_cache_blocksize,
+   int thread_count)
+    : state(in_state), chunk_output_evaluators(in_chunk_output_evaluators),
+      cache_blocksize(in_cache_blocksize) {
+    job_basket.Init(thread_count,state->Ms->GetArrayBlock());
+  }
+
+  void Cmd(int threadnumber, void* data);
+
+  // Note: Disable copy constructor and assignment operator by
+  // declaring w/o implementation.
+  OxsDirectorChunkOutputThread(const OxsDirectorChunkOutputThread&);
+  OxsDirectorChunkOutputThread& operator=(const OxsDirectorChunkOutputThread&);
+};
+
+Oxs_JobControl<OC_REAL8m> OxsDirectorChunkOutputThread::job_basket;
+
+void
+OxsDirectorChunkOutputThread::Cmd
+(int threadnumber,void* /* data */)
+{
+  while(1) {
+    // Claim a chunk
+    OC_INDEX index_start,index_stop;
+    job_basket.GetJob(threadnumber,index_start,index_stop);
+
+    if(index_start>=index_stop) break;
+
+    // We claim by blocksize, but work by cache_blocksize (which is
+    // presumably smaller).  We want blocksize big enough to reduce
+    // mutex collisions and other overhead, but cache_blocksize small
+    // enough that the spin data can reside in cache acrosss all the
+    // energy terms.
+    for(OC_INDEX icache_start=index_start;
+        icache_start<index_stop; icache_start+=cache_blocksize) {
+      OC_INDEX icache_stop = icache_start + cache_blocksize;
+      if(icache_stop>index_stop) icache_stop = index_stop;
+
+      // Send icache_start to icache_stop to output objects
+      for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator it
+            = chunk_output_evaluators.begin();
+          it != chunk_output_evaluators.end(); ++it) {
+        (*it)->ChunkScalarOutput(state,icache_start,
+                                 icache_stop,threadnumber);
+      } // for-it
+    } // for-icache_start
+  } // while(1)
+}
+
+
+void Oxs_Director::GetAllScalarOutputs(vector<String>& triples)
+{
+  if(driver==NULL) {
+    OXS_THROW(Oxs_IncompleteInitialization,"No driver specified");
+  }
+  const Oxs_SimState* state=driver->GetCurrentState();
+  if(state==NULL) {
+    OXS_THROW(Oxs_IncompleteInitialization,"Current state not initialized");
+  }
+  const OC_UINT4m state_id = state->Id();
+
+  // Run chunk output compute code, as needed
+  std::vector<Oxs_BaseChunkScalarOutput*> bsco_as_needed;
+  std::vector<Oxs_BaseChunkScalarOutput*> buddy_list;
+  for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator bscoit
+        = chunk_output_compute_obj.begin();
+      bscoit != chunk_output_compute_obj.end(); ++ bscoit) {
+    buddy_list.clear();
+    (*bscoit)->ChunkSharedScalarOutputs(buddy_list);
+    for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator buddy_it
+          = buddy_list.begin(); buddy_it != buddy_list.end(); ++buddy_it) {
+      if((*buddy_it)->cache.state_id != state_id) {
+        bsco_as_needed.push_back(*bscoit); // This evaluator is needed
+        break;
+      }
+    }
+  }
+  
+  if(bsco_as_needed.size()>0) { // At least one chunk evaluator is needed
+    const int number_of_threads = Oc_GetMaxThreadCount();
+    // Initialize
+    for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator bscoit
+          =bsco_as_needed.begin(); bscoit!=bsco_as_needed.end(); ++bscoit) {
+      (*bscoit)->ChunkScalarOutputInitialize(state,number_of_threads);
+    }
+    // Compute in parallel
+#if 1
+    OC_INDEX cachechunk = Oc_CacheSize()
+      /(4*(sizeof(ThreeVector)+sizeof(OC_REAL8m))); // 4 is fudge
+    if(cachechunk<1) cachechunk = 1; // Safety
+    OxsDirectorChunkOutputThread chunk_thread(state,bsco_as_needed,
+                                              cachechunk,
+                                              Oc_GetMaxThreadCount());
+    static Oxs_ThreadTree threadtree;
+    threadtree.LaunchTree(chunk_thread,0);
+#else
+    for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator bscoit
+          =bsco_as_needed.begin(); bscoit!=bsco_as_needed.end(); ++bscoit) {
+      (*bscoit)->ChunkScalarOutput(state,0,state->spin.Size(),0);
+    }
+#endif
+    // Finalize
+    for(std::vector<Oxs_BaseChunkScalarOutput*>::iterator bscoit
+          =bsco_as_needed.begin(); bscoit!=bsco_as_needed.end(); ++bscoit) {
+      (*bscoit)->ChunkScalarOutputFinalize(state,number_of_threads);
+    }
+  }
+
+  triples.clear();
+  char numbuf[100];
+  for(std::list<Oxs_BaseScalarOutput*>::iterator it
+        = scalar_output_obj.begin(); it != scalar_output_obj.end(); ++it) {
+    // Loop through all outputs.  Note that scalar_output_obj is a
+    // sorted list.
+    Oxs_BaseScalarOutput* obj = *it;
+    try {
+      vector<String> entry;
+      entry.push_back(obj->LongName());
+      entry.push_back(obj->OutputUnits());
+      OC_REAL8m value = obj->GetValue(state);
+      Oc_Snprintf(numbuf,sizeof(numbuf),
+                  (obj->GetOutputFormat()).c_str(),
+                  static_cast<double>(value));
+      entry.push_back(String(numbuf));
+      triples.push_back(Nb_MergeList(entry));
+    } catch (Oxs_ExtError& err) {
+      String head =
+        String("Error evaluating output \"")
+        + obj->OutputName()
+        + String("\" of object \"")
+        + obj->OwnerName()
+        + String("\" --- ");
+      err.Prepend(head);
+      throw;
+    } catch (Oxs_Exception& err) {
+      String head =
+        String("Error evaluating output \"")
+        + obj->OutputName()
+        + String("\" of object \"")
+        + obj->OwnerName()
+        + String("\" --- ");
+      err.Prepend(head);
+      throw;
+    } catch (Oc_Exception& err) {
+      String head =
+        String("Error evaluating output \"")
+        + obj->OutputName()
+        + String("\" of object \"")
+        + obj->OwnerName()
+        + String("\" --- ");
+      err.PrependMessage(head.c_str());
+      throw;
+    } catch (EXCEPTION& err) {
+      String errmsg = String("Error evaluating output \"")
+        + obj->OutputName()
+        + String("\" of object \"")
+        + obj->OwnerName()
+        + String("\" --- ")
+        + String(err.what());
+      throw errmsg;
+    } catch (...) {
+      String errmsg = String("Unrecognized error evaluating output \"")
+        + obj->OutputName()
+        + String("\" of object \"")
+        + obj->OwnerName()
+        + String("\".");
+      throw errmsg;
+    }
+  }
+}
+
 // Energy object index access
 Oxs_Energy* Oxs_Director::GetEnergyObj(OC_UINT4m i) const {
   if(i >=  energy_obj.size()) {
@@ -1349,7 +1706,8 @@ int Oxs_Director::DoDevelopTest(const String& in,String& out)
 
   OC_REAL8m maxang = 0;
   for(OC_INT4m i=0;i<count;i++) {
-    maxang = state->mesh->MaxNeighborAngle(state->spin,*(state->Ms));
+    maxang = state->mesh->MaxNeighborAngle(state->spin,*(state->Ms),
+                                           0,state->mesh->Size());
   }
   char buf[256];
   Oc_Snprintf(buf,sizeof(buf),"%.17g",

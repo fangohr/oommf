@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000150000000000000000"></A><A NAME="sec:mmarchive"></A>
 <BR>
 Data Archive: mmArchive
-</H1><A NAME="15769"></A><A NAME="15770"></A>
+</H1><A NAME="16056"></A><A NAME="16057"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -72,21 +72,21 @@ Data Archive: mmArchive
 The application <B>mmArchive</B> provides automated vector field and data
 table storage services.  Although
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="15781"><B>mmDisp</B></A>
+ NAME="16068"><B>mmDisp</B></A>
 and
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="15786"><B>mmGraph</B></A>
+ NAME="16073"><B>mmGraph</B></A>
 are able to save such data under the direction of the user, there are
 situations where it is more convenient to write data to disk without
 interactive control.
 
 <P>
 <B>mmArchive</B> does not present a user interface window of its own,
-but like the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><B>Oxs solvers</B></A><A NAME="15792"></A>
-relies on <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A><A NAME="15797"></A> to
+but like the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><B>Oxs solvers</B></A><A NAME="16079"></A>
+relies on <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A><A NAME="16084"></A> to
 provide an interface on its behalf.  Because <B>mmArchive</B> does not
 require a window, it is possible on Unix systems to bring down the X
-(window) server<A NAME="15799"></A> and still keep
+(window) server<A NAME="16086"></A> and still keep
 <B>mmArchive</B> running in the background.
 
 <P>
@@ -98,7 +98,7 @@ require a window, it is possible on Unix systems to bring down the X
 by <B>Oxsii/Boxsi</B> via a
 <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A>
 command in a 
-<A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2 file</A><A NAME="15812"></A>,
+<A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2 file</A><A NAME="16099"></A>,
 or from the command line via
 <PRE>
 tclsh oommf.tcl mmArchive [standard options]
@@ -113,7 +113,7 @@ only for enabling the <TT>-console</TT> option for debugging.
 
 <P>
 As noted above, <B>mmArchive</B> depends upon
-<B>mmLaunch</B><A NAME="15824"></A> to provide an interface.
+<B>mmLaunch</B><A NAME="16111"></A> to provide an interface.
 The entry for an instance of <B>mmArchive</B> in the
 <FONT COLOR="#800000"><B>Threads</B></FONT> column of any running copy of <B>mmLaunch</B> has a
 checkbutton next to it.  This button toggles the presence of a user
@@ -132,7 +132,7 @@ interface.
 
 <P>
 <FONT SIZE="+2"><B>Outputs</B></FONT>
-<BR><A NAME="15832"></A>
+<BR><A NAME="16119"></A>
 The client applications that send data to <B>mmArchive</B> control the
 flow of data.  <B>mmArchive</B> copies the data it receives into files
 specified by the client.  There is no interactive control to select the
@@ -144,7 +144,7 @@ For data table output, if the output file already exists then the new
 data is appended to the end of the file.  The data records for each
 session are sandwiched between ``Table Start'' and ``Table End''
 records.  See the <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
- NAME="15839">ODT format documentation</A> for
+ NAME="16126">ODT format documentation</A> for
 explanation of the data table file structure.  It is the
 responsibility of the user to insure that multiple data streams are
 not directed to the same data table file at the same time.
@@ -153,7 +153,7 @@ not directed to the same data table file at the same time.
 For vector field output, if the output file already exists then the
 old data is deleted and replaced with the current data.  See the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats"
- NAME="15844">OVF documentation</A> for information
+ NAME="16131">OVF documentation</A> for information
 about the vector field output format.
 
 <P>
@@ -161,10 +161,24 @@ about the vector field output format.
 <P>
 <FONT SIZE="+2"><B>Controls</B></FONT>
 <BR>
-The <FONT COLOR="#800000"><B>Exit</B></FONT> in the <B>mmLaunch</B>-supplied user interface terminates
-<B>mmArchive</B>.  Simply closing the user interface window does not
-terminate <B>mmArchive</B>, but only hides the control window.  To kill
-<B>mmArchive</B> the <FONT COLOR="#800000"><B>Exit</B></FONT> button must be pressed.
+<P>
+The display area inside the <B>mmArchive</B> window displays a log of
+<B>mmArchive</B> activity.  The menu selection <FONT COLOR="#800000"><B>File|Close
+interface</B></FONT> closes the <B>mmArchive</B> window without terminating
+<B>mmArchive</B>.  Use the <FONT COLOR="#800000"><B>File|Exit mmArchive</B></FONT> option or the
+window close button to terminate <B>mmArchive</B>.
+
+<P>
+If the <FONT COLOR="#800000"><B>Options|Wrap lines</B></FONT> option is selected, then each log
+entry is line wrapped.  Otherwise, each entry is on one line, and a
+horizontal slider is provided at the bottom of the display window to
+scroll through line.  The <FONT COLOR="#800000"><B>Options|Clear buffer</B></FONT> command
+clears the log display area.  This clears the buffer in that
+<B>mmArchive</B> display window only.  If a new display window is
+opened for the same <B>mmArchive</B> instance, the new display will
+show the entire log backing store.  The last two items on the
+<FONT COLOR="#800000"><B>Options</B></FONT> menu,  <FONT COLOR="#800000"><B>Enlarge font</B></FONT> and <FONT COLOR="#800000"><B>Reduce font</B></FONT>, adjust
+the size of the font used in the log display area.
 
 <P>
 
@@ -197,6 +211,6 @@ OOMMF to protect against this situation.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

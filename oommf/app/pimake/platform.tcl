@@ -95,15 +95,64 @@ Oc_Class Platform {
     # DOME: Guard against spaces in stems
     # DOME: Reconsider ../../ form vs. absolute.
     proc StaticLibraries {stemlist} {
-        set ret {}
-        set script [$configuration GetValue script_filename_static_library]
-        if {[string length $script]} {
-            foreach stem $stemlist {
-                lappend ret [file join .. .. pkg $stem $platformName \
-                        [eval $script $stem]]
-            }
-        }
-        return $ret
+       set ret {}
+       set script [$configuration GetValue script_filename_static_library]
+       if {[string length $script]} {
+          foreach stem $stemlist {
+             set pkgdir [file join .. .. pkg $stem]
+             if {[file isdirectory $pkgdir]} {
+                lappend ret [file join $pkgdir $platformName \
+                                 [eval $script $stem]]
+             } elseif {![catch {$configuration GetValue program_linker_extra_lib_dirs} libdirs]} {
+                # stem is not a recognized pkg stem; see if it is
+                # an external library in one of the extra library
+                # directories.
+                set extrascripts {}
+                if {![catch {$configuration GetValue program_linker_extra_lib_scripts} extras]} {
+                   set extrascripts $extras
+                }
+                set extra_candidates {}
+                set standard_candidates {}
+                foreach dir $libdirs {
+                   set dir [Oc_DirectPathname $dir]
+                   # Test "extra" scripts, if any
+                   foreach testscript $extrascripts {
+                      set test [file join $dir [eval $testscript $stem]]
+                      foreach match [glob -nocomplain $test] {
+                         if {[lsearch -exact \
+                               [concat $extra_candidates $standard_candidates] \
+                                  $match] == -1} {
+                            lappend extra_candidates $match
+                         }
+                      }
+                   }
+                   # Also see what the standard library script turns up
+                   set test [file join $dir [eval $script $stem]]
+                   foreach match [glob -nocomplain $test] {
+                      if {[lsearch -exact \
+                               [concat $extra_candidates $standard_candidates] \
+                               $match] == -1} {
+                         lappend standard_candidates $match
+                      }
+                   }
+                }
+                set candidates [concat $extra_candidates $standard_candidates]
+                if {[llength $extra_candidates]==1} {
+                   # If there is exactly one match from the extras
+                   # script, use it.
+                   lappend ret [lindex $extra_candidates 0]
+                } elseif {[llength $candidates]==1} {
+                   # Otherwise, if there is exactly one match from
+                   # both scripts, use it.
+                   lappend ret [lindex $candidates 0]
+                } elseif {[llength $candidates]>1} {
+                   # Multiple matches.  What to do?
+                   error "Multiple matches to library stem $stem: $candidates"
+                }
+             }
+          }
+       }
+       return $ret
     }
 
     proc AbsoluteSrc {stemlist} {
@@ -163,26 +212,47 @@ Oc_Class Platform {
                 continue
             }
             if {[$configuration GetValue program_linker_uses_-L-l]} {
-                set lf [$class StaticLibraries [list $stem]]
-                lappend ret -L[file dirname $lf]
-                lappend ret -l$stem
+  	       set libdir [file dirname [$class StaticLibraries [list $stem]]]
+	       if {[file isdirectory $libdir]} {
+		  # If $libdir is not a directory, then assume $stem is
+		  # a system library, and so doesn't need a -L option.
+		  lappend ret -L$libdir
+	       }
+	       lappend ret -l$stem
             } elseif {[$configuration GetValue program_linker_uses_-I-L-l]} {
-                set lf [$class StaticLibraries [list $stem]]
-                set libdir [file dirname $lf]
-                set hdir [file dirname $libdir]
-                set header [file join $hdir $stem.h]
-                if {[file readable $header]} {
-                    foreach dir [[CSourceFile New _ $header] DepPath] {
+  	       set libdir [file dirname [$class StaticLibraries [list $stem]]]
+	       if {[file isdirectory $libdir]} {
+		  # If $libdir is not a directory, then assume $stem
+		  # is a system library, and so doesn't need the -I
+		  # and -L options.
+		  set hdir [file dirname $libdir]
+		  set header [file join $hdir $stem.h]
+		  if {[file readable $header]} {
+		     foreach dir [[CSourceFile New _ $header] DepPath] {
                         lappend ret -I$dir
-                    }
-                }
-                lappend ret -ptr
-		lappend ret [file join $libdir tr]
-                lappend ret -L$libdir
-                lappend ret -l$stem
+		     }
+		  }
+		  lappend ret -ptr
+		  lappend ret [file join $libdir tr]
+		  lappend ret -L$libdir
+	       }
+	       lappend ret -l$stem
             } else {
-                lappend ret [$class StaticLibraries [list $stem]]
+	       set lf [$class StaticLibraries [list $stem]]
+	       if {[file isfile $lf]} {
+		  lappend ret $lf
+	       } else {
+		  # Assume this is a system library
+		  lappend ret $stem
+	       }
             }
+        }
+        if {![catch {$configuration GetValue program_linker_extra_args} flags]} {
+	   foreach elt $flags {
+	      if {[lsearch -exact $ret $elt]==-1} {
+		 lappend ret $elt
+	      }
+	   }
         }
         return $ret
     }
@@ -266,6 +336,7 @@ Oc_Class Platform {
                 # Ignore any options not supplied by this configuration
                 continue
             }
+
             foreach elt $val {
                 set linkcmd [concat $linkcmd [eval $optScript [list $elt]]]
             }

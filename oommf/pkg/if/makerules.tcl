@@ -6,7 +6,7 @@
 #
 # NOTICE: Please see the file ../../LICENSE
 #
-# Last modified on: $Date: 2000-08-25 17:01:25 $
+# Last modified on: $Date: 2000/08/25 17:01:25 $
 # Last modified by: $Author: donahue $
 #
 # Verify that this script is being sourced by pimake

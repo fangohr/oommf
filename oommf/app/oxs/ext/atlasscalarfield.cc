@@ -48,7 +48,7 @@ Oxs_AtlasScalarField::Oxs_AtlasScalarField(
   }
 
   // Set up value array.
-  values.SetSize(static_cast<OC_INDEX>(atlas_obj->GetRegionCount()));
+  values.SetSize(atlas_obj->GetRegionCount());
 
   // Fill value vector with non-default values
   size_t i;
@@ -64,8 +64,7 @@ Oxs_AtlasScalarField::Oxs_AtlasScalarField(
   }
   for(i=0;i<params.size();i+=2) {
     const String& region_name = params[i];
-    OC_INDEX region_id
-      = static_cast<OC_INDEX>(atlas_obj->GetRegionId(region_name));
+    OC_INDEX region_id = atlas_obj->GetRegionId(region_name);
     if(region_id<0) {
       char item[275];  // Safety
       item[250]='\0';
@@ -115,9 +114,9 @@ Oxs_AtlasScalarField::Value(const ThreeVector& pt) const
 {
   OC_REAL8m result=0.0;
   const Oxs_Atlas* atlas = atlas_key.GetPtr();
-  OC_INT4m id = atlas->GetRegionId(pt);
-  if(values[OC_INDEX(id)].value_is_set) {
-    result = values[OC_INDEX(id)].value_init->Value(pt);
+  OC_INDEX id = atlas->GetRegionId(pt);
+  if(values[id].value_is_set) {
+    result = values[id].value_init->Value(pt);
   } else if(default_value.value_is_set) {
     result = default_value.value_init->Value(pt);
   } else {

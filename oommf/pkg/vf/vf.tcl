@@ -2,7 +2,7 @@
 #
 #	Vector Field support
 #
-# Last modified on: $Date: 2012-09-25 17:12:03 $
+# Last modified on: $Date: 2015/03/25 16:45:23 $
 # Last modified by: $Author: dgp $
 #
 # When this version of the vf extension is selected by the 'package require'
@@ -12,7 +12,7 @@
 # has been initialized
 #
 # NOTE: version number below must match that in ./vf.h
-package require -exact Vf 1.2.0.5
+package require -exact Vf 1.2.0.6
 
 Oc_CheckTclIndex Vf
 

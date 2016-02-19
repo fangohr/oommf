@@ -1,6 +1,6 @@
 # FILE: hostGui.tcl
 #
-# Last modified on: $Date: 2008-02-14 20:50:03 $
+# Last modified on: $Date: 2008/02/14 20:50:03 $
 # Last modified by: $Author: donahue $
 #
 

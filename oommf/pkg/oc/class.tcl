@@ -3,9 +3,55 @@
 # Defines a command 'Oc_Class' which support object-oriented programming 
 # in Tcl.
 #
-# Last modified on: $Date: 2007-03-21 01:02:39 $
-# Last modified by: $Author: donahue $
-#
+# Last modified on: $Date: 2015/09/15 13:50:42 $
+# Last modified by: $Author: dgp $
+# 
+# The set of procs found in every Oc_Class is:
+# 
+# $class GlobalName $common
+#     Return Tcl global name for the actual variable.
+# 
+# $class Instances
+#     Return list of instances of $class
+# 
+# $class New $iVarName ?{*}$options?
+#     Create new instance of $class and store name in
+#     variable $iVarName. Invoke constructor with $options
+# 
+# $class Options ?$pattern? ?$access?
+#     Return valid args for either New or Configure/Cget
+#     matching $pattern
+# 
+# $class Undefine
+#     Destroy the $class
+# 
+# $class WinBasename
+#     Utility for Tk naming conventions.
+# 
+# $class Methods ?$pattern?
+# $class Procs ?$pattern?
+# 
+#     Unfinished. Broken. Do not use until they are completed.
+# 
+# The set of methods available for every Oc_Class instance is:
+# 
+# $instance Class
+#     Return the class of $instance
+# 
+# $instance Configure ?{*}$options?
+#     Instance variable query/set inspired by Tk
+# 
+# $instance Cget $option
+#     Instance variable query inspired by Tk
+# 
+# $instance Delete
+#     Destroy $instance.
+# 
+# $instance GlobalName $varName
+# $instance WinBasename
+# 
+#     Just like their $class counterparts. 
+# 
 # DOME:
 #
 # ClassConfigure proc

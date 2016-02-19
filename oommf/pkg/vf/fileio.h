@@ -2,7 +2,7 @@
  *
  * File input/output routines for deprecated VIO format
  *
- * Last modified on: $Date: 2010-07-16 22:34:01 $
+ * Last modified on: $Date: 2010/07/16 22:34:01 $
  * Last modified by: $Author: donahue $
  */
 

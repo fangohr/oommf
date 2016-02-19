@@ -113,7 +113,6 @@ Oc_Class Mmd_PlotSelectConfigure {
             arrow,autosample   1
             arrow,subsample    0
             arrow,size         1
-	    arrow,antialias    0
             pixel,status       0
             pixel,colormap     Red-Black-Blue
             pixel,colorcount   256

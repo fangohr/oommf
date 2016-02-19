@@ -296,14 +296,25 @@ if {[string match "windows" $tcl_platform(platform)]} {
    set nuldevice "/dev/null"
 }
 
-set exec_ignore_stderr {}
-if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin]} {
-   if {$vmaj>8 || ($vmaj==8 && $vmin>=5)} {
-      set exec_ignore_stderr "-ignorestderr"
+# The exec command in Tcl versions 8.5 and later supports an
+# -ignorestderr option; without this output to stderr is interpreted as
+# being an error.  The -ignorestderr option is a useful for debugging
+# when you don't want debug output on stderr to register as an error.
+# Introduce a proc that uses this option, if available, or else swallows
+# all stderr output.
+if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin] \
+       && ($vmaj>8 || ($vmaj==8 && $vmin>=5))} {
+   proc exec_ignore_stderr { args } {
+      eval exec -ignorestderr $args
+   }
+} else {
+   proc exec_ignore_stderr { args } {
+      global nuldevice
+      eval exec $args $ERR_REDIRECT
    }
 }
 
-set PID_INFO_TIMEOUT 50   ;# Max time to wait for mmArchive to start,
+set PID_INFO_TIMEOUT 60   ;# Max time to wait for mmArchive to start,
                           ## in seconds.
 
 set EXEC_TEST_TIMEOUT 150 ;# Max time to wait for any single test to
@@ -323,6 +334,7 @@ if {![catch {file normalize $TCLSH} _]} {
 set OOMMF [file join $HOME .. .. .. oommf.tcl]
 
 set SIGFIGS 8   ;# Default
+set loglevel 0  ;# Default
 
 set load_dir [file join $HOME load_tests]
 set examples_dir [file join $HOME .. examples]
@@ -332,7 +344,8 @@ set local_examples_dir [file join $HOME .. local]
 
 set bug_dir [file join $HOME bug_tests]
 
-set results_basename "regression-test-output"
+set results_basename_template "regression-test-output-%d"
+set results_basename [format $results_basename_template [pid]]
 
 
 ########################################################################
@@ -341,53 +354,57 @@ set results_basename "regression-test-output"
 # will fail; set the global variable no_display appropriately so
 # tests that rely on Tk can be skipped.
 set no_display 0
-set any2ppm_command [exec $TCLSH $OOMMF +command any2ppm -h]
+set any2ppm_command [exec_ignore_stderr $TCLSH $OOMMF +command any2ppm -h]
 set any2ppm_command [linsert $any2ppm_command 0 exec]
 if {[catch {eval $any2ppm_command 2>$nuldevice} _]} {
    set no_display 1
 }
 
 proc Usage {} {
-   global SIGFIGS results_basename
+   global loglevel results_basename_template SIGFIGS EXEC_TEST_TIMEOUT
    puts stderr "Usage: tclsh runtests.tcl\
-                  \[-v\]\
                   \[-autoadd\]\
-                  \[-sigfigs \<\#\>\]\
-                  \[-threads \<\#\>\] \\\n    \
-                  \[-keepfail\]\
-                  \[-noexcludes\]\
                   \[-ignoreextra\]\
-                  \[-listtests\]\
-                  \[-showoutput\] \\\n    \
-                  \[-updaterefdata\]\
+                  \[-keepfail\]\
+                  \[-listtests\]\n      \
+                  \[-loglevel \<\#\>\]\
+                  \[-noexcludes\]\
                   \[-resultsfile \<filename\>\]\
+                  \[-showoutput\]\n      \
+                  \[-sigfigs \<\#\>\]\
+                  \[-threads \<\#\>\]\
+                  \[-timeout \<\#\>\]\
+                  \[-updaterefdata\]\
+                  \[-v\]\n      \
                   \[testa testb ...\]"
    puts stderr " Where:"
-   puts stderr "  -v enable verbose output"
    puts stderr "  -autoadd automatically adds new tests from\
                    examples directory"
+   puts stderr "  -ignoreextra ignore extra columns in new data"
+   puts stderr "  -keepfail saves results from failed tests"
+   puts stderr "  -listtests shows selected tests and exits"
+   puts stderr "  -loglevel controls output to boxsi.errors (default $loglevel)"
+   puts stderr "  -noexcludes ignore exclude files"
+   puts stderr "  -resultsfile sets temp results filename\
+                   (default \"$results_basename_template\", with <pid> filling %d)"
+   puts stderr "  -showoutput dumps test stdout and stderr output"
    puts stderr "  -sigfigs is number of significant figures (default $SIGFIGS)"
    puts stderr "  -threads is number of threads to run (threaded builds only)"
-   puts stderr "  -noexcludes ignore exclude files"
-   puts stderr "  -ignoreextra ignore extra columns in new data"
-   puts stderr "  -listtests shows selected tests and exits"
-   puts stderr "  -showoutput dumps test stdout and stderr output"
-   puts stderr "  -keepfail saves results from failed tests"
+   puts stderr "  -timeout is max seconds to wait for one test\
+                   (default 150; 0 == no timeout)"
    puts stderr "  -updaterefdata to overwrite reference data\
                    with new results"
-   puts stderr "  -resultsfile sets temp results filename\
-                   (default \"$results_basename\")"
+   puts stderr "  -v enable verbose output"
    puts stderr "If no tests are specified, then all tests are run."
    exit 1
 }
 
 proc GetOid { app_name app_pid } {
    # OID is "OOMMF ID"
-   global TCLSH OOMMF PID_INFO_TIMEOUT ERR_REDIRECT
+   global TCLSH OOMMF PID_INFO_TIMEOUT
 
-   if {[catch {exec $TCLSH $OOMMF pidinfo -noheader \
-                  -wait $PID_INFO_TIMEOUT -pid $app_pid \
-                  $ERR_REDIRECT} pidinfo]} {
+   if {[catch {exec_ignore_stderr $TCLSH $OOMMF pidinfo -noheader \
+                  -wait $PID_INFO_TIMEOUT -pid $app_pid} pidinfo]} {
       puts stderr "---\n$pidinfo\n---"
       puts stderr "ERROR: Unable to determine OID for application\
                       $app_name with pid $app_pid"
@@ -406,13 +423,48 @@ proc GetOid { app_name app_pid } {
    return [lindex $pidinfo 0]
 }
 
+proc SystemKill { runpid } {
+   # Returns a three item list.  The first item is a number;
+   # 0 indicates success, anything else is failure.  The
+   # second and third items in the list are the eval outputs
+   # from the kill command(s).
+   global KILL_COMMAND KILL_COMMAND_B KILL_PGREP
+   if {[string match {} $KILL_COMMAND]} {
+      return [list 1 "No kill commands registered" {}]
+   }
+   if {![string match {} $KILL_PGREP]} {
+      # Note: pgrep returns an error if there are no child processes.
+      if {![catch {eval exec $KILL_PGREP $runpid} children]} {
+         set runpid [concat $runpid $children]
+      }
+   }
+   set msgkilla [set msgkillb "This space unintentionally blank"]
+   if {[set errcode [catch {eval exec $KILL_COMMAND $runpid} msgkilla]]} {
+      if {![string match {} $KILL_COMMAND_B]} {
+         set errcode [catch {eval exec $KILL_COMMAND_B $runpid} msgkillb]
+      } else {
+         set msgkillb "No secondary kill command registered"
+      }
+   } else {
+      set msgkillb {}
+   }
+   ## NB: kill command can fail if runpid exits before kill can get to it.
+   return [list $errcode $msgkilla $msgkillb]
+}
+
 proc Cleanup {} {
    # Send die request to mmArchive
    global TCLSH OOMMF mmArchive_pid mmArchive_oid nuldevice
+   set errcode 0
    if {[info exists mmArchive_oid]} {
-      exec $TCLSH $OOMMF killoommf $mmArchive_oid 2>$nuldevice
+      set errcode [catch {exec $TCLSH $OOMMF killoommf \
+                             $mmArchive_oid 2>$nuldevice}]
    } elseif {[info exists mmArchive_pid]} {
-      exec $TCLSH $OOMMF killoommf -pid $mmArchive_pid 2>$nuldevice
+      set errcode [catch {exec $TCLSH $OOMMF killoommf \
+                             -pid $mmArchive_pid 2>$nuldevice}]
+   }
+   if {$errcode && [info exists mmArchive_pid]} {
+      SystemKill $mmArchive_pid
    }
    # By unsetting mmArchive_oid and mmArchive_pid, we insure
    # that multiple calls to Cleanup during shutdown don't cause
@@ -421,12 +473,58 @@ proc Cleanup {} {
    catch {unset mmArchive_pid}
 }
 
+if {[string compare "windows" $tcl_platform(platform)]==0} {
+   # Kill command on Windows
+   set pgmlist {}
+   set pgm [auto_execok taskkill]
+   if {![string match {} $pgm]} {
+      lappend pgm /f /t /PID
+      lappend pgmlist $pgm
+   }
+   set pgm [auto_execok tskill]
+   if {![string match {} $pgm]} {
+      # tskill will terminate some processes that taskkill claims
+      # don't exist.  However, it appears that tskill is only
+      # accessible by 64-bit programs.
+      lappend pgmlist $pgm
+   }
+   if {[llength $pgmlist]<2} {
+      set pgm [auto_execok pskill]
+      if {![string match {} $pgm]} {
+         # pskill is part of Windows Sysinternals suite
+         lappend pgmlist $pgm
+      }
+   }
+   set KILL_COMMAND [lindex $pgmlist 0]
+   set KILL_COMMAND_B [lindex $pgmlist 1]
+   # The /t option to taskkill kills child processes
+   set KILL_PGREP {}
+} else {
+   # Kill command on unix. If pgrep is available, use that
+   # to get list of all child processes (with -P option).
+   # Use signal '-9' to make the kill as forceful as possible.
+   set KILL_COMMAND [set KILL_COMMAND_B [auto_execok kill]]
+   if {![string match {} $KILL_COMMAND]} {
+      lappend KILL_COMMAND -15   ;# SIGTERM
+      lappend KILL_COMMAND_B -9  ;# SIGKILL
+   }
+   set KILL_PGREP [auto_execok pgrep]
+   if {![string match {} $KILL_PGREP]} {
+      lappend KILL_PGREP -P
+   }
+}
 
 # Exec command with timeout (timeout in seconds)
 proc TimeoutExecReadHandler { chan } {
    global TE_runcode TE_results
    if {![eof $chan]} {
-      append TE_results [read $chan]
+      set data [read $chan]
+      append TE_results
+      if {[string match {*Boxsi run end.*} $data]} {
+         # Handle case where exit blocked by still-running
+         # child process.
+         set TE_runcode 0
+      }
    } else {
       set TE_runcode 0
    }
@@ -444,10 +542,21 @@ proc TimeoutExec { cmd timeout } {
    set chan [open $cmd r]
    fconfigure $chan -blocking 0 -buffering none
    fileevent $chan readable [list TimeoutExecReadHandler $chan]
-   set timeoutid [after $timeout [list set TE_runcode -1]]
+   if {$timeout>0} {
+      set timeoutid [after $timeout [list set TE_runcode -1]]
+   }
    vwait TE_runcode
-   after cancel $timeoutid
-   fconfigure $chan -blocking 1
+   if {$timeout>0} { after cancel $timeoutid }
+   if {$TE_runcode >= 0} {
+      # cmd ran to completion; reset chan to blocking mode
+      # so close can return error info.  Don't do this if
+      # cmd timed out, because in that case close may block
+      # indefinitely.
+      fconfigure $chan -blocking 1
+   } else {
+      # Kill process
+      SystemKill [pid $chan]
+   }
    if {[catch {close $chan} errmsg]} {
       append TE_results "\nERROR: $errmsg"
       if {$TE_runcode == 0} {
@@ -467,18 +576,80 @@ proc exit { args } {
 
 if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage }
 
-set verbose 0
-set verbose_index [lsearch -regexp $argv {^-+v$}]
-if {$verbose_index >= 0} {
-   set verbose 1
-   set argv [lreplace $argv $verbose_index $verbose_index]
-}
-
 set autoadd 0
 set autoadd_index [lsearch -regexp $argv {^-+autoadd$}]
 if {$autoadd_index >= 0} {
    set autoadd 1
    set argv [lreplace $argv $autoadd_index $autoadd_index]
+}
+
+set ignoreextra 0
+set ignoreextra_index [lsearch -regexp $argv {^-+ignoreextra$}]
+if {$ignoreextra_index >= 0} {
+   set ignoreextra 1
+   set argv [lreplace $argv $ignoreextra_index $ignoreextra_index]
+}
+
+set keepfail 0
+set keepfail_index [lsearch -regexp $argv {^-+keepfail(|ed)$}]
+if {$keepfail_index >= 0} {
+   set keepfail 1
+   set argv [lreplace $argv $keepfail_index $keepfail_index]
+}
+
+set leak 0
+set leak_index [lsearch -regexp $argv {^-+leak$}]
+if {$leak_index >= 0} {
+   set leak 1
+   set argv [lreplace $argv $leak_index $leak_index]
+
+   if {[string match {} [auto_execok valgrind]]} {
+      puts stderr "ERROR: No -leak test without valgrind"
+      exit 2
+   }
+}
+
+set listtests 0
+set listtests_index [lsearch -regexp $argv {^-+listtests$}]
+if {$listtests_index >= 0} {
+   set listtests 1
+   set argv [lreplace $argv $listtests_index $listtests_index]
+}
+
+set loglevel_index [lsearch -regexp $argv {^-+loglevel$}]
+if {$loglevel_index >= 0 && $loglevel_index+1 < [llength $argv]} {
+   set ul [expr {$loglevel + 1}]
+   set loglevel [lindex $argv $ul]
+   set argv [lreplace $argv $loglevel_index $ul]
+   if {![regexp {^[0-9]+$} $loglevel]} {
+      puts stderr "ERROR: Option loglevel must be a non-negative integer"
+      exit 2
+   }
+}
+
+set noexcludes 0
+set noexcludes_index [lsearch -regexp $argv {^-+noexcludes$}]
+if {$noexcludes_index >= 0} {
+   set noexcludes 1
+   set argv [lreplace $argv $noexcludes_index $noexcludes_index]
+}
+
+set resultsfile_index [lsearch -regexp $argv {^-+resultsfile$}]
+if {$resultsfile_index >= 0 && $resultsfile_index+1 < [llength $argv]} {
+   set ul [expr {$resultsfile_index + 1}]
+   set results_basename [lindex $argv $ul]
+   set argv [lreplace $argv $resultsfile_index $ul]
+   if {[string match {} $results_basename]} {
+      puts stderr "ERROR: resultsfile filename must be an non-empty string"
+      exit 3
+   }
+}
+
+set showoutput 0
+set showoutput_index [lsearch -regexp $argv {^-+showoutput$}]
+if {$showoutput_index >= 0} {
+   set showoutput 1
+   set argv [lreplace $argv $showoutput_index $showoutput_index]
 }
 
 set sigfig_index [lsearch -regexp $argv {^-+sigfigs$}]
@@ -504,39 +675,16 @@ if {$threads_index >= 0 && $threads_index+1 < [llength $argv]} {
    set thread_count $val
 }
 
-set noexcludes 0
-set noexcludes_index [lsearch -regexp $argv {^-+noexcludes$}]
-if {$noexcludes_index >= 0} {
-   set noexcludes 1
-   set argv [lreplace $argv $noexcludes_index $noexcludes_index]
-}
-
-set ignoreextra 0
-set ignoreextra_index [lsearch -regexp $argv {^-+ignoreextra$}]
-if {$ignoreextra_index >= 0} {
-   set ignoreextra 1
-   set argv [lreplace $argv $ignoreextra_index $ignoreextra_index]
-}
-
-set listtests 0
-set listtests_index [lsearch -regexp $argv {^-+listtests$}]
-if {$listtests_index >= 0} {
-   set listtests 1
-   set argv [lreplace $argv $listtests_index $listtests_index]
-}
-
-set showoutput 0
-set showoutput_index [lsearch -regexp $argv {^-+showoutput$}]
-if {$showoutput_index >= 0} {
-   set showoutput 1
-   set argv [lreplace $argv $showoutput_index $showoutput_index]
-}
-
-set keepfail 0
-set keepfail_index [lsearch -regexp $argv {^-+keepfail(|ed)$}]
-if {$keepfail_index >= 0} {
-   set keepfail 1
-   set argv [lreplace $argv $keepfail_index $keepfail_index]
+set timeout_index [lsearch -regexp $argv {^-+timeout$}]
+if {$timeout_index >= 0 && $timeout_index+1 < [llength $argv]} {
+   set ul [expr {$timeout_index + 1}]
+   set val [lindex $argv $ul]
+   set argv [lreplace $argv $timeout_index $ul]
+   if {![regexp {^[0-9]*$} $val]} {
+      puts stderr "ERROR: Option timeout must be a non-negative integer"
+      exit 2
+   }
+   set EXEC_TEST_TIMEOUT $val
 }
 
 set updaterefdata 0
@@ -546,16 +694,13 @@ if {$updaterefdata_index >= 0} {
    set argv [lreplace $argv $updaterefdata_index $updaterefdata_index]
 }
 
-set resultsfile_index [lsearch -regexp $argv {^-+resultsfile$}]
-if {$resultsfile_index >= 0 && $resultsfile_index+1 < [llength $argv]} {
-   set ul [expr {$resultsfile_index + 1}]
-   set results_basename [lindex $argv $ul]
-   set argv [lreplace $argv $resultsfile_index $ul]
-   if {[string match {} $results_basename]} {
-      puts stderr "ERROR: resultsfile filename must be an non-empty string"
-      exit 3
-   }
+set verbose 0
+set verbose_index [lsearch -regexp $argv {^-+v$}]
+if {$verbose_index >= 0} {
+   set verbose 1
+   set argv [lreplace $argv $verbose_index $verbose_index]
 }
+
 
 # Check for new or missing tests
 set load_list [glob -nocomplain [file join $load_dir *.subtests]]
@@ -817,9 +962,25 @@ proc TestCompareODT { oldfile newfile suberrors } {
    set chan [open $oldfile r]
    set oldtable [read -nonewline $chan]
    close $chan
-   set chan [open $newfile r]
-   set newtable [read -nonewline $chan]
-   close $chan
+
+   set MAXTRYCOUNT 10
+   for {set trycount 0} {$trycount<$MAXTRYCOUNT} {incr trycount} {
+      if {![catch {open $newfile r} chan]} {
+         set newtable [read -nonewline $chan]
+         close $chan
+         if {[regexp "# *Table *End\[ \t\n\]*\$" $newtable]} {
+            break
+         }
+      }
+      # Either can't open file or file trailer is missing, presumably
+      # because mmArchive isn't finished writing it.  Wait and retry.
+      after 1000
+   }
+   if {$trycount >= $MAXTRYCOUNT} {
+      puts "ERROR: Unable to open test ODT file \"$newfile\""
+      return 1
+   }
+
 
    # Remove Title line; it embeds a timestamp, which will change from
    # run to run.
@@ -842,10 +1003,10 @@ proc TestCompareODT { oldfile newfile suberrors } {
    set oldtable [split $oldtable "\n"]
    regsub -all " *\\\\\n# *" $newtable { } newtable
    set newtable [split $newtable "\n"]
-
    if {[llength $oldtable] != [llength $newtable]} {
          puts "ERROR: New and reference output\
-               have different number of lines"
+               have different number of lines\
+               ([llength $newtable] != [llength $oldtable])"
          return 1
    }
 
@@ -1112,9 +1273,13 @@ proc TestCompareODT { oldfile newfile suberrors } {
 
       set eltcount 0
       foreach oldelt $oldline newelt $newline allowed_err $colerr {
-         set observed_err [expr {abs(double($oldelt-$newelt))}]
-         if {$observed_err>$allowed_err*$maxrat} {
-            if {[catch {expr {$observed_err/$allowed_err}} maxrat]} {
+         set errcode [catch {expr {abs(double($oldelt-$newelt))}} observed_err]
+         if {$errcode || $observed_err>$allowed_err*$maxrat} {
+            if {$errcode} {
+               puts "ERROR ref data: $oldelt"
+               puts "      bad data: $newelt"
+               set maxrat 1e100
+            } elseif {[catch {expr {$observed_err/$allowed_err}} maxrat]} {
                puts "ERROR bad errors: observed_err = $observed_err"
                puts "                   allowed_err = $allowed_err"
                puts $maxrat
@@ -1129,10 +1294,16 @@ proc TestCompareODT { oldfile newfile suberrors } {
             set badreport "ODT compare error;\
                   Worst mismatch: line $linecount$itval, \
                   element $eltcount$eltname:\n"
-            append badreport [format " REF VALUE: $sigfmt\n" $oldelt]
-            append badreport [format " NEW VALUE: $sigfmt\n" $newelt]
-            append badreport [format " ERROR observed/allowed: %.2e/%.2e" \
-                     $observed_err $allowed_err]
+            if {$errcode} {
+               append badreport [format " REF VALUE: $sigfmt\n" $oldelt]
+               append badreport [format " NEW VALUE: %s\n" $newelt]
+               append badreport [format " INVALID DATA"]
+            } else {
+               append badreport [format " REF VALUE: $sigfmt\n" $oldelt]
+               append badreport [format " NEW VALUE: $sigfmt\n" $newelt]
+               append badreport [format " ERROR observed/allowed: %.2e/%.2e" \
+                                     $observed_err $allowed_err]
+            }
          }
          incr eltcount
       }
@@ -1147,14 +1318,14 @@ proc TestCompareODT { oldfile newfile suberrors } {
 }
 
 proc TestCompareOVF { oldfile newfile } {
-   global TCLSH OOMMF verbose exec_ignore_stderr
+   global TCLSH OOMMF verbose
    global avfdiff_basecmd nuldevice
    if {$verbose} {
       puts "Comparing \"$newfile\" to \"$oldfile\""
    }
    if {![info exists avfdiff_basecmd]} {
-      set avfdiff_basecmd [eval exec $exec_ignore_stderr \
-                              {$TCLSH $OOMMF avfdiff +command}]
+      set avfdiff_basecmd [exec_ignore_stderr \
+                              $TCLSH $OOMMF avfdiff +command]
       global tcl_platform
       if {[string compare "Darwin" $tcl_platform(os)] != 0} {
          # On (at least some) Mac OS X, this redirect can cause
@@ -1163,9 +1334,21 @@ proc TestCompareOVF { oldfile newfile } {
          lappend avfdiff_basecmd "<" $nuldevice
       }
    }
-   set cmd [concat $avfdiff_basecmd -info [list $oldfile] [list $newfile]]
+
+   # Test that newfile is ready to be opened and read
+   for {set trycount 0} {$trycount<5} {incr trycount} {
+      if {![catch {open $newfile r} chan]} { break }
+      if {$trycount+1 >= 5} {
+         puts "ERROR: Unable to open test ODT file \"$newfile\""
+         return 1
+      }
+      after 1000  ;# Can't open file; wait a little and try again
+   }
+   close $chan
+   set cmd [concat $avfdiff_basecmd -info \
+                [list $oldfile] [list $newfile]]
    if {[catch {
-         set results [eval exec $exec_ignore_stderr $cmd]
+         set results [eval exec_ignore_stderr $cmd]
       } errmsg]} {
       puts "Run compare error \"$oldfile\" \"$newfile\" -->"
       puts "$errmsg\n<-- Run compare error"
@@ -1187,14 +1370,14 @@ proc TestCompareOVF { oldfile newfile } {
       puts "$results\n<-- Run compare error"
       return 1
    }
-   if {![regexp {^.*Max mag = *([0-9.e+-]+),} \
+   if {![regexp {^.*Max *mag = *([0-9.e+-]+),} \
             $line0 dummy maxmag]} {
       puts "Run compare error (c) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
       puts "$results\n<-- Run compare error"
       return 1
    }
-   if {![regexp {^.*Max diff = *([0-9.e+-]+),} \
+   if {![regexp {^.*Max *diff = *([0-9.e+-]+),} \
             $line1 dummy maxdiff]} {
       puts "Run compare error (d) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
@@ -1457,8 +1640,8 @@ foreach root $new_tests {
 # instances of mmArchive running, then the tests may end up using one or
 # more of those instead, but the distinguishing feature of the one
 # launched here is that we send it a terminate request when we're done.
-set mmArchive_command [exec $TCLSH $OOMMF +command mmArchive +bg]
-set mmArchive_command [linsert $mmArchive_command 0 exec]
+set mmArchive_command [exec_ignore_stderr $TCLSH $OOMMF +command mmArchive +bg]
+set mmArchive_command [linsert $mmArchive_command 0 exec_ignore_stderr]
 set mmArchive_pid [eval $mmArchive_command]
 after 1000
 
@@ -1477,10 +1660,13 @@ set runerrcount 0
 set timeouterrcount 0
 set comperrcount 0
 set newcount 0
-set boxsi_base_command [exec $TCLSH $OOMMF +command boxsi]
+set boxsi_base_command [exec_ignore_stderr $TCLSH $OOMMF +command boxsi]
 if {[info exists thread_count] && $thread_count>0} {
    lappend boxsi_base_command -threads $thread_count
 }
+# To stress-test the host+account server launching+shutdown code,
+# uncomment the next line to cause a full restart with each test.
+# lappend boxsi_base_command -kill all
 if {[string compare "Darwin" $tcl_platform(os)] != 0} {
    # On (at least some) Mac OS X, this redirect causes spurious EOFs
    # on unrelated channel reads.  OTOH, this redirect may protect
@@ -1583,7 +1769,7 @@ foreach test $dotests {
 
       # Build boxsi command line
       set boxsi_command [linsert $boxsi_base_command end \
-                            -loglevel 0 \
+                            -loglevel $loglevel \
                             -regression_testname $results_basename \
                             -regression_test $reglevel]
       if {[llength $subparams]>0} {
@@ -1617,6 +1803,12 @@ foreach test $dotests {
          puts "TIMEOUT-->\n[string trim $errmsg]\n<--TIMEOUT"
          incr timeouterrcount
       } else {
+         if {$leak} {
+            regexp {definitely lost: (\d+) bytes} $errmsg -> count
+            if {$count} {
+               puts "LEAKED $count bytes"
+            }
+         }
          if {$showoutput} {
             flush stderr
             puts "TEST OUTPUT >>>>"
@@ -1684,8 +1876,16 @@ foreach test $dotests {
       foreach results_file [glob -nocomplain \
                                [file join $mifdir ${results_basename}*.o??]] {
          set time0 [clock seconds]
-         catch {file delete $results_file}
+         for {set idelete 0} {$idelete<20} {incr idelete} {
+            if {![catch {file delete $results_file}]} {
+               break
+            }
+            after 500
+         }
          set deletetime [expr {[clock seconds]-$time0}]
+         if {[file exists $results_file]} {
+            error "Unable to delete results file \"$results_file\""
+         }
          if {$deletetime>10} {
             global max_deletetime
             if {![info exists max_deletetime]} {

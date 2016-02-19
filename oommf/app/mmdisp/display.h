@@ -42,6 +42,9 @@ public:
   OC_BOOL antialias;  // 1=> Do antialiasing, 0=> don't.  May be ignored
   /// by some drawing routines.
 
+  OC_REAL8m outlinewidth;  // 0 means no arrow outlines
+  OommfPackedRGB outlinecolor;
+
   const char* stipple; // Stipple pattern.  Use "" for solid.
   // "gray25" is recommended for partial transparency.
   // NOTE: The patterns are intended to be string constants,
@@ -279,7 +282,7 @@ public:
   OC_BOOL SetBoundaryColor(const char* color);
   /// BoundaryColor is set and read are analogous to BackgroundColor
 
-  OC_INT4m GetColorQuantityTypes(Nb_List<Nb_DString> &types) const {
+  OC_INDEX GetColorQuantityTypes(Nb_List<Nb_DString> &types) const {
     return mesh->ColorQuantityTypes(types);
   }
 

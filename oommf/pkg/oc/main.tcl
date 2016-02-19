@@ -7,7 +7,7 @@
 # with special code to clean up their operations before an
 # application terminates.
 #
-# Last modified on: $Date: 2012-06-26 01:37:53 $
+# Last modified on: $Date: 2015/09/30 02:27:07 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Oc_Main {
@@ -75,11 +75,24 @@ Oc_Class Oc_Main {
         }
     }
 
+    proc Preload {args} {
+	foreach cmd $args {
+	    if {[string compare [lindex [info commands $cmd] 0] $cmd] == 0} {
+		continue
+	    }
+	    if {![auto_load $cmd]} {
+		return -code error "Command '$cmd' not loaded"
+	    }
+	}
+    }
+
     proc Exit {{exitcode 0}} {
         Oc_Log Log "Exiting application..." status
 	# Don't want to re-enter; make [exit] an error so we catch any
 	# attempts
-	#proc exit args {return -code error "tried to exit during exit handling"}
+	proc exit args {
+return -code error "tried to \"exit $args\" during exit handling: [info level]"
+}
 
         Oc_EventHandler Generate $class Shutdown
 

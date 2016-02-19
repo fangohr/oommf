@@ -13,11 +13,11 @@ Oc_Class FileLogger {
 		    open error log file $filename: $chanid"
 	} else {
 	    set instanceinfo [Oc_Main GetInstanceName]
-	    set iipid [lindex $instanceinfo 0]
-	    set iiname [lrange $instanceinfo 1 end]
+            set iipid "[lindex $instanceinfo 0]<[pid]>"
+            set iiver [lrange $instanceinfo 1 end]
             catch {
 		puts $chanid "\[$iipid [clock format [clock seconds]\
-			-format %H:%M:%S\ %Y-%m-%d]\] $$iiname $src $type:\
+			-format %H:%M:%S\ %Y-%m-%d]\] $iiver $src $type:\
 			$msg"
 	    }
 	    close $chanid

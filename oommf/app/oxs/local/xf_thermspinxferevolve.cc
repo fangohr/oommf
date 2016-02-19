@@ -13,6 +13,8 @@
 
 #include <float.h>
 #include <string>
+#include <stdlib.h>
+#include <time.h>
 
 #include "nb.h"
 #include "director.h"
@@ -30,14 +32,22 @@ OXS_EXT_REGISTER(Xf_ThermSpinXferEvolve);
 
 /* End includes */
 
-OC_REAL8m Xf_ThermSpinXferEvolve::GetStageTemp
-(OC_UINT4m stage) const
+OC_REAL8m Xf_ThermSpinXferEvolve::EvaluateTemperatureProfileScript
+(OC_UINT4m stage,
+ OC_REAL8m stage_time,
+ OC_REAL8m total_time) const
 {
-  if(!has_tempscript) return temperature;
+  if(!has_tempscript) return 1.0;
 
   int index;
   if((index = tempscript_opts[0].position)>=0) { // stage
     tempscript_cmd.SetCommandArg(index,stage);
+  }
+  if((index = tempscript_opts[1].position)>=0) { // stage_time
+    tempscript_cmd.SetCommandArg(index,stage_time);
+  }
+  if((index = tempscript_opts[2].position)>=0) { // total_time
+    tempscript_cmd.SetCommandArg(index,total_time);
   }
 
   tempscript_cmd.SaveInterpResult();
@@ -66,9 +76,9 @@ Xf_ThermSpinXferEvolve::Xf_ThermSpinXferEvolve(
     max_step_decrease(0.03125), max_step_increase_limit(4.0),
     max_step_increase_adj_ratio(1.9),
     reject_goal(0.05), reject_ratio(0.05),
-    KBoltzmann(1.38062e-23),
-    has_tempscript(0),
-    energy_state_id(0),next_timestep(0.),
+    KBoltzmann(1.38062e-23),temperature(0.),
+    tmpStepsize(1e-17),has_tempscript(0),
+    energy_state_id(0),next_timestep(1e-27),
     rkstep_ptr(NULL)
 {
   // Process arguments
@@ -301,46 +311,41 @@ Xf_ThermSpinXferEvolve::Xf_ThermSpinXferEvolve(
   }
 
   // The new parameters for thermal are set up here
-  if(HasInitValue("temperature") && HasInitValue("tempscript")) {
-    throw Oxs_ExtError(this,"Cannot specify both temperature and tempscript");
+  // The new parameters for thermal are set up here
+  if(HasInitValue("temperature")) {
+    temperature = GetRealInitValue("temperature", 0.); // Get temperature of simulation
   }
-  OC_REAL8m starttemp = -1;
-  if(HasInitValue("tempscript")) {
+
+  if(HasInitValue("tempscript")) { // Get time dependent multiplier to scale temperature
     has_tempscript=1;
-    String cmdoptreq = "stage";   // No option at present
+    String cmdoptreq = GetStringInitValue("tempscript_args",
+                                          "stage stage_time total_time");
     tempscript_opts.push_back(Nb_TclCommandLineOption("stage",1));
+    tempscript_opts.push_back(Nb_TclCommandLineOption("stage_time",1));
+    tempscript_opts.push_back(Nb_TclCommandLineOption("total_time",1));
     tempscript_cmd.SetBaseCommand(InstanceName(),
 				  director->GetMifInterp(),
 				  GetStringInitValue("tempscript"),
 				  Nb_ParseTclCommandLineRequest(InstanceName(),
 								 tempscript_opts,
 								 cmdoptreq));
-    starttemp = GetStageTemp(0);
-    if(HasInitValue("uniform_seed")) {
-      uniform_seed = GetIntInitValue("uniform_seed",1);
-      has_unifSeed = 1;
-    } else {
-      has_unifSeed = 0;
-    }
-  } else {
-    has_tempscript=0;
-    starttemp = GetRealInitValue("temperature", 0.);
-    if(HasInitValue("uniform_seed")) {
-      uniform_seed = GetIntInitValue("uniform_seed",1);
-      has_unifSeed = 1;
-    } else {
-      has_unifSeed = 0;
-    }
   }
-  // Initialize random number generators
+  if(HasInitValue("uniform_seed")) {
+    srand(time(NULL));
+    uniform_seed = GetIntInitValue("uniform_seed",(rand() % 65533 + 2)); // Default seed value is time dependent
+    has_unifSeed = 1;
+  } else {
+    has_unifSeed = 0;
+  }
+
+  // Re-initialize random number generator based on defined seed
   if(has_unifSeed) {
     Oc_Srand(uniform_seed);
   } else {
     Oc_Srand();
   }
-  temperature = fabs(starttemp);
-  if((starttemp>0.) || (has_tempscript!=0)) {
-    ito_calculus = GetIntInitValue("ito_calculus",0);
+
+  if(temperature>0.) {
     if(min_timestep==0.) {
       min_timestep=1e-15;
     }
@@ -355,7 +360,6 @@ Xf_ThermSpinXferEvolve::Xf_ThermSpinXferEvolve(
     Oxs_ToLower(method); // Do case insensitive match
     if(method.compare("rk2heun")==0) {
       rkstep_ptr = &Xf_ThermSpinXferEvolve::TakeRungeKuttaStep2Heun;
-      ito_calculus = 1; // Exclude drift term in calculation of dm_dt
     } else {
       throw Oxs_ExtError(this,"Invalid initialization detected:"
 			      " \"method\" value must be one of"
@@ -392,6 +396,8 @@ Xf_ThermSpinXferEvolve::Xf_ThermSpinXferEvolve(
      &Xf_ThermSpinXferEvolve::UpdateDerivedOutputs);
   delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
      &Xf_ThermSpinXferEvolve::UpdateDerivedOutputs);
+  temperature_output.Setup(this,InstanceName(),"Temperature","K",0,
+     &Xf_ThermSpinXferEvolve::UpdateTemperatureOutputs);
   ave_J_output.Setup(this,InstanceName(),"average J","A/m^2",0,
      &Xf_ThermSpinXferEvolve::UpdateSpinTorqueOutputs);
   dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
@@ -407,6 +413,7 @@ Xf_ThermSpinXferEvolve::Xf_ThermSpinXferEvolve(
   max_dm_dt_output.Register(director,-5);
   dE_dt_output.Register(director,-5);
   delta_E_output.Register(director,-5);
+  temperature_output.Register(director,-5);
   ave_J_output.Register(director,-5);
   dm_dt_output.Register(director,-5);
   mxH_output.Register(director,-5);
@@ -914,7 +921,7 @@ void Xf_ThermSpinXferEvolve::Calculate_dm_dt
     Hfluct.AdjustSize(mesh);
     h_fluctVarConst.AdjustSize(mesh);
     FillHfluctConst(mesh);
-    UpdateHfluct(mesh);
+    InitHfluct(mesh);
   }
 
   // Adjust mp array as requested.  This is a nop if mp_propagate
@@ -927,6 +934,14 @@ void Xf_ThermSpinXferEvolve::Calculate_dm_dt
 
   OC_REAL8m dE_dt_sum=0.0;
   OC_REAL8m max_dm_dt_sq = 0.0;
+
+  const OC_REAL8m Tmult = EvaluateTemperatureProfileScript(state_.stage_number,
+							  state_.stage_elapsed_time,
+							  state_.stage_start_time+state_.stage_elapsed_time);
+  if(temperature_output.GetCacheRequestCount()>0) {
+    temperature_output.cache.value = temperature * Tmult;
+    temperature_output.cache.state_id=state_.Id();
+  }
 
   const OC_REAL8m Jmult = EvaluateJProfileScript(state_.stage_number,
                           state_.stage_elapsed_time,
@@ -982,8 +997,7 @@ void Xf_ThermSpinXferEvolve::Calculate_dm_dt
       // h_fluctVarConst stores 2*kB*alpha/((1+alpha^2)*gamma*MU0*Vol)
       if(temperature>0.) {
 	tmpHfluct = Hfluct[i];                             // Standard normal random variable (eta)
-	tmpHfluct *= sqrt(h_fluctVarConst[i]*temperature); // eta*sqrt(2*kB*T*alpha/((1+alpha^2)*gamma*MU0*Vol)
-	tmpHfluct *= sqrt(1.0/(Ms_[i]*tmpStepsize));    // eta*sqrt(2*kB*T*alpha/((1+alpha^2)*gamma*MU0*Ms*Vol*time_step)
+	tmpHfluct *= sqrt(h_fluctVarConst[i]*Ms_inverse_[i]*Tmult); // eta*sqrt(2*kB*T*alpha/((1+alpha^2)*gamma*MU0*Ms*Vol*dt)
 	mxHfluct ^= tmpHfluct;
 	scratchA += mxHfluct;
       }
@@ -1015,14 +1029,6 @@ void Xf_ThermSpinXferEvolve::Calculate_dm_dt
 	}
       }
 
-      if(!ito_calculus) {
-	ThreeVector driftTerm;
-	driftTerm.x = cell_mgamma*(1+cell_alpha*cell_alpha)*m.x*tmpHfluct.x*tmpHfluct.x*tmpStepsize*tmpStepsize;
-	driftTerm.y = cell_mgamma*(1+cell_alpha*cell_alpha)*m.y*tmpHfluct.y*tmpHfluct.y*tmpStepsize*tmpStepsize;
-	driftTerm.z = cell_mgamma*(1+cell_alpha*cell_alpha)*m.z*tmpHfluct.z*tmpHfluct.z*tmpStepsize*tmpStepsize;
-	scratchA += driftTerm;
-      }
-
       scratchA *= cell_mgamma;
       dm_dt_[i] = scratchA;
 
@@ -1045,7 +1051,7 @@ void Xf_ThermSpinXferEvolve::Calculate_dm_dt
 
   // Get bound on smallest stepsize that would actually
   // change spin new_max_dm_dt_index:
-  if(temperature>0.) {
+  if((temperature>0.)||(has_tempscript)) {
     min_timestep_ = tmpStepsize;
   } else {
     min_timestep_ = PositiveTimestepBound(max_dm_dt_);
@@ -1567,8 +1573,7 @@ void Xf_ThermSpinXferEvolve::TakeRungeKuttaStep2Heun
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
                    &vtmpA,NULL,pE_pt);
   UpdateHfluct(cstate->mesh);// Update the random field before calculating slopes
-  Oxs_SimState& workstate = next_state_key.GetWriteReference();
-  temperature = GetStageTemp(workstate.stage_number);
+  // Oxs_SimState& workstate = next_state_key.GetWriteReference();
   tmpStepsize = stepsize;
   Calculate_dm_dt(next_state_key.GetReadReference(),vtmpA,pE_pt,
                   vtmpA,max_dm_dt,dE_dt,timestep_lower_bound);
@@ -2707,26 +2712,44 @@ Xf_ThermSpinXferEvolve::Step(const Oxs_TimeDriver* driver,
   return 1; // Accept step
 }
 
-void Xf_ThermSpinXferEvolve::UpdateHfluct(const Oxs_Mesh* mesh)
+void Xf_ThermSpinXferEvolve::InitHfluct(const Oxs_Mesh* mesh)
 {
   const OC_INDEX size = mesh->Size();
   for(OC_INDEX i=0;i<size;i++) {
+    Hfluct[i].Set(0., 0., 0.);
+  }
+}
+
+void Xf_ThermSpinXferEvolve::UpdateHfluct(const Oxs_Mesh* mesh)
+{
+  const OC_INDEX size = mesh->Size();
+  OC_INDEX i, j;
+  for(i=0;i<size;i++) {
     Hfluct[i].x=Gaussian_Random(0.,1.);
     Hfluct[i].y=Gaussian_Random(0.,1.);
     Hfluct[i].z=Gaussian_Random(0.,1.);
+  }
+  UpdateFixedSpinList(mesh);
+  const OC_INDEX fixed_count = GetFixedSpinCount();
+  for(j=0;j<fixed_count;j++) {
+    i = GetFixedSpin(j);
+    Hfluct[i].x=0.0;
+    Hfluct[i].y=0.0;
+    Hfluct[i].z=0.0;
   }
 }
 
 void Xf_ThermSpinXferEvolve::FillHfluctConst(const Oxs_Mesh* mesh)
 {
   // Update variables that will be constant factors in the simulation
-  // h_fluctVarConst will store 2*kB*alpha/((1+alpha^2)*gamma*MU0*Vol)
+  // h_fluctVarConst will store 2*kB*T*alpha/((1+alpha^2)*gamma*MU0*Vol*dt)
   const OC_INDEX size = mesh->Size();
   for(OC_INDEX i=0;i<size;i++) {
     h_fluctVarConst[i] = 2*fabs(alpha[i])/(1+alpha[i]*alpha[i]);     // 2*alpha/(1+alpha^2)
-    h_fluctVarConst[i] /= (MU0*fabs(gamma[i])*mesh->Volume(i));      // 2*alpha/((1+alpha^2)*MU0*gamma*Volume)
-    h_fluctVarConst[i] *= KBoltzmann;                                // 2*kB*alpha/((1+alpha^2)*MU0*gamma*Volume)
+    h_fluctVarConst[i] /= (MU0*fabs(gamma[i])*min_timestep);      // 2*alpha/((1+alpha^2)*MU0*gamma*Volume*dt)
+    h_fluctVarConst[i] *= KBoltzmann*temperature/mesh->Volume(i); // 2*kB*T*alpha/((1+alpha^2)*MU0*gamma*Volume*dt)
   }
+  
 }
 
 void Xf_ThermSpinXferEvolve::UpdateDerivedOutputs(const Oxs_SimState& state)
@@ -2902,6 +2925,20 @@ void Xf_ThermSpinXferEvolve::UpdateSpinTorqueOutputs(const Oxs_SimState& state)
   if(ave_J_output.GetCacheRequestCount()>0) {
     ave_J_output.cache.value=ave_J*Jmult;
     ave_J_output.cache.state_id = state.Id();
+  }
+
+}
+
+void Xf_ThermSpinXferEvolve::UpdateTemperatureOutputs(const Oxs_SimState& state)
+{
+
+  OC_REAL8m Tmult = EvaluateTemperatureProfileScript(state.stage_number,
+                          state.stage_elapsed_time,
+                          state.stage_start_time+state.stage_elapsed_time);
+
+  if(temperature_output.GetCacheRequestCount()>0) {
+    temperature_output.cache.value=temperature*Tmult;
+    temperature_output.cache.state_id = state.Id();
   }
 
 }

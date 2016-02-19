@@ -287,9 +287,10 @@ public:
   // neighboring vectors across the mesh, for all those vectors for
   // which the corresponding entry in zero_check is non-zero.
   // NB: This routine is boundary condition sensitive.
-  virtual OC_REAL8m MaxNeighborAngle(const Oxs_MeshValue<ThreeVector>& vec,
-                                 const Oxs_MeshValue<OC_REAL8m>& zero_check)
-    const;
+  virtual OC_REAL8m MaxNeighborAngle
+  (const Oxs_MeshValue<ThreeVector>& vec,
+   const Oxs_MeshValue<OC_REAL8m>& zero_check,
+   OC_INDEX node_start,OC_INDEX node_stop) const;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -321,9 +322,10 @@ public:
   // neighboring vectors across the mesh, for all those vectors for
   // which the corresponding entry in zero_check is non-zero.
   // NB: This routine is boundary condition sensitive.
-  virtual OC_REAL8m MaxNeighborAngle(const Oxs_MeshValue<ThreeVector>& vec,
-                                 const Oxs_MeshValue<OC_REAL8m>& zero_check)
-    const;
+  virtual OC_REAL8m MaxNeighborAngle
+  (const Oxs_MeshValue<ThreeVector>& vec,
+   const Oxs_MeshValue<OC_REAL8m>& zero_check,
+   OC_INDEX node_start,OC_INDEX node_stop) const;
 };
 
 #endif // _OXS_RECTANGULARMESH

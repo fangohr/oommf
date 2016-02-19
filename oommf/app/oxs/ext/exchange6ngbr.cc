@@ -5,6 +5,10 @@
  *
  */
 
+#include <stdio.h> // For some versions of g++ on Windows, if stdio.h is
+/// #include'd after a C++-style header, then printf format modifiers
+/// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
+
 #include <string>
 
 #include "atlas.h"
@@ -30,8 +34,8 @@ OXS_EXT_REGISTER(Oxs_Exchange6Ngbr);
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.48 $",
-   "$Date: 2012-09-07 02:44:30 $",
+   "$Revision: 1.54 $",
+   "$Date: 2015/01/29 21:33:45 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -65,16 +69,16 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
   // by a rational approximation to sqrt(2).
   OC_INDEX coef_check = 1;
   for(OC_INDEX ibit=0;ibit<sqrootbits;++ibit) coef_check *= 2;
-  if(sizeof(OC_INDEX)==1) {
+#if OC_INDEX_WIDTH == 1
     coef_check = 11;  // Table look-up <g>
-  } else if(sizeof(OC_INDEX)<5) {
+#elif OC_INDEX_WIDTH < 5
     // Use sqrt(2) > 239/169
     coef_check = (coef_check*239+168)/169 - 1;
-  } else {
+#else
     // Use sqrt(2) > 275807/195025.  This is accurate for
     // sizeof(OC_INDEX) <= 9, but will round low above that.
     coef_check = (coef_check*275807+195024)/195025 - 1;
-  }
+#endif // OC_INDEX_WIDTH
   const OC_INDEX max_coef_size = coef_check;
   if(coef_size>max_coef_size) {
       char buf[4096];
@@ -135,9 +139,9 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
 
     // Fill A matrix
     for(ic=0;ic<coef_size*coef_size;ic++) coef[0][ic] = default_coef;
-    for(OC_INT4m ip=0;static_cast<size_t>(ip)<params.size();ip+=3) {
-      OC_INT4m i1 = atlas->GetRegionId(params[ip]);
-      OC_INT4m i2 = atlas->GetRegionId(params[ip+1]);
+    for(OC_INDEX ip=0;static_cast<size_t>(ip)<params.size();ip+=3) {
+      OC_INDEX i1 = atlas->GetRegionId(params[ip]);
+      OC_INDEX i2 = atlas->GetRegionId(params[ip+1]);
       if(i1<0 || i2<0) {
         // Unknown region(s) requested
         char buf[4096];
@@ -148,9 +152,10 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
           Oc_Snprintf(item,sizeof(item),"%.82s",params[ip].c_str());
           if(item[80]!='\0') strcpy(item+80,"..."); // Overflow
           Oc_Snprintf(buf,sizeof(buf),
-                      "First entry in %.80s[%ld] sub-list, \"%.85s\","
-                      " is not a known region in atlas \"%.1000s\".  ",
-                      typestr.c_str(),long(ip/3),item,
+                      "First entry in %.80s[%" OC_INDEX_MOD "d] sub-list,"
+                      " \"%.85s\", is not a known region in atlas"
+                      " \"%.1000s\".  ",
+                      typestr.c_str(),ip/3,item,
                       atlas->InstanceName());
           cptr += strlen(buf);
         }
@@ -169,7 +174,7 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
         msg += String("Known regions:");
         vector<String> regions;
         atlas->GetRegionList(regions);
-        for(OC_INT4m j=0;static_cast<size_t>(j)<regions.size();++j) {
+        for(OC_INDEX j=0;static_cast<size_t>(j)<regions.size();++j) {
           msg += String(" \n");
           msg += regions[j];
         }
@@ -235,7 +240,7 @@ OC_BOOL Oxs_Exchange6Ngbr::Init()
 
 void Oxs_Exchange6Ngbr::CalcEnergyA
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -389,7 +394,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyA
 
 void Oxs_Exchange6Ngbr::CalcEnergyLex
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -540,9 +545,9 @@ void Oxs_Exchange6Ngbr::CalcEnergyLex
 
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunkInitialize
-(const Oxs_SimState& /* state */,
- Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+(const Oxs_SimState& state,
+ const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+ vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   if(maxdot.size() != (vector<OC_REAL8m>::size_type)number_of_threads) {
@@ -551,13 +556,38 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkInitialize
   for(int i=0;i<number_of_threads;++i) {
     maxdot[i] = 0.0; // Minimum possible value for (m_i-m_j).MagSq()
   }
+
+  if(mesh_id !=  state.mesh->Id() || !atlaskey.SameState()) {
+    // Setup region mapping.  NB: At a lower level, this may potentially
+    // involve calls back into the Tcl interpreter.  Per Tcl spec, only
+    // the thread originating the interpreter is allowed to make calls
+    // into it, so only threadnumber == 0 can do this processing.  The
+    // Oxs_ChunkEnergy interface guarantees that this initialization
+    // routine is only run on thread 0.
+    region_id.AdjustSize(state.mesh);
+    ThreeVector location;
+    const OC_INDEX size = state.mesh->Size();
+    for(OC_INDEX i=0;i<size;i++) {
+      state.mesh->Center(i,location);
+      if((region_id[i] = atlas->GetRegionId(location))<0) {
+        String msg = String("Import mesh to Oxs_Exchange6Ngbr::GetEnergy()"
+                            " routine of object ")
+          + String(InstanceName())
+          + String(" has points outside atlas ")
+          + String(atlas->InstanceName());
+        throw Oxs_ExtError(msg.c_str());
+      }
+    }
+    atlaskey.Set(atlas.GetPtr());
+    mesh_id = state.mesh->Id();
+  }
 }
 
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
 (const Oxs_SimState& state,
  const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- const Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+ const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   // Set max angle data
@@ -625,7 +655,7 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
   String smsa_name = StageMaxSpinAngleStateName();
   String rmsa_name = RunMaxSpinAngleStateName();
   if(state.previous_state_id &&
-     (oldstate
+     0 != (oldstate
       = director->FindExistingSimulationState(state.previous_state_id)) ) {
     if(oldstate->stage_number != state.stage_number) {
       stage_maxang = 0.0;
@@ -655,7 +685,7 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunk
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -669,146 +699,12 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunk
   }
 #endif
 
-  const OC_INDEX size = state.mesh->Size();
-  if(size<1) {
-    return;
-  }
-
-  if(mesh_id !=  state.mesh->Id() || !atlaskey.SameState()) {
-    // Setup region mapping.
-    // NB: At a lower level, this may potentially involve calls back
-    // into the Tcl interpreter.  Per Tcl spec, only the thread
-    // originating the interpreter is allowed to make calls into it, so
-    // only threadnumber == 0 can do this processing.  Any other thread
-    // must block until that processing is complete.
-    thread_control.Lock();
-    if(Oxs_ThreadError::IsError()) {
-      if(thread_control.count>0) {
-        // Release a blocked thread
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
-      return; // What else?
-    }
-    if(threadnumber != 0) {
-      if(mesh_id != state.mesh->Id() || !atlaskey.SameState()) {
-        // If above condition is false, then the main thread came
-        // though and initialized everything between the time of
-        // the previous check and this thread's acquiring of the
-        // thread_control mutex; in which case, "never mind".
-        // Otherwise:
-        ++thread_control.count; // Multiple threads may progress to this
-        /// point before the main thread (threadnumber == 0) grabs the
-        /// thread_control mutex.  Keep track of how many, so that
-        /// afterward they may be released, one by one.  (The main
-        /// thread will Notify control_wait.cond once; after that
-        /// as each waiting thread is released, the newly released
-        /// thread sends a Notify to wake up the next one.
-        thread_control.Wait(0);
-        --thread_control.count;
-        int condcheckerror=0;
-        if(mesh_id !=  state.mesh->Id() || !atlaskey.SameState()) {
-          // Error?
-          condcheckerror=1;
-          Oxs_ThreadPrintf(stderr,"Invalid condition in"
-                           " Oxs_Exchange6Ngbr::ComputeEnergyChunk(),"
-                           " thread number %d\n",threadnumber);
-        }
-        if(thread_control.count>0) {
-          // Free a waiting thread.
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        if(condcheckerror || Oxs_ThreadError::IsError()) {
-          return; // What else?
-        }
-      } else {
-        if(thread_control.count>0) {
-          // Free a waiting thread.  (Actually, it can occur that the
-          // thread_control will be grabbed by another thread that is
-          // blocked at the first thread_control mutex Lock() call above
-          // rather than on the ConditionWait, in which case this
-          // ConditionNotify will be effectively lost.  But that is
-          // okay, because then *that* thread will Notify when it
-          // releases the mutex.)
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-      }
-    } else {
-      // Main thread (threadnumber == 0)
-      try {
-        region_id.AdjustSize(state.mesh);
-        ThreeVector location;
-        for(OC_INDEX i=0;i<size;i++) {
-          state.mesh->Center(i,location);
-          if((region_id[i] = atlas->GetRegionId(location))<0) {
-            String msg = String("Import mesh to Oxs_Exchange6Ngbr::GetEnergy()"
-                                " routine of object ")
-              + String(InstanceName())
-                + String(" has points outside atlas ")
-              + String(atlas->InstanceName());
-            throw Oxs_ExtError(msg.c_str());
-          }
-        }
-        atlaskey.Set(atlas.GetPtr());
-        mesh_id = state.mesh->Id();
-      } catch(Oxs_ExtError& err) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(err));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(String& serr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(serr);
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(const char* cerr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(cerr));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(...) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String("Error in "
-            "Oxs_Exchange6Ngbr::ComputeEnergyChunk"));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      }
-      if(thread_control.count>0) {
-        // Free a waiting thread.  (Actually, it can occur that the
-        // thread_control will be grabbed by another thread that is
-        // blocked at the first thread_control mutex Lock() call above
-        // rather than on the ConditionWait, in which case this
-        // ConditionNotify will be effectively lost.  But that is
-        // okay, because then *that* thread will Notify when it
-        // releases the mutex.)
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
-    }
-  }
   if(excoeftype == LEX_TYPE) {
     CalcEnergyLex(state,ocedt,ocedtaux,node_start,node_stop,threadnumber);
   } else {
     CalcEnergyA(state,ocedt,ocedtaux,node_start,node_stop,threadnumber);
   }
+
 }
 
 void Oxs_Exchange6Ngbr::UpdateDerivedOutputs(const Oxs_SimState& state)

@@ -74,7 +74,7 @@
  *
  * STANDALONE NOTE: This file can also be built as a standalone
  * executable to test the computed tensor elements for periodic
- * boundary conditions.  For example:
+ * and non-periodic boundary conditions.  For example:
  *
  *    g++ -DSTANDALONE -DOC_USE_SSE=1 demagcoef.cc -lm -o pbctest
  *
@@ -82,13 +82,26 @@
  *
  */
 
+#if defined(STANDALONE) && STANDALONE==0
+# undef STANDALONE
+#endif
+
+// By default, MinGW uses I/O from the Windows Microsoft C runtime,
+// which doesn't support 80-bit floats.  Substitute MinGW versions for
+// printf etc.  This macro must be set before stdio.h is included.
+#if defined(STANDALONE) && (defined(__MINGW32__) || defined(__MINGW64__))
+# define __USE_MINGW_ANSI_STDIO 1
+#endif
+
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#if defined(STANDALONE) && STANDALONE==0
-# undef STANDALONE
+#ifndef USE_LOG1P
+# define USE_LOG1P 1  // Use log1p in place of log(1+x) where possible.
+/// This should make the results more accurate, but test results are
+/// mixed.
 #endif
 
 #ifndef STANDALONE
@@ -144,7 +157,10 @@ inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return logl(x); }
 inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)  { return powl(x,y); }
 inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabsl(x); }
 inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atanl(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) { return atan2l(y,x); }
+inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) {
+  if(x==0.0 && y==0.0) return 0.0L;
+  return atan2l(y,x);
+}
 #else   // OC_REALWIDE is double
 
 typedef double OC_REALWIDE;
@@ -156,18 +172,25 @@ inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return log(x); }
 inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)  { return pow(x,y); }
 inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabs(x); }
 inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atan(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) { return atan2(y,x); }
+inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) {
+  if(x==0.0 && y==0.0) return 0.0;
+  return atan2(y,x);
+}
 #endif // OC_REALWIDE == double?
- 
+
+OC_REALWIDE Oc_Nop(OC_REALWIDE);  // Declaration; definition is a end of file.
+
 OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x)
 { // Routine to calculate log(1+x), accurate for small x.
   // The log1p function is in the C99 spec.  That version
   // is probably fast and more accurate than the version below,
   // so should probably use that if available.
-  if(Oc_FabsRW(x)>0.5) return Oc_LogRW(1.0+x);
+  //    BTW, for very small values of x a short series expansion
+  // of log(1+x) will be faster than the following code.
+  if(Oc_FabsRW(x)>=0.5) return Oc_LogRW(1.0+x);
   // Otherwise, use little trick.  One should check that
   // compiler doesn't screw this up with "extra" precision.
-  OC_REALWIDE y1 = 1.0 + x;
+  OC_REALWIDE y1 = Oc_Nop(1.0 + x);
   if(y1 == 1.0) return x;
   OC_REALWIDE y2 = y1 - 1.0;
   OC_REALWIDE rat = Oc_LogRW(y1)/y2;
@@ -469,28 +492,44 @@ OC_REALWIDE Oxs_SelfDemagNx(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
 
   OC_REALWIDE piece4 = -y*z*z*(1/(x+Rxz)+y/(Rxy*Rxz+x*R))/(Rxz*(y+Rxy));
   if(piece4 > -0.5) {
+#if USE_LOG1P
     arr[4] = 3*x*Oc_Log1pRW(piece4)/z;
+#else
+    arr[4] = 3*x*Oc_LogRW(1.0+piece4)/z;
+#endif
   } else {
     arr[4] = 3*x*Oc_LogRW(x*(y+R)/(Rxz*(y+Rxy)))/z;
   }
 
   OC_REALWIDE piece5 = -y*y*z*(1/(x+Rxy)+z/(Rxy*Rxz+x*R))/(Rxy*(z+Rxz));
   if(piece5 > -0.5) {
+#if USE_LOG1P
     arr[5] = 3*x*Oc_Log1pRW(piece5)/y;
+#else
+    arr[5] = 3*x*Oc_LogRW(1.0+piece5)/y;
+#endif
   } else {
     arr[5] = 3*x*Oc_LogRW(x*(z+R)/(Rxy*(z+Rxz)))/y;
   }
 
   OC_REALWIDE piece6 = -x*x*z*(1/(y+Rxy)+z/(Rxy*Ryz+y*R))/(Rxy*(z+Ryz));
   if(piece6 > -0.5) {
+#if USE_LOG1P
     arr[6] = -3*y*Oc_Log1pRW(piece6)/x;
+#else
+    arr[6] = -3*y*Oc_LogRW(1.0+piece6)/x;
+#endif
   } else {
     arr[6] = -3*y*Oc_LogRW(y*(z+R)/(Rxy*(z+Ryz)))/x;
   }
 
   OC_REALWIDE piece7 = -x*x*y*(1/(z+Rxz)+y/(Rxz*Ryz+z*R))/(Rxz*(y+Ryz));
   if(piece7 > -0.5) {
+#if USE_LOG1P
     arr[7] = -3*z*Oc_Log1pRW(piece7)/x;
+#else
+    arr[7] = -3*z*Oc_LogRW(1.0+piece7)/x;
+#endif
   } else {
     arr[7] = -3*z*Oc_LogRW(z*(y+R)/(Rxz*(y+Ryz)))/x;
   }
@@ -533,34 +572,37 @@ Oxs_Newell_f(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
     if((temp1=x*y*z)>0.)
       piece[piececount++] = -12*temp1*Oc_Atan2RW(y*z,x*R);
     if(y>0. && (temp2=xsq+zsq)>0.) {
-#if 1
-      OC_REALWIDE dummy = Oc_LogRW(((y+R)*(y+R))/temp2);
-      piece[piececount++] = 3*y*(zsq-xsq)*dummy;
-#else
+#if USE_LOG1P
       OC_REALWIDE dummy = Oc_Log1pRW(2*y*(y+R)/temp2);
-      piece[piececount++] = 3*(z-x)*(z+x)*y*dummy;
+#else
+      OC_REALWIDE dummy = Oc_LogRW(((y+R)*(y+R))/temp2);
 #endif
+      piece[piececount++] = 3*y*(zsq-xsq)*dummy;
     }
     if((temp3=xsq+ysq)>0.) {
-#if 1
-      OC_REALWIDE dummy = Oc_LogRW(((z+R)*(z+R))/temp3);
-      piece[piececount++] = 3*z*(ysq-xsq)*dummy;
-#else
+#if USE_LOG1P
       OC_REALWIDE dummy = Oc_Log1pRW(2*z*(z+R)/temp3);
-      piece[piececount++] = 3*(y-x)*(y+x)*z*dummy;
+#else
+      OC_REALWIDE dummy = Oc_LogRW(((z+R)*(z+R))/temp3);
 #endif
+      piece[piececount++] = 3*z*(ysq-xsq)*dummy;
     }
   } else {
     // z==0
     if(x==y) {
       const OC_REALWIDE K = 2*Oc_SqrtRW(static_cast<OC_REALWIDE>(2.0))
         -6*Oc_LogRW(1+Oc_SqrtRW(static_cast<OC_REALWIDE>(2.0)));
-      /// K = -2.4598143973710680537922785014593576970294
+      /// K = -2.4598143973710680537922785014593576970294L
       piece[piececount++] = K*xsq*x;
     } else {
       piece[piececount++] = 2*(2*xsq-ysq)*R;
-      if(y>0. && x>0.)
+      if(y>0. && x>0.) {
+#if USE_LOG1P
+	piece[piececount++] = -3*y*xsq*Oc_Log1pRW(2*y*(y+R)/(x*x));
+#else
 	piece[piececount++] = -6*y*xsq*Oc_LogRW((y+R)/x);
+#endif
+      }
     }
   }
 
@@ -661,19 +703,39 @@ Oxs_Newell_g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
     piece[piececount++] = -3*z*xsq*Oc_Atan2RW(y*z,x*R);
 
     OC_REALWIDE temp1,temp2,temp3;
-    if((temp1=xsq+ysq)>0.)
+    if((temp1=xsq+ysq)>0.) {
+#if USE_LOG1P
+      piece[piececount++] = 3*x*y*z*Oc_Log1pRW(2*z*(z+R)/temp1);
+#else
       piece[piececount++] = 3*x*y*z*Oc_LogRW((z+R)*(z+R)/temp1);
+#endif
+    }
 
-    if((temp2=ysq+zsq)>0.)
+    if((temp2=ysq+zsq)>0.){
+#if USE_LOG1P
+      piece[piececount++] = 0.5*y*(3*zsq-ysq)*Oc_Log1pRW(2*x*(x+R)/temp2);
+#else
       piece[piececount++] = 0.5*y*(3*zsq-ysq)*Oc_LogRW((x+R)*(x+R)/temp2);
+#endif
+    }
 
-    if((temp3=xsq+zsq)>0.)
+    if((temp3=xsq+zsq)>0.) {
+#if USE_LOG1P
+      piece[piececount++] = 0.5*x*(3*zsq-xsq)*Oc_Log1pRW(2*y*(y+R)/temp3);
+#else
       piece[piececount++] = 0.5*x*(3*zsq-xsq)*Oc_LogRW((y+R)*(y+R)/temp3);
+#endif
+    }
 
   } else {
     // z==0.
+#if USE_LOG1P
+    if(y>0.) piece[piececount++] = -0.5*y*ysq*Oc_Log1pRW(2*x*(x+R)/(y*y));
+    if(x>0.) piece[piececount++] = -0.5*x*xsq*Oc_Log1pRW(2*y*(y+R)/(x*x));
+#else
     if(y>0.) piece[piececount++] = -y*ysq*Oc_LogRW((x+R)/y);
     if(x>0.) piece[piececount++] = -x*xsq*Oc_LogRW((y+R)/x);
+#endif
   }
 
   return result_sign*Oxs_AccurateSum(piececount,piece)/6.;
@@ -2500,7 +2562,14 @@ Oxs_DemagPeriodicZ::ComputeTensor
 
 void Usage()
 {
-  fprintf(stderr,"Usage: pbctest x y z hx hy hz W periodic_direction [arad]\n");
+  fprintf(stderr,
+          "Usage: pbctest x y z hx hy hz W periodic_direction [arad]\n");
+  fprintf(stderr,
+          " where x y z is offset,\n"
+          "       hx hy hz are cell dimensions,\n"
+          "       W is window length in periodic direction,\n"
+          "   and periodic_direction is one of x, y, z or n"
+          " (n -> not periodic)\n");
   exit(1);
 }
 
@@ -2543,7 +2612,7 @@ void PrettyFormat(long double x,char* buf,size_t bufsize)
       break;
     }
   }
-  buf[i++] = '\0';
+  buf[i] = '\0';
 }
 
 
@@ -2551,8 +2620,10 @@ int main(int argc,char** argv)
 {
   if(argc<9 || argc>10) Usage();
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 # define strtold(x,y) strtod((x),(y))
+#elif defined(__BORLANDC__)
+# define strtold(x,y) _strtold((x),(y))
 #endif
 
 #if OXS_DEMAG_ASYMP_USE_SSE
@@ -2710,5 +2781,7 @@ int main(int argc,char** argv)
 #endif
   return 0;
 }
+
+OC_REALWIDE Oc_Nop(OC_REALWIDE x) { return x; }
 
 #endif // STANDALONE

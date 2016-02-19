@@ -4,7 +4,7 @@
 # an application for some purpose, but which should not remain after the
 # application terminates.
 #
-# Last modified on: $Date: 2011-11-17 08:34:07 $
+# Last modified on: $Date: 2014/01/15 05:36:55 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Oc_TempFile {
@@ -120,7 +120,7 @@ Oc_Class Oc_TempFile {
           }
        }
        if {[string match volumerelative [file pathtype $directory]]} {
-          set drive [lindex [file split [pwd] 0]]
+          set drive [lindex [file split [pwd]] 0]
           set absoluteDir [eval file join \
                [lreplace [file split $directory] 0 0 $drive]]
        } else {

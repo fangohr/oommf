@@ -23,7 +23,7 @@ private:
 
   // Caching
   Oxs_OwnedPointer<Oxs_Mesh> cache_mesh;
-  mutable map<OC_UINT4m,OC_REAL8m> results_cache;  // Conceptually const
+  std::vector<OC_REAL8m> results_cache;
   OC_BOOL use_cache;
 
 public:

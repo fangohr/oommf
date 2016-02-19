@@ -5,9 +5,21 @@
 # It listens on the port name by its first command line argument, and 
 # directs communications among all OOMMF threads owned by this account.
 #
-# Last modified on: $Date: 2012-06-28 06:10:58 $
+# Last modified on: $Date: 2015/09/30 07:41:35 $
 # Last modified by: $Author: donahue $
 #
+# For debugging:
+# Oc_ForceStderrDefaultMessage
+# Oc_Log SetLogHandler Oc_DefaultMessage status
+# or
+#Oc_FileLogger SetFile \
+#    [format "C:/Users/donahue/oommf/account-[clock seconds]-%05d.log" [pid]]
+#Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
+#Oc_Log SetLogHandler [list Oc_FileLogger Log] error
+#Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
+#Oc_Log SetLogHandler [list Oc_FileLogger Log] info
+#Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+
 
 if {([llength $argv] > 3) || ([llength $argv] == 0)} {
     error "usage: account.tcl <service_port> ?<creator_port>? ?<oid>?"
@@ -35,10 +47,18 @@ if {[llength $argv] > 2} {
 # over which we communicate to that process, the process ID.
 array set info [list]
 
-# Third, there is an array that maps a service ID (really a pair
-# (OOMMF pid, serverType) joined by a :) to the port number on which
-# that server is listening.
+# Third, there is an array that maps a service ID (really a pair (OOMMF
+# pid, serverType) joined by a :) to the port number on which that
+# server is listening.  (serverType is a serial number identifying the
+# server object inside the server application.  For example, service ID
+# 2347:0 would be the first server in pid 2347, 2347:1 the second, etc.)
 array set service [list]
+
+# Fourth, an array that maps the service ID to its protocol
+array set protocol [list]
+
+# Fifth, an array that maps the service ID to the registration name
+array set regname [list]
 
 # Finally, the "name" array keeps track of names of processes, so
 # that the same process (and its services) can be found again and
@@ -86,7 +106,7 @@ Oc_IgnoreTermLoss
 
 proc FatalError {msg} {
     global master
-    if {![string match *expired $msg]} {
+    if {![string match *expired. $msg]} {
         Oc_Log Log $msg panic
     } else {
         Oc_Log Log $msg status
@@ -102,11 +122,16 @@ Oc_EventHandler Bindtags NotifyClaim NotifyClaim
 Oc_EventHandler Bindtags NotifyNewOid NotifyNewOid
 
 proc FreeOid {oid} {
-    global process info service name
+    global process info service name protocol regname
+    Oc_Log Log "Freeing OID $oid" status
     Oc_EventHandler DeleteGroup oid-$oid
     foreach n [array names service $oid:*] {
         unset service($n)
+        unset protocol($n)
+        unset regname($n)
+        Oc_EventHandler Generate Oc_Main DeleteThread -id $n
     }
+    Oc_EventHandler Generate Oc_Main DeleteOid -oid $oid
     set app [lindex $info($oid) 0]
     set pid [lindex $info($oid) 2]
     set names [lindex $info($oid) 3]
@@ -122,6 +147,13 @@ proc FreeOid {oid} {
 
 proc LostConnection {oid} {
     global info service
+
+    Oc_Log Log "LostConnection to OID $oid" status
+
+    # Don't send thread updates to now-dead connection
+    set connection [lindex $info($oid) 1]
+    Oc_EventHandler DeleteGroup NewThread-$connection
+
     set info($oid) [lreplace $info($oid) 1 1 {}]
     # We lost connection to process $oid.  Is it coming back?
     # Attempt to connect to its service(s).  Success,
@@ -168,6 +200,8 @@ $master(protocol) AddMessage start newoid {app pid start {oid -1}} {
     }
     set process($pid,$start) $oid
     Oc_EventHandler Generate NotifyNewOid $pid -oid $oid
+    Oc_EventHandler Generate Oc_Main NewOid -oid $oid
+    
     foreach x [array names info] {
 	set c [lindex $info($x) 1]
 	if {[llength [info commands $c]]} {
@@ -445,82 +479,88 @@ $master(protocol) AddMessage start getpids {oidpats args} {
     return [list start $result]
 }
 
-$master(protocol) AddMessage start programs {} {
-    global Omf_export_list
-    if {[CheckExportTimes]} {
-        SourceExportFiles  ;# Reread .omfExport.tcl files if necessary
-    }
-    foreach {id cmd} $Omf_export_list { lappend namelist $id }
-    return [list start [concat 0 $namelist]]
-}
-
-$master(protocol) AddMessage start launch {program args} {
-    global Omf_export env
-    if {[CheckExportTimes]} {
-        SourceExportFiles  ;# Reread .omfExport.tcl files if necessary
-    }
-    if {[info exists Omf_export($program)]} {
-	foreach {n v} $args {
-	    catch {set save($n) $env($n)}
-	    set env($n) $v
-	}
-	set code [catch {
-                eval $Omf_export($program) &
-                } threadid]
-	foreach {n v} $args {
-	    unset env($n)
-	    catch {set env($n) $save($n)}
-	}
-	if $code {
-            return [list start [list 1 Launch failed: $threadid]]
-        }
-        return [list start [list 0 $threadid]]
-    }
-    return [list start [list 1 Can't launch $program: no such program]]
+$master(protocol) AddMessage start kill {oidpats args} {
+   # Given a list of glob-style oid patterns (probably either a single
+   # oid or "*"), does a tell "die" on each account server connection.
+   # This requests each app to shutdown.
+   set appname 0
+   if {[llength $args]} {
+      set option [lindex $args 0]
+      if {[llength $args] > 1} {
+         return [list start [list -1 \
+                "wrong # args: should be \"kill oidpats ?-appname?\""]]
+      }
+      # check for the -appname switch
+      if {[string compare $option -appname]} {
+         return [list start [list -1 "invalid argument \"$option\""]]
+      }
+      set appname 1
+   }
+   global info
+   set oidlist {}
+   foreach pat $oidpats {
+      set oidlist [concat $oidlist [array names info $pat]]
+   }
+   if {[llength $oidlist]==0} {
+      return [list start [list 1 \
+                   "No processes match OID pattern(s) \"$oidpats\""]]
+   }
+   set oidlist [lsort -integer -unique $oidlist]
+   foreach oid  $oidlist {
+      set oidconn [lindex $info($oid) 1]
+      $oidconn Tell private die
+   }
+   return [list start $oidlist]
 }
 
 $master(protocol) AddMessage start threads {} {
     # Function is to return a list of running services registered
-    # with this account server.  A triple for each one: 
-    # ($programName $serviceId $port).
+    # with this account server.  A quartet for each one: 
+    # ($regName $serviceId $port $protocol).
     #
     # Name of this message should really be "services"
-    global service info
+    global service protocol regname info
     set ret [list]
     foreach sid [array names service] {
         set port $service($sid)
-        foreach {oid type} [split $sid :] break
-        set app [lindex $info($oid) 0]
-        lappend ret [list $app $sid $port]
+        set protocolname $protocol($sid)
+        set advertisedname $regname($sid)
+        lappend ret [list $advertisedname $sid $port $protocolname]
     }
 
     # Assume any client who asked for a list of threads wants to be
-    # informed when threads are (de)registered, but only one handler
-    # per connection
+    # informed when threads are (de)registered, and oids are
+    # created/freed, but only one handler per connection.
     Oc_EventHandler DeleteGroup NewThread-$connection
     Oc_EventHandler New _ Oc_Main NewThread \
             [list $connection Tell newthread %id] \
             -groups [list $connection NewThread-$connection]
     Oc_EventHandler New _ Oc_Main DeleteThread \
-            [list $connection Tell deletethread %id] \
+            [list catch [list $connection Tell deletethread %id]] \
+            -groups [list $connection NewThread-$connection]
+    Oc_EventHandler New _ Oc_Main NewOid \
+            [list $connection Tell newoid %oid] \
+            -groups [list $connection NewThread-$connection]
+    Oc_EventHandler New _ Oc_Main DeleteOid \
+            [list catch [list $connection Tell deleteoid %oid]] \
             -groups [list $connection NewThread-$connection]
     return [list start [concat 0 $ret]]
 }
 $master(protocol) AddMessage start lookup {sid} {
     # Return information about a service, given a service ID
-    global service info
+    global service protocol regname info
     if {[info exists service($sid)]} {
         set port $service($sid)
-        foreach {oid type} [split $sid :] break
-        set app [lindex $info($oid) 0]
+        set protocolname $protocol($sid)
+        set advertisedname $regname($sid)
         # Any checking here?  connection good? port registered?
-        return [list start [list 0 $port $app]]
+        return [list start [list 0 $port $advertisedname $protocolname]]
     }
     return [list start [list 1 service $sid not registered]]
 }
-$master(protocol) AddMessage start register {sid alias port} {
+$master(protocol) AddMessage start register {sid alias port protocolname} {
     # Register the availability of service $sid on port $port
-    global service info
+    global service protocol regname info
 
     # Verify registration request comes from correct app
     foreach {oid type} [split $sid :] break
@@ -535,13 +575,15 @@ $master(protocol) AddMessage start register {sid alias port} {
     }
     if {![info exists service($sid)]} {
 	set service($sid) $port
+        set protocol($sid) $protocolname
+        set regname($sid) $alias
 	Oc_EventHandler Generate Oc_Main NewThread -id $sid
     }
     return [list start [list 0 {}]]
 }
 $master(protocol) AddMessage start deregister { sid } {
     # De-register a service.  
-    global service info
+    global service protocol regname info
 
     # First verify de-registration request comes from correct app
     foreach {oid type} [split $sid :] break
@@ -552,7 +594,7 @@ $master(protocol) AddMessage start deregister { sid } {
 
     # Should add error check
     # Could also add service-death notification
-    set result [unset service($sid)]
+    set result [unset service($sid) protocol($sid) regname($sid)]
     Oc_EventHandler Generate Oc_Main DeleteThread -id $sid
     return [list start [list 0 $result]]
 }
@@ -600,7 +642,7 @@ proc SourceExportFiles {} {
 
     catch {unset Omf_export}
     catch {unset Omf_export_list}
-    catch {unset  Omf_export_mtime}
+    catch {unset Omf_export_mtime}
 
     foreach file $master(exportFiles) {
         if {![info exists Omf_export] && ![info exists Omf_export_list]} {
@@ -651,14 +693,17 @@ proc RegisterReply {} {
     set reply [$master(host) Get]
     switch -- [lindex $reply 0] {
         0 {
-            CallbackCreator
+           # This instance registered
+           CallbackCreator
         }
         default {
-            after 2000
-            CallbackCreator
-            exit
-            # set master(registered) 0
-            # FatalError "Registration error: [lrange $reply 1 end]"
+           # Registration failed; some other account server probably
+           # beat us.
+           after [expr {500 + int(500*rand())}]
+           CallbackCreator
+           exit
+           # set master(registered) 0
+           # FatalError "Registration error: [lrange $reply 1 end]"
         }
     }
 }
@@ -667,7 +712,7 @@ proc CallbackCreator {} {
     global argv master
     set master(registered) 1
     if {[llength $argv] >= 2} {
-        # Inform my creator that my server is running.
+        # Inform my creator that an account server is running.
         set port [lindex $argv 1]
         if {[catch {socket localhost $port} s]} {
             FatalError "Unable to call back $port: $s"
@@ -715,26 +760,82 @@ proc DeregisterTimeout {} {
     exit
 }
 
-# Once a connection becomes ready, set up handler to catch
-# connection destructions.  On last one, exit.
-Oc_EventHandler New _ Net_Connection Ready [list StartCheckConnect] \
-    -groups [list StartCheckConnect]
-
-proc StartCheckConnect {} {
-    # Only start checking connection after we have at least 2 connections
-    if {[llength [Net_Connection Instances]] >= 2} {
-        Oc_EventHandler New _ Net_Connection Delete [list CheckConnect]
-        Oc_EventHandler DeleteGroup StartCheckConnect
-    }
+if {0} {
+   # Debug logging
+   Oc_EventHandler New _ Net_Connection Ready \
+       [list ConnectReport %object connect]
+   Oc_EventHandler New _ Net_Connection Readable \
+       [list ConnectReport %object read]
+   Oc_EventHandler New _ Net_Connection Query \
+       [list ConnectReport %object query]
+   Oc_EventHandler New _ Net_Connection Delete \
+       [list ConnectReport %object die]
+   proc ConnectReport { object event } {
+      if {![catch {clock milliseconds} ms]} {
+         set secs [expr {$ms/1000}]
+         set ms [format {%03d} [expr {$ms - 1000*$secs}]]
+         set timestamp [clock format $secs \
+                            -format "%H:%M:%S.$ms %Y-%m-%d"]
+      } else {
+         set secs [clock seconds]
+         set timestamp [format [clock format $secs \
+                                    -format %H:%M:%S.???\ %Y-%m-%d]]
+      }
+      switch -exact $event {
+         connect { set msg "CONNECTION: $object" }
+         read { set msg "Read $object: [$object Get]" }
+         query { set msg "Query $object: [$object Get]" }
+         die { set msg "DIE: $object" }
+      }
+      set chan [open "C:/Users/donahue/tmp/oommf/account.log" a]
+      puts $chan [format "%s %6d %s" $timestamp [pid] $msg]
+      close $chan
+   }
 }
 
-proc CheckConnect {} {
-    # A Net_Connection is being destroyed.  If it's the penultimate one
-    # (last one connects to host server), schedule our suicide
-    if {[llength [Net_Connection Instances]] == 2} {
-        after idle [list FatalError\
-                 "All connections closed.  Account server expired"]
-    }
+
+# Once a connection becomes ready, set up handler to catch
+# connection destructions.  On last one, exit.
+Oc_EventHandler New _ Net_Connection Delete [list CheckConnect %object]
+
+proc CheckConnect { object } {
+   # A Net_Connection is being destroyed.  If there are no connections
+   # remaining aside from the usual one to the host server, then schedule
+   # our suicide.
+   global master
+   set connection_instances [Net_Connection Instances]
+   # Cases:
+   #  A) More than two connections => don't die
+   #  B) Two connections, one going down is host => don't die
+   #  C) Two connections, one going down is not host => die
+   #  D) One connection, one going down is host => ???
+   #  E) One connection, one going down is not host => die
+   # Best behavior for case D is unclear.  This case can only
+   # occur if the host dies before any other app connects to
+   # the account server, since otherwise to get to a single
+   # connection with only the host we have to pass through
+   # state C.  Previously the CheckConnect handler was only
+   # set after the second app connected to the account server,
+   # in which case D resolves to don't die.  But recent account
+   # object (i.e., the Net_Account class) code is robust wrt
+   # to restarting host and account servers, so it is probably
+   # more robust to die on case D.
+   if {[llength $connection_instances]>2} { return }
+   if {[llength $connection_instances]==2 && [info exists master(host)]} {
+      set host_connection [$master(host) HostConnection]
+      if {[string compare $host_connection $object]==0} {
+         return  ;# Don't die on host destruction
+      }
+   }
+   # Begin account server shutdown: First, stop accepting new
+   # connections.
+   $master(server) ForbidServiceStart
+   if {[$master(server) IsListening]} {
+      $master(server) Stop
+   }
+   # Shut down
+   after idle [list FatalError\
+                   "All connections closed.  Account server expired."]
 }
 
 vwait master(forever)

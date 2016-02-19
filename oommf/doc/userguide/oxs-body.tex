@@ -1,4 +1,5 @@
 \section{OOMMF eXtensible Solver}\label{sec:oxs}%
+\index{Oxs}\index{application!Oxs}%
 The Oxs (OOMMF eXtensible Solver) is an extensible micromagnetic
 computation engine capable of solving problems defined on
 three-dimensional grids of rectangular cells holding three-dimensional
@@ -80,8 +81,9 @@ automatically passed to \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
 command line via
 \begin{verbatim}
 tclsh oommf.tcl oxsii [standard options] [-exitondone <0|1>] \
-   [-nice <0|1>] [-parameters params] [-pause <0|1>] \
-   [-restart <0|1>] [-threads <count>] [-numanodes <nodes>] [miffile]
+   [-logfile logname] [-loglevel level] [-nice <0|1>] [-nocrccheck <0|1>] \
+   [-numanodes nodes] [-parameters params] [-pause <0|1>] \
+   [-restart <0|1|2>] [-restartfiledir dir] [-threads count] [miffile]
 \end{verbatim}
 where
 \begin{description}
@@ -89,49 +91,23 @@ where
   Whether to exit after solution of the problem is complete.
   Default is to simply await the interactive selection
   of another problem to be solved.
+\item[\optkey{-logfile logname}]
+  Write log and error messages to file \textit{logname}.  The default log
+  file is \fn{oommf/oxsii.errors}.
+\item[\optkey{-loglevel level}]
+  Controls the detail level of log messages, with larger values of
+  \textit{level} producing more output.  Default value is 1.
 \item[\optkey{-nice \boa 0\pipe 1\bca}]
   If enabled (i.e., 1), then the program will drop its scheduling
   priority after startup.  The default is 1, i.e., to yield scheduling
   priority to other applications.
-\item[\optkey{-parameters params}]
-  Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
-  parameters.  The \textit{params} argument should be a list with an
-  even number of arguments, corresponding to name + value pairs.  Each
-  ``name'' must appear in a
-  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
-  statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
-  \MIF\ file.  The entire name + value list must be quoted so it is
-  presented to \app{Oxsii} as a single item on the command line.  For
-  example, if \cd{A} and \cd{Ms} appeared in \cd{Parameter} statements
-  in the \MIF\ file, then an option like
-  \begin{verbatim}   -parameters "A 13e-12 Ms 800e3"\end{verbatim}
-  could be used to set \cd{A} to 13e-12 and Ms to 800e3.  The quoting
-  mechanism is shell/operating system specific; refer to your system
-  documentation for details.
-\item[\optkey{-pause \boa 0\pipe 1\bca}]
-  If disabled (i.e., 0), then the program automatically shifts into
-  ``Run'' mode after loading the specified \textit{miffile}. The default
-  is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
-  no effect if miffile is not specified.
-\item[\optkey{-restart \boa 0\pipe 1\bca\index{simulation~3D!restarting}}]
-  Controls the initial setting of the restart flag, and thereby 
-  the load restart behavior of any \cd{miffile} specified on the command
-  line.  The restart flag is described in the
-  \htmlonlyref{Controls section below}{html:oxsiirestartflag}.
-  The default value is 0, i.e., no restart.
-\item[\optkey{-threads \boa count\bca}]
-  \index{parallelization}
-  The option is available on
-  \hyperrefhtml{threaded}{threaded (Sec.~}{)}{sec:parallel} builds of Oxs.
-  The \textit{count} parameter is the number of threads to run.  The
-  default count value is set by the \cd{oommf\_thread\_count} value in
-  the \fn{config/platforms/} file for your platform, but may be
-  overridden by the
-  \cd{OOMMF\_THREADS}\index{environment~variables!OOMMF\_THREADS}
-  environment variable or this command line option.  In most cases the
-  default count value will equal the number of processing cores on the
-  system; this can be checked via the command
-  \cd{tclsh oommf.tcl +platform}.
+\item[\optkey{-nocrccheck \boa 0\pipe 1\bca}]
+  On simulation restarts, the CRC
+  \hyperrefhtml{CRC}{CRC (Sec.~}{)}{sec:crc32}
+  of the \MIF\ file is normally compared against the CRC of the original
+  \MIF\ file as recorded in the restart file.  If the CRCs don't match then
+  an error is thrown to alert the user that the \MIF\ file has changed.  If
+  this option is enabled (i.e., 1) then the check is disabled.
 \item[\optkey{-numanodes \boa nodes\bca}]\index{NUMA|(}
   \index{parallelization}
   This option is available on
@@ -173,10 +149,58 @@ where
   subset of the memory nodes with the \cd{-numanodes} option and an
   explicit nodes list.
 
-  The environment variable
-  \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}
-  may be used to override the default ``none'' setting, but is
-  subordinate to the command line setting, if any.\index{NUMA|)}
+  The default behavior is modified (in increasing order of priority) by the
+  \cd{numanodes} setting in the active \fn{oommf/config/platform/} platform
+  file, by the \cd {numanodes} setting in the \fn{oommf/config/options.tcl}
+  or \fn{oommf/config/local/options.tcl} file, or by the environment variable
+  \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}.  The
+  \cd{-numanodes} command line option, if any, overrides all.\index{NUMA|)}
+\item[\optkey{-parameters params}]
+  Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
+  parameters.  The \textit{params} argument should be a list with an
+  even number of arguments, corresponding to name + value pairs.  Each
+  ``name'' must appear in a
+  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
+  statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
+  \MIF\ file.  The entire name + value list must be quoted so it is
+  presented to \app{Oxsii} as a single item on the command line.  For
+  example, if \cd{A} and \cd{Ms} appeared in \cd{Parameter} statements
+  in the \MIF\ file, then an option like
+\begin{verbatim}
+   -parameters "A 13e-12 Ms 800e3"
+\end{verbatim}
+  could be used to set \cd{A} to 13e-12 and Ms to 800e3.  The quoting
+  mechanism is specific to the shell/operating system; refer to your system
+  documentation for details.
+\item[\optkey{-pause \boa 0\pipe 1\bca}]
+  If disabled (i.e., 0), then the program automatically shifts into
+  ``Run'' mode after loading the specified \textit{miffile}. The default
+  is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
+  no effect if miffile is not specified.
+\item[\optkey{-restart \boa 0\pipe 1\bca\index{simulation~3D!restarting}}]
+  Controls the initial setting of the restart flag, and thereby 
+  the load restart behavior of any \cd{miffile} specified on the command
+  line.  The restart flag is described in the
+  \htmlonlyref{Controls section below}{html:oxsiirestartflag}.
+  The default value is 0, i.e., no restart.
+\item[\optkey{-restartfiledir dir}]
+  Specifies the directory where restart files are written.  Default is the
+  directory holding the \MIF\ file.  You may want to change this to a local
+  temporary directory (e.g., \fn{/tmp}), especially if the \MIF\ file
+  directory is a network mount.
+\item[\optkey{-threads \boa count\bca}]
+  \index{parallelization}
+  The option is available on
+  \hyperrefhtml{threaded}{threaded (Sec.~}{)}{sec:parallel} builds of Oxs.
+  The \textit{count} parameter is the number of threads to run.  The
+  default count value is set by the \cd{oommf\_thread\_count} value in
+  the \fn{config/platforms/} file for your platform, but may be
+  overridden by the
+  \cd{OOMMF\_THREADS}\index{environment~variables!OOMMF\_THREADS}
+  environment variable or this command line option.  In most cases the
+  default count value will equal the number of processing cores on the
+  system; this can be checked via the command
+  \cd{tclsh oommf.tcl +platform}.
 \item[\optkey{miffile}]
   Load and solve the problem found in \textit{miffile}, which must be
   either in the \MIF~2 format, or convertible to that format by 
@@ -276,7 +300,7 @@ The final entry,
 \btn{File\pipe Exit Oxsii}, terminates the \app{Oxsii} solver and closes the
 interface window.
 
-\label{html:oxsiirestartflag}
+\arblink{html:oxsiirestartflag}
 The \btn{Options} menu holds two entries: Clear Schedule and Restart
 Flag.  The first clears all Step and Stage selections from the active
 output schedules, exactly as if the user clicked through the interactive
@@ -291,10 +315,12 @@ file.  If the checkpoint file is not found, then an error is raised.
 Otherwise, the information in the checkpoint file is used to resume the
 problem from the state saved in that file.  The restart flag can be set
 from the Options menu, the \cd{File\pipe Load} dialog box, or from the
-command line.  See the \hyperrefhtml{Oxs\_Driver
-documentation}{Oxs\_Driver documentation (Sec.~}{,
-page~\pageref{sec:oxsDrivers})}{sec:oxsDrivers} for information on
-checkpoint files.
+command line.
+\latex{See the Oxs\_Driver documentation, Sec.~\ref{sec:oxsDrivers}
+page~\pageref{html:oxsdrivercheckpoint}, for information on checkpoint
+files.}
+\html{See the Oxs\_Driver documentation for information on
+\htmlref{checkpoint files.}{html:oxsdrivercheckpoint}}
 
 The \btn{Help} menu provides the usual help facilities.
 
@@ -331,31 +357,31 @@ determined by the specified
 Refer to the appropriate Oxs\_Ext class documentation for simulation and
 computational details.
 
-\ssechead{Known Bugs}
-\index{platform!Windows!network socket bug|(}
-A bug in the network traffic handling code\index{network~socket} of
-\Tcl\ on \Windows~9X systems can sometimes interfere
-with communications between the control interface of \app{Oxsii} and
-the actual computation engine.  If \app{Oxsii} is sending out data
-to two or more data display services every iteration, the network
-traffic from that data can ``crowd out'' the receipt of
-control messages from the control interface.  You may observe this as a
-long delay between the time you click the \btn{Pause} button and the
-time the solver stops iterating.  This bug first appeared in \Tcl\
-release 8.0.3, and remained through \Tcl\ release 8.1.1.  It is fixed in
-\Tcl\ releases 8.2 and later, which we recommend for \OOMMF\ users on
-\Windows~9X systems.  Other platforms do not have this problem.
-\index{platform!Windows!network socket bug|)}
+%\ssechead{Known Bugs}
+%\index{platform!Windows!network socket bug|(}
+%A bug in the network traffic handling code\index{network~socket} of
+%\Tcl\ on \Windows~9X systems can sometimes interfere
+%with communications between the control interface of \app{Oxsii} and
+%the actual computation engine.  If \app{Oxsii} is sending out data
+%to two or more data display services every iteration, the network
+%traffic from that data can ``crowd out'' the receipt of
+%control messages from the control interface.  You may observe this as a
+%long delay between the time you click the \btn{Pause} button and the
+%time the solver stops iterating.  This bug first appeared in \Tcl\
+%release 8.0.3, and remained through \Tcl\ release 8.1.1.  It is fixed in
+%\Tcl\ releases 8.2 and later, which we recommend for \OOMMF\ users on
+%\Windows~9X systems.  Other platforms do not have this problem.
+%\index{platform!Windows!network socket bug|)}
 
-If \Tcl\ version 7.5 is in use, and \app{Oxsii} processes
-a \cd{Destination} command in a \MIF\ file, and in response
-launches another application, then \app{Oxsii} will not be
-able to fully terminate until the launched application also
-terminates.  You might notice this in \app{mmLaunch} where
-an \app{Oxsii} will remain in the \btn{Threads}\index{threads} column
-long after it has apparently exited.  This glitch is due to a
-bug in Tcl's \cd{exec} command in version 7.5 that has long
-been fixed.  Use a more recent Tcl release to avoid the problem.
+%If \Tcl\ version 7.5 is in use, and \app{Oxsii} processes
+%a \cd{Destination} command in a \MIF\ file, and in response
+%launches another application, then \app{Oxsii} will not be
+%able to fully terminate until the launched application also
+%terminates.  You might notice this in \app{mmLaunch} where
+%an \app{Oxsii} will remain in the \btn{Threads}\index{threads} column
+%long after it has apparently exited.  This glitch is due to a
+%bug in Tcl's \cd{exec} command in version 7.5 that has long
+%been fixed.  Use a more recent Tcl release to avoid the problem.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -393,9 +419,11 @@ converted to the \MIF~2 format by an automatic call to
 \ssechead{Launching}
 \app{Boxsi} must be started from the command line.  The syntax is
 \begin{verbatim}
-tclsh oommf.tcl boxsi [standard options] [-exitondone <0|1>] \
-   [-kill tags] [-nice <0|1>] [-parameters params] [-pause <0|1>] \
-   [-restart <0|1|2>]  [-threads <count>] [-numanodes <nodes>] miffile
+tclsh oommf.tcl boxsi [standard options] [-exitondone <0|1>] [-kill tags] \
+   [-logfile logname] [-loglevel level] [-nice <0|1>] [-nocrccheck <0|1>] \
+   [-numanodes nodes] [-parameters params] [-pause <0|1>] \
+   [-regression_test flag] [-regression_testname basename] \
+   [-restart <0|1|2>] [-restartfiledir dir] [-threads count] miffile
 \end{verbatim}
 where
 \begin{description}
@@ -411,54 +439,23 @@ where
   Sec.~\ref{sec:mif2ExtensionCommands}}) from the input \MIF\
   file, or else the keyword \cd{all}, which is interpreted to mean all
   the destination tags.
+\item[\optkey{-logfile logname}]
+  Write log and error messages to file \textit{logname}.  The default log
+  file is \fn{oommf/boxsi.errors}.
+\item[\optkey{-loglevel level}]
+  Controls the detail level of log messages, with larger values of
+  \textit{level} producing more output.  Default value is 1.
 \item[\optkey{-nice \boa 0\pipe 1\bca}]
   If enabled (i.e., 1), then the program will drop its scheduling
   priority after startup.  The default is 0, i.e., to retain its
   original scheduling priority.
-\item[\optkey{-parameters params}]
-  Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
-  parameters.  The \textit{params} argument should be a list with an
-  even number of arguments, corresponding to name + value pairs.  Each
-  ``name'' must appear in a
-  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
-  statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
-  \MIF\ file.  The entire name + value list must be quoted so it is
-  presented to \app{Boxsi} as a single item on the command line.  For
-  example, if \cd{A} and \cd{Ms} appeared in \cd{Parameter} statements
-  in the \MIF\ file, then an option like
-  \begin{verbatim}   -parameters "A 13e-12 Ms 800e3"\end{verbatim}
-  could be used to set \cd{A} to 13e-12 and Ms to 800e3.  The quoting
-  mechanism is shell/operating system specific; refer to your system
-  documentation for details.
-\item[\optkey{-pause \boa 0\pipe 1\bca}]
-  If enabled (i.e., 1), then the program automatically pauses after
-  loading the specified problem file.  The default is 0, i.e., to
-  automatically move into ``Run'' mode once the problem is loaded.
-\item[\optkey{-restart \boa 0\pipe 1\pipe 2\bca\index{simulation~3D!restarting}}]
-  If the restart option is 0 (the default), then the problem loads and
-  runs from the beginning.  If set to 1, then when loading the problem a
-  check is made for a pre-existing restart (checkpoint) file.  If one is
-  found, then the problem resumes from the state saved in that file.  If
-  no checkpoint file is found, then an error is raised.  If the restart
-  option is set to 2, then a checkpoint file is used if one can be
-  found, but if not then the problem loads and runs from the beginning
-  without raising an error.  See the
-  \hyperrefhtml{Oxs\_Driver documentation}{Oxs\_Driver documentation
-  (Sec.~}{, page~\pageref{sec:oxsDrivers})}{sec:oxsDrivers} for
-  information on checkpoint files.
-\item[\optkey{-threads \boa count\bca}]
-  \index{parallelization}
-  The option is available on
-  \hyperrefhtml{threaded}{threaded (Sec.~}{)}{sec:parallel} builds of Oxs.
-  The \textit{count} parameter is the number of threads to run.  The
-  default count value is set by the \cd{oommf\_thread\_count} value in
-  the \fn{config/platforms/} file for your platform, but may be
-  overridden by the
-  \cd{OOMMF\_THREADS}\index{environment~variables!OOMMF\_THREADS}
-  environment variable or this
-  command line option.  In most cases the default count value will
-  equal the number of processing cores on the system; this can be
-  checked via the command \cd{tclsh oommf.tcl +platform}.
+\item[\optkey{-nocrccheck \boa 0\pipe 1\bca}]
+  On simulation restarts, the CRC
+  \hyperrefhtml{CRC}{CRC (Sec.~}{)}{sec:crc32}
+  of the \MIF\ file is normally compared against the CRC of the original
+  \MIF\ file as recorded in the restart file.  If the CRCs don't match then
+  an error is thrown to alert the user that the \MIF\ file has changed.  If
+  this option is enabled (i.e., 1) then the check is disabled.
 \item[\optkey{-numanodes \boa nodes\bca}]\index{NUMA|(}
   \index{parallelization}
   This option is available on
@@ -500,10 +497,76 @@ where
   subset of the memory nodes with the \cd{-numanodes} option and an
   explicit nodes list.
 
-  The environment variable
-  \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}
-  may be used to override the default ``none'' setting, but is
-  subordinate to the command line setting, if any.\index{NUMA|)}
+  The default behavior is modified (in increasing order of priority) by the
+  \cd{numanodes} setting in the active \fn{oommf/config/platform/} platform
+  file, by the \cd {numanodes} setting in the \fn{oommf/config/options.tcl}
+  or \fn{oommf/config/local/options.tcl} file, or by the environment variable
+  \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}.  The
+  \cd{-numanodes} command line option, if any, overrides all.\index{NUMA|)}
+
+\item[\optkey{-parameters params}]
+  Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
+  parameters.  The \textit{params} argument should be a list with an
+  even number of arguments, corresponding to name + value pairs.  Each
+  ``name'' must appear in a
+  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
+  statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
+  \MIF\ file.  The entire name + value list must be quoted so it is
+  presented to \app{Boxsi} as a single item on the command line.  For
+  example, if \cd{A} and \cd{Ms} appeared in \cd{Parameter} statements
+  in the \MIF\ file, then an option like
+\begin{verbatim}
+   -parameters "A 13e-12 Ms 800e3"
+\end{verbatim}
+  could be used to set \cd{A} to 13e-12 and Ms to 800e3.  The quoting
+  mechanism is specific to the shell/operating system; refer to your system
+  documentation for details.
+\item[\optkey{-pause \boa 0\pipe 1\bca}]
+  If enabled (i.e., 1), then the program automatically pauses after
+  loading the specified problem file.  The default is 0, i.e., to
+  automatically move into ``Run'' mode once the problem is loaded.
+\item[\optkey{-regression\_test flag}]
+  This option is used internally by the 
+  \hyperrefhtml{\app{oxsregression}}{\app{oxsregression} (Sec.~}{)}{sec:oxsregression}
+  command line utility to run regression tests.  Default value is 0 (no
+  test).
+\item[\optkey{-regression\_testname basename}]
+  This option is used internally by the 
+  \hyperrefhtml{\app{oxsregression}}{\app{oxsregression} (Sec.~}{)}{sec:oxsregression}
+  command line utility to control temporary file names during regression
+  testing.
+\item[\optkey{-restart \boa 0\pipe 1\pipe 2\bca\index{simulation~3D!restarting}}]
+  If the restart option is 0 (the default), then the problem loads and
+  runs from the beginning.  If set to 1, then when loading the problem a
+  check is made for a pre-existing restart (checkpoint) file.  If one is
+  found, then the problem resumes from the state saved in that file.  If
+  no checkpoint file is found, then an error is raised.  If the restart
+  option is set to 2, then a checkpoint file is used if one can be
+  found, but if not then the problem loads and runs from the beginning
+  without raising an error.
+  \latex{See the Oxs\_Driver documentation, Sec.~\ref{sec:oxsDrivers}
+  page~\pageref{html:oxsdrivercheckpoint}, for information on checkpoint
+  files.}
+  \html{See the Oxs\_Driver documentation for information on
+  \htmlref{checkpoint files.}{html:oxsdrivercheckpoint}}
+\item[\optkey{-restartfiledir dir}]
+  Specifies the directory where restart files are written.  Default is the
+  directory holding the \MIF\ file.  You may want to change this to a local
+  temporary directory (e.g., \fn{/tmp}), especially if the \MIF\ file
+  directory is a network mount.
+\item[\optkey{-threads \boa count\bca}]
+  \index{parallelization}
+  The option is available on
+  \hyperrefhtml{threaded}{threaded (Sec.~}{)}{sec:parallel} builds of Oxs.
+  The \textit{count} parameter is the number of threads to run.  The
+  default count value is set by the \cd{oommf\_thread\_count} value in
+  the \fn{config/platforms/} file for your platform, but may be
+  overridden by the
+  \cd{OOMMF\_THREADS}\index{environment~variables!OOMMF\_THREADS}
+  environment variable or this
+  command line option.  In most cases the default count value will
+  equal the number of processing cores on the system; this can be
+  checked via the command \cd{tclsh oommf.tcl +platform}.
 \item[\optkey{miffile}]
   Load and solve the problem found in {\em miffile}, which must be
   either in the \MIF~2 format, or convertible to that format by 
@@ -580,17 +643,17 @@ menu item; the problem specification file must be declared on the
 The \btn{Help} menu provides the usual help facilities.
 
 The row of buttons immediately below the menu bar provides simulation
-progress control.  These buttons---\btn{Run}, \btn{Relax}, \btn{Step} and
-\btn{Pause}---become active once the micromagnetic problem has been
-initialized. These buttons allow the user to change the run state of the
-solver.  In the Pause state, the solver sits idle awaiting further
-instructions.  If \btn{Step} is selected, then the solver will move
-forward one iteration and then Pause.  In Relax mode, the solver takes
-at least one step, and then runs until it reaches a stage boundary, at
-which point the solver is paused.  In Run mode, the solver runs until
-the end of the problem is reached.  When the problem end is reached, the
-solver will either pause or exit, depending upon the setting of the
-\cd{-exitondone} command line option.
+progress control.  These buttons\emdash\btn{Run}, \btn{Relax},
+\btn{Step} and \btn{Pause}\emdash become active once the micromagnetic
+problem has been initialized. These buttons allow the user to change the
+run state of the solver.  In the Pause state, the solver sits idle
+awaiting further instructions.  If \btn{Step} is selected, then the
+solver will move forward one iteration and then Pause.  In Relax mode,
+the solver takes at least one step, and then runs until it reaches a
+stage boundary, at which point the solver is paused.  In Run mode, the
+solver runs until the end of the problem is reached.  When the problem
+end is reached, the solver will either pause or exit, depending upon the
+setting of the \cd{-exitondone} command line option.
 
 Normally the solver progresses automatically from problem initialization
 into Run mode, but this can be changed by the \cd{-pause} command line
@@ -626,15 +689,15 @@ operating system to schedule the eight threads among the system's eight
 cores as it sees fit.  Or, you might reduce the thread count to reserve
 one or more cores for other applications.  If the job is long running,
 however, you may find that the operating system tries to run multiple
-threads on a single core---perhaps in order to leave other cores idle so
+threads on a single core\emdash perhaps in order to leave other cores idle so
 that they can be shut down to save energy.  Or, the operating system may
 move threads away from the memory node where they have allocated memory,
 which effectively reduces memory bandwidth.  In such cases you might want
 to launch \app{Boxsi} with the \cd{-numanodes auto} option.  This
 overrides the operating systems preferences, and ties threads to
 particular memory nodes for the lifetime of the process.  (On Linux
-boxes, you should also check the ``cpu frequency governor'' selection
-and settings.)
+boxes, you should also check the ``cpu frequency governor'' and ``huge page
+support'' selection and settings.)
 
 If you want to run two instances of \app{Boxsi} concurrently, you might
 launch each with the \cd{-threads 4} option, so that each job has four
@@ -669,12 +732,21 @@ reliable.  For best results one should experiment with different
 settings, or run memory bandwidth tests with different node
 pairs.\index{NUMA|)}\index{parallelization|)}
 
-\ssechead{Known Bugs}
-\index{platform!Windows!network socket bug|(}
-\app{Boxsi} suffers from the same \Windows~9X \Tcl\ network traffic bug
-as \app{Oxsii}.  \OOMMF\ users on \Windows~9X systems are encouraged to
-upgrade to \Tcl~8.2 or later.
-\index{platform!Windows!network socket bug|)}
+\ssechead{Batch Scheduling Systems}
+\OOMMF\ jobs submitted to a batch queuing system (e.g., Condor, PBS,
+NQS) can experience sporadic failures caused by interactions between
+separate \OOMMF\ jobs running simultaneously on the same compute
+node.  These problems can be prevented by using the \OOMMF\ command
+line utility
+\hyperrefhtml{\app{launchhost}}{\app{launchhost} (Sec.~}{)}{sec:launchhost}
+to isolate each job.
+
+%\ssechead{Known Bugs}
+%\index{platform!Windows!network socket bug|(}
+%\app{Boxsi} suffers from the same \Windows~9X \Tcl\ network traffic bug
+%as \app{Oxsii}.  \OOMMF\ users on \Windows~9X systems are encouraged to
+%upgrade to \Tcl~8.2 or later.
+%\index{platform!Windows!network socket bug|)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -734,12 +806,12 @@ following \cd{Oxs\_Ext} classes are currently available:
   {\samepage\tt
    \begin{tabbing}
    \hspace*{\tabcolwidth}\=\kill
-      Oxs\_RectangularMesh
+      Oxs\_RectangularMesh     \>    Oxs\_PeriodicRectangularMesh
    \end{tabbing}}
   %end{latexonly}
   \begin{rawhtml}
 <PRE>
-   <A HREF="#RM">Oxs_RectangularMesh</A>
+   <A HREF="#RM">Oxs_RectangularMesh</A>            <A HREF="#PRM">Oxs_PeriodicRectangularMesh</A>
 </PRE>
   \end{rawhtml}
 \item Energies
@@ -1218,6 +1290,7 @@ proc Octs { cellsize x y z xmin ymin zmin xmax ymax zmax } {
     }
     return $octant
 }
+
 Specify Oxs_ScriptAtlas:octant {
     xrange {-20e-9 20e-9}
     yrange {-20e-9 20e-9}
@@ -1292,12 +1365,20 @@ equivalent examples using \Tcl\ scripts.
 \end{sloppypar}
 \end{description}
 
-\begin{rawhtml}<A NAME="RM"></A>\end{rawhtml}%
 \subsubsection{Meshes}\label{sec:Meshes}
 Meshes define the discretization impressed on the simulation.  There
-should be exactly one mesh declared in a \MIF~2 file.  The only
-standard mesh available at present is
+should be exactly one mesh declared in a \MIF~2 file.  The usual
+(finite) mesh type is \cd{Oxs\_RectangularMesh}.  For simulations that
+are periodic along one or more axes, use the
+\cd{Oxs\_PeriodicRectangularMesh} type.
+
+\begin{description}
+\begin{rawhtml}<A NAME="RM"></A>\end{rawhtml}%
+\label{html:oxsrectangularmesh}%
 \index{Oxs\_Ext~child~classes!Oxs\_RectangularMesh}
+\item[Oxs\_RectangularMesh:]
+This mesh is comprised of a lattice of rectangular prisms.
+The specify block has the form
 \begin{latexonly}
 \begin{quote}\tt
 Specify Oxs\_RectangularMesh:\oxsval{name} \ocb \\
@@ -1323,7 +1404,50 @@ The \oxsval{name} is commonly set to ``mesh'', in which case the mesh
 object may be referred to by other \cd{Oxs\_Ext} objects by the short
 name \cd{:mesh}.
 
-\textbf{Examples:} All \MIF\ files contain this class.
+\textbf{Examples:} \fn{sample.mif}, \fn{stdprob3.mif}, \fn{stdprob4.mif}.
+
+\begin{rawhtml}<A NAME="PRM"></A>\end{rawhtml}%
+\label{html:oxsperiodicrectangularmesh}%
+\index{Oxs\_Ext~child~classes!Oxs\_PeriodicRectangularMesh}
+\item[Oxs\_PeriodicRectangularMesh:]
+Like the \cd{Oxs\_RectangularMesh}, this mesh is also comprised of a
+lattice of rectangular prisms.  However, in this case the
+mesh is declared to be periodic along one or more of the axis
+directions.  The specify block has the form
+\begin{latexonly}
+\begin{quote}\tt
+Specify Oxs\_PeriodicRectangularMesh:\oxsval{name} \ocb \\
+\bi cellsize \ocb\oxsval{ xstep ystep zstep }\ccb\\
+\bi atlas \oxsval{atlas\_spec}\\
+\bi periodic \oxsval{periodic\_axes}\\
+\ccb
+\end{quote}
+\end{latexonly}
+\begin{rawhtml}<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_PeriodicRectangularMesh:</TT><I>name</I> <TT>{</TT>
+<DD><TT>cellsize {</TT>
+  <I>xstep<TT>&nbsp;</TT>ystep<TT>&nbsp;</TT>zstep</I>
+  <TT>}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>periodic </TT> <I>periodic_axes</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+\end{rawhtml}
+The \oxslabel{atlas} and \oxslabel{cellsize} values are the same as
+for the \cd{Oxs\_RectangularMesh} class.  The \oxsval{periodic\_axis}
+value should be a string consisting of one or more of the letters
+``x'', ``y'', or ``z'', denoting the periodic direction(s).
+\cd{Oxs\_Ext} objects that are incompatible with
+\cd{Oxs\_PeriodicRectangularMesh} will issue an error message at
+runtime.  In particular, the
+\htmlonlyref{\cd{Oxs\_Demag}}{html:oxsdemag} class supports
+periodicity in none or one direction, but not more.  Also, some
+third-party extensions provide independent periodicity support using
+the older \cd{Oxs\_RectangularMesh} class rather than
+\cd{Oxs\_PeriodicRectangularMesh}.
+
+\textbf{Examples:} \fn{pbcbrick.mif}, \fn{pbcstripes.mif}.
+
+\end{description}
 
 \subsubsection{Energies}
 The following subsections describe the available energy terms.  In
@@ -1339,54 +1463,134 @@ entries}{\oxsval{field\_object\_spec} entries
 \hyperrefhtml{Specify initialization block}{Specify initialization block
 (see Sec.~}{)}{par:oxsExtReferencing}.
 
-\textbf{Outputs:} For each magnetization configuration, two standard
-outputs are provided by all energy terms: the scalar output ``Energy,''
-which is the total energy in joules contributed by this energy term, and
-the vector field output ``Field,'' which is the pointwise field in A/m.
-If the code was compiled with the macro \cd{NDEBUG} not defined, then
-there will be an additional scalar output, ``Calc count,'' which counts
-the number of times the term has been calculated in the current
-simulation.  This is intended for debugging purposes only; this number
-should agree with the ``Energy calc count'' value provided by the
-evolver.
+\textbf{Outputs:} For each magnetization configuration, three standard
+outputs are provided by all energy terms: the scalar output
+``Energy,'' which is the total energy in joules contributed by this
+energy term, the scalar field output ``Energy density,'' which is a
+cell-by-cell map of the energy density in
+\latexhtml{J/m${}^3$}{J/m\begin{rawhtml}<SUP>3</SUP>\end{rawhtml}},
+and the three-component vector field output ``Field,'' which is the
+pointwise field in A/m.  If the code was compiled with the macro
+\cd{NDEBUG} not defined, then there will be an additional scalar
+output, ``Calc count,'' which counts the number of times the term has
+been calculated in the current simulation.  This is intended for
+debugging purposes only; this number should agree with the ``Energy
+calc count'' value provided by the evolver.
 
 \begin{itemize}
 \item{\textbf{Anisotropy Energy}}
 \begin{description}
 \begin{rawhtml}<A NAME="UA"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_UniaxialAnisotropy}%
-\item[Oxs\_UniaxialAnisotropy:]
-   Uniaxial magneto-crystalline anisotropy.  Specify block takes 2
-   parameters, the anisotropy direction \oxslabel{axis}, and either the
-   crystalline anisotropy constant \oxslabel{K1} (in
-   \latexhtml{J/m${}^3$}{J/m^3}) or the anistropy field \oxslabel{Ha}
-   (in A/m).  The axis direction is an easy axis if K1 (or Ha) is $>$0,
-   or is the normal to the easy plane if K1 (or Ha) is $<0$.  Both axis
-   and K1/Ha may be varied cellwise across the mesh.  The anisotropy
-   axis direction is initialized with a vector field object, while K1
-   or Ha is initialized with a scalar field object.  The axis direction
-   must be non-zero at each point, and will be normalized to unit
-   magnitude before being used.  The energy computed by this term is
-   non-negative in all cases.
+\item[Oxs\_UniaxialAnisotropy:] Uniaxial magneto-crystalline
+  anisotropy.  The Specify block has the form
+   \begin{latexonly}
+      \begin{quote}\tt
+      Specify Oxs\_UniaxialAnisotropy:\oxsval{name} \ocb\\
+        \bi K1 \oxsval{K} \\
+        \bi Ha \oxsval{H} \\
+        \bi axis \oxsval{u} \\
+      \ccb
+      \end{quote}
+   \end{latexonly}
+   \begin{rawhtml}<BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_UniaxialAnisotropy:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>K1 </TT><I>K</I>
+       <DD> <TT>Ha </TT><I>H</I>
+       <DD> <TT>axis </TT><I>u</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+   \end{rawhtml}
+  Exactly one of either \oxslabel{K1} or \oxslabel{Ha} should be
+  specified, where \oxslabel{K1} is the crystalline anisotropy constant
+  (in
+  \latexhtml{J/m${}^3$}{J/m\begin{rawhtml}<sup>3</sup>\end{rawhtml}}),
+  and \oxslabel{Ha} is the anistropy field (in A/m).  In either case,
+  \oxslabel{axis} is the anisotropy direction.  \oxslabel{K1},
+  \oxslabel{Ha}, and \oxslabel{axis} may each be varied cellwise across
+  the mesh: \oxslabel{K1} and \oxslabel{Ha} are initialized with scalar
+  field objects, while \oxslabel{axis} takes a vector field object.  (A
+  constant value will be interpreted as a uniform field object having
+  the stated value, as usual.)  The axis direction must be non-zero at
+  each point, and will be normalized to unit magnitude before being
+  used.
+
+  The axis direction is an easy axis if \oxslabel{K1} (or \oxslabel{Ha})
+  is $>$0, in which case the cellwise anisotropy energy density (in
+  J/m${}^3$) is given by
+   \begin{displaymath}
+         E_i = K_i(1 - \vm_i\cdot\vu_i)^2 \qquad \mbox{or} \qquad
+               \frac{1}{2}\, \mu_0 M_s H_i (1 - \vm_i\cdot\vu_i)^2,
+   \end{displaymath}
+  respectively.  (Here $m_i$ is the unit magnetization and $M_s$ the
+  saturation magnetization in cell $i$.)  Otherwise, if \oxslabel{K1}
+  (or \oxslabel{Ha}) is $<0$, the axis direction is the normal to the
+  easy plane and the cellwise anisotropy energy density is given by
+   \begin{displaymath}
+         E_i = -K_i(\vm_i\cdot\vu_i)^2 \qquad \mbox{or} \qquad
+               -\frac{1}{2}\, \mu_0 M_s H_i (\vm_i\cdot\vu_i)^2.
+   \end{displaymath}
+  The formulae in the two cases (easy axis vs.\ easy plane) differ by a
+  constant offset, and in each case the energy is non-negative.
+
 \textbf{Examples:} \fn{diskarray.mif}, \fn{stdprob3.mif}, \fn{grill.mif}.
 
 \begin{rawhtml}<A NAME="CA"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_CubicAnisotropy}%
-\item[Oxs\_CubicAnisotropy:]
-   Cubic magneto-crystalline anisotropy.  Specify block takes 3
-   parameters, crystalline anisotropy --- either as anisotropy constant
-   \oxslabel{K1} in \latexhtml{J/m${}^3$}{J/m^3} or anisotropy field
-   \oxslabel{Ha} in A/m --- and anisotropy directions \oxslabel{axis1}
-   and \oxslabel{axis2}.  The third anisotropy axis is computed as the
-   vector product, $\cd{axis1}\times\cd{axis2}$.  The axis directions
-   are easy axes if K1 (or Ha) is $>$0, or hard axes if K1 (or Ha) is
-   $<$0.  All may be varied cellwise across the mesh.  K1 or Ha is
-   initialized with a scalar field object, and the axis directions are
-   initialized with vector field objects.  The \cd{axis1} and \cd{axis2}
-   directions must be mutually orthogonal and non-zero at each point.
-   For each cell, if K1 (resp. Ha) is $>$0 then the computed energy will
-   be non-negative, else if K1 (resp.\ Ha) $<$0 then the computed energy
-   will be non-positive.
+\item[Oxs\_CubicAnisotropy:] Cubic magneto-crystalline anisotropy.
+  The Specify block has the form
+   \begin{latexonly}
+      \begin{quote}\tt
+      Specify Oxs\_CubicAnisotropy:\oxsval{name} \ocb\\
+        \bi K1 \oxsval{K} \\
+        \bi Ha \oxsval{H} \\
+        \bi axis1 \oxsval{$u_1$} \\
+        \bi axis2 \oxsval{$u_2$} \\
+      \ccb
+      \end{quote}
+   \end{latexonly}
+   \begin{rawhtml}<BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_CubicAnisotropy:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>K1 </TT><I>K</I>
+       <DD> <TT>Ha </TT><I>H</I>
+       <DD> <TT>axis1 </TT><I>u<sub>1</sub></I>
+       <DD> <TT>axis2 </TT><I>u<sub>2</sub></I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+   \end{rawhtml}
+  Exactly one of either \oxslabel{K1} or \oxslabel{Ha} should be
+  specified, where \oxslabel{K1} is the crystalline anisotropy constant
+  (in
+  \latexhtml{J/m${}^3$}{J/m\begin{rawhtml}<sup>3</sup>\end{rawhtml}}),
+  and \oxslabel{Ha} is the anistropy field (in A/m).  In either case,
+  \oxslabel{axis1} and \oxslabel{axis2} are two anisotropy directions;
+  the third anisotropy axis $u_3$ is computed as the vector product,
+  $u_1\times u_2$.  For each cell, the axis directions are easy axes if
+  \oxslabel{K1} (or \oxslabel{Ha}) is $>$0, or hard axes if
+  \oxslabel{K1} (or \oxslabel{Ha}) is $<$0.  All may be varied cellwise
+  across the mesh.  \oxslabel{K1} or \oxslabel{Ha} is initialized with a
+  scalar field object, and the axis directions are initialized with
+  vector field objects.  (Constant values will be interpreted as uniform
+  fields with the indicated value, as usual.)  The \oxslabel{axis1} and
+  \oxslabel{axis2} directions must be mutually orthogonal and non-zero
+  at each point ($u_1$ and $u_2$ are automatically scaled to unit
+  magnitude before use).
+
+  The anisotropy energy density (in J/m${}^3$) for cell $i$ is given by
+   \begin{displaymath}
+         E_i = K_i\left(a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2\right),
+   \end{displaymath}
+   or
+   \begin{displaymath}
+         E_i = \frac{1}{2}\, \mu_0 M_s H_i 
+         \left(a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2\right),
+   \end{displaymath}
+  where $a_1 = \vm\cdot\vu_1$, $a_2 = \vm\cdot\vu_2$, $a_3 =
+  \vm\cdot\vu_3$, for reduced (normalized) magnetization $m$ and
+  orthonormal anisotropy axes $\vu_1$, $\vu_2$, and $\vu_3$ at cell $i$.
+  In the second form, $M_s$ is the saturation magnetization in cell $i$.
+  For each cell, if \oxslabel{K1} (resp.\ \oxslabel{Ha}) is $>$0 then
+  the computed energy will be non-negative, otherwise for \oxslabel{K1}
+  (resp.\ \oxslabel{Ha}) $<$0 the computed energy will be non-positive.
+
 \textbf{Examples:} \fn{cgtest.mif}, \fn{sample2.mif}, \fn{grill.mif}.
 
 \end{description}
@@ -1494,6 +1698,18 @@ evolver.
    the region pair are in contact.  If long-range exchange interaction
    is required, use \cd{Oxs\_TwoSurfaceExchange}.
 
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_Exchange6Ngbr} provides three scalar outputs involving the
+   angle between spins at neighboring cells:
+\begin{itemize}
+\item \textbf{Max Spin Ang:} maximum angle, in degrees, between
+  neigboring spins for the current magnetization state.
+\item \textbf{Stage Max Spin Ang:} Maximum value of \cd{Max Spin Ang}
+  for the current stage.
+\item \textbf{Run Max Spin Ang:} Maximum value obtained by
+  \cd{Max Spin Ang} during the simulation.
+\end{itemize}
+
    \textbf{Examples:} \fn{grill.mif}, \fn{spinvalve.mif}, \fn{tclshapes.mif}.
 
 \begin{rawhtml}<A NAME="UE"></A>\end{rawhtml}%
@@ -1508,6 +1724,11 @@ evolver.
    varying, it is initialized with a simple constant (as opposed to a
    scalar field object).
 
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_UniformExchange} provides the three scalar outputs
+   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
+   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
+
    \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}, \fn{stdprob3.mif}.
 
 \begin{rawhtml}<A NAME="EP"></A>\end{rawhtml}%
@@ -1516,7 +1737,7 @@ evolver.
    The exchange coefficient $A_i$ is specified on
    a point-by-point (or cell-by-cell) basis, as opposed to the pairwise
    specification model used by \cd{Oxs\_Exchange6Ngbr}.  The exchange
-   energy at a cell $i$ is computed across its nearest 6 neighbors,
+   energy density at a cell $i$ is computed across its nearest 6 neighbors,
    $N_i$, using the formula
    \begin{displaymath}
         E_i =  \sum_{j\in N_i} A_{ij,{\rm eff}}
@@ -1564,6 +1785,11 @@ evolver.
    \hyperrefhtml{scalar field object}{scalar field object
    (Sec.~}{)}{sec:oxsFieldObjects} returning the desired exchange
    coefficient in J/m.
+
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_ExchangePtwise} provides the three scalar outputs
+   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
+   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
 
    \textbf{Example:} \fn{antidots-filled.mif}.
 
@@ -1641,7 +1867,7 @@ evolver.
    problem mesh that are in the bounding region, are either on the
    surface or lie on the ``inside'' side of the surface, and have a
    (nearest-) neighbor that is on the ``outside'' side of the surface.
-   A ``neighbor'' is determined by the mesh; in a typically rectangular
+   A ``neighbor'' is determined by the mesh; in a typical rectangular
    mesh each cell has six neighbors.
 
    In this way, 2 discrete lists of cells representing the two
@@ -1729,11 +1955,17 @@ Specify Oxs_TwoSurfaceExchange:AF {
          scalarvalue  6e-9
           scalarside  +
     }
-}\end{verbatim}
+}
+\end{verbatim}
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
 \begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_TwoSurfaceExchange} provides the three scalar outputs
+   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
+   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
 
 \textbf{Example:} \fn{spinvalve-af.mif}.
 
@@ -1774,6 +2006,11 @@ Specify Oxs_TwoSurfaceExchange:AF {
    \oxsval{A\_upper\_bound}.  The \cd{linkprob} value \oxsval{probability}
    must lie in the range $[0,1]$.
 
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_RandomSiteExchange} provides the three scalar outputs
+   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
+   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
+
    \textbf{Example:} \fn{randexch.mif}.
 
 \end{description}
@@ -1781,31 +2018,60 @@ Specify Oxs_TwoSurfaceExchange:AF {
 \item{\textbf{Self-Magnetostatic Energy}}
 \begin{description}
 \begin{rawhtml}<A NAME="DE"></A>\end{rawhtml}%
+\label{html:oxsdemag}%
 \index{Oxs\_Ext~child~classes!Oxs\_Demag}%
 \item[Oxs\_Demag:]
-   Standard demagnetization energy term, which is built
-   on the assumption that the magnetization is constant in each cell,
-   and computes the average demagnetization field through the cell using
+   Standard demagnetization energy term, built upon
+   the assumption that the magnetization is constant in each cell.
+   It computes the average demagnetization field in each cell using
    formulae from \cite{aharoni98,newell93} and convolution
-   via the Fast Fourier Transform.  The Specify initialization
-   string should be an empty string, typically denoted by \ocb\ccb.
+   via the Fast Fourier Transform.  This class supports non-periodic
+   simulations if the mesh object in the \MIF\ file is of the
+   \htmlonlyref{\cd{Oxs\_RectangularMesh}}{html:oxsrectangularmesh}
+   type; simulations periodic along one axis direction are also
+   supported when using the
+   \htmlonlyref{\cd{Oxs\_PeriodicRectangularMesh}}{html:oxsperiodicrectangularmesh}
+   class.  Periodicity in more than one direction is not supported at
+   this time.  The specify block has the form
+   \begin{latexonly}
+      \begin{quote}\tt
+      Specify Oxs\_Demag:\oxsval{name} \ocb\\
+        \bi asymptotic\_radius \oxsval{radius}\\
+      \ccb
+      \end{quote}
+   \end{latexonly}
+   \begin{rawhtml}<BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_Demag:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>asymptotic_radius </TT><I>radius</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+   \end{rawhtml}
+   The analytic formulae used to compute the demag kernel are
+   computationally expensive and inaccurate at large offsets.  At
+   offsets larger than \oxsval{radius} (measured in cells) asymptotic
+   approximations are used instead.  If \oxslabel{asymptotic\_radius} is
+   not specified, then the default value 32 is used.  For non-periodic
+   simulations, setting \oxsval{radius} to -1 causes the analytic
+   formulae to be used at all offsets.  The example file
+   \fn{demagtensor.mif} can be used to extract the computed
+   demagnetization tensor coefficients for a specified cell geometry;
+   see the description at the top of that file for usage details.
 
-   \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}.
+   \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}, \fn{pbcbrick.mif}, \fn{demagtensor.mif}.
 
 \begin{rawhtml}<A NAME="SD"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_SimpleDemag}%
 \item[Oxs\_SimpleDemag:]
-   This is the same as the \cd{Oxs\_Demag} object,
-   except that the implementation does not use any of the of the
-   symmetries inherent in the demagnetization kernel, or special
-   properties of the Fourier Transform when applied to a real
-   (non-complex) function.  As a result, the source code for this
-   implementation is considerably simpler than for \cd{Oxs\_Demag}, but
-   the run time performance and memory usage are poorer.
-   \cd{Oxs\_SimpleDemag} is included for validation checks, and as a
-   base for user-defined demagnetization implementations.  The
-   Specify initialization string for \cd{Oxs\_SimpleDemag} is an
-   the empty string, i.e., \ocb\ccb.
+   This is the same as the \cd{Oxs\_Demag} object, except that
+   periodicity is not supported and asymptotic formulae are not used.
+   The implementation does not use any of the symmetries
+   inherent in the demagnetization kernel, or special properties of the
+   Fourier Transform when applied to a real (non-complex) function.
+   As a result, the source code is
+   considerably simpler than for \cd{Oxs\_Demag}, but the run time
+   performance and memory usage are poorer.  \cd{Oxs\_SimpleDemag} is
+   included for validation checks, and as a base for user-defined
+   demagnetization implementations.  The Specify initialization string
+   for \cd{Oxs\_SimpleDemag} is an empty string, i.e., \ocb\ccb.
 
    \textbf{Example:} \fn{squarecubic.mif}.
 \end{description}
@@ -1857,6 +2123,19 @@ Specify Oxs_TwoSurfaceExchange:AF {
    sublist, then a step would have been added between those field
    values, so five stages would have resulted.  In this example, note
    that 795.77472=0.001/\munaught.
+
+   In addition to the standard energy and field outputs, the
+   \cd{Oxs\_UZeeman} class provides these four scalar outputs:
+   \begin{itemize}
+   \item \textbf{B:} Magnitude of the applied field, in
+   mT.  This is a non-negative quantity.
+   \item \textbf{Bx:} Signed amplitude of the $x$-component
+   of the applied field, in mT.
+   \item \textbf{By:} Signed amplitude of the $y$-component
+   of the applied field, in mT.
+   \item \textbf{Bz:} Signed amplitude of the $z$-component
+   of the applied field, in mT.
+   \end{itemize}
 
    \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}, \fn{marble.mif}.
 
@@ -1955,11 +2234,6 @@ Specify Oxs_TwoSurfaceExchange:AF {
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
-Specify Oxs_ScriptUZeeman {
-   script_args total_time
-   script SineField
-}
-
 proc SineField { total_time } {
     set PI [expr {4*atan(1.)}]
     set Amp 800.0
@@ -1968,11 +2242,29 @@ proc SineField { total_time } {
     set dHx [expr {$Amp*$Freq*cos($Freq*$total_time)}]
     return [list $Hx 0 0 $dHx 0 0]
 }
+
+Specify Oxs_ScriptUZeeman {
+   script_args total_time
+   script SineField
+}
 \end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
 \begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+   In addition to the standard energy and field outputs, the
+   \cd{Oxs\_ScriptUZeeman} class provides these four scalar outputs:
+   \begin{itemize}
+   \item \textbf{B:} Magnitude of the applied field, in
+   mT.  This is a non-negative quantity.
+   \item \textbf{Bx:} Signed amplitude of the $x$-component
+   of the applied field, in mT.
+   \item \textbf{By:} Signed amplitude of the $y$-component
+   of the applied field, in mT.
+   \item \textbf{Bz:} Signed amplitude of the $z$-component
+   of the applied field, in mT.
+   \end{itemize}
 
 \textbf{Examples:} \fn{acsample.mif}, \fn{pulse.mif}, \fn{rotate.mif},
                    \fn{varalpha.mif}, \fn{yoyo.mif}.
@@ -2065,11 +2357,6 @@ proc SineField { total_time } {
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
-Specify Oxs_TransformZeeman {
-  type general
-  script {Rotate 1e9}
-  field {0 1000. 0}
-}
 proc Rotate { freq stage stagetime totaltime } {
    global PI
    set w [expr {$freq*2*$PI}]
@@ -2083,6 +2370,12 @@ proc Rotate { freq stage stagetime totaltime } {
                  [expr {$w*$mst}] [expr {$w*$mct}] 0 \
                  [expr {$w*$ct}]  [expr {$w*$mst}] 0 \
                         0                0         0]
+}
+
+Specify Oxs_TransformZeeman {
+  type general
+  script {Rotate 1e9}
+  field {0 1000. 0}
 }
 \end{verbatim}
 %begin<latexonly>
@@ -2162,9 +2455,9 @@ block}{html:oxsdriverstagecount}\latex{\ (q.v.)}.
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
-Specify Oxs_StageZeeman {
-  script SlidingFieldSpec
-  stage_count 11
+proc SlidingField { xcutoff xrel yrel zrel } {
+   if {$xrel>$xcutoff} { return [list 0. 0. 0.] }
+   return [list 2e4 0. 0.]
 }
 
 proc SlidingFieldSpec { stage } {
@@ -2177,9 +2470,9 @@ proc SlidingFieldSpec { stage } {
    return $spec
 }
 
-proc SlidingField { xcutoff xrel yrel zrel } {
-   if {$xrel>$xcutoff} { return [list 0. 0. 0.] }
-   return [list 2e4 0. 0.]
+Specify Oxs_StageZeeman {
+  script SlidingFieldSpec
+  stage_count 11
 }
 \end{verbatim}
 %begin<latexonly>
@@ -2239,11 +2532,6 @@ Oxs_ScriptVectorField {
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
-Specify Oxs_StageZeeman {
-  script FileField
-  stage_count 3
-}
-
 proc FileField { stage } {
   set filelist { field-a.ohf field-b.ohf field-c.ohf }
   set spec Oxs_FileVectorField
@@ -2252,6 +2540,11 @@ proc FileField { stage } {
       file [lindex $filelist $stage]
    }]
    return $spec
+}
+
+Specify Oxs_StageZeeman {
+  script FileField
+  stage_count 3
 }
 \end{verbatim}
 %begin<latexonly>
@@ -2314,6 +2607,26 @@ Specify Oxs_StageZeeman {
    be set to 79.5775 to perform the conversion.  The direction of the
    applied field can be reversed by supplying a negative \cd{multiplier}
    value.
+
+   In addition to the standard energy and field outputs, the
+   \cd{Oxs\_StageZeeman} class provides these four scalar outputs:
+   \begin{itemize}
+   \item \textbf{B max:} Pointwise maximum magnitude of the applied
+     field, in mT.  This is a non-negative quantity;
+     \begin{latexonly}
+       $\textrm{B max} = \sqrt{(\textrm{Bx max})^2
+                               +(\textrm{By max})^2+(\textrm{Bz max})^2}.$
+     \end{latexonly}
+     \begin{rawhtml}
+B&nbsp;max&nbsp;=&nbsp;[(Bx&nbsp;max)<SUP>2</SUP>+(By&nbsp;max)<SUP>2</SUP>+(Bz&nbsp;max)<SUP>2</SUP>]<SUP>1/2</SUP>.
+     \end{rawhtml}
+   \item \textbf{Bx max:} Signed value of the $x$-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+   \item \textbf{By max:} Signed value of the $y$-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+   \item \textbf{Bz max:} Signed value of the $z$-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+   \end{itemize}
 
    \begin{sloppypar}
    \raggedright
@@ -2546,8 +2859,8 @@ be rejected if the total energy, after adjusting for effects due to any
 time varying external field, is found to increase.  In this case the
 next candidate stepsize is set to one half the rejected stepsize.
 
-The \cd{Oxs\_EulerEvolve} module provides five scalar outputs and three
-vector field outputs.  The scalar outputs are
+The \cd{Oxs\_EulerEvolve} module provides five scalar, one scalar
+field, and three vector field outputs.  The scalar outputs are
 \begin{itemize}
 \item \textbf{Max dm/dt:} maximum $|d\vm/dt|$, in degrees per
    nanosecond; $\vm$ is the unit magnetization direction.
@@ -2558,6 +2871,12 @@ vector field outputs.  The scalar outputs are
    joules per second.
 \item \textbf{Energy calc count:} number of times total energy has been
    calculated.
+\end{itemize}
+
+The scalar field output is
+\begin{itemize}
+\item \textbf{Total energy density:} cellwise total energy density, in
+\latexhtml{J/m${}^3$}{J/m\begin{rawhtml}<SUP>3</SUP>\end{rawhtml}}.
 \end{itemize}
 
 The vector field outputs are
@@ -2731,8 +3050,8 @@ that allowed by \oxsval{eprecision}.  The default value for
 \oxsval{eprecision} is \latex{$10^{-10}$.}\html{1e-10.}  This control
 may be disabled by setting \oxsval{eprecision} to -1.
 
-The \cd{Oxs\_RungeKuttaEvolve} module provides the same five scalar
-outputs and three vector outputs as \cd{Oxs\_EulerEvolve}.
+The \cd{Oxs\_RungeKuttaEvolve} module provides the same scalar, scalar
+field, and vector field outputs as \cd{Oxs\_EulerEvolve}.
 
 \textbf{Examples:} \fn{sample.mif}, \fn{acsample.mif},
                    \fn{varalpha.mif}, \fn{yoyo.mif}.
@@ -2935,7 +3254,8 @@ Specify Oxs_SpinXferEvolve:evolve {
   mp {1 0 0}
   P 0.4
   Lambda 2
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -3014,8 +3334,8 @@ respectively.
 
 Once a minimization direction has been selected, the first stage of the
 line minimization is to bracket the minimum energy on that line, i.e.,
-given a start point on the line---the location of the minimum from the
-previous line minimization---find another point on the line such that
+given a start point on the line\emdash the location of the minimum from the
+previous line minimization\emdash find another point on the line such that
 the energy minimum lies between those two points.  As one moves along
 the line, the spins in the simulation rotate, with one spin rotating
 faster than (or at least as fast as) all the others.  If the start point
@@ -3040,15 +3360,15 @@ If the bracketing process is successful, then a one dimensional
 minimization is carried out in the interval, using both energy and
 energy derivative information.  Each step in this process reduces the
 width of the bracketing interval.  This process is continued until
-either the angle between the line direction and the computed energy
+the angle between the line direction and the computed energy
 gradient is within \oxslabel{line\_minimum\_angle\_precision} degrees of
-orthogonal, or the width of the interval relative to the distance of the
+orthogonal, and the width of the interval relative to the distance of the
 interval from the start point (i.e., the stop point from the previous
 line minimization process) is less than
-\oxslabel{line\_minimum\_relwidth}.  In either case, the stop point,
+\oxslabel{line\_minimum\_relwidth}.  The stop point,
 i.e., the effective minimum, is taken to be the endpoint of the final
 interval having smaller energy.  The default value for
-\oxsval{min\_prec\_angle} is 5 degrees, and the default value for
+\oxsval{min\_prec\_angle} is 1 degree, and the default value for
 \oxsval{relwidth} is 1.  This latter setting effectively disables the
 \texttt{line\_minimum\_relwidth} control, which should generally be used
 only as a secondary control.
@@ -3122,8 +3442,8 @@ Fletcher-Reeves, which has somewhat smaller memory requirements.
 The last parameter, \oxslabel{fixed\_spins}, performs the same function
 as for the \htmlonlyref{\cd{Oxs\_EulerEvolve}}{html:EulerEvolve} class.
 
-The \cd{Oxs\_CGEvolve} module provides seven scalar outputs and two vector
-field outputs.  The scalar outputs are
+The \cd{Oxs\_CGEvolve} module provides nine scalar, one scalar
+ field, and two vector field outputs.  The scalar outputs are
 \begin{itemize}
 \item \textbf{Max mxHxm:} maximum $|\vm\times\vH\times\vm|$, in A/m;
    $\vm$ is the unit magnetization direction.
@@ -3141,6 +3461,14 @@ field outputs.  The scalar outputs are
 \item \textbf{Cycle count:} number of line direction selections.
 \item \textbf{Cycle sub count:} number of line direction selections
   since the last gradient direction reset.
+\item \textbf{Conjugate cycle count:} number of times the conjugate gradient
+   process has been reset to the gradient direction.
+\end{itemize}
+
+The scalar field output is
+\begin{itemize}
+\item \textbf{Total energy density:} cellwise total energy density, in
+\latexhtml{J/m${}^3$}{J/m\begin{rawhtml}<SUP>3</SUP>\end{rawhtml}}.
 \end{itemize}
 
 The vector field outputs are
@@ -3272,7 +3600,7 @@ the numerical precision of the energy calculations usually makes in not
 possible to obtain $|d\vm/dt|$ much below 0.001 degree per nanosecond.
 
 
-\label{html:oxsdriverstagecount}
+\arblink{html:oxsdriverstagecount}
 The \oxslabel{total\_iteration\_limit}, \oxslabel{stage\_count} and
 \oxslabel{stage\_count\_check} parameters involve simulation run
 completion conditions.  The default value for the first is 0,
@@ -3297,10 +3625,12 @@ intentionally specified that is meant to be implicitly extended to match
 the full simulation stage length.  In this case, the stage count check
 can be disabled by setting \oxsval{test} to 0.
 
-The checkpoint options are used to control the saving of solver state
-to disk; these saves are used by the \app{oxsii} and \app{boxsi} restart
-feature.  The value of the \oxslabel{checkpoint\_file} option is the
-name to use for the solver state file.  The default is
+The checkpoint\arblink{html:oxsdrivercheckpoint}%
+\index{simulation~3D!restarting}\index{file!checkpoint}
+options are used to control the saving of solver state to disk; these
+saves are used by the \app{oxsii} and \app{boxsi} restart feature.
+The value of the \oxslabel{checkpoint\_file} option is the name to
+use for the solver state file.  The default is
 \textit{base\_file\_name}.restart.
 
 Cleanup of the checkpoint file is determined by the setting of
@@ -3823,8 +4153,8 @@ Specify Oxs_ScriptScalarField {
     xrange { 0   1e-6 }
     yrange { 0 250e-9 }
     zrange { 0  50e-9 }
-
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -3866,7 +4196,8 @@ Specify Oxs_ScriptScalarField:project {
     script DotProduct
     script_args vectors
     vector_fields {:file1 :dir111}
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -3938,7 +4269,8 @@ Specify Oxs_TimeDriver {
     Ms { Oxs_VecMagScalarField {
        field :file1
     }}
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4016,7 +4348,8 @@ Specify Oxs_ScriptOrientScalarField:reflect {
    script Reflect
    script_args {rawpt minpt maxpt}
    atlas :atlas
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4128,7 +4461,8 @@ Specify Oxs_AffineOrientScalarField:reflect {
    M { 0 1 0
       -1 0 0
        0 0 1 }
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4427,7 +4761,8 @@ Specify Oxs_ScriptVectorField {
     script Vortex
     norm  1
     atlas :atlas
-}\end{verbatim}
+}
+\end{verbatim}
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
@@ -4780,14 +5115,17 @@ Specify Oxs_BoxAtlas:atlas {
   yrange {-80e-9 80e-9}
   zrange {0  40e-9}
 }
+
 proc Trap { x y z } {
      if {$y<=$x && $y<=0.5} {return [list 0 1 0]}
      return [list 0 0 0]
 }
+
 Specify Oxs_ScriptVectorField:trap {
    script Trap
    atlas :atlas
 }
+
 Specify Oxs_AffineOrientVectorField:orient {
    field :trap
    M { 0 -1 0
@@ -4796,29 +5134,34 @@ Specify Oxs_AffineOrientVectorField:orient {
    offset { -20e-9 0 0 }
    inverse 1
 }
+
 Specify Oxs_AffineTransformVectorField:rot {
    field :orient
    M { 0 -1 0
        1  0 0
        0  0 1 }
 }
+
 proc Threshold { vx vy vz } {
    set magsq [expr {$vx*$vx+$vy*$vy+$vz*$vz}]
    if {$magsq>0} {return 8e5}
    return 0.0
 }
+
 Specify Oxs_ScriptScalarField:Ms {
   vector_fields :rot
   script Threshold
   script_args vectors  
 }
+
 Specify Oxs_TimeDriver {
  m0 :rot
  Ms :Ms
  stopping_dm_dt 0.01
  evolver :evolve
  mesh :mesh
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4885,7 +5228,8 @@ class.  For example, given a scalar field \cd{:mask} and a vector field
 Specify Oxs_MaskVectorField {
    mask :mask
    field :vfield
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4902,12 +5246,14 @@ class
 proc MaskField { m vx vy vz } {
    return [list [expr {$m*$vx}] [expr {$m*$vy}] [expr {$m*$vz}]]
 }
+
 Specify Oxs_ScriptVectorField {
   script MaskField
   script_args {scalars vectors}
   scalar_fields { :mask }
   vector_fields { :vfield }
-}\end{verbatim}
+}
+\end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
@@ -4995,6 +5341,7 @@ Specify Oxs_LabelValue:probdata {
   alpha 0.5
   start_dm 0.01
 }
+
 Specify Oxs_EulerEvolve {
   attributes :probdata
 }

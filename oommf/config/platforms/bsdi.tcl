@@ -164,8 +164,8 @@ if {[string match g++ $ccbasename]} {
     # Optimization options
     # set opts [list -O0 -ffloat-store]  ;# No optimization
     # set opts [list -O%s]               ;# Minimal
-    set opts [list -O3 -ffast-math -fomit-frame-pointer -fstrict-aliasing]
-    # You can also try adding -malign-double
+    set opts [list -O3 -fomit-frame-pointer -fstrict-aliasing]
+    # You can also try adding -malign-double -ffast-math 
     #
     # The next block sets cpu-specific options, based on a guess (see
     # GuessCPU proc defined at the top of this file) of the current
@@ -276,7 +276,9 @@ if {[string match g++ $ccbasename]} {
     # but provides the x86 native floating point format having approx.
     # 19 decimal digits precision as opposed to 16 for double.)
     # Default is "double".
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some versions of gcc complain if "system" directories
@@ -341,7 +343,9 @@ if {[string match g++ $ccbasename]} {
     $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
     # Wide floating point type.
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Directories to exclude from explicit include search path, i.e.,
     # the -I list.  Some of the gcc versions don't play well with

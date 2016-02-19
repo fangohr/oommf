@@ -81,11 +81,25 @@ old data is deleted and replaced with the current data.  See the
 (Sec.~}{)}{sec:vfformats}\index{file!vector~field} for information
 about the vector field output format.
 
+
 \ssechead{Controls}
-The \btn{Exit} in the \app{mmLaunch}-supplied user interface terminates
-\app{mmArchive}.  Simply closing the user interface window does not
-terminate \app{mmArchive}, but only hides the control window.  To kill
-\app{mmArchive} the \btn{Exit} button must be pressed.
+
+The display area inside the \app{mmArchive} window displays a log of
+\app{mmArchive} activity.  The menu selection \btn{File\pipe Close
+interface} closes the \app{mmArchive} window without terminating
+\app{mmArchive}.  Use the \btn{File\pipe Exit mmArchive} option or the
+window close button to terminate \app{mmArchive}.
+
+If the \btn{Options\pipe Wrap lines} option is selected, then each log
+entry is line wrapped.  Otherwise, each entry is on one line, and a
+horizontal slider is provided at the bottom of the display window to
+scroll through line.  The \btn{Options\pipe Clear buffer} command
+clears the log display area.  This clears the buffer in that
+\app{mmArchive} display window only.  If a new display window is
+opened for the same \app{mmArchive} instance, the new display will
+show the entire log backing store.  The last two items on the
+\btn{Options} menu,  \btn{Enlarge font} and \btn{Reduce font}, adjust
+the size of the font used in the log display area.
 
 \ssechead{Known Bugs}
 \app{mmArchive} appends data table output to the file specified by the

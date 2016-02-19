@@ -1,0 +1,82 @@
+# MIF 2.2
+# MIF Example File: tricky.mif
+# Description: User output with tricky names, for debugging.
+
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+
+RandomSeed 1
+
+global tcl_platform
+if {[string match windows $tcl_platform(platform)]} {
+   # Windows doesn't allow backslashes, quotes or control characters
+   # (i.e., anything in the ASCII range 0-31, such as tabs) in file
+   # names.
+   set basename "Tri.cky.  Test name"
+} else {
+   set basename "Tri.cky.\t\"Test\"\\name"
+}
+
+SetOptions [subst {
+   basename [list $basename]
+}]
+
+set xrange 16e-9
+set yrange  8e-9
+set zrange  4e-9
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $xrange}
+  yrange {0 $yrange}
+  zrange {0 $zrange}
+}]
+
+set xcellsize 2e-9
+set ycellsize 2e-9
+set zcellsize 2e-9
+
+Specify Oxs_RectangularMesh:mesh [subst {
+   cellsize {$xcellsize $ycellsize $zcellsize}
+   atlas :atlas
+}]
+
+Specify Oxs_BoxAtlas:octant [subst {
+  xrange {0 [expr {$xrange/2.}]}
+  yrange {0 [expr {$yrange/2.}]}
+  zrange {0 [expr {$zrange/2.}]}
+}]
+
+Specify Oxs_AtlasVectorField:octant_field_x [subst {
+   atlas :octant
+   default_value {0 0 0}
+   values {
+      octant {1 0 0}
+   }
+}]
+
+Specify Oxs_Demag [subst {
+  user_output {
+     name [list "Real\t\"Tricky\"\\name\t"]
+     source_field Field
+     select_field :octant_field_x
+     units "\t"
+     normalize 0
+  }
+}]
+
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver {
+ evolver Oxs_CGEvolve
+ stopping_mxHxm 0.1
+ total_iteration_limit 10
+ checkpoint_interval 0
+ mesh :mesh
+ Ms 8e5
+ m0 {1 0 0}
+ report_max_spin_angle 1
+}
+
+#Destination archive mmArchive
+#Schedule DataTable archive Step 1
+#Schedule Oxs_Demag::Field archive Step 1

@@ -15,7 +15,7 @@ The \app{any2ppm} program converts bitmap files from the Portable Pixmap
 (PPM), Windows BMP, and GIF formats into the Portable Pixmap P3
 (text) format or the uncompressed 24 bits-per-pixel BMP binary format.
 Additional formats may be available if the \Tcl/\Tk\
-\htmladdnormallinkfoot{\textit{Img}}{http://purl.oclc.org/net/nijtmans/img.html}
+\htmladdnormallinkfoot{\textit{Img}}{http://tkimg.sourceforge.net/}
 package is installed on your system.  (Note: \OOMMF\ support for BMP
 requires Tk 8.0\index{requirement!Tk~8.0+} or later.)
 
@@ -70,7 +70,8 @@ properly initialized, which in particular means that a valid display
 must be available.  This is not a problem on \Windows, where a desktop
 is always present, but on \Unix\ this means that an \X\ server must be
 running.  The
-\htmladdnormallinkfoot{\textit{Xvfb}}{http://www.itworld.com/AppDev/1461/UIR000330xvfb/}\index{application!Xvfb}
+\htmladdnormallinkfoot{\textit{Xvfb}}{%
+http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}\index{application!Xvfb}
 virtual framebuffer can be used if desired.  (Xvfb is an X server
 distributed with X11R6 that requires no display hardware or physical
 input devices.)
@@ -95,10 +96,10 @@ The \app{avf2odt} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2odt [standard options] \
    [-average <space|plane|line|point|ball>] [-axis <x|y|z>] \
-   [-ball_radius brad] [-defaultvals <0|1>] [-filesort method] \
-   [-headers <full|collapse|none>] [-index label units valexpr] \
-   [-ipat pattern] [-normalize <0|1>] [-numfmt fmt] \
-   [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
+   [-ball_radius brad] [-defaultpos <0|1>] [-defaultvals <0|1>] \
+   [-extravals flag] [-filesort method] [-headers <full|collapse|none>] \
+   [-index label units valexpr] [-ipat pattern] [-normalize <0|1>] \
+   [-numfmt fmt] [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
    [-region xmin ymin zmin xmax ymax zmax] \
    [-rregion rxmin rymin rzmin rxmax rymax rzmax] \
    [-truncate <0|1>] [-v level] [-valfunc label units fcnexpr] \
@@ -166,6 +167,12 @@ where
   \cd{-defaultvals 0} may be used to omit the columns containing the
   averaged $v_x$, $v_y$ and $v_z$ values.  In particular, this may be
   useful in conjunction with the \cd{-valfunc} option.
+\item[\optkey{-extravals \boa 0\pipe 1\bca}]
+  Specify \cd{-extravals 1} to augment the output with columns
+  for the average $L^1$ norm
+  $\sum\left(|v_x| + |v_y| + |v_z|\right)/N$, the normalized $L^2$
+  norm $\sqrt{\sum v^2/N}$, the minimum component absolute value,
+  and the maximum component absolute value.
 \item[\optkey{-filesort method}]
   Specifies the sorting order to apply to the input file list.  This
   order is important when using the \cd{-onefile} option, since it
@@ -264,17 +271,17 @@ where
   fcnexpr is a \Tcl\ \cd{expr} expression that may include special
   variables.  Here, however, the allowed special variables are
   \cd{\$x}, \cd{\$y}, \cd{\$z}, \cd{\$r},
-  \cd{\$vx}, \cd{\$vy}, \cd{\$vz}, \cd{\$vmag}, where 
+  \cd{\$vx}, \cd{\$vy}, \cd{\$vz}, \cd{\$vmag}, where
   \cd{\$x}, \cd{\$y}, \cd{\$z}, and \cd{\$r} are sample location and
   magnitude, respectively ($r = \sqrt{x^2+y^2+z^2}$), and
   \cd{\$vx}, \cd{\$vy}, \cd{\$vz} and \cd{\$vmag} are vector component
   values and magnitude.  The output is the value of fcnexpr averaged
   across the manifold selected by the \cd{-average} option.  A couple
   of examples are
-  \begin{verbatim}
-     -valfunc Ms   A/m '$vmag'
-     -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
-  \end{verbatim}
+\begin{verbatim}
+   -valfunc Ms   A/m '$vmag'
+   -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
+\end{verbatim}
   As with the valexpr string for \cd{-index}, the fcnexpr string
   should be surrounding by single quotes on \Unix\ in order to
   forestall interpolation of the special variables by the shell.  On
@@ -331,9 +338,9 @@ The \app{avf2ovf} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ovf [standard options] \
    [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format <text|b4|b8>] [-grid <rect|irreg>] [-info] [-keepbb] \
-   [-mag] [-pertran xoff yoff zoff] [-q] [-rpertran rxoff ryoff rzoff] \
-   [-subsample period] [infile [outfile]]
+   [-format <text|b4|b8>] [-grid <rect|irreg>] [-info] [-keepbb] [-mag] \
+   [-pertran xoff yoff zoff] [-q] [-resample xstep ystep zstep order] \
+   [-rpertran rxoff ryoff rzoff] [-subsample period] [infile [outfile]]
 \end{verbatim}
 where
 \begin{description}
@@ -376,7 +383,7 @@ where
 \item[\optkey{-pertran xoff yoff zoff}]
   Translates field with respect to location coordiates, by amount
   $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$, in a periodic
-  fashion.  For example, if 
+  fashion.  For example, if
   $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$ is $(\mbox{50e-9},0,0)$,
   then a vector $v$ at position
   $(\mathit{rx},\mathit{ry},\mathit{rz})$
@@ -395,13 +402,22 @@ where
   applied after the translation.
 \item[\optkey{-q}]
   Quiet operation --- don't print informational messages.
+\item[\optkey{-resample xstep ystep zstep \boa 0\pipe 1\pipe 3\bca}]
+  Resample grid using specified step sizes.  Each step size must exactly
+  divide the grid extent in the corresponding direction, after any
+  clipping.  (That is, the export mesh consists of full cells only.)
+  The last argument specifies the polynomial interpolation order: 0 for
+  nearest value, 1 for trilinear interpolation, or 3 for fitting with
+  tricubic Catmull-Rom splines.  This control is only available for
+  input files having a rectangular grid structure.  Default is no
+  resampling.
 \item[\optkey{-rpertran rxoff ryoff rzoff}]
   Similar to -pertran, except the offsets
   $(\mathit{rxoff},\mathit{ryoff},\mathit{rzoff})$ are
   interpreted as offsets in the range $[0,1]$ taken relative to the
   spatial extents of the $x$, $y$, and $z$ coordinates.  For example, if
   $\mathit{xmax} - \mathit{xmin} = \mbox{500e-9}$, then an
-  $\mathit{rxoff}$ value of 0.1 is equivalent 
+  $\mathit{rxoff}$ value of 0.1 is equivalent
   to an $\mathit{xoff}$ value of 50e-9.
 \item[\optkey{-subsample period}]
   Reduce point density in output by subsampling input with specified
@@ -419,15 +435,16 @@ where
 
 The \cd{-clip} option is useful when one needs to do analysis on a
 small piece of a large simulation.  The \cd{-info} option is helpful
-here to discover the extents of the original mesh.
+here to discover the extents of the original mesh.  The \cd{-clip}
+option can also be used with \cd{-resample} to enlarge the mesh.
 
-The \cd{-flip} option can change be used to align different simulations
+The \cd{-flip} option can be used to align different simulations
 to the same orientation.  It can also be used to change a file into its
 mirror image; for example, ``-flip~-x:y:z'' reflects the mesh through
 the $yz$-plane.
 
-If both \cd{clip} and \cd{-flip} options are specified, then clipping is
-applied first, using the original coordinates.
+If multiple operations are specified, then the operation order is
+clip, resample, subsample, flip, and translate.
 
 The \cd{-format text} and \cd{-grid irreg} options are handy for
 preparing files for import into non-\OOMMF\ applications, since all
@@ -567,7 +584,7 @@ the input file specification string from expansion by the shell, as in
 files\label{sec:avf2ppmconfig}}\index{file!configuration}
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-\html{\htmlref{\app{mmDisp} configuration 
+\html{\htmlref{\app{mmDisp} configuration
 files}{sec:mmdispconfig}.}\latex{\app{mmDisp} configuration file
 (Sec.~\ref{sec:mmdispconfig}, page~\pageref{sec:mmdispconfig}).}
 
@@ -596,6 +613,15 @@ parameters, and the following additional parameters are available:
  the anti-aliased pixels are not drawn from the arrow or pixel colormap
  discretizations, so color allocation in the output bitmap may increase
  dramatically.
+\item[\optkey{arrow,outlinewidth}]
+ Width of a colored outline around each arrow; this can improve
+ visibility of an arrow when it is overlayed against a background with
+ color similar to that of the arrow.  Default value is zero, meaning no
+ outline.  A value of 1 produces an outline with a recommended width,
+ and other positive values are scaled relative to this.
+\item[\optkey{arrow,outlinecolor}]
+ If \cd{arrow,outlinewidth} is positive, then this is the color of the
+ arrow outline.
 \item[\optkey{misc,boundarypos}]
  Placement of the bounding polygon, either \cd{back} or \cd{front},
  i.e., either behind or in front of the rendered arrows and pixel
@@ -638,29 +664,29 @@ value set for each entry taking precedence.
 file \fn{avf2ppm.config}.}{pt:avf2ppm.config}
 \begin{verbatim}
 array set plot_config {
-  arrow,status       1                  misc,background     #FFFFFF
-  arrow,colormap     Black-Gray-White   misc,drawboundary   1
-  arrow,colorcount   0                  misc,boundarywidth  1
-  arrow,quantity     z                  misc,boundarycolor  #000000
-  arrow,colorphase   0.                 misc,boundarypos    front
-  arrow,colorinvert  0                  misc,matwidth       0
-  arrow,autosample   1                  misc,matcolor       #FFFFFF
-  arrow,subsample    10                 misc,margin         10
-  arrow,size         1                  misc,width          640
-  arrow,antialias    1                  misc,height         480
-                                        misc,crop           1
-  pixel,status       1                  misc,zoom           0
-  pixel,colormap     Teal-White-Red     misc,rotation       0
-  pixel,colorcount   225                misc,datascale      0
-  pixel,opaque       1                  misc,relcenterpt {0.5 0.5 0.5}
-  pixel,quantity     x
-  pixel,colorphase   0.                 viewaxis            +z
-  pixel,colorinvert  0                  viewaxis,xarrowspan {}
-  pixel,autosample   1                  viewaxis,xpixelspan {}
-  pixel,subsample    0                  viewaxis,yarrowspan {}
-  pixel,size         1                  viewaxis,ypixelspan {}
-                                        viewaxis,zarrowspan {}
-                                        viewaxis,zpixelspan {}
+    arrow,status       1                misc,background    #FFFFFF
+    arrow,antialias    1                misc,drawboundary  1
+    arrow,outlinewidth 0.0              misc,boundarywidth 1
+    arrow,outlinecolor #000000          misc,boundarycolor #000000
+    arrow,colormap     Red-Black-Blue   misc,boundarypos   front
+    arrow,colorcount   100              misc,matwidth      0
+    arrow,quantity     z                misc,matcolor      #FFFFFF
+    arrow,colorphase   0                misc,margin        10
+    arrow,colorreverse 0                misc,width         640
+    arrow,autosample   1                misc,height        480
+    arrow,subsample    10               misc,crop          1
+    arrow,size         1                misc,zoom          0
+                                        misc,rotation      0
+    pixel,status       1                misc,datascale     0
+    pixel,colormap     Teal-White-Red   misc,relcenterpt   {0.5 0.5 0.5}
+    pixel,colorcount   100
+    pixel,opaque       1                viewaxis            +z
+    pixel,quantity     x                viewaxis,xarrowspan {}
+    pixel,colorphase   0                viewaxis,xpixelspan {}
+    pixel,colorreverse 0                viewaxis,yarrowspan {}
+    pixel,autosample   1                viewaxis,ypixelspan {}
+    pixel,subsample    0                viewaxis,zarrowspan {}
+    pixel,size         1                viewaxis,zpixelspan {}
 }
 \end{verbatim}
 \end{codelisting}
@@ -752,7 +778,7 @@ the input file specification string from expansion by the shell, as in
 files\label{sec:avf2psconfig}}\index{file!configuration}
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-\html{\htmlref{\app{mmDisp} configuration 
+\html{\htmlref{\app{mmDisp} configuration
 files}{sec:mmdispconfig}.}\latex{\app{mmDisp} configuration file
 (Sec.~\ref{sec:mmdispconfig}, page~\pageref{sec:mmdispconfig}).}
 
@@ -873,13 +899,66 @@ identical dimensions.
 \sssechead{Launching}
 The \app{avfdiff} launch command is:
 \begin{verbatim}
-tclsh oommf.tcl avfdiff [standard options] [info] file-0 file-1 [... file-n]
+tclsh oommf.tcl avfdiff [standard options] [-cross] [-filesort method] \
+   [-info] [-numfmt fmt] [-odt label units valexpr] \
+   [-resample fileselect interp_order] file-0 file-1 [... file-n]
 \end{verbatim}
 where
 \begin{description}
+\item[\optkey{-cross}]
+  Compute the pointwise vector cross product
+  of each \cd{file-k} against \cd{file-0} instead of subtraction.
+\item[\optkey{-filesort method}]
+  Specifies the sorting order to apply to the target file list,
+  \cd{file-1} through \cd{file-n}.  The order is important when using
+  the \cd{-odt} option, because it controls the order of the rows in the
+  output.  Parameter \cd{method} should be a valid option string for the
+  \Tcl\ command \cd{lsort}, e.g., ``-ascii -decreasing''.  Note that the
+  \cd{lsort} sort options all begin with a hyphen, ``-'', and that if
+  you want to use multiple options they must be grouped as one element
+  to \cd{-filesort} (by, for example, placing quotes around the list).
+  If this option is not specified then the order is as presented on the
+  command line (or as produced by wildcard expansion).
 \item[\optkey{-info}]
   Prints statistics on file differences.  If this option is selected
   then no output files are created.
+\item[\optkey{-numfmt fmt}]
+  Parameter \cd{fmt} specifies a C-style output format for numeric data if
+  \cd{-info} or \cd{-odt} is selected.  Default value is
+  ``\verb+%- #20.15g+''.
+\item[\optkey{-odt label units valexpr}]
+  Computes the file differences, but instead of writing difference files
+  to disk this option writes \OOMMF\ Data Table
+  \hyperrefhtml{(\ODT)}{(\ODT\ format, Sec.~}{)}{sec:odtformat} output to
+  stdout.  The \ODT\ output consists of eight columns.  The first column
+  is an index column identifying the target file (\cd{file-1} through
+  \cd{file-n}).  The \cd{label} parameter is a string specifying the
+  label for this column, and likewise the \cd{units} parameter is a
+  string specifying the units for the column.  The third parameter,
+  \cd{valexpr}, is any valid \Tcl\ \cd{expr} expression that may
+  include the special variables \cd{\$i}, \cd{\$f1}, \cd{\$f2}, \ldots,
+  \cd{\$d1}, \cd{\$d2}, \ldots; here \cd{\$i} is the 0-based index of
+  the file in the target file list (\cd{file-1} is index 0, \cd{file-2}
+  is index 1, etc.), \cd{\$f1} is the first number appearing in the
+  target filename, \cd{\$f2} is the second number appearing in the target
+  filename, \cd{\$d1} is the first number appearing in the ``Desc''
+  fields in the header of the target file, etc.  This control is
+  analogous to the \cd{-index} option to 
+  \hyperrefhtml{\cd{avf2odt}}{\cd{avf2odt} (Sec.~}{)}{sec:avf2odt}.
+  The next three columns are the sum of each of the vector components in
+  the difference.  The last four columns are the averaged $L^1$ norm,
+  the normalized $L^2$ norm, minimum component absolute value, and
+  maximum component absolute value of the difference; these columns
+  correspond to those produced by the \cd{-extravals} option to
+  \htmlonlyref{\cd{avf2odt}}{sec:avf2odt}.
+\item[\optkey{-resample \boa 0\pipe n\bca\  \boa 0\pipe 1\pipe 3\bca}]
+  Resample either the base file (\cd{file-0}) to match the resolutions of
+  the target files (\cd{file-1} through \cd{file-n}), or resample each
+  target file to match the resolution of the base file.  Set
+  \cd{fileselect} to 0 for the former, to n for the latter.  The second
+  argument specifies the polynomial interpolation order: 0 for
+  nearest value, 1 for trilinear interpolation, or 3 for fitting with
+  tricubic Catmull-Rom splines.  Default is no resampling.
 \item[\optkey{file-0}]
   Name of input file to subtract from other files.  Must be either
   an \OVF\ 1.0 file in the rectangular mesh subformat, or an \VIO\
@@ -894,11 +973,11 @@ where
   subtracted, with the same requirements as \cd{file-1}.
 \end{description}
 
-For each input file \cd{file-1} through \cd{file-n}, a separate output
-file is generated, in the \OVF\ 1.0 format.  Each output file has a
-name based on the name of corresponding input file, with a \cd{-diff}
-suffix.  If a file with the same name already exists, it will be
-overwritten.
+If neither \cd{-info} nor \cd{-odt} are specified, then for each target
+file \cd{file-1} through \cd{file-n} a separate output file is
+generated, in the \OVF\ 1.0 format.  Each output file has a name based
+on the name of corresponding input file, with a \cd{-diff} suffix.  If a
+file with the same name already exists, it will be overwritten.
 
 For output file format details, see the \hyperrefhtml{OVF file
 description}{OVF file description (Sec.~}{)}{sec:ovfformat}.
@@ -953,13 +1032,13 @@ The \app{killoommf} application terminates running \OOMMF\ processes.
 The \app{killoommf} command line is:
 \begin{verbatim}
 tclsh oommf.tcl killoommf [standard options] [-account name] \
-   [-hostport port] [-q] [-show] [-shownames] [-test] \
+   [-hostport port] [-pid] [-q] [-show] [-shownames] [-test] \
    [-timeout secs] oid [...]
 \end{verbatim}
 where
 \begin{description}
 \item[\optkey{-account name}]
- Specify the account name.  The default is the same used by 
+ Specify the account name.  The default is the same used by
  \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
  the current user login name, except on \Windows~9X, where the dummy
  account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
@@ -969,6 +1048,8 @@ where
  \cd{Net\_Host~port} setting in \fn{oommf/config/options.tcl}, or by
  the environment variable \cd{OOMMF\_HOSTPORT} (which, if set,
  overrides the former).  The standard setting is 15136.
+\item[\optkey{-pid}]
+ Select processes by system pid rather than OOMMF oid.
 \item[\optkey{-q}]
  Quiet; don't print informational messages.
 \item[\optkey{-show}]
@@ -986,7 +1067,9 @@ where
 \item[\optkey{oid \ldots}]
  List of one or more oids (\OOMMF\ ID's), application names,
  nicknames, or the keyword ``all''.  Glob-style wildcards may also be
- used.  This field is required (there are no default kill targets).
+ used.  This field is required (there are no default kill targets).  If
+ the \cd{-pid} option is specified then numbers are interpreted as
+ referring to system process ID's rather than \OOMMF\ ID's.
 \end{description}
 The \app{killoommf} command affects processes that listen to \OOMMF\
 message traffic.  These are the same applications that are listed in
@@ -1008,6 +1091,73 @@ system, and then using the system facilities for terminating processes
 \Windows).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Last Oxsii/Boxsi run:
+            lastjob\label{sec:lastjob}}%
+\index{application!lastjob}
+
+The \app{lastjob} command reads through
+\hyperrefhtml{Oxs}{Oxs (Sec.~}{)}{sec:oxs}\index{application!Oxs}
+log files and identifies
+the last simulation run.  From information in the log file,
+\app{lastjob} constructs a command equivalent to that used to launch
+the last simulation and prints that command to stdout.  If that
+simulation is not recorded as complete in the log file, and a restart is
+requested, then the simulation will be restarted with the
+\cd{-restart 1} comand line option.  If a restart
+(checkpoint) file exists for the simulation, then the command will
+restart the simulation at the checkpoint state.  If a restart file
+cannot be found, then the job restart will fail.
+(By default, \app{oxsii} and \app{boxsi} write
+\latex{checkpoint files (Sec.~\ref{sec:oxsDrivers},
+page~\pageref{html:oxsdrivercheckpoint})}%
+\html{\htmlref{checkpoint files}{html:oxsdrivercheckpoint}}
+to disk every fifteen minutes.  If a simulation is aborted, for example
+by a system crash, then the checkpoint file can be used to restart the
+simulation.)
+
+\sssechead{Launching}
+The \app{lastjob} launch command is:
+\begin{verbatim}
+tclsh oommf.tcl lastjob [-logfile logname] [-unfinished] [-v] <show|restart> \
+   <oxsii|boxsi> [hostname] [username]
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{-logfile logname}]
+The name of the file to look in to determine the last job.  Optional.
+The default is to look in the \OOMMF\ root directory for either
+\fn{oxsii.errors} or \fn{boxsi.errors}, corresponding to whether
+\app{oxsii} or \app{boxsi} jobs are selected.
+\item[\optkey{-unfinished}]
+Restrict search to unfinished jobs.  Optional.
+\item[\optkey{-v}]
+Request verbose output.  Optional.
+\item[\optkey{show\pipe restart}]
+Selects whether to simply show the command or to attempt a restart.
+Required.
+\item[\optkey{oxsii\pipe boxsi}]
+Selects \app{oxsii} or \app{boxsi} jobs.  Required.
+\item[\optkey{hostname}]
+The name of the host machine to look for jobs for.  This is optional,
+with the default being the name of the current machine.  This option is
+useful if the log file is on a shared drive used by multiple hosts.
+This field is interpreted as a regular expression, so for example
+``\cd{.*}'' can be used to find the last job for all hosts.
+\item[\optkey{username}]
+The name of the user to look for jobs for.  This is optional,
+with the default being the name of the current user.  This option is
+useful if the same log file is shared by multiple users.
+This field is interpreted as a regular expression, so for example
+``\cd{.*}'' can be used to find the last job by any user.
+\end{description}
+Note: If your command shell expands wildcards, as is common on Unix
+systems, then you may need to escape or quote regular expressions to
+protect them from expansion by the shell.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{Launching the \OOMMF\ host server:
    launchhost\label{sec:launchhost}}%
 \index{application!launchhost}\index{processes!host~server}\index{ports}
@@ -1150,7 +1300,7 @@ of any trailing \fn{.omf} or
 The \app{mifconvert}\index{application!mifconvert} utility converts any
 of the
 \hyperrefhtml{\MIF}{\MIF\ (Sec.~}{,
-page~\pageref{sec:mifformat})}{sec:mifformat} formats into the 
+page~\pageref{sec:mifformat})}{sec:mifformat} formats into the
 \MIF~2.1 format used by the
 \hyperrefhtml{Oxs 3D solvers}{Oxs 3D solvers (Sec.~}{)}{sec:oxs}.
 It can also convert between
@@ -1204,6 +1354,191 @@ where
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Process Nicknames: nickname\label{sec:nickname}}%
+\index{application!pidinfo}\index{PID's}\index{OID's}\index{nicknames}
+
+The \app{nickname} command associates nicknames to running instances
+of \OOMMF\ applications.  These names are used by the \MIF\ 2.x
+\htmlonlyref{\cd{Destination}}{html:destinationCmd} command\latex{
+(Sec.~\ref{sec:mif2ExtensionCommands})}.
+
+\sssechead{Launching}
+The \app{nickname} command line is:
+\begin{verbatim}
+tclsh oommf.tcl nickname [standard options] [-account name] \
+   [-hostport port] [-pid] [-timeout secs] oid nickname [nickname2 ...]
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{-account name}]
+ Specify the account name.  The default is the same used by
+ \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
+ the current user login name, except on \Windows~9X, where the dummy
+ account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
+ instead.
+\item[\optkey{-hostport port}]
+ Use the host server listening on \cd{port}.  Default is set by the
+ \cd{Net\_Host~port} setting in \fn{oommf/config/options.tcl}, or by
+ the environment variable \cd{OOMMF\_HOSTPORT} (which, if set,
+ overrides the former).  The standard setting is 15136.
+\item[\optkey{-pid}]
+ Specify application instance to nickname by system PID
+ (process identifier) rather than OID (\OOMMF\ identifier).
+\item[\optkey{-timeout secs}]
+ Maximum time to wait for response from servers, in seconds.  Default
+ is five seconds.
+\item[\optkey{oid}]
+ The \OOMMF\ ID of the running application instance to nickname, unless
+ the \cd{-pid} option is specified, in which case the system PID is
+ specified instead.
+\item[\optkey{nickname}]
+ One or more nicknames to associate with the specified application
+ instance.  Each nickname must include at least one non-numeric
+ character.
+\end{description}
+This command is used to associate nicknames with running instances of
+\OOMMF\ applications.  The \MIF\ 2
+\htmlonlyref{\cd{Destination}}{html:destinationCmd} command can then
+use the nickname to link Oxs output to a given OOMMF application
+instance at problem load time.  Nicknames for GUI applications can be
+viewed in the application \cd{About} dialog box, or can be seen for
+any application via the \cd{-names} option to the command line
+application \htmlonlyref{\app{pidinfo}}{sec:pidinfo}.
+
+Note that nicknames can also be associated with \OOMMF\ applications
+when they are started via the standard \cd{-nickname} command line
+option, or by using the \cd{application:nickname} syntax for
+applications launched by the \MIF\ \cd{Destination} command.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{\ODT\ Derived Quantity Calculator: odtcalc}\label{sec:odtcalc}%
+\index{file!data~table}
+
+The \app{odtcalc}\index{application!odtcalc} utility reads an
+\hyperrefhtml{\ODT}{\ODT\ (Sec.~}{)}{sec:odtformat} file on stdin
+that contains one or more tables, and prints to stdout an \ODT\ file
+consisting of the same tables augmented by additional columns as
+controlled by command line arguments.  This utility enables the calculation
+and recording of new data table columns that can be computed from
+existing columns.
+
+\sssechead{Launching}
+The \app{odtcalc} launch command is:
+\begin{verbatim}
+tclsh oommf.tcl odtcalc [standard options] [var expr unit ...] \
+    <infile >outfile
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{var expr unit \ldots}]
+  Each triplet of command line arguments determines the calculation
+  to make for the production of a new column in the output data table.
+  Each {\tt var} value becomes the new {\tt Columns:} entry in the
+  data table header, labeling the new column of data.
+  Each {\tt unit} value becomes the new {\tt Units:} entry in the
+  data table header, reporting the measurement unit for the new
+  column of data.
+  Each {\tt expr} value is a Tcl expression to be evaluated to
+  compute each new data value to be stored in the new column of data.
+  See below for more details.
+\item[\optkey{\boa infile}]
+  \app{odtcalc} reads its input from stdin.  Use the redirection operator
+  ``\boa'' to read input from a file.
+\item[\optkey{\bca outfile}]
+  \app{odtcalc} writes its output to stdout.  Use the redirection operator
+  ``\bca'' to send output to a file.
+\end{description}
+
+The computation of a new data value for each row of each new column
+of data is performed by passing the corresponding {\tt expr} command
+line argument to Tcl's {\bf expr} command.  The standard collection
+of operators and functions are available.  The value of other columns
+in the same row may be accessed by use of the column label as a variable
+name.  For example, the value of the {\tt Iteration} column can be used
+in {\tt expr} by including the variable substitution {\tt \$Iteration}.
+When column labels include colons, the {\tt expr} has the option of using
+just the portion of the column label after the last colon as the variable
+name.  For example, the value of the {\tt Oxs\_UZeeman::Bx} column can
+be used in {\tt expr} by including the variable substitution {\tt \$Bx}.
+When multiple triples specifying new data columns are provided, the
+values of earlier new columns may be used to compute the values of later
+new columns.  The order of command line arguments controls the order of
+the new columns that are added to the right side of the data table.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{\ODT\ Table Concatenation: odtcat}\label{sec:odtcat}%
+\index{file!data~table}
+
+The \app{odtcat}\index{application!odtcat} utility reads an
+\hyperrefhtml{\ODT}{\ODT\ (Sec.~}{)}{sec:odtformat} file on stdin that
+contains one or more tables, and concatenates them together into a
+single table, creating a new \ODT\ file consisting of a single table.
+When successive tables are joined, the tail of the first is truncated as
+necessary so that the specified control column is monotonic across the
+seam.
+
+This tool is useful for fixing up \ODT\ output from a simulation that
+was interrupted and restarted from checkpoint data one or more times.
+
+\sssechead{Launching}
+The \app{odtcat} launch command is:
+\begin{verbatim}
+tclsh oommf.tcl odtcat [standard options] [-b overlap_lines] \
+   [-c control_column] [-o order] [-q] <infile >outfile
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{-b overlap\_lines}]
+  Overlap window size.  This is the maximum number of lines to retain
+  when looking for overlap between two adjacent tables.  This is also
+  the upper limit on the number of lines that may be removed when
+  two tables are joined.  The default value is 100.
+\item[\optkey{-c control\_column}]
+  Specifies control column, either by number or glob-string.  Default
+  is the glob string
+  \cd{\ocb Oxs\_TimeDriver:*:Simulation time\ccb\ Oxs\_MinDriver:*:Iteration}.
+\item[\optkey{-o order}]
+  Order selection: one of \cd{increase}, \cd{decrease}, \cd{auto}
+  (default), or \cd{none}.
+\item[\optkey{-q}]
+  Quiet; don't write informational messages to stderr.
+\item[\optkey{\boa infile}]
+  \app{odtcat} reads its input from stdin.  Use the redirection operator
+  ``\boa'' to read input from a file.
+\item[\optkey{\bca outfile}]
+  \app{odtcat} writes its output to stdout.  Use the redirection operator
+  ``\bca'' to send output to a file.
+\end{description}
+The first table header is examined and compared against the control
+column specification to identify the control column.  If multiple
+columns match the control column specification, then an error is
+reported and the process exits.  The \OOMMF\ command line utility
+{\hyperrefhtml{\app{odtcols}}{\app{odtcols} (Sec.~}{)}{sec:odtcols}}
+with the \texttt{\textbf{-s}} command line switch can be used to view
+column headers before running \app{odtcat}.
+
+Each table in the input stream is assumed to have the same layout as
+the first; header information between tables is summarily eliminated.
+As each table is encountered, a check is made that the new table has
+the same number of columns as the first.  If not, an error is reported
+and processing is halted.
+
+When subsequent table headers are encountered, the values in the
+control column in the tail of the preceding table and the head of the
+succeeding table are compared.  The order selection is used to
+determine the position of the start of the latter table inside the
+tail of the former.  If the data are not compatible with the specified
+ordering, then an error is reported an the program aborts.  If
+identical values are discovered, then the matching lines in the
+earlier table are excluded from the output stream.
+
+If the \texttt{\textbf{-q}} flag is not specified, then after
+processing is complete a report is written to stderr detailing the
+number of tables merged and the number of data lines eliminated.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{\ODT\ Column Extraction: odtcols}\label{sec:odtcols}%
 \index{file!data~table}
@@ -1216,7 +1551,8 @@ table files.
 The \app{odtcols} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl odtcols [standard options] [-f format] \
-   [-m missing] [-q] [-s] [-S] [-t output_type] [-w colwidth] \
+   [-m missing] [-q] [-s] [-S] [-t output_type] \
+   [-table select] [-no-table deselect] [-w colwidth] \
    [col ...] <infile >outfile
 \end{verbatim}
 where
@@ -1252,6 +1588,17 @@ where
   party programs; in particular, such output is not in \ODT\ format, and
   there is no support in OOMMF for translating back from CSV or bare
   format to \ODT\ format.
+\item[\optkey{-table select}]
+  Select tables to include in output.  Tables are selected by index
+  number; the first table in the file has index 0.  The select string
+  consists of one or more selections separated by commas, where each
+  selection is either an individual index number or a range with
+  inclusive endpoints separated by a colon.  Example select string:
+  \cd{0:3,7,9:12}.  Default is all tables.
+\item[\optkey{-no-table deselect}]
+  Specify tables to exclude from output.  The deselect string has the
+  same format at the \cd{-table select} string.  Default is to print all
+  tables, so the effective default deselect string is the empty set.
 \item[\optkey{-w colwidth}]
   Minimum horizontal spacing to provide for each column on output.
   Optional.  Default value is 15.
@@ -1264,36 +1611,203 @@ where
   from left to right.  If no columns are specified then by default all
   columns are selected.
 \item[\optkey{\boa infile}]
-  Odtcols reads its input from stdin.  Use the redirection operator
+  \app{odtcols} reads its input from stdin.  Use the redirection operator
   ``\boa'' to read input from a file.
 \item[\optkey{\bca outfile}]
-  Odtcols writes its output to stdout.  Use the redirection operator
-  ``\bca'' to send the output to a file.
+  \app{odtcols} writes its output to stdout.  Use the redirection operator
+  ``\bca'' to send output to a file.
 \end{description}
 Commonly the \texttt{\textbf{-s}} switch is used in a first pass, to
 reveal the column headers; specific column selections may then be made
 in a second, separate invocation.  If no options or columns are
 specified, then the help message is displayed.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Oxs package management:
+            oxspkg\label{sec:oxspkg}}%
+\index{application!oxspkg}
+
+The \app{oxspkg} command is used to manage optional Oxs extension
+packages.  Each package is stored in a separate directory under
+\fn{oommf/app/oxs/contrib/}.  These packages can be ``installed'' and
+``uninstalled'' to and from the \fn{oommf/app/oxs/local/} directory by
+the \app{oxspkg} command.  The install is a simple copy that does not
+automatically build the package or link it into the Oxs executable---a
+separate invocation of
+\hyperrefhtml{\app{pimake}}{\app{pimake} (Sec.~}{)}{sec:pimake}
+is needed for that.
+
+\sssechead{Launching}
+The \app{oxspkg} launch command is:
+\begin{description}
+\addtolength{\itemsep}{-0.9\baselineskip}
+\item[\latex{\hphantom{\textbf{or}}\hspace{1ex}}]\hspace*{1ex}\latex{\\[-\baselineskip]}
+\verb+tclsh oommf.tcl oxspkg list+
+\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
+\verb+tclsh oommf.tcl oxspkg listfiles pkg [pkg ...]+
+\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
+\verb+tclsh oommf.tcl oxspkg install [-v] [-nopatch] pkg [pkg ...]+
+\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
+\verb+tclsh oommf.tcl oxspkg uninstall pkg [pkg ...]+
+\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
+\verb+tclsh oommf.tcl oxspkg copyout pkg [pkg ...] destination+
+\end{description}
+Glob-style wildcards (*, ?) or the keyword \cd{all} are accepted in
+package specifications.  (If your command shell expands wildcards, as
+is common on \Unix\ systems, then you may need to escape or quote the
+wildcards so that they are passed unadulterated to the \app{oxspkg}
+program.)  The first argument following the \app{oxspkg}
+keyword is one of the sub-commands \cd{list}, \cd{listfiles},
+\cd{install}, \cd{uninstall}, or \cd{copyout}:
+\begin{description}
+\item[\optkey{list}]
+  Lists all the packges available under
+  \fn{oommf/app/oxs/contrib/}, how many (installable) files are in
+  each package, and the package install status.
+\item[\optkey{listfiles pkg [pkg \ldots]}]
+  List each of the ``installable'' files for the selected package.
+  (There may be additional files for the package, e.g.\ \fn{README} or
+  files with versioning information, included in the
+  \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directory.  However, those
+  files are ignored by the \app{oxspkg install} command.)
+\item[\optkey{install [-v] [-nopatch] pkg [pkg \ldots]}]
+  Install (copies) the installable files for the selected package
+  from \fn{oommf/app/oxs/contrib/} to \fn{oommf/app/oxs/local/}.
+  This command \textbf{does not} to compile the files or link them
+  into the Oxs executable.  The user is responsible for making a
+  separate call to \htmlonlyref{\app{pimake}}{sec:pimake}
+  to build and link the package.
+
+  For third-party packages, the contents of the
+  \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directory will mirror some
+  release of the package from the official maintainer of the package.
+  If those files don't compile cleanly against the current
+  \OOMMF\ distribution, then a patch file will be included in the
+  parent \fn{oommf/app/oxs/contrib/} directory.  Normally that patch
+  file (if any) is automatically applied as part of the installation
+  procedure.  The \cd{-nopatch} option skips the patch step.  Note:
+  The patch step requires that a \app{patch} command exists on the
+  system executable search path.  \app{patch} is a standard system
+  utility on \Unix\ systems.  Versions of \app{patch} for \Windows\ are
+  available, such as the one from the GnuWin project.  If there are no
+  patches for a particular package, then the message \cd{No patches
+    found} will be reported during the install process.
+
+  The \cd{-v} option requests more verbose output.
+\item[\optkey{uninstall pkg [pkg \ldots]}]
+ Deletes all files in \fn{oommf/app/oxs/local/} associated with the
+ selected package.  Here ``associated'' means a file name match with a
+ file in the package directory \fn{oommf/app/oxs/contrib/\oab pkg\cab/}.
+ There is no checking of contents or timestamps between the files.
+\item[\optkey{copyout pkg [pkg \ldots] destination}]
+  Selects files in the same manner as the \cd{uninstall} command, but
+  rather than deleting the files instead copies them to the
+  \fn{destination} directory.  This is intended as a development aid
+  for creating patches for packages.
+\end{description}
+
+Most of the optional packages controlled by \app{oxspkg} are from
+third-party contributors.  However, some may originate with the
+\OOMMF\ core development team, but are made optional because they
+require third-party libraries or are considered too experimental to be
+included among the standard \OOMMF\ packages.  See the \fn{README} file
+in the various \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directories
+for details.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Oxs regression tests:
+            oxsregression\label{sec:oxsregression}}%
+\index{application!regression}
+
+The \app{oxsregression} runs a test suite for the Oxs solver.  For
+each test, an instance of
+\hyperrefhtml{\app{boxsi}}{\app{boxsi} (Sec.~}{)}{sec:boxsi}\index{application!boxsi}
+is run and the results are compared against reference results stored
+in subdirectories under \fn{oommf/app/oxs/regression\_tests/}.
+
+\sssechead{Launching}
+The \app{oxsregression} launch command is:
+\begin{verbatim}
+tclsh oommf.tcl runtests [-autoadd] [-ignoreextra] [-keepfail] [-listtests]
+       [-loglevel level] [-noexcludes] [-resultsfile stemname] [-showoutput]
+       [-sigfigs digits] [-threads count] [-timeout seconds]
+       [-updaterefdata] [-v] [testa testb ...]
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{-autoadd}]
+ Automatically adds new tests from \MIF\ files found in the examples
+ directory \fn{oommf/app/oxs/examples/}.
+\item[\optkey{-ignoreextra}]
+ Ignore extra columns, if any, in test results as compared to
+ reference results.  This is useful in developement work when
+ changes to a \MIF\ file introduce additional data table output.
+\item[\optkey{-keepfail}]
+  Keep results from failed tests.  Normally test results are
+  automatically deleted.
+\item[\optkey{-listtests}]
+  List all selected tests and exit without running any tests.
+\item[\optkey{-loglevel level}]
+  Controls amount of log information written to \fn{boxsi.errors}
+  (default 0).
+\item[\optkey{-noexcludes}]
+  Some tests suffer from various numerical problems.  These are
+  excluded from testing, unless this option is specified.
+\item[\optkey{-resultsfile stemname}]
+  Test results are written to temporary files; by default these files
+  have the stem \cd{regression-test-output}.  If \app{oxsregression}
+  is run simultaneously, perhaps on different machines on a shared
+  file system, then overwriting of files from one process can
+  interfere with the processing by another.  The \cd{-resultsfile}
+  option can be used to cordon off results between simultaneous runs.
+\item[\optkey{-showoutput}]
+  If this switch is not specified, then \fn{stdout} and \fn{stderr}
+  output from \app{boxsi} is swallowed by \app{oxsregression}.
+\item[\optkey{-sigfigs digits}]
+ Number of significant (decimal) digits to use in comparing test to
+ reference results; the default setting is eight.
+\item[\optkey{-threads count}]
+ Number of threads to run \app{boxsi} with.  This option is available
+ for threaded builds only.  The default is the default thread count
+ for \app{boxsi}.
+\item[\optkey{-timeout seconds}]
+ Maximum number of seconds to wait for one test to finish; any
+ individual test that fails to complete within this time span is summarily
+ terminated.  The default time is 150 seconds; use 0 to indicate no timeout.
+\item[\optkey{-updaterefdata}]
+ For developer use only; this option causes the reference results to
+ be replaced (overwritten) with new test results.
+\item[\optkey{-v}]
+ Enable verbose output.
+\item[\optkey{testa testb \ldots}]
+ Tests to run, with glob-style wildcards (*, ?) accepted.  If no tests
+ are specified then all (non-excluded) tests are selected.  Subtest
+ selection must be quoted with the test to appear as a single
+ argument, e.g., \verb+"exch6ngbr 1,7,9"+.  If no subtests are
+ specified then all subtests are run.
+\end{description}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{OOMMF and Process ID Information: pidinfo\label{sec:pidinfo}}%
 \index{application!pidinfo}\index{PID's}\index{OID's}
 
-The \app{pidinfo} command returns the mapping of OOMMF ID's (OID's)
-to system process ID's (PID's).
+The \app{pidinfo} command prints a table mapping OOMMF ID's (OID's)
+to system process ID's (PID's) and application names.
 
 \sssechead{Launching}
 The \app{pidinfo} command line is:
 \begin{verbatim}
 tclsh oommf.tcl pidinfo [standard options] [-account name] \
-   [-hostport port] [-names] [-noheader] [-ports] [-timeout secs] \
-   [-v] [oid ...]
+   [-hostport port] [-names] [-noheader] [-pid] [-ports] \
+   [-timeout secs] [-wait secs] [-v] [oid ...]
 \end{verbatim}
 where
 \begin{description}
 \item[\optkey{-account name}]
- Specify the account name.  The default is the same used by 
+ Specify the account name.  The default is the same used by
  \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
  the current user login name, except on \Windows~9X, where the dummy
  account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
@@ -1309,6 +1823,8 @@ where
  command\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}.
 \item[\optkey{-noheader}]
  Don't print column headers.
+\item[\optkey{-pid}]
+ Select processes by system pid rather than OOMMF oid.
 \item[\optkey{-ports}]
  Display active server ports for each application.
 \item[\optkey{-timeout secs}]
@@ -1316,9 +1832,13 @@ where
  is five seconds.
 \item[\optkey{-v}]
  Display information about the host and account servers.
+\item[\optkey{-wait secs}]
+ If no match is found, then retry for up to \cd{secs} seconds.  Default
+ is zero seconds, i.e., try once.
 \item[\optkey{oid \ldots}]
  List of OOMMF ID's to display information about.  Default is all
- current applications.
+ current applications.  If the \cd{-pid} option is specified then this
+ selection is by system process ID's rather than \OOMMF\ ID's.
 \end{description}
 The title bar of running OOMMF applications typically displays the
 application OID, which are used by OOMMF applications to identify one
@@ -1330,58 +1850,6 @@ utilities.  The PID may also be needed to invoke the operating system
 ``kill'' facility to terminate a rogue OOMMF application.  The
 \app{pidinfo} application can be used to correspond OID's or \OOMMF\
 application names to PID's for such purposes.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Process Nicknames: nickname\label{sec:nickname}}%
-\index{application!pidinfo}\index{PID's}\index{OID's}\index{nicknames}
-
-The \app{nickname} command associates nicknames to running instances
-of OOMMF applications.  These names are used by the \MIF\ 2.x
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} command\latex{
-(Sec.~\ref{sec:mif2ExtensionCommands})}.
-
-\sssechead{Launching}
-The \app{nickname} command line is:
-\begin{verbatim}
-tclsh oommf.tcl nickname [standard options] [-account name] \
-   [-hostport port] [-pid] [-timeout secs] oid [nickname ...]
-\end{verbatim}
-where
-\begin{description}
-\item[\optkey{-account name}]
- Specify the account name.  The default is the same used by 
- \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
- the current user login name, except on \Windows~9X, where the dummy
- account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
- instead.
-\item[\optkey{-hostport port}]
- Use the host server listening on \cd{port}.  Default is set by the
- \cd{Net\_Host~port} setting in \fn{oommf/config/options.tcl}, or by
- the environment variable \cd{OOMMF\_HOSTPORT} (which, if set,
- overrides the former).  The standard setting is 15136.
-\item[\optkey{-pid}]
- Specify application instance to nickname by system PID
- (process identifier) rather than OID (OOMMF identifier).
-\item[\optkey{-timeout secs}]
- Maximum time to wait for response from servers, in seconds.  Default
- is five seconds.
-\item[\optkey{oid}]
- The OOMMF ID of the running application instance to nickname, unless
- the \cd{-pid} option is specified, in which case the system PID is
- specified instead.
-\item[\optkey{nickname}]
- One or more nicknames to associate with the specified application
- instance.  Each nickname must include at least one non-numeric
- character.
-\end{description}
-This command is used to associate nicknames with running instances of
-OOMMF applications.  The \MIF\ 2.1
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} command can then
-use the nickname to link Oxs output to a given OOMMF application
-instance at problem load time.  Nicknames for GUI applications can be
-viewed in the application \cd{About} dialog box, or can be seen for
-any application via the \cd{-names} option to the command line
-application \htmlonlyref{\app{pidinfo}}{sec:pidinfo}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

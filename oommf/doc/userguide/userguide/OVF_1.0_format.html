@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,13 +13,13 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
 <LINK REL="next" HREF="OVF_2.0_format.html">
-<LINK REL="previous" HREF="Vector_Field_File_Format_OV.html">
+<LINK REL="previous" HREF="OVF_0.0_format.html">
 <LINK REL="up" HREF="Vector_Field_File_Format_OV.html">
 <LINK REL="next" HREF="OVF_2.0_format.html">
 </HEAD>
@@ -28,27 +28,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html905"
+<A NAME="tex2html994"
   HREF="OVF_2.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html901"
+<A NAME="tex2html990"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html895"
-  HREF="Vector_Field_File_Format_OV.html">
+<A NAME="tex2html984"
+  HREF="OVF_0.0_format.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html907"
+<A NAME="tex2html996"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html903"
+<A NAME="tex2html992"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html906"
+<B> Next:</B> <A NAME="tex2html995"
   HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
-<B> Up:</B> <A NAME="tex2html902"
+<B> Up:</B> <A NAME="tex2html991"
   HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
-<B> Previous:</B> <A NAME="tex2html896"
-  HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
+<B> Previous:</B> <A NAME="tex2html985"
+  HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
@@ -56,15 +56,15 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html909"
-  HREF="OVF_1.0_format.html#SECTION000201100000000000000">Segment Header block</A>
-<LI><A NAME="tex2html910"
-  HREF="OVF_1.0_format.html#SECTION000201200000000000000">Data block</A>
+<LI><A NAME="tex2html998"
+  HREF="OVF_1.0_format.html#SECTION000202100000000000000">Segment Header block</A>
+<LI><A NAME="tex2html999"
+  HREF="OVF_1.0_format.html#SECTION000202200000000000000">Data block</A>
 </UL>
 <!--End of Table of Child-Links-->
 <HR>
 
-<H2><A NAME="SECTION000201000000000000000"></A><A NAME="sec:ovfformat"></A>
+<H2><A NAME="SECTION000202000000000000000"></A><A NAME="sec:ovfformat"></A>
 <BR>
 The OVF 1.0 format
 </H2>
@@ -104,7 +104,7 @@ identification line. OOMMF treats all of these as synonyms for
 
 <P>
 The remainder of the file is conceptually broken into Segment
-blocks<A NAME="19919"></A>, and each Segment block is composed of a
+blocks<A NAME="21054"></A>, and each Segment block is composed of a
 (Segment) Header block and a Data block.  Each block begins with a
 ``<code># Begin: &lt;block type&gt;</code>'' line, and ends with a corresponding
 ``<code># End: &lt;block type&gt;</code>'' line.  The number of Segment blocks is
@@ -122,7 +122,7 @@ to start the first segment.
 
 <P>
 
-<H3><A NAME="SECTION000201100000000000000"></A><A NAME="sec:ovfsegmentheader"></A>
+<H3><A NAME="SECTION000202100000000000000"></A><A NAME="sec:ovfsegmentheader"></A>
 <BR>
 Segment Header block
 </H3>
@@ -169,7 +169,7 @@ unless ``integer'' is explicitly stated.
    ValueRangeMinMag.  If both ValueRangeMinMag and ValueRangeMaxMag
    are zero, then the values should be ignored.
 </LI>
-<LI><B>meshtype:</B><A NAME="19938"></A> Grid structure; should be either
+<LI><B>meshtype:</B><A NAME="21073"></A> Grid structure; should be either
    ``rectangular'' or
    ``irregular.''  Irregular grid files should specify ``pointcount''
    in the header; rectangular grid files should specify instead
@@ -196,7 +196,7 @@ unless ``integer'' is explicitly stated.
 
 <P>
 
-<H3><A NAME="SECTION000201200000000000000">
+<H3><A NAME="SECTION000202200000000000000">
 Data block</A>
 </H3>
 The data block start is marked by a line of the form
@@ -318,7 +318,7 @@ line that ends the segment, and hence the file.
 
 <P>
 Note: An OVF&nbsp;1.0 file with ASCII data and irregular meshtype is
-also a valid OVF&nbsp;0.0 (SVF<A NAME="19953"></A>) file, although as a
+also a valid OVF&nbsp;0.0 (SVF<A NAME="21088"></A>) file, although as a
 OVF&nbsp;0.0 file the value scaling as specified by
 ``<code># valueunit</code>'' and ``<code># valuemultiplier</code>'' header lines is
 inactive.
@@ -396,7 +396,7 @@ inactive.
 # End: segment
 </PRE>
   <DIV ALIGN="CENTER">
-Figure 11:
+Figure 12:
     Commented OVF sample
 file.
     <A HREF="#sec:ovfformat">(Description.)</A>
@@ -408,22 +408,22 @@ file.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html905"
+<A NAME="tex2html994"
   HREF="OVF_2.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html901"
+<A NAME="tex2html990"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html895"
-  HREF="Vector_Field_File_Format_OV.html">
+<A NAME="tex2html984"
+  HREF="OVF_0.0_format.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html908"
+<A NAME="tex2html997"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html903"
+<A NAME="tex2html992"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

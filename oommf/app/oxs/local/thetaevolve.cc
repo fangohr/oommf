@@ -193,6 +193,8 @@ UHH_ThetaEvolve::UHH_ThetaEvolve(
      &UHH_ThetaEvolve::UpdateDerivedOutputs);
   delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
      &UHH_ThetaEvolve::UpdateDerivedOutputs);
+  temperature_output.Setup(this,InstanceName(),"Temperature","K",0,
+     &UHH_ThetaEvolve::UpdateDerivedOutputs);
   dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
      &UHH_ThetaEvolve::UpdateDerivedOutputs);
   mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
@@ -207,6 +209,7 @@ OC_BOOL UHH_ThetaEvolve::Init()
   max_dm_dt_output.Register(director,-5);
   dE_dt_output.Register(director,-5);
   delta_E_output.Register(director,-5);
+  temperature_output.Register(director,-5);
   dm_dt_output.Register(director,-5);
   mxH_output.Register(director,-5);
 
@@ -372,6 +375,20 @@ void UHH_ThetaEvolve::Calculate_dm_dt
 
 
 OC_BOOL
+UHH_ThetaEvolve::InitNewStage
+(const Oxs_TimeDriver* /* driver */,
+ Oxs_ConstKey<Oxs_SimState> state,
+ Oxs_ConstKey<Oxs_SimState> /* prevstate */)
+{
+  // Update derived data in state.
+  const Oxs_SimState& cstate = state.GetReadReference();
+  // Note: state is a copy-by-value import, so its read lock
+  //       will be released on exit.
+	SetTemperature(GetStageTemp(cstate.stage_number),alpha,gamma);
+  return 1;
+}
+
+OC_BOOL
 UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
 		      Oxs_ConstKey<Oxs_SimState> current_state,
 		      const Oxs_DriverStepInfo& /* step_info */,
@@ -462,7 +479,6 @@ UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
     workstate.stage_start_time = cstate.stage_start_time
                                 + cstate.stage_elapsed_time;
     workstate.stage_elapsed_time = workstate.last_timestep;
-		SetTemperature(GetStageTemp(workstate.stage_number),alpha,gamma);
   } else {
     workstate.stage_start_time = cstate.stage_start_time;
     workstate.stage_elapsed_time = cstate.stage_elapsed_time
@@ -628,6 +644,7 @@ UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
      !nstate.AddDerivedData("Max dm/dt",new_max_dm_dt) ||
      !nstate.AddDerivedData("dE/dt",new_dE_dt) ||
      !nstate.AddDerivedData("Delta E",dE) ||
+     !nstate.AddDerivedData("Temperature",temperature) ||
      !nstate.AddDerivedData("pE/pt",new_pE_pt)) {
     throw Oxs_Ext::Error(this,
        "UHH_ThetaEvolve::Step:"
@@ -652,12 +669,14 @@ void UHH_ThetaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state)
   max_dm_dt_output.cache.state_id
     = dE_dt_output.cache.state_id
     = delta_E_output.cache.state_id
+		= temperature_output.cache.state_id
     = 0;  // Mark change in progress
 
   OC_REAL8m dummy_value;
   if(!state.GetDerivedData("Max dm/dt",max_dm_dt_output.cache.value) ||
      !state.GetDerivedData("dE/dt",dE_dt_output.cache.value) ||
      !state.GetDerivedData("Delta E",delta_E_output.cache.value) ||
+     !state.GetDerivedData("Temperature",temperature_output.cache.value) ||
      !state.GetDerivedData("pE/pt",dummy_value) ||
      !state.GetDerivedData("Timestep lower bound",dummy_value) ||
      (dm_dt_output.GetCacheRequestCount()>0
@@ -714,12 +733,18 @@ void UHH_ThetaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state)
     delta_E_output.cache.value=dummy_value;
   }
 
+    if(!state.GetDerivedData("Temperature",dummy_value)) {
+      state.AddDerivedData("Temperature",
+			   temperature);
+    }
+
   max_dm_dt_output.cache.value*=(180e-9/PI);
   /// Convert from radians/second to deg/ns
 
   max_dm_dt_output.cache.state_id
     = dE_dt_output.cache.state_id
     = delta_E_output.cache.state_id
+    = temperature_output.cache.state_id
     = state.Id();
 }   // end UpdateDerivedOutputs
 

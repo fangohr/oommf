@@ -109,38 +109,9 @@ $config SetValue program_compiler_c++ {g++ -c}
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
          cpuguess-linux-x86_64.tcl]
 
-proc Find_SSE_Level {} {
-   # Read and organize cpu info from /proc/cpuinfo
-   set chan [open "/proc/cpuinfo" r]
-   set data [read $chan]
-   close $chan
-   regsub "\n\n.*" $data {} cpu0
-   regsub -all "\[ \t]+" $cpu0 { } cpu0
-   regsub -all " *: *" $cpu0 {:} cpu0
-   regsub -all " *\n *" $cpu0 "\n" cpu0
-   array set cpuarr [split $cpu0 ":\n"]
-   set flags $cpuarr(flags)
-
-   # Determine SSE level from settings in $flags.  For now,
-   # don't try to distinguish between the various sub-levels,
-   # e.g., map ssse3 -> sse3; sse4_1, sse4_2, sse4a -> sse4
-   if {[lsearch $flags sse4*]>=0 || [lsearch $flags nni]} {
-      set sse_level 4
-   } elseif {[lsearch $flags  sse3]>=0 ||
-             [lsearch $flags   pni]>=0 ||
-             [lsearch $flags ssse3]>=0 ||
-             [lsearch $flags   mni]>=0 ||
-             [lsearch $flags   tni]>=0} {
-      set sse_level 3
-   } elseif {[lsearch $flags sse2]>=0} {
-      set sse_level 2
-   } elseif {[lsearch $flags sse]>=0} {
-      set sse_level 1
-   } else {
-      set sse_level 0
-   }
-   return $sse_level
-}
+# Load routine to determine glibc version
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         glibc-support.tcl]
 
 ########################################################################
 # LOCAL CONFIGURATION
@@ -168,6 +139,12 @@ proc Find_SSE_Level {} {
 ## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not use
 ## SSE intrinsics.  Leave unset to get the default.
 # $config SetValue sse_level 2  ;# Replace '2' with desired level
+#
+## Use FMA (fused multiply-add) intrinsics?  If so, specify either "3"
+## for three argument intrinsics or "4" for four argument intrinsics.
+## Set to 0 to not use FMA intrinsics.  Leave unset to get the default
+## (which may depend on the selected compiler).
+# $config SetValue fma_type 0 ;# Replace '0' with desired type
 #
 ## Use NUMA (non-uniform memory access) libraries?  This is only
 ## supported on Linux systems that have both NUMA runtime (numactl) and
@@ -213,10 +190,26 @@ proc Find_SSE_Level {} {
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
-## Extra libs to throw on the link line
-# $config SetValue program_linker_extra_libs -lfftw3 
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
 # 
-###################
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -233,8 +226,11 @@ if {[catch {$config GetValue oommf_threads}]} {
 $config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
 ## maximum number of "auto" threads to 4.
 if {[catch {$config GetValue thread_count}]} {
-   # Value not set in platforms/local/linux-x86_64.tcl, so use
-   # getconf to report the number of "online" processors
+   # Value not set in platforms/local/linux-x86_64.tcl, so use getconf
+   # to report the number of "online" processors.  NOTE: Neither
+   # _NPROCESSORS_ONLN nor processor_count in /proc/cpuinfo
+   # distinguish between physical cores and logical cores introduced
+   # via hyperthreading.
    if {[catch {exec getconf _NPROCESSORS_ONLN} processor_count]} {
       # getconf call failed.  Try using /proc/cpuinfo
       unset processor_count
@@ -312,6 +308,9 @@ if {[string match g++* $ccbasename]} {
             # accurate than what comes from GuessCpu.
             $config SetValue sse_level [Find_SSE_Level]
          }
+         if {[catch {$config GetValue fma_type}]} {
+            $config SetValue fma_type [Find_FMA_Type]
+         }
       } else {
          if {[catch {$config GetValue sse_level}]} {
             # sse_level not set in LOCAL CONFIGURATION block;
@@ -352,22 +351,6 @@ if {[string match g++* $ccbasename]} {
       lappend opts -mfpmath=387
    }
 
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
-
    # Older versions of GCC don't include the _mm_cvtsd_f64 intrinsic.
    # If not set in the local platform file, then use the gcc version
    # date to guess the right behavior.
@@ -397,6 +380,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -440,16 +439,20 @@ if {[string match g++* $ccbasename]} {
    #   Use of realwide is restricted in the code so that the speed
    # advantage of using "double" over "long double" should be pretty
    # minimal on this platform, but YMMV.
-   # Default is "double" (because on some platforms "long double"
-   # is a wide type simulated via software and is very slow).
-   $config SetValue program_compiler_c++_typedef_realwide "long double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
    # but you can try setting this to "long double" for extra
    # precision (and extra slowness).  If this is set to "long double",
    # then so should realwide in the preceding stanza.
-   #$config SetValue program_compiler_c++_typedef_real8m "long double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_real8m "double"
+   }
 
    # The long double versions of floor() and ceil() are badly broken
    # on some machines.  If the following option is set to 1, then
@@ -520,22 +523,6 @@ if {[string match g++* $ccbasename]} {
    }
    lappend opts "--exceptions" ;# This has to come after -mp
 
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
-
    # Use/don't use SSE intrinsics.  The default is yes, at level 2,
    # since x86_64 guarantees at least SSE2.
    #    You can override the value by setting the $config sse_level
@@ -558,7 +545,6 @@ if {[string match g++* $ccbasename]} {
       $config SetValue program_compiler_c++_broken_storel_pd 1
    }
 
-
    # Disable selected warnings
    # Warning 1301: non-template friend of a template class
    lappend opts --display_error_number
@@ -567,6 +553,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
@@ -586,7 +588,20 @@ if {[string match g++* $ccbasename]} {
 
    # Widest natively support floating point type.  See note about
    # "realwide" in the g++ block above.
-   $config SetValue program_compiler_c++_typedef_realwide "double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
+
+   # Experimental: The OC_REAL8m type is intended to be at least
+   # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
+   # but you can try setting this to "long double" for extra
+   # precision (and extra slowness).  If this is set to "long double",
+   # then so should realwide in the preceding stanza.
+   if {[catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_real8m "double"
+   }
 
    # The long double versions of floor() and ceil() are badly broken
    # on some machines.  If the following option is set to 1, then
@@ -666,6 +681,9 @@ if {[string match g++* $ccbasename]} {
          if {[catch {$config GetValue sse_level}]} {
             $config SetValue sse_level [Find_SSE_Level]
          }
+         if {[catch {$config GetValue fma_type}]} {
+            $config SetValue fma_type [Find_FMA_Type]
+         }
       }
       set cpuopts [GetIcpcCpuOptFlags $icpc_version $cpu_arch]
    }
@@ -674,22 +692,6 @@ if {[string match g++* $ccbasename]} {
    # unsetting the cpuopts variable.
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
-   }
-
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
    }
 
    # Use/don't use SSE intrinsics.  The default is yes, at level 2,
@@ -709,6 +711,22 @@ if {[string match g++* $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
+
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
@@ -722,17 +740,24 @@ if {[string match g++* $ccbasename]} {
    # { format "-w0 -verbose \
    #   -msg_disable undpreid,novtbtritmp,boolexprconst,badmulchrcom" }
 
-   # Wide floating point type.  Defaults to double, but you can
-   # change this to "long double" for extra precision and somewhat
-   # reduced speed.
-   # $config SetValue program_compiler_c++_typedef_realwide "long double"
+   # Wide floating point type.  Defaults to "long double" which provides
+   # extra precision.  Change to "double" for somewhat faster runs with
+   # reduced precision.
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
    # but you can try setting this to "long double" for extra
    # precision (and extra slowness).  If this is set to "long double",
    # then so should realwide in the preceding stanza.
-   # $config SetValue program_compiler_c++_typedef_real8m "long double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_real8m "double"
+   }
+
 } elseif {[string match openCC* $ccbasename]} {
    # Optimization options
    set opts -Ofast
@@ -761,6 +786,12 @@ if {[string match g++* $ccbasename]} {
       } else {
          set cpuopts -mtune=$cpu_arch
       }
+      if {[catch {$config GetValue sse_level}]} {
+         $config SetValue sse_level [Find_SSE_Level]
+      }
+      if {[catch {$config GetValue fma_type}]} {
+         $config SetValue fma_type [Find_FMA_Type]
+      }
    }
    # You can override the above results by directly setting or
    # unsetting the cpuopts variable, e.g.,
@@ -773,7 +804,6 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
-
    # Disable some default warnings in the opts switch, as opposed
    # to the warnings switch below, so that these warnings are always
    # muted, even if '-warn' option in file options.tcl is disabled.
@@ -785,6 +815,22 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
+   }
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -829,14 +875,20 @@ if {[string match g++* $ccbasename]} {
    # minimal on this platform, but YMMV.
    # Default is "double" (because on some platforms "long double"
    # is a wide type simulated via software and is very slow).
-   $config SetValue program_compiler_c++_typedef_realwide "long double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
    # but you can try setting this to "long double" for extra
    # precision (and extra slowness).  If this is set to "long double",
    # then so should realwide in the preceding stanza.
-   #$config SetValue program_compiler_c++_typedef_real8m "long double"
+   if {[catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_real8m "double"
+   }
 
    # The long double versions of floor() and ceil() are badly broken
    # on some machines.  If the following option is set to 1, then
@@ -981,18 +1033,22 @@ if {$major>8 || ($major==8 && $minor>=3)} {
 unset major ; unset minor ; unset serial
 
 ########################################################################
-#$config SetValue TCL_LIBS [concat -lfftw3 [$config GetValue TCL_LIBS]]
-#$config SetValue TK_LIBS [concat -lfftw3 [$config GetValue TK_LIBS]]
-
+if {[catch {$config GetValue program_linker_extra_libs} extra_libs]} {
+   set extra_libs {}
+}
+foreach {glibc_major glibc_minor} [GetGlibcVersion] break
+if {$glibc_major<2 || ($glibc_major==2 && $glibc_minor<17)} {
+   # The realtime extensions library is needed for glibc prior
+   # to 2.17 for clock_gettime() support.
+   lappend extra_libs -lrt
+}
 if {![catch {$config GetValue use_numa} _] && $_} {
    # Include NUMA (non-uniform memory access) library
-   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] -lnuma]
-   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] -lnuma]
+   lappend extra_libs -lnuma
 }
-
-if {![catch {$config GetValue program_linker_extra_libs} libs]} {
-   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] $libs]
-   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] $libs]
+if {[llength $extra_libs]>0} {
+   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] $extra_libs]
+   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] $extra_libs]
 }
 
 ########################################################################

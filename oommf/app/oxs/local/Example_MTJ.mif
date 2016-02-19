@@ -158,6 +158,16 @@ proc ReadHField { stage } {
 
 Specify Oxs_Demag {}
 
+
+proc u_profile { s } {
+    set scale 0.0;
+    if {$s==1} {
+        set scale 0
+    }
+    return $scale
+}
+
+
 proc J_time { t } {
     set scale 1.0;
     set StopCurrent [expr 1.0e-8]

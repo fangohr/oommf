@@ -93,6 +93,18 @@ public:
     : Oxs_Exception(msgtext,msgsubtype,msgsrc,msgfile,msgline,sd_count) {}
 };
 
+// Bad code
+class Oxs_BadCode : public Oxs_Exception {
+public:
+  const char* MessageType() const { return "Bad code"; }
+  Oxs_BadCode(const String& text) : Oxs_Exception(text) {}
+  Oxs_BadCode(const String& msgtext,
+              const String& msgsubtype,
+              const String& msgsrc,
+              const char* msgfile,int msgline,int sd_count)
+    : Oxs_Exception(msgtext,msgsubtype,msgsrc,msgfile,msgline,sd_count) {}
+};
+
 // Data structure lock action failure
 class Oxs_BadLock : public Oxs_Exception {
 public:

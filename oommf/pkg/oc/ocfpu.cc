@@ -2,9 +2,9 @@
  *
  *	Floating point unit control
  *
- * NOTICE: Plase see the file ../../LICENSE
+ * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2012-09-19 22:54:03 $
+ * Last modified on: $Date: 2014/11/19 04:40:35 $
  * Last modified by: $Author: donahue $
  *
  */
@@ -54,10 +54,20 @@ static Tcl_Mutex ocfpu_mutex = 0;
  *    10 = Round to +infinity
  *    11 = Truncate (round to zero)
  *
-*/
+ * Some compilers (notably Borland C++) by default enable floating
+ * point exceptions.  If you don't want the code to abort on floating
+ * point overflow, etc., then mask these exceptions with code like
+ *
+ *   OC_UINT2 mode = Getx87ControlWord();
+ *   mode |= 0x3f;
+ *   Setx87ControlWord(mode);
+ *
+ */
 #if OC_USE_X87
 
-# if defined(__GNUC__)
+# if defined(__GNUC__) || defined(__PGIC__)
+// __GNUC__ is GNU C/C++, __PGIC__ is Portland group C/C++
+// Intel C++ also flows here, via __GNUC__.
 #  if !(defined(__i386__) || defined(__x86_64__))
 #   error OC_USE_X87 only valid on x86 systems
 #  endif
@@ -72,28 +82,45 @@ OC_UINT2 Oc_FpuControlData::Getx87ControlWord()
   return mode;
 }
 
-# elif defined(_MSC_VER) || defined(__BORLANDC__)
+# elif defined(_WIN32)
 #  if !(defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64))
 #   error OC_USE_X87 only valid on x86 systems
 #  endif
+// The following is the Visual C++ convention; many Windows compilers
+// accept this.  Separate code blocks for any exceptions should be
+// place above.
 void Oc_FpuControlData::Setx87ControlWord (OC_UINT2 mode)
 {
   _control87((unsigned int)mode,0xFFFF); // Declared in <float.h>
 }
 OC_UINT2 Oc_FpuControlData::Getx87ControlWord()
 {
-  return _control87(0,0);  // Declared in <float.h>
+  return static_cast<OC_UINT2>(_control87(0,0));  // Declared in <float.h>
 }
 
 # else
-#  error OC_USE_X87 only supported on gcc compiler
+// If all else fails, try the gcc assembler convention.  If your
+// compiler fails here then write a separate block for that compiler.
+// (Or, if you are really desperate, write dummy routines that do
+// nothing; at present (Sep-2013) this code is only used to propagate
+// the control word to child threads on Windows.)
+void Oc_FpuControlData::Setx87ControlWord (OC_UINT2 mode)
+{
+  __asm__("fldcw %0" : : "m"(mode));
+}
+OC_UINT2 Oc_FpuControlData::Getx87ControlWord()
+{
+  OC_UINT2 mode;
+  __asm__("fstcw %0" : "=m"(mode));
+  return mode;
+}
 # endif // x87 compiler check
 #endif // x87 control word
 
 
 /* SSE Control word description:
  *
- * Pnemonic   Bit Location             Description
+ * Mnemonic   Bit Location             Description
  *   FZ         bit 15                Flush To Zero
  *   R+         bit 14                Round Positive
  *   R-         bit 13                Round Negative
@@ -127,12 +154,12 @@ OC_UINT2 Oc_FpuControlData::Getx87ControlWord()
 #if OC_USE_SSE
 OC_UINT2 Oc_FpuControlData::GetSSEControlWord()
 {
-  return _mm_getcsr();
+  return static_cast<OC_UINT2>(_mm_getcsr());
 }
 
 void Oc_FpuControlData::SetSSEControlWord (OC_UINT2 mode)
 {
-  _mm_setcsr(mode & 0xFFC0);  // Mask out "volatile" bits
+  _mm_setcsr(mode & 0xFFC0u);  // Mask out "volatile" bits
   // NOTE: Bit 6 (mask 0x0040) controls DAZ.
 }
 #endif // OC_USE_SSE
@@ -169,6 +196,24 @@ void Oc_FpuControlData::WriteData()
 #endif
 #if OC_USE_SSE
     SetSSEControlWord(sse_data);
+#endif
+
+  } catch(...) {
+    Tcl_MutexUnlock(&ocfpu_mutex);
+    throw;
+  }
+  Tcl_MutexUnlock(&ocfpu_mutex);
+}
+
+void Oc_FpuControlData::MaskExceptions()
+{
+  Tcl_MutexLock(&ocfpu_mutex);
+  try {
+
+#if OC_USE_X87
+    OC_INT2 mode = Getx87ControlWord();
+    mode |= 0x3f;
+    Setx87ControlWord(mode);
 #endif
 
   } catch(...) {

@@ -18,8 +18,8 @@ Oxs_Output::Oxs_Output()
 {}
 
 Oxs_Output::~Oxs_Output()
-{ // Deregisters
-  if(director!=NULL) director->DeregisterOutput(this);
+{ // Deregister output from director
+  Deregister();
 }
 
 void Oxs_Output::Setup
@@ -70,6 +70,11 @@ void Oxs_Output::Register
               "Output object not registered.");
   }
 #endif // NDEBUG
+}
+
+void Oxs_Output::Deregister() {
+  if(director!=0) director->DeregisterOutput(this);
+  director=0; // Protect against multiple deregistration
 }
 
 String Oxs_Output::LongName() const

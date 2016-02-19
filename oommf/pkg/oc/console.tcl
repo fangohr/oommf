@@ -2,7 +2,7 @@
 #
 #	Provides a console window.
 #
-# Last modified on: $Date: 2002-03-20 21:40:47 $
+# Last modified on: $Date: 2002/03/20 21:40:47 $
 # Last modified by: $Author: dgp $
 #
 # This file is evaluated to provide a console window interface to the

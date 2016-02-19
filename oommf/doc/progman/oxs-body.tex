@@ -197,8 +197,117 @@ void Oxs_ExampleAnisotropy::GetEnergyAndField
 \subsection{Writing a New \cd{Oxs\_Energy} Extension}\label{sec:energynew}
 Under construction.
 
+\blackhole{
+%%% Some text from an email I wrote on 4-Apr-2014:
 
+The basic process is:
 
+(1) Find an existing energy term that is close to what you want.  Look
+    in oommf/app/oxs/ext/, oommf/app/oxs/local/, or the OOMMF page for
+    contributed modules
 
+       http://math.nist.gov/oommf/contrib/oxsext/
 
+    You can also ask on the muMAG mailing list, or do a web search.
 
+(2) Make a copy of the .h and .cc files of the "close" extension into
+    the directory oommf/app/oxs/local/.  The new files should have a
+    name different from that of the "close" extension.
+
+(3) Select a name for your extension and change all instances of the old
+    class name with the new extension name.  The name should have a
+    prefix that refers to you or your institution; this is to help
+    protect against name collisions with extensions written by other
+    people.  All of the Oxs_Ext classes written at NIST as part of the
+    OOMMF project use the prefix "Oxs_", for example Oxs_Demag,
+    Oxs_UniformExchange, Oxs_UZeeman.  So do *not* use the "Oxs_" prefix
+    for your extension.
+
+(4) Do a test build with your new files.  Run 'tclsh oommf.tcl pimake'.
+    Pimake will automatically notice your new .cc files in
+    oommf/app/oxs/local/ and compile and link them into the oxs
+    executable.  Fix any compiler and link errors as necessary until the
+    build is successful.
+
+(5) At this point you will have a working class with a new name.  You
+    can write .mif files using your new class name, but the behavior
+    will be the same as the "close" class.  So the next step is to edit
+    the .h and .cc files to get the behavior you want:
+
+      (a) Modify the class constructor to add or remove initialization
+          parameters; these are the label-value pairs you put inside the
+          class Specify block inside the .mif file.
+
+      (b) Modify the ::GetEnergy or ::ComputeEnergy member function to
+          implement the new behavior.  (GetEnergy and ComputeEnergy are
+          two interfaces to the same functionality; the latter is more
+          recent and is recommended for new code, but if your "close"
+          class used the older GetEnergy interface then it is fine to
+          stick with that.)  See the file oommf/app/oxs/base/energy.h
+          for details.
+
+(6) Run 'tclsh oommf.tcl pimake' to rebuild your extensions.  Make
+    changes as necessary until it compiles and links successfully.
+
+(7) Write a .mif file that uses your extension.  Load the problem into
+    Oxsii and check that it does what you intended.
+
+As an specific example, suppose I chose the kl_demag.h and kl_demag.cc
+files as my "close" example.  So following step 2 above, I copy these
+files to say kader_demag.h and kader_demag.cc.  For step 3 I open the
+kader_demag.* file into a plain text editor.  Looking in the .h file I
+see that the existing class name is "Klm_Demag_PBC".  So I change *all*
+instances of Klm_Demag_PBC with my new class name, let's say
+"Kader_Demag".  For example, in the .h file I change
+
+ class Klm_Demag_PBC:public Oxs_Energy                    --> class Kader_Demag:public Oxs_Energy
+ void (Klm_Demag_PBC::*fillcoefs)(const Oxs_Mesh*) const; --> void (Kader_Demag::*fillcoefs)(const Oxs_Mesh*) const;
+ Klm_Demag_PBC(const char* name,...) // Child instance id --> Kader_Demag(const char* name,...) // Child instance id
+ virtual ~Klm_Demag_PBC();                                --> virtual ~Kader_Demag();
+
+In the .cc file I change
+
+   OXS_EXT_REGISTER(Klm_Demag_PBC);                      --> OXS_EXT_REGISTER(Kader_Demag);
+   UINT4m Klm_Demag_PBC::NextPowerOfTwo(UINT4m n) const  --> UINT4m Kader_Demag::NextPowerOfTwo(UINT4m n) const
+   Klm_Demag_PBC::Klm_Demag_PBC(...)                     --> Kader_Demag::Kader_Demag(...)
+   and so on...
+
+I then do a test build with 'tclsh oommf.tcl pimake'.  If I've made all
+the changes properly then it should compile and link find (step 4).  You
+can now create a .mif file that includes a Specify block that looks like
+
+   Specify Kader_Demag {
+      tensor_file_name    "/tmp/demag_tensor/"
+   }
+
+It will load into Oxsii and run just like Klm_Demag_PBC.
+
+Step 5: Edit kader_demag.h and kader_demag.cc to make the real changes
+that I want.  The member function
+
+    Kader_Demag::Kader_Demag(...)
+
+is the constructor (step5a).  If you look in that function you will see
+lines that look like
+
+  tensor_file_name = GetStringInitValue("tensor_file_name", "");
+  error_A_dip_OFFdiag = GetRealInitValue("error_A_dip_OFFdiag", 1.1e-2);
+
+These read a parameter values named "tensor_file_name" and
+"error_A_dip_OFFdiag" from the .mif Specify block.  If you don't
+explicitly list these in the .mif Specify block, then the first gets a
+default value of "", and the second a default value of 1.1e-2.  The
+various *InitValue routines are defined in the file
+oommf/app/oxs/base/ext.h and ext.cc files.  You will need to modify the
+class declaration in kader_demag.h if you want to add or delete class
+variables.
+
+When you are happy with the constructor, next edit the energy
+computation routine.  kl_demag uses the older GetEnergy interface ---
+find the member function
+
+    void Kader_Demag::GetEnergy
+
+in kader_demag.cc.  Read that routine and make changes as necessary.
+Then run pimake (step 6) and start testing your extension (step 7).
+}

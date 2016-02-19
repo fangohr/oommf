@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2008-07-31 23:10:06 $
+ * Last modified on: $Date: 2008/07/31 23:10:06 $
  * Last modified by: $Author: donahue $
  */
 

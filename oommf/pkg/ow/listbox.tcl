@@ -2,7 +2,7 @@
 #
 # Scrolled listbox subwidget
 #
-# Last modified on: $Date: 2010-08-23 23:36:08 $
+# Last modified on: $Date: 2010/08/23 23:36:08 $
 # Last modified by: $Author: donahue $
 #
 

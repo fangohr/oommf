@@ -270,7 +270,34 @@ $config SetValue \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-###################
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
+#
+## Flags to remove from compiler "opts" string:
+# $config SetValue program_compiler_c++_remove_flags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
+# 
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -287,17 +314,29 @@ if {[catch {$config GetValue oommf_threads}]} {
 $config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
 ## maximum number of "auto" threads to 4.
 if {[catch {$config GetValue thread_count}]} {
-   # Value not set in platforms/local/wintel.tcl, so try
-   # to get value from environment:
-   if {[info exists env(NUMBER_OF_PROCESSORS)]} {
-      set processor_count $env(NUMBER_OF_PROCESSORS)
-      set auto_max [$config GetValue thread_count_auto_max]
-      if {$processor_count>$auto_max} {
-         # Limit automatically set thread count to auto_max
-         set processor_count $auto_max
+   # Value not set in platforms/local/wintel.tcl, so
+   # query the system:
+   set processor_count 0
+   if {![catch {exec wmic cpu get NumberOfCores /all} data]
+       && [llength $data]>1} {
+      foreach cpucores [lrange $data 1 end] {
+         catch {incr processor_count $cpucores}
       }
-      $config SetValue thread_count $processor_count
    }
+   if {$processor_count<1 && [info exists env(NUMBER_OF_PROCESSORS)]} {
+      set processor_count $env(NUMBER_OF_PROCESSORS)
+      # Note: NUMBER_OF_PROCESSORS is logical processor count, including
+      # those resulting from hyperthreadeding (if any).
+   }
+   if {$processor_count<1} {
+      set processor_count 1
+   }
+   set auto_max [$config GetValue thread_count_auto_max]
+   if {$processor_count>$auto_max} {
+      # Limit automatically set thread count to auto_max
+      set processor_count $auto_max
+   }
+   $config SetValue thread_count $processor_count
 }
 
 if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
@@ -316,6 +355,7 @@ if {[catch {$config GetValue program_compiler_c++} ccbasename]} {
 
 # Microsoft Visual C++ compiler
 if {[string match cl $ccbasename]} {
+   catch {unset cl_libs}
    set compilestr [$config GetValue program_compiler_c++]
    if {![info exists cl_version]} {
       set cl_version [GuessClVersion [lindex $compilestr 0]]
@@ -421,9 +461,30 @@ if {[string match cl $ccbasename]} {
       $config SetValue sse_level 0
    }
 
+   # Default stack alignment with this platform/compiler is 8 bytes,
+   # which in particular means that SSE variables on the stack won't
+   # necessarily be 16-byte aligned.
+   $config SetValue program_compiler_c++_stack_alignment 8
+
    # Silence security warnings
    if {$cl_major_version>7} {
       lappend opts /D_CRT_SECURE_NO_DEPRECATE
+   }
+
+   # Make user requested tweaks to compile line
+   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+      foreach elt $extraflags {
+         if {[lsearch -exact $opts $elt]<0} {
+            lappend opts $elt
+         }
+      }
+   }
+   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+      foreach elt $noflags {
+         regsub -all -- $elt $opts {} opts
+      }
+      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+      regsub -- {\s*$} $opts {} opts
    }
 
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -436,7 +497,7 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_compiler_c++_option_src {format "\"/Tp%s\""}
    $config SetValue program_compiler_c++_option_inc {format "\"/I%s\""}
    $config SetValue program_compiler_c++_option_warn {
-      format "/W4 /wd4505 /wd4702"
+      format "/W4 /wd4505 /wd4702 /wd4127"
    }
    #   Warning C4505 is about removal of unreferenced local functions.
    # This seems to be a common occurrence when using templates with the
@@ -444,6 +505,9 @@ if {[string match cl $ccbasename]} {
    #   Warning C4702 is about unreachable code.  A lot of warnings of
    # this type are generated in the STL; I'm not even sure they are all
    # true.
+   #   Warning C4127 is "conditional expression is constant".  This
+   # occurs intentionally many places in the code, either for
+   # readability or as a consequence of supporting multiple platforms.
    #
    # $config SetValue program_compiler_c++_option_debug {format "/MLd"}
    $config SetValue program_compiler_c++_option_debug {format "/Zi"}
@@ -459,7 +523,9 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_compiler_c++_property_use_underscore_getpid 1
 
    # Widest natively support floating point type
-   $config SetValue program_compiler_c++_typedef_realwide "double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
 
    # Under the Microsoft Visual C++ compiler, 80-bit floating point
    # is not supported; both double and long double are 64-bits. and
@@ -482,6 +548,15 @@ if {[string match cl $ccbasename]} {
       $config SetValue program_compiler_c++_missing_cvtsd_f64 0
    }
 
+
+   # Visual C++ support for SetCurrentProcessExplicitAppUserModelID
+   # began with version 10 (2010).  Note: Enabling this block makes
+   # the executables require Windows 7 or later.
+   # if {$cl_major_version >= 10} {
+   #    $config SetValue program_compiler_c++_set_taskbar_id 1
+   #    lappend cl_libs shell32.lib
+   # }
+
    # The program to run on this platform to create a single library file out
    # of many object files.
    # Microsoft Visual C++'s library maker
@@ -500,14 +575,26 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
+
    $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
    $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
-   # Note: advapi32 is needed for GetUserName function in Nb package.
-   $config SetValue TK_LIBS {user32.lib advapi32.lib}
-   $config SetValue TCL_LIBS {user32.lib advapi32.lib}
+   # Note 1: advapi32 is needed for GetUserName function in Nb package.
+   # Note 2: We could add here support for the Windows 7 API call
+   #   SetCurrentProcessExplicitAppUserModelID(), which can be used to
+   #   tie all OOMMF apps to the same taskbar group in Windows 7.  This
+   #   involves adding shell32.lib to the TCL/TK_LIBS lists, and setting
+   #   the config value program_compiler_c++_set_taskbar_id.  See the
+   #   windows-x86_64.tcl platform file for details.  We choose not to
+   #   do this here because we expect 32-bit Windows builds to be aimed
+   #   primarily at Windows XP and possibly Windows Vista, neither of
+   #   which support that API call.
+   lappend cl_libs user32.lib advapi32.lib
+   $config SetValue TK_LIBS $cl_libs
+   $config SetValue TCL_LIBS $cl_libs
    $config SetValue program_linker_uses_-L-l {0}
    $config SetValue program_linker_uses_-I-L-l {0}
 
+   unset cl_libs
    unset cl_version
    unset cl_major_version
 } elseif {[string match icl $ccbasename]} {
@@ -535,6 +622,22 @@ if {[string match cl $ccbasename]} {
     # so that the NDEBUG symbol is defined during compile.
     #
 
+    # Make user requested tweaks to compile line
+    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	  if {[lsearch -exact $opts $elt]<0} {
+	     lappend opts $elt
+	  }
+       }
+    }
+    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+       foreach elt $noflags {
+	  regsub -all -- $elt $opts {} opts
+       }
+       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+       regsub -- {\s*$} $opts {} opts
+    }
+
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
@@ -553,7 +656,9 @@ if {[string match cl $ccbasename]} {
     $config SetValue program_compiler_c++_property_no_erf 1
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # The program to run on this platform to create a single library file out
     # of many object files.
@@ -636,25 +741,21 @@ if {[string match cl $ccbasename]} {
     }
     catch {unset nowarn}
 
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
-    # Wide floating point type.  Defaults to double, but you can
-    # change this to "long double" for extra precision and somewhat
-    # reduced speed.  NB: With the Borland compiler, long doubles are
-    # 10-bytes wide, but by default pack as 12-byte objects inside
-    # structs.  This difference may cause some code breakage.  One
-    # workaround is to add the "-a2" switch to the compiler options.
-    # This aligns objects on 2-byte boundaries (as opposed to the
-    # default 4-byte boundaries), so long double pack tightly.
-    # $config SetValue program_compiler_c++_typedef_realwide "long double"
-
-    # Experimental: The OC_REAL8m type is intended to be at least 8 bytes
-    # wide.  Generally OC_REAL8m is typedef'ed to double, but you can try
-    # setting this to "long double" for extra precision (and extra
-    # slowness).  If this is set to "long double", then so should
-    # realwide in the preceding stanza.  See also the note about the
-    # "-a2" option in the comment preceding realwide.
-    # $config SetValue program_compiler_c++_typedef_real8m "long double"
+    # Make user requested tweaks to compile line
+    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	  if {[lsearch -exact $opts $elt]<0} {
+	     lappend opts $elt
+	  }
+       }
+    }
+    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+       foreach elt $noflags {
+	  regsub -all -- $elt $opts {} opts
+       }
+       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+       regsub -- {\s*$} $opts {} opts
+    }
 
     # Wide floating point type.
     # NOTE: "long double" provides somewhat better precision than
@@ -669,7 +770,9 @@ if {[string match cl $ccbasename]} {
     # in a 2 byte hole between long double members.  To remove this
     # hole, you must include the "-a2" option in the C++ compiler
     # options.
-    # $config SetValue program_compiler_c++_typedef_realwide "long double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Experimental: The OC_REAL8m type is intended to be at least
     # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
@@ -678,7 +781,16 @@ if {[string match cl $ccbasename]} {
     # then so should realwide in the preceding stanza.
     # NOTE: If you use long double, then include the -a2 switch
     # in the options, as discussed in the "realwide" stanza above.
-    # $config SetValue program_compiler_c++_typedef_real8m "long double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+       $config SetValue program_compiler_c++_typedef_real8m "double"
+    }
+
+    if {![catch {join [$config GetValue program_compiler_c++_typedef_real8m]} _] \
+            && [string match {long double} $_]} {
+       ## join command above drops spurious whitespace
+       lappend opts -a2
+    }
+    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Work arounds
     # $config SetValue program_compiler_c++_property_strict_atan2 1
@@ -805,6 +917,16 @@ if {[string match cl $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
+   # Use ANSI conformant printf routines, which in particular
+   # support the L format modifier for long double types.  The
+   # __USE_MINGW_ANSI_STDIO macro is an internal compiler macro,
+   # and arguably one should use -ansi or -posix (or ...?) instead,
+   # but those switches introduces additional changes to compiler
+   # behavior that we might not want.  BTW, this macro needs to
+   # be set before any header file inclusion.  For more on this
+   # macro see the mingw header file _mingw.h
+   lappend opts "-D__USE_MINGW_ANSI_STDIO=1"
+
    # SSE support
    if {[catch {$config GetValue sse_level} sse_level]} {
       set sse_level 0  ;# Default setting for 32-bit x86
@@ -824,7 +946,7 @@ if {[string match cl $ccbasename]} {
       # 16-byte aligned stacks for SSE (and used by gcc).  The stack
       # realignment somewhat increases function call overhead, but is
       # needed if linking a gcc build of OOMMF against a Visual C++
-      # build of Tcl/Tk.  An option here may be use a gcc build of
+      # build of Tcl/Tk.  An option here may be to use a gcc build of
       # Tcl/Tk.
       lappend opts -mstackrealign
    } else {
@@ -882,10 +1004,14 @@ if {[string match cl $ccbasename]} {
    #                -Wmissing-declarations  -Wnested-externs
    # Update: gcc 3.4.5 issues an uninitialized warning in the STL,
    #  so -Wno-uninitialized is necessary.
+   # Update: gcc 4.7.2 format checks don't recognize the long double
+   #  "L" modifier, so -Wno-format is necessary.  Apparently there
+   #  is a workaround using the __MINGW_PRINTF_FORMAT macro, if you
+   #  don't mind the GCC + MinGW specific nature of it.
    $config SetValue program_compiler_c++_option_warn {format "-Wall \
         -W -Wpointer-arith -Wwrite-strings \
         -Woverloaded-virtual -Wsynth -Werror -Wno-uninitialized \
-        -Wno-unused-function"}
+        -Wno-unused-function -Wno-format"}
 
    # Wide floating point type.
    # NOTE: On the x86+gcc platform, "long double" provides
@@ -895,7 +1021,9 @@ if {[string match cl $ccbasename]} {
    # but provides the x86 native floating point format having approx.
    # 19 decimal digits precision as opposed to 16 for double.)
    # Default is "double".
-   # $config SetValue program_compiler_c++_typedef_realwide "long double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
@@ -998,6 +1126,10 @@ if {[string match cl $ccbasename]} {
     # Use OOMMF supplied erf() error function
     $config SetValue program_compiler_c++_property_no_erf 1
 
+    # Digital Marc C++ version 8.57 doesn't support partial
+    # template instantiation.  Implement workarounds.
+    $config SetValue program_compiler_c++_no_partial_instantiation 1
+
     # Optimization
     # Standard optimization:
     #set opts [list -6 -ff]
@@ -1008,12 +1140,37 @@ if {[string match cl $ccbasename]} {
     #  Oc_Option Add * Platform cflags {-def NDEBUG}
     # so that the NDEBUG symbol is defined during compile.
 
+    # Default maximum memory limit for dmc is apparently 30 MB (8.57,
+    # Aug-2013).  This is too small for some of the files in Oxs.  The
+    # -HPnn option allows the limit to be increased to nn MB.  (Some
+    # online discussion indicates that as of DMC 8.50, the max value
+    # for "nn" is 299.)
+    lappend opts "-HP99"
+
+    # Make user requested tweaks to compile line
+    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	  if {[lsearch -exact $opts $elt]<0} {
+	     lappend opts $elt
+	  }
+       }
+    }
+    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+       foreach elt $noflags {
+	  regsub -all -- $elt $opts {} opts
+       }
+       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+       regsub -- {\s*$} $opts {} opts
+    }
+
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Wide floating point type.  Defaults to double, but you can
     # change this to "long double" for extra precision and somewhat
     # reduced speed.
-    # $config SetValue program_compiler_c++_typedef_realwide "long double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # Experimental: The OC_REAL8m type is intended to be at least 8 bytes
     # wide.  Generally OC_REAL8m is typedef'ed to double, but you can try
@@ -1022,10 +1179,22 @@ if {[string match cl $ccbasename]} {
     # realwide in the preceding stanza.
     # $config SetValue program_compiler_c++_typedef_real8m "long double"
 
+    # Digital Mars C++ 8.57 has a placement new[], but for some reason
+    # sometimes it increments the requested offset by 4 bytes?!  Work
+    # around this bug by using the single item placement new in an
+    # explicit loop.  If you are using a verion of Digital Mars C++
+    # with a working placement new[], then you may comment this out.
+    # (BTW, there is an assert in oommf/app/oxs/base/oxsthread.h to
+    # catch this error.)
+    $config SetValue program_compiler_c++_no_placment_new_array 1
+
     # The program to run on this platform to create a single library file out
     # of many object files.
     # ... Digital Mars lib ...
-    $config SetValue program_libmaker {lib -c}
+    # NOTE: The -p32 switch sets the pagesize.  The default is
+    # apparently -p16, which is apparently too small for some of the
+    # OOMMF libraries.
+    $config SetValue program_libmaker {lib -p32 -c}
     proc fibar { name } { return [list [file nativename $name]] }
     $config SetValue program_libmaker_option_obj {fibar}
     proc fifibar { name } { return [list [file nativename $name]] }
@@ -1110,10 +1279,28 @@ if {[string match cl $ccbasename]} {
     #  Oc_Option Add * Platform cflags {-def NDEBUG}
     # so that the NDEBUG symbol is defined during compile.
 
+    # Make user requested tweaks to compile line
+    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
+       foreach elt $extraflags {
+	  if {[lsearch -exact $opts $elt]<0} {
+	     lappend opts $elt
+	  }
+       }
+    }
+    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
+       foreach elt $noflags {
+	  regsub -all -- $elt $opts {} opts
+       }
+       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
+       regsub -- {\s*$} $opts {} opts
+    }
+
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Widest natively support floating point type
-    $config SetValue program_compiler_c++_typedef_realwide "double"
+    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+       $config SetValue program_compiler_c++_typedef_realwide "double"
+    }
 
     # The program to run on this platform to create a single library file out
     # of many object files.
@@ -1168,6 +1355,17 @@ $config SetValue script_filename_object {format %s.obj}
 # a file name stem and evaluated returns the corresponding file name for
 # a static library on this platform
 $config SetValue script_filename_static_library {format %s.lib}
+
+# Partial Tcl commands (or scripts) for creating library file names from
+# stems for third party libraries that don't follow the
+# script_filename_static_library rule.
+if {[catch {$config GetValue program_linker_extra_lib_scripts} extra_lib_scripts]} {
+   set extra_lib_scripts {}
+}
+lappend extra_lib_scripts {format "lib%s.lib"}
+lappend extra_lib_scripts {format "lib%s.a"}
+$config SetValue program_linker_extra_lib_scripts $extra_lib_scripts
+unset extra_lib_scripts
 
 # A list of partial Tcl commands (or scripts) which when completed by
 # lappending a file name stem and evaluated returns the corresponding

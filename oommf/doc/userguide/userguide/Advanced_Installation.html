@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,26 +28,26 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html204"
+<A NAME="tex2html205"
   HREF="Platform_Specific_Installat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html200"
+<A NAME="tex2html201"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html194"
+<A NAME="tex2html195"
   HREF="Basic_Installation.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html206"
+<A NAME="tex2html207"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html202"
+<A NAME="tex2html203"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html205"
+<B> Next:</B> <A NAME="tex2html206"
   HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
-<B> Up:</B> <A NAME="tex2html201"
+<B> Up:</B> <A NAME="tex2html202"
   HREF="Installation.html">Installation</A>
-<B> Previous:</B> <A NAME="tex2html195"
+<B> Previous:</B> <A NAME="tex2html196"
   HREF="Basic_Installation.html">Basic Installation</A>
 <BR>
 <BR>
@@ -56,22 +56,22 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html208"
-  HREF="Advanced_Installation.html#SECTION00033100000000000000">Reducing Disk Space Usage</A>
 <LI><A NAME="tex2html209"
-  HREF="Advanced_Installation.html#SECTION00033200000000000000">Local Customizations</A>
+  HREF="Advanced_Installation.html#SECTION00033100000000000000">Reducing Disk Space Usage</A>
 <LI><A NAME="tex2html210"
-  HREF="Advanced_Installation.html#SECTION00033300000000000000">Optimization</A>
+  HREF="Advanced_Installation.html#SECTION00033200000000000000">Local Customizations</A>
 <LI><A NAME="tex2html211"
-  HREF="Advanced_Installation.html#SECTION00033400000000000000">Parallelization</A>
+  HREF="Advanced_Installation.html#SECTION00033300000000000000">Optimization</A>
 <LI><A NAME="tex2html212"
+  HREF="Advanced_Installation.html#SECTION00033400000000000000">Parallelization</A>
+<LI><A NAME="tex2html213"
   HREF="Advanced_Installation.html#SECTION00033500000000000000">Managing OOMMF Platform Names</A>
 <UL>
-<LI><A NAME="tex2html213"
-  HREF="Advanced_Installation.html#SECTION00033510000000000000">Changing the name OOMMF assigns to your platform</A>
 <LI><A NAME="tex2html214"
-  HREF="Advanced_Installation.html#SECTION00033520000000000000">Adding a new platform type</A>
+  HREF="Advanced_Installation.html#SECTION00033510000000000000">Changing the name OOMMF assigns to your platform</A>
 <LI><A NAME="tex2html215"
+  HREF="Advanced_Installation.html#SECTION00033520000000000000">Adding a new platform type</A>
+<LI><A NAME="tex2html216"
   HREF="Advanced_Installation.html#SECTION00033530000000000000">Resolving platform name conflicts</A>
 </UL></UL>
 <!--End of Table of Child-Links-->
@@ -94,7 +94,7 @@ Reducing Disk Space Usage
 </H3>
 
 <P>
-<A NAME="1000"></A>
+<A NAME="1023"></A>
 To delete the intermediate files created when building the OOMMF software from source code, use 
 <A HREF="Platform-Independent_Make_p.html#sec:pimake">pimake</A>
 to build the target
@@ -104,11 +104,11 @@ tclsh oommf.tcl pimake objclean
 </PRE>
 Running your platform <TT><B>strip</B></TT> utility on the OOMMF executable files
 should also reduce their size somewhat.
-<A NAME="1009"></A>
+<A NAME="1032"></A>
 
 <P>
 
-<H3><A NAME="SECTION00033200000000000000"></A><A NAME="sec:custom"></A><A NAME="1012"></A>
+<H3><A NAME="SECTION00033200000000000000"></A><A NAME="sec:custom"></A><A NAME="1035"></A>
 <BR>
 Local Customizations
 </H3>
@@ -116,7 +116,7 @@ Local Customizations
 <P>
 OOMMF software supports local customization of some of its
 features.  All OOMMF programs load the file
-<TT><B>config/options.tcl</B></TT><A NAME="1014"></A><A NAME="1015"></A>, which
+<TT><B>config/options.tcl</B></TT><A NAME="1037"></A><A NAME="1038"></A>, which
 contains customization commands as well as editing instructions.  As it
 is distributed, <TT><B>config/options.tcl</B></TT> directs programs to also load
 the file <TT><B>config/local/options.tcl</B></TT>, if it exists.  Because future
@@ -136,15 +136,13 @@ program is used for the display of help documentation.  By default,
 OOMMF software uses the application
 <A HREF="Documentation_Viewer_mmHelp.html#sec:mmhelp"><B>mmHelp</B></A>, which
 is included in the OOMMF release, but the help documentation files
-are standard HTML, so any web browser (for example, 
-Netscape Navigator<A NAME="1030"></A>
-or Microsoft Internet Explorer<A NAME="1031"></A>) 
+are standard HTML, so any web browser 
 may be used instead.  Complete
 instructions are in the file <TT><B>config/options.tcl</B></TT>.
 
 <P>
 
-<H3><A NAME="SECTION00033300000000000000"></A><A NAME="sec:optimize"></A><A NAME="1035"></A>
+<H3><A NAME="SECTION00033300000000000000"></A><A NAME="sec:optimize"></A><A NAME="1056"></A>
 <BR>
 Optimization
 </H3>
@@ -161,10 +159,8 @@ with other choices as well.  You can edit the platform configuration
 file to replace the default selection with another choice that
 provides better computing performance.  For example, in
 <TT><B>config/platforms/wintel.tcl</B></TT>, alternative optimization flags for the
-MSVC++ compiler are defined with the line:
-<PRE>
-$config SetValue program_compiler_c++_option_opt {format "/G5 /Ox"}
-</PRE>
+MSVC++ compiler may be invoked by editing how the configuration
+variable <TT>opts</TT> is defined, following instructions in the comments.
 
 <P>
 The extensible solver, Oxs, can be compiled with debugging support
@@ -186,7 +182,7 @@ already exist.
 
 <P>
 
-<H3><A NAME="SECTION00033400000000000000"></A><A NAME="sec:parallel"></A><A NAME="1049"></A>
+<H3><A NAME="SECTION00033400000000000000"></A><A NAME="sec:parallel"></A><A NAME="1069"></A>
 <BR>
 Parallelization
 </H3>
@@ -221,12 +217,12 @@ programs <TT>oxsii</TT> and <TT>boxsi</TT>.  You can modify the default by
 editing the <TT>oommf_thread_count</TT> value in the
 <TT><B>config/platforms/</B></TT> file for your platform.  You can override the
 default at run time by setting the environment variable
-<TT>OOMMF_THREADS</TT><A NAME="1065"></A>, or by
+<TT>OOMMF_THREADS</TT><A NAME="1085"></A>, or by
 using the command line option <TT>-threads</TT> to <TT>oxsii</TT> and
 <TT>boxsi</TT>.
 
 <P>
-<A NAME="1069"></A>Some multi-processor machines have a non-uniform memory
+<A NAME="1089"></A>Some multi-processor machines have a non-uniform memory
 architecture (NUMA), which means that although each processor can access
 all of system memory, some parts of memory can be accessed faster than
 others.  Typically this is accomplished by dividing the system memory
@@ -234,7 +230,7 @@ and processors into ``nodes.''  Memory accesses within a node are faster
 than accesses between nodes, and depending on the architecture access
 latency and bandwidth may be different between different node pairs.
 Examples of machines with NUMA include some multi-processor AMD Opteron
-and Intel Nehalem Xeon boxes.
+and Intel Xeon boxes.
 
 <P>
 Computer programs such as OOMMF can run on NUMA machines without
@@ -284,13 +280,13 @@ NUMA-aware version of OOMMF.
 To activate the NUMA-aware code, you must specify the <TT>-numanodes</TT>
 option on the <TT>oxsii</TT>/<TT>boxsi</TT> command line, or set the the
 environment variable
-<TT>OOMMF_NUMANODES</TT><A NAME="1091"></A>.
+<TT>OOMMF_NUMANODES</TT><A NAME="1111"></A>.
 Check the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs documention</A> for details.
-<A NAME="1096"></A><A NAME="1097"></A>
+<A NAME="1116"></A><A NAME="1117"></A>
 
 <P>
 
-<H3><A NAME="SECTION00033500000000000000"></A><A NAME="sec:platformNames"></A><A NAME="1100"></A>
+<H3><A NAME="SECTION00033500000000000000"></A><A NAME="sec:platformNames"></A><A NAME="1120"></A>
 <BR>
 Managing OOMMF Platform Names
 </H3>
@@ -421,28 +417,28 @@ host name is <TT>foo.bar.net</TT>:
 
 <P>
 Contact the OOMMF developers if you need further assistance.
-<A NAME="1148"></A>
+<A NAME="1168"></A>
 
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html204"
+<A NAME="tex2html205"
   HREF="Platform_Specific_Installat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html200"
+<A NAME="tex2html201"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html194"
+<A NAME="tex2html195"
   HREF="Basic_Installation.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html207"
+<A NAME="tex2html208"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html202"
+<A NAME="tex2html203"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

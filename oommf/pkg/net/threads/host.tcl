@@ -9,7 +9,7 @@
 # on which host.tcl contacts its parent to signal that its server is
 # ready.  This also suppresses error messages.
 #
-# Last modified on: $Date: 2008-05-20 07:13:41 $
+# Last modified on: $Date: 2015/09/30 07:41:36 $
 # Last modified by: $Author: donahue $
 
 if {([llength $argv] > 2) || ([llength $argv] == 0)} {
@@ -114,7 +114,10 @@ if {$startError} {
 }
 
 if {[llength $argv] == 2} {
-    # Inform my creator that my server is running.
+    # Ping creator.  If server is running then ping back with
+    # OOMMF_HOSTPORT, port number and two newlines.  If server open
+    # fails (probably because some other process grabbed the port
+    # first) then ping back with single newline.
     set port [lindex $argv 1]
     if {[catch {socket localhost $port} s]} {
         $master(server) Delete
@@ -148,7 +151,14 @@ proc CheckConnect {} {
     # A Net_Connection is being destroyed.  If it's the last one,
     # schedule our suicide
     if {[llength [Net_Connection Instances]] == 1} {
-	after idle Die
+       # Stop accepting new connections immediately
+       global master
+       $master(server) ForbidServiceStart
+       if {[$master(server) IsListening]} {
+          $master(server) Stop
+       }
+       # Shut down
+       after idle Die
     }
 }
 

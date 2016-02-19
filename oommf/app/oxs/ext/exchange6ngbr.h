@@ -33,18 +33,18 @@ private:
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
   mutable Oxs_ThreadControl thread_control;
   mutable OC_UINT4m mesh_id;
-  mutable Oxs_MeshValue<OC_INT4m> region_id;
+  mutable Oxs_MeshValue<OC_INDEX> region_id;
 
   // Support for threaded maxang calculations
   mutable vector<OC_REAL8m> maxdot;
 
   void CalcEnergyA(const Oxs_SimState& state,
-                   Oxs_ComputeEnergyDataThreaded& ocedt,
+                   const Oxs_ComputeEnergyDataThreaded& ocedt,
                    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                    OC_INDEX node_start,OC_INDEX node_stop,
                    int threadnumber) const;
   void CalcEnergyLex(const Oxs_SimState& state,
-                     Oxs_ComputeEnergyDataThreaded& ocedt,
+                     const Oxs_ComputeEnergyDataThreaded& ocedt,
                      Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                      OC_INDEX node_start,OC_INDEX node_stop,
                      int threadnumber) const;
@@ -83,18 +83,18 @@ protected:
 
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& state,
-   Oxs_ComputeEnergyDataThreaded& ocedt,
-   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunkFinalize
   (const Oxs_SimState& state,
    const Oxs_ComputeEnergyDataThreaded& ocedt,
-   const Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+   const vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

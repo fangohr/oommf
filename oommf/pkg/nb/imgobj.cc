@@ -16,12 +16,13 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:57 $
+ * Last modified on: $Date: 2013/05/22 07:15:34 $
  * Last modified by: $Author: donahue $
  */
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <math.h>        /* For floor() on Solaris with Forte compiler */
 #include <string.h>
 
@@ -461,7 +462,7 @@ public:
     Palette = NULL;
   }
 
-  void AllocPalette(int size) {
+  void AllocPalette(OC_UINT4m size) {
     FreePalette();
     Palette=new Nb_ImgObj_RGBQuad[size];
   }
@@ -573,7 +574,9 @@ int Nb_ImgObj_MSHeader::FillHeader(Tcl_Channel chan)
   }
   if(PaletteSize>0) {
     AllocPalette(PaletteSize);
-    Tcl_Read(chan,(char *)Palette,PaletteSize*sizeof(Palette[0]));
+    size_t rsize = size_t(PaletteSize)*sizeof(Palette[0]);
+    assert(rsize <= INT_MAX);
+    Tcl_Read(chan,(char *)Palette,static_cast<int>(rsize));
   }
 
   return 1;
@@ -594,7 +597,8 @@ Nb_ImgObj::ReadBmp1bit
   }
   Nb_ImgObj_RGBQuad offbit = header->Palette[0];
   Nb_ImgObj_RGBQuad onbit  = header->Palette[1];
-  const int filerowsize = header->GetFileRowSize();
+  assert(header->GetFileRowSize() <= INT_MAX);
+  const int filerowsize = static_cast<int>(header->GetFileRowSize());
   if((width-1)/8 >= filerowsize) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","ReadBmp1bit",
              NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -604,7 +608,8 @@ Nb_ImgObj::ReadBmp1bit
              width,8*filerowsize,filename.GetStr()));
   }
   Oc_AutoBuf buf;
-  buf.SetLength(filerowsize);
+  assert(filerowsize>=0);
+  buf.SetLength(size_t(filerowsize));
   unsigned char* const chbuf = (unsigned char*)buf.GetStr();
   for(OC_INT4m i=height-1;i>=0;--i) {
     if(Tcl_Read(chan,(char*)chbuf,filerowsize) != filerowsize) {
@@ -638,7 +643,8 @@ Nb_ImgObj::ReadBmp4bit
 {
   // Note: Rows in the input file run from bottom to top.
   const Nb_ImgObj_RGBQuad* pal = header->Palette;
-  const int filerowsize = header->GetFileRowSize();
+  assert(header->GetFileRowSize() <= INT_MAX);
+  const int filerowsize = static_cast<int>(header->GetFileRowSize());
   if( (width-1)/2 >= filerowsize) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","ReadBmp4bit",
              NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -649,7 +655,8 @@ Nb_ImgObj::ReadBmp4bit
   }
   const OC_UINT4m palsize = header->GetPaletteSize();
   Oc_AutoBuf buf;
-  buf.SetLength(filerowsize);
+  assert(filerowsize>=0);
+  buf.SetLength(size_t(filerowsize));
   unsigned char* const chbuf = (unsigned char*)buf.GetStr();
   for(OC_INT4m i=height-1;i>=0;--i) {
     if(Tcl_Read(chan,(char*)chbuf,filerowsize) != filerowsize) {
@@ -700,7 +707,8 @@ Nb_ImgObj::ReadBmp8bit
 {
   // Note: Rows in the input file run from bottom to top.
   const Nb_ImgObj_RGBQuad* pal = header->Palette;
-  const int filerowsize = header->GetFileRowSize();
+  assert(header->GetFileRowSize() <= INT_MAX);
+  const int filerowsize = static_cast<int>(header->GetFileRowSize());
   if(width > filerowsize) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","ReadBmp8bit",
              NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -711,7 +719,8 @@ Nb_ImgObj::ReadBmp8bit
   }
   const OC_UINT4m palsize = header->GetPaletteSize();
   Oc_AutoBuf buf;
-  buf.SetLength(filerowsize);
+  assert(filerowsize>=0);
+  buf.SetLength(size_t(filerowsize));
   unsigned char* const chbuf = (unsigned char*)buf.GetStr();
   for(OC_INT4m i=height-1;i>=0;--i) {
     if(Tcl_Read(chan,(char*)chbuf,filerowsize) != filerowsize) {
@@ -748,7 +757,8 @@ Nb_ImgObj::ReadBmp24bit
   // Note 1: Byte order in input file is "Blue Green Red".
   // Note 2: Rows end on 4-byte boundary.
   // Note 3: Rows in the input file run from bottom to top.
-  const int filerowsize = header->GetFileRowSize();
+  assert(header->GetFileRowSize() <= INT_MAX);
+  const int filerowsize = static_cast<int>(header->GetFileRowSize());
   if(width > filerowsize) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","ReadBmp24bit",
              NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -758,7 +768,8 @@ Nb_ImgObj::ReadBmp24bit
              width,filerowsize,filename.GetStr()));
   }
   Oc_AutoBuf buf;
-  buf.SetLength(filerowsize);
+  assert(filerowsize>=0);
+  buf.SetLength(size_t(filerowsize));
   unsigned char* const chbuf = (unsigned char*)buf.GetStr();
   for(OC_INT4m i=height-1;i>=0;--i) {
     if(Tcl_Read(chan,(char*)chbuf,filerowsize) != filerowsize) {
@@ -796,8 +807,9 @@ Nb_ImgObj::ReadMSBitmap(Tcl_Channel  chan)
     return 0;
   }
 
-  width = header.Width;
-  height = header.Height;
+  width = static_cast<OC_INT4m>(header.Width);
+  height = static_cast<OC_INT4m>(header.Height);
+  assert(width>=0 && height>=0); // Overflow check
   maxvalue = 255;  // I guess...
 
   if(width<1 || height<1) {

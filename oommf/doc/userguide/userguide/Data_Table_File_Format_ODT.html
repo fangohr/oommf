@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -28,27 +28,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html872"
+<A NAME="tex2html947"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html868"
+<A NAME="tex2html943"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html862"
-  HREF="MIF_1.2.html">
+<A NAME="tex2html937"
+  HREF="MIF_2.2.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html874"
+<A NAME="tex2html949"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html870"
+<A NAME="tex2html945"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html873"
+<B> Next:</B> <A NAME="tex2html948"
   HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
-<B> Up:</B> <A NAME="tex2html869"
+<B> Up:</B> <A NAME="tex2html944"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html863"
-  HREF="MIF_1.2.html">MIF 1.2</A>
+<B> Previous:</B> <A NAME="tex2html938"
+  HREF="MIF_2.2.html">MIF 2.2</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
@@ -59,7 +59,7 @@ Data Table File Format (ODT)
 </H1>
 Textual output from solver applications that is not of the vector field
 variety is output in the <EM>OOMMF Data Table</EM> (ODT)
-format<A NAME="19849"></A>.  This is an ASCII text file format,
+format<A NAME="20953"></A>.  This is an ASCII text file format,
 with column information in the header and one line of data per record.
 Any line ending in a '<TT>&#92;</TT>' character is joined to the succeeding
 line before any other processing is performed.  Any leading `<TT>#</TT>'
@@ -93,13 +93,14 @@ data, or any of the following 5 recognized descriptor tag lines:
    interpreted as a title for the table.
 </LI>
 <LI><B> <TT>#</TT> Columns:</B> Required.  One parameter per column,
-   designating the label for that column.  Spaces may be embedded in a
-   column label by using the normal Tcl grouping mechanisms (i.e.,
-   double-quotes and braces).
+   designating the label header for that column.  Spaces may be embedded
+   in a column label by using the normal Tcl grouping mechanisms
+   (i.e., double-quotes and braces).
 </LI>
 <LI><B> <TT>#</TT> Units:</B> Optional.  If given, it should have one
    parameter for each column, giving a unit label for the
-   corresponding column.
+   corresponding column.  Spaces may be embedded in the unit labels, in
+   the same manner as for column headers.
 </LI>
 <LI><B> <TT>#</TT> Table End</B>: Optional, no parameters.  Should be paired
    with a corresponding Table Start record.
@@ -110,6 +111,10 @@ and before any Table End line, with one record per line.
 The data should be numeric values separated by whitespace.  The two
 character open-close curly brace pair,  { }, is used to indicate
 a missing value.
+
+<P>
+Embedded newlines and carriage returns are not allowed in the title,
+columns, or units records.
 
 <P>
 The command line utility, 
@@ -147,22 +152,22 @@ Figure 10:
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html872"
+<A NAME="tex2html947"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html868"
+<A NAME="tex2html943"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html862"
-  HREF="MIF_1.2.html">
+<A NAME="tex2html937"
+  HREF="MIF_2.2.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html875"
+<A NAME="tex2html950"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html870"
+<A NAME="tex2html945"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

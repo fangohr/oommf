@@ -113,10 +113,12 @@ void RealDiff(const char* label,const Oxs_MeshValue<OC_REAL8m>& arr) {
 ////////////////////////////////////////////////////////////////////////
 ///////// THREAD A  THREAD A  THREAD A  THREAD A  THREAD A /////////////
 ////////////////////////////////////////////////////////////////////////
-class _Oxs_RKEvolve_RKFBase54_ThreadA : public Oxs_ThreadRunObj {
+
+class _Oxs_RKEvolve_Step_ThreadA : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<OC_REAL8m> job_basket;
 
   // Imports
   const Oxs_Mesh* mesh_ptr;
@@ -129,29 +131,29 @@ public:
   // Exports
   Oxs_MeshValue<ThreeVector>* dm_dt_ptr;
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
-  OC_REAL8m dE_dt_sum;
-  OC_REAL8m max_dm_dt;
+  vector<OC_REAL8m> thread_dE_dt;
+  vector<OC_REAL8m> thread_max_dm_dt;
 
   // More imports
-  OC_INT4m do_precess;
+  OC_BOOL do_precess;
 
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
-
-  _Oxs_RKEvolve_RKFBase54_ThreadA()
+  _Oxs_RKEvolve_Step_ThreadA(int thread_count,
+                             const Oxs_StripedArray<OC_REAL8m>* arrblock)
     : mesh_ptr(0), Ms_ptr(0), gamma_ptr(0), alpha_ptr(0), mxH_ptr(0),
-      spin_ptr(0), dm_dt_ptr(0), dE_dt_sum(0.0), max_dm_dt(0.0),
-      vecsize(0), block_size(0) {}
+      spin_ptr(0), dm_dt_ptr(0),
+      thread_dE_dt(thread_count), // Default initialize to 0.0's
+      thread_max_dm_dt(thread_count), // Default initialize to 0.0's
+      do_precess(1) {
+    job_basket.Init(thread_count,arrblock);
+  }
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_ThreadA::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_ThreadA::offset(0);
+Oxs_JobControl<OC_REAL8m> _Oxs_RKEvolve_Step_ThreadA::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_ThreadA::Cmd(int /* threadnumber */,
-                                         void* /* data */)
+void _Oxs_RKEvolve_Step_ThreadA::Cmd(int threadnumber,
+                                     void* /* data */)
 { // Imports
   const Oxs_Mesh& mesh = *mesh_ptr;
   const Oxs_MeshValue<OC_REAL8m>& Ms    = *Ms_ptr;
@@ -159,28 +161,23 @@ void _Oxs_RKEvolve_RKFBase54_ThreadA::Cmd(int /* threadnumber */,
   const Oxs_MeshValue<OC_REAL8m>& alpha = *alpha_ptr;
   const Oxs_MeshValue<ThreeVector>& mxH = *mxH_ptr;
   const Oxs_MeshValue<ThreeVector>& spin = *spin_ptr;
+  const OC_BOOL precess = do_precess;  // Make local copy
 
   // Exports
   Oxs_MeshValue<ThreeVector>& dm_dt = *dm_dt_ptr;
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
-  dE_dt_sum = 0.0;
-  max_dm_dt = 0.0;
+  OC_REAL8m dE_dt_sum = 0.0;  // Local, work variables
+  OC_REAL8m max_dm_dt = 0.0;
 
   // Support variables
   OC_REAL8m max_dm_dt_sq = 0.0;
 
   while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
-
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart;j<jstop;++j) {
       if(Ms[j]==0) {
@@ -188,7 +185,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadA::Cmd(int /* threadnumber */,
       } else {
         OC_REAL8m coef1 = gamma[j];
         OC_REAL8m coef2 = -1*alpha[j]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j];
         ThreeVector scratch2 = mxH[j];
@@ -209,77 +206,10 @@ void _Oxs_RKEvolve_RKFBase54_ThreadA::Cmd(int /* threadnumber */,
   }
   max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
   /// differ from max_i |dm_dt[i]| by rounding errors.
-}
 
-void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
-(const Oxs_SimState& state,
- const Oxs_MeshValue<ThreeVector>& mxH,
- Oxs_MeshValue<ThreeVector>& dm_dt,
- vector<_Oxs_RKEvolve_RKFBase54_ThreadA>& thread_data)
-{
-  const Oxs_Mesh* mesh = state.mesh;
-  const OC_INDEX vecsize = mesh->Size();
-
-  // Fill out alpha and gamma meshvalue arrays, as necessary.
-  if(mesh_id != mesh->Id() || !gamma.CheckMesh(mesh)
-     || !alpha.CheckMesh(mesh)) {
-    UpdateMeshArrays(mesh);
-  }
-
-
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
-
-  _Oxs_RKEvolve_RKFBase54_ThreadA::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_ThreadA::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_ThreadA::job_control.Unlock();
-
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs>(vecsize*3+3)/4) ibs = vecsize;
-
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].mesh_ptr = mesh;
-    thread_data[ithread].Ms_ptr = state.Ms;
-    thread_data[ithread].gamma_ptr = &gamma;
-    thread_data[ithread].alpha_ptr = &alpha;
-    thread_data[ithread].mxH_ptr = &mxH;
-    thread_data[ithread].spin_ptr = &state.spin;
-    thread_data[ithread].dm_dt_ptr = &dm_dt;
-    thread_data[ithread].do_precess = do_precess;
-    thread_data[ithread].vecsize = vecsize;
-    thread_data[ithread].block_size = ibs;
-  }
-}
-
-void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
-(const vector<_Oxs_RKEvolve_RKFBase54_ThreadA>& thread_data, // Import
- OC_REAL8m pE_pt,          // Import
- OC_REAL8m& max_dm_dt,     // Export
- OC_REAL8m& dE_dt,         // Export
- OC_REAL8m& min_timestep_export) // Export
-{
-  max_dm_dt = 0.0;
-  dE_dt = 0.0;
-  const OC_INT4m thread_count = thread_data.size();
-  for(OC_INT4m ithread=0;ithread<thread_count;++ithread) {
-    if(thread_data[ithread].max_dm_dt>max_dm_dt) {
-      max_dm_dt = thread_data[ithread].max_dm_dt;
-    }
-    dE_dt += thread_data[ithread].dE_dt_sum;
-  }
-
-  dE_dt = -1 * MU0 * dE_dt + pE_pt;
-  /// The first term is (partial E/partial M)*dM/dt, the
-  /// second term is (partial E/partial t)*dt/dt.  Note that,
-  /// provided Ms_[i]>=0, that by constructions dE_dt_sum above
-  /// is always non-negative, so dE_dt_ can only be made positive
-  /// by positive pE_pt_.
-
-  // Get bound on smallest stepsize that would actually
-  // change spin new_max_dm_dt_index:
-  min_timestep_export = PositiveTimestepBound(max_dm_dt);
+  // Export results into thread-specific storage
+  thread_max_dm_dt[threadnumber] = max_dm_dt;
+  thread_dE_dt[threadnumber]     = dE_dt_sum;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -287,8 +217,9 @@ void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
 ////////////////////////////////////////////////////////////////////////
 class _Oxs_RKEvolve_RKFBase54_ThreadB : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<OC_REAL8m> job_basket;
 
   // Imports
   const Oxs_Mesh* mesh_ptr;
@@ -305,36 +236,29 @@ public:
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
   Oxs_MeshValue<ThreeVector>* work_spin_ptr; // Import and export
   Oxs_MeshValue<ThreeVector>* kn_ptr; // State advancement; kn = b*A
-  OC_REAL8m dE_dt_sum;
-  OC_REAL8m max_dm_dt;
-  OC_REAL8m norm_error;  // State advancement
+  vector<OC_REAL8m> thread_dE_dt;
+  vector<OC_REAL8m> thread_max_dm_dt;
+  vector<OC_REAL8m> thread_norm_error;  // State advancement
   // Also sets spins in work_state to base_state.spin + mstep*(b*A)
 
   // More imports
   OC_REAL8m mstep; // State advancement
   OC_REAL8m b_dm_dt; // State advancement
 
-  OC_INT4m do_precess;
-
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
+  OC_BOOL do_precess;
 
   _Oxs_RKEvolve_RKFBase54_ThreadB()
     : mesh_ptr(0), Ms_ptr(0), gamma_ptr(0), alpha_ptr(0), mxH_ptr(0),
       base_spin_ptr(0), b_ptr(0), A_ptr(0),
       dm_dt_ptr(0), work_spin_ptr(0), kn_ptr(0),
-      dE_dt_sum(0.0), max_dm_dt(0.0),
-      norm_error(0.0), mstep(0.0), b_dm_dt(0.0),
-      do_precess(1), vecsize(0), block_size(0) {}
+      mstep(0.0), b_dm_dt(0.0), do_precess(1) {}
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_ThreadB::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_ThreadB::offset(0);
+Oxs_JobControl<OC_REAL8m> _Oxs_RKEvolve_RKFBase54_ThreadB::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
+void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int threadnumber,
                                          void* /* data */)
 {
   // Imports
@@ -347,7 +271,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
   const vector<OC_REAL8m>& b = *b_ptr;
   const vector<const Oxs_MeshValue<ThreeVector>*>& A = *A_ptr;
 
-  const OC_UINT4m term_count = b.size();
+  const size_t term_count = b.size();
 
   // Exports
   Oxs_MeshValue<ThreeVector>& dm_dt = *dm_dt_ptr;
@@ -355,9 +279,14 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
   Oxs_MeshValue<ThreeVector>& kn = *kn_ptr;
 
-  dE_dt_sum = 0.0;
-  max_dm_dt = 0.0;
-  norm_error = 0.0;
+  OC_REAL8m work_dE_dt = 0.0;
+  OC_REAL8m work_max_dm_dt = 0.0;
+  OC_REAL8m work_norm_error = 0.0;
+
+  // Local copies
+  const OC_REAL8m work_mstep = mstep;
+  const OC_REAL8m work_b_dm_dt = b_dm_dt;
+  const OC_BOOL work_do_precess = do_precess;
 
   // Support variables
   OC_REAL8m max_dm_dt_sq = 0.0;
@@ -369,24 +298,18 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
   OC_REAL8m max_normsq1  = 0.0;
 
   while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
-
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart; j < jstart + (jstop-jstart)%2 ; ++j) {
       ThreeVector dm_dt_result(0,0,0);
       if(Ms[j]!=0.0) {
         OC_REAL8m coef1 = gamma[j];
         OC_REAL8m coef2 = -1*alpha[j]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!work_do_precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j];
         ThreeVector scratch2 = mxH[j];
@@ -398,26 +321,31 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
         if(dm_dt_sq>max_dm_dt_sq) {
           max_dm_dt_sq = dm_dt_sq;
         }
-        dE_dt_sum += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
+        work_dE_dt += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
         scratch2 ^= work_spin[j]; // ((mxH)xm)
         scratch2 *= coef2;  // -alpha.gamma((mxH)xm) = alpha.gamma(mx(mxH))
         dm_dt_result = scratch1 + scratch2;
       }
       dm_dt[j] = dm_dt_result;
 
-      // State advance
-      ThreeVector tempspin = dm_dt_result;
-      tempspin *= b_dm_dt;
-      for(OC_UINT4m k=0;k<term_count;++k) {
-        tempspin += b[k] * (*(A[k]))[j];
+      // State advance.  Match the form used in the pair-processing
+      // block below so that rounding results don't depend on whether
+      // or not the job scheduler exercises this branch.
+      ThreeVector tempsum(0,0,0);
+      for(size_t k=0;k<term_count;++k) {
+        const OC_REAL8m bk = b[k];
+        tempsum.Accum(bk,(*(A[k]))[j]);
       }
-      kn[j] = tempspin;  // Note: kn may be one of the A[k].
-      tempspin *= mstep;
-      tempspin += base_spin[j];
-      OC_REAL8m magsq = tempspin.MakeUnit();
+      tempsum.Accum(work_b_dm_dt,dm_dt_result);
+      ThreeVector wspin = base_spin[j];
+      wspin.Accum(work_mstep,tempsum);
+
+      kn[j]   = tempsum;
+      OC_REAL8m magsq = wspin.MakeUnit();
+      work_spin[j]   = wspin;
+
       if(magsq<min_normsq0) min_normsq0=magsq;
       if(magsq>max_normsq0) max_normsq0=magsq;
-      work_spin[j] = tempspin;
     }
 
     for(;j<jstop;j+=2) {
@@ -425,7 +353,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
       if(Ms[j]!=0.0) {
         OC_REAL8m coef1 = gamma[j];
         OC_REAL8m coef2 = -1*alpha[j]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!work_do_precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j];
         ThreeVector scratch2 = mxH[j];
@@ -437,7 +365,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
         if(dm_dt_sq>max_dm_dt_sq) {
           max_dm_dt_sq = dm_dt_sq;
         }
-        dE_dt_sum += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
+        work_dE_dt += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
         scratch2 ^= work_spin[j]; // ((mxH)xm)
         scratch2 *= coef2;  // -alpha.gamma((mxH)xm) = alpha.gamma(mx(mxH))
         dm_dt_result0 = scratch1 + scratch2;
@@ -447,7 +375,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
       if(Ms[j+1]!=0.0) {
         OC_REAL8m coef1 = gamma[j+1];
         OC_REAL8m coef2 = -1*alpha[j+1]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!work_do_precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j+1];
         ThreeVector scratch2 = mxH[j+1];
@@ -459,50 +387,44 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
         if(dm_dt_sq>max_dm_dt_sq) {
           max_dm_dt_sq = dm_dt_sq;
         }
-        dE_dt_sum += mxH_sq * Ms[j+1] * mesh.Volume(j+1) * coef2;
+        work_dE_dt += mxH_sq * Ms[j+1] * mesh.Volume(j+1) * coef2;
         scratch2 ^= work_spin[j+1]; // ((mxH)xm)
         scratch2 *= coef2;  // -alpha.gamma((mxH)xm) = alpha.gamma(mx(mxH))
         dm_dt_result1 = scratch1 + scratch2;
       }
 
       // State advance
-      // Note: The code below is designed to keep rounding errors the
-      //       same between j and j+1, especially in the case where
-      //       extra precision is carried in intermediate floating point
-      //       operations.
       ThreeVector tempsum0(0,0,0);
-      for(OC_UINT4m k=0;k<term_count;++k) {
+      ThreeVector tempsum1(0,0,0);
+      for(size_t k=0;k<term_count;++k) {
         const OC_REAL8m bk = b[k];
         tempsum0.Accum(bk,(*(A[k]))[j]);
+        tempsum1.Accum(bk,(*(A[k]))[j+1]);
       }
-      tempsum0.Accum(b_dm_dt,dm_dt_result0);
       ThreeVector wspin0 = base_spin[j];
-      wspin0.Accum(mstep,tempsum0);
+      ThreeVector wspin1 = base_spin[j+1];
+      tempsum0.Accum(work_b_dm_dt,dm_dt_result0);
+      tempsum1.Accum(work_b_dm_dt,dm_dt_result1);
+
+      wspin0.Accum(work_mstep,tempsum0);
+      wspin1.Accum(work_mstep,tempsum1);
 
       kn[j]   = tempsum0;
-      dm_dt[j]   = dm_dt_result0;
-      OC_REAL8m magsq0 = wspin0.MakeUnit();
-      work_spin[j]   = wspin0;
+      kn[j+1] = tempsum1;
 
+      dm_dt[j]   = dm_dt_result0;
+      dm_dt[j+1] = dm_dt_result1;
+
+      OC_REAL8m magsq0 = wspin0.MakeUnit();
       if(magsq0<min_normsq0) min_normsq0=magsq0;
       if(magsq0>max_normsq0) max_normsq0=magsq0;
 
-      ThreeVector tempsum1(0,0,0);
-      for(OC_UINT4m k=0;k<term_count;++k) {
-        const OC_REAL8m bk = b[k];
-        tempsum1.Accum(bk,(*(A[k]))[j+1]);
-      }
-      tempsum1.Accum(b_dm_dt,dm_dt_result1);
-      ThreeVector wspin1 = base_spin[j+1];
-      wspin1.Accum(mstep,tempsum1);
-
-      kn[j+1] = tempsum1;
-      dm_dt[j+1] = dm_dt_result1;
       OC_REAL8m magsq1 = wspin1.MakeUnit();
-      work_spin[j+1] = wspin1;
-
       if(magsq1<min_normsq1) min_normsq1=magsq1;
       if(magsq1>max_normsq1) max_normsq1=magsq1;
+
+      work_spin[j]   = wspin0;
+      work_spin[j+1] = wspin1;
     }
   }
 
@@ -511,11 +433,14 @@ void _Oxs_RKEvolve_RKFBase54_ThreadB::Cmd(int /* threadnumber */,
     // At least one "j" was processed
     if(min_normsq1<min_normsq0) min_normsq0=min_normsq1;
     if(max_normsq1>max_normsq0) max_normsq0=max_normsq1;
-    max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
+    work_max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
     /// differ from max_j |dm_dt[j]| by rounding errors.
-    norm_error = OC_MAX(sqrt(max_normsq0)-1.0,1.0 - sqrt(min_normsq0));
+    work_norm_error = OC_MAX(sqrt(max_normsq0)-1.0,1.0 - sqrt(min_normsq0));
   }
 
+  thread_dE_dt[threadnumber] = work_dE_dt;
+  thread_max_dm_dt[threadnumber] = work_max_dm_dt;
+  thread_norm_error[threadnumber] = work_norm_error;
 VecDiff("FINI THREAD B spin",work_spin);
 VecDiff("             dm_dt",dm_dt);
 VecDiff("                kn",kn);
@@ -526,7 +451,7 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
  Oxs_SimState& work_state,       // Import and export
  const Oxs_MeshValue<ThreeVector>& mxH,
  Oxs_MeshValue<ThreeVector>& dm_dt,
- vector<_Oxs_RKEvolve_RKFBase54_ThreadB>& thread_data,
+ _Oxs_RKEvolve_RKFBase54_ThreadB& thread_data,
  OC_REAL8m mstep,
  OC_REAL8m b_dm_dt,
  const vector<OC_REAL8m>& b,
@@ -535,6 +460,7 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
 {
   const Oxs_Mesh* mesh = base_state.mesh;
   const OC_INDEX vecsize = mesh->Size();
+  const int thread_count = Oc_GetMaxThreadCount();
 
   // Fill out alpha and gamma meshvalue arrays, as necessary.
   if(mesh_id != mesh->Id() || !gamma.CheckMesh(mesh)
@@ -542,50 +468,40 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
     UpdateMeshArrays(mesh);
   }
 
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
+  SpinDiff("INIT THREAD B",base_state);
+  RealDiff(" gamma",gamma); /**/
+  RealDiff(" alpha",alpha); /**/
+  VecDiff(" mxH",mxH); /**/
 
-  _Oxs_RKEvolve_RKFBase54_ThreadB::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_ThreadB::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_ThreadB::job_control.Unlock();
+  thread_data.mesh_ptr = mesh;
+  thread_data.Ms_ptr = base_state.Ms;
+  thread_data.gamma_ptr = &gamma;
+  thread_data.alpha_ptr = &alpha;
+  thread_data.mxH_ptr = &mxH;
+  thread_data.base_spin_ptr = &base_state.spin;
+  thread_data.b_ptr = &b;
+  thread_data.A_ptr = &A;
+  thread_data.dm_dt_ptr = &dm_dt;
+  thread_data.work_spin_ptr = &work_state.spin;
+  thread_data.kn_ptr = &kn;
+  thread_data.mstep = mstep;
+  thread_data.b_dm_dt = b_dm_dt;
+  thread_data.do_precess = do_precess;
 
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs> (vecsize*3+3)/4) ibs = vecsize;
+  thread_data.job_basket.Init(thread_count,work_state.Ms->GetArrayBlock());
 
-SpinDiff("INIT THREAD B",base_state);
-RealDiff(" gamma",gamma); /**/
-RealDiff(" alpha",alpha); /**/
-VecDiff(" mxH",mxH); /**/
+  thread_data.thread_dE_dt.clear();
+  thread_data.thread_dE_dt.resize(thread_count,0.0);
 
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].mesh_ptr = mesh;
-    thread_data[ithread].Ms_ptr = base_state.Ms;
-    thread_data[ithread].gamma_ptr = &gamma;
-    thread_data[ithread].alpha_ptr = &alpha;
-    thread_data[ithread].mxH_ptr = &mxH;
-    thread_data[ithread].base_spin_ptr = &base_state.spin;
+  thread_data.thread_max_dm_dt.clear();
+  thread_data.thread_max_dm_dt.resize(thread_count,0.0);
 
-    thread_data[ithread].b_ptr = &b;
-    thread_data[ithread].A_ptr = &A;
-
-    thread_data[ithread].dm_dt_ptr = &dm_dt;
-    thread_data[ithread].work_spin_ptr = &work_state.spin;
-
-    thread_data[ithread].kn_ptr = &kn;
-
-    thread_data[ithread].mstep = mstep;
-    thread_data[ithread].b_dm_dt = b_dm_dt;
-
-    thread_data[ithread].do_precess = do_precess;
-    thread_data[ithread].vecsize = vecsize;
-    thread_data[ithread].block_size = ibs;
-  }
+  thread_data.thread_norm_error.clear();
+  thread_data.thread_norm_error.resize(thread_count,0.0);
 
   // Adjust state code
   work_state.ClearDerivedData();
-  const OC_UINT4m term_count = b.size();
+  const size_t term_count = b.size();
   if(term_count != A.size()) {
     OXS_THROW(Oxs_BadParameter,"Failure in"
               " Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt:"
@@ -611,7 +527,7 @@ VecDiff(" mxH",mxH); /**/
 
 void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
 (const Oxs_SimState& base_state, // Import
- const vector<_Oxs_RKEvolve_RKFBase54_ThreadB>& thread_data, // Import
+ const _Oxs_RKEvolve_RKFBase54_ThreadB& thread_data, // Import
  OC_REAL8m pE_pt,             // Import
  OC_REAL8m hstep,             // Import
  Oxs_SimState& work_state, // Export
@@ -620,20 +536,22 @@ void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
  OC_REAL8m& min_timestep_export,    // Export
  OC_REAL8m& norm_error)       // Export
 {
-  max_dm_dt = 0.0;
-  dE_dt = 0.0;
-  norm_error = 0.0;
-  const OC_INT4m thread_count = thread_data.size();
-  for(OC_INT4m ithread=0;ithread<thread_count;++ithread) {
-    if(thread_data[ithread].max_dm_dt>max_dm_dt) {
-      max_dm_dt = thread_data[ithread].max_dm_dt;
+  const OC_INDEX thread_count
+    = static_cast<OC_INDEX>(thread_data.thread_dE_dt.size());
+  assert(thread_count>=0);
+
+  dE_dt = thread_data.thread_dE_dt[0];
+  max_dm_dt = thread_data.thread_max_dm_dt[0];
+  norm_error = thread_data.thread_norm_error[0];
+  for(OC_INDEX i=1;i<thread_count;++i) {
+    dE_dt += thread_data.thread_dE_dt[i];
+    if(thread_data.thread_max_dm_dt[i]>max_dm_dt) {
+      max_dm_dt = thread_data.thread_max_dm_dt[i];
     }
-    dE_dt += thread_data[ithread].dE_dt_sum;
-    if(thread_data[ithread].norm_error>norm_error) {
-      norm_error = thread_data[ithread].norm_error;
+    if(thread_data.thread_norm_error[i]>norm_error) {
+      norm_error = thread_data.thread_norm_error[i];
     }
   }
-
   dE_dt = -1 * MU0 * dE_dt + pE_pt;
   /// The first term is (partial E/partial M)*dM/dt, the
   /// second term is (partial E/partial t)*dt/dt.  Note that,
@@ -673,8 +591,9 @@ void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
 ////////////////////////////////////////////////////////////////////////
 class _Oxs_RKEvolve_RKFBase54_ThreadC : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<OC_REAL8m> job_basket;
 
   // Imports
   const Oxs_Mesh* mesh_ptr;
@@ -692,9 +611,9 @@ public:
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
   Oxs_MeshValue<ThreeVector>* work_spin_ptr; // Import and export
   Oxs_MeshValue<ThreeVector>* kn_ptr; // State advancement; kn = b2*A
-  OC_REAL8m dE_dt_sum;
-  OC_REAL8m max_dm_dt;
-  OC_REAL8m norm_error;  // State advancement
+  vector<OC_REAL8m> thread_dE_dt;
+  vector<OC_REAL8m> thread_max_dm_dt;
+  vector<OC_REAL8m> thread_norm_error;  // State advancement
   // Also sets spins in work_state to base_state.spin + mstep*(b1*A)
 
   // More imports
@@ -702,27 +621,21 @@ public:
   OC_REAL8m b1_dm_dt;  // State advancement
   OC_REAL8m b2_dm_dt; // State advancement
 
-  OC_INT4m do_precess;
-
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
+  OC_BOOL do_precess;
 
   _Oxs_RKEvolve_RKFBase54_ThreadC()
     : mesh_ptr(0), Ms_ptr(0), gamma_ptr(0), alpha_ptr(0), mxH_ptr(0),
       base_spin_ptr(0), b1_ptr(0), b2_ptr(0), A_ptr(0),
       dm_dt_ptr(0), work_spin_ptr(0), kn_ptr(0),
-      dE_dt_sum(0.0), max_dm_dt(0.0),
-      norm_error(0.0), mstep(0.0), b1_dm_dt(0.0), b2_dm_dt(0.0),
-      do_precess(1), vecsize(0), block_size(0) {}
+      mstep(0.0), b1_dm_dt(0.0), b2_dm_dt(0.0),
+      do_precess(1) {}
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_ThreadC::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_ThreadC::offset(0);
+Oxs_JobControl<OC_REAL8m> _Oxs_RKEvolve_RKFBase54_ThreadC::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
+void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int threadnumber,
                                          void* /* data */)
 {
   // Imports
@@ -736,7 +649,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
   const vector<OC_REAL8m>& b2 = *b2_ptr;
   const vector<const Oxs_MeshValue<ThreeVector>*>& A = *A_ptr;
 
-  const OC_UINT4m term_count = b1.size();
+  const size_t term_count = b1.size();
 
   // Exports
   Oxs_MeshValue<ThreeVector>& dm_dt = *dm_dt_ptr;
@@ -744,9 +657,16 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
   Oxs_MeshValue<ThreeVector>& kn = *kn_ptr;
 
-  dE_dt_sum = 0.0;
-  max_dm_dt = 0.0;
-  norm_error = 0.0;
+  OC_REAL8m work_dE_dt = 0.0;
+  OC_REAL8m work_max_dm_dt = 0.0;
+  OC_REAL8m work_norm_error = 0.0;
+
+  // Local copies
+  const OC_REAL8m work_mstep = mstep;
+  const OC_REAL8m work_b1_dm_dt = b1_dm_dt;
+  const OC_REAL8m work_b2_dm_dt = b2_dm_dt;
+  const OC_BOOL work_do_precess = do_precess;
+
 
   // Support variables
   OC_REAL8m max_dm_dt_sq = 0.0;
@@ -755,24 +675,18 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
   OC_REAL8m max_normsq  = 0.0;
 
   while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
-
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart; j<jstop ; ++j) {
       ThreeVector dm_dt_result(0,0,0);
       if(Ms[j]!=0.0) {
         OC_REAL8m coef1 = gamma[j];
         OC_REAL8m coef2 = -1*alpha[j]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!work_do_precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j];
         ThreeVector scratch2 = mxH[j];
@@ -784,7 +698,7 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
         if(dm_dt_sq>max_dm_dt_sq) {
           max_dm_dt_sq = dm_dt_sq;
         }
-        dE_dt_sum += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
+        work_dE_dt += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
         scratch2 ^= work_spin[j]; // ((mxH)xm)
         scratch2 *= coef2;  // -alpha.gamma((mxH)xm) = alpha.gamma(mx(mxH))
         dm_dt_result = scratch1 + scratch2;
@@ -794,24 +708,24 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
 #if 1
       ThreeVector tempspin1(0,0,0);
       ThreeVector tempspin2(0,0,0);
-      for(OC_UINT4m k=0;k<term_count;++k) {
+      for(size_t k=0;k<term_count;++k) {
         const ThreeVector& tempvec = (*(A[k]))[j];
         tempspin2.Accum(b2[k],tempvec);
         tempspin1.Accum(b1[k],tempvec);
       }
-      tempspin1.Accum(b1_dm_dt,dm_dt_result);
-      tempspin1 *= mstep;
+      tempspin1.Accum(work_b1_dm_dt,dm_dt_result);
+      tempspin1 *= work_mstep;
       tempspin1 += base_spin[j];
       OC_REAL8m magsq = tempspin1.MakeUnit();
       work_spin[j] = tempspin1;
 
       dm_dt[j] = dm_dt_result;
-      tempspin2.Accum(b2_dm_dt,dm_dt_result);
+      tempspin2.Accum(work_b2_dm_dt,dm_dt_result);
       kn[j] = tempspin2;
 #else
       Nb_Xpfloat ts1x,ts1y,ts1z;
       Nb_Xpfloat ts2x,ts2y,ts2z;
-      for(OC_UINT4m k=0;k<term_count;++k) {
+      for(size_t k=0;k<term_count;++k) {
         const ThreeVector& tempvec = (*(A[k]))[j];
 	ts1x += b1[k]*tempvec.x;
 	ts1y += b1[k]*tempvec.y;
@@ -849,10 +763,14 @@ void _Oxs_RKEvolve_RKFBase54_ThreadC::Cmd(int /* threadnumber */,
   // Thread-level exports
   if(min_normsq <= max_normsq) {
     // At least one "j" was processed
-    max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
+    work_max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
     /// differ from max_j |dm_dt[j]| by rounding errors.
-    norm_error = OC_MAX(sqrt(max_normsq)-1.0,1.0-sqrt(min_normsq));
+    work_norm_error = OC_MAX(sqrt(max_normsq)-1.0,1.0-sqrt(min_normsq));
   }
+
+  thread_dE_dt[threadnumber] = work_dE_dt;
+  thread_max_dm_dt[threadnumber] = work_max_dm_dt;
+  thread_norm_error[threadnumber] = work_norm_error;
 VecDiff("FINI THREAD C spin",work_spin);
 VecDiff("             dm_dt",dm_dt);
 VecDiff("                kn",kn);
@@ -863,18 +781,18 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
  Oxs_SimState& work_state,       // Import and export
  const Oxs_MeshValue<ThreeVector>& mxH,
  Oxs_MeshValue<ThreeVector>& dm_dt,
- vector<_Oxs_RKEvolve_RKFBase54_ThreadC>& thread_data,
+ _Oxs_RKEvolve_RKFBase54_ThreadC& thread_data,
  OC_REAL8m mstep,
  OC_REAL8m b1_dm_dt,
  OC_REAL8m b2_dm_dt,
  const vector<OC_REAL8m>& b1,
  const vector<OC_REAL8m>& b2,
  vector<const Oxs_MeshValue<ThreeVector>*>& A,
- Oxs_MeshValue<ThreeVector>& kn) // Export kn = b2*A
-  /// Also, work_state spin is set to base_state + mstep*(b1*A);
+ Oxs_MeshValue<ThreeVector>& kn)
 {
   const Oxs_Mesh* mesh = base_state.mesh;
   const OC_INDEX vecsize = mesh->Size();
+ const int thread_count = Oc_GetMaxThreadCount();
 
   // Fill out alpha and gamma meshvalue arrays, as necessary.
   if(mesh_id != mesh->Id() || !gamma.CheckMesh(mesh)
@@ -882,47 +800,37 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
     UpdateMeshArrays(mesh);
   }
 
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
+  thread_data.mesh_ptr = mesh;
+  thread_data.Ms_ptr = base_state.Ms;
+  thread_data.gamma_ptr = &gamma;
+  thread_data.alpha_ptr = &alpha;
+  thread_data.mxH_ptr = &mxH;
+  thread_data.base_spin_ptr = &base_state.spin;
+  thread_data.b1_ptr = &b1;
+  thread_data.b2_ptr = &b2;
+  thread_data.A_ptr = &A;
+  thread_data.dm_dt_ptr = &dm_dt;
+  thread_data.work_spin_ptr = &work_state.spin;
+  thread_data.kn_ptr = &kn;
+  thread_data.mstep = mstep;
+  thread_data.b1_dm_dt = b1_dm_dt;
+  thread_data.b2_dm_dt = b2_dm_dt;
+  thread_data.do_precess = do_precess;
 
-  _Oxs_RKEvolve_RKFBase54_ThreadC::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_ThreadC::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_ThreadC::job_control.Unlock();
+  thread_data.job_basket.Init(thread_count,work_state.Ms->GetArrayBlock());
 
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs>(vecsize*3+3)/4) ibs = vecsize;
+  thread_data.thread_dE_dt.clear();
+  thread_data.thread_dE_dt.resize(thread_count,0.0);
 
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].mesh_ptr = mesh;
-    thread_data[ithread].Ms_ptr = base_state.Ms;
-    thread_data[ithread].gamma_ptr = &gamma;
-    thread_data[ithread].alpha_ptr = &alpha;
-    thread_data[ithread].mxH_ptr = &mxH;
-    thread_data[ithread].base_spin_ptr = &base_state.spin;
+  thread_data.thread_max_dm_dt.clear();
+  thread_data.thread_max_dm_dt.resize(thread_count,0.0);
 
-    thread_data[ithread].b1_ptr = &b1;
-    thread_data[ithread].b2_ptr = &b2;
-    thread_data[ithread].A_ptr = &A;
-
-    thread_data[ithread].dm_dt_ptr = &dm_dt;
-    thread_data[ithread].work_spin_ptr = &work_state.spin;
-
-    thread_data[ithread].kn_ptr = &kn;
-
-    thread_data[ithread].mstep = mstep;
-    thread_data[ithread].b1_dm_dt = b1_dm_dt;
-    thread_data[ithread].b2_dm_dt = b2_dm_dt;
-
-    thread_data[ithread].do_precess = do_precess;
-    thread_data[ithread].vecsize = vecsize;
-    thread_data[ithread].block_size = ibs;
-  }
+  thread_data.thread_norm_error.clear();
+  thread_data.thread_norm_error.resize(thread_count,0.0);
 
   // Adjust state code
   work_state.ClearDerivedData();
-  const OC_UINT4m term_count = b1.size();
+  const size_t term_count = b1.size();
   if(term_count != b2.size()) {
     OXS_THROW(Oxs_BadParameter,"Failure in"
               " Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt:"
@@ -954,7 +862,7 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
 
 void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
 (const Oxs_SimState& base_state, // Import
- const vector<_Oxs_RKEvolve_RKFBase54_ThreadC>& thread_data, // Import
+ const _Oxs_RKEvolve_RKFBase54_ThreadC& thread_data, // Import
  OC_REAL8m pE_pt,             // Import
  OC_REAL8m hstep,             // Import
  Oxs_SimState& work_state, // Export
@@ -963,20 +871,22 @@ void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
  OC_REAL8m& min_timestep_export,    // Export
  OC_REAL8m& norm_error)       // Export
 {
-  max_dm_dt = 0.0;
-  dE_dt = 0.0;
-  norm_error = 0.0;
-  const OC_INT4m thread_count = thread_data.size();
-  for(OC_INT4m ithread=0;ithread<thread_count;++ithread) {
-    if(thread_data[ithread].max_dm_dt>max_dm_dt) {
-      max_dm_dt = thread_data[ithread].max_dm_dt;
+  const OC_INDEX thread_count
+    = static_cast<OC_INDEX>(thread_data.thread_dE_dt.size());
+  assert(thread_count>=0);
+
+  dE_dt = thread_data.thread_dE_dt[0];
+  max_dm_dt = thread_data.thread_max_dm_dt[0];
+  norm_error = thread_data.thread_norm_error[0];
+  for(OC_INDEX i=1;i<thread_count;++i) {
+    dE_dt += thread_data.thread_dE_dt[i];
+    if(thread_data.thread_max_dm_dt[i]>max_dm_dt) {
+      max_dm_dt = thread_data.thread_max_dm_dt[i];
     }
-    dE_dt += thread_data[ithread].dE_dt_sum;
-    if(thread_data[ithread].norm_error>norm_error) {
-      norm_error = thread_data[ithread].norm_error;
+    if(thread_data.thread_norm_error[i]>norm_error) {
+      norm_error = thread_data.thread_norm_error[i];
     }
   }
-
   dE_dt = -1 * MU0 * dE_dt + pE_pt;
   /// The first term is (partial E/partial M)*dM/dt, the
   /// second term is (partial E/partial t)*dt/dt.  Note that,
@@ -1016,8 +926,9 @@ void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
 ////////////////////////////////////////////////////////////////////////
 class _Oxs_RKEvolve_RKFBase54_ThreadD : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<OC_REAL8m> job_basket;
 
   // Imports
   const Oxs_Mesh* mesh_ptr;
@@ -1031,33 +942,26 @@ public:
   // Exports
   Oxs_MeshValue<ThreeVector>* dm_dt_ptr;
   /// Note: mxH and dm_dt may be same Oxs_MeshValue objects.
-  OC_REAL8m dE_dt_sum;
-  OC_REAL8m max_dm_dt;
-  OC_REAL8m max_dD_magsq;
+  vector<OC_REAL8m> thread_dE_dt;
+  vector<OC_REAL8m> thread_max_dm_dt;
+  vector<OC_REAL8m> thread_max_dD_magsq;
 
   // More imports
   OC_REAL8m dc7;
 
-  OC_INT4m do_precess;
-
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
+  OC_BOOL do_precess;
 
   _Oxs_RKEvolve_RKFBase54_ThreadD()
     : mesh_ptr(0),Ms_ptr(0), gamma_ptr(0), alpha_ptr(0), mxH_ptr(0),
       work_spin_ptr(0), dD13456_ptr(0), dm_dt_ptr(0),
-      dE_dt_sum(0.0), max_dm_dt(0.0),max_dD_magsq(0.0),
-      dc7(0.0),
-      do_precess(1), vecsize(0), block_size(0) {}
+      dc7(0.0), do_precess(1) {}
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_ThreadD::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_ThreadD::offset(0);
+Oxs_JobControl<OC_REAL8m> _Oxs_RKEvolve_RKFBase54_ThreadD::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_ThreadD::Cmd(int /* threadnumber */,
+void _Oxs_RKEvolve_RKFBase54_ThreadD::Cmd(int threadnumber,
                                          void* /* data */)
 { // This routine computes max_dD_magsq.  This involves computing
   // dm_dt at each mesh point, but that result is not stored.
@@ -1073,60 +977,29 @@ void _Oxs_RKEvolve_RKFBase54_ThreadD::Cmd(int /* threadnumber */,
 
   // Exports
   Oxs_MeshValue<ThreeVector>& dm_dt = *dm_dt_ptr;
-  dE_dt_sum = 0.0;
-  max_dm_dt = 0.0;
-  max_dD_magsq = 0.0;
+  OC_REAL8m work_dE_dt = 0.0;
+  OC_REAL8m work_max_dD_magsq = 0.0;
+
+  // Local copies
+  const OC_REAL8m work_dc7 = dc7;
+  const OC_BOOL work_do_precess = do_precess;
 
   // Support variables
   OC_REAL8m max_dm_dt_sq = 0.0;
 
-#ifdef NOAH
-OC_INDEX max_bad_j=-1; /**/
- char xbuf[4096];
- xbuf[0] = '\0';
-
- union {
-   double x;
-   char y[sizeof(double)];
- } dtest;
- dtest.y[0] = 0xb2;
- dtest.y[1] = 0xe3;
- dtest.y[2] = 0x16;
- dtest.y[3] = 0x4a;
- dtest.y[4] = 0x7d;
- dtest.y[5] = 0xb0;
- dtest.y[6] = 0xef;
- dtest.y[7] = 0x3f;
- Oc_Snprintf(xbuf+strlen(xbuf),sizeof(xbuf)-strlen(xbuf),"\nTEST: %25.16e\n\n",dtest.x);
-
- Oc_Snprintf(xbuf+strlen(xbuf),sizeof(xbuf)-strlen(xbuf),"ThreaD %d: alpha=%p\n",threadnumber,&(alpha[0]));
- Oc_Snprintf(xbuf+strlen(xbuf),sizeof(xbuf)-strlen(xbuf),"alpha[  1]: ");
- ShowDouble(xbuf+strlen(xbuf),&(alpha[1]));
- Oc_Snprintf(xbuf+strlen(xbuf),sizeof(xbuf)-strlen(xbuf),"alpha[256]: ");
- ShowDouble(xbuf+strlen(xbuf),&(alpha[256]));
- Oc_Snprintf(xbuf+strlen(xbuf),sizeof(xbuf)-strlen(xbuf),"alpha[%3d]: ",alpha.Size()-1);
- ShowDouble(xbuf+strlen(xbuf),&(alpha[alpha.Size()-1]));
- fprintf(stderr,xbuf);
-#endif
   while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
-
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart;j<jstop;++j) {
       ThreeVector dm_dt_result(0,0,0);
       if(Ms[j]!=0.0) {
         OC_REAL8m coef1 = gamma[j];
         OC_REAL8m coef2 = -1*alpha[j]*coef1;
-        if(!do_precess) coef1 = 0.0;
+        if(!work_do_precess) coef1 = 0.0;
         
         ThreeVector scratch1 = mxH[j];
         ThreeVector scratch2 = mxH[j];
@@ -1138,50 +1011,36 @@ OC_INDEX max_bad_j=-1; /**/
         if(dm_dt_sq>max_dm_dt_sq) {
           max_dm_dt_sq = dm_dt_sq;
         }
-        dE_dt_sum += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
+        work_dE_dt += mxH_sq * Ms[j] * mesh.Volume(j) * coef2;
         scratch2 ^= work_spin[j]; // ((mxH)xm)
         scratch2 *= coef2;  // -alpha.gamma((mxH)xm) = alpha.gamma(mx(mxH))
         dm_dt_result = scratch1 + scratch2;
       }
       ThreeVector dD = dm_dt[j] = dm_dt_result;
-      dD *= dc7;
+      dD *= work_dc7;
       dD += dD13456[j];
-#ifdef NOAH
-if(j==1 || j==256) { /**/
-  fprintf(stderr,"THREAD %d j=%4d\n dm_dt=(%23.15e %23.15e %23.15e)\n"
-	  "    dD=(%23.15e %23.15e %23.15e)\n    dc7=%23.16e   alpha=%25.16e\n",
-	  threadnumber,j,dm_dt_result.x,dm_dt_result.y,dm_dt_result.z,
-	  dD13456[j].x,dD13456[j].y,dD13456[j].z,dc7,alpha[j]); fflush(stderr); /**/
-} /**/
-#endif // NOAH
       OC_REAL8m dD_magsq = dD.MagSq();
-      if(dD_magsq > max_dD_magsq) {
-        max_dD_magsq = dD_magsq;
-#ifdef NOAH
-max_bad_j = j; /**/
-#endif // NOAH
+      if(dD_magsq > work_max_dD_magsq) {
+        work_max_dD_magsq = dD_magsq;
       }
     }
   }
-#ifdef NOAH
-fprintf(stderr,"Thread %d max_dD_magsq=%20.12e at j=%5d with max_dmdtsq=%20.12e\n",threadnumber,max_dD_magsq,max_bad_j,max_dm_dt_sq); fflush(stderr); /**/
-#endif // NOAH
   // Thread-level exports
-  max_dm_dt = sqrt(max_dm_dt_sq);  // Note: This result may slightly
-  /// differ from max_j |dm_dt[j]| by rounding errors.
-
+  thread_dE_dt[threadnumber] = work_dE_dt;
+  thread_max_dm_dt[threadnumber] = sqrt(max_dm_dt_sq);
+  thread_max_dD_magsq[threadnumber] = work_max_dD_magsq;
 }
 
 void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
 (const Oxs_SimState& work_state,       // Import
  const Oxs_MeshValue<ThreeVector>& mxH,
  Oxs_MeshValue<ThreeVector>& dm_dt,
- vector<_Oxs_RKEvolve_RKFBase54_ThreadD>& thread_data,
+ _Oxs_RKEvolve_RKFBase54_ThreadD& thread_data,
  OC_REAL8m dc7,
  const Oxs_MeshValue<ThreeVector>& dD13456)
 {
   const Oxs_Mesh* mesh = work_state.mesh;
-  const OC_INDEX vecsize = mesh->Size();
+  const int thread_count = Oc_GetMaxThreadCount();
 
   // Fill out alpha and gamma meshvalue arrays, as necessary.
   if(mesh_id != mesh->Id() || !gamma.CheckMesh(mesh)
@@ -1189,59 +1048,53 @@ void Oxs_RungeKuttaEvolve::Initialize_Threaded_Calculate_dm_dt
     UpdateMeshArrays(mesh);
   }
 
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
+  thread_data.mesh_ptr = mesh;
+  thread_data.Ms_ptr = work_state.Ms;
+  thread_data.gamma_ptr = &gamma;
+  thread_data.alpha_ptr = &alpha;
+  thread_data.mxH_ptr = &mxH;
+  thread_data.work_spin_ptr = &work_state.spin;
+  thread_data.dm_dt_ptr = &dm_dt;
+  thread_data.dc7 = dc7;
+  thread_data.dD13456_ptr = &dD13456;
+  thread_data.do_precess = do_precess;
 
-  _Oxs_RKEvolve_RKFBase54_ThreadD::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_ThreadD::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_ThreadD::job_control.Unlock();
+  thread_data.job_basket.Init(thread_count,work_state.Ms->GetArrayBlock());
 
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs>(vecsize*3+3)/4) ibs = vecsize;
+  thread_data.thread_dE_dt.clear();
+  thread_data.thread_dE_dt.resize(thread_count,0.0);
 
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].mesh_ptr = mesh;
-    thread_data[ithread].Ms_ptr = work_state.Ms;
-    thread_data[ithread].gamma_ptr = &gamma;
-    thread_data[ithread].alpha_ptr = &alpha;
-    thread_data[ithread].mxH_ptr = &mxH;
-    thread_data[ithread].work_spin_ptr = &work_state.spin;
-    thread_data[ithread].dm_dt_ptr = &dm_dt;
+  thread_data.thread_max_dm_dt.clear();
+  thread_data.thread_max_dm_dt.resize(thread_count,0.0);
 
-    thread_data[ithread].dc7 = dc7;
-    thread_data[ithread].dD13456_ptr = &dD13456;
-
-    thread_data[ithread].do_precess = do_precess;
-    thread_data[ithread].vecsize = vecsize;
-    thread_data[ithread].block_size = ibs;
-  }
+  thread_data.thread_max_dD_magsq.clear();
+  thread_data.thread_max_dD_magsq.resize(thread_count,0.0);
 }
 
 void Oxs_RungeKuttaEvolve::Finalize_Threaded_Calculate_dm_dt
-(const vector<_Oxs_RKEvolve_RKFBase54_ThreadD>& thread_data, // Import
+(const _Oxs_RKEvolve_RKFBase54_ThreadD& thread_data, // Import
  OC_REAL8m pE_pt,          // Import
  OC_REAL8m& max_dm_dt,      // Export
  OC_REAL8m& dE_dt,          // Export
  OC_REAL8m& min_timestep_export,  // Export
  OC_REAL8m& max_dD_magsq)   // Export
 {
-  max_dm_dt = 0.0;
-  dE_dt = 0.0;
-  max_dD_magsq = 0.0;
-  const OC_INT4m thread_count = thread_data.size();
-  for(OC_INT4m ithread=0;ithread<thread_count;++ithread) {
-    if(thread_data[ithread].max_dm_dt>max_dm_dt) {
-      max_dm_dt = thread_data[ithread].max_dm_dt;
+  const OC_INDEX thread_count
+    = static_cast<OC_INDEX>(thread_data.thread_dE_dt.size());
+  assert(thread_count>=0);
+
+  dE_dt = thread_data.thread_dE_dt[0];
+  max_dm_dt = thread_data.thread_max_dm_dt[0];
+  max_dD_magsq = thread_data.thread_max_dD_magsq[0];
+  for(OC_INDEX i=1;i<thread_count;++i) {
+    dE_dt += thread_data.thread_dE_dt[i];
+    if(thread_data.thread_max_dm_dt[i]>max_dm_dt) {
+      max_dm_dt = thread_data.thread_max_dm_dt[i];
     }
-    dE_dt += thread_data[ithread].dE_dt_sum;
-    if(thread_data[ithread].max_dD_magsq>max_dD_magsq) {
-      max_dD_magsq = thread_data[ithread].max_dD_magsq;
+    if(thread_data.thread_max_dD_magsq[i]>max_dD_magsq) {
+      max_dD_magsq = thread_data.thread_max_dD_magsq[i];
     }
   }
-
-
   dE_dt = -1 * MU0 * dE_dt + pE_pt;
   /// The first term is (partial E/partial M)*dM/dt, the
   /// second term is (partial E/partial t)*dt/dt.  Note that,
@@ -1894,31 +1747,30 @@ Oxs_RungeKuttaEvolve::AdjustState
 
 class _Oxs_RKEvolve_RKFBase54_AdjustState : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<ThreeVector> job_basket;
 
   const Oxs_MeshValue<ThreeVector>* dm_dt_ptr;    // Import
   const Oxs_MeshValue<ThreeVector>* old_spin_ptr; // Import
   Oxs_MeshValue<ThreeVector>* new_spin_ptr;       // Export
-  OC_REAL8m mstep;                               // Import
-  OC_REAL8m norm_error;                          // Export
+  vector<OC_REAL8m> norm_error;                   // Export
+  OC_REAL8m mstep;                                // Import
   
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
-
-  _Oxs_RKEvolve_RKFBase54_AdjustState()
-    : dm_dt_ptr(0), old_spin_ptr(0), new_spin_ptr(0),
-      mstep(0.0), norm_error(0.0),
-      vecsize(0), block_size(0) {}
+  _Oxs_RKEvolve_RKFBase54_AdjustState(int thread_count,
+                        const Oxs_StripedArray<ThreeVector>* arrblock)
+          : dm_dt_ptr(0), old_spin_ptr(0), new_spin_ptr(0),
+            norm_error(thread_count),mstep(0.0) {
+    job_basket.Init(thread_count,arrblock);
+  }
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_AdjustState::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_AdjustState::offset(0);
+Oxs_JobControl<ThreeVector> _Oxs_RKEvolve_RKFBase54_AdjustState::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_AdjustState::Cmd(int /* threadnumber */,
+
+void _Oxs_RKEvolve_RKFBase54_AdjustState::Cmd(int threadnumber,
                                               void* /* data */)
 { // Imports
   const Oxs_MeshValue<ThreeVector>& dm_dt = *dm_dt_ptr;
@@ -1937,22 +1789,18 @@ void _Oxs_RKEvolve_RKFBase54_AdjustState::Cmd(int /* threadnumber */,
   OC_REAL8m min_normsq1 = DBL_MAX;
   OC_REAL8m max_normsq1 = 0.0;
 
-  while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
+  OC_REAL8m tstep = mstep;  // Local copy
 
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+  while(1) {
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart; j < jstart + (jstop-jstart)%2 ; ++j) {
       ThreeVector tempspin = old_spin[j];
-      tempspin.Accum(mstep,dm_dt[j]);
+      tempspin.Accum(tstep,dm_dt[j]);
       OC_REAL8m magsq = tempspin.MakeUnit();
       if(magsq<min_normsq) min_normsq=magsq;
       if(magsq>max_normsq) max_normsq=magsq;
@@ -1961,11 +1809,11 @@ void _Oxs_RKEvolve_RKFBase54_AdjustState::Cmd(int /* threadnumber */,
 
     for(;j<jstop;j+=2) {
       ThreeVector tempspin0 = old_spin[j];
-      tempspin0.Accum(mstep,dm_dt[j]);
+      tempspin0.Accum(tstep,dm_dt[j]);
       OC_REAL8m magsq0 = tempspin0.MakeUnit();
 
       ThreeVector tempspin1 = old_spin[j+1];
-      tempspin1.Accum(mstep,dm_dt[j+1]);
+      tempspin1.Accum(tstep,dm_dt[j+1]);
       OC_REAL8m magsq1 = tempspin1.MakeUnit();
 
       new_spin[j]   = tempspin0;
@@ -1981,11 +1829,13 @@ void _Oxs_RKEvolve_RKFBase54_AdjustState::Cmd(int /* threadnumber */,
 
   if(max_normsq<max_normsq0) max_normsq = max_normsq0;
   if(max_normsq<max_normsq1) max_normsq = max_normsq1;
+  OC_REAL8m max_norm = sqrt(max_normsq);
 
   if(min_normsq>min_normsq0) min_normsq = min_normsq0;
   if(min_normsq>min_normsq1) min_normsq = min_normsq1;
-  
-  norm_error = OC_MAX(sqrt(max_normsq)-1.0,1.0 - sqrt(min_normsq));
+  OC_REAL8m min_norm = sqrt(min_normsq);
+
+  norm_error[threadnumber] = OC_MAX(max_norm-1.0,1.0 - min_norm);
 }
 
 void
@@ -2008,38 +1858,23 @@ Oxs_RungeKuttaEvolve::AdjustState  // Threaded version
                          " Import spin and dm_dt are different sizes.");
   }
   new_spin.AdjustSize(old_state.mesh);
-  const OC_INDEX vecsize = old_state.mesh->Size();
 
-  vector<_Oxs_RKEvolve_RKFBase54_AdjustState> thread_data;
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
+  const int thread_count = Oc_GetMaxThreadCount();
+  _Oxs_RKEvolve_RKFBase54_AdjustState
+    threadAdjustState(thread_count,old_spin.GetArrayBlock());
 
-  _Oxs_RKEvolve_RKFBase54_AdjustState::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_AdjustState::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_AdjustState::job_control.Unlock();
-
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs>(vecsize*3+3)/4) ibs = vecsize;
+  threadAdjustState.dm_dt_ptr = &dm_dt;
+  threadAdjustState.old_spin_ptr = &old_spin;
+  threadAdjustState.new_spin_ptr = &new_spin;
+  threadAdjustState.mstep = mstep;
 
   Oxs_ThreadTree threadtree;
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].dm_dt_ptr = &dm_dt;
-    thread_data[ithread].old_spin_ptr = &old_spin;
-    thread_data[ithread].new_spin_ptr = &new_spin;
-    thread_data[ithread].mstep = mstep;
-    thread_data[ithread].norm_error = 0.0;
-    thread_data[ithread].vecsize= vecsize;
-    thread_data[ithread].block_size= ibs;
-    if(ithread!=0) threadtree.Launch(thread_data[ithread],0);
-  }
-  threadtree.LaunchRoot(thread_data[0],0);
+  threadtree.LaunchTree(threadAdjustState,0);
 
-  norm_error = -1.0;
-  for(OC_INT4m ithread=0;ithread<MaxThreadCount;++ithread) {
-    if(thread_data[ithread].norm_error > norm_error) {
-      norm_error = thread_data[ithread].norm_error;
+  norm_error = threadAdjustState.norm_error[0];
+  for(int i=1;i<thread_count;++i) {
+    if(norm_error < threadAdjustState.norm_error[i]) {
+      norm_error = threadAdjustState.norm_error[i];
     }
   }
 
@@ -3453,9 +3288,10 @@ RealDiff("Pt B1 temp enery",temp_energy); /**/
 timer[4].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
+    // Initialize thread structure
     vector<OC_REAL8m> vb; vector<const Oxs_MeshValue<ThreeVector>*> vs;
     vb.push_back(b21); vs.push_back(&current_dm_dt);
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadB> thread_data;
+    _Oxs_RKEvolve_RKFBase54_ThreadB thread_data;
     Oxs_SimState& work_state = next_state_key.GetWriteReference();
     Initialize_Threaded_Calculate_dm_dt(*cstate,work_state,
                                         vtmpA,vtmpA,thread_data,
@@ -3463,12 +3299,11 @@ timer[4].Start(); /**/
                                         b22 /* b_dm_dt */,
                                         vb,vs,vtmpB);
 
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(*cstate,thread_data,pE_pt,
                                       stepsize*a2 /* hstep */,
                                       work_state,
@@ -3491,10 +3326,11 @@ VecDiff("Pt C1 vtmpB",vtmpB); /**/
 timer[5].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
+    // Initialize thread structure
     vector<OC_REAL8m> vb; vector<const Oxs_MeshValue<ThreeVector>*> vs;
     vb.push_back(b31); vs.push_back(&current_dm_dt);
     vb.push_back(b32); vs.push_back(&vtmpA);
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadB> thread_data;
+    _Oxs_RKEvolve_RKFBase54_ThreadB thread_data;
     Oxs_SimState& work_state = next_state_key.GetWriteReference();
     Initialize_Threaded_Calculate_dm_dt(*cstate,work_state,
                                         vtmpB,vtmpB,thread_data,
@@ -3502,12 +3338,11 @@ timer[5].Start(); /**/
                                         b33 /* b_dm_dt */,
                                         vb,vs,vtmpC);
 
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(*cstate,thread_data,pE_pt,
                                       stepsize*a3 /* hstep */,
                                       work_state,
@@ -3529,11 +3364,12 @@ SpinDiff("Pt D",next_state_key.GetReadReference()); /**/
 timer[6].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
+    // Initialize thread structure
     vector<OC_REAL8m> vb; vector<const Oxs_MeshValue<ThreeVector>*> vs;
     vb.push_back(b41); vs.push_back(&current_dm_dt);
     vb.push_back(b42); vs.push_back(&vtmpA);
     vb.push_back(b43); vs.push_back(&vtmpB);
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadB> thread_data;
+    _Oxs_RKEvolve_RKFBase54_ThreadB thread_data;
     Oxs_SimState& work_state = next_state_key.GetWriteReference();
     Initialize_Threaded_Calculate_dm_dt(*cstate,work_state,
                                         vtmpC,vtmpC,thread_data,
@@ -3541,12 +3377,11 @@ timer[6].Start(); /**/
                                         b44 /* b_dm_dt */,
                                         vb,vs,vtmpD);
 
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(*cstate,thread_data,pE_pt,
                                       stepsize*a4 /* hstep */,
                                       work_state,
@@ -3568,12 +3403,13 @@ SpinDiff("Pt E",next_state_key.GetReadReference()); /**/
 timer[7].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
+    // Initialize thread structure
     vector<OC_REAL8m> vb; vector<const Oxs_MeshValue<ThreeVector>*> vs;
     vb.push_back(b51); vs.push_back(&current_dm_dt);
     vb.push_back(b52); vs.push_back(&vtmpA);
     vb.push_back(b53); vs.push_back(&vtmpB);
     vb.push_back(b54); vs.push_back(&vtmpC);
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadB> thread_data;
+    _Oxs_RKEvolve_RKFBase54_ThreadB thread_data;
     Oxs_SimState& work_state = next_state_key.GetWriteReference();
     Initialize_Threaded_Calculate_dm_dt(*cstate,work_state,
                                         vtmpD,vtmpD,thread_data,
@@ -3581,12 +3417,11 @@ timer[7].Start(); /**/
                                         b55 /* b_dm_dt */,
                                         vb,vs,vtmpA);
 
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(*cstate,thread_data,pE_pt,
                                       stepsize,   /* hstep; a5==1 */
                                       work_state,
@@ -3608,6 +3443,7 @@ VecDiff("Pt F1 vtmpA",vtmpA); /**/
 timer[8].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
+    // Initialize thread structure
     vector<OC_REAL8m> vb1;
     vector<OC_REAL8m> vb2;
     vector<const Oxs_MeshValue<ThreeVector>*> vs;
@@ -3616,7 +3452,7 @@ timer[8].Start(); /**/
     vb1.push_back(b64); vb2.push_back(dc4); vs.push_back(&vtmpC);
     vb1.push_back(b65); vb2.push_back(dc5); vs.push_back(&vtmpD);
 
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadC> thread_data;
+    _Oxs_RKEvolve_RKFBase54_ThreadC thread_data;
     Oxs_SimState& work_state = next_state_key.GetWriteReference();
     Initialize_Threaded_Calculate_dm_dt(*cstate,work_state,
                                         vtmpA,vtmpA,thread_data,
@@ -3625,12 +3461,11 @@ timer[8].Start(); /**/
                                         dc6 /* b2_dm_dt */,
                                         vb1,vb2,vs,vtmpB);
 
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(*cstate,thread_data,pE_pt,
                                       stepsize,   /* hstep; a6==1 */
                                       work_state,
@@ -3657,15 +3492,15 @@ SpinDiff("Pt G",endstate); /**/
 timer[9].Start(); /**/
 #endif // REPORT_TIME_RKDEVEL
   {
-    vector<_Oxs_RKEvolve_RKFBase54_ThreadD> thread_data;
+    // Initialize thread structure
+    _Oxs_RKEvolve_RKFBase54_ThreadD thread_data;
     Initialize_Threaded_Calculate_dm_dt(endstate,mxH_output.cache.value,vtmpA,
                                         thread_data,dc7,vtmpB);
+    // Run threads
     Oxs_ThreadTree threadtree;
-    const OC_INT4m thread_count = thread_data.size();
-    for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-      threadtree.Launch(thread_data[ithread],0);
-    }
-    threadtree.LaunchRoot(thread_data[0],0);
+    threadtree.LaunchTree(thread_data,0);
+
+    // Collect results
     Finalize_Threaded_Calculate_dm_dt(thread_data,pE_pt,
                                       max_dm_dt,dE_dt,
                                       timestep_lower_bound,max_dD_sq);
@@ -3824,39 +3659,31 @@ void Oxs_RungeKuttaEvolve::ComputeEnergyChange
 
 class _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
-  static OC_INDEX offset;
+  // Note: The job basket is static, so only one "set" (tree) of this
+  // class may be run at any one time.
+  static Oxs_JobControl<OC_REAL8m> job_basket;
 
-  const Oxs_Mesh* mesh;                               // Import
+  const Oxs_Mesh* mesh;                                  // Import
   const Oxs_MeshValue<OC_REAL8m>* current_energy_ptr;    // Import
   const Oxs_MeshValue<OC_REAL8m>* candidate_energy_ptr;  // Import
-  OC_REAL8m dE;                                          // Export
-  OC_REAL8m var_dE;                                      // Export
-  OC_REAL8m total_E;                                     // Export
-
-  // Job control (imports)
-  OC_INDEX vecsize;
-  OC_INDEX block_size;
+  vector<OC_REAL8m> thread_dE;                           // Export
+  vector<OC_REAL8m> thread_var_dE;                       // Export
+  vector<OC_REAL8m> thread_total_E;                      // Export
 
   _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange()
-    : mesh(0),current_energy_ptr(0),candidate_energy_ptr(0),
-      dE(0.0), var_dE(0.0), total_E(0.0),
-      vecsize(0), block_size(0) {}
+    : mesh(0),current_energy_ptr(0),candidate_energy_ptr(0) {}
 
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::job_control;
-OC_INDEX  _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::offset(0);
+Oxs_JobControl<OC_REAL8m> _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::job_basket;
 
-void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int /* threadnumber */,
+void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int threadnumber,
                                                       void* /* data */)
-{ // Imports
+{ // Imports (local copies)
+  const Oxs_Mesh* work_mesh                        = mesh;
   const Oxs_MeshValue<OC_REAL8m>& current_energy   = *current_energy_ptr;
   const Oxs_MeshValue<OC_REAL8m>& candidate_energy = *candidate_energy_ptr;
-
-  // Exports
-  dE = var_dE = total_E = 0.0;
 
   Nb_Xpfloat dE0=0.0, var_dE0=0.0, total_E0=0.0;
   Nb_Xpfloat dE1=0.0, var_dE1=0.0, total_E1=0.0;
@@ -3864,20 +3691,14 @@ void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int /* threadnumber */,
   Nb_Xpfloat dE3=0.0, var_dE3=0.0, total_E3=0.0;
 
   while(1) {
-    job_control.Lock();
-    OC_INDEX istart = offset;
-    OC_INDEX istop = ( offset += block_size );
-    job_control.Unlock();
-
-    if(istart>=vecsize) break;
-    if(istop>vecsize) istop=vecsize;
+    OC_INDEX jstart,jstop;
+    job_basket.GetJob(threadnumber,jstart,jstop);
+    if(jstart>=jstop) break; // No more jobs
 
     OC_INDEX j;
-    const OC_INDEX jstart = istart;
-    const OC_INDEX jstop  = istop;
 
     for(j=jstart; j < jstart + (jstop-jstart)%4 ; ++j) {
-      OC_REAL8m vol = mesh->Volume(j);
+      OC_REAL8m vol = work_mesh->Volume(j);
       OC_REAL8m e = vol*current_energy[j];
       OC_REAL8m new_e = vol*candidate_energy[j];
       total_E0 += e;
@@ -3886,8 +3707,8 @@ void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int /* threadnumber */,
     }
 
     for(;j<jstop;j+=4) {
-      OC_REAL8m vol0 = mesh->Volume(j);
-      OC_REAL8m vol1 = mesh->Volume(j+1);
+      OC_REAL8m vol0 = work_mesh->Volume(j);
+      OC_REAL8m vol1 = work_mesh->Volume(j+1);
 
       OC_REAL8m e0 = vol0*current_energy[j];
       OC_REAL8m e1 = vol1*current_energy[j+1];
@@ -3903,8 +3724,8 @@ void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int /* threadnumber */,
       dE1 += new_e1 - e1;
       var_dE1 += new_e1*new_e1 + e1*e1;
 
-      OC_REAL8m vol2 = mesh->Volume(j+2);
-      OC_REAL8m vol3 = mesh->Volume(j+3);
+      OC_REAL8m vol2 = work_mesh->Volume(j+2);
+      OC_REAL8m vol3 = work_mesh->Volume(j+3);
 
       OC_REAL8m e2 = vol2*current_energy[j+2];
       OC_REAL8m e3 = vol3*current_energy[j+3];
@@ -3925,9 +3746,9 @@ void _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::Cmd(int /* threadnumber */,
   var_dE0  += var_dE1 + var_dE2 + var_dE3;
   total_E0 += total_E1 + total_E2 + total_E3;
 
-  dE = dE0.GetValue();
-  var_dE = var_dE0.GetValue();
-  total_E = total_E0.GetValue();
+  thread_dE[threadnumber] = dE0.GetValue();
+  thread_var_dE[threadnumber] = var_dE0.GetValue();
+  thread_total_E[threadnumber] = total_E0.GetValue();
 }
 
 void
@@ -3939,41 +3760,35 @@ Oxs_RungeKuttaEvolve::ComputeEnergyChange // Threaded version
 { // Computes cellwise difference between energies, and variance.
   // Export total_E is "current" energy (used for stepsize control).
 
-  const OC_INDEX vecsize = mesh->Size();
+  const int thread_count = Oc_GetMaxThreadCount();
 
-  vector<_Oxs_RKEvolve_RKFBase54_ComputeEnergyChange> thread_data;
-  const OC_INT4m MaxThreadCount = Oc_GetMaxThreadCount();
-  thread_data.resize(MaxThreadCount);
+  _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange thread_data;
 
-  _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::job_control.Lock();
-  _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::offset = 0;
-  _Oxs_RKEvolve_RKFBase54_ComputeEnergyChange::job_control.Unlock();
+  // Initialize thread structure
+  thread_data.job_basket.Init(thread_count,
+                              current_energy.GetArrayBlock());
+  thread_data.mesh = mesh;
+  thread_data.current_energy_ptr = &current_energy;
+  thread_data.candidate_energy_ptr = &candidate_energy;
+  thread_data.thread_dE.clear();
+  thread_data.thread_dE.resize(thread_count,0.0);
+  thread_data.thread_var_dE.clear();
+  thread_data.thread_var_dE.resize(thread_count,0.0);
+  thread_data.thread_total_E.clear();
+  thread_data.thread_total_E.resize(thread_count,0.0);
 
-  OC_INDEX ibs = (vecsize + MaxThreadCount - 1)/MaxThreadCount;
-  ibs = (ibs + 7)/8;
-  if(ibs%8) { ibs += 8 - (ibs%8); }
-  if(ibs>(vecsize*3+3)/4) ibs = vecsize;
-
-  OC_INT4m ithread;
+  // Run threads
   Oxs_ThreadTree threadtree;
-  for(ithread=0;ithread<MaxThreadCount;++ithread) {
-    thread_data[ithread].mesh = mesh;
-    thread_data[ithread].current_energy_ptr = &current_energy;
-    thread_data[ithread].candidate_energy_ptr = &candidate_energy;
-    thread_data[ithread].vecsize= vecsize;
-    thread_data[ithread].block_size= ibs;
-    if(ithread!=0) threadtree.Launch(thread_data[ithread],0);
-  }
-  threadtree.LaunchRoot(thread_data[0],0);
+  threadtree.LaunchTree(thread_data,0);
 
-  // Accumulate results
-  dE = thread_data[0].dE;
-  var_dE = thread_data[0].var_dE;
-  total_E = thread_data[0].total_E;
-  for(ithread=1;ithread<MaxThreadCount;++ithread) {
-    dE += thread_data[ithread].dE;
-    var_dE += thread_data[ithread].var_dE;
-    total_E += thread_data[ithread].total_E;
+  // Collect results
+  dE = thread_data.thread_dE[0];
+  var_dE = thread_data.thread_var_dE[0];
+  total_E = thread_data.thread_total_E[0];
+  for(int i=1;i<thread_count;++i) {
+    dE += thread_data.thread_dE[i];
+    var_dE += thread_data.thread_var_dE[i];
+    total_E += thread_data.thread_total_E[i];
   }
 }
 
@@ -4216,6 +4031,8 @@ timer[0].Stop(); /**/
   // Otherwise, we are accepting the new step.
 
   // Calculate dm_dt at new point, and fill in cache.
+  // This branch is not active when using the RKF54 kernel, but is
+  // when using the RK4 kernel.
   if(new_energy_and_dmdt_computed) {
     dm_dt_output.cache.value.Swap(vtmpA);
   } else {
@@ -4231,20 +4048,49 @@ timer[0].Stop(); /**/
                     dm_dt_output.cache.value,new_max_dm_dt,
                     new_dE_dt,new_timestep_lower_bound);
 #else // OOMMF_THREADS
-    {
-      vector<_Oxs_RKEvolve_RKFBase54_ThreadA> thread_data;
-      Initialize_Threaded_Calculate_dm_dt(nstate,mxH_output.cache.value,
-                                          dm_dt_output.cache.value,
-                                          thread_data);
-      Oxs_ThreadTree threadtree;
-      const OC_INT4m thread_count = thread_data.size();
-      for(OC_INT4m ithread=1;ithread<thread_count;++ithread) {
-        threadtree.Launch(thread_data[ithread],0);
+    { // Threaded version of Calculate_dm_dt:
+      // Fill out alpha and gamma meshvalue arrays, as necessary.
+      if(mesh_id != nstate.mesh->Id() || !gamma.CheckMesh(nstate.mesh)
+         || !alpha.CheckMesh(nstate.mesh)) {
+        UpdateMeshArrays(nstate.mesh);
       }
-      threadtree.LaunchRoot(thread_data[0],0);
-      Finalize_Threaded_Calculate_dm_dt(thread_data,new_pE_pt,
-                                        new_max_dm_dt,new_dE_dt,
-                                        new_timestep_lower_bound);
+
+      // Initialize thread structure
+      const int thread_count = Oc_GetMaxThreadCount();
+      _Oxs_RKEvolve_Step_ThreadA thread_data(thread_count,
+                                             nstate.Ms->GetArrayBlock());
+      thread_data.mesh_ptr   = nstate.mesh;
+      thread_data.Ms_ptr     = nstate.Ms;
+      thread_data.gamma_ptr  = &gamma;
+      thread_data.alpha_ptr  = &alpha;
+      thread_data.mxH_ptr    = &mxH_output.cache.value;
+      thread_data.spin_ptr   = &nstate.spin;
+      thread_data.dm_dt_ptr  = &dm_dt_output.cache.value;
+      thread_data.do_precess = do_precess;
+
+      // Run threads
+      Oxs_ThreadTree threadtree;
+      threadtree.LaunchTree(thread_data,0);
+
+      // Collect results
+      new_max_dm_dt = thread_data.thread_max_dm_dt[0];
+      new_dE_dt = thread_data.thread_dE_dt[0];
+      for(int i=1;i<thread_count;++i) {
+        if(thread_data.thread_max_dm_dt[i] > new_max_dm_dt) {
+          new_max_dm_dt = thread_data.thread_max_dm_dt[i];
+        }
+        new_dE_dt += thread_data.thread_dE_dt[i];
+      }
+      new_dE_dt = -1 * MU0 * new_dE_dt + new_pE_pt;
+      /// The first term is (partial E/partial M)*dM/dt, the
+      /// second term is (partial E/partial t)*dt/dt.  Note that,
+      /// provided Ms_[i]>=0, that by constructions dE_dt_sum above
+      /// is always non-negative, so dE_dt_ can only be made positive
+      /// by positive pE_pt_.
+
+      // Get bound on smallest stepsize that would actually
+      // change spin new_max_dm_dt_index:
+      new_timestep_lower_bound = PositiveTimestepBound(new_max_dm_dt);
     }
 #endif // OOMMF_THREADS
     if(!nstate.AddDerivedData("Timestep lower bound",
@@ -4275,8 +4121,9 @@ timer[0].Stop(); /**/
   return 1; // Accept step
 }
 
-void Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
-                                                const Oxs_SimState* prevstate_ptr)
+void
+Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
+					   const Oxs_SimState* prevstate_ptr)
 { // This routine fills all the Oxs_RungeKuttaEvolve Oxs_ScalarOutput's to
   // the appropriate value based on the import "state", and any of
   // Oxs_VectorOutput's that have CacheRequest enabled are filled.
@@ -4300,6 +4147,21 @@ void Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
       && mxH_output.cache.state_id != state.Id())) {
 
     // Missing at least some data, so calculate from scratch
+
+    // Check ahead for trouble computing Delta E:
+    if(!state.GetDerivedData("Delta E",dummy_value)
+       && state.previous_state_id != 0
+       && prevstate_ptr!=NULL
+       && state.previous_state_id == prevstate_ptr->Id()) {
+      OC_REAL8m old_E;
+      if(!prevstate_ptr->GetDerivedData("Total E",old_E)) {
+	// Previous state doesn't have stored Total E.  Compute it
+	// now.
+	OC_REAL8m old_pE_pt;
+	GetEnergyDensity(*prevstate_ptr,energy,NULL,NULL,old_pE_pt,old_E);
+	prevstate_ptr->AddDerivedData("Total E",old_E);
+      }
+    }
 
     // Calculate H and mxH outputs
     Oxs_MeshValue<ThreeVector>& mxH = mxH_output.cache.value;

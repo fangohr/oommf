@@ -98,7 +98,7 @@ void OommfPolygon::Clear()
   vertex.Clear();  // Note: Does not release memory
 }
 
-int OommfPolygon::GetVertexCount()
+OC_INDEX OommfPolygon::GetVertexCount()
 {
   return vertex.GetSize();
 }
@@ -277,6 +277,23 @@ void OommfPolygon::AdjustAllToIntegers()
       pt=vertex.GetNext(key)) {
     pt->x=OC_ROUND(pt->x);
     pt->y=OC_ROUND(pt->y);
+  }
+}
+
+void OommfPolygon::MakeVertexList(Nb_List<PlanePoint>& vlist) const
+{ // Copies vertex into vlist, repeating the first and last vertex to
+  // make a closed polyhedron.
+  assert(vertex.GetSize()>=3);
+  vlist.Clear();
+  Nb_List_Index<PlanePoint> key;
+  const PlanePoint* firstpt=vertex.GetFirst(key);
+  if(firstpt != NULL) {
+    vlist.SetFirst(*firstpt);
+    const PlanePoint* pt;
+    while((pt=vertex.GetNext(key))!=NULL) {
+      vlist.Append(*pt);
+    }
+    vlist.Append(*firstpt);
   }
 }
 
@@ -576,7 +593,9 @@ void OommfBitmap::DrawPolyLine(const Nb_List<PlanePoint>& vlist,
 
 void OommfBitmap::DrawFilledArrow(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
                                  OC_REAL8m xcos,OC_REAL8m ycos,OC_REAL8m zcos,
-                                 OommfPackedRGB color,OC_BOOL antialias)
+                                 OommfPackedRGB color,OC_BOOL antialias,
+                                 OC_REAL8m outline_width,
+                                 OommfPackedRGB outline_color)
 { // Draws arrow centered at point (xc,yc) in bitmap, of specified size,
   // directional cosines xcos,ycos,zcos, with specified color.
   work_poly=default_arrow;
@@ -587,6 +606,12 @@ void OommfBitmap::DrawFilledArrow(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
   work_poly.Rotate(xcos/sizeadj,ycos/sizeadj);
   work_poly.Shift(xc,yc);
   DrawFilledPoly(work_poly,color,antialias);
+  if(outline_width != 0.0) {
+    const OC_REAL8m base_width = 1.5; // Emperical value
+    Nb_List<PlanePoint> vlist;
+    work_poly.MakeVertexList(vlist);
+    DrawPolyLine(vlist,outline_width*base_width,outline_color,2,antialias);
+  }
 }
 
 void OommfBitmap::DrawDiamondWithCross(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
@@ -717,6 +742,10 @@ int OommfBitmap::WritePPMChannel(Tcl_Channel channel,int ppm_type)
 # error "Current OommfBitmap code only supports TKCOLORLENGTH==6"
 #endif
 
+  // Safety against callers who might not pass us a binary channel
+  Tcl_SetChannelOption(NULL, channel,
+                       Oc_AutoBuf("-translation"), Oc_AutoBuf("binary"));
+
   /// Note: On some (non-ANSI) compilers, sprintf() returns a pointer
   ///       to the buffer instead of an output byte count.
   if(ppm_type==6) {
@@ -842,6 +871,10 @@ int OommfBitmap::WriteBMPChannel(Tcl_Channel channel,int bmp_type)
   Oc_Flip4(&head.XPelsPerMeter);  Oc_Flip4(&head.YPelsPerMeter);
   Oc_Flip4(&head.ClrUsed);        Oc_Flip4(&head.ClrImportant);
 #endif
+
+  // Safety against callers who might not pass us a binary channel
+  Tcl_SetChannelOption(NULL, channel,
+                       Oc_AutoBuf("-translation"), Oc_AutoBuf("binary"));
 
   // Write header.  Do this one field at a time to avoid
   // machine specific alignment restrictions.  (Binary headers

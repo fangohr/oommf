@@ -17,6 +17,30 @@
  *
  *           Oxs_ThreadBush
  *           Oxs_ThreadTwig
+ *
+ *           Oxs_ThreadThrowaway
+ */
+
+/* The thread timers are implemented using thread local storage, but
+ * this turns out to be rather awkward.  It might be cleaner to have
+ * an array of length equal to the number of threads, with each entry
+ * in the array holding either an array of timers (one array for each
+ * thread) or else a map that provides a reworked version of
+ * oxs_ThreadLocalMap.  The advantage of such a structure is that the
+ * threads, in particular the main thread, could access
+ * thread-specific data from other threads.  Of course, one needs to
+ * do that in a thread-safe manner, but the main thread can do this
+ * easily outside of thread commands when all of the child threads are
+ * blocked.  The Oxs_Thread array would seem a natural place to put
+ * the thread local array, but as it is currently constituted the main
+ * thread (thread 0) is not represented in the Oxs_Thread array.  This
+ * actually makes code maintenance trickier because many places on has
+ * to iterate through the oxs_Thread array but remember that the
+ * length of this array is one less than the total number of threads,
+ * and include special handling for main thread (aka thread 0, which
+ * is not element 0 of the Oxs_Thread array).  It might be nice to
+ * change that so that the main thread is represented in the
+ * Oxs_Thread array (possibly by a distinct subclass up or down).
  */
 
 #ifndef _OXS_THREAD
@@ -28,8 +52,20 @@
 #include <vector>
 
 #include "oc.h"  /* includes tcl.h */
+#include "nb.h"  /* Nb_WallWatch */
 
 /* End includes */
+
+// Number (per thread) of thread timer objects.  Set this to zero to
+// disable thread timing and reports.
+//#define OXS_THREAD_TIMER_COUNT 15
+#define OXS_THREAD_TIMER_COUNT 0
+
+// Write to stderr each time memory for a Oxs_StripedArray object is
+// allocated or released.
+#ifndef _OXS_THREAD_TRACK_MEMORY
+# define _OXS_THREAD_TRACK_MEMORY 0
+#endif
 
 /* For NUMA builds, we align stripes to pages because that is the
  * the granularity of memory mapping to nodes.  For non-NUMA, align
@@ -360,21 +396,32 @@ public:
   void Join(); // Joins all running threads.
 
   void LaunchRoot(Oxs_ThreadRunObj& runobj,void* data); // Runs
-  /// command on root (i.e., 0) thread, and calls Join() to
-  /// wait for all children to finish, with error handling.
+  /// command on root (i.e., 0) thread, and calls Join() to wait for
+  /// all children to finish, with error handling.
 
-  // Run on a range of threads.  Creates new threads as needed.
-  // Set first_thread to 0 to include main (host) thread.  Set
-  // last_thread to -1 to include uppermost existing thread.
-  // This routine is self-joining.  Do not use this routine
-  // in parallel with Launch.  RunOnThreadRange will block
-  // until there are no running threads.
+  // Run on a range of threads.  Creates new threads as needed.  Set
+  // first_thread to 0 to include main (host) thread.  Set last_thread
+  // to -1 to include uppermost existing thread.  This routine is
+  // self-joining.  Do not use this routine in parallel with Launch.
+  // RunOnThreadRange will block until there are no running threads.
+  // NB: This routine launches the threads serially directly from the
+  // master thread, i.e., it does *not* use the hierarchical
+  // multi-level launch/join used in LaunchTree.
   void RunOnThreadRange(int first_thread,int last_thread,
                         Oxs_ThreadRunObj& runobj,void* data);
 
   void LaunchTree(Oxs_ThreadRunObj& runobj,void* data); // Functionally
-  /// equivalent to Launch + LaunchRoot, this single call starts
-  /// all children via multi-level start/stop approach.
+  /// equivalent to Launch + LaunchRoot, this single call starts all
+  /// children via multi-level start/stop approach.  All threads share
+  /// a reference to a single Oxs_ThreadRunObj object, so any write
+  /// access into that object should be either protected by a mutex or
+  /// otherwise protected against simultaneous access.  (For example,
+  /// a vector could be initialized with length equal to the number of
+  /// threads, and then restrict each thread to write only to the
+  /// element matching its thread number.)  Also, on NUMA machines the
+  /// data in the Oxs_ThreadRunObj object will live on only one memory
+  /// node, so frequently accessed data inside the Oxs_ThreadRunObj
+  /// object should be read once by each thread and stored locally.
 
   void DeleteLockerItem(String name); // Deletes local locker item
   /// named "name" in all existing threads (including thread 0).
@@ -476,6 +523,27 @@ public:
   /// is not in map.
 
 };
+
+#if OXS_THREAD_TIMER_COUNT
+class Oxs_ThreadTimers : public Oxs_ThreadMapDataObject {
+public:
+  std::vector<Nb_WallWatch> timers;
+  Oxs_ThreadTimers(int timer_count=0) {
+    timers.resize(timer_count);
+  }
+  ~Oxs_ThreadTimers() {}
+  void Reset() {
+    for(std::vector<Nb_WallWatch>::iterator it=timers.begin();
+        it!=timers.end(); ++it) {
+      it->Reset();
+    }
+  }
+};
+
+// Name for local map access to timer vector:
+# define OXS_THREAD_TIMER_NAME "OxsThreadTimers"
+
+#endif // OXS_THREAD_TIMER_COUNT
 
 // Base class that Oxs_Thread client should inherit from.
 // This class is used in both threaded and non-threaded
@@ -641,6 +709,68 @@ inline void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
 
 
 ////////////////////////////////////////////////////////////////////////
+// THROWAWAY THREADS ///////////////////////////////////////////////////
+//
+// Class for threads that are launched to run in the background and
+// forgotten; one example would be a background write-to-disk task.  To
+// use, create a child instance and call the Launch() method.  In the
+// non-threaded version Launch() will block until the task completes.
+//
+// The child thread is not tied to any NUMA node.  This is preferred in
+// the original use case, as we want background threads to run wherever
+// they can with the least disruption to the main compute threads.  This
+// should be easy to change, however, if the need arises.  See the
+// Oc_NumaRunOnAnyNode() call in _Oxs_ThreadThrowaway_main(ClientData).
+//
+// This base class does not provide any way for the launcher to
+// determine when or if the child thread finishes.  If that is needed,
+// embed a mutex and flag inside the child class, and have Task adjust
+// the flag appropriately (through the mutex) upon completion.
+//
+// The base class also does not provide any protection against
+// reentrancy --- use with care!
+class Oxs_ThreadThrowaway {
+public:
+  const String name;
+  Oxs_ThreadThrowaway(const char* iname)
+    : name(iname), active_thread_count(0)
+  {}
+  virtual ~Oxs_ThreadThrowaway();
+  OC_INDEX ActiveThreadCount() const;
+protected:
+  // It is not clear if Launch and/or Task should be protected or
+  // public.  The first use of Oxs_ThreadThrowaway is
+  // Oxs_Driver::BackgroundCheckpoint, and there Lauch is not intended
+  // to be called from outside the ::BackgroundCheckpoint class, so as a
+  // first guess we make both Launch and Task protected.
+  void Launch();
+  virtual void Task() = 0;
+private:
+#if OOMMF_THREADS
+  friend Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData);
+  mutable Oxs_Mutex mutex;
+#endif
+  OC_INDEX active_thread_count;
+  // Declare but don't define the following members
+  Oxs_ThreadThrowaway(const Oxs_ThreadThrowaway&);
+  Oxs_ThreadThrowaway& operator=(const Oxs_ThreadThrowaway&);
+};
+
+#if !OOMMF_THREADS
+inline void Oxs_ThreadThrowaway::Launch()
+{
+  ++active_thread_count;
+  Task();
+  --active_thread_count;
+}
+
+inline OC_INDEX Oxs_ThreadThrowaway::ActiveThreadCount() const
+{ return active_thread_count; }
+
+inline Oxs_ThreadThrowaway::~Oxs_ThreadThrowaway() {}
+#endif // !OOMMF_THREADS
+
+////////////////////////////////////////////////////////////////////////
 // Oxs_StripedArray is an array wrapper that stripes the memory across
 // memory nodes.  This is only meaningful on a NUMA (non-uniform memory
 // access) system.  In other cases there is effectively only one node,
@@ -663,10 +793,7 @@ class _Oxs_StripedArray_StripeThread : public Oxs_ThreadTwig {
   // memory store of that node.
 private:
   char* const bufbase;
-  const OC_UINDEX full_size;
-  const OC_UINDEX strip_size;
-  const OC_INT4m strip_count;
-  const OC_INT4m augment_count;
+  const vector<OC_UINDEX> strip_positions;
 
    // Declare but don't define the following members
   _Oxs_StripedArray_StripeThread();
@@ -675,58 +802,15 @@ private:
                        operator=(const _Oxs_StripedArray_StripeThread&);
 
 public:
-  _Oxs_StripedArray_StripeThread(char* new_bufbase,
-                                 OC_UINDEX new_full_size,
-                                 OC_UINDEX new_strip_size,
-                                 OC_INT4m new_strip_count,
-                                 OC_INT4m new_augment_count)
-    : bufbase(new_bufbase), full_size(new_full_size),
-      strip_size(new_strip_size),
-      strip_count(new_strip_count),
-      augment_count(new_augment_count) {}
-
-  static void SplitAlgorithm(OC_INT4m threadid,
-                             OC_UINDEX fullsize,
-                             OC_UINDEX stripsize,
-                             OC_INT4m stripcount,
-                             OC_INT4m augmentcount,
-                             OC_UINDEX& mystart,
-                             OC_UINDEX& mystop) {
-    assert(threadid<stripcount);
-    mystart = threadid*stripsize;
-    OC_UINDEX mysize = stripsize;
-    if(threadid<augmentcount) {
-      mystart += threadid * OXS_STRIPE_BLOCKSIZE;
-      mysize += OXS_STRIPE_BLOCKSIZE;
-    } else {
-      mystart += augmentcount * OXS_STRIPE_BLOCKSIZE;
-    }
-    mystop = mystart + mysize;
-    if(threadid < stripcount - 1) {
-      if(mystop > fullsize) {
-        // This shouldn't happen, unless full_size
-        // is comparable to OXS_STRIPE_BLOCKSIZE.
-        mystop = fullsize;
-      }
-    } else {
-      mystop = fullsize; // Last strip always gets all that's left
-    }
-    if(mystart>mystop) {
-      // This happens if threadid*stripsize>fullsize.
-      // In principle clients should be coded to handle this
-      // case, but tweak anyway for the ignorant.
-      mystart = mystop;
-    }
-  }
+  _Oxs_StripedArray_StripeThread(char* in_bufbase,
+                                 const vector<OC_UINDEX>& in_strip_positions)
+    : bufbase(in_bufbase), strip_positions(in_strip_positions) {}
 
   void Task(OC_INT4m oc_thread_id) {
     // NB: The algorithm here needs to agree with the code
     // in Oxs_StripedArray<T>::GetStripPosition().
-    OC_UINDEX mystart,mystop;
-    SplitAlgorithm(oc_thread_id,
-                   full_size,strip_size,
-                   strip_count,augment_count,
-                   mystart,mystop);
+    OC_UINDEX mystart = strip_positions[oc_thread_id];
+    OC_UINDEX mystop  = strip_positions[oc_thread_id+1];
     if(mystop>mystart) {
       // If full_size is small relative to OXS_STRIPE_BLOCKSIZE, then
       // the first one or few strips eat up the whole array.  In this
@@ -742,20 +826,12 @@ private:
   char* datablock;
   T* const arr;
   OC_INDEX arr_size;
+  OC_INDEX strip_count;   // Number of strips
+
   OC_UINDEX strip_size; // Nominal strip size, in bytes
-  OC_INT4m strip_count;   // Number of strips
-  OC_INT4m augment_count; // Number of strips augmented with an extra page
-  // NOTE: strip_size is OC_UINDEX rather than OC_INDEX to handle the
-  // case where strip_size is too big to fit in the signed type, but
-  // not the unsigned type.  This would occur, for example, on a 32-bit
-  // system with an array object of size > 2 GB.  OTOH, arr_size counts
-  // items of type T, which in this application seem to be rather likely
-  // to have sizeof(T)>1, so if T[arr_size] fits in memory (i.e., <4 GB)
-  // then arr_size has to fit in the signed OC_INDEX type.  OK, this
-  // reasoning fails for T = char, but the whole scenario is unlikely
-  // enought that it doesn't seem worthwhile to throw away the convenience
-  // of signed integers.  Moreover, the signed OC_INDEX type on 64-bit
-  // systems is way-huge.
+  vector<OC_UINDEX> strip_pos; // Strip positions, in bytes.  This vector
+  /// has size strip_count + 1, with indices i in strip n running
+  ///     strip_pos[n] <= i < strip_pos[n+1].
 
   // Disable all copy operators by declaring them but not providing
   // a definition.
@@ -764,6 +840,9 @@ private:
 public:
   void Free() {
     if(datablock) {
+#if _OXS_THREAD_TRACK_MEMORY
+      fprintf(stderr,"--- Oxs_StripedArray at %p deleted\n",datablock);
+#endif 
       // Implement "placement delete"
       while(arr_size>0) arr[--arr_size].~T(); // Explicit destructor call
       const_cast<T*&>(arr)=0;
@@ -772,14 +851,13 @@ public:
     }
     const_cast<T*&>(arr) = 0;      // Safety
     arr_size = 0;
-    strip_size = 0;
     strip_count = 0;
-    augment_count = 0;
+    strip_size = 0;
+    strip_pos.clear();
   }
 
   Oxs_StripedArray() : datablock(0), arr(0),
-                       arr_size(0), strip_size(0),
-                       strip_count(0), augment_count(0) {}
+                       arr_size(0), strip_count(0), strip_size(0) {}
   ~Oxs_StripedArray() { Free(); }
 
   void Swap(Oxs_StripedArray<T>& other) {
@@ -795,22 +873,24 @@ public:
     arr_size = other.arr_size;
     other.arr_size = tsize;
 
+    OC_INDEX tsc = strip_count;
+    strip_count = other.strip_count;
+    other.strip_count = tsc;
+
     OC_UINDEX ssize = strip_size;
     strip_size = other.strip_size;
     other.strip_size = ssize;
 
-    OC_INT4m tsc = strip_count;
-    strip_count = other.strip_count;
-    other.strip_count = tsc;
-
-    OC_INT4m tac = augment_count;
-    augment_count = other.augment_count;
-    other.augment_count = tac;
+    strip_pos.swap(other.strip_pos);
   }
 
   void SetSize(OC_INDEX newsize);
+  OC_INDEX GetSize() const { return arr_size; }
 
   T* GetArrBase() const { return arr; }
+
+  inline const T& operator[](OC_INDEX index) const { return arr[index]; }
+  inline T& operator[](OC_INDEX index) { return arr[index]; }
 
   // Get offsets for a given strip, where
   //           0 <= strip_number < strip_count
@@ -819,6 +899,8 @@ public:
   void GetStripPosition(OC_INT4m strip_number,
                         OC_INDEX& start_offset,
                         OC_INDEX& stop_offset) const;
+
+  OC_INDEX GetStripCount() const { return strip_count; }
 };
 
 template<class T> void Oxs_StripedArray<T>::GetStripPosition
@@ -831,10 +913,8 @@ template<class T> void Oxs_StripedArray<T>::GetStripPosition
   assert(0<=number && number<strip_count);
 
   // First, compute strip position in bytes.
-  OC_UINDEX mystart, mystop;
-  _Oxs_StripedArray_StripeThread::SplitAlgorithm
-    (number,static_cast<OC_UINDEX>(arr_size)*sizeof(T),
-     strip_size,strip_count,augment_count,mystart,mystop);
+  OC_UINDEX mystart = strip_pos[number];
+  OC_UINDEX mystop  = strip_pos[number+1];
 
   // Convert units to sizeof(T).  If sizeof(T) does not divide
   // strip_size, then the convention in terms of T is that the strip
@@ -861,11 +941,24 @@ template<class T> void Oxs_StripedArray<T>::SetSize
 {
   if(newsize == arr_size) return; // Nothing to do.
   Free();  // Release existing memory, if any.
+
+  if(newsize<0) {
+    char tbuf[1024];
+    Oc_Snprintf(tbuf,sizeof(tbuf),
+                "Oxs_StripedArray: Invalid size request to SetSize:"
+                " %" OC_INDEX_MOD "d (may indicate index overflow)",
+                newsize);
+    OXS_THROW(Oxs_BadParameter,tbuf);
+  }
   if(newsize<=0) return;
+
+  OC_UINDEX fullsize = static_cast<OC_UINDEX>(newsize)*sizeof(T);
+  /// fullsize is array size in bytes
 
   // Determine strip sizes
   strip_count = Oc_GetMaxThreadCount();
-  if(strip_count>1 && newsize*sizeof(T)>OXS_STRIPE_BLOCKSIZE) {
+  OC_INT4m augment_count;
+  if(strip_count>1 && fullsize>OXS_STRIPE_BLOCKSIZE) {
     strip_size = static_cast<OC_UINDEX>(newsize/strip_count) * sizeof(T);
     strip_size -= strip_size % OXS_STRIPE_BLOCKSIZE; // Reduce to page boundary
 
@@ -875,14 +968,30 @@ template<class T> void Oxs_StripedArray<T>::SetSize
     // to bunch up on last strip, so instead distribute excess across
     // the strips, starting at the beginning, one page each as needed.
     OC_INDEX leftovers
-      = static_cast<OC_UINDEX>(newsize)*sizeof(T)
-      - static_cast<OC_UINDEX>(strip_count)*strip_size;
+      = fullsize - static_cast<OC_UINDEX>(strip_count)*strip_size;
     augment_count = static_cast<OC_INT4m>(leftovers/OXS_STRIPE_BLOCKSIZE);
   } else {
     // Put everything into the first strip.
-    strip_size = static_cast<OC_UINDEX>(newsize)*sizeof(T);
+    strip_size = fullsize;
     augment_count = 0;
   }
+
+  // Assign strip offsets, in bytes
+  strip_pos.resize(strip_count+1);
+  for(OC_INT4m istrip=0;istrip<strip_count;++istrip) {
+    OC_UINDEX ipos = 0;
+    if(istrip < augment_count) {
+      ipos = istrip*(strip_size + OXS_STRIPE_BLOCKSIZE);
+    } else {
+      ipos = istrip*strip_size + augment_count*OXS_STRIPE_BLOCKSIZE;
+    }
+    // If array is small relative to the number of strips and
+    // OXS_STRIPE_BLOCKSIZE, then the first few strips can eat up the
+    // entire array and the last strips end up empty.
+    if(ipos>fullsize) ipos = fullsize;
+    strip_pos[istrip] = ipos;
+  }
+  strip_pos[strip_count] = fullsize;
 
   // Allocate and initialize memory using "placement new".  We need to
   // allocate additional space so that the start of the working space
@@ -897,6 +1006,17 @@ template<class T> void Oxs_StripedArray<T>::SetSize
   else                                alignment = OC_CACHE_LINESIZE;
   blocksize += 2*(alignment - 1);
 
+  // Overflow check
+  if( (OC_UINDEX_MAX/OC_UINDEX(newsize)) < sizeof(T)
+      || blocksize<OC_UINDEX(newsize)*sizeof(T)) {
+    char tbuf[1024];
+    Oc_Snprintf(tbuf,sizeof(tbuf),
+                "Oxs_StripedArray: Allocation request size too big:"
+                " %" OC_INDEX_MOD "d items of size %lu",
+                newsize,(unsigned long)sizeof(T));
+    OXS_THROW(Oxs_BadParameter,tbuf);
+  }
+
   datablock = new char[blocksize];
   if(!datablock) {
     // Handling for case where "new" is old broken kind that
@@ -907,6 +1027,13 @@ template<class T> void Oxs_StripedArray<T>::SetSize
                 " of size %lu bytes",(unsigned long)blocksize);
     OXS_THROW(Oxs_NoMem,tbuf);
   }
+#if _OXS_THREAD_TRACK_MEMORY
+  fprintf(stderr,
+          "+++ Oxs_StripedArray at %p allocated: %10lu x %2lu (%5.1f GB)\n",
+          datablock,(unsigned long)newsize,(unsigned long)sizeof(T),
+          double(blocksize)/(1024.*1024.*1024.));
+#endif 
+
   // Note: It is important to cast datablock to type OC_UINDEX rather
   // than OC_INDEX, because as a pointer (as opposed to an index) it
   // can't be assumed that datablock will evaluate as a positive integer
@@ -927,15 +1054,13 @@ template<class T> void Oxs_StripedArray<T>::SetSize
                                static_cast<OC_UINDEX>(newsize)*sizeof(T));
 
   // Stripe data
-  _Oxs_StripedArray_StripeThread stripe(datablock+alignoff,
-                     static_cast<OC_UINDEX>(newsize)*sizeof(T),
-                     strip_size,strip_count,augment_count);
+  _Oxs_StripedArray_StripeThread stripe(datablock+alignoff,strip_pos);
   Oxs_ThreadBush thread_bush;
   thread_bush.RunAllThreads(&stripe);
 
 #ifdef OC_NO_PLACEMENT_NEW_ARRAY
   // Compiler does not support placment new[].  Assume that
-  // the single item placement new works, and workaround by
+  // the single item placement new works, and work around by
   // using that in a loop.
   const_cast<T*&>(arr) = new(datablock + alignoff)T;
   for(OC_INDEX ix=1;ix<newsize;++ix) {
@@ -945,6 +1070,7 @@ template<class T> void Oxs_StripedArray<T>::SetSize
   const_cast<T*&>(arr)
     = new(datablock + alignoff)T[newsize];  // Placement new
 #endif
+  assert(reinterpret_cast<OC_UINDEX>(arr) % alignment == 0);
   /// Might want to put a fence here, to insure that arr gets set
   /// before arr_size, for any threads that are relying on arr_size to
   /// decide whether or not arr is usable.  In any event, it is
@@ -956,6 +1082,15 @@ template<class T> void Oxs_StripedArray<T>::SetSize
 // THREAD JOB CONTROL //////////////////////////////////////////////////
 
 #if OOMMF_THREADS //////////////////////////////////////////////////////
+// NB: When selecting the class T to be used as the template type in
+// an Oxs_JobControl object, if more than one class seems natural then
+// it is usually best to pick the smaller class, especially if the
+// size of the smaller class divides into the size of the larger
+// class(es), because some effort is made in the scheduling process to
+// align jobs with cache lines or page boundaries.  If sizeof(A) =
+// n*sizeof(B), with n an integer, and chunk_size*sizeof(B) is a
+// multiple of the cache line or page size then chunk_size*sizeof(A) =
+// chunk_size*n*sizeof(B) will be too.
 template<class T> class Oxs_JobControl
 {
 private:
@@ -972,11 +1107,7 @@ private:
   void ReassignJobs(OC_INT4m thread_id, OC_INDEX& start, OC_INDEX& stop);
   Oxs_Mutex rejuggle; // Used for reassigning unfinished jobs.
 
-  OC_INDEX job_size;
-
   OC_INT4m thread_count;
-
-  int all_done;
 
   enum { BASE_PIECE_COUNT=32 };
 
@@ -984,28 +1115,36 @@ public:
   void Free() {
     if(threadjob != 0) delete[] threadjob;
     threadjob = 0;
-    job_size = -1;
     thread_count = -1;
-    all_done = 0;
   }
 
-  Oxs_JobControl() : threadjob(0),
-                     job_size(-1), thread_count(-1), all_done(0) {}
+  Oxs_JobControl() : threadjob(0), thread_count(-1) {}
 
   ~Oxs_JobControl() { Free(); }
 
   void Init(OC_INT4m number_of_threads,
-            const Oxs_StripedArray<T>* arrblock);
+            const Oxs_StripedArray<T>* arrblock,
+            OC_INDEX record_size = 1);
+  // record_size is the number of T objects per work unit.  Each job
+  // assignment will be an integral multiple of record_size.
 
   void GetJob(OC_INT4m thread_id,
               OC_INDEX &start, OC_INDEX& stop);
 
+  void ResetJobs() { // Mark all non-trivial jobs as not done
+    for(OC_INT4m i=0;i<thread_count;++i) {
+      threadjob[i].all_done = (threadjob[i].start >= threadjob[i].stop);
+    }
+  }
 };
 
 template<class T> void Oxs_JobControl<T>::Init
 (OC_INT4m number_of_threads,
- const Oxs_StripedArray<T>* arrblock)
+ const Oxs_StripedArray<T>* arrblock,
+ OC_INDEX record_size)
 {
+  if(record_size < 1) record_size = 1;
+
   if(thread_count != number_of_threads ||
      threadjob==0) {
     // (re)Alloc.  Otherwise, reuse old space.
@@ -1013,18 +1152,84 @@ template<class T> void Oxs_JobControl<T>::Init
     thread_count = number_of_threads;
     threadjob = new JobData[thread_count];
   }
+  assert(thread_count>0);
 
-  for(OC_INT4m i=0;i<thread_count;++i) {
-    arrblock->GetStripPosition(i,threadjob[i].start,threadjob[i].stop);
-    threadjob[i].all_done = 0;
+  const OC_INDEX strip_count =  arrblock->GetStripCount();
+#if OC_USE_NUMA
+  if(thread_count < strip_count) {
+    OXS_THROW(Oxs_BadCode,"Thread count is smaller than array split count\n");
+  }
+#endif
+
+  const OC_INDEX arrsize = arrblock->GetSize();
+  if(thread_count < strip_count) {
+    // In the non-NUMA case, just divide up task evenly among the threads.
+    // In the NUMA case, this branch shouldn't happen.
+    const OC_INDEX blocksize = arrsize/thread_count;
+    const OC_INDEX fudgesize = arrsize - blocksize*thread_count;
+    OC_INDEX fencepole = 0;
+    for(OC_INT4m i=0;i<thread_count;++i) {
+      OC_INDEX adj = blocksize + (i<fudgesize ? 1 : 0);
+      threadjob[i].start = fencepole;
+      threadjob[i].stop = (fencepole += adj) ;
+    }
+  } else { // thread_count >= strip_count
+    // Copy jobs from strips.
+    // NB: This code assumes that
+    //   threadjob[i].start <= threadjob[i].stop == threadjob[i+1].start
+    OC_INT4m i=0;
+    for(;i<strip_count;++i) {
+      arrblock->GetStripPosition(i,threadjob[i].start,threadjob[i].stop);
+    }
+    for(;i<thread_count;++i) {
+       // Threads in excess of strip_count get null job
+      threadjob[i].start = threadjob[i].stop = arrsize;
+    }
+  }
+  assert(threadjob[0].start == 0 && threadjob[thread_count-1].stop == arrsize);
+
+  if(record_size>1) {
+    // Tweak jobs so each assignment is an integral multiple of
+    // record_size --- except for the stop point of the last job, which
+    // is never changed.
+    OC_INDEX fencepole = threadjob[0].start;
+    for(OC_INT4m i=1;i<thread_count;++i) {
+      OC_INDEX jobsize = OC_MAX(0,threadjob[i].start - fencepole);
+      /// jobsize is the size of job i-1
+      OC_INDEX adj = jobsize % record_size;
+      if(adj != 0) {
+        if(adj < record_size/2 && (i>1 || jobsize>adj)) {
+          // Round down, unless i==1 and rounding down would
+          // result in null job.  This special case is a sop
+          // to routines that assume thread 0 will run.
+          jobsize -= adj;
+        } else { // Round up
+          jobsize += record_size - adj;
+        }
+      }
+      if((fencepole += jobsize)>arrsize) fencepole = arrsize;
+      threadjob[i].start = fencepole;
+    }
+    for(OC_INT4m i=0;i<thread_count-1;++i) {
+      threadjob[i].stop = threadjob[i+1].start;
+    }
   }
 
-  all_done = 0;
+  // Empty jobs are marked by setting .start = .stop = -1 and
+  // .all_done=1
+  for(OC_INT4m i=0;i<thread_count;++i) {
+    if(threadjob[i].start < threadjob[i].stop) {
+      threadjob[i].all_done = 0;
+    } else {
+      threadjob[i].start = threadjob[i].stop = -1;
+      threadjob[i].all_done = 1;
+    }
+  }
 }
 
 template<class T> inline void Oxs_JobControl<T>::GetJob
 (OC_INT4m thread_id,
- OC_INDEX &start,
+ OC_INDEX& start,
  OC_INDEX& stop)
 {
   JobData& job = threadjob[thread_id];
@@ -1095,7 +1300,8 @@ public:
 #ifndef NDEBUG
             number_of_threads
 #endif
-            , const Oxs_StripedArray<T>* arrblock) {
+            , const Oxs_StripedArray<T>* arrblock,
+            OC_INDEX /* record_size */ =1) {
     assert(number_of_threads == 1);
     arrblock->GetStripPosition(0,threadjobs.start,threadjobs.stop);
   }

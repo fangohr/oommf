@@ -50,12 +50,12 @@ public:
   virtual ~Oxs_ArrayScalarField() {}
 
   // Array interface
-  void InitArray(OC_INT4m xdim,OC_INT4m ydim,OC_INT4m zdim,
+  void InitArray(OC_INDEX xdim,OC_INDEX ydim,OC_INDEX zdim,
                  const Oxs_Box& range);
-  void SetArrayElt(OC_INT4m ix,OC_INT4m iy,OC_INT4m iz,OC_REAL8m val) {
+  void SetArrayElt(OC_INDEX ix,OC_INDEX iy,OC_INDEX iz,OC_REAL8m val) {
     array(iz,iy,ix) = val;
   }
-  OC_REAL8m GetArrayElt(OC_INT4m ix,OC_INT4m iy,OC_INT4m iz) {
+  OC_REAL8m GetArrayElt(OC_INDEX ix,OC_INDEX iy,OC_INDEX iz) {
     return array(iz,iy,ix);
   }
 

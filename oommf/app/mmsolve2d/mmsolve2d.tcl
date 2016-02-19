@@ -11,8 +11,8 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 
 Oc_Main SetAppName mmSolve2D
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:57 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:44:00 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
@@ -52,7 +52,7 @@ if {[Oc_Main HasTk]} {
 }
 
 # Set the values of some global variables which control the
-# interaction with the threadGui module in mmLaunch.
+# interaction with the ThreadGui module in mmLaunch.
 #
 # $commands is a list which tells the interface what commands
 # to display in the middle panel of "Runtime Controls".  The
@@ -221,12 +221,19 @@ array set outputs {
 	# First pass---new solver
 	mms_solver New solver $mif $restart_option
 	Oc_EventHandler Generate LoadProbDescFile InterfaceChange
-	# Examine this:
-	Oc_EventHandler New _ $solver Delete [list exit] \
-                -groups [list $solver]
+	# Shutdown handlers:
+        Oc_EventHandler New sdh $solver Delete [list exit] \
+                -oneshot 1 -groups [list $solver]]
 	Oc_EventHandler New _ $solver RunDone [list RunEndNotify]
-        Oc_EventHandler New _ Oc_Main Shutdown [list $solver Delete] \
-                -groups [list $solver]
+        Oc_EventHandler New _ Oc_Main Shutdown \
+               "[list $sdh Delete] ; [list $solver Delete]" \
+                -oneshot 1 -groups [list $solver]
+        # The solver Destructor raises a solver Delete event.  If the
+        # above $solver Delete handler is in place when this Oc_Main
+        # Shutdown handler calls $solver Delete, then the solver
+        # Destructor causes Oc_Main Exit to be called.  Oc_Main Exit
+        # raises an Oc_Main Shutdown event, and around and around we
+        # go.
     } else {
 	# Reset existing solver
 	ResetThread $mif

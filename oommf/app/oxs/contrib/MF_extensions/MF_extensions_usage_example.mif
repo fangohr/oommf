@@ -1,0 +1,262 @@
+# MIF 2.1
+# MIF Example File: svbias.mif
+# Description: Spin valve example, SAF, exchange coupling between the
+# layers, exchange Bias.
+#
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+set zbot   2.0e-9
+set zref1  3.0e-9
+set zref2  5.0e-9
+set ztop   6.0e-9
+set z_max  8.0e-9
+
+set Msbot 1400e3
+set Msref 1400e3
+set Mstop 1150e3
+
+set Jreftop +0.01e-3
+set Jbotref -0.190e-3
+
+set xbias 80.0
+
+set Kbot 60e3
+set Kref 20e3
+set Ktop 1e3
+
+# 0-2 nm (<25%) bottom, 3-5 nm (37.5-62.5%) refer, 7-8 nm (<75%) top
+proc EllipseFD { x y z xmax ymax zmax  } {
+global Msbot Msref Mstop zbot zref1 zref2 ztop
+   set m 0.0
+   if {$z<=$zbot} {
+      set m $Msbot }
+   if {$z>=$zref1 & $z<=$zref2} {
+    set m $Msref }
+   if {$z>=$ztop} {
+      set m $Mstop  }
+   set rx [expr 2.*$x/$xmax -1. ]
+   set ry [expr 2.*$y/$ymax -1. ]
+   set r [expr {sqrt($rx*$rx+$ry*$ry)}]
+   if {$r<=1} {
+      return [expr {$m} ]
+   }
+   return 0.0
+}
+
+proc Ellipse { x y z xmax ymax zmax } {
+    set xrad [expr 2.*$x/$xmax -1.]
+    set yrad [expr 2.*$y/$ymax -1.]
+    set test [expr $xrad*$xrad+$yrad*$yrad]
+    if {$test>1.0} {return 0}
+    return 1
+}
+
+Specify Oxs_MultiAtlas:atlas [subst {
+  atlas { Oxs_ScriptAtlas:top {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {$ztop $z_max}
+  regions { top }
+  script_args {rawpt maxpt}
+  script Ellipse 
+   }   }
+   atlas { Oxs_ScriptAtlas:spacer {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {$zref2  $ztop}
+  regions { spacer }
+  script_args {rawpt maxpt}
+  script Ellipse
+   }   }
+   atlas { Oxs_ScriptAtlas:refer {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {$zref1  $zref2}
+  regions { refer }
+  script_args {rawpt maxpt}
+  script Ellipse
+   }   }   
+   atlas { Oxs_ScriptAtlas:spacerRu {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {$zbot  $zref1}
+  regions { spacerRu }
+  script_args {rawpt maxpt}
+  script Ellipse
+   }   }
+   atlas { Oxs_ScriptAtlas:bottom {
+  xrange {0 200e-9}
+  yrange {0 100e-9}
+  zrange {0e-9  $zbot}
+  regions { bottom }
+  script_args {rawpt maxpt}
+  script Ellipse
+   }   }   
+}]
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {2e-9 2e-9 1e-9}
+  atlas :atlas
+}
+
+# Exchange
+Specify Oxs_Exchange6Ngbr {
+  atlas :atlas
+  default_A 0
+  A {
+    top top 13e-12
+    refer refer 13e-12
+    bottom bottom 13e-12    
+  }
+}
+
+# Uncomment sigma2 to enable biquadratic coupling.
+Specify Oxs_LinearScalarField:zheight {
+ vector {0 0 1}
+ norm   1.0
+}
+
+Specify Oxs_TwoSurfaceExchange:FF [subst {
+ sigma $Jreftop
+ comment {sigma2 -1e-4}
+ surface1 {
+         atlas  :atlas
+        region  refer
+   scalarfield  :zheight
+   scalarvalue  $zref2
+    scalarside  -
+ }
+ surface2 {
+         atlas  :atlas
+        region  top
+   scalarfield  :zheight
+   scalarvalue  $ztop
+    scalarside  +
+ }
+}]
+
+Specify Oxs_TwoSurfaceExchange:AF [subst {
+ sigma $Jbotref
+ comment {sigma2 -1e-4}
+ surface1 {
+         atlas  :atlas
+        region  bottom
+   scalarfield  :zheight
+   scalarvalue  $zbot
+    scalarside  -
+ }
+ surface2 {
+         atlas  :atlas
+        region  refer
+   scalarfield  :zheight
+   scalarvalue  $zref1
+    scalarside  +
+ }
+}]
+
+
+# exchange bias field:
+Specify Oxs_FixedZeeman:Bias [subst {
+multiplier [expr {0.001/$mu0}]    
+  field { Oxs_AtlasVectorField { 
+   atlas :atlas
+   default_value { 0. 0. 0. }
+   values {
+    bottom { $xbias 0. 0. }
+    }
+ }}
+}]
+
+# RA set in Ohm*m^2
+# normal work_mode=0: I(R_p+TMR), work_mode!=0: I(R_p)
+Specify MF_CurrentFlowEvolver [subst {
+  gamma_LL 2.21e5
+  method rkf54s
+  alpha 0.017
+  bJ0	0.0
+  bJ1	0.0
+  bJ2  0.0
+  eta0  0.7
+
+  RA_p 2.0e-12
+  RA_ap 4.0e-12
+
+  current_mode 0.0
+  oersted_mode 0.0
+ 
+  vrange {
+  { 0.0 -2.0 6 }
+  { -2.0 2.0 12 }
+  { 2.0 0.0 6 }
+ }
+ 
+ Inter_down {
+  atlas :atlas
+  region refer
+  scalarfield :zheight
+  scalarvalue $zref2
+  scalarside -
+ }
+ Inter_up {
+  atlas :atlas
+  region top
+  scalarfield :zheight
+  scalarvalue $ztop
+  scalarside +
+ }  
+} ] 	
+
+
+Specify Oxs_UniaxialAnisotropy [subst {
+ K1  { Oxs_AtlasScalarField {
+     atlas :atlas
+     default_value 0
+    values {
+        bottom $Kbot
+        refer $Kref
+        top   $Ktop
+     }
+ }}
+  axis { Oxs_AtlasVectorField {
+   atlas :atlas
+   default_value { 1 0 0 }
+   values {
+    bottom { 1 0 0 }
+    refer   { 1 0 0 }
+    top    { 1 0 0 }
+    }
+  }
+ }
+}]
+
+Specify Oxs_Demag {}
+
+Specify Oxs_TimeDriver [subst {
+ basename s3_cims_extra_precise
+ evolver MF_CurrentFlowEvolver
+ comment {1 deg/ns = 17453293 rad/sec; If Ms=8.6e5, and lambda is small,
+         then mxh=1e-6 translates into dm/dt = 2e5 rad/sec = 0.01 deg/ns}
+ stopping_dm_dt 0.03
+ stage_count 25
+ stage_iteration_limit 50000
+ mesh :mesh
+   Ms { Oxs_ScriptScalarField  {
+      atlas :atlas
+	script_args {rawpt maxpt}
+      script {EllipseFD}
+   } }
+ m0 { Oxs_AtlasVectorField {
+    atlas :atlas
+    default_value { 1 0 0 }
+    values {
+     bottom { 1 0 0 }
+     refer  { -1 0 0 }
+     top    { 1 0 0 }
+    }
+  }}  
+}]
+
+Destination archive mmArchive
+Schedule Oxs_TimeDriver::Magnetization archive stage 1
+Schedule DataTable archive stage 1

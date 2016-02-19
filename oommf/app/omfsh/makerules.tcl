@@ -36,13 +36,13 @@ MakeRule Define {
 			puts $f [format {
 Oc_Application Define {
     -name		omfsh
-    -version		1.2.0.5
+    -version		1.2.0.6
     -machine		%s
     -file		"%s"
 }
 Oc_Application Define {
     -name		filtersh
-    -version		1.2.0.5
+    -version		1.2.0.6
     -machine		%s
     -file		"%s"
 }

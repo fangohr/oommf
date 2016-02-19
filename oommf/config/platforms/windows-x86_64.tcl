@@ -142,6 +142,12 @@ $config SetValue \
 ## on the selected compiler).
 # $config SetValue sse_level 2  ;# Replace '2' with desired level
 #
+## Use FMA (fused multiply-add) intrinsics?  If so, specify either "3"
+## for three argument intrinsics or "4" for four argument intrinsics.
+## Set to 0 to not use FMA intrinsics.  Leave unset to get the default
+## (which may depend on the selected compiler).
+# $config SetValue fma_type 0 ;# Replace '0' with desired type
+#
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
 # $config SetValue program_compiler_c++_override {g++ -c}
@@ -181,7 +187,26 @@ $config SetValue \
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
-###################
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
+# 
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
@@ -195,20 +220,32 @@ if {[catch {$config GetValue oommf_threads}]} {
       $config SetValue oommf_threads 0  ;# No threads
    }
 }
-$config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
-## maximum number of "auto" threads to 4.
+$config SetValue thread_count_auto_max 8 ;# Arbitrarily limit
+## maximum number of "auto" threads to 8.
 if {[catch {$config GetValue thread_count}]} {
-   # Value not set in platforms/local/windows-x86_64.tcl, so try
-   # to get value from environment:
-   if {[info exists env(NUMBER_OF_PROCESSORS)]} {
-      set processor_count $env(NUMBER_OF_PROCESSORS)
-      set auto_max [$config GetValue thread_count_auto_max]
-      if {$processor_count>$auto_max} {
-         # Limit automatically set thread count to auto_max
-         set processor_count $auto_max
+   # Value not set in platforms/local/windows-x86_64.tcl, so
+   # query the system:
+   set processor_count 0
+   if {![catch {exec wmic cpu get NumberOfCores /all} data]
+       && [llength $data]>1} {
+      foreach cpucores [lrange $data 1 end] {
+         catch {incr processor_count $cpucores}
       }
-      $config SetValue thread_count $processor_count
    }
+   if {$processor_count<1 && [info exists env(NUMBER_OF_PROCESSORS)]} {
+      set processor_count $env(NUMBER_OF_PROCESSORS)
+      # Note: NUMBER_OF_PROCESSORS is logical processor count, including
+      # those resulting from hyperthreadeding (if any).
+   }
+   if {$processor_count<1} {
+      set processor_count 1
+   }
+   set auto_max [$config GetValue thread_count_auto_max]
+   if {$processor_count>$auto_max} {
+      # Limit automatically set thread count to auto_max
+      set processor_count $auto_max
+   }
+   $config SetValue thread_count $processor_count
 }
 
 if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
@@ -227,6 +264,7 @@ if {[catch {$config GetValue program_compiler_c++} ccbasename]} {
 
 # Microsoft Visual C++ compiler
 if {[string match cl $ccbasename]} {
+   catch {unset cl_libs}
    set compilestr [$config GetValue program_compiler_c++]
    if {![info exists cl_version]} {
       set cl_version [GuessClVersion [lindex $compilestr 0]]
@@ -386,7 +424,9 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_compiler_c++_property_use_underscore_getpid 1
 
    # Widest natively support floating point type
-   $config SetValue program_compiler_c++_typedef_realwide "double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
 
    # Under the Microsoft Visual C++ compiler, 80-bit floating point
    # is not supported; both double and long double are 64-bits. and
@@ -409,6 +449,14 @@ if {[string match cl $ccbasename]} {
       $config SetValue program_compiler_c++_missing_cvtsd_f64 0
    }
 
+   # Visual C++ support for SetCurrentProcessExplicitAppUserModelID
+   # began with version 10 (2010).  Note: Enabling this block makes
+   # the executables require Windows 7 or later.
+   if {$cl_major_version >= 10} {
+      $config SetValue program_compiler_c++_set_taskbar_id 1
+      lappend cl_libs shell32.lib
+   }
+
    # The program to run on this platform to create a single library file out
    # of many object files.
    # Microsoft Visual C++'s library maker
@@ -429,12 +477,17 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
    $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
    $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
-   # Note: advapi32 is needed for GetUserName function in Nb package.
-   $config SetValue TK_LIBS {user32.lib advapi32.lib}
-   $config SetValue TCL_LIBS {user32.lib advapi32.lib}
+   # Note 1: advapi32 is needed for GetUserName function in Nb package.
+   # Note 2: shell32.lib is needed for SetCurrentProcessExplicitAppUserModelID
+   #   function called inside WinMain in pkg/oc/oc.cc to tie all OOMMF
+   #   apps to the same taskbar group in Windows 7.
+   lappend cl_libs user32.lib advapi32.lib
+   $config SetValue TK_LIBS $cl_libs
+   $config SetValue TCL_LIBS $cl_libs
    $config SetValue program_linker_uses_-L-l {0}
    $config SetValue program_linker_uses_-I-L-l {0}
 
+   unset cl_libs
    unset cl_version
    unset cl_major_version
 } elseif {[string match g++* $ccbasename]} {
@@ -496,6 +549,17 @@ if {[string match cl $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
+   # Use ANSI conformant printf routines, which in particular support
+   # the L format modifier for long double types.  The
+   # __USE_MINGW_ANSI_STDIO macro is an internal compiler macro; with
+   # the 32-bit MinGW compiler 4.7.2 the -ansi and -posix switches set
+   # this macro, but on 64-bit 4.7.3 they do not.  BTW, this macro
+   # needs to be set before any system header file inclusion.  For
+   # more on this macro see the mingw header file _mingw.h in the
+   # mingw32/include directory, or os_defines.h deep in the
+   # mingw64/include/c++/ tree.
+   lappend opts "-D__USE_MINGW_ANSI_STDIO=1"
+
    # SSE support
    if {[catch {$config GetValue sse_level} sse_level]} {
       set sse_level 2  ;# Default setting for x86_64
@@ -555,10 +619,14 @@ if {[string match cl $ccbasename]} {
    #                -Wmissing-declarations  -Wnested-externs
    # Update: gcc 3.4.5 issues an uninitialized warning in the STL,
    #  so -Wno-uninitialized is necessary.
+   # Update: gcc 4.7.3 format checks don't recognize the long double
+   #  "L" modifier, so -Wno-format is necessary.  Apparently there
+   #  is a workaround using the __MINGW_PRINTF_FORMAT macro, if you
+   #  don't mind the GCC + MinGW specific nature of it.
    $config SetValue program_compiler_c++_option_warn {format "-Wall \
         -W -Wpointer-arith -Wwrite-strings \
         -Woverloaded-virtual -Wsynth -Werror -Wno-uninitialized \
-        -Wno-unused-function"}
+        -Wno-unused-function -Wno-format"}
 
    # Wide floating point type.
    # NOTE: On the x86_64+gcc platform, "long double" provides better
@@ -568,7 +636,9 @@ if {[string match cl $ccbasename]} {
    # native floating point format having approx. 19 decimal digits
    # precision as opposed to 16 for double.)
    # Default is "double".
-   # $config SetValue program_compiler_c++_typedef_realwide "long double"
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
 
    # Experimental: The OC_REAL8m type is intended to be at least
    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
@@ -671,6 +741,17 @@ $config SetValue script_filename_object {format %s.obj}
 # a file name stem and evaluated returns the corresponding file name for
 # a static library on this platform
 $config SetValue script_filename_static_library {format %s.lib}
+
+# Partial Tcl commands (or scripts) for creating library file names from
+# stems for third party libraries that don't follow the
+# script_filename_static_library rule.
+if {[catch {$config GetValue program_linker_extra_lib_scripts} extra_lib_scripts]} {
+   set extra_lib_scripts {}
+}
+lappend extra_lib_scripts {format "lib%s.lib"}
+lappend extra_lib_scripts {format "lib%s.a"}
+$config SetValue program_linker_extra_lib_scripts $extra_lib_scripts
+unset extra_lib_scripts
 
 # A list of partial Tcl commands (or scripts) which when completed by
 # lappending a file name stem and evaluated returns the corresponding

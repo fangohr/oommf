@@ -27,7 +27,7 @@ private:
 
   // Caching
   Oxs_OwnedPointer<Oxs_Mesh> cache_mesh;
-  mutable map<OC_UINT4m,ThreeVector> results_cache;  // Conceptually const
+  mutable map<OC_INDEX,ThreeVector> results_cache;  // Conceptually const
   OC_BOOL use_cache;
 
 public:

@@ -581,7 +581,7 @@ Oxs_SpinXferEvolve::Propagate_mp
       }
     }
   } else if(J_direction == JD_Y_NEG || J_direction == JD_Y_POS) {
-    const OC_INT4m offset = rmesh->DimX();
+    const OC_INDEX offset = rmesh->DimX();
     OC_REAL8m multiplier = 0.5;
     if (J_direction == JD_Y_NEG) multiplier *= -1;
     OC_INDEX base = rmesh->Index(0,0,0);
@@ -642,7 +642,7 @@ Oxs_SpinXferEvolve::Propagate_mp
       }
     }
   } else if(J_direction == JD_Z_NEG || J_direction == JD_Z_POS) {
-    const OC_INT4m offset = rmesh->DimX()*rmesh->DimY();
+    const OC_INDEX offset = rmesh->DimX()*rmesh->DimY();
     OC_REAL8m multiplier = 0.5;
     if (J_direction == JD_Z_NEG) multiplier *= -1;
     OC_INDEX base = rmesh->Index(0,0,0);

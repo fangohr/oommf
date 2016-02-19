@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:27 $
+ * Last modified on: $Date: 2014/10/29 23:52:16 $
  * Last modified by: $Author: donahue $
  */
 
@@ -15,7 +15,9 @@
 
 /* End includes */
 
-typedef OC_REALWIDE OXS_FFT_REAL_TYPE;
+typedef OC_REAL8m OXS_FFT_REAL_TYPE;
+typedef OC_INDEX  OXS_FFT_INT_TYPE;
+#define OXS_FFT_INT_MOD OC_INDEX_MOD
 
 #define USE_OXSCOMPLEX
 
@@ -24,8 +26,8 @@ typedef OXS_FFT_REAL_TYPE OXS_COMPLEX_REAL_TYPE;
 class Oxs_Complex {
 public:
   OXS_COMPLEX_REAL_TYPE re,im;
-  Oxs_Complex() { re=im=0.0; }
-  Oxs_Complex(OXS_COMPLEX_REAL_TYPE x,OXS_COMPLEX_REAL_TYPE y) { re=x; im=y; }
+  Oxs_Complex() : re(0), im(0) {}
+  Oxs_Complex(OXS_COMPLEX_REAL_TYPE x,OXS_COMPLEX_REAL_TYPE y): re(x), im(y) {}
   void Set(OXS_COMPLEX_REAL_TYPE x,OXS_COMPLEX_REAL_TYPE y) { re=x; im=y; }
   friend inline Oxs_Complex operator+(const Oxs_Complex& a,
 					const Oxs_Complex& b);
@@ -103,11 +105,10 @@ class Oxs_FFT {
   // NOTE: All member functions except for constructor and
   // destructor are "conceptually const"
 private:
-  int PackCheck();  // Routine to check Oxs_Complex packing restriction.
-
-  mutable int vecsize;
+  static OC_BOOL PackCheck();  // Checks Oxs_Complex packing restriction.
+  mutable OXS_FFT_INT_TYPE vecsize;
   mutable OXS_FFT_REAL_TYPE vecsize_normalization; // ==1/vecsize.
-  mutable int log2vecsize; // 2^log2vecsize == vecsize
+  mutable OXS_FFT_INT_TYPE log2vecsize; // 2^log2vecsize == vecsize
   enum Direction { forward, inverse };
   mutable Oxs_Complex *Uforward;
   mutable Oxs_Complex *Uinverse;
@@ -121,17 +122,17 @@ private:
   // on this issue, but doing multiple declares like this is
   // arguably bad practice, so just break them up.
 
-  mutable int *permindex;
+  mutable OXS_FFT_INT_TYPE *permindex;
 
   void Permute(Oxs_Complex *vec) const;
 
   void BaseDecFreqForward(Oxs_Complex *vec) const;
   void BaseDecTimeInverse(Oxs_Complex *vec) const;
 
-  void FillRootsOfUnity(int size,
+  void FillRootsOfUnity(OXS_FFT_INT_TYPE size,
 			Oxs_Complex* forward_roots,
 			Oxs_Complex* inverse_roots) const;
-  void Setup(int size) const;
+  void Setup(OXS_FFT_INT_TYPE size) const;
 
 
   // The "realdata" variables are used by the real FFT code.
@@ -147,25 +148,26 @@ private:
   //   NOTE 2: For reasons of computational efficiency,
   // realdata_wforward actually holds 0.5*(roots of unity);
   // but realdata_winverse holds the unscaled roots.
-  mutable int realdata_vecsize;
+  mutable OXS_FFT_INT_TYPE realdata_vecsize;
   mutable Oxs_Complex *realdata_wforward;
   mutable Oxs_Complex *realdata_winverse;
   // See note following Uforward and Uinverse declarations
   // concerning declaring multiple "mutable" variables with
   // a single statement.  (Executive summary: don't do it.)
-  void InitializeRealDataTransforms(int size) const; // Import size
-  /// is the desired value for realdata_vecsize.  This routine is
-  /// conceptually const.
+  void InitializeRealDataTransforms(OXS_FFT_INT_TYPE size) const;
+  /// Import size is the desired value for realdata_vecsize.  This
+  /// routine is conceptually const.
 public:
   Oxs_FFT();
   ~Oxs_FFT();
   void ReleaseMemory() const; // Conceptually const!?
 
-  void ForwardDecFreqScrambledNoScale(int size,Oxs_Complex *vec) const {
+  void ForwardDecFreqScrambledNoScale(OXS_FFT_INT_TYPE size,
+                                      Oxs_Complex *vec) const {
     if(size!=vecsize) Setup(size);
     BaseDecFreqForward(vec);
   }
-  void ForwardDecFreqNoScale(int size,Oxs_Complex *vec) const {
+  void ForwardDecFreqNoScale(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const {
     if(size==2) {
       OXS_FFT_REAL_TYPE x0=vec[0].re;
       OXS_FFT_REAL_TYPE y0=vec[0].im;
@@ -178,12 +180,12 @@ public:
       Permute(vec);
     }
   }
-  void ForwardDecFreq(int size,Oxs_Complex *vec) const {
+  void ForwardDecFreq(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const {
     // Default scaling, which is 1.0
     ForwardDecFreqNoScale(size,vec);
   }
 
-  void ForwardDecFreqRealDataNoScale(int size,void *vec) const;
+  void ForwardDecFreqRealDataNoScale(OXS_FFT_INT_TYPE size,void *vec) const;
   /// Performs FFT on a real sequence.  size must be a positive power of
   /// two.  The calculation is done in-place, where on return the array
   /// should be interpreted as a complex array with real and imaginary
@@ -203,16 +205,17 @@ public:
   ///   NB: This code *ASSUMES* that the Oxs_Complex type packs tightly
   /// as two OXS_FFT_REAL_TYPE elements.
 
-  void ForwardDecFreqRealData(int size,void *vec) const {
+  void ForwardDecFreqRealData(OXS_FFT_INT_TYPE size,void *vec) const {
     // Default scaling, which is 1.0
     ForwardDecFreqRealDataNoScale(size,vec);
   }
 
-  void InverseDecTimeScrambledNoScale(int size,Oxs_Complex *vec) const {
+  void InverseDecTimeScrambledNoScale(OXS_FFT_INT_TYPE size,
+                                      Oxs_Complex *vec) const {
     if(size!=vecsize) Setup(size);
     BaseDecTimeInverse(vec);
   }
-  void InverseDecTimeNoScale(int size,Oxs_Complex *vec) const {
+  void InverseDecTimeNoScale(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const {
     if(size==2) {
       OXS_FFT_REAL_TYPE x0=vec[0].re;
       OXS_FFT_REAL_TYPE y0=vec[0].im;
@@ -226,15 +229,15 @@ public:
       BaseDecTimeInverse(vec);
     }
   }
-  void InverseDecTime(int size,Oxs_Complex *vec) const; // Default scaling,
-  /// which is 1./size.
+  void InverseDecTime(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const;
+  /// Default scaling, which is 1./size.
 
-  void InverseDecTimeRealDataNoScale(int size,void *vec) const;
-  void InverseDecTimeRealData(int size,void *vec) const; // Default scaling,
-  /// which is 2./size.
+  void InverseDecTimeRealDataNoScale(OXS_FFT_INT_TYPE size,void *vec) const;
+  void InverseDecTimeRealData(OXS_FFT_INT_TYPE size,void *vec) const;
+  /// Default scaling, which is 2./size.
 
 
-  void UnpackRealPairImage(int size, Oxs_Complex *cvec) const;
+  void UnpackRealPairImage(OXS_FFT_INT_TYPE size, Oxs_Complex *cvec) const;
   /// Given complex sequence cvec[] which is the FFT image of
   /// f[]+i.g[], where f[] and g[] are real sequences, unpacks
   /// in-place to yield half of each of the conjugate symmetric
@@ -254,8 +257,9 @@ public:
   /// can be computed as F[size-k] = conj(F[k]), and similarly
   /// G[k] = conj(G[size-k]).
 
-  void RepackRealPairImage(int size, Oxs_Complex *cvec) const;
-  /// Reverses the operation of UnpackRealPairImage(int,Oxs_Complex).
+  void RepackRealPairImage(OXS_FFT_INT_TYPE size, Oxs_Complex *cvec) const;
+  /// Reverses the operation of
+  /// UnpackRealPairImage(OXS_FFT_INT_TYPE,Oxs_Complex).
 
 };
 

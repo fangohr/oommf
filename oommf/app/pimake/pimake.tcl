@@ -37,10 +37,11 @@ exec tclsh "$0" ${1+"$@"}
 # catches it's own errors and reports them to support older Tcl
 # releases.
 #
-# The following [catch] command catches any errors which arise in the
-# main body of this script.
+# The following [set script] command stores a script which is run below
+# inside a [catch] that catches any errors arising in the main body of
+# the script.
 #
-set code [catch {
+set script {
 
 if {[catch {package require Tcl 8}]} {
     if {[catch {package require Tcl 7.5}]} {
@@ -140,7 +141,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 1.2.0.5
+Oc_Main SetVersion 1.2.0.6
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}
@@ -223,9 +224,21 @@ if {[catch {MakeRule Build $target} errmsg]} {
 ########################################################################
 ########################################################################
 
-# The following line is the end of the [catch] command which encloses the
+# The following line is the end of the [set script] command enclosing the
 # entire main body of this script.
-} msg]
+}
+
+if {[catch {package require Tcl 8.5-}]} {
+    set code [catch $script msg]
+} else {
+    # See oommf.tcl comment - stupid old Tcl releases.
+    set catch catch
+    set code [$catch $script msg o]
+    if {$code in {1 2}} {
+	set errorCode [dict get $o -errorcode]
+    }
+    unset o
+} 
 #
 ########################################################################
 

@@ -7,7 +7,7 @@
 # by which a program is known remotely to information needed to launch
 # it locally.
 #
-# Last modified on: $Date: 2007-03-21 01:17:04 $
+# Last modified on: $Date: 2007/03/21 01:17:04 $
 # Last modified by: $Author: donahue $
 
 set Omf_export_list [list \

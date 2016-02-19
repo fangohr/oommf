@@ -1031,7 +1031,12 @@ public:
 
     static _PBC_DemagJobControl job_control;
 
+#if NB_XPFLOAT_USE_SSE && \
+  defined(OC_COMPILER_STACK_ALIGNMENT) && OC_COMPILER_STACK_ALIGNMENT<16
+    OC_REAL8m energy_sum;
+#else
     Nb_Xpfloat energy_sum;
+#endif
 
     OC_INDEX rdimx;
 
@@ -2047,7 +2052,7 @@ void PBC_Demag_2D::CalculateDemagTensors(
 
     OC_REALWIDE x, y, z;
 
-    int gxx, gyy, gzz;
+    int gxx, gyy /*, gzz */;
 
 
     gxx = sample_repeat_nx;
@@ -2077,7 +2082,7 @@ void PBC_Demag_2D::CalculateDemagTensors(
     } else {
         gxx = FindG(xx, dx * dy*dz, xdim*dx, ydim * dy);
         gyy = FindG(yy, dx * dy*dz, xdim*dx, ydim * dy);
-        gzz = FindG(zz, dx * dy*dz, xdim*dx, ydim * dy);
+        // gzz = FindG(zz, dx * dy*dz, xdim*dx, ydim * dy);
 
 
         OC_INDEX index, i, j, k;

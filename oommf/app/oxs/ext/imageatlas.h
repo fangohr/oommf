@@ -21,7 +21,7 @@ OC_USE_STRING;
 struct OxsImageAtlasColorData { // For private use only
 public:
   OC_REAL8m red,green,blue; // Values, [0,1]
-  OC_UINT4m region_id;
+  OC_INDEX region_id;
   OxsImageAtlasColorData():red(0.),green(0.),blue(0.),region_id(0) {}
   OC_BOOL SetColor(const String& colorstr);
   OC_REAL8m DistanceSq(OC_REAL8m r,OC_REAL8m g,OC_REAL8m b) const;
@@ -33,7 +33,7 @@ OC_BOOL operator<(const OxsImageAtlasColorData&,const OxsImageAtlasColorData&);
 OC_BOOL operator>(const OxsImageAtlasColorData&,const OxsImageAtlasColorData&);
 OC_BOOL operator==(const OxsImageAtlasColorData&,const OxsImageAtlasColorData&);
 
-typedef unsigned int OxsImageAtlasPixelType; // For private use only
+typedef OC_INDEX OxsImageAtlasPixelType; // For private use only
 /// This can me made wider or narrower if more or fewer regions are
 /// needed.  The size affects the memory usage of the 'pixel' array in
 /// Oxs_ImageAtlas.
@@ -41,7 +41,7 @@ typedef unsigned int OxsImageAtlasPixelType; // For private use only
 class Oxs_ImageAtlas:public Oxs_Atlas {
 private:
   OxsImageAtlasPixelType* pixel;
-  OC_UINT4m image_width,image_height;
+  OC_INDEX image_width,image_height;
 
   enum ViewPlane { xy, zx, yz } view;
   // View plane selection:
@@ -61,14 +61,14 @@ private:
 
   void FillPixels(const char* filename,
 		  vector<OxsImageAtlasColorData>& color_data,
-		  OC_REAL8m matcherror,OC_UINT4m default_id,int autocolor);
+		  OC_REAL8m matcherror,OC_INDEX default_id,int autocolor);
   /// Note: The last parameter, autocolor, is a temporary hack for
   ///       large region count support.
 
   static OC_BOOL
   FindBestMatchRegion(OC_REAL8m r, OC_REAL8m g, OC_REAL8m b,
 		      const vector<OxsImageAtlasColorData>& color_data,
-		      OC_UINT4m& match_id, OC_REAL8m& match_distsq);
+		      OC_INDEX& match_id, OC_REAL8m& match_distsq);
   /// Returns 0 if color_data is empty. Otherwise sets match_id and
   /// match_distsq to best fit, and returns 1.
 
@@ -93,32 +93,34 @@ public:
   /// is the special region "universe."  The stored bbox for region 0
   /// is by fiat the atlas bounding box.
 
-  OC_BOOL GetRegionExtents(OC_UINT4m id,Oxs_Box &mybox) const;
+  OC_BOOL GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const;
   /// If 0<id<GetRegionCount, then sets mybox to bounding box
   /// for the specified region, and returns 1.  If id is 0,
   /// sets mybox to atlas bounding box, and returns 1.
   /// Otherwise, leaves mybox untouched and returns 0.
 
-  OC_INT4m GetRegionId(const ThreeVector& point) const;
+  OC_INDEX GetRegionId(const ThreeVector& point) const;
   /// Returns the id number for the region containing point.
   /// The return value is 0 if the point is not contained in
   /// the atlas, i.e., belongs to the "universe" region.
 
-  OC_INT4m GetRegionId(const String& name) const;
+  OC_INDEX GetRegionId(const String& name) const;
   /// Given a region id string (name), returns
   /// the corresponding region id index.  If
   /// "name" is not included in the atlas, then
   /// -1 is returned.  Note: If name == "universe",
   /// then the return value will be 0.
 
-  OC_BOOL GetRegionName(OC_UINT4m id,String& name) const;
+  OC_BOOL GetRegionName(OC_INDEX id,String& name) const;
   /// Given an id number, fills in "name" with
   /// the corresponding region id string.  Returns
   /// 1 on success, 0 if id is invalid.  If id is 0,
   /// then name is set to "universe", and the return
   /// value is 1.
 
-  OC_UINT4m GetRegionCount() const { return OC_UINT4m(region_name.size()); }
+  OC_INDEX GetRegionCount() const {
+    return static_cast<OC_INDEX>(region_name.size());
+  }
   /// Valid RegionId numbers range from 0 to GetRegionCount() - 1,
   /// inclusive, where 0 is the special "universe" region.
 

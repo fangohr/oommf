@@ -1,0 +1,15 @@
+initproblem 1
+subproblem 1 solver euler
+subproblem 1 solver rk2
+subproblem 1 solver rk2heun
+subproblem 1 solver rk4
+subproblem 1 solver rkf54
+subproblem 1 solver rkf54m
+subproblem 1 solver rkf54s
+subproblem 2 solver euler
+subproblem 2 solver rk2
+subproblem 2 solver rk2heun
+subproblem 2 solver rk4
+subproblem 2 solver rkf54
+subproblem 2 solver rkf54m
+subproblem 2 solver rkf54s

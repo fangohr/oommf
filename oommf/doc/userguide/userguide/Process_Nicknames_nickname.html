@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+<!--Converted with LaTeX2HTML 2008 (1.71)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,47 +13,47 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
-<LINK REL="next" HREF="Platform-Independent_Make_p.html">
-<LINK REL="previous" HREF="OOMMF_Process_ID_Informatio.html">
+<LINK REL="next" HREF="ODT_Derived_Quantity_Calcul.html">
+<LINK REL="previous" HREF="mifconvert.html">
 <LINK REL="up" HREF="Command_Line_Utilities.html">
-<LINK REL="next" HREF="Platform-Independent_Make_p.html">
+<LINK REL="next" HREF="ODT_Derived_Quantity_Calcul.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html737"
-  HREF="Platform-Independent_Make_p.html">
+<A NAME="tex2html728"
+  HREF="ODT_Derived_Quantity_Calcul.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html733"
+<A NAME="tex2html724"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html727"
-  HREF="OOMMF_Process_ID_Informatio.html">
+<A NAME="tex2html718"
+  HREF="mifconvert.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html739"
+<A NAME="tex2html730"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html735"
+<A NAME="tex2html726"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html738"
-  HREF="Platform-Independent_Make_p.html">Platform-Independent Make: pimake</A>
-<B> Up:</B> <A NAME="tex2html734"
+<B> Next:</B> <A NAME="tex2html729"
+  HREF="ODT_Derived_Quantity_Calcul.html">ODT Derived Quantity Calculator:</A>
+<B> Up:</B> <A NAME="tex2html725"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html728"
-  HREF="OOMMF_Process_ID_Informatio.html">OOMMF and Process ID</A>
+<B> Previous:</B> <A NAME="tex2html719"
+  HREF="mifconvert.html">MIF Format Conversion: mifconvert</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION0001714000000000000000"></A><A NAME="sec:nickname"></A><A NAME="17177"></A><A NAME="17178"></A><A NAME="17179"></A><A NAME="17180"></A>
+<H2><A NAME="SECTION0001713000000000000000"></A><A NAME="sec:nickname"></A><A NAME="17515"></A><A NAME="17516"></A><A NAME="17517"></A><A NAME="17518"></A>
 <BR>
 Process Nicknames: nickname
 </H2>
@@ -71,15 +71,15 @@ of OOMMF applications.  These names are used by the MIF 2.x
 The <B>nickname</B> command line is:
 <PRE>
 tclsh oommf.tcl nickname [standard options] [-account name] \
-   [-hostport port] [-pid] [-timeout secs] oid [nickname ...]
+   [-hostport port] [-pid] [-timeout secs] oid nickname [nickname2 ...]
 </PRE>
 where
 <DL>
 <DT><STRONG><TT><B>-account name</B></TT></STRONG></DT>
-<DD>Specify the account name.  The default is the same used by 
+<DD>Specify the account name.  The default is the same used by
  <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>:
  the current user login name, except on Windows&nbsp;9X, where the dummy
- account ID  ``oommf''<A NAME="17195"></A> may be used
+ account ID  ``oommf''<A NAME="17533"></A> may be used
  instead.
 </DD>
 <DT><STRONG><TT><B>-hostport port</B></TT></STRONG></DT>
@@ -108,7 +108,7 @@ where
 </DD>
 </DL>
 This command is used to associate nicknames with running instances of
-OOMMF applications.  The MIF 2.1
+OOMMF applications.  The MIF 2
 <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A> command can then
 use the nickname to link Oxs output to a given OOMMF application
 instance at problem load time.  Nicknames for GUI applications can be
@@ -117,25 +117,31 @@ any application via the <TT>-names</TT> option to the command line
 application <A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A>.
 
 <P>
+Note that nicknames can also be associated with OOMMF applications
+when they are started via the standard <TT>-nickname</TT> command line
+option, or by using the <TT>application:nickname</TT> syntax for
+applications launched by the MIF <TT>Destination</TT> command.
+
+<P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html737"
-  HREF="Platform-Independent_Make_p.html">
+<A NAME="tex2html728"
+  HREF="ODT_Derived_Quantity_Calcul.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html733"
+<A NAME="tex2html724"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html727"
-  HREF="OOMMF_Process_ID_Informatio.html">
+<A NAME="tex2html718"
+  HREF="mifconvert.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html740"
+<A NAME="tex2html731"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html735"
+<A NAME="tex2html726"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 28, 2012</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
 </BODY>
 </HTML>

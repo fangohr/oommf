@@ -13,8 +13,8 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011-10-24 21:23:49 $
- * Last modified by: $Author: donahue $
+ * Last modified on: $Date: 2015/04/17 17:17:03 $
+ * Last modified by: $Author: dgp $
  */
 
 #include <assert.h>
@@ -92,68 +92,6 @@ int Nb_InputChannel::FillBuf()
 
 #undef NB_INPUTCHANNEL_BUFSIZE
 #undef NB_INPUTCHANNEL_ERRBUFSIZE
-
-////////////////////////////////////////////////////////////////////////
-// Wrapper for write-access Tcl channels
-
-#define NB_OUTPUTCHANNEL_ERRBUFSIZE 4096
-
-Nb_OutputChannel::Nb_OutputChannel()
-  : chan(NULL),buf_offset(0)
-{
-  assert(NB_OUTPUTCHANNEL_BUFSIZE>0);
-  buf.SetLength(NB_OUTPUTCHANNEL_BUFSIZE);
-}
-
-void Nb_OutputChannel::OpenFile(const char* filename,
-                               const char* translation)
-{
-  Close();
-
-  Oc_DirectPathname(filename,file_descriptor);
-
-  chan = Tcl_OpenFileChannel(NULL,file_descriptor.GetStr(),
-			     OC_CONST84_CHAR("w"),0);
-  if(chan==NULL) {
-    // Unable to open file.
-    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_OutputChannel","OpenFile",
-                       NB_OUTPUTCHANNEL_ERRBUFSIZE+2000,
-                       "Unable to open file \"%.2000s\" for writing.",
-                       file_descriptor.GetStr()));
-  }
-
-  if(Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-translation"),
-			  OC_CONST84_CHAR(translation))!=TCL_OK ||
-     Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-buffering"),
-			  OC_CONST84_CHAR("full"))!=TCL_OK ||
-     Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-buffersize"),
-         OC_CONST84_CHAR(OC_STRINGIFY(NB_OUTPUTCHANNEL_BUFSIZE)))!=TCL_OK) {
-    // Channel configuration error.
-    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_OutputChannel","OpenFile",
-                       NB_OUTPUTCHANNEL_ERRBUFSIZE+2000,
-                       "Unable to configure output channel"
-                       " for file \"%.2000s\".",
-                       file_descriptor.GetStr()));
-  }
-  buf_offset = 0;
-}
-
-int Nb_OutputChannel::WriteBuf()
-{
-  int bytes_written = Tcl_Write(chan,(char*)buf,buf_offset);
-  if(bytes_written<0) {
-    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_OutputChannel","WriteBuf",
-                       NB_OUTPUTCHANNEL_ERRBUFSIZE+4000,
-                       "Write error on \"%.2000s\": %.2000s",
-                       file_descriptor.GetStr(),
-                       Tcl_ErrnoMsg(Tcl_GetErrno())));
-  }
-  buf_offset=0;
-  return bytes_written;
-}
-
-#undef NB_OUTPUTCHANNEL_BUFSIZE
-#undef NB_OUTPUTCHANNEL_ERRBUFSIZE
 
 ////////////////////////////////////////////////////////////////////////
 // Very simple C++ wrapper for Tcl_OpenFileChannel.

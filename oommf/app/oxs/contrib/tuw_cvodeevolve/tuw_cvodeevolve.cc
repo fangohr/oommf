@@ -13,13 +13,13 @@
 #include "oxsexcept.h"
 #include "tuw_cvodeevolve.h"
 
-// Oxs_Ext registration support
-OXS_EXT_REGISTER(Tuw_CvodeEvolve);
+#include <cvode/cvode_spgmr.h>
+#include <nvector/nvector_serial.h>
 
 /* End includes */
 
-#include "cvode/cvode_spgmr.h"
-#include "nvector/nvector_serial.h"
+// Oxs_Ext registration support
+OXS_EXT_REGISTER(Tuw_CvodeEvolve);
 
 // Constructor
 Tuw_CvodeEvolve::Tuw_CvodeEvolve(

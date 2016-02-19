@@ -30,8 +30,8 @@ OXS_EXT_REGISTER(Oxs_UniformExchange);
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.72 $",
-   "$Date: 2012-09-07 14:41:24 $",
+   "$Revision: 1.74 $",
+   "$Date: 2015/01/29 08:35:12 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -140,7 +140,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrFree
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -334,7 +334,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -492,7 +492,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror_lex
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -639,7 +639,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirrorStd
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -808,7 +808,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrBigAngMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -989,7 +989,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrZD2
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -1203,7 +1203,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrFree
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -1577,7 +1577,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2032,7 +2032,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1B
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2303,7 +2303,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2538,7 +2538,7 @@ Oxs_UniformExchange::CalcEnergy26Ngbr
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2766,8 +2766,8 @@ Oxs_UniformExchange::CalcEnergy26Ngbr
 
 void Oxs_UniformExchange::ComputeEnergyChunkInitialize
 (const Oxs_SimState& /* state */,
- Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+ const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+ vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   if(maxdot.size() != (vector<OC_REAL8m>::size_type)number_of_threads) {
@@ -2781,7 +2781,7 @@ void Oxs_UniformExchange::ComputeEnergyChunkInitialize
 void Oxs_UniformExchange::ComputeEnergyChunkFinalize
 (const Oxs_SimState& state,
  const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- const Oxs_ComputeEnergyDataThreadedAux& /* ocedtaux */,
+ const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   // Set max angle data
@@ -2849,7 +2849,7 @@ void Oxs_UniformExchange::ComputeEnergyChunkFinalize
   String smsa_name = StageMaxSpinAngleStateName();
   String rmsa_name = RunMaxSpinAngleStateName();
   if(state.previous_state_id &&
-     (oldstate
+     0 != (oldstate
       = director->FindExistingSimulationState(state.previous_state_id)) ) {
     if(oldstate->stage_number != state.stage_number) {
       stage_maxang = 0.0;
@@ -2879,7 +2879,7 @@ void Oxs_UniformExchange::ComputeEnergyChunkFinalize
 
 void Oxs_UniformExchange::ComputeEnergyChunk
 (const Oxs_SimState& state,
- Oxs_ComputeEnergyDataThreaded& ocedt,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,

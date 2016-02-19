@@ -50,8 +50,16 @@ typedef String Oxs_CmdProc(Oxs_Director* director,Tcl_Interp *interp,
 			   int argc,CONST84 char** argv);
 Oxs_CmdProc Oxs_SetRestartFlag;
 Oxs_CmdProc Oxs_SetRestartCrcCheck;
+Oxs_CmdProc Oxs_SetRestartFileDir;
+Oxs_CmdProc Oxs_GetRestartFileDir;
 Oxs_CmdProc Oxs_GetMifCrc;
 Oxs_CmdProc Oxs_GetMifParameters;
+Oxs_CmdProc Oxs_GetStage;
+Oxs_CmdProc Oxs_GetRunStateCounts;
+Oxs_CmdProc Oxs_GetCurrentStateId;
+Oxs_CmdProc Oxs_SetStage;
+Oxs_CmdProc Oxs_IsProblemLoaded;
+Oxs_CmdProc Oxs_GetMif;
 Oxs_CmdProc Oxs_ProbInit;
 Oxs_CmdProc Oxs_ProbReset;
 Oxs_CmdProc Oxs_Run;
@@ -59,30 +67,24 @@ Oxs_CmdProc Oxs_DriverName;
 Oxs_CmdProc Oxs_MeshGeometryString;
 Oxs_CmdProc Oxs_MifOption;
 Oxs_CmdProc Oxs_ListRegisteredExtClasses;
-Oxs_CmdProc Oxs_ListEnergyObjects;
 Oxs_CmdProc Oxs_ListExtObjects;
+Oxs_CmdProc Oxs_ListEnergyObjects;
 Oxs_CmdProc Oxs_ListOutputObjects;
 Oxs_CmdProc Oxs_OutputGet;
+Oxs_CmdProc Oxs_GetAllScalarOutputs;
 Oxs_CmdProc Oxs_OutputNames;
-Oxs_CmdProc Oxs_SetStage;
-Oxs_CmdProc Oxs_GetStage;
-Oxs_CmdProc Oxs_GetRunStateCounts;
-Oxs_CmdProc Oxs_GetMif;
-
-Oxs_CmdProc Oxs_DirectorDevelopTest;
-Oxs_CmdProc Oxs_DriverLoadTestSetup;
-
 Oxs_CmdProc Oxs_EvalScalarField;
 Oxs_CmdProc Oxs_EvalVectorField;
 Oxs_CmdProc Oxs_GetAtlasRegions;
 Oxs_CmdProc Oxs_GetAtlasRegionByPosition;
-
 Oxs_CmdProc Oxs_GetThreadStatus; // For debugging
-
 Oxs_CmdProc Oxs_ExtCreateAndRegister;
+Oxs_CmdProc Oxs_ForceFinalCheckpoint;
+Oxs_CmdProc Oxs_DirectorDevelopTest;
+Oxs_CmdProc Oxs_DriverLoadTestSetup;
+Tcl_CmdProc Oxs_ProbRelease;
 
 Tcl_CmdProc OxsCmdsSwitchboard;
-Tcl_CmdProc Oxs_ProbRelease;
 
 /*
  *----------------------------------------------------------------------
@@ -404,7 +406,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     }
     if(!tmp_error_message.empty()) {
       const char* interp_result = Tcl_GetStringResult(interp);
-      int reslen = strlen(interp_result);
+      size_t reslen = strlen(interp_result);
       char spacer[2];
       spacer[0] = '\0';
       if(reslen>0 && interp_result[reslen-1]!='\n') {
@@ -487,6 +489,57 @@ String Oxs_SetRestartCrcCheck(Oxs_Director* director,Tcl_Interp *interp,
   char buf[64];
   Oc_Snprintf(buf,sizeof(buf),"%d",oldflag);
   return String(buf);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_SetRestartFileDir --
+ *      Interactively set the default directory for storing restart files.
+ *
+ * Results:
+ *      Returns directory name.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_SetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
+                             int argc,CONST84 char** argv)
+{
+  if (argc != 2) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     " restart_directory\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  director->SetRestartFileDir(argv[1]);
+  return String(argv[1]);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_GetRestartFileDir --
+ *      Returns default directory for restart file storage
+ *
+ * Results:
+ *      Returns directory name.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
+                             int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     "\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  return String(director->GetRestartFileDir());
 }
 
 /*
@@ -618,6 +671,38 @@ String Oxs_GetRunStateCounts(Oxs_Director* director,Tcl_Interp *interp,
 /*
  *----------------------------------------------------------------------
  *
+ * Oxs_GetRunCounts --
+ *      Returns a list consisting of the current iteration, stage, and
+ *   number of stages.
+ *
+ * Results:
+ *      String form of the list.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+String Oxs_GetCurrentStateId(Oxs_Director* director,Tcl_Interp *interp,
+			     int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     "\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+
+  OC_UINT4m id = director->GetCurrentStateId();
+
+  char buf[1024];
+  Oc_Snprintf(buf,sizeof(buf),"%" OC_INT4m_MOD "u",id);
+  return String(buf);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * Oxs_SetStage --
  *      Interactively set the Stage of the problem being solved.
  *
@@ -649,6 +734,36 @@ String Oxs_SetStage(Oxs_Director* director,Tcl_Interp *interp,
   char buf[64];
   Oc_Snprintf(buf,sizeof(buf),"%d",stage);
   return String(buf);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_IsProblemLoaded --
+ *      Returns 0 if no problem is loaded.
+ *
+ * Results:
+ *      Problem status as a string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+String Oxs_IsProblemLoaded(Oxs_Director* director,Tcl_Interp *interp,
+                           int argc, CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     "\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  String result = String("0");
+  if(director->IsProblemLoaded()) {
+    result = String("1");
+  }
+  return result;
 }
 
 /*
@@ -941,7 +1056,6 @@ String Oxs_DriverName(Oxs_Director* director,Tcl_Interp *interp,
 String Oxs_MeshGeometryString(Oxs_Director* director,Tcl_Interp *interp,
                               int argc,CONST84 char** argv)
 {
-
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
 		     argv[0],"\"",(char *) NULL);
@@ -1129,6 +1243,35 @@ String Oxs_OutputGet(Oxs_Director* director,Tcl_Interp *interp,
     }
     return String("");
 }
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_OutputNames --
+ *      Retrieves output from all scalar output objects
+ *
+ * Results:
+ *      A standard Tcl result.
+ *
+ * Side effects:
+ *      Sets result of interp to a triple of strings giving the
+ *      (long) name, units, and value for each output.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetAllScalarOutputs(Oxs_Director* director, Tcl_Interp *interp,
+                               int argc, CONST84 char** argv)
+{
+    if (argc != 1) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0], "\"", (char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+    }
+    vector<String> triples;
+    director->GetAllScalarOutputs(triples);
+    return Nb_MergeList(triples);
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -1440,10 +1583,10 @@ String Oxs_GetAtlasRegionByPosition
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
   ThreeVector position(x,y,z);
-  OC_INT4m id = atlas->GetRegionId(position);
+  OC_INDEX id = atlas->GetRegionId(position);
 
   String region_name; // Convert id number to region name
-  atlas->GetRegionName((OC_UINT4m)id,region_name);
+  atlas->GetRegionName(id,region_name);
 
   return region_name;
 }
@@ -1524,6 +1667,39 @@ String Oxs_ExtCreateAndRegister
 /*
  *----------------------------------------------------------------------
  *
+ * Oxs_ForceFinalCheckpoint --
+ *      Causes last state to be written as a checkpoint file on exit
+ *
+ * Results:
+ *      Results string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_ForceFinalCheckpoint(Oxs_Director* director,Tcl_Interp *interp,
+                                int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0],"\"",(char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  driver->ForceFinalCheckpoint();
+  return String("");
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
  * Oxs_DirectorDevelopTest --
  *      Hook for development/debug testing.
  *
@@ -1590,12 +1766,18 @@ String Oxs_DriverLoadTestSetup(Oxs_Director* director,Tcl_Interp *interp,
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
 
-  Oxs_Ext* ext = director->FindExtObject(driver_name);
+  OC_UINT4m match_count;
+  Oxs_Ext* ext = director->FindExtObject(driver_name,match_count);
   Oxs_Driver* driver = NULL;
   if(ext == NULL ||
      (driver = dynamic_cast<Oxs_Driver*>(ext)) == NULL) {
-    Tcl_AppendResult(interp, "Unable to get pointer to Driver.",
-		     (char *) NULL);
+    if(match_count == 0) {
+      Tcl_AppendResult(interp, "Unable to get pointer to Driver.",
+                       (char *) NULL);
+    } else {
+      Tcl_AppendResult(interp, "Multiple Driver blocks in MIF file.",
+                       (char *) NULL);
+    }
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
 
@@ -1698,11 +1880,15 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
 	    OxsCmdsCleanup)
   REGCMD(Oxs_SetRestartFlag,"Oxs_Director::SetRestartFlag");
   REGCMD(Oxs_SetRestartCrcCheck,"Oxs_Director::SetRestartCrcCheck");
+  REGCMD(Oxs_SetRestartFileDir,"Oxs_Director::SetRestartFileDir");
+  REGCMD(Oxs_GetRestartFileDir,"Oxs_Director::GetRestartFileDir");
   REGCMD(Oxs_GetMifCrc,"Oxs_Director::GetMifCrc");
   REGCMD(Oxs_GetMifParameters,"Oxs_Director::GetMifParameters");
   REGCMD(Oxs_GetStage,"Oxs_Director::GetStage");
   REGCMD(Oxs_GetRunStateCounts,"Oxs_GetRunStateCounts");
+  REGCMD(Oxs_GetCurrentStateId,"Oxs_GetCurrentStateId");
   REGCMD(Oxs_SetStage,"Oxs_Director::SetStage");
+  REGCMD(Oxs_IsProblemLoaded,"Oxs_Director::IsProblemLoaded");
   REGCMD(Oxs_GetMif,"Oxs_Director::GetMifHandle");
   REGCMD(Oxs_ProbInit,"Oxs_Director::ProbInit");
   REGCMD(Oxs_ProbReset,"Oxs_Director::ProbReset");
@@ -1715,6 +1901,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_ListEnergyObjects,"Oxs_Director::ListEnergyObjects");
   REGCMD(Oxs_ListOutputObjects,"Oxs_Director::ListOutputObjects");
   REGCMD(Oxs_OutputGet,"Oxs_Director::Output");
+  REGCMD(Oxs_GetAllScalarOutputs,"Oxs_Director::GetAllScalarOutputs");
   REGCMD(Oxs_OutputNames,"Oxs_Director::OutputNames");
   REGCMD(Oxs_EvalScalarField,"Oxs_EvalScalarField");
   REGCMD(Oxs_EvalVectorField,"Oxs_EvalVectorField");
@@ -1722,6 +1909,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_GetAtlasRegionByPosition,"Oxs_GetAtlasRegionByPosition");
   REGCMD(Oxs_GetThreadStatus,"Oxs_GetThreadStatus");
   REGCMD(Oxs_ExtCreateAndRegister,"Oxs_ExtCreateAndRegister");
+  REGCMD(Oxs_ForceFinalCheckpoint,"Oxs_ForceFinalCheckpoint");
   REGCMD(Oxs_DirectorDevelopTest,"Oxs_DirectorDevelopTest");
   REGCMD(Oxs_DriverLoadTestSetup,"Oxs_DriverLoadTestSetup");
 #undef REGCMD

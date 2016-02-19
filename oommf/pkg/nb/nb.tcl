@@ -2,7 +2,7 @@
 #
 #	Nuts & Bolts support
 #
-# Last modified on: $Date: 2012-09-25 17:12:01 $
+# Last modified on: $Date: 2015/03/25 16:45:03 $
 # Last modified by: $Author: dgp $
 #
 # When this version of the nb extension is selected by the 'package require'
@@ -13,7 +13,7 @@
 #
 # NOTE: version number below must match that in ./nb.h
 
-package require -exact Nb 1.2.0.5
+package require -exact Nb 1.2.0.6
 
 Oc_CheckTclIndex Nb
 

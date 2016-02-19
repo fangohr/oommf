@@ -28,7 +28,7 @@ OC_USE_STRING;
  *  static const Oxs_WarningMessageRevisionInfo revinfo
  *    (__FILE__,
  *     "$Revision: 1.9 $",
- *     "$Date: 2008-09-09 23:58:01 $",
+ *     "$Date: 2008/09/09 23:58:01 $",
  *     "$Author: donahue $",
  *     "Billy Bob");
  *

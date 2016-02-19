@@ -9,7 +9,7 @@
 #        large       --- Larger than standard, non-bold.
 #        large_bold  --- Large bold font.
 #
-# Last modified on: $Date: 2007-03-21 01:02:40 $
+# Last modified on: $Date: 2007/03/21 01:02:40 $
 # Last modified by: $Author: donahue $
 #
 Oc_Class Oc_Font {

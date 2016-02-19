@@ -48,6 +48,9 @@ if {$extras} {
    foreach elt [info proc Guess*Version] {
       if {[regexp -- {^Guess(.*)Version$} $elt dum compiler_str]} {
          set compiler [string tolower $compiler_str]
+         if {[string match gcc $compiler]} {
+            set compiler g++
+         }
          if {![catch {$elt $compiler} compiler_version] \
                 && ![string match {} $compiler_version]} {
             puts "$compiler version: $compiler_version"

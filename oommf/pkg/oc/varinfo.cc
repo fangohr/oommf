@@ -2,7 +2,7 @@
  *
  * Small program to probe system characteristics.
  *
- * Last modified on: $Date: 2012-09-11 14:12:51 $
+ * Last modified on: $Date: 2014/10/29 23:55:24 $
  * Last modified by: $Author: donahue $
  *
  */
@@ -16,7 +16,13 @@
 #include <math.h>
 #include <float.h>
 
-#if defined(__unix) || defined(_AIX)
+#ifdef __APPLE__
+# define BUILD_MAC_OSX
+# include <sys/types.h>
+# include <sys/sysctl.h>
+#endif
+
+#if defined(__unix) || defined(_AIX) || defined(BUILD_MAC_OSX)
 # define BUILD_UNIX
 # include <unistd.h>
 #endif /* __unix */
@@ -27,14 +33,23 @@
 # include <windows.h>
 # undef WIN32_LEAN_AND_MEAN
 # if defined(__MINGW_GCC) || defined(__MINGW32__)
-/* MinGW gcc uses Microsoft C run-time libraries, which
- * don't support "long double" (e.g., Lg) format type.
+/* If MinGW gcc uses the Microsoft C run-time libraries,
+ * then the "long double" (e.g., Lg) format type is not
+ * supported.  However, MinGW also has an ansi-compliant
+ * stdio library that does.  Select accordingly.
  */
+# if defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO!=0
+#  define NO_L_FORMAT 0
+# else
 #  define NO_L_FORMAT 1
+# endif
 # endif
 #endif
 
 /* End includes */
+
+// #define COMPLEX 1
+#define VECTOR 1
 
 #ifndef REPORT_PAGESIZE
 # define REPORT_PAGESIZE 1
@@ -48,36 +63,38 @@
 # define NO_L_FORMAT 0
 #endif
 
-/****************
-#define COMPLEX
-#define EXTRALONG
-#define EXTRALONGINT
-#define EXTRALONGDOUBLE
-****************/
+#ifndef EXTRALONG
+# define EXTRALONG 1  /* Default is to do extra longs if possible */
+#endif
 
-#if !defined(EXTRALONGINT) && defined(LLONG_MAX)
-# define EXTRALONGINT
+#if EXTRALONG
+# if !defined(EXTRALONGINT) && defined(LLONG_MAX)
+#  define EXTRALONGINT
 /* If LLONG_MAX is defined, then presumably "long long"
  * type is supported.
  */
-#endif
+# endif
 
-#ifdef __cplusplus
-# if !defined(EXTRALONGDOUBLE) && !defined(__SUNPRO_CC) && !defined(__sun)
+# ifdef __cplusplus
+#  if !defined(EXTRALONGDOUBLE) && !defined(__SUNPRO_CC) && !defined(__sun)
 /* Some(?) releases of Sun Forte compiler missing floorl support. */
 /* Some(?) g++ installations on Solaris missing floorl support. */
-#  define EXTRALONGDOUBLE
+#   define EXTRALONGDOUBLE
+#  endif
 # endif
-#endif
+#endif /* EXTRALONG */
 
-#ifdef EXTRALONG
+#if EXTRALONG
 # ifndef EXTRALONGINT
 #  define EXTRALONGINT
 # endif
 # ifndef EXTRALONGDOUBLE
 #  define EXTRALONGDOUBLE
 # endif
-#endif
+#else /* EXTRALONG == 0 */
+# undef EXTRALONGINT
+# undef EXTRALONGDOUBLE
+#endif /* EXTRALONG */
 
 #ifdef EXTRALONGINT
 # ifdef BUILD_WINDOWS
@@ -90,9 +107,24 @@
 #endif
 
 #ifdef EXTRALONGDOUBLE
+#include <cmath>    // Get long double overloads
 typedef long double HUGEFLOAT;
 const char* HUGEFLOATTYPE = "long double";
 #endif
+
+#ifdef VECTOR
+struct two_vector_float       { float x,y; };
+struct two_vector_double      { double x,y; };
+# ifdef EXTRALONGDOUBLE
+struct two_vector_long_double { long double x,y; };
+# endif // EXTRALONGDOUBLE
+
+struct three_vector_float       { float x,y,z; };
+struct three_vector_double      { double x,y,z; };
+# ifdef EXTRALONGDOUBLE
+struct three_vector_long_double { long double x,y,z; };
+# endif // EXTRALONGDOUBLE
+#endif // VECTOR
 
 /*
  * If "EXTRALONG" is defined, then types "long long" and "long double"
@@ -218,20 +250,51 @@ int len;
   }
 }
 
+float FltMachEps()
+{
+  volatile float eps,epsok,check;
+  eps=1.0;
+  epsok=2.0;
+  check=1.0f+eps;
+  while(check>1.0f) {
+    epsok=eps;
+    eps/=2.0f;
+    check = 1.0f + eps;
+  }
+  return epsok;
+}
+
+
 double DblMachEps()
 {
-  volatile double one;
-  double eps,epsok,check;
-  one = 1.0;
+  volatile double eps,epsok,check;
   eps=1.0;
   epsok=2.0;
   check=1.0+eps;
-  while(check>one) {
+  while(check>1.0) {
     epsok=eps;
     eps/=2.0;
     check = 1.0 + eps;
   }
   return epsok;
+}
+
+int FltPrecision()
+{ // Returns effective mantissa width, in bits
+  volatile float test = 2.0;
+  test /= 3.0; test -= 0.5;
+  test *= 3;   test -= 0.5;
+  if(test<0.0) test *= -1;
+  return int(0.5-log(test)/log(float(2.)));
+}
+
+int DblPrecision()
+{ // Returns effective mantissa width, in bits
+  volatile double test = 2.0;
+  test /= 3.0; test -= 0.5;
+  test *= 3;   test -= 0.5;
+  if(test<0.0) test *= -1;
+  return int(0.5-log(test)/log(double(2.)));
 }
 
 #ifdef EXTRALONGDOUBLE
@@ -248,13 +311,47 @@ HUGEFLOAT LongDblMachEps()
   }
   return epsok;
 }
+
+int LongDblPrecision()
+{ // Returns effective mantissa width, in bits
+  volatile HUGEFLOAT test = 2.0;
+  test /= 3.0; test -= 0.5;
+  test *= 3;   test -= 0.5;
+  if(test<0.0) test *= -1;
+  return int(0.5-log(test)/log(HUGEFLOAT(2.)));
+}
 #endif /* EXTRALONGDOUBLE */
+
+
+int DecimalDigits(int precision)
+{ // Returns the number of decimal digits needed to exactly specify a
+  // binary floating point value of precision bits.  For details, see
+  //
+  //    "How to print floating point numbers accurately," Guy L. Steele
+  //    and Jon L. White, ACM SIGPLAN NOTICES, Volume 39, Issue 4,
+  //    372-389 (Apr 2004).  DOI: 10.1145/989393.989431
+  //
+  // (Also available in Proceedings of the ACM SIGPLAN’SO Conference on
+  // Programming Language Design and Implementation, White Plains, New
+  // York, June 20-22, 1990, pp 112-126.)
+  if(precision == 24) {
+    return 9;
+  }
+  if(precision == 53) {
+    return 17;
+  }
+  if(precision == 64) {
+    return 21;
+  }
+  return 2 + int(floor(precision*log(2.)/log(10.)));
+}
+
 
 void Usage()
 {
   fprintf(stderr,"Usage: varinfo [-h|--help]"
 	  " [--skip-atan2] [--skip-underflow]\n");
-  exit(1);
+  exit(99);
 }
 
 /* Declaration for dummy zero routine.  Definition at bottom of file. */
@@ -299,6 +396,16 @@ char **argv;
       else Usage();
     }
   }
+
+#ifdef EXTRALONGINT
+  printf("HUGEINTTYPE: %s\n",HUGEINTTYPE);
+#endif
+#ifdef EXTRALONGDOUBLE
+  printf("HUGEFLOATTYPE: %s\n",HUGEFLOATTYPE);
+#endif
+#if defined(EXTRALONGINT) || defined(EXTRALONGDOUBLE)
+  printf("\n");
+#endif
 
   /* Work length info */
   printf("Type        char is %2d bytes wide   ",(int)sizeof(char));
@@ -360,6 +467,22 @@ char **argv;
   printf("Type __complex__ double is %2d bytes wide\n",
 	 sizeof(__complex__ double));
 #endif /* COMPLEX */
+
+#ifdef VECTOR
+  printf("\n");
+  printf("Type          two_vector_float is %2d bytes wide\n",(int)sizeof(struct two_vector_float));
+  printf("Type         two_vector_double is %2d bytes wide\n",(int)sizeof(struct two_vector_double));
+# ifdef EXTRALONGDOUBLE
+  printf("Type    two_vector_long_double is %2d bytes wide\n",(int)sizeof(struct two_vector_long_double));
+# endif // EXTRALONGDOUBLE
+  printf("\n");
+  printf("Type        three_vector_float is %2d bytes wide\n",(int)sizeof(struct three_vector_float));
+  printf("Type       three_vector_double is %2d bytes wide\n",(int)sizeof(struct three_vector_double));
+# ifdef EXTRALONGDOUBLE
+  printf("Type  three_vector_long_double is %2d bytes wide\n",(int)sizeof(struct three_vector_long_double));
+# endif // EXTRALONGDOUBLE
+#endif
+
 
   /* Byte order info */
   printf("\n");  fflush(stdout);
@@ -426,24 +549,176 @@ char **argv;
   printf(  "                  CLK_TCK: <not defined>\n");
 #endif
 
-  printf("\nFLT_EPSILON: %.9g\n",FLT_EPSILON);
-  printf("SQRT_FLT_EPSILON: %.9g\n",sqrt(FLT_EPSILON));
-  printf("DBL_EPSILON: %.17g\n",DBL_EPSILON);
-  printf("SQRT_DBL_EPSILON: %.17g\n",sqrt(DBL_EPSILON));
-  printf("CUBE_ROOT_DBL_EPSILON: %.17g\n",pow(DBL_EPSILON,1./3.));
-#if !NO_L_FORMAT && defined(LDBL_EPSILON)
-  printf("LDBL_EPSILON: %.20Lg\n",LDBL_EPSILON);
+  printf("\nFLT_MANT_DIG: %3d\n",FLT_MANT_DIG);
+#if defined(FLT_MAX_EXP)
+  printf("FLT_MAX_EXP: %4d\n",FLT_MAX_EXP);
 #endif
+#if defined(FLT_MIN_EXP)
+  printf("FLT_MIN_EXP: %4d\n",FLT_MIN_EXP);
+#endif
+  int fltdigs = DecimalDigits(FLT_MANT_DIG) - 1; // "-1" to use %e
+  printf("FLT_MIN: %.*e\n",fltdigs,FLT_MIN);
+  printf("SQRT_FLT_MIN: %.*e\n",fltdigs,sqrt(FLT_MIN));
+  printf("FLT_MAX: %.*e\n",fltdigs,FLT_MAX);
+  printf("SQRT_FLT_MAX: %.*e\n",fltdigs,sqrt(FLT_MAX));
+  printf("FLT_EPSILON: %.*e\n",fltdigs,FLT_EPSILON);
+  printf("SQRT_FLT_EPSILON: %.*e\n",fltdigs,sqrt(FLT_EPSILON));
+  printf("CUBE_ROOT_FLT_EPSILON: %.*e\n",
+         fltdigs,pow(double(FLT_EPSILON),1./3.));
 
-#if !NO_L_FORMAT && defined(EXTRALONGDOUBLE)
-  printf("\nCalculated Double Epsilon:    %.17g\n",DblMachEps());
-  printf(  "Calculated HUGEFLOAT Epsilon: %.20Lg\n",LongDblMachEps());
-#else
-  printf("\nCalculated Double Epsilon: %.17g\n",DblMachEps());
+  printf("\nDBL_MANT_DIG: %4d\n",DBL_MANT_DIG);
+#if defined(DBL_MAX_EXP)
+  printf("DBL_MAX_EXP: %5d\n",DBL_MAX_EXP);
+#endif
+#if defined(DBL_MIN_EXP)
+  printf("DBL_MIN_EXP: %5d\n",DBL_MIN_EXP);
+#endif
+  int dbldigs = DecimalDigits(DBL_MANT_DIG) - 1; // "-1" to use %e
+  printf("DBL_MIN: %.*e\n",dbldigs,DBL_MIN);
+  printf("SQRT_DBL_MIN: %.*e\n",dbldigs,sqrt(DBL_MIN));
+  printf("DBL_MAX: %.*e\n",dbldigs,DBL_MAX);
+  printf("SQRT_DBL_MAX: %.*e\n",dbldigs,sqrt(DBL_MAX));
+  printf("DBL_EPSILON: %.*e\n",dbldigs,DBL_EPSILON);
+  printf("SQRT_DBL_EPSILON: %.*e\n",dbldigs,sqrt(DBL_EPSILON));
+  printf("CUBE_ROOT_DBL_EPSILON: %.*e\n",dbldigs,pow(DBL_EPSILON,1./3.));
+
+#ifdef EXTRALONGDOUBLE
+  printf("\n");
+# if defined(LDBL_MANT_DIG)
+  printf("LDBL_MANT_DIG: %5d\n",LDBL_MANT_DIG);
+  int ldbldigs = DecimalDigits(LDBL_MANT_DIG);
+# else
+  int ldbldigs = DecimalDigits(LongDblPrecision());
+# endif
+  --ldbldigs; // Precision in %e format is number of digits
+  /// to the right of decimal point; the total number of digits
+  /// printed is thus one more than the %e precision.
+# if defined(LDBL_MAX_EXP)
+  printf("LDBL_MAX_EXP: %6d\n",LDBL_MAX_EXP);
+# endif
+# if defined(LDBL_MIN_EXP)
+  printf("LDBL_MIN_EXP: %6d\n",LDBL_MIN_EXP);
+# endif
+# if !NO_L_FORMAT && defined(LDBL_MIN) && defined(LDBL_MAX)
+  printf("LDBL_MIN: %.*LeL\n",ldbldigs,LDBL_MIN);
+  printf("LDBL_MAX: %.*LeL\n",ldbldigs,LDBL_MAX);
+# elif defined(LDBL_MANT_DIG) && defined(LDBL_MIN_EXP) && defined(LDBL_MAX_EXP)
+  // Probably missing L format, but handle here also case where LDBL_MIN
+  // and/or LDBL_MAX are missing.  It's a little tricky to get the
+  // long double representations right using just doubles, in part
+  // because while %.17g is lossless for doubles (assuming 53-bit mantissa
+  // doubles), you generally can't just suffix an L (e.g., "%.17gL")
+  // and get a correct long double value, because unless the value is and
+  // integer then it won't round to the right long double.  Bottom line:
+  // if you change one character in the following code, be certain to
+  // carefully test that it still works.
+  if(sizeof(double) == sizeof(HUGEFLOAT) &&
+     DblPrecision() == LongDblPrecision() ) {
+    // Presumably HUGEFLOAT and double are identical, so
+    // it doesn't matter that L modifier is missing.
+    printf("LDBL_MIN: %.*e\n",dbldigs,double(LDBL_MIN));
+    printf("LDBL_MAX: %.*e\n",dbldigs,double(LDBL_MAX));
+  } else {
+    double pot = pow(2.0,DBL_MAX_EXP-1);
+    int ldblexp = -1*LDBL_MIN_EXP;
+    printf("LDBL_MIN: (1.0L/(2.0L");
+    while(ldblexp > DBL_MAX_EXP-1) {
+      printf("*%.*e",dbldigs,pot);
+      ldblexp -= (DBL_MAX_EXP-1);
+    }
+    printf("*%.*e))\n",dbldigs,pow(2.0,ldblexp));
+
+    double tweaka=1, tweakb=1;
+    for(i=0;i<DBL_MANT_DIG-2;++i) tweaka *= 2.0;
+    for(;i<LDBL_MANT_DIG-1;++i) tweakb *= 2.0;
+    printf("LDBL_MAX: ((2.0L - 1.0L/(%.*eL*%.*eL))",
+	   dbldigs,tweaka,dbldigs,tweakb);
+    ldblexp = LDBL_MAX_EXP - 1;
+    while(ldblexp > DBL_MAX_EXP-1) {
+      printf("*%.*e",dbldigs,pot);
+      ldblexp -= (DBL_MAX_EXP-1);
+    }
+    printf("*%.*e)\n",dbldigs,pow(2.0,ldblexp));
+  }
+# endif
+# if defined(LDBL_EPSILON)
+#  if NO_L_FORMAT
+  printf("LDBL_EPSILON: %.*e\n",dbldigs,double(LDBL_EPSILON));
+  printf("SQRT_LDBL_EPSILON: %.*e\n",dbldigs,double(sqrt(LDBL_EPSILON)));
+  printf("CUBE_ROOT_LDBL_EPSILON: %.*e\n",dbldigs,
+         pow(LDBL_EPSILON,HUGEFLOAT(1.)/3.));
+#  else
+  printf("LDBL_EPSILON: %.*LeL\n",ldbldigs,LDBL_EPSILON);
+  // sqrt and pow may overload to long versions, but if not then
+  // fix up with a few Newton steps.
+  HUGEFLOAT sqrteps = sqrt(LDBL_EPSILON);
+  HUGEFLOAT check = sqrteps*sqrteps;
+  HUGEFLOAT err = check - LDBL_EPSILON;
+  HUGEFLOAT abserr = (err>0?err:-1*err);
+  int safety=0;
+  while(abserr > 2*LDBL_EPSILON*LDBL_EPSILON && ++safety < 5) {
+    // Newton step for sqrt
+    sqrteps = 0.5*(check+LDBL_EPSILON)/sqrteps;
+    check = sqrteps*sqrteps;
+    err = check - LDBL_EPSILON;
+    abserr = (err>0?err:-1*err);
+  }
+  if(safety>=5) {
+    fprintf(stderr,"\nERROR: Failure extracting sqrt(LDBL_EPSILON)\n");
+    exit(10);
+  }
+  printf("SQRT_LDBL_EPSILON: %.*LeL\n",ldbldigs,sqrteps);
+  HUGEFLOAT crteps = pow(HUGEFLOAT(LDBL_EPSILON),HUGEFLOAT(1.)/3.);
+  check = crteps*crteps*crteps;
+  err = check - LDBL_EPSILON;
+  abserr = (err>0?err:-1*err);
+  safety=0;
+  while(abserr > 4*LDBL_EPSILON*LDBL_EPSILON && ++safety < 5) {
+    // Newton step for cube root
+    crteps = (2*check+LDBL_EPSILON)/(3*crteps*crteps);
+    check = crteps*crteps*crteps;
+    err = check - LDBL_EPSILON;
+    abserr = (err>0?err:-1*err);
+  }
+  if(safety>=5) {
+    fprintf(stderr,"\nERROR: Failure extracting cube root of LDBL_EPSILON\n");
+    exit(11);
+  }
+  printf("CUBE_ROOT_LDBL_EPSILON: %.*LeL\n",ldbldigs,crteps);
+#  endif
+# endif
 #endif /* EXTRALONGDOUBLE */
 
-  printf("\nDBL_MIN: %.17g\n",DBL_MIN);
-  printf("DBL_MAX: %.17g\n",DBL_MAX);
+  printf("\n");
+#if defined(EXTRALONGDOUBLE)
+  printf("Calculated float epsilon:       %.*e\n",fltdigs,FltMachEps());
+  printf("Calculated double epsilon:      %.*e\n",dbldigs,DblMachEps());
+# if NO_L_FORMAT
+  printf("Calculated %11s epsilon: %.*e\n",
+         HUGEFLOATTYPE,dbldigs,double(LongDblMachEps()));
+# else
+  printf("Calculated %11s epsilon: %.*LeL\n",
+         HUGEFLOATTYPE,ldbldigs,LongDblMachEps());
+# endif
+#else
+  printf("Calculated float epsilon:  %.*e\n",fltdigs,FltMachEps());
+  printf("Calculated double epsilon: %.*e\n",dbldigs,DblMachEps());
+#endif /* EXTRALONGDOUBLE */
+
+  printf("\n");
+#if defined(EXTRALONGDOUBLE)
+  printf("Calculated float precision:       %3d bits\n",
+         FltPrecision());
+  printf("Calculated double precision:      %3d bits\n",
+         DblPrecision());
+  printf("Calculated %11s precision: %3d bits\n",
+         HUGEFLOATTYPE,LongDblPrecision());
+#else
+  printf("Calculated float precision:  %3d bits\n",
+         FltPrecision());
+  printf("Calculated double precision: %3d bits\n",
+         DblPrecision());
+#endif
 
   if(!skip_atan2) {
     printf("\nReturn value from atan2(0,0): %g\n",atan2(zero(),zero()));
@@ -489,12 +764,16 @@ char **argv;
     pagesize = sysconf(_SC_PAGESIZE);
 #  elif defined(_SC_PAGE_SIZE) 
     pagesize = sysconf(_SC_PAGE_SIZE);
+#  elif defined(PAGESIZE)
+    pagesize = sysconf(PAGESIZE);
+#  elif defined(PAGE_SIZE)
+    pagesize = sysconf(PAGE_SIZE);
 #  endif
 # elif defined(BUILD_WINDOWS)
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     pagesize = (long int)si.dwPageSize;
-# endif
+# endif /* BUILD_UNIX */
     if(pagesize>0) {
       printf("\nMemory pagesize: %ld bytes\n",pagesize);
     } else {
@@ -509,7 +788,25 @@ char **argv;
 # if defined(BUILD_UNIX)
 #  if defined(_SC_LEVEL1_DCACHE_LINESIZE)
     cache_linesize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+#  elif defined(LEVEL1_DCACHE_LINESIZE)
+    cache_linesize = sysconf(LEVEL1_DCACHE_LINESIZE);
 #  endif
+#  if defined(BUILD_MAC_OSX)
+    if(cache_linesize==0) {
+      int dummy=0;
+      size_t dummy_size = sizeof(dummy);
+      if(sysctlbyname("machdep.cpu.cache.linesize",
+		      &dummy,&dummy_size,0,0) == 0) {
+	cache_linesize = dummy;
+      }
+    }
+#  endif
+    /* On Windows one can call GetLogialProcessorInformation to get an
+     * array of SYSTEM_LOGICAL_PROCESSOR_INFORMATION structs
+     * (presumably one per processor), each of which contain
+     * CACHE_DESCRIPTOR structs (presumably one for each cache), each
+     * of which has a LineSize member.
+     */
 # endif // !BUILD_UNIX
     if(cache_linesize>0) {
       printf("\nCache linesize: %ld bytes\n",cache_linesize);

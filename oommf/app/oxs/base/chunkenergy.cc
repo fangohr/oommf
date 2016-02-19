@@ -22,25 +22,43 @@ OC_USE_STRING;
 struct Oxs_ComputeEnergies_ChunkStruct {
 public:
   Oxs_ChunkEnergy* energy;
-  Oxs_ComputeEnergyDataThreaded ocedt;
-  Oxs_ComputeEnergyDataThreadedAux ocedtaux;
-  Oxs_ComputeEnergies_ChunkStruct()
-    : energy(0) {}
+  const Oxs_ComputeEnergyDataThreaded ocedt;
+  vector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux;
+
+  Oxs_ComputeEnergies_ChunkStruct
+  (Oxs_ChunkEnergy* import_energy,
+   const Oxs_ComputeEnergyDataThreaded& import_ocedt,
+   int thread_count)
+    : energy(import_energy), ocedt(import_ocedt),
+      thread_ocedtaux(thread_count) {}
+
+  // Note implicit copy constructor
+
+  Oxs_ComputeEnergies_ChunkStruct&
+  operator=(const Oxs_ComputeEnergies_ChunkStruct& right)
+  { // The const ocedt element blocks creation of a default assignment
+    // operator.  Workaround using default copy constructor.
+    if (this == &right) return *this; 
+    this->~Oxs_ComputeEnergies_ChunkStruct();
+    new (this) Oxs_ComputeEnergies_ChunkStruct(right);
+    return *this; 
+  } 
+
 };
 
 class Oxs_ComputeEnergiesChunkThread : public Oxs_ThreadRunObj {
 public:
-  static Oxs_JobControl<ThreeVector> job_basket;
+  static Oxs_JobControl<OC_REAL8m> job_basket;
   /// job_basket is static, so only one "set" of this class is allowed.
 
   const Oxs_SimState* state;
-  vector<Oxs_ComputeEnergies_ChunkStruct> energy_terms;
+  vector<Oxs_ComputeEnergies_ChunkStruct>* energy_terms;
 
   Oxs_MeshValue<ThreeVector>* mxH;
   Oxs_MeshValue<ThreeVector>* mxH_accum;
   Oxs_MeshValue<ThreeVector>* mxHxm;
   const vector<OC_INDEX>* fixed_spins;
-  OC_REAL8m max_mxH;
+  vector<OC_REAL8m> max_mxH;
 
   OC_INDEX cache_blocksize;
 
@@ -50,13 +68,12 @@ public:
     : state(0),
       mxH(0),mxH_accum(0),
       mxHxm(0), fixed_spins(0),
-      max_mxH(0.0),
       cache_blocksize(0), accums_initialized(0) {}
 
   void Cmd(int threadnumber, void* data);
 
   static void Init(int thread_count,
-                   const Oxs_StripedArray<ThreeVector>* arrblock) {
+                   const Oxs_StripedArray<OC_REAL8m>* arrblock) {
     job_basket.Init(thread_count,arrblock);
   }
 
@@ -64,7 +81,7 @@ public:
   // and destructor.
 };
 
-Oxs_JobControl<ThreeVector> Oxs_ComputeEnergiesChunkThread::job_basket;
+Oxs_JobControl<OC_REAL8m> Oxs_ComputeEnergiesChunkThread::job_basket;
 
 void
 Oxs_ComputeEnergiesChunkThread::Cmd
@@ -81,6 +98,10 @@ Oxs_ComputeEnergiesChunkThread::Cmd
   OC_INDEX i_fixed = 0;
   OC_INDEX i_fixed_total = 0;
   if(fixed_spins) i_fixed_total = fixed_spins->size();
+
+  // Local vector to hold Oxs_ComputeEnergyDataThreadedAux results.
+  // These data are copied over into this->energy_terms at the end.
+  vector<Oxs_ComputeEnergyDataThreadedAux> eit_ocedtaux(energy_terms->size());
 
   while(1) {
     // Claim a chunk
@@ -101,15 +122,15 @@ Oxs_ComputeEnergiesChunkThread::Cmd
       if(icache_stop>index_stop) icache_stop = index_stop;
 
       // Process chunk
-      OC_UINT4m energy_item = 0;
+      OC_INDEX energy_item = 0;
       for(vector<Oxs_ComputeEnergies_ChunkStruct>::iterator eit
-            = energy_terms.begin();
-          eit != energy_terms.end() ; ++eit, ++energy_item) {
+            = energy_terms->begin();
+          eit != energy_terms->end() ; ++eit, ++energy_item) {
 
         // Set up some refs for convenience
         Oxs_ChunkEnergy& eterm = *(eit->energy);
-        Oxs_ComputeEnergyDataThreaded& ocedt = eit->ocedt;
-        Oxs_ComputeEnergyDataThreadedAux& ocedtaux = eit->ocedtaux;
+        Oxs_ComputeEnergyDataThreaded ocedt = eit->ocedt; // Local copy
+        Oxs_ComputeEnergyDataThreadedAux& ocedtaux = eit_ocedtaux[energy_item];
 #if REPORT_TIME
 # if 0  // Individual chunk times currently meaningless,
         //and may slow code due to mutex blocks.
@@ -272,7 +293,11 @@ Oxs_ComputeEnergiesChunkThread::Cmd
     }
   }
 
-  max_mxH = sqrt(max_mxH_sq);
+  // Copy out thread scalar results
+  max_mxH[threadnumber] = sqrt(max_mxH_sq);
+  for(size_t ei=0;ei<energy_terms->size();++ei) {
+    (*energy_terms)[ei].thread_ocedtaux[threadnumber] = eit_ocedtaux[ei];
+  }
 }
 
 #if REPORT_TIME
@@ -325,20 +350,20 @@ void Oxs_ComputeEnergies
   // to insure that the main thread (threadnumber == 0) has an
   // opportunity to run for initialization purposes in the
   // Oxs_ChunkEnergy::ComputeEnergyChunk() function.  (Oxs_ChunkEnergy
-  // classes that make (or may make) call into the Tcl interpreter must
+  // classes that make (or may make) calls into the Tcl interpreter must
   // use threadnumber == 0 for those calls, as per Tcl specs.  So if
   // all threads with threadnumber != 0 block on ComputeEnergyChunk()
   // entry, then the threadnumber == 0 is guaranteed at least one call
-  // into ComputeEnergyChunk().
+  // into ComputeEnergyChunk().)
   //
-  // Update May-2009: The now preferred initialization method is to
-  // use ComputeEnergyChunkInitialize.  The guarantee that threadnumber
-  // 0 will always run is honored for backward compatibility, but new
-  // code should use ComputeEnergyChunkInitialize instead.
+  // Update May-2009: The now preferred initialization method is to use
+  // ComputeEnergyChunkInitialize().  The guarantee that threadnumber 0
+  // will always run is honored for backward compatibility, but new code
+  // should use ComputeEnergyChunkInitialize() instead.
   //
-  //    Data in Oxs_ComputeEnergyExtraData are filled in on the backside
-  // of the chunk compute code.  These results could be computed by the
-  // client, but doing it here gives improved cache locality.
+  //    Data in Oxs_ComputeEnergyExtraData are filled in on the back
+  // side of the chunk compute code.  These results could be computed by
+  // the client, but doing it here gives improved cache locality.
 
   if(state.Id()==0) {
     String msg = String("Programming error:"
@@ -419,47 +444,50 @@ void Oxs_ComputeEnergies
 
   // Initialize those parts of ChunkStruct that are independent
   // of any particular energy term.
-  Oxs_ComputeEnergies_ChunkStruct foo;
-  foo.ocedt.state_id = state.Id();
-  foo.ocedt.scratch_energy = oced.scratch_energy;
-  foo.ocedt.scratch_H      = oced.scratch_H;
-  foo.ocedt.energy_accum   = oced.energy_accum;
-  foo.ocedt.H_accum        = oced.H_accum;
-  foo.ocedt.mxH_accum      = oced.mxH_accum;
+  Oxs_ComputeEnergyDataThreaded ocedt_base;
+  ocedt_base.state_id = state.Id();
+  ocedt_base.scratch_energy = oced.scratch_energy;
+  ocedt_base.scratch_H      = oced.scratch_H;
+  ocedt_base.energy_accum   = oced.energy_accum;
+  ocedt_base.H_accum        = oced.H_accum;
+  ocedt_base.mxH_accum      = oced.mxH_accum;
   for(vector<Oxs_Energy*>::const_iterator it = energies.begin();
       it != energies.end() ; ++it ) {
     Oxs_ChunkEnergy* ceptr =
       dynamic_cast<Oxs_ChunkEnergy*>(*it);
     if(ceptr != NULL) {
       // Set up and initialize chunk energy structures
-      foo.energy = ceptr;
       if(ceptr->energy_density_output.GetCacheRequestCount()>0) {
         ceptr->energy_density_output.cache.state_id=0;
-        foo.ocedt.energy = &(ceptr->energy_density_output.cache.value);
-        foo.ocedt.energy->AdjustSize(state.mesh);
+        ocedt_base.energy = &(ceptr->energy_density_output.cache.value);
+        ocedt_base.energy->AdjustSize(state.mesh);
+      } else {
+        ocedt_base.energy = 0;
       }
       if(ceptr->field_output.GetCacheRequestCount()>0) {
         ceptr->field_output.cache.state_id=0;
-        foo.ocedt.H = &(ceptr->field_output.cache.value);
-        foo.ocedt.H->AdjustSize(state.mesh);
+        ocedt_base.H = &(ceptr->field_output.cache.value);
+        ocedt_base.H->AdjustSize(state.mesh);
+      } else {
+        ocedt_base.H = 0;
       }
-      chunk.push_back(foo);
+      chunk.push_back(Oxs_ComputeEnergies_ChunkStruct(ceptr,ocedt_base,thread_count));
     } else {
       nonchunk.push_back(*it);
     }
   }
 
-  // The "accum" elements are initialized on the first pass by
-  // moving each accum pointer to the corresponding non-accum member.
-  // After filling by the first energy term, the pointers are moved
-  // back to the accum member.  This way we avoid a pass through
-  // memory storing zeros, and a pass through memory loading zeros.
-  // Zero load/stores are cheap in the chunk memory case, because
-  // in that case the load/stores are just to and from cache, but
-  // we prefer here to run non-chunk energies first so that we
-  // can compute mxHxm and max |mxH| on the backsize of the chunk
-  // energy runs (where m and mxH are in cache and so don't have
-  // to be loaded).  Create a boolean to track initialization.
+  // The "accum" elements are initialized on the first pass by moving
+  // each accum pointer to the corresponding non-accum member.  After
+  // filling by the first energy term, the pointers are moved back to
+  // the accum member.  This way we avoid a pass through memory storing
+  // zeros, and a pass through memory loading zeros.  Zero load/stores
+  // are cheap in the chunk memory case, because in that case the
+  // load/stores are just to and from cache, but we prefer here to run
+  // non-chunk energies first so that we can compute mxHxm and max |mxH|
+  // on the back side of the chunk energy runs (where m and mxH are in
+  // cache and so don't have to be loaded).  Create a boolean to track
+  // initialization.
   OC_BOOL accums_initialized = 0;
 
   // Non-chunk energies //////////////////////////////////////
@@ -553,8 +581,7 @@ void Oxs_ComputeEnergies
 
   // Compute cache_blocksize
   const OC_INDEX meshsize = state.mesh->Size();
-  const OC_INDEX cache_size = 1024 * 1024;  // Should come from
-  /// platform file or perhaps sysconf().
+  const OC_INDEX cache_size = Oc_CacheSize();
 
   const OC_INDEX recsize = sizeof(ThreeVector) + sizeof(OC_REAL8m);
   /// May want to query individual energies for this.
@@ -573,37 +600,34 @@ void Oxs_ComputeEnergies
   const OC_INDEX cache_blocksize = tcblocksize;
 
   // Thread control
-  static Oxs_ThreadTree threadtree;
-
   Oxs_ComputeEnergiesChunkThread::Init(thread_count,
-                                       state.spin.GetArrayBlock());
+                                       state.Ms->GetArrayBlock());
 
-  vector<Oxs_ComputeEnergiesChunkThread> chunk_thread;
-  chunk_thread.resize(thread_count);
-  chunk_thread[0].state     = &state;
-  chunk_thread[0].energy_terms = chunk; // Make copies.
-  chunk_thread[0].mxH       = oced.mxH;
-  chunk_thread[0].mxH_accum = oced.mxH_accum;
-  chunk_thread[0].mxHxm     = oceed.mxHxm;
-  chunk_thread[0].fixed_spins = oceed.fixed_spin_list;
-  chunk_thread[0].cache_blocksize = cache_blocksize;
-  chunk_thread[0].accums_initialized = accums_initialized;
+  Oxs_ComputeEnergiesChunkThread chunk_thread;
+  chunk_thread.state     = &state;
+  chunk_thread.energy_terms = &chunk;
+  chunk_thread.mxH       = oced.mxH;
+  chunk_thread.mxH_accum = oced.mxH_accum;
+  chunk_thread.mxHxm     = oceed.mxHxm;
+  chunk_thread.fixed_spins = oceed.fixed_spin_list;
+  chunk_thread.max_mxH.resize(thread_count);
+  chunk_thread.cache_blocksize = cache_blocksize;
+  chunk_thread.accums_initialized = accums_initialized;
 
   // Initialize chunk energy computations
-  for(vector<Oxs_ComputeEnergies_ChunkStruct>::iterator it
-        = chunk.begin(); it != chunk.end() ; ++it ) {
-    Oxs_ChunkEnergy& eterm = *(it->energy);  // For code clarity
-    Oxs_ComputeEnergyDataThreaded& ocedt = it->ocedt;
-    Oxs_ComputeEnergyDataThreadedAux& ocedtaux = it->ocedtaux;
-    eterm.ComputeEnergyChunkInitialize(state,ocedt,ocedtaux,
+  for(vector<Oxs_ComputeEnergies_ChunkStruct>::iterator itc
+        = chunk.begin(); itc != chunk.end() ; ++itc ) {
+    Oxs_ChunkEnergy& eterm = *(itc->energy);  // For code clarity
+    const Oxs_ComputeEnergyDataThreaded& ocedt = itc->ocedt;
+    vector<Oxs_ComputeEnergyDataThreadedAux>&
+      thread_ocedtaux = itc->thread_ocedtaux;
+    eterm.ComputeEnergyChunkInitialize(state,ocedt,thread_ocedtaux,
                                        thread_count);
   }
 
-  for(int ithread=1;ithread<thread_count;++ithread) {
-    chunk_thread[ithread] = chunk_thread[0];
-    threadtree.Launch(chunk_thread[ithread],0);
-  }
-  threadtree.LaunchRoot(chunk_thread[0],0);
+  // Run threads to compute chunk energy computations
+  static Oxs_ThreadTree threadtree;
+  threadtree.LaunchTree(chunk_thread,0);
 
   // Note: If chunk.size()>0, then we are guaranteed that accums are
   // initialized.  If accums_initialized is ever needed someplace
@@ -615,27 +639,24 @@ void Oxs_ComputeEnergies
 
     Oxs_ChunkEnergy& eterm = *(chunk[ei].energy);  // Convenience
     const Oxs_ComputeEnergyDataThreaded& ocedt = chunk[ei].ocedt;
-    const Oxs_ComputeEnergyDataThreadedAux& ocedtaux = chunk[ei].ocedtaux;
+    const vector<Oxs_ComputeEnergyDataThreadedAux>&
+      thread_ocedtaux = chunk[ei].thread_ocedtaux;
 
-    eterm.ComputeEnergyChunkFinalize(state,ocedt,ocedtaux,
+    eterm.ComputeEnergyChunkFinalize(state,ocedt,thread_ocedtaux,
                                      thread_count);
 
     ++(eterm.calc_count);
 
     // For each energy term, loop though all threads and sum
     // energy and pE_pt contributions.
-    OC_REAL8m pE_pt_term = chunk[ei].ocedtaux.pE_pt_accum;
+    OC_REAL8m pE_pt_term = 0.0;
+    OC_REAL8m energy_term = 0.0;
+    vector<Oxs_ComputeEnergies_ChunkStruct>& et = *(chunk_thread.energy_terms);
     for(int ithread=0;ithread<thread_count;++ithread) {
-      pE_pt_term
-        += chunk_thread[ithread].energy_terms[ei].ocedtaux.pE_pt_accum;
+      pE_pt_term += et[ei].thread_ocedtaux[ithread].pE_pt_accum;
+      energy_term += et[ei].thread_ocedtaux[ithread].energy_total_accum;
     }
     oced.pE_pt += pE_pt_term;
-
-    OC_REAL8m energy_term = chunk[ei].ocedtaux.energy_total_accum;
-    for(int ithread=0;ithread<thread_count;++ithread) {
-      energy_term
-        += chunk_thread[ithread].energy_terms[ei].ocedtaux.energy_total_accum;
-    }
     oced.energy_sum += energy_term;
 
     if(eterm.energy_sum_output.GetCacheRequestCount()>0) {
@@ -652,32 +673,32 @@ void Oxs_ComputeEnergies
     }
 
 #if REPORT_TIME
+# if 0
     Nb_StopWatch bar;
-    bar.ThreadAccum(chunk[ei].ocedtaux.energytime);
-    for(int ithread=0;ithread<thread_count;++ithread) {
-      bar.ThreadAccum
-        (chunk_thread[ithread].energy_terms[ei].ocedtaux.energytime);
-
+    for(int rithread=0;rithread<thread_count;++rithread) {
+      bar.ThreadAccum(et[ei].thread_ocedtaux[rithread].energytime);
     }
     eterm.energytime.Accum(bar);
+# endif
 #endif // REPORT_TIME
   }
+
+  OC_REAL8m max_mxH_test = 0.0;
+  for(int imh=0;imh<thread_count;++imh) {
+    if(chunk_thread.max_mxH[imh]>max_mxH_test) {
+      max_mxH_test = chunk_thread.max_mxH[imh];
+    }
+  }
+  oceed.max_mxH = max_mxH_test;
 
   if(oceed.mxHxm!=0 && oced.mxH_accum == oceed.mxHxm) {
     // Undo mxHxm hack
     oced.mxH_accum = 0;
   }
 
-  oceed.max_mxH = 0.0;
-  for(vector<Oxs_ComputeEnergiesChunkThread>::const_iterator cect
-        = chunk_thread.begin(); cect != chunk_thread.end() ; ++cect ) {
-    if(cect->max_mxH > oceed.max_mxH) oceed.max_mxH = cect->max_mxH;
-  }
-
 #if REPORT_TIME
   Oxs_ChunkEnergy::chunktime.Stop();
 #endif
-
 }
 
 //////////////////////// OXS_COMPUTEENERGIES ///////////////////////////

@@ -5,6 +5,7 @@
  */
 
 
+#include <limits>
 #include <iostream>
 
 #include "oc.h"
@@ -92,7 +93,7 @@ OxsExtUserOutput::~OxsExtUserOutput()
 ////////////////////////////////////////////////////////////////////////
 // Oxs_Ext member functions
 Oxs_Ext::~Oxs_Ext()
-{ 
+{
 #ifdef OC_STL_MAP_BROKEN_EMPTY_DELETE
   // Some STL implementations (MVC++ 6.0 on Windows/Alpha) have a bug
   // that causes a hang if init_strings is destroyed when
@@ -222,6 +223,13 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
         if(strcmp("comment",pieces[j])==0) continue;
         if(strcmp("name",pieces[j])==0) {
           uo.name = pieces[j+1];
+          // Newlines and carriage returns are not allowed in column
+          // names.  Replace any such with blanks.
+          std::size_t matchindex = 0;
+          while((matchindex = uo.name.find_first_of("\n\r",matchindex))
+                != std::string::npos) {
+            uo.name[matchindex++] = ' ';
+          }
         } else if(strcmp("source_field",pieces[j])==0) {
           uo.source_field_name = pieces[j+1];
         } else if(strcmp("select_field",pieces[j])==0) {
@@ -297,6 +305,13 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
         } else if(strcmp("units",pieces[j])==0) {
           uo.units = pieces[j+1];
           uo.units_specified = 1;
+          // Newlines and carriage returns are not allowed in unit
+          // labels.  Replace any such with blanks.
+          std::size_t matchindex = 0;
+          while((matchindex = uo.units.find_first_of("\n\r",matchindex))
+                != std::string::npos) {
+            uo.units[matchindex++] = ' ';
+          }
         } else {
           char item[4000];
           Oc_EllipsizeMessage(item,sizeof(item),pieces[j]);
@@ -329,7 +344,10 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
       // Output object initialization and registration
       uo.output.Setup(this,InstanceName(),uo.name.c_str(),
                       uo.units.c_str(),1,
-                      &Oxs_Ext::Fill__user_outputs);
+                      &Oxs_Ext::Fill__user_outputs_init,
+                      &Oxs_Ext::Fill__user_outputs,
+                      &Oxs_Ext::Fill__user_outputs_fini,
+                      &Oxs_Ext::Fill__user_outputs_shares);
       uo.output.Register(director,5);
 
     } else {
@@ -1053,10 +1071,18 @@ void Oxs_Ext::FindOrCreateObjectHelper
 {
   Oxs_Ext* objptr=NULL;
   // Check for explicit reference to existing object
+  OC_UINT4m match_count=0;
   if(params.size()==1 &&
-     (objptr = dtr->FindExtObject(params[0]))!=NULL) {
+     (objptr = dtr->FindExtObject(params[0],match_count))!=NULL) {
     obj.SetAsNonOwner(objptr);
     return;
+  }
+  if(match_count>1) {
+      String msg
+        = "Multiple matches found for Oxs_Ext object identifier \"";
+      msg += params[0];
+      msg += "\"";
+      throw msg;
   }
 
   // Otherwise, try to create a new Oxs_Ext object
@@ -1311,7 +1337,8 @@ Oxs_Ext::StageRequestCount(unsigned int& min,unsigned int& max) const
 }
 
 void
-Oxs_Ext::Fill__user_outputs(const Oxs_SimState& state)
+Oxs_Ext::Fill__user_outputs_init
+(const Oxs_SimState& state,int number_of_threads)
 { // NOTE 1: This code assumes that the cells in the mesh
   //         are uniformly sized.
   // NOTE 2: This code assumes that Ms is fixed.
@@ -1323,95 +1350,150 @@ Oxs_Ext::Fill__user_outputs(const Oxs_SimState& state)
                          "Oxs_RectangularMesh.");
   }
 #endif
+
   const OC_INDEX size = state.mesh->Size();
   for(OC_INDEX index=0;index<user_output.GetSize();++index) {
     OxsExtUserOutput& uo = user_output[index];
-    Oxs_ScalarOutput<Oxs_Ext>& output = uo.output;
-    if(output.GetCacheRequestCount()>0
-       && output.cache.state_id != state.Id()) {
-      uo.update_in_progress = 1;
-      output.cache.state_id = 0;
-      try {
-        if(uo.source_field==NULL) {
-          // Source field lookup hasn't been performed yet;
-          // Do it now.
-          uo.LookupSource(InstanceName());
-        }
-
-        if(uo.source_field->cache.state_id != state.Id()) {
-          if(uo.source_cacheable) {
-            if(!uo.source_field->UpdateCache(&state)) {
-              char item1[4000];
-              Oc_EllipsizeMessage(item1,sizeof(item1),
-                                  uo.source_field_name.c_str());
-              char item2[4000];
-              Oc_EllipsizeMessage(item2,sizeof(item2),
-                                  uo.name.c_str());
-              char buf[9000];
-              Oc_Snprintf(buf,sizeof(buf),
-                          "Source output \"%.4000s\" for user output"
-                          " \"%.4000s\" has not been and is unable to"
-                          " be updated for state %d (source field"
-                          " state id = %d)",
-                          item1,item2,
-                          state.Id(),uo.source_field->cache.state_id);
-              throw Oxs_ExtError(this,buf);
-            }
-          } else {
-            uo.source_field->FillBuffer(&state,uo.source_buffer);
-          }
-        }
-        const Oxs_MeshValue<ThreeVector>& source
-          = (uo.source_cacheable
-             ? uo.source_field->cache.value : uo.source_buffer);
-
-        if(!uo.selector.CheckMesh(state.mesh)) {
-          // Initialize selector and selector scaling
-
-          Oxs_OwnedPointer<Oxs_VectorField> tmpinit; // Initializer
-          OXS_GET_EXT_OBJECT(uo.selector_init,
-                             Oxs_VectorField,tmpinit);
-          tmpinit->FillMeshValue(state.mesh,uo.selector);
-
-          OC_INDEX cell_count = size;
-          if(uo.exclude_0_Ms) {
-            const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
-            cell_count = 0;
-            for(OC_INDEX j=0;j<size;++j) {
-              if(0.0==Ms[j]) {
-                uo.selector[j].Set(0,0,0);
-              } else {
-                ++cell_count;
-              }
-            }
-          }
-
-          uo.scaling = 1.0; // safety
-          if(uo.normalize) {
-            OC_REAL8m sum=0.0;
-            for(OC_INDEX j=0;j<size;++j) {
-              sum += sqrt(uo.selector[j].MagSq());
-            }
-            if(sum>0.0) uo.scaling = 1.0/sum;
-          } else {
-            if(size>0.0) uo.scaling = 1.0/static_cast<OC_REAL8m>(cell_count);
-          }
-          uo.scaling *= uo.user_scaling;
-
-        }
-        const Oxs_MeshValue<ThreeVector>& selector = uo.selector;
-
-        OC_REAL8m sum=0.0;
-        for(OC_INDEX i=0;i<size;++i) {
-          sum += (source[i]*selector[i]);
-        }
-        output.cache.value=sum*uo.scaling;
-      } catch(...) {
-        uo.update_in_progress = 0;
-        throw;
-      }
-      output.cache.state_id=state.Id();
-      uo.update_in_progress = 0;
+    Oxs_ChunkScalarOutput<Oxs_Ext>& output = uo.output;
+    if(output.cache.state_id == state.Id()) {
+      continue;  // Already done
     }
+
+    output.cache.state_id = 0;
+
+    if(uo.source_field==NULL) {
+      // Source field lookup hasn't been performed yet;
+      // Do it now.
+      uo.LookupSource(InstanceName());
+    }
+
+    // Initialize source field.  When chunk vector fields
+    // are coded, call their initializer instead.
+    if(uo.source_field->cache.state_id != state.Id()) {
+      if(uo.source_cacheable) {
+        if(!uo.source_field->UpdateCache(&state)) {
+          char item1[4000];
+          Oc_EllipsizeMessage(item1,sizeof(item1),
+                              uo.source_field_name.c_str());
+          char item2[4000];
+          Oc_EllipsizeMessage(item2,sizeof(item2),
+                              uo.name.c_str());
+          char buf[9000];
+          Oc_Snprintf(buf,sizeof(buf),
+                      "Source output \"%.4000s\" for user output"
+                      " \"%.4000s\" has not been and is unable to"
+                      " be updated for state %d (source field"
+                      " state id = %d)",
+                      item1,item2,
+                      state.Id(),uo.source_field->cache.state_id);
+          throw Oxs_ExtError(this,buf);
+        }
+      } else {
+        uo.source_field->FillBuffer(&state,uo.source_buffer);
+      }
+    }
+
+    // Initialize selector and selector scaling
+    if(!uo.selector.CheckMesh(state.mesh)) {
+      Oxs_OwnedPointer<Oxs_VectorField> tmpinit; // Initializer
+      OXS_GET_EXT_OBJECT(uo.selector_init,
+                         Oxs_VectorField,tmpinit);
+      tmpinit->FillMeshValue(state.mesh,uo.selector);
+
+      OC_INDEX cell_count = size;
+      if(uo.exclude_0_Ms) {
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+        cell_count = 0;
+        for(OC_INDEX j=0;j<size;++j) {
+          if(0.0==Ms[j]) {
+            uo.selector[j].Set(0,0,0);
+          } else {
+            ++cell_count;
+          }
+        }
+      }
+
+      uo.scaling = 1.0; // safety
+      if(uo.normalize) {
+        OC_REAL8m sum=0.0;
+        for(OC_INDEX j=0;j<size;++j) {
+          sum += sqrt(uo.selector[j].MagSq());
+        }
+        if(sum>0.0) uo.scaling = 1.0/sum;
+      } else {
+        if(size>0.0) uo.scaling = 1.0/static_cast<OC_REAL8m>(cell_count);
+      }
+      uo.scaling *= uo.user_scaling;
+
+    }
+
+    // Set up thread results vector for each output.
+    std::vector<OC_REAL8m>& chunk = uo.chunk_storage;
+    chunk.resize(number_of_threads);
+    for(int i=0;i<number_of_threads;++i) {
+      chunk[i] = 0.0;
+    }
+
+  } // index<user_output.GetSize()
+}
+
+void
+Oxs_Ext::Fill__user_outputs
+(const Oxs_SimState& /* state */,
+ OC_INDEX node_start,
+ OC_INDEX node_stop,
+ int threadnumber)
+{ // NOTE 1: This code assumes that the cells in the mesh
+  //         are uniformly sized.
+  // NOTE 2: This code assumes that Ms is fixed.
+  for(OC_INDEX index=0;index<user_output.GetSize();++index) {
+    OxsExtUserOutput& uo = user_output[index];
+    Oxs_ChunkScalarOutput<Oxs_Ext>& output = uo.output;
+    if(output.cache.state_id != 0) {
+      continue;
+    }
+    const Oxs_MeshValue<ThreeVector>& source
+      = (uo.source_cacheable
+         ? uo.source_field->cache.value : uo.source_buffer);
+    const Oxs_MeshValue<ThreeVector>& selector = uo.selector;
+
+    OC_REAL8m sum=0.0;
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      sum += (source[i]*selector[i]);
+    }
+
+    uo.chunk_storage[threadnumber] += sum;
+    
+  } // index<user_output.GetSize()
+}
+
+void
+Oxs_Ext::Fill__user_outputs_fini
+(const Oxs_SimState& state,int number_of_threads)
+{
+  for(OC_INDEX index=0;index<user_output.GetSize();++index) {
+    OxsExtUserOutput& uo = user_output[index];
+    Oxs_ChunkScalarOutput<Oxs_Ext>& output = uo.output;
+    if(output.cache.state_id != 0) {
+      continue;
+    }
+    std::vector<OC_REAL8m>& chunk = uo.chunk_storage;
+    OC_REAL8m sum = chunk[0];
+    for(int i=1;i<number_of_threads;++i) {
+      sum += chunk[i];
+    }
+    output.cache.value=sum*uo.scaling;
+    output.cache.state_id=state.Id();
+  } // index<user_output.GetSize()
+}
+
+void
+Oxs_Ext::Fill__user_outputs_shares
+(std::vector<Oxs_BaseChunkScalarOutput*>& buddy_list)
+{
+  buddy_list.clear();
+  for(OC_INDEX index=0;index<user_output.GetSize();++index) {
+    OxsExtUserOutput& uo = user_output[index];
+    buddy_list.push_back(&(uo.output));
   }
 }

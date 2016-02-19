@@ -2,7 +2,7 @@
 #
 # Entry graph canvas sub-widget
 #
-# Last modified on: $Date: 2011-07-14 20:50:04 $
+# Last modified on: $Date: 2014/01/21 05:47:04 $
 # Last modified by: $Author: donahue $
 #
 # The usual stacking order is:
@@ -493,37 +493,17 @@ Oc_Class Ow_GraphWin {
 
         # Mouse bindings
 	# Show position
-	$graph bind showpos <Button> "$this ShowPosition %x %y %b %s 1 pos"
-        if {[Ow_IsAqua]} {
-           # On Mac OS X, "Mod1" maps to the "Command" key.  Use Mod1 +
-           # B1 as a stand-in for B3 (on OS X + Aqua platform only).
-           $graph bind showpos <Mod1-Button-1> \
-              "$this ShowPosition %x %y 3 %s 1 pos"
-        }
-        # If using OS X + X11, then the "Command" key maps to "Meta".
-        # Since I'm not currently able to find any other systems that
-        # bind anything to Meta, it is probably(?) okay to make this
-        # binding always.
-        $graph bind showpos <Meta-Button-1> \
-           "$this ShowPosition %x %y 3 %s 1 pos"
-
+	$graph bind showpos <<Ow_LeftButton>>  "$this ShowPosition %x %y 1 %s 1 pos"
+	$graph bind showpos <<Ow_RightButton>> "$this ShowPosition %x %y 3 %s 1 pos"
         bind $graph <ButtonRelease>  "+ $this UnshowPosition %s"
+        bind $graph <Control-ButtonRelease>  "+ $this UnshowPosition %s"
 	# Object dragging
 	foreach obj [list key hrule vrule] {
 	    $graph bind $obj <Button> "$this DragInit $obj %x %y %b %s"
-	    $graph bind $obj <B1-Motion> \
+	    $graph bind $obj <<Ow_LeftButtonMotion>> \
 		    [Oc_SkipWrap "$this Drag $obj %x %y 1 %s"]
-	    $graph bind $obj <B3-Motion> \
+	    $graph bind $obj <<Ow_RightButtonMotion>> \
 		    [Oc_SkipWrap "$this Drag $obj %x %y 3 %s"]
-            if {[Ow_IsAqua]} {
-               $graph bind $obj <Mod1-B1-Motion> \
-                  [Oc_SkipWrap "$this Drag $obj %x %y 3 %s"]
-            }
-           $graph bind $obj <Meta-B1-Motion> \
-               [Oc_SkipWrap "$this Drag $obj %x %y 3 %s"]
-	    ## Note: The %b field is not defined for Motion events.
-	    ## However, the button is encoded in the state field,
-	    ## as a modifier mask (0x100 for B1, 0x400 for B3).
 	}
 	# Zoom box
         bind $graph <Control-Button> \

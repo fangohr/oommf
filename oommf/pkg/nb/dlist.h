@@ -4,15 +4,16 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2010-07-16 22:33:54 $
+ * Last modified on: $Date: 2013/05/22 16:25:53 $
  * Last modified by: $Author: donahue $
  */
 
 #ifndef _NB_DLIST
 #define _NB_DLIST
 
-#include "oc.h"   /* Includes tcl.h, needed for Tcl_SplitList */
+#include <assert.h>
 
+#include "oc.h"   /* Includes tcl.h, needed for Tcl_SplitList */
 #include "errhandlers.h"
 
 /* End includes */     /* Optional directive to build.tcl */
@@ -76,7 +77,7 @@ template<class T> class Nb_List;
 template<class T> class Nb_List_Index {
 private:
   friend class Nb_List<T>;
-  OC_INT4m spine,rib;  // Index of "next" element.
+  OC_INDEX spine,rib;  // Index of "next" element.
 public:
   Nb_List_Index() : spine(0),rib(0) {}
 };
@@ -86,20 +87,20 @@ private:
   const ClassDoc class_doc; // Static data member templates not
   /// implemented by gnu C++ compiler.
 
-  OC_INT4m spine_xtnd_size,rib_xtnd_size; // Alloc increment amounts (>0).
+  OC_INDEX spine_xtnd_size,rib_xtnd_size; // Alloc increment amounts (>0).
   /// spine_xtnd_size *should* be a const class static data member,
   /// but some compilers don't yet allow this.
 
-  OC_INT4m alloc_spine;                   // Allocated spine size.  The
+  OC_INDEX alloc_spine;                   // Allocated spine size.  The
   /// corresponding value for ribs is always just rib_xtnd_size.
-  OC_INT4m alloc_rib_count;               // Number of ribs actually
+  OC_INDEX alloc_rib_count;               // Number of ribs actually
   /// allocated.  This value should be <= alloc_spine.
 
-  OC_INT4m last_used_spine_index;  // Index on spine of last rib with valid data.
-  OC_INT4m last_used_rib_index;    // Index on last rib of last valid elt.
+  OC_INDEX last_used_spine_index;  // Index on spine of last rib with valid data
+  OC_INDEX last_used_rib_index;    // Index on last rib of last valid elt
 
   T* next_elt;                  // Pointer to "next" elt, NULL iff past end
-  OC_INT4m spine_index,rib_index;  // Index of "next" element.
+  OC_INDEX spine_index,rib_index;  // Index of "next" element.
 
   /// NOTE 1: When the list is empty, last_used_spine_index == -1 and
   ///  last_used_rib_index == rib_xtnd_size-1.  In fact, GetSize()==0
@@ -145,14 +146,14 @@ private:
   void AddRib();                // Allocate a new rib & affix to spine,
   /// and increments alloc_rib_count.
 
-  void ExtendSpine(int new_length=0);
+  void ExtendSpine(OC_INDEX new_length=0);
   /// Typically called with new_length==0, in which case this routine
   /// allocates a new T** arr of size alloc_spine+spine_xtnd_size, copies
   /// the old T** arr into the new space, and frees the old array space.
   /// Should only be called by AddRib(), except that the "Copy" operator
   /// also calls this with new_length>0, for efficency.
 
-  void Reset(OC_INT4m _rib_xtnd_size=0); // Initializes all member
+  void Reset(OC_INDEX _rib_xtnd_size=0); // Initializes all member
   /// variables, and deallocates memory if arr!=NULL.  Because
   /// of the latter, if calling from a constructor, be sure
   /// to set arr=NULL first!
@@ -161,14 +162,14 @@ private:
   ///   as the constructors!!!
 
 public:
-  OC_INT4m Copy(const Nb_List<T> &src);
+  void Copy(const Nb_List<T> &src);
 
-  Nb_List(OC_INT4m _rib_xtnd_size=0);   // Default constructor
+  Nb_List(OC_INDEX _rib_xtnd_size=0);   // Default constructor
   Nb_List(const Nb_List<T> &src);       // Copy constructor
 
   ~Nb_List() { Reset(rib_xtnd_size); }
   void Free(void) { Reset(rib_xtnd_size); }
-  OC_INT4m GetSize() const { 
+  OC_INDEX GetSize() const { 
     return (last_used_spine_index*rib_xtnd_size)+last_used_rib_index+1;
   }
   void RestartGet();
@@ -204,8 +205,8 @@ public:
     last_used_rib_index=rib_xtnd_size-1;
     RestartGet();
   }
-  OC_INT4m SetFirst(const T &elt); // Copies elt & sets "used" length to 1.
-  OC_INT4m Append(const T &elt);   // Indexes off of "used" length.
+  void SetFirst(const T &elt); // Copies elt & sets "used" length to 1.
+  void Append(const T &elt);   // Indexes off of "used" length.
   /// Updates last_used_rib_index and last_used_spine_index.  Also
   /// updates next_elt pointer if it had pointed past the end of
   /// valid data.
@@ -238,19 +239,19 @@ public:
   Nb_List<T> &operator=(const Nb_List<T> &other) { Copy(other); return *this; }
 
   // Debug and optimization aids
-  OC_INT4m GetAllocRibCount() const { return alloc_rib_count; }
-  OC_INT4m GetSpaceWaste() const; // Returns # of unused _bytes_ allocated.
+  OC_INDEX GetAllocRibCount() const { return alloc_rib_count; }
+  OC_INDEX GetSpaceWaste() const; // Returns # of unused _bytes_ allocated.
   void DumpState(FILE* fptr=stderr) const;
 
 };
 
 // Basic initialization AND de-initialization!
-template<class T> void Nb_List<T>::Reset(OC_INT4m _rib_xtnd_size)
+template<class T> void Nb_List<T>::Reset(OC_INDEX _rib_xtnd_size)
 {
 #define MEMBERNAME "Reset()"
   if(alloc_spine>0 && arr!=NULL) {
     // Deallocate existing memory
-    for(OC_INT4m i=alloc_rib_count-1;i>=0;--i) {
+    for(OC_INDEX i=alloc_rib_count-1;i>=0;--i) {
       delete[] arr[i];
     }
     delete[] arr;
@@ -259,7 +260,7 @@ template<class T> void Nb_List<T>::Reset(OC_INT4m _rib_xtnd_size)
 
   spine_xtnd_size=SPINE_EXTEND_SIZE;
   if(_rib_xtnd_size>0) rib_xtnd_size=_rib_xtnd_size;
-  else                 rib_xtnd_size=RIB_EXTEND_MEMSIZE / OC_INT4m(sizeof(T));
+  else                 rib_xtnd_size=RIB_EXTEND_MEMSIZE / OC_INDEX(sizeof(T));
   if(rib_xtnd_size<1)  rib_xtnd_size=1; // Absolute minimum extend size!
 
   last_used_spine_index = -1;
@@ -269,7 +270,7 @@ template<class T> void Nb_List<T>::Reset(OC_INT4m _rib_xtnd_size)
 }
 
 // Default constructor
-template<class T> Nb_List<T>::Nb_List(OC_INT4m _rib_xtnd_size)
+template<class T> Nb_List<T>::Nb_List(OC_INDEX _rib_xtnd_size)
   : class_doc(NB_LIST_DOC_INFO)
 {
   arr=NULL;  Reset(_rib_xtnd_size);
@@ -287,10 +288,10 @@ template<class T> Nb_List<T>::Nb_List(const Nb_List<T> &src)
   arr=NULL;  Reset(src.rib_xtnd_size);  Copy(src);
 }
 
-template<class T> OC_INT4m Nb_List<T>::Copy(const Nb_List<T> &src)
+template<class T> void Nb_List<T>::Copy(const Nb_List<T> &src)
 {
 #define MEMBERNAME "Copy(Nb_List<T> &)"
-  if(&src==this) return 0;  // Nothing to do!
+  if(&src==this) return;  // Nothing to do!
 
   // Currently just pitch any alloc'ed space in *this and
   // start fresh.  If heavy use is made of this function
@@ -303,7 +304,7 @@ template<class T> OC_INT4m Nb_List<T>::Copy(const Nb_List<T> &src)
   if(spine_xtnd_size!=src.spine_xtnd_size)
     FatalError(-1,STDDOC,"Supposed class const spine_xtnd_size isn't!");
   ExtendSpine(src.alloc_spine);
-  for(int i=0;i<src.alloc_rib_count;i++) AddRib();
+  for(OC_INDEX i=0;i<src.alloc_rib_count;i++) AddRib();
 
   // Copy ribs.  NOTE: It is ASSUMED that the class T
   // has a valid operator=().
@@ -326,11 +327,10 @@ template<class T> OC_INT4m Nb_List<T>::Copy(const Nb_List<T> &src)
   if(src.next_elt==NULL) next_elt=NULL;
   else                   next_elt=&(arr[spine_index][rib_index]);
 
-  return 0;
 #undef MEMBERNAME
 }
 
-template<class T> void Nb_List<T>::ExtendSpine(int new_length)
+template<class T> void Nb_List<T>::ExtendSpine(OC_INDEX new_length)
 { // Typically called with new_length==0, in which case this routine
   // allocates a new T** arr of size alloc_spine+spine_xtnd_size, copies
   // the old T** arr into the new space, and frees the old array space.
@@ -338,12 +338,12 @@ template<class T> void Nb_List<T>::ExtendSpine(int new_length)
   // also calls this with new_length>0, for efficency.
 #define MEMBERNAME "ExtendSpine"
   // First several extensions add a piece smaller than full spine_xtnd_size.
-  OC_INT4m xtnd_size=new_length;
+  OC_INDEX xtnd_size=new_length;
   if(xtnd_size<=0) {
     if(alloc_spine>=spine_xtnd_size)
       xtnd_size=spine_xtnd_size;
     else {
-      OC_INT4m small_add=OC_MAX(1,spine_xtnd_size/4);
+      OC_INDEX small_add=OC_MAX(1,spine_xtnd_size/4);
       xtnd_size=spine_xtnd_size-alloc_spine;
       if(xtnd_size>=2*small_add)
 	xtnd_size=small_add;
@@ -352,14 +352,15 @@ template<class T> void Nb_List<T>::ExtendSpine(int new_length)
   if(xtnd_size<1) xtnd_size=1;  // Safety
 
   T** tarr;
-  if((tarr=new T*[alloc_spine+xtnd_size])==0)
+  assert(alloc_spine>=0);
+  if((tarr=new T*[size_t(alloc_spine+xtnd_size)])==0)
     FatalError(-1,STDDOC,ErrNoMem);
   if(arr!=NULL) {
     if(alloc_rib_count>alloc_spine)
       FatalError(-1,STDDOC,
 		 "Programming error: alloc_rib_count=%d > alloc_spine=%d",
 		 alloc_rib_count,alloc_spine);
-    for(OC_INT4m i=0;i<alloc_rib_count;i++) tarr[i]=arr[i];
+    for(OC_INDEX i=0;i<alloc_rib_count;i++) tarr[i]=arr[i];
     delete[] arr;
   }
   arr=tarr;
@@ -372,7 +373,8 @@ template<class T> void Nb_List<T>::AddRib()
   // incrementing alloc_rib_count as necessary.
 #define MEMBERNAME "AddRib"
   if(alloc_rib_count+1>alloc_spine) ExtendSpine();
-  if((arr[alloc_rib_count++]=new T[rib_xtnd_size])==0)
+  assert(rib_xtnd_size>=0);
+  if((arr[alloc_rib_count++]=new T[size_t(rib_xtnd_size)])==0)
     FatalError(-1,STDDOC,ErrNoMem);
 #undef MEMBERNAME
 }
@@ -417,7 +419,7 @@ Nb_List<T>::ReplaceElt(const Nb_List_Index<T>& key,const T &elt)
   return 0;
 }
 
-template<class T> OC_INT4m Nb_List<T>::Append(const T &elt)
+template<class T> void Nb_List<T>::Append(const T &elt)
 {
 #define MEMBERNAME "Append"
   if(++last_used_rib_index>=rib_xtnd_size) {
@@ -437,16 +439,14 @@ template<class T> OC_INT4m Nb_List<T>::Append(const T &elt)
   /// Note: if next_elt != NULL, then it holds a valid address into one
   ///   of the arr[] subarrays, and so remains valid even after spine
   ///   extension.
-
-  return 0;
 #undef MEMBERNAME
 }
 
-template<class T> OC_INT4m Nb_List<T>::SetFirst(const T &elt)
+template<class T> void Nb_List<T>::SetFirst(const T &elt)
 {
 #define MEMBERNAME "SetFirst"
   Clear();
-  return Append(elt);
+  Append(elt);
 #undef MEMBERNAME
 }
 
@@ -508,8 +508,8 @@ Nb_List<T>::GetNext(Nb_List_Index<T>& key) const
   // end of the list, then NULL is returned, and key is set to
   // the last valid element.
   T* tptr=NULL;
-  int rib=key.rib;
-  int spine=key.spine;
+  OC_INDEX rib=key.rib;
+  OC_INDEX spine=key.spine;
   if((++rib)>=rib_xtnd_size) { rib=0; ++spine; }
   if(spine<last_used_spine_index
      || (spine==last_used_spine_index && rib<=last_used_rib_index)) {
@@ -535,17 +535,17 @@ Nb_List<T>::GetNext(Nb_List_Index<T>& key)
 
 // Debug and optimization aids
 
-template<class T> OC_INT4m Nb_List<T>::GetSpaceWaste() const
+template<class T> OC_INDEX Nb_List<T>::GetSpaceWaste() const
 { // Returns number of _bytes_ allocated but not used
-  OC_INT4m spine_waste=(alloc_spine-last_used_spine_index-1)
-    * OC_INT4m(sizeof(T*));
+  OC_INDEX spine_waste=(alloc_spine-last_used_spine_index-1)
+    * OC_INDEX(sizeof(T*));
   /// Unused space on the spine
 
-  OC_INT4m full_rib_size=rib_xtnd_size * OC_INT4m(sizeof(T));
-  OC_INT4m eves_ribs=(alloc_rib_count-last_used_spine_index-1)*full_rib_size;
+  OC_INDEX full_rib_size=rib_xtnd_size * OC_INDEX(sizeof(T));
+  OC_INDEX eves_ribs=(alloc_rib_count-last_used_spine_index-1)*full_rib_size;
   /// Ribs allocated but completely unused
 
-  OC_INT4m spare_rib=(rib_xtnd_size-last_used_rib_index) * OC_INT4m(sizeof(T));
+  OC_INDEX spare_rib=(rib_xtnd_size-last_used_rib_index) * OC_INDEX(sizeof(T));
   /// Leftover space on the last rib
 
   return spine_waste+eves_ribs+spare_rib;
@@ -553,15 +553,21 @@ template<class T> OC_INT4m Nb_List<T>::GetSpaceWaste() const
 
 template<class T> void Nb_List<T>::DumpState(FILE* fptr) const
 {
-  fprintf(fptr,"      spine_xtnd_size = %3d\n",spine_xtnd_size);
-  fprintf(fptr,"        rib_xtnd_size = %3d\n",  rib_xtnd_size);
-  fprintf(fptr,"          alloc_spine = %3d\n",     alloc_spine);
-  fprintf(fptr,"      alloc_rib_count = %3d\n",alloc_rib_count);
-  fprintf(fptr,"last_used_spine_index = %3d\n",last_used_spine_index);
-  fprintf(fptr,"  last_used_rib_index = %3d\n",last_used_rib_index);
+  fprintf(fptr,"      spine_xtnd_size = %3" OC_INDEX_MOD "d\n",
+          spine_xtnd_size);
+  fprintf(fptr,"        rib_xtnd_size = %3" OC_INDEX_MOD "d\n",
+          rib_xtnd_size);
+  fprintf(fptr,"          alloc_spine = %3" OC_INDEX_MOD "d\n",
+          alloc_spine);
+  fprintf(fptr,"      alloc_rib_count = %3" OC_INDEX_MOD "d\n",
+          alloc_rib_count);
+  fprintf(fptr,"last_used_spine_index = %3" OC_INDEX_MOD "d\n",
+          last_used_spine_index);
+  fprintf(fptr,"  last_used_rib_index = %3" OC_INDEX_MOD "d\n",
+          last_used_rib_index);
   fprintf(fptr,"             next_elt = %p\n",next_elt);
-  fprintf(fptr,"          spine_index = %3d\n",spine_index);
-  fprintf(fptr,"            rib_index = %3d\n",rib_index);
+  fprintf(fptr,"          spine_index = %3" OC_INDEX_MOD "d\n",spine_index);
+  fprintf(fptr,"            rib_index = %3" OC_INDEX_MOD "d\n",rib_index);
   fprintf(fptr,"                  arr = %p\n",arr);
 }
 

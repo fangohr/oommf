@@ -7,7 +7,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2009-07-22 23:29:20 $
+ * Last modified on: $Date: 2012/11/20 01:01:49 $
  * Last modified by: $Author: donahue $
  */
 
@@ -64,6 +64,14 @@ Nb_Init(Tcl_Interp *interp)
 
   // Setup Tcl script portion of Nb extension
   if ( Oc_InitScript(interp, "Nb", NB_VERSION) != TCL_OK) {
+    RETURN_TCL_ERROR;
+  }
+
+  // Test Nb_Xpfloat class for brokenness
+  if(Nb_Xpfloat::Test() != 0) {
+    Tcl_AppendResult(interp,
+	     OC_CONST84_CHAR("\n\tNb_Xpfloat initialization test error"),
+             NULL);
     RETURN_TCL_ERROR;
   }
 

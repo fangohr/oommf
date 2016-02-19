@@ -6,7 +6,7 @@ Oc_Class Oxs_Schedule {
     private array common index
 
     # Add an interface to change these
-    private common events {Step Stage}
+    private common events {Step Stage Done}
 
     # Is this 
     private array variable active
@@ -80,10 +80,13 @@ Oc_Class Oxs_Schedule {
         $index($o,$d) Set$w $e $v
     }
     method Send {e} {
-        upvar #0 [string tolower $e] count
-        if {$count % $frequency($e)} {
-            return
-        }
+       if {[string compare Done $e]!=0} {
+          # Done event does not have a count
+          upvar #0 [string tolower $e] count
+          if {$count % $frequency($e)} {
+             return
+          }
+       }
         if {[catch {Oxs_Output Send $output $destination} msg]} {
            # If error is due to missing output or destination,
            # then delete the current schedule and swallow the
@@ -109,4 +112,3 @@ Oc_Class Oxs_Schedule {
         set frequency($event) $value
     }
 }
-

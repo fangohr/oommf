@@ -13,9 +13,10 @@ package require Net 1.2.0.3
 # and as a result initialization is not completed.
 rename bgerror orig_boxsi_bgerror
 proc bgerror { msg } {
+   Oc_Log Log "FATAL BACKGROUND ERROR: $msg" error
    orig_boxsi_bgerror $msg
    puts stderr "\nFATAL BACKGROUND ERROR: $msg"
-   exit 13
+   catch {exit 13}
 }
 
 Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
@@ -23,8 +24,8 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:58 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
@@ -34,15 +35,6 @@ Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
 
 # Command line options
 Oc_CommandLine ActivateOptionSet Net
-Oc_CommandLine Option restart {
-    {flag {expr {$flag==0 || $flag==1 || $flag==2}} \
-        {= 0 (default=no), 1 (force) or 2 (try)}}
-} {
-    global restart_flag; set restart_flag $flag
-} {1 => use <basename>.restart file to restart simulation}
-set restart_flag 0
-Oxs_SetRestartFlag $restart_flag
-#trace variable restart_flag w {Oxs_SetRestartFlag $restart_flag ;# }
 
 Oc_CommandLine Option nocrccheck {
 	{flag {expr {$flag==0 || $flag==1}} {= 0 (default) or 1}}
@@ -74,6 +66,13 @@ Oc_CommandLine Option nice {
 	global nice; set nice $flag
 } {1 => Drop priority after starting}
 set nice 0
+
+Oc_CommandLine Option logfile {
+    {name {expr {![string match {} $name]}}}
+   } {
+      global logfile;  set logfile $name
+   } {Name of log file (default is oommf/boxsi.errors)}
+set logfile [file join [Oc_Main GetOOMMFRootDir] boxsi.errors]
 
 Oc_CommandLine Option loglevel {
       {level {expr {[regexp {^[0-9]+$} $level]}}}
@@ -114,9 +113,9 @@ Oc_CommandLine Option kill {
 if {[Oc_HaveThreads]} {
    set threadcount [Oc_GetMaxThreadCount]
    Oc_CommandLine Option threads {
-      {number {expr {[regexp {^[0-9]+$} $number] && $number>0}}}
+      {count {expr {[regexp {^[0-9]+$} $count] && $count>0}}}
    } {
-      global threadcount;  set threadcount $number
+      global threadcount;  set threadcount $count
    } [subst {Number of concurrent threads (default is $threadcount)}]
 } else {
    set threadcount 1  ;# Safety
@@ -125,18 +124,7 @@ if {[Oc_HaveThreads]} {
 # NUMA (non-uniform memory access) support
 set numanodes none
 if {[Oc_NumaAvailable]} {
-   if {[info exists env(OOMMF_NUMANODES)]} {
-      set nodes $env(OOMMF_NUMANODES)
-      if {![regexp {^([0-9 ,]*|auto|none)$} $nodes]} {
-         puts stderr "\n************************************************"
-         puts stderr "ERROR: Bad environment variable setting:\
-                   OOMMF_NUMANODES=$nodes"
-         puts stderr "   Overriding to \"$numanodes\""
-         puts stderr "************************************************"
-      } else {
-         set numanodes $nodes
-      }
-   }
+   set numanodes [Oc_GetDefaultNumaNodes]
    Oc_CommandLine Option numanodes {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
@@ -155,6 +143,17 @@ Oc_CommandLine Option restart {
 set restart_flag 0
 Oxs_SetRestartFlag $restart_flag
 
+Oc_CommandLine Option restartfiledir {
+    {dir {expr {![string match {} $dir]}}}
+   } {
+      global restart_file_directory;  set restart_file_directory $dir
+   } {Directory for restart files (default is MIF file directory)}
+set restart_file_directory {}
+# Note: At present, the restart file dir is set from the command line
+# at problem start and never changed.  Trying to change this once a
+# problem is loaded is problematic, because we want any droppings in
+# the old directory cleaned-up before using the new directory.
+
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
     {filename {} {Input MIF 2.1 problem file}}
@@ -167,6 +166,10 @@ Oc_CommandLine Option [Oc_CommandLine Switch] {
 ##########################################################################
 Oc_CommandLine Parse $argv
 if {[catch {Oxs_SetRestartFlag $restart_flag} msg]} {
+   Oc_Log Log $msg error
+   exit 1
+}
+if {[catch {Oxs_SetRestartFileDir $restart_file_directory} msg]} {
    Oc_Log Log $msg error
    exit 1
 }
@@ -216,7 +219,7 @@ trace variable update_extra_info w { Oc_Main SetExtraInfo $update_extra_info ;# 
 append gui "[list Oc_Main SetPid [pid]]\n"
 append gui {
 
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:58 $} _ date
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
 Oc_Main SetDate [string trim $date]
 
 # This won't cross different OOMMF installations nicely
@@ -262,11 +265,6 @@ catch {
                           [Oc_Main GetOOMMFRootDir] doc userguide userguide \
                           OOMMF_eXtensible_Solver_Bat.html]]
    Oc_Main SetHelpURL [Oc_Url FromFilename $boxsi_doc_section]
-   proc SetOidCallback {code result args} {
-      if {$code == 0} {Oc_Main SetOid $result}
-      rename SetOidCallback {}
-   }
-   remote -callback SetOidCallback serveroid
    if {[Ow_IsAqua]} {
       # Add some padding to allow space for Aqua window resize
       # control in lower righthand corner
@@ -284,13 +282,17 @@ Oc_Log AddType infolog ;# Record in log file only
 
 set menubar .mb
 foreach {fmenu hmenu} [Ow_MakeMenubar . $menubar File Help] {}
-$fmenu add command -label "Show Console" -command { console show } -underline 0
-$fmenu add command -label "Close Interface" -command closeGui -underline 0
+$fmenu add command -label "Show Console" -command { console show } -underline 5
+$fmenu add command -label "Close Interface" -command closeGui -underline 6
 $fmenu add separator
-$fmenu add command -label "Clear Schedule" -command ClearSchedule
+$fmenu add command -label "Clear Schedule" -command ClearSchedule -underline 6
 $fmenu add separator
 $fmenu add command -label "Exit [Oc_Main GetAppName]" \
 	-command exit -underline 1
+$fmenu add command -label "Checkpoint & Exit" \
+   -command GuiCheckpointExit -underline 4
+share checkpoint_exit_request
+
 Ow_StdHelpMenu $hmenu
 
 set menuwidth [Ow_GuessMenuWidth $menubar]
@@ -437,14 +439,14 @@ grid [label $sframe.l -text Schedule -relief groove] - -sticky new
 grid columnconfigure $sframe 0 -pad 15
 grid columnconfigure $sframe 1 -weight 1
 grid [button $sframe.send -command \
-	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0]} \
+	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0] 1} \
 	-text Send] - -sticky new
 lappend output_tkbox_list $sframe.send
 
 #
 # FOR NOW JUST HACK IN THE EVENTS WE SUPPORT
 #	eventually this may be driver-dependent
-set events [list Step Stage]
+set events [list Step Stage Done]
 set schedwidgets [list $sframe.send]
 foreach event $events {
     set active [checkbutton $sframe.a$event -text $event -anchor w \
@@ -452,6 +454,10 @@ foreach event $events {
     $active configure -command [subst -nocommands \
 		{Schedule Active [$active cget -variable] $event}]
     lappend output_tkbox_list $active
+   if {[string compare Done $event]==0} {
+      grid $active -sticky nw
+      lappend schedwidgets $active
+   } else {
     Ow_EntryBox New frequency $sframe.f$event -label every \
 	    -autoundo 0 -valuewidth 4 \
 	    -variable Schedule---frequencyA($event) \
@@ -462,6 +468,7 @@ foreach event $events {
     lappend output_owbox_list $frequency
     grid $active [$frequency Cget -winpath] -sticky nw
     lappend schedwidgets $active $frequency
+   }
 }
 
 grid rowconfigure $sframe [expr {[lindex [grid size $sframe] 1] - 1}] -weight 1
@@ -575,9 +582,30 @@ proc ClearSchedule {} {
 	foreach d $destList {
 	    remote Oxs_Schedule Set $o $d Active Stage 0
 	    remote Oxs_Schedule Set $o $d Active Step 0
+	    remote Oxs_Schedule Set $o $d Active Done 0
 	}
     }
 }
+
+proc GuiCheckpointExit {} {
+   global checkpoint_exit_request  ;# shared variable
+   set checkpoint_exit_request 1
+   # Trace on checkpoint_exit_request on app side triggers
+   # exit.
+}
+
+# Override default window delete handling
+proc DeleteVerify {} {
+   set response [Ow_Dialog 1 "Exit [Oc_Main GetInstanceName]?" \
+                    warning "Are you *sure* you want to exit \
+			[Oc_Main GetInstanceName]?" {} 2 Exit "Checkpoint\n& Exit" Cancel]
+   if {$response == 0} {
+      after 10 exit
+   } elseif {$response == 1} {
+      GuiCheckpointExit
+   }
+}
+wm protocol . WM_DELETE_WINDOW DeleteVerify
 
 pack $oframe -side top -fill both -expand 1
 
@@ -602,21 +630,27 @@ if {[Oc_Main HasTk]} {
 
 }
 
-# Set up to write log messages to oommf/boxsi.errors.
-FileLogger SetFile [file join [Oc_Main GetOOMMFRootDir] boxsi.errors]
-Oc_Log SetLogHandler [list FileLogger Log] panic Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] error Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] warning Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] info Oc_Log
-Oc_Log SetLogHandler [list FileLogger Log] panic
-Oc_Log SetLogHandler [list FileLogger Log] error
-Oc_Log SetLogHandler [list FileLogger Log] warning
-Oc_Log SetLogHandler [list FileLogger Log] info
+# Set up to write log messages to oommf/boxsi.errors (or alternative).
+Oc_FileLogger SetFile $logfile
+Oc_Log SetLogHandler [list Oc_FileLogger Log] panic Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] error Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] warning Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] info Oc_Log
+Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
+Oc_Log SetLogHandler [list Oc_FileLogger Log] error
+Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
+Oc_Log SetLogHandler [list Oc_FileLogger Log] info
+
 
 Oc_Log AddType infolog ;# Record in log file only
 if {$loglevel>0} {
-   Oc_Log SetLogHandler [list FileLogger Log] infolog
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] infolog
 }
+if {$loglevel>1} {
+   # Dump status messages too
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+}
+
 
 # Create a new Oxs_Destination for each Net_Thread that becomes Ready
 Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
@@ -626,7 +660,6 @@ Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
 # and the set of Tcl commands provided by OXS
 ##########################################################################
 # OXS provides the following classes:
-#	FileLogger
 #	Oxs_Mif
 # and the following operations:
 #	Oxs_ProbInit $file $params	: Calls Oxs_ProbRelease.  Reads
@@ -729,7 +762,9 @@ proc ChangeStatus {old args} {
 	    set output_interface_state normal
 	    global exitondone
 	    if {$exitondone} {
-		exit	;# will trigger ReleaseProblem, etc.
+               after idle exit  ;# will trigger ReleaseProblem, etc.
+               # Put this on after idle list so that any pending events
+               # have an opportunity to process.
 	    } else {
 	        # do nothing ?
                global problem
@@ -745,41 +780,77 @@ proc ChangeStatus {old args} {
 # Initialize status to "" -- no problem loaded.
 set status ""
 
-# Routine to flush pending log messages.  Used for cleanup
-proc FlushLog {} {
-    foreach id [after info] {
-	foreach {script type} [after info $id] break
-	if {[string match idle $type] && [string match *Oc_Log* $script]} {
-	    uplevel #0 $script
-	}
-    }
+proc KillApps { oidlist } {
+   global kill_apps_wait account_server
+   if {[llength $oidlist]==0} {
+      set kill_apps_wait 0
+      return 
+   }
+   set kill_apps_wait 1
+   set qid [$account_server Send kill $oidlist]
+   Oc_EventHandler New _ $account_server Reply$qid KillAppsReply
+   # What happens if account server crashes?
 }
 
-# Be sure any loaded problem gets release on application exit
-Oc_EventHandler New _ Oc_Main Shutdown ReleaseProblem -oneshot 1
-Oc_EventHandler New _ Oc_Main Shutdown FlushLog
+proc KillAppsReply {} {
+   global kill_apps_wait
+   set kill_apps_wait 0
+}
+
+
 proc ReleaseProblem {} {
-    global status
-    # We're about to release any loaded problem.  Spread the word.
-    Oc_EventHandler Generate Oxs Release
-    if {[catch {
-	Oxs_ProbRelease
-    } msg]} {
-	# This is really bad.  Kill the solver.
-	#
-	# ...but first flush any pending log messages to the
-	# error log file.
-	FlushLog
-	Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
-	exit
-    }
-    global stagerequest number_of_stages problem
-    set stagerequest {}
-    set number_of_stages {}
-    if {[info exists problem]} {
-       Oc_Log Log "End \"[file tail $problem]\"" infolog
-    }
-    set status ""
+   if {![Oxs_IsProblemLoaded]} { return }
+   # Get list of OIDs to be killed as per command line -kill option.
+   # Note that Oxs_ProbRelease destroys the MIF object, so we have
+   # to get the list first.
+
+   # Kill any outstanding "after idle Loop" commands
+   foreach ai [after info] {
+      foreach {script type} [after info $ai] {
+         if {[string match Loop* $script]} {
+            after cancel $ai
+         }
+      }
+   }
+
+   global killtags
+   set killoids [[Oxs_GetMif] KillOids $killtags]
+
+   if {[catch {
+      Oxs_ProbRelease
+   } msg]} {
+      # This is really bad.  Kill the solver.
+      #
+      # ...but first flush any pending log messages to the
+      # error log file.
+      FlushLog
+      Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
+      exit
+   }
+
+   if {[catch {Oc_EventHandler Generate Oxs Release} msg]} {
+      Oc_Log Log "Oxs Release handler FAILURE:\n\t$msg" panic
+      exit
+   }
+
+   KillApps $killoids
+   global kill_apps_wait
+   while {$kill_apps_wait} {
+      vwait kill_apps_wait
+   }
+
+   # Note: There are traces on the following variables.
+   global status stagerequest number_of_stages problem checkpoint_exit
+   set stagerequest {}
+   set number_of_stages {}
+   if {[info exists problem]} {
+       if {$checkpoint_exit} {
+          Oc_Log Log "Checkpoint exit \"[file tail $problem]\"" infolog
+       } else {
+          Oc_Log Log "End \"[file tail $problem]\"" infolog
+       }
+   }
+   set status ""
 }
 
 proc ProbInfo {} {
@@ -797,6 +868,16 @@ proc ProbInfo {} {
    return $txt
 }
 
+set checkpoint_exit 0
+trace variable checkpoint_exit_request w {CheckpointPrepareExit ;# }
+proc CheckpointPrepareExit {} {
+   # Adjust flags to write and keep last state as checkpoint file
+   Oxs_ForceFinalCheckpoint
+   global checkpoint_exit
+   set checkpoint_exit 1
+   exit
+}
+
 proc MeshGeometry {} {
    # Returns a tweaked version of the mesh geometry string
    set geostr [Oxs_MeshGeometryString]
@@ -806,6 +887,41 @@ proc MeshGeometry {} {
       regsub {([0-9]+) cells$} $geostr "$cellcount cells" geostr
    }
    return $geostr
+}
+
+proc ProbOptions {} {
+   # Returns a list of options in effect for currently loaded problem
+   global argv MIF_params
+   # Arguments from the command line
+   for {set i 0} {$i<[llength $argv]-1} {incr i} {
+      if {[regexp {^-+(.*)} [lindex $argv $i] dummy elt]} {
+         if {[string match {} $elt]} { break }
+         set elt [string trimleft $elt "-"]
+         set opts($elt) [lindex $argv [incr i]]
+      }
+   }
+   # Current MIF parameters; for boxsi these should be set on the
+   # command line, but it shouldn't hurt to reset them from
+   # MIF_params.
+   if {[llength $MIF_params]} {
+      set opts(parameters) $MIF_params
+   }
+   # Current thread and numanodes settings may be filled in
+   # from environment settings rather than the command line;
+   # either way (re)set them here.
+   if {[Oc_HaveThreads]} {
+      global threadcount
+      set opts(threads) $threadcount
+      if {[Oc_NumaAvailable]} {
+         global numanodes
+         set opts(numanodes) $numanodes
+      }
+   }
+   set optlist {}
+   foreach elt [lsort [array names opts]] {
+      lappend optlist "-$elt" $opts($elt)
+   }
+   return $optlist
 }
 
 set workdir [Oc_DirectPathname "."]  ;# Initial working directory
@@ -819,11 +935,7 @@ proc LoadProblem {fname} {
 
    global status step autorun_pause workdir
    global stage stagerequest number_of_stages
-   global killtags
    upvar 1 $fname f
-
-   # We're about to release any loaded problem.  Spread the word.
-   Oc_EventHandler Generate Oxs Release
 
    set f [Oc_DirectPathname $f]
    set newdir [file dirname $f]
@@ -834,20 +946,17 @@ proc LoadProblem {fname} {
       cd $newdir
       set workdir $newdir
    } msg] || [catch {
-      global MIF_params
-      if {[llength $MIF_params]} {
-         set ps "Params: $MIF_params"
-      } else {
-         set ps "no params"
-      }
-      Oc_Log Log "Start \"$f\", $ps" infolog
+      ReleaseProblem   ;# Should be a NOP for boxsi
+      set opts [ProbOptions]
+      Oc_Log Log "Start: \"$f\"\nOptions: $opts" infolog
+      global MIF_params update_extra_info
       Oxs_ProbInit $f $MIF_params ;# includes a call to Oxs_ProbReset
-      global update_extra_info
       append update_extra_info "\nMesh geometry: [MeshGeometry]"
       Oc_Main SetExtraInfo $update_extra_info
       set pi [ProbInfo]
       Oc_Log Log $pi infolog
-      flush stderr ; puts "Start  [file tail $f], $ps\n$pi" ; flush stdout
+      flush stderr
+      puts "Start: \"$f\"\nOptions: $opts\n$pi" ; flush stdout
    } msg] || [catch {
       global regression_test regression_testname
       if {$regression_test} {
@@ -904,15 +1013,14 @@ proc LoadProblem {fname} {
          ## can't be brought up either.
       }
       after idle [list SetupInitialSchedule $script]
-      Oc_EventHandler New _ Oxs Release \
-         [list $mif KillApps $killtags] -oneshot 1
    }
 }
 
 proc SetupInitialSchedule {script} {
-    # Need account server; HACK(?) - we know it's in [global a]
+    # Need account server; HACK(?) - we know it's in
+    # [global account_server]
     # need MIF object; HACK(?) - retrieve it from OXS
-    upvar #0 a acct
+    upvar #0 account_server acct
     if {![$acct Ready]} {
 	Oc_EventHandler New _ $acct Ready [info level 0] -oneshot 1
 	return
@@ -1029,11 +1137,71 @@ Oc_EventHandler New _ Oxs Step {
 			}
 		    } ;#}
 
-# Terminate Loop when solver is Done
-Oc_EventHandler New _ Oxs Done [list set status Done]
+# Terminate Loop when solver is Done. Put this on the after idle list so
+# that all other Done event handlers have an opportunity to fire first.
+Oc_EventHandler New _ Oxs Done [list after idle set status Done]
 
-# All problem releases should request cleanup first
+# Routine to flush pending log messages.  Used for cleanup.
+proc FlushLog {} {
+   foreach id [after info] {
+      foreach {script type} [after info $id] break
+      if {[string match idle $type] && [string match *Oc_Log* $script]} {
+         uplevel #0 $script
+      }
+   }
+}
+
+set connection_close_count 0
+proc FlushData {} {
+   # Explicitly close each data source.  Note that at the very bottom
+   # a socket close occurs, which is a blocking operation.
+   global connection_close_count
+   foreach elt [Net_Thread Instances] {
+      if {![catch {$elt Protocol} proto]} {
+         # If thread is in an uninitialized (are partially shutdown)
+         # state, then Protocol might not be set.
+         switch -exact $proto {
+            GeneralInterface {}
+            DataTable -
+            vectorField -
+            scalarField {
+               incr connection_close_count
+               Oc_EventHandler New _ $elt DeleteEnd \
+                   [list incr connection_close_count -1] -oneshot 1
+               $elt SafeClose
+            }
+            default {
+               Oc_Log Log "Unrecognized Net_Thread protocol \"$proto\"\
+                         will not be flushed" warning
+            }
+         }
+      }
+   }
+   # If desired, the following stanza can be moved to the
+   # very end of the shutdown process.
+   if {$connection_close_count > 0} {
+      while {$connection_close_count > 0} {
+         vwait connection_close_count
+      }
+   }
+}
+
+# All problem releases should request cleanup first, which includes
+# writing a end record to DataTable output.  Next, FlushData is called
+# to wait for all sent data to be acknowledged by receiver.
+# Application termination by KillApps should be held back until after
+# FlushData completes.
 Oc_EventHandler New _ Oxs Release [list Oc_EventHandler Generate Oxs Cleanup]
+Oc_EventHandler New _ Oxs Release FlushData
+
+# Be sure any loaded problem gets release on application exit.
+Oc_EventHandler New _ Oc_Main Shutdown ReleaseProblem -oneshot 1
+Oc_EventHandler New _ Oc_Main Shutdown FlushLog
+Oc_EventHandler New _ Oc_Main Shutdown [list puts "Boxsi run end."]
+## The "Boxsi run end." message can be used by scripts to detect the
+## end of a boxsi run even if the output channel from boxsi doesn't
+## signal EOF because (for example) some boxsi background child
+## process (for example an account server) is still running.
 
 ##########################################################################
 # Our server offers GeneralInterface protocol services -- start it
@@ -1043,6 +1211,24 @@ Net_Server New server -alias [Oc_Main GetAppName] \
 		Oxs_Output Oxs_Schedule
 	}]
 $server Start 0
+Oc_EventHandler New register_failure $server RegisterFail \
+    [list error "Failure to register with account server"]] \
+    -oneshot 1 -groups [list $server]
+Oc_EventHandler New _ $server RegisterSuccess \
+    [list $register_failure Delete] -oneshot 1 -groups [list $server]
+# One observed failure mode: Boxsi starts, launches an account server,
+# registers with it and gets back OID 0.  Then boxsi launches an
+# mmArchive instance.  mmArchive comes up but something crashes the
+# account server before mmAchive can register with it.  mmArchive is
+# unaware of this situation, however, and starts up an account server
+# in the normal fashion.  At this time boxsi realizes that the account
+# server is down and starts another one.  Suppose now that the account
+# server started by mmArchive wins the race to be the one and only
+# account server, and suppose further that mmArchive registers with it
+# before boxsi finds it.  Not knowing any better, this new account
+# server gives out OID 0 to mmArchive.  What happens when boxsi hooks
+# up with the new account server and tells the account server that it,
+# boxsi, have already been assigned OID 0???
 
 ##########################################################################
 # Track the threads known to the account server
@@ -1079,8 +1265,8 @@ proc GetThreadsReply { acct } {
     # Create a Net_Thread instance for each element of the returned
     # thread list
     if {![lindex $threads 0]} {
-        foreach triple [lrange $threads 1 end] {
-	    NewThread $acct [lindex $triple 1]
+        foreach quartet [lrange $threads 1 end] {
+	    NewThread $acct [lindex $quartet 1]
         }
     }
 }
@@ -1100,6 +1286,11 @@ proc HandleAccountTell { acct } {
                 Oc_EventHandler New _ $t Ready [list $t Send bye]
             }
         }
+        notify -
+        newoid -
+        deleteoid {
+           # Ignore notifications and OID info
+        }
         default {
           Oc_Log Log "Bad message from account $acct:\n\t$message" status
         }
@@ -1107,7 +1298,6 @@ proc HandleAccountTell { acct } {
 }
 # There's a new thread with id $id, create corresponding local instance
 proc NewThread { acct id } {
-
     # Do not keep any connections to yourself!
     if {[string match [$acct OID]:* $id]} {return}
 
@@ -1115,11 +1305,12 @@ proc NewThread { acct id } {
             -accountname [$acct Cget -accountname] -pid $id
 }
 # Delay "nice" of this process until any children are spawned.
-Net_Account New a
-if {[$a Ready]} {
-    Initialize $a
+Net_Account New account_server
+if {[$account_server Ready]} {
+    Initialize $account_server
 } else {
-    Oc_EventHandler New _ $a Ready [list Initialize $a] -oneshot 1
+    Oc_EventHandler New _ $account_server Ready \
+        [list Initialize $account_server] -oneshot 1
 }
 
 vwait forever

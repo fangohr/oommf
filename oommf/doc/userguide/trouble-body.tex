@@ -66,8 +66,9 @@ need to have the development versions of \Tcl, \Tk, and (if needed) X
 installed.  The way to achieve that is platform-dependent.  On \Windows\
 you do not need an X installation, but when you install \Tcl/\Tk\ be
 sure to request a ``full'' installation, or one with ``header and
-library files''.  On Linux, be sure to install developer packages (for
-example, the XFree86-devel RPM) as well as user packages.  Other
+library files''.  On Linux, be sure to install developer packages
+%(for example, the XFree86-devel RPM)
+as well as user packages.  Other
 platforms are unlikely to have this problem.  In the case of
 \fn{Xlib.h}, it is also possible that the \fn{tkConfig.sh} file has an
 incorrect entry for \cd{TK\_XINCLUDES}.  A workaround for this is to
@@ -98,7 +99,7 @@ requires a compiler capable of compiling source code which uses
 C++ exceptions.
 
 \item \hyperrefhtml{Compiling}{Compiling
-(Sec.~}{)}{sec:install.compile} with gcc/egcs produces syntax errors
+(Sec.~}{)}{sec:install.compile} with gcc produces syntax errors
 on lines involving \cd{auto\_ptr} templates.
 
 This is known to occur on RedHat 5.2 systems.  The \cd{auto\_ptr}
@@ -206,60 +207,28 @@ in your \cd{\~{}/.cshrc} file (csh or tcsh shell users).  Another option
 is to modify the ld.so cache; see the ld.so and ldconfig man pages for
 details.
 
-\item \index{sockets}When launching multiple \OOMMF\ applications on
-  \Windows~9X, there is an error:
-\begin{quote}
-\raggedright
-\cd{couldn't open socket: no buffer space available}
-\end{quote}
-\OOMMF\ uses network sockets for communications between its various
-components.  On \Windows~9X, the socket resources are limited, and
-most \OOMMF\ applications use several sockets.  The only workaround is
-to close unneeded \OOMMF\ applications, and any other applications
-that may be using network resources.  The system command line utility
-\cd{netstat} can be used to monitor network communications.  This
-problem does not arise on \Windows~NT or \Unix\ systems.
-
-\item In the Cygwin environment on \Windows\, there is an warning like:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
-%begin<latexonly>
-\begin{quote}
-%end<latexonly>
-\begin{verbatim}
-Tcl version mismatch:
-        C:/Cygwin/lib/tclConfig.sh from 8.0p2
-        Running Tcl 8.0.4
-\end{verbatim}
-%begin<latexonly>
-\end{quote}
-%end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
-This is caused by broken \fn{tclConfig.sh} and \fn{tkConfig.sh} files
-in the Cygwin distribution.  You may ignore the warning, or edit the
-\fn{tclConfig.sh} and \fn{tkConfig.sh} files to change the
-\cd{TCL\_PATCH\_LEVEL} and \cd{TK\_PATCH\_LEVEL} values from ``p2'' to
-``.4''.  However, the best option is to upgrade \Tcl/\Tk.  The stock
-\Windows\ \Tcl/\Tk\ 8.4.7 (and presumably later) release works in Cygwin.
+%\item \index{sockets}When launching multiple \OOMMF\ applications on
+%  \Windows~9X, there is an error:
+%\begin{quote}
+%\raggedright
+%\cd{couldn't open socket: no buffer space available}
+%\end{quote}
+%\OOMMF\ uses network sockets for communications between its various
+%components.  On \Windows~9X, the socket resources are limited, and
+%most \OOMMF\ applications use several sockets.  The only workaround is
+%to close unneeded \OOMMF\ applications, and any other applications
+%that may be using network resources.  The system command line utility
+%\cd{netstat} can be used to monitor network communications.  This
+%problem does not arise on \Windows~NT or \Unix\ systems.
 
 \item When starting \OOMMF\ in the Cygwin environment on \Windows, the
 mmLaunch window appears briefly, then disappears without any error
 messages.
 
-Some versions of \Tcl/\Tk\ included with the Cygwin environment
-(i.e., \cd{/usr/bin/tclsh}) are known to have bugs in the socket code
-that cause \OOMMF\ to crash in this manner.  Please build and run
-\OOMMF\ using a stock \Windows\ \Tcl/\Tk, as described in the build
-instructions for the
-\hyperrefhtml{Cygwin environment.}{Cygwin environment (Sec.~}{,
-page~\pageref{par:install.cygwin}).}{par:install.cygwin}
-
-\item POSIX-style pathnames are not always recognized by OOMMF in
-Cygwin.
-
-This is an artifact of using a standard \Windows\ \Tcl/\Tk, which is
-unaware of the Cygwin unix-like view of the file system.  At present,
-the only workaround is to use Windows-style pathnames, e.g.,
-\fn{C:\bs oommf\bs tests\bs mytest.mif}.
+Some old versions of \Tcl/\Tk\ included with the Cygwin environment
+(i.e., \cd{/usr/bin/tclsh}) had bugs in the socket code
+that caused \OOMMF\ to crash in this manner.  This problem is fixed in
+current Cygwin releases.
 
 \item I ran out of memory!
 

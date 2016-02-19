@@ -5,7 +5,7 @@
 Some of the \OOMMF\ applications are platform-independent Tcl
 scripts.  Some of them are Tcl scripts that require special
 platform-dependent interpreters.  Others are platform-dependent,
-compiled C++ applications.  It is likely that some of them will 
+compiled C++ applications.  It is possible that some of them will 
 change status in later releases of \OOMMF.  Each of these types
 of application requires a different command line for launching.
 Rather than require all \OOMMF\ users to manage this complexity,
@@ -105,32 +105,16 @@ option argument is specified as \verb+<0|1>+, \verb+0+ typically means
 off, no or disable, and \verb+1+ means on, yes or enable.
 
 \begin{description}
-\item[\optkey{-version}]
-Display the version of the application and exit.
-
-\item[\optkey{-help}]
-Display a help message and exit.
-
-\item[\optkey{-tk \boa 0\pipe 1\bca}]
-Disable or enable Tk.  Tk must be enabled for an application to display
-graphical widgets.  However, when Tk is enabled on Unix platforms
-the application is dependent on an X Windows server.  If the 
-X Windows server dies, it will kill the application.  Long-running
-applications that do not inherently use display widgets support
-disabling of Tk with \verb+-tk 0+.  
-Other applications that must use display widgets are unable to run
-with the option \verb+-tk 0+.  To run applications that require
-\verb+-tk 1+ on a Unix system with no display, one might use
-\htmladdnormallinkfoot{Xvfb}{http://www.itworld.com/AppDev/1461/UIR000330xvfb/}
-\index{application!Xvfb}.
-
-\item[\optkey{-cwd directory}]
-Set the current working directory of the application.
-
 \item[\optkey{-console}]
 Display a console widget in which Tcl
 commands may be interactively typed into the application.
 Useful for debugging.
+
+\item[\optkey{-cwd directory}]
+Set the current working directory of the application.
+
+\item[\optkey{-help}]
+Display a help message and exit.
 
 \item[\optkey{-nickname \boa name\bca}]\index{nicknames}
 Associates the specified \textit{name} as a nickname for the process.
@@ -146,6 +130,22 @@ particular application instances.  Multiple \cd{-nickname} options may
 be used to set multiple nicknames.  (Technical detail: Nickname
 functionality is only available to processes that connect to an
 account server.)
+
+\item[\optkey{-tk \boa 0\pipe 1\bca}]
+Disable or enable Tk.  Tk must be enabled for an application to display
+graphical widgets.  However, when Tk is enabled on Unix platforms
+the application is dependent on an X Windows server.  If the 
+X Windows server dies, it will kill the application.  Long-running
+applications that do not inherently use display widgets support
+disabling of Tk with \verb+-tk 0+.  
+Other applications that must use display widgets are unable to run
+with the option \verb+-tk 0+.  To run applications that require
+\verb+-tk 1+ on a Unix system with no display, one might use
+\htmladdnormallinkfoot{Xvfb}{http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}
+\index{application!Xvfb}.
+
+\item[\optkey{-version}]
+Display the version of the application and exit.
 \end{description}
 
 In addition, those applications which enable Tk accept additional Tk

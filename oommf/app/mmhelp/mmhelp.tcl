@@ -18,7 +18,7 @@
 #    v--Edit here if necessary \
 exec wish "$0" ${1+"$@"}
 #
-# Last modified on: $Date: 2012-09-25 17:11:52 $
+# Last modified on: $Date: 2015/03/25 16:43:31 $
 # Last modified by: $Author: dgp $
 #
 # Usage: omfsh mmhelp.tcl <HomeURL>
@@ -175,8 +175,8 @@ set omfhb_debug 0
 source [file join [file dirname [info script]] counter.tcl]
 
 Oc_Main SetAppName mmHelp
-Oc_Main SetVersion 1.2.0.5
-regexp \\\044Date:(.*)\\\044 {$Date: 2012-09-25 17:11:52 $} _ date
+Oc_Main SetVersion 1.2.0.6
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:31 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
