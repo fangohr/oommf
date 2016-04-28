@@ -104,10 +104,13 @@ $config SetValue program_compiler_c++_set_macosx_appname 1
 # The GNU C++ compiler 'g++'
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
 # <URL:http://egcs.cygnus.com/>
-$config SetValue program_compiler_c++ {g++ -c}
+# Note: This has been modified by Ryan Pepper - OS X no longer uses g++ as
+# the default compiler, and therefore this just changes to use Clang
+# - the build fails otherwise on 10.11.
+#$config SetValue program_compiler_c++ {g++ -c}
 #
 # The Clang C++ compiler 'clang++'
-#$config SetValue program_compiler_c++ {clang++ -c}
+$config SetValue program_compiler_c++ {clang++ -c}
 
 ########################################################################
 # SUPPORT PROCEDURES
