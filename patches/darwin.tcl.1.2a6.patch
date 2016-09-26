@@ -1,0 +1,18 @@
+--- oommf/config/platforms/darwin.tcl	2015-07-20 20:32:33.000000000 +0100
++++ oommf/config/platforms/darwin_updated.tcl	2016-09-26 14:16:19.000000000 +0100
+@@ -104,10 +104,13 @@
+ # The GNU C++ compiler 'g++'
+ # <URL:http://www.gnu.org/software/gcc/gcc.html>
+ # <URL:http://egcs.cygnus.com/>
+-$config SetValue program_compiler_c++ {g++ -c}
++# Note: This has been modified by Ryan Pepper - OS X no longer uses g++ as
++# the default compiler, and therefore this just changes to use Clang
++# - the build fails otherwise on 10.11.
++#$config SetValue program_compiler_c++ {g++ -c}
+ #
+ # The Clang C++ compiler 'clang++'
+-#$config SetValue program_compiler_c++ {clang++ -c}
++$config SetValue program_compiler_c++ {clang++ -c}
+ 
+ ########################################################################
+ # SUPPORT PROCEDURES

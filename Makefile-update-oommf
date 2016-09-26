@@ -12,6 +12,7 @@ all:
 	make get-oommf
 	make untar-oommf
 	make update-logfile
+        make patches
 	echo "Run git 'commit -a' or similar to update git repo with new release"
 
 get-oommf:
@@ -24,11 +25,19 @@ untar-oommf:
 	mv $(OOMMFPREFIX)-1.2a5bis $(OOMMFPREFIX)
 
 update-logfile:
-        echo "======================================================="
+	echo "======================================================="
 	echo "`date`: unpacked $(OOMMFSOURCEFILE)" >> versionlog.txt
-        echo "   version: $(OOMMFVERSION)" >> versionlog.txt
-        echo "   date: $(OOMMFDATE)" >> versionlog.txt
-        echo "   source-url: $(OOMMFSOURCEURL)"
-        
+        echo "   OOMMF:"
+	echo "     version: $(OOMMFVERSION)" >> versionlog.txt
+	echo "     date: $(OOMMFDATE)" >> versionlog.txt
+	echo "     source-url: $(OOMMFSOURCEURL)"
+        echo "   github-url: https://github.com/fangohr/oommf"
+        echo "   github version: $(git rev-list HEAD -1)"
+
+
+make patches:
+	# patch from Ryan Pepper to allow compilation on OS X 10.11
+	patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch 
+
 
 
