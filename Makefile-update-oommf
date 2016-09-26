@@ -43,7 +43,6 @@ apply-patches:
 	echo "Applying patches ..."
 	# patch from Ryan Pepper to allow compilation on OS X 10.11
 	patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
-        echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
-
+	echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
 
 
