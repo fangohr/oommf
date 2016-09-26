@@ -10,10 +10,10 @@ GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
 all:
-	make get-oommf
-	make untar-oommf
-	make update-logfile
-        make patches
+	make -f Makefile-update-oommf get-oommf
+	make -f Makefile-update-oommf untar-oommf
+	make -f Makefile-update-oommf update-logfile
+	make -f Makefile-update-oommf patches
 	echo "Run git 'commit -a' or similar to update git repo with new release"
 
 get-oommf:
