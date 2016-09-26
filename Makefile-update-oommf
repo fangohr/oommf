@@ -5,6 +5,7 @@ OOMMFVERSION="12a5bis"
 OOMMFDATE="20120928"
 OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
 OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE).tar.gz
+OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
 
 
 all:
@@ -15,7 +16,7 @@ all:
 
 get-oommf:
 	mkdir -p Downloads
-	cd Downloads && wget http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
+	cd Downloads && wget $OOMMFSOURCEURL
 
 untar-oommf:
 	tar xfvz Downloads/$(OOMMFSOURCEFILE)
@@ -23,6 +24,11 @@ untar-oommf:
 	mv $(OOMMFPREFIX)-1.2a5bis $(OOMMFPREFIX)
 
 update-logfile:
+        echo "======================================================="
 	echo "`date`: unpacked $(OOMMFSOURCEFILE)" >> versionlog.txt
+        echo "   version: $(OOMMFVERSION)" >> versionlog.txt
+        echo "   date: $(OOMMFDATE)" >> versionlog.txt
+        echo "   source-url: $(OOMMFSOURCEURL)"
+        
 
 
