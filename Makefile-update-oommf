@@ -18,17 +18,16 @@ all:
 
 get-oommf:
 	mkdir -p Downloads
-	cd Downloads && wget $OOMMFSOURCEURL
+	cd Downloads && wget $(OOMMFSOURCEURL)
 
 untar-oommf:
 	tar xfvz Downloads/$(OOMMFSOURCEFILE)
-	# next is a manual hack, may need to update for future releases
-	mv $(OOMMFPREFIX)-1.2a5bis $(OOMMFPREFIX)
 
 update-logfile:
-	echo "======================================================="
-	echo "`date`: unpacked $(OOMMFSOURCEFILE)" >> versionlog.txt
-        echo "   OOMMF:"
+	echo "=======================================================" >> versionlog.txt
+	echo "date: `date` " >> versionlog.txt
+	echo "   unpacked $(OOMMFSOURCEFILE)" >> versionlog.txt
+	echo "   OOMMF:" >> versionlog.txt
 	echo "     version: $(OOMMFVERSION)" >> versionlog.txt
 	echo "     date: $(OOMMFDATE)" >> versionlog.txt
 	echo "     source-url: $(OOMMFSOURCEURL)" >> versionlog.txt
@@ -37,6 +36,7 @@ update-logfile:
 
 
 make patches:
+	echo "Applying patches ..."
 	# patch from Ryan Pepper to allow compilation on OS X 10.11
 	patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch 
 
