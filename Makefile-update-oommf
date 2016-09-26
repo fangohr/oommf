@@ -6,6 +6,7 @@ OOMMFDATE="20120928"
 OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
 OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE).tar.gz
 OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
+GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
 all:
@@ -30,9 +31,9 @@ update-logfile:
         echo "   OOMMF:"
 	echo "     version: $(OOMMFVERSION)" >> versionlog.txt
 	echo "     date: $(OOMMFDATE)" >> versionlog.txt
-	echo "     source-url: $(OOMMFSOURCEURL)"
-        echo "   github-url: https://github.com/fangohr/oommf"
-        echo "   github version: $(git rev-list HEAD -1)"
+	echo "     source-url: $(OOMMFSOURCEURL)" >> versionlog.txt
+	echo "   github-url: https://github.com/fangohr/oommf" >> versionlog.txt
+	echo "   github version: $(GITREPOHASH)" >> versionlog.txt
 
 
 make patches:
