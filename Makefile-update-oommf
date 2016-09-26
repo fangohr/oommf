@@ -13,6 +13,7 @@ all:
 	make -f Makefile-update-oommf get-oommf
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
+	make -f Makefile-update-oommf update-oommf-version
 	make -f Makefile-update-oommf apply-patches
 	echo "Run git 'commit -a' or similar to update git repo with new release"
 
