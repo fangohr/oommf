@@ -1,3 +1,4 @@
+
 # oommf
 
 This is a git repository of the Object Oriented MicroMagnetic Framework software 
@@ -9,3 +10,11 @@ http://math.nist.gov/oommf/software-12.html in the [oommf](https://github.com/fa
 The intention is to provide the OOMMF distribution files in a git repository for those who prefer to pull them via git.
 
 The License for the OOMMF code is available in https://github.com/fangohr/oommf/blob/master/oommf/LICENSE
+
+
+
+## For developers
+
+To update this repository with a new OOMMF release, please update the variables in
+`Makefile-update-oommf`, and then run `make -f Makefile-update-oommf all`.
+
