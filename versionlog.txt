@@ -1,1 +1,11 @@
 Thu 24 Sep 2015 12:21:42 BST: unpacked oommf12a5bis_20120928.tar.gz
+=======================================================
+date: Mon 26 Sep 2016 15:05:44 BST 
+   unpacked oommf12a6_20150930.tar.gz
+   OOMMF:
+     version: 12a6
+     date: 20150930
+     source-url: http://math.nist.gov/oommf/dist/oommf12a6_20150930.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: 3e360023f2006169401468360b7dd7b1f619cd79
+   patch applied:  patches/darwin.tcl.1.2a6.patch
