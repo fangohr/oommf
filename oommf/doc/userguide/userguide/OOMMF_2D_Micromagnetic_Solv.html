@@ -72,7 +72,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <!--End of Table of Child-Links-->
 <HR>
 
-<H2><A NAME="SECTION000112000000000000000"></A><A NAME="sec:obs"></A><A NAME="11623"></A><A NAME="11624"></A>
+<H2><A NAME="SECTION000112000000000000000"></A><A NAME="sec:obs"></A><A NAME="11649"></A><A NAME="11650"></A>
 <BR>
 OOMMF 2D Micromagnetic Solver Batch System
 </H2>
@@ -81,7 +81,7 @@ OOMMF 2D Micromagnetic Solver Batch System
 The OOMMF Batch System (OBS) provides a scriptable interface
 to the same micromagnetic solver engine used by
 <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"
- NAME="11629"><B>mmSolve2D</B></A>, in the
+ NAME="11655"><B>mmSolve2D</B></A>, in the
 form of three Tcl applicatons
 (<B>batchmaster</B>, <B>batchslave</B>, and
 <B>batchsolve</B>) that provide support for complex job scheduling.
@@ -107,7 +107,7 @@ OBS applications are launched from the command line using the
 <FONT SIZE="+1"><B>Overview</B></FONT>
 <BR>
 The application
-<B>batchsolve</B><A NAME="11642"></A> provides a simple
+<B>batchsolve</B><A NAME="11668"></A> provides a simple
 command line interface to the OOMMF 2D micromagnetic solver engine.
 
 <P>
@@ -132,9 +132,9 @@ where
 </DD>
 <DT><STRONG><TT><B>-interface <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>Whether to register with the account service
-  directory<A NAME="11653"></A> application, so
+  directory<A NAME="11679"></A> application, so
   that <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="11658"><B>mmLaunch</B></A>, can provide
+ NAME="11684"><B>mmLaunch</B></A>, can provide
   an interactive interface.  Default = 1 (do register), which will
   automatically start account service directory and
   host service directory applications as necessary.
@@ -147,10 +147,10 @@ where
   rather than just falling off the end (the effect of which will
   depend on whether or not Tk is loaded).
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="12690"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="12716"></A></B></TT></STRONG></DT>
 <DD>Determines solver behavior when a new problem is loaded.  If 1, then
-  the solver will look for <TT><B><I>basename</I>.log</B></TT><A NAME="11664"></A>
-  and <TT><B><I>basename*</I>.omf</B></TT><A NAME="11666"></A> files to
+  the solver will look for <TT><B><I>basename</I>.log</B></TT><A NAME="11690"></A>
+  and <TT><B><I>basename*</I>.omf</B></TT><A NAME="11692"></A> files to
   restart a previous run from the last
   saved state (where <TT><B><I>basename</I></B></TT> is the ``Base Output
   Filename'' specified in the input problem specification).  If these
@@ -162,18 +162,18 @@ where
 </DD>
 <DT><STRONG><TT><B>file</B></TT></STRONG></DT>
 <DD>Immediately load and run the specified MIF&nbsp;1.x
-  file<A NAME="11672"></A>.
+  file<A NAME="11698"></A>.
 </DD>
 </DL>
 
 <P>
 The input file <B><TT><B>file</B></TT></B> should contain a
 <A HREF="Problem_Specification_File_.html#sec:mifformat">Micromagnetic Input Format</A> 1.x problem
-description<A NAME="11679"></A>, such as produced by
+description<A NAME="11705"></A>, such as produced by
 <A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"
- NAME="11684"><B>mmProbEd</B></A>.  The batch solver
+ NAME="11710"><B>mmProbEd</B></A>.  The batch solver
 searches several directories for this file, including the current
-working directory<A NAME="11685"></A>, the <TT><B>data</B></TT> and
+working directory<A NAME="11711"></A>, the <TT><B>data</B></TT> and
 <TT><B>scripts</B></TT> subdirectories, and parallel directories relative to the
 directories <TT><B>app/mmsolve</B></TT> and
 <TT><B>app/mmpe</B></TT> in the OOMMF distribution.  Refer to the
@@ -181,13 +181,13 @@ directories <TT><B>app/mmsolve</B></TT> and
 
 <P>
 If <TT>-interface</TT> is set to 1 (enabled), <B>batchsolve</B> registers
-with the account service directory<A NAME="11694"></A>
+with the account service directory<A NAME="11720"></A>
 application, and <B>mmLaunch</B> will be able to provide an interactive
 interface.  Using this interface, <B>batchsolve</B> may be controlled in
 a manner similar to <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"
- NAME="11701"><B>mmSolve2D</B></A>.  The
-interface<A NAME="11702"></A> allows you to pause,
-un-pause, and terminate<A NAME="11703"></A> the current
+ NAME="11727"><B>mmSolve2D</B></A>.  The
+interface<A NAME="11728"></A> allows you to pause,
+un-pause, and terminate<A NAME="11729"></A> the current
 simulation, as well as to attach data display applications to monitor
 the solver's progress.  If more interactive control is needed,
 <B>mmSolve2D</B> should be used.
@@ -195,7 +195,7 @@ the solver's progress.  If more interactive control is needed,
 <P>
 If <TT>-interface</TT> is 0 (disabled), <B>batchsolve</B> does not register,
 leaving it without an interface, unless it is sourced into another
-script (e.g., <TT><B>batchslave.tcl</B></TT><A NAME="11708"></A>) that
+script (e.g., <TT><B>batchslave.tcl</B></TT><A NAME="11734"></A>) that
 arranges for an interface on the behalf of <B>batchsolve</B>.
 
 <P>
@@ -216,11 +216,11 @@ script.
 
 <P>
 Note on Tk dependence: If a problem is loaded that uses a
-<A HREF="MIF_1.1.html#sec:partgeometry">bitmap mask file</A><A NAME="11720"></A><A NAME="11721"></A>, and
+<A HREF="MIF_1.1.html#sec:partgeometry">bitmap mask file</A><A NAME="11746"></A><A NAME="11747"></A>, and
 if that mask file is not in the PPM P3 (text) format, then
-<B>batchsolve</B> will launch <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm">any2ppm</A><A NAME="11727"></A> to convert it into
+<B>batchsolve</B> will launch <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm">any2ppm</A><A NAME="11753"></A> to convert it into
 the PPM P3 format.  Since <B>any2ppm</B>
-requires<A NAME="11729"></A><A NAME="11730"></A> Tk, at the
+requires<A NAME="11755"></A><A NAME="11756"></A> Tk, at the
 time the mask file is read a valid display must be available.  See the
 <B>any2ppm</B> documentation for details.
 
@@ -233,29 +233,29 @@ The output may be changed by a Tcl <A HREF="#sec:batchsolvepi">wrapper
 script</A>, but the default
 output behavior of <B>batchsolve</B> is to write tabular text data and
 the magnetization state at the control point for each applied field
-step.  The tabular data are appended to the file <TT><B><EM>basename</EM>.odt</B></TT><A NAME="11739"></A>, where <EM>basename</EM> is the
+step.  The tabular data are appended to the file <TT><B><EM>basename</EM>.odt</B></TT><A NAME="11765"></A>, where <EM>basename</EM> is the
 ``Base Output Filename'' specified in the input
-MIF&nbsp;1.x file<A NAME="11741"></A>.  See the routine <TT>GetTextData</TT> in
+MIF&nbsp;1.x file<A NAME="11767"></A>.  See the routine <TT>GetTextData</TT> in
 <TT><B>batchsolve.tcl</B></TT> for details, but at present the output consists of
-the solver iteration count<A NAME="11744"></A>, nominal applied field
-<B>B</B><A NAME="11745"></A>, reduced average
-magnetization <B>m</B><A NAME="11746"></A>, and total
-energy<A NAME="11747"></A>.  This output is in the ODT file format.
+the solver iteration count<A NAME="11770"></A>, nominal applied field
+<B>B</B><A NAME="11771"></A>, reduced average
+magnetization <B>m</B><A NAME="11772"></A>, and total
+energy<A NAME="11773"></A>.  This output is in the ODT file format.
 
 <P>
 The magnetization data are written to a series of OVF (OOMMF Vector
-Field) files<A NAME="11748"></A>,
+Field) files<A NAME="11774"></A>,
 <TT><B><I>basename</I>.field<I>nnnn</I>.omf</B></TT>, where <TT><B><I>nnnn</I></B></TT>
 starts at <TT><B>0000</B></TT> and is incremented at each applied
-field<A NAME="11753"></A> step.  (The ASCII text header inside each
+field<A NAME="11779"></A> step.  (The ASCII text header inside each
 file records the nominal applied field at that step.)  These files are
 viewable using <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="11758"><B>mmDisp</B></A>.
+ NAME="11784"><B>mmDisp</B></A>.
 
 <P>
 The solver also automatically appends the input problem specification
 and miscellaneous runtime information to the log file
-<TT><B><EM>basename</EM>.log</B></TT><A NAME="11760"></A>.
+<TT><B><EM>basename</EM>.log</B></TT><A NAME="11786"></A>.
 
 <P>
 
@@ -280,7 +280,7 @@ a wrapper script to provide enhanced functionality.
 <DT><STRONG><TT><B>mif</B></TT></STRONG></DT>
 <DD>A Tcl handle to a global <TT>mms_mif</TT> 
   object holding the problem description defined by the input
-  MIF&nbsp;1.x file<A NAME="11773"></A>.
+  MIF&nbsp;1.x file<A NAME="11799"></A>.
 </DD>
 <DT><STRONG><TT><B>solver</B></TT></STRONG></DT>
 <DD>A Tcl handle to the <TT>mms_solver</TT> object.
@@ -328,7 +328,7 @@ argument to the <TT>BatchTaskRun</TT> and <TT>BatchTaskLaunch</TT> procs in
 <TT><B>batchsolve.tcl</B></TT>.  Typically one copies the default procs (as needed)
 into a <A HREF="#sec:batchschedex">task script</A>, and makes appropriate
 modifications.  You may (re-)define these procs either before or after
-sourcing <TT><B>batchsolve.tcl</B></TT><A NAME="11802"></A>.
+sourcing <TT><B>batchsolve.tcl</B></TT><A NAME="11828"></A>.
 
 <P>
 
@@ -344,7 +344,7 @@ sourcing <TT><B>batchsolve.tcl</B></TT><A NAME="11802"></A>.
 The OBS supports complex scheduling of multiple batch jobs
 with two applications, <B>batchmaster</B> and <B>batchslave</B>.
 The user launches <B>batchmaster</B> and provides it with
-a task script<A NAME="11809"></A>.  The task script is a
+a task script<A NAME="11835"></A>.  The task script is a
 Tcl script that describes the set of tasks for <B>batchmaster</B>
 to accomplish.  The work is actually done by instances of
 <B>batchslave</B> that are launched by <B>batchmaster</B>.
@@ -364,7 +364,7 @@ and may be used to schedule other types of jobs as well.
 Master Scheduling Control: batchmaster</A>
 </H4>
 <P>
-The application <B>batchmaster</B><A NAME="11823"></A> is
+The application <B>batchmaster</B><A NAME="11849"></A> is
 launched by the command line:
 <PRE>
 tclsh oommf.tcl batchmaster [standard options] task_script \
@@ -384,7 +384,7 @@ tclsh oommf.tcl batchmaster [standard options] task_script \
 </DL>
 
 <P>
-When <B>batchmaster</B><A NAME="11834"></A> is run, it
+When <B>batchmaster</B><A NAME="11860"></A> is run, it
 sources the task script.  Tcl commands in the task script
 should modify the global object <TT>$TaskInfo</TT>
 to inform the master what tasks to perform and
@@ -412,8 +412,8 @@ network name, and the <TT>$TaskInfo</TT> methods <TT>AppendSlave</TT> and
 Furthermore, OOMMF does not currently supply any methods for launching
 jobs on remote machines, so a task script which requests the launching
 of jobs on remote machines requires a working
-<code>rsh</code><A NAME="11852"></A> command or
-equivalent<A NAME="11853"></A>.
+<code>rsh</code><A NAME="11878"></A> command or
+equivalent<A NAME="11879"></A>.
 <A HREF="#sec:batchschedtask">(Details.)</A>
 
 <P>
@@ -501,7 +501,7 @@ the spawn command so that all slave applications are launched in the
 background.
 
 <P>
-The communication protocol<A NAME="11908"></A> between
+The communication protocol<A NAME="11934"></A> between
 <B>batchmaster</B> and <B>batchslave</B> is evolving and is not
 described here.  Check the source code for the latest details.
 
@@ -514,7 +514,7 @@ Batch Task Scripts
 <P>
 The application <B>batchmaster</B> 
 creates an instance of a <TT>BatchTaskObj</TT> object with
-the name <TT>$TaskInfo</TT>.  The task script<A NAME="11916"></A> uses
+the name <TT>$TaskInfo</TT>.  The task script<A NAME="11942"></A> uses
 method calls to this object to set up tasks to be performed.  The only
 required call is to the <TT>AppendTask</TT> method, e.g.,
 <BLOCKQUOTE><PRE>
@@ -524,7 +524,7 @@ $TaskInfo AppendTask A "BatchTaskRun taskA.mif"
 This method expects two arguments, a label for the task (here ``A'') and
 a script to accomplish the task.  
 The script will be passed across a
-network socket<A NAME="11922"></A> from 
+network socket<A NAME="11948"></A> from 
 <B>batchmaster</B> to a slave application, and
 then the script will be interpreted by the slave.  In particular, keep
 in mind that the file system seen by the script will be that of the
@@ -533,7 +533,7 @@ machine on which the slave process is running.
 <P>
 This example uses the default <TT><B>batchsolve.tcl</B></TT> procs to run the
 simulation defined by the <TT><B>taskA.mif</B></TT> MIF&nbsp;1.x
-file<A NAME="11926"></A>.  If you want to make changes to the MIF problem specifications on the fly, you will need to modify the default
+file<A NAME="11952"></A>.  If you want to make changes to the MIF problem specifications on the fly, you will need to modify the default
 procs.  This is done by creating a slave initialization script, via the
 call
 <BLOCKQUOTE><PRE>
@@ -547,7 +547,7 @@ usually redefines the <TT>SolverTaskInit</TT> proc; optionally the
 each task <TT>SolverTaskInit</TT> is called by <TT>BatchTaskRun</TT> (in
 <TT><B>batchsolve.tcl</B></TT>), after each iteration
 <TT>BatchTaskIterationCallback</TT> is executed, at each control
-point<A NAME="11939"></A> <TT>BatchTaskRelaxCallback</TT> is
+point<A NAME="11965"></A> <TT>BatchTaskRelaxCallback</TT> is
 run, and at the end of each task <TT>SolverTaskCleanup</TT> is called.
 <TT>SolverTaskInit</TT> and <TT>SolverTaskCleanup</TT> are passed the arguments
 that were passed to <TT>BatchTaskRun</TT>.  A simple <TT>SolverTaskInit</TT>
@@ -570,9 +570,9 @@ for this task on the argument list, and makes use of the global
 variables <TT>mif</TT> and <TT>basename</TT>.  (Both should be initialized in
 the slave initialization script outside the <TT>SolverTaskInit</TT> proc.)
 It then stores the requested value of <TT>A</TT> in the
-<TT>mif</TT><A NAME="11956"></A> object, sets up the base filename to use for
+<TT>mif</TT><A NAME="11982"></A> object, sets up the base filename to use for
 output, and opens a text file to which tabular
-data<A NAME="11957"></A> will be appended.  The handle to this text
+data<A NAME="11983"></A> will be appended.  The handle to this text
 file is stored in the global <TT>outtextfile</TT>, which is closed by the
 default <TT>SolverTaskCleanup</TT> proc.  A corresponding task script could
 be
@@ -631,7 +631,7 @@ and the last is interpreted as a single percent.
 are launched in the background.
 
 <P>
-To launch <B>batchslave</B> on a remote host, use <TT><B>rsh</B></TT><A NAME="12011"></A>
+To launch <B>batchslave</B> on a remote host, use <TT><B>rsh</B></TT><A NAME="12037"></A>
 in the spawn command, e.g.,
 <BLOCKQUOTE><PRE>
 $TaskInfo AppendSlave 1 {exec rsh foo tclsh oommf/oommf.tcl \
@@ -670,7 +670,7 @@ The
 <A NAME="pt:batchschedsimpletask"></A>
 <A HREF="#fig:batchschedsimpletask">first sample task script</A> is a simple example that runs the
 3 micromagnetic simulations described by the MIF&nbsp;1.x files
-<TT><B>taskA.mif</B></TT>, <TT><B>taskB.mif</B></TT> and <TT><B>taskC.mif</B></TT><A NAME="12039"></A>.  It
+<TT><B>taskA.mif</B></TT>, <TT><B>taskB.mif</B></TT> and <TT><B>taskC.mif</B></TT><A NAME="12065"></A>.  It
 is launched with the command
 <BLOCKQUOTE><PRE>
 tclsh oommf.tcl batchmaster simpletask.tcl
@@ -680,8 +680,8 @@ This example uses the default slave launch script, so a single slave is
 launched on the current machine, and the 3 simulations will be run
 sequentially.  Also, no slave initialization script is given, so the
 default procs in <TT><B>batchsolve.tcl</B></TT> are used.  Output will be magnetization
-states<A NAME="12045"></A> and tabular data<A NAME="12046"></A>
-at each control point<A NAME="12047"></A>, stored in
+states<A NAME="12071"></A> and tabular data<A NAME="12072"></A>
+at each control point<A NAME="12073"></A>, stored in
 files on the local machine with base names as specified in the MIF files.
 
 <P>
@@ -784,7 +784,7 @@ The
 
 <A NAME="pt:batchschedmultitask"></A>
  <A HREF="#fig:batchschedmultitask">third task script</A> is a more complicated example
-running concurrent processes<A NAME="12079"></A> on two
+running concurrent processes<A NAME="12105"></A> on two
 machines.  This script should be run with the command
 <BLOCKQUOTE><PRE>
 tclsh oommf.tcl batchmaster multitask.tcl bar
@@ -803,12 +803,12 @@ farther down in the script.  The remote machine is specified as
 There are two <TT>AppendSlave</TT> commands, one to run two slaves on the
 local machine, and one to run a single slave on the remote machine
 (<TT><B>foo</B></TT>).  The latter changes to a specified
-working directory<A NAME="12093"></A>  before
+working directory<A NAME="12119"></A>  before
 launching the <TT><B>batchslave</B></TT> application on the remote machine.  (For
 this to work you must have <TT>rsh</TT> configured properly.  In the future
 it may be possible to launch remote commands using the OOMMF account
 server application, thereby lessening the reliance on system commands
-like <TT>rsh</TT><A NAME="12097"></A>.)
+like <TT>rsh</TT><A NAME="12123"></A>.)
 
 <P>
 Below this the slave initialization script is defined.  The Tcl <TT>regsub</TT> command is used to place the task script defined value of
@@ -821,7 +821,7 @@ machine it is running on.)  Then replacement <TT>SolverTaskInit</TT> and
 interprets its first argument as a value for the exchange constant
 <TT>A</TT>.  Note that this is different from the default
 <TT>SolverTaskInit</TT> proc, which interprets its first argument as the
-name of a MIF&nbsp;1.x file<A NAME="12106"></A> to load.  With this task
+name of a MIF&nbsp;1.x file<A NAME="12132"></A> to load.  With this task
 script, a MIF file is read once when the slave is brought up, and then
 each task redefines only the value of <TT>A</TT> for the simulation (and
 corresponding changes to the output filenames and data table header).
@@ -935,6 +935,6 @@ script <TT><B>multitask.tcl</B></TT>.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

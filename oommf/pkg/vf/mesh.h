@@ -2,7 +2,7 @@
  *
  * Abstract mesh class and children
  *
- * Last modified on: $Date: 2015/08/04 21:55:17 $
+ * Last modified on: $Date: 2016/02/24 20:34:19 $
  * Last modified by: $Author: donahue $
  */
 
@@ -155,15 +155,24 @@ public:
     minmag=MinMagHint; maxmag=MaxMagHint;
   }
 
+  void GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
+                       Nb_LocatedVector<OC_REAL8>& max_export) const;
   void GetValueMagSpan(OC_REAL8m &minmag,OC_REAL8m &maxmag) const;
-  /// Returns smallest and largest magnitude across all value
-  /// vectors in mesh. This does *not* include DisplayValueScale
-  /// scaling, but does include ValueMultiplier.
+  /// Returns smallest and largest magnitude across all value vectors in
+  /// mesh. This does *not* include DisplayValueScale scaling, but does
+  /// include ValueMultiplier.  The Nb_LocatedVector version returns the
+  /// (or, in case of duplicates, an example of) vector value and
+  /// location having the extremal values.
 
+  void GetNonZeroValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
+                              Nb_LocatedVector<OC_REAL8>& max_export) const;
   void GetNonZeroValueMagSpan(OC_REAL8m &minmag,OC_REAL8m &maxmag) const;
   /// Determine smallest and largest magnitude across all vectors in
   /// mesh, *excluding* zero vectors. This does *not* include
-  /// DisplayValueScale scaling, but does include ValueMultiplier.
+  /// DisplayValueScale scaling, but does include ValueMultiplier.  The
+  /// Nb_LocatedVector version returns the (or, in case of duplicates,
+  /// an example of) vector value and location having the extremal
+  /// values.
 
   void GetValueMean(Nb_Vec3<OC_REAL8>& meanvalue) const;
   /// Compute vector mean value.  Each node is weighted equally.  The
@@ -176,6 +185,10 @@ public:
   /// include DisplayValueScale scaling, but does include
   /// ValueMultiplier.
 
+  OC_REAL8m GetValueL1() const;
+  /// Computes \sum_i (|x_i| + |y_i| + |z_i|)/N, where i=1..N.
+  /// Each node is weighted equally.  The value does *not* include
+  /// DisplayValueScale scaling, but does include ValueMultiplier.
 
   virtual const char* GetMeshType() const =0;
 
@@ -588,10 +601,19 @@ public:
   // and z axes are icount, jcount, and kcount, respectively.  The
   // method order specifies the interpolation method; it should be
   // either 0 (nearest), 1 (trilinear) or 3 (tricubic).
-  void ResampleCopy(const Vf_GridVec3f& other_mesh,
+  void ResampleCopy(const Vf_GridVec3f& import_mesh,
                     const Nb_BoundingBox<OC_REAL8> &newrange,
                     OC_INDEX icount,OC_INDEX jcount,OC_INDEX kcount,
                     int method_order);
+
+  // ResampleCopyAverage is similar to ResampleCopy, except rather than
+  // resampling through samples on a fit curve, instead each resampled
+  // value is the average value from the cells in source mesh lying in
+  // the footprint of the resample cell.
+  void ResampleCopyAverage(const Vf_GridVec3f& import_mesh,
+                    const Nb_BoundingBox<OC_REAL8> &newrange,
+                    OC_INDEX icount,OC_INDEX jcount,OC_INDEX kcount);
+
 
   inline Nb_Vec3<OC_REAL8>& GridVec(OC_INDEX i,OC_INDEX j,OC_INDEX k) {
     return grid(k,j,i);

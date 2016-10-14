@@ -55,16 +55,16 @@ virtual frame buffer.
 
 \index{requirement!disk~space|(}
 The \OOMMF\ source distribution unpacks into a directory tree containing
-about 1500 files and directories, occupying approximately 80 MB of
+about 2500 files and directories, occupying approximately 130 MiB of
 storage.  The amount of disk space needed for compiling and linking
 varies greatly between platforms; allow up to an additional 60 MB for
 the build.  Removing intermediate object modules (cf.\ the \cd{pimake}
 ``objclean'' target, in \html{the} \hyperrefhtml{Reducing Disk Space
 Usage}{Reducing Disk Space Usage, Sec.~}{,
 below}{sec:install.reducedisk} \html{section}) reduces the final space
-requirement for source + binary executables to between 80 MB and 90 MB.
-The \OOMMF\ distribution containing \Windows\ executables unpacks into a
-directory tree occupying about 85 MB of storage.  
+requirement for source + binary executables to less than 140 MB.
+%The \OOMMF\ distribution containing \Windows\ executables unpacks into a
+%directory tree occupying about 85 MB of storage.  
 %{\bf Note:} On a
 %non-compressed {\tt FAT16} file system on a large disk, \OOMMF\ may take
 %up much more disk space.  This is because on such systems, the minimum
@@ -134,13 +134,15 @@ to prepare \OOMMF\ software for use on your computer.
 The latest release of the \OOMMF\ software may be retrieved from the
 \htmladdnormallinkfoot{\OOMMF\ download
 page}{http://math.nist.gov/oommf/software.html}.  Each release is
-available in two formats.  The first format is a gzipped tar file
-containing an archive of all the \OOMMF\ source code.  The second format
-is a \fn{.zip} compressed archive containing source code and
-pre-compiled executables for \Windows.  Each \Windows\ binary
+available in three formats.  The first format is a gzipped tar file
+containing an archive of all the \OOMMF\ source code.  The second and
+third formats
+are \fn{.zip} compressed archives containing source code and
+pre-compiled executables for \Windows.  They contain 64-bit and
+32-bit executables repectively.  Each \Windows\ binary
 distribution is compatible with only a particular sequence of releases
-of \Tcl/\Tk.  For example, a Windows binary release for \Tcl/\Tk\ 8.3.x
-is compatible with \Tcl/\Tk\ 8.3.0, 8.3.1, \ldots.  
+of \Tcl/\Tk.  For example, a Windows binary release for \Tcl/\Tk\ 8.6.x
+is compatible with \Tcl/\Tk\ 8.6.0, 8.6.1, \ldots.  
 %Other release
 %formats, e.g., pre-compiled executables for Microsoft
 %\Windows~NT running on a Compaq Alpha Systems RISC-based microprocessor
@@ -150,7 +152,7 @@ is compatible with \Tcl/\Tk\ 8.3.0, 8.3.1, \ldots.
 For the first format, unpack the distribution archive using gunzip and
 tar:
 \begin{verbatim}
-gunzip -c oommf12a6.tar.gz | tar xvf -
+gunzip -c oommf12b0.tar.gz | tar xvf -
 \end{verbatim}
 
 For the other format(s), you will need a utility program to unpack the
@@ -164,7 +166,7 @@ One utility program which is known to be suitable is
 
 Using your utility, unpack the \fn{.zip} archive, e.g.
 \begin{verbatim}
-unzip oommf12a6_86.zip
+unzip oommf12b0_86_x64.zip
 \end{verbatim}
 
 For either distribution format, the unpacking sequence creates a
@@ -181,9 +183,9 @@ sure that the resulting mix of files from an old and a new
 important restriction is that the major+minor release number of
 \Tcl/\Tk\ must match the major+minor release number of the \Tcl/\Tk\
 that \OOMMF\ was built against.  For example, if \OOMMF\ was built using
-\Tcl/\Tk\ 8.5.18, then the resulting executables can run with any past or
+\Tcl/\Tk\ 8.5.19, then the resulting executables can run with any past or
 future releases of \Tcl/\Tk\ from the 8.5.* series, but they won't run
-(for example) with \Tcl/\Tk\ 8.4.20 or 8.6.4.
+(for example) with \Tcl/\Tk\ 8.4.20 or 8.6.6.
 
 Another restriction is that the width of memory addresses in \Tcl/\Tk\
 and \OOMMF\ must match.  Most general-purpose operating systems today
@@ -259,33 +261,31 @@ it will print a summary of your
 platform configuration when it is evaluated by \fn{tclsh}.
 This summary describes your platform type, your C++ compiler,
 and your \Tcl/\Tk\ installation.  As an example, 
-here is the typical output on a Mac OS X 10.9 system:
+here is the typical output on a CentOS 7 Linux system:
 \begin{verbatim}
 $ tclsh oommf.tcl +platform
-<5426> oommf.tcl 1.2.0.6  info:
-OOMMF release 1.2.0.6, snapshot 2015.03.25
-Platform Name:		darwin
-Tcl name for OS:	Darwin 13.4.0
-C++ compiler:   	/usr/bin/g++ 
- Version string:	 Apple LLVM version 6.0 (clang-600.0.57) (based on LLVM 3.5svn) / Target: x86_64-apple-darwin13.4.0 / Thread model: posix
+<17875> oommf.tcl 1.2.1.0  info:
+OOMMF release 1.2.1.0
+Platform Name:          linux-x86_64
+Tcl name for OS:        Linux 3.10.0-327.28.3.el7.x86_64
+C++ compiler:           /bin/g++ 
+ Version string:         g++ (GCC) 4.8.5 20150623 (Red Hat 4.8.5-4) / x86_64-redhat-linux
 Shell details ---
- tclsh (running): 	/usr/bin/tclsh
-                  	(links to /usr/bin/tclsh8.5)
-                  	(links to /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclsh8.5)
-                  	 --> Version 8.5.9, 64 bit, threaded
- tclsh (OOMMF): 	/usr/bin/tclsh8.5
-                  	 --> Version 8.5.9, 64 bit, threaded
- filtersh:           	/Users/dgp/oommf/app/omfsh/darwin/filtersh
-                  	 --> Version 8.5.9, 64 bit, threaded
- tclConfig.sh:        	/System/Library/Frameworks/Tcl.framework/Versions/8.5/tclConfig.sh
-                      	 --> Version 8.5.9
- wish (OOMMF):        	/usr/bin/wish8.5
-                  	 --> Version 8.5.9, Tk 8.5.9, 64 bit, threaded
- tkConfig.sh:         	/System/Library/Frameworks/Tk.framework/Versions/8.5/tkConfig.sh
-                      	 --> Tk Version 8.5.9
-OOMMF threads:         	Yes: Default thread count = 2
-OOMMF API index:       	20150129
-Temp file directory: 	/var/folders/dy/srfj33512f51kc5knp_lph_r0000gp/T/
+ tclsh (running):       /usr/bin/tclsh
+                        (links to /usr/bin/tclsh8.5)
+                         --> Version 8.5.13, 64 bit, threaded
+ tclsh (OOMMF):         /usr/bin/tclsh8.5
+                         --> Version 8.5.13, 64 bit, threaded
+ tclConfig.sh:          /usr/lib64/tclConfig.sh
+                         --> Version 8.5.13
+ wish (OOMMF):          /usr/bin/wish8.5
+                         --> Version 8.5.13, Tk 8.5.13, 64 bit, threaded
+ tkConfig.sh:           /usr/lib64/tkConfig.sh
+                         --> Tk Version 8.5.13
+OOMMF threads:          Yes: Default thread count = 4
+  NUMA support:          No
+OOMMF API index:        20150129
+Temp file directory:    /tmp
 \end{verbatim}
 
 If \cd{oommf.tcl +platform} doesn't print a summary similar to the
@@ -298,7 +298,7 @@ of the platform configuration information.
 
 \index{platform!names|(}
 The first line of the example summary reports that \OOMMF\ recognizes
-the platform by the name \cd{darwin}.  \OOMMF\ software recognizes many
+the platform by the name \cd{linux-x86\_64}.  \OOMMF\ software recognizes many
 of the more popular computing platforms, and assigns each a platform
 name.  The platform name is used by \OOMMF\ in index and configuration
 files and to name directories so that a single \OOMMF\ installation can
@@ -322,9 +322,9 @@ than the one you wish to use, then you will need to tell \OOMMF\ what
 compiler to use.  To do that, you must edit the appropriate
 configuration file for your platform.  Continuing the example above, one
 would edit the file
-\fn{config/platforms/darwin.tcl}\index{configuration~values}.
+\fn{config/platforms/linux-x86\_64.tcl}\index{configuration~values}.
 Editing instructions are contained within the file.  On other platforms
-the name \fn{darwin} in \fn{config/platforms/darwin.tcl}
+the name \fn{linux-x86\_64} in \fn{config/platforms/linux-x86\_64.tcl}
 should be replaced with the platform name \OOMMF\ reports for your
 platform.  For example, on a 32-bit Windows machine using an x86
 processor, the corresponding configuration file is
@@ -353,8 +353,7 @@ Cygwin environment\index{platform!Windows!Cygwin~environment} on
 \Windows\ have such a file, usually named \fn{tclConfig.sh}.  The
 \Tcl\ configuration file records details about how \Tcl\ was built and
 where it was installed.  On \Windows\ platforms, this information is
-recorded in the
-\Windows\ registry\index{platform!Windows!no~Tcl~configuration~file}, so
+recorded via other means\index{platform!Windows!no~Tcl~configuration~file}, so
 it is normal to have \cd{oommf.tcl +platform} report ``none found''.  If
 \cd{oommf.tcl +platform} reports ``none found'', but you know that an
 appropriate \Tcl\ configuration file is present on your system, you can
@@ -408,8 +407,10 @@ After the thread info, \cd{oommf.tcl +platform} reports the directory
 that \OOMMF\ will use to write temporary files\index{temporary~files}.
 This directory is used, for example, to transfer magnetization data from
 the micromagnetic solvers to the \app{mmDisp} display module.  You must
-have write access to this directory.  If you don't like the
-\OOMMF\ default, you may change it via the
+have write access to this directory.  It needs to have enough space to
+manage the dataflows of your simulations.  It is also beneficial if
+this directory is local to the processors performing the calculations.
+If you don't like the \OOMMF\ default, you may change it via the
 \cd{path\_directory\_temporary}\index{configuration~values!path\_directory\_temporary}
 setting in the \fn{config/platforms/} file for your platform.  Or you
 can set the environment variable
@@ -572,9 +573,9 @@ bootstrap application will start up a copy of the \OOMMF\ application
 \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch} in a
 new window.
 
-If you publish material created with the aid of \OOMMF, please refer to
-\hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
-for citation information.
+%If you publish material created with the aid of \OOMMF, please refer to
+%\hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
+%for citation information.
 
 
 \subsubsection{Reporting Problems}
@@ -896,7 +897,7 @@ installing a ``development'' version of \Tcl/\Tk, which may be found on
 the operating system installation disks, or may be available from the
 system vendor.  There are also binary releases of \Tcl/\Tk\ for a number
 of systems available from ActiveState, under the name
-\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/Products/ActiveTcl/}.
+\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/activetcl/}.
 Alternatively, one may download the sources for \Tcl\ and \Tk\ from the
 \htmladdnormallinkfoot{Tcl Developer
 Xchange}{http://purl.org/tcl/home/}, and build and install \Tcl/\Tk\
@@ -991,7 +992,7 @@ details.
 Both 32-bit and 64-bit builds are supported using the MinGW ports of
 g++.  (The 32-bit and 64-bit versions of g++ are separate downloads.)
 Use a standard Windows \Tcl/\Tk, such as the
-\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/Products/ActiveTcl/}
+\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/activetcl/}
 release from ActiveState.  You will also need to edit the appropriate
 platform file to select g++ as the compiler.  If you are using a 32-bit
 \Tcl/\Tk\ and g++, then the platform file is
@@ -1027,11 +1028,11 @@ different address'' error messages), then follow this procedure:
 Additional information on this problem can be found in the Cygwin
 documentation.
 
-At the time of this writing (Sept.\ 2013), the Cygwin versions of
+At the time of this writing (Sept.\ 2016), the Cygwin versions of
 \Tcl/\Tk\ are not threaded, so \OOMMF\ built using Cygwin will
 likewise be not threaded.  This will likely change when a Cygwin
 \Tcl/\Tk\ 8.6 package becomes available (the current Cygwin
-\Tcl/\Tk\ is 8.5.11), but it is possible to build a threaded
+\Tcl/\Tk\ is 8.5.18), but it is possible to build a threaded
 \Tcl/\Tk\ in Cygwin from source.  Refer to the \Tcl/\Tk\ build
 documentation for details.
 

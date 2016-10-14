@@ -32,6 +32,7 @@ private:
 			NGBR_6_FREE,
                         NGBR_6_MIRROR, NGBR_6_MIRROR_STD,
                         NGBR_6_BIGANG_MIRROR, NGBR_6_ZD2,
+                        NGBR_6_ALT,
 			NGBR_12_FREE, NGBR_12_ZD1, NGBR_12_ZD1B,
 			NGBR_12_MIRROR,	NGBR_26 } kernel;
   /// Exchange formulation to use.  "unknown" is invalid; it
@@ -113,6 +114,14 @@ private:
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
   void CalcEnergy6NgbrZD2
+  (const Oxs_MeshValue<ThreeVector>& spin,
+   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+   const Oxs_CommonRectangularMesh* mesh,
+   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+   OC_INDEX node_start,OC_INDEX node_stop,
+   int threadnumber) const;
+  void CalcEnergy6NgbrAlt
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,

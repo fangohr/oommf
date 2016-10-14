@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avfdiff
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 Oc_CommandLine Option console {} {}
 Oc_CommandLine Option [Oc_CommandLine Switch] {
@@ -54,9 +54,69 @@ Oc_CommandLine Option filesort {
 } {is lsort option string or "none"}}
 } { global filesort; set filesort $method } {Sort order for file1 through filen}
 
+proc IsFloat { x } {
+    if {[regexp -- {^-?[0-9]+\.?[0-9]*((e|E)(-|\+)?[0-9]+)?$} $x] || \
+            [regexp -- {^-?[0-9]*\.?[0-9]+((e|E)(-|\+)?[0-9]+)?$} $x]} {
+        if {![catch {expr $x}]} { return 1 }
+    }
+    return 0
+}
+
+proc ClipItemCheck { item } {
+    # Format check
+    if {[string match "-" $item] || [IsFloat $item]} {
+	return 1
+    }
+    return 0
+}
+
+proc ClipStringCheck { clipstr } {
+    set okaystr 0
+    catch {
+	if {[llength $clipstr]==0} {
+	    set okaystr 1  ;# No clipping
+	} elseif {[llength $clipstr]==6} {
+	    set okaystr 1
+	    # Format check
+	    foreach item $clipstr {
+		if {![ClipItemCheck $item]} {
+		    set okaystr 0
+		    break
+		}
+	    }
+	    # Relative order check
+	    for {set i 0} {$i<3} {incr i} {
+		set min [lindex $clipstr $i]
+		set max [lindex $clipstr [expr {$i+3}]]
+		if {![string match "-" $min] && \
+			![string match "-" $max] && \
+			$min>$max} {
+		    set okaystr 0
+		    break
+		}
+	    }
+	}
+    }
+    return $okaystr
+}
+
+Oc_CommandLine Option clip {
+    {xmin { ClipItemCheck $xmin } {is minimum x}}
+    {ymin { ClipItemCheck $ymin } {is minimum y}}
+    {zmin { ClipItemCheck $zmin } {is minimum z}}
+    {xmax { ClipItemCheck $xmax } {is maximum x}}
+    {ymax { ClipItemCheck $ymax } {is maximum y}}
+    {zmax { ClipItemCheck $zmax } {is maximum z}}
+} {
+    global clipstr
+    set clipstr [list $xmin $ymin $zmin $xmax $ymax $zmax]
+} "\n\tClipping box"
+set clipstr {}
+
 Oc_CommandLine Option resample {
    {fileselect {regexp {^(0|n)$} $fileselect} {is file to change (0 or n)}}
-   {interp_order {regexp {^(0|1|3)$} $interp_order} {is interpolation order (0, 1 or 3)}}
+   {interp_order {regexp {^(0|1|3|ave)$} $interp_order}
+      {is interpolation order (0, 1, 3 or ave)}}
 } {
    global resample; set resample $fileselect
    global resample_order; set resample_order $interp_order
@@ -65,6 +125,12 @@ set resample {}
 set resample_order 0
 
 Oc_CommandLine Parse $argv
+
+# Check clip string is sensible
+if {![ClipStringCheck $clipstr]} {
+    puts stderr "ERROR: Bad clip request"
+    exit 10
+}
 
 if {$info && $odt} {
    error "ERROR: Both -info and -odt options are set. Pick one."
@@ -141,8 +207,13 @@ proc MakeCompatibleMesh { baseid changeid outid method_order} {
    set jcount [expr {int(round(($ymax-$ymin)/$ystep))}]
    set kcount [expr {int(round(($zmax-$zmin)/$zstep))}]
 
-   Resample $changeid $outid $xmin $ymin $zmin $xmax $ymax $zmax \
-      $icount $jcount $kcount $method_order
+   if {[string compare "ave" $method_order]==0} {
+      ResampleAverage $changeid $outid $xmin $ymin $zmin \
+         $xmax $ymax $zmax $icount $jcount $kcount
+   } else {
+      Resample $changeid $outid $xmin $ymin $zmin $xmax $ymax $zmax \
+         $icount $jcount $kcount $method_order
+   }
 }
 
 # Routine to extract numbers embedded in a text string.  Return value is
@@ -236,8 +307,12 @@ proc WriteOdtData { outchan arrname } {
 
 
 # Load subtractor
-SelectActiveMesh 1
+set active_mesh 1
+SelectActiveMesh $active_mesh
 ChangeMesh $subfile 0 0 0 -1
+if {[llength $clipstr]} {
+   CopyMesh $active_mesh $active_mesh 0 "x:y:z" $clipstr 1
+}
 if {$info} {
    set namlen [string length $subfile]
    foreach infile $filelist {
@@ -245,28 +320,37 @@ if {$info} {
       if {$len>$namlen} { set namlen $len}
    }
    foreach {minval maxval} [GetMeshValueMagSpan] { break }
+   set L1 [GetMeshValueL1]
    set rms [GetMeshValueRMS]
    set minval [ResetInf $minval] ; set maxval [ResetInf $maxval]
+   set L1     [ResetInf $L1]
    set rms    [ResetInf $rms]
    set units [GetMeshValueUnit]
+   set tabset [expr {$namlen + [string length " (in $units)"]}]
    if {[catch {format "%*s (in %s): \
-               Min  mag = $numfmt,  Max  mag = $numfmt, RMS = $numfmt" \
-               $namlen $subfile $units $minval $maxval $rms} msg]} {
+            Min mag = $numfmt\n%*s   Max mag = $numfmt,\
+            L1 = $numfmt,      RMS = $numfmt" \
+            $namlen $subfile $units $minval $tabset " " $maxval $L1 $rms} msg]} {
       error "$msg\nVALUES: subfile=$subfile\n         \
-                             units=$units\n       \
-                            minval=$minval\n       \
-                            maxval=$maxval\n          \
+                             units=$units\n        \
+                            minval=$minval\n        \
+                            maxval=$maxval\n            \
+                                L1=$L1\n           \
                                rms=$rms"
    }
    puts $msg
 }
 
-SelectActiveMesh 0
+set active_mesh 0
+SelectActiveMesh $active_mesh
 set passcount -1
 foreach infile $filelist {
    incr passcount
    if {[catch {ChangeMesh $infile 0 0 0 -1} errmsg]} {
       error "ERROR loading file \"$infile\": $errmsg"
+   }
+   if {[llength $clipstr]} {
+      CopyMesh $active_mesh $active_mesh 0 "x:y:z" $clipstr 1
    }
    set baseid 1
    if {[catch {
@@ -299,12 +383,15 @@ foreach infile $filelist {
    } else {
       if {$info} {
          foreach {minval maxval} [GetMeshValueMagSpan] { break }
+         set L1 [GetMeshValueL1]
          set rms [GetMeshValueRMS]
          set minval [ResetInf $minval] ; set maxval [ResetInf $maxval]
+         set L1     [ResetInf $L1]
          set rms    [ResetInf $rms]
          set units [GetMeshValueUnit]
-         puts [format "%*s (in %s):  Max diff = $numfmt,  RMS diff = $numfmt" \
-                  $namlen $infile $units $maxval $rms $units]
+         puts [format "%*s (in %s): Max diff = $numfmt,\
+                       L1 = $numfmt, RMS diff = $numfmt" \
+                  $namlen $infile $units $maxval $L1 $rms $units]
       } elseif {$odt} {
          if {$odtmode == 0} {
             set filecount [llength $filelist]

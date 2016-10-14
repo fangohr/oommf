@@ -11,14 +11,15 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 
 Oc_Main SetAppName mmSolve2D
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:44:00 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:35 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]] doc userguide userguide \
 	2D_Micromagnetic_Solver_mmS.html]]
+Oc_Main SetDataRole producer
 
 Oc_CommandLine ActivateOptionSet Net
 

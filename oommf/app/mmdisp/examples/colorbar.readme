@@ -1,0 +1,29 @@
+The colorbar.config and colorwheel.config configuration files can be
+used with colorbar.ovf and colorwheel.ovf, respectively, to create color
+bars and wheels that can be added to graphics to indicate color values.
+
+Use the OOMMF command line tool avf2ppm to create a bitmap file.  For
+example, to create a Windows .bmp file,
+
+  tclsh oommf.tcl avf2ppm -config colorbar.config -format b24 colorbar.ovf
+
+If you have the pnmtopng filter command on your system, then you can try
+
+   tclsh oommf.tcl avf2ppm -config colorbar.config colorbar.ovf \
+      -filter pnmtopng -opatsub .png
+
+to create a PNG file.
+
+See the OOMMF User's Guide for details on using the avf2ppm command.
+
+The included example colorbar.png and colorwheel.png files display the
+Blue-White-Red and Red-Green-Blue-Red colormaps, respectively.  If you
+want to make a color bar or wheel for a different colormap, edit the
+corresponding .config file and change the "pixel,colormap" value as
+desired.
+
+If you prefer PostScript .eps files, use avf2ps instead of avf2ppm.
+
+The output from the above displays a bare color map without any
+annotation.  To add text indicating numeric values, import the image
+into your favorite drawing tool and edit as necessary.

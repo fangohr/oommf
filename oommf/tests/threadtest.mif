@@ -1,0 +1,139 @@
+# MIF 2.1
+# Description: Thick, polycrystalline version of stdprob1.mif,
+#              for thread testing
+
+########## REFERENCE VALUES ######################
+# --- Thickness = 20 nm:
+#                    Stage :            0
+#                Iteration :          100
+# evolve:Energy calc count :          115
+#   Run Max Spin Ang (deg) :     16.4
+#       Max Spin Ang (deg) :     9.6
+#   evolve:Max mxHxm (A/m) :    185527.67
+#
+# --- Thickness = 32 nm:
+#                    Stage :            0
+#                Iteration :          100
+# evolve:Energy calc count :          115
+#   Run Max Spin Ang (deg) :     16.0
+#       Max Spin Ang (deg) :     9.9
+#   evolve:Max mxHxm (A/m) :    615212.52
+########## REFERENCE VALUES ######################
+
+#### Single-threaded timing results on mepuche #######
+# --- Thickness = 20 nm:
+# [mepuche:~/oommf/app/oxs]$ tclsh ../../oommf.tcl boxsi examples/threadtest.mif              
+# Full Step time (secs) 196.25 cpu / 196.43 wall, module Oxs_MinDriver:
+# GetEnergy time (secs)   3.68 cpu /   3.70 wall, module Oxs_UZeeman:
+#       subtime ... f-fft  38.87 cpu /  38.93 wall, (Oxs_Demag:)
+#       subtime ... i-fft  36.46 cpu /  36.41 wall, (Oxs_Demag:)
+#       subtime ...  conv  62.85 cpu /  62.93 wall, (Oxs_Demag:)
+#       subtime ...   dot   2.31 cpu /   2.30 wall, (Oxs_Demag:)
+# GetEnergy time (secs) 152.48 cpu / 152.62 wall, module Oxs_Demag:
+# GetEnergy time (secs)   7.81 cpu /   7.85 wall, module Oxs_UniformExchange:
+# GetEnergy time (secs)   4.91 cpu /   4.95 wall, module Oxs_UniaxialAnisotropy:
+# --- Thickness = 32 nm:
+# [mepuche:~/oommf/app/oxs]$ tclsh ../../oommf.tcl boxsi examples/threadtest.mif
+# Full Step time (secs) 274.20 cpu / 274.43 wall, module Oxs_MinDriver:
+# GetEnergy time (secs)   5.89 cpu /   5.94 wall, module Oxs_UZeeman:
+#       subtime ... f-fft  61.87 cpu /  62.03 wall, (Oxs_Demag:)
+#       subtime ... i-fft  58.42 cpu /  58.51 wall, (Oxs_Demag:)
+#       subtime ...  conv  60.96 cpu /  60.86 wall, (Oxs_Demag:)
+#       subtime ...   dot   3.76 cpu /   3.64 wall, (Oxs_Demag:)
+# GetEnergy time (secs) 200.97 cpu / 201.19 wall, module Oxs_Demag:
+# GetEnergy time (secs)  12.71 cpu /  12.73 wall, module Oxs_UniformExchange:
+# GetEnergy time (secs)   7.99 cpu /   7.89 wall, module Oxs_UniaxialAnisotropy:
+######################################################
+
+
+#### Multi-threaded timing results on mepuche #######
+# --- Thickness = 32 nm, thread count = 4:
+# [mepuche:~/oommf/app/oxs]$ export OOMMF_THREAD_COUNT=4
+# [mepuche:~/oommf/app/oxs]$ tclsh ../../oommf.tcl boxsi examples/threadtest.mif
+# Starting child thread #0
+# Starting child thread #1
+# Starting child thread #2
+# EMBED_CONVOLUTION=1
+# Full Step time (secs) 402.57 cpu / 170.16 wall, module Oxs_MinDriver:
+# GetEnergy time (secs)   5.87 cpu /   5.89 wall, module Oxs_UZeeman:
+#       subtime ...  init  11.11 cpu /  11.12 wall, (Oxs_Demag:)
+#       subtime ... f-fft 101.87 cpu /  25.88 wall, (Oxs_Demag:)
+#       subtime ... i-fft 102.14 cpu /  25.71 wall, (Oxs_Demag:)
+#       subtime ...  conv  98.43 cpu /  24.95 wall, (Oxs_Demag:)
+#       subtime ...   dot   3.72 cpu /   3.74 wall, (Oxs_Demag:)
+# GetEnergy time (secs) 321.96 cpu /  96.10 wall, module Oxs_Demag:
+# GetEnergy time (secs)  12.75 cpu /  12.79 wall, module Oxs_UniformExchange:
+# GetEnergy time (secs)   7.86 cpu /   7.85 wall, module Oxs_UniaxialAnisotropy:
+# Ending thread #0
+# Ending thread #1
+# Ending thread #2
+######################################################
+
+
+RandomSeed 17
+
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+Parameter itlimit 100
+
+Parameter cellsize 4 ;# Cell size in nm
+set cellsize [expr {$cellsize*1e-9}] ;# Convert to meters
+
+set xsize 2000e-9
+set ysize 1000e-9
+set zsize   32e-9
+
+Specify Oxs_BoxAtlas:atlas [subst {
+   xrange {0 $xsize}
+   yrange {0 $ysize}
+   zrange {0 $zsize}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+   cellsize {$cellsize $cellsize $cellsize}
+   atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+   K1 0.5e3
+   axis {1 2 3}
+}]
+
+Specify Oxs_CubicAnisotropy [subst {
+   K1 1e3
+   axis1 {1 0 0}
+   axis2 {0 1 0}
+}]
+
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.001/$mu0]
+  Hrange {
+     { 50  0.87275325  0  -50 -0.87275325 0   100 }
+  }
+}]
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+ evolver :evolve
+ stopping_mxHxm 0.01
+ mesh :mesh
+ Ms 8.6e5
+ m0 {10 1 0}
+ total_iteration_limit $itlimit
+ checkpoint_interval -1
+}]
+
+#Destination table   mmDataTable
+#Schedule DataTable table Step 1
+
+Destination archive mmArchive
+Schedule DataTable archive Stage 1
+#Schedule DataTable archive Step 99999

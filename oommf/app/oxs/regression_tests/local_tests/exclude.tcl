@@ -5,6 +5,12 @@ lappend excludelist {semianalyticevolve-test {} "Bad numerics? (Mac, cpuarch=gen
 lappend excludelist {modllg_onespin {} "Bad numerics? (Windows + gcc or bcc)"}
 lappend excludelist {spinxfer {} "Bad numerics? (Windows + gcc or bcc)"}
 lappend excludelist {lagtest {} "Bad numerics?"}
+lappend excludelist [list xcgtest {} "In development"]
+lappend excludelist [list kl_infinite_prism {} "Bad numerics?"]
+lappend excludelist [list xf_thermspinxferevolve_example1 {} "Bad numerics?"]
+lappend excludelist [list xf_thermspinxferevolve_example2 {} "Bad numerics?"]
+lappend excludelist [list xf_thermheunevolve_example1 {} "Bad numerics?"]
+lappend excludelist [list xf_thermheunevolve_example2 {} "Bad numerics?"]
 
 # If unix, is X11 server accessible?
 global no_display

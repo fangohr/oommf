@@ -7,7 +7,7 @@ if {[catch {set tcl_precision 0}]} {
    set tcl_precision 17
 }
 
-set progvers "MIF Conversion utility 1.2.0.4"
+set progvers "MIF Conversion utility 1.2.1.0"
 
 set infochan stdout
 set errchan stderr
@@ -773,13 +773,16 @@ if {[llength $cellsize]!=3} {
 
 
 ##############################################################
-# Get part shape info
+# Get part shape info.  The number of parameters varies
+# by shape.  The documentation indicates that a valid file
+# should have the proper number of parameters, but the mifio.cc
+# code ignores extra parameters, so do the same here.
 if {[catch {EatAllRecords inlist "partshape"} part_shape]} {
     set part_shape rectangle
 }
-if {[string match -nocase "rectangle" $part_shape]} {
+if {[string match -nocase "rectangle" [lindex $part_shape 0]]} {
     set Ms_str "$Ms"
-} elseif {[string match -nocase "ellipse" $part_shape]} {
+} elseif {[string match -nocase "ellipse" [lindex $part_shape 0]]} {
     puts $outfile {
 proc Ellipse { Ms x y z } {
     set xrad [expr {2.*$x - 1.}]
@@ -790,7 +793,7 @@ proc Ellipse { Ms x y z } {
 }}
     set Ms_str \
        "{ Oxs_ScriptScalarField { atlas :atlas script {Ellipse $Ms} } }"
-} elseif {[string match -nocase "ellipsoid" $part_shape]} {
+} elseif {[string match -nocase "ellipsoid" [lindex $part_shape 0]]} {
     puts $outfile {
 proc Ellipsoid { Ms x y z } {
     set xrad [expr {2.*$x - 1.}]

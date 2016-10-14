@@ -67,30 +67,43 @@
 enum Oc_PrefetchDirective {
   Ocpd_NTA=_MM_HINT_NTA, Ocpd_T2=_MM_HINT_T2,
   Ocpd_T1=_MM_HINT_T1, Ocpd_T0=_MM_HINT_T0
-  // xmmintrin.h header values for these are
+  // The xmmintrin.h header values for these are
   //    _MM_HINT_NTA == 0, _MM_HINT_T2 == 1,
   //    _MM_HINT_T1 == 2,  _MM_HINT_T0 == 3
 };
 
-inline void Oc_Prefetch(const void* addr,Oc_PrefetchDirective hint)
-{
-#if defined(__GNUC__) && !defined(__INTEL_COMPILER)
-  _mm_prefetch((const char *)(addr),_mm_hint(hint));
-#elif defined(__PGIC__) // Portland group compiler
-  _mm_prefetch((const char *)(addr),_mm_hint(hint));
-#elif defined(_MSC_VER)
-  // The Visual C++ headers say second parameter to _mm_prefetch is int,
-  // but compiler whines if it isn't actually constant.
-  switch(hint) {
-  case Ocpd_NTA: _mm_prefetch((const char *)(addr),_MM_HINT_NTA); break;
-  case Ocpd_T0:  _mm_prefetch((const char *)(addr),_MM_HINT_T0); break;
-  case Ocpd_T1:  _mm_prefetch((const char *)(addr),_MM_HINT_T1); break;
-  case Ocpd_T2:  _mm_prefetch((const char *)(addr),_MM_HINT_T2); break;
-  }
-#else
-  _mm_prefetch((const char *)(addr),int(hint));
-#endif
+#if 0
+template<Oc_PrefetchDirective hint> inline void Oc_Prefetch(const void* addr) {
+  OC_THROW("Unrecognized Oc_PrefetchDirective request");
 }
+#else
+// Undefined base template
+template<Oc_PrefetchDirective hint> inline void Oc_Prefetch(const void* addr);
+#endif
+// Specializations.
+// Note 1: Some compilers declare address type to be const void * (gcc),
+//  while others declare the type as const char* (Intel, Visual C++).
+//  The code below uses casts to dance about these differences.  (C++
+//  specs allow any pointer to be cast to a void*, but strict
+//  conformance requires explicit cast from a void* to another pointer
+//  type.
+// Note2 : I've tried making Oc_Prefetch an inline non-template
+//  function, but many compilers, if building with optimizations turned
+//  off, complain that the second argument to _mm_prefetch must be a
+//  constant.
+template<> inline void Oc_Prefetch<Ocpd_NTA>(const void* addr) {
+  _mm_prefetch(static_cast<const char*>(addr),_MM_HINT_NTA);
+}
+template<> inline  void Oc_Prefetch<Ocpd_T2>(const void* addr) {
+  _mm_prefetch(static_cast<const char*>(addr),_MM_HINT_T2);
+}
+template<> inline  void Oc_Prefetch<Ocpd_T1>(const void* addr) {
+  _mm_prefetch(static_cast<const char*>(addr),_MM_HINT_T1);
+}
+template<> inline  void Oc_Prefetch<Ocpd_T0>(const void* addr) {
+  _mm_prefetch(static_cast<const char*>(addr),_MM_HINT_T0);
+}
+
 
 #if OC_COMPILER_HAS_MM_CVTSD_F54
 # define oc_sse_cvtsd_f64(a) _mm_cvtsd_f64(a)
@@ -284,11 +297,9 @@ inline const Oc_Duet Oc_FlipDuet(const Oc_Duet& w)
 
 #else  // !OC_USE_SSE
 
-// Prefetching
+// Prefetching (NOP)
 enum Oc_PrefetchDirective { Ocpd_NTA, Ocpd_T2, Ocpd_T1, Ocpd_T0 };
-
-inline void Oc_Prefetch(const void* /* addr */,Oc_PrefetchDirective /* hint */)
-{}
+template<Oc_PrefetchDirective> inline void Oc_Prefetch(const void*) {}
 
 class Oc_Duet {
 public:

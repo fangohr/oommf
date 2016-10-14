@@ -49,8 +49,8 @@ Specify Oxs_CubicAnisotropy {
 #
 # IN CONTRAST, in the following Specify block, for Oxs_UniformExchange,
 # A is an actual scalar, not a scalar field, so it can only be
-# initialized via an actual constant.  Use the Oxs_6NgbrExchange or
-# Oxs_PtwiseExchange classes if you need the exchange stiffness to
+# initialized via an actual constant.  Use the Oxs_Exchange6Ngbr or
+# Oxs_ExchangePtwise classes if you need the exchange stiffness to
 # spatially vary.
 
 Specify Oxs_UniformExchange {

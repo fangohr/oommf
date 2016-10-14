@@ -54,6 +54,8 @@
 #include "oc.h"  /* includes tcl.h */
 #include "nb.h"  /* Nb_WallWatch */
 
+#include "oxsexcept.h"
+
 /* End includes */
 
 // Number (per thread) of thread timer objects.  Set this to zero to
@@ -476,9 +478,9 @@ typedef map<String,Oxs_ThreadMapDataObject*> OXS_THREADMAP;
 // Auto-initializing map object, used for thread local storage.
 class Oxs_ThreadLocalMap {
 private:
-  Tcl_ThreadDataKey* mapkey;
 
 #if OOMMF_THREADS
+  Tcl_ThreadDataKey* mapkey;
   OXS_THREADMAP* GetLockerPointer();
   /// Automatically initialized on first access in each thread.
 #else
@@ -491,7 +493,7 @@ private:
   // To help prevent abuse, this is a private function, accessible only
   // by friends --- it is not called by any Oxs_ThreadLocalMap member,
   // including in particular ~Oxs_ThreadLocalMap.
-  static void DeleteLocker(Tcl_ThreadDataKey* mapkey);
+  static void DeleteLocker(Tcl_ThreadDataKey* import_mapkey);
 
   // Friend access for DeleteLocker
 #if OOMMF_THREADS
@@ -502,7 +504,12 @@ private:
 #endif
 
 public:
+#if OOMMF_THREADS
   Oxs_ThreadLocalMap(Tcl_ThreadDataKey* key) : mapkey(key) {}
+#else
+  Oxs_ThreadLocalMap(Tcl_ThreadDataKey* /* key */)  {}
+#endif
+
   ~Oxs_ThreadLocalMap() {} // Note: Destructor does *not* delete
   /// any objects in locker map.  Instead, friend functions should
   /// call DeleteLocker during problem release.
@@ -558,18 +565,22 @@ private:
   friend Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData);
   friend void Oxs_ThreadTree::LaunchTree(Oxs_ThreadRunObj&,void*);
   friend void Oxs_ThreadTree::EndThreads();
+  int multilevel;
 #else
   friend class Oxs_ThreadTree;
 #endif
-
-  int multilevel;
 
 protected:
   // Allow children of Oxs_ThreadRunObj access to thread local storage.
   Oxs_ThreadLocalMap local_locker;
 
 public:
-  Oxs_ThreadRunObj() : multilevel(0), local_locker(&thread_data_map) {}
+  Oxs_ThreadRunObj() :
+#if OOMMF_THREADS
+    multilevel(0),
+#endif
+    local_locker(&thread_data_map) {}
+
   virtual void Cmd(int threadnumber,void* data) =0;
   virtual ~Oxs_ThreadRunObj() {}
 };

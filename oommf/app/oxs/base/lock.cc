@@ -12,87 +12,101 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported
 
 /* End includes */
 
+Oxs_Mutex Oxs_Lock::class_mutex;
 OC_UINT4m Oxs_Lock::id_count=0;
 
 Oxs_Lock::~Oxs_Lock()
 {
-  if(write_lock>0)
-    OXS_THROW(Oxs_BadLock,"Delete with open write lock");
-  if(read_lock>0)
-    OXS_THROW(Oxs_BadLock,"Delete with open read lock(s)");
-  if(dep_lock>0)
-    OXS_THROW(Oxs_BadLock,"Delete with open dep lock(s)");
-
-  obj_id=0;
-}
-
-// Assignment operator does not copy lock counts, but
-// does check access restrictions.  obj_id is copied
-// if there are no outstanding locks and obj_id>0.
-Oxs_Lock& Oxs_Lock::operator=(const Oxs_Lock& other)
-{
-  if(read_lock>0)
-    OXS_THROW(Oxs_BadLock,"Assignment attempt over open read lock(s)");
-  if(write_lock==0) {
-    // This is the no-lock situation
-    if(other.obj_id!=0) {
-      obj_id = other.obj_id;
-    } else {
-      // Take the next valid id
-      if((obj_id = ++id_count)==0) {
-	obj_id = ++id_count; // Safety
-	// Wrap around.  For now make this fatal.
-	OXS_THROW(Oxs_BadLock,"Lock count id overflow.");
-      }
-    }
+  // Note: Destructors aren't suppose to throw
+  const char* errmsg = 0;
+  instance_mutex.Lock();
+  if(write_lock>0) {
+    errmsg = "Oxs_BadLock: Delete with open write lock";
+  } else if(read_lock>0) {
+    errmsg = "Oxs_BadLock: Delete with open read lock(s)";
+  } else if(dep_lock>0) {
+    errmsg = "Oxs_BadLock: Delete with open dep lock(s)";
   }
-  // if write_lock>0, then presumably obj_id is already 0.
-  return *this;
+  instance_mutex.Unlock();
+  if(errmsg != 0) {
+    fputs(errmsg,stderr);
+    std::terminate();
+  }
+  obj_id=0;
 }
 
 OC_BOOL Oxs_Lock::SetDepLock()
 {
+  instance_mutex.Lock();
   ++dep_lock;
+  instance_mutex.Unlock();
   return 1;
 }
 
 OC_BOOL Oxs_Lock::ReleaseDepLock()
 {
-  if(dep_lock<1) return 0;
-  --dep_lock;
-  return 1;
+  OC_BOOL rtncode = 0;
+  instance_mutex.Lock();
+  if(dep_lock>0) {
+    --dep_lock;
+    rtncode=1;
+  }
+  instance_mutex.Unlock();
+  return rtncode;
 }
 
 
 OC_BOOL Oxs_Lock::SetReadLock()
 {
-  if(write_lock) return 0;
-  ++read_lock;
-  return 1;
+  OC_BOOL rtncode = 0;
+  instance_mutex.Lock();
+  if(!write_lock) {
+    ++read_lock;
+    rtncode=1;
+  }
+  instance_mutex.Unlock();
+  return rtncode;
 }
 
 OC_BOOL Oxs_Lock::ReleaseReadLock()
 {
-  if(read_lock<1) return 0;
-  --read_lock;
-  return 1;
+  OC_BOOL rtncode = 0;
+  instance_mutex.Lock();
+  if(read_lock>0) { // read_lock == 0 is probably an error
+    --read_lock;
+    rtncode=1;
+  }
+  instance_mutex.Unlock();
+  return rtncode;
 }
 
 OC_BOOL Oxs_Lock::SetWriteLock()
 {
-  if(read_lock>0 || write_lock>0) return 0;
-  write_lock=1;
-  obj_id=0;
-  return 1;
+  OC_BOOL rtncode = 0;
+  instance_mutex.Lock();
+  if(!read_lock && !write_lock) {
+    write_lock=1;
+    obj_id=0;
+    rtncode=1;
+  }
+  instance_mutex.Unlock();
+  return rtncode;
 }
 
 OC_BOOL Oxs_Lock::ReleaseWriteLock()
 {
-  if(write_lock!=1) return 0;
-  if((obj_id = ++id_count)==0) {
-    // Wrap around.  Might want to issue a warning.
-    obj_id = ++id_count;
+  OC_BOOL rtncode = 0;
+  instance_mutex.Lock();
+  try {
+    if(write_lock) {
+      obj_id=GetNextFreeId(); // Uses class_mutex and may throw
+      write_lock=0;
+      rtncode=1;
+    }
+  } catch(...) {
+    instance_mutex.Unlock();
+    throw;
   }
-  write_lock=0;
-  return 1;
+  instance_mutex.Unlock();
+  return rtncode;
 }

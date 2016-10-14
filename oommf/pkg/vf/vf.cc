@@ -66,14 +66,14 @@ Vf_Init(Tcl_Interp *interp)
     if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
 		       OC_CONST84_CHAR("1.1"), 0) == NULL) {
         Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(Vf "VF_VERSION" needs Oc 1.1)"),
+		OC_CONST84_CHAR("\n\t(Vf " VF_VERSION " needs Oc 1.1)"),
                 NULL);
         RETURN_TCL_ERROR;
     }
     if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Nb"),
 		       OC_CONST84_CHAR("1.2.0.4"), 0) == NULL) {
         Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(Vf "VF_VERSION" needs Nb 1.2.0.4)"),
+		OC_CONST84_CHAR("\n\t(Vf " VF_VERSION " needs Nb 1.2.0.4)"),
                 NULL);
         RETURN_TCL_ERROR;
     }

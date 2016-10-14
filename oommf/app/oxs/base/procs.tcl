@@ -80,3 +80,15 @@ proc Oxs_RGlob { args } {
     }
     return $matchlist
 }
+
+# Checkpoint timestamp
+proc Oxs_CheckpointTimestamp {} {
+   if {![catch {clock milliseconds} now]} {
+      set chktime [expr {($now - int(round(1000*[Oxs_GetCheckpointAge]))+500)/1000}]
+   } else {
+      # For pre-8.5 Tcl
+      set now [clock seconds]
+      set chktime [expr {$now - int(round([Oxs_GetCheckpointAge]))}]
+   }
+   return [clock format $chktime]
+}

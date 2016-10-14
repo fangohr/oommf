@@ -1,0 +1,61 @@
+# MIF 2.1
+
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+RandomSeed 1
+
+Parameter id 0
+
+Specify Oxs_BoxAtlas:atlas {
+  xrange {0 1000e-9}
+  yrange {0  750e-9}
+  zrange {0   20e-9}
+}
+
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :atlas
+}
+
+Specify Oxs_UniaxialAnisotropy {
+  K1  0.5e3
+  axis { Oxs_UniformVectorField {
+    norm 1
+    vector {1 0 0}
+  }  }
+}
+
+Specify Oxs_UniformExchange {
+  A  13e-12
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UZeeman:extfield0 [subst {
+  comment {Field values in Tesla; scale to A/m}
+  multiplier [expr {1/$MU0}]
+  Hrange {
+    {0.0 0.1 0.0 0.0 0.0 0.0 2}
+  }
+}]
+
+Specify Oxs_RungeKuttaEvolve:evolver {
+  do_precess 1
+  gamma_LL 2.21e5
+  alpha 0.05
+}
+
+Specify Oxs_TimeDriver [subst {
+  basename loadtest-${id}
+  checkpoint_interval 0
+  evolver :evolver
+  mesh :mesh
+  stage_iteration_limit 15
+  Ms 800e3
+  m0 {0.99984769515639127 0.017452406437283376 0.0 }
+}]
+
+#Destination archive mmArchive new
+Destination archive mmArchive
+Schedule DataTable archive Stage 1

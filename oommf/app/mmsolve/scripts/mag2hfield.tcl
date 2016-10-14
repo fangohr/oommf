@@ -6,7 +6,7 @@ package require Oc 1.1
 package require Mms 1.1.1
 
 Oc_Main SetAppName mag2hfield
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 Oc_CommandLine Option console {} {}
 

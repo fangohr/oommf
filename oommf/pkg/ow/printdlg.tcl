@@ -496,7 +496,7 @@ Oc_Class Ow_PrintDlg {
         if {[string match {} $elt]} {return}
         upvar #0 $globalarrname source
         if {[info exists prn($elt)] && \
-                ![string match $prn($elt) $source($elt)]} {
+                [string compare $prn($elt) $source($elt)]!=0} {
             set prn($elt) $source($elt)
 	    switch -- $elt {
 		aspect_crop {

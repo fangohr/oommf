@@ -24,14 +24,15 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]] doc userguide userguide\
         OOMMF_eXtensible_Solver_Int.html]]
+Oc_Main SetDataRole producer
 
 # Command line options
 Oc_CommandLine ActivateOptionSet Net
@@ -67,18 +68,22 @@ Oc_CommandLine Option nice {
 } {1 => Drop priority after starting}
 set nice 0
 
+if {![Oc_Option Get OxsLogs directory _]} {
+   set logfile [file join $_ boxsi.errors]
+} else {
+   set logfile [file join [Oc_Main GetOOMMFRootDir] boxsi.errors]
+}
 Oc_CommandLine Option logfile {
-    {name {expr {![string match {} $name]}}}
-   } {
-      global logfile;  set logfile $name
-   } {Name of log file (default is oommf/boxsi.errors)}
-set logfile [file join [Oc_Main GetOOMMFRootDir] boxsi.errors]
+   {name {expr {![string match {} $name]}}}
+} {
+   global logfile;  set logfile $name
+} [subst {Name of log file (default is $logfile)}]
 
 Oc_CommandLine Option loglevel {
-      {level {expr {[regexp {^[0-9]+$} $level]}}}
-   } {
-      global loglevel;  set loglevel $level
-} {Level of log detail to oommf/boxsi.errors (default is 1)}
+   {level {expr {[regexp {^[0-9]+$} $level]}}}
+} {
+   global loglevel;  set loglevel $level
+} {Level of log detail to boxsi.errors (default is 1)}
 set loglevel 1
 
 Oc_CommandLine Option regression_test {
@@ -134,6 +139,24 @@ if {[Oc_NumaAvailable]} {
                 (default is "$numanodes")}]
 }
 
+# Default output directory; if {}, then use directory containing MIF file.
+set output_directory {}
+if {[info exists env(OOMMF_OUTDIR)]} {
+   set output_directory $env(OOMMF_OUTDIR)
+}
+if {[string match {} $output_directory]} {
+   set default_output_dirstr "MIF file directory"
+} else {
+   set default_output_dirstr $output_directory
+}
+Oc_CommandLine Option outdir {
+   {dir {expr {![string match {} $dir]}}}
+} {
+   global output_directory
+   set output_directory [Oc_DirectPathname $dir]
+} "Directory for output (default is $default_output_dirstr)"
+
+# Checkpoint (restart) file options
 Oc_CommandLine Option restart {
     {flag {expr {$flag==0 || $flag==1 || $flag==2}} \
         {= 0 (default=no), 1 (force) or 2 (try)}}
@@ -143,16 +166,26 @@ Oc_CommandLine Option restart {
 set restart_flag 0
 Oxs_SetRestartFlag $restart_flag
 
-Oc_CommandLine Option restartfiledir {
-    {dir {expr {![string match {} $dir]}}}
-   } {
-      global restart_file_directory;  set restart_file_directory $dir
-   } {Directory for restart files (default is MIF file directory)}
-set restart_file_directory {}
 # Note: At present, the restart file dir is set from the command line
 # at problem start and never changed.  Trying to change this once a
 # problem is loaded is problematic, because we want any droppings in
 # the old directory cleaned-up before using the new directory.
+set restart_file_directory {}
+if {[info exists env(OOMMF_RESTARTFILEDIR)]} {
+   set restart_file_directory $env(OOMMF_RESTARTFILEDIR)
+} else {
+   set restart_file_directory $output_directory
+}
+if {[string match {} $restart_file_directory]} {
+   set default_restart_dirstr "MIF file directory"
+} else {
+   set default_restart_dirstr $restart_file_directory
+}
+Oc_CommandLine Option restartfiledir {
+   {dir {expr {![string match {} $dir]}}}
+} {
+   global restart_file_directory;  set restart_file_directory $dir
+} "Directory for restart files (default is $default_restart_dirstr)"
 
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
@@ -199,6 +232,68 @@ set update_extra_info $aboutinfo
 unset aboutinfo
 
 ##########################################################################
+# Checkpoint control
+##########################################################################
+proc UpdateCheckpointControl { name1 name2 op } {
+   global checkpoint_control checkpoint_control_list
+   foreach {name value} $checkpoint_control_list {
+      if {[string compare $value $checkpoint_control($name)]==0} {
+         continue   ;# No change in setting
+      }
+      switch -exact $name {
+         disposal {
+            Oxs_SetCheckpointDisposal $value
+            set checkpoint_control(disposal) $value
+         }
+         filename {
+            error "Checkpoint filename not allowed to change\
+                   during simulation run."
+         }
+         interval {
+            Oxs_SetCheckpointInterval $value
+            set checkpoint_control(interval) $value
+         }
+         timestamp {
+            error "Checkpoint timestamp can't be varied by user"
+         }
+         default {
+            error "Unrecognized checkpoint control array item: \"$name\""
+         }
+      }
+   }
+}
+
+Oc_EventHandler New _ Oxs Checkpoint {
+   set checkpoint_control(timestamp) [Oxs_CheckpointTimestamp]
+   trace vdelete checkpoint_control_list w UpdateCheckpointControl
+   set checkpoint_control_list [array get checkpoint_control]
+   trace variable checkpoint_control_list w UpdateCheckpointControl
+}
+
+proc InitializeCheckpointControl {} {
+   global checkpoint_control checkpoint_control_list
+   global checkpoint_timestamp
+   if {![Oxs_IsProblemLoaded]} {
+      # Default settings
+      set checkpoint_control(disposal) standard
+      set checkpoint_control(filename) ""
+      set checkpoint_control(interval) 15
+   } else {
+      set checkpoint_control(disposal) [Oxs_GetCheckpointDisposal]
+      set checkpoint_control(filename) [Oxs_GetCheckpointFilename]
+      set checkpoint_control(interval) [Oxs_GetCheckpointInterval]
+   }
+   set checkpoint_control(timestamp) "never"
+   ## No checkpoint file (yet) from this run
+
+   trace vdelete checkpoint_control_list w UpdateCheckpointControl
+   set checkpoint_control_list [array get checkpoint_control]
+   trace variable checkpoint_control_list w UpdateCheckpointControl
+}
+
+InitializeCheckpointControl
+
+##########################################################################
 # Define the GUI of this app to be displayed remotely by clients of the
 # Net_GeneralInterface protocol.  Return $gui in response to the
 # GetGui message.
@@ -219,7 +314,7 @@ trace variable update_extra_info w { Oc_Main SetExtraInfo $update_extra_info ;# 
 append gui "[list Oc_Main SetPid [pid]]\n"
 append gui {
 
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 07:28:07 $} _ date
+regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 
 # This won't cross different OOMMF installations nicely
@@ -282,16 +377,30 @@ Oc_Log AddType infolog ;# Record in log file only
 
 set menubar .mb
 foreach {fmenu hmenu} [Ow_MakeMenubar . $menubar File Help] {}
-$fmenu add command -label "Show Console" -command { console show } -underline 5
+if {![Oc_Option Get Menu show_console_option _] && $_} {
+   $fmenu add command -label "Show Console" -command { console show } \
+       -underline 5
+}
 $fmenu add command -label "Close Interface" -command closeGui -underline 6
-$fmenu add separator
 $fmenu add command -label "Clear Schedule" -command ClearSchedule -underline 6
+
+$fmenu add command -label "Checkpoint Control..." -underline 5 \
+      -command [list CheckpointControlButton $fmenu "Checkpoint Control..."] \
+      -state normal
 $fmenu add separator
 $fmenu add command -label "Exit [Oc_Main GetAppName]" \
 	-command exit -underline 1
-$fmenu add command -label "Checkpoint & Exit" \
-   -command GuiCheckpointExit -underline 4
-share checkpoint_exit_request
+share checkpoint_control_list
+share checkpoint_timestamp
+
+########################################################################
+# Checkpoint control dialog.  Note that this is running on the server
+# (mmLaunch) side, so we need to locate checkpoint.tcl relative to OOMMF
+# root.
+
+source [file join [Oc_Main GetOOMMFRootDir] app oxs checkpoint.tcl]
+
+########################################################################
 
 Ow_StdHelpMenu $hmenu
 
@@ -587,22 +696,13 @@ proc ClearSchedule {} {
     }
 }
 
-proc GuiCheckpointExit {} {
-   global checkpoint_exit_request  ;# shared variable
-   set checkpoint_exit_request 1
-   # Trace on checkpoint_exit_request on app side triggers
-   # exit.
-}
-
 # Override default window delete handling
 proc DeleteVerify {} {
    set response [Ow_Dialog 1 "Exit [Oc_Main GetInstanceName]?" \
                     warning "Are you *sure* you want to exit \
-			[Oc_Main GetInstanceName]?" {} 2 Exit "Checkpoint\n& Exit" Cancel]
+			[Oc_Main GetInstanceName]?" {} 1 Exit Cancel]
    if {$response == 0} {
       after 10 exit
-   } elseif {$response == 1} {
-      GuiCheckpointExit
    }
 }
 wm protocol . WM_DELETE_WINDOW DeleteVerify
@@ -814,7 +914,14 @@ proc ReleaseProblem {} {
    }
 
    global killtags
-   set killoids [[Oxs_GetMif] KillOids $killtags]
+   set mif [Oxs_GetMif]
+   # If error occurs during problem load, then mif object might not be
+   # set.
+   if {[llength [info commands $mif]] == 1} {
+      set killoids [$mif KillOids $killtags]
+   } else {
+      set killoids {}
+   }
 
    if {[catch {
       Oxs_ProbRelease
@@ -840,15 +947,11 @@ proc ReleaseProblem {} {
    }
 
    # Note: There are traces on the following variables.
-   global status stagerequest number_of_stages problem checkpoint_exit
+   global status stagerequest number_of_stages problem
    set stagerequest {}
    set number_of_stages {}
    if {[info exists problem]} {
-       if {$checkpoint_exit} {
-          Oc_Log Log "Checkpoint exit \"[file tail $problem]\"" infolog
-       } else {
-          Oc_Log Log "End \"[file tail $problem]\"" infolog
-       }
+      Oc_Log Log "End \"[file tail $problem]\"" infolog
    }
    set status ""
 }
@@ -866,16 +969,6 @@ proc ProbInfo {} {
       append txt "\n[Oc_Main GetExtraInfo]"
    }
    return $txt
-}
-
-set checkpoint_exit 0
-trace variable checkpoint_exit_request w {CheckpointPrepareExit ;# }
-proc CheckpointPrepareExit {} {
-   # Adjust flags to write and keep last state as checkpoint file
-   Oxs_ForceFinalCheckpoint
-   global checkpoint_exit
-   set checkpoint_exit 1
-   exit
 }
 
 proc MeshGeometry {} {
@@ -935,6 +1028,7 @@ proc LoadProblem {fname} {
 
    global status step autorun_pause workdir
    global stage stagerequest number_of_stages
+   global checkpoint_timestamp
    upvar 1 $fname f
 
    set f [Oc_DirectPathname $f]
@@ -952,6 +1046,12 @@ proc LoadProblem {fname} {
       global MIF_params update_extra_info
       Oxs_ProbInit $f $MIF_params ;# includes a call to Oxs_ProbReset
       append update_extra_info "\nMesh geometry: [MeshGeometry]"
+      set cpf [Oxs_GetCheckpointFilename]
+      if {[string match {} $cpf]} {
+         append update_extra_info "\nCheckpointing disabled"
+      } else {
+         append update_extra_info "\nCheckpoint file: $cpf"
+      }
       Oc_Main SetExtraInfo $update_extra_info
       set pi [ProbInfo]
       Oc_Log Log $pi infolog
@@ -961,9 +1061,9 @@ proc LoadProblem {fname} {
       global regression_test regression_testname
       if {$regression_test} {
          # This is not a standard run, but part of a regression test.
-         # Make some standard modifications to the effective contents
-         # of the import MIF file to make it more amenable to such
-         # testing.  See the LoadTestSetup method in base/mif.tcl for
+         # Make some standard modifications to the effective contents of
+         # the import MIF file to make it more amenable to such testing.
+         # See the RegressionTestSetup method in base/mif.tcl for
          # details.
          #   Note: Do this setup before creating Oxs_Output objects,
          # or else output objects get the basename as specified in the
@@ -1002,6 +1102,7 @@ proc LoadProblem {fname} {
       foreach {step stage number_of_stages} [Oxs_GetRunStateCounts] break
       set stagerequest $stage
       set script {set status Pause}
+      InitializeCheckpointControl
       if {!$autorun_pause} {
          # Run
          append script {; after 1 {set status Run}}
@@ -1072,30 +1173,33 @@ proc Loop {type} {
 	ReleaseProblem
 	set status Error
     } else {
-	;# Fire event handlers
-	foreach ev $msg {
-	    # $ev is a 4 item list: <event_type state_id stage step>
-	    set event [lindex $ev 0]
-	    switch -exact -- $event {
-		STEP {
-		    Oc_EventHandler Generate Oxs Step \
-			    -stage [lindex $ev 2] \
-			    -step [lindex $ev 3]
-		}
-		STAGE_DONE {
-		    Oc_EventHandler Generate Oxs Stage
-		}
-		RUN_DONE {
-		    Oc_EventHandler Generate Oxs Done
-		}
-		default {
-		    after idle [list Oc_Log Log \
-			    "Unrecognized event: $event" error Loop]
-		    ReleaseProblem
-	    	    set status Error
-		}
-	    }
-	}
+       ;# Fire event handlers
+       foreach ev $msg {
+          # $ev is a 4 item list: <event_type state_id stage step>
+          set event [lindex $ev 0]
+          switch -exact -- $event {
+             STEP {
+                Oc_EventHandler Generate Oxs Step \
+                   -stage [lindex $ev 2] \
+                   -step [lindex $ev 3]
+             }
+             STAGE_DONE {
+                Oc_EventHandler Generate Oxs Stage
+             }
+             RUN_DONE {
+                Oc_EventHandler Generate Oxs Done
+             }
+             CHECKPOINT {
+                Oc_EventHandler Generate Oxs Checkpoint
+             }
+             default {
+                after idle [list Oc_Log Log \
+                        "Unrecognized event: $event" error Loop]
+                ReleaseProblem
+                set status Error
+             }
+          }
+       }
     }
     after idle [info level 0]
 }

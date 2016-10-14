@@ -120,7 +120,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		1.2.0.6
+                    -version		1.2.1.0
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -277,6 +277,7 @@ MakeRule Define {
              [file join ext uniformscalarfieldinit.h]  \
              [file join ext uniformvectorfieldinit.cc] \
              [file join ext uniformvectorfieldinit.h]  \
+             [file join base filelogger.tcl] \
              [file join base region.cc] \
              [file join base region.h]  \
              [file join base scalarfieldinit.cc] \

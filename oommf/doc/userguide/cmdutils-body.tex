@@ -331,16 +331,17 @@ replaces this with the extension \fn{.odt}.
 The \app{avf2ovf} program converts vector field files from any of the
 \latexhtml{recognized formats (\OVF, \VIO; see
 Sec.~\ref{sec:vfformats})}{\htmlref{recognized formats}{sec:vfformats}
-(\OVF, \VIO)} into the \OVF\ 1.0 format.
+(\OVF, \VIO)} into the \OVF\ format.
 
 \sssechead{Launching}
 The \app{avf2ovf} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ovf [standard options] \
    [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format <text|b4|b8>] [-grid <rect|irreg>] [-info] [-keepbb] [-mag] \
-   [-pertran xoff yoff zoff] [-q] [-resample xstep ystep zstep order] \
-   [-rpertran rxoff ryoff rzoff] [-subsample period] [infile [outfile]]
+   [-format <text|b4|b8>] [-grid <rect|irreg>] [-info] [-keepbb] \
+   [-mag] [-ovfversion version] [-pertran xoff yoff zoff] [-q] \
+   [-resample xstep ystep zstep order] [-rpertran rxoff ryoff rzoff] \
+   [-subsample period] [infile [outfile]]
 \end{verbatim}
 where
 \begin{description}
@@ -380,6 +381,8 @@ where
   Write out a scalar valued field instead of a vector value field, where
   the scalar values are the magnitude $|v(r)|$ of the vector values at
   each point $r$.
+\item[\optkey{-ovfversion version}]
+  Specify the output \OVF\ version, either 1 (default) or 2.
 \item[\optkey{-pertran xoff yoff zoff}]
   Translates field with respect to location coordiates, by amount
   $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$, in a periodic
@@ -426,9 +429,9 @@ where
   This control is only available for input files having a rectangular
   grid structure.  Default value is 1, i.e., no subsampling.
 \item[\optkey{infile}]
-  Name of input file to process.  Must be one of the recognized formats,
-  \OVF\ 0.0, \OVF\ 1.0, or \VIO.  If no file is specified, reads from
-  stdin.
+  Name of input file to process.  Must be one of the recognized
+  formats, \OVF\ 0.0, \OVF\ 1.0, \OVF\ 2.0, or \VIO.  If no file is
+  specified, reads from stdin.
 \item[\optkey{outfile}]
   Name of output file.  If no file is specified, writes to stdout.
 \end{description}

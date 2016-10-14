@@ -11,7 +11,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 Oc_ForceStderrDefaultMessage	;# Use stderr, not dialog to report errors
 
 Oc_Main SetAppName batchmaster
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{task_script {} {Task definition file}}

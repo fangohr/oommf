@@ -724,7 +724,7 @@ Oxs_FFT1DThreeVector::ForwardRealToComplexFFTRadix4
           vd[i+1] = dy1 + dx2;
         }
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+6;j+=2) {
+          for(OC_INDEX j=i;j-i<6;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -1267,7 +1267,7 @@ Oxs_FFT1DThreeVector::InverseComplexToRealFFTRadix4
           vd[i] = dx1 + dy2;  vd[i+1] = dy1 - dx2;
         }
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+6;j+=2) {
+          for(OC_INDEX j=i;j-i<6;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -1804,7 +1804,7 @@ Oxs_FFT1DThreeVector::ForwardRealToComplexFFTRadix4ZP
         vd[i]   = x0 - y1;        vd[i+1] = y0 + x1;
       }
       while(i<stride) {
-        for(OC_INDEX j=i;j<i+6;j+=2) {
+        for(OC_INDEX j=i;j-i<6;j+=2) {
           OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
           OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
           OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -1944,7 +1944,7 @@ Oxs_FFT1DThreeVector::ForwardRealToComplexFFTRadix4ZP
           vd[i+1] = dy1 + dx2;
         }
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+6;j+=2) {
+          for(OC_INDEX j=i;j-i<6;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -2500,7 +2500,7 @@ Oxs_FFT1DThreeVector::InverseComplexToRealFFTRadix4ZP
           vd[i] = dx1 + dy2;  vd[i+1] = dy1 - dx2;
         }
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+6;j+=2) {
+          for(OC_INDEX j=i;j-i<6;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -3050,7 +3050,7 @@ Oxs_FFT1DThreeVector::ForwardRealToComplexFFTSize64
       vd[i+1] = dy1 + dx2;
     }
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+2*OFTV_VECSIZE;j+=2) {
+      for(OC_INDEX j=i;j-i<2*OFTV_VECSIZE;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -3526,7 +3526,7 @@ Oxs_FFT1DThreeVector::InverseComplexToRealFFTSize64
       vd[i] = dx1 + dy2;  vd[i+1] = dy1 - dx2;
     }
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+6;j+=2) {
+      for(OC_INDEX j=i;j-i<6;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -3982,7 +3982,7 @@ Oxs_FFT1DThreeVector::ForwardRealToComplexFFTSize64ZP
       vd[i]   = x0 - y1;        vd[i+1] = y0 + x1;
     }
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+2*OFTV_VECSIZE;j+=2) {
+      for(OC_INDEX j=i;j-i<2*OFTV_VECSIZE;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -4419,7 +4419,7 @@ Oxs_FFT1DThreeVector::InverseComplexToRealFFTSize64ZP
       vd[i] = dx1 + dy2;  vd[i+1] = dy1 - dx2;
     }
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+6;j+=2) {
+      for(OC_INDEX j=i;j-i<6;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -9165,7 +9165,7 @@ Oxs_FFTStrided::ForwardFFTRadix4
         }
         i = rstride;
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+bw;j+=2) {
+          for(OC_INDEX j=i;j-i<bw;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -9637,7 +9637,7 @@ Oxs_FFTStrided::InverseFFTRadix4
         }
         i = rstride;
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+bw;j+=2) {
+          for(OC_INDEX j=i;j-i<bw;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -10106,7 +10106,7 @@ Oxs_FFTStrided::ForwardFFTRadix4ZP
       }
       i = rstride;
       while(i<stride) {
-        for(OC_INDEX j=i;j<i+bw;j+=2) {
+        for(OC_INDEX j=i;j-i<bw;j+=2) {
           OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
           OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
           OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -10249,7 +10249,7 @@ Oxs_FFTStrided::ForwardFFTRadix4ZP
         }
         i = rstride;
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+bw;j+=2) {
+          for(OC_INDEX j=i;j-i<bw;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -10731,7 +10731,7 @@ Oxs_FFTStrided::InverseFFTRadix4ZP
         }
         i = rstride;
         while(i<stride) {
-          for(OC_INDEX j=i;j<i+bw;j+=2) {
+          for(OC_INDEX j=i;j-i<bw;j+=2) {
             OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
             OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
             OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -11215,7 +11215,7 @@ Oxs_FFTStrided::ForwardFFTSize64
     }
     i = rstride;
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+bw;j+=2) {
+      for(OC_INDEX j=i;j-i<bw;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -11610,7 +11610,7 @@ Oxs_FFTStrided::InverseFFTSize64
     }
     i = rstride;
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+bw;j+=2) {
+      for(OC_INDEX j=i;j-i<bw;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -11997,7 +11997,7 @@ Oxs_FFTStrided::ForwardFFTSize64ZP
     }
     i = rstride;
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+bw;j+=2) {
+      for(OC_INDEX j=i;j-i<bw;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1
@@ -12359,7 +12359,7 @@ Oxs_FFTStrided::InverseFFTSize64ZP
     }
     i = rstride;
     while(i<stride) {
-      for(OC_INDEX j=i;j<i+bw;j+=2) {
+      for(OC_INDEX j=i;j-i<bw;j+=2) {
         OXS_FFT_REAL_TYPE x0 = va[j];    // x0 := R0
         OXS_FFT_REAL_TYPE y0 = va[j+1];  // y0 := R6
         OXS_FFT_REAL_TYPE x1 = vb[j];    // x1 := R1

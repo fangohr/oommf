@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "oc.h"
+#include "nb.h"
 #include "director.h"
 #include "driver.h"
 #include "key.h"
@@ -26,8 +27,8 @@
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.118 $",
-   "$Date: 2015/08/13 21:56:57 $",
+   "$Revision: 1.120 $",
+   "$Date: 2016/01/09 01:02:26 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -42,23 +43,65 @@ void OxsDriverCheckpointShutdownHandler(int,ClientData cd)
               Oxs_Driver::BackgroundCheckpoint::OXSDRIVER_CMT_SHUTDOWN);
 }
 
+
+const char* Oxs_Driver::BackgroundCheckpoint::GetDisposal
+() const
+{
+  const char* disposal = "invalid";
+  switch(checkpoint_disposal)
+    {
+    case OXSDRIVER_CDT_STANDARD:
+       disposal = "standard"; break;
+    case OXSDRIVER_CDT_DONE_ONLY:
+       disposal = "done_only"; break;
+    case OXSDRIVER_CDT_NEVER:
+       disposal = "never"; break;
+    default:
+       disposal = "invalid"; break;
+    }
+  return disposal;
+}
+
+void
+Oxs_Driver::BackgroundCheckpoint::SetDisposal
+(const String& in_disposal)
+{
+  checkpoint_disposal = OXSDRIVER_CDT_INVALID;
+  if(in_disposal.compare("standard")==0) {
+    checkpoint_disposal = OXSDRIVER_CDT_STANDARD;
+  } else if(in_disposal.compare("done_only")==0) {
+    checkpoint_disposal = OXSDRIVER_CDT_DONE_ONLY;
+  } else if(in_disposal.compare("never")==0) {
+    checkpoint_disposal = OXSDRIVER_CDT_NEVER;
+  } else {
+    String msg=String("Invalid checkpoint_disposal request: ")
+      + in_disposal
+      + String("\n Should be one of standard, done_only, or never.");
+    throw Oxs_BadParameter(msg);
+  }
+}
+
+
 void
 Oxs_Driver::BackgroundCheckpoint::Init
 (const String& in_filename,
- double in_interval,const String& in_cleanup)
+ double in_interval,const String& in_disposal)
 {
   // Set-up file names.  The Oc_DirectPathname and Nb_TempName routines
   // call into the global Tcl interp, so can only be called from the
   // main thread.
-  Oc_AutoBuf full_filename;
+  Oc_AutoBuf full_filename,dirname;
   checkpoint_filename = in_filename;
   Oc_DirectPathname(checkpoint_filename.c_str(),full_filename);
   checkpoint_filename_full = full_filename.GetStr();
+  Oc_TclFileCmd("dirname",checkpoint_filename_full.c_str(),dirname);
 
   Nb_DString tmpchknamA = Nb_TempName(full_filename.GetStr(),
-                                      "-oxs-checkpoint.tmp",".");
+                                      "-oxs-checkpoint.tmp",
+                                      dirname.GetStr());
   Nb_DString tmpchknamB = Nb_TempName(full_filename.GetStr(),
-                                      "-oxs-checkpoint.backup",".");
+                                      "-oxs-checkpoint.backup",
+                                      dirname.GetStr());
   Nb_Remove(tmpchknamA.GetStr());
   Nb_Remove(tmpchknamB.GetStr());
   /// Nb_TempName creates an empty file.  We don't need to keep these
@@ -96,19 +139,7 @@ Oxs_Driver::BackgroundCheckpoint::Init
   }
   mutex.Unlock();
 
-  checkpoint_cleanup = OXSDRIVER_CCT_INVALID;
-  if(in_cleanup.compare("normal")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_NORMAL;
-  } else if(in_cleanup.compare("done_only")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_DONE_ONLY;
-  } else if(in_cleanup.compare("never")==0) {
-    checkpoint_cleanup = OXSDRIVER_CCT_NEVER;
-  } else {
-    String msg=String("Invalid checkpoint_cleanup request: ")
-      + in_cleanup
-      + String("\n Should be one of normal, done_only, or never.");
-    throw Oxs_BadParameter(msg);
-  }
+  SetDisposal(in_disposal);
 
   Oc_AppendSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
 }
@@ -152,17 +183,15 @@ Oxs_Driver::BackgroundCheckpoint::WaitForBackupThread
 
 void
 Oxs_Driver::BackgroundCheckpoint::WrapUp
-(OxsDriverProblemStatus probstat)
+(OxsDriverProblemStatus probstat,OC_BOOL flush_queue)
 { // Remove any queued backup requests and wait for backup thread to
   // stop.
   Oc_RemoveSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
   const int timeout = 100; // Max seconds to wait for backup thread
-  OxsDriverCheckpointModeTypes cmt = OXSDRIVER_CMT_DISABLED;
-  if(OXSDRIVER_CCT_FORCEFINAL == checkpoint_cleanup) {
-    cmt = OXSDRIVER_CMT_FLUSHED;
-  }
-  if(WaitForBackupThread(timeout,cmt) &&
-     director->GetErrorStatus()==0 && checkpoint_writes>0) {
+  const OxsDriverCheckpointModeTypes cmt
+    = (flush_queue ? OXSDRIVER_CMT_FLUSHED : OXSDRIVER_CMT_DISABLED);
+  if(WaitForBackupThread(timeout,cmt) && director->GetErrorStatus()==0
+     && checkpoint_writes>0 && !TestKeepCheckpoint(probstat)) {
     // Check that checkpoint_writes is not 0 to insure that a
     // checkpoint has been written during this run.  This is not to
     // insure the existence of a checkpoint file (which anyway may
@@ -171,35 +200,15 @@ Oxs_Driver::BackgroundCheckpoint::WrapUp
     // set causing the checkpoint file to be automatically destroyed
     // when the user tries to reload the problem.
     static Oxs_WarningMessage noremove(3);
-    switch(checkpoint_cleanup)
-      {
-      case OXSDRIVER_CCT_NORMAL:
-        if(Nb_FileExists(checkpoint_filename_full.c_str())
-           && Nb_Remove(checkpoint_filename_full.c_str())!=0) {
-          String msg = String("Unable to remove checkpoint file \"")
-            + checkpoint_filename_full
-            + String("\".");
-          noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
-        }
-        break;
-      case OXSDRIVER_CCT_DONE_ONLY:
-        if(probstat==OXSDRIVER_PS_DONE) {
-          if(Nb_FileExists(checkpoint_filename_full.c_str())
-             && Nb_Remove(checkpoint_filename_full.c_str())!=0) {
-            String msg = String("Unable to remove checkpoint file \"")
-              + checkpoint_filename_full
-              + String("\".");
-            noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
-          }
-        }
-        break;
-      case OXSDRIVER_CCT_INVALID:
-      case OXSDRIVER_CCT_FORCEFINAL:
-      case OXSDRIVER_CCT_NEVER:
-        break;
-      }
-    checkpoint_writes = 0; // Safety
+    if(Nb_FileExists(checkpoint_filename_full.c_str())
+       && Nb_Remove(checkpoint_filename_full.c_str())!=0) {
+      String msg = String("Unable to remove checkpoint file \"")
+        + checkpoint_filename_full
+        + String("\".");
+      noremove.Send(revision_info,OC_STRINGIFY(__LINE__),msg.c_str());
+    }
   }
+  checkpoint_writes = 0; // Safety
 }
 
 Oxs_Driver::BackgroundCheckpoint::~BackgroundCheckpoint()
@@ -208,7 +217,7 @@ Oxs_Driver::BackgroundCheckpoint::~BackgroundCheckpoint()
   // proper problem_status value.  The call here is just a failsafe.
   // When CloseDown is called it sets the director member to 0, so
   // subsequent calls become NOPs.
-  WrapUp(OXSDRIVER_PS_INVALID);
+  WrapUp(OXSDRIVER_PS_INVALID,0);
   if(ActiveThreadCount()==0) {
     // If a backup thread is running, then it may be holding onto a
     // state, in which case releasing the simstate reserve requirements
@@ -258,13 +267,14 @@ Oxs_Driver::BackgroundCheckpoint::RequestBackup
   if(dolaunch) Launch();
 }
 
-void
+int
 Oxs_Driver::BackgroundCheckpoint::UpdateBackup
 (Oxs_ConstKey<Oxs_SimState>& statekey)
 { // This routine controls checkpoint requests based on elapsed time.
   if(statekey.GetPtr()==NULL) {
     throw("Invalid checkpoint update request.");
   }
+  int backup_request = 0;
   if(checkpoint_interval >= 0.0) {
     Oc_Ticks now;
     now.ReadWallClock();
@@ -272,8 +282,10 @@ Oxs_Driver::BackgroundCheckpoint::UpdateBackup
     if(now.Seconds()>=checkpoint_interval) {
       checkpoint_time.ReadWallClock();
       RequestBackup(statekey);
+      backup_request = 1;
     }
   }
+  return backup_request;
 }
 
 void
@@ -450,6 +462,7 @@ Oxs_Driver::Oxs_Driver
   ) : Oxs_Ext(name,newdtr,argstr),
       problem_status(OXSDRIVER_PS_INVALID),
       report_max_spin_angle(0),normalize_aveM(1),scaling_aveM(1.0),
+      report_wall_time(0),
       number_of_stages(1),bgcheckpt(newdtr),
       start_iteration(0),start_stage(0),start_stage_iteration(0),
       start_stage_start_time(0.),start_stage_elapsed_time(0.),
@@ -495,10 +508,21 @@ Oxs_Driver::Oxs_Driver
   }
   double tmp_checkpoint_interval // Convert from minutes to seconds.
     = 60*GetRealInitValue("checkpoint_interval",15.0);
-  String tmp_checkpoint_cleanup
-    = GetStringInitValue("checkpoint_cleanup","normal");
+  String tmp_checkpoint_disposal = "standard";
+  // The deprecated "checkpoint_cleanup" init value with default
+  // value "normal" has been replaced with "checkpoint_disposal"
+  // with default value "standard".
+  if(FindInitValue("checkpoint_cleanup",tmp_checkpoint_disposal)) {
+    if(tmp_checkpoint_disposal.compare("normal") == 0) {
+      tmp_checkpoint_disposal = "standard";
+    }
+    DeleteInitValue("checkpoint_cleanup");
+  } else {
+    tmp_checkpoint_disposal 
+      = GetStringInitValue("checkpoint_disposal","standard");
+  }
   bgcheckpt.Init(tmp_checkpoint_file,tmp_checkpoint_interval,
-                 tmp_checkpoint_cleanup);
+                 tmp_checkpoint_disposal);
 
   OXS_GET_INIT_EXT_OBJECT("mesh",Oxs_Mesh,mesh_obj);
   mesh_key.Set(mesh_obj.GetPtr());  // Sets a dep lock
@@ -762,6 +786,9 @@ Oxs_Driver::Oxs_Driver
     throw Oxs_ExtError(this,msg);
   }
 
+  // Report wall time in DataTable output?
+  report_wall_time = GetIntInitValue("report_wall_time",0);
+
   // Setup outputs
   OSO_INIT(iteration_count,"Iteration","");
   OSO_INIT(stage_iteration_count,"Stage iteration","");
@@ -839,6 +866,11 @@ Oxs_Driver::Oxs_Driver
     run_maxSpinAng_output.Register(director,0);
   }
 
+  if(report_wall_time) {
+    OSO_INIT(wall_time,"Wall time","s");
+    wall_time_output.Register(director,0);
+  }
+
   const OC_INDEX projection_count = projection_output.GetSize();
   for(OC_INDEX ipo=0;ipo<projection_count;++ipo) {
     OxsDriverProjectionOutput& po = projection_output[ipo];
@@ -853,10 +885,12 @@ Oxs_Driver::Oxs_Driver
 //Destructor
 Oxs_Driver::~Oxs_Driver()
 {
-  if(IsForceFinalCheckpoint()) {
+  OC_BOOL flush_queue = 0;
+  if(bgcheckpt.TestKeepCheckpoint(problem_status)) {
     bgcheckpt.RequestBackup(current_state);
+    flush_queue = 1;
   }
-  bgcheckpt.WrapUp(problem_status);
+  bgcheckpt.WrapUp(problem_status,flush_queue);
 #if REPORT_TIME
   Oc_TimeVal cpu,wall;
   driversteptime.GetTimes(cpu,wall);
@@ -1252,7 +1286,13 @@ void Oxs_Driver::FillNewStageStateMemberData
     }
     throw Oxs_ExtError(this,String(buf));
   }
-  new_state = old_state; // Copy data
+
+  // Copy old_state to new_state.  The CloneHeader operation copies
+  // everything except spin and derived data.  The spin copy will be
+  // expensive if the mesh is big.
+  old_state.CloneHeader(new_state);
+  new_state.spin = old_state.spin;
+
   new_state.previous_state_id = old_state.Id();
   new_state.iteration_count = old_state.iteration_count + 1;
   /// Increment iteration count across stage boundary.
@@ -1408,6 +1448,7 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
   int stage_events=0;
   int done_event=0;
   int step_calls=0; // Number of times child Step() routine is called.
+  int checkpoint_event=0;
 
   // There are two considerations involved in the decision to break out
   // of the following step loops: 1) scheduled events should be passed
@@ -1559,7 +1600,7 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
     }
 
     // Checkpoint file save
-    bgcheckpt.UpdateBackup(current_state);
+    checkpoint_event += bgcheckpt.UpdateBackup(current_state);
     
   } // End of 'step_events<max_steps ...' loop
 
@@ -1572,8 +1613,17 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
   if(stage_events) {
     results.push_back(OxsRunEvent(OXS_STAGE_DONE_EVENT,current_state));
   }
-  if(done_event) {
+  if(done_event || problem_status==OXSDRIVER_PS_DONE) {
+    // The problem_status test above handles the case where ::Run is
+    // entered with a done state.  This can happen if the stage is
+    // adjusted via Oxs_Driver::SetStage, because that routine
+    // swallows events --- including in particular RUN_DONE events ---
+    // in which case the controlling code doesn't realize the
+    // simulation is complete and calls ::Run past the end.
     results.push_back(OxsRunEvent(OXS_RUN_DONE_EVENT,current_state));
+  }
+  if(checkpoint_event) {
+    results.push_back(OxsRunEvent(OXS_CHECKPOINT_EVENT,current_state));
   }
 }
 
@@ -1590,6 +1640,14 @@ void Oxs_Driver::Fill__##NAME##_output(const Oxs_SimState& state) \
 OSO_FUNC(iteration_count)
 OSO_FUNC(stage_iteration_count)
 OSO_FUNC(stage_number)
+
+void Oxs_Driver::Fill__wall_time_output(const Oxs_SimState& state)
+{ // Note: Caches time on first call for given state.
+  static Oc_Ticks clock;
+  clock.ReadWallClock();
+  wall_time_output.cache.value = clock.Seconds();
+  wall_time_output.cache.state_id = state.Id();
+}
 
 void
 Oxs_Driver::Fill__spin_output(const Oxs_SimState& state)

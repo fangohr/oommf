@@ -15,10 +15,11 @@ RandomSeed $seed  ;# Initialize seed to {} to get a seed
 
 Parameter L  8.47 ;# Cube dimension, in units of exchange length
 Parameter N 32    ;# Number of cells along one edge of cube
+
 Parameter initial_state "random" ;# Initial state should be
-## one of "uniform", "vortex", "cantedvortex", "twisted", "random"
-## or "file <filename>"; in the last case <filename> is the name
-## of a file to use as the initial configuration.
+## one of "uniform", "vortex", "canted", "cantedvortex", "twisted",
+## "random" or "file <filename>"; in the last case <filename> is the
+## name of a file to use as the initial configuration.
 
 Parameter stop 1e-3
 
@@ -205,8 +206,9 @@ switch [string tolower [lindex $initial_state 0]] {
    }
    default {
       error "Unrecognized initial_state: \"$initial_state\"; should\
-             be one of \"uniform\", \"vortex\",  \"cantedvortex\",,\
-             \"twisted\", \"random\", or \"file <filename>\"."
+             be one of \"uniform\", \"vortex\", \"canted\",\
+             \"cantedvortex\", \"twisted\", \"random\",\
+             or \"file <filename>\"."
    }
 }
 

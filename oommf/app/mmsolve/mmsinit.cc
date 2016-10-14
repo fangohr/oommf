@@ -136,7 +136,7 @@ static char mybuf[MYBUFSIZE]; // Scratch space, used in particular to
 static const char* Vec3Dtoa(Vec3D v)
 { // Converts a Vec3D to an ASCII character string.
   static char buf[256]; // Should be big enough!
-  Oc_Snprintf(buf, sizeof(buf), FLTSTR" "FLTSTR" "FLTSTR,
+  Oc_Snprintf(buf, sizeof(buf), FLTSTR " " FLTSTR " " FLTSTR,
               v.GetX(),v.GetY(),v.GetZ());
   return buf;
 }
@@ -488,7 +488,7 @@ Grid2DInstanceGetEnergyDensities
     classPtr->GetEnergyDensities(exch,anis,demag,zeeman,total);
 
     Oc_Snprintf(mybuf, sizeof(mybuf), 
-                FLTSTR" "FLTSTR" "FLTSTR" "FLTSTR" "FLTSTR,
+                FLTSTR " " FLTSTR " " FLTSTR " " FLTSTR " " FLTSTR,
 	        exch,    anis,    demag,   zeeman,  total);
     Tcl_ResetResult(interp);
     Tcl_AppendResult(interp,mybuf,(char *)NULL);

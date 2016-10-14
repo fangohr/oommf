@@ -2,8 +2,8 @@
 #
 #	OOMMF core provided customizations to Tcl/Tk
 #
-# Last modified on: $Date: 2014/02/21 21:36:25 $
-# Last modified by: $Author: dgp $
+# Last modified on: $Date: 2016/03/08 21:34:01 $
+# Last modified by: $Author: donahue $
 #
 # This file provides some customization/extensions to Tcl/Tk that
 # are common across the OOMMF project.
@@ -170,3 +170,7 @@ if {[llength [info commands interp]]} {
     }
 }
 
+################################
+# Default history length is 20 commands, which is rather niggardly.
+# Increase to some arbitrary amount.
+history keep 999

@@ -28,8 +28,8 @@ package require Nb 1.2.0.4	;# [Nb_InputFilter]
 wm withdraw .
 
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/06/03 19:30:04 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
@@ -38,6 +38,7 @@ Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]] doc userguide userguide \
 	Data_Graph_Display_mmGraph.html]]
+Oc_Main SetDataRole consumer
 
 if {!$no_net} {
    Oc_CommandLine Option net {

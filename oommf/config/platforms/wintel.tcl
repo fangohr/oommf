@@ -34,7 +34,12 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-## Support for the automated buildtest scripts
+# Environment variable override for C++ compiler
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+}
+
+# Support for the automated buildtest scripts
 if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
    source [file join [file dirname [info script]] buildtest.tcl]
 }
@@ -200,6 +205,10 @@ $config SetValue program_compiler_c++ {cl /c}
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
          cpuguess-wintel.tcl]
 
+# Miscellaneous processing routines
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         misc-support.tcl]
+
 # On Windows, child threads get the system default x87 control word,
 # which in particular means the floating point precision is set to use a
 # 53 bit mantissa ( = 8-byte float)), rather than the 64 bit mantissa (
@@ -210,6 +219,10 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # parent thread to its children.
 $config SetValue \
    program_compiler_c++_property_init_thread_fpu_control_word 1
+
+# Miscellaneous processing routines
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         misc-support.tcl]
 
 ########################################################################
 # LOCAL CONFIGURATION
@@ -270,13 +283,13 @@ $config SetValue \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to add to compiler "opts" string:
-# $config SetValue program_compiler_c++_add_flags \
-#                          {-funroll-loops}
-#
 ## Flags to remove from compiler "opts" string:
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
 #
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
@@ -471,21 +484,8 @@ if {[string match cl $ccbasename]} {
       lappend opts /D_CRT_SECURE_NO_DEPRECATE
    }
 
-   # Make user requested tweaks to compile line
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
 
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
@@ -510,7 +510,9 @@ if {[string match cl $ccbasename]} {
    # readability or as a consequence of supporting multiple platforms.
    #
    # $config SetValue program_compiler_c++_option_debug {format "/MLd"}
-   $config SetValue program_compiler_c++_option_debug {format "/Zi"}
+   $config SetValue program_compiler_c++_option_debug {
+      format "/Zi /Fdwintel/"
+   }
    $config SetValue program_compiler_c++_option_def {format "\"/D%s\""}
 
    # Use OOMMF supplied erf() error function
@@ -622,22 +624,13 @@ if {[string match cl $ccbasename]} {
     # so that the NDEBUG symbol is defined during compile.
     #
 
-    # Make user requested tweaks to compile line
-    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-       foreach elt $extraflags {
-	  if {[lsearch -exact $opts $elt]<0} {
-	     lappend opts $elt
-	  }
-       }
-    }
-    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-       foreach elt $noflags {
-	  regsub -all -- $elt $opts {} opts
-       }
-       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-       regsub -- {\s*$} $opts {} opts
-    }
+    # Make user requested tweaks to compile line options
+    set opts [LocalTweakOptFlags $config $opts]
 
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
@@ -741,22 +734,6 @@ if {[string match cl $ccbasename]} {
     }
     catch {unset nowarn}
 
-    # Make user requested tweaks to compile line
-    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-       foreach elt $extraflags {
-	  if {[lsearch -exact $opts $elt]<0} {
-	     lappend opts $elt
-	  }
-       }
-    }
-    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-       foreach elt $noflags {
-	  regsub -all -- $elt $opts {} opts
-       }
-       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-       regsub -- {\s*$} $opts {} opts
-    }
-
     # Wide floating point type.
     # NOTE: "long double" provides somewhat better precision than
     # "double", but at a cost of increased memory usage and a decrease
@@ -785,11 +762,19 @@ if {[string match cl $ccbasename]} {
        $config SetValue program_compiler_c++_typedef_real8m "double"
     }
 
-    if {![catch {join [$config GetValue program_compiler_c++_typedef_real8m]} _] \
-            && [string match {long double} $_]} {
+    if {![catch {join [$config GetValue program_compiler_c++_typedef_real8m]} \
+              _] && [string match {long double} $_]} {
        ## join command above drops spurious whitespace
        lappend opts -a2
     }
+
+    # Make user requested tweaks to compile line options
+    set opts [LocalTweakOptFlags $config $opts]
+
+    # NOTE: If you want good performance, be sure to edit ../options.tcl
+    #  or ../local/options.tcl to include the line
+    #    Oc_Option Add * Platform cflags {-def NDEBUG}
+    #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Work arounds
@@ -951,8 +936,8 @@ if {[string match cl $ccbasename]} {
       lappend opts -mstackrealign
    } else {
       # Otherwise, strip out all SSE options
-      regsub -all -- {^-mfpmath=sse\s+|\s+-mfpmath=sse(?=\s|$)} $opts {} opts
-      regsub -all -- {^-msse\d*\s+|\s+-msse\d*(?=\s|$)} $opts {} opts
+      regsub -all -- {-mfpmath=[^ ]*} $opts {} opts
+      regsub -all -- {-msse[^ ]*} $opts {} opts
    }
    $config SetValue sse_level $sse_level
    unset sse_level
@@ -965,20 +950,7 @@ if {[string match cl $ccbasename]} {
    catch {unset nowarn}
 
    # Make user requested tweaks to compile line
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
+   set opts [LocalTweakOptFlags $config $opts]
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
@@ -1147,22 +1119,13 @@ if {[string match cl $ccbasename]} {
     # for "nn" is 299.)
     lappend opts "-HP99"
 
-    # Make user requested tweaks to compile line
-    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-       foreach elt $extraflags {
-	  if {[lsearch -exact $opts $elt]<0} {
-	     lappend opts $elt
-	  }
-       }
-    }
-    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-       foreach elt $noflags {
-	  regsub -all -- $elt $opts {} opts
-       }
-       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-       regsub -- {\s*$} $opts {} opts
-    }
+    # Make user requested tweaks to compile line options
+    set opts [LocalTweakOptFlags $config $opts]
 
+    # NOTE: If you want good performance, be sure to edit ../options.tcl
+    #  or ../local/options.tcl to include the line
+    #     Oc_Option Add * Platform cflags {-def NDEBUG}
+    #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Wide floating point type.  Defaults to double, but you can
@@ -1279,22 +1242,13 @@ if {[string match cl $ccbasename]} {
     #  Oc_Option Add * Platform cflags {-def NDEBUG}
     # so that the NDEBUG symbol is defined during compile.
 
-    # Make user requested tweaks to compile line
-    if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-       foreach elt $extraflags {
-	  if {[lsearch -exact $opts $elt]<0} {
-	     lappend opts $elt
-	  }
-       }
-    }
-    if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-       foreach elt $noflags {
-	  regsub -all -- $elt $opts {} opts
-       }
-       regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-       regsub -- {\s*$} $opts {} opts
-    }
+    # Make user requested tweaks to compile line options
+    set opts [LocalTweakOptFlags $config $opts]
 
+    # NOTE: If you want good performance, be sure to edit ../options.tcl
+    #  or ../local/options.tcl to include the line
+    #    Oc_Option Add * Platform cflags {-def NDEBUG}
+    #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
     # Widest natively support floating point type

@@ -19,16 +19,17 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:45 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
-# regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
+# regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
 Oc_Main SetAuthor [Oc_Person Lookup jeicke]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]] doc userguide userguide \
 	Micromagnetic_Problem_Edito.html]]
+Oc_Main SetDataRole producer
 
 if {!$no_net} {
    Oc_CommandLine Option net {

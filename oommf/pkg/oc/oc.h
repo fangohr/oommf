@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2015/06/26 23:31:40 $
+ * Last modified on: $Date: 2015/10/09 21:23:12 $
  * Last modified by: $Author: donahue $
  */
 
@@ -95,7 +95,8 @@ int             Oc_Nop(int);
 long            Oc_Nop(long);
 unsigned int    Oc_Nop(unsigned int);
 unsigned long   Oc_Nop(unsigned long);
-void*           Oc_Nop(void*);
+const void*     Oc_Nop(const void*);
+const String&   Oc_Nop(const String& x);
 Tcl_Channel     Oc_Nop(Tcl_Channel);
 #if OC_USE_SSE
 __m128d         Oc_Nop(__m128d);
@@ -117,5 +118,10 @@ void            Oc_TclFileCmd(const char* subcmd,
 typedef void OcSigFunc(int,ClientData); // C++ linkage OK here
 void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData);
 void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData);
+
+void Oc_StrError(int errnum,char* buf,size_t buflen);
+// Note: There is a bare declare of this function in ocnuma.cc.  If the
+// signature of Oc_StrError changes it should be updated both here and
+// in ocnuma.cc.
 
 #endif /* _OC */

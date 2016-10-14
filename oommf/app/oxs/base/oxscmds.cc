@@ -79,7 +79,12 @@ Oxs_CmdProc Oxs_GetAtlasRegions;
 Oxs_CmdProc Oxs_GetAtlasRegionByPosition;
 Oxs_CmdProc Oxs_GetThreadStatus; // For debugging
 Oxs_CmdProc Oxs_ExtCreateAndRegister;
-Oxs_CmdProc Oxs_ForceFinalCheckpoint;
+Oxs_CmdProc Oxs_GetCheckpointFilename;
+Oxs_CmdProc Oxs_GetCheckpointDisposal;
+Oxs_CmdProc Oxs_SetCheckpointDisposal;
+Oxs_CmdProc Oxs_GetCheckpointInterval;
+Oxs_CmdProc Oxs_SetCheckpointInterval;
+Oxs_CmdProc Oxs_GetCheckpointAge;
 Oxs_CmdProc Oxs_DirectorDevelopTest;
 Oxs_CmdProc Oxs_DriverLoadTestSetup;
 Tcl_CmdProc Oxs_ProbRelease;
@@ -984,6 +989,13 @@ String Oxs_Run(Oxs_Director* director,Tcl_Interp *interp,
 		    state->stage_number,
 		    state->iteration_count);
 	break;
+      case OXS_CHECKPOINT_EVENT:
+	Oc_Snprintf(event_buf,sizeof(event_buf),
+		    "CHECKPOINT %u %u %u",
+		    state->Id(),
+		    state->stage_number,
+		    state->iteration_count);
+	break;
       case OXS_INVALID_EVENT:
         OXS_THROW(Oxs_ProgramLogicError,"Invalid event detected");
         break;
@@ -1667,18 +1679,20 @@ String Oxs_ExtCreateAndRegister
 /*
  *----------------------------------------------------------------------
  *
- * Oxs_ForceFinalCheckpoint --
- *      Causes last state to be written as a checkpoint file on exit
+ * Oxs_GetCheckpointFilename --
+ *      Retrieves full (absolute) path to checkpoint (restart) file.
  *
  * Results:
- *      Results string.
+ *      If checkpointing is disabled then return value is an empty
+ *      string.  Otherwise, returns the full, absolute path to the
+ *      checkpoint file.
  *
  * Side effects:
  *      None.
  *
  *----------------------------------------------------------------------
  */
-String Oxs_ForceFinalCheckpoint(Oxs_Director* director,Tcl_Interp *interp,
+String Oxs_GetCheckpointFilename(Oxs_Director* director,Tcl_Interp *interp,
                                 int argc,CONST84 char** argv)
 {
   if (argc != 1) {
@@ -1692,10 +1706,202 @@ String Oxs_ForceFinalCheckpoint(Oxs_Director* director,Tcl_Interp *interp,
 		     (char *) NULL);
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
-  driver->ForceFinalCheckpoint();
+  return String(driver->GetCheckpointFilename());
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_GetCheckpointDisposal --
+ *      Retrieves string representing checkpoint file disposal behavior
+ *
+ * Results:
+ *      Results string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetCheckpointDisposal(Oxs_Director* director,Tcl_Interp *interp,
+                                 int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0],"\"",(char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  return String(driver->GetCheckpointDisposal());
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_SetCheckpointDisposal --
+ *      Sets checkpoint fila disposal behavior.
+ *
+ * Results:
+ *      None (an empty string is returned)
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+String Oxs_SetCheckpointDisposal(Oxs_Director* director,
+                                 Tcl_Interp *interp,
+                                 int argc,CONST84 char** argv)
+{
+  if (argc != 2) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     " cleanup_behavior\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+
+  driver->SetCheckpointDisposal(String(argv[1]));
+  // Errors thrown by SetCheckpointDisposal (invalid disposal request
+  // type) will be handled by OxsCmdsSwitchboard wrapper.
+
   return String("");
 }
 
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_GetCheckpointInterval --
+ *      Retrieves interval time between checkpoints, in (wall-clock)
+ *      minutes
+ *
+ * Results:
+ *      Results string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetCheckpointInterval(Oxs_Director* director,Tcl_Interp *interp,
+                                 int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0],"\"",(char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  double interval = driver->GetCheckpointInterval();
+
+  char buf[64];
+  Oc_Snprintf(buf,sizeof(buf),"%g",interval);
+  /// Warning: Possible precision loss.  Might want to use Tcl's float
+  /// to string routine instead.
+
+  return String(buf);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_SetCheckpointInterval --
+ *      Sets interval time between checkpoints, in (wall-clock)
+ *      minutes.
+ *
+ * Results:
+ *      None (an empty string is returned)
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+String Oxs_SetCheckpointInterval(Oxs_Director* director,
+                                 Tcl_Interp *interp,
+                                 int argc,CONST84 char** argv)
+{
+  if (argc != 2) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     " checkpoint_minutes\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+
+  double interval;
+  if (Tcl_GetDouble(interp, argv[1], &interval) != TCL_OK) {
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  driver->SetCheckpointInterval(interval);
+
+  return String("");
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_GetCheckpointAge --
+ *      Returns number of (wall-clock) seconds (as a double) since last
+ *      checkpoint request.  Note that this is not especially accurate,
+ *      as time marches forward after the call.  Nonetheless, should
+ *      suffice for human interfaces.
+ *
+ * Results:
+ *      Results string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetCheckpointAge(Oxs_Director* director,Tcl_Interp *interp,
+                            int argc,CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0],"\"",(char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  Oxs_Driver* driver = director->GetDriver();
+  if(driver == 0) {
+    Tcl_AppendResult(interp, "Driver not initialized.",
+		     (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  Oc_Ticks ticks;
+  ticks.ReadWallClock();
+  ticks -= driver->GetCheckpointTicks();
+
+  char buf[64];
+  Oc_Snprintf(buf,sizeof(buf),"%g",ticks.Seconds());
+
+  return String(buf);
+}
 
 /*
  *----------------------------------------------------------------------
@@ -1909,7 +2115,12 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_GetAtlasRegionByPosition,"Oxs_GetAtlasRegionByPosition");
   REGCMD(Oxs_GetThreadStatus,"Oxs_GetThreadStatus");
   REGCMD(Oxs_ExtCreateAndRegister,"Oxs_ExtCreateAndRegister");
-  REGCMD(Oxs_ForceFinalCheckpoint,"Oxs_ForceFinalCheckpoint");
+  REGCMD(Oxs_GetCheckpointFilename,"Oxs_GetCheckpointFilename");
+  REGCMD(Oxs_GetCheckpointDisposal,"Oxs_GetCheckpointDisposal");
+  REGCMD(Oxs_SetCheckpointDisposal,"Oxs_SetCheckpointDisposal");
+  REGCMD(Oxs_GetCheckpointInterval,"Oxs_GetCheckpointInterval");
+  REGCMD(Oxs_SetCheckpointInterval,"Oxs_SetCheckpointInterval");
+  REGCMD(Oxs_GetCheckpointAge,"Oxs_GetCheckpointAge");
   REGCMD(Oxs_DirectorDevelopTest,"Oxs_DirectorDevelopTest");
   REGCMD(Oxs_DriverLoadTestSetup,"Oxs_DriverLoadTestSetup");
 #undef REGCMD

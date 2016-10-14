@@ -18,7 +18,7 @@
 
 #define NB_MAJOR_VERSION	1
 #define NB_MINOR_VERSION	2
-#define NB_RELEASE_LEVEL	0
-#define NB_RELEASE_SERIAL	6
+#define NB_RELEASE_LEVEL	1
+#define NB_RELEASE_SERIAL	0
 
 #endif /* _NB_VERSION */

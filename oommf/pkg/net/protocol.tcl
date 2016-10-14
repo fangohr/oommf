@@ -3,8 +3,8 @@
 # Each instance of the Oc_Class Net_Protocol describes a protocol to be 
 # used for replying to queries received over a Net_Connection.
 #
-# Last modified on: $Date: 2015/03/25 20:29:18 $
-# Last modified by: $Author: dgp $
+# Last modified on: $Date: 2015/10/16 08:28:14 $
+# Last modified by: $Author: donahue $
 
 Oc_Class Net_Protocol {
 
@@ -94,13 +94,14 @@ Oc_Class Net_Protocol {
                     "return \[[list list $s] \[list 0 \[pid]]]"
 	    $this AddMessage $s serveroid {} \
                     "return \[[list list $s] \[list 0 \[Oc_Main GetOid]]]"
+	    $this AddMessage $s datarole {} \
+                    "return \[[list list $s] \[list 0 \[Oc_Main GetDataRole]]]"
 	    $this AddMessage $s bye {} {list close [list 0 Bye!]}
 	    $this AddMessage $s exit {} {
 		set id [after 0 exit]
 		Oc_EventHandler New _ Oc_Main Shutdown [list after cancel $id]
 		list close [list 0 $id]
 	    }
-
 	    Oc_EventHandler New _ Oc_Main Shutdown [list $this Shutdown $s] \
 		    -groups [list $this]
 	}

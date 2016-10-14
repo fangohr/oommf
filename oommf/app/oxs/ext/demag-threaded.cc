@@ -2303,8 +2303,8 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
           OC_INDEX cindex = j*cjstride;
           for(i=0;i<ispan; ++i, cindex+=6, Hindex+=Hy_istride) {
             // Hbase[Hindex]     = cbase[cindex];
-            Oc_Prefetch(Hbase+Hindex+2*ODTV_VECSIZE*ODTV_COMPLEXSIZE,Ocpd_T0);
-            Oc_Prefetch(cbase+cindex+4*cjstride,Ocpd_NTA);
+            Oc_Prefetch<Ocpd_T0>(Hbase+Hindex+2*ODTV_VECSIZE*ODTV_COMPLEXSIZE);
+            Oc_Prefetch<Ocpd_NTA>(cbase+cindex+4*cjstride);
             Oc_Duet tmp0,tmp1,tmp2;
             tmp0.LoadAligned(cbase[cindex]);    // x
             tmp1.LoadAligned(cbase[cindex+2]);  // y
@@ -2348,15 +2348,15 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
             StartTimer(11);
             const OC_INDEX ypass_offset = 4*Hy_kstride;
             for(k=0;k<rdimz;++k) {
-              Oc_Prefetch(Hzbase + (k+cdimz/2)*Hz_kstride,Ocpd_T0);
+              Oc_Prefetch<Ocpd_T0>(Hzbase + (k+cdimz/2)*Hz_kstride);
               // Front side
               const OXS_FFT_REAL_TYPE* const Hytmpa = Hybase + k*Hy_kstride
                 + ODTV_VECSIZE*ODTV_COMPLEXSIZE*jstart;
               OXS_FFT_REAL_TYPE* const Hztmpa = Hzbase + k*Hz_kstride;
               OXS_FFT_REAL_TYPE* const Hztmpb = Hztmpa
                 + ODTV_VECSIZE*ODTV_COMPLEXSIZE*(jstop-jstart);
-              // Oc_Prefetch(Hztmpa+(cdimz/2)*Hz_kstride,Ocpd_T0);
-              //Oc_Prefetch(Hztmpb+(cdimz/2)*Hz_kstride,Ocpd_T0);
+              // Oc_Prefetch<Ocpd_T0>(Hztmpa+(cdimz/2)*Hz_kstride);
+              //Oc_Prefetch<Ocpd_T0>(Hztmpb+(cdimz/2)*Hz_kstride);
               for(j=0;j<ODTV_VECSIZE*ODTV_COMPLEXSIZE*(jstop-jstart); j += 6) {
                 // Hztmpa[j] = Hytmpa[j];
                 Oc_Duet tmp0,tmp1,tmp2;
@@ -2379,8 +2379,8 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
                 tmp0.StoreAligned(Hztmpb[j]);
                 tmp1.StoreAligned(Hztmpb[j+2]);
                 tmp2.StoreAligned(Hztmpb[j+4]);
-                Oc_Prefetch(Hytmpb+j+ypass_offset,Ocpd_T0);
-                Oc_Prefetch(Hytmpa+j+ypass_offset,Ocpd_T0);
+                Oc_Prefetch<Ocpd_T0>(Hytmpb+j+ypass_offset);
+                Oc_Prefetch<Ocpd_T0>(Hytmpa+j+ypass_offset);
               }
             }
             StopTimer(11);
@@ -2403,7 +2403,7 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
               = (0<ka && ka<adimz-1 ? Hzbase + (cdimz-ka)*Hz_kstride : 0);
             
             for(OC_INDEX ja=jstart;ja<jstop;++ja) {
-              Oc_Prefetch(Atmp+(astridek+ja),Ocpd_NTA);
+              Oc_Prefetch<Ocpd_NTA>(Atmp+(astridek+ja));
               const Oxs_Demag::A_coefs& Aref = Atmp[ja];
               Oc_Duet A_00(Aref.A00);   Oc_Duet A_01(Aref.A01);
               Oc_Duet A_02(Aref.A02);   Oc_Duet A_11(Aref.A11);

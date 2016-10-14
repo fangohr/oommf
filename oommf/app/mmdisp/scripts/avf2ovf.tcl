@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 Oc_CommandLine Option console {} {}
 
@@ -93,8 +93,9 @@ proc IsPosFloat { x } {
    return 0
 }
 
-proc IsNonNegativeInteger { x } {
-   if {[regexp -- {^[0-9]+$} $x]} {
+proc IsResampleType { x } {
+   if {[string compare "ave" $x]==0
+       || [regexp -- {^[0-9]+$} $x]} {
       return 1
    }
    return 0
@@ -163,6 +164,13 @@ Oc_CommandLine Option format {
 } {Format of output file: text, 4-, or 8-byte binary}
 set format text
 
+Oc_CommandLine Option ovfversion {
+        {version {regexp {1|2} $version} {is either 1 (default) or 2}}
+    } {
+	upvar #0 ovfversion globalversion; set globalversion $version
+} {OVF version of output file}
+set ovfversion 1
+
 Oc_CommandLine Option grid {
    {type {regexp {^(rect|irreg|reg)} $type} {is one of {rect,irreg}}}
     } {
@@ -194,7 +202,7 @@ Oc_CommandLine Option resample {
    {xstep { IsPosFloat $xstep } {is x-step}}
    {ystep { IsPosFloat $ystep } {is y-step}}
    {zstep { IsPosFloat $zstep } {is z-step}}
-   {order { IsNonNegativeInteger $order } {is interpolation order (0, 1 or 3)}}
+   {order { IsResampleType $order } {is interpolation order (0, 1, 3 or ave)}}
 } {
    global resample
    set resample [list $xstep $ystep $zstep $order]
@@ -331,8 +339,9 @@ if {[llength $resample]==4} {
       puts stderr "ERROR: resampling step sizes must be positive"
       exit 41
    }
-   if {$method_order!=0 && $method_order!=1 && $method_order!=3} {
-      puts stderr "ERROR: resampling interpolation order must be 0, 1 or 3"
+   if {[string compare "ave" $method_order]!=0
+       && $method_order!=0 && $method_order!=1 && $method_order!=3} {
+      puts stderr "ERROR: resampling interpolation order must be 0, 1, 3 or ave"
       exit 43
    }
    if {[llength $clipstr]!=6} {
@@ -373,8 +382,13 @@ if {[llength $resample]==4} {
                       [expr {($zmax-$zmin)/$kcount}]]
       exit 47
    }
-   Resample 0 0 $xmin $ymin $zmin $xmax $ymax $zmax \
-      $icount $jcount $kcount $method_order
+   if {[string compare "ave" $method_order]==0} {
+      ResampleAverage 0 0 $xmin $ymin $zmin $xmax $ymax $zmax \
+         $icount $jcount $kcount
+   } else {
+      Resample 0 0 $xmin $ymin $zmin $xmax $ymax $zmax \
+         $icount $jcount $kcount $method_order
+   }
 }
 
 if {![string match "x:y:z" $flipstr] || ![string match {} $clipstr]
@@ -390,7 +404,12 @@ if {$tx!=0.0 || $ty!=0.0 || $tz!=0.0} {
 
 # $filename == "" --> write to stdout
 if {!$writemags} {
-   WriteMesh $outputfile $formatmap($format) $gridmap($grid) $title $desc
+   if { $ovfversion == 1 } {
+      WriteMesh $outputfile $formatmap($format) $gridmap($grid) $title $desc
+   } else {
+      WriteMeshOVF2 $outputfile $formatmap($format) $gridmap($grid) \
+         $title $desc
+   }
 } else {
    WriteMeshMagnitudes $outputfile $formatmap($format) $gridmap($grid) \
       $title $desc

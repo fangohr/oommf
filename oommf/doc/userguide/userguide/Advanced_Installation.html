@@ -94,7 +94,7 @@ Reducing Disk Space Usage
 </H3>
 
 <P>
-<A NAME="1023"></A>
+<A NAME="1016"></A>
 To delete the intermediate files created when building the OOMMF software from source code, use 
 <A HREF="Platform-Independent_Make_p.html#sec:pimake">pimake</A>
 to build the target
@@ -104,11 +104,11 @@ tclsh oommf.tcl pimake objclean
 </PRE>
 Running your platform <TT><B>strip</B></TT> utility on the OOMMF executable files
 should also reduce their size somewhat.
-<A NAME="1032"></A>
+<A NAME="1025"></A>
 
 <P>
 
-<H3><A NAME="SECTION00033200000000000000"></A><A NAME="sec:custom"></A><A NAME="1035"></A>
+<H3><A NAME="SECTION00033200000000000000"></A><A NAME="sec:custom"></A><A NAME="1028"></A>
 <BR>
 Local Customizations
 </H3>
@@ -116,7 +116,7 @@ Local Customizations
 <P>
 OOMMF software supports local customization of some of its
 features.  All OOMMF programs load the file
-<TT><B>config/options.tcl</B></TT><A NAME="1037"></A><A NAME="1038"></A>, which
+<TT><B>config/options.tcl</B></TT><A NAME="1030"></A><A NAME="1031"></A>, which
 contains customization commands as well as editing instructions.  As it
 is distributed, <TT><B>config/options.tcl</B></TT> directs programs to also load
 the file <TT><B>config/local/options.tcl</B></TT>, if it exists.  Because future
@@ -142,7 +142,7 @@ instructions are in the file <TT><B>config/options.tcl</B></TT>.
 
 <P>
 
-<H3><A NAME="SECTION00033300000000000000"></A><A NAME="sec:optimize"></A><A NAME="1056"></A>
+<H3><A NAME="SECTION00033300000000000000"></A><A NAME="sec:optimize"></A><A NAME="1049"></A>
 <BR>
 Optimization
 </H3>
@@ -182,7 +182,7 @@ already exist.
 
 <P>
 
-<H3><A NAME="SECTION00033400000000000000"></A><A NAME="sec:parallel"></A><A NAME="1069"></A>
+<H3><A NAME="SECTION00033400000000000000"></A><A NAME="sec:parallel"></A><A NAME="1062"></A>
 <BR>
 Parallelization
 </H3>
@@ -217,12 +217,12 @@ programs <TT>oxsii</TT> and <TT>boxsi</TT>.  You can modify the default by
 editing the <TT>oommf_thread_count</TT> value in the
 <TT><B>config/platforms/</B></TT> file for your platform.  You can override the
 default at run time by setting the environment variable
-<TT>OOMMF_THREADS</TT><A NAME="1085"></A>, or by
+<TT>OOMMF_THREADS</TT><A NAME="1078"></A>, or by
 using the command line option <TT>-threads</TT> to <TT>oxsii</TT> and
 <TT>boxsi</TT>.
 
 <P>
-<A NAME="1089"></A>Some multi-processor machines have a non-uniform memory
+<A NAME="1082"></A>Some multi-processor machines have a non-uniform memory
 architecture (NUMA), which means that although each processor can access
 all of system memory, some parts of memory can be accessed faster than
 others.  Typically this is accomplished by dividing the system memory
@@ -280,13 +280,13 @@ NUMA-aware version of OOMMF.
 To activate the NUMA-aware code, you must specify the <TT>-numanodes</TT>
 option on the <TT>oxsii</TT>/<TT>boxsi</TT> command line, or set the the
 environment variable
-<TT>OOMMF_NUMANODES</TT><A NAME="1111"></A>.
+<TT>OOMMF_NUMANODES</TT><A NAME="1104"></A>.
 Check the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs documention</A> for details.
-<A NAME="1116"></A><A NAME="1117"></A>
+<A NAME="1109"></A><A NAME="1110"></A>
 
 <P>
 
-<H3><A NAME="SECTION00033500000000000000"></A><A NAME="sec:platformNames"></A><A NAME="1120"></A>
+<H3><A NAME="SECTION00033500000000000000"></A><A NAME="sec:platformNames"></A><A NAME="1113"></A>
 <BR>
 Managing OOMMF Platform Names
 </H3>
@@ -417,7 +417,7 @@ host name is <TT>foo.bar.net</TT>:
 
 <P>
 Contact the OOMMF developers if you need further assistance.
-<A NAME="1168"></A>
+<A NAME="1161"></A>
 
 <P>
 <HR>
@@ -439,6 +439,6 @@ Contact the OOMMF developers if you need further assistance.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

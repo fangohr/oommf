@@ -34,12 +34,17 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-## Support for the automated buildtest scripts
+# Environment variable override for C++ compiler
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+}
+
+# Support for the automated buildtest scripts
 if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
    source [file join [file dirname [info script]] buildtest.tcl]
 }
 
-## Enable experimental code to set application name in Mac OS X menubar
+# Enable experimental code to set application name in Mac OS X menubar
 $config SetValue program_compiler_c++_set_macosx_appname 1
 
 
@@ -132,6 +137,10 @@ proc GuessGccVersion { gcc } {
     return [split $guess "."]
 }
 
+# Miscellaneous processing routines
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         misc-support.tcl]
+
 ########################################################################
 # LOCAL CONFIGURATION
 #
@@ -186,13 +195,13 @@ proc GuessGccVersion { gcc } {
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to add to compiler "opts" string:
-# $config SetValue program_compiler_c++_add_flags \
-#                          {-funroll-loops}
-#
 ## Flags to remove from compiler "opts" string:
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
 #
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
@@ -343,8 +352,8 @@ if {[string match g++ [file tail [lindex \
    }
 
    # Uncomment the following two lines to remove SSE enabling flags.
-   # regsub -all -- {^-mfpmath=sse\s+|\s+-mfpmath=sse(?=\s|$)} $opts {} opts
-   # regsub -all -- {^-msse\d*\s+|\s+-msse\d*(?=\s|$)} $opts {} opts
+   # regsub -all -- {-mfpmath=[^ ]*} $opts {} opts
+   # regsub -all -- {-msse[^ ]*} $opts {} opts
 
    # Uncomment the following to remove loop array prefetch flag
    # regsub -all -- \
@@ -374,21 +383,8 @@ if {[string match g++ [file tail [lindex \
    }
    catch {unset nowarn}
 
-   # Make user requested tweaks to compile line
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
@@ -493,21 +489,8 @@ if {[string match g++ [file tail [lindex \
       }
    }
 
-   # Make user requested tweaks to compile line
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 

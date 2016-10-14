@@ -2,7 +2,7 @@
  *
  * Main source file for vector field file I/O.
  *
- * Last modified on: $Date: 2014/10/22 21:25:33 $
+ * Last modified on: $Date: 2016/03/18 23:14:41 $
  * Last modified by: $Author: donahue $
  */
 
@@ -3569,7 +3569,7 @@ Vf_Ovf20FileHeader::WriteData
     }
 
     if(!bare) {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# End: Data Binary 4\n");
+      Nb_FprintfChannel(outchan, NULL, 1024, "\n# End: Data Binary 4\n");
     }
 
   } else if(datastyle == vf_obin8) {
@@ -3668,7 +3668,7 @@ Vf_Ovf20FileHeader::WriteData
     }
 #endif // OC_BYTEORDER
     if(!bare) {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# End: Data Binary 8\n");
+      Nb_FprintfChannel(outchan, NULL, 1024, "\n# End: Data Binary 8\n");
     }
   }
 
@@ -3858,7 +3858,7 @@ Vf_Ovf20FileHeader::WriteData
     }
 
     if(!bare) {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# End: Data Binary 4\n");
+      Nb_FprintfChannel(outchan, NULL, 1024, "\n# End: Data Binary 4\n");
     }
 
   } else if(datastyle == vf_obin8) {
@@ -3942,7 +3942,7 @@ Vf_Ovf20FileHeader::WriteData
       }
     }
     if(!bare) {
-      Nb_FprintfChannel(outchan, NULL, 1024, "# End: Data Binary 8\n");
+      Nb_FprintfChannel(outchan, NULL, 1024, "\n# End: Data Binary 8\n");
     }
   }
 

@@ -73,7 +73,7 @@ private:
   // See the Run() member function for the actual implementation
   // of these rules.
   //
-  // problem_status is also used in conjuction with checkpoint_cleanup
+  // problem_status is also used in conjuction with checkpoint_disposal
   // to decide checkpoint file disposal inside ~Oxs_Driver().
   //
 
@@ -179,6 +179,10 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
   OC_BOOL normalize_aveM;
   OC_REAL8m scaling_aveM; // For use with regular meshes
 
+  // Optional output that dumps wall clock time to DataTable output
+  OC_INT4m report_wall_time;
+  OSO_DECL(wall_time);
+
 #undef OSO_DECL
 
   vector<OC_UINT4m> stage_iteration_limit; // Counts; 0 => no limit
@@ -237,14 +241,14 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
     String checkpoint_filename_tmpA; // Temp file names.  Note that the same
     String checkpoint_filename_tmpB; // temp files are used for all saves.
     double checkpoint_interval; // In wall-clock seconds.
+                               /// Negative values disable checkpointing.
     Oc_Ticks checkpoint_time;   // Time of last checkpoint commit.
     OC_UINT4m checkpoint_id;    // Id of last checkpoint commit.
 
-    enum OxsDriverCheckpointCleanupTypes {
-      OXSDRIVER_CCT_INVALID, OXSDRIVER_CCT_NORMAL,
-      OXSDRIVER_CCT_DONE_ONLY, OXSDRIVER_CCT_NEVER,
-      OXSDRIVER_CCT_FORCEFINAL
-    } checkpoint_cleanup;
+    enum OxsDriverCheckpointDisposalTypes {
+      OXSDRIVER_CDT_INVALID, OXSDRIVER_CDT_STANDARD,
+      OXSDRIVER_CDT_DONE_ONLY, OXSDRIVER_CDT_NEVER
+    } checkpoint_disposal;
 
     // Declare but don't define the following members
     BackgroundCheckpoint(const BackgroundCheckpoint&);
@@ -263,22 +267,43 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
         checkpoint_writes(0), checkpoint_mode(OXSDRIVER_CMT_INVALID),
         director(in_dtr),
         checkpoint_interval(0),checkpoint_id(0),
-        checkpoint_cleanup(OXSDRIVER_CCT_INVALID) {
+        checkpoint_disposal(OXSDRIVER_CDT_INVALID) {
       director->ReserveSimulationStateRequest(ReserveStateCount());
       checkpoint_time.ReadWallClock();
     }
 
     ~BackgroundCheckpoint();
 
-    void ForceFinalCheckpoint() {
-      checkpoint_cleanup = OXSDRIVER_CCT_FORCEFINAL;
+    OC_BOOL TestKeepCheckpoint(OxsDriverProblemStatus probstatus) {
+      // Returns 1 if checkpoint should be kept, 0 otherwise.
+      if(checkpoint_writes==0) return 0;  // No checkpoint written
+      if(checkpoint_disposal==OXSDRIVER_CDT_STANDARD) {
+        // STANDARD behavior is to delete checkpoint if possible
+        return 0;
+      }
+      if(checkpoint_disposal==OXSDRIVER_CDT_DONE_ONLY
+         && probstatus==OXSDRIVER_PS_DONE) {
+        return 0;
+      }
+      return 1; // Keep checkpoint in any abnormal circumstance
     }
-    OC_BOOL IsForceFinalCheckpoint() const {
-      return (OXSDRIVER_CCT_FORCEFINAL == checkpoint_cleanup);
+
+    const char* GetDisposal() const;
+    void SetDisposal(const String& in_disposal);
+
+    // Note: Interval times in (wall-clock) seconds
+    double GetInterval() const { return checkpoint_interval; }
+    void SetInterval(double in_interval) {
+      checkpoint_interval = in_interval;
+    }
+
+    // Wall time of last checkpoint commit
+    Oc_Ticks GetTicks() const {
+      return checkpoint_time;
     }
 
     void Init(const String& in_filename,
-              double in_interval,const String& in_cleanup);
+              double in_interval,const String& in_disposal);
 
     void Reset(const Oxs_SimState* start_state) {
       Oc_RemoveSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
@@ -301,10 +326,20 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
       Oc_AppendSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
     }
 
-    void WrapUp(OxsDriverProblemStatus probstatus);
+    void WrapUp(OxsDriverProblemStatus probstatus,OC_BOOL flush_queue);
 
     const char* CheckpointFilename() const {
       return checkpoint_filename.c_str();
+    }
+
+    const char* CheckpointFullFilename() const {
+      // If checkpointing is enabled, then return the absolute path to
+      // the checkpoint file.  Otherwise, return an empty string.
+      if(checkpoint_interval >= 0.0) {
+        return checkpoint_filename_full.c_str();
+      } else {
+        return "";
+      }
     }
 
     // RequestBackup queues state onto backup stack unconditionally, and
@@ -312,8 +347,10 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
     // checks checkpoint_time and checkpoint_id; if sufficient time has
     // elapsed and the id has changed, then checkpoint_time and
     // checkpoint_id are updated and the state is sent to RequestBackup.
+    // Return from UpdateBackup is 1 if RequestBackup is called,
+    // otherwise 0.
     void RequestBackup(Oxs_ConstKey<Oxs_SimState>& statekey);
-    void UpdateBackup(Oxs_ConstKey<Oxs_SimState>& statekey);
+    int UpdateBackup(Oxs_ConstKey<Oxs_SimState>& statekey);
   }  bgcheckpt;  // Restart file control
 
   // CHECKPOINTING /////////////////////////////////////////////////////
@@ -397,11 +434,28 @@ public:
   OC_UINT4m GetStage() const;
   OC_UINT4m GetNumberOfStages() const { return number_of_stages; }
 
-  void ForceFinalCheckpoint() {
-    bgcheckpt.ForceFinalCheckpoint();
+  const char* GetCheckpointFilename() const {
+    return bgcheckpt.CheckpointFullFilename();
   }
-  OC_BOOL IsForceFinalCheckpoint() const {
-    return bgcheckpt.IsForceFinalCheckpoint();
+
+  const char* GetCheckpointDisposal() const {
+    return bgcheckpt.GetDisposal();
+  }
+  void SetCheckpointDisposal(const String& in_disposal) {
+    bgcheckpt.SetDisposal(in_disposal);
+  }
+
+  // Note: bgcheckpt tracks intervals in seconds.  The
+  // driver interface tracks minutes.
+  double GetCheckpointInterval() const {
+    return bgcheckpt.GetInterval()/60.;
+  }
+  void SetCheckpointInterval(double in_interval) {
+    bgcheckpt.SetInterval(in_interval*60.);
+  }
+
+  Oc_Ticks GetCheckpointTicks() const {
+    return bgcheckpt.GetTicks();
   }
 
   // Special setup for MIF load tests.  (This is part of the regression

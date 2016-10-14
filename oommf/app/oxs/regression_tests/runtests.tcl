@@ -309,8 +309,13 @@ if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin] \
    }
 } else {
    proc exec_ignore_stderr { args } {
-      global nuldevice
-      eval exec $args $ERR_REDIRECT
+      global ERR_REDIRECT
+      if {[string compare & [lindex $args end]]==0} {
+         set args [linsert $args [expr {[llength $args]-1}] $ERR_REDIRECT]
+      } else {
+         lappend args $ERR_REDIRECT
+      }
+      eval exec $args
    }
 }
 
@@ -335,6 +340,7 @@ set OOMMF [file join $HOME .. .. .. oommf.tcl]
 
 set SIGFIGS 8   ;# Default
 set loglevel 0  ;# Default
+set logfile [file join $HOME runtests.log]
 
 set load_dir [file join $HOME load_tests]
 set examples_dir [file join $HOME .. examples]
@@ -364,6 +370,7 @@ proc Usage {} {
    global loglevel results_basename_template SIGFIGS EXEC_TEST_TIMEOUT
    puts stderr "Usage: tclsh runtests.tcl\
                   \[-autoadd\]\
+                  \[-alttestdir \<dirname\>\]\
                   \[-ignoreextra\]\
                   \[-keepfail\]\
                   \[-listtests\]\n      \
@@ -380,13 +387,15 @@ proc Usage {} {
    puts stderr " Where:"
    puts stderr "  -autoadd automatically adds new tests from\
                    examples directory"
+   puts stderr "  -alttestdir specifies alternative test directory"
    puts stderr "  -ignoreextra ignore extra columns in new data"
    puts stderr "  -keepfail saves results from failed tests"
    puts stderr "  -listtests shows selected tests and exits"
-   puts stderr "  -loglevel controls output to boxsi.errors (default $loglevel)"
+   puts stderr "  -loglevel controls output to boxsi.errors\
+                   (default $loglevel)"
    puts stderr "  -noexcludes ignore exclude files"
-   puts stderr "  -resultsfile sets temp results filename\
-                   (default \"$results_basename_template\", with <pid> filling %d)"
+   puts stderr "  -resultsfile sets temp results filename (default\
+                   \"$results_basename_template\", with <pid> filling %d)"
    puts stderr "  -showoutput dumps test stdout and stderr output"
    puts stderr "  -sigfigs is number of significant figures (default $SIGFIGS)"
    puts stderr "  -threads is number of threads to run (threaded builds only)"
@@ -518,8 +527,7 @@ if {[string compare "windows" $tcl_platform(platform)]==0} {
 proc TimeoutExecReadHandler { chan } {
    global TE_runcode TE_results
    if {![eof $chan]} {
-      set data [read $chan]
-      append TE_results
+      append TE_results [set data [read $chan]]
       if {[string match {*Boxsi run end.*} $data]} {
          # Handle case where exit blocked by still-running
          # child process.
@@ -583,6 +591,15 @@ if {$autoadd_index >= 0} {
    set argv [lreplace $argv $autoadd_index $autoadd_index]
 }
 
+set alt_test_dir {}
+set alttestdir_index [lsearch -regexp $argv {^-+alttestdir$}]
+if {$alttestdir_index >= 0 && $alttestdir_index+1 < [llength $argv]} {
+   set ul [expr {$alttestdir_index + 1}]
+   set alt_test_dir [file join [pwd] [lindex $argv $ul]]
+   set argv [lreplace $argv $alttestdir_index $ul]
+}
+
+
 set ignoreextra 0
 set ignoreextra_index [lsearch -regexp $argv {^-+ignoreextra$}]
 if {$ignoreextra_index >= 0} {
@@ -618,7 +635,7 @@ if {$listtests_index >= 0} {
 
 set loglevel_index [lsearch -regexp $argv {^-+loglevel$}]
 if {$loglevel_index >= 0 && $loglevel_index+1 < [llength $argv]} {
-   set ul [expr {$loglevel + 1}]
+   set ul [expr {$loglevel_index + 1}]
    set loglevel [lindex $argv $ul]
    set argv [lreplace $argv $loglevel_index $ul]
    if {![regexp {^[0-9]+$} $loglevel]} {
@@ -701,72 +718,80 @@ if {$verbose_index >= 0} {
    set argv [lreplace $argv $verbose_index $verbose_index]
 }
 
+# Note: If alt_test_dir is non-empty, then default load, local, and bug
+# tests are disabled.
+if {![string match {} $alt_test_dir]} {
+   set loadtests {}
+   set localtests {}
+   set new_tests {}
+   set bug_dir $alt_test_dir ;# If set, alt_test_dir replaces bug_dir
+} else {
+   # Check for new or missing tests
+   set load_list [glob -nocomplain [file join $load_dir *.subtests]]
+   set examples_list [glob -nocomplain [file join $examples_dir *.mif]]
+   set new_tests {}
+   set missing_tests {}
 
-# Check for new or missing tests
-set load_list [glob -nocomplain [file join $load_dir *.subtests]]
-set examples_list [glob -nocomplain [file join $examples_dir *.mif]]
-set new_tests {}
-set missing_tests {}
-
-if {$autoadd} {
-   foreach test $examples_list {
-      set root [file rootname [file tail $test]]
-      set check [file join $load_dir ${root}.subtests]
-      if {[lsearch -exact $load_list $check]<0} {
-         lappend new_tests $root
+   if {$autoadd} {
+      foreach test $examples_list {
+         set root [file rootname [file tail $test]]
+         set check [file join $load_dir ${root}.subtests]
+         if {[lsearch -exact $load_list $check]<0} {
+            lappend new_tests $root
+         }
       }
    }
-}
 
-foreach test $load_list {
-   set root [file rootname [file tail $test]]
-   set check [file join $examples_dir ${root}.mif]
-   if {[lsearch -exact $examples_list $check]<0} {
-      lappend missing_tests $root
+   foreach test $load_list {
+      set root [file rootname [file tail $test]]
+      set check [file join $examples_dir ${root}.mif]
+      if {[lsearch -exact $examples_list $check]<0} {
+         lappend missing_tests $root
+      }
    }
-}
 
-# Report new and missing tests
-if {[llength $new_tests]>0} {
-   puts "New tests---"
-   foreach test $new_tests { puts $test }
-   puts "------------"
-}
-
-if {[llength $missing_tests]>0} {
-   puts "Missing tests---"
-   foreach test $missing_tests { puts $test }
-   puts "----------------"
-}
-
-# Build full load test list
-set loadtests $new_tests
-foreach test $load_list {
-   set root [file rootname [file tail $test]]
-   if {[lsearch -exact $missing_tests $root]<0} {
-      lappend loadtests $root
+   # Report new and missing tests
+   if {[llength $new_tests]>0} {
+      puts "New tests---"
+      foreach test $new_tests { puts $test }
+      puts "------------"
    }
-}
-set loadtests [lsort $loadtests]
 
-# Silently omit any missing local MIF files, so that
-# extensions can be removed from local w/o breaking
-# regression test suite.
-set local_load_list \
-    [glob -nocomplain [file join $local_load_dir *.subtests]]
-set local_examples_list \
-    [glob -nocomplain [file join $local_examples_dir *.mif] \
-                      [file join $local_examples_dir *.mif2]]
-set localtests {}
-foreach test $local_load_list {
-   set root [file rootname [file tail $test]]
-   set check [file join $local_examples_dir ${root}.mif]
-   if {[lsearch -exact $local_examples_list $check]>=0} {
-      lappend localtests $root
-   } else {
-      set check [file join $local_examples_dir ${root}.mif2]
+   if {[llength $missing_tests]>0} {
+      puts "Missing tests---"
+      foreach test $missing_tests { puts $test }
+      puts "----------------"
+   }
+
+   # Build full load test list
+   set loadtests $new_tests
+   foreach test $load_list {
+      set root [file rootname [file tail $test]]
+      if {[lsearch -exact $missing_tests $root]<0} {
+         lappend loadtests $root
+      }
+   }
+   set loadtests [lsort $loadtests]
+
+   # Silently omit any missing local MIF files, so that
+   # extensions can be removed from local w/o breaking
+   # regression test suite.
+   set local_load_list \
+      [glob -nocomplain [file join $local_load_dir *.subtests]]
+   set local_examples_list \
+      [glob -nocomplain [file join $local_examples_dir *.mif] \
+          [file join $local_examples_dir *.mif2]]
+   set localtests {}
+   foreach test $local_load_list {
+      set root [file rootname [file tail $test]]
+      set check [file join $local_examples_dir ${root}.mif]
       if {[lsearch -exact $local_examples_list $check]>=0} {
          lappend localtests $root
+      } else {
+         set check [file join $local_examples_dir ${root}.mif2]
+         if {[lsearch -exact $local_examples_list $check]>=0} {
+            lappend localtests $root
+         }
       }
    }
 }
@@ -785,6 +810,7 @@ foreach test $bug_list {
    lappend bugtests $root
 }
 set bugtests [lsort $bugtests]
+
 
 # Compare loadtests, localtests and bugtests to requested tests in
 # argv, and construct a list of tests to do.  Each element of dotests
@@ -964,8 +990,10 @@ proc TestCompareODT { oldfile newfile suberrors } {
    close $chan
 
    set MAXTRYCOUNT 10
+   set file_opened 0
    for {set trycount 0} {$trycount<$MAXTRYCOUNT} {incr trycount} {
       if {![catch {open $newfile r} chan]} {
+         set file_opened 1
          set newtable [read -nonewline $chan]
          close $chan
          if {[regexp "# *Table *End\[ \t\n\]*\$" $newtable]} {
@@ -977,7 +1005,11 @@ proc TestCompareODT { oldfile newfile suberrors } {
       after 1000
    }
    if {$trycount >= $MAXTRYCOUNT} {
-      puts "ERROR: Unable to open test ODT file \"$newfile\""
+      if {!$file_opened} {
+         puts "ERROR: Unable to open test ODT file \"$newfile\""
+      } else {
+         puts "ERROR: Test ODT file \"$newfile\" incomplete."
+      }
       return 1
    }
 
@@ -1355,7 +1387,7 @@ proc TestCompareOVF { oldfile newfile } {
       return 1
    }
    set listresults [split $results "\n"]
-   if {[llength $listresults]!=2} {
+   if {[llength $listresults]!=3} {
       puts "Run compare error (a) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
       puts "$results\n<-- Run compare error"
@@ -1363,22 +1395,23 @@ proc TestCompareOVF { oldfile newfile } {
    }
    set line0 [string trim [lindex $listresults 0]]
    set line1 [string trim [lindex $listresults 1]]
+   set line2 [string trim [lindex $listresults 2]]
    if {![string match "${oldfile} (in *" $line0] || \
-         ![string match "${newfile} (in *" $line1]} {
+         ![string match "${newfile} (in *" $line2]} {
       puts "Run compare error (b) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
       puts "$results\n<-- Run compare error"
       return 1
    }
    if {![regexp {^.*Max *mag = *([0-9.e+-]+),} \
-            $line0 dummy maxmag]} {
+            $line1 dummy maxmag]} {
       puts "Run compare error (c) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
       puts "$results\n<-- Run compare error"
       return 1
    }
    if {![regexp {^.*Max *diff = *([0-9.e+-]+),} \
-            $line1 dummy maxdiff]} {
+            $line2 dummy maxdiff]} {
       puts "Run compare error (d) \"$oldfile\" \"$newfile\";\
             Bad avfdiff -info output -->"
       puts "$results\n<-- Run compare error"
@@ -1770,6 +1803,7 @@ foreach test $dotests {
       # Build boxsi command line
       set boxsi_command [linsert $boxsi_base_command end \
                             -loglevel $loglevel \
+                            -logfile  $logfile \
                             -regression_testname $results_basename \
                             -regression_test $reglevel]
       if {[llength $subparams]>0} {

@@ -59,7 +59,7 @@ Oxsii">
 <BR>
 OOMMF eXtensible Solver Interactive Interface:
 Oxsii
-</H2><A NAME="3959"></A><A NAME="3960"></A>
+</H2><A NAME="3947"></A><A NAME="3948"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -79,7 +79,7 @@ application. <B>Oxsii</B> is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Oxsii</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="3978"><B>mmLaunch</B></A>.  It is through
+ NAME="3966"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Oxsii</B>.
 
@@ -112,7 +112,7 @@ command line via
 <PRE>
 tclsh oommf.tcl oxsii [standard options] [-exitondone &lt;0|1&gt;] \
    [-logfile logname] [-loglevel level] [-nice &lt;0|1&gt;] [-nocrccheck &lt;0|1&gt;] \
-   [-numanodes nodes] [-parameters params] [-pause &lt;0|1&gt;] \
+   [-numanodes nodes] [-outdir dir] [-parameters params] [-pause &lt;0|1&gt;] \
    [-restart &lt;0|1|2&gt;] [-restartfiledir dir] [-threads count] [miffile]
 </PRE>
 where
@@ -144,8 +144,8 @@ where
   this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4016"></A>
-  <A NAME="4017"></A>
+<DD><A NAME="4004"></A>
+  <A NAME="4005"></A>
   This option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
   Oxs.  The <I>nodes</I> parameter must be either a comma separated
@@ -191,8 +191,20 @@ The default behavior is modified (in increasing order of priority) by the
   <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
   file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
   or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4046"></A>.  The
-  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4048"></A>
+  <TT>OOMMF_NUMANODES</TT><A NAME="4034"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4036"></A>
+</DD>
+<DT><STRONG><TT><B>-outdir dir</B></TT></STRONG></DT>
+<DD>Specifies the directory where output files are written by
+  <B>mmArchive</B>.  This option is useful when the default output
+  directory is inaccessible or slow. The environment variable
+  <TT>OOMMF_OUTDIR</TT><A NAME="4040"></A> sets the
+  default output directory.  If <TT>OOMMF_OUTDIR</TT> is set to the empty
+  string, or not set at all, then the default is the directory holding
+  the MIF file.  If this option is specified on the command line, or
+  if <TT>OOMMF_OUTDIR</TT> is set, then the <B>Oxsii</B>
+  <TT>File|Load...</TT> dialog box includes a control to change
+  the output directory.
 </DD>
 <DT><STRONG><TT><B>-parameters params</B></TT></STRONG></DT>
 <DD>Sets <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> file
@@ -218,7 +230,7 @@ The default behavior is modified (in increasing order of priority) by the
   is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
   no effect if miffile is not specified.
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6728"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6747"></A></B></TT></STRONG></DT>
 <DD>Controls the initial setting of the restart flag, and thereby 
   the load restart behavior of any <TT>miffile</TT> specified on the command
   line.  The restart flag is described in the
@@ -226,20 +238,26 @@ The default behavior is modified (in increasing order of priority) by the
   The default value is 0, i.e., no restart.
 </DD>
 <DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
-<DD>Specifies the directory where restart files are written.  Default is the
-  directory holding the MIF file.  You may want to change this to a local
-  temporary directory (e.g., <TT><B>/tmp</B></TT>), especially if the MIF file
-  directory is a network mount.
+<DD>Specifies the directory where restart files are written.
+  The default is determined by the environment variable
+  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4069"></A>,
+  or if this is not set then by
+  <TT>OOMMF_OUTDIR</TT><A NAME="4071"></A>.  If
+  neither environment variable is set then the default is the
+  directory holding the MIF file.  Write access is required to the
+  restart file directory.  Also, you may want to consider whether the
+  restart files should be written to a local temporary directory or a
+  network mount.
 </DD>
 <DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4074"></A>
+<DD><A NAME="4073"></A>
   The option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
   The <I>count</I> parameter is the number of threads to run.  The
   default count value is set by the <TT>oommf_thread_count</TT> value in
   the <TT><B>config/platforms/</B></TT> file for your platform, but may be
   overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="4083"></A>
+  <TT>OOMMF_THREADS</TT><A NAME="4082"></A>
   environment variable or this command line option.  In most cases the
   default count value will equal the number of processing cores on the
   system; this can be checked via the command
@@ -254,11 +272,11 @@ The default behavior is modified (in increasing order of priority) by the
 All the above switches are optional.
 
 <P>
-Since <B>Oxsii</B><A NAME="4091"></A> does not present
+Since <B>Oxsii</B><A NAME="4090"></A> does not present
 any user interface window of its own, it depends on
-<B>mmLaunch</B><A NAME="4093"></A> to provide an interface on
+<B>mmLaunch</B><A NAME="4092"></A> to provide an interface on
 its behalf.  The entry for an instance of <B>Oxsii</B> in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4096"></A> column of any running copy of
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4095"></A> column of any running copy of
 <B>mmLaunch</B> has a checkbutton next to it.  This button toggles the
 presence of a user interface window through which the user may control
 that instance of <B>Oxsii</B>.
@@ -310,11 +328,11 @@ When the <TT>DataTable</TT> entry is selected, the Destination box will
 list all OOMMF applications accepting datatable-style input, i.e., all
 currently running
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="4143"><B>mmDataTable</B></A>,
+ NAME="4142"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="4148"><B>mmGraph</B></A>, and
+ NAME="4147"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4153"><B>mmArchive</B></A> processes.
+ NAME="4152"><B>mmArchive</B></A> processes.
 
 <P>
 The vector field outputs include pointwise magnetization, various total
@@ -323,9 +341,9 @@ outputs, the vector field outputs are listed individually in the Output
 scroll box.  Allowed destinations for vector field output are running
 instances of
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="4158"><B>mmDisp</B></A> and
+ NAME="4157"><B>mmDisp</B></A> and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4163"><B>mmArchive</B></A>.  Caution is
+ NAME="4162"><B>mmArchive</B></A>.  Caution is
 advised when scheduling vector field output, especially with large
 problems, because the output may run many megabytes.
 
@@ -443,6 +461,6 @@ computational details.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

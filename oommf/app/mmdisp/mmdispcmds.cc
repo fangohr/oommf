@@ -164,7 +164,7 @@ int FreeMesh(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 }
 
 int CopyMesh(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
-{
+{ // Note: new mesh id is allowed to be the same as original mesh id.
   Tcl_ResetResult(interp);
   if(argc<3 || argc>7) {
     Oc_Snprintf(buf,sizeof(buf),
@@ -440,6 +440,83 @@ int Resample(ClientData,Tcl_Interp *interp,
   return TCL_OK;
 }
 
+int ResampleAverage(ClientData,Tcl_Interp *interp,
+                    int argc,CONST84 char** argv)
+{
+  Tcl_ResetResult(interp);
+  if(argc!=12) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Resample must be called with 11 arguments: "
+                "original mesh id, new mesh id, "
+                "xmin, ymin, zmin, xmax, ymax, zmax, "
+                "icount, jcount, kcount "
+                "(%d arguments passed)",
+                argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  int origmeshId = atoi(argv[1]);
+  if(origmeshId<0 || origmeshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Invalid mesh id request: %d; should be between 0 and %d",
+                origmeshId,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  int newmeshId = atoi(argv[2]);
+  if(newmeshId<0 || newmeshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Invalid mesh id request: %d; should be between 0 and %d",
+                newmeshId,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  Nb_Vec3<OC_REAL8> corner1(Nb_Atof(argv[3]),
+                            Nb_Atof(argv[4]),
+                            Nb_Atof(argv[5]));
+  Nb_Vec3<OC_REAL8> corner2(Nb_Atof(argv[6]),
+                            Nb_Atof(argv[7]),
+                            Nb_Atof(argv[8]));
+  Nb_BoundingBox<OC_REAL8> newrange;
+  newrange.SortAndSet(corner1,corner2); 
+
+  OC_INDEX icount = static_cast<OC_INDEX>(atol(argv[9]));
+  OC_INDEX jcount = static_cast<OC_INDEX>(atol(argv[10]));
+  OC_INDEX kcount = static_cast<OC_INDEX>(atol(argv[11]));
+
+  // Rectangular mesh is required
+  if(strcmp(myMeshArray[origmeshId]->GetMeshType(),"Vf_GridVec3f")!=0) {
+    Oc_Snprintf(buf,sizeof(buf),"Invalid mesh type: %s\n",
+                myMeshArray[origmeshId]->GetMeshType());
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  Vf_GridVec3f* origgrid =
+    dynamic_cast<Vf_GridVec3f*>(myMeshArray[origmeshId]);
+  if(origgrid==0) {
+    Oc_Snprintf(buf,sizeof(buf),
+                "Downcast of input mesh to Vf_GridVec3f failed.\n");
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  // Create new mesh
+  Vf_GridVec3f* ngrid = new Vf_GridVec3f();
+  ngrid->ResampleCopyAverage(*origgrid,newrange,icount,jcount,kcount);
+
+  // Put new mesh into myMeshArray.  Note that this works
+  // including the case where newmeshId == origmeshId.
+  if(myMeshArray[newmeshId]!=NULL) delete myMeshArray[newmeshId];
+  myMeshArray[newmeshId] = ngrid;
+
+  if(activeMeshId == newmeshId) {
+    myFrame.SetMesh(ngrid);
+  }
+
+  return TCL_OK;
+}
+
 int CrossProductMesh(ClientData,Tcl_Interp *interp,
                      int argc,CONST84 char** argv)
 {
@@ -609,6 +686,23 @@ int GetMeshValueRMS(ClientData,Tcl_Interp *interp,int argc,CONST84 char**)
   return TCL_OK;
 }
 
+int GetMeshValueL1(ClientData,Tcl_Interp *interp,int argc,CONST84 char**)
+{
+  Tcl_ResetResult(interp);
+  if(argc!=1) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "GetMeshValueL1 must be called with no arguments"
+            " (%d arguments passed)",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  OC_REAL8m rms = myMeshArray[activeMeshId]->GetValueL1();
+  Oc_Snprintf(buf,sizeof(buf),"%.17g",
+              static_cast<double>(rms));
+  Tcl_AppendResult(interp,buf,(char *)NULL);
+  return TCL_OK;
+}
+
 int GetMeshValueUnit(ClientData,Tcl_Interp *interp,int argc,CONST84 char**)
 {
   Tcl_ResetResult(interp);
@@ -750,8 +844,13 @@ int GetMeshStructureInfo(ClientData,Tcl_Interp *interp,
   meshrange.GetExtremes(mesh_minpt,mesh_maxpt);
 
   OC_REAL8m value_min,value_max;
+  Nb_LocatedVector<OC_REAL8> min_vec,max_vec;
   const char *meshunit = myMesh->GetMeshUnit();
-  myMesh->GetValueMagSpan(value_min,value_max);
+
+  myMesh->GetValueMagSpan(min_vec,max_vec);
+  value_min = min_vec.value.Mag();
+  value_max = max_vec.value.Mag();
+
   const char *valueunit = myMesh->GetValueUnit();
   if(IsRectangularMesh(myMesh)) {
     if(size<1 || strcmp("Vf_GridVec3f",myMesh->GetMeshType())!=0) {
@@ -761,52 +860,89 @@ int GetMeshStructureInfo(ClientData,Tcl_Interp *interp,
       Vf_GridVec3f* regmesh = (Vf_GridVec3f*)myMesh;
       OC_INDEX dimx,dimy,dimz;
       regmesh->GetDimens(dimx,dimy,dimz);
+      Nb_Vec3<OC_REAL8> basept = regmesh->GetBasePoint();
+      Nb_Vec3<OC_REAL8> step = regmesh->GetGridStep();
       Oc_Snprintf(buf,sizeof(buf),
-                  "Rectangular mesh\n"
-                  " Mesh size: %d\n"
-                  " Dimensions: %d %d %d\n"
-                  " Value magnitude span: %.17g to %.17g (in %s)\n"
-                  " Data range: (%g,%g,%g) x (%g,%g,%g) (in %s)\n"
-                  " Mesh range: (%g,%g,%g) x (%g,%g,%g) (in %s)",
-                  size,
-                  dimx,dimy,dimz,
-                  static_cast<double>(value_min),
-                  static_cast<double>(value_max),valueunit,
-                  static_cast<double>(minpt.x),
-                  static_cast<double>(minpt.y),
-                  static_cast<double>(minpt.z),
-                  static_cast<double>(maxpt.x),
-                  static_cast<double>(maxpt.y),
-                  static_cast<double>(maxpt.z),meshunit,
-                  static_cast<double>(mesh_minpt.x),
-                  static_cast<double>(mesh_minpt.y),
-                  static_cast<double>(mesh_minpt.z),
-                  static_cast<double>(mesh_maxpt.x),
-                  static_cast<double>(mesh_maxpt.y),
-                  static_cast<double>(mesh_maxpt.z),meshunit);
+          "Rectangular mesh\n"
+          " Mesh size: %d\n"
+          " Dimensions: %d %d %d\n"
+          " Value magnitude span: %#.17g [(%g,%g,%g) at (%g,%g,%g)]\n"
+          "                    to %#.17g [(%g,%g,%g) at (%g,%g,%g)] (in %s)\n"
+          " Data range: (%g,%g,%g) x (%g,%g,%g) (in %s)\n"
+          " Mesh range: (%g,%g,%g) x (%g,%g,%g) (in %s)\n"
+          " Mesh base/step: (%g,%g,%g)/(%g,%g,%g) (in %s)",
+          size,
+          dimx,dimy,dimz,
+          static_cast<double>(value_min),
+          static_cast<double>(min_vec.value.x),
+          static_cast<double>(min_vec.value.y),
+          static_cast<double>(min_vec.value.z),
+          static_cast<double>(min_vec.location.x),
+          static_cast<double>(min_vec.location.y),
+          static_cast<double>(min_vec.location.z),
+          static_cast<double>(value_max),
+          static_cast<double>(max_vec.value.x),
+          static_cast<double>(max_vec.value.y),
+          static_cast<double>(max_vec.value.z),
+          static_cast<double>(max_vec.location.x),
+          static_cast<double>(max_vec.location.y),
+          static_cast<double>(max_vec.location.z),
+          valueunit,
+          static_cast<double>(minpt.x),
+          static_cast<double>(minpt.y),
+          static_cast<double>(minpt.z),
+          static_cast<double>(maxpt.x),
+          static_cast<double>(maxpt.y),
+          static_cast<double>(maxpt.z),meshunit,
+          static_cast<double>(mesh_minpt.x),
+          static_cast<double>(mesh_minpt.y),
+          static_cast<double>(mesh_minpt.z),
+          static_cast<double>(mesh_maxpt.x),
+          static_cast<double>(mesh_maxpt.y),
+          static_cast<double>(mesh_maxpt.z),meshunit,
+          static_cast<double>(basept.x),
+          static_cast<double>(basept.y),
+          static_cast<double>(basept.z),
+          static_cast<double>(step.x),
+          static_cast<double>(step.y),
+          static_cast<double>(step.z),meshunit);
     }
   } else {
     Oc_Snprintf(buf,sizeof(buf),
-                "Irregular mesh\n"
-                " Size: %d\n"
-                " Value magnitude span: %g to %g (in %s)\n"
-                " Data range: (%g,%g,%g) x (%g,%g,%g) (in %s)\n"
-                " Mesh range: (%g,%g,%g) x (%g,%g,%g) (in %s)",
-                size,
-                static_cast<double>(value_min),
-                static_cast<double>(value_max),valueunit,
-                static_cast<double>(minpt.x),
-                static_cast<double>(minpt.y),
-                static_cast<double>(minpt.z),
-                static_cast<double>(maxpt.x),
-                static_cast<double>(maxpt.y),
-                static_cast<double>(maxpt.z),meshunit,
-                static_cast<double>(mesh_minpt.x),
-                static_cast<double>(mesh_minpt.y),
-                static_cast<double>(mesh_minpt.z),
-                static_cast<double>(mesh_maxpt.x),
-                static_cast<double>(mesh_maxpt.y),
-                static_cast<double>(mesh_maxpt.z),meshunit);
+          "Irregular mesh\n"
+          " Size: %d\n"
+          " Value magnitude span: %#.17g [(%g,%g,%g) at (%g,%g,%g)]\n"
+          "                    to %#.17g [(%g,%g,%g) at (%g,%g,%g)] (in %s)\n"
+          " Data range: (%g,%g,%g) x (%g,%g,%g) (in %s)\n"
+          " Mesh range: (%g,%g,%g) x (%g,%g,%g) (in %s)",
+          size,
+          static_cast<double>(value_min),
+          static_cast<double>(min_vec.value.x),
+          static_cast<double>(min_vec.value.y),
+          static_cast<double>(min_vec.value.z),
+          static_cast<double>(min_vec.location.x),
+          static_cast<double>(min_vec.location.y),
+          static_cast<double>(min_vec.location.z),
+          static_cast<double>(value_max),
+          static_cast<double>(max_vec.value.x),
+          static_cast<double>(max_vec.value.y),
+          static_cast<double>(max_vec.value.z),
+          static_cast<double>(max_vec.location.x),
+          static_cast<double>(max_vec.location.y),
+          static_cast<double>(max_vec.location.z),
+          valueunit,
+          static_cast<double>(minpt.x),
+          static_cast<double>(minpt.y),
+          static_cast<double>(minpt.z),
+          static_cast<double>(maxpt.x),
+          static_cast<double>(maxpt.y),
+          static_cast<double>(maxpt.z),meshunit,
+          static_cast<double>(mesh_minpt.x),
+          static_cast<double>(mesh_minpt.y),
+          static_cast<double>(mesh_minpt.z),
+          static_cast<double>(mesh_maxpt.x),
+          static_cast<double>(mesh_maxpt.y),
+          static_cast<double>(mesh_maxpt.z),meshunit);
   }
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
@@ -890,6 +1026,34 @@ int GetMeshDescription(ClientData,Tcl_Interp *interp,
   const char *desc=myMeshArray[meshId]->GetDescription();
   if(desc!=NULL) strncpy(buf,desc,sizeof(buf));
   else           buf[0]='\0';
+  Tcl_AppendResult(interp,buf,(char *)NULL);
+  return TCL_OK;
+}
+
+int GetMeshSize(ClientData,Tcl_Interp *interp,
+                int argc,CONST84 char** argv)
+{
+  // Returns an integer reporting the number of nodes in the mesh
+  Tcl_ResetResult(interp);
+  if(argc<1 || argc>2) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "GetMeshSize must be called with 0 or 1 argument:"
+                " ?meshId? (%d arguments passed)",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  int meshId = activeMeshId;
+  if(argc>1) meshId = atoi(argv[1]);
+  if(meshId<0 || meshId>=MY_MESH_ARRAY_SIZE) {
+    Oc_Snprintf(buf,sizeof(buf),
+            "Invalid mesh id request: %d; should be between 0 and %d",
+            meshId,MY_MESH_ARRAY_SIZE-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  OC_INDEX size=myMeshArray[meshId]->GetSize();
+  Oc_Snprintf(buf,sizeof(buf),"%ld",static_cast<long>(size));
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
 }
@@ -2021,6 +2185,123 @@ int WriteMesh(ClientData,Tcl_Interp *interp,
   return errcode;
 }
 
+int WriteMeshOVF2
+(ClientData,Tcl_Interp *interp,
+ int argc,CONST84 char** argv)
+{
+  Tcl_ResetResult(interp);
+  if(argc<4 || argc>6) {
+    Oc_Snprintf(buf,sizeof(buf),"WriteMeshOVF2 must be called with"
+            " 3-5 arguments: filename <text|binary4|binary8>"
+            " <rectangular|irregular> [title] [description]"
+            " (%d arguments passed)",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  int errcode=TCL_OK;
+
+  Vf_OvfDataStyle ods=vf_oascii;
+  if(strcmp("binary4",argv[2])==0)      ods=vf_obin4;
+  else if(strcmp("binary8",argv[2])==0) ods=vf_obin8;
+
+  Vf_Ovf20_MeshType reqtype = vf_ovf20mesh_rectangular;
+  if(strcmp("irregular",argv[3])==0) {
+    reqtype = vf_ovf20mesh_irregular;
+  }
+
+  Vf_Mesh* mesh = myMeshArray[activeMeshId];
+  Vf_Ovf20FileHeader header;
+
+  Vf_Mesh_MeshNodes meshnodes(mesh);
+  meshnodes.DumpGeometry(header,reqtype);
+  
+  // Additional details
+  if(argc>4) header.title.Set(String(argv[4]));
+  if(argc>5) header.desc.Set(String(argv[5]));
+
+  vector<String> valueunits;   // Value units, such as "J/m^3"
+  vector<String> valuelabels;  // Value label, such as "Exchange energy density"
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valuelabels.push_back(String("")); // Empty placeholder for now.
+  valuelabels.push_back(String(""));
+  valuelabels.push_back(String(""));
+  header.valuedim.Set(3); // Vector field
+  header.valuelabels.Set(valuelabels);
+  header.valueunits.Set(valueunits);
+
+  if(!header.IsValidGeom()) {
+    OC_THROW("Programming error?"
+             " Invalid file header constructed in WriteMeshOVF2");
+  }
+
+  // Copy (scaled) vector components into vanilla OC_REAL8m array
+  const OC_INDEX size = meshnodes.GetSize();
+  Nb_ArrayWrapper<OC_REAL8m> vecvals(3*size);
+  for(OC_INDEX i=0; i<size ; ++i) {
+    const Nb_Vec3<OC_REAL8m>& nbvec = meshnodes.GetValue(i);
+    vecvals[3*i]   = nbvec.x;
+    vecvals[3*i+1] = nbvec.y;
+    vecvals[3*i+2] = nbvec.z;
+  }
+
+  // Open file
+  Tcl_Channel channel;
+  Tcl_DString saveTranslation;
+  const char* filename = NULL;
+  if (argv[1][0] == '\0') {
+    int mode;
+    channel = Tcl_GetChannel(interp, OC_CONST84_CHAR("stdout"), &mode);
+    Tcl_DStringInit(&saveTranslation);
+    Tcl_GetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+                         &saveTranslation);
+    filename = "stdout";
+  } else {
+    channel = Tcl_OpenFileChannel(interp, argv[1], OC_CONST84_CHAR("w"), 0666);
+    filename = argv[1];
+  }
+  if (channel == NULL) {
+    return TCL_ERROR;
+  }
+  Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+                       OC_CONST84_CHAR("lf"));
+
+
+  // Write
+  OC_INT4m writecheck = 0;
+  try {
+    Vf_Ovf20VecArrayConst data_info(3,size,vecvals.GetPtr());
+    header.WriteHeader(channel);
+    header.WriteData(channel, ods,
+                     "%# .17g",  // Might want to allow user to set this
+                     &meshnodes,data_info);
+  } catch(...) {
+    writecheck = 1;
+  }
+  if(writecheck != 0) {
+    Oc_AutoBuf errmsg;
+    errmsg.SetLength(sizeof(filename)+256);
+    Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
+                "WriteMeshOVF2 error writing to \"%s\"; device full?",
+                filename);
+    Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
+    errcode=TCL_ERROR;
+  }
+
+  if (argv[1][0] != '\0') {
+    Tcl_Close(NULL, channel);
+  } else {
+    Tcl_Flush(channel);
+    Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+        Tcl_DStringValue(&saveTranslation));
+    Tcl_DStringFree(&saveTranslation);
+  }
+
+  return errcode;
+}
+
 int WriteMeshMagnitudes
 (ClientData,Tcl_Interp *interp,
  int argc,CONST84 char** argv)
@@ -2578,11 +2859,11 @@ char* WriteCenteredLabels
 }
 
 // Tcl_Write to stdout broken in Tcl 8.5 and 8.6.  Use Obj interface
-// instead.
-#if TCL_MAJOR_VERSION >= 8
-# define WMA_USE_OBJ 1
-#else
+// instead.  (Tcl_ObjPrintf first appears in Tcl 8.5.)
+#if TCL_MAJOR_VERSION<8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION<5)
 # define WMA_USE_OBJ 0
+#else
+# define WMA_USE_OBJ 1
 #endif
 
 // #define WMA_DEFAULT_NUM_FMT "%- #24.17g"
@@ -5686,6 +5967,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"GetFrameBox",GetFrameBox);
   Oc_RegisterCommand(interp,"GetFrameRotation",GetFrameRotation);
   Oc_RegisterCommand(interp,"GetZoom",GetZoom);
+  Oc_RegisterCommand(interp,"GetMeshSize",GetMeshSize);
   Oc_RegisterCommand(interp,"GetMeshCellSize",GetMeshCellSize);
   Oc_RegisterCommand(interp,"GetMeshCoordinates",GetMeshCoordinates);
   Oc_RegisterCommand(interp,"GetDisplayCoordinates",GetDisplayCoordinates);
@@ -5701,6 +5983,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"GetMeshValueMagSpan",GetMeshValueMagSpan);
   Oc_RegisterCommand(interp,"GetMeshValueMean",GetMeshValueMean);
   Oc_RegisterCommand(interp,"GetMeshValueRMS",GetMeshValueRMS);
+  Oc_RegisterCommand(interp,"GetMeshValueL1",GetMeshValueL1);
   Oc_RegisterCommand(interp,"GetMeshValueUnit",GetMeshValueUnit);
   Oc_RegisterCommand(interp,"GetMeshZRange",GetMeshZRange);
   Oc_RegisterCommand(interp,"GetVecColor",GetVecColor);
@@ -5709,6 +5992,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"IsRectangularMesh",IsRectangularMesh);
   Oc_RegisterCommand(interp,"PeriodicTranslate",PeriodicTranslate);
   Oc_RegisterCommand(interp,"Resample",Resample);
+  Oc_RegisterCommand(interp,"ResampleAverage",ResampleAverage);
   Oc_RegisterCommand(interp,"PSWriteMesh",PSWriteMesh);
   Oc_RegisterCommand(interp,"ReportActiveMesh",ReportActiveMesh);
   Oc_RegisterCommand(interp,"SelectActiveMesh",SelectActiveMesh);
@@ -5721,6 +6005,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"WriteMesh",WriteMesh);
   Oc_RegisterCommand(interp,"WriteMeshUsingDeprecatedVIOFormat",
                      WriteMeshUsingDeprecatedVIOFormat);
+  Oc_RegisterCommand(interp,"WriteMeshOVF2",WriteMeshOVF2);
   Oc_RegisterCommand(interp,"WriteMeshMagnitudes",WriteMeshMagnitudes);
   Oc_RegisterCommand(interp,"WriteMeshAverages",WriteMeshAverages);
 

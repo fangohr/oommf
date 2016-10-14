@@ -35,7 +35,12 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-## Support for the automated buildtest scripts
+# Environment variable override for C++ compiler
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+}
+
+# Support for the automated buildtest scripts
 if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
    source [file join [file dirname [info script]] buildtest.tcl]
 }
@@ -93,6 +98,10 @@ $config SetValue program_compiler_c++ {g++ -c}
 #
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
          gcc-support.tcl]
+
+# Miscellaneous processing routines
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         misc-support.tcl]
 
 ########################################################################
 # LOCAL CONFIGURATION
@@ -156,13 +165,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to add to compiler "opts" string:
-# $config SetValue program_compiler_c++_add_flags \
-#                          {-funroll-loops}
-#
 ## Flags to remove from compiler "opts" string:
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
 #
 ###################
 # Default handling of local defaults:
@@ -265,22 +274,6 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $cpuopts]
    }
 
-   if {![catch {$config GetValue program_compiler_c++_add_flags} extraflags]} {
-      foreach elt $extraflags {
-         if {[lsearch -exact $opts $elt]<0} {
-            lappend opts $elt
-         }
-      }
-   }
-
-   if {![catch {$config GetValue program_compiler_c++_remove_flags} noflags]} {
-      foreach elt $noflags {
-         regsub -all -- $elt $opts {} opts
-      }
-      regsub -all -- {\s+-} $opts { -} opts  ;# Compress spaces
-      regsub -- {\s*$} $opts {} opts
-   }
-
    # Disable some default warnings in the opts switch, as opposed
    # to the warnings switch below, so that these warnings are always
    # muted, even if '-warn' option in file options.tcl is disabled.
@@ -293,6 +286,9 @@ if {[string match g++* $ccbasename]} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
+
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl

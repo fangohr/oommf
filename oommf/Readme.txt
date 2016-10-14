@@ -1,8 +1,7 @@
 README: OOMMF
 Object Oriented MicroMagnetic computing Framework
-Release 1.2a6
-
-	This file last modified on: $Date: 2015/09/27 13:35:22 $
+Release 1.2b0
+Release Date: 2016 September 26
 
 OOMMF is a project in the Mathematical and Computational Sciences 
 Division (MCSD) of ITL/NIST aimed at developing portable, extensible 
@@ -19,11 +18,11 @@ The main contributors to OOMMF are Mike Donahue and Don Porter.
 Before you can do anything with OOMMF, you must have Tcl/Tk installed
 on your computer.  The Tcl/Tk Core is available for free download from 
 the Tcl Developer eXchange at <URL:http://www.tcl.tk/>.  We recommend
-the latest Tcl/Tk releases, currently 8.6.4. The oldest versions
+the latest Tcl/Tk releases, currently 8.6.6. The oldest versions
 of Tcl/Tk compatible with OOMMF varies with the computing platform,
-but any installation likely to be found should be acceptable.
-Please note as exceptions that releases 8.6.2, 8.6.3, 8.5.17, and
-8.5.18 of Tcl should be avoided as they include I/O bugs that interfere
+but most installations likely to be found should be acceptable.
+Please note as exceptions that releases 8.6.2, 8.6.3, 8.5.16, and
+8.5.17 of Tcl should be avoided as they include I/O bugs that interfere
 with OOMMF's ability to reliably record output in the file system.
 OOMMF software does not support any alpha or beta versions of Tcl/Tk.
 
@@ -33,7 +32,7 @@ Most OOMMF users on MS Windows platforms will download a release
 with pre-compiled executables compatible with Tcl/Tk 8.6.x.  Type
 the following commands at an MS-DOS Prompt to start using OOMMF:
 
-	unzip oommf12a6.zip
+	unzip oommf12b0.zip
 	cd oommf
 	tclsh86 oommf.tcl pimake upgrade
 	tclsh86 oommf.tcl
@@ -41,7 +40,7 @@ the following commands at an MS-DOS Prompt to start using OOMMF:
 For most OOMMF users on Unix and Mac OS X, the following sequence of
 commands should upgrade, build, and run your OOMMF installation:
 
-	gunzip -c oommf12a6.tar.gz | tar xvf -
+	gunzip -c oommf12b0.tar.gz | tar xvf -
 	cd oommf
 	oommf.tcl pimake distclean
 	oommf.tcl pimake upgrade

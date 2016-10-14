@@ -18,7 +18,7 @@
 
 #define IF_MAJOR_VERSION	1
 #define IF_MINOR_VERSION	2
-#define IF_RELEASE_LEVEL	0
-#define IF_RELEASE_SERIAL	6
+#define IF_RELEASE_LEVEL	1
+#define IF_RELEASE_SERIAL	0
 
 #endif /* _IF_VERSION */

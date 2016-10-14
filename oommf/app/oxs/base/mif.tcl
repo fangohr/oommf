@@ -1052,7 +1052,6 @@ Oc_Class Oxs_Mif {
 
 
     method RegressionTestSetup { level regressiontest_basename } {
-
        # This is not a standard run, but rather part of a regression
        # test.  If level == 1, then make the following changes to the
        # problem specification:

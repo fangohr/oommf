@@ -2,7 +2,7 @@
  *
  * Header file for vector field file I/O.
  *
- * Last modified on: $Date: 2013/05/22 07:15:38 $
+ * Last modified on: $Date: 2016/04/14 02:20:01 $
  * Last modified by: $Author: donahue $
  */
 
@@ -961,7 +961,7 @@ public:
                  const Vf_Ovf20_MeshNodes* mesh,
                  const vector<Vf_Ovf20VecArrayConst>& data_array,
                  OC_BOOL bare=0) const;
-  // Save as preceding WriteData member, except that rather than
+  // Same as preceding WriteData member, except that rather than
   // a single dumping out of a single OC_REAL8m*, a collection of
   // OC_REAL8m pointed to by Vf_Ovf20VecArray elements are interleaved
   // on output.  Note: The array_length field for each element of

@@ -2,6 +2,11 @@
  *
  * Oxs_Key class, intended for use with the Oxs_Lock family.
  *
+ * The Oxs_Lock class is thread-safe.  However, this companion Oxs_Key
+ * class is not thread-safe.  This means that while an Oxs_Lock object
+ * can be shared between threads, each Oxs_Key object should be accessed
+ * from only its home thread.
+ *
  * Usage notes:  In general, in passing around pointers to Oxs_Lock
  * objects, one has 3 choices: pass a raw pointer, pass an
  * Oxs_ConstKey object, or pass an Oxs_Key object.  Here are some

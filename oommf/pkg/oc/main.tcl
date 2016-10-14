@@ -7,7 +7,7 @@
 # with special code to clean up their operations before an
 # application terminates.
 #
-# Last modified on: $Date: 2015/09/30 02:27:07 $
+# Last modified on: $Date: 2015/11/04 06:01:36 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Oc_Main {
@@ -18,10 +18,16 @@ Oc_Class Oc_Main {
     private common start
     private common blockExit 0
     private common blockShutdown 0
+    private common dataRole unspecified
     ClassConstructor {
+       # Set thisFile immediately, so that oommf/config/options.tcl
+       # can access GetOOMMFRootDir.  The subsequent Oc_EventHandler
+       # calls trigger the loading of oommf/pkg/oc/option.tcl, which
+       # in turn loads oommf/config/options.tcl, so we want thisFile
+       # defined before that.
+       set thisFile [Oc_DirectPathname [info script]]
        Oc_EventHandler Bindtags $class $class
        Oc_EventHandler Bindtags Oc_Log Oc_Log
-       set thisFile [Oc_DirectPathname [info script]]
        set pid [pid]
        set oid {} ;# Default oid is none.  If a Net_Account object is
        ## created, it will reset this to the OID returned by the account
@@ -276,4 +282,20 @@ return -code error "tried to \"exit $args\" during exit handling: [info level]"
     proc GetOOMMFRootDir {} {
         return [file dirname [file dirname [file dirname $thisFile]]]
     }
+
+    proc SetDataRole { role } {
+       switch -exact $role {
+          producer { set dataRole producer }
+          consumer { set dataRole consumer }
+          default {
+             return -code error "Data role must be one\
+                                 of \"producer\" or \"consumer\""
+          }
+       }
+    }
+
+    proc GetDataRole {} {
+       return $dataRole    
+    }
+
 }

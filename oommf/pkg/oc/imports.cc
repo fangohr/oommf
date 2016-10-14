@@ -353,24 +353,30 @@ int Oc_Fsync(Tcl_Channel chan)
 {
   int errcode = 0;
   Tcl_Flush(chan);
+  ClientData cd;
+  if(Tcl_GetChannelHandle(chan,TCL_WRITABLE,&cd)!=TCL_OK) {
+    return -1;
+  }
+
 #if OC_SYSTEM_TYPE==OC_UNIX
-  int handle;
-  if(Tcl_GetChannelHandle(chan,TCL_WRITABLE,
-     static_cast<ClientData*>(static_cast<void*>(&handle)))!=TCL_OK) {
-    return -1;
-  }
+  // The FileGetHandleProc routine in tclUnixChan.c passes the (int)
+  // file descriptor through client data via the Tcl INT2PTR macro.
+  // Presumably the proper way to cast back from client data to an int
+  // is through a signed int with width >= pointer width.  (It would be
+  // nice for Tcl to provide an interface for this.
+  int handle = reinterpret_cast<OC_INDEX>(cd);
   errcode = fsync(handle);
-#endif // OC_SYSTEM_TYPE==OC_UNIX
-#if OC_SYSTEM_TYPE==OC_WINDOWS
-  HANDLE handle;
-  if(Tcl_GetChannelHandle(chan,TCL_WRITABLE,
-     static_cast<ClientData*>(static_cast<void*>(&handle)))!=TCL_OK) {
-    return -1;
-  }
+
+#elif OC_SYSTEM_TYPE==OC_WINDOWS
+  // The FileGetHandleProc routine in tclWinChan.c passes the file
+  // descriptor (of type HANDLE) by casting from HANDLE directly to
+  // ClientData.  So we should be able to cast directly back.  (Both
+  // ClientData and HANDLE are, under the hood, void*.)
+  HANDLE handle  = reinterpret_cast<HANDLE>(cd);
   errcode = !(FlushFileBuffers(handle));
-#endif // OC_SYSTEM_TYPE==OC_WINDOWS
-  Oc_Nop(chan); // Workaround for apparent stack corruption
-  /// bug in g++ 4.6.3 20120306.
+
+#endif // OC_SYSTEM_TYPE
+
   return ( errcode == 0 ? 0 : -1 );
 }
 

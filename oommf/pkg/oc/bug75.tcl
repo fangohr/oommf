@@ -2,7 +2,7 @@
 #
 #	Patches for Tcl 7.5 / Tk 4.1
 #
-# Last modified on: $Date: 2001/06/28 22:18:47 $
+# Last modified on: $Date: 2015/11/24 23:19:25 $
 # Last modified by: $Author: donahue $
 #
 # This file contains Tcl code which when sourced in a Tcl 7.5 interpreter
@@ -195,7 +195,6 @@ if {[string match unix $tcl_platform(platform)]} {
     #	  $slave in Tk 4.2.  Strangely, [grid configure] still does not
     # 	  allow this (See Bug 418644) so the (partial) compatibility
     #	  workaround for this is rather complicated.
-
     if {[llength [info commands grid]]} {
         array set Tk4.1_grid [list "" ""]
         unset Tk4.1_grid()
@@ -392,6 +391,11 @@ if {[string match unix $tcl_platform(platform)]} {
 	}
     }
 
+    if {[llength [info commands event]]==0} {
+       # The Tk "event" command premiered in Tk 4.2.  Provide a NOP
+       # version here so old code can hobble along w/o it.
+       proc event args {}
+    }
 } else {
     Oc_Log Log "OOMMF software does not support 
 Tcl version 7.5 on non-Unix platforms.  

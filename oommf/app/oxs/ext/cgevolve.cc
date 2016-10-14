@@ -780,8 +780,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
       //       root would nicely speed up ThreeVector::MakeUnit().
 #if OC_USE_SSE
       const int FOFF=12;
-      _mm_prefetch((const char *)(scratch_direction+j+FOFF),_MM_HINT_T0);
-      _mm_prefetch((const char *)(scratch_best_spin+j+FOFF),_MM_HINT_T0);
+      Oc_Prefetch<Ocpd_T0>((const char *)(scratch_direction+j+FOFF));
+      Oc_Prefetch<Ocpd_T0>((const char *)(scratch_best_spin+j+FOFF));
 #endif
       Oc_Duet dvx,dvy,dvz;
       Oxs_ThreeVectorPairLoadAligned(&(scratch_direction[j]),dvx,dvy,dvz);
@@ -919,15 +919,16 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
       //       bound.
 #if OC_USE_SSE
       const int OFFSET=12; // BLAHBLAHBLAH;
-      _mm_prefetch((const char *)(sdir+j+OFFSET),    _MM_HINT_T0);
-      _mm_prefetch((const char *)(smxHxm+j+OFFSET),  _MM_HINT_T0);
-      _mm_prefetch((const char *)(sMs+j+OFFSET),     _MM_HINT_T0);
-      _mm_prefetch((const char *)(stenergy+j+OFFSET),_MM_HINT_T0);
-      _mm_prefetch((const char *)(sbenergy+j+OFFSET),_MM_HINT_T0);
+      Oc_Prefetch<Ocpd_T0>((const char *)(sdir+j+OFFSET));
+      Oc_Prefetch<Ocpd_T0>((const char *)(smxHxm+j+OFFSET));
+      Oc_Prefetch<Ocpd_T0>((const char *)(sMs+j+OFFSET));
+      Oc_Prefetch<Ocpd_T0>((const char *)(stenergy+j+OFFSET));
+      Oc_Prefetch<Ocpd_T0>((const char *)(sbenergy+j+OFFSET));
 #endif
       Oc_Duet vol;   mesh->VolumePair(j,vol);
 
-      Oc_Duet vtx,vty,vtz; Oxs_ThreeVectorPairLoadAligned(&(sdir[j]),vtx,vty,vtz);
+      Oc_Duet vtx,vty,vtz; Oxs_ThreeVectorPairLoadAligned(&(sdir[j]),
+                                                          vtx,vty,vtz);
       Oc_Duet vt_magsq = vtx*vtx + vty*vty + vtz*vtz;
       Oc_Duet denom = Oc_Sqrt(Oc_Duet(1.) + dt_offset_sq * vt_magsq);
 
@@ -938,7 +939,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
       Oc_Duet ste;   ste.LoadAligned(stenergy[j]);
       Oc_Duet sbe;   sbe.LoadAligned(sbenergy[j]);
 
-      Oc_Duet mhx, mhy, mhz;   Oxs_ThreeVectorPairLoadAligned(&(smxHxm[j]),mhx,mhy,mhz);
+      Oc_Duet mhx, mhy, mhz;   Oxs_ThreeVectorPairLoadAligned(&(smxHxm[j]),
+                                                              mhx,mhy,mhz);
       Oc_Duet mh_magsq = mhx*mhx + mhy*mhy + mhz*mhz;
       Oc_Duet mh_dot_vt = mhx*vtx + mhy*vty + mhz*vtz;
 
@@ -1035,9 +1037,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::Cmd(int threadnumber,
     const unsigned int LOOP_SIZE = 8;
     for(;i+OC_INDEX(7)<istop;i+=OC_INDEX(LOOP_SIZE)) { // asdf +7
       // Code below assumes LOOP_SIZE == 8
-#if OC_USE_SSE
-      _mm_prefetch((const char *)(senergy+i)+16*64,_MM_HINT_T0);
-#endif
+      Oc_Prefetch<Ocpd_T0>((const char *)(senergy+i)+16*64);
       seA.LoadAligned(senergy[i]);   seA *= vA;
       seB.LoadAligned(senergy[i+2]); seB *= vB;
       smesh->VolumeQuad(i+ 8,vA,vB);
@@ -1148,14 +1148,12 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadA::Cmd(int threadnumber,
       const OC_INDEX STRIDE = 4;
       Oc_Duet a0,b0,a1,b1,a2,b2,a3,b3,a4,b4,a5,b5;
       while(j+2*STRIDE-1<jsize) {
-#if OC_USE_SSE
-        _mm_prefetch((const char *)(sbest_mxHxm+j)+4*64,_MM_HINT_T0);
-        _mm_prefetch((const char *)(sbest_mxHxm+j)+5*64,_MM_HINT_T0);
-        _mm_prefetch((const char *)(sbest_mxHxm+j)+6*64,_MM_HINT_T0);
-        _mm_prefetch((const char *)(sP+j)+4*64,_MM_HINT_T0);
-        _mm_prefetch((const char *)(sP+j)+5*64,_MM_HINT_T0);
-        _mm_prefetch((const char *)(sP+j)+6*64,_MM_HINT_T0);
-#endif
+        Oc_Prefetch<Ocpd_T0>((const char *)(sbest_mxHxm+j)+4*64);
+        Oc_Prefetch<Ocpd_T0>((const char *)(sbest_mxHxm+j)+5*64);
+        Oc_Prefetch<Ocpd_T0>((const char *)(sbest_mxHxm+j)+6*64);
+        Oc_Prefetch<Ocpd_T0>((const char *)(sP+j)+4*64);
+        Oc_Prefetch<Ocpd_T0>((const char *)(sP+j)+5*64);
+        Oc_Prefetch<Ocpd_T0>((const char *)(sP+j)+6*64);
         for(OC_INDEX j2=0; j2<2; ++j2, j+=STRIDE) {
           a0.LoadAligned(sbest_mxHxm[j].x);   a0 *= a0;
           a1.LoadAligned(sbest_mxHxm[j].z);   a1 *= a1;
@@ -1485,11 +1483,9 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       Nmsv.LoadAligned(sMs_V[j]);
     }
     for(;j+3<jsize;j+=2) { // asdf +3
-# if OC_USE_SSE
-      _mm_prefetch((const char *)(sbest_mxHxm+j+8),_MM_HINT_T0);
-      _mm_prefetch((const char *)(sP+j+8),_MM_HINT_T0);
-      _mm_prefetch((const char *)(sMs_V+j+8),_MM_HINT_T0);
-# endif
+      Oc_Prefetch<Ocpd_T0>((const char *)(sbest_mxHxm+j+8));
+      Oc_Prefetch<Ocpd_T0>((const char *)(sP+j+8));
+      Oc_Prefetch<Ocpd_T0>((const char *)(sMs_V+j+8));
       Oc_Duet tx=Ntx, ty=Nty, tz=Ntz;
       Oc_Duet msv=Nmsv;
       Oc_Duet gsum = (tx*tx + ty*ty + tz*tz) * msv * msv;

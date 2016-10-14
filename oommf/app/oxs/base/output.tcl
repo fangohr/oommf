@@ -105,8 +105,12 @@ Oc_Class Oxs_Output {
             # The relative check may not be strictly necessary,
             # but may be helpful in case basename is volume
             # relative...in which case we punt and don't change it.
-            global workdir
-            set basename [file join $workdir $basename]
+            global output_directory workdir
+            if {[string match {} $output_directory]} {
+               set basename [file join $workdir $basename]
+            } else {
+               set basename [file join $output_directory $basename]
+            }
         }
 
         # Stage value format, for embedding into filenames

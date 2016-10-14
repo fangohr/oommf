@@ -82,7 +82,7 @@ command line via
 \begin{verbatim}
 tclsh oommf.tcl oxsii [standard options] [-exitondone <0|1>] \
    [-logfile logname] [-loglevel level] [-nice <0|1>] [-nocrccheck <0|1>] \
-   [-numanodes nodes] [-parameters params] [-pause <0|1>] \
+   [-numanodes nodes] [-outdir dir] [-parameters params] [-pause <0|1>] \
    [-restart <0|1|2>] [-restartfiledir dir] [-threads count] [miffile]
 \end{verbatim}
 where
@@ -155,6 +155,17 @@ where
   or \fn{oommf/config/local/options.tcl} file, or by the environment variable
   \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}.  The
   \cd{-numanodes} command line option, if any, overrides all.\index{NUMA|)}
+\item[\optkey{-outdir dir}]
+  Specifies the directory where output files are written by
+  \app{mmArchive}.  This option is useful when the default output
+  directory is inaccessible or slow. The environment variable
+  \cd{OOMMF\_OUTDIR}\index{environment~variables!OOMMF\_OUTDIR} sets the
+  default output directory.  If \cd{OOMMF\_OUTDIR} is set to the empty
+  string, or not set at all, then the default is the directory holding
+  the \MIF\ file.  If this option is specified on the command line, or
+  if \cd{OOMMF\_OUTDIR} is set, then the \app{Oxsii}
+  \cd{File\pipe Load\ldots} dialog box includes a control to change
+  the output directory.
 \item[\optkey{-parameters params}]
   Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
   parameters.  The \textit{params} argument should be a list with an
@@ -184,10 +195,16 @@ where
   \htmlonlyref{Controls section below}{html:oxsiirestartflag}.
   The default value is 0, i.e., no restart.
 \item[\optkey{-restartfiledir dir}]
-  Specifies the directory where restart files are written.  Default is the
-  directory holding the \MIF\ file.  You may want to change this to a local
-  temporary directory (e.g., \fn{/tmp}), especially if the \MIF\ file
-  directory is a network mount.
+  Specifies the directory where restart files are written.
+  The default is determined by the environment variable
+  \cd{OOMMF\_RESTARTFILEDIR}\index{environment~variables!OOMMF\_RESTARTFILEDIR},
+  or if this is not set then by
+  \cd{OOMMF\_OUTDIR}\index{environment~variables!OOMMF\_OUTDIR}.  If
+  neither environment variable is set then the default is the
+  directory holding the \MIF\ file.  Write access is required to the
+  restart file directory.  Also, you may want to consider whether the
+  restart files should be written to a local temporary directory or a
+  network mount.
 \item[\optkey{-threads \boa count\bca}]
   \index{parallelization}
   The option is available on
@@ -421,7 +438,7 @@ converted to the \MIF~2 format by an automatic call to
 \begin{verbatim}
 tclsh oommf.tcl boxsi [standard options] [-exitondone <0|1>] [-kill tags] \
    [-logfile logname] [-loglevel level] [-nice <0|1>] [-nocrccheck <0|1>] \
-   [-numanodes nodes] [-parameters params] [-pause <0|1>] \
+   [-numanodes nodes] [-outdir dir] [-parameters params] [-pause <0|1>] \
    [-regression_test flag] [-regression_testname basename] \
    [-restart <0|1|2>] [-restartfiledir dir] [-threads count] miffile
 \end{verbatim}
@@ -503,7 +520,14 @@ where
   or \fn{oommf/config/local/options.tcl} file, or by the environment variable
   \cd{OOMMF\_NUMANODES}\index{environment~variables!OOMMF\_NUMANODES}.  The
   \cd{-numanodes} command line option, if any, overrides all.\index{NUMA|)}
-
+\item[\optkey{-outdir dir}]
+  Specifies the directory where output files are written by
+  \app{mmArchive}.  This option is useful when the default output
+  directory is inaccessible or slow. The environment variable
+  \cd{OOMMF\_OUTDIR}\index{environment~variables!OOMMF\_OUTDIR} sets the
+  default output directory.  If \cd{OOMMF\_OUTDIR} is set to the empty
+  string, or not set at all, then the default is the directory holding
+  the \MIF\ file.
 \item[\optkey{-parameters params}]
   Sets \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format} file
   parameters.  The \textit{params} argument should be a list with an
@@ -550,10 +574,16 @@ where
   \html{See the Oxs\_Driver documentation for information on
   \htmlref{checkpoint files.}{html:oxsdrivercheckpoint}}
 \item[\optkey{-restartfiledir dir}]
-  Specifies the directory where restart files are written.  Default is the
-  directory holding the \MIF\ file.  You may want to change this to a local
-  temporary directory (e.g., \fn{/tmp}), especially if the \MIF\ file
-  directory is a network mount.
+  Specifies the directory where restart files are written.
+  The default is determined by the environment variable
+  \cd{OOMMF\_RESTARTFILEDIR}\index{environment~variables!OOMMF\_RESTARTFILEDIR},
+  or if this is not set then by
+  \cd{OOMMF\_OUTDIR}\index{environment~variables!OOMMF\_OUTDIR}.  If
+  neither environment variable is set then the default is the
+  directory holding the \MIF\ file.  Write access is required to the
+  restart file directory.  Also, you may want to consider whether the
+  restart files should be written to a local temporary directory or a
+  network mount.
 \item[\optkey{-threads \boa count\bca}]
   \index{parallelization}
   The option is available on
@@ -3528,7 +3558,7 @@ Specify Oxs\_TimeDriver:\oxsval{name} \ocb\\
  \bi stage\_count\_check \oxsval{test}\\
  \bi checkpoint\_file \oxsval{restart\_file\_name}\\
  \bi checkpoint\_interval \oxsval{checkpoint\_minutes}\\
- \bi checkpoint\_cleanup \oxsval{cleanup\_behavior}\\
+ \bi checkpoint\_disposal \oxsval{cleanup\_behavior}\\
  \bi start\_iteration \oxsval{iteration}\\
  \bi start\_stage \oxsval{stage}\\
  \bi start\_stage\_iteration \oxsval{stage\_iteration}\\
@@ -3536,7 +3566,8 @@ Specify Oxs\_TimeDriver:\oxsval{name} \ocb\\
  \bi start\_stage\_elapsed\_time \oxsval{stage\_elapsed\_time}\\
  \bi start\_last\_timestep \oxsval{timestep}\\
  \bi normalize\_aveM\_output \oxsval{aveMflag}\\
- \bi report\_max\_spin\_angle \oxsval{report}\\
+ \bi report\_max\_spin\_angle \oxsval{report\_angle}\\
+ \bi report\_wall\_time \oxsval{report\_time}\\
 \ccb
 \end{quote}
 \end{latexonly}
@@ -3554,7 +3585,7 @@ Specify Oxs\_TimeDriver:\oxsval{name} \ocb\\
 <DD><TT> stage_count_check </TT><I>test</I>
 <DD><TT> checkpoint_file </TT> <I>restart_file_name</I>
 <DD><TT> checkpoint_interval </TT> <I>checkpoint_minutes</I>
-<DD><TT> checkpoint_cleanup </TT> <I>cleanup_behavior</I>
+<DD><TT> checkpoint_disposal </TT> <I>cleanup_behavior</I>
 <DD><TT> start_iteration </TT> <I>iteration</I>
 <DD><TT> start_stage </TT> <I>stage</I>
 <DD><TT> start_stage_iteration </TT> <I>stage_iteration</I>
@@ -3562,7 +3593,8 @@ Specify Oxs\_TimeDriver:\oxsval{name} \ocb\\
 <DD><TT> start_stage_elapsed_time </TT> <I>stage_elapsed_time</I>
 <DD><TT> start_last_timestep </TT> <I>timestep</I>
 <DD><TT> normalize_aveM_output </TT> <I>aveMflag</I>
-<DD><TT> report_max_spin_angle </TT> <I>report</I>
+<DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
+<DD><TT> report_wall_time </TT> <I>report_time</I>
 <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 \end{rawhtml}
 The first four parameters, \oxslabel{evolver}, \oxslabel{mesh},
@@ -3634,9 +3666,9 @@ use for the solver state file.  The default is
 \textit{base\_file\_name}.restart.
 
 Cleanup of the checkpoint file is determined by the setting of
-\oxslabel{checkpoint\_cleanup}, which should be one of
-\textit{normal} (the default), \textit{done\_only}, or \textit{never}.
-Under the normal setting, the checkpoint file is automatically deleted
+\oxslabel{checkpoint\_disposal}, which should be one of
+\textit{standard} (the default), \textit{done\_only}, or \textit{never}.
+Under the standard setting, the checkpoint file is automatically deleted
 upon normal program termination, either because the solver reached the end
 of the problem, or because the user interactively terminated the problem
 prematurely.  If \oxsval{cleanup\_behavior} is set to
@@ -3680,7 +3712,7 @@ See the \hyperrefhtml{\cd{SetOptions}}{\cd{SetOptions}
 (Sec.~}{)}{html:mif2SetOptions}\index{SetOptions~command~(MIF)}
 documentation for details.
 
-\cd{Oxs\_TimeDriver} provides 11 scalar outputs and 2 vector field
+\cd{Oxs\_TimeDriver} provides 12 scalar outputs and 2 vector field
 outputs.  The scalar outputs are
 \begin{itemize}
 \item \textbf{Stage:} current stage number, counting from 0.
@@ -3713,6 +3745,7 @@ forward and backward along each of the 3 coordinate axis directions.
 Ang'' obtained across the current stage, in degrees.
 \item \textbf{Run Max Spin Ang:} the largest value of ``Max Spin
 Ang'' obtained across the current run, in degrees.
+\item \textbf{Wall time:} Wall clock time, in seconds.
 \end{itemize}
 The three ``Max Spin Ang'' outputs are disabled by default.  In general
 one should refer instead to the neighboring spin angle outputs provided
@@ -3720,6 +3753,14 @@ by the exchange energies.  However, for backward compatibility, or for
 simulations without any exchange energy terms, the driver spin angle
 outputs can be enabled by setting the
 \oxslabel{report\_max\_spin\_angle} option to to 1.
+
+The ``Wall time'' output is also disabled by default.  It can be enabled
+by setting the \oxslabel{report\_wall\_time} option to to 1.  It reports
+the wall clock time, in seconds, since a system-dependent zero-time.
+This output may be useful for performance comparisions and
+debugging. (Note: The timestamp for a magnetization state is recorded
+when output is first requested for that state; the timestamp is not
+directly tied to the processing of the state.)
 
 The vector field outputs are
 \begin{itemize}
@@ -3750,7 +3791,7 @@ Specify Oxs\_MinDriver:\oxsval{name} \ocb\\
  \bi stage\_count\_check \oxsval{test}\\
  \bi checkpoint\_file \oxsval{restart\_file\_name}\\
  \bi checkpoint\_interval \oxsval{checkpoint\_minutes}\\
- \bi checkpoint\_cleanup \oxsval{cleanup\_behavior}\\
+ \bi checkpoint\_disposal \oxsval{cleanup\_behavior}\\
  \bi start\_iteration \oxsval{iteration}\\
  \bi start\_stage \oxsval{stage}\\
  \bi start\_stage\_iteration \oxsval{stage\_iteration}\\
@@ -3758,7 +3799,8 @@ Specify Oxs\_MinDriver:\oxsval{name} \ocb\\
  \bi start\_stage\_elapsed\_time \oxsval{stage\_elapsed\_time}\\
  \bi start\_last\_timestep \oxsval{timestep}\\
  \bi normalize\_aveM\_output \oxsval{aveMflag}\\
- \bi report\_max\_spin\_angle \oxsval{report}\\
+ \bi report\_max\_spin\_angle \oxsval{report\_angle}\\
+ \bi report\_wall\_time \oxsval{report\_time}\\
 \ccb
 \end{quote}
 \end{latexonly}
@@ -3775,7 +3817,7 @@ Specify Oxs\_MinDriver:\oxsval{name} \ocb\\
 <DD><TT> stage_count_check </TT><I>test</I>
 <DD><TT> checkpoint_file </TT> <I>restart_file_name</I>
 <DD><TT> checkpoint_interval </TT> <I>checkpoint_minutes</I>
-<DD><TT> checkpoint_cleanup </TT> <I>cleanup_behavior</I>
+<DD><TT> checkpoint_disposal </TT> <I>cleanup_behavior</I>
 <DD><TT> start_iteration </TT> <I>iteration</I>
 <DD><TT> start_stage </TT> <I>stage</I>
 <DD><TT> start_stage_iteration </TT> <I>stage_iteration</I>
@@ -3783,7 +3825,8 @@ Specify Oxs\_MinDriver:\oxsval{name} \ocb\\
 <DD><TT> start_stage_elapsed_time </TT> <I>stage_elapsed_time</I>
 <DD><TT> start_last_timestep </TT> <I>timestep</I>
 <DD><TT> normalize_aveM_output </TT> <I>aveMflag</I>
-<DD><TT> report_max_spin_angle </TT> <I>report</I>
+<DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
+<DD><TT> report_wall_time </TT> <I>report_time</I>
 <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 \end{rawhtml}
 These parameters are the same as those described for the
@@ -3810,7 +3853,7 @@ output controls have been moved into the \cd{SetOptions} block.  See the
 (Sec.~}{)}{html:mif2SetOptions}\index{SetOptions~command~(MIF)}
 documentation for details.
 
-\cd{Oxs\_MinDriver} provides 9 scalar outputs and 2 vector
+\cd{Oxs\_MinDriver} provides 10 scalar outputs and 2 vector
 field outputs.  The scalar outputs are
 \begin{itemize}
 \item \textbf{Stage:} current stage number, counting from 0.
@@ -3839,10 +3882,13 @@ forward and backward along each of the 3 coordinate axis directions.
 Ang'' obtained across the current stage, in degrees.
 \item \textbf{Run Max Spin Ang:} the largest value of ``Max Spin
 Ang'' obtained across the current run, in degrees.
+\item \textbf{Wall time:} Wall clock time, in seconds.
 \end{itemize}
 As is the case for the \cd{Oxs\_TimeDriver}, the three ``Max Spin Ang''
-outputs are disabled by default.  They can be enabled by setting the
-\oxslabel{report\_max\_spin\_angle} option to to 1.
+outputs and ``Wall time'' are disabled by default.  They angle outputs
+are enabled by setting the \oxslabel{report\_max\_spin\_angle} option to
+to 1, and the wall time output is enabled by setting the
+\oxslabel{report\_wall\_time} option to to 1.
 
 The vector field outputs are
 \begin{itemize}

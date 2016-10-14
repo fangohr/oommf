@@ -18,7 +18,7 @@ set K1 5e5
 set xsize  80e-9
 set ysize  16e-9
 set zsize   8e-9
-set cellsize 2e-9
+Parameter cellsize 2e-9
 
 Specify Oxs_MultiAtlas:atlas [subst {
    atlas {Oxs_BoxAtlas {

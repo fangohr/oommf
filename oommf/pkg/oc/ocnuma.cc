@@ -8,7 +8,7 @@
  *       called *only* from the main thread, preferably during
  *       initialization.
  *
- * Last modified on: $Date: 2015/08/13 20:15:12 $
+ * Last modified on: $Date: 2015/10/09 21:23:12 $
  * Last modified by: $Author: donahue $
  */
 
@@ -23,6 +23,8 @@
 // Note: The numa-devel package is needed to get numaif.h.
 # include <numaif.h>
 #endif // OC_USE_NUMA
+
+void Oc_StrError(int errnum,char* buf,size_t buflen);  // From oc.cc
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -382,10 +384,12 @@ void Oc_SetMemoryPolicyFirstTouch(char* start,OC_UINDEX len)
   int errcode = mbind(start,len,MPOL_PREFERRED,NULL,numa_max_node()+1,0);
   if(errcode != 0) {
     int errsav = errno;  // Save code from global errno
+    char errbuf[1024];
+    Oc_StrError(errsav,errbuf,sizeof(errbuf));
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"",
                           "Oc_SetMemoryPolicyFirstTouch",
                           1024,"%.256s; start=%lX, len=%lX, max_node=%d",
-                          strerror(errsav),
+                          errbuf,
                           (unsigned long)start,
                           (unsigned long)len,
                           numa_max_node()));
@@ -518,15 +522,16 @@ void* Oc_AllocThreadLocal(size_t size)
 
   if(errcode != 0) {
     int errsav = errno;  // Save code from global errno
+    char errbuf[1024];
+    Oc_StrError(errsav,errbuf,sizeof(errbuf));
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"",
                           "Oc_AllocThreadLocal",1024,
                           "%.256s; start=%lX, len=%lX, max_node=%d",
-                          strerror(errsav),
+                          errbuf,
                           (unsigned long)pgstart,
                           (unsigned long)pgsize,
                           numa_max_node()));
   }
-
   return start;
 }
 

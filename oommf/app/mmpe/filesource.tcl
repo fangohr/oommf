@@ -7,7 +7,7 @@ package require Net 1.2.0.3
 wm withdraw .
 
 Oc_Main SetAppName FileSource
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:44 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author

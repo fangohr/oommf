@@ -15,7 +15,7 @@
  * 
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2015/09/30 02:36:11 $
+ * Last modified on: $Date: 2015/10/13 19:43:40 $
  * Last modified by: $Author: donahue $
  */
 
@@ -67,8 +67,9 @@ int           Oc_Nop(int x) { return x; }
 long          Oc_Nop(long x) { return x; }
 unsigned int  Oc_Nop(unsigned int x) { return x; }
 unsigned long Oc_Nop(unsigned long x) { return x; }
-void*         Oc_Nop(void* x) { return x; }
-Tcl_Channel   Oc_Nop(Tcl_Channel chan) { return chan; }
+const void*   Oc_Nop(const void* x) { return x; }
+const String& Oc_Nop(const String& x) { return x; }
+Tcl_Channel   Oc_Nop(Tcl_Channel x) { return x; }
 #if OC_USE_SSE
 __m128d         Oc_Nop(__m128d x) { return x; }
 __m128i         Oc_Nop(__m128i x) { return x; }
@@ -778,8 +779,8 @@ void OcSigTermHandler(int signo)
 { // On unix, signo should be SIGTERM (from kill) or SIGINT (from
   // Ctrl-C); on Windows it may be SIGINT (from Ctrl-C), SIGBREAK (from
   // Ctrl-Break/Pause, or window close).
+  Tcl_MutexLock(&ocsigtermhandler_mutex);
   try {
-    Tcl_MutexLock(&ocsigtermhandler_mutex);
     // Loop through handlers, from back (last registered) to
     // front(first registered).
     for(std::list< pair<OcSigFunc*,ClientData> >::reverse_iterator rit
@@ -791,7 +792,6 @@ void OcSigTermHandler(int signo)
       } catch(...) {}
     }
   } catch(...) {
-    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
     // Note: OcSigTermHandler is extern "C" type, and shouldn't throw
     // exceptions.
   }
@@ -803,8 +803,8 @@ void OcSigTermHandler(int signo)
 
 void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData cd)
 {
+  Tcl_MutexLock(&ocsigtermhandler_mutex);
   try {
-    Tcl_MutexLock(&ocsigtermhandler_mutex);
     sigterm_handlers.push_back(pair<OcSigFunc*,ClientData>(handler,cd));
     if(sigterm_handlers.size()==1) {
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
@@ -824,8 +824,8 @@ void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData cd)
 }
 void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData cd)
 {
+  Tcl_MutexLock(&ocsigtermhandler_mutex);
   try {
-    Tcl_MutexLock(&ocsigtermhandler_mutex);
     std::list< pair<OcSigFunc*,ClientData> >::iterator it
       = std::find(sigterm_handlers.begin(),
                   sigterm_handlers.end(),
@@ -848,6 +848,51 @@ void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData cd)
   Tcl_MutexUnlock(&ocsigtermhandler_mutex);
 }
 
+// Multi-platform version of strerror_r.  Thread-safe.
+void Oc_StrError(int errnum,char* buf,size_t buflen)
+{
+  if(buflen<1) {
+    OC_THROW("Bad parameter value; buflen<1 (Oc_StrError)");
+  }
+#if defined(_MSC_VER) &&  (_MSC_VER >= 1400)
+  // strerror_s is thread-safe routine in Visual C++
+  if(strerror_s(buf,buflen,errnum)==0) return;
+#else
+  // Some platforms don't have strerror_r, and some that do (e.g.,
+  // linux) provide multiple versions with different behavior overlaid
+  // on the same signature (such as a glibc version and a posix
+  // version).  So, for portability, and working on the assumption that
+  // this is not performance critical code, fall back to C89 strerror.
+  // Wrap with mutex locking since strerror is not guaranteed to be
+  // thread-safe.
+# if OOMMF_THREADS
+  // Without this #if test, in the no-threads case g++ complains
+  // 'ocstrerror_mutex' defined but not used.
+  static Tcl_Mutex ocstrerror_mutex = 0;
+# endif
+  Tcl_MutexLock(&ocstrerror_mutex);
+  try {
+    const char* cptr = strerror(errnum);
+    size_t j=0;
+    for(;j<buflen-1;++j) {
+      if(cptr[j] == '\0') break;
+      buf[j] = cptr[j];
+    }
+    buf[j] = '\0';
+    Tcl_MutexUnlock(&ocstrerror_mutex);
+    return;
+  } catch(...) {
+    Tcl_MutexUnlock(&ocstrerror_mutex);
+  }
+#endif // OC_SYSTEM_TYPE
+ const char* unk = "Unknown error";
+ size_t i=0;
+ for(;i<buflen-1;++i) {
+   if(unk[i] == '\0') break;
+   buf[i] = unk[i];
+ }
+ buf[i] = '\0';
+}
 
 static int
 LockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
@@ -858,11 +903,14 @@ LockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
   if(chan==NULL) return -1;
   int direction=TCL_WRITABLE;
   if(!writespec) direction=TCL_READABLE;
-#if OC_SYSTEM_TYPE==OC_UNIX
-  int handle;
-  if(Tcl_GetChannelHandle(chan,direction,
-     static_cast<ClientData*>(static_cast<void*>(&handle)))!=TCL_OK)
+
+  ClientData cd;
+  if(Tcl_GetChannelHandle(chan,direction,&cd)!=TCL_OK) {
     return -2;
+  }
+
+#if OC_SYSTEM_TYPE==OC_UNIX
+  int handle = reinterpret_cast<OC_INDEX>(cd);
   struct flock lock;
   lock.l_type=F_WRLCK;
   if(!writespec) lock.l_type=F_RDLCK;
@@ -870,16 +918,12 @@ LockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
   lock.l_whence=SEEK_SET;
   lock.l_len=0; // Lock entire file
   if(fcntl(handle,F_SETLK,&lock)==0) return 0; // Success!
+#elif OC_SYSTEM_TYPE==OC_WINDOWS
+  HANDLE osfhandle = reinterpret_cast<HANDLE>(cd);
+  if(LockFile(osfhandle,0,0,1,0)) return 0; // Success!
+#endif // OC_SYSTEM_TYPE
+
   return 1;  // Lock already held
-#endif // OC_SYSTEM_TYPE==OC_UNIX
-#if OC_SYSTEM_TYPE==OC_WINDOWS
-  HANDLE osfhandle;
-  if(Tcl_GetChannelHandle(chan,direction,(ClientData *)&osfhandle)!=TCL_OK)
-    return -2;
-  int result=LockFile(osfhandle,0,0,1,0);
-  if(result) return 0; // Success!
-  return 1; // Lock already held
-#endif // OC_SYSTEM_TYPE==OC_WINDOWS
 }
 
 static int
@@ -954,27 +998,26 @@ UnlockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
   if(chan==NULL) return -1;
   int direction=TCL_WRITABLE;
   if(!writespec) direction=TCL_READABLE;
-#if OC_SYSTEM_TYPE==OC_UNIX
-  int handle;
-  if(Tcl_GetChannelHandle(chan,direction,
-     static_cast<ClientData*>(static_cast<void*>(&handle)))!=TCL_OK)
+
+  ClientData cd;
+  if(Tcl_GetChannelHandle(chan,direction,&cd)!=TCL_OK) {
     return -2;
+  }
+
+#if OC_SYSTEM_TYPE==OC_UNIX
+  int handle = reinterpret_cast<OC_INDEX>(cd);
   struct flock lock;
   lock.l_type=F_UNLCK;
   lock.l_start=0;
   lock.l_whence=SEEK_SET;
   lock.l_len=0; // Entire file
   if(fcntl(handle,F_SETLK,&lock)==0) return 0; // Success!
-  return -1;  // Error
-#endif // OC_SYSTEM_TYPE==OC_UNIX
-#if OC_SYSTEM_TYPE==OC_WINDOWS
-  HANDLE osfhandle;
-  if(Tcl_GetChannelHandle(chan,direction,(ClientData *)&osfhandle)!=TCL_OK)
-    return -2;
-  int result=UnlockFile(osfhandle,0,0,1,0);
-  if(result) return 0; // Success!
-  return 1; // Error; file probably not locked.
-#endif // OC_SYSTEM_TYPE==OC_WINDOWS
+#elif OC_SYSTEM_TYPE
+  HANDLE osfhandle = reinterpret_cast<HANDLE>(cd);
+  if(UnlockFile(osfhandle,0,0,1,0)) return 0; // Success!
+#endif // OC_SYSTEM_TYPE
+
+  return -3; // Error; file probably not locked.
 }
 
 static int
@@ -1021,7 +1064,7 @@ static void MakeNice()
   errno=0;
   if(nice(NICE_DEFAULT) == -1 && errno!=0) {
     char buf[1024];
-    strerror_r(errno,buf,sizeof(buf));
+    Oc_StrError(errno,buf,sizeof(buf));
     fprintf(stderr,"Unable to renice application to nice level %d: %s\n",
             NICE_DEFAULT,buf);
   }

@@ -23,16 +23,17 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:09 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
-# regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
+# regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
 Oc_Main SetAuthor [Oc_Person Lookup donahue]
 Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]] doc userguide userguide \
 	Data_Table_Display_mmDataTa.html]]
+Oc_Main SetDataRole consumer
 
 Oc_CommandLine ActivateOptionSet Net
 

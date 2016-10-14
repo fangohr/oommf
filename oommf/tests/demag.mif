@@ -1,0 +1,27 @@
+# MIF 1.1
+# material name:Custom
+ms:1000e3
+a:0
+k1:0
+anisotropy type:uniaxial
+anisotropy dir1:0 0 1
+
+part height:5e-6
+part width:1e-6
+part thickness:100e-9
+part shape:rectangle
+
+#init mag:uniform 54.7356103172 45.0
+#init mag:uniform 90. 90.
+#init mag:uniform 90. 45.
+init mag:uniform 0. 0.
+#init mag:uniform 90. 0.
+randomizer seed:1
+
+field range: 0 0 0 0 0 0 0 -iteration 0
+
+# These should all be reset by the task script
+demag type:constmag
+base output filename: demag
+cell size:1000e-9
+user comment: Demag test problem: kernel=constmag, cellsize=1000 nm

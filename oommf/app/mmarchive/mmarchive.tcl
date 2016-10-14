@@ -12,10 +12,11 @@ if {[Oc_Main HasTk]} {
 }
 
 Oc_Main SetAppName mmArchive
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/07/16 06:25:45 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
+Oc_Main SetDataRole consumer
 
 Oc_Main Preload Oc_TempName Oc_TempFile
 
@@ -62,7 +63,7 @@ append gui "[list Oc_Main SetVersion [Oc_Main GetVersion]]\n"
 append gui "[list Oc_Main SetPid [pid]]\n"
 append gui {
 
-   regexp \\\044Date:(.*)\\\044 {$Date: 2015/07/16 06:25:45 $} _ date
+   regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
    Oc_Main SetDate [string trim $date]
 
    # This won't cross different OOMMF installations nicely
@@ -78,8 +79,10 @@ append gui {
    # May want to add error sharing code here.
    set menubar .mb
    foreach {fmenu omenu hmenu} [Ow_MakeMenubar . $menubar File Options Help] {}
-   $fmenu add command -label "Show console" \
-       -command { console show } -underline 0
+   if {![Oc_Option Get Menu show_console_option _] && $_} {
+      $fmenu add command -label "Show console" \
+          -command { console show } -underline 0
+   }
    $fmenu add command -label "Close interface" \
        -command { closeGui } -underline 0
    $fmenu add command -label "Exit [Oc_Main GetAppName]" \
@@ -177,6 +180,7 @@ $protocol(dt) AddMessage start DataTable { triples } {
       LogMessage error $errmsg  ;# Log
       error $errmsg             ;# rethrow
    }
+#after 200
    return [list start [list 0 0]]
 }
 [Net_Server New server(dt) -protocol $protocol(dt) \
@@ -201,6 +205,7 @@ $protocol(vf) AddMessage start datafile { fnlist } {
       error $errmsg                                       ;# rethrow
    }
    LogMessage status "Wrote vector field $permfile"
+#after 2000
    return [list start [list 0 0]]
 }
 [Net_Server New server(vf) -protocol $protocol(vf) \

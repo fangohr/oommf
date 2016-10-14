@@ -33,6 +33,10 @@
 # touches the file buildtest.tcl-touch to signal that it was properly
 # sourced.
 
+set runseq_start_time [clock seconds]
+
+set VERBOSE 0  ;# For debugging
+
 proc Usage {} {
    puts stderr {Usage: tclsh runseq.tcl [-h] [-l]\
                 [-buildonly] [-showhosts] [testno ...]}
@@ -46,58 +50,6 @@ proc Usage {} {
 }
 
 if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage }
-
-set list_tests_flag 0
-set list_tests_index [lsearch -regexp $argv {^-+(l|list)$}]
-if {$list_tests_index>=0} {
-   set list_tests_flag 1
-   set argv [lreplace $argv $list_tests_index $list_tests_index]
-}
-
-set show_hosts_flag 0
-set show_hosts_index [lsearch -regexp $argv {^-+showhosts$}]
-if {$show_hosts_index>=0} {
-   set show_hosts_flag 1
-   set argv [lreplace $argv $show_hosts_index $show_hosts_index]
-}
-
-set build_only_flag 0
-set build_only_index [lsearch -regexp $argv {^-+buildonly$}]
-if {$build_only_index>=0} {
-   set build_only_flag 1
-   set argv [lreplace $argv $build_only_index $build_only_index]
-}
-
-set test_requests {}
-foreach elt $argv {
-   if {[regexp -- {^([0-9]+)-([0-9]+)$} $elt dummy start end] \
-          && $start <= $end} {
-      # Range request
-      for {set i $start} {$i<=$end} {incr i} {
-         lappend test_requests $i
-      }
-   } else {
-      lappend test_requests $elt
-   }
-}
-
-
-if {![regexp -- {^[0-9]*$} [join $test_requests {}]]} {
-   puts stderr "Invalid test request."
-   Usage
-}
-
-set runseq_start_time [clock seconds]
-if {!$list_tests_flag && !$show_hosts_flag} {
-   puts "runseq start time: [clock format $runseq_start_time]"
-}
-
-set env(OOMMF_BUILDTEST) 1  ;# For platform files
-
-
-set VERBOSE 0  ;# For debugging
-
-set hostname [info hostname]
 
 ##########
 # This is the tclsh used to launch child OOMMF processes.  More
@@ -151,6 +103,8 @@ if {![file exists $OOMMF]} {
 ### MACHINE SPECIFIC DETAILS
 ###
 #####################################################################
+set env(OOMMF_BUILDTEST) 1  ;# For platform files
+set hostname [info hostname]
 set detailsfile [file join [file dirname $OOMMF] \
                      config platforms local buildtest-details.tcl]
 if {![file exists $detailsfile]} {
@@ -161,20 +115,6 @@ if {![file exists $detailsfile]} {
 if {[catch {source $detailsfile} errmsg]} {
    puts stderr "ERROR SOURCING DETAILS FILE: $errmsg"
 }
-
-if {$show_hosts_flag} {
-   if {[llength [info command ListHosts]]!=1} {
-      puts stderr "ERROR: Build test details file \"$detailsfile\" \
-                   does not define a ListHosts command."
-      exit 1
-   }
-   set index 0
-   foreach elt [ListHosts] {
-      puts [format "%2d) $elt" [incr index]]
-   }
-   exit
-}
-
 if {![info exists buildtest_labels]} {
    puts stderr \
       "Variable buildtest_labels not set by build test details file"
@@ -188,6 +128,82 @@ if {![info exists buildtest_values]} {
    puts stderr "\"$detailsfile\""
    puts stderr "Edit details file to fix."
    exit 1
+}
+
+#
+##########
+
+##########
+#
+# Command line options parsing
+#
+set list_tests_flag 0
+set list_tests_index [lsearch -regexp $argv {^-+(l|list)$}]
+if {$list_tests_index>=0} {
+   set list_tests_flag 1
+   set argv [lreplace $argv $list_tests_index $list_tests_index]
+}
+
+set show_hosts_flag 0
+set show_hosts_index [lsearch -regexp $argv {^-+showhosts$}]
+if {$show_hosts_index>=0} {
+   set show_hosts_flag 1
+   set argv [lreplace $argv $show_hosts_index $show_hosts_index]
+}
+
+set build_only_flag 0
+set build_only_index [lsearch -regexp $argv {^-+buildonly$}]
+if {$build_only_index>=0} {
+   set build_only_flag 1
+   set argv [lreplace $argv $build_only_index $build_only_index]
+}
+
+set test_requests {}
+foreach elt $argv {
+   if {[regexp -- {^([0-9]*)-([0-9]*)$} $elt dummy start end]} {
+      if {[string match {} $start]} { set start 0 }
+      if {[string match {} $end]} { set end [llength $buildtest_values] }
+      if {$start <= $end} {
+         # Range request
+         for {set i $start} {$i<=$end} {incr i} {
+            lappend test_requests $i
+         }
+      } else {
+         lappend test_requests $elt
+      }
+   } else {
+      lappend test_requests $elt
+   }
+}
+
+
+if {![regexp -- {^[0-9]*$} [join $test_requests {}]]} {
+   puts stderr "Invalid test request."
+   Usage
+}
+
+if {!$list_tests_flag && !$show_hosts_flag} {
+   puts "runseq start time: [clock format $runseq_start_time]"
+}
+#
+##########
+
+#####################################################################
+###
+### MACHINE SPECIFIC OPTIONS
+###
+#####################################################################
+if {$show_hosts_flag} {
+   if {[llength [info command ListHosts]]!=1} {
+      puts stderr "ERROR: Build test details file \"$detailsfile\" \
+                   does not define a ListHosts command."
+      exit 1
+   }
+   set index 0
+   foreach elt [ListHosts] {
+      puts [format "%2d) $elt" [incr index]]
+   }
+   exit
 }
 
 # Check that test labels match known labels
@@ -427,6 +443,22 @@ foreach test $buildtest_values {
       puts [format "--- %13s: %s" $name $value]
    }
    flush stdout
+
+   # Make thread count request a proper Tcl list
+   if {[info exists tcv(threadcount)]} {
+      set tcv(threadcount) [join [regsub -all {,} $tcv(threadcount) " "]]
+      set newcount {}
+      foreach elt $tcv(threadcount) {
+         if {[regexp -- {^([0-9]*)-([0-9]*)$} $elt dummy start end]} {
+            for {set i $start} {$i<=$end} {incr i} {
+               lappend newcount $i
+            }
+         } else {
+            lappend newcount $elt
+         }
+      }
+      set tcv(threadcount) $newcount
+   }
 
    # Setup environment variables used for communication with children
    set env(OOMMF_BUILDTEST_COMPILER) $tcv(compiler)

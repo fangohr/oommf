@@ -30,8 +30,8 @@ OXS_EXT_REGISTER(Oxs_UniformExchange);
 // Revision information, set via CVS keyword substitution
 static const Oxs_WarningMessageRevisionInfo revision_info
   (__FILE__,
-   "$Revision: 1.74 $",
-   "$Date: 2015/01/29 08:35:12 $",
+   "$Revision: 1.75 $",
+   "$Date: 2016/03/04 22:08:58 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
 
@@ -82,6 +82,8 @@ Oxs_UniformExchange::Oxs_UniformExchange(
     kernel = NGBR_6_BIGANG_MIRROR;
   } else if(kernel_request.compare("6ngbrzd2")==0) {
     kernel = NGBR_6_ZD2;
+  } else if(kernel_request.compare("6ngbralt")==0) {
+    kernel = NGBR_6_ALT;
   } else if(kernel_request.compare("12ngbrfree")==0) {
     kernel = NGBR_12_FREE;
   } else if(kernel_request.compare("12ngbrzd1")==0 ||
@@ -97,7 +99,7 @@ Oxs_UniformExchange::Oxs_UniformExchange(
   } else {
     String msg=String("Invalid kernel request: ")
       + kernel_request
-      + String("\n Should be one of 6ngbr, 6ngbrfree,"
+      + String("\n Should be one of 6ngbr, 6ngbrfree, 6ngbralt,"
 	       " 12ngbr, 12ngbrfree, 12ngbrmirror, or 26ngbr.");
     throw Oxs_ExtError(this,msg.c_str());
   }
@@ -1166,6 +1168,192 @@ Oxs_UniformExchange::CalcEnergy6NgbrZD2
   ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
+  maxdot[threadnumber] = thread_maxdot;
+}
+
+void
+Oxs_UniformExchange::CalcEnergy6NgbrAlt
+(const Oxs_MeshValue<ThreeVector>& spin,
+ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+ const Oxs_CommonRectangularMesh* mesh,
+ const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,OC_INDEX node_stop,
+ int threadnumber) const
+{ // Exchange computation based on \int (grad(m))^2 rather than
+  // \int m.grad^2(m), with O(h^2) energy density approximation
+  // in edge cells.  See NOTES VII, 2-Mar-2016, pp 120-125.
+  // STILL TO DO:
+  //  (1) The code below applies corrections to edges along
+  //      simulation boundaries, but not interior edges formed
+  //      by Ms=0 cells.
+  //  (2) Handle cases where dim = 2 (and check dim=3 is OK)
+
+#ifndef NDEBUG
+  if(node_stop>mesh->Size() || node_start>node_stop) {
+    throw Oxs_ExtError(this,"Programming error:"
+                       " Invalid node_start/node_stop values");
+  }
+#endif
+  OC_INDEX xdim = mesh->DimX();
+  OC_INDEX ydim = mesh->DimY();
+  OC_INDEX zdim = mesh->DimZ();
+  OC_INDEX xydim = xdim*ydim;
+  OC_INDEX xyzdim = xdim*ydim*zdim;
+
+  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+
+  Nb_Xpfloat energy_sum = 0;
+  OC_REAL8m thread_maxdot = maxdot[threadnumber];
+  OC_REAL8m thread_maxdot_x = thread_maxdot;
+  OC_REAL8m thread_maxdot_y = thread_maxdot;
+  OC_REAL8m thread_maxdot_z = thread_maxdot;
+  // Note: For maxangle calculation, it suffices to check
+  // spin[j]-spin[i] for j>i, or j<i, or various mixes of the two.
+
+  OC_INDEX x,y,z;
+  mesh->GetCoords(node_start,x,y,z);
+
+  OC_INDEX i = node_start;
+  while(i<node_stop) {
+    OC_INDEX xstop = xdim;
+    if(xdim-x>node_stop-i) xstop = x + (node_stop-i);
+    ThreeVector xlast(0.,0.,0.);
+    if(x>0 || (x==0 && xperiodic)) {
+      OC_INDEX j = i-1;
+      if(x==0) j += xdim;
+      if(Ms_inverse[j]!=0.0) {
+        xlast = (spin[j]-spin[i]);
+        if(!xperiodic && (x==1 || x==xdim-1)) {
+          xlast *= 25./24.;
+        }
+      }
+    }
+    while(x<xstop) {
+      if(0 == Ms_inverse[i]) {
+        if(ocedt.energy) (*ocedt.energy)[i] = 0.0;
+        if(ocedt.H)      (*ocedt.H)[i].Set(0.,0.,0.);
+        if(ocedt.mxH)    (*ocedt.mxH)[i].Set(0.,0.,0.);
+        xlast.Set(0.,0.,0.);
+      } else {
+#if defined(__GNUC__) && __GNUC__ == 4 \
+  && defined(__GNUC_MINOR__) && __GNUC_MINOR__ <= 1
+        Oc_Nop(Ms_inverse[i]); // i686-apple-darwin9-gcc-4.0.1 (OS X Leopard)
+        /// (others?) has an optimization bug that segfaults in the
+        /// following code block.  Problem appears to be with the
+        /// -fstrict-aliasing option (see demag-threaded.cc, line 1664),
+        /// which is thrown in by -fast on Mac OS X/x86.
+#endif
+        const OC_REAL8m hmult = (-2/MU0) * Ms_inverse[i];
+
+        ThreeVector base = spin[i];
+        ThreeVector sum = xlast;
+        if(x<xdim-1 || (x==xdim-1 && xperiodic)) {
+          OC_INDEX j = i + 1;
+          if(x==xdim-1) j -= xdim;
+          if(Ms_inverse[j]!=0) {
+            xlast = (base - spin[j]);
+            OC_REAL8m dot = xlast.MagSq();
+            if(dot>thread_maxdot_x) thread_maxdot_x = dot;
+            if(!xperiodic && (x==0 || x==xdim-2)) {
+              xlast *= 25./24.;
+            }
+            sum -= xlast;
+          }
+        }
+        sum *= wgtx;
+
+        ThreeVector tempy(0.,0.,0.);
+        if(y>0 || (y==0 && yperiodic)) {
+          OC_INDEX j = i-xdim;
+          if(y==0) j += xydim;
+          if(Ms_inverse[j]!=0.0) {
+            tempy = (spin[j] - base);
+            OC_REAL8m dot = tempy.MagSq();
+            if(dot>thread_maxdot_y) thread_maxdot_y = dot;
+            if(!yperiodic && (y==1 || y==ydim-1)) {
+              tempy *= 25./24.;
+            }
+          }
+        }
+        if(y<ydim-1 || (y==ydim-1 && yperiodic)) {
+          OC_INDEX j = i+xdim;
+          if(y==ydim-1) j -= xydim;
+          if(Ms_inverse[j]!=0.0) {
+            if(!yperiodic && (y==0 || y==ydim-2)) {
+              tempy += 25./24.*(spin[j] - base);
+            } else {
+              tempy += (spin[j] - base);
+            }
+          }
+        }
+        sum += wgty*tempy;
+
+        ThreeVector tempz(0.,0.,0.);
+        if(z>0 || (z==0 && zperiodic)) {
+          OC_INDEX j = i-xydim;
+          if(z==0) j+= xyzdim;
+          if(Ms_inverse[j]!=0.0) {
+            tempz = (spin[j] - base);
+            OC_REAL8m dot = tempz.MagSq();
+            if(dot>thread_maxdot_z) thread_maxdot_z = dot;
+            if(!zperiodic && (z==1 || z==zdim-1)) {
+              tempz *= 25./24.;
+            }
+          }
+        }
+        if(z<zdim-1 || (z==zdim-1 && zperiodic)) {
+          OC_INDEX j = i+xydim;
+          if(z==zdim-1) j -= xyzdim;
+          if(Ms_inverse[j]!=0.0) {
+            if(!zperiodic && (z==0 || z==zdim-2)) {
+              tempz += 25./24.*(spin[j] - base);
+            } else {
+              tempz += (spin[j] - base);
+            }
+          }
+        }
+        sum += wgtz*tempz;
+
+        OC_REAL8m ei = base.x*sum.x + base.y*sum.y + base.z*sum.z;
+        sum.x *= hmult;  sum.y *= hmult;   sum.z *= hmult;
+
+        // The following computation of mxH is wasted if ocedt.mxH and
+        // ocedt.mxH_accum are NULL (as happens if one is using the
+        // old-style GetEnergy interface), but timing tests imply that
+        // the loss in that case is small, but the win is significant
+        // for the case where ocedt.mxH_accum is non-NULL (as happens
+        // if one is using the new-style
+        // ComputeEnergy/AccumEnergyAndTorque interface).
+        OC_REAL8m tx = base.y*sum.z - base.z*sum.y;
+        OC_REAL8m ty = base.z*sum.x - base.x*sum.z;
+        OC_REAL8m tz = base.x*sum.y - base.y*sum.x;
+
+        energy_sum += ei;
+        if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+        if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+        if(ocedt.H)       (*ocedt.H)[i] = sum;
+        if(ocedt.H_accum) (*ocedt.H_accum)[i] += sum;
+        if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+        if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+      }
+      ++i;
+      ++x;
+    }
+    x=0;
+    if((++y)>=ydim) {
+      y=0;
+      ++z;
+    }
+  }
+  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  /// All cells have same volume in an Oxs_CommonRectangularMesh.
+
+  if(thread_maxdot_x>thread_maxdot) thread_maxdot = thread_maxdot_x;
+  if(thread_maxdot_y>thread_maxdot) thread_maxdot = thread_maxdot_y;
+  if(thread_maxdot_z>thread_maxdot) thread_maxdot = thread_maxdot_z;
   maxdot[threadnumber] = thread_maxdot;
 }
 
@@ -2948,6 +3136,9 @@ void Oxs_UniformExchange::ComputeEnergyChunk
                                 node_start,node_stop,threadnumber);
   } else if(kernel == NGBR_6_ZD2) {
     CalcEnergy6NgbrZD2(spin,Ms_inverse,mesh,ocedt,ocedtaux,
+                       node_start,node_stop,threadnumber);
+  } else if(kernel == NGBR_6_ALT) {
+    CalcEnergy6NgbrAlt(spin,Ms_inverse,mesh,ocedt,ocedtaux,
                        node_start,node_stop,threadnumber);
   } else if(kernel == NGBR_12_FREE) {
     if(rmesh==NULL) {

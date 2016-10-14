@@ -685,17 +685,12 @@ int If_MSBitmap::WritePhoto
 // OOMMF If_PPM class
 class If_PPM {
 private:
-  OC_UINT4m Width;
-  OC_UINT4m Height;
-  OC_UINT4m Maxvalue;
-
   int ReadNumber(Tcl_Channel chan,int& number);
   char* ReadNumber(char* data,int& number);
   char* ReadHeader(char* data,
 		   int& imagewidth,int& imageheight,int& maxval);
-
 public:
-  If_PPM() : Width(0), Height(0), Maxvalue(0) {}
+  If_PPM() {}
   ~If_PPM() {}
   int ReadCheck(Tcl_Channel chan,int& imagewidth,int& imageheight);
   /// Returns 1 if the file on chan looks like a PPM P3.
@@ -1433,7 +1428,7 @@ If_Init(Tcl_Interp *interp)
     if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
 		       OC_CONST84_CHAR("1.1"), 0) == NULL) {
         Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(If "IF_VERSION" needs Oc 1.1)"),
+		OC_CONST84_CHAR("\n\t(If " IF_VERSION " needs Oc 1.1)"),
                 NULL);
         RETURN_TCL_ERROR;
     }

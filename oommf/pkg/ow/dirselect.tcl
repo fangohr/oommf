@@ -2,7 +2,10 @@
 #
 # Directory selection dialog sub-widget
 #
-# Last modified on: $Date: 2008/04/01 22:04:52 $
+# Includes also proc Ow_ModalSelectDirectory, which uses Ow_DirSelect
+# to create a modal directory selection dialog.
+#
+# Last modified on: $Date: 2016/01/04 22:45:23 $
 # Last modified by: $Author: donahue $
 #
 # Callbacks: UPDATE -value $value
@@ -53,6 +56,7 @@ Oc_Class Ow_DirSelect {
 	Ow_EntryBox New pathbox $winpath \
 		-label "Path:" -display_preference "end" \
 		-valuewidth $valuewidth \
+                -coloredits 1 \
 		-callback "$this PathBoxCallback"
 	pack [$pathbox Cget -winpath] -side top -fill x -expand 0
 	frame $winpath.listframe -relief raised -bd 2
@@ -109,9 +113,15 @@ Oc_Class Ow_DirSelect {
 	    catch {cd $newpath}
 	    set temppath [pwd]
 	    if {[string compare $value $temppath]!=0} {
-		set value $temppath
-		eval $callback $this UPDATE -value {$value}
-		$this FillList
+		# Verify directory read access
+		if {[catch {glob -nocomplain *}]} {
+		    # No read access; revert to old path
+		    catch {cd $value}
+		} else {
+		    set value $temppath
+		    eval $callback $this UPDATE -value {$value}
+		    $this FillList
+		}
 	    }
 	}
 	$pathbox Set $value
@@ -148,4 +158,51 @@ Oc_Class Ow_DirSelect {
 	    destroy $winpath
 	}
     }
+}
+
+# Sample usage of Ow_DirSelect to create a modal directory selection
+# dialog box.
+proc Ow_ModalSelectDirectory { parentwin {initdir {}} } {
+   set winpath $parentwin.wOw_ModalSelectDirectory
+   set id 0
+   while {[winfo exists $winpath$id] && $id<1000} {
+      incr id
+   }
+   set winpath $winpath$id
+
+   # Note: winpath should be a valid name for non-existing top-level widget
+   set workdir [pwd]
+   toplevel $winpath
+
+   wm group $winpath $parentwin
+   wm title $winpath "Select Directory"
+   if {![string match {} [info commands Ow_PositionChild]]} {
+      Ow_PositionChild $winpath $parentwin ;# Position at +.25+.25 over parent
+   }
+   catch {grab $winpath}
+   wm transient $winpath $parentwin
+   wm protocol $winpath WM_DELETE_WINDOW \
+       [list set selectdirectory_action_$winpath 0]
+   raise $winpath
+
+   Ow_DirSelect New dirbox $winpath
+   if {![string match {} $initdir]} {
+      $dirbox SetPath $initdir
+   }
+
+   global selectdirectory_action_$winpath
+   button $winpath.ok -text " OK " -padx 8 -pady 4 \
+       -command [list set selectdirectory_action_$winpath 1]
+   button $winpath.cancel -text " Cancel " -padx 8 -pady 4 \
+       -command [list set selectdirectory_action_$winpath 0]
+   pack [$dirbox Cget -winpath]
+   pack $winpath.ok $winpath.cancel -side left -fill y -expand 1 -pady 4
+   tkwait variable selectdirectory_action_$winpath
+   set result {}
+   if [set selectdirectory_action_$winpath] {
+      set result [$dirbox Cget -value]
+   }
+   destroy $winpath
+   cd $workdir
+   return $result
 }

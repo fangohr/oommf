@@ -8,20 +8,20 @@ set config [Oc_Config RunPlatform]
 
 set scriptfn [Oc_DirectPathname [info script]]
 if {![string match [string tolower [file rootname [file tail $scriptfn]]] \
-        [$config GetValue platform_name]]} {
-    error "Configuration file '$scriptfn'
+         [$config GetValue platform_name]]} {
+   error "Configuration file '$scriptfn'
 sourced by '[$config GetValue platform_name]'"
 }
 
 set localfn [file join [file dirname $scriptfn] local \
                 [file tail $scriptfn]]
 if {[file readable $localfn]} {
-    if {[catch {source $localfn} msg]} {
-        global errorInfo errorCode
-	set msg [join [split $msg \n] \n\t]
-	error "Error sourcing local platform file:\n    $localfn:\n\t$msg" \
-		$errorInfo $errorCode
-    }
+   if {[catch {source $localfn} msg]} {
+      global errorInfo errorCode
+      set msg [join [split $msg \n] \n\t]
+      error "Error sourcing local platform file:\n    $localfn:\n\t$msg" \
+         $errorInfo $errorCode
+   }
 }
 
 if {[catch {$config GetValue program_compiler_c++_override}] \
@@ -34,7 +34,12 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-## Support for the automated buildtest scripts
+# Environment variable override for C++ compiler
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+}
+
+# Support for the automated buildtest scripts
 if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
    source [file join [file dirname [info script]] buildtest.tcl]
 }
@@ -103,7 +108,11 @@ $config SetValue program_compiler_c++ {g++ -c}
 # SUPPORT PROCEDURES
 #
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
-         gcc-support.tcl]
+           gcc-support.tcl]
+
+# Miscellaneous processing routines
+source [file join [file dirname [Oc_DirectPathname [info script]]]  \
+         misc-support.tcl]
 
 ########################################################################
 # LOCAL CONFIGURATION
@@ -168,13 +177,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to add to compiler "opts" string:
-# $config SetValue program_compiler_c++_add_flags \
-#                          {-funroll-loops}
-#
 ## Flags to remove from compiler "opts" string:
 # $config SetValue program_compiler_c++_remove_flags \
-#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+   #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+   #                          {-funroll-loops}
 #
 ###################
 # Default handling of local defaults:
@@ -224,7 +233,7 @@ if {[catch {$config GetValue use_numa}]} {
    $config SetValue use_numa 0
 }
 if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
-    $config SetValue program_compiler_c++ $compiler
+   $config SetValue program_compiler_c++ $compiler
 }
 
 ########################################################################
@@ -232,34 +241,37 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
 
 # Compiler option processing...
 if {[string match g++ [file tail [lindex \
-        [$config GetValue program_compiler_c++] 0]]]} {
-    # ...for GNU g++ C++ compiler
-    set opts [list -O%s]
+                       [$config GetValue program_compiler_c++] 0]]]} {
+   # ...for GNU g++ C++ compiler
+   set opts [list -O%s]
 
-    # Default warnings disable
-    set nowarn [list -Wno-non-template-friend]
-    if {[info exists nowarn] && [llength $nowarn]>0} {
-       set opts [concat $opts $nowarn]
-    }
-    catch {unset nowarn}
+   # Default warnings disable
+   set nowarn [list -Wno-non-template-friend]
+   if {[info exists nowarn] && [llength $nowarn]>0} {
+      set opts [concat $opts $nowarn]
+   }
+   catch {unset nowarn}
 
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
 
-    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
-    $config SetValue program_compiler_c++_option_src {format \"%s\"}
-    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
-    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
 
-    # Widest natively support floating point type
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
+   $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
+   $config SetValue program_compiler_c++_option_src {format \"%s\"}
+   $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
+   $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
-    # Directories to exclude from explicit include search path, i.e.,
-    # the -I list.  Some versions of gcc complain if "system" directories
-    # appear in the -I list.
-    $config SetValue \
-    	program_compiler_c++_system_include_path [list /usr/include]
+   # Widest natively support floating point type
+   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      $config SetValue program_compiler_c++_typedef_realwide "double"
+   }
+
+   # Directories to exclude from explicit include search path, i.e.,
+   # the -I list.  Some versions of gcc complain if "system" directories
+   # appear in the -I list.
+   $config SetValue \
+      program_compiler_c++_system_include_path [list /usr/include]
 }
 
 # The program to run on this platform to link together object files and
@@ -267,16 +279,16 @@ if {[string match g++ [file tail [lindex \
 #
 # Use the selected compiler to control the linking.
 $config SetValue program_linker [lindex \
-        [$config GetValue program_compiler_c++] 0]
+                       [$config GetValue program_compiler_c++] 0]
 
 # Linker option processing...
 if {[string match g++ [file tail [lindex \
-        [$config GetValue program_linker] 0]]]} {
-    # ...for GNU g++ as linker
-    $config SetValue program_linker_option_obj {format \"%s\"}
-    $config SetValue program_linker_option_out {format "-o \"%s\""}
-    $config SetValue program_linker_option_lib {format \"%s\"}
-    $config SetValue program_linker_uses_-L-l {1}
+                       [$config GetValue program_linker] 0]]]} {
+   # ...for GNU g++ as linker
+   $config SetValue program_linker_option_obj {format \"%s\"}
+   $config SetValue program_linker_option_out {format "-o \"%s\""}
+   $config SetValue program_linker_option_lib {format \"%s\"}
+   $config SetValue program_linker_uses_-L-l {1}
 }
 
 # The program to run on this platform to create a single library file out
@@ -284,10 +296,10 @@ if {[string match g++ [file tail [lindex \
 $config SetValue program_libmaker {ar cr}
 
 if {[string match ar [file tail [lindex \
-        [$config GetValue program_libmaker] 0]]]} {
-    # Option processing for ar
-    $config SetValue program_libmaker_option_obj {format \"%s\"}
-    $config SetValue program_libmaker_option_out {format \"%s\"}
+                      [$config GetValue program_libmaker] 0]]]} {
+   # Option processing for ar
+   $config SetValue program_libmaker_option_obj {format \"%s\"}
+   $config SetValue program_libmaker_option_out {format \"%s\"}
 }
 
 # The absolute, native filename of the null device

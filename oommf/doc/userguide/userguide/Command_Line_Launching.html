@@ -53,7 +53,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00060000000000000000"></A><A NAME="sec:cll"></A><A NAME="3405"></A><A NAME="3406"></A>
+<H1><A NAME="SECTION00060000000000000000"></A><A NAME="sec:cll"></A><A NAME="3393"></A><A NAME="3394"></A>
 <BR>
 Command Line Launching
 </H1>
@@ -70,7 +70,7 @@ we provide a pair of programs that provide simplified interfaces
 for launching OOMMF applications.
 
 <P>
-<A NAME="3407"></A>
+<A NAME="3395"></A>
 The first of these is used to launch OOMMF applications from the
 command line.  Because its function is only to start another
 program, we refer to this program as the ``bootstrap application.''
@@ -84,7 +84,7 @@ tclsh oommf.tcl mmGraph
 </PRE>
 The search for an application matching the name is case-insensitive.
 (Here, as elsewhere in this document, the current working
-directory<A NAME="3415"></A> is assumed to be the OOMMF root
+directory<A NAME="3403"></A> is assumed to be the OOMMF root
 directory.  For other cases, adjust the pathname to <TT>oommf.tcl</TT> as
 appropriate.)  As discussed <A HREF="Requirements.html#sec:install.requirements">earlier</A>, the name of the Tcl shell,
 rendered here as <code>tclsh</code>, may vary between systems.
@@ -95,7 +95,7 @@ by default it will launch the application
 <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>.
 
 <P>
-<A NAME="3425"></A>
+<A NAME="3413"></A>
 Any command line arguments to the bootstrap
 application that begin with the character `<TT>+</TT>' modify its
 behavior.
@@ -106,7 +106,7 @@ tclsh oommf.tcl +help
 </PRE>
 
 <P>
-<A NAME="3429"></A>
+<A NAME="3417"></A>
 The command line arguments <TT>+bg</TT> and <TT>+fg</TT> control how the
 bootstrap behaves after launching the requested application.  It
 can exit immediately after launching the requested application 
@@ -116,10 +116,10 @@ registers within the OOMMF system whether it prefers to be launched
 in foreground or background mode.  If neither option is requested on
 the command line, the bootstrap launches the requested application
 in its preferred mode.
-<A NAME="3434"></A>
+<A NAME="3422"></A>
 
 <P>
-<A NAME="3435"></A>
+<A NAME="3423"></A>
 The first command line argument that does not begin with the
 character <TT>+</TT> is interpreted as a specification of which
 application should be launched.  As described above, this is 
@@ -135,7 +135,7 @@ will guarantee that the instance of the application mmGraph it
 launches is of at least version 1.1.  If no copy of mmGraph
 satisfying the version requirement can be found, an error is
 reported.
-<A NAME="3439"></A>
+<A NAME="3427"></A>
 
 <P>
 The rest of the command line arguments that are not recognized by
@@ -157,8 +157,8 @@ launches mmGraph with the command line argument <TT>-help</TT>.
 mmGraph then displays its own help message.
 
 <P>
-<A NAME="3447"></A>
-<A NAME="3448"></A>
+<A NAME="3435"></A>
+<A NAME="3436"></A>
 Most OOMMF applications accept the standard options listed below.
 Some of the OOMMF applications accept additional arguments when
 launched from the command line, as documented in the corresponding
@@ -187,7 +187,7 @@ Useful for debugging.
 <P>
 </DD>
 <DT><STRONG><TT><B>-nickname <TT><B>&lt;</B></TT>name<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="3454"></A>
+<DD><A NAME="3442"></A>
 Associates the specified <I>name</I> as a nickname for the process.
 The string <I>name</I> should contain at least one non-numeric
 character.  Nicknames can also be set at launch time via the
@@ -215,7 +215,7 @@ with the option <code>-tk 0</code>.  To run applications that require
 <code>-tk 1</code> on a Unix system with no display, one might use
 <A NAME="tex2html18"
   HREF="http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml">Xvfb</A>
-<A NAME="3471"></A>.
+<A NAME="3459"></A>.
 
 <P>
 </DD>
@@ -227,9 +227,9 @@ with the option <code>-tk 0</code>.  To run applications that require
 <P>
 In addition, those applications which enable Tk accept additional Tk
 options, such as <code>-display</code>.  See the Tk documentation for details.
-<A NAME="3474"></A>
-<A NAME="3475"></A>
-<A NAME="3476"></A>
+<A NAME="3462"></A>
+<A NAME="3463"></A>
+<A NAME="3464"></A>
 
 <P>
 The bootstrap application should be infrequently used by most users.
@@ -242,7 +242,7 @@ that are inherently command line driven, and in circumstances where
 the user wishes to precisely control the command line arguments passed
 to an OOMMF application or the environment in which an OOMMF application
 runs.
-<A NAME="3487"></A>
+<A NAME="3475"></A>
 
 <P>
 
@@ -250,7 +250,7 @@ runs.
 <FONT SIZE="+2"><B>Platform Issues</B></FONT>
 <BR>
 <P>
-<A NAME="3489"></A>
+<A NAME="3477"></A>
 On most Unix platforms, if <TT><B>oommf.tcl</B></TT> is marked executable,
 it may be run directly, i.e., without specifying <TT>tclsh</TT>.  This
 works because the first few lines of the <TT><B>oommf.tcl</B></TT> Tcl script are:
@@ -275,23 +275,23 @@ be as simple as:
 oommf.tcl appName
 </PRE>
 from any working directory.
-<A NAME="3503"></A>
+<A NAME="3491"></A>
 
 <P>
-<A NAME="3504"></A>
+<A NAME="3492"></A>
 On Windows platforms, because <TT><B>oommf.tcl</B></TT> has the file
 extension <TT><B>.tcl</B></TT>, it is normally associated by Windows with the
 <TT><B>wish</B></TT> interpreter.  The <TT><B>oommf.tcl</B></TT> script has been
 specially written so that either <TT><B>tclsh</B></TT> or <TT><B>wish</B></TT> is a suitable
 interpreter.  This means that simply double-clicking on an icon
 associated with the file <TT><B>oommf.tcl</B></TT> 
-(say, in Windows Explorer<A NAME="3512"></A>)
+(say, in Windows Explorer<A NAME="3500"></A>)
 will launch the bootstrap application with no arguments.  This will
 result in the default behavior of launching the application
 <B>mmLaunch</B>, which is suitable for launching other OOMMF applications.  (If this doesn't work, refer back to the
 <A HREF="Platform_Specific_Installat.html#sec:install.windows">Windows Options</A> section in the
 installation instructions.)  
-<A NAME="3517"></A>
+<A NAME="3505"></A>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
@@ -311,6 +311,6 @@ installation instructions.)
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

@@ -9,6 +9,25 @@
 
 /* End includes */
 
+// In Tcl versions 8.3 and earlier, and Tcl 8.4 released prior to
+// 2004-07-16 (i.e., Tcl 8.4.6 and earlier), Tcl_ExitThread
+// unconditionally calls Tcl_FinalizeNotifier.  This produces a ref
+// counting bug if Tcl_InitNotifier has not been called in the thread.
+// This bug can cause OOMMF to hang during shutdown.  (In this
+// particular instance, the problem is triggered by Oxs_ThreadThrowaway
+// threads used for checkpointing.)
+//   However, Tcl_CreateInterp includes a call to Tcl_InitNotifier; the
+// safest workaround appears to be to create an interp in each child
+// thread.  (Testing prior to Tcl 8.4 presumably didn't much consider
+// the case of threads without interps.)  At some time we may have an
+// active use for such interps, but for now only create thread interps
+// as needed as a bug workaround.
+#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION < 4)
+# define _OXS_THREAD_MAKE_CHILD_INTERPS 1
+#else
+# define _OXS_THREAD_MAKE_CHILD_INTERPS 0
+#endif
+
 // Thread-safe fprintf
 void Oxs_ThreadPrintf(FILE* fptr,const char *format, ...) {
   static Oxs_Mutex oxs_threadprintf_mutex;
@@ -279,6 +298,10 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
   }
 #endif
 
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_Interp *thread_interp = Tcl_CreateInterp();
+#endif
+
   // Notify parent Oxs_Thread that we are ready and waiting
   start.Lock();
   start.count = 1; // Ready to wait
@@ -337,7 +360,9 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
 
   // Clean-up thread-local storage
   Oxs_ThreadLocalMap::DeleteLocker(&Oxs_ThreadRunObj::thread_data_map);
-
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_DeleteInterp(thread_interp);
+#endif
   Tcl_ExitThread(TCL_OK);
   TCL_THREAD_CREATE_RETURN;
 }
@@ -620,7 +645,7 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
       // Print node mask for master thread
       Oc_AutoBuf runmask;
       Oc_NumaGetRunMask(runmask);
-      Oxs_ThreadPrintf(stderr,"Thread %2d nodemasK: %s\n",
+      Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
                        0,runmask.GetStr());
     }
 #endif
@@ -1069,6 +1094,10 @@ Tcl_ThreadCreateType _Oxs_ThreadBush_main(ClientData clientdata)
               oc_thread_id);
   threadstr = errbuf;
 
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_Interp *thread_interp = Tcl_CreateInterp();
+#endif
+
   // Action loop
   try {
     twig.Task(oc_thread_id);
@@ -1097,6 +1126,9 @@ Tcl_ThreadCreateType _Oxs_ThreadBush_main(ClientData clientdata)
   // NOTE: After this point, the bundle ptr may go invalid.
 
   // All done.
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_DeleteInterp(thread_interp);
+#endif
   Tcl_ExitThread(TCL_OK);
 
   TCL_THREAD_CREATE_RETURN; // pro forma
@@ -1156,6 +1188,11 @@ Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
     = *static_cast<Oxs_ThreadThrowaway *>(clientdata);
   String threadstr = "\nException thrown in thread ";
   threadstr += obj.name;
+
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_Interp *thread_interp = Tcl_CreateInterp();
+#endif
+
   try {
     if(Oc_NumaReady()) {
       Oc_NumaRunOnAnyNode();
@@ -1194,6 +1231,10 @@ Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
   }
   catch(...) {}
   obj.mutex.Unlock();
+
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_DeleteInterp(thread_interp);
+#endif
 
   Tcl_ExitThread(TCL_OK);
 

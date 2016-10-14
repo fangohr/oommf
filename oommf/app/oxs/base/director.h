@@ -60,7 +60,8 @@ extern "C" {
 enum OxsRunEventTypes { OXS_INVALID_EVENT,
                         OXS_STEP_EVENT,
                         OXS_STAGE_DONE_EVENT,
-                        OXS_RUN_DONE_EVENT };
+                        OXS_RUN_DONE_EVENT,
+                        OXS_CHECKPOINT_EVENT };
 struct OxsRunEvent {
 public:
   OxsRunEventTypes event;
@@ -147,7 +148,7 @@ private:
   /// to indicate an error has occurred.  This can be checked
   /// by objects during cleanup, to possibly modify their
   /// behavior.  In particular, this is used by the checkpoint
-  /// cleanup code in Oxs_Driver.  This flag is automatically
+  /// disposal code in Oxs_Driver.  This flag is automatically
   /// cleared at the bottom of the Release() method.
 
   vector<Oxs_Ext*> ext_obj;  // Ordered list of instantiated Oxs_Ext

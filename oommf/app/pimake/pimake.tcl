@@ -141,7 +141,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}
@@ -231,14 +231,15 @@ if {[catch {MakeRule Build $target} errmsg]} {
 if {[catch {package require Tcl 8.5-}]} {
     set code [catch $script msg]
 } else {
-    # See oommf.tcl comment - stupid old Tcl releases.
+    # Really old releases of Tcl were really dumb in their failed
+    # efforts to compile [catch], so we do a dumb thing to work around it.
     set catch catch
     set code [$catch $script msg o]
-    if {$code in {1 2}} {
-	set errorCode [dict get $o -errorcode]
+    if {$code == 1 || $code == 2} {
+        set errorCode [dict get $o -errorcode]
     }
     unset o
-} 
+}
 #
 ########################################################################
 

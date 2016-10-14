@@ -24,6 +24,26 @@ if {[file readable $localfn]} {
     }
 }
 
+if {[catch {$config GetValue program_compiler_c++_override}] \
+       && ![catch {$config GetValue program_compiler_c++} _]} {
+   # If program_compiler_c++ is set, but program_compiler_c++_override
+   # is not, then assume user set the former instead of the latter,
+   # and so copy the former to the latter to preserve the setting
+   # across the setting of program_compiler_c++ in the "REQUIRED
+   # CONFIGURATION" section below.
+   $config SetValue program_compiler_c++_override $_
+}
+
+# Environment variable override for C++ compiler
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+}
+
+# Support for the automated buildtest scripts
+if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
+   source [file join [file dirname [info script]] buildtest.tcl]
+}
+
 ########################################################################
 # START EDIT HERE
 # In order to properly build, install, and run on your computing 

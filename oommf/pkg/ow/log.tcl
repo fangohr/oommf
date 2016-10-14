@@ -1,6 +1,6 @@
 # FILE: log.tcl
 #
-# Last modified on: $Date: 2014/12/03 07:07:05 $
+# Last modified on: $Date: 2016/01/22 23:57:33 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Ow_Log {
@@ -107,9 +107,15 @@ Oc_Class Ow_Log {
       } else {
          set follow 0 ;# End is not currenty visible
       }
+      set signfont 1
+      if {$fontsize<0} {
+         set fontsize [expr {abs($fontsize)}]
+         set signfont -1
+      }
       set fontsize [expr {$fontsize + $delta}]
       if {$fontsize < 1}   { set fontsize 1 }
       if {$fontsize > 128 } {set fontsize 128 }
+      set fontsize [expr {$signfont * $fontsize}]
       font configure $font -size $fontsize
       $tw configure -font $font
       if {$follow} {

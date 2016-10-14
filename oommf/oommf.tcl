@@ -126,7 +126,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName oommf.tcl
-Oc_Main SetVersion 1.2.0.6
+Oc_Main SetVersion 1.2.1.0
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for
@@ -276,7 +276,7 @@ if {[catch {package require Tcl 8.5-}]} {
     # efforts to compile [catch], so we do a dumb thing to work around it.
     set catch catch
     set code [$catch $script msg o]
-    if {$code in {1 2}} {
+    if {$code == 1 || $code == 2} {
         set errorCode [dict get $o -errorcode]
     }
     unset o

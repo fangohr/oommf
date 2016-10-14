@@ -3,7 +3,7 @@
 # A collection of Tcl procedures (not Oc_Classes) which are part of the
 # Ow extension
 #
-# Last modified on: $Date: 2012/06/26 21:11:27 $
+# Last modified on: $Date: 2016/01/04 22:45:24 $
 # Last modified by: $Author: donahue $
 
 ########################################################################
@@ -398,7 +398,7 @@ proc Ow_Descendents { win {level 0} } {
 ### may be wm-specific.                                           ###
 #####################################################################
 proc Ow_PositionChild { child {parent .} {xrat .25} {yrat .25} } {
-    set parentpos [winfo geometry $parent]
+    set parentpos [winfo geometry [winfo toplevel $parent]]
     set junk ""
     regexp {^([0-9]*)x?([-+]?[0-9]*)([-+][0-9]+)([-+][0-9]+)} \
             "$parentpos" junk parwidth parheight parposx parposy
@@ -752,7 +752,7 @@ set ow(dialog,width) 12c
 set ow(dialog,instance) 0
 proc Ow_Dialog { modal title bitmap message {width ""} \
         {defaultbtn ""} args } {
-    global ow
+    global ow tcl_platform
     set parent [focus]    ;# Position dialog over toplevel with focus.
     if {[string match {} $parent]} {
         set parent "."
@@ -857,18 +857,48 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
     } else {
         set btncmd {destroy $window}
     }
-    foreach btnlabel $args {
-        set btn($btncount) [button $window.bottom.btn$btncount \
-                -text $btnlabel -command [subst $btncmd] ]
-        bind $btn($btncount) <Key-Return> "$btn($btncount) invoke"
-        pack $btn($btncount) -side left -expand 1 -padx 5
-        incr btncount 1
-    }
-    if {$btncount==0} {
-        set btn($btncount) [button $window.bottom.btn$btncount \
-                -text "OK" -command [subst $btncmd] ]
-        pack $btn($btncount) -side left -expand 1 -padx 5
-        incr btncount 1
+    if {[string compare Darwin $tcl_platform(os)]==0 \
+           && [llength [info commands ttk::button]]==1} {
+       # The "button" widget on the Mac are limited to a height of one
+       # line, so, if available, use ttk:button instead.
+       set textjust [ttk::style lookup Ow_DialogButtons -justify]
+       if {[string compare center $textjust]!=0} {
+          # Define style with center text justification.  TButton is the
+          # default style for ttk:button (with left justification).
+          ttk::style layout Ow_DialogButtons [ttk::style layout TButton]
+          eval ttk::style configure Ow_DialogButtons \
+             [ttk::style configure TButton]
+          ttk::style configure Ow_DialogButtons -justify center
+       }
+       foreach btnlabel $args {
+          set btn($btncount) [ttk::button $window.bottom.btn$btncount \
+                              -text $btnlabel -command [subst $btncmd] \
+                              -style Ow_DialogButtons]
+          bind $btn($btncount) <Key-Return> "$btn($btncount) invoke"
+          pack $btn($btncount) -side left -expand 1 -padx 5
+          incr btncount 1
+       }
+       if {$btncount==0} {
+          set btn($btncount) [ttk::button $window.bottom.btn$btncount \
+                              -text "OK" -command [subst $btncmd]  \
+                              -style Ow_DialogButtons]]
+          pack $btn($btncount) -side left -expand 1 -padx 5
+          incr btncount 1
+       }
+    } else {
+       foreach btnlabel $args {
+          set btn($btncount) [button $window.bottom.btn$btncount \
+                              -text $btnlabel -command [subst $btncmd] ]
+          bind $btn($btncount) <Key-Return> "$btn($btncount) invoke"
+          pack $btn($btncount) -side left -expand 1 -padx 5
+          incr btncount 1
+       }
+       if {$btncount==0} {
+          set btn($btncount) [button $window.bottom.btn$btncount \
+                                -text "OK" -command [subst $btncmd] ]
+          pack $btn($btncount) -side left -expand 1 -padx 5
+          incr btncount 1
+       }
     }
     pack $window.bottom -side bottom -fill x -expand 0 -before $window.top
  

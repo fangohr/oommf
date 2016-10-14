@@ -2487,7 +2487,7 @@ void Grid2D::BinDumpm(const OC_CHAR *filename, const OC_CHAR *note)
       break;
     }
   }
-  delete temparr;
+  delete[] temparr;
   fv.Close();
 }
 

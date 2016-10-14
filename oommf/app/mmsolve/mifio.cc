@@ -144,7 +144,7 @@ void MIF::Init(void)
   AnisDir1=AnisDir2=Vec3D(0.,0.,0.);
   DemagType=mif_demag_notset;
   PartWidth=PartHeight=PartThickness=CellSize= -1.0;
-  GeomType=mif_geom_notset;   GeomTypeParam="0.0";
+  GeomType=mif_geom_notset;   GeomTypeParam="";
   RandomizerSeed= -1;
   UserInteractionLevel= -1;
   UserReportCode= -1;
@@ -787,7 +787,7 @@ void MIF::Read(const char* inname,int &errorcode)
 	warncount++;
       }
       if(paramcount==3) GeomTypeParam=param[2];
-      else              GeomTypeParam="0.0";
+      else              GeomTypeParam="";
     }
     // INITIAL MAGNETIZATION
     else if(strcmp(param[0],"initmag")==0) {
@@ -1087,6 +1087,20 @@ void MIF::DumpPartialInfo(FILE* fptr)
 	      (GeomType==mif_oval ? "oval" :
 	       (GeomType==mif_pyramid ? "pyramid" : "not set")))))),
 	   GeomTypeParam.GetStr());
+
+  fprintf(fptr,"#   Part shape:     %s",
+	  (GeomType==mif_rectangle ? "rectangle" :
+	   (GeomType==mif_ellipse ? "ellipse" :
+	    (GeomType==mif_ellipsoid ? "ellipsoid" :
+	     (GeomType==mif_mask ? "mask" : 
+	      (GeomType==mif_oval ? "oval" :
+	       (GeomType==mif_pyramid ? "pyramid" : "not set")))))));
+  if(GeomTypeParam.Length()>0) {
+    fprintf(fptr," %s\n",GeomTypeParam.GetStr());
+  } else {
+    fputs("\n",fptr);
+  }
+
   fprintf(fptr,"#  Initial Magnetization:");
   for(i=0;i<MagInitArgs.argc;i++)
     fprintf(fptr," %s",MagInitArgs.argv[i]);

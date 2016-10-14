@@ -53,7 +53,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION000111000000000000000"></A><A NAME="sec:mmsolve2d"></A><A NAME="11354"></A><A NAME="11355"></A>
+<H2><A NAME="SECTION000111000000000000000"></A><A NAME="sec:mmsolve2d"></A><A NAME="11380"></A><A NAME="11381"></A>
 <BR>
 The 2D Micromagnetic Interactive Solver: mmSolve2D
 </H2>
@@ -78,7 +78,7 @@ problem description server applications, data table display and storage
 applications, and vector field display and storage applications.  
 <B>mmSolve2D</B> is the server of a solver control service for which the
 only client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="11373"><B>mmLaunch</B></A>.  It is through
+ NAME="11399"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>mmSolve2D</B>.
 
@@ -93,7 +93,7 @@ command line via
 tclsh oommf.tcl mmSolve2D [standard options] [-restart &lt;0|1&gt;]
 </PRE>
 <DL>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="12323"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="12349"></A></B></TT></STRONG></DT>
 <DD>Affects the behavior of the solver
   when a new problem is loaded.  Default value is 0.  When launched with
   <TT>-restart 1</TT>, the solver will look for <TT><B><I>basename</I>.log</B></TT>
@@ -110,11 +110,11 @@ tclsh oommf.tcl mmSolve2D [standard options] [-restart &lt;0|1&gt;]
 </DL>
 
 <P>
-Since <B>mmSolve2D</B><A NAME="11397"></A> does not present
+Since <B>mmSolve2D</B><A NAME="11423"></A> does not present
 any user interface window of its own, it depends on
-<B>mmLaunch</B><A NAME="11399"></A> to provide an interface on
+<B>mmLaunch</B><A NAME="11425"></A> to provide an interface on
 its behalf.  The entry for an instance of <B>mmSolve2D</B> in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="11402"></A> column of any running copy of
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="11428"></A> column of any running copy of
 <B>mmLaunch</B> has a checkbutton next to it.  This button toggles the
 presence of a user interface window through which the user may control
 that instance of <B>mmSolve2D</B>.  The user interface window is divided
@@ -132,7 +132,7 @@ by toggling the <FONT COLOR="#800000"><B>Inputs</B></FONT> checkbutton.  When op
 contains a list of the inputs required by <B>mmSolve2D</B>.  There is
 only one item in the list: <FONT COLOR="#800000"><B>ProblemDescription</B></FONT>.  When
 <FONT COLOR="#800000"><B>ProblemDescription</B></FONT> is selected, the right subpanel (labeled
-<FONT COLOR="#800000"><B>Source Threads</B></FONT><A NAME="11416"></A>) displays a list of applications
+<FONT COLOR="#800000"><B>Source Threads</B></FONT><A NAME="11442"></A>) displays a list of applications
 that can supply a problem description.  The user selects from among the
 listed applications the one from which <B>mmSolve2D</B> should request a
 problem description.
@@ -150,29 +150,29 @@ the <FONT COLOR="#800000"><B>Scheduled Outputs</B></FONT> panel contains three s
 <FONT COLOR="#800000"><B>Outputs</B></FONT> subpanel is filled with a list of the types of output
 <B>mmSolve2D</B> can generate while solving the loaded problem.  The
 three elements in this list are <FONT COLOR="#800000"><B>TotalField</B></FONT>, for the output of a
-vector field<A NAME="11426"></A> representing the total effective
+vector field<A NAME="11452"></A> representing the total effective
 field, <FONT COLOR="#800000"><B>Magnetization</B></FONT>, for the output of a vector field
 representing the current magnetization state of the grid of spins, and
 <FONT COLOR="#800000"><B>DataTable</B></FONT>, for the output of a table of data
-values<A NAME="11429"></A> describing other quantities of interest
+values<A NAME="11455"></A> describing other quantities of interest
 calculated by <B>mmSolve2D</B>.
 
 <P>
 Upon selecting one of the output types from the <FONT COLOR="#800000"><B>Outputs</B></FONT> subpanel,
 a list of applications appears in the
-<FONT COLOR="#800000"><B>Destination Threads</B></FONT><A NAME="11433"></A> subpanel which provide a
+<FONT COLOR="#800000"><B>Destination Threads</B></FONT><A NAME="11459"></A> subpanel which provide a
 display and/or storage service for the type of output selected.  The
 user may select from this list those applications to which the selected
 type of output should be sent.
 
 <P>
 For each application selected, a final interface is displayed in the
-<FONT COLOR="#800000"><B>Schedule</B></FONT><A NAME="11435"></A> subpanel.  Through this interface
+<FONT COLOR="#800000"><B>Schedule</B></FONT><A NAME="11461"></A> subpanel.  Through this interface
 the user may set the schedule according to which the selected type of
 data is sent to the selected application for display or storage.  The
 schedule is described relative to events in <B>mmSolve2D</B>.  An
 <FONT COLOR="#800000"><B>Iteration</B></FONT>&nbsp;event occurs at every step in the solution of the ODE.
-A <FONT COLOR="#800000"><B>ControlPoint</B></FONT><A NAME="11439"></A> event occurs
+A <FONT COLOR="#800000"><B>ControlPoint</B></FONT><A NAME="11465"></A> event occurs
 whenever the solver determines that a control point specification is
 met.  (Control point specs are discussed in the <A HREF="MIF_1.1.html#sec:expparams">Experiment
 parameters</A> paragraph in the <A HREF="MIF_1.1.html#sec:mif1format">MIF&nbsp;1.1
@@ -187,7 +187,7 @@ delivered to selected display and storage applications.  For the
 output delivery schedule is under user control.  For example, the user
 may elect to send vector field data describing the current magnetization
 state to an <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="11453"><B>mmDisp</B></A>
+ NAME="11479"><B>mmDisp</B></A>
 instance for display every 25 iterations of the ODE, rather than every
 iteration.
 
@@ -196,19 +196,19 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <B>mmSolve2D</B> include:
 
 <UL>
-<LI><B>Iteration:</B><A NAME="11458"></A> The iteration count of the ODE
+<LI><B>Iteration:</B><A NAME="11484"></A> The iteration count of the ODE
       solver.
 </LI>
-<LI><B>Field Updates:</B><A NAME="11460"></A> The number of times the
+<LI><B>Field Updates:</B><A NAME="11486"></A> The number of times the
       ODE solver has calculated the effective field.
 </LI>
-<LI><B>Sim Time (ns):</B><A NAME="11462"></A> The elapsed simulated
+<LI><B>Sim Time (ns):</B><A NAME="11488"></A> The elapsed simulated
       time.
 </LI>
-<LI><B>Time Step (ns):</B><A NAME="11464"></A> The interval of simulated
+<LI><B>Time Step (ns):</B><A NAME="11490"></A> The interval of simulated
       time spanned by the last step taken in the ODE solver.
 </LI>
-<LI><B>Step Size:</B><A NAME="11466"></A> The magnitude of the last step
+<LI><B>Step Size:</B><A NAME="11492"></A> The magnitude of the last step
         taken by the ODE solver as a normalized value.  (This is
         currently the time step in seconds, multiplied by the
         gyromagnetic ratio times the damping coefficient times <B><I>M</I><SUB>s</SUB></B>
@@ -217,7 +217,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
  -->
 .)
 </LI>
-<LI><B>Bx, By, Bz (mT):</B><A NAME="11468"></A> The <B><I>x</I></B>
+<LI><B>Bx, By, Bz (mT):</B><A NAME="11494"></A> The <B><I>x</I></B>
 <!-- MATHEND
  
  -->
@@ -233,7 +233,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 </LI>
 <LI><B>B (mT):</B> The magnitude of the nominal applied field (always non-negative).
 </LI>
-<LI><B>|m x h|:</B><A NAME="11475"></A>  The maximum of the
+<LI><B>|m x h|:</B><A NAME="11501"></A>  The maximum of the
         point-wise quantity
         <!-- MATH
  $|\textbf{M}\times\textbf{H}_{eff}|/M_s^2$
@@ -246,7 +246,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
         used to test convergence to an equilibrium state (and raise
         control point -torque events).
 </LI>
-<LI><B>Mx/Ms, My/Ms, Mz/Ms:</B><A NAME="11479"></A> The <B><I>x</I></B>
+<LI><B>Mx/Ms, My/Ms, Mz/Ms:</B><A NAME="11505"></A> The <B><I>x</I></B>
 <!-- MATHEND
  
  -->
@@ -266,7 +266,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <!-- MATHEND
  
  -->
-):</B><A NAME="11481"></A> The total
+):</B><A NAME="11507"></A> The total
         average energy density for the magnetically active elements of
         the simulated part.
 </LI>
@@ -274,7 +274,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <!-- MATHEND
  
  -->
-):</B><A NAME="11483"></A> The
+):</B><A NAME="11509"></A> The
         component of the average energy density for the magnetically
         active elements of the simulated part due to exchange
         interactions.
@@ -283,7 +283,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <!-- MATHEND
  
  -->
-):</B><A NAME="11485"></A> The
+):</B><A NAME="11511"></A> The
         component of the average energy density for the magnetically
         active elements of the simulated part due to crystalline and
         surface anisotropies.
@@ -292,7 +292,7 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <!-- MATHEND
  
  -->
-):</B><A NAME="11487"></A> The component
+):</B><A NAME="11513"></A> The component
         of the average energy density for the magnetically active
         elements of the simulated part due to self-demagnetizing fields.
 </LI>
@@ -300,18 +300,18 @@ The quantities included in <FONT COLOR="#800000"><B>DataTable</B></FONT> output 
 <!-- MATHEND
  
  -->
-):</B><A NAME="11489"></A>  The
+):</B><A NAME="11515"></A>  The
         component of average energy density for the magnetically active
         elements of the simulated part due to interaction with the
         applied field.
 </LI>
-<LI><B>Max Angle:</B><A NAME="11491"></A>  The maximum angle (in degrees)
+<LI><B>Max Angle:</B><A NAME="11517"></A>  The maximum angle (in degrees)
         between the magnetization orientation of any pair of neighboring
         spins in the grid.  (The neighborhood of a spin is the same as
         that defined by the exchange energy calculation.)
 </LI>
 </UL>
-In addition, the solver automatically keeps a log file<A NAME="11493"></A>
+In addition, the solver automatically keeps a log file<A NAME="11519"></A>
 that records the input problem specification and miscellaneous runtime
 information.  The name of this log file is <TT><B><I>basename</I>.log</B></TT>,
 where <TT><B><I>basename</I></B></TT> is the ``Base Output Filename'' specified
@@ -325,7 +325,7 @@ new entries are appended to the end of the file.
 <BR>
 The middle section of the user interface window contains a series of
 buttons providing user control over the
-solver<A NAME="11497"></A>.  After a problem
+solver<A NAME="11523"></A>.  After a problem
 description server application has been selected, the <FONT COLOR="#800000"><B>LoadProblem</B></FONT>
 button triggers a fetch of a problem description from the selected
 server.  The <FONT COLOR="#800000"><B>LoadProblem</B></FONT> button may be selected at any time to
@@ -355,7 +355,7 @@ state of the solver is indicated in the <FONT COLOR="#800000"><B>Status</B></FON
 panel of the user interface window.
 
 <P>
-The problem description (MIF&nbsp;1.x format)<A NAME="11511"></A>
+The problem description (MIF&nbsp;1.x format)<A NAME="11537"></A>
 specifies a fixed <A HREF="MIF_1.1.html#sec:expparams">applied field schedule</A>.  This schedule defines an
 ordered list of applied fields, which the solver in ``run'' mode steps
 through in sequence.  The <FONT COLOR="#800000"><B>Field-</B></FONT> and <FONT COLOR="#800000"><B>Field+</B></FONT> buttons allow
@@ -381,7 +381,7 @@ data type has been selected, as discussed in the Outputs section above.
 
 <P>
 At the far right of the solver controls is the <FONT COLOR="#800000"><B>Exit</B></FONT> button, which
-terminates<A NAME="11525"></A> <B>mmSolve2D</B>.  Simply
+terminates<A NAME="11551"></A> <B>mmSolve2D</B>.  Simply
 closing the user interface window does not terminate <B>mmSolve2D</B>,
 but only closes the user interface window.  To kill the solver the
 <FONT COLOR="#800000"><B>Exit</B></FONT> button must be pressed.
@@ -392,7 +392,7 @@ but only closes the user interface window.  To kill the solver the
 <FONT SIZE="+1"><B>Details</B></FONT>
 <BR>
 Given a problem description, <B>mmSolve2D</B> integrates the
-Landau-Lifshitz equation<A NAME="11531"></A>&nbsp;[<A
+Landau-Lifshitz equation<A NAME="11557"></A>&nbsp;[<A
  HREF="bibliography.html#gilbert55">10</A>,<A
  HREF="bibliography.html#landau35">12</A>]
 <BR>
@@ -467,7 +467,7 @@ where
 equations</A> in the Oxs documentation.)
 
 <P>
-The effective field<A NAME="11560"></A> is defined as
+The effective field<A NAME="11586"></A> is defined as
 <DIV ALIGN="CENTER">
 </DIV><P><!-- MATH
  \begin{displaymath}
@@ -490,7 +490,7 @@ The effective field<A NAME="11560"></A> is defined as
 </P>
 <DIV ALIGN="CENTER">
 </DIV>
-The average energy density<A NAME="11569"></A> <B><I>E</I></B>
+The average energy density<A NAME="11595"></A> <B><I>E</I></B>
 <!-- MATHEND
  
  -->
@@ -504,14 +504,14 @@ The average energy density<A NAME="11569"></A> <B><I>E</I></B>
  -->
  specified by Brown's equations [<A
  HREF="bibliography.html#brown78">4</A>], including
-anisotropy<A NAME="11571"></A>,
-exchange<A NAME="11572"></A>, self-magnetostatic
-(demagnetization)<A NAME="11573"></A> and applied
-field<A NAME="11574"></A> (Zeeman) terms.
+anisotropy<A NAME="11597"></A>,
+exchange<A NAME="11598"></A>, self-magnetostatic
+(demagnetization)<A NAME="11599"></A> and applied
+field<A NAME="11600"></A> (Zeeman) terms.
 
 <P>
 The micromagnetic problem is impressed upon a regular 2D
-grid<A NAME="11575"></A> of squares, with 3D magnetization spins positioned at
+grid<A NAME="11601"></A> of squares, with 3D magnetization spins positioned at
 the centers of the cells.  Note that the constraint that the grid be
 composed of square elements takes priority over the requested size of
 the grid.  The actual size of the grid used in the computation will be
@@ -533,7 +533,7 @@ be found in the source-code file <TT><B>oommf/app/mmsolve/magelt.cc</B></TT>.
 The self-magnetostatic field is calculated as the convolution of the
 magnetization against a kernel that describes the cell to cell
 magnetostatic interaction.  The convolution is evaluated using fast
-Fourier transform (FFT)<A NAME="11578"></A> techniques.  Several kernels are
+Fourier transform (FFT)<A NAME="11604"></A> techniques.  Several kernels are
 supported; these are selected as part of the problem description in
 <A HREF="MIF_1.1.html#sec:mifdemagspec">MIF&nbsp;1.x format</A>.  Each kernel represents a different
 interpretation of the discrete magnetization.  The recommended model is
@@ -544,9 +544,9 @@ formulae from [<A
  HREF="bibliography.html#aharoni98">2</A>].
 
 <P>
-The Landau-Lifshitz ODE<A NAME="11586"></A> (<A HREF="#eq:llode">5</A>) is
+The Landau-Lifshitz ODE<A NAME="11612"></A> (<A HREF="#eq:llode">5</A>) is
 integrated using a second order
-predictor-corrector<A NAME="11588"></A> technique of the
+predictor-corrector<A NAME="11614"></A> technique of the
 Adams type.  The right side of (<A HREF="#eq:llode">5</A>) at the current and
 previous step is extrapolated forward in a linear fashion, and is
 integrated across the new time interval to obtain a quadratic prediction
@@ -618,7 +618,7 @@ the size of the next step.  No fixed ratio between the previous and
 current time step is assumed.
 
 <P>
-A fourth order Runge-Kutta<A NAME="11593"></A> solver is used to
+A fourth order Runge-Kutta<A NAME="11619"></A> solver is used to
 prime the predictor-corrector solver, and is used as a backup in case
 the predictor-corrector fails to find a valid step.  The Runge-Kutta
 solver is not selectable as the primary solver at runtime, but may be so
@@ -630,7 +630,7 @@ integration procedure.
 For a given applied field, the integration continues until a
 <A HREF="MIF_1.1.html#sec:expparams">control point</A>
  is
-reached.  A control point<A NAME="11599"></A> event may
+reached.  A control point<A NAME="11625"></A> event may
 be raised by the ODE iteration count, elapsed simulation time, or by the
 maximum value of <!-- MATH
  $|\textbf{M}\times\textbf{H}_{\mbox{eff}}|/M_s^2$
@@ -664,14 +664,14 @@ coefficient.
 
 <P>
 When multiple copies of
-<B>mmLaunch</B><A NAME="11610"></A><A NAME="11611"></A>
+<B>mmLaunch</B><A NAME="11636"></A><A NAME="11637"></A>
 are used, each can have its own interface to a running copy of
 <B>mmSolve2D</B>.  When the interface presented by one copy of
 <B>mmLaunch</B> is used to set the output schedule in <B>mmSolve2D</B>,
 those settings are not reflected in the interfaces presented by other
 copies of <B>mmLaunch</B>.  For example, although the first interface
 sets a schedule that DataTable data is to be sent to an instance of
-<B>mmGraph</B><A NAME="11617"></A> every third Iteration, there is
+<B>mmGraph</B><A NAME="11643"></A> every third Iteration, there is
 no indication of that schedule presented to the user in the second
 interface window.  It is unusual to have more than one copy of
 <B>mmLaunch</B> running simultaneously. However, this bug also appears
@@ -699,6 +699,6 @@ status of that running solver.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

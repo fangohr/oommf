@@ -5,7 +5,7 @@
 #
 # Need to split this into files likely to load together
 #
-# Last modified on: $Date: 2015/09/30 06:21:20 $
+# Last modified on: $Date: 2015/10/01 00:19:12 $
 # Last modified by: $Author: donahue $
 
 # Returns the absolute, direct pathname of its argument
@@ -889,11 +889,11 @@ typedef  unsigned char      OC_UCHAR;
     if { $varsize(float) != $varsize(double) } {
 	append porth "typedef  float              OC_REAL$varsize(float);\n"
         append fmodstr "#define OC_REAL$varsize(float)_MOD \"\"\n"
-        set real${varsize(float)}type "float"
+        set real$varsize(float)type "float"
     }
     append porth "typedef  double             OC_REAL$varsize(double);\n"
     append fmodstr "#define OC_REAL$varsize(double)_MOD \"\"\n"
-    set real${varsize(double)}type "double"
+    set real$varsize(double)type "double"
 
     if {![catch {$config GetValue program_compiler_c++_typedef_real4m} \
          real4mtype]} {

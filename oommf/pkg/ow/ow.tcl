@@ -21,7 +21,7 @@ package require Nb 1.1.1.0			;# [Nb_RatApprox]
 Oc_CheckTclIndex Ow
 
 # CVS 
-package provide Ow 1.2.0.6
+package provide Ow 1.2.1.0
 
 # Provide Oc_Log dialogs for message reporting 
 Oc_Log SetLogHandler Ow_Message panic Oc_Log

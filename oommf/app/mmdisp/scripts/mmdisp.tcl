@@ -14,8 +14,8 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 1.2.0.6
-regexp \\\044Date:(.*)\\\044 {$Date: 2015/09/30 06:19:10 $} _ date
+Oc_Main SetVersion 1.2.1.0
+regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
 # Oc_Main SetAuthor [Oc_Person Lookup [string trim $author]]
@@ -27,6 +27,7 @@ Oc_Main SetHelpURL [Oc_Url FromFilename [file join [file dirname \
         [file dirname [file dirname [file dirname [Oc_DirectPathname [info \
         script]]]]]] doc userguide userguide \
         Vector_Field_Display_mmDisp.html]]
+Oc_Main SetDataRole consumer
 
 Oc_CommandLine ActivateOptionSet Net
 
@@ -2235,19 +2236,19 @@ proc UpdateCoordDisplay { newrot } {
     ShowCoords $win $newrot $plot_config(viewaxis)
 }
 trace variable DisplayRotation w DisplayRotationTrace
-bind $coords_win <<Ow_LeftButton>> {
+catch {bind $coords_win <<Ow_LeftButton>> {
     set temp [expr {(round($DisplayRotation/90.)+1)%%4}]
     set DisplayRotation [expr {$temp*90}]
-}
+}} ;# Catch is for Tcl 7.5/Tk 4.1, which doesn't support virtual events.
 bind $coords_win <Key-Left> {
     # Same as <Button-1>
     set temp [expr {(round($DisplayRotation/90.)+1)%%4}]
     set DisplayRotation [expr {$temp*90}]
 }
-bind $coords_win <<Ow_RightButton>> {
+catch {bind $coords_win <<Ow_RightButton>> {
     set temp [expr {(round($DisplayRotation/90.)-1)%%4}]
     set DisplayRotation [expr {$temp*90}]
-}
+}} ;# Catch is for Tcl 7.5/Tk 4.1, which doesn't support virtual events.
 bind $coords_win <Key-Right> {
     # Same as <Button-3>
     set temp [expr {(round($DisplayRotation/90.)-1)%%4}]
@@ -2997,9 +2998,10 @@ $filemenu add command -label "Print..." -underline 0 \
 bind . <Control-Key-p> { $filemenu invoke "Print..." }
 
 $filemenu add separator
-$filemenu add command -label "Show Console" \
-   -command { LaunchCommandConsole $filemenu "Show Console" } -underline 1
-
+if {![Oc_Option Get Menu show_console_option _] && $_} {
+   $filemenu add command -label "Show Console" \
+       -command { LaunchCommandConsole $filemenu "Show Console" } -underline 1
+}
 $filemenu add separator
 $filemenu add command -label "Write config..." -underline 0 \
         -command { LaunchDialog $filemenu "Write config..." WRITECONFIG }
@@ -3557,21 +3559,27 @@ proc CenterScreenView { vx vy } {
     global canvas
     CenterPlotView [$canvas canvasx $vx] [$canvas canvasy $vy]
 }
-bind $canvas <<Ow_LeftButton>> { OMF_InitZoomBox %x %y 1 }
-bind $canvas <<Ow_RightButton>> { OMF_InitZoomBox %x %y -1 }
-bind $canvas <<Ow_LeftButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
-bind $canvas <<Ow_RightButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
-bind $canvas <ButtonRelease> { OMF_DoZoom %x %y }
-bind $canvas <<Ow_ShiftLeftButtonRelease>> { CancelZoom }
-bind $canvas <<Ow_ShiftRightButtonRelease>> { CancelZoom }
-bind $canvas <<Ow_MiddleButtonRelease>> { CancelZoom ; CenterScreenView %x %y }
-bind $canvas <<Ow_MiddleButton>> {
-   continue ;# Make this a nop so is doesn't interact with other bindings.
+# Following catch is for Tcl 7.5/Tk 4.1, which doesn't support virtual
+# events.
+catch {
+   bind $canvas <<Ow_LeftButton>> { OMF_InitZoomBox %x %y 1 }
+   bind $canvas <<Ow_RightButton>> { OMF_InitZoomBox %x %y -1 }
+   bind $canvas <<Ow_LeftButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+   bind $canvas <<Ow_RightButtonMotion>> [Oc_SkipWrap {OMF_DrawZoomBox %x %y}]
+   bind $canvas <ButtonRelease> { OMF_DoZoom %x %y }
+   bind $canvas <<Ow_ShiftLeftButtonRelease>> { CancelZoom }
+   bind $canvas <<Ow_ShiftRightButtonRelease>> { CancelZoom }
+   bind $canvas <<Ow_MiddleButtonRelease>> {
+      CancelZoom ; CenterScreenView %x %y
+   }
+   bind $canvas <<Ow_MiddleButton>> {
+      continue ;# Make this a nop so is doesn't interact with other bindings.
+   }
+   bind $canvas <<Ow_ShiftLeftButton>> { OMF_ShowPosition %x %y }
+   bind $canvas <<Ow_ShiftRightButton>> { OMF_ShowPosition %x %y 1 }
+   bind $canvas <<Ow_ShiftLeftButtonRelease>> +OMF_UnshowPosition
+   bind $canvas <<Ow_ShiftRightButtonRelease>> +OMF_UnshowPosition
 }
-bind $canvas <<Ow_ShiftLeftButton>> { OMF_ShowPosition %x %y }
-bind $canvas <<Ow_ShiftRightButton>> { OMF_ShowPosition %x %y 1 }
-bind $canvas <<Ow_ShiftLeftButtonRelease>> +OMF_UnshowPosition
-bind $canvas <<Ow_ShiftRightButtonRelease>> +OMF_UnshowPosition
 
 proc OMF_ShowPosition { wx wy {verbose 0}} {
     set boxmargin 5

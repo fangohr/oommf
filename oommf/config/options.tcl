@@ -171,6 +171,20 @@ if {[string match windows $tcl_platform(platform)]} {
 # Oc_Option Add * {} owDisableWatchCursor 0
 #
 ########################################################################
+# Show (1) or hide (0) console option on app menus.
+Oc_Option Add * Menu show_console_option 1
+#
+########################################################################
+# Directory for Oxsii and Boxsi log/error files.  Default is the OOMMF
+# root directory.  (File names are oxsii.errors and boxsi.errors,
+# respectively.)
+if {[info exists env(OOMMF_OXSLOGDIR)]} {
+   Oc_Option Add * OxsLogs directory $env(OOMMF_OXSLOGDIR)
+} else {
+   Oc_Option Add * OxsLogs directory [Oc_Main GetOOMMFRootDir]
+}
+#
+########################################################################
 # Slave MIF interpreter control in Oxs
 #
 # Value should be one of safe, custom or unsafe

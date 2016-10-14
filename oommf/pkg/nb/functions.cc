@@ -413,24 +413,40 @@ int Nb_IsFinite(OC_REAL8 x)
 #if !OC_REALWIDE_IS_REAL8
 int Nb_IsFinite(OC_REALWIDE x)
 {
-#if OC_REALWIDE_INTRINSIC_WIDTH != 10 && OC_REALWIDE_INTRINSIC_WIDTH != 16
-# error Unsupported OC_REALWIDE floating point type
-#endif
+# if OC_REALWIDE_INTRINSIC_WIDTH == 8
+
+  // Same tests as for OC_REAL8 case
+  unsigned char *cptr = (unsigned char *)(&x);
+#  if (OC_BYTEORDER == 4321)  // Little endian
+  unsigned int code = (((unsigned int)cptr[7])<<8) + ((unsigned int)cptr[6]);
+#  else // Otherwise assume big endian
+  unsigned int code = (((unsigned int)cptr[0])<<8) + ((unsigned int)cptr[1]);
+#  endif
+  unsigned mask = 0x7FF0;
+  code &= mask;
+  return (code!=mask);
+
+# elif  OC_REALWIDE_INTRINSIC_WIDTH == 10 || OC_REALWIDE_INTRINSIC_WIDTH == 16
+
   // For both 80-bit extended precision and 128-bit quad precision IEEE
   // formats, Inf's and nan's are indicated by all 15 exponent bits
   // being set.  (The top bit is the sign bit.)
   unsigned char *cptr = (unsigned char *)(&x);
-#if (OC_BYTEORDER == 4321)  // Little endian
+#  if (OC_BYTEORDER == 4321)  // Little endian
   unsigned int code = (((unsigned int)cptr[OC_REALWIDE_INTRINSIC_WIDTH-1])<<8)
     + ((unsigned int)cptr[OC_REALWIDE_INTRINSIC_WIDTH-2]);
-#else // Otherwise assume big endian
+#  else // Otherwise assume big endian
   unsigned int code = (((unsigned int)cptr[0])<<8) + ((unsigned int)cptr[1]);
-#endif
+#  endif
   unsigned mask = 0x7FFF;
   code &= mask;
   return (code!=mask);
+
+# else // OC_REALWIDE_INTRINSIC_WIDTH
+#  error Unsupported OC_REALWIDE floating point type
+# endif // OC_REALWIDE_INTRINSIC_WIDTH
 }
-#endif
+#endif // !OC_REALWIDE_IS_REAL8
 
 //////////////////////////////////////////////////////////////////////////
 // Routine to detect string containing nothing but whitespace.

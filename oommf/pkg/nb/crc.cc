@@ -4,7 +4,7 @@
  *
  * NOTICE: Please see the file ../../LICENSE
  *
- * Last modified on: $Date: 2011/03/27 05:37:04 $
+ * Last modified on: $Date: 2016/02/12 06:11:05 $
  * Last modified by: $Author: donahue $
  */
 
@@ -219,7 +219,7 @@ int NbComputeCRCChannelCmd(ClientData,Tcl_Interp *interp,
 
 #if OC_HAS_INT8 && OC_INDEX_WIDTH<8
   // Special handling for big files
-  Oc_Snprintf(msg,sizeof(msg),"0x%08lX %"PRIu64,
+  Oc_Snprintf(msg,sizeof(msg),"0x%08lX %" PRIu64,
 	      static_cast<unsigned long>(crc),bytes_read);
 # else
   Oc_Snprintf(msg,sizeof(msg),"0x%08lX %lu",

@@ -2,7 +2,7 @@
  *
  * Abstract mesh class and children
  *
- * Last modified on: $Date: 2015/08/04 21:55:17 $
+ * Last modified on: $Date: 2016/02/24 20:34:19 $
  * Last modified by: $Author: donahue $
  */
 
@@ -177,10 +177,11 @@ OC_BOOL Vf_Mesh::FindClosest(const Nb_Vec3<OC_REAL4> &pos,
 // This does *not* include DisplayValueScale scaling, but does include
 // ValueMultiplier.
 void
-Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
+Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
+                         Nb_LocatedVector<OC_REAL8>& max_export) const
 {
   Vf_Mesh_Index *key=NULL;
-  Nb_LocatedVector<OC_REAL8> vec;
+  Nb_LocatedVector<OC_REAL8> vec,min_vec,max_vec;
   const OC_REAL8m sqrt3 = sqrt(3.0);
   const OC_REAL8m sqrt1_3 = 1.0/sqrt(3.0);
   OC_REAL8m max_a = 0.0, max_b = 0.0;  // Scaling to protect against
@@ -216,6 +217,7 @@ Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
       ty /= tx;  tz /= tx;
       max_b = min_b = 1 + ty*ty + tz*tz;
     }
+    min_vec = max_vec = vec;
     while(GetNextPt(key,vec)) {
       tx=abs(vec.value.x); ty=abs(vec.value.y); tz=abs(vec.value.z);
       if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
@@ -225,10 +227,12 @@ Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
         OC_REAL8m tb = 1 + ty*ty + tz*tz;
         if(tx >= sqrt3*max_a) {
           max_a = tx;  max_b = tb;
+          max_vec = vec;
         } else {
           OC_REAL8m tr = max_a/tx;
           if(tr*tr*max_b < tb) {
             max_a = tx;  max_b = tb;
+            max_vec = vec;
           }
         }
       }
@@ -240,10 +244,12 @@ Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
           OC_REAL8m tb = 1 + ty*ty + tz*tz;
           if(tx <= sqrt1_3*min_a) {
             min_a = tx;  min_b = tb;
+            min_vec = vec;
           } else {
             OC_REAL8m tr = min_a/tx;
             if(tr*tr*min_b > tb) {
               min_a = tx;  min_b = tb;
+              min_vec = vec;
             }
           }
         }
@@ -251,19 +257,28 @@ Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
     }
   }
   delete key;
-  min_export = (min_a>0.0 ? min_a*sqrt(min_b)*ValueMultiplier : 0.0);
-  max_export = (max_a>0.0 ? max_a*sqrt(max_b)*ValueMultiplier : 0.0);
+  min_vec.value *= ValueMultiplier;  min_export = min_vec;
+  max_vec.value *= ValueMultiplier;  max_export = max_vec;
+}
+
+void
+Vf_Mesh::GetValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
+{
+  Nb_LocatedVector<OC_REAL8> min_vec,max_vec;
+  GetValueMagSpan(min_vec,max_vec);
+  min_export = min_vec.value.Mag();
+  max_export = max_vec.value.Mag();
 }
 
 // Determine smallest and largest magnitude across all vectors in mesh,
 // *excluding* zero vectors. This does *not* include DisplayValueScale
 // scaling, but does include ValueMultiplier.
 void
-Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
-                                OC_REAL8m& max_export) const
+Vf_Mesh::GetNonZeroValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
+                                Nb_LocatedVector<OC_REAL8>& max_export) const
 {
   Vf_Mesh_Index *key=NULL;
-  Nb_LocatedVector<OC_REAL8> vec;
+  Nb_LocatedVector<OC_REAL8> vec,min_vec,max_vec;
   const OC_REAL8m sqrt3 = sqrt(3.0);
   const OC_REAL8m sqrt1_3 = 1.0/sqrt(3.0);
   OC_REAL8m max_a = -1.0, max_b = 0.0;  // Scaling to protect against
@@ -299,6 +314,7 @@ Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
       ty /= tx;  tz /= tx;
       max_b = min_b = 1 + ty*ty + tz*tz;
     }
+    min_vec = max_vec = vec;
     while(max_a<0.0 && GetNextPt(key,vec)) {
       tx=abs(vec.value.x); ty=abs(vec.value.y); tz=abs(vec.value.z);
       if(tx<ty) { OC_REAL8m tmp=tx; tx=ty; ty=tmp; }
@@ -307,6 +323,7 @@ Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
         max_a = min_a = tx;
         ty /= tx;  tz /= tx;
         max_b = min_b = 1 + ty*ty + tz*tz;
+        min_vec = max_vec = vec;
       }
     }
     while(GetNextPt(key,vec)) {
@@ -319,10 +336,12 @@ Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
         OC_REAL8m tb = 1 + ty*ty + tz*tz;
         if(tx >= sqrt3*max_a) {
           max_a = tx;  max_b = tb;
+          max_vec = vec;
         } else {
           OC_REAL8m tr = max_a/tx;
           if(tr*tr*max_b < tb) {
             max_a = tx;  max_b = tb;
+            max_vec = vec;
           }
         }
       }
@@ -331,18 +350,29 @@ Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,
         OC_REAL8m tb = 1 + ty*ty + tz*tz;
         if(tx <= sqrt1_3*min_a) {
           min_a = tx;  min_b = tb;
+          min_vec = vec;
         } else {
           OC_REAL8m tr = min_a/tx;
           if(tr*tr*min_b > tb) {
             min_a = tx;  min_b = tb;
+            min_vec = vec;
           }
         }
       }
     }
   }
   delete key;
-  min_export = (min_a>0.0 ? min_a*sqrt(min_b)*ValueMultiplier : 0.0);
-  max_export = (max_a>0.0 ? max_a*sqrt(max_b)*ValueMultiplier : 0.0);
+  min_vec.value *= ValueMultiplier;  min_export = min_vec;
+  max_vec.value *= ValueMultiplier;  max_export = max_vec;
+}
+
+void
+Vf_Mesh::GetNonZeroValueMagSpan(OC_REAL8m& min_export,OC_REAL8m& max_export) const
+{
+  Nb_LocatedVector<OC_REAL8> min_vec,max_vec;
+  GetNonZeroValueMagSpan(min_vec,max_vec);
+  min_export = min_vec.value.Mag();
+  max_export = max_vec.value.Mag();
 }
 
 // Compute vector mean value.  Each node is weighted equally.  The
@@ -393,6 +423,33 @@ Vf_Mesh::GetValueRMS() const
   }
   return result;
 }
+
+// Computes \sum_i (|x_i| + |y_i| + |z_i|)/N, where i=1..N.
+// Each node is weighted equally.  The value does *not* include
+// DisplayValueScale scaling, but does include ValueMultiplier.
+OC_REAL8m
+Vf_Mesh::GetValueL1() const
+{
+  OC_REAL8m result = 0.0;
+  OC_REAL8m count = static_cast<OC_REAL8m>(GetSize());
+  if(count>0) {
+    Vf_Mesh_Index *key=NULL;
+    Nb_LocatedVector<OC_REAL8> vec;
+    OC_REAL8m sum=0.0;
+    if(GetFirstPt(key,vec)) {
+      sum += fabs(vec.value.x) + fabs(vec.value.y) + fabs(vec.value.z);
+      while(GetNextPt(key,vec)) {
+        sum += fabs(vec.value.x) + fabs(vec.value.y) + fabs(vec.value.z);
+      }
+    }
+    delete key;
+    sum /= count;
+    result = fabs(ValueMultiplier)*sum;
+  }
+  return result;
+}
+
+
 
 // Subtract values of one mesh from the other.
 OC_BOOL Vf_Mesh::SubtractMesh(const Vf_Mesh& other)
@@ -2031,6 +2088,138 @@ Vf_GridVec3f::ResampleCopy
 #undef MEMBERNAME
 }
 
+
+// ResampleCopyAverage is similar to ResampleCopy, except rather than
+// resampling through samples on a fit curve, instead each resampled
+// value is the average value from the cells in source mesh lying in
+// the footprint of the resample cell.
+void
+Vf_GridVec3f::ResampleCopyAverage
+(const Vf_GridVec3f& import_mesh,
+ const Nb_BoundingBox<OC_REAL8> &newrange,
+ OC_INDEX icount,OC_INDEX jcount,OC_INDEX kcount)
+{
+#define MEMBERNAME "ResampleCopyAverage"
+  if(icount<1 || jcount<1 || kcount<1) {
+    FatalError(-1,STDDOC,"%s: icount=%ld, jcount=%ld, kcount=%ld",
+               ErrBadParam,long(icount),long(jcount),long(kcount));
+  }
+  assert(import_mesh.coords_step.x>0
+         && import_mesh.coords_step.y>0
+         && import_mesh.coords_step.z>0);
+
+  // Collect grid data from import mesh.  This allows import_mesh
+  // and *this to be the same mesh.
+  OC_INDEX i2max,j2max,k2max;
+  import_mesh.GetDimens(i2max,j2max,k2max); --i2max; --j2max; --k2max;
+  Nb_Vec3<OC_REAL8> import_coords_base = import_mesh.coords_base;
+  Nb_Vec3<OC_REAL8> import_coords_step = import_mesh.coords_step;
+
+  // Copy Vf_Mesh base from import_mesh
+  SetFilename(import_mesh.GetName());
+  SetTitle(import_mesh.GetTitle());
+  SetDescription(import_mesh.GetDescription());
+  SetMeshUnit(import_mesh.GetMeshUnit());
+  SetValueUnit(import_mesh.GetValueUnit());
+  SetDisplayValueScale(import_mesh.GetDisplayValueScale());
+  ValueMultiplier = import_mesh.GetValueMultiplier();
+  import_mesh.GetMagHints(MinMagHint,MaxMagHint);
+
+  // Initialize non-data portions of new grid
+  range = newrange;
+  coords_step.x = range.GetWidth()/icount;
+  coords_step.y = range.GetHeight()/jcount;
+  coords_step.z = range.GetDepth()/kcount;
+  range.GetMinPt(coords_base);
+  coords_base += 0.5*coords_step;
+
+  Nb_Vec3<OC_REAL8> maxpt;
+  range.GetMaxPt(maxpt);
+  maxpt -= 0.5*coords_step;
+  data_range.Set(coords_base,maxpt);
+
+  boundary_from_data = 1;
+  FillDataBoundaryList(boundary); // NB: This routine requires
+  /// that range be already set so that GetPreciseRange returns the
+  /// correct values.
+
+  OC_REAL8 offx
+    = (coords_base.x-import_coords_base.x)/import_coords_step.x;
+  OC_REAL8 offy
+    = (coords_base.y-import_coords_base.y)/import_coords_step.y;
+  OC_REAL8 offz
+    = (coords_base.z-import_coords_base.z)/import_coords_step.z;
+  OC_REAL8 sx = coords_step.x/import_coords_step.x;
+  OC_REAL8 sy = coords_step.y/import_coords_step.y;
+  OC_REAL8 sz = coords_step.z/import_coords_step.z;
+
+  Nb_Array3D< Nb_Vec3<OC_REAL8> > dummy_grid;
+  const Nb_Array3D< Nb_Vec3<OC_REAL8> >* import_grid = &(import_mesh.grid);
+  if(grid.IsSameArray(import_mesh.grid)) {
+    // Resampling on same grid; create holding space
+    grid.Swap(dummy_grid);
+    import_grid = &dummy_grid;
+  }
+  // NB: Coordinates are reversed when accessing grid directly!
+  grid.Allocate(kcount,jcount,icount);
+
+  for(OC_INDEX k=0;k<kcount;++k) {
+    OC_REAL8 k2a = OC_MAX(-0.5,offz + (k-0.5)*sz);
+    OC_INDEX k2start = OC_MAX(0,OC_INDEX(OC_ROUND(k2a)));
+    OC_REAL8 kawgt = (k2start+0.5)-k2a;
+
+    OC_REAL8 k2b = OC_MIN(offz + (k+0.5)*sz,k2max+0.5);
+    OC_INDEX k2stop = OC_MIN(OC_INDEX(OC_ROUND(k2b)),k2max);
+    OC_REAL8 kbwgt = k2b-(k2stop-0.5);
+    if(k2start == k2stop) { kawgt = kbwgt = k2b-k2a; } // 1 cell
+
+    for(OC_INDEX j=0;j<jcount;++j) {
+      OC_REAL8 j2a = OC_MAX(-0.5,offy + (j-0.5)*sy);
+      OC_INDEX j2start = OC_MAX(0,OC_INDEX(OC_ROUND(j2a)));
+      OC_REAL8 jawgt = (j2start+0.5)-j2a;
+
+      OC_REAL8 j2b = OC_MIN(offy + (j+0.5)*sy,j2max+0.5);
+      OC_INDEX j2stop = OC_MIN(OC_INDEX(OC_ROUND(j2b)),j2max);
+      OC_REAL8 jbwgt = j2b-(j2stop-0.5);
+      if(j2start == j2stop) { jawgt = jbwgt = j2b-j2a; } // 1 cell
+
+      for(OC_INDEX i=0;i<icount;++i) {
+        OC_REAL8 i2a = OC_MAX(-0.5,offx + (i-0.5)*sx);
+        OC_INDEX i2start = OC_MAX(0,OC_INDEX(OC_ROUND(i2a)));
+        OC_REAL8 iawgt = (i2start+0.5)-i2a;
+
+        OC_REAL8 i2b = OC_MIN(offx + (i+0.5)*sx,i2max+0.5);
+        OC_INDEX i2stop = OC_MIN(OC_INDEX(OC_ROUND(i2b)),i2max);
+        OC_REAL8 ibwgt = i2b-(i2stop-0.5);
+        if(i2start == i2stop) { iawgt = ibwgt = i2b-i2a; } // 1 cell
+
+        Nb_Vec3<OC_REAL8> sum(0.0,0.0,0.0);
+        OC_REAL8 zwgt,yzwgt,xyzwgt;
+        for(OC_INDEX k2=k2start;k2<=k2stop;++k2) {
+          if(k2==k2start)     zwgt = kawgt;
+          else if(k2==k2stop) zwgt = kbwgt;
+          else                zwgt = 1.0;
+          for(OC_INDEX j2=j2start;j2<=j2stop;++j2) {
+            if(j2==j2start)     yzwgt = jawgt*zwgt;
+            else if(j2==j2stop) yzwgt = jbwgt*zwgt;
+            else                yzwgt = zwgt;
+            for(OC_INDEX i2=i2start;i2<=i2stop;++i2) {
+              if(i2==i2start)     xyzwgt = iawgt*yzwgt;
+              else if(i2==i2stop) xyzwgt = ibwgt*yzwgt;
+              else                xyzwgt = yzwgt;
+              sum += xyzwgt * ((*import_grid)(k2,j2,i2));
+            }
+          }
+        }
+        sum *= 1.0/((k2b-k2a)*(j2b-j2a)*(i2b-i2a));
+        grid(k,j,i) = sum;
+      }
+    }
+  }
+
+  // dummy_grid is automatically freed on exit
+#undef MEMBERNAME
+}
 
 //////////////////////////////////////////////////////////////////////////
 // General (non-regular) 3D mesh of Nb_Vec3<OC_REAL4>'s

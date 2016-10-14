@@ -57,10 +57,10 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Vector Field File Format Conversion:
           avf2ovf
-</H2><A NAME="16837"></A><A NAME="16838"></A><A NAME="16839"></A><A NAME="16840"></A>
+</H2><A NAME="16863"></A><A NAME="16864"></A><A NAME="16865"></A><A NAME="16866"></A>
 The <B>avf2ovf</B> program converts vector field files from any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
-(OVF, VIO) into the OVF 1.0 format.
+(OVF, VIO) into the OVF format.
 
 <P>
 
@@ -71,9 +71,10 @@ The <B>avf2ovf</B> launch command is:
 <PRE>
 tclsh oommf.tcl avf2ovf [standard options] \
    [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] [-mag] \
-   [-pertran xoff yoff zoff] [-q] [-resample xstep ystep zstep order] \
-   [-rpertran rxoff ryoff rzoff] [-subsample period] [infile [outfile]]
+   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] \
+   [-mag] [-ovfversion version] [-pertran xoff yoff zoff] [-q] \
+   [-resample xstep ystep zstep order] [-rpertran rxoff ryoff rzoff] \
+   [-subsample period] [infile [outfile]]
 </PRE>
 where
 <DL>
@@ -152,7 +153,7 @@ where
   ASCII text header in all cases.)
 </DD>
 <DT><STRONG><TT><B>-grid <TT><B>&lt;</B></TT>rect|irreg<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>Specify output grid<A NAME="16858"></A> structure.  The default is <TT>rect</TT>,
+<DD>Specify output grid<A NAME="16884"></A> structure.  The default is <TT>rect</TT>,
   which will output a regular rectangular grid if the input is recognized
   as a regular rectangular grid.  The option ``-grid irreg'' forces
   irregular mesh style output.
@@ -181,6 +182,9 @@ where
  
  -->
 .
+</DD>
+<DT><STRONG><TT><B>-ovfversion version</B></TT></STRONG></DT>
+<DD>Specify the output OVF version, either 1 (default) or 2.
 </DD>
 <DT><STRONG><TT><B>-pertran xoff yoff zoff</B></TT></STRONG></DT>
 <DD>Translates field with respect to location coordiates, by amount
@@ -367,9 +371,9 @@ where
   grid structure.  Default value is 1, i.e., no subsampling.
 </DD>
 <DT><STRONG><TT><B>infile</B></TT></STRONG></DT>
-<DD>Name of input file to process.  Must be one of the recognized formats,
-  OVF 0.0, OVF 1.0, or VIO.  If no file is specified, reads from
-  stdin.
+<DD>Name of input file to process.  Must be one of the recognized
+  formats, OVF 0.0, OVF 1.0, OVF 2.0, or VIO.  If no file is
+  specified, reads from stdin.
 </DD>
 <DT><STRONG><TT><B>outfile</B></TT></STRONG></DT>
 <DD>Name of output file.  If no file is specified, writes to stdout.
@@ -444,6 +448,6 @@ boundary edges that don't run parallel to a coordinate axis.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

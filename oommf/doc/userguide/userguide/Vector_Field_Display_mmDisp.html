@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000140000000000000000"></A><A NAME="sec:mmdisp"></A>
 <BR>
 Vector Field Display: mmDisp
-</H1><A NAME="14611"></A>
+</H1><A NAME="14637"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -117,7 +117,7 @@ That file will be opened on startup.
 Input to <B>mmDisp</B> may come from either a file or from a client
 application (typically a running solver), in any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats"
- NAME="14642">OOMMF vector field formats</A>.
+ NAME="14668">OOMMF vector field formats</A>.
 Other file formats can also be supported if a translation filter program
 is available.
 
@@ -139,7 +139,7 @@ display window size), or whether their values should be held constant
 while loading the file.
 
 <P>
-<A NAME="14649"></A>
+<A NAME="14675"></A>
 
 <P>
 <B>mmDisp</B> permits local customization allowing for automatic
@@ -154,9 +154,9 @@ format from standard input and writes to standard output the same data
 in one of the formats supported by <B>mmDisp</B>.  In its default
 configuration, <B>mmDisp</B> recognizes the patterns <TT>.gz</TT>, <TT>.z</TT>,
 and <TT>.zip</TT>, and invokes the translation
-program <TT>gzip -dc</TT><A NAME="14665"></A> to perform the
+program <TT>gzip -dc</TT><A NAME="14691"></A> to perform the
 ``translation.''  In this way, support for reading
-compressed<A NAME="14666"></A> files is
+compressed<A NAME="14692"></A> files is
 ``built in'' to <B>mmDisp</B> on any platform where the <B>gzip</B>
 program is installed.
 
@@ -164,7 +164,7 @@ program is installed.
 There are two categories of translations supported: decompression and
 format conversion.  Both are modified by the usual method of
 <A HREF="Advanced_Installation.html#sec:custom"
- NAME="14673">local customization</A>.  The
+ NAME="14699">local customization</A>.  The
 command governing decompression in the customization file is of the form
 <BLOCKQUOTE><PRE>
 Oc_Option Add * Nb_InputFilter decompress {{.gz .zip} {gzip -dc}}
@@ -200,7 +200,7 @@ Oc_Option Add * Nb_InputFilter ovf {.bar foo}
 This assumes that the program <TT>foo</TT> accepts input of the form
 <TT><B>.bar</B></TT> on standard input and writes the translated results to
 standard output.
-<A NAME="14693"></A>
+<A NAME="14719"></A>
 
 <P>
 
@@ -208,32 +208,32 @@ standard output.
 <FONT SIZE="+2"><B>Outputs</B></FONT>
 <BR>
 The vector field displayed by <B>mmDisp</B> may be saved to disk via the
-<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="14697"></A> dialog box.  The output
+<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="14723"></A> dialog box.  The output
 is in the <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="14702">OVF format</A>.  The OVF file
+ NAME="14728">OVF format</A>.  The OVF file
 options may be set by selecting the appropriate radio buttons in the
 OVF File Options panel.  The <FONT COLOR="#800000"><B>Title</B></FONT> and <FONT COLOR="#800000"><B>Desc</B></FONT> fields may be
 edited before saving.  Enabling the <FONT COLOR="#800000"><B>Browse</B></FONT> button allows for
 saving multiple files without closing the ``Save File'' dialog box.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14707"></A> dialog is used to
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14733"></A> dialog is used to
 produce a PostScript file of the current display.  On Unix systems, the
 output may be sent directly to a
-printer<A NAME="14708"></A> by filling the
+printer<A NAME="14734"></A> by filling the
 <FONT COLOR="#800000"><B>Print to:</B></FONT> entry with the appropriate pipe command, e.g.,
 |<TT>lpr</TT>.  (The exact form is system dependent.)  The other
 print dialog box options are described in the
 <A HREF="#sec:mmdispconfig">configuration files</A> section below.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="14714"></A> dialog
+The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="14740"></A> dialog
 allows one to save to disk a configuration file holding the current
 display parameters.  This file can be used to affect startup display
 parameters, or used as input to the <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="14719">avf2ppm</A> and
+ NAME="14745">avf2ppm</A> and
 <A HREF="Making_PostScript_from_Vect.html#sec:avf2ps"
- NAME="14724">avf2ps</A> command line utilities
+ NAME="14750">avf2ps</A> command line utilities
 that convert files from the OVF format into bitmap images and
 PostScript printer files, respectively.  (mmDisp does not provide
 direct support for writing bitmap files.)  Details of the configuration
@@ -283,7 +283,7 @@ display.
 <P>
 Columns 2-4 in the Configure dialog box control the use of color.  Both
 arrows and pixels may be independently colored to indicate some
-quantity<A NAME="14746"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
+quantity<A NAME="14772"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
 controls which scalar quantity the color of the arrow or pixel
 represents.  Available color quantities include vector <B><I>x</I></B>
 <!-- MATHEND
@@ -303,7 +303,7 @@ divergence is also available for display.
 
 <P>
 The assignment of a color to a quantity value is determined by the
-<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="14749"></A> selected.  Colormaps are labeled by a
+<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="14775"></A> selected.  Colormaps are labeled by a
 sequence of colors that are mapped across the range of the selected
 quantity.  For example, if the ``Red-Black-Blue'' colormap is applied to
 the <FONT COLOR="#800000"><B>Color Quantity</B></FONT> ``z'', then vectors pointing into the
@@ -375,11 +375,11 @@ request arrows or pixels larger or smaller than the default size.
 
 <P>
 Below the Arrow and Pixel Controls are several additional controls.  The
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14760"></A><A NAME="html:mmdispdatascale"></A> entry
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14786"></A><A NAME="html:mmdispdatascale"></A> entry
 affects the data value scaling.  As described above, all arrows are
 displayed with length between zero and full-scale.  The full-scale arrow
 length corresponds to some scalar value of the magnitude of the vector
-field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14763"></A> entry allows the user to
+field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14789"></A> entry allows the user to
 set the value at which the drawn arrow length goes full-scale.  Any
 vectors in the vector field with magnitude equal to or greater than the
 data scale value will be represented by arrows drawn at full scale.
@@ -387,7 +387,7 @@ Other vectors will be represented by shorter arrows with length
 determined by a linear scale between zero and the data scale value.
 Similarly, the data scale value controls the range of values spanned by
 the colormap used to color pixels.  The usual use of the
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14765"></A> entry is to reduce the data
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="14791"></A> entry is to reduce the data
 scale value so that more detail can be seen in those portions of
 the vector field which have magnitude less than other parts of the
 vector field.
@@ -401,7 +401,7 @@ value.  The initial (default) data scale value is usually the maximum
 vector magnitude in the field, so at this setting no arrows are
 truncated.  Entering <TT><B>0</B></TT> into the data scale box will cause the data
 scale to be reset to the default value.  (For <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="14771">OVF files</A>,
+ NAME="14797">OVF files</A>,
 the default data scale value is set from the <TT>ValueRangeMaxMag</TT>
 header line.  This is typically set to the maximum vector magnitude, but
 this is not guaranteed.)  The data scale control is intended primarily
@@ -410,7 +410,7 @@ may also be used to adjust the pixel display contrast for any field
 type.
 
 <P>
-The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="14774"></A> entry controls the spatial scaling of
+The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="14800"></A> entry controls the spatial scaling of
 the display.  The value roughly corresponds to the number of pixels per
 vector in the fully-sampled vector field.  (This value is not affected
 by the subsampling rate.)
@@ -420,7 +420,7 @@ The <FONT COLOR="#800000"><B>Margin</B></FONT> entry specifies the margin size, 
 maintained around the vector field.
 
 <P>
-The next row of entry boxes control slice<A NAME="14776"></A>
+The next row of entry boxes control slice<A NAME="14802"></A>
 display.  Slice selection allows display of that subset of the data
 that is within a specified distance of a plane running perpendicular
 to the view axis.  The location of that plane with respect to the view
@@ -439,7 +439,7 @@ documentation for more on mesh spatial units.)
 
 <P>
 Below the slice contols are controls to specify whether or not a
-bounding polygon<A NAME="14784"></A> is displayed, and the background
+bounding polygon<A NAME="14810"></A> is displayed, and the background
 color for the display window.
 
 <P>
@@ -514,7 +514,7 @@ This is a limited ``Undo'' feature.
 
 <P>
 Below the data scale and zoom controls in the control bar is the slice
-center selection control<A NAME="14796"></A>.  This will be
+center selection control<A NAME="14822"></A>.  This will be
 labeled <FONT COLOR="#800000"><B>Z-slice</B></FONT>, <FONT COLOR="#800000"><B>X-slice</B></FONT>, or <FONT COLOR="#800000"><B>Y-slice</B></FONT>, depending on
 which view axis is selected.  The thickness of the slice can be set
 from the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
@@ -544,10 +544,10 @@ key combinations are active:
 <LI><TT><B>CTRL-o</B></TT> - same as menu selection <FONT COLOR="#800000"><B>File|Open...</B></FONT>
 </LI>
 <LI><TT><B>CTRL-s</B></TT> - same as menu selection 
-                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="14812"></A>
+                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="14838"></A>
 </LI>
 <LI><TT><B>CTRL-p</B></TT> - same as menu selection
-                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14815"></A>
+                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14841"></A>
 </LI>
 <LI><TT><B>CTRL-c</B></TT> - same as menu selection
         <FONT COLOR="#800000"><B>Options|Configure...</B></FONT>
@@ -677,7 +677,7 @@ the <TT>plot_config</TT> array:
 <DD>Set to 1 to display arrows, 0 to not draw arrows.
 </DD>
 <DT><STRONG><TT><B>arrow,autosample</B></TT></STRONG></DT>
-<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="14888"></A> and
+<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="14914"></A> and
  automatically determine a ``reasonable'' subsampling rate for the
  arrows.  Set to 0 to turn off this feature.
 </DD>
@@ -692,12 +692,12 @@ the <TT>plot_config</TT> array:
   <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog.
 </DD>
 <DT><STRONG><TT><B>arrow,colorcount</B></TT></STRONG></DT>
-<DD>Number of discretization<A NAME="14896"></A> levels to use
+<DD>Number of discretization<A NAME="14922"></A> levels to use
   from the colormap.  A value of zero will color all arrows with the
   first color in the colormap.
 </DD>
 <DT><STRONG><TT><B>arrow,quantity</B></TT></STRONG></DT>
-<DD>Scalar quantity the arrow color<A NAME="14898"></A> is to represent.
+<DD>Scalar quantity the arrow color<A NAME="14924"></A> is to represent.
  Supported values include <TT>x</TT>, <TT>y</TT>, <TT>z</TT>, <TT>xy-angle</TT>,
  <TT>xz-angle</TT>, <TT>yz-angle</TT>, and <TT>slice</TT>.  The
  <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog presents the complete list of
@@ -742,7 +742,7 @@ the <TT>plot_config</TT> array:
 <DD>Specify the background color.
 </DD>
 <DT><STRONG><TT><B>misc,drawboundary</B></TT></STRONG></DT>
-<DD>If 1, then draw the bounding polygon<A NAME="14928"></A>, if any, as
+<DD>If 1, then draw the bounding polygon<A NAME="14954"></A>, if any, as
  specified in the input vector field file.
 </DD>
 <DT><STRONG><TT><B>misc,boundarycolor</B></TT></STRONG></DT>
@@ -752,7 +752,7 @@ the <TT>plot_config</TT> array:
 <DD>Width of the bounding polygon, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,margin</B></TT></STRONG></DT>
-<DD>The size of the border margin<A NAME="14932"></A>, in pixels.
+<DD>The size of the border margin<A NAME="14958"></A>, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,defaultwindowwidth</B></TT>, <TT><B>misc,defaultwindowheight</B></TT></STRONG></DT>
 <DD>Width and height of initial display viewport, in pixels.
@@ -763,7 +763,7 @@ the <TT>plot_config</TT> array:
  ignored during <B>mmDisp</B> initialization, but are written out by the
  <FONT COLOR="#800000"><B>File|Write config...</B></FONT> command as a convenience for the
  <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="14943">avf2ppm</A> command line
+ NAME="14969">avf2ppm</A> command line
  utility.
 </DD>
 <DT><STRONG><TT><B>misc,rotation</B></TT></STRONG></DT>
@@ -825,7 +825,7 @@ the <TT>plot_config</TT> array:
 
 <P>
 The <TT>print_config</TT> array controls printing defaults, as displayed in
-the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14976"></A> dialog box:
+the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="15002"></A> dialog box:
 <DL>
 <DT><STRONG><TT><B>orient</B></TT></STRONG></DT>
 <DD>Paper orientation, either landscape or portrait.
@@ -915,7 +915,7 @@ file <TT><B>mmdisp.config</B></TT>.
 <P>
 The selection of vectors for display determined by the
 <FONT COLOR="#800000"><B>Subsample</B></FONT> value differs depending on whether or not the data
-lie on a regular grid<A NAME="15001"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
+lie on a regular grid<A NAME="15027"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
 values and determines the ratio of data points to displayed points.  For
 example, a value of 5 means that every fifth vector on the grid is
 displayed.  This means that the number of vectors displayed is 25 times
@@ -959,6 +959,6 @@ meshes.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2015</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
 </BODY>
 </HTML>

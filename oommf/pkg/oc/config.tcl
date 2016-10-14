@@ -1,6 +1,6 @@
 # FILE: config.tcl
 #
-# Last modified on: $Date: 2015/08/13 20:23:19 $
+# Last modified on: $Date: 2016/01/30 01:12:25 $
 # Last modified by: $Author: donahue $
 
 Oc_Class Oc_Config {
@@ -77,10 +77,14 @@ Oc_Class Oc_Config {
         # Local build options, optionally set in local platform
         # specific files in oommf/config/platforms/local/
         if {[catch {$runPlatform GetValue oommf_threads}]} {
-           # Default is to follow Tcl value
+           # Default is to follow Tcl value, provided the Tcl version is
+           # 8.3 or later.  (Much of the Tcl library thread support API,
+           # e.g., Tcl_CreateThread, first appears in Tcl 8.3.)
            global tcl_platform
+           foreach {major minor} [split [info tclversion] .] break
            if {[info exists tcl_platform(threaded)] \
-                  && $tcl_platform(threaded)} {
+                  && $tcl_platform(threaded) \
+                  && ($major>8 || ($major==8 && $minor>2))} {
               $runPlatform SetValue oommf_threads 1  ;# Do threads
            } else {
               $runPlatform SetValue oommf_threads 0  ;# No threads
@@ -255,7 +259,7 @@ Oc_Class Oc_Config {
        # If not a snapshot release, return empty string.
        # Otherwise, return string of the form yyyy.mm.dd
        # return "2009.10.15"
-       return {2015.03.25}
+       return {2016.09.30}
     }
 
     method OommfApiIndex {} {
@@ -335,7 +339,7 @@ Oc_Class Oc_Config {
           append ret " tclsh (OOMMF): \t$tclsh\n"
           if {![catch {exec $tclsh $tclinfoscript} target_tcl_info]} {
              append ret "                  \t --> Version "
-             set target_tcl_info [regsub -all "\t" $target_tcl_info " "]
+             regsub -all "\t" $target_tcl_info " " target_tcl_info
              if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
                      $target_tcl_info dummy target_tcl_version]} {
                 append ret "$target_tcl_version"
@@ -376,7 +380,7 @@ Oc_Class Oc_Config {
           append ret " filtersh:           \t[lindex $filtershcmd 0]\n"
           if {![catch {eval exec $filtershcmd} target_tcl_info]} {
              append ret "                  \t --> Version "
-             set target_tcl_info [regsub -all "\t" $target_tcl_info " "]
+             regsub -all "\t" $target_tcl_info " " target_tcl_info
              if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
                      $target_tcl_info dummy target_tcl_version]} {
                 append ret "$target_tcl_version"
@@ -403,7 +407,7 @@ Oc_Class Oc_Config {
              append ret "\n"
           } else {
              # Run error.  Pull out whatever information we can.
-             set work_info [regsub -all "\t\r" $target_tcl_info " "]
+             regsub -all "\t\r" $target_tcl_info " " work_info
              if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
                      $work_info dummy target_tcl_version]} {
                 set msg \
@@ -465,7 +469,7 @@ Oc_Class Oc_Config {
        append ret " wish (OOMMF):        \t$wish\n"
        if {![catch {exec $wish $tclinfoscript} target_tcl_info]} {
           append ret "                  \t --> Version "
-          set target_tcl_info [regsub -all "\t" $target_tcl_info " "]
+          regsub -all "\t" $target_tcl_info " " target_tcl_info
           if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
                   $target_tcl_info dummy target_tcl_version]} {
              append ret "$target_tcl_version"
