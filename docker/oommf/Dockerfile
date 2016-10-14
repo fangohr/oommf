@@ -15,6 +15,14 @@ RUN echo "#! /bin/bash" > oommf
 RUN echo "tclsh /usr/local/oommf/oommf/oommf.tcl \$@" > oommf
 RUN chmod a+x oommf
 
+WORKDIR /usr/local/bin
+RUN echo "#! /bin/bash" > oommf-version
+RUN echo "# see https://github.com/fangohr/oommf/blob/master/versionlog.txt" >> oommf-version
+RUN echo "# for for meaning of version strings." >> oommf-version
+RUN echo "cat /usr/local/oommf/oommf-version" >> oommf-version
+RUN chmod a+x oommf-version
+
+
 # Create working directory with easy name for mounting this
 RUN mkdir /io
 WORKDIR /io
