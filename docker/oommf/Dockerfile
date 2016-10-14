@@ -28,7 +28,7 @@ RUN mkdir /io
 WORKDIR /io
 
 # Tell oommf-python where to find oommf.tcl
-ENV OOMMFPATH /usr/local/oommf/oommf/oommf.tcl
+ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 
 
 
