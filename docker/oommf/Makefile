@@ -6,7 +6,3 @@ push: image
 
 run: image
 	docker run -ti -v `pwd`:/io joommf/oommf bash
-
-
-
-
