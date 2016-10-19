@@ -85,7 +85,7 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # The GNU C++ compiler 'g++'
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
 # <URL:http://egcs.cygnus.com/>
-$config SetValue program_compiler_c++ {g++ -c}
+$config SetValue program_compiler_c++ {nvcc -c}
 #
 # The Portland Group 'pgCC'
 # <URL:http://www.pgroup.com/>
@@ -138,7 +138,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 #
 ## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not use
 ## SSE intrinsics.  Leave unset to get the default.
-# $config SetValue sse_level 2  ;# Replace '2' with desired level
+ $config SetValue sse_level 1  ;# Replace '2' with desired level
 #
 ## Use FMA (fused multiply-add) intrinsics?  If so, specify either "3"
 ## for three argument intrinsics or "4" for four argument intrinsics.
@@ -268,7 +268,7 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
 
 # Compiler option processing...
 set ccbasename [file tail [lindex [$config GetValue program_compiler_c++] 0]]
-if {[string match g++* $ccbasename]} {
+if {[string match nvcc* $ccbasename]} {
     # ...for GNU g++ C++ compiler
 
    if {![info exists gcc_version]} {
@@ -348,7 +348,7 @@ if {[string match g++* $ccbasename]} {
       regsub -all -- {^-mfpmath=sse\s+|\s+-mfpmath=sse(?=\s|$)} $opts {} opts
       regsub -all -- {^-msse\d*\s+|\s+-msse\d*(?=\s|$)} $opts {} opts
       # Since x64_64 guarantees SSE2, to disable requires explicit flags
-      lappend opts -mfpmath=387
+    
    }
 
    # Older versions of GCC don't include the _mm_cvtsd_f64 intrinsic.
@@ -920,13 +920,13 @@ if {[set compileonly [lsearch -exact $linkername "-c"]]>=0} {
     set linkername [lreplace $linkername $compileonly $compileonly]
 }
 unset compileonly
-if {[string match g++* $ccbasename]} {
+if {[string match nvcc* $ccbasename]} {
     # ...for GNU g++ as linker
     $config SetValue program_linker $linkername
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
-    $config SetValue program_linker_rpath {format "-Wl,-rpath=%s"}
+    $config SetValue program_linker_rpath {format "-Xlinker -rpath -Xlinker %s"}
     $config SetValue program_linker_uses_-L-l {1}
 } elseif {[string match pgCC $ccbasename]} {
     # ...for Portland Group pgCC as linker

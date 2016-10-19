@@ -9,7 +9,7 @@
 #ifndef _FFTW_DEMAG
 #define _FFTW_DEMAG
 
-#include <fftw3.h>
+#include <cufftw.h>
 
 #include "oc.h"
 #include "director.h"
