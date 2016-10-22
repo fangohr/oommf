@@ -1,3 +1,11 @@
+# If we ever introduce testing here,
+# it is likely to use Python.
+#
+# So we leave the Python installation commands
+# below commented out, but in this .travis.yml file.
+#
+# Hans, 22 October 2016
+
 sudo: required
 
 os: linux
@@ -13,11 +21,11 @@ python:
 
 before_install:
 - sudo apt-get update -y
-- sudo apt-get -y install python3-pip python-dev
-- sudo pip3 install -U setuptools
-- sudo pip3 install -U virtualenvwrapper
-- python3 -V
-- pip3 -V
+#- sudo apt-get -y install python3-pip python-dev
+#- sudo pip3 install -U setuptools
+#- sudo pip3 install -U virtualenvwrapper
+#- python3 -V
+#- pip3 -V
 #- pip3 install matplotlib scipy numpy
 #- python3 -c "import matplotlib"
 #- sudo ln -s /usr/bin/python3 /usr/local/bin/python
@@ -38,10 +46,14 @@ before_install:
 
 script:
   - pwd
-  - py.test --version
+  #- py.test --version
   - echo $PATH
-  - python --version
+  #- python --version
   - echo $OOMMFTCL
+  - echo "We only test that the +version call succeeds."
+  - echo "More tests would be better."
+  - echo "Although the joommf repositories cover some system testing."
+  - echo "see https://joommf.github.io"
   - tclsh ${OOMMFTCL} +version
   - cat oommf-version
   - cat versionlog.txt
