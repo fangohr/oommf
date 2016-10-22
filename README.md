@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/fangohr/oommf.svg?branch=master)](https://travis-ci.org/fangohr/oommf)
 
 # oommf
 
