@@ -1,0 +1,47 @@
+sudo: required
+
+os: linux
+dist: trusty
+
+env:
+  OOMMFTCL=/opt/oommf/oommf/oommf.tcl
+
+language: python
+
+python:
+   - "3.5"
+
+before_install:
+- sudo apt-get update -y
+- sudo apt-get -y install python3-pip python-dev
+- sudo pip3 install -U setuptools
+- sudo pip3 install -U virtualenvwrapper
+- python3 -V
+- pip3 -V
+#- pip3 install matplotlib scipy numpy
+#- python3 -c "import matplotlib"
+#- sudo ln -s /usr/bin/python3 /usr/local/bin/python
+
+- export OOMMF_TK_CONFIG=/usr/lib/x86_64-linux-gnu/tk8.6/tkConfig.sh
+- export OOMMF_TCL_CONFIG=/usr/lib/x86_64-linux-gnu/tcl8.6/tclConfig.sh
+- sudo apt-get update -y
+- sudo apt-get -y install tk8.6 tcl8.6 tcl8.6-dev tk8.6-dev
+- pwd
+- mkdir -p /opt
+- pushd /opt
+- git clone https://github.com/fangohr/oommf.git
+- cd oommf
+- make
+- popd
+- pwd
+
+
+script:
+  - pwd
+  - py.test --version
+  - echo $PATH
+  - python --version
+  - echo $OOMMFTCL
+  - tclsh ${OOMMFTCL} +version
+  - cat oommf-version
+  - cat versionlog.txt
