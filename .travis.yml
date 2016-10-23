@@ -50,10 +50,10 @@ script:
   - echo $PATH
   #- python --version
   - echo $OOMMFTCL
-  - echo "We only test that the +version call succeeds."
-  - echo "More tests would be better."
-  - echo "Although the joommf repositories cover some system testing."
-  - echo "see https://joommf.github.io"
+  - echo "We only test that the +version call succeeds.
+    More tests would be better.
+    Although the joommf repositories cover some system testing.
+    see https://joommf.github.io"
   - tclsh ${OOMMFTCL} +version
   - cat oommf-version
   - cat versionlog.txt
