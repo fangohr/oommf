@@ -76,7 +76,6 @@ script:
 
   # Now try to build docker file
   - echo "Now we test the OOMMF installation inside Docker:"
-  #- cd docker/oommf
 
 
   # Ask OOMMF in docker contain for version number
