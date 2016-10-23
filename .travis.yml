@@ -16,7 +16,7 @@ language: python
 python:
    - "3.5"
 
-# first, install OOMMF on (Travis) host
+
 
 env:
   OOMMFTCL=/opt/oommf/oommf/oommf.tcl
@@ -32,7 +32,7 @@ before_install:
 #- python3 -c "import matplotlib"
 #- sudo ln -s /usr/bin/python3 /usr/local/bin/python
 
-- echo "Installation on host system"
+- echo "Installation of OOMMF on host system"
 - export OOMMF_TK_CONFIG=/usr/lib/x86_64-linux-gnu/tk8.6/tkConfig.sh
 - export OOMMF_TCL_CONFIG=/usr/lib/x86_64-linux-gnu/tcl8.6/tclConfig.sh
 - sudo apt-get update -y
@@ -72,6 +72,7 @@ script:
   - g++ --version
   - echo 'puts $tcl_version;exit 0' | tclsh
   - echo 'puts [info patchlevel];exit 0' | tclsh
+  - cat /etc/issue
 
   # Now try to build docker file
   - echo "Now we test the OOMMF installation inside Docker:"
@@ -86,3 +87,4 @@ script:
   - docker run testimage g++ --version
   - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
   - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
+  - docker run testimage cat /etc/issue
