@@ -59,3 +59,17 @@ script:
   - tclsh ${OOMMFTCL} +version
   - cat oommf-version
   - cat versionlog.txt
+
+  # Now try to build docker file
+  - cd docker/oommf
+  # build docker file
+  - make build
+  # Ask OOMMF in docker contain for version number
+  - docker run joommf/oommf tclsh /usr/local/oommf/oommf/oommf.tcl +version
+  # and get some other diagnostic data
+  - docker run hostname
+  - docker run pwd
+  - docker run g++ --version
+  
+  
+
