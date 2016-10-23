@@ -11,13 +11,15 @@ sudo: required
 os: linux
 dist: trusty
 
-env:
-  OOMMFTCL=/opt/oommf/oommf/oommf.tcl
-
 language: python
 
 python:
    - "3.5"
+
+# first, install OOMMF on (Travis) host
+
+env:
+  OOMMFTCL=/opt/oommf/oommf/oommf.tcl
 
 before_install:
 - sudo apt-get update -y
