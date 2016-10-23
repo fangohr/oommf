@@ -65,9 +65,13 @@ script:
     see https://joommf.github.io.
     We start with OOMMF installed on the host system:"
   - tclsh ${OOMMFTCL} +version
+  # Get some version information about oommf code
   - cat oommf-version
   - cat versionlog.txt
-
+  # Get system tool versions
+  - g++ --version
+  - echo 'puts $tcl_version;exit 0' | tclsh
+  - echo 'puts [info patchlevel];exit 0' | tclsh
 
   # Now try to build docker file
   - echo "Now we test the OOMMF installation inside Docker:"
@@ -80,3 +84,5 @@ script:
   - docker run testimage hostname
   - docker run testimage pwd
   - docker run testimage g++ --version
+  - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
+  - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
