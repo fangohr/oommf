@@ -19,3 +19,15 @@ date: Fri 14 Oct 2016 14:47:33 BST
    github-url: https://github.com/fangohr/oommf
    github version: 581ef6639e011a3dfc6558bca85641dec1c2a2f2
    patch applied:  patches/darwin.tcl.1.2a6.patch
+=======================================================
+date: Wed 15 March 2016 12:00:00 BST 
+   unpacked oommf12b0_20160930.tar.gz
+   OOMMF:
+     version: 12b0
+     date: 20160930
+     build: 1
+     source-url: http://math.nist.gov/oommf/dist/oommf12b0_20160930.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: 581ef6639e011a3dfc6558bca85641dec1c2a2f2
+   patch applied:  patches/darwin.tcl.1.2a6.patch
+   extensions: oommf-bulk-dmi 07e130d0623bc206b57c236a4a7d7a53885a5341
