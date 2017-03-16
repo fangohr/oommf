@@ -30,4 +30,4 @@ date: Wed 15 March 2016 12:00:00 BST
    github-url: https://github.com/fangohr/oommf
    github version: 581ef6639e011a3dfc6558bca85641dec1c2a2f2
    patch applied:  patches/darwin.tcl.1.2a6.patch
-   extensions: oommf-bulk-dmi 07e130d0623bc206b57c236a4a7d7a53885a5341
+   extensions: github.com/joommf/oommf-bulk-dmi 07e130d0623bc206b57c236a4a7d7a53885a5341
