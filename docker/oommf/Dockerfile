@@ -13,7 +13,7 @@ ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 # Create executable oommf script
 WORKDIR /usr/local/bin
 RUN echo "#! /bin/bash" > oommf
-RUN echo "tclsh /usr/local/oommf/oommf/oommf.tcl \$@" > oommf
+RUN echo "tclsh /usr/local/oommf/oommf/oommf.tcl \$@" >> oommf
 RUN chmod a+x oommf
 
 # Enable getting oommf version
