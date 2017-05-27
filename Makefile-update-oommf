@@ -2,6 +2,8 @@
 # (as of September 2015)
 OOMMFPREFIX="oommf"
 OOMMFVERSION="12b0"
+# USE dot in conda version numbers:
+OOMMFVERSIONCONDA="1.2b0"
 OOMMFDATE="20160930"
 OOMMFBUILD="b1"
 OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
@@ -11,12 +13,17 @@ GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
 all:
-	make -f Makefile-update-oommf get-oommf
-	make -f Makefile-update-oommf untar-oommf
-	make -f Makefile-update-oommf update-logfile
-	make -f Makefile-update-oommf update-oommf-version
-	make -f Makefile-update-oommf apply-patches
-	echo "Run git 'commit -a' or similar to update git repo with new release"
+	#make -f Makefile-update-oommf get-oommf
+	#make -f Makefile-update-oommf untar-oommf
+	#make -f Makefile-update-oommf update-logfile
+	#make -f Makefile-update-oommf update-oommf-version
+	#make -f Makefile-update-oommf apply-patches
+	@echo "things to do now:"
+	@echo "1. Comment on DMI extension in source in versionlog.txt?"
+	@echo "2. Run git 'commit -a' or similar to update git repo with new release"
+	@echo "3. Tag the revisision (conda-forge recipe needs this):"
+	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
+	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
 
 get-oommf:
 	mkdir -p Downloads
@@ -49,5 +56,3 @@ apply-patches:
 	# record original file in repository.
 	# git add oommf/config/platforms/darwin.tcl.orig
 	# when this patch is removed, the file above should also be removed from the repo.
-
-
