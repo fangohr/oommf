@@ -36,8 +36,8 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
 }
 
 # Environment variable override for C++ compiler
-if {[info exists env(OOMMF_C++)]} {
-   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+if {[info exists env(OOMMF_CPP)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
 # Support for the automated buildtest scripts
