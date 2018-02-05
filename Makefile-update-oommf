@@ -5,7 +5,7 @@ OOMMFVERSION="20a0"
 # USE dot in conda version numbers:
 OOMMFVERSIONCONDA="2.0a0"
 OOMMFDATE="20170929"
-OOMMFBUILD="b1"
+OOMMFBUILD="a0"
 OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
 OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE).tar.gz
 OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
@@ -13,11 +13,10 @@ GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
 all:
-	#make -f Makefile-update-oommf get-oommf
-	#make -f Makefile-update-oommf untar-oommf
-	#make -f Makefile-update-oommf update-logfile
-	#make -f Makefile-update-oommf update-oommf-version
-	#make -f Makefile-update-oommf apply-patches
+	make -f Makefile-update-oommf get-oommf
+	make -f Makefile-update-oommf untar-oommf
+	make -f Makefile-update-oommf update-logfile
+	make -f Makefile-update-oommf update-oommf-version
 	@echo "things to do now:"
 	@echo "1. Comment on DMI extension in source in versionlog.txt?"
 	@echo "2. Run git 'commit -a' or similar to update git repo with new release"
@@ -51,8 +50,9 @@ update-oommf-version:
 apply-patches:
 	echo "Applying patches ..."
 	# patch from Ryan Pepper to allow compilation on OS X 10.11
-	patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
-	echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
+	# (already applied into latest OOMMF version)
+	# patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
+	# echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
 	# record original file in repository.
 	# git add oommf/config/platforms/darwin.tcl.orig
 	# when this patch is removed, the file above should also be removed from the repo.
