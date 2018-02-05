@@ -37,7 +37,8 @@ Oxs_TwoSurfaceExchange::Oxs_TwoSurfaceExchange(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_Energy(name,newdtr,argstr),
-    mesh_id(0),report_max_spin_angle(0)
+    mesh_id(0), energy_density_error_estimate(-1),
+    report_max_spin_angle(0)
 {
   // Process arguments
   init_sigma = GetRealInitValue("sigma",0.);
@@ -198,6 +199,7 @@ Oxs_TwoSurfaceExchange::~Oxs_TwoSurfaceExchange()
 OC_BOOL Oxs_TwoSurfaceExchange::Init()
 {
   mesh_id = 0;
+  energy_density_error_estimate = -1;
   links.clear();
   return Oxs_Energy::Init();
 }
@@ -271,6 +273,7 @@ void Oxs_TwoSurfaceExchange::FillLinkList
 
   // For each cell in bdry1_cells, find closest cell in bdry2_cells,
   // and store this pair in "links".
+  OC_REAL8m max_Awork = 0.0;
   links.clear();  // Throw away previous links, if any.
   vector<OC_INDEX>::iterator it1 = bdry1_cells.begin();
   while(it1!=bdry1_cells.end()) {
@@ -326,10 +329,10 @@ void Oxs_TwoSurfaceExchange::FillLinkList
                         + fabs(wtemp.y*mesh->EdgeLengthY())
                         + fabs(wtemp.z*mesh->EdgeLengthZ());
       if(cellwgt>0.) { // Safety
-	cellwgt = sqrt(min_distsq)/cellwgt;
-	// min_distsq _should_ be wtemp.MagSq(), so
-	// cellwgt is |wtemp|/<wtemp,celldims>, i.e.,
-	// < wtemp/|wtemp| , celldims >^{-1}
+        cellwgt = sqrt(min_distsq)/cellwgt;
+        // min_distsq _should_ be wtemp.MagSq(), so
+        // cellwgt is |wtemp|/<wtemp,celldims>, i.e.,
+        // < wtemp/|wtemp| , celldims >^{-1}
         // This should work properly if the two surfaces are
         // parallel to each other and also to one of the
         // coordinate planes.  This probably needs to be beefed
@@ -346,42 +349,43 @@ void Oxs_TwoSurfaceExchange::FillLinkList
       //  center locations of the two cells in the link pair.
 
       links.push_back(ltemp);
+
+      OC_REAL8m Atest = 2*Oc_Fabs(ltemp.exch_coef1)
+        + 4*Oc_Fabs(ltemp.exch_coef2);
+      if(Atest>max_Awork) max_Awork = Atest;
     }
     ++it1;
   }
+  energy_density_error_estimate = 16*OC_REAL8m_EPSILON*max_Awork;
 }
 
-void Oxs_TwoSurfaceExchange::GetEnergy
+void Oxs_TwoSurfaceExchange::ComputeEnergy
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
+ Oxs_ComputeEnergyData& oced
  ) const
 {
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
-
-  const Oxs_Mesh* mesh = state.mesh;
-
   // If mesh has changed, re-pick link selections
+  const Oxs_Mesh* mesh = state.mesh;
   if(mesh_id !=  mesh->Id()) {
     FillLinkList(mesh);
     mesh_id=mesh->Id();
   }
+  oced.energy_density_error_estimate = energy_density_error_estimate;
 
-  // Zero entire energy and field meshes
-  OC_INDEX size=mesh->Size();
-  OC_INDEX index;
-  for(index=0;index<size;index++) energy[index]=0.;
-  for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+  // Since some cells might not have links, zero non-accum arrays.  Note
+  // the Oxs_MeshValue assignment operator runs parallel on threaded
+  // builds.
+  if(oced.energy) *(oced.energy) = 0.0;
+  if(oced.H)           *(oced.H) = Oxs_ThreeVector(0,0,0);
+  if(oced.mxH)       *(oced.mxH) = Oxs_ThreeVector(0,0,0);
 
   // Iterate through link list and accumulate energies and fields
   OC_REAL8m maxdot = 0;
   OC_REAL8m hcoef = 2.0/MU0;
+  Oxs_Energy::SUMTYPE esum = 0.0;
   vector<Oxs_TwoSurfaceExchangeLinkParams>::const_iterator it
     = links.begin();
   for(it=links.begin();it!=links.end();++it) {
@@ -397,12 +401,49 @@ void Oxs_TwoSurfaceExchange::GetEnergy
     OC_REAL8m elink = (ecoef1 + ecoef2*temp)*temp; // Energy density
     /// elink works out to
     ///    [sigma*(1-mi*mj)+sigma2*(1-mi*mj)*(1+mi*mj)]/cellsize
-    energy[i] += elink;
-    energy[j] += elink;
+    esum += elink; // Note that this is half total addition, since elink
+                  /// is added to cells i and j.
     mdiff *= hcoef*(ecoef1+2*ecoef2*temp);
-    field[i] += -1*Ms_inverse[i]*mdiff;
-    field[j] +=    Ms_inverse[j]*mdiff;
+
+    ThreeVector Hi = -1*Ms_inverse[i]*mdiff;
+    ThreeVector Hj =    Ms_inverse[j]*mdiff;
+    ThreeVector Ti = spin[i]^Hi;
+    ThreeVector Tj = spin[j]^Hj;
+
+    // Note that cells may have multiple links, so we add link energy
+    // and fields into both accum and non-accum outputs.
+    if(oced.energy) {
+      (*oced.energy)[i] += elink;
+      (*oced.energy)[j] += elink;
+    }
+    if(oced.energy_accum) {
+      (*oced.energy_accum)[i] += elink;
+      (*oced.energy_accum)[j] += elink;
+    }
+    if(oced.H) {
+      (*oced.H)[i] += Hi;
+      (*oced.H)[j] += Hj;
+    }
+    if(oced.H_accum) {
+      (*oced.H_accum)[i] += Hi;
+      (*oced.H_accum)[j] += Hj;
+    }
+    if(oced.mxH) {
+      (*oced.mxH)[i] += Ti;
+      (*oced.mxH)[j] += Tj;
+    }
+    if(oced.mxH_accum) {
+      (*oced.mxH_accum)[i] += Ti;
+      (*oced.mxH_accum)[j] += Tj;
+    }
   }
+
+  oced.energy_sum = esum * (2*state.mesh->Volume(0));
+  /// All cells have same volume in an Oxs_RectangularMesh.  Factor "2"
+  /// comes because esum includes contribution from only one side of
+  /// each link.
+
+  oced.pE_pt = 0.0;
 
   // Set maxang data
   const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);

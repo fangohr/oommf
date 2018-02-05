@@ -7,6 +7,14 @@
  *
  */
 
+#ifndef OOMMF_ATOMIC
+# define OOMMF_ATOMIC 0
+#endif
+
+#if OOMMF_ATOMIC
+# include <atomic>
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +77,7 @@
 
 #if EXTRALONG
 # if !defined(EXTRALONGINT) && defined(LLONG_MAX)
-#  define EXTRALONGINT
+#  define EXTRALONGINT 1
 /* If LLONG_MAX is defined, then presumably "long long"
  * type is supported.
  */
@@ -79,7 +87,7 @@
 #  if !defined(EXTRALONGDOUBLE) && !defined(__SUNPRO_CC) && !defined(__sun)
 /* Some(?) releases of Sun Forte compiler missing floorl support. */
 /* Some(?) g++ installations on Solaris missing floorl support. */
-#   define EXTRALONGDOUBLE
+#   define EXTRALONGDOUBLE 1
 #  endif
 # endif
 #endif /* EXTRALONG */
@@ -89,14 +97,26 @@
 #  define EXTRALONGINT
 # endif
 # ifndef EXTRALONGDOUBLE
-#  define EXTRALONGDOUBLE
+#  define EXTRALONGDOUBLE 1
 # endif
 #else /* EXTRALONG == 0 */
 # undef EXTRALONGINT
-# undef EXTRALONGDOUBLE
+# define EXTRALONGDOUBLE 0
 #endif /* EXTRALONG */
 
-#ifdef EXTRALONGINT
+#ifndef EXTRALONGINT
+#  define EXTRALONGINT 0
+#endif
+
+#ifndef EXTRALONGDOUBLE
+# define EXTRALONGDOUBLE 0
+#endif
+
+#ifndef USEQUADFLOAT
+# define USEQUADFLOAT 0   /* Quad double-type; compiler specific extension. */
+#endif
+
+#if EXTRALONGINT
 # ifdef BUILD_WINDOWS
   typedef __int64 HUGEINT;
   const char* HUGEINTTYPE = "__int64";
@@ -106,24 +126,43 @@
 # endif
 #endif
 
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
 #include <cmath>    // Get long double overloads
 typedef long double HUGEFLOAT;
 const char* HUGEFLOATTYPE = "long double";
 #endif
 
+#if USEQUADFLOAT
+# ifdef __GNUC__
+/* Note 1: __float128 (aka _Float128) first appears in gcc 4.3
+ *  Note 2: Include "-lquadmath" on link line.
+ */
+typedef __float128 QUADFLOAT;
+const char* QUADFLOATTYPE = "__float128";
+# include <quadmath.h>
+# else
+#  error Compiler specific directive for quad floating point type not declared.
+# endif
+#endif
+
 #ifdef VECTOR
 struct two_vector_float       { float x,y; };
 struct two_vector_double      { double x,y; };
-# ifdef EXTRALONGDOUBLE
+# if EXTRALONGDOUBLE
 struct two_vector_long_double { long double x,y; };
 # endif // EXTRALONGDOUBLE
+# if USEQUADFLOAT
+struct two_vector_quad_float { QUADFLOAT x,y; };
+# endif
 
 struct three_vector_float       { float x,y,z; };
 struct three_vector_double      { double x,y,z; };
-# ifdef EXTRALONGDOUBLE
+# if EXTRALONGDOUBLE
 struct three_vector_long_double { long double x,y,z; };
 # endif // EXTRALONGDOUBLE
+# if USEQUADFLOAT
+struct three_vector_quad_float { QUADFLOAT x,y,z; };
+# endif
 #endif // VECTOR
 
 /*
@@ -216,7 +255,7 @@ int len;
 #define DOUBLECONST(l) (l==4 ? (double)2.015747786 : \
 		       (l==8 ? (double)2.12598231449442521 : \
 			(double)0.))
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
 #define LONGDOUBLECONST(l) \
             (l==4 ? 2.015747786L : \
             (l==8 ? 2.12598231449442521L : \
@@ -224,6 +263,15 @@ int len;
             (l>12  ? 4.031434063821607074202229911572472L : \
             (HUGEFLOAT)0.))))
 #endif /* EXTRALONGDOUBLE */
+
+#if USEQUADFLOAT
+#define QUADFLOATCONST(l) \
+            (l==4 ? 2.015747786Q : \
+            (l==8 ? 2.12598231449442521Q : \
+            (l==10 ? 4.06286812764321414839Q : \
+            (l>12  ? 4.031434063821607074202229911572472Q : \
+            (QUADFLOAT)0.))))
+#endif /* USEQUADFLOAT */
 
 
 #ifdef __cplusplus
@@ -297,7 +345,7 @@ int DblPrecision()
   return int(0.5-log(test)/log(double(2.)));
 }
 
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
 HUGEFLOAT LongDblMachEps()
 {
   volatile HUGEFLOAT eps,epsok,check;
@@ -322,6 +370,30 @@ int LongDblPrecision()
 }
 #endif /* EXTRALONGDOUBLE */
 
+#if USEQUADFLOAT
+QUADFLOAT QuadFloatMachEps()
+{
+  volatile QUADFLOAT eps,epsok,check;
+  eps=1.0;
+  epsok=2.0;
+  check=1.0+eps;
+  while(check>1.0) {
+    epsok=eps;
+    eps/=2.0;
+    check = 1.0 + eps;
+  }
+  return epsok;
+}
+
+int QuadFloatPrecision()
+{ // Returns effective mantissa width, in bits
+  volatile QUADFLOAT test = 2.0;
+  test /= 3.0; test -= 0.5;
+  test *= 3;   test -= 0.5;
+  if(test<0.0) test *= -1;
+  return int(0.5-log(test)/log(QUADFLOAT(2.)));
+}
+#endif /* USEQUADFLOAT */
 
 int DecimalDigits(int precision)
 { // Returns the number of decimal digits needed to exactly specify a
@@ -370,12 +442,16 @@ char **argv;
   long l;
   float f;
   double d;
-#ifdef EXTRALONGINT
+#if EXTRALONGINT
   HUGEINT ll;
 #endif /* EXTRALONGINT */  
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
   size_t ihf;
   HUGEFLOAT ld;
+#endif /* EXTRALONGDOUBLE */  
+#if USEQUADFLOAT
+  size_t iqf;
+  QUADFLOAT qf;
 #endif /* EXTRALONGDOUBLE */  
 #ifdef COMPLEX
   __complex__ int ci;
@@ -397,13 +473,16 @@ char **argv;
     }
   }
 
-#ifdef EXTRALONGINT
+#if EXTRALONGINT
   printf("HUGEINTTYPE: %s\n",HUGEINTTYPE);
 #endif
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
   printf("HUGEFLOATTYPE: %s\n",HUGEFLOATTYPE);
 #endif
-#if defined(EXTRALONGINT) || defined(EXTRALONGDOUBLE)
+#if USEQUADFLOAT
+  printf("QUADFLOATTYPE: %s\n",QUADFLOATTYPE);
+#endif
+#if EXTRALONGINT || EXTRALONGDOUBLE || USEQUADFLOAT
   printf("\n");
 #endif
 
@@ -426,7 +505,7 @@ char **argv;
   FillByteOrder(l,loop,sizeof(long));
   PrintByteOrder((char *)&l,(int)sizeof(long));       printf("\n");
 
-#ifdef EXTRALONGINT
+#if EXTRALONGINT
   printf("Type %11s is %2d bytes wide   ",HUGEINTTYPE,(int)sizeof(HUGEINT));
   FillByteOrder(ll,loop,sizeof(HUGEINT));
   PrintByteOrder((char *)&ll,(int)sizeof(HUGEINT)); printf("\n");
@@ -441,7 +520,7 @@ char **argv;
   d=DOUBLECONST(sizeof(double));
   PrintByteOrder((char *)&d,(int)sizeof(double));     printf("\n");
 
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
   printf("Type %11s is %2d bytes wide   ",
          HUGEFLOATTYPE,(int)sizeof(HUGEFLOAT));
   for(ihf=0;ihf<sizeof(HUGEFLOAT);++ihf) { ((char *)&ld)[ihf]=0; }
@@ -457,6 +536,14 @@ char **argv;
   PrintByteOrder((char *)&ld,(int)sizeof(HUGEFLOAT));  printf("\n");
 #endif /* EXTRALONGDOUBLE */
 
+#if USEQUADFLOAT
+  printf("Type %11s is %2d bytes wide   ",
+         QUADFLOATTYPE,(int)sizeof(QUADFLOAT));
+  for(iqf=0;iqf<sizeof(QUADFLOAT);++iqf) { ((char *)&qf)[iqf]=0; }
+  qf=QUADFLOATCONST(sizeof(QUADFLOAT));
+  PrintByteOrder((char *)&qf,(int)sizeof(QUADFLOAT));     printf("\n");
+#endif /* USEQUADFLOAT */
+
   printf("\n");
   printf("Type      void * is %2d bytes wide\n",(int)sizeof(void *));
 
@@ -470,19 +557,71 @@ char **argv;
 
 #ifdef VECTOR
   printf("\n");
-  printf("Type          two_vector_float is %2d bytes wide\n",(int)sizeof(struct two_vector_float));
-  printf("Type         two_vector_double is %2d bytes wide\n",(int)sizeof(struct two_vector_double));
-# ifdef EXTRALONGDOUBLE
-  printf("Type    two_vector_long_double is %2d bytes wide\n",(int)sizeof(struct two_vector_long_double));
+  printf("Type          two_vector_float is %2d bytes wide\n",
+         (int)sizeof(struct two_vector_float));
+  printf("Type         two_vector_double is %2d bytes wide\n",
+         (int)sizeof(struct two_vector_double));
+# if EXTRALONGDOUBLE
+  printf("Type    two_vector_long_double is %2d bytes wide\n",
+         (int)sizeof(struct two_vector_long_double));
 # endif // EXTRALONGDOUBLE
+# if USEQUADFLOAT
+  printf("Type     two_vector_quad_float is %2d bytes wide\n",
+         (int)sizeof(struct two_vector_quad_float));
+# endif // EXTRALONGDOUBLE
+
   printf("\n");
-  printf("Type        three_vector_float is %2d bytes wide\n",(int)sizeof(struct three_vector_float));
-  printf("Type       three_vector_double is %2d bytes wide\n",(int)sizeof(struct three_vector_double));
-# ifdef EXTRALONGDOUBLE
-  printf("Type  three_vector_long_double is %2d bytes wide\n",(int)sizeof(struct three_vector_long_double));
+  printf("Type        three_vector_float is %2d bytes wide\n",
+         (int)sizeof(struct three_vector_float));
+  printf("Type       three_vector_double is %2d bytes wide\n",
+         (int)sizeof(struct three_vector_double));
+# if EXTRALONGDOUBLE
+  printf("Type  three_vector_long_double is %2d bytes wide\n",
+         (int)sizeof(struct three_vector_long_double));
+# endif // EXTRALONGDOUBLE
+# if USEQUADFLOAT
+  printf("Type   three_vector_quad_float is %2d bytes wide\n",
+         (int)sizeof(struct three_vector_quad_float));
 # endif // EXTRALONGDOUBLE
 #endif
 
+#if OOMMF_ATOMIC
+  /* Atomic operation info */
+  /* Support for std::atomic_id_lock_free and related functions incomplete
+   * in some versions of g++.  So just report macro settings.
+   */
+  printf("\n");
+# ifdef ATOMIC_CHAR_LOCK_FREE
+  printf("ATOMIC_CHAR_LOCK_FREE = %d\n",ATOMIC_CHAR_LOCK_FREE);
+# else
+  printf("ATOMIC_CHAR_LOCK_FREE not defined");
+# endif
+# ifdef ATOMIC_SHORT_LOCK_FREE
+  printf("ATOMIC_SHORT_LOCK_FREE = %d\n",ATOMIC_SHORT_LOCK_FREE);
+# else
+  printf("ATOMIC_SHORT_LOCK_FREE not defined");
+# endif
+# ifdef ATOMIC_INT_LOCK_FREE
+  printf("ATOMIC_INT_LOCK_FREE = %d\n",ATOMIC_INT_LOCK_FREE);
+# else
+  printf("ATOMIC_INT_LOCK_FREE not defined");
+# endif
+# ifdef ATOMIC_LONG_LOCK_FREE
+  printf("ATOMIC_LONG_LOCK_FREE = %d\n",ATOMIC_LONG_LOCK_FREE);
+# else
+  printf("ATOMIC_LONG_LOCK_FREE not defined");
+# endif
+# ifdef ATOMIC_LLONG_LOCK_FREE
+  printf("ATOMIC_LLONG_LOCK_FREE = %d\n",ATOMIC_LLONG_LOCK_FREE);
+# else
+  printf("ATOMIC_LLONG_LOCK_FREE not defined");
+# endif
+# ifdef ATOMIC_POINTER_LOCK_FREE
+  printf("ATOMIC_POINTER_LOCK_FREE = %d\n",ATOMIC_POINTER_LOCK_FREE);
+# else
+  printf("ATOMIC_POINTER_LOCK_FREE not defined");
+# endif
+#endif /* OOMMF_ATOMIC */
 
   /* Byte order info */
   printf("\n");  fflush(stdout);
@@ -582,7 +721,7 @@ char **argv;
   printf("SQRT_DBL_EPSILON: %.*e\n",dbldigs,sqrt(DBL_EPSILON));
   printf("CUBE_ROOT_DBL_EPSILON: %.*e\n",dbldigs,pow(DBL_EPSILON,1./3.));
 
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
   printf("\n");
 # if defined(LDBL_MANT_DIG)
   printf("LDBL_MANT_DIG: %5d\n",LDBL_MANT_DIG);
@@ -689,36 +828,83 @@ char **argv;
 # endif
 #endif /* EXTRALONGDOUBLE */
 
-  printf("\n");
-#if defined(EXTRALONGDOUBLE)
-  printf("Calculated float epsilon:       %.*e\n",fltdigs,FltMachEps());
-  printf("Calculated double epsilon:      %.*e\n",dbldigs,DblMachEps());
-# if NO_L_FORMAT
-  printf("Calculated %11s epsilon: %.*e\n",
-         HUGEFLOATTYPE,dbldigs,double(LongDblMachEps()));
-# else
-  printf("Calculated %11s epsilon: %.*LeL\n",
-         HUGEFLOATTYPE,ldbldigs,LongDblMachEps());
-# endif
-#else
-  printf("Calculated float epsilon:  %.*e\n",fltdigs,FltMachEps());
-  printf("Calculated double epsilon: %.*e\n",dbldigs,DblMachEps());
-#endif /* EXTRALONGDOUBLE */
+#if USEQUADFLOAT
+  /* Note: These macros may be compiler dependent.  The following set is
+   * used by GCC.  Depending on your gcc build, the %Qe format specifier
+   * for printf may or may not be supported.  Instead, the code below
+   * uses quadmath_snprintf to do the __float128 -> string conversion.
+   * Either way, check that -lquadmath is included in the link command.
+   */
+  char quadbuf[1024];
+  printf("\nFLT128_MANT_DIG: %4d\n",FLT128_MANT_DIG);
+#if defined(FLT128_MAX_EXP)
+  printf("FLT128_MAX_EXP: %5d\n",FLT128_MAX_EXP);
+#endif
+#if defined(FLT128_MIN_EXP)
+  printf("FLT128_MIN_EXP: %5d\n",FLT128_MIN_EXP);
+#endif
+  int quaddigs = DecimalDigits(FLT128_MANT_DIG) - 1; // "-1" to use %e
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",quaddigs,FLT128_MIN);
+  printf("FLT128_MIN: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,sqrtq(FLT128_MIN));
+  printf("SQRT_FLT128_MIN: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,FLT128_MAX);
+  printf("FLT128_MAX: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,sqrtq(FLT128_MAX));
+  printf("SQRT_FLT128_MAX: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,FLT128_EPSILON);
+  printf("FLT128_EPSILON: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,sqrtq(FLT128_EPSILON));
+  printf("SQRT_FLT128_EPSILON: %s\n",quadbuf);
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,powq(FLT128_EPSILON,1.Q/3.Q));
+  printf("CUBE_ROOT_FLT128_EPSILON: %s\n",quadbuf);
+#endif /* USEQUADFLOAT */
+
 
   printf("\n");
-#if defined(EXTRALONGDOUBLE)
-  printf("Calculated float precision:       %3d bits\n",
-         FltPrecision());
-  printf("Calculated double precision:      %3d bits\n",
-         DblPrecision());
-  printf("Calculated %11s precision: %3d bits\n",
-         HUGEFLOATTYPE,LongDblPrecision());
-#else
-  printf("Calculated float precision:  %3d bits\n",
-         FltPrecision());
-  printf("Calculated double precision: %3d bits\n",
-         DblPrecision());
+  int typespace = 6;
+#if EXTRALONGDOUBLE
+  if(typespace<(int)strlen(HUGEFLOATTYPE)) typespace = (int)strlen(HUGEFLOATTYPE);
 #endif
+#if USEQUADFLOAT
+  if(typespace<(int)strlen(QUADFLOATTYPE)) typespace = (int)strlen(QUADFLOATTYPE);
+#endif
+
+  printf("Calculated %*s epsilon: %.*e\n",typespace,"float",fltdigs,FltMachEps());
+  printf("Calculated %*s epsilon: %.*e\n",typespace,"double",dbldigs,DblMachEps());
+#if EXTRALONGDOUBLE
+# if NO_L_FORMAT
+  printf("Calculated %*s epsilon: %.*e\n",
+         typespace,HUGEFLOATTYPE,dbldigs,double(LongDblMachEps()));
+# else
+  printf("Calculated %*s epsilon: %.*LeL\n",
+         typespace,HUGEFLOATTYPE,ldbldigs,LongDblMachEps());
+# endif
+#endif /* EXTRALONGDOUBLE */
+#if USEQUADFLOAT
+  quadmath_snprintf(quadbuf,sizeof(quadbuf),"%.*Qe",
+                    quaddigs,QuadFloatMachEps());
+  printf("Calculated %*s epsilon: %sQ\n",
+         typespace,QUADFLOATTYPE,quadbuf);
+#endif /* USEQUADFLOAT */
+
+  printf("\n");
+  printf("Calculated %*s precision: %3d bits\n",typespace,"float",FltPrecision());
+  printf("Calculated %*s precision: %3d bits\n",typespace,"double",DblPrecision());
+#if EXTRALONGDOUBLE
+  printf("Calculated %*s precision: %3d bits\n",
+         typespace,HUGEFLOATTYPE,LongDblPrecision());
+#endif /* EXTRALONGDOUBLE */
+#if USEQUADFLOAT
+  printf("Calculated %*s precision: %3d bits\n",
+         typespace,QUADFLOATTYPE,QuadFloatPrecision());
+#endif /* USEQUADFLOAT */
 
   if(!skip_atan2) {
     printf("\nReturn value from atan2(0,0): %g\n",atan2(zero(),zero()));
@@ -740,7 +926,7 @@ char **argv;
     }
   }
 
-#ifdef EXTRALONGDOUBLE
+#if EXTRALONGDOUBLE
 # ifdef NO_FLOORL_CHECK
   printf("\nLibrary function floorl assumed bad or missing.\n");
 # else
@@ -801,11 +987,11 @@ char **argv;
       }
     }
 #  endif
-    /* On Windows one can call GetLogialProcessorInformation to get an
-     * array of SYSTEM_LOGICAL_PROCESSOR_INFORMATION structs
-     * (presumably one per processor), each of which contain
-     * CACHE_DESCRIPTOR structs (presumably one for each cache), each
-     * of which has a LineSize member.
+    /* On Windows one can call GetLogicalProcessorInformation to get an
+     * array of SYSTEM_LOGICAL_PROCESSOR_INFORMATION structs (presumably
+     * one per processor), each of which contain CACHE_DESCRIPTOR
+     * structs (presumably one for each cache), each of which has a
+     * LineSize member.
      */
 # endif // !BUILD_UNIX
     if(cache_linesize>0) {

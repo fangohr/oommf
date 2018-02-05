@@ -769,7 +769,7 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
  
     frame $window.top    -bd 5
     frame $window.bottom -bd 5
-    if { "$bitmap" != "" } then {
+    if {![string match {} $bitmap]} {
         label $window.top.bitmap -bitmap $bitmap
         pack $window.top.bitmap -side left -anchor w -padx 2m
     }
@@ -880,8 +880,8 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
        }
        if {$btncount==0} {
           set btn($btncount) [ttk::button $window.bottom.btn$btncount \
-                              -text "OK" -command [subst $btncmd]  \
-                              -style Ow_DialogButtons]]
+                                 -text "OK" -command [subst $btncmd]  \
+                                 -style Ow_DialogButtons]
           pack $btn($btncount) -side left -expand 1 -padx 5
           incr btncount 1
        }

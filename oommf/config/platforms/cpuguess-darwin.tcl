@@ -274,6 +274,8 @@ proc GuessCpu_x86_old {} {
 }
 
 source [file join [file dirname [info script]] x86-support.tcl]
+catch {rename GetGccCpuOptFlagsX86 {}} ;# In case this file is
+## sourced more than once.
 rename GetGccCpuOptFlags GetGccCpuOptFlagsX86
 
 proc GetGccCpuOptFlags { gcc_version cpu_arch } {
@@ -340,6 +342,7 @@ proc GuessCpu_x86 {} {
                [GuessCpuArch_VendorFamilyModel $vendor $cpu_family $cpu_model] {
                   break
                }
+            # Note: One might also want to look at $macharr(brand_string)
             set cpuinfo [list $vendor $cputype $sselevel]
          }
       }
@@ -354,10 +357,16 @@ proc GuessCpu {} {
    set guess unknown
    set cpuinfo {}
    # Is this an x86 or PPC machine?
-   if {![catch {exec machine} cpustr] && [string match "i?86" $cpustr]} {
+   global tcl_platform
+   if {[string match "i?86" $tcl_platform(machine)] \
+          || [string match "x86*" $tcl_platform(machine)]} {
       set cpuinfo [GuessCpu_x86]
-   } else {
-      set cpuinfo [GuessCpu_ppc]
+   } elseif {![catch {exec machine} cpustr]} {
+      if {[string match "i?86" $cpustr] || [string match "x86*" $cpustr]} {
+         set cpuinfo [GuessCpu_x86]
+      } else {
+         set cpuinfo [GuessCpu_ppc]
+      }
    }
    if {![string match {} $cpuinfo]} {
       set guess $cpuinfo

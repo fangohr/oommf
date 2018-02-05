@@ -1,7 +1,7 @@
 
 Oc_Application Define {
     -name		mmHelp
-    -version		1.2.1.0
+    -version		2.0a0
     -machine		omfsh
     -file		mmhelp.tcl
 }

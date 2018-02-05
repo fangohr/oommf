@@ -32,7 +32,11 @@ private:
   mutable OC_INDEX pydim;
   mutable OC_INDEX pzdim;
   mutable OC_INDEX ptotalsize;
+
   mutable OC_UINT4m mesh_id;
+  mutable OC_REAL8m energy_density_error_estimate; // Cached value,
+  /// initialized when mesh changes.
+
   // The A## arrays hold demag coefficients, transformed into
   // frequency domain.  These are held long term.  Mx, My, Mz
   // and Hcomp are used as temporary space to convert M into
@@ -58,7 +62,12 @@ private:
 
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
-			 Oxs_EnergyData& oed) const;
+			 Oxs_EnergyData& oed) const {
+    GetEnergyAlt(state,oed);
+  }
+
+  virtual void ComputeEnergy(const Oxs_SimState& state,
+                             Oxs_ComputeEnergyData& oced) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is

@@ -104,7 +104,12 @@ proc GuessClVersion { cl } {
     catch {exec $cl} usage_str
     if {[regexp -- {Version ([0-9]+)[.][0-9]+[.][0-9]+} \
              $usage_str dummy version]} {
-        set guess [expr {$version - 6}]
+       if {$version<19} {
+          set guess [expr {$version - 6}]
+       } else {
+          set guess [expr {$version - 5}]
+       }
+       # NB: There is no version 13
     }
     return [split $guess "."]
 }

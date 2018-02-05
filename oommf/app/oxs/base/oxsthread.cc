@@ -323,7 +323,7 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
         // Wake up siblings
         std::vector<Oxs_Thread*>::iterator ti;
         for(ti=launch_threads.begin();ti!=launch_threads.end();++ti) {
-          (*ti)->RunCmd(*stop,*runobj,data);
+          (*ti)->RunCmd(*stop,runobj,data);
         }
       }
       runobj->Cmd(thread_number,data);
@@ -486,18 +486,18 @@ Oxs_Thread::~Oxs_Thread()
 
 void Oxs_Thread::RunCmd
 (Oxs_ThreadControl& stop_x,
- Oxs_ThreadRunObj& runobj_x,
+ Oxs_ThreadRunObj* runobj_x,
  void* data_x)
 {
   // runobj == NULL is used as a message to threadmain to
   // terminate.  Don't expose this implementation detail
   // to the user.  Instead, raise an error.
-  if(0 == &runobj_x) {
+  if(0 == runobj_x) {
     OXS_THROW(Oxs_BadParameter,"NULL thread runobj reference.");
   }
   start.Lock();
   stop = &stop_x;
-  runobj = &runobj_x;
+  runobj = runobj_x;
   data = data_x;
   start.count = 0; // Run signal
   start.Notify();
@@ -555,7 +555,7 @@ void Oxs_ThreadTree::Launch(Oxs_ThreadRunObj& runobj,void* data)
   }
   ++threads_unjoined;
   ++stop.count;
-  threads[free_thread]->RunCmd(stop,runobj,data);
+  threads[free_thread]->RunCmd(stop,&runobj,data);
   launch_mutex.Unlock();
 }
 
@@ -790,7 +790,7 @@ void Oxs_ThreadTree::LaunchTree(Oxs_ThreadRunObj& runobj,void* data)
     runobj.multilevel=1; // Inform group leaders to launch slaves
     std::vector<Oxs_Thread*>::iterator ti;
     for(ti=root_launch_threads.begin();ti!=root_launch_threads.end();++ti) {
-      (*ti)->RunCmd(stop,runobj,data);
+      (*ti)->RunCmd(stop,&runobj,data);
     }
     runobj.Cmd(0,data);
   } catch(...) {
@@ -849,7 +849,7 @@ Oxs_ThreadTree::RunOnThreadRange
     if(i<1) continue;
     ++threads_unjoined;
     ++stop.count;
-    threads[i-1]->RunCmd(stop,runobj,data);
+    threads[i-1]->RunCmd(stop,&runobj,data);
   }
 
   if(first_thread==0) {

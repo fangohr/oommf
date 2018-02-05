@@ -120,7 +120,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		1.2.1.0
+                    -version		2.0a0
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -143,7 +143,7 @@ MakeRule Define {
 				[file join base tclIndex]]
     -script		[format {
 			    Platform Link -obj {%s %s %s extinit} \
-			            -lib {%s %s tk} \
+			            -lib {%s %s tk tcl} \
 			            -sub CONSOLE -out oxs
 			} $objects $extobjs $lclobjs $oxslibs $lcllibs]
 }
@@ -154,7 +154,7 @@ MakeRule Define {
 			        [Platform StaticLibraries {nb oc}]]
     -script		[format {
 			    Platform Link -obj {%s} \
-			            -lib {nb oc tk} \
+			            -lib {nb oc tk tcl} \
 			            -sub WINDOWS -out opmsh
 			} $pobjs ]
 }
@@ -277,7 +277,6 @@ MakeRule Define {
              [file join ext uniformscalarfieldinit.h]  \
              [file join ext uniformvectorfieldinit.cc] \
              [file join ext uniformvectorfieldinit.h]  \
-             [file join base filelogger.tcl] \
              [file join base region.cc] \
              [file join base region.h]  \
              [file join base scalarfieldinit.cc] \

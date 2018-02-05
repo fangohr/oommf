@@ -1,6 +1,6 @@
 /* FILE: stagezeeman.cc            -*-Mode: c++-*-
  *
- * Uniform Zeeman (applied field) energy, derived from Oxs_Energy class,
+ * Uniform Zeeman (applied field) energy, derived from Oxs_ChunkEnergy class,
  * specified from a Tcl proc.
  *
  */
@@ -23,8 +23,9 @@ Oxs_StageZeeman::Oxs_StageZeeman(
   const char* name,     // Child instance id
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
-  : Oxs_Energy(name,newdtr,argstr),
-    number_of_stages(0), mesh_id(0), stage_valid(0)
+  : Oxs_ChunkEnergy(name,newdtr,argstr),
+    number_of_stages(0), mesh_id(0), stage_valid(0),
+    energy_density_error_estimate(-1.0)
 {
   working_stage = static_cast<OC_UINT4m>(static_cast<OC_INT4m>(-1));
   /// Safety;  First ChangeFileInitializer() call should be
@@ -117,8 +118,10 @@ OC_BOOL Oxs_StageZeeman::Init()
   mesh_id = 0;
   stagefield.Release();
 
+  energy_density_error_estimate = -1.0;
+
   // Run parent initializer.
-  return Oxs_Energy::Init();
+  return Oxs_ChunkEnergy::Init();
 }
 
 void Oxs_StageZeeman::StageRequestCount(unsigned int& min,
@@ -183,23 +186,31 @@ Oxs_StageZeeman::ChangeFieldInitializer
 }
 
 void
-Oxs_StageZeeman::FillStageFieldCache(const Oxs_Mesh* mesh) const
+Oxs_StageZeeman::FillStageFieldCache(const Oxs_SimState& state) const
 {
+  const Oxs_Mesh* mesh = state.mesh;
   max_field.Set(0.,0.,0.);
+  energy_density_error_estimate=0.0;
   stagefield_init->FillMeshValue(mesh,stagefield);
   OC_INDEX size = mesh->Size();
   if(size>0) {
+    const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
     if(hmult!=1.0) stagefield *= hmult;
     OC_INDEX max_i=0;
     OC_REAL8m max_magsq = stagefield[OC_INDEX(0)].MagSq();
+    OC_REAL8m max_energysq = max_magsq*Ms[OC_INDEX(0)]*Ms[OC_INDEX(0)];
     for(OC_INDEX i=1;i<size;i++) {
       OC_REAL8m magsq = stagefield[i].MagSq();
       if(magsq>max_magsq) {
         max_magsq = magsq;
         max_i = i;
       }
+      OC_REAL8m energy_test = magsq*Ms[i]*Ms[i];
+      if(energy_test>max_energysq) max_energysq = energy_test;
     }
     max_field = stagefield[max_i];
+    energy_density_error_estimate
+      = 4*OC_REAL8m_EPSILON*MU0*Oc_Sqrt(max_energysq);
   }
 }
 
@@ -209,47 +220,66 @@ void Oxs_StageZeeman::UpdateCache(const Oxs_SimState& state) const
   if(!stage_valid || working_stage!=state.stage_number) {
     mesh_id = 0;
     ChangeFieldInitializer(state.stage_number,state.mesh);
-    FillStageFieldCache(state.mesh);
+    FillStageFieldCache(state);
     mesh_id = state.mesh->Id();
   } else if(mesh_id != state.mesh->Id()) {
     mesh_id = 0;
-    FillStageFieldCache(state.mesh);
+    FillStageFieldCache(state);
     mesh_id = state.mesh->Id();
   }
 }
 
-void Oxs_StageZeeman::GetEnergy
+
+void Oxs_StageZeeman::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
- ) const
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int /* number_of_threads */) const
 {
-  OC_INDEX size = state.mesh->Size();
-  if(size<1) return;
-
   UpdateCache(state);
-
   if(!stagefield.CheckMesh(state.mesh)) {
     throw Oxs_ExtError(this,"Programming error; stagefield size"
                          " incompatible with mesh.");
   }
+  ocedt.energy_density_error_estimate
+    = energy_density_error_estimate;
+}
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
-  energy.AdjustSize(state.mesh);
-  field.AdjustSize(state.mesh);
-
-  field = stagefield; // Copy field
-
+void Oxs_StageZeeman::ComputeEnergyChunk
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,OC_INDEX node_stop,
+ int /* threadnumber */) const
+{
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
-  OC_INDEX i=0;
-  do { // Calculate energy density
-    energy[i] = -MU0 * Ms[i] * (spin[i]*field[i]);
-    ++i;
-  } while(i<size);
+  Nb_Xpfloat energy_sum = 0.0;
+
+  for(OC_INDEX i=node_start;i<node_stop;++i) {
+    OC_REAL8m ei,tx,ty,tz;
+    OC_REAL8m Msi = Ms[i];
+    if(0.0 != Msi) {
+      const ThreeVector& m = spin[i];
+      const ThreeVector& H = stagefield[i];
+      tz = m.x*H.y;  // t = m x H
+      ty = m.x*H.z;
+      tx = m.y*H.z;
+      ei =  -MU0*Msi*(m.x*H.x + m.y*H.y + m.z*H.z);
+      tz -= m.y*H.x;
+      ty  = m.z*H.x - ty;
+      tx -= m.z*H.y;
+      energy_sum += ei * state.mesh->Volume(i);
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+    } else {
+      ei = tx = ty = tz = 0.0;
+    }
+    if(ocedt.energy) (*ocedt.energy)[i] = ei;
+    if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+  }
+  ocedtaux.energy_total_accum += energy_sum;
+  // ocedtaux.pE_pt_accum += 0.0;
 }
 
 void

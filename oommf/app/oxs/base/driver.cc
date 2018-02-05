@@ -274,7 +274,7 @@ Oxs_Driver::BackgroundCheckpoint::UpdateBackup
   if(statekey.GetPtr()==NULL) {
     throw("Invalid checkpoint update request.");
   }
-  int backup_request = 0;
+  int request_backup = 0;
   if(checkpoint_interval >= 0.0) {
     Oc_Ticks now;
     now.ReadWallClock();
@@ -282,10 +282,10 @@ Oxs_Driver::BackgroundCheckpoint::UpdateBackup
     if(now.Seconds()>=checkpoint_interval) {
       checkpoint_time.ReadWallClock();
       RequestBackup(statekey);
-      backup_request = 1;
+      request_backup = 1;
     }
   }
-  return backup_request;
+  return request_backup;
 }
 
 void
@@ -536,6 +536,7 @@ Oxs_Driver::Oxs_Driver
   // Fill Ms and Ms_inverse array, and verify that Ms is non-negative.
   Msinit->FillMeshValue(mesh_obj.GetPtr(),Ms);
   Ms_inverse.AdjustSize(mesh_obj.GetPtr());
+  max_absMs = 0.0;
   for(OC_INDEX icell=0;icell<mesh_obj->Size();icell++) {
     if(Ms[icell]<0.0) {
       char buf[1024];
@@ -547,6 +548,7 @@ Oxs_Driver::Oxs_Driver
       Ms_inverse[icell]=0.0; // Special case handling
     } else {
       Ms_inverse[icell]=1.0/Ms[icell];
+      if(Ms[icell]>max_absMs) max_absMs = Ms[icell];
     }
   }
 
@@ -918,7 +920,8 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
       fclose(check);
       String MIF_info;
       istate.RestoreState(bgcheckpt.CheckpointFilename(),
-                          mesh_key.GetPtr(),&Ms,&Ms_inverse,
+                          mesh_key.GetPtr(),
+                          &Ms,&Ms_inverse,max_absMs,
                           director,MIF_info);
       fresh_start = 0;
     } else if(rflag==1) {
@@ -942,6 +945,8 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
     istate.mesh = mesh_key.GetPtr();
     istate.Ms = &Ms;
     istate.Ms_inverse = &Ms_inverse;
+    istate.max_absMs = max_absMs;
+
     m0->FillMeshValue(istate.mesh,istate.spin);
     // Insure that all spins are unit vectors
     OC_INDEX size = istate.spin.Size();
@@ -1102,7 +1107,7 @@ OC_BOOL Oxs_Driver::Init()
     // derived data.  Otherwise, use the default STAGE_START
     // status.
     OC_REAL8m value;
-    if(cstate.GetDerivedData("Oxs_Driver Problem Status",value)) {
+    if(cstate.GetAuxData("Oxs_Driver Problem Status",value)) {
       problem_status = FloatToProblemStatus(value);
     } else {
       problem_status = OXSDRIVER_PS_STAGE_START;
@@ -1340,7 +1345,9 @@ void Oxs_Driver::FillNewStageState
   FillNewStageStateDerivedData(old_state,new_stage_number,new_state);
 }
 
-void Oxs_Driver::SetStage(OC_UINT4m requestedStage)
+void Oxs_Driver::SetStage
+(OC_UINT4m requestedStage,
+ vector<OxsRunEvent>& events)
 {
   if(current_state.GetPtr() == NULL) {
     // Current state is not initialized.
@@ -1357,27 +1364,14 @@ void Oxs_Driver::SetStage(OC_UINT4m requestedStage)
   }
 
   const Oxs_SimState& cstate = current_state.GetReadReference();
+  events.clear();
   if(requestedStage != cstate.stage_number) {
     // Change state only if stage number changes.
-#if 0
-    Oxs_Key<Oxs_SimState> next_state;
-    director->GetNewSimulationState(next_state);
-
-    Oxs_SimState& nstate = next_state.GetWriteReference();
-    FillNewStageState(cstate,requestedStage,nstate);
-    next_state.GetReadReference();  // Release write lock
-
-    current_state = next_state;
-    current_state.GetReadReference(); // Hold read lock
-    problem_status = OXSDRIVER_PS_STAGE_START;
-#else
     // Use machinery in Oxs_Driver::Run to transition states.
     // At present, OxsRunEvent data is simply discarded.  We
     // may want to change this in the future.
     problem_status = OXSDRIVER_PS_STAGE_END;
-    vector<OxsRunEvent> dummy_results;
-    Run(dummy_results,requestedStage - cstate.stage_number);
-#endif
+    Run(events,requestedStage - cstate.stage_number);
   }
 }
 
@@ -1465,23 +1459,16 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
 
   while (step_events<max_steps && step_calls<allowed_step_calls
          && problem_status!=OXSDRIVER_PS_DONE) {
-    Oxs_Key<Oxs_SimState> next_state;
     Oxs_ConstKey<Oxs_SimState> previous_state; // Used for state transitions
     OC_BOOL step_taken=0;
     OC_BOOL step_result=0;
     switch(problem_status) {
-      case OXSDRIVER_PS_INSIDE_STAGE:
+      case OXSDRIVER_PS_INSIDE_STAGE: {
         // Most common case.
-        director->GetNewSimulationState(next_state);
-        // NOTE: At this point next_state holds a write lock.
-        //   The Step() function can make additional calls
-        //   to next_state.GetWriteReference() as needed; write
-        //   locks do not accumulate.  However, it is the
-        //   responsibility of Step or its callees to release
-        //   the write lock, once next_state is fully populated.
 #if REPORT_TIME
         driversteptime.Start();
 #endif // REPORT_TIME
+        Oxs_ConstKey<Oxs_SimState> next_state;
         step_result = Step(current_state,step_info,next_state);
 #if REPORT_TIME
         driversteptime.Stop();
@@ -1489,8 +1476,8 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
         if( step_result ) {
           // Good step.  Release read lock on old current_state,
           // and copy key from next_state.
-          next_state.GetReadReference();  // Safety write lock release
           current_state = next_state; // Free old read lock
+          current_state.GetReadReference();
           if(report_max_spin_angle) {
             UpdateSpinAngleData(*(current_state.GetPtr())); // Update
             /// max spin angle data on each accepted step.  Might want
@@ -1505,17 +1492,20 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
         }
         ++step_info.total_attempt_count;
         ++step_calls;
-        break;
+      }
+      break;
 
       case OXSDRIVER_PS_STAGE_END: {
         const Oxs_SimState& cstate = current_state.GetReadReference();
-        director->GetNewSimulationState(next_state);
-        Oxs_SimState& nstate = next_state.GetWriteReference();
+        Oxs_Key<Oxs_SimState> temp_state;
+        director->GetNewSimulationState(temp_state);
+        Oxs_SimState& tstate = temp_state.GetWriteReference();
         FillNewStageState(cstate,cstate.stage_number+stage_increment,
-                          nstate);
-        next_state.GetReadReference(); // Release write lock
+                          tstate);
+        temp_state.GetReadReference(); // Release write lock
         previous_state.Swap(current_state); // For state transistion
-        current_state = next_state;
+        current_state = temp_state;
+        current_state.GetReadReference();
       }
       // NB: STAGE_END flow continues through STAGE_START block
       case OXSDRIVER_PS_STAGE_START:
@@ -1544,7 +1534,6 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
            && cstate.GetDerivedData("Max Spin Ang",angle_data)) {
           maxSpinAng_output.cache.value = angle_data;
           maxSpinAng_output.cache.state_id = cstate.Id();
-
         }
         if(stage_maxSpinAng_output.cache.state_id != cstate.Id()
            && cstate.GetDerivedData("Stage Max Spin Ang",angle_data)) {
@@ -1566,37 +1555,8 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
           problem_status = OXSDRIVER_PS_DONE;
         }
       }
-#ifndef NDEBUG
-      // For debugging purposes, we verify the return from
-      // AddDerivedData, which returns True on success.  Failure might
-      // happen if the previous status was STAGE_START, since in that
-      // case the new current state is the same as the previous current
-      // state, and so may already have a problem status recorded.  I
-      // think this shouldn't happen, and I don't see any way it could
-      // be a significant problem if it did happen, so for non-debug
-      // builds just remove the check, thereby ignoring any hiccups.
-      if(!cstate.AddDerivedData("Oxs_Driver Problem Status",
-                                static_cast<OC_REAL8m>(problem_status))) {
-        OC_REAL8m oldvalue = -1.0;
-        if(!cstate.GetDerivedData("Oxs_Driver Problem Status",
-                                  oldvalue)) {
-          throw Oxs_ExtError(this,"Undiagnosable error trying to"
-                               " set Oxs_Driver Problem Status into"
-                               " current state.");
-        }
-        char buf[1000];
-        Oc_Snprintf(buf,sizeof(buf),
-                    "Error setting Oxs_Driver Problem Status"
-                    " into current state; value already set."
-                    " Old value: %d, New value: %d",
-                    static_cast<int>(oldvalue),
-                    static_cast<int>(problem_status));
-        throw Oxs_ExtError(this,String(buf));
-      }
-#else
-      cstate.AddDerivedData("Oxs_Driver Problem Status",
-                            static_cast<OC_REAL8m>(problem_status));
-#endif
+      cstate.AddAuxData("Oxs_Driver Problem Status",
+                        static_cast<OC_REAL8m>(problem_status));
     }
 
     // Checkpoint file save
@@ -1614,12 +1574,9 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
     results.push_back(OxsRunEvent(OXS_STAGE_DONE_EVENT,current_state));
   }
   if(done_event || problem_status==OXSDRIVER_PS_DONE) {
-    // The problem_status test above handles the case where ::Run is
-    // entered with a done state.  This can happen if the stage is
-    // adjusted via Oxs_Driver::SetStage, because that routine
-    // swallows events --- including in particular RUN_DONE events ---
-    // in which case the controlling code doesn't realize the
-    // simulation is complete and calls ::Run past the end.
+    // The problem_status check handles case where ::Run is entered with
+    // problem_status already in done state (which shouldn't actually
+    // ever happen).
     results.push_back(OxsRunEvent(OXS_RUN_DONE_EVENT,current_state));
   }
   if(checkpoint_event) {
@@ -1807,10 +1764,9 @@ Oxs_Driver::Fill__maxSpinAng_output
  int threadnumber)
 {
   assert(size_t(threadnumber) < fill_maxSpinAng_output_storage.size());
-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
-  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
   const Oxs_Mesh* mesh = state.mesh;
-  OC_REAL8m angle = mesh->MaxNeighborAngle(spin,Ms,node_start,node_stop);
+  OC_REAL8m angle = mesh->MaxNeighborAngle(state.spin,*(state.Ms),
+                                           node_start,node_stop);
   if(fill_maxSpinAng_output_storage[threadnumber]<angle) {
     fill_maxSpinAng_output_storage[threadnumber]=angle;
   }

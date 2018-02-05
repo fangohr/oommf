@@ -4,14 +4,14 @@
 # across network sockets.
 #
 # This script should be run using the omfsh shell.
-package require Oc 1.1
+package require Oc 2
 
 Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 Oc_ForceStderrDefaultMessage	;# Use stderr, not dialog to report errors
 
 Oc_Main SetAppName batchmaster
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{task_script {} {Task definition file}}

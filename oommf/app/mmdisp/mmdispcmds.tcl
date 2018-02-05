@@ -9,7 +9,7 @@
 # has been initialized
 #
 # NOTE: version number below must match that in ./mmdispcmds.h
-package require -exact Mmdispcmds 1.2.1.0
+package require -exact Mmdispcmds 2.0a0
 
 Oc_CheckTclIndex Mmdispcmds
 

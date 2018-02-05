@@ -63,7 +63,7 @@ if {[catch {[Oc_Config RunPlatform] GetValue platform_use_mpi} _] || !$_} {
                         puts $f [format {
 Oc_Application Define {
     -name               mmSolve
-    -version            1.2.1.0
+    -version            2.0a0
     -machine            %s
     -file               "%s"
 }
@@ -73,7 +73,7 @@ Oc_Application Define {
                         puts $f [format {
 Oc_Application Define {
     -name               mpirun
-    -version            1.2.1.0
+    -version            2.0a0
     -machine            %s
     -directory          {}
     -file               {%s}
@@ -86,7 +86,7 @@ Oc_Application Define {
                         puts $f [format {
 Oc_Application Define {
     -name               mmSolve
-    -version            1.2.1.0
+    -version            2.0a0
     -machine            mpirun
     -file               "%s"
 }
@@ -108,7 +108,7 @@ MakeRule Define {
 			        tclIndex]]
     -script		[format {
 			    Platform Link -obj {%s} \
-			            -lib {vf nb oc tk} \
+			            -lib {vf nb oc tk tcl} \
 			            -sub CONSOLE -out mmsolve
 			} $objects]
 }

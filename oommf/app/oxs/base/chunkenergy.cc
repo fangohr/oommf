@@ -22,8 +22,8 @@ OC_USE_STRING;
 struct Oxs_ComputeEnergies_ChunkStruct {
 public:
   Oxs_ChunkEnergy* energy;
-  const Oxs_ComputeEnergyDataThreaded ocedt;
-  vector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux;
+  Oxs_ComputeEnergyDataThreaded ocedt;
+  Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux;
 
   Oxs_ComputeEnergies_ChunkStruct
   (Oxs_ChunkEnergy* import_energy,
@@ -52,13 +52,13 @@ public:
   /// job_basket is static, so only one "set" of this class is allowed.
 
   const Oxs_SimState* state;
-  vector<Oxs_ComputeEnergies_ChunkStruct>* energy_terms;
+  std::vector<Oxs_ComputeEnergies_ChunkStruct>* energy_terms;
 
   Oxs_MeshValue<ThreeVector>* mxH;
   Oxs_MeshValue<ThreeVector>* mxH_accum;
   Oxs_MeshValue<ThreeVector>* mxHxm;
-  const vector<OC_INDEX>* fixed_spins;
-  vector<OC_REAL8m> max_mxH;
+  const std::vector<OC_INDEX>* fixed_spins;
+  std::vector<OC_REAL8m> max_mxH;
 
   OC_INDEX cache_blocksize;
 
@@ -101,7 +101,8 @@ Oxs_ComputeEnergiesChunkThread::Cmd
 
   // Local vector to hold Oxs_ComputeEnergyDataThreadedAux results.
   // These data are copied over into this->energy_terms at the end.
-  vector<Oxs_ComputeEnergyDataThreadedAux> eit_ocedtaux(energy_terms->size());
+  Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>
+    eit_ocedtaux(energy_terms->size());
 
   while(1) {
     // Claim a chunk
@@ -123,7 +124,7 @@ Oxs_ComputeEnergiesChunkThread::Cmd
 
       // Process chunk
       OC_INDEX energy_item = 0;
-      for(vector<Oxs_ComputeEnergies_ChunkStruct>::iterator eit
+      for(std::vector<Oxs_ComputeEnergies_ChunkStruct>::iterator eit
             = energy_terms->begin();
           eit != energy_terms->end() ; ++eit, ++energy_item) {
 
@@ -131,12 +132,6 @@ Oxs_ComputeEnergiesChunkThread::Cmd
         Oxs_ChunkEnergy& eterm = *(eit->energy);
         Oxs_ComputeEnergyDataThreaded ocedt = eit->ocedt; // Local copy
         Oxs_ComputeEnergyDataThreadedAux& ocedtaux = eit_ocedtaux[energy_item];
-#if REPORT_TIME
-# if 0  // Individual chunk times currently meaningless,
-        //and may slow code due to mutex blocks.
-        ocedtaux.energytime.Start();
-# endif 
-#endif // REPORT_TIME
         if(!accums_initialized && energy_item==0) {
           // Note: Each thread has its own copy of the ocedt and
           // ocedtaux data, so we can tweak these as desired without
@@ -202,13 +197,6 @@ Oxs_ComputeEnergiesChunkThread::Cmd
                                    icache_start,icache_stop,
                                    threadnumber);
         }
-
-#if REPORT_TIME
-# if 0  // Individual chunk times currently meaningless,
-        //and may slow code due to mutex blocks.
-        ocedtaux.energytime.Stop();
-# endif
-#endif // REPORT_TIME
       }
 
       // Post-processing, for this energy term and chunk.
@@ -324,10 +312,39 @@ void Oxs_ChunkEnergy::ReportTime()
 ////////////////////////////////////////////////////////////////////////
 //////////////////////// OXS_COMPUTEENERGIES ///////////////////////////
 
+OC_REAL8m Oxs_ComputeEnergiesErrorEstimate
+(const Oxs_SimState& state,
+ OC_REAL8m energy_density_error_estimate,
+ OC_REAL8m energy_sum)
+{
+  if(energy_density_error_estimate>=0.0) {
+    return energy_density_error_estimate;
+  }
+  OC_REAL8m term_energy_density = Oc_Fabs(energy_sum);
+  const OC_REAL8m simulation_volume = state.mesh->TotalVolume();
+  if(simulation_volume >= 1.0
+     || term_energy_density < OC_REAL8m_MAX*simulation_volume) {
+    term_energy_density /= simulation_volume;
+    // Cells with Ms=0 don't contribute to energy sum, so we might
+    // want to replace state.mesh.TotalVolume() with a value
+    // (possibly weighted?) representing the magnetically active
+    // volume.  OTOH, ideally energy terms should fill in the energy
+    // density error estimate in oced.
+  } else {
+    if(simulation_volume == 0.0) {
+      term_energy_density = 0.0;
+    } else {
+      term_energy_density = OC_REAL8m_MAX/256; // Punt
+    }
+  }
+  return term_energy_density*Oxs_ComputeEnergyData::edee_round_error;
+}
+
+
 void Oxs_ComputeEnergies
 (const Oxs_SimState& state,
  Oxs_ComputeEnergyData& oced,
- const vector<Oxs_Energy*>& energies,
+ const std::vector<Oxs_Energy*>& energies,
  Oxs_ComputeEnergyExtraData& oceed)
 { // Compute sums of energies, fields, and/or torques for all energies
   // in "energies" import.  On entry, oced.energy_accum, oced.H_accum,
@@ -403,6 +420,7 @@ void Oxs_ComputeEnergies
   }
   oced.energy_sum = 0.0;
   oced.pE_pt = 0.0;
+  oced.energy_density_error_estimate = 0.0;
   oceed.max_mxH = 0.0;
 
   if(energies.size() == 0) {
@@ -439,8 +457,8 @@ void Oxs_ComputeEnergies
     oced.mxH_accum = oceed.mxHxm;
   }
 
-  vector<Oxs_ComputeEnergies_ChunkStruct> chunk;
-  vector<Oxs_Energy*> nonchunk;
+  std::vector<Oxs_ComputeEnergies_ChunkStruct> chunk;
+  std::vector<Oxs_Energy*> nonchunk;
 
   // Initialize those parts of ChunkStruct that are independent
   // of any particular energy term.
@@ -451,7 +469,7 @@ void Oxs_ComputeEnergies
   ocedt_base.energy_accum   = oced.energy_accum;
   ocedt_base.H_accum        = oced.H_accum;
   ocedt_base.mxH_accum      = oced.mxH_accum;
-  for(vector<Oxs_Energy*>::const_iterator it = energies.begin();
+  for(std::vector<Oxs_Energy*>::const_iterator it = energies.begin();
       it != energies.end() ; ++it ) {
     Oxs_ChunkEnergy* ceptr =
       dynamic_cast<Oxs_ChunkEnergy*>(*it);
@@ -491,7 +509,7 @@ void Oxs_ComputeEnergies
   OC_BOOL accums_initialized = 0;
 
   // Non-chunk energies //////////////////////////////////////
-  for(vector<Oxs_Energy*>::const_iterator ncit = nonchunk.begin();
+  for(std::vector<Oxs_Energy*>::const_iterator ncit = nonchunk.begin();
       ncit != nonchunk.end() ; ++ncit ) {
     Oxs_Energy& eterm = *(*ncit);  // Convenience
 
@@ -565,8 +583,12 @@ void Oxs_ComputeEnergies
       accums_initialized = 1;
     }
 
-    oced.energy_sum += term_oced.energy_sum;
     oced.pE_pt += term_oced.pE_pt;
+    oced.energy_sum += term_oced.energy_sum;
+    oced.energy_density_error_estimate
+      += Oxs_ComputeEnergiesErrorEstimate(state,
+                                term_oced.energy_density_error_estimate,
+                                term_oced.energy_sum.GetValue());
 
 #if REPORT_TIME
     eterm.energytime.Stop();
@@ -615,11 +637,11 @@ void Oxs_ComputeEnergies
   chunk_thread.accums_initialized = accums_initialized;
 
   // Initialize chunk energy computations
-  for(vector<Oxs_ComputeEnergies_ChunkStruct>::iterator itc
+  for(std::vector<Oxs_ComputeEnergies_ChunkStruct>::iterator itc
         = chunk.begin(); itc != chunk.end() ; ++itc ) {
     Oxs_ChunkEnergy& eterm = *(itc->energy);  // For code clarity
-    const Oxs_ComputeEnergyDataThreaded& ocedt = itc->ocedt;
-    vector<Oxs_ComputeEnergyDataThreadedAux>&
+    Oxs_ComputeEnergyDataThreaded& ocedt = itc->ocedt;
+    Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>&
       thread_ocedtaux = itc->thread_ocedtaux;
     eterm.ComputeEnergyChunkInitialize(state,ocedt,thread_ocedtaux,
                                        thread_count);
@@ -638,8 +660,8 @@ void Oxs_ComputeEnergies
   for(OC_INDEX ei=0;static_cast<size_t>(ei)<chunk.size();++ei) {
 
     Oxs_ChunkEnergy& eterm = *(chunk[ei].energy);  // Convenience
-    const Oxs_ComputeEnergyDataThreaded& ocedt = chunk[ei].ocedt;
-    const vector<Oxs_ComputeEnergyDataThreadedAux>&
+    Oxs_ComputeEnergyDataThreaded& ocedt = chunk[ei].ocedt;
+    Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>&
       thread_ocedtaux = chunk[ei].thread_ocedtaux;
 
     eterm.ComputeEnergyChunkFinalize(state,ocedt,thread_ocedtaux,
@@ -649,15 +671,21 @@ void Oxs_ComputeEnergies
 
     // For each energy term, loop though all threads and sum
     // energy and pE_pt contributions.
-    OC_REAL8m pE_pt_term = 0.0;
-    OC_REAL8m energy_term = 0.0;
-    vector<Oxs_ComputeEnergies_ChunkStruct>& et = *(chunk_thread.energy_terms);
+    Oxs_Energy::SUMTYPE pE_pt_term = 0.0;
+    Oxs_Energy::SUMTYPE energy_term = 0.0;
+    std::vector<Oxs_ComputeEnergies_ChunkStruct>& et
+      = *(chunk_thread.energy_terms);
     for(int ithread=0;ithread<thread_count;++ithread) {
       pE_pt_term += et[ei].thread_ocedtaux[ithread].pE_pt_accum;
       energy_term += et[ei].thread_ocedtaux[ithread].energy_total_accum;
     }
     oced.pE_pt += pE_pt_term;
     oced.energy_sum += energy_term;
+
+    oced.energy_density_error_estimate
+      += Oxs_ComputeEnergiesErrorEstimate(state,
+                                ocedt.energy_density_error_estimate,
+                                energy_term.GetValue());
 
     if(eterm.energy_sum_output.GetCacheRequestCount()>0) {
       eterm.energy_sum_output.cache.value=energy_term;
@@ -672,15 +700,6 @@ void Oxs_ComputeEnergies
       eterm.energy_density_output.cache.state_id=state.Id();
     }
 
-#if REPORT_TIME
-# if 0
-    Nb_StopWatch bar;
-    for(int rithread=0;rithread<thread_count;++rithread) {
-      bar.ThreadAccum(et[ei].thread_ocedtaux[rithread].energytime);
-    }
-    eterm.energytime.Accum(bar);
-# endif
-#endif // REPORT_TIME
   }
 
   OC_REAL8m max_mxH_test = 0.0;

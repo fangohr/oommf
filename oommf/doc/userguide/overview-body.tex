@@ -3,7 +3,7 @@ The goal of the
 \htmladdnormallinkfoot{\OOMMF}{http://math.nist.gov/oommf/} (Object
 Oriented MicroMagnetic Framework) project in the
 \htmladdnormallink{Information Technology
-Laboratory}{http://www.nist.gov/itl/} (ITL) at the
+Laboratory}{http://www.itl.nist.gov/} (ITL) at the
 \htmladdnormallink{National Institute of Standards and
 Technology}{http://www.nist.gov/} (NIST)
 is to develop a portable, extensible public domain micromagnetic
@@ -13,11 +13,11 @@ be extended by other programmers so that people developing
 new code can build on the \OOMMF\ foundation.
 The main
 contributors to \OOMMF\ are
-\ifnotpdf{\htmladdnormallink{Mike Donahue}{http://www.nist.gov/people/michael-j-donahue}}
-\pdfonly{\htmladdnormallink{Mike Donahue}{http://www.nist.gov/people/michael-j-donahue}}
+\ifnotpdf{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\~{}MDonahue}}
+\pdfonly{\htmladdnormallink{Mike Donahue}{http://math.nist.gov/\%7EMDonahue}}
 and
-\ifnotpdf{\htmladdnormallink{Don Porter}{http://www.nist.gov/people/don-porter}.}
-\pdfonly{\htmladdnormallink{Don Porter}{http://www.nist.gov/people/don-porter}.}
+\ifnotpdf{\htmladdnormallink{Don Porter}{http://math.nist.gov/\~{}DPorter}.}
+\pdfonly{\htmladdnormallink{Don Porter}{http://math.nist.gov/\%7EDPorter}.}
 
 \OOMMF\ is written in C++, a widely-available, object-oriented language
 that can produce programs with good performance as well as extensibility.
@@ -27,8 +27,8 @@ operates across a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 The code may be modified at three distinct levels.  At the top level,
 individual programs interact via well-defined protocols across network
 sockets\index{network~socket}.  One may connect these modules together
-in various ways from the user interface, and new modules can interoperate
-by supporting the same protocols.  The second level of
+in various ways from the user interface, and new modules speaking the
+same protocol can be transparently added.  The second level of
 modification is at the \Tcl/\Tk\ script level.  Some modules allow
 \Tcl/\Tk\ scripts to be imported and executed at run time, and the top
 level scripts are relatively easy to modify or replace.  At the lowest
@@ -61,7 +61,7 @@ Programming Manual'').
 %magnetization\index{magnetization!initial} can be varied pointwise, and
 %arbitrarily shaped elements\index{boundary} can be modeled.  
 
-The current development version, \OOMMF\ 1.2, features Oxs, the
+The current development version, \OOMMF\ 2.0, includes Oxs, the
 \OOMMF\ eXtensible Solver.  Oxs offers users of \OOMMF\ the ability
 to extend Oxs with their own modules.  
 %The details of programming

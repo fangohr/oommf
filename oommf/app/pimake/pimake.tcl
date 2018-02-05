@@ -30,6 +30,10 @@ exec tclsh "$0" ${1+"$@"}
 #
 ########################################################################
 
+# Announce to those concerned that a build is in progress
+global env
+set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1
+
 ########################################################################
 # This script is meant to be portable to many platforms and many
 # versions of Tcl/Tk.  Reporting of errors in startup scripts wasn't
@@ -141,7 +145,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}

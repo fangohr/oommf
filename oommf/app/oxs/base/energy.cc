@@ -223,17 +223,26 @@ void Oxs_Energy::GetEnergyData
   }
   if(energy_sum_output.GetCacheRequestCount()>0) {
     if(oed.energy_sum.IsSet()) {
-      energy_sum_output.cache.value=oed.energy_sum;
+      energy_sum_output.cache.value
+        = static_cast<OC_REAL8m>(oed.energy_sum.Get());
     } else {
       OC_INDEX size = state.mesh->Size();
-      Nb_Xpfloat energy_sum=0;
       const Oxs_MeshValue<OC_REAL8m>& ebuf = *oed.energy;
       const Oxs_Mesh& mesh = *state.mesh;
-      for(OC_INDEX i=0; i<size; ++i) {
-        energy_sum += ebuf[i] * mesh.Volume(i);
+      Oxs_Energy::SUMTYPE energy_sum = 0.0;
+      OC_REAL8m cell_volume;
+      if(mesh.HasUniformCellVolumes(cell_volume)) {
+        for(OC_INDEX i=0; i<size; ++i) {
+          energy_sum += ebuf[i];
+        }
+        energy_sum *= cell_volume;
+      } else {
+        for(OC_INDEX i=0; i<size; ++i) {
+          energy_sum += ebuf[i] * mesh.Volume(i);
+        }
       }
-      energy_sum_output.cache.value=energy_sum.GetValue();
-      oed.energy_sum.Set(energy_sum.GetValue()); // Might as well set
+      energy_sum_output.cache.value = energy_sum;
+      oed.energy_sum = energy_sum; // Might as well set
       /// this field if we are doing the calculation anyway.
     }
     energy_sum_output.cache.state_id=state.Id();
@@ -318,68 +327,144 @@ void Oxs_Energy::ComputeEnergy
   if(oced.H)      oed.field_buffer  = oced.H;
   else            oed.field_buffer  = oced.scratch_H;
 
-  // Although not stated in the interface docs, some Oxs_Energy children
-  // assume that the oed energy and field buffers are pre-sized on
-  // entry.  For backwards compatibility, make this so.
+  // Oxs_Energy children may assume that the oed energy and field
+  // buffers are pre-sized on entry.
   oed.energy_buffer->AdjustSize(mesh);
   oed.field_buffer->AdjustSize(mesh);
 
   GetEnergy(state,oed);
 
   // Accum as requested
-  OC_INDEX i;
-  const OC_INDEX size = mesh->Size();
-
   const OC_BOOL have_energy_sum = oed.energy_sum.IsSet();
-  if(have_energy_sum) oced.energy_sum = oed.energy_sum;
-  else                oced.energy_sum = 0.0;
-
-  if(oced.energy_accum) {
-    Oxs_MeshValue<OC_REAL8m>& energy_accum = *oced.energy_accum;
-    const Oxs_MeshValue<OC_REAL8m>& energy = *(oed.energy.Get());
-    for(i=0; i<size; ++i) {
-      energy_accum[i] += energy[i];
-      if(!have_energy_sum) {
-        oced.energy_sum += energy[i] * mesh->Volume(i);
-      }
-    }
-  } else if(!have_energy_sum) {
-    const Oxs_MeshValue<OC_REAL8m>& energy = *(oed.energy.Get());
-    for(i=0; i<size; ++i) {
-      oced.energy_sum += energy[i] * mesh->Volume(i);
-    }
+  const Oxs_MeshValue<OC_REAL8m>& term_energy = *(oed.energy.Get());
+  const int number_of_threads = Oc_GetMaxThreadCount();
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE> term_energy_sum;
+  if(!have_energy_sum) {
+    term_energy_sum.resize(number_of_threads,0.0);
   }
+
+  if(oced.energy_accum && !have_energy_sum) {
+    Oxs_RunThreaded<OC_REAL8m,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (term_energy,
+       [&](OC_INT4m threadno,OC_INDEX jstart,OC_INDEX jstop) {
+        Oxs_MeshValue<OC_REAL8m>& thd_energy_accum = *(oced.energy_accum);
+        const Oxs_MeshValue<OC_REAL8m>& thd_energy = term_energy;
+        const Oxs_Mesh& thd_mesh = *mesh;
+        Oxs_Energy::SUMTYPE& thd_energy_sum = term_energy_sum[threadno];
+        OC_REAL8m cell_volume;
+        if(thd_mesh.HasUniformCellVolumes(cell_volume)) {
+          Oxs_Energy::SUMTYPE chunk_energy = 0.0;
+          for(OC_INDEX j=jstart;j<jstop;++j) {
+            chunk_energy += thd_energy[j];
+            thd_energy_accum[j] += thd_energy[j];
+          }
+          chunk_energy *= cell_volume;
+          thd_energy_sum += chunk_energy;
+        } else {
+          for(OC_INDEX j=jstart;j<jstop;++j) {
+            thd_energy_sum += thd_energy[j] * thd_mesh.Volume(j);
+            thd_energy_accum[j] += thd_energy[j];
+          }
+        }
+      });
+  } else if(oced.energy_accum) { // have_energy_sum is true
+    Oxs_RunThreaded<OC_REAL8m,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (term_energy,
+       [&](OC_INT4m /* threadno */,OC_INDEX jstart,OC_INDEX jstop) {
+        Oxs_MeshValue<OC_REAL8m>& thd_energy_accum = *(oced.energy_accum);
+        const Oxs_MeshValue<OC_REAL8m>& thd_energy = term_energy;
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          thd_energy_accum[j] += thd_energy[j];
+        }
+      });
+  } else if(!have_energy_sum) { // oced.energy_accum is false
+    Oxs_RunThreaded<OC_REAL8m,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (term_energy,
+       [&](OC_INT4m threadno,OC_INDEX jstart,OC_INDEX jstop) {
+        const Oxs_MeshValue<OC_REAL8m>& thd_energy = term_energy;
+        const Oxs_Mesh& thd_mesh = *mesh;
+        Oxs_Energy::SUMTYPE& thd_energy_sum = term_energy_sum[threadno];
+        OC_REAL8m cell_volume;
+        if(thd_mesh.HasUniformCellVolumes(cell_volume)) {
+          Oxs_Energy::SUMTYPE chunk_energy = 0.0;
+          for(OC_INDEX j=jstart;j<jstop;++j) {
+            chunk_energy += thd_energy[j];
+          }
+          chunk_energy *= cell_volume;
+          thd_energy_sum += chunk_energy;
+        } else {
+          for(OC_INDEX j=jstart;j<jstop;++j) {
+            thd_energy_sum += thd_energy[j] * thd_mesh.Volume(j);
+          }
+        }
+      });
+  }
+  if(!have_energy_sum) {
+    for(int i=1;i<number_of_threads;++i) {
+      term_energy_sum[0] += term_energy_sum[i];
+    }
+    oced.energy_sum = term_energy_sum[0];
+  } else {
+    oced.energy_sum = oed.energy_sum;
+  }
+
 
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<ThreeVector>& H = *(oed.field.Get());
   if(oced.mxH_accum && oced.H_accum) {
-    for(i=0; i<size; ++i) {
-      (*oced.H_accum)[i] += H[i];
-      ThreeVector temp = spin[i];
-      temp ^= H[i];
-      (*oced.mxH_accum)[i] += temp;
-    }
+    Oxs_RunThreaded<ThreeVector,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (spin,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        const Oxs_MeshValue<ThreeVector>& thd_spin = spin;
+        const Oxs_MeshValue<ThreeVector>& thd_H = H;
+        Oxs_MeshValue<ThreeVector>& thd_H_accum   = *(oced.H_accum);
+        Oxs_MeshValue<ThreeVector>& thd_mxH_accum = *(oced.mxH_accum);
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          thd_mxH_accum[j] += thd_spin[j] ^ thd_H[j];
+          thd_H_accum[j]   += thd_H[j];
+        }
+      });
   } else if(oced.mxH_accum) {
-    for(i=0; i<size; ++i) {
-      ThreeVector temp = spin[i];
-      temp ^= H[i];
-      (*oced.mxH_accum)[i] += temp;
-    }
+    Oxs_RunThreaded<ThreeVector,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (spin,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        const Oxs_MeshValue<ThreeVector>& thd_spin = spin;
+        const Oxs_MeshValue<ThreeVector>& thd_H = H;
+        Oxs_MeshValue<ThreeVector>& thd_mxH_accum = *(oced.mxH_accum);
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          thd_mxH_accum[j] += thd_spin[j] ^ thd_H[j];
+        }
+      });
   } else if(oced.H_accum) {
     (*oced.H_accum) += H;
   }
 
   // Copy energy and field results, as needed
-  if(oced.energy && oced.energy != oed.energy.Get()) (*oced.energy) = (*oed.energy);
-  if(oced.H      && oced.H      != oed.field.Get())  (*oced.H)      = (*oed.field);
+  if(oced.energy && oced.energy != oed.energy.Get()) {
+    (*oced.energy) = (*oed.energy);
+  }
+  if(oced.H      && oced.H      != oed.field.Get())  {
+    (*oced.H) = (*oed.field);
+  }
 
   // mxH requested?
   if(oced.mxH) {
-    for(i=0; i<size; ++i) {
-      ThreeVector temp = spin[i];
-      temp ^= H[i];
-      (*oced.mxH)[i] = temp;
-    }
+    Oxs_RunThreaded<ThreeVector,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (spin,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        const Oxs_MeshValue<ThreeVector>& thd_spin = spin;
+        const Oxs_MeshValue<ThreeVector>& thd_H = H;
+        Oxs_MeshValue<ThreeVector>& thd_mxH = *(oced.mxH);
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          thd_mxH[j] = thd_spin[j] ^ thd_H[j];
+        }
+      });
   }
 
   // pE_pt
@@ -428,11 +513,10 @@ void Oxs_Energy::GetEnergyAlt
 // that the former uses the newer ComputeEnergy interface rather than
 // the deprecated GetEnergy interface.
 //
-// The "oced.scratch_*" members must be filled before entry.  They
-// point to scratch space that may or may not be used.  This space
-// will be resized as needed.  If desired, "scratch_energy" may point
-// to the same place as "energy", and likewise for "scratch_H" and
-// "H".
+// The "oced.scratch_*" members must be set before entry.  They point
+// to scratch space that may or may not be used.  This space will be
+// resized as needed.  If desired, "scratch_energy" may point to the
+// same place as "energy", and likewise for "scratch_H" and "H".
 //
 // The remaining Oxs_MeshValue pointers are output requests.  If one
 // of these pointers is NULL on entry, then that output is requested.

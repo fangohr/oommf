@@ -12,13 +12,14 @@
 #include "nb.h"
 #include "threevector.h"
 #include "output.h"
+#include "chunkenergy.h"
 #include "energy.h"
 
 OC_USE_STD_NAMESPACE;
 
 /* End includes */
 
-class Oxs_ScriptUZeeman:public Oxs_Energy {
+class Oxs_ScriptUZeeman:public Oxs_ChunkEnergy {
 private:
   vector<Nb_TclCommandLineOption> command_options;
   Nb_TclCommand cmd;
@@ -29,6 +30,12 @@ private:
   void GetAppliedField(const Oxs_SimState& state,
 		       ThreeVector& H,ThreeVector& dHdt) const;
 
+  // H_work and dHdt_work are set inside ComputeEnergyChunkInitialize
+  // for use in immediately succeeding ComputeEnergyChunk (for same
+  // state).
+  mutable ThreeVector H_work;
+  mutable ThreeVector dHdt_work;
+
   // Supplied outputs, in addition to those provided by Oxs_Energy.
   Oxs_ScalarOutput<Oxs_ScriptUZeeman> Bapp_output;
   Oxs_ScalarOutput<Oxs_ScriptUZeeman> Bappx_output;
@@ -38,7 +45,26 @@ private:
 
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
-			 Oxs_EnergyData& oed) const;
+			 Oxs_EnergyData& oed) const {
+    GetEnergyAlt(state,oed);
+  }
+
+  virtual void ComputeEnergy(const Oxs_SimState& state,
+                             Oxs_ComputeEnergyData& oced) const {
+    ComputeEnergyAlt(state,oced);
+  }
+
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
+  virtual void ComputeEnergyChunk(const Oxs_SimState& state,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+                                  OC_INDEX node_start,OC_INDEX node_stop,
+                                  int threadnumber) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is

@@ -270,7 +270,22 @@ public:
   int GetIteration();
   int GetStage();
   int GetNumberOfStages();
-  int SetStage(int requestedStage);
+  int SetStage(int requestedStage,
+               vector<OxsRunEvent>& events);
+
+  int IsRunDone();
+  // Reads current Oxs_SimState run_done status.  Returns 1 if run_done
+  // == DONE, 0 if == NOT_DONE, and -1 otherwise.  Note that this call
+  // does not explicitly check any stopping criteria, it only peeks at
+  // the current Oxs_SimState structure to see if a done state has been
+  // recorded.  In particular, when a problem is loaded from scratch the
+  // run done status is UNKNOWN until the first step is taken.  This
+  // allows a problem to be loaded quickly and the MIF file checked for
+  // structural errors, without requiring an potentially expensive demag
+  // computation.  The main use of this call is to check checkpoint file
+  // loads.  (Checkpoint files contain the Oxs_SimState::SimStateStatus
+  // values.)
+
   OC_UINT4m GetCurrentStateId();
 
   String GetMifHandle() const;
@@ -448,7 +463,8 @@ public:
   const Oxs_SimState* FindExistingSimulationState(OC_UINT4m id) const;
 
   // Hook for develop tests
-  int DoDevelopTest(const String& in, String& out);
+  int DoDevelopTest(const String& subroutine, String& result_str,
+                    int argc,CONST84 char** argv);
 };
 
 #endif // _OXS_DIRECTOR

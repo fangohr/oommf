@@ -3,16 +3,16 @@
 # The OOMMF eXtensible Solver Interative Interface
 
 # Support libraries
-package require Oc 1.1
-package require Oxs 1.2
-package require Net 1.2.0.3
+package require Oc 2
+package require Oxs 2
+package require Net 2
 
 Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -134,12 +134,20 @@ set loglevel 1
 
 # Multi-thread support
 if {[Oc_HaveThreads]} {
-   set threadcount_request [Oc_GetMaxThreadCount]
+   set thread_limit [Oc_GetThreadLimit]
+   if {[string match {} $thread_limit]} {
+      set maxnote {}
+   } else {
+      set maxnote "; max is $thread_limit"
+   }
+   set threadcount_request [Oc_EnforceThreadLimit [Oc_GetMaxThreadCount]]
    Oc_CommandLine Option threads {
       {count {expr {[regexp {^[0-9]+$} $count] && $count>0}}}
    } {
-      global threadcount_request;  set threadcount_request $count
-   } [subst {Number of concurrent threads (default is $threadcount_request)}]
+      global threadcount_request
+      set threadcount_request [Oc_EnforceThreadLimit $count]
+   } [subst {Number of concurrent threads\
+                (default is $threadcount_request$maxnote)}]
 } else {
    set threadcount_request 1  ;# Safety
 }
@@ -181,12 +189,18 @@ if {[catch {Oxs_SetRestartFileDir $restart_file_directory} msg]} {
 
 proc SetupThreads {} {
    if {[Oc_HaveThreads]} {
-      global threadcount_request
+      global threadcount_request threadcount_hardlimit
       if {$threadcount_request<1} {set threadcount_request 1}
+      set threadcount_request [Oc_EnforceThreadLimit $threadcount_request]
       Oc_SetMaxThreadCount $threadcount_request
       set aboutinfo "Number of threads: $threadcount_request"
+      set threadcount_hardlimit [Oc_GetThreadLimit]
+      if {![string match {} $threadcount_hardlimit]} {
+         append aboutinfo " (limit is $threadcount_hardlimit)"
+      }
    } else {
       set aboutinfo "Single threaded build"
+      set threadcount_hardlimit 1
    }
 
    if {[Oc_HaveThreads] && [Oc_NumaAvailable]} {
@@ -215,6 +229,10 @@ proc SetupThreads {} {
 # by future calls to SetupThreads
 if {[Oc_HaveThreads]} {
    set aboutinfo "Number of threads: $threadcount_request"
+   set threadcount_hardlimit [Oc_GetThreadLimit]
+   if {![string match {} $threadcount_hardlimit]} {
+      append aboutinfo " (limit is $threadcount_hardlimit)"
+   }
 } else {
    set aboutinfo "Single threaded build"
 }
@@ -293,9 +311,9 @@ InitializeCheckpointControl
 # GetGui message.
 ##########################################################################
 set gui {
-    package require Oc 1.1
+    package require Oc 2
     package require Tk
-    package require Ow 1.2.0.4
+    package require Ow 2
     wm withdraw .
 
    Oc_Log SetLogHandler [list Ow_BkgdLogger Log] panic Oc_Log
@@ -407,6 +425,7 @@ $omenu add checkbutton -label "Restart flag" -underline 0 \
 share checkpoint_control_list
 share checkpoint_timestamp
 share restart_flag
+share threadcount_hardlimit ;# Set from config file or environment variable
 share threadcount_request  ;# Set from command line or File|Load dialog
 share numanode_request     ;# Ditto
 share MIF_params
@@ -450,6 +469,24 @@ proc LoadOptionBoxOutputBrowse { win var } {
    }
 }
 
+# Test routine for thread request entry box.  Returns 0 for a good
+# entry, 1 if the entry is incomplete but otherwise valid, 2 for
+# invalid, and 3 for expr $value error.
+proc Oxs_IntLimit { value } {
+   global threadcount_hardlimit
+   set test [Ow_IsPosInteger $value]
+   if {$test>1} {
+      return $test ;# Not a possible positive integer
+   }
+   if {$test==0 \
+           && ![string match {} $threadcount_hardlimit] \
+           && $value>$threadcount_hardlimit} {
+      return 2  ;# Invalid
+   }
+   return $test
+}
+
+
 proc LoadOptionBoxSetup { widget frame } {
     global restart_flag loadopt_restart_flag
     global MIF_params loadopt_params_widget
@@ -473,7 +510,8 @@ proc LoadOptionBoxSetup { widget frame } {
        set loadopt_threadcount $threadcount_request
        Ow_EntryBox New loadopt_threads_widget $frame.top.threads \
           -label "Threads:" -autoundo 0  \
-          -valuewidth 4 -valuetype posint \
+          -valuewidth 4 \
+          -valuetype custom -valuecheck Oxs_IntLimit \
           -coloredits 0 -writethrough 1 \
           -outer_frame_options "-bd 0" \
           -variable loadopt_threadcount
@@ -571,7 +609,8 @@ proc LoadCallback { widget actionid args } {
        global loadopt_outdir loadopt_outdir_type output_directory
        set restart_flag $loadopt_restart_flag
        if {[info exists loadopt_threadcount]} {
-          set threadcount_request $loadopt_threadcount
+          set threadcount_request \
+             [Oc_EnforceThreadLimit [expr $loadopt_threadcount]]
        }
        if {[info exists loadopt_numanodes]} {
           set numanode_request $loadopt_numanodes
@@ -1054,8 +1093,6 @@ proc FlushLog {} {
 Oc_EventHandler New _ Oc_Main Shutdown ReleaseProblem -oneshot 1
 Oc_EventHandler New _ Oc_Main Shutdown FlushLog
 proc ReleaseProblem {} {
-    global status
-
     # We're about to release any loaded problem.  Spread the word.
     Oc_EventHandler Generate Oxs Release
     if {[catch {
@@ -1069,7 +1106,10 @@ proc ReleaseProblem {} {
 	Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
 	exit
     }
-    Oc_Log Log "End \"[file tail $problem]\"" infolog
+    global problem status
+    if {[info exists problem]} {
+       Oc_Log Log "End \"[file tail $problem]\"" infolog
+    }
     set status ""
 }
 
@@ -1195,6 +1235,9 @@ proc LoadProblem {fname} {
       }
       set autorun 0 ;# Autorun at most once
       after idle [list SetupInitialSchedule $script]
+      if {[Oxs_IsRunDone]==1} {
+         after idle [list Oc_EventHandler Generate Oxs Done]
+      }
    }
 }
 
@@ -1236,6 +1279,35 @@ proc Reset {} {
     }
 }
 
+proc GenerateRunEvents { events } {
+   # Fire event handlers
+   foreach ev $events {
+      # $ev is a 4 item list: <event_type state_id stage step>
+      set event [lindex $ev 0]
+      switch -exact -- $event {
+         STEP {
+            Oc_EventHandler Generate Oxs Step \
+               -stage [lindex $ev 2] \
+               -step [lindex $ev 3]
+         }
+         STAGE_DONE {
+            Oc_EventHandler Generate Oxs Stage
+         }
+         RUN_DONE {
+            Oc_EventHandler Generate Oxs Done
+         }
+         CHECKPOINT {
+            Oc_EventHandler Generate Oxs Checkpoint
+         }
+         default {
+            after idle [list Oc_Log Log \
+                           "Unrecognized event: $event" error Loop]
+            ReleaseProblem
+         }
+      }
+   }
+}
+
 # Keep taking steps as long as the status is unchanged,
 # remaining one of Run, Relax.
 Oc_Log AddSource Loop
@@ -1249,32 +1321,8 @@ proc Loop {type} {
 		[list Oc_Log Log $msg error Loop]}]
 	ReleaseProblem
     } else {
-       ;# Fire event handlers
-       foreach ev $msg {
-          # $ev is a 4 item list: <event_type state_id stage step>
-          set event [lindex $ev 0]
-          switch -exact -- $event {
-             STEP {
-                Oc_EventHandler Generate Oxs Step \
-                   -stage [lindex $ev 2] \
-                   -step [lindex $ev 3]
-             }
-             STAGE_DONE {
-                Oc_EventHandler Generate Oxs Stage
-             }
-             RUN_DONE {
-                Oc_EventHandler Generate Oxs Done
-             }
-             CHECKPOINT {
-                Oc_EventHandler Generate Oxs Checkpoint
-             }
-             default {
-                after idle [list Oc_Log Log \
-                        "Unrecognized event: $event" error Loop]
-                ReleaseProblem
-             }
-          }
-       }
+       # Fire event handlers
+       GenerateRunEvents $msg
     }
     after idle [info level 0]
 }
@@ -1287,34 +1335,28 @@ trace variable problem w {uplevel #0 set status Loading... ;#}
 Oc_EventHandler New _ Oxs Step [list set step %step]
 Oc_EventHandler New _ Oxs Step [list set stage %stage]
 Oc_EventHandler New _ Oxs Step {
-    if {$stagerequest != %stage} {
-		trace vdelete stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
-	set stagerequest %stage
-		trace variable stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
-    }
+   if {$stagerequest != %stage} {
+      trace vdelete stagerequest w {
+         if {[info exists stage] && $stage != $stagerequest} {
+            set results [Oxs_SetStage $stagerequest]
+            set stage [lindex $results 0]
+            GenerateRunEvents [lindex $results 1]
+      } ;#}
+      set stagerequest %stage
+      trace variable stagerequest w {
+         if {[info exists stage] && $stage != $stagerequest} {
+            set results [Oxs_SetStage $stagerequest]
+            set stage [lindex $results 0]
+            GenerateRunEvents [lindex $results 1]
+         } ;#}
+   }
 }
-		trace variable stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
+trace variable stagerequest w {
+    if {[info exists stage] && $stage != $stagerequest} {
+       set results [Oxs_SetStage $stagerequest]
+       set stage [lindex $results 0]
+       GenerateRunEvents [lindex $results 1]
+} ;#}
 
 # Terminate Loop when solver is Done. Put this on the after idle list so
 # that all other Done event handlers have an opportunity to fire first.

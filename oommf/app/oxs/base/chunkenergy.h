@@ -18,6 +18,8 @@
 #ifndef _OXS_CHUNKENERGY
 #define _OXS_CHUNKENERGY
 
+#include <assert.h>
+
 #include <vector>
 
 #include "energy.h"
@@ -26,6 +28,7 @@
 #include "key.h"
 #include "mesh.h"
 #include "meshvalue.h"
+#include "oc.h"
 #include "outputderiv.h"
 #include "util.h"
 
@@ -63,37 +66,49 @@ public:
   Oxs_MeshValue<ThreeVector>* H;
   Oxs_MeshValue<ThreeVector>* mxH;
 
+  mutable OC_REAL8m energy_density_error_estimate; // Estimate of absolute
+  /// error in the cellwise energy density, in J/m^3.  Optional;
+  /// use value -1 to request error estimate based on energy
+  /// value and Oxs_ComputeEnergies::edee_round_error.
+
   Oxs_ComputeEnergyDataThreaded(const Oxs_SimState& state)
     : state_id(state.Id()), scratch_energy(0), scratch_H(0),
       energy_accum(0), H_accum(0), mxH_accum(0),
-      energy(0), H(0), mxH(0) {}
+      energy(0), H(0), mxH(0), energy_density_error_estimate(-1.0) {}
 
   Oxs_ComputeEnergyDataThreaded()
     : state_id(0), scratch_energy(0), scratch_H(0),
       energy_accum(0), H_accum(0), mxH_accum(0),
-      energy(0), H(0), mxH(0) {}
+      energy(0), H(0), mxH(0), energy_density_error_estimate(-1.0) {}
 
   Oxs_ComputeEnergyDataThreaded(const Oxs_ComputeEnergyData& oced)
     : state_id(oced.state_id),
       scratch_energy(oced.scratch_energy), scratch_H(oced.scratch_H),
       energy_accum(oced.energy_accum), H_accum(oced.H_accum),
       mxH_accum(oced.mxH_accum),
-      energy(oced.energy), H(oced.H), mxH(oced.mxH) {}
+      energy(oced.energy), H(oced.H), mxH(oced.mxH),
+      energy_density_error_estimate(oced.energy_density_error_estimate) {}
 
   // Note implicit copy constructor and assignment operator.
 };
 
 struct Oxs_ComputeEnergyDataThreadedAux {
-  // Required outputs.  One per thread
-  OC_REAL8m energy_total_accum;
-  OC_REAL8m pE_pt_accum;
+public:
+  // Required outputs.  One per thread.  NB: If Oxs_Energy::SUMTYPE is
+  // of type Nb_Xpfloat, and Nb_Xpfloat uses SSE2 datatype, then
+  // alignment requires care on 32-bit platforms.  Make sure that the
+  // Oxs_ComputeEnergyDataThreadedAux struct is only packed into aligned
+  // containers (such as Oc_AlignedVector) and that this struct is not
+  // extended with any elements that would break SSE2 (16-byte)
+  // alignment.
+  Oxs_Energy::SUMTYPE energy_total_accum;
+  Oxs_Energy::SUMTYPE pE_pt_accum;
 
-  // Timing data; one per thread
-#if REPORT_TIME
-# if 0
-  Nb_StopWatch energytime;
-# endif
-#endif
+  static size_t Alignment() {
+    assert(sizeof(Oxs_ComputeEnergyDataThreadedAux)
+           % sizeof(Oxs_Energy::SUMTYPE) == 0);
+    return Oc_Alignment<Oxs_Energy::SUMTYPE>();
+  }
 
   Oxs_ComputeEnergyDataThreadedAux()
     : energy_total_accum(0.0), pE_pt_accum(0.0) {}
@@ -114,7 +129,7 @@ class Oxs_ComputeEnergiesChunkThread; // Thread helper class;
 class Oxs_ChunkEnergy:public Oxs_Energy {
   friend void Oxs_ComputeEnergies(const Oxs_SimState&,
                                   Oxs_ComputeEnergyData&,
-                                  const vector<Oxs_Energy*>&,
+                                  const std::vector<Oxs_Energy*>&,
                                   Oxs_ComputeEnergyExtraData& oceed);
   friend class Oxs_ComputeEnergiesChunkThread;
 private:
@@ -160,19 +175,19 @@ protected:
   // and *Finalize are NOPs.
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& /* state */,
-   const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
-   vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+   Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
    int /* number_of_threads */) const {}
 
   virtual void ComputeEnergyChunkFinalize
   (const Oxs_SimState& /* state */,
-   const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
-   const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+   Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
    int /* number_of_threads */) const {}
 
   virtual void
   ComputeEnergyChunk(const Oxs_SimState& state,
-                     const Oxs_ComputeEnergyDataThreaded& ocedt,
+                     Oxs_ComputeEnergyDataThreaded& ocedt,
                      Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                      OC_INDEX node_start,OC_INDEX node_stop,
                      int threadnumber) const = 0;
@@ -223,7 +238,7 @@ protected:
     chunktime.Start();
 #endif
     Oxs_ComputeEnergyDataThreaded ocedt(oced);
-    vector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux(1);
+    Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux> thread_ocedtaux(1);
 
     ComputeEnergyChunkInitialize(state,ocedt,thread_ocedtaux,1);
     ComputeEnergyChunk(state,ocedt,thread_ocedtaux[0],0,state.mesh->Size(),0);

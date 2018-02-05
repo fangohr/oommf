@@ -40,6 +40,9 @@ private:
   /// K1, Ha, and axis are cached values filled by corresponding
   /// *_init members when a change in mesh is detected.
 
+  mutable OC_REAL8m max_K1;  // Max K1 magnitude. Used for energy
+                             // density error estimate.
+
   // It is not uncommon for the anisotropy to be specified by uniform
   // fields.  In this case, memory traffic can be significantly
   // reduced, which may be helpful in parallelized code.  The
@@ -61,7 +64,7 @@ private:
   // RectIntegEnergy is a helper function for ComputeEnergyChunk;
   // it computes using "RECT_INTEG" method.
   void RectIntegEnergy(const Oxs_SimState& state,
-                       const Oxs_ComputeEnergyDataThreaded& ocedt,
+                       Oxs_ComputeEnergyDataThreaded& ocedt,
                        Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                        OC_INDEX node_start,OC_INDEX node_stop) const;
 
@@ -94,8 +97,14 @@ protected:
     ComputeEnergyAlt(state,oced);
   }
 
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;
@@ -113,6 +122,5 @@ public:
   // Optional interface for conjugate-gradient evolver.
   virtual int IncrementPreconditioner(PreconditionerData& pcd);
 };
-
 
 #endif // _OXS_UNIAXIALANISOTROPY

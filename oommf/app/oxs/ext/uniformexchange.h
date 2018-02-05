@@ -58,6 +58,9 @@ private:
   mutable OC_REAL8m yinteg[3];
   mutable OC_REAL8m zinteg[3];
 
+  mutable OC_REAL8m energy_density_error_estimate; // Cached value,
+                                 /// initialized when mesh changes.
+
   void InitCoef_12NgbrZD1(OC_INDEX size,
 			  OC_REAL8m wgt[3],
 			  Nb_2DArrayWrapper<OC_REAL8m>& coef) const;
@@ -77,7 +80,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -85,7 +88,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -93,7 +96,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -101,7 +104,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -109,7 +112,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -117,7 +120,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -125,7 +128,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -133,7 +136,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_RectangularMesh* rmesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -141,7 +144,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_RectangularMesh* rmesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -149,7 +152,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_RectangularMesh* rmesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -157,7 +160,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_CommonRectangularMesh* mesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -165,7 +168,7 @@ private:
   (const Oxs_MeshValue<ThreeVector>& spin,
    const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
    const Oxs_RectangularMesh* rmesh,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
    OC_INDEX node_start,OC_INDEX node_stop,
    int threadnumber) const;
@@ -204,18 +207,18 @@ protected:
 
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& state,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
-   vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunkFinalize
   (const Oxs_SimState& state,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
-   const vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

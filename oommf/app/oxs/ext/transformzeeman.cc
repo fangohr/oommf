@@ -26,9 +26,11 @@ Oxs_TransformZeeman::Oxs_TransformZeeman(
   const char* name,     // Child instance id
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
-  : Oxs_Energy(name,newdtr,argstr),
+  : Oxs_ChunkEnergy(name,newdtr,argstr),
     hmult(1.0), number_of_stages(0),
-    transform_type(identity), mesh_id(0)
+    transform_type(identity), mesh_id(0),max_fixedfield(-1),
+    tfrm_row1(0,0,0),tfrm_row2(0,0,0),tfrm_row3(0,0,0),
+    Dtfrm_row1(0,0,0),Dtfrm_row2(0,0,0),Dtfrm_row3(0,0,0)
 {
   // Process arguments
   hmult = GetRealInitValue("multiplier",1.0);
@@ -87,6 +89,13 @@ OC_BOOL Oxs_TransformZeeman::Init()
 {
   mesh_id = 0;
   fixedfield.Release();
+  max_fixedfield = -1;
+  tfrm_row1.Set(0,0,0);
+  tfrm_row2.Set(0,0,0);
+  tfrm_row3.Set(0,0,0);
+  Dtfrm_row1.Set(0,0,0);
+  Dtfrm_row2.Set(0,0,0);
+  Dtfrm_row3.Set(0,0,0);
   return Oxs_Energy::Init();
 }
 
@@ -101,7 +110,6 @@ Oxs_TransformZeeman::StageRequestCount
     min = max = number_of_stages;
   }
 }
-
 
 void
 Oxs_TransformZeeman::GetAppliedField
@@ -208,64 +216,112 @@ Oxs_TransformZeeman::GetAppliedField
   cmd.RestoreInterpResult();
 }
 
-
-void Oxs_TransformZeeman::GetEnergy
+void Oxs_TransformZeeman::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
- ) const
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int number_of_threads) const
 {
-  OC_INDEX size = state.mesh->Size();
-  if(size<1) return; // Nothing to do!
-
   if(mesh_id != state.mesh->Id()) {
     // This is either the first pass through, or else mesh
     // has changed.
     mesh_id = 0;
     fixedfield_init->FillMeshValue(state.mesh,fixedfield);
     if(hmult!=1.0) {
-      for(OC_INDEX i=0;i<size;i++) fixedfield[i] *= hmult;
+      fixedfield *= hmult; // On threaded builds the multiplication
+      /// will run in parallel
     }
+    // Find max fixedfield value
+    std::vector<OC_REAL8m> thread_maxvalsq(number_of_threads,0);
+    Oxs_RunThreaded<ThreeVector,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (fixedfield,
+       [&](OC_INT4m thread_id,OC_INDEX istart,OC_INDEX istop) {
+        OC_REAL8m thd_maxvalsq = thread_maxvalsq[thread_id]; // Thread local copy
+        for(OC_INDEX i=istart;i<istop;++i) {
+          OC_REAL8m magsq = fixedfield[i].MagSq();
+          if(magsq>thd_maxvalsq) thd_maxvalsq=magsq;
+        }
+        thread_maxvalsq[thread_id]    = thd_maxvalsq;
+      });
+    for(int i=1;i<number_of_threads;++i) {
+      if(thread_maxvalsq[0]<thread_maxvalsq[i]) {
+        thread_maxvalsq[0] = thread_maxvalsq[i];
+      }
+    }
+    max_fixedfield = Oc_Sqrt(thread_maxvalsq[0]);
     mesh_id = state.mesh->Id();
   }
+  OC_REAL8m Tmax=1;
+  if(transform_type != identity) {
+    GetAppliedField(state,tfrm_row1,tfrm_row2,tfrm_row3,
+                    Dtfrm_row1,Dtfrm_row2,Dtfrm_row3);
+    Tmax= tfrm_row1.MagSq();
+    OC_REAL8m tmp2 = tfrm_row2.MagSq();
+    if(tmp2>Tmax) Tmax=tmp2;
+    OC_REAL8m tmp3 = tfrm_row3.MagSq();
+    if(tmp3>Tmax) Tmax=tmp3;
+    Tmax = Oc_Sqrt(Tmax);
+  }
 
+  ocedt.energy_density_error_estimate
+    = 16*OC_REAL8m_EPSILON*MU0*state.max_absMs*max_fixedfield*Tmax;
+
+}
+
+void Oxs_TransformZeeman::ComputeEnergyChunk
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,OC_INDEX node_stop,
+ int /* threadnumber */) const
+{
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
   const Oxs_Mesh* mesh = state.mesh;
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+  Oxs_Energy::SUMTYPE thd_energy=0.0;
+  Oxs_Energy::SUMTYPE thd_pE_pt=0.0;
 
   if(transform_type == identity) {
-    OC_INDEX i=0;
-    do {
-      field[i] = fixedfield[i];
-      energy[i] = -MU0*Ms[i]*(fixedfield[i]*spin[i]);
-      ++i;
-    } while(i<size);
-    oed.pE_pt = 0.0;
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      const ThreeVector& H = fixedfield[i];
+      OC_REAL8m ei = (-MU0*Ms[i])*(H*spin[i]);
+      ThreeVector mxH = spin[i]^H;
+      if(ocedt.H)                       (*ocedt.H)[i]  = H;
+      if(ocedt.H_accum)           (*ocedt.H_accum)[i] += H;
+      if(ocedt.energy)             (*ocedt.energy)[i]  = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.mxH)                   (*ocedt.mxH)[i]  = mxH;
+      if(ocedt.mxH_accum)       (*ocedt.mxH_accum)[i] += mxH;
+      thd_energy += mesh->Volume(i)*ei;
+    }
   } else {
-    ThreeVector row1, row2, row3;
-    ThreeVector drow1, drow2, drow3;
-    GetAppliedField(state,row1,row2,row3,drow1,drow2,drow3);
-
-    OC_REAL8m pE_pt_sum=0;
-    OC_INDEX i=0;
-    do {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      OC_REAL8m vol = mesh->Volume(i);
       const ThreeVector& v = fixedfield[i];
-      field[i].Set(row1*v,row2*v,row3*v); // Apply transform
-
+      const ThreeVector H(tfrm_row1*v,
+                          tfrm_row2*v,
+                          tfrm_row3*v); // Apply transform
+      const ThreeVector dH(Dtfrm_row1*v,
+                           Dtfrm_row2*v,
+                           Dtfrm_row3*v); // dH/dt
       ThreeVector temp = (-MU0*Ms[i])*spin[i];
-      energy[i] = field[i]*temp;
+      ThreeVector mxH = spin[i]^H;
+      OC_REAL8m ei = H*temp;
 
-      ThreeVector dH(drow1*v,drow2*v,drow3*v); // dH/dt
-      pE_pt_sum += mesh->Volume(i)*(dH*temp);
+      if(ocedt.H)                       (*ocedt.H)[i]  = H;
+      if(ocedt.H_accum)           (*ocedt.H_accum)[i] += H;
+      if(ocedt.energy)             (*ocedt.energy)[i]  = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.mxH)                   (*ocedt.mxH)[i]  = mxH;
+      if(ocedt.mxH_accum)       (*ocedt.mxH_accum)[i] += mxH;
 
-      ++i;
-    } while(i<size);
-    oed.pE_pt = pE_pt_sum;
+      thd_energy += vol*ei;
+      thd_pE_pt += vol*(dH*temp);
+    }
   }
 
+  ocedtaux.energy_total_accum += thd_energy;
+  ocedtaux.pE_pt_accum += thd_pE_pt;
 }

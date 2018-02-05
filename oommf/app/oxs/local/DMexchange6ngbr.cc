@@ -78,7 +78,7 @@ Oxs_DMExchange6Ngbr::Oxs_DMExchange6Ngbr(
 		  (unsigned int)params.size());
       throw Oxs_Ext::Error(this,buf);
   }
-  for(i=0;i<params.size();i+=3) {
+  for(i=0;i<static_cast<OC_INDEX>(params.size());i+=3) {
     OC_INT4m i1 = atlas->GetRegionId(params[i]);
     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
     if(i1<0 || i2<0) {
@@ -187,7 +187,6 @@ void Oxs_DMExchange6Ngbr::GetEnergy
   OC_INDEX xdim = mesh->DimX();
   OC_INDEX ydim = mesh->DimY();
   OC_INDEX zdim = mesh->DimZ();
-  OC_INDEX xydim = xdim*ydim;
 
   OC_REAL8m wgtx = 1.0/(mesh->EdgeLengthX());
   OC_REAL8m wgty = 1.0/(mesh->EdgeLengthY());

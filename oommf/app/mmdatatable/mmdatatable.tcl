@@ -23,7 +23,7 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -690,7 +690,7 @@ proc AddTriples { triples } {
 }
 
 if {!$no_net} {
-    package require Net 1.2.0.3
+    package require Net 2
     Net_Protocol New protocol -name "OOMMF DataTable protocol 0.1"
     $protocol AddMessage start DataTable { triples } {
 	AddTriples $triples

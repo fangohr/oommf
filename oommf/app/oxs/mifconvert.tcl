@@ -7,7 +7,7 @@ if {[catch {set tcl_precision 0}]} {
    set tcl_precision 17
 }
 
-set progvers "MIF Conversion utility 1.2.1.0"
+set progvers "MIF Conversion utility 1.2.0.4"
 
 set infochan stdout
 set errchan stderr

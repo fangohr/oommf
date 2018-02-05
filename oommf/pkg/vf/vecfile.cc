@@ -1705,7 +1705,8 @@ OC_INT4m Vf_OvfFileOutput::WriteMesh(Vf_Mesh *mesh,
 
     if(!mesh->IsBoundaryFromData()) {
       Nb_FprintfChannel(channel, NULL, 1024, "# boundary:");
-      for(Nb_Vec3<OC_REAL8> *v=bdryline.GetFirst();v!=NULL;v=bdryline.GetNext()) {
+      for(Nb_Vec3<OC_REAL8> *v=bdryline.GetFirst();
+          v!=NULL;v=bdryline.GetNext()) {
         Nb_FprintfChannel(channel, NULL, 1024,
                           " %.17g %.17g %.17g",
                           static_cast<double>(v->x),
@@ -2002,15 +2003,20 @@ Vf_GridVec3f *Vf_VioFileInput::NewRectGrid()
   // Note: Vio files sample at cell centers
   Nb_BoundingBox<OC_REAL8> data_range,total_range;
   data_range.Set(Nb_Vec3<OC_REAL8>(OC_REAL8(0.),OC_REAL8(0.),OC_REAL8(0.)),
-          Nb_Vec3<OC_REAL8>(OC_REAL8(xsize-1.),OC_REAL8(ysize-1.),OC_REAL8(zsize-1.)));
-  total_range.Set(Nb_Vec3<OC_REAL8>(OC_REAL8(-0.5),OC_REAL8(-0.5),OC_REAL8(-0.5)),
-          Nb_Vec3<OC_REAL8>(OC_REAL8(xsize-0.5),OC_REAL8(ysize-0.5),OC_REAL8(zsize-0.5)));
+                 Nb_Vec3<OC_REAL8>(OC_REAL8(xsize-1.),
+                                   OC_REAL8(ysize-1.),OC_REAL8(zsize-1.)));
+  total_range.Set(Nb_Vec3<OC_REAL8>(OC_REAL8(-0.5),
+                                    OC_REAL8(-0.5),OC_REAL8(-0.5)),
+                  Nb_Vec3<OC_REAL8>(OC_REAL8(xsize-0.5),
+                                    OC_REAL8(ysize-0.5),OC_REAL8(zsize-0.5)));
 
   // Initialize mesh
   Vf_GridVec3f *mesh=new Vf_GridVec3f(filename,filename,"vio file",
                               NULL,NULL,1.0,xsize,ysize,zsize,
-                              Nb_Vec3<OC_REAL8>(OC_REAL8(0.),OC_REAL8(0.),OC_REAL8(0.)),
-                              Nb_Vec3<OC_REAL8>(OC_REAL8(1.),OC_REAL8(1.),OC_REAL8(1.)),
+                              Nb_Vec3<OC_REAL8>(OC_REAL8(0.),
+                                                OC_REAL8(0.),OC_REAL8(0.)),
+                              Nb_Vec3<OC_REAL8>(OC_REAL8(1.),
+                                                OC_REAL8(1.),OC_REAL8(1.)),
                               data_range,total_range,NULL);
 
   // Fill grid

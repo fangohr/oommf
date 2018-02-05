@@ -35,6 +35,7 @@ Oxs_CubicAnisotropy::Oxs_CubicAnisotropy(
   const char* argstr)   // MIF input block parameters
   : Oxs_ChunkEnergy(name,newdtr,argstr),
     aniscoeftype(ANIS_UNKNOWN), mesh_id(0),
+    max_K1(-1.0),
     K1_is_uniform(0), Ha_is_uniform(0),
     axis1_is_uniform(0), axis2_is_uniform(0),
     uniform_K1_value(0.), uniform_Ha_value(0.)
@@ -106,200 +107,123 @@ OC_BOOL Oxs_CubicAnisotropy::Init()
   Ha.Release();
   axis1.Release();
   axis2.Release();
+  max_K1 = -1.0;
   return Oxs_ChunkEnergy::Init();
+}
+
+void Oxs_CubicAnisotropy::ComputeEnergyChunkInitialize
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int /* number_of_threads */) const
+{
+  const Oxs_Mesh* mesh = state.mesh;
+  if(mesh_id !=  mesh->Id()) {
+    // This is either the first pass through, or else mesh has changed.
+    // Initialize/update data fields.  NB: At a lower level, this may
+    // potentially involve calls back into the Tcl interpreter.  Per Tcl
+    // spec, only the thread originating the interpreter is allowed to
+    // make calls into it.  The ComputeEnergyChunkInitialize member is
+    // guaranteed to be called in the main thread.
+    if(aniscoeftype == K1_TYPE) {
+      if(K1_is_uniform) {
+        max_K1 = Oc_Fabs(uniform_K1_value);
+      } else {
+        K1_init->FillMeshValue(state.mesh,K1);
+        max_K1=0.0;
+        const OC_INDEX size = state.mesh->Size();
+        for(OC_INDEX i=0;i<size;i++) {
+          OC_REAL8m test = Oc_Fabs(K1[i]);
+          if(test>max_K1) max_K1 = test;
+        }
+      }
+    } else if(aniscoeftype == Ha_TYPE) {
+      if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
+      max_K1=0.0;
+      const OC_INDEX size = state.mesh->Size();
+      const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+      for(OC_INDEX i=0;i<size;i++) {
+        // Note: This code assumes that Ms doesn't change
+        // for the lifetime of state.mesh.
+        OC_REAL8m test = Oc_Fabs(0.5*MU0*Ha[i]*Ms[i]);
+        if(test>max_K1) max_K1 = test;
+      }
+    }
+    if(!axis1_is_uniform || !axis2_is_uniform) {
+      axis1_init->FillMeshValue(mesh,axis1);
+      axis2_init->FillMeshValueOrthogonal(mesh,axis1,axis2);
+      const OC_INDEX size = mesh->Size();
+      for(OC_INDEX i=0;i<size;i++) {
+        // Much of the code below requires axis1 and axis2 to be
+        // orthogonal unit vectors.  Guarantee this is the case:
+        const OC_REAL8m eps = 1e-14;
+        if(fabs(axis1[i].MagSq()-1)>eps) {
+          String msg =
+            String("Invalid initialization detected for object ")
+            + String(InstanceName())
+            + String(": Anisotropy axis 1 isn't norm 1");
+          throw Oxs_ExtError(msg.c_str());
+        }
+        if(fabs(axis2[i].MagSq()-1)>eps) {
+          String msg = 
+            String("Invalid initialization detected for object ")
+            + String(InstanceName())
+            + String(": Anisotropy axis 2 isn't norm 1");
+          throw Oxs_ExtError(msg.c_str());
+        }
+        if(fabs(axis1[i]*axis2[i])>eps) {
+          String msg =
+            String("Invalid initialization detected for object ")
+            + String(InstanceName())
+            + String(": Specified anisotropy axes aren't perpendicular");
+          throw Oxs_ExtError(msg.c_str());
+        }
+      }
+    } else {
+      // axis1 and axis2 are uniform.  Check norm and orthogonality
+      const OC_REAL8m eps = 1e-14;
+      if(fabs(uniform_axis1_value.MagSq()-1)>eps) { // Safety
+        String msg =
+          String("Invalid initialization detected for object ")
+          + String(InstanceName())
+          + String(": Anisotropy axis 1 isn't norm 1");
+        throw Oxs_ExtError(msg.c_str());
+      }
+      if(fabs(uniform_axis2_value.MagSq()-1)>eps) { // Safety
+        String msg = 
+          String("Invalid initialization detected for object ")
+          + String(InstanceName())
+          + String(": Anisotropy axis 2 isn't norm 1");
+        throw Oxs_ExtError(msg.c_str());
+      }
+      if(fabs(uniform_axis1_value*uniform_axis2_value)>eps) {
+        String msg =
+          String("Invalid initialization detected for object ")
+          + String(InstanceName())
+          + String(": Specified anisotropy axes aren't perpendicular");
+        throw Oxs_ExtError(msg.c_str());
+      }
+    }
+    mesh_id = mesh->Id();
+  }
+  ocedt.energy_density_error_estimate = 4*OC_REAL8m_EPSILON*max_K1;
 }
 
 void Oxs_CubicAnisotropy::ComputeEnergyChunk
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
- int threadnumber
+ int /* threadnumber */
  ) const
 {
+  assert(node_start<=node_stop && node_stop<=state.mesh->Size());
+
   const Oxs_Mesh* mesh = state.mesh;
   const Oxs_MeshValue<OC_REAL8m>& Ms         = *(state.Ms);
   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
-
-  const OC_INDEX size = mesh->Size();
-  if(mesh_id !=  mesh->Id()) {
-    // This is either the first pass through, or else mesh
-    // has changed.  Initialize/update data fields.
-    // NB: At a lower level, this may potentially involve calls back
-    // into the Tcl interpreter.  Per Tcl spec, only the thread
-    // originating the interpreter is allowed to make calls into it, so
-    // only threadnumber == 0 can do this processing.  Any other thread
-    // must block until that processing is complete.
-    thread_control.Lock();
-    if(Oxs_ThreadError::IsError()) {
-      if(thread_control.count>0) {
-        // Release a blocked thread
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
-      return; // What else?
-    }
-    if(threadnumber != 0) {
-      if(mesh_id != mesh->Id()) {
-        // If above condition is false, then the main thread came
-        // though and initialized everything between the time of
-        // the previous check and this thread's acquiring of the
-        // thread_control mutex; in which case, "never mind".
-        // Otherwise:
-        ++thread_control.count; // Multiple threads may progress to this
-        /// point before the main thread (threadnumber == 0) grabs the
-        /// thread_control mutex.  Keep track of how many, so that
-        /// afterward they may be released, one by one.  (The main
-        /// thread will Notify control_wait.cond once; after that
-        /// as each waiting thread is released, the newly released
-        /// thread sends a Notify to wake up the next one.
-        thread_control.Wait(0);
-        --thread_control.count;
-        int condcheckerror=0;
-        if(mesh_id !=  mesh->Id()) {
-          // Error?
-          condcheckerror=1;
-          Oxs_ThreadPrintf(stderr,"Invalid condition in"
-                           " Oxs_CubicAnisotropy::ComputeEnergyChunk(),"
-                           " thread number %d\n",threadnumber);
-        }
-        if(thread_control.count>0) {
-          // Free a waiting thread.
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        if(condcheckerror || Oxs_ThreadError::IsError()) {
-          return; // What else?
-        }
-      } else {
-        if(thread_control.count>0) {
-          // Free a waiting thread.  (Actually, it can occur that the
-          // thread_control will be grabbed by another thread that is
-          // blocked at the first thread_control mutex Lock() call above
-          // rather than on the ConditionWait, in which case this
-          // ConditionNotify will be effectively lost.  But that is
-          // okay, because then *that* thread will Notify when it
-          // releases the mutex.)
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-      }
-    } else {
-      // Main thread (threadnumber == 0)
-      try {
-        if(aniscoeftype == K1_TYPE) {
-          if(!K1_is_uniform) K1_init->FillMeshValue(state.mesh,K1);
-        } else if(aniscoeftype == Ha_TYPE) {
-          if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
-        }
-        if(!axis1_is_uniform || !axis2_is_uniform) {
-          axis1_init->FillMeshValue(mesh,axis1);
-          axis2_init->FillMeshValueOrthogonal(mesh,axis1,axis2);
-          for(OC_INDEX i=0;i<size;i++) {
-            // Much of the code below requires axis1 and axis2 to be
-            // orthogonal unit vectors.  Guarantee this is the case:
-            const OC_REAL8m eps = 1e-14;
-            if(fabs(axis1[i].MagSq()-1)>eps) {
-              String msg =
-                String("Invalid initialization detected for object ")
-                + String(InstanceName())
-                + String(": Anisotropy axis 1 isn't norm 1");
-              throw Oxs_ExtError(msg.c_str());
-            }
-            if(fabs(axis2[i].MagSq()-1)>eps) {
-              String msg = 
-                String("Invalid initialization detected for object ")
-                + String(InstanceName())
-                + String(": Anisotropy axis 2 isn't norm 1");
-              throw Oxs_ExtError(msg.c_str());
-            }
-            if(fabs(axis1[i]*axis2[i])>eps) {
-              String msg =
-                String("Invalid initialization detected for object ")
-                + String(InstanceName())
-                + String(": Specified anisotropy axes aren't perpendicular");
-              throw Oxs_ExtError(msg.c_str());
-            }
-          }
-        } else {
-          // axis1 and axis2 are uniform.  Check norm and orthogonality
-          const OC_REAL8m eps = 1e-14;
-          if(fabs(uniform_axis1_value.MagSq()-1)>eps) { // Safety
-            String msg =
-              String("Invalid initialization detected for object ")
-              + String(InstanceName())
-              + String(": Anisotropy axis 1 isn't norm 1");
-            throw Oxs_ExtError(msg.c_str());
-          }
-          if(fabs(uniform_axis2_value.MagSq()-1)>eps) { // Safety
-            String msg = 
-              String("Invalid initialization detected for object ")
-              + String(InstanceName())
-              + String(": Anisotropy axis 2 isn't norm 1");
-            throw Oxs_ExtError(msg.c_str());
-          }
-          if(fabs(uniform_axis1_value*uniform_axis2_value)>eps) {
-            String msg =
-              String("Invalid initialization detected for object ")
-              + String(InstanceName())
-              + String(": Specified anisotropy axes aren't perpendicular");
-            throw Oxs_ExtError(msg.c_str());
-          }
-        }
-        mesh_id = mesh->Id();
-      } catch(Oxs_ExtError& err) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(err));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(String& serr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(serr);
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(const char* cerr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(cerr));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(...) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String("Error in "
-            "Oxs_CubicAnisotropy::ComputeEnergyChunk"));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      }
-      if(thread_control.count>0) {
-        // Free a waiting thread.  (Actually, it can occur that the
-        // thread_control will be grabbed by another thread that is
-        // blocked at the first thread_control mutex Lock() call above
-        // rather than on the ConditionWait, in which case this
-        // ConditionNotify will be effectively lost.  But that is
-        // okay, because then *that* thread will Notify when it
-        // releases the mutex.)
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
-    }
-  }
 
   Nb_Xpfloat energy_sum = 0.0;
 
@@ -307,7 +231,6 @@ void Oxs_CubicAnisotropy::ComputeEnergyChunk
   OC_REAL8m field_mult = -1*uniform_Ha_value;
   ThreeVector unifaxis1 = uniform_axis1_value;
   ThreeVector unifaxis2 = uniform_axis2_value;
-
 
   for(OC_INDEX i=node_start;i<node_stop;++i) {
     // This code requires u1 and u2 to be orthonormal, and m to be a
@@ -417,7 +340,7 @@ void Oxs_CubicAnisotropy::ComputeEnergyChunk
 #endif
   }
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue();
+  ocedtaux.energy_total_accum += energy_sum;
   // ocedtaux.pE_pt_accum += 0.0;
 }
 

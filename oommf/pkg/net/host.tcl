@@ -244,7 +244,7 @@ Oc_Class Net_Host {
            }
            Oc_Log Log "Starting OOMMF host server on localhost" status $class
            # Ought to redirect std channels somewhere
-           Oc_Application Exec {omfsh 1.1} \
+           Oc_Application Exec {omfsh 2} \
                $hostthread -tk 0 $port $listenport \
                > [[Oc_Config RunPlatform] GetValue path_device_null] \
               2> [[Oc_Config RunPlatform] GetValue path_device_null] &

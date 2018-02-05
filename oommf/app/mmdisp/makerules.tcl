@@ -53,13 +53,13 @@ MakeRule Define {
                         puts $f [format {
 Oc_Application Define {
     -name               mmDispSh
-    -version            1.2.1.0
+    -version            2.0a0
     -machine            %s
     -file               "%s"
 }
 Oc_Application Define {
     -name               conDispSh
-    -version            1.2.1.0
+    -version            2.0a0
     -machine            %s
     -file               "%s"
 }
@@ -79,7 +79,7 @@ MakeRule Define {
 			        [file join .. .. pkg net tclIndex] \
 			        tclIndex]]
     -script		[format {
-			    Platform Link -obj {%s} -lib {vf nb oc tk} \
+			    Platform Link -obj {%s} -lib {vf nb oc tk tcl} \
 			            -sub WINDOWS -out mmdispsh
 			} $allObjects]
 }
@@ -94,7 +94,7 @@ MakeRule Define {
 			        [file join .. .. pkg vf tclIndex] \
 			        tclIndex]]
     -script		[format {
-			    Platform Link -obj {%s} -lib {vf nb oc tk} \
+			    Platform Link -obj {%s} -lib {vf nb oc tk tcl} \
 			            -sub CONSOLE -out condispsh
 			} $allObjects]
 }

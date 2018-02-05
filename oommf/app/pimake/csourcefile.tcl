@@ -219,25 +219,36 @@ $searchpath"
             } elseif {[regexp "^\[ \t\]*#\[ \t\]*include\[ \t\]+<(\[^>\]+)>" \
                     $line match newfile] && ([string match tcl.h $newfile] \
                     || [string match tk.h $newfile])} {
+                if {[catch {$configuration GetValue use_tk} use_tk]} {
+                   set use_tk 1   ;# Default is to build with Tk
+                }
 		if {[string match tcl.h $newfile]} {
 		    global env
 		    set includeDir $env(OOMMF_TCL_INCLUDE_DIR)
-		} elseif {[string match tk.h $newfile]} {
+		} elseif {$use_tk && [string match tk.h $newfile]} {
 		    global env
 		    set includeDir $env(OOMMF_TK_INCLUDE_DIR)
 		}
-                set newpath [file join $includeDir $newfile]
-                if {[lsearch -exact $dependencies $newpath] == -1} {
-                    lappend dependencies $newpath
+                if {$use_tk || ![string match tk.h $newfile]} {
+                   # Don't include tk.h in dependencies if use_tk is false
+                   set newpath [file join $includeDir $newfile]
+                   if {[lsearch -exact $dependencies $newpath] == -1} {
+                      lappend dependencies $newpath
+                   }
+                   if {[lsearch -exact $deppath $includeDir] == -1 && \
+                          [lsearch -exact $sysdeppath $includeDir] == -1} {
+                      # Be aggressive about putting Tcl and Tk directories
+                      # at front of include list
+                      set deppath [linsert $deppath 0 $includeDir]
+                   }
                 }
-		if {[lsearch -exact $deppath $includeDir] == -1 && \
-			[lsearch -exact $sysdeppath $includeDir] == -1} {
-		   # Be aggressive about putting Tcl and Tk directories
-		   # at front of include list
-		   set deppath [linsert $deppath 0 $includeDir]
-		}
-                if {[string match tk.h $newfile]} {
+                if {$use_tk && [string match tk.h $newfile]} {
                     set xinc [$configuration GetValue TK_XINCLUDES]
+                    if {[string match {#*} $xinc]} {
+                       # File tkConfig.sh in versions of Tk prior to 8.4 have
+                       #    TK_XINCLUDES='# no special path needed'
+                       set xinc {}
+                    }
 		    foreach npp $xinc {
 			regsub -- {^-I} $npp {} npp
 			set npp [string trim $npp \"]

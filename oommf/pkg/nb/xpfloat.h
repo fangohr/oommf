@@ -72,8 +72,9 @@
  *  implement a nonstandard allocator for std::vector (and etc.)
  *
  */
-#if !OC_REAL8m_IS_DOUBLE
+#if OC_REAL8m_IS_LONG_DOUBLE
 typedef long double NB_XPFLOAT_TYPE; // No choice
+# define NB_XPFLOAT_IS_OC_REAL8m 1
 # define NB_XPFLOAT_USE_SSE 0
 # if OC_FP_LONG_DOUBLE_EXTRA_PRECISION
 #  define NB_XPFLOAT_NEEDS_VOLATILE 1
@@ -83,21 +84,25 @@ typedef long double NB_XPFLOAT_TYPE; // No choice
 
 #elif OC_USE_SSE
 typedef OC_REAL8 NB_XPFLOAT_TYPE;
+# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_REAL8
 # define NB_XPFLOAT_USE_SSE 1
 # define NB_XPFLOAT_NEEDS_VOLATILE 0
 
 #elif !OC_FP_DOUBLE_EXTRA_PRECISION
 typedef double NB_XPFLOAT_TYPE;
+# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_DOUBLE
 # define NB_XPFLOAT_USE_SSE 0
 # define NB_XPFLOAT_NEEDS_VOLATILE 0
 
 #elif !OC_FP_LONG_DOUBLE_EXTRA_PRECISION
 typedef long double NB_XPFLOAT_TYPE;
+# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_LONG_DOUBLE
 # define NB_XPFLOAT_USE_SSE 0
 # define NB_XPFLOAT_NEEDS_VOLATILE 0
 
 #else
 typedef double NB_XPFLOAT_TYPE;
+# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_DOUBLE
 # define NB_XPFLOAT_USE_SSE 0
 # define NB_XPFLOAT_NEEDS_VOLATILE 1
 
@@ -133,22 +138,32 @@ class Nb_Xpfloat
 private:
 #if !NB_XPFLOAT_USE_SSE
   NB_XPFLOAT_TYPE x,corr;
+#else // NB_XPFLOAT_USE_SSE
+  __m128d xpdata;
+#endif // NB_XPFLOAT_USE_SSE
+
+public:
+
+#if !NB_XPFLOAT_USE_SSE
   void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
     big = x; small = corr;
   }
 #else // NB_XPFLOAT_USE_SSE
-  __m128d xpdata;
   void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
     big = Oc_SseGetLower(xpdata);
     small = Oc_SseGetUpper(xpdata);
   }
 #endif // NB_XPFLOAT_USE_SSE
 
-public:
-
   static int Test(); // Test that code works as designed. In particular,
   /// see if compiler has broken compensated summation code in Accum().
   /// Returns 0 on success, 1 on error.
+
+#if NB_XPFLOAT_USE_SSE
+  static size_t Alignment() { return 16; }
+#else
+  static size_t Alignment() { return 8; }
+#endif
 
 #if !NB_XPFLOAT_USE_SSE
   Nb_Xpfloat() : x(0), corr(0) {}
@@ -163,80 +178,28 @@ public:
 
   NB_XPFLOAT_TYPE GetValue() const { return x; }
 
-  // Defining Accum(NB_XPFLOAT_TYPE) here, as opposed to in the
-  // xpfloat.cc file, allows significant speedups with the g++ compiler.
-  // It makes small difference with the Intel C++ compiler (icpc),
-  // presumably because of icpc's interprocedural optimization ability?
-  // NB: Compiler-specific #if's restrict optimizer to respect
-  // non-associativity of floating point addition.
-#if defined(__GNUC__) \
-  && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)) \
-  && !defined(__INTEL_COMPILER)
-  void Accum(NB_XPFLOAT_TYPE y) __attribute__((optimize(2,"no-fast-math"))) {
-#else
-  void Accum(NB_XPFLOAT_TYPE y) {
-#endif
-#if defined(__INTEL_COMPILER)
-# pragma float_control(precise,on)
-#endif
-
-    // Calculate sum, using compensated (Kahan) summation.
-    //
-    // We try to select NB_XPFLOAT_TYPE so that there is no hidden
-    // precision in intermediate computations.  If this can't be
-    // assured, the fallback is to accumulate all operations into
-    // variables marked "volatile" to insure that no hidden precision is
-    // carried between operations.  This is slow (one test with g++ on
-    // an AMD Athlon 64 x2 showed a factor of 8), and moreover for all
-    // the machines+compilers I know about the "long double" type
-    // carries full precision.
-    //
-    // A second problem is compilers that ignore associativity
-    // restrictions.  At the time of this writing (2012), GCC respects
-    // associativity unless the -ffast-math optimization flag is given
-    // at compile time.  We protect against this by using the
-    // "-no-fast-math" function attribute in the case GCC is detected.
-    // Also at this time, the Intel compile *by default* compiles with
-    // what it calls the "fast=1" floating point model, which ignores
-    // associativity.  This can be changed by adding the switch
-    // "-fp-model precise" to the compile line, or else by adding
-    // "#pragma float_control(precise,on)" inside this function.  The
-    // pragma option operates on a function by function basis, so it is
-    // less global.
-
-# if NB_XPFLOAT_NEEDS_VOLATILE 
-    volatile NB_XPFLOAT_TYPE sum1; // Mark as volatile to protect against
-    volatile NB_XPFLOAT_TYPE sum2; // problems arising from extra precision.
-    volatile NB_XPFLOAT_TYPE corrtemp;
-# else
-    NB_XPFLOAT_TYPE sum1;
-    NB_XPFLOAT_TYPE sum2;
-    NB_XPFLOAT_TYPE corrtemp;
-# endif
-
-    // Calculate sum
-    sum1=y+corr;
-    sum2=x+sum1;
-
-    // Determine new correction term.  Do in two steps, as opposed to
-    // "corrtemp = (x-sum2) + sum1", because a) some compilers ignore
-    // parentheses (with regards to ordering) at high optimization levels,
-    // and b) we want to be sure to drop any extra precision.
-    corrtemp = x - sum2;
-    corrtemp += sum1;
-    
-    // Store results
-    corr = corrtemp;
-    x=sum2;
-  }
-
   Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y) { x*=y; corr*=y; return *this; }
 
 #else // NB_XPFLOAT_USE_SSE ////////////////////////////////////////////////
 
+# ifndef NDEBUG
+  Nb_Xpfloat() {
+    assert(sizeof(Nb_Xpfloat)==16 && reinterpret_cast<OC_UINDEX>(&xpdata)%16==0);
+    xpdata = _mm_setzero_pd();
+  }
+  Nb_Xpfloat(NB_XPFLOAT_TYPE newx) {
+    assert(sizeof(Nb_Xpfloat)==16 && reinterpret_cast<OC_UINDEX>(&xpdata)%16==0);
+    xpdata = _mm_set_sd(newx);
+  }
+  Nb_Xpfloat(const Nb_Xpfloat& y) {
+    assert(sizeof(Nb_Xpfloat)==16 && reinterpret_cast<OC_UINDEX>(&xpdata)%16==0);
+    xpdata = y.xpdata;
+  }
+# else
   Nb_Xpfloat() : xpdata(_mm_setzero_pd()) {}
   Nb_Xpfloat(NB_XPFLOAT_TYPE newx) : xpdata(_mm_set_sd(newx)) {}
   Nb_Xpfloat(const Nb_Xpfloat& y) : xpdata(y.xpdata) {}
+# endif
 
   void Set(NB_XPFLOAT_TYPE newx) { xpdata=_mm_set_sd(newx); }
   Nb_Xpfloat& operator=(NB_XPFLOAT_TYPE y) { Set(y); return *this; }
@@ -246,20 +209,6 @@ public:
 
   NB_XPFLOAT_TYPE GetValue() const { return Oc_SseGetLower(xpdata); }
 
-  // Defining Accum(NB_XPFLOAT_TYPE) here, as opposed to in the
-  // xpfloat.cc file, allows significant speedups with the g++ compiler.
-  // It makes small difference with the Intel C++ compiler (icpc),
-  // presumably because of icpc's interprocedural optimization ability?
-  void Accum(NB_XPFLOAT_TYPE y) {
-    // SSE double precision doesn't carry any extra precision, so we
-    // don't need to use "volatile"
-    __m128d corr = _mm_unpackhi_pd(xpdata,_mm_setzero_pd());
-    __m128d sum1 = _mm_add_sd(_mm_set_sd(y),corr);
-    __m128d sum2 = _mm_add_sd(sum1,xpdata);
-    __m128d corrtemp = _mm_add_sd(sum1,_mm_sub_sd(xpdata,sum2));
-    xpdata = _mm_unpacklo_pd(sum2,corrtemp);
-  }
-
   Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y) {
     xpdata = _mm_mul_pd(xpdata,_mm_set1_pd(y));
     return *this;
@@ -267,6 +216,13 @@ public:
 
 #endif // NB_XPFLOAT_USE_SSE
 
+#if !NB_XPFLOAT_USE_SSE && defined(__GNUC__) \
+  && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)) \
+  && !defined(__INTEL_COMPILER)
+  void Accum(NB_XPFLOAT_TYPE y) __attribute__((optimize(2,"no-fast-math")));
+#else
+  void Accum(NB_XPFLOAT_TYPE y);
+#endif
 
   Nb_Xpfloat& operator+=(NB_XPFLOAT_TYPE y) { Accum(y); return *this; }
   Nb_Xpfloat& operator-=(NB_XPFLOAT_TYPE y) { Accum(-y); return *this; }
@@ -276,7 +232,27 @@ public:
   Nb_Xpfloat& operator-=(const Nb_Xpfloat& y);
   Nb_Xpfloat& operator*=(const Nb_Xpfloat& y);
 
+  operator NB_XPFLOAT_TYPE() const { return GetValue(); }
+
   friend Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y);
+
+#if !NB_XPFLOAT_IS_OC_REAL8m
+  // If NB_XPFLOAT_TYPE is different than OC_REAL8m, then overloaded functions
+  // taking either NB_XPFLOAT_TYPE or Nb_Xpfloat won't know which way to cast
+  // an OC_REAL8m.  Provide overloads taking OC_REAL8m explicitly.
+  Nb_Xpfloat(OC_REAL8m newx) : x(newx), corr(0) {}
+  void Set(OC_REAL8m newx) { Set(static_cast<NB_XPFLOAT_TYPE>(newx)); }
+  void Accum(OC_REAL8m y) { Accum(static_cast<NB_XPFLOAT_TYPE>(y)); }
+  Nb_Xpfloat& operator+=(OC_REAL8m y) {
+    return operator+=(static_cast<NB_XPFLOAT_TYPE>(y));
+  }
+  Nb_Xpfloat& operator-=(OC_REAL8m y) {
+    return operator-=(static_cast<NB_XPFLOAT_TYPE>(y));
+  }
+  Nb_Xpfloat& operator*=(OC_REAL8m y) {
+    return operator*=(static_cast<NB_XPFLOAT_TYPE>(y));
+  }
+#endif // !NB_XPFLOAT_IS_OC_REAL8m
 };
 
 Nb_Xpfloat operator+(const Nb_Xpfloat& x,const Nb_Xpfloat& y);
@@ -285,6 +261,89 @@ Nb_Xpfloat operator*(const Nb_Xpfloat& x,NB_XPFLOAT_TYPE y);
 inline
 Nb_Xpfloat operator*(NB_XPFLOAT_TYPE y,const Nb_Xpfloat& x) { return x*y; }
 Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y);
+
+// Defining Accum(NB_XPFLOAT_TYPE) here, as opposed to in the
+// xpfloat.cc file, allows significant speedups with the g++ compiler.
+// It makes small difference with the Intel C++ compiler (icpc),
+// presumably because of icpc's interprocedural optimization ability?
+// NB: Compiler-specific #if's restrict optimizer to respect
+// non-associativity of floating point addition.
+#if !NB_XPFLOAT_USE_SSE
+# if defined(_MSC_VER)
+// Use Visual C++ pragma to require precise (non-associative) math
+#  pragma float_control(precise,on,push)
+# endif
+inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
+{
+# if defined(__INTEL_COMPILER)
+#  pragma float_control(precise,on)
+# endif
+  // Calculate sum, using compensated (Kahan) summation.
+  //
+  // We try to select NB_XPFLOAT_TYPE so that there is no hidden
+  // precision in intermediate computations.  If this can't be
+  // assured, the fallback is to accumulate all operations into
+  // variables marked "volatile" to insure that no hidden precision is
+  // carried between operations.  This is slow (one test with g++ on
+  // an AMD Athlon 64 x2 showed a factor of 8), and moreover for all
+  // the machines+compilers I know about the "long double" type
+  // carries full precision.
+  //
+  // A second problem is compilers that ignore associativity
+  // restrictions.  At the time of this writing (2012), GCC respects
+  // associativity unless the -ffast-math optimization flag is given
+  // at compile time.  We protect against this by using the
+  // "-no-fast-math" function attribute in the case GCC is detected.
+  // Also at this time, the Intel compile *by default* compiles with
+  // what it calls the "fast=1" floating point model, which ignores
+  // associativity.  This can be changed by adding the switch
+  // "-fp-model precise" to the compile line, or else by adding
+  // "#pragma float_control(precise,on)" inside this function.  The
+  // pragma option operates on a function by function basis, so it is
+  // less global.
+# if NB_XPFLOAT_NEEDS_VOLATILE 
+  volatile NB_XPFLOAT_TYPE sum1; // Mark as volatile to protect against
+  volatile NB_XPFLOAT_TYPE sum2; // problems arising from extra precision.
+  volatile NB_XPFLOAT_TYPE corrtemp;
+# else
+  NB_XPFLOAT_TYPE sum1;
+  NB_XPFLOAT_TYPE sum2;
+  NB_XPFLOAT_TYPE corrtemp;
+# endif
+
+  // Calculate sum
+  sum1=y+corr;
+  sum2=x+sum1;
+
+  // Determine new correction term.  Do in two steps, as opposed to
+  // "corrtemp = (x-sum2) + sum1", because a) some compilers ignore
+  // parentheses (with regards to ordering) at high optimization levels,
+  // and b) we want to be sure to drop any extra precision.
+  corrtemp = x - sum2;
+  corrtemp += sum1;
+    
+  // Store results
+  corr = corrtemp;
+  x=sum2;
+}
+# if defined(_MSC_VER)
+#  pragma float_control(pop)
+# endif
+
+#else // NB_XPFLOAT_USE_SSE
+
+inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y) {
+  // SSE double precision doesn't carry any extra precision, so we
+  // don't need to use "volatile"
+  __m128d corr = _mm_unpackhi_pd(xpdata,_mm_setzero_pd());
+  __m128d sum1 = _mm_add_sd(_mm_set_sd(y),corr);
+  __m128d sum2 = _mm_add_sd(sum1,xpdata);
+  __m128d corrtemp = _mm_add_sd(sum1,_mm_sub_sd(xpdata,sum2));
+  xpdata = _mm_unpacklo_pd(sum2,corrtemp);
+}
+
+#endif // NB_XPFLOAT_USE_SSE
+
 
 #if OC_USE_SSE
 inline void
@@ -309,15 +368,15 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,__m128d y)
   __m128d corrtemp = _mm_add_pd(_mm_sub_pd(wx,sum2),sum1);
   xpA.xpdata = _mm_unpacklo_pd(sum2,corrtemp);
   xpB.xpdata = _mm_unpackhi_pd(sum2,corrtemp);
-#else
+#else // !NB_XPFLOAT_USE_SSE
   // Non-SSE version that retains precision in xpA and xpB
   // in case where NB_XPFLOAT_TYPE is wider than REAL8.
   double dummy[2];
   _mm_storeu_pd(dummy,y);
   Nb_XpfloatDualAccum(xpA,dummy[0],xpB,dummy[1]);
-#endif
+#endif // NB_XPFLOAT_USE_SSE
 }
-#endif
+#endif // OC_USE_SSE
 
 inline void
 Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,NB_XPFLOAT_TYPE yA,
@@ -352,5 +411,24 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,const Oc_Duet& y)
   Nb_XpfloatDualAccum(xpA,y.GetA(),xpB,y.GetB());
 #endif
 }
+
+#if !NB_XPFLOAT_IS_OC_REAL8m
+// If NB_XPFLOAT_TYPE is different than OC_REAL8m, then overloaded functions
+// taking either NB_XPFLOAT_TYPE or Nb_Xpfloat won't know which way to cast
+// an OC_REAL8m.  Provide overloads taking OC_REAL8m explicitly.
+inline Nb_Xpfloat operator*(const Nb_Xpfloat& x,OC_REAL8m y) {
+  return x*static_cast<NB_XPFLOAT_TYPE>(y);
+}
+inline Nb_Xpfloat operator*(OC_REAL8m y,const Nb_Xpfloat& x) {
+  return static_cast<NB_XPFLOAT_TYPE>(y)*x;
+}
+inline void
+Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,OC_REAL8m yA,
+                    Nb_Xpfloat& xpB,OC_REAL8m yB)
+{
+  Nb_XpfloatDualAccum(xpA,static_cast<NB_XPFLOAT_TYPE>(yA),
+                      xpB,static_cast<NB_XPFLOAT_TYPE>(yB));
+}
+#endif // !NB_XPFLOAT_IS_OC_REAL8m
 
 #endif // _NB_XPFLOAT_H

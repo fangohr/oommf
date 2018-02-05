@@ -203,12 +203,14 @@ Oc_Class Net_ThreadGui {
         pack [label $data.label -text "Inputs" -relief groove] \
                 -side top -in $data -fill x
         foreach o [array names ipdb] {
-            set desc $ipdb($o)
-            pack [radiobutton $data.w$o -text $o -value $o \
-                    -variable [$this GlobalName indataselection] \
-                    -anchor w \
-                    -command [list $this DisplayInputThreads [lindex $desc 0]]] \
-                    -side top -in $data -fill x
+           set desc $ipdb($o)
+           radiobutton $data.w$o -text $o -value $o \
+               -variable [$this GlobalName indataselection] \
+               -anchor w \
+               -command [list $this DisplayInputThreads [lindex $desc 0]]
+           catch {$data.w$o configure -tristatevalue "tristatevalue"}
+           # Disable Tk 8.5+ tristate mode.
+           pack $data.w$o -side top -in $data -fill x
         }
         pack $data -side left -fill y
         if {[array size ipdb]} {
@@ -230,12 +232,14 @@ Oc_Class Net_ThreadGui {
         pack [label $data.label -text "Outputs" -relief groove] \
                 -side top -in $data -fill x
         foreach o [array names opdb] {
-            set desc $opdb($o)
-            pack [radiobutton $data.w$o -text $o -value $o \
-                    -variable [$this GlobalName dataselection] \
-                    -anchor w \
-                    -command [list $this DisplayThreads [lindex $desc 0]]] \
-                    -side top -in $data -fill x
+           set desc $opdb($o)
+           radiobutton $data.w$o -text $o -value $o \
+              -variable [$this GlobalName dataselection] \
+              -anchor w \
+              -command [list $this DisplayThreads [lindex $desc 0]]
+           catch {$data.w$o configure -tristatevalue "tristatevalue"}
+           # Disable Tk 8.5+ tristate mode.
+           pack $data.w$o -side top -in $data -fill x
         }
         pack $data -side left -fill y
         if {[array size opdb]} {
@@ -289,13 +293,18 @@ Oc_Class Net_ThreadGui {
                             -value $t -anchor w \
                             -command [list $this DisplaySchedule] \
                             -variable [$this GlobalName threadselection]]
+                    catch {$btn configure -tristatevalue "tristatevalue"}
+                    # Tk 8.5 introduces a tristate mode, which we don't use.
+                    # Change default tristatevalue from "" to "tristatevalue"
+                    # so that tristate mode is not accidentally selected by
+                    # mousing over the radiobutton.
                     pack $btn -side top -in $dt -fill x
                 }
             }
         }
         pack $dt -side left -fill both -expand 1
-        $this DisplaySchedule
         catch {unset threadselection}
+        $this DisplaySchedule
     }
     method DisplayInputThreads { type } {
         if {[info exists idt]} {
@@ -323,6 +332,8 @@ Oc_Class Net_ThreadGui {
                             -value $t -anchor w \
                             -command [list $this UpdateInput] \
                             -variable [$this GlobalName ithreadselection]]
+                    catch {$btn configure -tristatevalue "tristatevalue"}
+                    # Disable Tk 8.5+ tristate mode.
                     pack $btn -side top -in $idt -fill x
                 }
             } 

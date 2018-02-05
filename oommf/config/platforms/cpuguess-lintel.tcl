@@ -38,63 +38,6 @@
 # Support procs
 source [file join [file dirname [info script]] x86-support.tcl]
 
-proc Find_SSE_Level { {flags {}} } {
-   if {[string match {} $flags]} {
-      # Read and organize cpu info from /proc/cpuinfo
-      set chan [open "/proc/cpuinfo" r]
-      set data [read $chan]
-      close $chan
-      regsub "\n\n.*" $data {} cpu0
-      regsub -all "\[ \t]+" $cpu0 { } cpu0
-      regsub -all " *: *" $cpu0 {:} cpu0
-      regsub -all " *\n *" $cpu0 "\n" cpu0
-      array set cpuarr [split $cpu0 ":\n"]
-      set flags $cpuarr(flags)
-   }
-
-   # Determine SSE level from settings in $flags.  For now,
-   # don't try to distinguish between the various sub-levels,
-   # e.g., map ssse3 -> sse3; sse4_1, sse4_2, sse4a -> sse4
-   if {[lsearch $flags sse4*]>=0 || [lsearch $flags nni]} {
-      set sse_level 4
-   } elseif {[lsearch $flags  sse3]>=0 ||
-             [lsearch $flags   pni]>=0 ||
-             [lsearch $flags ssse3]>=0 ||
-             [lsearch $flags   mni]>=0 ||
-             [lsearch $flags   tni]>=0} {
-      set sse_level 3
-   } elseif {[lsearch $flags sse2]>=0} {
-      set sse_level 2
-   } elseif {[lsearch $flags sse]>=0} {
-      set sse_level 1
-   } else {
-      set sse_level 0
-   }
-   return $sse_level
-}
-
-proc Find_FMA_Type { {flags {}} } {
-   if {[string match {} $flags]} {
-      # Read and organize cpu info from /proc/cpuinfo
-      set chan [open "/proc/cpuinfo" r]
-      set data [read $chan]
-      close $chan
-      regsub "\n\n.*" $data {} cpu0
-      regsub -all "\[ \t]+" $cpu0 { } cpu0
-      regsub -all " *: *" $cpu0 {:} cpu0
-      regsub -all " *\n *" $cpu0 "\n" cpu0
-      array set cpuarr [split $cpu0 ":\n"]
-      set flags $cpuarr(flags)
-   }
-   if {[lsearch $flags fma]>=0} {
-      set fma_type 3
-   } elseif {[lsearch $flags fma4]>=0} {
-      set fma_type 4
-   } else {
-      set fma_type 0
-   }
-}
-
 # Routine to guess the CPU using /proc/cpuinfo provided by Linux kernel
 # Output is a three element list.
 # The first element is the vendor, which will be one of:

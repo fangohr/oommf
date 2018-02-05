@@ -2,13 +2,13 @@
 #
 # This file must be evaluated by mmDispSh
 
-package require Oc 1.2.0.4        ;# Oc_TempName
-package require Mmdispcmds 1.1.1.0
+package require Oc 2        ;# Oc_TempName
+package require Mmdispcmds 2
 Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option console {} {}
 

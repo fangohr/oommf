@@ -7,9 +7,9 @@ if {![info exists no_net]} {set no_net 0}
 if {![info exists no_event_loop]} {set no_event_loop 0}
 
 # Library support
-package require Oc 1.2.0.4	;# [Oc_TempName]
-package require Ow 1.2.0.4
-if {!$no_net} { package require Net 1.2.0.4}
+package require Oc 2	;# [Oc_TempName]
+package require Ow 2
+if {!$no_net} { package require Net 2}
 wm withdraw .
 
 # Several places in this program rely on finding components
@@ -19,7 +19,7 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -1520,7 +1520,7 @@ Oc_EventHandler New _ Oc_Main Exit {proc Die win {}}
 #**************************************************************************#
 # networking
 if {!$no_net} {
-    package require Net 1.2.0.4
+    package require Net 2
     Net_Protocol New protocol -name "OOMMF ProbEd protocol 0.1"
     $protocol AddMessage start GetProbDescFile {} {
 	set fn [Oc_TempName tmp .mif]

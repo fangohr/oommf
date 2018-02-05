@@ -12,7 +12,7 @@
 #   OOMMF_BUILDTEST_NUMA
 #
 # The following environment variables may optionally be set before
-# sourcing thie file:
+# sourcing this file:
 #
 #   OOMMF_BUILDTEST_REAL8m
 #   OOMMF_BUILDTEST_REALWIDE

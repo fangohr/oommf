@@ -68,10 +68,8 @@ Tcl and Tk are available for free from the
   HREF="http://www.tcl.tk/">Tcl Developer Xchange</A>.
 We recommend the latest stable 
 versions of Tcl and Tk concurrent with this release of OOMMF.
-OOMMF requires<A NAME="775"></A>
-at least Tcl version 7.5 and Tk version 4.1 
-on Unix platforms, and requires at least Tcl version 8.0 and 
-Tk version 8.0 on Microsoft Windows platforms.  OOMMF software 
+OOMMF requires<A NAME="778"></A>
+at least version 8.5 of Tcl and TkOOMMF software 
 does not support any alpha or beta versions of Tcl/Tk, and 
 each release of OOMMF may not work with later releases of
 Tcl/Tk.  Check the release dates of both OOMMF and
@@ -82,26 +80,26 @@ A Tcl/Tk installation includes two shell programs.  The names of
 these programs may vary depending on the Tcl/Tk version and the 
 type of platform.  The first shell program contains an interpreter 
 for the base Tcl language.  In the OOMMF documentation we refer 
-to this program as <TT><B>tclsh</B></TT><A NAME="777"></A>.  
+to this program as <TT><B>tclsh</B></TT><A NAME="780"></A>.  
 The second shell program contains 
 an interpreter for the base Tcl language extended by additional
 Tcl commands supplied by the Tk toolkit.  In the 
 OOMMF documentation we refer to this program as 
-<TT><B>wish</B></TT><A NAME="779"></A>.  
+<TT><B>wish</B></TT><A NAME="782"></A>.  
 Consult your Tcl/Tk documentation to determine 
 the actual names of these programs on your platform (for example, 
 <TT><B>tclsh86.exe</B></TT> or <TT><B>wish8.6</B></TT>).
 
 <P>
-OOMMF applications communicate via TCP/IP<A NAME="782"></A> network sockets.
-This means that OOMMF requires<A NAME="783"></A>
+OOMMF applications communicate via TCP/IP<A NAME="785"></A> network sockets.
+This means that OOMMF requires<A NAME="786"></A>
 support for networking, even 
 on a stand-alone machine.  At a minimum, OOMMF must be able to 
 access the loopback interface so that the host can talk to 
 itself using TCP/IP.
 
 <P>
-<A NAME="784"></A>
+<A NAME="787"></A>
 OOMMF applications that use Tk require a windowing system and
 a valid display.  On Unix systems, this means that an X server must
 be running.  If you need to run OOMMF applications on a Unix system
@@ -112,26 +110,14 @@ or use the
 <A NAME="tex2html10"
   HREF="http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml">Xvfb</A>
 virtual frame buffer.
-<A NAME="791"></A>
+<A NAME="794"></A>
 
 <P>
-<A NAME="792"></A>
-The OOMMF source distribution unpacks into a directory tree containing
-about 2500 files and directories, occupying approximately 130 MiB of
-storage.  The amount of disk space needed for compiling and linking
-varies greatly between platforms; allow up to an additional 60 MB for
-the build.  Removing intermediate object modules (cf. the <TT>pimake</TT>
-``objclean'' target, in the <A HREF="Advanced_Installation.html#sec:install.reducedisk">Reducing Disk Space
-Usage</A> section) reduces the final space
-requirement for source + binary executables to less than 140 MB.
-<A NAME="800"></A>
-
-<P>
-<A NAME="801"></A><A NAME="802"></A>
+<A NAME="795"></A><A NAME="796"></A>
 To build OOMMF software from source code, you will
-need<A NAME="803"></A> a C++ compiler capable of handling
-C++ templates, C++ exceptions, and (for the OOMMF eXtensible Solver)
-the C++ Standard Template Library.  You will need other software
+need<A NAME="797"></A> a C++ compiler 
+that implements the features of the C++11 standard.
+You will need other software
 development utilities for your platform as well.  
 We do development and
 test builds on the following platforms, although porting to others
@@ -178,6 +164,6 @@ build to avoid limits on simulation sizes.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
 </BODY>
 </HTML>

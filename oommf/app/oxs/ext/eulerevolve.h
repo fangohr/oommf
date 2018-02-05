@@ -7,9 +7,10 @@
 #ifndef _OXS_EULEREVOLVE
 #define _OXS_EULEREVOLVE
 
-#include "timeevolver.h"
+#include "energy.h"
 #include "key.h"
 #include "output.h"
+#include "timeevolver.h"
 
 /* End includes */
 
@@ -101,6 +102,34 @@ private:
    OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& timestep_lower_bound_);
   /// Imports: mesh_, Ms_, mxH_, spin_, pE_pt
   /// Exports: dm_dt_, max_dm_dt_, dE_dt_, timestep_lower_bound_
+
+  inline void Calculate_dm_dt_i
+  (const Oxs_Mesh& mesh,
+   const Oxs_MeshValue<OC_REAL8m>& Ms,
+   const Oxs_MeshValue<ThreeVector>& mxH,
+   const Oxs_MeshValue<ThreeVector>& spin,
+   Oxs_MeshValue<ThreeVector>& dm_dt,
+   OC_REAL8m& max_dm_dt_sq,
+   Oxs_Energy::SUMTYPE& dE_dt_sum,
+   const OC_REAL8m coef1, /* (do_precess ? -1*gamma : 0.0 ) */
+   const OC_REAL8m coef2, /* alpha * gamma */
+   const OC_INDEX i) {
+    if(Ms[i]==0) {
+      dm_dt[i].Set(0.0,0.0,0.0);
+    } else {
+      dE_dt_sum += mxH[i].MagSq() * Ms[i] * mesh.Volume(i);
+      ThreeVector scratch = mxH[i];
+      scratch ^= spin[i];
+      scratch *= coef2;
+      scratch.Accum(coef1,mxH[i]);
+      OC_REAL8m dm_dt_sq = scratch.MagSq();
+      dm_dt[i] = scratch;
+      if(dm_dt_sq>max_dm_dt_sq) {
+        max_dm_dt_sq=dm_dt_sq;
+      }
+    }
+  }
+
 
 public:
   virtual const char* ClassName() const; // ClassName() is

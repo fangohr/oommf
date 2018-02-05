@@ -175,22 +175,9 @@ Oc_Class Platform {
         set ret {}
         foreach stem $stemlist {
             if {[string match tk $stem]} {
+                if {![$configuration GetValue use_tk]} { continue }
                 set ret [concat $ret [$configuration GetValue TK_LIB_SPEC]]
-                set ret [concat $ret [$configuration GetValue TCL_LIB_SPEC]]
                 set ret [concat $ret [$configuration GetValue TK_LIBS]]
-		if {[catch {$configuration GetValue TCL_PACKAGE_PATH} pp]} {
-		    continue
-		}
-		set libdir [lindex $pp 0]
-		if {[string match */Resources/Scripts $libdir]} {
-		    set libdir [file dirname [file dirname $libdir]]
-		}
-		if {[catch {
-			$configuration GetValue program_linker_rpath
-		} script]} {
-		    continue
-		}
-                set ret [concat $ret [eval $script $libdir]]
 		continue
             }
             if {[string match tcl $stem]} {
@@ -203,12 +190,23 @@ Oc_Class Platform {
 		if {[string match */Resources/Scripts $libdir]} {
 		    set libdir [file dirname [file dirname $libdir]]
 		}
-		if {[catch {
-			$configuration GetValue program_linker_rpath
-		} script]} {
-		    continue
-		}
-                set ret [concat $ret [eval $script $libdir]]
+                if {[catch {
+                   $configuration GetValue program_linker_rpath
+                } rpath_script]} {
+                   continue
+                }
+                if {![catch {
+                   $configuration GetValue cross_compile_target_tcl_rpath
+                } target_rpath] && ![catch {
+                   $configuration GetValue program_linker_rpathlink
+                } rpathlink_script]} {
+                   # Cross-compile link with separate rpath
+                   set ret [concat $ret [eval $rpath_script $target_rpath]]
+                   set ret [concat $ret [eval $rpathlink_script $libdir]]
+                } else {
+                   # Usual link
+                   set ret [concat $ret [eval $rpath_script $libdir]]
+                }
                 continue
             }
             if {[$configuration GetValue program_linker_uses_-L-l]} {

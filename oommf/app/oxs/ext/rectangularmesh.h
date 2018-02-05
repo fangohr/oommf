@@ -21,6 +21,7 @@
 #include "scalarfield.h"
 #include "mesh.h"
 #include "vf.h"
+#include "oxsexcept.h"
 
 OC_USE_STD_NAMESPACE;
 OC_USE_STRING;
@@ -239,6 +240,124 @@ public:
     x = index - z*xydim - y*xdim;
   }
 
+  friend struct Oxs_RectangularMeshCoords;
+};
+
+// Support structure that may be used by code that wants evolving
+// coordinate info without accessing mesh object directly.  This is
+// intended primarily for use by threads running across multiple
+// processors, so that each thread can maintain a local copy of its
+// access point inside a mesh.  Sample usage:
+//
+//   const Oxs_CommonRectangularMesh* mesh;
+//   Oxs_MeshValue<OC_REAL8m> invalue;
+//   Oxs_MeshValue<OC_REAL8m> outvalue;
+//
+//   void ProcessChunk(OC_INT4m /* thread_number */,
+//                     OC_INDEX jstart,OC_INDEX jstop) {
+//      Oxs_RectangularMeshCoords coords(mesh);
+//      coords.SetIndex(jstart);
+//      do { // Note: jstart<jstop is guaranteed
+//          OC_INDEX j=coords.index;
+//          if(0<coords.z && coords.z+1<coords.zdim) {
+//              outval[j] = inval[j+coords.xydim] - inval[j-coords.xydim];
+//          } else {
+//              outval[j] = 0;
+//          }
+//      } while(coords.AdvanceIndex()<jstop);
+//   }
+
+
+struct Oxs_RectangularMeshCoords {
+public:
+  OC_INDEX index;
+  OC_INDEX x;
+  OC_INDEX y;
+  OC_INDEX z;
+  OC_INDEX xdim;
+  OC_INDEX ydim;
+  OC_INDEX zdim;
+  OC_INDEX xydim;
+  OC_INDEX xyzdim;
+
+  inline OC_INDEX AdvanceIndex() {
+    // Return value is new index value.
+    // NB: There is no check that new index value < xyzdim.
+    if((++x)>=xdim) {
+      x=0;
+      if((++y)>=ydim) {
+        y=0;
+        ++z;
+      }
+    }
+    return (++index);
+  }
+
+  OC_BOOL SetIndex(OC_INDEX new_index) {
+    // Note: This function involves two integer division operations,
+    // which are probably slow, so don't call more often than necessary.
+    if(new_index >= xyzdim || new_index<0) return 0;
+    index = new_index;
+    z = index/xydim;
+    y = (index - z*xydim)/xdim;
+    x = index - z*xydim - y*xdim;
+    return 1;
+  }
+
+  OC_INDEX operator++() { return AdvanceIndex(); } // Prefix increment
+  OC_INDEX operator++(int n) { // Postfix increment
+    OC_INDEX itmp = index;
+    if(n==0) {
+      AdvanceIndex();
+    } else {
+      SetIndex(itmp + n);
+    }
+    return itmp;
+  }
+  OC_INDEX operator--() { // Prefix increment
+    if( (--index) < 0) {
+      index = x = y = z = 0;
+    } else {
+      if((--x)<0) {
+        x=xdim-1;
+        if((--y)<0) {
+          y=ydim-1;
+          --z;
+        }
+      }
+    }
+    return index;
+  }
+  OC_INDEX operator--(int n) { // Postfix increment
+    OC_INDEX itmp = index;
+    if(n==0) {
+      operator--();
+    } else {
+      SetIndex(itmp - n);
+    }
+    return itmp;
+  }
+
+  Oxs_RectangularMeshCoords(const Oxs_CommonRectangularMesh* mesh)
+    : index(0), x(0), y(0), z(0),
+      xdim(mesh->xdim), ydim(mesh->ydim), zdim(mesh->zdim),
+      xydim(mesh->xydim), xyzdim(mesh->elementcount) {}
+  void Reset(const Oxs_CommonRectangularMesh* mesh) {
+    index = x = y = z = 0;
+    xdim = mesh->xdim;
+    ydim = mesh->ydim;
+    zdim = mesh->zdim;
+    xydim = mesh->xydim;
+    xyzdim = mesh->elementcount;
+  }
+  Oxs_RectangularMeshCoords(const Oxs_Mesh* mesh) {
+    const Oxs_CommonRectangularMesh* rectmesh
+      = dynamic_cast<const Oxs_CommonRectangularMesh*>(mesh);
+    if(!rectmesh) {
+      OXS_THROW(Oxs_BadParameter,"Import mesh is not a rectangular mesh.");
+    }
+    Reset(rectmesh);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////

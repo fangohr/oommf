@@ -34,9 +34,10 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler
-if {[info exists env(OOMMF_C++)]} {
-   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
+# than OOMMF_C++ because the latter is an invalid name in Unix shells.
+if {[info exists env(OOMMF_CPP)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
 # Support for the automated buildtest scripts
@@ -82,13 +83,17 @@ $config SetValue program_compiler_c++_set_macosx_appname 1
 # among lines providing alternative values for a feature, uncomment the
 # line containing the proper value.
 #
-# The features in this file are divided into three sections.  The first
-# section (REQUIRED CONFIGURATION) includes features which require you 
-# to provide a value.  The second section (OPTIONAL CONFIGURATION)
-# includes features which have usable default values, but which you
-# may wish to customize.  The third section (ADVANCED CONFIGURATION)
-# contains features which you probably do not need or want to change
-# without a good reason.
+# The features in this file are divided into three sections.  The
+# first section (REQUIRED CONFIGURATION) includes features which
+# require you to provide a value.  The second section (LOCAL
+# CONFIGURATION) includes features which have usable default values,
+# but which you may wish to customize.  These can be edited here, but
+# it is recommended instead that you create a subdirectory named
+# "local", put a copy of the LOCAL CONFIGURATION section there in a
+# file with the same name as this file, and then edit that file.  The
+# third section (BUILD CONFIGURATION) contains features which you
+# probably do not need or want to change without a good reason.
+#
 ########################################################################
 # REQUIRED CONFIGURATION
 
@@ -101,17 +106,14 @@ $config SetValue program_compiler_c++_set_macosx_appname 1
 # in your path, be sure to use the whole pathname.  Also include any 
 # options required to instruct your compiler to only compile, not link.  
 #
-# If your compiler is not listed below, additional features will
-# have to be added in the ADVANCED CONFIGURATION section below to 
-# describe to the OOMMF software how to operate your compiler.  Send
-# e-mail to the OOMMF developers for assistance.
+# If your compiler is not listed below, additional features will have
+# to be added in the BUILD CONFIGURATION section below to describe to
+# the OOMMF software how to operate your compiler.  Send e-mail to the
+# OOMMF developers for assistance.
 #
 # The GNU C++ compiler 'g++'
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
 # <URL:http://egcs.cygnus.com/>
-# Note: This has been modified by Ryan Pepper - OS X no longer uses g++ as
-# the default compiler, and therefore this just changes to use Clang
-# - the build fails otherwise on 10.11.
 #$config SetValue program_compiler_c++ {g++ -c}
 #
 # The Clang C++ compiler 'clang++'
@@ -120,22 +122,11 @@ $config SetValue program_compiler_c++ {clang++ -c}
 ########################################################################
 # SUPPORT PROCEDURES
 #
-# Routines to guess the processor type
+# Load routines to guess the CPU using /procs/cpuinfo, determine
+# compiler version, and provide appropriate cpu-specific and compiler
+# version-specific optimization flags.
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
          cpuguess-darwin.tcl]
-
-# Routine to guess the gcc version.  Note: Apple's version of gcc
-# mungs the version string (at least in Leopard).
-proc GuessGccVersion { gcc } {
-    set guess {}
-    catch {
-        set fptr [open "|$gcc --version" r]
-        set verstr [read $fptr]
-        close $fptr
-        regexp -- {(^| )([0-9][0-9.]+)( |$)} $verstr dummy dumA guess dumB
-    }
-    return [split $guess "."]
-}
 
 # Miscellaneous processing routines
 source [file join [file dirname [Oc_DirectPathname [info script]]]  \
@@ -163,6 +154,11 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## Specify the number of default threads.  This is only meaningful
 ## for builds with thread support.
 # $config SetValue thread_count 4  ;# Replace '4' with desired thread count.
+#
+## Specify hard limit on the max number of threads per process.  This is
+## only meaningful for builds with thread support.  If not set, then there
+## is no limit.
+# $config SetValue thread_limit 8
 #
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
@@ -271,8 +267,20 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
     $config SetValue program_compiler_c++ $compiler
 }
 
+# The absolute, native filename of the null device
+$config SetValue path_device_null {/dev/null}
+
+# Are we building OOMMF, or running it?
+if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
+       || !$env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} {
+   # Remainder of script concerns the build environment only,
+   # none of which is not relevant at run time.
+   unset config
+   return
+}
+
 ########################################################################
-# ADVANCED CONFIGURATION
+# BUILD CONFIGURATION
 
 # Compiler option processing...
 if {[string match g++ [file tail [lindex \
@@ -292,6 +300,11 @@ if {[string match g++ [file tail [lindex \
       }
    }
    if {!$gcc_is_clang} {
+      if {[lindex $gcc_version 0]<4 ||
+          ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<5)} {
+         puts stderr "WARNING: This version of OOMMF requires g++ 4.5\
+                   or later (C++ 11 support)"
+      }
       $config SetValue program_compiler_c++_banner_cmd \
 	 [list GetGccBannerVersion  \
 	     [lindex [$config GetValue program_compiler_c++] 0]]
@@ -332,6 +345,18 @@ if {[string match g++ [file tail [lindex \
       # PowerPC arch, but not on Intel targets.
       if {[string match host $cpu_arch]} {
          set cpu_arch [GuessCpu]
+         if {[catch {$config GetValue sse_level}]} {
+            # In principle, the result from Find_SSE_Level may be more
+            # accurate than what comes from GuessCpu.
+            if {![catch {Find_SSE_Level} sse]} {
+               $config SetValue sse_level $sse
+            }
+         }
+         if {[catch {$config GetValue fma_type}]} {
+            if {![catch {Find_FMA_Type} fma]} {
+               $config SetValue fma_type $fma
+            }
+         }
       }
       if {!$gcc_is_clang} {
 	 set cpuopts [GetGccCpuOptFlags $gcc_version $cpu_arch]
@@ -340,6 +365,13 @@ if {[string match g++ [file tail [lindex \
       }
    }
    unset cpu_arch
+
+   if {[catch {$config GetValue sse_level}] \
+          && [string compare x86_64 $tcl_platform(machine)]==0} {
+      # SSE level 2 guaranteed on x86_64
+      $config SetValue sse_level 2
+   }
+
    # You can override the above results by directly setting or
    # unsetting the cpuopts variable, e.g.,
    #
@@ -350,10 +382,6 @@ if {[string match g++ [file tail [lindex \
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
-
-   # Uncomment the following two lines to remove SSE enabling flags.
-   # regsub -all -- {-mfpmath=[^ ]*} $opts {} opts
-   # regsub -all -- {-msse[^ ]*} $opts {} opts
 
    # Uncomment the following to remove loop array prefetch flag
    # regsub -all -- \
@@ -461,10 +489,30 @@ if {[string match g++ [file tail [lindex \
       # matches the format and known types as returned from GuessCpu.
       if {[string match host $cpu_arch]} {
          set cpu_arch [GuessCpu]
+         if {[catch {$config GetValue sse_level}]} {
+            # In principle, the result from Find_SSE_Level may be more
+            # accurate than what comes from GuessCpu.
+            if {![catch {Find_SSE_Level} sse]} {
+               $config SetValue sse_level $sse
+            }
+         }
+         if {[catch {$config GetValue fma_type}]} {
+            if {![catch {Find_FMA_Type} fma]} {
+               $config SetValue fma_type $fma
+            }
+         }
       }
       set cpuopts [GetClangCpuOptFlags $clang_version $cpu_arch]
    }
    unset cpu_arch
+
+   if {[catch {$config GetValue sse_level}] \
+          && [string compare x86_64 $tcl_platform(machine)]==0} {
+      # SSE level 2 guaranteed on x86_64
+      $config SetValue sse_level 2
+   }
+
+
    # You can override the above results by directly setting or
    # unsetting the cpuopts variable, e.g.,
    #
@@ -577,9 +625,6 @@ if {[string match ar [file tail [lindex \
     $config SetValue program_libmaker_option_obj {format \"%s\"}
     $config SetValue program_libmaker_option_out {format \"%s\"}
 }
-
-# The absolute, native filename of the null device
-$config SetValue path_device_null {/dev/null}
 
 # A partial Tcl command (or script) which when completed by lappending
 # a file name stem and evaluated returns the corresponding file name for

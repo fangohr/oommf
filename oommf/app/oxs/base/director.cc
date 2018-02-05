@@ -218,7 +218,9 @@ int Oxs_Director::GetNumberOfStages()
   return stage_count;
 }
 
-int Oxs_Director::SetStage(int requestedStage)
+int Oxs_Director::SetStage
+(int requestedStage,
+ vector<OxsRunEvent>& events)
 {
   if(driver==NULL) {
     OXS_THROW(Oxs_IncompleteInitialization,"no driver identified");
@@ -234,7 +236,7 @@ int Oxs_Director::SetStage(int requestedStage)
   // Should we also check for requestedStage too large?
 
   try {
-    driver->SetStage(static_cast<OC_UINT4m>(requestedStage));
+    driver->SetStage(static_cast<OC_UINT4m>(requestedStage),events);
   } catch (Oxs_ExtError& err) {
     String head =
       String("Oxs_Ext error inside SetStage function of driver ")
@@ -252,6 +254,32 @@ int Oxs_Director::SetStage(int requestedStage)
 
   return driver->GetStage();
 }
+
+int Oxs_Director::IsRunDone()
+{ // Reads current Oxs_SimState run_done status.  Returns 1 if run_done
+  // == DONE, 0 if == NOT_DONE, and -1 otherwise.  Note that this call
+  // does not explicitly check any stopping criteria, it only peeks at
+  // the current Oxs_SimState structure to see if a done state has been
+  // recorded.  In particular, when a problem is loaded from scratch the
+  // run done status is UNKNOWN until the first step is taken.  This
+  // allows a problem to be loaded quickly and the MIF file checked for
+  // structural errors, without requiring an potentially expensive demag
+  // computation.  The main use of this call is to check checkpoint file
+  // loads.  (Checkpoint files contain the Oxs_SimState::SimStateStatus
+  // values.)
+  if(driver==NULL) {
+    OXS_THROW(Oxs_IncompleteInitialization,"no driver identified");
+  }
+  const Oxs_SimState* cstate = driver->GetCurrentState();
+  if(cstate->run_done == Oxs_SimState::SimStateStatus::NOT_DONE) {
+    return 0;
+  }
+  if(cstate->run_done == Oxs_SimState::SimStateStatus::DONE) {
+    return 1;
+  }
+  return -1;
+}
+
 
 OC_UINT4m Oxs_Director::GetCurrentStateId()
 {
@@ -702,6 +730,22 @@ void Oxs_Director::Release()
     // Release simulation states.  We don't care about the order.
     vector<Oxs_SimState*>::iterator sim_it = simulation_state.begin();
     while(sim_it!=simulation_state.end()) {
+      OC_UINT4m lock_count;
+      if((lock_count=(*sim_it)->DepLockCount())!=0) {
+        fprintf(stderr,"ERROR: simstate %lu DepLockCount=%lu on exit\n",
+                static_cast<unsigned long>((*sim_it)->Id()),
+                static_cast<unsigned long>(lock_count));
+      }
+      if((lock_count=(*sim_it)->ReadLockCount())!=0) {
+        fprintf(stderr,"ERROR: simstate %lu ReadLockCount=%lu on exit\n",
+                static_cast<unsigned long>((*sim_it)->Id()),
+                static_cast<unsigned long>(lock_count));
+      }
+      if((lock_count=(*sim_it)->WriteLockCount())!=0) {
+        fprintf(stderr,"ERROR: simstate %lu ReadLockCount=%lu on exit\n",
+                static_cast<unsigned long>((*sim_it)->Id()),
+                static_cast<unsigned long>(lock_count));
+      }
       delete (*sim_it);
       ++sim_it;
     }
@@ -1688,32 +1732,73 @@ Oxs_Director::FindExistingSimulationState(OC_UINT4m id) const
 #ifndef DEVELOP_TEST
 // Default NOP (inactive) code with error return
 int Oxs_Director::DoDevelopTest
-(const String& /* in */,
- String& /* out */)
+(const String& /* subroutine */,
+ String& result_str,
+ int /* argc */,CONST84 char** /* argv */)
 {
+  result_str = "DoDevelopTest not enabled.";
   return 1;
 }
 #else // DEVELOP_TEST
-// Working code; should return 0 on success, >0 on error
-int Oxs_Director::DoDevelopTest(const String& in,String& out)
-{ 
-  OC_INT4m count = atoi(in.c_str());
-  if(count<1) return 1;
+int OxsTestMeshvalue(String& result_str,
+                     int argc,const char** argv)
+{
+  // Parameter check
+  result_str = "Usage: meshvalue <array_size> <loop_count>";
+  if(argc != 3) return 1;
+  OC_INDEX array_size = strtol(argv[1],NULL,0);
+  OC_INDEX loop_count = strtol(argv[2],NULL,0);
+  if(array_size<1 || loop_count<1) return 1;
+    
+  Oxs_MeshValue<double> a;
+  Oxs_MeshValue<double> b;
+  Oxs_MeshValue<double> c;
 
-  if(driver==NULL) return 2;
-  const Oxs_SimState* state = driver->GetCurrentState();
-  if(state==NULL) return 3;
+  a.AdjustSize(array_size);
+  b.AdjustSize(array_size);
+  c.AdjustSize(array_size);
 
-  OC_REAL8m maxang = 0;
-  for(OC_INT4m i=0;i<count;i++) {
-    maxang = state->mesh->MaxNeighborAngle(state->spin,*(state->Ms),
-                                           0,state->mesh->Size());
+  a = 3.1;
+  b = 0.99999999;
+  c = 1.234567;
+
+  OC_REAL8m val = 0.99999999;
+
+  Nb_WallWatch timer;
+  timer.Start();
+  for(OC_INDEX loop=0;loop<loop_count;++loop) {
+    a = b;
+    a = c;
   }
-  char buf[256];
-  Oc_Snprintf(buf,sizeof(buf),"%.17g",
-              static_cast<double>(maxang*(180.0/PI)));
-  out = String(buf);
+  timer.Stop();
+  double iterate_time = timer.GetTime()/double(loop_count);
+
+  char buf[1024];
+  Oc_Snprintf(buf,sizeof(buf),
+              "Time per iteration: %12.3f microseconds (value: %g)\n",
+              iterate_time*1e6,a[OC_INDEX(0)]);
+
+  result_str=String(buf);
   return 0;
+}
+
+// Working code; should return 0 on success, >0 on error
+int Oxs_Director::DoDevelopTest
+(const String& subroutine,
+ String& result_str,
+ int argc,const char** argv)
+{ 
+  int rtncode = -1;
+  if(subroutine.compare("meshvalue")==0) {
+    rtncode = OxsTestMeshvalue(result_str,argc,argv);
+  } else {
+    result_str = String("Unrecognized subroutine request: \"")
+      + subroutine + String("\"");
+    result_str += String("\n Supported routines:");
+    result_str += String("\n\tmeshvalue");
+    rtncode=1;
+  }
+  return rtncode;
 }
 #endif // DEVELOP_TEST
 

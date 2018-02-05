@@ -53,7 +53,7 @@ Oxs_UniformExchange::Oxs_UniformExchange(
     excoeftype(A_UNKNOWN), A(-1.), lex(-1.),
     kernel(NGBR_UNKNOWN), 
     xperiodic(0),yperiodic(0),zperiodic(0),
-    mesh_id(0)
+    mesh_id(0), energy_density_error_estimate(-1)
 {
   // Process arguments
   OC_BOOL has_A = HasInitValue("A");
@@ -134,6 +134,7 @@ OC_BOOL Oxs_UniformExchange::Init()
   xcoef.Free();
   ycoef.Free();
   zcoef.Free();
+  energy_density_error_estimate = -1;
   return Oxs_ChunkEnergy::Init();
 }
 
@@ -142,7 +143,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrFree
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -325,7 +326,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrFree
   }
 
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -336,7 +337,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -359,7 +360,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror
   OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   OC_REAL8m thread_maxdot_x = thread_maxdot;
   OC_REAL8m thread_maxdot_y = thread_maxdot;
@@ -480,7 +481,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   if(thread_maxdot_x>thread_maxdot) thread_maxdot = thread_maxdot_x;
@@ -494,7 +495,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror_lex
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -517,7 +518,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror_lex
   OC_REAL8m wgty = lex*lex/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = lex*lex/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   // Note: For maxangle calculation, it suffices to check
   // spin[j]-spin[i] for j>i, or j<i, or various mixes of the two.
@@ -630,7 +631,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror_lex
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -641,7 +642,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirrorStd
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -671,7 +672,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirrorStd
   OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   // Note: For maxangle calculation, it suffices to check
   // spin[j]-spin[i] for j>i, or j<i, or various mixes of the two.
@@ -782,7 +783,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirrorStd
     }
   }
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -810,7 +811,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrBigAngMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -980,7 +981,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrBigAngMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -991,7 +992,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrZD2
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -1165,7 +1166,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrZD2
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -1176,7 +1177,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrAlt
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -1205,7 +1206,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrAlt
   OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   OC_REAL8m thread_maxdot_x = thread_maxdot;
   OC_REAL8m thread_maxdot_y = thread_maxdot;
@@ -1348,7 +1349,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrAlt
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   if(thread_maxdot_x>thread_maxdot) thread_maxdot = thread_maxdot_x;
@@ -1391,7 +1392,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrFree
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -1754,7 +1755,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrFree
       if(z==2 || z==zdim-3) ck=25./24.;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -1765,7 +1766,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2099,7 +2100,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1
       if(z==2 || z==zdim-3) ck=25./24.;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2220,7 +2221,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1B
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2241,63 +2242,6 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1B
   OC_INDEX ydim = mesh->DimY();
   OC_INDEX zdim = mesh->DimZ();
   OC_INDEX xydim = xdim*ydim;
-  if((1<xdim && xdim<5) || (1<ydim && ydim<5)
-     || (1<zdim && zdim<5)) {
-    char buf[1024];
-    Oc_Snprintf(buf,sizeof(buf),
-	"Each dimension must be ==1 or >=5 for 12ngbrZD1b kernel."
-	" (Actual dimensions: xdim=%u, ydim=%u, zdim=%u.)",
-	xdim,ydim,zdim);
-    throw Oxs_ExtError(this,buf);
-  }
-
-  // (Re)-initialize coefficients if mesh has changed.  Note: Unlike
-  // initialization code in some of the other Oxs_ChunkEnergy classes,
-  // this initialization does not make calls back into the Tcl
-  // interpreter.  Therefore, this initialization can be done by any one
-  // thread; it doesn't have to be threadnumber == -1 (main thread).  So
-  // we can manage with a simple mutex lock (as opposed to a more
-  // complicated scheme involving ConditionWait calls.)
-  if(mesh_id != mesh->Id()) {
-    thread_mutex.Lock(); // Make certain only one thread makes changes
-    try {
-      if(mesh_id != mesh->Id()) { // This thread won thread_mutex lock
-        InitCoef_12NgbrZD1(xdim,xinteg,xcoef);
-        InitCoef_12NgbrZD1(ydim,yinteg,ycoef);
-        InitCoef_12NgbrZD1(zdim,zinteg,zcoef);
-        mesh_id = mesh->Id();
-      }
-    } catch(Oxs_ExtError& err) {
-      // Leave unmatched mesh_id as a flag to check
-      // Oxs_ThreadError for an error.
-      thread_mutex.Unlock();
-      Oxs_ThreadError::SetError(String(err));
-      throw;
-    } catch(String& serr) {
-      // Leave unmatched mesh_id as a flag to check
-      // Oxs_ThreadError for an error.
-      thread_mutex.Unlock();
-      Oxs_ThreadError::SetError(serr);
-      throw;
-    } catch(const char* cerr) {
-      // Leave unmatched mesh_id as a flag to check
-      // Oxs_ThreadError for an error.
-      thread_mutex.Unlock();
-      Oxs_ThreadError::SetError(String(cerr));
-      throw;
-    } catch(...) {
-      // Leave unmatched mesh_id as a flag to check
-      // Oxs_ThreadError for an error.
-      thread_mutex.Unlock();
-      Oxs_ThreadError::SetError(String("Error in "
-          "Oxs_UniformExchange::CalcEnergy12NgbrZD1B"));
-      throw;
-    }
-    thread_mutex.Unlock();
-    if(Oxs_ThreadError::IsError()) {
-      return; // What else?
-    }
-  }
 
   const OC_REAL8m hcoef = -2/MU0;
   OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
@@ -2480,7 +2424,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1B
       /// Note: zcoef_index is only valid if zoff<5
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2491,7 +2435,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrMirror
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_CommonRectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2715,7 +2659,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2726,7 +2670,7 @@ Oxs_UniformExchange::CalcEnergy26Ngbr
 (const Oxs_MeshValue<ThreeVector>& spin,
  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
  const Oxs_RectangularMesh* mesh,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop,
  int threadnumber) const
@@ -2946,16 +2890,16 @@ Oxs_UniformExchange::CalcEnergy26Ngbr
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
 }
 
 void Oxs_UniformExchange::ComputeEnergyChunkInitialize
-(const Oxs_SimState& /* state */,
- const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   if(maxdot.size() != (vector<OC_REAL8m>::size_type)number_of_threads) {
@@ -2964,12 +2908,75 @@ void Oxs_UniformExchange::ComputeEnergyChunkInitialize
   for(int i=0;i<number_of_threads;++i) {
     maxdot[i] = 0.0; // Minimum possible value for (m_i-m_j).MagSq()
   }
+
+  // (Re)-initialize coefficients if mesh has changed.  Note: Unlike
+  // initialization code in some of the other Oxs_ChunkEnergy classes,
+  // this initialization does not make calls back into the Tcl
+  // interpreter.  Therefore, this initialization can be done by any one
+  // thread; it doesn't have to be threadnumber == -1 (main thread).  So
+  // we can manage with a simple mutex lock (as opposed to a more
+  // complicated scheme involving ConditionWait calls.)
+  const Oxs_CommonRectangularMesh* mesh
+    = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
+  if(mesh==NULL) {
+    String msg=String("Object ")
+      + String(state.mesh->InstanceName())
+      + String(" is not a rectangular mesh.");
+    throw Oxs_ExtError(this,msg);
+  }
+  if(mesh_id != mesh->Id()) {
+    mesh_id = mesh->Id();
+    if(kernel == NGBR_12_ZD1B) {
+      const OC_INDEX xdim = mesh->DimX();
+      const OC_INDEX ydim = mesh->DimY();
+      const OC_INDEX zdim = mesh->DimZ();
+      if((1<xdim && xdim<5) || (1<ydim && ydim<5)
+         || (1<zdim && zdim<5)) {
+        char buf[1024];
+        Oc_Snprintf(buf,sizeof(buf),
+                    "Each dimension must be ==1 or >=5 for 12ngbrZD1b kernel."
+                    " (Actual dimensions: xdim=%u, ydim=%u, zdim=%u.)",
+                    xdim,ydim,zdim);
+        throw Oxs_ExtError(this,buf);
+      }
+      InitCoef_12NgbrZD1(xdim,xinteg,xcoef);
+      InitCoef_12NgbrZD1(ydim,yinteg,ycoef);
+      InitCoef_12NgbrZD1(zdim,zinteg,zcoef);
+    }
+    OC_REAL8m minedge = OC_REAL8m_MAX;
+    if(mesh->DimX() > 1) {
+      minedge = mesh->EdgeLengthX();
+    }
+    if(mesh->DimY() > 1 && mesh->EdgeLengthY()<minedge) {
+      minedge = mesh->EdgeLengthY();
+    }
+    if(mesh->DimZ() > 1 && mesh->EdgeLengthZ()<minedge) {
+      minedge = mesh->EdgeLengthZ();
+    }
+    OC_REAL8m working_A = 0.0;
+    if(excoeftype == A_TYPE) {
+      working_A = A;
+    } else if(excoeftype == LEX_TYPE) {
+      OC_REAL8m lexMs = lex*state.max_absMs;
+      if(lexMs>0) {
+        working_A = 0.5*MU0*lexMs*lexMs;
+      }
+    } else {
+      throw Oxs_ExtError(this,"Unsupported ExchangeCoefType.");
+    }
+    energy_density_error_estimate
+      = 16*OC_REAL8m_EPSILON*working_A/minedge/minedge;
+    // Worse case prefactor should be larger than 16, but in practice
+    // error is probably smaller.
+  }
+  ocedt.energy_density_error_estimate = energy_density_error_estimate;
 }
 
 void Oxs_UniformExchange::ComputeEnergyChunkFinalize
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>&
+    /* thread_ocedtaux */,
  int number_of_threads) const
 {
   // Set max angle data
@@ -3064,10 +3071,9 @@ void Oxs_UniformExchange::ComputeEnergyChunkFinalize
   }
 }
 
-
 void Oxs_UniformExchange::ComputeEnergyChunk
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -3195,7 +3201,7 @@ void Oxs_UniformExchange::UpdateDerivedOutputs(const Oxs_SimState& state)
                            maxspinangle_output.cache.value)) {
     // Error; This should always be set.  For now, just set the value to
     // -1, but in the future should consider throwing an exception.
-    maxspinangle_output.cache.value = -1.0;
+    maxspinangle_output.cache.value = -2.222;
   }
 
   String stage_dummy_name = StageMaxSpinAngleStateName();

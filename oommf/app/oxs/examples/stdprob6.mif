@@ -1,0 +1,154 @@
+# MIF 2.1
+#
+# muMAG Standard Problem 6.
+#
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+
+Parameter stop_torque 1e-2
+Parameter energy_precision 1e-14    ;# 1e-14 is the default value
+Parameter cellsize 2                ;# Should be divisor of 10
+
+Parameter demag 0  ;# Either 0 (no demag) or 1 (demag on)
+
+set basename [format "stdprob6-cs%.2f-st%.2e" $cellsize $stop_torque]
+if {$energy_precision != 1e-14} {
+   append basename [format "-ep%.2e" $energy_precision]
+}
+
+if {$demag} {
+   append basename "-demag"
+}
+
+set cellsize [expr {$cellsize*1e-9}]
+
+# mu0 Ms = 1.61 T  
+Parameter Ms 1281197.0
+Parameter Ku 2370000.0
+
+Parameter scale0 0.946
+## Scale factor for grain 0; This factor should be adjusted so that total
+## energy is just above 0 after the fourth grain flips, and just below 0
+## before the fifth grain flips.
+
+set kvals {
+     -0.10472969070497719       -0.00548865051484762        0.99448557888003870
+      0.09420787727017729       -0.00328981156645872        0.99554711239604548
+     -0.08922931618206420        0.00155750350745839        0.99600989117403120
+      0.08631575947602720        0.00000000000000000        0.99626783028765745
+      0.08476757215692623       -0.00147962347580652        0.99639965346490870
+      0.00000000000000000        0.08401951248174742        0.99646410950035199
+      0.08362794318455457        0.00145973117809969        0.99649597907046700
+      0.08340084294495687        0.00291242161189829        0.99651182491550254
+}
+
+# If demag is turned off, then the above kvals yield the following
+# Stoner-Wohlfarth switching fields:
+#
+#     H_sw (mT)    Interval (mT)
+#   2750 - 0.125         -
+#   2800 - 0.125        50
+#   2825 - 0.125        25
+#   2840 - 0.125        15
+#   2848 - 0.125         8
+#   2852 - 0.125         4
+#   2854 - 0.125         2
+#   2855 - 0.125         1
+#
+
+set grain_count [expr {[llength $kvals]/3}]
+
+set i 0
+foreach {ax ay az} $kvals {
+   # Note: Keep spacing so that each grain aligns with the 2 nm mesh.
+   Specify Oxs_BoxAtlas:grain$i [subst {
+      xrange {[expr {$i*30e-9}] [expr {$i*30e-9+20e-9}]}
+      yrange {0 20e-9}
+      zrange {0 20e-9}
+   }]
+   lappend atlasspec atlas grain$i
+   lappend K1axes grain$i [list $ax $ay $az]
+   Report [format "axis\[%d\]: %12.8f %12.8f %12.8f" $i $ax $ay $az]
+   incr i
+}
+
+Specify Oxs_MultiAtlas:atlas [subst {
+   $atlasspec
+   xrange {0 [expr {$grain_count*30e-9-10e-9}]}
+   yrange {0 20e-9}
+   zrange {0 20e-9}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+   K1 { Oxs_AtlasScalarField {
+      atlas :atlas
+      default_value $Ku
+      values {
+         universe 0.0
+         grain0 [expr {$scale0*$Ku}]
+      }
+   }}
+   axis { Oxs_AtlasVectorField {
+      atlas :atlas
+      norm 1
+      default_value {0 0 1}
+      values {
+         $K1axes
+      }
+   }}
+}]
+
+# UniformExchange
+Specify Oxs_UniformExchange {
+   A  9.2e-12
+}
+
+# UZeeman
+# Use 1 mT steps up to Hmid, then 0.5 mT afterwards
+set Hstart -2735
+set Hmid   -2840
+set Hstop  -2860
+set stepA      1.00
+set stepB      0.5
+Specify Oxs_UZeeman [subst {
+  multiplier [expr {0.001/$mu0}]  comment { Field values in mT }
+  Hrange {
+     { 0 0 $Hstart  0 0 $Hmid  [expr {int(abs(round(($Hstart-$Hmid)/$stepA)))}]}
+    { 0 0 $Hmid    0 0 $Hstop [expr  {int(abs(round(($Hmid-$Hstop)/$stepB)))}]}
+  }
+}]
+
+if {$demag} {
+  Specify Oxs_Demag {}
+}
+
+# CGEvolver
+Specify Oxs_CGEvolve [subst {
+   energy_precision $energy_precision
+}]
+
+# MinDriver
+Specify Oxs_MinDriver [subst {
+  evolver Oxs_CGEvolve
+  stopping_mxHxm $stop_torque
+  mesh :mesh
+  Ms { Oxs_AtlasScalarField {
+    atlas :atlas
+    default_value $Ms
+    values {
+       universe 0.0
+       grain0 [expr {$scale0 * $Ms}]
+    }
+  }}
+  m0 {0 0 1}
+  basename $basename
+}]
+
+Destination table mmArchive
+Schedule DataTable table Stage 1
+#Schedule DataTable table Step 1000

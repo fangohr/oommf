@@ -37,6 +37,9 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
 # Environment variable override for C++ compiler
 if {[info exists env(OOMMF_C++)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
+   # Note: "OOMMF_C++" is an invalid name in Unix shells.
+   $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
 # Support for the automated buildtest scripts
@@ -65,13 +68,17 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # among lines providing alternative values for a feature, uncomment the
 # line containing the proper value.
 #
-# The features in this file are divided into three sections.  The first
-# section (REQUIRED CONFIGURATION) includes features which require you
-# to provide a value.  The second section (OPTIONAL CONFIGURATION)
-# includes features which have usable default values, but which you
-# may wish to customize.  The third section (ADVANCED CONFIGURATION)
-# contains features which you probably do not need or want to change
-# without a good reason.
+# The features in this file are divided into three sections.  The
+# first section (REQUIRED CONFIGURATION) includes features which
+# require you to provide a value.  The second section (LOCAL
+# CONFIGURATION) includes features which have usable default values,
+# but which you may wish to customize.  These can be edited here, but
+# it is recommended instead that you create a subdirectory named
+# "local", put a copy of the LOCAL CONFIGURATION section there in a
+# file with the same name as this file, and then edit that file.  The
+# third section (BUILD CONFIGURATION) contains features which you
+# probably do not need or want to change without a good reason.
+#
 ########################################################################
 # REQUIRED CONFIGURATION
 
@@ -86,10 +93,10 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # in your path, be sure to use the whole pathname.  Also include any
 # options required to instruct your compiler to only compile, not link.
 #
-# If your compiler is not listed below, additional features will
-# have to be added in the ADVANCED CONFIGURATION section below to
-# describe to the OOMMF software how to operate your compiler.  Send
-# e-mail to the OOMMF developers for assistance.
+# If your compiler is not listed below, additional features will have
+# to be added in the BUILD CONFIGURATION section below to describe to
+# the OOMMF software how to operate your compiler.  Send e-mail to the
+# OOMMF developers for assistance.
 #
 # Microsoft Visual C++
 # <URL:http://msdn.microsoft.com/visualc/>
@@ -150,9 +157,16 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## for builds with thread support.
 # $config SetValue thread_count 4  ;# Replace '4' with desired thread count.
 #
-## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not use
-## SSE intrinsics.  Leave unset to get the default (which may depend
-## on the selected compiler).
+## Specify hard limit on the max number of threads per process.  This is
+## only meaningful for builds with thread support.  If not set, then there
+## is no limit.
+# $config SetValue thread_limit 8
+#
+## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not
+## use SSE intrinsics.  Leave unset to get the default (which may
+## depend on the compiler).  Note: The cpu_arch selection below must
+## support the desired sse_level.  In particular, on 64-bit systems
+## cpu_arch == generic supports only SSE 2 or lower.
 # $config SetValue sse_level 2  ;# Replace '2' with desired level
 #
 ## Use FMA (fused multiply-add) intrinsics?  If so, specify either "3"
@@ -267,8 +281,20 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
     $config SetValue program_compiler_c++ $compiler
 }
 
+# The absolute, native filename of the null device
+$config SetValue path_device_null {nul:}
+
+# Are we building OOMMF, or running it?
+if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
+       || !$env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} {
+   # Remainder of script concerns the build environment only,
+   # none of which is not relevant at run time.
+   unset config
+   return
+}
+
 ########################################################################
-# ADVANCED CONFIGURATION
+# BUILD CONFIGURATION
 
 # Compiler option processing...
 if {[catch {$config GetValue program_compiler_c++} ccbasename]} {
@@ -283,6 +309,10 @@ if {[string match cl $ccbasename]} {
    set compilestr [$config GetValue program_compiler_c++]
    if {![info exists cl_version]} {
       set cl_version [GuessClVersion [lindex $compilestr 0]]
+   }
+   if {[lindex $cl_version 0]<12} {
+      puts stderr "WARNING: This version of OOMMF requires\
+                   Visual C++ 12.0 or later (C++ 11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetClBannerVersion  [lindex $compilestr 0]]
@@ -304,22 +334,17 @@ if {[string match cl $ccbasename]} {
 
    # Optimization options for Microsoft Visual C++
    #
-   # VC++ 6 (1998) and earlier are not supported.
+   # VC++ earlier than 12.0 (2013) are not supported.
    #
-   # Options for VC++ 7.0 (2002), 7.1 (2003):
-   #            Disable optimizations: /Od
-   #             Maximum optimization: /Ox
-   #      Enable runtime debug checks: /GZ
-   #   Optimize for Pentium processor: /G5
-   #         Optimize for Pentium Pro: /G6
-   #
-   # Options for VC++ 8.0 (2005), 9.0 (2008):
+   # Options for VC++:
    #                  Disable optimizations: /Od
    #                   Maximum optimization: /Ox
    #                    Enable stack checks: /GZ
-   #                   Require SSE2 support: /arch:SSE2
+   #                   Require AVX  support: /arch:AVX
+   #                   Require AVX2 support: /arch:AVX2
    # Fast (less predictable) floating point: /fp:fast
    #     Use portable but insecure lib fcns: /D_CRT_SECURE_NO_DEPRECATE
+   # Note: x86_64 guarantees SSE2 support.
    #
    # Default optimization
    #   set opts {}
@@ -503,6 +528,11 @@ if {[string match cl $ccbasename]} {
       set gcc_version [GuessGccVersion \
                           [lindex [$config GetValue program_compiler_c++] 0]]
    }
+   if {[lindex $gcc_version 0]<4 ||
+       ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<7)} {
+      puts stderr "WARNING: This version of OOMMF requires g++ 4.7\
+                   or later (C++ 11 support)"
+   }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetGccBannerVersion  \
           [lindex [$config GetValue program_compiler_c++] 0]]
@@ -671,7 +701,8 @@ if {[string match cl $ccbasename]} {
    #       executables will be larger.
    #       Pick one:
    # $config SetValue program_linker [list $ccbasename]
-   $config SetValue program_linker [list $ccbasename -static-libgcc -static-libstdc++]
+   $config SetValue program_linker \
+       [list $ccbasename -static-libgcc -static-libstdc++]
 
    $config SetValue program_linker_option_obj {format \"%s\"}
    $config SetValue program_linker_option_out {format "-o \"%s\""}
@@ -718,9 +749,6 @@ if {[string match cl $ccbasename]} {
 }
 catch {unset ccbasename}
 
-# The absolute, native filename of the null device
-$config SetValue path_device_null {nul:}
-
 # A partial Tcl command (or script) which when completed by lappending
 # a file name stem and evaluated returns the corresponding file name for
 # an executable on this platform
@@ -739,7 +767,8 @@ $config SetValue script_filename_static_library {format %s.lib}
 # Partial Tcl commands (or scripts) for creating library file names from
 # stems for third party libraries that don't follow the
 # script_filename_static_library rule.
-if {[catch {$config GetValue program_linker_extra_lib_scripts} extra_lib_scripts]} {
+if {[catch {$config GetValue program_linker_extra_lib_scripts} \
+         extra_lib_scripts]} {
    set extra_lib_scripts {}
 }
 lappend extra_lib_scripts {format "lib%s.lib"}

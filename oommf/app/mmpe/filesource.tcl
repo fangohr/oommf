@@ -1,13 +1,13 @@
 # FILE: filesource.tcl
 
 # Library support
-package require Oc 1.2.0.4	;# [Oc_TempName]
-package require Ow 1.2.0.4
-package require Net 1.2.0.3
+package require Oc 2	;# [Oc_TempName]
+package require Ow 2
+package require Net 2
 wm withdraw .
 
 Oc_Main SetAppName FileSource
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:44 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author

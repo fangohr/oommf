@@ -47,14 +47,14 @@
 # rrange is used.  If neither is set, the default is the
 # entire mesh volume.
 
-package require Oc 1.1.1.0
-package require Nb 1.2.0.4
-package require Mmdispcmds 1.1.1.0
+package require Oc 2
+package require Nb 2
+package require Mmdispcmds 2
 Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2odt
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option console {} {}
 

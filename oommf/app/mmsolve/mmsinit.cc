@@ -39,21 +39,21 @@ int Mmsolve_Init(Tcl_Interp *interp)
 
   Oc_AutoBuf ab, ab1;
 
-    if (Tcl_PkgRequire(interp, ab("Oc"), ab1("1.2.0.4"), 0) == NULL) {
+    if (Tcl_PkgRequire(interp, ab("Oc"), ab1("2"), 0) == NULL) {
         Tcl_AppendResult(interp, ab("\n\t(Mms " MMSOLVE_VERSION
-                " needs Oc 1.2.0.4)"), NULL);
+                " needs Oc 2)"), NULL);
         RETURN_TCL_ERROR;
     }
 
-    if (Tcl_PkgRequire(interp, ab("Nb"), ab1("1.2.0.4"), 0) == NULL) {
+    if (Tcl_PkgRequire(interp, ab("Nb"), ab1("2"), 0) == NULL) {
         Tcl_AppendResult(interp, ab("\n\t(Mms " MMSOLVE_VERSION
-                " needs Nb 1.2.0.4)"), NULL);
+                " needs Nb 2)"), NULL);
         RETURN_TCL_ERROR;
     }
 
-    if (Tcl_PkgRequire(interp, ab("Vf"), ab1("1.1.0.2"), 0) == NULL) {
+    if (Tcl_PkgRequire(interp, ab("Vf"), ab1("2"), 0) == NULL) {
         Tcl_AppendResult(interp, ab("\n\t(Mms " MMSOLVE_VERSION
-                " needs Vf 1.1.0.2)"), NULL);
+                " needs Vf 2)"), NULL);
         RETURN_TCL_ERROR;
     }
 

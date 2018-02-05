@@ -28,7 +28,7 @@ Oxs_ScriptUZeeman::Oxs_ScriptUZeeman(
   const char* name,     // Child instance id
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
-  : Oxs_Energy(name,newdtr,argstr),
+  : Oxs_ChunkEnergy(name,newdtr,argstr),
     hscale(1.0), number_of_stages(0)
 {
   // Process arguments
@@ -135,45 +135,90 @@ Oxs_ScriptUZeeman::GetAppliedField
 }
 
 
-void Oxs_ScriptUZeeman::GetEnergy
+void Oxs_ScriptUZeeman::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int /* number_of_threads */) const
+{
+  GetAppliedField(state,H_work,dHdt_work);
+  ocedt.energy_density_error_estimate
+    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*Oc_Sqrt(H_work.MagSq());
+}
+
+void Oxs_ScriptUZeeman::ComputeEnergyChunk
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,OC_INDEX node_stop,
+ int /* threadnumber */
  ) const
 {
   OC_INDEX size = state.mesh->Size();
   if(size<1) return;
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
-
-  ThreeVector H,dHdt;
-  GetAppliedField(state,H,dHdt);
-
-  OC_INDEX i=0;
-  do {
-    field[i] = H;
-    ++i;
-  } while(i<size);
+  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+  const Oxs_Mesh* mesh = state.mesh;
+  ThreeVector    H = H_work;    // Local copies
+  ThreeVector dHdt = dHdt_work;
 
   ThreeVector vtemp(H);
   vtemp *= -MU0; // Constant so that
                 /// vtemp * spin * Ms = cell energy density
-  Nb_Xpfloat Msumx,Msumy,Msumz;
-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
-  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
-  const Oxs_Mesh* mesh = state.mesh;
-  i=0;
-  do {
-    OC_REAL8m cellscale = Ms[i]*mesh->Volume(i);
-    Msumx += cellscale * spin[i].x;
-    Msumy += cellscale * spin[i].y;
-    Msumz += cellscale * spin[i].z;
-    energy[i] = Ms[i] * (spin[i]*vtemp);
-    ++i;
-  } while(i<size);
+  Nb_Xpfloat Msumx = 0.0;
+  Nb_Xpfloat Msumy = 0.0;
+  Nb_Xpfloat Msumz = 0.0;
+  Nb_Xpfloat energy_sum = 0.0;
+
+  OC_REAL8m cell_volume;
+  if(state.mesh->HasUniformCellVolumes(cell_volume)) {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      const ThreeVector&  m = spin[i];
+      const OC_REAL8m cellvolume = mesh->Volume(i);
+      OC_REAL8m cellscale = Ms[i]*cellvolume;
+      Msumx += cellscale * m.x;
+      Msumy += cellscale * m.y;
+      Msumz += cellscale * m.z;
+      OC_REAL8m ei  = Ms[i] * (m*vtemp);
+      energy_sum += ei;
+      OC_REAL8m tz = m.x*H.y;  // t = m x H
+      OC_REAL8m ty = m.x*H.z;
+      OC_REAL8m tx = m.y*H.z;
+      tz -= m.y*H.x;    ty  = m.z*H.x - ty;    tx -= m.z*H.y;
+
+      if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.H)            (*ocedt.H)[i] = H;
+      if(ocedt.H_accum)      (*ocedt.H_accum)[i] += H;
+      if(ocedt.mxH)          (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+      if(ocedt.mxH_accum)    (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+    }
+    energy_sum *= cell_volume;
+  } else {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      const ThreeVector&  m = spin[i];
+      const OC_REAL8m cellvolume = mesh->Volume(i);
+      OC_REAL8m cellscale = Ms[i]*cellvolume;
+      Msumx += cellscale * m.x;
+      Msumy += cellscale * m.y;
+      Msumz += cellscale * m.z;
+      OC_REAL8m ei  = Ms[i] * (m*vtemp);
+      energy_sum += ei * cellvolume;
+      OC_REAL8m tz = m.x*H.y;  // t = m x H
+      OC_REAL8m ty = m.x*H.z;
+      OC_REAL8m tx = m.y*H.z;
+      tz -= m.y*H.x;    ty  = m.z*H.x - ty;    tx -= m.z*H.y;
+
+      if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.H)            (*ocedt.H)[i] = H;
+      if(ocedt.H_accum)      (*ocedt.H_accum)[i] += H;
+      if(ocedt.mxH)          (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+      if(ocedt.mxH_accum)    (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+    }
+  }
+
   Msumx *= dHdt.x;
   Msumy *= dHdt.y;
   Msumz *= dHdt.z;
@@ -183,7 +228,9 @@ void Oxs_ScriptUZeeman::GetEnergy
   Msumx += Msumy;
   Msumx += Msumz;
   Msumx *= -MU0;
-  oed.pE_pt = Msumx.GetValue();
+
+  ocedtaux.energy_total_accum += energy_sum;
+  ocedtaux.pE_pt_accum += Msumx;
 }
 
 void

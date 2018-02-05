@@ -20,7 +20,7 @@ proc WriteToStdout {msg type src} {
 }
 Oc_Log SetLogHandler WriteToStdout status
 
-package require Net 1.2.0.3
+package require Net 2
 
 proc Die {} {
     global server

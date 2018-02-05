@@ -9,9 +9,7 @@
 # command, this file is sourced.
 
 # Verify minimum Tcl/Tk support
-if {[catch {package require Tcl 8}]} {
-    package require Tcl 7.5
-}
+package require Tcl 8.5-
 
 # Insure floating point ops are at full precision
 if {[catch {set tcl_precision 0}]} {
@@ -51,7 +49,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 1.2.1.0
+package provide Oc 2.0a0
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]

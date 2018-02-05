@@ -6,7 +6,7 @@
 #
 # Note: If batchsolve.tcl is to be used with this script, then this
 #  script should be launched with mmsolve instead of omfsh.
-package require Oc 1.1
+package require Oc 2
 
 Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
@@ -14,7 +14,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 Oc_ForceStderrDefaultMessage	;# Error messages to stderr, not dialog
 
 Oc_Main SetAppName batchslave
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{host {} {Hostname to connect to master}}

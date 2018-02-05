@@ -29,7 +29,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName launchhost
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}
@@ -108,7 +108,7 @@ if {[file readable $hostprog]} {
    # only output to stdout (if any) is the port number as reported
    # back on the ping channel.  Allow stderr to flow through,
    # however.
-   Oc_Application Exec {omfsh 1.1} \
+   Oc_Application Exec {omfsh 2} \
       $hostprog -tk 0 $hostport $listenport \
       > [[Oc_Config RunPlatform] GetValue path_device_null] &
 } else {

@@ -225,7 +225,7 @@ OC_BOOL
 Oxs_TimeDriver::Step
 (Oxs_ConstKey<Oxs_SimState> base_state,
  const Oxs_DriverStepInfo& stepinfo,
- Oxs_Key<Oxs_SimState>& next_state)
+ Oxs_ConstKey<Oxs_SimState>& next_state)
 { // Returns true if step was successful, false if
   // unable to step as requested.
 
@@ -235,7 +235,7 @@ Oxs_TimeDriver::Step
   // is destroyed.
   Oxs_Key<Oxs_TimeEvolver> temp_key = evolver_key;
   Oxs_TimeEvolver& evolver = temp_key.GetWriteReference();
-  return evolver.Step(this,base_state,stepinfo,next_state);
+  return evolver.TryStep(this,base_state,stepinfo,next_state);
 }
 
 OC_BOOL

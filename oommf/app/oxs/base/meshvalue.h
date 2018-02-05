@@ -3,7 +3,7 @@
  * Oxs_MeshValue templated class, intended for use with the
  * Oxs_Mesh family.
  *
- * Note: To maintain a clean dependency hierarchy and prevent cyclic
+ * Note 1: To maintain a clean dependency hierarchy and prevent cyclic
  *   dependencies, this class does not maintain a lock on the mesh
  *   used to construct it.  Only the size of the mesh is retained,
  *   although a client may call Oxs_MeshValue<T>::CheckMesh() to
@@ -14,24 +14,12 @@
  *   holder and/or user of the Oxs_MeshValue object to insure the
  *   correctness of that pointer.
  *
- * Note on threads: Prior to Dec-2008, this file contained code that
- *    provided threaded versions of several of the Oxs_MeshValue
- *    operations, such as operator+=, etc.  However, the time
- *    required to perform the floating point operations inside these
- *    tends to be rather small as compared to the memory overhead,
- *    so that the threading does not provide substantial speed-up
- *    because of memory bandwidth limits.  For simplicity, this
- *    code has been dropped from the head; if it makes sense to
- *    bring it back at some point, check the cvs repository.
- *       At the same time, a mutex has been introduced in support of
- *    Oxs_MeshValue lazy allocation.  This should be a NOP if
- *    OOMMF_THREADS is not defined, otherwise the overhead is
- *    hopefully minimal as OOMMF generally tries to limit the number
- *    of Oxs_MeshValue memory allocations.  If this turns out to be
- *    a performance problem, then we may want to consider exposing
- *    the mutex or else provide versions of the allocators that
- *    don't use the mutex.  -mjd, Dec-2008
- *
+ * Note 2: Many of the class member functions are threaded using the Oxs
+ *   thread pool and the Oxs_RunThreaded template with lambda
+ *   expressions.  Those members and the Oxs_MeshValue allocation and
+ *   resizing operations should only be accessed from the Oxs main
+ *   thread.  Child threads should only access the array indexing
+ *   operator[] and class const members.
  */
 
 #ifndef _OXS_MESHVALUE
@@ -183,11 +171,11 @@ private:
   T* const arr;         // Convenience variables; these shadow settings
   OC_INDEX const size; /// in arrblock;
 
-  Oxs_Mutex alloc_mutex; // Add some thread safety for lazy allocation
-
   Oxs_StripedArray<T> arrblock;
 
   void Free();
+  static const OC_INDEX MIN_THREADING_SIZE = 10000; // If size is
+  // smaller than this, then don't thread array operations.
 
 public:
   Oxs_MeshValue() : arr(0), size(0) {}
@@ -228,6 +216,8 @@ public:
   void AdjustSize(const Oxs_MeshValue<T>& other);  // Compares current size
   /// to size of other.  If different, deletes current arr and
   /// allocates new one compatible with other.
+
+  void AdjustSize(OC_INDEX newsize);
 
   OC_BOOL CheckMesh(const Vf_Ovf20_MeshNodes* mesh) const;
   /// Returns true if current arr size is compatible with mesh.
@@ -365,11 +355,7 @@ T& Oxs_MeshValue<T>::operator[](OC_INDEX index)
 template<class T>
 void Oxs_MeshValue<T>::Free()
 {
-  // Free value array.  Note that this is *NOT* locked on
-  // the alloc_mutex.  Calling routines should lock on an
-  // as needed basis.  (One should be careful that a mutex
-  // lock call isn't made from a thread already holding a
-  // lock on that same mutex.)
+  // Free value array.
   arrblock.Free();
   const_cast<T*&>(arr) = 0;
   const_cast<OC_INDEX&>(size) = 0;
@@ -379,19 +365,72 @@ void Oxs_MeshValue<T>::Free()
 /// CONSTRUCTORS
 
 template<class T>
+void Oxs_MeshValue<T>::AdjustSize(OC_INDEX newsize)
+{
+  if(newsize != size) {
+    Free(); // Sets "size" to 0.
+    if(newsize>0) {
+      arrblock.SetSize(newsize);
+      const_cast<T*&>(arr) = arrblock.GetArrBase();
+      if(arr==NULL) {
+        char errbuf[256];
+        Oc_Snprintf(errbuf,sizeof(errbuf),
+                    "Unable to allocate memory for %ld objects of size %lu"
+                    " (Oxs_MeshValue<T>::AdjustSize)",
+                    (long)newsize,(unsigned long)sizeof(T));
+        OXS_THROW(Oxs_NoMem,errbuf);
+      }
+      const_cast<OC_INDEX&>(size) = newsize;
+    }
+  }
+}
+
+template<class T>
+void Oxs_MeshValue<T>::AdjustSize(const Vf_Ovf20_MeshNodes* newmesh)
+{
+  OC_INDEX newsize = 0;
+  if(newmesh != NULL) {
+    newsize = newmesh->Size();
+  }
+  AdjustSize(newsize);
+}
+
+template<class T>
+void Oxs_MeshValue<T>::AdjustSize(const Oxs_MeshValue<T>& other)
+{
+  if(this == &other) return;  // Nothing to do.
+  AdjustSize(other.size);
+}
+
+template<class T> Oxs_MeshValue<T>&
+Oxs_MeshValue<T>::operator=(const Oxs_MeshValue<T>& other)
+{
+  if(this == &other) return *this;  // Nothing to do.
+  AdjustSize(other);
+  if(size < 1) return *this; // Nothing to copy
+  if(size<MIN_THREADING_SIZE) {
+    memcpy(arr,other.arr,static_cast<size_t>(size)*sizeof(T));
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        memcpy(arr+jstart,other.arr+jstart,
+               static_cast<size_t>(jstop-jstart)*sizeof(T));
+      });
+  }
+  return *this;
+}
+
+template<class T>
 Oxs_MeshValue<T>::Oxs_MeshValue(const Oxs_MeshValue<T> &other)
   : arr(0), size(0)
 { // Copy constructor.
-  AdjustSize(other);
-  if(size>0) {
-    memcpy(arr,other.arr,static_cast<size_t>(size)*sizeof(T));
-  }
+  operator=(other);
 }
 
 template<class T>
 void Oxs_MeshValue<T>::Swap(Oxs_MeshValue<T>& other)
 { // Note: This works okay also if this==&other
-  alloc_mutex.Lock();
   OC_INDEX tsize = size;
   const_cast<OC_INDEX&>(size) = other.size;
   const_cast<OC_INDEX&>(other.size) = tsize;
@@ -401,100 +440,6 @@ void Oxs_MeshValue<T>::Swap(Oxs_MeshValue<T>& other)
   const_cast<T*&>(other.arr)  = tarr;
 
   arrblock.Swap(other.arrblock);
-
-  alloc_mutex.Unlock();
-}
-
-template<class T>
-void Oxs_MeshValue<T>::AdjustSize(const Vf_Ovf20_MeshNodes* newmesh)
-{
-  if(newmesh == NULL) {
-    alloc_mutex.Lock();
-    try {
-      Free();
-    } catch(...) {
-      alloc_mutex.Unlock();
-      throw;
-    }
-    alloc_mutex.Unlock();
-  } else {
-    const OC_INDEX newsize = newmesh->Size();
-    alloc_mutex.Lock();
-    try {
-      if(newsize != size) { // Potential race hazard: what if
-        // size gets set to newsize before arr is pointed to valid alloc
-        // space -- at least as seen by some thread?  For safety, keep
-        // this check inside alloc_mutex.Lock() region.
-
-        // Allocate new value array.  For thread safety, "size"
-        // should be adjusted defensively wrt "arr" allocation.
-        // (See CheckMesh member function.)
-        Free(); // Sets "size" to 0.
-        if(newsize>0) {
-          arrblock.SetSize(newsize);
-          const_cast<T*&>(arr) = arrblock.GetArrBase();
-          if(arr==NULL) {
-            char errbuf[256];
-            Oc_Snprintf(errbuf,sizeof(errbuf),
-                        "Unable to allocate memory for %ld objects of size %lu"
-                        " (using AdjustSize(Vf_Ovf20_MeshNodes*) interface)",
-                        (long)newsize,(unsigned long)sizeof(T));
-            OXS_THROW(Oxs_NoMem,errbuf);
-          }
-          const_cast<OC_INDEX&>(size) = newsize;
-        }
-      }
-    } catch(...) {
-      alloc_mutex.Unlock();
-      throw;
-    }
-    alloc_mutex.Unlock();
-  }
-}
-
-template<class T>
-void Oxs_MeshValue<T>::AdjustSize(const Oxs_MeshValue<T>& other)
-{
-  if(this == &other) return;  // Nothing to do.
-  const OC_INDEX newsize = other.size;
-  if(newsize != size) {
-      alloc_mutex.Lock();
-      try {
-        if(newsize != size) { // Won race?
-          // Allocate new value array.  For thread safety, "size"
-          // should be adjusted defensively wrt "arr" allocation.
-          // (See CheckMesh member function.)
-          Free(); // Sets "size" to 0.
-          if(newsize>0) {
-            arrblock.SetSize(newsize);
-            const_cast<T*&>(arr) = arrblock.GetArrBase();
-            if(arr==NULL) {
-              char errbuf[256];
-              Oc_Snprintf(errbuf,sizeof(errbuf),
-                          "Unable to allocate memory for %ld objects of size %lu"
-                          " (using AdjustSize(Oxs_MeshValue<T>&) interface)",
-                          (long)newsize,(unsigned long)sizeof(T));
-              OXS_THROW(Oxs_NoMem,errbuf);
-            }
-            const_cast<OC_INDEX&>(size) = newsize;
-          }
-        }
-      } catch(...) {
-        alloc_mutex.Unlock();
-      }
-      alloc_mutex.Unlock();
-  }
-}
-
-template<class T> Oxs_MeshValue<T>&
-Oxs_MeshValue<T>::operator=(const Oxs_MeshValue<T>& other)
-{
-  if(this == &other) return *this;  // Nothing to do.
-  AdjustSize(other);
-  if(size>0) {
-    memcpy(arr,other.arr,static_cast<size_t>(size)*sizeof(T));
-  }
-  return *this;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -507,7 +452,17 @@ Oxs_MeshValue<T>::operator+=(const Oxs_MeshValue<T>& other)
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator+=");
   }
-  for(OC_INDEX i=0;i<size;i++) arr[i]+=other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]+=other.arr[i];
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] += other.arr[j];
+        }
+      });
+  }
   return *this;
 }
 
@@ -518,39 +473,78 @@ Oxs_MeshValue<T>::operator-=(const Oxs_MeshValue<T>& other)
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator-=");
   }
-  for(OC_INDEX i=0;i<size;i++) arr[i]-=other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]-=other.arr[i];
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] -= other.arr[j];
+        }
+      });
+  }
   return *this;
 }
 
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator*=(const Oxs_MeshValue<T>& other)
-{ // NOTE: Use of this operator requires that type T support
-  // the operator*=(const T&) operator.
+{
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator*=");
   }
-  for(OC_INDEX i=0;i<size;i++) arr[i]*=other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]*=other.arr[i];
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] *= other.arr[j];
+        }
+      });
+  }
   return *this;
 }
 
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator/=(const Oxs_MeshValue<T>& other)
-{ // NOTE: Use of this operator requires that type T support
-  // the operator/=(const T&) operator.
+{
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator/=");
   }
-  for(OC_INDEX i=0;i<size;i++) arr[i]/=other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]/=other.arr[i];
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] /= other.arr[j];
+        }
+      });
+  }
   return *this;
 }
 
+
+
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator*=(OC_REAL8m mult)
-{ // NOTE: Use of this operator requires that type T support
-  // the operator*=(OC_REAL8m) operator.
-  for(OC_INDEX i=0;i<size;i++) arr[i]*=mult;
+{
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]*=mult;
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] *= mult;
+        }
+      });
+  }
   return *this;
 }
 
@@ -558,7 +552,17 @@ Oxs_MeshValue<T>::operator*=(OC_REAL8m mult)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator=(const T &value)
 {
-  for(OC_INDEX i=0;i<size;i++) arr[i]=value;
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]=value;
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] = value;
+        }
+      });
+  }
   return *this;
 }
 
@@ -571,7 +575,17 @@ Oxs_MeshValue<T>::Accumulate
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::Accumulate");
   }
-  for(OC_INDEX i=0;i<size;i++) arr[i]+=mult*other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]+=mult*other.arr[i];
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] += mult*other.arr[j];
+        }
+      });
+  }
   return *this;
 }
 
@@ -582,11 +596,22 @@ Oxs_MeshValue<T>::HornerStep
 {
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
-             "Size mismatch in Oxs_MeshValue<T>::Accumulate");
+             "Size mismatch in Oxs_MeshValue<T>::HornerStep");
   }
-  for(OC_INDEX i=0;i<size;i++) {
-    arr[i] *= mult;
-    arr[i] += other.arr[i];
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) {
+      arr[i] *= mult;
+      arr[i] += other.arr[i];
+    }
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] *= mult;
+          arr[j] += other.arr[j];
+        }
+      });
   }
   return *this;
 }

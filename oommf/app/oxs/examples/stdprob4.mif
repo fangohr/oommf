@@ -13,6 +13,15 @@ Parameter subproblem  2  ;# Should be either 1 or 2
 Parameter initproblem 0  ;# Use 1 to generate initial state,
             ## or 0 to run using previously generated state.
 
+Parameter xcellsize 2.5e-9
+Parameter ycellsize 2.5e-9
+Parameter zcellsize   3e-9
+
+Parameter coarse_demag {}  ;# Empty string for normal demag, else a
+        # triplet of positive integers specifying coarse grid size.
+
+Parameter til {} ;# Total iteration limit
+
 if {1 == $subproblem} {
     set basename stdprob4a
     set Hx  -24.6  ;# Applied field in mT
@@ -33,16 +42,22 @@ Specify Oxs_BoxAtlas:atlas {
   zrange {0   3e-9}
 }
 
-Specify Oxs_RectangularMesh:mesh {
-  cellsize {2.5e-9 2.5e-9 3e-9}
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xcellsize $ycellsize $zcellsize}
   atlas Oxs_BoxAtlas:atlas
-}
+}]
 
 Specify Oxs_UniformExchange {
   A  13E-12
 }
 
-Specify Oxs_Demag {}
+set coarse_grid {}
+if {![string match {} $coarse_demag]} {
+   set coarse_grid [linsert coarse_grid end $coarse_demag]
+}
+Specify Oxs_Demag [subst {
+   $coarse_grid
+}]
 
 if {$initproblem} {
     Specify Oxs_CGEvolve {}
@@ -80,6 +95,9 @@ if {$initproblem} {
           method $solver
        }]
     }
+    if {![string match {} $til]} {
+       set til "total_iteration_limit $til"
+    }
     Specify Oxs_TimeDriver [subst {
 	basename $basename
 	evolver :evolver
@@ -91,5 +109,6 @@ if {$initproblem} {
 	    norm  1.0
 	    file  stdprob4-start.omf
 	}}
+        $til
     }]
 }

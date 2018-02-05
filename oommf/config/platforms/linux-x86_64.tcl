@@ -35,9 +35,10 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler
-if {[info exists env(OOMMF_C++)]} {
-   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
+# than OOMMF_C++ because the latter is an invalid name in Unix shells.
+if {[info exists env(OOMMF_CPP)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
 # Support for the automated buildtest scripts
@@ -66,13 +67,17 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # among lines providing alternative values for a feature, uncomment the
 # line containing the proper value.
 #
-# The features in this file are divided into three sections.  The first
-# section (REQUIRED CONFIGURATION) includes features which require you
-# to provide a value.  The second section (OPTIONAL CONFIGURATION)
-# includes features which have usable default values, but which you
-# may wish to customize.  The third section (ADVANCED CONFIGURATION)
-# contains features which you probably do not need or want to change
-# without a good reason.
+# The features in this file are divided into three sections.  The
+# first section (REQUIRED CONFIGURATION) includes features which
+# require you to provide a value.  The second section (LOCAL
+# CONFIGURATION) includes features which have usable default values,
+# but which you may wish to customize.  These can be edited here, but
+# it is recommended instead that you create a subdirectory named
+# "local", put a copy of the LOCAL CONFIGURATION section there in a
+# file with the same name as this file, and then edit that file.  The
+# third section (BUILD CONFIGURATION) contains features which you
+# probably do not need or want to change without a good reason.
+#
 ########################################################################
 # REQUIRED CONFIGURATION
 
@@ -82,10 +87,10 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # in your path, be sure to use the whole pathname.  Also include any
 # options required to instruct your compiler to only compile, not link.
 #
-# If your compiler is not listed below, additional features will
-# have to be added in the ADVANCED CONFIGURATION section below to
-# describe to the OOMMF software how to operate your compiler.  Send
-# e-mail to the OOMMF developers for assistance.
+# If your compiler is not listed below, additional features will have
+# to be added in the BUILD CONFIGURATION section below to describe to
+# the OOMMF software how to operate your compiler.  Send e-mail to the
+# OOMMF developers for assistance.
 #
 # The GNU C++ compiler 'g++'
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
@@ -145,8 +150,16 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## for builds with thread support.
 # $config SetValue thread_count 4  ;# Replace '4' with desired thread count.
 #
-## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not use
-## SSE intrinsics.  Leave unset to get the default.
+## Specify hard limit on the max number of threads per process.  This is
+## only meaningful for builds with thread support.  If not set, then there
+## is no limit.
+# $config SetValue thread_limit 8
+#
+## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not
+## use SSE intrinsics.  Leave unset to get the default (which may
+## depend on the compiler).  Note: The cpu_arch selection below must
+## support the desired sse_level.  In particular, on 64-bit systems
+## cpu_arch == generic supports only SSE 2 or lower.
 # $config SetValue sse_level 2  ;# Replace '2' with desired level
 #
 ## Use FMA (fused multiply-add) intrinsics?  If so, specify either "3"
@@ -216,6 +229,15 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
 # 
+## Uncomment the following "use_tk 0" line to build OOMMF without Tk.
+## This is for special-purpose use only, typically for remote batch jobs
+## on a headless machine with Tcl but without X11 (and hence Tk).  This
+## significantly hobbles OOMMF --- not only are all GUI interfaces
+## disabled, but so too the Tk image processing code.  Even on a
+## headless machine, it is better if possible to run X11 with a virtual
+## frame buffer (e.g. Xvfb).
+# $config SetValue use_tk 0
+#
 # END LOCAL CONFIGURATION
 ########################################################################
 #
@@ -272,8 +294,20 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
     $config SetValue program_compiler_c++ $compiler
 }
 
+# The absolute, native filename of the null device
+$config SetValue path_device_null {/dev/null}
+
+# Are we building OOMMF, or running it?
+if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
+       || !$env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} {
+   # Remainder of script concerns the build environment only,
+   # none of which is not relevant at run time.
+   unset config
+   return
+}
+
 ########################################################################
-# ADVANCED CONFIGURATION
+# BUILD CONFIGURATION
 
 # Compiler option processing...
 set ccbasename [file tail [lindex [$config GetValue program_compiler_c++] 0]]
@@ -283,6 +317,11 @@ if {[string match g++* $ccbasename]} {
    if {![info exists gcc_version]} {
       set gcc_version [GuessGccVersion \
                           [lindex [$config GetValue program_compiler_c++] 0]]
+   }
+   if {[lindex $gcc_version 0]<4 ||
+       ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<7)} {
+      puts stderr "WARNING: This version of OOMMF requires g++ 4.7\
+                   or later (C++ 11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetGccBannerVersion  \
@@ -619,6 +658,27 @@ if {[string match g++* $ccbasename]} {
       [list GetIcpcBannerVersion  \
           [lindex [$config GetValue program_compiler_c++] 0]]
 
+   # Intel compiler on Linux relies on parts of gcc install.
+   # Assume here that g++ or gcc is on PATH:
+   if {![info exists gcc_version]} {
+      set gcc_version [GuessGccVersion g++x]
+      if {[llength $gcc_version]==0} {
+         set gcc_version [GuessGccVersion gcc]
+      }
+   }
+   set gcc_bad 0
+   if {[llength $gcc_version]>0} {
+      if {[lindex $gcc_version 0]<4 || 
+          ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<8)} {
+         set gcc_bad 1
+      }
+   }
+   if {[lindex $icpc_version]<14 || $gcc_bad} {
+      puts stderr "WARNING: This version of OOMMF requires\
+                   Intel icpc version 14 or later and g++ 4.8\
+                   or later (C++ 11 support)"
+   }
+
    # NOTES on program_compiler_c++_option_opt:
    #   If you use -ipo, or any other flag that enables interprocedural
    #     optimizations (IPO) such as -fast, then the program_linker
@@ -660,6 +720,7 @@ if {[string match g++* $ccbasename]} {
       # inserted an appropriate cpu_arch string, i.e., one that
       # matches the format and known types as returned from GuessCpu.
       if {[string match host $cpu_arch]} {
+         set cpuopts [list -xHost]
          set cpu_arch [GuessCpu]
          if {[catch {$config GetValue sse_level}]} {
             $config SetValue sse_level [Find_SSE_Level]
@@ -667,8 +728,9 @@ if {[string match g++* $ccbasename]} {
          if {[catch {$config GetValue fma_type}]} {
             $config SetValue fma_type [Find_FMA_Type]
          }
+      } else {
+         set cpuopts [GetIcpcCpuOptFlags $icpc_version $cpu_arch]
       }
-      set cpuopts [GetIcpcCpuOptFlags $icpc_version $cpu_arch]
    }
    unset cpu_arch
    # You can override the above results by directly setting or
@@ -687,7 +749,9 @@ if {[string match g++* $ccbasename]} {
       $config SetValue sse_level 2
    }
 
-   # Default warnings disable
+   # Default warnings disable.
+   # Warning 1572 is floating point comparisons being unreliable.
+   # Warning 1624 is non-template friends of templated classes.
    set nowarn [list -wd1572,1624]
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
@@ -705,6 +769,8 @@ if {[string match g++* $ccbasename]} {
    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
    $config SetValue program_compiler_c++_option_debug {format "-g"}
 
+   # Warning enabled by '-warn 1' setting to cflags in Oc_Option
+   #   Platform setting.
    $config SetValue program_compiler_c++_option_warn \
       { format "-Wall -Werror -wd1418,1419,279,810,981,383,1572,1624" }
    # { format "-w0 -verbose \
@@ -903,10 +969,12 @@ if {[string match g++* $ccbasename]} {
     # (IPO) appear in the program_compiler_c++_option_opt value above,
     # then append those flags into program_linker too.
     if {[lsearch -exact $opts -fast]>=0 || [lsearch -glob $opts -ipo*]>=0} {
-       lappend linkcmdline -ipo -lsvml
+       lappend linkcmdline -ipo -lsvml -wd11021
        # The svml library is needed for the dvl/spectrum executable
        # and the oommf/app/oxs/ext/fft3v.cc object module when compiled
        # with some releases of the icpc v9 and v10 compiler.
+       # -wd11021 disables ipo warning 11021 which complains about a
+       # long list of unresolved symbols in libtk.
     }
     if {[lsearch -exact $opts -parallel]>=0} {
        lappend linkcmdline -parallel
@@ -955,9 +1023,6 @@ if {[string match icpc $ccbasename]} {
     $config SetValue program_libmaker_option_out {format \"%s\"}
 }
 unset ccbasename
-
-# The absolute, native filename of the null device
-$config SetValue path_device_null {/dev/null}
 
 # A partial Tcl command (or script) which when completed by lappending
 # a file name stem and evaluated returns the corresponding file name for

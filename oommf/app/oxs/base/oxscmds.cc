@@ -59,6 +59,7 @@ Oxs_CmdProc Oxs_GetRunStateCounts;
 Oxs_CmdProc Oxs_GetCurrentStateId;
 Oxs_CmdProc Oxs_SetStage;
 Oxs_CmdProc Oxs_IsProblemLoaded;
+Oxs_CmdProc Oxs_IsRunDone;
 Oxs_CmdProc Oxs_GetMif;
 Oxs_CmdProc Oxs_ProbInit;
 Oxs_CmdProc Oxs_ProbReset;
@@ -148,6 +149,82 @@ void OxsCmdsCleanup(ClientData clientData)
 {
   OxsCmdsClientData* cd = static_cast<OxsCmdsClientData*>(clientData);
   delete cd;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * OxsCmdsMakeEventString --
+ *      Internal helper routine for processing OxsRunEvent vectors.
+ *
+ * Results:
+ *      String containing list of events.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String OxsCmdsMakeEventString(const vector<OxsRunEvent>& events)
+{
+  String whole_list;
+  if(!events.empty()) {
+    // Build event list
+    vector<String> event_list;
+    vector<OxsRunEvent>::const_iterator it;
+    for(it=events.begin();it!=events.end();++it) {
+      const Oxs_SimState* state = it->state_key.GetPtr();
+      if(state==NULL || state->Id()==0) {
+	OXS_THROW(Oxs_ProgramLogicError,"Invalid state returned");
+      }
+      static char event_buf[512];
+      switch(it->event) {
+      case OXS_STEP_EVENT:
+	Oc_Snprintf(event_buf,sizeof(event_buf),
+		    "STEP %u %u %u",
+		    state->Id(),
+		    state->stage_number,
+		    state->iteration_count);
+	break;
+      case OXS_STAGE_DONE_EVENT:
+	Oc_Snprintf(event_buf,sizeof(event_buf),
+		    "STAGE_DONE %u %u %u",
+		    state->Id(),
+		    state->stage_number,
+		    state->iteration_count);
+	break;
+      case OXS_RUN_DONE_EVENT:
+	Oc_Snprintf(event_buf,sizeof(event_buf),
+		    "RUN_DONE %u %u %u",
+		    state->Id(),
+		    state->stage_number,
+		    state->iteration_count);
+	break;
+      case OXS_CHECKPOINT_EVENT:
+	Oc_Snprintf(event_buf,sizeof(event_buf),
+		    "CHECKPOINT %u %u %u",
+		    state->Id(),
+		    state->stage_number,
+		    state->iteration_count);
+	break;
+      case OXS_INVALID_EVENT:
+        OXS_THROW(Oxs_ProgramLogicError,"Invalid event detected");
+        break;
+      default:
+        {
+          char buf[1024];
+          Oc_Snprintf(buf,sizeof(buf),
+                      "Unknown event type returned: %d",
+                      static_cast<int>(it->event));
+          OXS_THROW(Oxs_ProgramLogicError,buf);
+        }
+      }
+      event_list.push_back(String(event_buf));
+    }
+    whole_list = Nb_MergeList(event_list);
+  }
+
+  return whole_list;
 }
 
 /*
@@ -642,7 +719,7 @@ String Oxs_GetStage(Oxs_Director* director,Tcl_Interp *interp,
 /*
  *----------------------------------------------------------------------
  *
- * Oxs_GetRunCounts --
+ * Oxs_GetRunStateCounts --
  *      Returns a list consisting of the current iteration, stage, and
  *   number of stages.
  *
@@ -676,12 +753,11 @@ String Oxs_GetRunStateCounts(Oxs_Director* director,Tcl_Interp *interp,
 /*
  *----------------------------------------------------------------------
  *
- * Oxs_GetRunCounts --
- *      Returns a list consisting of the current iteration, stage, and
- *   number of stages.
+ * Oxs_GetCurrentStateId --
+ *      Query directory for identifier for current state
  *
  * Results:
- *      String form of the list.
+ *      String form of the current state identifier
  *
  * Side effects:
  *      None.
@@ -712,7 +788,8 @@ String Oxs_GetCurrentStateId(Oxs_Director* director,Tcl_Interp *interp,
  *      Interactively set the Stage of the problem being solved.
  *
  * Results:
- *      Returns the actual stage.
+ *      A string containing a two item list.  The first item is the
+ *      actual stage.  The second item is a list of events (if any).
  *
  * Side effects:
  *      None.
@@ -734,11 +811,23 @@ String Oxs_SetStage(Oxs_Director* director,Tcl_Interp *interp,
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
 
-  int stage = director->SetStage(requestedStage);
+  vector<OxsRunEvent> events; // Note: Each OxsRunEvent includes
+  /// a key tied to a simulation state.  That key will hold a read
+  /// lock on the state until the OxsRunEvent is destroyed.  The
+  /// easiest way to insure proper destruction, that works even
+  /// across exceptions, is for results to be an automatic (local)
+  /// variable.
+
+  int stage = director->SetStage(requestedStage,events);
 
   char buf[64];
   Oc_Snprintf(buf,sizeof(buf),"%d",stage);
-  return String(buf);
+
+  vector<String> results;
+  results.push_back(String(buf));
+  results.push_back(OxsCmdsMakeEventString(events));
+
+  return Nb_MergeList(results);
 }
 
 /*
@@ -770,6 +859,38 @@ String Oxs_IsProblemLoaded(Oxs_Director* director,Tcl_Interp *interp,
   }
   return result;
 }
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_IsRunDone --
+ *      Returns 1 if current state is done, 0 if not done,
+ *      and -1 if done status is unknown.
+ *
+ * Results:
+ *      Problem status as a string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+String Oxs_IsRunDone(Oxs_Director* director,Tcl_Interp *interp,
+                     int argc, CONST84 char** argv)
+{
+  if (argc != 1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+		     "\"", (char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  int doneness = director->IsRunDone();
+  char buf[64];
+  Oc_Snprintf(buf,sizeof(buf),"%d",doneness);
+
+  return String(buf);
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -945,75 +1066,24 @@ String Oxs_Run(Oxs_Director* director,Tcl_Interp *interp,
   Tcl_ResetResult(interp); // Safety: Wipe away any accidental
   /// scribblings in the result area.
 
-  String whole_list;
-  if(!results.empty()) {
-    // Build event list
-    vector<String> event_list;
-    vector<OxsRunEvent>::const_iterator it;
-    for(it=results.begin();it!=results.end();++it) {
-      const Oxs_SimState* state = it->state_key.GetPtr();
-      if(state==NULL || state->Id()==0) {
-	OXS_THROW(Oxs_ProgramLogicError,"Invalid state returned");
-      }
-      static char event_buf[512];
-      switch(it->event) {
-      case OXS_STEP_EVENT:
-	Oc_Snprintf(event_buf,sizeof(event_buf),
-		    "STEP %u %u %u",
-		    state->Id(),
-		    state->stage_number,
-		    state->iteration_count);
-	break;
-      case OXS_STAGE_DONE_EVENT:
-	Oc_Snprintf(event_buf,sizeof(event_buf),
-		    "STAGE_DONE %u %u %u",
-		    state->Id(),
-		    state->stage_number,
-		    state->iteration_count);
-	break;
-      case OXS_RUN_DONE_EVENT:
-#if REPORT_TIME
-        { 
-          Oc_TimeVal cpu,wall;
-          cruntime.GetTimes(cpu,wall);
-          if(double(wall)>0.0) {
-            fprintf(stderr,"C++-level run time (secs)%7.2f cpu /%7.2f wall\n",
-                    double(cpu),double(wall));
-          }
-          cruntime.Reset();
-        }
-#endif // REPORT_TIME
-	Oc_Snprintf(event_buf,sizeof(event_buf),
-		    "RUN_DONE %u %u %u",
-		    state->Id(),
-		    state->stage_number,
-		    state->iteration_count);
-	break;
-      case OXS_CHECKPOINT_EVENT:
-	Oc_Snprintf(event_buf,sizeof(event_buf),
-		    "CHECKPOINT %u %u %u",
-		    state->Id(),
-		    state->stage_number,
-		    state->iteration_count);
-	break;
-      case OXS_INVALID_EVENT:
-        OXS_THROW(Oxs_ProgramLogicError,"Invalid event detected");
-        break;
-      default:
-        {
-          char buf[1024];
-          Oc_Snprintf(buf,sizeof(buf),
-                      "Unknown event type returned: %d",
-                      static_cast<int>(it->event));
-          OXS_THROW(Oxs_ProgramLogicError,buf);
-        }
-      }
-      event_list.push_back(String(event_buf));
-    }
-    whole_list = Nb_MergeList(event_list);
-  }
 
-  return whole_list;
+#if REPORT_TIME
+  for(vector<OxsRunEvent>::const_iterator cit = results.begin();
+      cit != results.end(); ++cit) {
+    if(cit->event != OXS_RUN_DONE_EVENT) continue;
+    // Otherwise, RUN_DONE event occurred; report
+    Oc_TimeVal cpu,wall;
+    cruntime.GetTimes(cpu,wall);
+    if(double(wall)>0.0) {
+      fprintf(stderr,"C++-level run time (secs)%7.2f cpu /%7.2f wall\n",
+              double(cpu),double(wall));
+    }
+    cruntime.Reset();
+    break;
+  }
+#endif // REPORT_TIME
+
+  return OxsCmdsMakeEventString(results);
 }
 
 
@@ -1920,25 +1990,28 @@ String Oxs_GetCheckpointAge(Oxs_Director* director,Tcl_Interp *interp,
 String Oxs_DirectorDevelopTest(Oxs_Director* director,Tcl_Interp *interp,
 			       int argc,CONST84 char** argv)
 {
-  if(argc!=2) {
+  if(argc<2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
-		     argv[0]," count\"",(char *) NULL);
+		     argv[0]," routine ...\"",(char *) NULL);
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
-  String out;
-  int result_code = director->DoDevelopTest(String(argv[1]),out);
+  String routine = argv[1];
+  String result_string;
+  int result_code
+    = director->DoDevelopTest(routine,result_string,argc-1,argv+1);
   if(result_code!=0) {
     char buf[256];
     Oc_Snprintf(buf,sizeof(buf),"%d",result_code);
     Tcl_AppendResult(interp,
-		     "Test error; error code: ",buf,
+		     "Test error ---\n   error  code: ",buf,
+                     "\n result string: ",result_string.c_str(),
 		     "\nSee DoDevelopTest source code in"
 		     " oommf/app/oxs/base/director.cc"
 		     " for details.",
 		     (char *)NULL);
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
-  return out;
+  return result_string;
 }
 
 
@@ -2095,6 +2168,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_GetCurrentStateId,"Oxs_GetCurrentStateId");
   REGCMD(Oxs_SetStage,"Oxs_Director::SetStage");
   REGCMD(Oxs_IsProblemLoaded,"Oxs_Director::IsProblemLoaded");
+  REGCMD(Oxs_IsRunDone,"Oxs_Director::IsRunDone");
   REGCMD(Oxs_GetMif,"Oxs_Director::GetMifHandle");
   REGCMD(Oxs_ProbInit,"Oxs_Director::ProbInit");
   REGCMD(Oxs_ProbReset,"Oxs_Director::ProbReset");

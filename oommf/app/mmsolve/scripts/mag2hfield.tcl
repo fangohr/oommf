@@ -2,11 +2,11 @@
 #
 # This file must be interpreted by the mmsolve shell.
 
-package require Oc 1.1
-package require Mms 1.1.1
+package require Oc 2
+package require Mms 2
 
 Oc_Main SetAppName mag2hfield
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option console {} {}
 

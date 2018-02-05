@@ -50,7 +50,7 @@ if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin] \
 
 ########################################################################
 # Script control parameters
-set tcl_precision 17
+set tcl_precision 0
 
 set EXEC_STAGE_TEST_TIMEOUT 6000 ;# Max time to wait for any single test
 ## stage to run, in seconds.
@@ -597,6 +597,7 @@ set default_cellsize(1b) [list 16 32/3. 8 32/6. 32/7. 4]
 set default_cellsize(3) [list 32 16 8 4]
 set cellsize {}
 set numa none
+set tick_digits 1
 
 ########################################################################
 # Usage
@@ -605,18 +606,21 @@ proc Usage {} {
    global NUMASUPPORT EXEC_STAGE_TEST_TIMEOUT
    global test_number default_cellsize
    global sil nos threads cellsize numa
-   global default_evolver
+   global tick_digits default_evolver
    puts -nonewline stderr "Usage: tclsh perftest.tcl \<testnum\>"
    if {$NUMASUPPORT} {
       puts -nonewline stderr " \[-numa \<none\|auto\|\#\[,\#...\]\>\]"
    }
-   puts stderr " \[-sil \<\#\>\] \\\n  \
-                  \[-number_of_stages \<\#\>\]\
-                  \[-threads \<\# \[\# ...\]\>\]\
-                  \[-cellsize \<\# \[\# ...\]\>\] \\\n  \
-                  \[-evolver \<cg\|rk\|euler\>\]\
-                  \[-timeout \<\#\>\] \\\n  \
-                  \[-v\] \[-info\] \[-efficiency\] \[-speedup\]"
+   puts stderr \
+       " \[-sil \<\#\>\] \\\n  \
+         \[-number_of_stages \<\#\>\]\
+         \[-threads \<\# \[\# ...\]\>\]\
+         \[-cellsize \<\# \[\# ...\]\>\] \\\n  \
+         \[-digits \<\#\>\]\
+         \[-evolver \
+          \<cg\|rk\|rk2\|rk2heun\|rk4\|rkf54\|rkf54m\|rkf54s\|euler\>\] \\\n  \
+         \[-timeout \<\#\>\] \[-showoutput\]\
+         \[-v\] \[-info\] \[-efficiency\] \[-speedup\]"
    puts stderr " Where:"
    puts stderr "  testnum is the test number (1, 1b or 3)"
    if {$NUMASUPPORT} {
@@ -633,6 +637,7 @@ proc Usage {} {
       puts stderr "  -cellsize is cellsize (in nm) list\
                    (default $default_cellsize($test_number))"
    }
+   puts stderr "  -digits is precision for time output (default $tick_digits)"
    if {[string match {} $default_evolver]} {
       puts stderr "  -evolver selects evolver (options may vary by test)"
    } else {
@@ -640,6 +645,7 @@ proc Usage {} {
    }
    puts stderr "  -timeout sets stage timeout, in seconds;\
                 0 to disable, default=$EXEC_STAGE_TEST_TIMEOUT"
+   puts stderr "  -showoutput prints run stdout and stderr output"
    puts stderr "  -v for verbose output."
    puts stderr "  -info shows system info and exits"
    puts stderr "  -efficiency to print efficiency table"
@@ -762,6 +768,14 @@ if {$cellsize_index >= 0} {
    set argv [lreplace $argv $cellsize_index [expr {$index - 1}]]
 }
 
+set digits_index [lsearch -regexp $argv {^-+digits$}]
+if {$digits_index >= 0} {
+   set index [expr {$digits_index + 1}]
+   set tick_digits [lindex $argv $index]
+   set argv [lreplace $argv $digits_index $index]
+}
+set tickfmt [format "%%7.%df" $tick_digits]
+
 set evolver_index [lsearch -regexp $argv {^-+evolver$}]
 if {$evolver_index >= 0} {
    set index [expr {$evolver_index + 1}]
@@ -781,6 +795,13 @@ set speedup_index [lsearch -regexp $argv {^-+speedup$}]
 if {$speedup_index >= 0} {
    set speedup_flag 1
    set argv [lreplace $argv $speedup_index $speedup_index]
+}
+
+set showoutput 0
+set showoutput_index [lsearch -regexp $argv {^-+showoutput$}]
+if {$showoutput_index >= 0} {
+   set showoutput 1
+   set argv [lreplace $argv $showoutput_index $showoutput_index]
 }
 
 set verbose 0
@@ -977,8 +998,7 @@ proc SystemKill { runpid } {
 proc TimeoutExecReadHandler { chan } {
    global TE_runcode TE_results
    if {![eof $chan]} {
-      set data [read $chan]
-      append TE_results
+      append TE_results [set data [read $chan]]
       if {[string match {*Boxsi run end.*} $data]} {
          # Handle case where exit blocked by still-running
          # child process.
@@ -1117,6 +1137,13 @@ foreach cs $cellsize {
       } elseif {[lindex $run_result 0] != 0} {
          puts stderr "Run error; cell size=$cs, thread count=$tc"
       } else {
+         if {$showoutput} {
+            flush stderr
+            puts "RUN OUTPUT >>>>"
+            puts [string trim [lindex $run_result 1]]
+            puts "<<<< RUN OUTPUT"
+            flush stdout
+         }
          set timing_data [split [eval exec $odtcols_command] "\n"]
          foreach {base_evals base_time} [lindex $timing_data 0] break
          set stage 1
@@ -1180,6 +1207,13 @@ foreach cs $cellsize {
       }
       set tick_list [lsort -real $results([list $cs $tc])]
       if {[llength $tick_list]<1} { continue }
+      if {$verbose} {
+         set ta [expr {[lindex $tick_list 0]*1000.}]
+         set tz [expr {[lindex $tick_list end]*1000.}]
+         puts [format \
+               "Cell size=$cs, thread count=$tc, time range: %.2f - %.2f (ms)" \
+               $ta $tz]
+      }
       set tick_sum 0.0
       foreach ticks $tick_list {
          set tick_sum [expr {$tick_sum + $ticks}]
@@ -1307,7 +1341,7 @@ foreach cs $cellsize {
    foreach tc $threads {
       if {[info exists ave_tick([list $cs $tc])]} {
          puts -nonewline \
-            [format " %7.1f" [expr {1000.*$ave_tick([list $cs $tc])}]]
+            [format " $tickfmt" [expr {1000.*$ave_tick([list $cs $tc])}]]
       } else {
          puts -nonewline [format " %7s" "   -   "]
       }

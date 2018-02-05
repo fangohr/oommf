@@ -105,7 +105,8 @@ Oc_Class Oc_Application {
                 }
             }
         }
-        # Add entries for tclsh and wish
+        # Add entries for tclsh, user_tclsh, and wish.
+        # (user_tclsh is the Tcl shell interpreting this script.)
         set config [Oc_Config RunPlatform]
 	if {![catch {$config Tclsh} mytclsh]} {
 	    if {[catch {$config GetValue TCL_VERSION} ver]} {
@@ -113,6 +114,11 @@ Oc_Class Oc_Application {
 	    }
 	    [$class New _ -name tclsh -version $ver -machine $platformName \
 		    -file $mytclsh -directory ""] Initialize
+	}
+	if {![catch {info nameofexecutable} usertclsh]} {
+           set ver [info tclversion]
+           [$class New _ -name user_tclsh -version $ver -machine $platformName \
+               -file $usertclsh -directory ""] Initialize
 	}
 	if {![catch {$config Wish} mywish]} {
 	    if {[catch {$config GetValue TK_VERSION} ver]} {
@@ -159,25 +165,7 @@ Oc_Class Oc_Application {
     }
 
     callback proc CompareVersions {v1 v2} {
-        while {1} {
-            regexp {^([0-9]+)?(\.(.*))?} $v1 match1 num1 _ v1
-            if {[set done1 [string match {} $match1]]} {
-                set num1 0 
-            }
-            regexp {^([0-9]+)?(\.(.*))?} $v2 match2 num2 _ v2
-            if {[set done2 [string match {} $match2]]} {
-                set num2 0
-            }
-            if {$num1 > $num2} {
-                return 1
-            } elseif {$num1 < $num2} {
-                return -1
-            }
-            if {$done1 && $done2} {
-                break
-            }
-        }
-        return 0
+	return [package vcompare $v1 $v2]
     }
 
     proc IsShell {appname} {
@@ -287,7 +275,7 @@ Oc_Class Oc_Application {
             return -code error "No matching application in the search path."
         }
         set attempts ""
-        foreach v [lsort -command [list $class CompareVersions] -decreasing \
+        foreach v [lsort -command {package vcompare} -decreasing \
                 $versions($name)] {
             if {[$class Satisfies $v $version] \
                     && [info exists apps($name,$v)]} {
@@ -306,9 +294,7 @@ Oc_Class Oc_Application {
         if {[string match {} $req]} {
             return 1
         }
-        regexp {^([0-9]+)?(\.(.*))?} $avail _ ma
-        regexp {^([0-9]+)?(\.(.*))?} $req _ mr
-        expr {($ma == $mr) && ([$class CompareVersions $avail $req] >= 0)}
+	return [package vsatisfies $avail $req]
     }
 
     const public variable machine

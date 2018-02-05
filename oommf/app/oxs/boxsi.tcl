@@ -3,9 +3,9 @@
 # The Batch-mode OOMMF eXtensible Solver Interface
 
 # Support libraries
-package require Oc 1.1
-package require Oxs 1.2
-package require Net 1.2.0.3
+package require Oc 2
+package require Oxs 2
+package require Net 2
 
 # Make background errors fatal.  Otherwise, since boxsi is assumed
 # to run non-interactively, a background error can cause the boxsi
@@ -24,7 +24,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -116,14 +116,22 @@ Oc_CommandLine Option kill {
 
 # Multi-thread support
 if {[Oc_HaveThreads]} {
-   set threadcount [Oc_GetMaxThreadCount]
+   set thread_limit [Oc_GetThreadLimit]
+   if {[string match {} $thread_limit]} {
+      set maxnote {}
+   } else {
+      set maxnote "; max is $thread_limit"
+   }
+   set threadcount_request [Oc_EnforceThreadLimit [Oc_GetMaxThreadCount]]
    Oc_CommandLine Option threads {
       {count {expr {[regexp {^[0-9]+$} $count] && $count>0}}}
    } {
-      global threadcount;  set threadcount $count
-   } [subst {Number of concurrent threads (default is $threadcount)}]
+      global threadcount_request
+      set threadcount_request [Oc_EnforceThreadLimit $count]
+   } [subst {Number of concurrent threads\
+                (default is $threadcount_request$maxnote)}]
 } else {
-   set threadcount 1  ;# Safety
+   set threadcount_request 1  ;# Safety
 }
 
 # NUMA (non-uniform memory access) support
@@ -208,8 +216,14 @@ if {[catch {Oxs_SetRestartFileDir $restart_file_directory} msg]} {
 }
 
 if {[Oc_HaveThreads]} {
+   if {$threadcount_request<1} {set threadcount_request 1}
+   set threadcount [Oc_EnforceThreadLimit $threadcount_request]
    Oc_SetMaxThreadCount $threadcount
    set aboutinfo "Number of threads: $threadcount"
+   set thread_limit [Oc_GetThreadLimit]
+   if {![string match {} $thread_limit]} {
+      append aboutinfo " (limit is $thread_limit)"
+   }
 } else {
    set aboutinfo "Single threaded build"
 }
@@ -299,7 +313,7 @@ InitializeCheckpointControl
 # GetGui message.
 ##########################################################################
 set gui {
-    package require Oc 1.1
+    package require Oc 2
     package require Tk
     package require Ow
     wm withdraw .
@@ -1114,6 +1128,9 @@ proc LoadProblem {fname} {
          ## can't be brought up either.
       }
       after idle [list SetupInitialSchedule $script]
+      if {[Oxs_IsRunDone]==1} {
+         after idle [list Oc_EventHandler Generate Oxs Done]
+      }
    }
 }
 
@@ -1159,6 +1176,37 @@ proc Reset {} {
     }
 }
 
+proc GenerateRunEvents { events } {
+   # Fire event handlers
+   global status
+   foreach ev $events {
+      # $ev is a 4 item list: <event_type state_id stage step>
+      set event [lindex $ev 0]
+      switch -exact -- $event {
+         STEP {
+            Oc_EventHandler Generate Oxs Step \
+               -stage [lindex $ev 2] \
+               -step [lindex $ev 3]
+         }
+         STAGE_DONE {
+            Oc_EventHandler Generate Oxs Stage
+         }
+         RUN_DONE {
+            Oc_EventHandler Generate Oxs Done
+         }
+         CHECKPOINT {
+            Oc_EventHandler Generate Oxs Checkpoint
+         }
+         default {
+            after idle [list Oc_Log Log \
+                           "Unrecognized event: $event" error Loop]
+            ReleaseProblem
+            set status Error
+         }
+      }
+   }
+}
+
 # Keep taking steps as long as the status is unchanged,
 # remaining one of Run, Relax.
 Oc_Log AddSource Loop
@@ -1173,33 +1221,8 @@ proc Loop {type} {
 	ReleaseProblem
 	set status Error
     } else {
-       ;# Fire event handlers
-       foreach ev $msg {
-          # $ev is a 4 item list: <event_type state_id stage step>
-          set event [lindex $ev 0]
-          switch -exact -- $event {
-             STEP {
-                Oc_EventHandler Generate Oxs Step \
-                   -stage [lindex $ev 2] \
-                   -step [lindex $ev 3]
-             }
-             STAGE_DONE {
-                Oc_EventHandler Generate Oxs Stage
-             }
-             RUN_DONE {
-                Oc_EventHandler Generate Oxs Done
-             }
-             CHECKPOINT {
-                Oc_EventHandler Generate Oxs Checkpoint
-             }
-             default {
-                after idle [list Oc_Log Log \
-                        "Unrecognized event: $event" error Loop]
-                ReleaseProblem
-                set status Error
-             }
-          }
-       }
+       # Fire event handlers
+       GenerateRunEvents $msg
     }
     after idle [info level 0]
 }
@@ -1212,34 +1235,28 @@ trace variable problem w {uplevel #0 set status Loading... ;#}
 Oc_EventHandler New _ Oxs Step [list set step %step]
 Oc_EventHandler New _ Oxs Step [list set stage %stage]
 Oc_EventHandler New _ Oxs Step {
-    if {$stagerequest != %stage} {
-		trace vdelete stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
-	set stagerequest %stage
-		trace variable stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
-    }
+   if {$stagerequest != %stage} {
+      trace vdelete stagerequest w {
+         if {[info exists stage] && $stage != $stagerequest} {
+            set results [Oxs_SetStage $stagerequest]
+            set stage [lindex $results 0]
+            GenerateRunEvents [lindex $results 1]
+      } ;#}
+      set stagerequest %stage
+      trace variable stagerequest w {
+         if {[info exists stage] && $stage != $stagerequest} {
+            set results [Oxs_SetStage $stagerequest]
+            set stage [lindex $results 0]
+            GenerateRunEvents [lindex $results 1]
+         } ;#}
+   }
 }
-		trace variable stagerequest w {
-		    if {[info exists stage] && $stage != $stagerequest} {
-			Oxs_SetStage $stagerequest
-			set stage [Oxs_GetStage]
-			if {$stage != $stagerequest} {
-			    after idle [list set stagerequest $stage]
-			}
-		    } ;#}
+trace variable stagerequest w {
+    if {[info exists stage] && $stage != $stagerequest} {
+       set results [Oxs_SetStage $stagerequest]
+       set stage [lindex $results 0]
+       GenerateRunEvents [lindex $results 1]
+} ;#}
 
 # Terminate Loop when solver is Done. Put this on the after idle list so
 # that all other Done event handlers have an opportunity to fire first.

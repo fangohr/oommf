@@ -34,7 +34,7 @@
  * blocked.  The Oxs_Thread array would seem a natural place to put
  * the thread local array, but as it is currently constituted the main
  * thread (thread 0) is not represented in the Oxs_Thread array.  This
- * actually makes code maintenance trickier because many places on has
+ * actually makes code maintenance trickier because many places one has
  * to iterate through the oxs_Thread array but remember that the
  * length of this array is one less than the total number of threads,
  * and include special handling for main thread (aka thread 0, which
@@ -50,6 +50,9 @@
 #include <string.h> // For memset
 #include <map>    // Used for thread local storage
 #include <vector>
+
+#include <functional>   // Provides support for std::function<>, which
+/// is helpful for using lambda expression as template parameters.
 
 #include "oc.h"  /* includes tcl.h */
 #include "nb.h"  /* Nb_WallWatch */
@@ -94,6 +97,18 @@ class Oxs_ThreadControl; // Forward reference
 class Oxs_Mutex {
   friend class Oxs_ThreadControl;
 private:
+  // Note: Tcl docs say to declare Tcl_Mutex variables via
+  //   TCL_DECLARE_MUTEX(mutex) In the TCL_THREADS #define'd case this
+  //   expands to static Tcl_Mutex mutex; If I do that here I get only
+  //   one mutex across all Oxs_Mutex instances --- not what I want.
+  //   So instead we use a bare Tcl_Mutex declaration and initialize
+  //   it to 0 (which is what happens to statics) in the Oxs_Mutex
+  //   constructor.  But are there other reasons requiring Tcl_Mutex
+  //   objects to be statics?  For example, a static variable has a
+  //   unique address held for the lifetime of the process, so can be
+  //   safely used as a unique key.  Addresses of variables on the
+  //   heap may be re-used.  If the Oxs_Mutex instance is static then
+  //   mutex will be too.  But what happens otherwise???
   Tcl_Mutex mutex;
   volatile int lock_held;
 public:
@@ -212,7 +227,7 @@ public:
   }
 
   ~Oxs_ThreadControl() {
-    Tcl_ConditionFinalize(&cond);    cond=0; 
+    Tcl_ConditionFinalize(&cond);    cond=0;
     mutex.Lock();
     count=0;  // Safety
     mutex.Unlock();
@@ -342,7 +357,7 @@ class Oxs_Thread {
   /// reserved for the main (parent) thread.
 
   ~Oxs_Thread();
-  void RunCmd(Oxs_ThreadControl& stop,Oxs_ThreadRunObj& runobj,void* data);
+  void RunCmd(Oxs_ThreadControl& stop,Oxs_ThreadRunObj* runobj,void* data);
 
   // When start.count>0, control OS thread is paused, waiting for a
   // new command to run.  start.count==0 means thread is active.
@@ -853,7 +868,7 @@ public:
     if(datablock) {
 #if _OXS_THREAD_TRACK_MEMORY
       fprintf(stderr,"--- Oxs_StripedArray at %p deleted\n",datablock);
-#endif 
+#endif
       // Implement "placement delete"
       while(arr_size>0) arr[--arr_size].~T(); // Explicit destructor call
       const_cast<T*&>(arr)=0;
@@ -1043,7 +1058,7 @@ template<class T> void Oxs_StripedArray<T>::SetSize
           "+++ Oxs_StripedArray at %p allocated: %10lu x %2lu (%5.1f GB)\n",
           datablock,(unsigned long)newsize,(unsigned long)sizeof(T),
           double(blocksize)/(1024.*1024.*1024.));
-#endif 
+#endif
 
   // Note: It is important to cast datablock to type OC_UINDEX rather
   // than OC_INDEX, because as a pointer (as opposed to an index) it
@@ -1325,6 +1340,274 @@ public:
   }
 };
 #endif // OOMMF_THREADS
+
+////////////////////////////////////////////////////////////////////////
+// Simple template interface for launching threaded evaluation of a
+// member function of an arbitrary class.  The member function must have
+// signature
+//  void ()(OC_INT4m thread_number,OC_INDEX jstart,O_INDEX jstop)
+// and should cause independent processing of a chunk of array indices
+// given by the range [jstart,jstop).
+//   In threaded builds, the number of threads run is given by
+// Oc_GetMaxThreadCount().  In non-threaded builds a single call is made
+// with jstart=0 and jstop=arr.Size().
+//   The call syntax is typically
+//
+//   Oxs_RunMemberThreaded<FOO,OC_REAL8m>(*this,&FOO::Compute_Bar,Ms);
+//
+// where *this is an instance of class FOO,
+// Compute_Bar(OC_INT4m,OC_INDEX,OC_INDEX) is the FOO member function to
+// evaluate, and Ms is a const Oxs_MeshValue<OC_REAL8m>& involved in the
+// evaluation of Compute_Bar.  Note that all import data for Compute_Bar
+// need to be set up separately before the Oxs_RunMemberThreaded call,
+// and export data is retrieved separately afterward.  Generally *this
+// member variables are used for data import and export.
+//   The thread_number import can be used for thread-separate
+// accumulation of results, by creating and initializing an array in
+// *this of size Oc_GetMaxThreadCount() before making the
+// Oxs_RunMemberThreaded call.  Then each thread uses the OC_INT4m
+// thread_number to access the relevant array element.  One important
+// performance consideration to keep in mind: If threads are running on
+// different NUMA memory nodes, then the node holding the accumulation
+// array won't be on the local node for some of the threads.  Moreover,
+// if two adjacent elements, say sum[i] and sum[i+1] lie on the same
+// cache line, and if threads i and i+1 are running on different
+// processors then the cache will thrash if the two threads are
+// simultaneously trying to write to the same cache line.  The proper
+// way to do this is for each thread to create a local copy of its
+// sum[i] at the top of the thread chunk function, accumulate into the
+// local copy while processing through jstart to jstop, and then copy
+// the final result back into sum[i] at the end.  Provided the j-chunks
+// are big enough the cache thrashing should not be significant.
+
+// There is also a template (Oxs_RunThreaded) provided primarily for
+// use with lambda expressions.  This can be used inside member
+// functions directly.  The call sequence looks like
+//
+//   Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+//                  (spin,
+//                   [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+//                    for(OC_INDEX j=jstart;j<jstop;++j) {
+//                      ...
+//                    }});
+//
+//
+// Individual thread results can be collected as follows:
+//
+//   const int number_of_threads = Oc_GetMaxThreadCount();
+//   std::vector<OC_REAL8m> thread_max_E(number_of_threads,0.0);
+//   Oc_AlignedVector<Nb_Xpfloat> thread_E_sum(number_of_threads,0.0);
+//   Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+//                  (energy,
+//                   [&](OC_INT4m thread_id,OC_INDEX jstart,OC_INDEX jstop) {
+//                    OC_REAL8m thd_max_E = thread_max_E[thread_id]; // Local copy
+//                    Nb_Xpfloat thd_E_sum = 0.0;                    // Ditto
+//                    for(OC_INDEX j=jstart;j<jstop;++j) {
+//                      OC_REAL8m E = energy[j] * mesh->Volume(j);
+//                      if(E>thd_max_E) thd_max_E = E;
+//                      thd_E_sum += E;
+//                    }
+//                    thread_max_E[thread_id]  = thd_max_E;
+//                    thread_E_sum[thread_id] += thd_E_sum;
+//   });
+//   for(int i=1;i<number_of_threads;++i) {
+//      if(thread_max_E[0]<thread_max_E[i]) {
+//         thread_max_E[0] = thread_max_E[i];
+//      }
+//      thread_E_sum[0] += thread_E_sum[i];
+//   }
+//   OC_REAL8m max_E = thread_max_E[0];
+//   OC_REAL8m E_sum = static_cast<OC_REAL8m>(thread_E_sum[0]);
+//
+// Here vectors are set up with one entry for each thread, and each
+// thread accesses only the entry associated with it (via the thread_id
+// value).  After parallel processing completes the results across the
+// threads are aggregated.  Several notes:
+//
+//    1) Local working copies are made of the vector entries.  As
+//       discussed above in the Oxs_RunMemberThreaded template notes,
+//       local copies are important if write access is performed to the
+//       data, because if say thread_E_sum[i] and thread_E_sum[i+1]
+//       share the same cache line, but thread i and thread i+1 run on
+//       different processors, then each write by one thread will
+//       invalidate the cache line in the other processor, and so the
+//       cache line will thrash.  The computer hardware will insure that
+//       the program performs correctly, but performance will suffer; if
+//       the threads are running on different processors in a
+//       multi-processor machine then the performance hit is extremely
+//       critical; the slow down is less pronounced on a one processor
+//       box with top level cache shared across all cores, but still
+//       significant.  There is still the potential for cache thrashing
+//       when the working values are copied back to the vector, but that
+//       should not be significant provided the j-chunks are big enough.
+//
+//    2) Quantities summed across a big mesh will suffer large rounding
+//       error.  If the sum is evaluated piecemeal as above (one piece
+//       per thread), then the particular rounding error will depend on
+//       the number of threads/pieces.  Even if the accuracy loss is not
+//       significant for the application at hand, the rounding
+//       dependence on thread count and job scheduling makes regression
+//       testing difficult.  For these reasons it is often a good idea
+//       in this situation to use compensated summation such as provided
+//       by the Nb_Xpfloat class to control rounding error.
+//
+//    3) Variable alignment outside of the base variable types (int,
+//       double, pointers, etc.) is not guaranteed by the default
+//       allocators in C++ standard library containers.  In particular,
+//       the SSE2 __m128d type that may be used by Nb_Xpfloat requires
+//       16-byte alignment, and that requirement is not insured in
+//       32-bit Windows or Linux executables.  So for these or other
+//       types with special alignment requirements, use the
+//       Oc_AlignedVector template.  Oc_AlignedVector is a typedef for
+//       std::vector with the Oc_AlignedAlloc allocator.  See
+//       oommf/pkg/oc/ocalloc.h for details.
+
+#if !OOMMF_THREADS
+template <typename T> class Oxs_MeshValue; // Forward declaration
+template<typename OBJCLASS,typename REFARRAYTYPE>
+class Oxs_RunMemberThreaded {
+public:
+  Oxs_RunMemberThreaded(OBJCLASS& obj,
+                  void (OBJCLASS::*eval_chunk)(OC_INT4m,OC_INDEX,OC_INDEX),
+                  const Oxs_MeshValue<REFARRAYTYPE>& arr) {
+    (obj.*eval_chunk)(0,0,arr.Size());
+  }
+private:
+  Oxs_RunMemberThreaded(Oxs_RunMemberThreaded const&);
+  Oxs_RunMemberThreaded& operator=(Oxs_RunMemberThreaded const&);
+};
+
+// Version for use with lambda expressions:
+template<typename REFARRAYTYPE,typename FUNC>
+class Oxs_RunThreaded {
+public:
+  Oxs_RunThreaded(const Oxs_MeshValue<REFARRAYTYPE>& arr,
+                  FUNC eval_chunk) {
+    eval_chunk(0,0,arr.Size());
+  }
+private:
+  Oxs_RunThreaded(Oxs_RunThreaded const&);
+  Oxs_RunThreaded& operator=(Oxs_RunThreaded const&);
+};
+
+
+#else // OOMMF_THREADS /////////////////////////////////////////////////
+template <typename T> class Oxs_MeshValue; // Forward declaration
+template<typename OBJCLASS,typename REFARRAYTYPE>
+class _Oxs_RunMemberThreaded_Support  : public Oxs_ThreadRunObj {
+public:
+  Oxs_JobControl<REFARRAYTYPE> job_basket;
+
+  _Oxs_RunMemberThreaded_Support
+  (int number_of_threads,
+   OBJCLASS& import_obj,
+   void (OBJCLASS::*import_eval_chunk)(OC_INT4m,OC_INDEX,OC_INDEX),
+   const Oxs_MeshValue<REFARRAYTYPE>& arr)
+    : obj(import_obj), eval_chunk(import_eval_chunk)
+  {
+    job_basket.Init(number_of_threads,arr.GetArrayBlock());
+  }
+
+  void Cmd(int threadnumber, void* /* data */) {
+    // Process array by chunks.  (Note: g++ 4.4.7 apparently doesn't
+    // scope parent public member variables into child, so we include
+    // full name resolution to job_basket.)
+    while(1) {
+      OC_INDEX jstart,jstop;
+      _Oxs_RunMemberThreaded_Support<OBJCLASS,REFARRAYTYPE>
+        ::job_basket.GetJob(threadnumber,jstart,jstop);
+        if(jstart>=jstop) break; // No more jobs
+        (obj.*eval_chunk)(threadnumber,jstart,jstop);
+    }
+  }
+
+private:
+  OBJCLASS& obj;
+  void (OBJCLASS::*eval_chunk)(OC_INT4m,OC_INDEX,OC_INDEX);
+
+  // Disable default copy and assignment members
+  _Oxs_RunMemberThreaded_Support(_Oxs_RunMemberThreaded_Support const&);
+  _Oxs_RunMemberThreaded_Support& operator=(_Oxs_RunMemberThreaded_Support const&);
+};
+
+template<typename OBJCLASS,typename REFARRAYTYPE>
+class Oxs_RunMemberThreaded {
+public:
+  Oxs_RunMemberThreaded(OBJCLASS& obj,
+                  void (OBJCLASS::*eval_chunk)(OC_INT4m,OC_INDEX,OC_INDEX),
+                  const Oxs_MeshValue<REFARRAYTYPE>& arr) {
+    number_of_threads = Oc_GetMaxThreadCount();
+    if(number_of_threads <= 1) { // Bypass thread initialization overhead
+      (obj.*eval_chunk)(0,0,arr.Size());
+    } else {
+      Oxs_ThreadTree threadtree;
+      _Oxs_RunMemberThreaded_Support<OBJCLASS,REFARRAYTYPE>
+        thread_data(number_of_threads,obj,eval_chunk,arr);
+      threadtree.LaunchTree(thread_data,0);
+    }
+  }
+private:
+  int number_of_threads;
+  Oxs_RunMemberThreaded(Oxs_RunMemberThreaded const&);
+  Oxs_RunMemberThreaded& operator=(Oxs_RunMemberThreaded const&);
+};
+
+// Version for use with lambda expressions:
+template<typename REFARRAYTYPE,typename FUNC>
+class _Oxs_RunThreaded_Support  : public Oxs_ThreadRunObj {
+public:
+  Oxs_JobControl<REFARRAYTYPE> job_basket;
+
+  _Oxs_RunThreaded_Support
+  (int number_of_threads,
+   const Oxs_MeshValue<REFARRAYTYPE>& arr,FUNC import_eval_chunk)
+    : eval_chunk(import_eval_chunk)
+  {
+    job_basket.Init(number_of_threads,arr.GetArrayBlock());
+  }
+
+  void Cmd(int threadnumber, void* /* data */) {
+    // Process array by chunks.
+    while(1) {
+      OC_INDEX jstart,jstop;
+      _Oxs_RunThreaded_Support<REFARRAYTYPE,FUNC>
+        ::job_basket.GetJob(threadnumber,jstart,jstop);
+        if(jstart>=jstop) break; // No more jobs
+        eval_chunk(threadnumber,jstart,jstop);
+    }
+  }
+
+private:
+  FUNC eval_chunk;
+
+  // Disable default copy and assignment members
+  _Oxs_RunThreaded_Support(_Oxs_RunThreaded_Support const&);
+  _Oxs_RunThreaded_Support& operator=(_Oxs_RunThreaded_Support const&);
+};
+
+template<typename REFARRAYTYPE,typename FUNC>
+class Oxs_RunThreaded {
+public:
+  Oxs_RunThreaded(const Oxs_MeshValue<REFARRAYTYPE>& arr,FUNC eval_chunk) {
+    number_of_threads = Oc_GetMaxThreadCount();
+    if(number_of_threads <= 1) { // Bypass thread initialization overhead
+      eval_chunk(0,0,arr.Size());
+    } else {
+      Oxs_ThreadTree threadtree;
+      _Oxs_RunThreaded_Support<REFARRAYTYPE,FUNC>
+        thread_data(number_of_threads,arr,eval_chunk);
+      threadtree.LaunchTree(thread_data,0);
+    }
+  }
+private:
+  int number_of_threads;
+  Oxs_RunThreaded(Oxs_RunThreaded const&); // Disable
+  Oxs_RunThreaded& operator=(Oxs_RunThreaded const&); // Disable
+};
+
+
+#endif // OOMMF_THREADS
+////////////////////////////////////////////////////////////////////////
 
 
 #endif // _OXS_THREAD

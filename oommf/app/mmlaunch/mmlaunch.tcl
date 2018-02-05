@@ -9,14 +9,14 @@
 # Support libraries
 package require Ow
 package require Net
-package require Oc 1.1.0.1
+package require Oc 2
 if {[catch {package require Tk 8}]} {
     package require Tk 4.1
 }
 wm withdraw .
 
 Oc_Main SetAppName mmLaunch
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:38 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author

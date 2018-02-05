@@ -74,7 +74,7 @@ public:
   virtual  OC_BOOL
   Step(Oxs_ConstKey<Oxs_SimState> current_state,
        const Oxs_DriverStepInfo& step_info,
-       Oxs_Key<Oxs_SimState>& next_state);
+       Oxs_ConstKey<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.
 

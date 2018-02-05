@@ -43,7 +43,8 @@ Oxs_ExchangePtwise::Oxs_ExchangePtwise(
   const char* name,     // Child instance id
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
-  : Oxs_Energy(name,newdtr,argstr), mesh_id(0)
+  : Oxs_ChunkEnergy(name,newdtr,argstr),
+    mesh_id(0), energy_density_error_estimate(-1)
 {
   // Process arguments
   OXS_GET_INIT_EXT_OBJECT("A",Oxs_ScalarField,A_init);
@@ -71,60 +72,59 @@ OC_BOOL Oxs_ExchangePtwise::Init()
 {
   mesh_id = 0;
   A.Release();
+  energy_density_error_estimate = -1;
   return Oxs_Energy::Init();
 }
 
-void Oxs_ExchangePtwise::GetEnergy
+void Oxs_ExchangePtwise::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
- ) const
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int number_of_threads) const
 {
-  // Check mesh type
-  const Oxs_CommonRectangularMesh* mesh
-    = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
-  if(mesh==NULL) {
-    String msg =
-      String("Import mesh (\"")
-      + String(state.mesh->InstanceName())
-      + String("\") to Oxs_ExchangePtwise::GetEnergy()"
-             " routine of object \"") + String(InstanceName())
-      + String("\" is not a rectangular mesh object.");
-    throw Oxs_ExtError(msg.c_str());
-  }
-
-  // If periodic, collect data for distance determination
-  // Periodic boundaries?
-  int xperiodic=0, yperiodic=0, zperiodic=0;
-  const Oxs_PeriodicRectangularMesh* pmesh
-    = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
-  if(pmesh!=NULL) {
-    xperiodic = pmesh->IsPeriodicX();
-    yperiodic = pmesh->IsPeriodicY();
-    zperiodic = pmesh->IsPeriodicZ();
-  }
-
-  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
-
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
-
-  OC_INDEX xdim = mesh->DimX();
-  OC_INDEX ydim = mesh->DimY();
-  OC_INDEX zdim = mesh->DimZ();
-  OC_INDEX xydim = xdim*ydim;
-  OC_INDEX xyzdim = xdim*ydim*zdim;
-
   if(mesh_id != state.mesh->Id()) {
     // This is either the first pass through, or else mesh
     // has changed.
     mesh_id = 0;
+
+    // Check mesh type
+    const Oxs_CommonRectangularMesh* mesh
+      = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
+    if(mesh==NULL) {
+      String msg =
+        String("Import mesh (\"")
+        + String(state.mesh->InstanceName())
+        + String("\") to Oxs_ExchangePtwise::ComputeEnergyChunkInitialize()"
+                 " routine of object \"") + String(InstanceName())
+        + String("\" is not a rectangular mesh object.");
+      throw Oxs_ExtError(msg.c_str());
+    }
+
+    // If periodic, collect data for distance determination
+    // Periodic boundaries?
+    int xperiodic=0, yperiodic=0, zperiodic=0;
+    const Oxs_PeriodicRectangularMesh* pmesh
+      = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
+    if(pmesh!=NULL) {
+      xperiodic = pmesh->IsPeriodicX();
+      yperiodic = pmesh->IsPeriodicY();
+      zperiodic = pmesh->IsPeriodicZ();
+    }
+
+    OC_INDEX xdim = mesh->DimX();
+    OC_INDEX ydim = mesh->DimY();
+    OC_INDEX zdim = mesh->DimZ();
+    OC_INDEX xydim = xdim*ydim;
+    OC_INDEX xyzdim = xdim*ydim*zdim;
+
+    OC_REAL8m wgtx = 1.0/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+    OC_REAL8m wgty = 1.0/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+    OC_REAL8m wgtz = 1.0/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+
     A_init->FillMeshValue(state.mesh,A);
     // Check that we won't have any divide-by-zero problems
     // when we use A.
+    OC_REAL8m max_Aeff = 0.0;
     for(OC_INDEX z=0;z<zdim;z++) {
       for(OC_INDEX y=0;y<ydim;y++) {
         for(OC_INDEX x=0;x<xdim;x++) {
@@ -133,24 +133,28 @@ void Oxs_ExchangePtwise::GetEnergy
           for(OC_INDEX dir=0;dir<3;dir++) { // 0=>x, 1=>y, 2=>z
             OC_INDEX j = -1;
             OC_INDEX x2=x,y2=y,z2=z;
+            OC_REAL8m dir_wgt=0;
             switch(dir) {
             case 0:
               if(x+1<xdim) { j=i+1;     x2+=1; }
               else if(xperiodic) { j=i+1-xdim; x2=0; }
+              dir_wgt = wgtx;
               break;
             case 1:
               if(y+1<ydim) { j=i+xdim;  y2+=1; }
               else if(yperiodic) { j=i+xdim-xydim; y2=0; }
+              dir_wgt = wgty;
               break;
             default:
               if(z+1<zdim) { j=i+xydim; z2+=1; }
               else if(zperiodic) { j=i+xydim-xyzdim; z2=0; }
+              dir_wgt = wgtz;
               break;
             }
             if(j<0) continue; // Edge case; skip
             OC_REAL8m Aj=A[j];
-            if(fabs(Ai+Aj)<1.0
-               && fabs(Ai*Aj)>(DBL_MAX/2.)*(fabs(Ai+Aj))) {
+            if(Oc_Fabs(Ai+Aj)<1.0
+               && Oc_Fabs(Ai*Aj)>(DBL_MAX/2.)*(Oc_Fabs(Ai+Aj))) {
               char buf[2000];
               Oc_Snprintf(buf,sizeof(buf),
                           "Exchange coefficient A initialization in"
@@ -161,101 +165,40 @@ void Oxs_ExchangePtwise::GetEnergy
                           x2,y2,z2,static_cast<double>(Aj));
               throw Oxs_ExtError(buf);
             }
+            OC_REAL8m testA = Oc_Fabs(2*Ai*Aj*dir_wgt/(Ai+Aj));
+            if(testA>max_Aeff) max_Aeff = testA;
           }
         } // x++
       } // y++
     } // z++
+
+    energy_density_error_estimate = 16*OC_REAL8m_EPSILON*max_Aeff;
     mesh_id = state.mesh->Id();
   } // mesh_id != state.mesh->Id()
 
-  // First loop through and zero out entire energy and field
-  // meshes.  This could be done inside the main body of the
-  // loop, but it makes the logic a bit more complicated.
-  OC_INDEX size = state.mesh->Size();
-  OC_INDEX index;
-  for(index=0;index<size;index++) energy[index]=0.;
-  for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+  if(maxdot.size() != (vector<OC_REAL8m>::size_type)number_of_threads) {
+    maxdot.resize(number_of_threads);
+  }
+  for(int i=0;i<number_of_threads;++i) {
+    maxdot[i] = 0.0; // Minimum possible value for (m_i-m_j).MagSq()
+  }
 
-  // Now run through mesh and accumulate energies and fields.
-  OC_REAL8m wgtx = 1.0/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
-  OC_REAL8m wgty = 1.0/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
-  OC_REAL8m wgtz = 1.0/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+  ocedt.energy_density_error_estimate = energy_density_error_estimate;
+}
 
-  OC_REAL8m hcoef = 2/MU0;
-
-  // Exchange energy density is
-  //
-  //     A.(1-m_i*m_j)/d^2                      (1)
-  //
-  // where A is effective exchange coefficient, and d is
-  // the distance between the centers of cells i and j.  In
-  // this code effective A is calculated from A_i and A_j
-  // via A = 2.A_i.A_j/(A_i+A_j).  This energy density
-  // is accumated at both cells i & j.
-  //   The fields are
-  //
-  //     H_i = (2/MU0).[A/(Ms_i.d^2)].m_j       (2)
-  //     H_j = (2/MU0).[A/(Ms_j.d^2)].m_i
-  //
-  // where the lead factor of 2 comes because in the total
-  // energy expression, (1) occurs twice, once for cell i
-  // and once for cell j.
-
-  OC_REAL8m maxdot = 0;
-
-  for(OC_INDEX z=0;z<zdim;++z) {
-    for(OC_INDEX y=0;y<ydim;++y) {
-      for(OC_INDEX x=0;x<xdim;++x) {
-        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
-        const ThreeVector& spini = spin[i];
-        OC_REAL8m Msii = Ms_inverse[i];
-        OC_REAL8m Ai = A[i];
-        if(Msii == 0.0 || Ai==0.0) continue;
-        // Iterate through 3 neighbor directions, +x, +y and +z
-        for(OC_INDEX dir=0;dir<3;++dir) { // 0=>x, 1=>y, 2=>z
-          OC_INDEX j = -1;
-          OC_REAL8m wgt=0.;
-          switch(dir) {
-          case 0:
-            wgt=wgtx;
-            if(x+1<xdim)       j=i+1;
-            else if(xperiodic) j=i+1-xdim;
-            break;
-          case 1:
-            wgt=wgty;
-            if(y+1<ydim)       j=i+xdim;
-            else if(yperiodic) j=i+xdim-xydim;
-            break;
-          default:
-            wgt=wgtz;
-            if(z+1<zdim)       j=i+xydim;
-            else if(zperiodic) j=i+xydim-xyzdim;
-            break;
-          }
-          if(j<0) continue; // Edge case; skip
-          OC_REAL8m Aj=A[j];
-          if(Aj == 0.0) continue;
-          OC_REAL8m Msij=Ms_inverse[j];
-          if(Msij==0.0) continue;
-          OC_REAL8m acoef = 2*wgt*((Ai*Aj)/(Ai+Aj));
-          const ThreeVector& spinj = spin[j];
-          ThreeVector mdiff = spini - spinj;
-          OC_REAL8m dot = mdiff.MagSq();
-          if(dot>maxdot) maxdot = dot;
-          mdiff *= acoef;
-          OC_REAL8m eij = mdiff*spini;
-          energy[i]+=eij;
-          energy[j]+=eij;
-          mdiff *= hcoef;
-          field[i] += -1*Msii*mdiff;
-          field[j] +=    Msij*mdiff;
-        } // Neighbor direction loop
-      } // ++x
-    } // ++y
-  } // ++z
-
-  // Set maxang data
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);
+void Oxs_ExchangePtwise::ComputeEnergyChunkFinalize
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>&
+    /* thread_ocedtaux */,
+ int number_of_threads) const
+{
+  // Set max angle data
+  OC_REAL8m total_maxdot = 0.0;
+  for(int i=0;i<number_of_threads;++i) {
+    if(maxdot[i]>total_maxdot) total_maxdot = maxdot[i];
+  }
+  const OC_REAL8m arg = 0.5*Oc_Sqrt(total_maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;
@@ -288,7 +231,7 @@ void Oxs_ExchangePtwise::GetEnergy
     OC_REAL8m diff = (dummy_value-maxang)*(PI/180.);
     OC_REAL8m sum  = (dummy_value+maxang)*(PI/180.);
     if(sum > PI ) sum = 2*PI - sum;
-    if(fabs(diff*sum)>8*OC_REAL8_EPSILON) {
+    if(Oc_Fabs(diff*sum)>8*OC_REAL8_EPSILON) {
       char errbuf[1024];
       Oc_Snprintf(errbuf,sizeof(errbuf),
                   "Programming error:"
@@ -340,6 +283,164 @@ void Oxs_ExchangePtwise::GetEnergy
   if(!state.GetDerivedData(rmsa_name,dummy_value)) {
     state.AddDerivedData(rmsa_name,run_maxang);
   }
+}
+
+void Oxs_ExchangePtwise::ComputeEnergyChunk
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,
+ OC_INDEX node_stop,
+ int threadnumber
+ ) const
+{
+#ifndef NDEBUG
+  if(node_stop>state.mesh->Size() || node_start>node_stop) {
+    throw Oxs_ExtError(this,"Programming error:"
+                       " Invalid node_start/node_stop values");
+  }
+#endif
+  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+
+
+  // Downcast mesh
+  const Oxs_CommonRectangularMesh* mesh
+    = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
+  assert(mesh!=0);
+
+  // If periodic, collect data for distance determination
+  // Periodic boundaries?
+  int xperiodic=0, yperiodic=0, zperiodic=0;
+  const Oxs_PeriodicRectangularMesh* pmesh
+    = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
+  if(pmesh!=NULL) {
+    xperiodic = pmesh->IsPeriodicX();
+    yperiodic = pmesh->IsPeriodicY();
+    zperiodic = pmesh->IsPeriodicZ();
+  }
+
+  OC_INDEX xdim = mesh->DimX();
+  OC_INDEX ydim = mesh->DimY();
+  OC_INDEX zdim = mesh->DimZ();
+  OC_INDEX xydim = xdim*ydim;
+  OC_INDEX xyzdim = xdim*ydim*zdim;
+
+  OC_REAL8m wgtx = -1.0/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+  OC_REAL8m wgty = -1.0/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+  OC_REAL8m wgtz = -1.0/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+
+  OC_REAL8m hcoef = -2/MU0;
+
+  Nb_Xpfloat energy_sum = 0.0;
+  OC_REAL8m thread_maxdot = maxdot[threadnumber];
+  // Note: For maxangle calculation, it suffices to check
+  // spin[j]-spin[i] for j>i.
+
+  OC_INDEX x,y,z;
+  mesh->GetCoords(node_start,x,y,z);
+
+  OC_INDEX i = node_start;
+  while(i<node_stop) {
+    OC_INDEX xstop = xdim;
+    if(xdim-x>node_stop-i) xstop = x + (node_stop-i);
+    while(x<xstop) {
+      ThreeVector base = spin[i];
+      OC_REAL8m Msii = Ms_inverse[i];
+      if(0.0 == Msii) {
+        if(ocedt.energy) (*ocedt.energy)[i] = 0.0;
+        if(ocedt.H)      (*ocedt.H)[i].Set(0.,0.,0.);
+        if(ocedt.mxH)    (*ocedt.mxH)[i].Set(0.,0.,0.);
+        ++i;   ++x;
+        continue;
+      }
+      OC_REAL8m Ai = A[i];
+      ThreeVector sum(0.,0.,0.);
+      if(z>0 || zperiodic) {
+        OC_INDEX j = i-xydim;
+        if(z==0) j += xyzdim;
+        OC_REAL8m Aj=A[j];
+        if(Aj!=0 && Ms_inverse[j]!=0.0) {
+          OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+          ThreeVector diff = (spin[j] - base);
+          OC_REAL8m dot = diff.MagSq();
+          sum += acoef*wgtz*diff;
+          if(dot>thread_maxdot) thread_maxdot = dot;
+        }
+      }
+      if(y>0 || yperiodic) {
+        OC_INDEX j = i-xdim;
+        if(y==0) j += xydim;
+        OC_REAL8m Aj=A[j];
+        if(Aj!=0 && Ms_inverse[j]!=0.0) {
+          OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+          ThreeVector diff = (spin[j] - base);
+          OC_REAL8m dot = diff.MagSq();
+          sum += acoef*wgty*diff;
+          if(dot>thread_maxdot) thread_maxdot = dot;
+        }
+      }
+      if(x>0 || xperiodic) {
+        OC_INDEX j = i-1;
+        if(x==0) j += xdim;
+        OC_REAL8m Aj=A[j];
+        if(Aj!=0 && Ms_inverse[j]!=0.0) {
+          OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+          ThreeVector diff = (spin[j] - base);
+          OC_REAL8m dot = diff.MagSq();
+          sum += acoef*wgtx*diff;
+          if(dot>thread_maxdot) thread_maxdot = dot;
+        }
+      }
+      if(x<xdim-1 || xperiodic) {
+        OC_INDEX j = i+1;
+        if(x==xdim-1) j -= xdim;
+        OC_REAL8m Aj=A[j];
+        OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+        if(Ms_inverse[j]!=0.0) sum += acoef*wgtx*(spin[j] - base);
+      }
+      if(y<ydim-1 || yperiodic) {
+        OC_INDEX j = i+xdim;
+        if(y==ydim-1) j -= xydim;
+        OC_REAL8m Aj=A[j];
+        OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+        if(Ms_inverse[j]!=0.0) sum += acoef*wgty*(spin[j] - base);
+      }
+      if(z<zdim-1 || zperiodic) {
+        OC_INDEX j = i+xydim;
+        if(z==zdim-1) j -= xyzdim;
+        OC_REAL8m Aj=A[j];
+        OC_REAL8m acoef = 2*((Ai*Aj)/(Ai+Aj));
+        if(Ms_inverse[j]!=0.0) sum += acoef*wgtz*(spin[j]- base);
+      }
+
+      OC_REAL8m ei = base.x*sum.x + base.y*sum.y + base.z*sum.z;
+      OC_REAL8m hmult = hcoef*Msii;
+      sum.x *= hmult;  sum.y *= hmult;   sum.z *= hmult;
+      OC_REAL8m tx = base.y*sum.z - base.z*sum.y;
+      OC_REAL8m ty = base.z*sum.x - base.x*sum.z;
+      OC_REAL8m tz = base.x*sum.y - base.y*sum.x;
+
+      energy_sum += ei;
+      if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.H)       (*ocedt.H)[i] = sum;
+      if(ocedt.H_accum) (*ocedt.H_accum)[i] += sum;
+      if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+      ++i;   ++x;
+    }
+    x=0;
+    if((++y)>=ydim) {
+      y=0;
+      ++z;
+    }
+  }
+
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
+  /// All cells have same volume in an Oxs_RectangularMesh.
+
+  maxdot[threadnumber] = thread_maxdot;
 }
 
 void Oxs_ExchangePtwise::UpdateDerivedOutputs(const Oxs_SimState& state)
