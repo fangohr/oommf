@@ -4,6 +4,10 @@
  *
  */
 
+#include <stdio.h>
+
+#include <exception>
+
 #include "oc.h"
 #include "lock.h"
 #include "oxsexcept.h"
@@ -12,101 +16,84 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported
 
 /* End includes */
 
-Oxs_Mutex Oxs_Lock::class_mutex;
-OC_UINT4m Oxs_Lock::id_count=0;
+std::atomic<OC_UINT4> Oxs_Lock::id_count(0);
 
 Oxs_Lock::~Oxs_Lock()
 {
   // Note: Destructors aren't suppose to throw
   const char* errmsg = 0;
-  instance_mutex.Lock();
-  if(write_lock>0) {
+  OC_UINT8 test = lock_data.load();
+  if(test & WRITE_MASK) {
     errmsg = "Oxs_BadLock: Delete with open write lock";
-  } else if(read_lock>0) {
+  } else if(test & READ_MASK) {
     errmsg = "Oxs_BadLock: Delete with open read lock(s)";
   } else if(dep_lock>0) {
     errmsg = "Oxs_BadLock: Delete with open dep lock(s)";
   }
-  instance_mutex.Unlock();
   if(errmsg != 0) {
     fputs(errmsg,stderr);
     std::terminate();
   }
-  obj_id=0;
+  lock_data.store(0);
 }
 
-OC_BOOL Oxs_Lock::SetDepLock()
+void Oxs_Lock::ReleaseDepLock()
 {
-  instance_mutex.Lock();
-  ++dep_lock;
-  instance_mutex.Unlock();
-  return 1;
+  OC_UINT4m testval = dep_lock.load();
+  do {
+    if(testval==0) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Dep lock release request with dep_lock==0");
+    }
+  } while(!dep_lock.compare_exchange_weak(testval,testval-1));
 }
-
-OC_BOOL Oxs_Lock::ReleaseDepLock()
-{
-  OC_BOOL rtncode = 0;
-  instance_mutex.Lock();
-  if(dep_lock>0) {
-    --dep_lock;
-    rtncode=1;
-  }
-  instance_mutex.Unlock();
-  return rtncode;
-}
-
 
 OC_BOOL Oxs_Lock::SetReadLock()
 {
-  OC_BOOL rtncode = 0;
-  instance_mutex.Lock();
-  if(!write_lock) {
-    ++read_lock;
-    rtncode=1;
-  }
-  instance_mutex.Unlock();
-  return rtncode;
+  OC_UINT8 newval;
+  OC_UINT8 testval = lock_data.load();
+  do {
+    if(testval & WRITE_MASK) return 0;  // Fail; write lock held
+    newval = (((testval >> READ_SHIFT) + 1 ) << READ_SHIFT)
+             | (testval & ID_MASK);
+  } while(!lock_data.compare_exchange_weak(testval,newval));
+  return 1;
 }
 
-OC_BOOL Oxs_Lock::ReleaseReadLock()
+void Oxs_Lock::ReleaseReadLock()
 {
-  OC_BOOL rtncode = 0;
-  instance_mutex.Lock();
-  if(read_lock>0) { // read_lock == 0 is probably an error
-    --read_lock;
-    rtncode=1;
-  }
-  instance_mutex.Unlock();
-  return rtncode;
+  OC_UINT8 newval;
+  OC_UINT8 testval = lock_data.load();
+  do {
+    if((testval & READ_MASK) == 0) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Read lock release request with read_lock==0");
+    }
+    newval = (((testval >> READ_SHIFT) - 1 ) << READ_SHIFT)
+             | (testval & ID_MASK);
+  } while(!lock_data.compare_exchange_weak(testval,newval));
 }
 
 OC_BOOL Oxs_Lock::SetWriteLock()
 {
-  OC_BOOL rtncode = 0;
-  instance_mutex.Lock();
-  if(!read_lock && !write_lock) {
-    write_lock=1;
-    obj_id=0;
-    rtncode=1;
-  }
-  instance_mutex.Unlock();
-  return rtncode;
+  OC_UINT8 newval = WRITE_MASK; // obj_id is zero when write lock is held
+  OC_UINT8 testval = lock_data.load();
+  do {
+    if(testval & (WRITE_MASK | READ_MASK)) {
+      return 0;  // Fail; either read or write lock already held
+    }
+  } while(!lock_data.compare_exchange_weak(testval,newval));
+  return 1;
 }
 
-OC_BOOL Oxs_Lock::ReleaseWriteLock()
+void Oxs_Lock::ReleaseWriteLock()
 {
-  OC_BOOL rtncode = 0;
-  instance_mutex.Lock();
-  try {
-    if(write_lock) {
-      obj_id=GetNextFreeId(); // Uses class_mutex and may throw
-      write_lock=0;
-      rtncode=1;
+  OC_UINT8 newval = GetNextFreeId(); // No write or read locks on success
+  OC_UINT8 testval = lock_data.load();
+  do {
+    if((testval & WRITE_MASK) == 0) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Write lock release request with write_lock==0");
     }
-  } catch(...) {
-    instance_mutex.Unlock();
-    throw;
-  }
-  instance_mutex.Unlock();
-  return rtncode;
+  } while(!lock_data.compare_exchange_weak(testval,newval));
 }

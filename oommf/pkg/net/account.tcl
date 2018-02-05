@@ -356,12 +356,12 @@ Oc_Class Net_Account {
 		    on localhost" status $class
             # Ought to redirect std channels somewhere
 	    if {[info exists lastoid]} {
-               Oc_Application Exec {omfsh 1.1} \
+               Oc_Application Exec {omfsh 2} \
                     $acctthread -tk 0 0 $listenport $lastoid \
                     > [[Oc_Config RunPlatform] GetValue path_device_null]  \
                    2> [[Oc_Config RunPlatform] GetValue path_device_null] &
 	    } else {
-               Oc_Application Exec {omfsh 1.1} \
+               Oc_Application Exec {omfsh 2} \
                     $acctthread -tk 0 0 $listenport \
                     > [[Oc_Config RunPlatform] GetValue path_device_null]  \
                    2> [[Oc_Config RunPlatform] GetValue path_device_null] &

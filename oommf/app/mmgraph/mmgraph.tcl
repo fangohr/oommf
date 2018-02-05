@@ -21,14 +21,14 @@ if {[info exists tcl_precision] &&
 }
 
 # Support libraries
-package require Oc 1.1.0.1
+package require Oc 2
 package require Tk
-package require Ow 1.2.0.4	;# Ow_PrintDlg: -smart_menu
-package require Nb 1.2.0.4	;# [Nb_InputFilter]
+package require Ow 2	;# Ow_PrintDlg: -smart_menu
+package require Nb 2	;# [Nb_InputFilter]
 wm withdraw .
 
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -2061,7 +2061,7 @@ proc CloseSource { conn } {
 
 if {!$no_net} {
     # Protocol
-    package require Net 1.2.0.3
+    package require Net 2
     Net_Protocol New protocol -name "OOMMF DataTable protocol 0.1"
     $protocol Init {
 	Oc_EventHandler New _ $connection Delete \

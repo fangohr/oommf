@@ -151,6 +151,15 @@ double Oc_UnifRand()
   return ((double)OMF_RANDOM())/((double)OMF_RANDOM_MAX);
 }
 
+double Oc_UnifRand(Oc_RandomState& mystate)
+{ // Returns random value in [0,1] with unif. distrib.  Note: Unlike
+  // Oc_UnifRand(), this routine does not use OMF_RANDOM wrappers.  This
+  // means that this routine can not be overridden by a user-specified
+  // random number generator.
+  return ((double)Oc_Random::Random(mystate))/((double)Oc_Random::MaxValue());
+}
+
+
 // Tcl wrappers for Oc_Srand and Oc_UnifRand
 int OcSrand(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 {
@@ -363,7 +372,7 @@ int Oc_Fsync(Tcl_Channel chan)
   // file descriptor through client data via the Tcl INT2PTR macro.
   // Presumably the proper way to cast back from client data to an int
   // is through a signed int with width >= pointer width.  (It would be
-  // nice for Tcl to provide an interface for this.
+  // nice for Tcl to provide an interface for this.)
   int handle = reinterpret_cast<OC_INDEX>(cd);
   errcode = fsync(handle);
 
@@ -728,7 +737,9 @@ Tcl_DiscardResult(Tcl_SavedResult *savedPtr)
  * If we ever do, remove this restriction.
  * For now, EOF on stdin will kill shells build with Tcl 7.
  */
+# if OC_USE_TK
 void Tk_InitConsoleChannels(Tcl_Interp*) {}
+# endif /* OC_USE_TK */
 #else
 /*
  * In Tcl 8.x, a set of null channels can replace the standard channels

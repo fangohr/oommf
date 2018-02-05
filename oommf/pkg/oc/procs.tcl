@@ -170,6 +170,7 @@ proc Oc_MakeHeaderWrappers {outdir} {
 # oommf/config/names/cygwin-x86_64.tcl to determine the OOMMF platform
 # name, and further below in this file to set the OC_SYSTEM_TYPE and
 # OC_SYSTEM_SUBTYPE macros for ocport.h.
+# NOTE: Cross-compile not supported.
 proc Oc_IsCygwinPlatform {} {
    global tcl_platform env
    if {![string match intel $tcl_platform(machine)] &&
@@ -219,60 +220,90 @@ proc Oc_IsCygwin64Platform {} {
 }
 
 proc Oc_MakePortHeader {varinfo outfile} {
-    # Eventually make calls to objects representing local configuration.
-    Oc_MakeHeaderWrappers [file dirname $outfile]
+   # Check to see if build is a cross compile
+   set config [Oc_Config RunPlatform]
+   if {[catch {$config GetValue cross_compile} cross_compile]} {
+      set cross_compile 0   ;# Default is no
+   }
 
-    puts "Updating [file join [pwd] $outfile] ..."
-    global tcl_platform
-    # See if we can tell what platform we are on
-    set config [Oc_Config RunPlatform]
-    set systemtype unknown  ;# For local use
-    set systemsubtype unknown
-    if {![info exists tcl_platform(platform)]} {
-	set systemtype unix  ;# Can't tell, so assume unix
-    } else {
-	if {[string compare $tcl_platform(platform) "unix"] == 0} {
+   # Eventually make calls to objects representing local configuration.
+   Oc_MakeHeaderWrappers [file dirname $outfile]
+
+   puts "Updating [file join [pwd] $outfile] ..."
+   global tcl_platform
+   # See if we can tell what platform we are on
+   set systemtype unknown  ;# For local use
+   set systemsubtype unknown
+   set systemtcltype unknown
+   if {$cross_compile} {
+      if {[catch {$config GetValue cross_compile_systemtype} st]} {
+         set st unix  ;# Can't tell, so assume unix
+      }
+      set systemtype $st
+      if {![catch {$config GetValue cross_compile_systemsubtype} sst]} {
+         set systemsubtype $sst
+      }
+      if {![catch {$config GetValue cross_compile_systemtcltype} stt]} {
+         set systemtcltype $stt
+      } else {
+         set systemtcltype $systemtype ;# If not set, assume matches systemtype
+      }
+   } else {
+      if {![info exists tcl_platform(platform)]} {
+         set systemtype unix  ;# Can't tell, so assume unix
+      } else {
+         set systemtcltype $tcl_platform(platform)
+         if {[string compare $tcl_platform(platform) "unix"] == 0} {
 	    set systemtype unix
 	    if {[string compare $tcl_platform(os) "Darwin"] == 0} {
-		set systemsubtype darwin
+               set systemsubtype darwin
 	    }
-	} elseif {[string compare $tcl_platform(platform) "windows"] == 0} {
-           if {[Oc_IsCygwinPlatform] || [Oc_IsCygwin64Platform]} {
-		# Building under the cygwin toolkit
-		set systemtype unix
-                set systemsubtype cygwin
+         } elseif {[string compare $tcl_platform(platform) "windows"] == 0} {
+            if {[Oc_IsCygwinPlatform] || [Oc_IsCygwin64Platform]} {
+               # Building under the cygwin toolkit
+               set systemtype unix
+               set systemsubtype cygwin
 	    } else {
-		set systemtype windows
-		if {[string compare $tcl_platform(os) "Windows NT"] == 0} {
-		    set systemsubtype winnt
-		}
+               set systemtype windows
+               if {[string compare $tcl_platform(os) "Windows NT"] == 0} {
+                  set systemsubtype winnt
+               }
 	    }
-	} else {
-           error "Unsupported platform: $tcl_platform(platform)"
-	}
-    }
+         } else {
+            error "Unsupported platform: $tcl_platform(platform)"
+         }
+      }
+   }
 
+   # If this is a cross compile, then adjust varinfo command line
+   if {![catch {$config GetValue cross_compile_exec} xexec]} {
+      # xexec should look like "ssh machinename"
+      if {![catch {$config GetValue cross_compile_path_to_oommf} xpath]} {
+         set varinfo [file join $xpath pkg/oc $varinfo]
+      }
+      set varinfo [linsert $xexec end $varinfo]
+   }
 
-    # Run varinfo and parse output
-    set varinfo_flags {}
-    if {![catch {
-	$config GetValue program_compiler_c++_property_strict_atan2
-    }]} {
-	# Property already set (probably from platform file).  Keep
-	# this value and disable atan2 test in varinfo.
-	lappend varinfo_flags "--skip-atan2"
-    }
-    if {[catch {eval exec $varinfo $varinfo_flags 2>@ stderr} varlist]} {
-	# error running varinfo, probably killed by atan2 test.
-	# Try again, disabling that test
-	$config SetValue program_compiler_c++_property_strict_atan2 1
-	lappend varinfo_flags --skip-atan2
-	if {[catch {eval exec $varinfo $varinfo_flags 2>@ stderr} varlist]} {
-	    set msg "Error running $varinfo $varinfo_flags:\n$varlist"
-	    error $msg $msg
-	}
-    }
-    append varlist "\n"  ;# Simplify whole-line regexp searches
+   # Run varinfo and parse output
+   set varinfo_flags {}
+   if {![catch {
+      $config GetValue program_compiler_c++_property_strict_atan2
+   }]} {
+      # Property already set (probably from platform file).  Keep
+      # this value and disable atan2 test in varinfo.
+      lappend varinfo_flags "--skip-atan2"
+   }
+   if {[catch {eval exec $varinfo $varinfo_flags 2>@ stderr} varlist]} {
+      # error running varinfo, probably killed by atan2 test.
+      # Try again, disabling that test
+      $config SetValue program_compiler_c++_property_strict_atan2 1
+      lappend varinfo_flags --skip-atan2
+      if {[catch {eval exec $varinfo $varinfo_flags 2>@ stderr} varlist]} {
+         set msg "Error running $varinfo $varinfo_flags:\n$varlist"
+         error $msg $msg
+      }
+   }
+   append varlist "\n"  ;# Simplify whole-line regexp searches
 
     set varinttypelist {char short int long {long long} __int64}
     set varfloattypelist {float double {long double}}
@@ -295,8 +326,8 @@ proc Oc_MakePortHeader {varinfo outfile} {
     }
     set varsize(pointer) -1
     if {[regexp {void \* is *([0-9]*)} $varlist tempmatch varsize(pointer)]} {
-       if {[info exists tcl_platform(pointerSize)] &&
-	   $tcl_platform(pointerSize) != $varsize(pointer)} {
+       if {!$cross_compile && [info exists tcl_platform(pointerSize)] && \
+              $tcl_platform(pointerSize) != $varsize(pointer)} {
            error "Compiler pointer size ($varsize(pointer))\
                   != Tcl pointer size ($tcl_platform(pointerSize))"
        }
@@ -312,12 +343,12 @@ proc Oc_MakePortHeader {varinfo outfile} {
         regexp "\n${varwidth}_MANT_DIG: (\[^\n\]+)" \
            $varlist tempmatch vardig($varwidth) ;# bits of precision
     }
-    regexp "\nCalculated double epsilon: (\[^\n\]+)" \
+    regexp "\nCalculated *double *epsilon: *(\[^\n\]+)" \
 	    $varlist tempmatch vareps(COMPUTED_DBL)
     if {[regexp "(^|\n)HUGEFLOATTYPE:(\[^\n\]+)" \
           $varlist tempmatch dummy HFT]} {
        set HFT [string trim $HFT]
-       regexp [format "\nCalculated %s epsilon: (\[^\n\]+)" $HFT] \
+       regexp [format "\nCalculated *%s *epsilon: *(\[^\n\]+)" $HFT] \
              $varlist tempmatch vareps(COMPUTED_HUGE)
     }
 
@@ -491,24 +522,14 @@ proc Oc_MakePortHeader {varinfo outfile} {
 /* End includes */
 }
 
-    append porth "
-#define CONFIG_TCL_MAJOR_VERSION [$config GetValue TCL_MAJOR_VERSION]
-#define CONFIG_TCL_MINOR_VERSION [$config GetValue TCL_MINOR_VERSION]
-#define CONFIG_TK_MAJOR_VERSION [$config GetValue TK_MAJOR_VERSION]
-#define CONFIG_TK_MINOR_VERSION [$config GetValue TK_MINOR_VERSION]"
     if {[catch {set tclpl [$config GetValue TCL_PATCH_LEVEL]}]} {
 	regsub {^[0-9]+\.[0-9]+} [info patchlevel] {} tclpl
     }
-    append porth "
-#define CONFIG_TCL_PATCH_LEVEL \"[$config GetValue TCL_VERSION]$tclpl\""
     if {[catch {set tkpl [$config GetValue TK_PATCH_LEVEL]}]} {
 	# Assume Tcl and Tk patch levels are in sync
 	# Otherwise would need Tk loaded to access $tk_patchLevel
 	regsub {^[0-9]+\.[0-9]+} [info patchlevel] {} tkpl
     }
-    append porth "
-#define CONFIG_TK_PATCH_LEVEL \"[$config GetValue TK_VERSION]$tkpl\""
-
     proc PL2LS {pl} {
 	switch -- [string index $pl 0] {
 		a {return [list 0 [string range $pl 1 end]]}
@@ -522,15 +543,27 @@ proc Oc_MakePortHeader {varinfo outfile} {
     foreach {tclrl tclrs} [PL2LS $tclpl] {break}
     foreach {tkrl tkrs} [PL2LS $tkpl] {break}
     rename PL2LS {}
+    append porth "
+#define CONFIG_TCL_PATCH_LEVEL \"[$config GetValue TCL_VERSION]$tclpl\"
+#define CONFIG_TCL_MAJOR_VERSION [$config GetValue TCL_MAJOR_VERSION]
+#define CONFIG_TCL_MINOR_VERSION [$config GetValue TCL_MINOR_VERSION]
+#define CONFIG_TCL_RELEASE_SERIAL $tclrs
+#define CONFIG_TCL_RELEASE_LEVEL $tclrl\n"
+
+    if {![catch {$config GetValue cross_compile_target_tcl_library} _] \
+           || ![catch {$config GetValue TCL_LIBRARY} _]} {
+       # Note that cross_compile_target_tcl_library, if set, has
+       # precedence over TCL_LIBRARY.
+       append porth "#define CONFIG_TCL_LIBRARY $_\n"
+    }
 
     append porth "
-#define CONFIG_TCL_RELEASE_LEVEL $tclrl
-#define CONFIG_TCL_RELEASE_SERIAL $tclrs
-#define CONFIG_TK_RELEASE_LEVEL $tkrl
-#define CONFIG_TK_RELEASE_SERIAL $tkrs\n"
-
-    catch {append porth "#define CONFIG_TCL_LIBRARY\
-	    [$config GetValue TCL_LIBRARY]\n"}
+#define OC_USE_TK [$config GetValue use_tk]
+#define CONFIG_TK_PATCH_LEVEL \"[$config GetValue TK_VERSION]$tkpl\"
+#define CONFIG_TK_MAJOR_VERSION [$config GetValue TK_MAJOR_VERSION]
+#define CONFIG_TK_MINOR_VERSION [$config GetValue TK_MINOR_VERSION]
+#define CONFIG_TK_RELEASE_SERIAL $tkrs
+#define CONFIG_TK_RELEASE_LEVEL $tkrl\n\n"
 
     # Does compiler support the 'using namespace std' directive?
     if {[catch {
@@ -861,7 +894,6 @@ typedef  unsigned char      OC_UCHAR;
           append porth "#define OC_HAS_INT$vs 0\n"
        }
     }
-    unset int_type_widths
 
     append porth "\n/* Width of integer types */\n"
     if {[info exists varsize(int)]} {
@@ -952,6 +984,12 @@ typedef  unsigned char      OC_UCHAR;
         [string match "float" $real8mtype] } {
        set real8m_is_double 0
     }
+    set real8m_is_long_double 1
+    if {[string match "double" $real8mtype] || \
+        [string match "float" $real8mtype] } {
+       set real8m_is_long_double 0
+    }
+
     set real8m_is_real8 1
     if {![string match $real8type $real8mtype]} {
        set real8m_is_real8 0
@@ -1015,6 +1053,8 @@ typedef  unsigned char      OC_UCHAR;
 
    append porth [format \
            "\n#define OC_REAL8m_IS_DOUBLE %d\n" $real8m_is_double]
+   append porth [format \
+           "\n#define OC_REAL8m_IS_LONG_DOUBLE %d\n" $real8m_is_long_double]
    append porth [format \
            "#define OC_REAL8m_IS_REAL8 %d\n" $real8m_is_real8]
    append porth [format \
@@ -1099,23 +1139,32 @@ typedef  unsigned char      OC_UCHAR;
    }
 
    # Use the legacy x86 fpu (i.e., the x87?)
-   global tcl_platform
-   if {[string match "i*86" $tcl_platform(machine)]    \
-       || [string match "x86*" $tcl_platform(machine)] \
-       || [string match "*x86" $tcl_platform(machine)] \
-       || [string compare "amd64" $tcl_platform(machine)] == 0 \
-       || [string compare "intel" $tcl_platform(machine)] == 0 } {
+   set use_x87 0
+   if {$cross_compile} {
+      if {![catch {$config GetValue cross_compile_machine} machine]} {
+         set machine {} ;# machine not set
+      }
+   } else {
+      global tcl_platform
+      set machine $tcl_platform(machine)
+   }
+   if {[string match "i*86" $machine] \
+           || [string match "x86*" $machine] \
+           || [string match "*x86" $machine] \
+           || [string compare "amd64" $machine] == 0 \
+           || [string compare "intel" $machine] == 0 } {
+         set use_x87 1
+   }
+   if {$use_x87} {
       append porth {
 /* Use legacy x86 floating point */
 #define OC_USE_X87 1
 }  }
 
-
    # SSE?
    if {[catch {$config GetValue sse_level} sse_level]} {
       set sse_level 0   ;# Default
    }
-
    if {$sse_level>0} {
       append porth [subst {
 /* Use SSE intrinsics, level $sse_level and lower */
@@ -1124,16 +1173,28 @@ typedef  unsigned char      OC_UCHAR;
  * (and therefore agrees with the SSE double precision type.)
  */
 #define OC_SSE_LEVEL $sse_level
-#if OC_SSE_LEVEL>1 && OC_REAL8m_IS_REAL8 && OC_HAS_INT8
+}]
+   if {$sse_level>1 && $real8m_is_real8 \
+    && [lsearch -exact $int_type_widths 8] >= 0} {
+      append porth [subst \
+{#if OC_SSE_LEVEL>1 && OC_REAL8m_IS_REAL8 && OC_HAS_INT8
 # define OC_USE_SSE OC_SSE_LEVEL
   union OC_SSE_MASK {
      OC_UINT8 imask;
      OC_REAL8 dval;
   };
 #else
+# error Configuration error (ocport.h: OC_USE_SSE)
+#endif
+}]} else {
+      append porth [subst {\
+#if OC_SSE_LEVEL>1 && OC_REAL8m_IS_REAL8 && OC_HAS_INT8
+# error Configuration error (ocport.h: OC_USE_SSE)
+#else
 # define OC_USE_SSE 0
 #endif
-}] } else {
+}]}
+ } else {
       append porth {
 /* Don't use SSE intrinsics */
 #define OC_SSE_LEVEL 0
@@ -1396,7 +1457,7 @@ typedef int Tcl_ThreadDataKey;
 #define OC_CYGWIN 6
 #define OC_WINNT 7
 }
-    # Note: Local variable "systemtype" is set at top of this proc
+    # Note: Local variables "system*type" are set at top of this proc
     # Note 2: Some brain-damaged compilers bitch if the
     #         OC_SYSTEM_SUBTYPE macro is left undefined.
     if {[string compare $systemtype "unix"] == 0} {
@@ -1419,16 +1480,18 @@ typedef int Tcl_ThreadDataKey;
 
     # The system Tcl type is used to distinguish the Tcl variant
     # being used in the Cygwin environment.
-    if {[string compare unix $tcl_platform(platform)]==0} {
+    if {[string compare unix $systemtcltype]==0} {
        set system_tcltype OC_UNIX
-    } elseif {[string compare windows $tcl_platform(platform)==0]} {
+    } elseif {[string compare windows $systemtcltype]==0} {
        set system_tcltype OC_WINDOWS
     } else {
        error "Unrecognized or unsupported Tcl platform:\
-              $tcl_platform(platform)"
+              $systemtcltype"
     }
     append porth "#define OC_TCL_TYPE $system_tcltype\n"
 
+    # Variables OS and OSMAJOR are used below to support old versions of
+    # sunos.  This use not supported for cross-compiles.
     set OS [string tolower [string trim $tcl_platform(os)]]
     set OSVERSION [string tolower [string trim $tcl_platform(osVersion)]]
     set OSMAJOR $OSVERSION
@@ -1466,6 +1529,7 @@ typedef int Tcl_ThreadDataKey;
 /* NB: Any code that uses the default macro settings (involving  */
 /*     Oc_Random), must also #include "oc.h" in order to get the */
 /*     definition of the Oc_Random class.                        */
+#define OMF_RANDOM_IS_DEFAULT 1
 #define OMF_SRANDOM(seed)  Oc_Random::Srandom(seed)
 #define OMF_RANDOM()       Oc_Random::Random()
 #define OMF_RANDOM_MAX     Oc_Random::MaxValue()

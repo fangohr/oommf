@@ -11,6 +11,7 @@
 
 #include "atlas.h"
 #include "key.h"
+#include "chunkenergy.h"
 #include "energy.h"
 #include "mesh.h"
 #include "meshvalue.h"
@@ -22,13 +23,19 @@
 
 /* End includes */
 
-class Oxs_ExchangePtwise:public Oxs_Energy {
+class Oxs_ExchangePtwise:public Oxs_ChunkEnergy {
 private:
   Oxs_OwnedPointer<Oxs_ScalarField> A_init;
   mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_REAL8m> A;
   /// Exchange coefficient A is filled by A_init routine
   /// each time a change in the mesh is detected.
+
+  // Support for threaded maxang calculations
+  mutable std::vector<OC_REAL8m> maxdot;
+
+  mutable OC_REAL8m energy_density_error_estimate; // Cached value,
+  /// initialized when mesh changes.
 
   // Supplied outputs, in addition to those provided by Oxs_Energy.
   Oxs_ScalarOutput<Oxs_ExchangePtwise> maxspinangle_output;
@@ -53,7 +60,32 @@ private:
 
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
-			 Oxs_EnergyData& oed) const;
+			 Oxs_EnergyData& oed) const {
+    GetEnergyAlt(state,oed);
+  }
+
+  virtual void ComputeEnergy(const Oxs_SimState& state,
+                             Oxs_ComputeEnergyData& oced) const {
+    ComputeEnergyAlt(state,oced);
+  }
+
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
+  virtual void ComputeEnergyChunkFinalize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
+  virtual void ComputeEnergyChunk(const Oxs_SimState& state,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+                                  OC_INDEX node_start,OC_INDEX node_stop,
+                                  int threadnumber) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is

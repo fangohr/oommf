@@ -242,7 +242,7 @@ OC_BOOL
 Oxs_MinDriver::Step
 (Oxs_ConstKey<Oxs_SimState> base_state,
  const Oxs_DriverStepInfo& stepinfo,
- Oxs_Key<Oxs_SimState>& next_state)
+ Oxs_ConstKey<Oxs_SimState>& next_state)
 { // Returns true if step was successful, false if
   // unable to step as requested.
 
@@ -252,7 +252,7 @@ Oxs_MinDriver::Step
   // is destroyed.
   Oxs_Key<Oxs_MinEvolver> temp_key = evolver_key;
   Oxs_MinEvolver& evolver = temp_key.GetWriteReference();
-  return evolver.Step(this,base_state,stepinfo,next_state);
+  return evolver.TryStep(this,base_state,stepinfo,next_state);
 }
 
 OC_BOOL

@@ -28,11 +28,10 @@ OC_USE_STRING;
  *   #define REPORT_TIME 1/0
  *     This enables/disables the reporting of non-zero calculation
  *     time information.  If enabled, then at run end a report is
- *     written to * stderr detailing the cpu and wall time spent
- *     computing each * energy term, as well as the aggregate time
- *     spent in the step * routine of the driver object.
+ *     written to stderr detailing the cpu and wall time spent
+ *     computing each energy term, as well as the aggregate time spent
+ *     in the step routine of the driver object.
  */
-
 #ifndef REPORT_TIME
 # define REPORT_TIME 0
 #endif

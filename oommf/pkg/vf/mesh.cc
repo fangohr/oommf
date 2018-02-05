@@ -182,8 +182,8 @@ Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
 {
   Vf_Mesh_Index *key=NULL;
   Nb_LocatedVector<OC_REAL8> vec,min_vec,max_vec;
-  const OC_REAL8m sqrt3 = sqrt(3.0);
-  const OC_REAL8m sqrt1_3 = 1.0/sqrt(3.0);
+  const OC_REAL8m sqrt3 = sqrt(OC_REAL8m(3.0));
+  const OC_REAL8m sqrt1_3 = 1.0/sqrt3;
   OC_REAL8m max_a = 0.0, max_b = 0.0;  // Scaling to protect against
   OC_REAL8m min_a = 0.0, min_b = 0.0;  // over- and underflow
   // A min or max value is represented by two values, a scale value "a"
@@ -194,7 +194,7 @@ Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
   //
   //    1 <= b <= 3
   //    |(x,y,z)| = a*sqrt(b)
-  //    a <= |(x,y,z) <= a*sqrt(3)
+  //    a <= |(x,y,z)| <= a*sqrt(3)
   //
   // Now, to test if say |(u,v,w)| is larger than |(x,y,z)| we compute
   // ta = max(|u|,|v|,|w|) and tb = ((u/ta)^2 + (v/ta)^2 + (w/ta)^2),
@@ -225,7 +225,7 @@ Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
       if(tx > sqrt1_3 * max_a) { // vec may be new max
         ty /= tx;  tz /= tx;
         OC_REAL8m tb = 1 + ty*ty + tz*tz;
-        if(tx >= sqrt3*max_a) {
+        if(tx*sqrt1_3 >= max_a) {
           max_a = tx;  max_b = tb;
           max_vec = vec;
         } else {
@@ -236,7 +236,7 @@ Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
           }
         }
       }
-      if(tx < sqrt3 * max_a) { // vec may be new min
+      if(tx*sqrt1_3 < max_a) { // vec may be new min
         if(tx == 0.0) {
           min_a = min_b = 0.0;
         } else {
@@ -257,6 +257,39 @@ Vf_Mesh::GetValueMagSpan(Nb_LocatedVector<OC_REAL8>& min_export,
     }
   }
   delete key;
+
+  // If min and max values are very nearly equal, then rounding error
+  // can result in |min_vec| being ever so slightly larger than
+  // |max_vec|.  This can cause problems in downstream code which
+  // assumes |max_vec| >= |min_vec|.  So check and swap if necessary.
+  // (Of course, rounding error also means that there may be vecs with
+  // |vec| outside of the min/max range, i.e. |vec|<|min_vec| or
+  // |max_vec|<|vec|, but this is less easily discoverable and so less
+  // likely to cause problems.
+
+  // Scaling hack, assumes IEEE 8-byte double.  Should work in
+  // practice.  We want powers of two to avoid rounding errors.
+  // Note that 3*(testsize*testsize) < OC_REAL8m_MAX, and
+  // 3*(OC_REAL8_MAX*testscale)^2 < OC_REAL8m_MAX.
+  const OC_REAL8 testsize  = 6.703903964971299e+153; // 2^511
+  const OC_REAL8 testscale = 3.729170365600103e-155; // 1/2^513
+
+  OC_REAL8m scale = ( max_a>testsize ? testscale : 1.0 );
+
+  OC_REAL8m sx = min_vec.value.x*scale;
+  OC_REAL8m sy = min_vec.value.y*scale;
+  OC_REAL8m sz = min_vec.value.z*scale;
+  OC_REAL8m smagsq = sx*sx + sy*sy + sz*sz;
+
+  OC_REAL8m tx = max_vec.value.x*scale;
+  OC_REAL8m ty = max_vec.value.y*scale;
+  OC_REAL8m tz = max_vec.value.z*scale;
+  OC_REAL8m tmagsq = tx*tx + ty*ty + tz*tz;
+
+  if(smagsq > tmagsq) { // Swap
+    vec = min_vec;  min_vec = max_vec;  max_vec = vec;
+  }
+
   min_vec.value *= ValueMultiplier;  min_export = min_vec;
   max_vec.value *= ValueMultiplier;  max_export = max_vec;
 }

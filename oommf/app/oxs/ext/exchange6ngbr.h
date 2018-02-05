@@ -29,6 +29,7 @@ private:
 
   OC_INDEX coef_size;
   OC_REAL8m** coef;
+  OC_REAL8m max_abscoef;
   mutable Oxs_Key<Oxs_Atlas> atlaskey;  
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
   mutable Oxs_ThreadControl thread_control;
@@ -36,15 +37,20 @@ private:
   mutable Oxs_MeshValue<OC_INDEX> region_id;
 
   // Support for threaded maxang calculations
-  mutable vector<OC_REAL8m> maxdot;
+  mutable std::vector<OC_REAL8m> maxdot;
+
+  mutable OC_REAL8m energy_density_error_estimate; // Cached value,
+  /// initialized when mesh changes.  This estimate is based on the
+  /// largest value in the coef array (i.e., max_abscoef),
+  /// irrespective of whether or not that value is actually used.
 
   void CalcEnergyA(const Oxs_SimState& state,
-                   const Oxs_ComputeEnergyDataThreaded& ocedt,
+                   Oxs_ComputeEnergyDataThreaded& ocedt,
                    Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                    OC_INDEX node_start,OC_INDEX node_stop,
                    int threadnumber) const;
   void CalcEnergyLex(const Oxs_SimState& state,
-                     const Oxs_ComputeEnergyDataThreaded& ocedt,
+                     Oxs_ComputeEnergyDataThreaded& ocedt,
                      Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                      OC_INDEX node_start,OC_INDEX node_stop,
                      int threadnumber) const;
@@ -83,18 +89,18 @@ protected:
 
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& state,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
-   vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunkFinalize
   (const Oxs_SimState& state,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
-   const vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

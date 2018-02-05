@@ -22,6 +22,7 @@ class Oxs_UZeeman
   : public Oxs_ChunkEnergy, public Oxs_EnergyPreconditionerSupport {
 private:
   vector<ThreeVector> Happ;  // Indexed off of state stage_number
+
   ThreeVector GetAppliedField(OC_UINT4m stage_number) const;
   /// Utility function. Indexes Happ off of stage_number with
   /// proper range behavior.
@@ -50,8 +51,14 @@ protected:
     ComputeEnergyAlt(state,oced);
   }
 
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

@@ -30,6 +30,8 @@ private:
   /// fixedfield_init when a change in mesh is
   /// detected.
 
+  mutable OC_REAL8m energy_density_error_estimate;
+
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
 			 Oxs_EnergyData& oed) const {
@@ -43,12 +45,12 @@ protected:
 
   virtual void ComputeEnergyChunkInitialize
   (const Oxs_SimState& state,
-   const Oxs_ComputeEnergyDataThreaded& ocedt,
-   vector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
    int number_of_threads) const;
 
   virtual void ComputeEnergyChunk(const Oxs_SimState& state,
-                                  const Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
                                   Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
                                   OC_INDEX node_start,OC_INDEX node_stop,
                                   int threadnumber) const;

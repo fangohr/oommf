@@ -76,16 +76,16 @@ int Oxs_Init(Tcl_Interp *interp)
   Oc_AutoBuf ab;
 
   if (Tcl_PkgRequire(interp,OC_CONST84_CHAR("Oc"),
-                     OC_CONST84_CHAR("1.2.0.4"), 0) == NULL) {
+                     OC_CONST84_CHAR("2"), 0) == NULL) {
     Tcl_AppendResult(interp,ab("\n\t(Oxs " OXS_VERSION
-				"needs Oc 1.2.0.4)"), NULL);
+				"needs Oc 2)"), NULL);
     RETURN_TCL_ERROR;
   }
 
   if (Tcl_PkgRequire(interp,OC_CONST84_CHAR("Nb"),
-                     OC_CONST84_CHAR("1.2.0.4"), 0) == NULL) {
+                     OC_CONST84_CHAR("2"), 0) == NULL) {
     Tcl_AppendResult(interp,ab("\n\t(Oxs " OXS_VERSION
-				"needs Nb 1.2.0.4)"), NULL);
+				"needs Nb 2)"), NULL);
     RETURN_TCL_ERROR;
   }
 

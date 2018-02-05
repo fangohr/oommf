@@ -3,15 +3,15 @@
 # This file must be interpreted by the mmsolve shell.
 
 # Support libraries
-package require Oc 1.1
-package require Mms 1.1.0.1
-package require Net 1.2.0.3
+package require Oc 2
+package require Mms 2
+package require Net 2
 
 Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 
 Oc_Main SetAppName mmSolve2D
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:35 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]

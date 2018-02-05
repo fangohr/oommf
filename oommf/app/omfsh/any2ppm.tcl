@@ -7,13 +7,13 @@
 #
 # This file must be interpreted by the filtersh shell.
 
-package require Oc 1.2.0.4	;# [Oc_TempFile]
+package require Oc 2	;# [Oc_TempFile]
 package require Tk
-package require If 1.2.0.4
+package require If 2
 Oc_ForceStderrDefaultMessage
 
 Oc_Main SetAppName any2ppm
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Option console {} {}
 

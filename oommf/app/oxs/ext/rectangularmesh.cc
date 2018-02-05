@@ -1007,32 +1007,32 @@ OC_REAL8m Oxs_RectangularMesh::MaxNeighborAngle
   OxsRectangularMeshAngle maxangY(0.0);
   OxsRectangularMeshAngle maxangZ(0.0);
 
-  const OC_INDEX xdim = DimX();  // For convenience
-  const OC_INDEX ydim = DimY();  // For convenience
-  const OC_INDEX zdim = DimZ();  // For convenience
-  const OC_INDEX xydim = xdim*ydim;
+  const OC_INDEX dimx = DimX();  // For convenience
+  const OC_INDEX dimy = DimY();  // For convenience
+  const OC_INDEX dimz = DimZ();  // For convenience
+  const OC_INDEX dimxy = dimx*dimy;
 
   OC_INDEX ix,iy,iz;
   GetCoords(node_start,ix,iy,iz);
 
   for(OC_INDEX index=node_start;index<node_stop;++index) {
     if(zero_check[index]!=0.0) {
-      if(ix+1<xdim && zero_check[index+1]!=0.0) {
+      if(ix+1<dimx && zero_check[index+1]!=0.0) {
         OxsRectangularMeshAngle test(vec[index],vec[index+1]);
         if(test>maxangX) maxangX = test;
       }
-      if(iy+1<ydim && zero_check[index+xdim]!=0.0) {
-        OxsRectangularMeshAngle test(vec[index],vec[index+xdim]);
+      if(iy+1<dimy && zero_check[index+dimx]!=0.0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+dimx]);
         if(test>maxangY) maxangY = test;
       }
-      if(iz+1<zdim && zero_check[index+xydim]!=0.0) {
-        OxsRectangularMeshAngle test(vec[index],vec[index+xydim]);
+      if(iz+1<dimz && zero_check[index+dimxy]!=0.0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+dimxy]);
         if(test>maxangZ) maxangZ = test;
       }
     }
-    if(++ix >= xdim) {
+    if(++ix >= dimx) {
       ix=0;
-      if(++iy >= ydim) {
+      if(++iy >= dimy) {
         iy=0; ++iz;
       }
     }
@@ -1104,38 +1104,38 @@ OC_REAL8m Oxs_PeriodicRectangularMesh::MaxNeighborAngle
   OxsRectangularMeshAngle maxangY(0.0);
   OxsRectangularMeshAngle maxangZ(0.0);
 
-  const OC_INDEX xdim = DimX();  // For convenience
-  const OC_INDEX ydim = DimY();  // For convenience
-  const OC_INDEX zdim = DimZ();  // For convenience
-  const OC_INDEX xydim = xdim*ydim;
-  const OC_INDEX zwrap = (zdim-1)*xydim;
+  const OC_INDEX dimx = DimX();  // For convenience
+  const OC_INDEX dimy = DimY();  // For convenience
+  const OC_INDEX dimz = DimZ();  // For convenience
+  const OC_INDEX dimxy = dimx*dimy;
+  const OC_INDEX zwrap = (dimz-1)*dimxy;
 
   OC_INDEX ix,iy,iz;
   GetCoords(node_start,ix,iy,iz);
 
   for(OC_INDEX index=node_start;index<node_stop;++index) {
     if(zero_check[index]!=0.0) {
-      if(ix+1<xdim) {
+      if(ix+1<dimx) {
         if(zero_check[index+1]!=0.0) {
           OxsRectangularMeshAngle test(vec[index],vec[index+1]);
           if(test>maxangX) maxangX = test;
         }
-      } else if(xperiodic && zero_check[index+1-xdim]!=0) {
-        OxsRectangularMeshAngle test(vec[index],vec[index+1-xdim]);
+      } else if(xperiodic && zero_check[index+1-dimx]!=0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+1-dimx]);
         if(test>maxangX) maxangX = test;
       }
-      if(iy+1<ydim) {
-        if(zero_check[index+xdim]!=0.0) {
-          OxsRectangularMeshAngle test(vec[index],vec[index+xdim]);
+      if(iy+1<dimy) {
+        if(zero_check[index+dimx]!=0.0) {
+          OxsRectangularMeshAngle test(vec[index],vec[index+dimx]);
           if(test>maxangY) maxangY = test;
         }
-      } else if(yperiodic && zero_check[index+xdim-xydim]!=0) {
-        OxsRectangularMeshAngle test(vec[index],vec[index+xdim-xydim]);
+      } else if(yperiodic && zero_check[index+dimx-dimxy]!=0) {
+        OxsRectangularMeshAngle test(vec[index],vec[index+dimx-dimxy]);
         if(test>maxangY) maxangY = test;
       }
-      if(iz+1<zdim) {
-        if(zero_check[index+xydim]!=0.0) {
-          OxsRectangularMeshAngle test(vec[index],vec[index+xydim]);
+      if(iz+1<dimz) {
+        if(zero_check[index+dimxy]!=0.0) {
+          OxsRectangularMeshAngle test(vec[index],vec[index+dimxy]);
           if(test>maxangZ) maxangZ = test;
         }
       } else if(zperiodic && zero_check[index-zwrap]!=0) {
@@ -1143,9 +1143,9 @@ OC_REAL8m Oxs_PeriodicRectangularMesh::MaxNeighborAngle
         if(test>maxangZ) maxangZ = test;
       }
     }
-    if(++ix >= xdim) {
+    if(++ix >= dimx) {
       ix=0;
-      if(++iy >= ydim) {
+      if(++iy >= dimy) {
         iy=0; ++iz;
       }
     }

@@ -305,7 +305,7 @@ Oxs_Demag::Oxs_FFTLocker::Oxs_FFTLocker
 #if !defined(NDEBUG)
   for(OC_INDEX izz=0;izz<fftz_Hwork_base_size;++izz) {
     // Fill workspace with NaNs, to detect uninitialized use.
-    fftz_Hwork_base[izz]=255;
+    reinterpret_cast<unsigned char&>(fftz_Hwork_base[izz]) = 255u;
   }
 #endif
 
@@ -362,7 +362,8 @@ Oxs_Demag::Oxs_Demag(
     rdimx(0),rdimy(0),rdimz(0),cdimx(0),cdimy(0),cdimz(0),
     adimx(0),adimy(0),adimz(0),
     xperiodic(0),yperiodic(0),zperiodic(0),
-    mesh_id(0),
+    coarse_grid(0),coarse_block_x(1),coarse_block_y(1),coarse_block_z(1),
+    mesh_id(0),energy_density_error_estimate(-1),
     asymptotic_radius(-1),
     MaxThreadCount(Oc_GetMaxThreadCount()),
     embed_block_size(0)
@@ -391,6 +392,24 @@ Oxs_Demag::Oxs_Demag(
   /// energy by a constant amount, but since the demag field is changed
   /// by a multiple of m, the torque and therefore the magnetization
   /// dynamics are unaffected.
+
+  // Compute on coarse grid?
+  if(HasInitValue("coarse_grid")) {
+    ThreeVector blockvec = GetThreeVectorInitValue("coarse_grid");
+    coarse_block_x = static_cast<int>(blockvec.x);
+    coarse_block_y = static_cast<int>(blockvec.y);
+    coarse_block_z = static_cast<int>(blockvec.z);
+    if(coarse_block_x<1 || coarse_block_y<1 || coarse_block_z<1
+       || static_cast<OC_REAL8m>(coarse_block_x) != blockvec.x
+       || static_cast<OC_REAL8m>(coarse_block_y) != blockvec.y
+       || static_cast<OC_REAL8m>(coarse_block_z) != blockvec.z) {
+      throw Oxs_ExtError(this,"Invalid values for coarse_grid entry: "
+                         "Each value should be a positive integer.");
+    }
+    if(coarse_block_x>1 || coarse_block_y>1 || coarse_block_z>1) {
+      coarse_grid = 1; // Enable coarse grid
+    }
+  }
 
 #if REPORT_TIME
   // Set default names for development timers
@@ -446,6 +465,7 @@ OC_BOOL Oxs_Demag::Init()
   convtime.Reset();        dottime.Reset();
 #endif // REPORT_TIME
   mesh_id = 0;
+  energy_density_error_estimate = -1;
   ReleaseMemory();
   return Oxs_Energy::Init();
 }
@@ -1338,6 +1358,20 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   rdimx = mesh->DimX();
   rdimy = mesh->DimY();
   rdimz = mesh->DimZ();
+  if(coarse_grid) {
+    // If coarse block dimensions doesn't exactly divide mesh
+    // dimensions, then round up for additional zero padding.
+    rdimx = (rdimx + coarse_block_x - 1)/coarse_block_x;
+    rdimy = (rdimy + coarse_block_y - 1)/coarse_block_y;
+    rdimz = (rdimz + coarse_block_z - 1)/coarse_block_z;
+    if((xperiodic && rdimx*coarse_block_x != mesh->DimX())
+       || (yperiodic && rdimy*coarse_block_y != mesh->DimY())
+       || (zperiodic && rdimz*coarse_block_z != mesh->DimZ())) {
+      throw Oxs_ExtError(this,
+             "Coarse block dimensions must divide periodic dimensions");
+    }
+  }
+
   if(rdimx==0 || rdimy==0 || rdimz==0) return; // Empty mesh!
 
   // Initialize fft object.  If a dimension equals 1, then zero
@@ -1505,6 +1539,11 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   OC_REAL8m dx = mesh->EdgeLengthX();
   OC_REAL8m dy = mesh->EdgeLengthY();
   OC_REAL8m dz = mesh->EdgeLengthZ();
+  if(coarse_grid) {
+    dx *= coarse_block_x;
+    dy *= coarse_block_y;
+    dz *= coarse_block_z;
+  }
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
@@ -1886,15 +1925,15 @@ public:
   const Oxs_Demag::Oxs_FFTLocker_Info* locker_info;
 
   Nb_ArrayWrapper<Nb_Xpfloat> energy_sum; // Per thread export.
-  // Note: Some (especially 32-bit compilers) do 16-byte alignment for
-  // SSE __m128d data type in std::vector, so use Nb_ArrayWrapper
-  // instead.
+  // Note: Some (especially 32-bit compilers) don't do 16-byte
+  // alignment for SSE __m128d data type in std::vector, so use
+  // Nb_ArrayWrapper instead.
 
   _Oxs_DemagiFFTxDotThread(int threadcount)
     : carr(0),
       spin_ptr(0), Ms_ptr(0), oced_ptr(0),
       locker_info(0) {
-    energy_sum.SetSize(OC_INDEX(threadcount),sizeof(Nb_Xpfloat));
+    energy_sum.SetSize(OC_INDEX(threadcount),Nb_Xpfloat::Alignment());
 #if NB_XPFLOAT_USE_SSE // Check alignment
     assert(size_t(energy_sum.GetPtr()) % sizeof(Nb_Xpfloat) == 0);
 #endif
@@ -2572,12 +2611,12 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
 
       // Inverse FFT-y on Hwork, and copy back to carr
       StartTimer(8);
-      const OC_INDEX istop = ispan - (ispan%4);
+      const OC_INDEX ileadstop = ispan - (ispan%4);
       for(k=0;k<rdimz;++k) {
         OXS_FFT_REAL_TYPE* const Hbase = Hywork + k*Hy_kstride;
         OXS_FFT_REAL_TYPE* const cbase = carr
           + ODTV_VECSIZE*ODTV_COMPLEXSIZE*i1 + k*ckstride;
-        for(i=0;i<istop;i+=4) {
+        for(i=0;i<ileadstop;i+=4) {
           StartTimer(9);
           ffty->InverseFFT(Hbase + i*Hy_istride);
           ffty->InverseFFT(Hbase + (i+1)*Hy_istride);
@@ -2714,7 +2753,11 @@ void Oxs_Demag::ComputeEnergy
     mesh_id = 0; // Safety
     FillCoefficientArrays(state.mesh);
     mesh_id = state.mesh->Id();
+    energy_density_error_estimate
+      = 0.5*OC_REAL8m_EPSILON*MU0*state.max_absMs*state.max_absMs
+      *(log(double(cdimx))+log(double(cdimy))+log(double(cdimz)))/log(2.);
   }
+  oced.energy_density_error_estimate = energy_density_error_estimate;
 
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
@@ -2804,8 +2847,7 @@ void Oxs_Demag::ComputeEnergy
     for(OC_INDEX ithread=0;ithread<MaxThreadCount;++ithread) {
       tempsum += ifftx_thread.energy_sum[ithread];
     }
-    oced.energy_sum
-      = static_cast<OC_REAL8m>(tempsum.GetValue() * state.mesh->Volume(0));
+    oced.energy_sum = tempsum * state.mesh->Volume(0);
     /// All cells have same volume in an Oxs_RectangularMesh.
   }
 

@@ -99,7 +99,7 @@ details which pertain only to a particular platform.  These issues are
 discussed below.
 
 <P>
-<A NAME="1164"></A>
+<A NAME="1180"></A>
 
 <H3><A NAME="SECTION00034100000000000000">
 Unix Configuration</A>
@@ -116,7 +116,7 @@ the operating system installation disks, or may be available from the
 system vendor.  There are also binary releases of Tcl/Tk for a number
 of systems available from ActiveState, under the name
 <A NAME="tex2html13"
-  HREF="http://www.activestate.com/activetcl/">ActiveTcl</A>.
+  HREF="http://www.activestate.com/Products/ActiveTcl/">ActiveTcl</A>.
 Alternatively, one may download the sources for Tcl and Tk from the
 <A NAME="tex2html14"
   HREF="http://purl.org/tcl/home/">Tcl Developer
@@ -165,7 +165,7 @@ would involve creating separate platform name files in
 appropriate <TT><B>oommf/config/platforms</B></TT> file for each new platform.  The
 platform name files would have to be written so as to reliably detect
 the CPU subtype on each machine.  See <A HREF="Advanced_Installation.html#sec:platformNames">``Managing OOMMF platform names''</A> for details on creating platform name
-files.  <A NAME="1194"></A>
+files.  <A NAME="1210"></A>
 
 <P>
 
@@ -182,7 +182,7 @@ time.
 
 <P>
 
-<H3><A NAME="SECTION00034200000000000000"></A><A NAME="sec:install.macosx"></A><A NAME="1206"></A>
+<H3><A NAME="SECTION00034200000000000000"></A><A NAME="sec:install.macosx"></A><A NAME="1222"></A>
 <BR>
 Mac OS X Configuration
 </H3>
@@ -191,10 +191,10 @@ platform name is ``darwin''.  If the <A HREF="Basic_Installation.html#sec:platfo
 configuration check</A> does not find a C++ compiler,
 then you will have to install one.  Refer to your system documentation
 for details.
-<A NAME="1211"></A>
+<A NAME="1227"></A>
 
 <P>
-<A NAME="1212"></A>
+<A NAME="1228"></A>
 
 <H3><A NAME="SECTION00034300000000000000"></A><A NAME="sec:install.windows"></A>
 <BR>
@@ -207,7 +207,7 @@ This section lists installation options for Microsoft Windows.
 <P>
 
 <H4><A NAME="SECTION00034310000000000000"></A>
-<A NAME="1216"></A>
+<A NAME="1232"></A>
 <BR>
 Using Microsoft Visual C++
 </H4>
@@ -224,7 +224,7 @@ details.
 <P>
 
 <H4><A NAME="SECTION00034320000000000000"></A>
-<A NAME="1221"></A>
+<A NAME="1237"></A>
 <BR>
 Using MinGW g++
 </H4>
@@ -234,7 +234,7 @@ Both 32-bit and 64-bit builds are supported using the MinGW ports of
 g++.  (The 32-bit and 64-bit versions of g++ are separate downloads.)
 Use a standard Windows Tcl/Tk, such as the
 <A NAME="tex2html15"
-  HREF="http://www.activestate.com/activetcl/">ActiveTcl</A>
+  HREF="http://www.activestate.com/Products/ActiveTcl/">ActiveTcl</A>
 release from ActiveState.  You will also need to edit the appropriate
 platform file to select g++ as the compiler.  If you are using a 32-bit
 Tcl/Tk and g++, then the platform file is
@@ -244,7 +244,7 @@ Tcl/Tk and g++ the platform file is
 
 <P>
 
-<H4><A NAME="SECTION00034330000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1228"></A>
+<H4><A NAME="SECTION00034330000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1244"></A>
 <BR>
 Using the Cygwin toolkit
 </H4>
@@ -282,18 +282,18 @@ Additional information on this problem can be found in the Cygwin
 documentation.
 
 <P>
-At the time of this writing (Sept. 2016), the Cygwin versions of
+At the time of this writing (Sept. 2013), the Cygwin versions of
 Tcl/Tk are not threaded, so OOMMF built using Cygwin will
 likewise be not threaded.  This will likely change when a Cygwin
 Tcl/Tk 8.6 package becomes available (the current Cygwin
-Tcl/Tk is 8.5.18), but it is possible to build a threaded
+Tcl/Tk is 8.5.11), but it is possible to build a threaded
 Tcl/Tk in Cygwin from source.  Refer to the Tcl/Tk build
 documentation for details.
 
 <P>
 
 <H4><A NAME="SECTION00034340000000000000"></A>
-<A NAME="1242"></A>
+<A NAME="1258"></A>
 <BR>
 Using Borland C++
 </H4>
@@ -391,7 +391,7 @@ After this, continue with the instructions in the
 <P>
 
 <H4><A NAME="SECTION00034350000000000000"></A>
-<A NAME="1295"></A>
+<A NAME="1311"></A>
 <BR>
 Using Digital Mars C++
 </H4>
@@ -460,7 +460,7 @@ After this, continue with the instructions in the
 <P>
 
 <H4><A NAME="SECTION00034360000000000000"></A>
-<A NAME="1319"></A>
+<A NAME="1335"></A>
 <BR>
 Setting the TCL_LIBRARY environment variable
 </H4>
@@ -468,7 +468,7 @@ Setting the TCL_LIBRARY environment variable
 <P>
 If you encounter difficulties during OOMMF start up, you may need to set
 the environment variable 
-TCL_LIBRARY<A NAME="1320"></A>.  (NOTE: This
+TCL_LIBRARY<A NAME="1336"></A>.  (NOTE: This
 is almost never necessary!)
 
 <P>
@@ -504,6 +504,6 @@ Click <FONT COLOR="#800000"><B>Set</B></FONT> and <FONT COLOR="#800000"><B>OK</B
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
 </BODY>
 </HTML>

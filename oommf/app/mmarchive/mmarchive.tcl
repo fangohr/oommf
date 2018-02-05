@@ -5,14 +5,14 @@
 # Provide no GUI, so this app survives death of X
 
 # Support libraries
-package require Oc 1.2.0.4      ;# [Oc_TempName]
-package require Net 1.2.0.4
+package require Oc 2      ;# [Oc_TempName]
+package require Net 2
 if {[Oc_Main HasTk]} {
    wm withdraw .
 }
 
 Oc_Main SetAppName mmArchive
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -53,7 +53,7 @@ LogMessage status "mmArchive started"
 ##------ GUI ---------#
 #
 set gui {
-   package require Oc 1.1
+   package require Oc 2
    package require Tk
    package require Ow
    wm withdraw .

@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H2><A NAME="SECTION00082000000000000000"></A><A NAME="sec:boxsi"></A>
 <BR>
 OOMMF eXtensible Solver Batch Interface: boxsi
-</H2><A NAME="4204"></A><A NAME="4205"></A>
+</H2><A NAME="4238"></A><A NAME="4239"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -81,7 +81,7 @@ application. It is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Boxsi</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="4223"><B>mmLaunch</B></A>.  It is through
+ NAME="4257"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Boxsi</B>.
 
@@ -140,8 +140,8 @@ where
   this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4258"></A>
-  <A NAME="4259"></A>
+<DD><A NAME="4292"></A>
+  <A NAME="4293"></A>
   This option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
   Oxs.  The <I>nodes</I> parameter must be either a comma separated
@@ -187,14 +187,14 @@ The default behavior is modified (in increasing order of priority) by the
   <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
   file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
   or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4288"></A>.  The
-  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4290"></A>
+  <TT>OOMMF_NUMANODES</TT><A NAME="4322"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4324"></A>
 </DD>
 <DT><STRONG><TT><B>-outdir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where output files are written by
   <B>mmArchive</B>.  This option is useful when the default output
   directory is inaccessible or slow. The environment variable
-  <TT>OOMMF_OUTDIR</TT><A NAME="4294"></A> sets the
+  <TT>OOMMF_OUTDIR</TT><A NAME="4328"></A> sets the
   default output directory.  If <TT>OOMMF_OUTDIR</TT> is set to the empty
   string, or not set at all, then the default is the directory holding
   the MIF file.
@@ -234,7 +234,7 @@ The default behavior is modified (in increasing order of priority) by the
   command line utility to control temporary file names during regression
   testing.
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="7108"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="7142"></A></B></TT></STRONG></DT>
 <DD>If the restart option is 0 (the default), then the problem loads and
   runs from the beginning.  If set to 1, then when loading the problem a
   check is made for a pre-existing restart (checkpoint) file.  If one is
@@ -250,9 +250,9 @@ The default behavior is modified (in increasing order of priority) by the
 <DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where restart files are written.
   The default is determined by the environment variable
-  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4330"></A>,
+  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4364"></A>,
   or if this is not set then by
-  <TT>OOMMF_OUTDIR</TT><A NAME="4332"></A>.  If
+  <TT>OOMMF_OUTDIR</TT><A NAME="4366"></A>.  If
   neither environment variable is set then the default is the
   directory holding the MIF file.  Write access is required to the
   restart file directory.  Also, you may want to consider whether the
@@ -260,14 +260,14 @@ The default behavior is modified (in increasing order of priority) by the
   network mount.
 </DD>
 <DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4334"></A>
+<DD><A NAME="4368"></A>
   The option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
   The <I>count</I> parameter is the number of threads to run.  The
   default count value is set by the <TT>oommf_thread_count</TT> value in
   the <TT><B>config/platforms/</B></TT> file for your platform, but may be
   overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="4343"></A>
+  <TT>OOMMF_THREADS</TT><A NAME="4377"></A>
   environment variable or this
   command line option.  In most cases the default count value will
   equal the number of processing cores on the system; this can be
@@ -281,12 +281,12 @@ The default behavior is modified (in increasing order of priority) by the
 </DL>
 
 <P>
-Although <B>Boxsi</B><A NAME="4351"></A> cannot be
-launched by <B>mmLaunch</B><A NAME="4353"></A>, nonetheless
+Although <B>Boxsi</B><A NAME="4385"></A> cannot be
+launched by <B>mmLaunch</B><A NAME="4387"></A>, nonetheless
 a limited graphical interactive interface for <B>Boxsi</B> is provided
 through <B>mmLaunch</B>, in the same manner as is done for <B>Oxsii</B>.
 Each running instance of <B>Boxsi</B> is included in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4359"></A> list of <B>mmLaunch</B>, along with a
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4393"></A> list of <B>mmLaunch</B>, along with a
 checkbutton.  This button toggles the presence of a user interface
 window.
 
@@ -402,7 +402,7 @@ computational details.
 
 <P>
 <FONT SIZE="+2"><B>Threading considerations<A NAME="html:threadconsider"></A></B></FONT>
-<BR><A NAME="4427"></A><A NAME="4428"></A>
+<BR><A NAME="4461"></A><A NAME="4462"></A>
 As an example, suppose you are running on a four dual-core processor
 box, where each of the four processors is connected to a separate memory
 node.  In other words, there are eight cores in total, and each pair of
@@ -461,7 +461,7 @@ selecting nodes for the <TT>boxsi -numanodes</TT> option, but in
 practice the distance information reported by <TT>numactl</TT> is often not
 reliable.  For best results one should experiment with different
 settings, or run memory bandwidth tests with different node
-pairs.<A NAME="4451"></A><A NAME="4452"></A>
+pairs.<A NAME="4485"></A><A NAME="4486"></A>
 
 <P>
 
@@ -496,6 +496,6 @@ to isolate each job.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
 </BODY>
 </HTML>

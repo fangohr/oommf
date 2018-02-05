@@ -17,10 +17,17 @@ Parameter evolver cg
 switch -exact $evolver {
    cg -
    rk -
+   rk2 -
+   rk2heun -
+   rk4 -
+   rkf54 -
+   rkf54m -
+   rkf54s -
    euler {}
    default {
       error "Invalid evolver request: \"$evolver\".\
-             Should be one of cg, rk, or euler."
+             Should be one of cg, rk, rk2, rk4, rkf54,\
+             rkf54m, rkf54s or euler."
    }
 }
 
@@ -100,7 +107,13 @@ if {[string match cg $evolver]} {
    if {[string match euler $evolver]} {
       Specify Oxs_EulerEvolve:evolve {}
    } else {
-      Specify Oxs_RungeKuttaEvolve:evolve {}
+      if {[string match rk $evolver]} {
+         Specify Oxs_RungeKuttaEvolve:evolve {}
+      } else {
+         Specify Oxs_RungeKuttaEvolve:evolve [subst {
+            method $evolver
+         }]
+      }
    }
 }
 

@@ -87,8 +87,7 @@ public:
 #endif
 
 
-
-  Oxs_ThreeVector Accum(OC_REAL8m a,const Oxs_ThreeVector& v) {
+  Oxs_ThreeVector& Accum(OC_REAL8m a,const Oxs_ThreeVector& v) {
     x+=a*v.x;  y+=a*v.y;  z+=a*v.z;  return *this;
   }
 

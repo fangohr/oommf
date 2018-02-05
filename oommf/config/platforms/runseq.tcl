@@ -1,7 +1,7 @@
 # File: runseq.tcl
 # Purpose: Automates build and run regression tests.
 #
-# To use, create a oommf/config/platform/local/buildtest.details file
+# To use, create a oommf/config/platform/local/buildtest-details.tcl file
 # with "MACHINE SPECIFIC DETAILS" as described below.  Then run "tclsh
 # runseq.tcl".
 #
@@ -50,6 +50,13 @@ proc Usage {} {
 }
 
 if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage }
+
+set show_hosts_flag 0
+set show_hosts_index [lsearch -regexp $argv {^-+showhosts$}]
+if {$show_hosts_index>=0} {
+   set show_hosts_flag 1
+   set argv [lreplace $argv $show_hosts_index $show_hosts_index]
+}
 
 ##########
 # This is the tclsh used to launch child OOMMF processes.  More
@@ -115,14 +122,14 @@ if {![file exists $detailsfile]} {
 if {[catch {source $detailsfile} errmsg]} {
    puts stderr "ERROR SOURCING DETAILS FILE: $errmsg"
 }
-if {![info exists buildtest_labels]} {
+if {![info exists buildtest_labels] && !$show_hosts_flag} {
    puts stderr \
       "Variable buildtest_labels not set by build test details file"
    puts stderr "\"$detailsfile\""
    puts stderr "Is machine $hostname known to details file?"
    exit 1
 }
-if {![info exists buildtest_values]} {
+if {![info exists buildtest_values] && !$show_hosts_flag} {
    puts stderr \
       "Variable buildtest_values not set by build test details file"
    puts stderr "\"$detailsfile\""
@@ -142,13 +149,6 @@ set list_tests_index [lsearch -regexp $argv {^-+(l|list)$}]
 if {$list_tests_index>=0} {
    set list_tests_flag 1
    set argv [lreplace $argv $list_tests_index $list_tests_index]
-}
-
-set show_hosts_flag 0
-set show_hosts_index [lsearch -regexp $argv {^-+showhosts$}]
-if {$show_hosts_index>=0} {
-   set show_hosts_flag 1
-   set argv [lreplace $argv $show_hosts_index $show_hosts_index]
 }
 
 set build_only_flag 0
@@ -200,8 +200,17 @@ if {$show_hosts_flag} {
       exit 1
    }
    set index 0
+   set match_index -1
    foreach elt [ListHosts] {
       puts [format "%2d) $elt" [incr index]]
+      if {[string compare $hostname $elt]==0} {
+         set match_index $index
+      }
+   }
+   if {$match_index<0} {
+      puts stderr "Current host $hostname not on list"
+   } else {
+      puts stderr "Current host is entry $match_index"
    }
    exit
 }

@@ -1,0 +1,259 @@
+# MIF 2.2
+# MIF Example File: baryakhtar.mif
+#  Implements simulation reported in Figs. 1 and 2 from paper 
+#
+#    "Phenomenological description of the nonlocal magnetization
+#    relaxation in magnonics, spintronics, and domain-wall dynamics,"
+#    Weiwei Wang, Mykola Dvornik, Marc-Antonio Bisotti, Dmitri
+#    Chernyshenko, Marijan Beg, Maximilian Albert, Arne Vansteenkiste,
+#    Bartel V. Waeyenberge, Andriy N. Kuchko, Volodymyr V. Kruglyak, and
+#    Hans Fangohr, Physical Review B, 92, 054430 (10 pages) (2015).
+#
+# If parameter "smooth" is zero, then the applied field is applied
+# without ramping at time t=0, and the spatial extent has a sharp cutoff
+# at x=2nm.  If parameter "smooth" is one (the default), then temporal
+# profile of the applied field is scaled with a 0.5*(1-cos(t)) factor
+# across the first "smooth_time" seconds, and the spatial extent is
+# smoothly reduced via another cosine across the range 2 nm < x <
+# "smooth_length".  The smoothing operations reduce the amplitude of the
+# response, but yield a cleaner signal (i.e., smaller harmonics).
+
+# Shape options:
+#       strip -- Matches first example in Wang, Dvornik, Bisotti et al.
+#    football -- prolate spheroid
+#        disk -- thin cylinder
+#      sphere -- sphere
+# The latter two shapes can be used to check stepsize stability.
+Parameter shape strip
+
+Parameter alpha 0.01
+Parameter beta  0.02
+Parameter amp 1000 ;# in Oersted
+Parameter freq 30  ;# In GHz
+
+Parameter smooth 1  ;# 0 => Match paper description
+                    ;# 1 => Smooth applied field profile, spatial and temporal.
+set smooth_time  0.5e-9
+set smooth_length 30e-9
+
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+
+set Ms 8.6e5
+set A 1.3e-11
+
+set basename [format "baryakhtar-%03dGHz-beta%4.2f" \
+                  [expr {int(round($freq))}] $beta] 
+if {![string match strip $shape]} {
+   append basename "-${shape}"
+}
+
+SetOptions [subst {
+   basename $basename
+}]
+
+if {[string match football $shape]} {
+   set xsize 1002e-9
+   set ysize 100e-9
+   set zsize 100e-9
+   set xcellsize 2e-9
+   set ycellsize 2e-9
+   set zcellsize 2e-9
+   Specify Oxs_EllipsoidAtlas:atlas [subst {
+      xrange {0 $xsize}
+      yrange {0 $ysize}
+      zrange {0 $zsize}
+      name body
+   }]
+} elseif {[string match sphere $shape]} {
+   # Use script instead of Oxs_EllipsoidAtlas so we can tweak radius to
+   # get single cells poking out on coordinate axis-parallel diameters.
+   set partsize 126e-9 ;# Code below requires an odd number
+   set cellsize 2e-9   ;# of cells across part width.
+   set rcell [expr {$cellsize/$partsize}]
+   set part_radsq [expr {(3.*$rcell - 2)*$rcell+1.0}] ;# Scaled
+   set xsize [set ysize [set zsize $partsize]]
+   set xcellsize [set ycellsize [set zcellsize $cellsize]]
+   proc NobbySphere { x y z } {
+      global part_radsq
+      set x [expr {2.*$x-1.}]
+      set y [expr {2.*$y-1.}]
+      set z [expr {2.*$z-1.}]
+      if {$x*$x+$y*$y+$z*$z<=$part_radsq} {
+         return 1
+      }
+      return 0
+   }
+   Specify Oxs_ScriptAtlas:atlas [subst {
+      xrange {0 $xsize}
+      yrange {0 $ysize}
+      zrange {0 $zsize}
+      regions {body}
+      script NobbySphere
+   }]
+} elseif {[string match disk $shape]} {
+   proc Ellipse { x y z } {
+      set x [expr {2.*$x-1.}]
+      set y [expr {2.*$y-1.}]
+      if {$x*$x+$y*$y<=1} {
+         return 1
+      }
+      return 0
+   }
+   set xsize 500e-9
+   set ysize 500e-9
+   set zsize   8e-9
+   set xcellsize 2e-9
+   set ycellsize 2e-9
+   set zcellsize 2e-9
+   Specify Oxs_ScriptAtlas:atlas [subst {
+      xrange {0 $xsize}
+      yrange {0 $ysize}
+      zrange {0 $zsize}
+      regions {body}
+      script Ellipse
+   }]
+} else {
+   # $shape == strip
+   set xsize 2002e-9
+   set ysize 2e-9
+   set zsize 2e-9
+   set xcellsize 1e-9
+   set ycellsize 2e-9
+   set zcellsize 2e-9
+   Specify Oxs_BoxAtlas:atlas [subst {
+      xrange {0 $xsize}
+      yrange {0 $ysize}
+      zrange {0 $zsize}
+      name body
+   }]
+}
+
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xcellsize $ycellsize $zcellsize}
+  atlas :atlas
+}]
+
+# Applied field
+if {!$smooth} {
+   Specify Oxs_BoxAtlas:leftend [subst {
+      xrange {0 2e-9}
+      yrange {0 $ysize}
+      zrange {0 $zsize}
+   }]
+   Specify Oxs_AtlasVectorField:endfield [subst {
+      atlas :leftend
+      default_value {0 0 0}
+      values {
+         leftend {0 1 0}
+      }
+   }]
+} else { ;# Smooth
+   proc endfieldscript { x y z } {
+      # Spatial profile for applied field
+      global smooth_length pi
+      set left_edge 2e-9
+      if {$x <= $left_edge} {
+         return [list 0.0 1.0 0.0]
+      }
+      if {$x >= $smooth_length} {
+         return [list 0.0 0.0 0.0]
+      }
+      # Cosine decay:
+      set lambda [expr {($x-$left_edge)/($smooth_length-$left_edge)}]
+      return [list 0.0 [expr {0.5*(cos($pi*$lambda)+1)}] 0.0]
+   }
+   Specify Oxs_ScriptVectorField:endfield {
+      script endfieldscript
+      script_args rawpt
+      atlas :atlas
+   }
+}
+
+set amp [expr {$amp*1e-4/$mu0}]
+set freq [expr {2*$pi*$freq*1e9}]
+set smooth_adj [expr {$pi/$smooth_time}]
+proc SineProfile { total_time } {
+   global amp freq smooth smooth_time smooth_adj
+   set Ay [expr {$amp*sin($freq*$total_time)}]
+   set dAy [expr {$amp*$freq*cos($freq*$total_time)}]
+   if {$smooth && $total_time < $smooth_time} {
+      set wgt [expr {0.5*(1-cos($smooth_adj*$total_time))}]
+      set dwgt [expr {0.5*sin($smooth_adj*$total_time)*$smooth_adj}]
+      set dAy [expr {$dAy*$wgt + $Ay*$dwgt}]
+      set Ay [expr {$Ay*$wgt}] ;# Compute this *after* dAy since this
+      ## line changes Ay.
+   }
+   return [list 0 $Ay 0 0 $dAy 0]
+}
+
+Specify Oxs_TransformZeeman {
+   field :endfield
+   type diagonal
+   script SineProfile
+   script_args total_time
+}
+
+
+# Exchange
+Specify Oxs_UniformExchange [subst {
+  A  $A
+}]
+
+# Demag
+Specify Oxs_Demag {}
+
+# Evolver
+set G [expr {$A/($mu0*$Ms*$Ms)}]
+set sigma [expr {$beta*$G}]
+
+proc alphascript { x y z } {
+   # Spatially varying damping parameter alpha
+   global alpha
+   set alphamin $alpha
+   set alphamax 0.5
+   set xramp 1802e-9
+   set xstop 2002e-9
+   if {$x<=1802e-9} {
+      return $alphamin
+   }
+   set lambda [expr {($x-$xramp)/($xstop-$xramp)}]
+   return [expr {$alphamin + ($alphamax-$alphamin)*$lambda}]
+}
+Specify Oxs_ScriptScalarField:alpha {
+   script alphascript
+   script_args rawpt
+   atlas :atlas
+}
+
+if {$sigma != 0.0} {
+   Specify Oxs_RungeKuttaEvolve:evolve [subst {
+      alpha :alpha
+      baryakhtar_sigma $sigma
+   }]
+} else {
+   Specify Oxs_RungeKuttaEvolve:evolve [subst {
+      alpha :alpha
+   }]
+}
+
+# Driver
+Specify Oxs_TimeDriver [subst {
+   evolver :evolve
+   stopping_time 4e-9
+   mesh :mesh
+   Ms { Oxs_AtlasScalarField {
+      atlas :atlas
+      default_value 0.0
+      values {
+         body $Ms
+      }
+   }}
+   m0 {1 0 0}
+}]
+
+#Destination archive mmArchive
+#Schedule DataTable archive Stage 1
+#Destination archive mmArchive
+#Schedule Oxs_TimeDriver::Magnetization archive stage 1

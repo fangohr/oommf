@@ -219,22 +219,38 @@ EXTERN void Tcl_SaveResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
   typedef int Oc_SeekPos;
 #endif
 
-/***********************************************************************
- * Defensive programming against varying contents of different versions 
- * of tk.h
- **********************************************************************/
-#include <tk.h>
+#if OC_USE_TK
+# include <tk.h>
+#else  /* !OC_USE_TK */
+  /*
+   * User-requested no-Tk build.  Supply dummy replacements here to
+   * satisfy linker.  Note that this code is inside an extern "C" block,
+   * so function declarations here get C linkage.
+   */
+# define TK_MAJOR_VERSION 0
+# define TK_MINOR_VERSION 0
+  inline int Tk_Init(Tcl_Interp*) { return TCL_ERROR; }
+  inline int Tk_SafeInit(Tcl_Interp*) { return TCL_ERROR; }
+  inline void Tk_Main(int argc,char* argv[],Tcl_AppInitProc* appInitProc) {
+    Tcl_Main(argc,argv,appInitProc);
+    /*
+     * Note that Tcl_Main gets #define'd below to Tk_Main, so keep this
+     * declaration ahead of that.
+     */
+  }
+  inline void Tk_InitConsoleChannels(Tcl_Interp*) {}
+  inline int Tk_CreateConsoleWindow() { return TCL_ERROR; }
+#endif /* OC_USE_TK */
 
 /*
  * Verify version of tk.h matches the Tk version for which ocport.h was
  * configured.  Otherwise libraries selected for linking may not be
  * compatible with headers used for compiling, leading to a run-time error.
  */
-
-#if ((TK_MAJOR_VERSION != CONFIG_TK_MAJOR_VERSION) \
+# if ((TK_MAJOR_VERSION != CONFIG_TK_MAJOR_VERSION) \
     || (TK_MINOR_VERSION != CONFIG_TK_MINOR_VERSION))
 #  error "tk.h version mismatch"
-#endif
+# endif
 
 /*
  * Safety that all macros have a definition (even in Tk 4.1).
@@ -326,16 +342,31 @@ class Oc_Random {
   // An implementation of glibc random(), based on notes
   // by Peter Selinger, "The GLIBC random number generator,"
   // 4-Jan-2007.
-  // NOTE: The generator state is stored in a static variable.
-  //       This means that the state is shared program-wide,
-  //       across threads.  Mutexes protect against re-entrancy
-  //       problems, but if multiple threads access Oc_Random
-  //       then the results can vary from run-to-run, depending
-  //       on the relative access order between threads.
+  // NOTE: There is a static variable holding a global generator state.
+  //   This state is shared program-wide, across threads.  Mutexes
+  //   protect against re-entrancy problems, but if multiple threads
+  //   access Oc_Random then the results can vary from run-to-run,
+  //   depending on the relative access order between threads.  Also,
+  //   mutex locking may slow generation of "random" numbers.  An
+  //   alternative is for each thread to hold its own generator state,
+  //   and use the Random(Oc_RandomState&) and associated
+  //   Srandom(Oc_RandomState&,OC_UINT4m) calls.  This should be faster,
+  //   and can provide run-to-run repeat-ability, but take care in
+  //   initializing each state so that the threads don't mirror each
+  //   other.  Also, the OMF_RANDOM macro in ocport.h, which allows the
+  //   end user to provide an alternative random number generator, is
+  //   not supported by this alternative, non-global state interface.
+  //   Code using the alterative interface can use the
+  //   OMF_RANDOM_IS_DEFAULT macro to detect replacement of the default
+  //   random number generator.
+
 public:
-#if OOMMF_THREADS
-  static Tcl_Mutex random_state_mutex;  // Thread-safe hack.
-#endif
+  static OC_INT4m MaxValue() { return 0x7fffffff; }
+  /// NB: This function is referenced by procs.tcl to build
+  ///     ocport.h.  Changes to MaxValue() may need reflection
+  ///     there as well.
+
+  // Mutex-locked calls to global random state
   static void Srandom(OC_UINT4m seed) {
     Tcl_MutexLock(&random_state_mutex);
     state.Init(seed);
@@ -347,17 +378,29 @@ public:
     Tcl_MutexUnlock(&random_state_mutex);
     return static_cast<OC_INT4m>(step_result>>1);
   }
-  static OC_INT4m MaxValue() { return 0x7fffffff; }
-  /// NB: This function is referenced by procs.tcl to build
-  ///     ocport.h.  Changes to MaxValue() may need reflection
-  ///     there as well.
+
+  // Calls using caller-defined random state.  NB: These are not
+  // mutex-locked.  The caller is responsible for protecting against
+  // re-entrancy --- which may allow for faster access.
+  static void Srandom(Oc_RandomState& mystate,OC_UINT4m seed) {
+    mystate.Init(seed);
+  }
+  static OC_INT4m Random(Oc_RandomState& mystate) {
+    OC_UINT4m step_result = mystate.Step();
+    return static_cast<OC_INT4m>(step_result>>1);
+  }
+
 private:
-  static Oc_RandomState state;
+#if OOMMF_THREADS
+  static Tcl_Mutex random_state_mutex;  // Thread-safe hack.
+#endif
+  static Oc_RandomState state;  // global random state
 };
 
 void Oc_Srand();
 void Oc_Srand(unsigned int seed);
 double Oc_UnifRand();
+double Oc_UnifRand(Oc_RandomState& mystate);
 /*
  * Oc_UnifRand() random value in [0,1] with unif. distrib.
  * The random number generator may be (re)initialized by

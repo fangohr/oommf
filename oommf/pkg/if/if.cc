@@ -26,6 +26,8 @@
 
 /* End includes */     // Optional directive to pimake
 
+#if OC_USE_TK
+
 ////////////////////////////////////////////////////////////////////////
 // MsBitmap and related classes
 struct If_RGBQuad {
@@ -36,6 +38,8 @@ struct If_RGBQuad {
   int MSFill32(Tcl_Channel chan);  // Fills structure from chan
   /// of MS RGBQuad's, returning the number of bytes read (4),
   /// or 0 on error.
+  inline int MSFill32(const unsigned char* carr); // Analogous
+  /// to above, but takes input from a 4-byte long buffer.
   inline int MSFill24(const unsigned char* carr); // Analogous
   /// to above, but takes input from a 3-byte long buffer.
   inline int MSFill16_RGB555(const unsigned char* carr); // Fills
@@ -48,12 +52,20 @@ struct If_RGBQuad {
 
 int If_RGBQuad::MSFill32(Tcl_Channel chan)
 { // Note: MS RGBQuad's are ordered "Blue Green Red Reserved"
+  //       Assumes 8-8-8 RGB bit-mask.
   char carr[4];
   int count=Tcl_Read(chan,carr,4);
   if(count!=4) return 0;
   Blue=static_cast<OC_BYTE>(carr[0]);    Green=static_cast<OC_BYTE>(carr[1]);
   Red =static_cast<OC_BYTE>(carr[2]); Reserved=static_cast<OC_BYTE>(carr[3]);
   return count;
+}
+
+int If_RGBQuad::MSFill32(const unsigned char* carr)
+{ // Note: MS RGBQuad's are ordered "Blue Green Red Reserved"
+  Blue=carr[0];    Green=carr[1];
+  Red=carr[2];     Reserved=carr[3];
+  return 4;
 }
 
 int If_RGBQuad::MSFill24(const unsigned char* carr)
@@ -172,6 +184,8 @@ private:
                  OC_UINT4 startcol,OC_UINT4 stopcol); // 16 bits/pixel, RGB565
   int  Bmp24toRgbq(const unsigned char* read_buf,If_RGBQuad* &pix,
 		  OC_UINT4 startcol,OC_UINT4 stopcol);        // 24 bits/pixel
+  int  Bmp32toRgbq(const unsigned char* read_buf,If_RGBQuad* &pix,
+		  OC_UINT4 startcol,OC_UINT4 stopcol);        // 32 bits/pixel
   BmpConvert DataConvert;
 
 public:
@@ -290,6 +304,7 @@ int If_MSBitmap::FillHeader(Tcl_Channel chan,OC_BOOL fillpalette)
     case 8:   DataConvert = &If_MSBitmap::Bmp8toRgbq;        break;
     case 16:  DataConvert = &If_MSBitmap::Bmp16toRgbq_RGB555; break;
     case 24:  DataConvert = &If_MSBitmap::Bmp24toRgbq;       break;
+    case 32:  DataConvert = &If_MSBitmap::Bmp32toRgbq;       break;
     default:  DataConvert = BmpConvert(NULL);  break;
     }
 
@@ -297,16 +312,20 @@ int If_MSBitmap::FillHeader(Tcl_Channel chan,OC_BOOL fillpalette)
   // this code also supports RGB565, which is selected by setting the
   // Compression field to BI_BITFIELDS (==3) and putting the proper
   // mask values in the palette area.
-  if(BitCount == 16 && Compression == 3) {
-    Tcl_Seek(chan,bmistart+BmiSize,SEEK_SET);
-    OC_UINT4 rmask,gmask,bmask;
-    Tcl_Read(chan,(char *)&rmask,sizeof(OC_UINT4));
-    Tcl_Read(chan,(char *)&gmask,sizeof(OC_UINT4));
-    Tcl_Read(chan,(char *)&bmask,sizeof(OC_UINT4));
-    if(rmask == 0x7C00 && gmask == 0x03E0 && bmask == 0x001F) {
-      DataConvert = &If_MSBitmap::Bmp16toRgbq_RGB555;
-    } else if(rmask == 0xF800 && gmask == 0x07E0 && bmask == 0x001F) {
-      DataConvert = &If_MSBitmap::Bmp16toRgbq_RGB565;
+  if(Compression == 3) {
+    if(BitCount == 16) {
+      Tcl_Seek(chan,bmistart+BmiSize,SEEK_SET);
+      OC_UINT4 rmask,gmask,bmask;
+      Tcl_Read(chan,(char *)&rmask,sizeof(OC_UINT4));
+      Tcl_Read(chan,(char *)&gmask,sizeof(OC_UINT4));
+      Tcl_Read(chan,(char *)&bmask,sizeof(OC_UINT4));
+      if(rmask == 0x7C00 && gmask == 0x03E0 && bmask == 0x001F) {
+        DataConvert = &If_MSBitmap::Bmp16toRgbq_RGB555;
+      } else if(rmask == 0xF800 && gmask == 0x07E0 && bmask == 0x001F) {
+        DataConvert = &If_MSBitmap::Bmp16toRgbq_RGB565;
+      } else {
+        DataConvert = BmpConvert(NULL); // Unsupported format
+      }
     } else {
       DataConvert = BmpConvert(NULL); // Unsupported format
     }
@@ -327,6 +346,7 @@ int If_MSBitmap::FillHeader(Tcl_Channel chan,OC_BOOL fillpalette)
 	case  8: palsize=256;  break;
 	case 16: palsize=0;    break;  // High color
 	case 24: palsize=0;    break;  // True color
+	case 32: palsize=0;    break;  // True color
 	default: return 0;     // Invalid BitCount value
 	}
     }
@@ -429,11 +449,22 @@ If_MSBitmap::Bmp16toRgbq_RGB565(const unsigned char* read_buf,
 
 int
 If_MSBitmap::Bmp24toRgbq(const unsigned char* read_buf,If_RGBQuad* &pix,
-		      OC_UINT4 startcol,OC_UINT4 stopcol)
+                         OC_UINT4 startcol,OC_UINT4 stopcol)
 { // True color input file; 24 bits per pixel, no palette
   const int data_width=3;
-  for(OC_UINT4 j=startcol;j<stopcol;j++) {
+  for(OC_UINT4 j=startcol;j<stopcol;++j) {
     pix[j-startcol].MSFill24(read_buf+j*data_width);
+  }
+  return 0;
+}
+
+int
+If_MSBitmap::Bmp32toRgbq(const unsigned char* read_buf,If_RGBQuad* &pix,
+                         OC_UINT4 startcol,OC_UINT4 stopcol)
+{ // True color input file; 24 bits per pixel, no palette
+  const int data_width=4;
+  for(OC_UINT4 j=startcol;j<stopcol;++j) {
+    pix[j-startcol].MSFill32(read_buf+j*data_width);
   }
   return 0;
 }
@@ -1167,11 +1198,13 @@ int If_PPM::WritePhoto
   int maxval = 255; // Assumed
 
   // Write header
-  size_t buf_strlen = strlen((char *)buf);
-  assert(buf_strlen<=INT_MAX);
-  Oc_Snprintf((char*)buf,sizeof(buf),"P3\n%d %d\n%d\n",
+  Oc_Snprintf(reinterpret_cast<char *>(buf),
+              sizeof(buf),"P3\n%d %d\n%d\n",
 	      width,height,maxval);
-  if(Tcl_Write(chan,(char*)buf,static_cast<int>(buf_strlen))==-1) {
+  size_t buf_strlen = strlen(reinterpret_cast<char *>(buf));
+  assert(buf_strlen<=INT_MAX);
+  if(Tcl_Write(chan,reinterpret_cast<char *>(buf),
+               static_cast<int>(buf_strlen))==-1) {
     Tcl_ResetResult(interp);
     Tcl_AppendResult(interp,"Output error writing"
 		     " PPM P3 file: \"",filename,
@@ -1426,9 +1459,9 @@ If_Init(Tcl_Interp *interp)
     return TCL_ERROR
 
     if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
-		       OC_CONST84_CHAR("1.1"), 0) == NULL) {
+		       OC_CONST84_CHAR("2"), 0) == NULL) {
         Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(If " IF_VERSION " needs Oc 1.1)"),
+		OC_CONST84_CHAR("\n\t(If " IF_VERSION " needs Oc 2)"),
                 NULL);
         RETURN_TCL_ERROR;
     }
@@ -1469,3 +1502,18 @@ If_Init(Tcl_Interp *interp)
 
 #undef RETURN_TCL_ERROR
 }
+
+#else /* !OC_USE_TK */
+
+int 
+If_Init(Tcl_Interp *interp)
+{
+  Tcl_AppendResult(interp,
+                   OC_CONST84_CHAR("\n\t(If " IF_VERSION
+                     " requires Tk (this is a no-Tk build of OOMMF)"),
+                   NULL);
+  Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in If_Init())"));
+  return TCL_ERROR;
+}
+
+#endif /* OC_USE_TK */

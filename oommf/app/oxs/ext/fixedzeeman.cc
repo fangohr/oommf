@@ -25,7 +25,8 @@ Oxs_FixedZeeman::Oxs_FixedZeeman(
   const char* name,     // Child instance id
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
-  : Oxs_ChunkEnergy(name,newdtr,argstr), mesh_id(0)
+  : Oxs_ChunkEnergy(name,newdtr,argstr), mesh_id(0),
+    energy_density_error_estimate(-1.0)
 {
   // Process arguments
   field_mult = GetRealInitValue("multiplier",1.0);
@@ -36,14 +37,15 @@ Oxs_FixedZeeman::Oxs_FixedZeeman(
 OC_BOOL Oxs_FixedZeeman::Init()
 {
   mesh_id = 0;
+  energy_density_error_estimate = -1.0;
   fixedfield.Release();
   return Oxs_Energy::Init();
 }
 
 void Oxs_FixedZeeman::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int /* number_of_threads */) const
 {
   if(mesh_id != state.mesh->Id()) {
@@ -56,13 +58,26 @@ void Oxs_FixedZeeman::ComputeEnergyChunkInitialize
       for(OC_INDEX i=0;i<size;i++) fixedfield[i] *= field_mult;
     }
     mesh_id = state.mesh->Id();
+
+    // Energy density error estimate
+    const OC_INDEX size = fixedfield.Size();
+    OC_REAL8m max_factorsq = 0.0;
+    const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+    for(OC_INDEX i=0;i<size;i++) {
+      OC_REAL8m test = fixedfield[i].MagSq()*Ms[i]*Ms[i];
+      if(test>max_factorsq) max_factorsq = test;
+    }
+    energy_density_error_estimate
+      = 4*OC_REAL8m_EPSILON*MU0*Oc_Sqrt(max_factorsq);
   }
+  ocedt.energy_density_error_estimate
+    = energy_density_error_estimate;
 }
 
 
 void Oxs_FixedZeeman::ComputeEnergyChunk
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -74,25 +89,45 @@ void Oxs_FixedZeeman::ComputeEnergyChunk
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
+  OC_REAL8m cell_volume;
+  if(state.mesh->HasUniformCellVolumes(cell_volume)) {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      Oxs_ThreeVector& hi = fixedfield[i];
 
-  for(OC_INDEX i=node_start;i<node_stop;++i) {
-    Oxs_ThreeVector& hi = fixedfield[i];
+      OC_REAL8m ei = -MU0*Ms[i]*(hi*spin[i]);;
+      energy_sum += ei;
 
-    OC_REAL8m ei = -MU0*Ms[i]*(hi*spin[i]);;
-    energy_sum += (ei*state.mesh->Volume(i));
+      if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.H)       (*ocedt.H)[i] = hi;
+      if(ocedt.H_accum) (*ocedt.H_accum)[i] += hi;
+      if(ocedt.mxH_accum || ocedt.mxH) {
+        Oxs_ThreeVector ti = spin[i] ^ hi;
+        if(ocedt.mxH)       (*ocedt.mxH)[i] = ti;
+        if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ti;
+      }
+    }
+    energy_sum *= cell_volume;
+  } else {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      Oxs_ThreeVector& hi = fixedfield[i];
 
-    if(ocedt.energy)       (*ocedt.energy)[i] = ei;
-    if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
-    if(ocedt.H)       (*ocedt.H)[i] = hi;
-    if(ocedt.H_accum) (*ocedt.H_accum)[i] += hi;
-    if(ocedt.mxH_accum || ocedt.mxH) {
-      Oxs_ThreeVector ti = spin[i] ^ hi;
-      if(ocedt.mxH)       (*ocedt.mxH)[i] = ti;
-      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ti;
+      OC_REAL8m ei = -MU0*Ms[i]*(hi*spin[i]);;
+      energy_sum += (ei*state.mesh->Volume(i));
+
+      if(ocedt.energy)       (*ocedt.energy)[i] = ei;
+      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+      if(ocedt.H)       (*ocedt.H)[i] = hi;
+      if(ocedt.H_accum) (*ocedt.H_accum)[i] += hi;
+      if(ocedt.mxH_accum || ocedt.mxH) {
+        Oxs_ThreeVector ti = spin[i] ^ hi;
+        if(ocedt.mxH)       (*ocedt.mxH)[i] = ti;
+        if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ti;
+      }
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue();
+  ocedtaux.energy_total_accum += energy_sum;
 }
 
 

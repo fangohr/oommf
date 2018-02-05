@@ -71,11 +71,9 @@ Oc_Class Oc_Config {
         # NOTE: env(OSTYPE) is used in some of the cygwin environment
         #       discovery code; See the Oc_IsCygwinPlatform and
         #       Oc_IsCygwin64Platform procs in oommf/pkg/oc/procs.tcl.
-	$runPlatform RecordTclTkConfiguration
-	$runPlatform FindTclTkIncludes 
 
-        # Local build options, optionally set in local platform
-        # specific files in oommf/config/platforms/local/
+        # Default thread options.  These can be changed in the
+        # platform specific files under oommf/config/platforms/local/
         if {[catch {$runPlatform GetValue oommf_threads}]} {
            # Default is to follow Tcl value, provided the Tcl version is
            # 8.3 or later.  (Much of the Tcl library thread support API,
@@ -91,15 +89,109 @@ Oc_Class Oc_Config {
            }
         }
 
-        $runPlatform LoadCache
-	# If Tcl and Tk were installed under different --prefix directories
-	# the OOMMF applications will need help to find the Tk script library
-	if {![info exists env(TK_LIBRARY)]
-		&& ![catch {$runPlatform GetValue TCL_PREFIX} tcp]
-		&& ![catch {$runPlatform GetValue TK_PREFIX} tkp]
-		&& [string compare $tcp $tkp]} {
-	    set env(TK_LIBRARY) [file join $tkp lib tk[$class TkVersion]]
-	}
+        # Check to see if we are in the midst of building OOMMF.
+        # Default is no.
+        if {[catch {set env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} \
+                build_environment_needed]} {
+           set build_environment_needed 0
+        }
+
+        if {$build_environment_needed} {
+           $class DetermineBuildEnvironment
+        } else {
+           $runPlatform LoadCache
+        }
+        return
+
+    }
+
+    proc DetermineBuildEnvironment {} {
+       global env
+       # Determine Tcl and Tk layout.  The oommf/config/platform/* file
+       # presumably hasn't been read yet, so we don't know if the user
+       # has requested a no-Tk build or not.  Look for Tk regardless
+       # (the TK_LIB config value is referenced by the generic platform
+       # template), and dump results later if use_tk is zero.
+       $runPlatform RecordTclTkConfiguration
+       $runPlatform FindTclTkIncludes 
+
+       # Once the config/platform file has been read, we can check for
+       # cross-compiling and use_tk settings and adjust appropriately.
+       $runPlatform LoadCache
+       if {[catch {$runPlatform GetValue use_tk} use_tk]} {
+          # Default is to build with Tk
+          $runPlatform SetValue use_tk [set use_tk 1]
+       }
+       if {[llength [$runPlatform Features cross_compile*]]>0} {
+          if {[catch {$runPlatform GetValue cross_compile} cross_compile]} {
+             $runPlatform SetValue cross_compile [set cross_compile 1]
+          }
+          # Feature "cross_compile" is a master switch; if 0 then all
+          # cross_compiler options (including itself) are removed.
+          # OTOH, if cross_compile is undefined, then the existence of
+          # any other cross_compile* feature defines cross_compile to
+          # true.
+          if {!$cross_compile} {
+             foreach elt [$runPlatform Features cross_compile*] {
+                $runPlatform UnsetValue $elt
+             }
+          }
+       }
+       if {![catch {$runPlatform GetValue cross_compile_host_tcl_config} \
+                tclconfig]} {
+          # Cross-compiling in effect; get values from specified
+          # tclConfig.sh file.  Don't choke if tclConfig.sh doesn't
+          # exist --- this may just mean that we're running on the
+          # target machine rather than the build host.
+          if {![file exists $tclconfig]} {
+             catch {unset env(OOMMF_TCL_CONFIG)}
+          } else {
+             $runPlatform LoadConfigFile [set env(OOMMF_TCL_CONFIG) $tclconfig]
+          }
+       }
+       if {![catch {$runPlatform GetValue cross_compile_host_tcl_include_dir} \
+                tclincludedir]} {
+          set env(OOMMF_TCL_INCLUDE_DIR) $tclincludedir
+       }
+       if {!$use_tk} {
+          # Non-Tk build.  Fill in dummy values.
+          catch {unset env(OOMMF_TK_CONFIG)}
+          catch {unset env(OOMMF_TK_INCLUDE_DIR)}
+          catch {unset env(TK_LIBRARY)}
+          $runPlatform SetValue TK_VERSION "0.0"
+          $runPlatform SetValue TK_MAJOR_VERSION 0
+          $runPlatform SetValue TK_MINOR_VERSION 0
+          $runPlatform SetValue TK_PATCH_LEVEL ".0"
+          $runPlatform SetValue TK_RELEASE_LEVEL 0
+          $runPlatform SetValue TK_RELEASE_SERIAL 0
+       } else {
+          if {![catch {$runPlatform GetValue cross_compile_host_tk_config} \
+                   tkconfig]} {
+             # Cross-compiling in effect; get values from specified
+             # tkConfig.sh file.  Don't choke if tkConfig.sh doesn't
+             # exist --- this may just mean that we're running on the
+             # target machine rather than the build host.
+             if {![file exists $tkconfig]} {
+                catch {unset env(OOMMF_TK_CONFIG)}
+             } else {
+                $runPlatform LoadConfigFile \
+                   [set env(OOMMF_TK_CONFIG) $tkconfig]
+             }
+          }
+          if {![catch {$runPlatform GetValue cross_compile_host_tk_include_dir} \
+                   tkincludedir]} {
+             set env(OOMMF_TK_INCLUDE_DIR) $tkincludedir
+          }
+       }
+
+       # If Tcl and Tk were installed under different --prefix directories
+       # the OOMMF applications will need help to find the Tk script library
+       if {$use_tk && ![info exists env(TK_LIBRARY)]
+           && ![catch {$runPlatform GetValue TCL_PREFIX} tcp]
+           && ![catch {$runPlatform GetValue TK_PREFIX} tkp]
+           && [string compare $tcp $tkp]} {
+          set env(TK_LIBRARY) [file join $tkp lib tk[$class TkVersion]]
+       }
     }
 
     proc TkVersion {} {
@@ -143,6 +235,10 @@ Oc_Class Oc_Config {
 
     method SetValue {feature value} {
         set values($feature) $value
+    }
+
+    method UnsetValue {feature} {
+       catch {unset values($feature)}
     }
 
     method Features {glob} {
@@ -259,7 +355,7 @@ Oc_Class Oc_Config {
        # If not a snapshot release, return empty string.
        # Otherwise, return string of the form yyyy.mm.dd
        # return "2009.10.15"
-       return {2016.09.30}
+       return {2017.09.29}
     }
 
     method OommfApiIndex {} {
@@ -267,10 +363,148 @@ Oc_Class Oc_Config {
        # primarily by external extension writers.  This value is
        # echoed in the ocport.h header by the Oc_MakePortHeader proc
        # in oc/procs.tcl. Format is "yyyymmdd".
-       return 20150129
+       return 20170916
     }
 
+    method CrossCompileSummary {} {
+       global tcl_platform env
+       set ret "Platform Name:\t\t$name (cross-compile)\n"
+       append ret "C++ compiler:   \t"
+       if {![catch {$this GetValue program_compiler_c++} c]} {
+          set wd [auto_execok [lindex $c 0]]
+          if {![string match {} $wd]} {
+             append ret "$wd "
+          } else {
+             append ret "not found - \"[lindex $c 0]\""
+          }
+          append ret \n
+          if {![catch {$this GetValue program_compiler_c++_banner_cmd} \
+                   bcmd]} {
+             if {![catch {eval $bcmd} banner] && [string length $banner]} {
+                append ret " Version string:\t $banner\n"
+             }
+          }
+          if {![catch {$this GetValue program_compiler_c++_cpu_arch} arch]} {
+             append ret " Compiler target arch:\t $arch\n"
+          }
+       } else {
+          append ret "none selected\n"
+       }
+       append ret "Shell details ---\n"
+       set noe [Oc_DirectPathname [info nameofexecutable]]
+       append ret " tclsh (host):        \t$noe\n"
+
+       append ret " tclConfig.sh:        \t"
+       if {[info exists env(OOMMF_TCL_CONFIG)]} {
+          append ret "$env(OOMMF_TCL_CONFIG)\n"
+          append ret "                      \t --> Version "
+          if {![catch {$this GetValue TCL_VERSION} v]} {
+             if {![catch {$this GetValue TCL_PATCH_LEVEL} pl]} {
+                append ret $v$pl
+             } else {
+                append ret $v
+             }
+          } else {
+             append ret unknown
+          }
+          append ret "\n"
+       } else {
+          append ret "not found\n"
+       }
+       if {[catch {$this GetValue use_tk} use_tk]} {
+          set use_tk 1  ;# Default is to build with Tk
+       }
+       append ret " tkConfig.sh:         \t"
+       if {!$use_tk} {
+          append ret "Build without Tk requested.\n"
+       } else {
+          if {[info exists env(OOMMF_TK_CONFIG)]} {
+             append ret "$env(OOMMF_TK_CONFIG)\n"
+          } else {
+             append ret "not found\n"
+          }
+          append ret "                      \t --> Tk Version "
+          if {![catch {$this GetValue TK_VERSION} v]} {
+             if {![catch {$this GetValue TK_PATCH_LEVEL} pl]} {
+                append ret $v$pl
+             } else {
+                append ret $v
+             }
+          } else {
+             append ret unknown
+          }
+       }
+
+        append ret    "\nOOMMF threads:         \t"
+        if {[$this GetValue oommf_threads]} {
+           append ret "Yes: Default thread count = [Oc_GetDefaultThreadCount]"
+           set threadlimit [Oc_GetThreadLimit]
+           if {![string match {} $threadlimit]} {
+              append ret " (limit is $threadlimit)"
+           }
+           if {![catch {$this GetValue use_numa} use_numa]} {
+           append ret "\n  NUMA support:        \t "
+              if {$use_numa} {
+                 append ret "Yes: Default nodes = [Oc_GetDefaultNumaNodes]"
+              } else {
+                 append ret "No"
+              }
+           }
+        } else {
+           append ret "No"
+        }
+
+        append ret "\nOOMMF API index:       \t[$this OommfApiIndex]"
+
+	Oc_TempFile New xxx
+	append ret "\nTemp file directory: \t[$xxx Cget -directory]"
+	$xxx Delete
+
+	if {[llength $predefinedEnvVars]} {
+	    append ret "\n\nRelevant environment variables:"
+	    foreach e $predefinedEnvVars {
+		append ret "\n  $e = $env($e)"
+	    }
+	}
+
+       if {[info exists env(OOMMF_TCL_CONFIG)] && \
+              ![info exists env(OOMMF_TCL_INCLUDE_DIR)]} {
+	    append ret "\nWARNING: Your installation of Tcl appears\
+		to be missing the header\nfile <tcl.h>.  Perhaps you\
+		need to re-install Tcl, requesting a full\ninstallation\
+		this time, or install the developers package for\
+		Tcl?\nIf you are sure a Tcl header file is installed on\
+		your system, then\nset the environment variable\
+		OOMMF_TCL_INCLUDE_DIR to the directory\nthat contains\
+		the Tcl header file."
+	}
+	if {$use_tk && [info exists env(OOMMF_TCL_CONFIG)] && \
+               ![info exists env(OOMMF_TK_INCLUDE_DIR)]} {
+	    append ret "\nWARNING: Your installation of Tk appears\
+		to be missing the header\nfile <tk.h>.  Perhaps you\
+		need to re-install Tk, requesting a full\ninstallation\
+		this time, or install the developers package for\
+		Tk?\nIf you are sure a Tk header file is installed on\
+		your system, then\nset the environment variable\
+		OOMMF_TK_INCLUDE_DIR to the directory\nthat contains\
+		the Tk header file."
+	}
+
+	if {[string match *WARNING* $ret]} {
+	    append ret "\n\nPlease see the Installation section of the\
+		    OOMMF User's Guide\nfor more information."
+	}
+	return $ret
+    }
     method Summary {} {
+       global env
+       set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1
+       $class DetermineBuildEnvironment
+
+       if {![catch {$this GetValue cross_compile} xc] && $xc} {
+          return [$this CrossCompileSummary]
+       }
+
        global tcl_platform
        set ret "Platform Name:\t\t$name\n"
        append ret "Tcl name for OS:\t"
@@ -332,6 +566,7 @@ Oc_Class Oc_Config {
           append ret ", not threaded"
        }
        append ret "\n"
+
 
        set tclinfoscript [file join [Oc_Main GetOOMMFRootDir] \
                              pkg oc tclinfo.tcl]
@@ -465,70 +700,81 @@ Oc_Class Oc_Config {
        }
        append ret "\n"
 
-       catch {$this Wish} wish
-       append ret " wish (OOMMF):        \t$wish\n"
-       if {![catch {exec $wish $tclinfoscript} target_tcl_info]} {
-          append ret "                  \t --> Version "
-          regsub -all "\t" $target_tcl_info " " target_tcl_info
-          if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
-                  $target_tcl_info dummy target_tcl_version]} {
-             append ret "$target_tcl_version"
-             unset target_tcl_version
-          } else {
-             append ret "?"
-          }
-          append ret ", Tk "
-          if {[regexp {Tk version *= *([0-9.]*)} \
-                  $target_tcl_info dummy target_tk_version]} {
-             append ret "$target_tk_version"
-             unset target_tk_version
-          } else {
-             append ret "?"
-          }
-          if {[regexp {tcl_platform\(pointerSize\) *= *([0-9.]*)} \
-                  $target_tcl_info dummy pointerSize]} {
-             append ret ", [expr {$pointerSize*8}] bit"
-             unset pointerSize
-          } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9.]*)} \
-                        $target_tcl_info dummy wordSize]} {
-             append ret ", [expr {$wordSize*8}] bit"
-             unset wordSize
-          }
-          if {[regexp {tcl_platform\(threaded\) *= *([0-9]*)} \
-                  $target_tcl_info dummy threaded] && $threaded} {
-             append ret ", threaded"
-          } else {
-             append ret ", not threaded"
-          }
-          catch {unset threaded}
-          append ret "\n"
+       if {[catch {$this GetValue use_tk} use_tk]} {
+          set use_tk 1  ;# Default is to build with Tk
        }
-       catch {unset target_tcl_info}
-       unset tclinfoscript
+       if {!$use_tk} {
+          append ret " wish (OOMMF):        \tBuild without Tk requested.\n"
+       } else {
+          catch {$this Wish} wish
+          append ret " wish (OOMMF):        \t$wish\n"
+          if {![catch {exec $wish $tclinfoscript} target_tcl_info]} {
+             append ret "                  \t --> Version "
+             regsub -all "\t" $target_tcl_info " " target_tcl_info
+             if {[regexp {Tcl patchlevel *= *([0-9.]*)} \
+                     $target_tcl_info dummy target_tcl_version]} {
+                append ret "$target_tcl_version"
+                unset target_tcl_version
+             } else {
+                append ret "?"
+             }
+             append ret ", Tk "
+             if {[regexp {Tk version *= *([0-9.]*)} \
+                     $target_tcl_info dummy target_tk_version]} {
+                append ret "$target_tk_version"
+                unset target_tk_version
+             } else {
+                append ret "?"
+             }
+             if {[regexp {tcl_platform\(pointerSize\) *= *([0-9.]*)} \
+                     $target_tcl_info dummy pointerSize]} {
+                append ret ", [expr {$pointerSize*8}] bit"
+                unset pointerSize
+             } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9.]*)} \
+                           $target_tcl_info dummy wordSize]} {
+                append ret ", [expr {$wordSize*8}] bit"
+                unset wordSize
+             }
+             if {[regexp {tcl_platform\(threaded\) *= *([0-9]*)} \
+                     $target_tcl_info dummy threaded] && $threaded} {
+                append ret ", threaded"
+             } else {
+                append ret ", not threaded"
+             }
+             catch {unset threaded}
+             append ret "\n"
+          }
+          catch {unset target_tcl_info}
 
-       append ret " tkConfig.sh:         \t"
-       global env
-       if {[info exists env(OOMMF_TK_CONFIG)]} {
-          append ret "$env(OOMMF_TK_CONFIG)\n"
-       } elseif {[string match windows $tcl_platform(platform)]} {
-          append ret "not required on Windows\n"
-       } else {
-          append ret "none found\n"
-       }
-       append ret "                      \t --> Tk Version "
-       if {![catch {$this GetValue TK_VERSION} v]} {
-          if {![catch {$this GetValue TK_PATCH_LEVEL} pl]} {
-             append ret $v$pl
+          append ret " tkConfig.sh:         \t"
+          global env
+          if {[info exists env(OOMMF_TK_CONFIG)]} {
+             append ret "$env(OOMMF_TK_CONFIG)\n"
+          } elseif {[string match windows $tcl_platform(platform)]} {
+             append ret "not required on Windows\n"
           } else {
-             append ret $v
+             append ret "none found\n"
           }
-       } else {
-          append ret unknown
+          append ret "                      \t --> Tk Version "
+          if {![catch {$this GetValue TK_VERSION} v]} {
+             if {![catch {$this GetValue TK_PATCH_LEVEL} pl]} {
+                append ret $v$pl
+             } else {
+                append ret $v
+             }
+          } else {
+             append ret unknown
+          }
        }
+       unset tclinfoscript
 
         append ret    "\nOOMMF threads:         \t"
         if {[$this GetValue oommf_threads]} {
            append ret "Yes: Default thread count = [Oc_GetDefaultThreadCount]"
+           set threadlimit [Oc_GetThreadLimit]
+           if {![string match {} $threadlimit]} {
+              append ret " (limit is $threadlimit)"
+           }
            if {![catch {$this GetValue use_numa} use_numa]} {
            append ret "\n  NUMA support:        \t "
               if {$use_numa} {
@@ -553,20 +799,6 @@ Oc_Class Oc_Config {
 		append ret "\n  $e = $env($e)"
 	    }
 	}
-	if {0 && [info exists tcl_platform(threaded)]} {
-	    append ret "\nWARNING: Your installation of Tcl appears to be\
-		thread-enabled.\nOOMMF does not support thread-enabled\
-		Tcl.  If you have trouble with\nOOMMF, try installing\
-		non-thread-enabled Tcl."
-	}
-	if {0 && ![catch {$this GetValue TK_DEFS} defs]} {
-	    if {[string match *TCL_THREADS=1* $defs]} {
-		append ret "\nWARNING: Your installation of Tk appears to be\
-			thread-enabled.\nOOMMF does not support thread-enabled\
-			operations.  If you have\ntrouble with\
-			OOMMF, try installing non-thread-enabled Tk."
-	    }
-	}
 	if {![info exists env(OOMMF_TCL_INCLUDE_DIR)]} {
 	    append ret "\nWARNING: Your installation of Tcl appears\
 		to be missing the header\nfile <tcl.h>.  Perhaps you\
@@ -577,7 +809,7 @@ Oc_Class Oc_Config {
 		OOMMF_TCL_INCLUDE_DIR to the directory\nthat contains\
 		the Tcl header file."
 	}
-	if {![info exists env(OOMMF_TK_INCLUDE_DIR)]} {
+	if {$use_tk && ![info exists env(OOMMF_TK_INCLUDE_DIR)]} {
 	    append ret "\nWARNING: Your installation of Tk appears\
 		to be missing the header\nfile <tk.h>.  Perhaps you\
 		need to re-install Tk, requesting a full\ninstallation\
@@ -637,6 +869,51 @@ Oc_Class Oc_Config {
         eval $detectScript
     }
 
+    private method SetWindowsTclTkLibValues {} {
+       # Assumes the following config values are already set:
+       set root [$this GetValue TCL_PREFIX]
+       set tlma [$this GetValue TCL_MAJOR_VERSION]
+       set tlmi [$this GetValue TCL_MINOR_VERSION]
+       set tkma [$this GetValue TK_MAJOR_VERSION]
+       set tkmi [$this GetValue TK_MINOR_VERSION]
+       if {[regexp {^8\.0([.p]([0-9]+))?$} [info patchlevel] m mm patch]
+	   && ($patch < 4)} {
+	  set vc vc
+       } else {
+	  set vc ""
+       }
+
+       # The following are relative to TCL_EXEC_PREFIX, thus $root
+       # in our "standard" Tcl/Tk install on Windows.
+       set Tcllib_base tcl$tlma$tlmi
+       set Tklib_base tk$tkma$tkmi
+       foreach elt {Tcl Tk} {
+	  set base [set ${elt}lib_base]
+	  set test [file join $root lib $base$vc.lib]
+	  if {![file exists $test]} {
+	     # Not there; try "t" (threaded) suffix
+	     set test [file join $root lib ${base}t.lib]
+	     if {![file exists $test]} {
+		# Still no luck; see what we can find
+		set check [file join $root lib ${base}*.lib]
+		if {[llength $check]==1} {
+		   set test [lindex $check 0]
+		} else {
+		   if {[llength $check]==0} {
+		      set msg "Unable to locate $elt lib in\
+                          folder [file join $root lib]"
+		   } else {
+		      set msg "Unable to identify unique $elt lib in\
+                          folder [file join $root lib]"
+		   }
+		   error $msg $msg
+		}
+	     }
+	  }
+	  $this SetValue [string toupper $elt]_VC_LIB_SPEC $test
+       }
+    }
+
     private method RecordStandardWindowsTclTkConfiguration {root} {
 	# Note that a "standard" Tcl/Tk configuration on Windows
 	# is one where TCL_PREFIX, TK_PREFIX, TCL_EXEC_PREFIX,
@@ -678,18 +955,8 @@ Oc_Class Oc_Config {
 	    regsub {^[0-9]+\.[0-9]+} $tk_patchLevel {} pl
 	}
 	$this SetValue TK_PATCH_LEVEL $pl
-	if {[regexp {^8\.0([.p]([0-9]+))?$} [info patchlevel] m mm patch]
-		&& ($patch < 4)} {
-	    set vc vc
-	} else {
-	    set vc ""
-	}
-	# The following are relative to TCL_EXEC_PREFIX, thus $root
-	# in our "standard" Tcl/Tk install on Windows.
-	$this SetValue TCL_VC_LIB_SPEC [file join $root lib \
-		tcl$tlma$tlmi$vc.lib]
-	$this SetValue TK_VC_LIB_SPEC [file join $root lib \
-		tk$tkma$tkmi$vc.lib]
+	$this SetWindowsTclTkLibValues
+
 	# Add other *_LIB_SPEC (f.e. Borland, Watcom, ...) on request.
 	# Compiler-specific configurations (f.e. TCL_LIBS) must be
 	# completed in the config/platforms/*.tcl file.
@@ -751,103 +1018,104 @@ Oc_Class Oc_Config {
 	    catch {set env(OOMMF_TCL_CONFIG) [Oc_DirectPathname \
 		    [$this FindTclConfig]]} msg
 	}
+
+        # Check to see if we are in the midst of building OOMMF.
+        # Default is no.
+        if {[catch {set env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} \
+                build_environment_needed]} {
+           set build_environment_needed 0
+        }
 	if {[info exists env(OOMMF_TCL_CONFIG)]} {
-	    $this LoadConfigFile $env(OOMMF_TCL_CONFIG)
-	    # Warn if we got a config file for a different Tcl release
-	    if {[catch {$this GetValue TCL_PATCH_LEVEL} pl]
-		    || [string match {} $pl]} {
-		# No TCL_PATCH_LEVEL definition -- check TCL_VERSION only
-		if {![string match [package provide Tcl] \
-			[$this GetValue TCL_VERSION]]} {
+           $this LoadConfigFile $env(OOMMF_TCL_CONFIG)
+           # Warn if we got a config file for a different Tcl release,
+           # unless we are in the midst of a build.  (Cross-compile
+           # builds in particular may have different build and run Tcl.)
+           if {!$build_environment_needed} {
+              if {[catch {$this GetValue TCL_PATCH_LEVEL} pl]
+                  || [string match {} $pl]} {
+                 # No TCL_PATCH_LEVEL definition -- check TCL_VERSION only
+                 if {![string match [package provide Tcl] \
+                          [$this GetValue TCL_VERSION]]} {
 		    global errorInfo
 		    set errorInfo [Oc_StackTrace]
 		    Oc_Log Log "Tcl version\
 			    mismatch:\n\t$env(OOMMF_TCL_CONFIG) from\
 			    [$this GetValue TCL_VERSION]\n\tRunning Tcl\
 			    [package provide Tcl]" warning $class 
-		}
-            } else {
-		# TCL_PATCH_LEVEL defined -- check it
-		if {![string match [info patchlevel] \
-			[$this GetValue TCL_VERSION]$pl]} {
+                 }
+              } else {
+                 # TCL_PATCH_LEVEL defined -- check it
+                 if {![string match [info patchlevel] \
+                          [$this GetValue TCL_VERSION]$pl]} {
 		    global errorInfo
 		    set errorInfo [Oc_StackTrace]
 		    Oc_Log Log "Tcl version\
 			    mismatch:\n\t$env(OOMMF_TCL_CONFIG) from\
 			    [$this GetValue TCL_VERSION]$pl\n\tRunning Tcl\
 			    [info patchlevel]" warning $class 
-		}
-
-	    }
+                 }
+                 
+              }
+           }
         }
 	# ...and look for tkConfig.sh
 	if {[info exists env(OOMMF_TK_CONFIG)]} {
-	    # Either the user or a parent app is trying to tell us
-	    # what tkConfig.sh file to use.
-	    if {![string match absolute \
+           # Either the user or a parent app is trying to tell us
+           # what tkConfig.sh file to use.
+           if {![string match absolute \
 		    [file pathtype $env(OOMMF_TK_CONFIG)]]} {
-		set msg "Error in environment variable:\nOOMMF_TK_CONFIG =\
+              set msg "Error in environment variable:\nOOMMF_TK_CONFIG =\
 			$env(OOMMF_TK_CONFIG)\nMust be absolute pathname"
-		error $msg $msg
-	    }
-	    if {![file readable $env(OOMMF_TK_CONFIG)]} {
-		set msg "Error in environment variable:\nOOMMF_TK_CONFIG =\
+              error $msg $msg
+           }
+           if {![file readable $env(OOMMF_TK_CONFIG)]} {
+              set msg "Error in environment variable:\nOOMMF_TK_CONFIG =\
 			$env(OOMMF_TK_CONFIG)\nFile not readable"
-		error $msg $msg
-	    }
+              error $msg $msg
+           }
 	} else {
-	    catch {set env(OOMMF_TK_CONFIG) [Oc_DirectPathname \
-		    [$this FindTkConfig]]}
+           catch {set env(OOMMF_TK_CONFIG) [Oc_DirectPathname \
+                                               [$this FindTkConfig]]}
 	}
 	if {[info exists env(OOMMF_TK_CONFIG)]} {
-	    $this LoadConfigFile $env(OOMMF_TK_CONFIG)
-	    # Warn if we got a config file for a different Tk release
-	    if {[string length [package provide Tk]]
-		    && ![catch {$this GetValue TK_PATCH_LEVEL} pl]
-		    && ![string match {} $pl]} {
-		# Check that patch levels match
-		global tk_patchLevel
-		if {![string match $tk_patchLevel \
-			[$this GetValue TK_VERSION]$pl]} {
+           $this LoadConfigFile $env(OOMMF_TK_CONFIG)
+           # Warn if we got a config file for a different Tk release,
+           # unless we are in the midst of a build.  (Cross-compile
+           # builds in particular may have different build and run Tk.)
+           if {!$build_environment_needed} {
+              if {[string length [package provide Tk]]
+                  && ![catch {$this GetValue TK_PATCH_LEVEL} pl]
+                  && ![string match {} $pl]} {
+                 # Check that patch levels match
+                 global tk_patchLevel
+                 if {![string match $tk_patchLevel \
+                          [$this GetValue TK_VERSION]$pl]} {
 		    global errorInfo
 		    set errorInfo [Oc_StackTrace]
 		    Oc_Log Log "Tk version\
 			    mismatch:\n\t$env(OOMMF_TK_CONFIG) from\
 			    [$this GetValue TK_VERSION]$pl\n\tRunning Tk\
 			    $tk_patchLevel" warning $class 
-		}
-            } else {
-		if {![string match [$class TkVersion] \
-			[$this GetValue TK_VERSION]]} {
+                 }
+              } else {
+                 if {![string match [$class TkVersion] \
+                          [$this GetValue TK_VERSION]]} {
 		    global errorInfo
 		    set errorInfo [Oc_StackTrace]
 		    Oc_Log Log "Tk version\
 			    mismatch:\n\t$env(OOMMF_TK_CONFIG) from\
 			    [$this GetValue TK_VERSION]\n\tRunning Tk\
 			    [$class TkVersion]" warning $class 
-		}
-	    }
+                 }
+              }
+           }
         }
 	if {[string match windows $tcl_platform(platform)]
 		&& (![info exists env(OSTYPE)]
 			|| ![string match cygwin* $env(OSTYPE)])
 		&& (![info exists env(TERM)] 
 		    || ![string match cygwin $env(TERM)])} {
-	    set root [$this GetValue TCL_PREFIX]
-	    set tlma [$this GetValue TCL_MAJOR_VERSION]
-	    set tlmi [$this GetValue TCL_MINOR_VERSION]
-	    set tkma [$this GetValue TK_MAJOR_VERSION]
-	    set tkmi [$this GetValue TK_MINOR_VERSION]
-	    if {[regexp {^8\.0([.p]([0-9]+))?$} [info patchlevel] m mm patch]
-		&& ($patch < 4)} {
-		set vc vc
-	    } else {
-		set vc ""
-	    }
-	    $this SetValue TCL_VC_LIB_SPEC [file join $root lib \
-						tcl$tlma$tlmi$vc.lib]
-	    $this SetValue TK_VC_LIB_SPEC [file join $root lib \
-					       tk$tkma$tkmi$vc.lib]
+	   $this SetWindowsTclTkLibValues
 	}
     }
 

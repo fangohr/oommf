@@ -90,6 +90,12 @@ OcSetMaxThreadCount(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
     return TCL_ERROR;
   }
 
+  // Enforce thread limits (if any)
+  Oc_Snprintf(buf,sizeof(buf),"Oc_EnforceThreadLimit %d",thread_count);
+  Tcl_Eval(interp,buf);
+  thread_count=atoi(Tcl_GetStringResult(interp));
+  Tcl_ResetResult(interp);
+
   try {
     Oc_SetMaxThreadCount(thread_count);
   } catch(char* errmsg) {

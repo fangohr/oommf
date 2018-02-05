@@ -80,7 +80,7 @@ proc GetGccGeneralOptFlags { gcc_version } {
          \"$gcc_version\""
    }
 
-   # Optimization options
+   # Version specific options
    set opts [list -O2]
    if {$verA>4 || ($verA==4 && $verB>=4)} {
       # -ffast-math breaks compensated summation in Nb_Xpfloat class.
@@ -89,6 +89,16 @@ proc GetGccGeneralOptFlags { gcc_version } {
       # which disables fast-math on a function-by-function basis,
       # thereby providing a work around.
       lappend opts -ffast-math
+   }
+   if {$verA>4 || ($verA==4 && $verB>=3)} {
+      # Include flag for C++ 11 support, as available.
+      # (Official gcc docs say -std=c++0x introduced in gcc 4.3,
+      # and -std=c++11 in gcc 4.7).
+      if {$verA==4 && $verB<7} {
+         lappend opts -std=c++0x
+      } else {
+         lappend opts -std=c++11
+      }
    }
    if {$verA>=3} {
       lappend opts -frename-registers

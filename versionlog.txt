@@ -31,3 +31,13 @@ date: Wed 15 March 2016 12:00:00 BST
    github version: 581ef6639e011a3dfc6558bca85641dec1c2a2f2
    patch applied:  patches/darwin.tcl.1.2a6.patch
    extensions: github.com/joommf/oommf-bulk-dmi 07e130d0623bc206b57c236a4a7d7a53885a5341
+=======================================================
+date: Mon Feb  5 11:18:00 GMT 2018 
+   unpacked oommf20a0_20170929.tar.gz
+   OOMMF:
+     version: 20a0
+     date: 20170929
+     build: a0
+     source-url: http://math.nist.gov/oommf/dist/oommf20a0_20170929.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: 3f52d43566961af6d79dbb97910154229603cf07

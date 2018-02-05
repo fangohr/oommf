@@ -51,40 +51,6 @@ OC_USE_EXCEPTION;
 /* End includes */     
 
 /*
- * Dummy function calls to force expression evaluation.
- * Used to work around some broken compiler optimizations.
- * The types here should all be explicit types, not typedefs,
- * because typedefs can potentially resolve to overlapping
- * types, resulting in overload conflicts.  Also, we probably
- * don't want to use templates here(?), because we want to
- * be sure these calls don't get inlined (that being the whole
- * raison d'etre of these beasts).
- */
-float         Oc_Nop(float x) { return x; }
-double        Oc_Nop(double x) { return x; }
-long double   Oc_Nop(long double x) { return x; }
-int           Oc_Nop(int x) { return x; }
-long          Oc_Nop(long x) { return x; }
-unsigned int  Oc_Nop(unsigned int x) { return x; }
-unsigned long Oc_Nop(unsigned long x) { return x; }
-const void*   Oc_Nop(const void* x) { return x; }
-const String& Oc_Nop(const String& x) { return x; }
-Tcl_Channel   Oc_Nop(Tcl_Channel x) { return x; }
-#if OC_USE_SSE
-__m128d         Oc_Nop(__m128d x) { return x; }
-__m128i         Oc_Nop(__m128i x) { return x; }
-#endif
-#if OC_SYSTEM_TYPE == OC_WINDOWS
-__int64          Oc_Nop(__int64 x) { return x; }
-unsigned __int64 Oc_Nop(unsigned __int64 x) { return x; }
-#endif
-
-/*
- * The global interpreter of the application.
- */
-
-
-/*
  * Function to return cache size, in bytes.
  * Currently hardcoded to return 16KB for
  * L1 cache, 1MB for L2 cache, 0 for L3 cache.
@@ -102,7 +68,9 @@ size_t Oc_CacheSize(int level)
   return csize;
 }
 
-
+/*
+ * The global interpreter of the application.
+ */
 static Tcl_Interp *globalInterp = (Tcl_Interp *)NULL;
 
 /*
@@ -2034,4 +2002,33 @@ int WinMainCRTStartup() { mainCRTStartup(); return 0; }
 # else
 # error "No fixup available for missing startup entry point on this platform."
 # endif
+#endif
+
+/*
+ * Dummy function calls to force expression evaluation.
+ * Used to work around some broken compiler optimizations.
+ * The types here should all be explicit types, not typedefs,
+ * because typedefs can potentially resolve to overlapping
+ * types, resulting in overload conflicts.  Also, we probably
+ * don't want to use templates here(?), because we want to
+ * be sure these calls don't get inlined (that being the whole
+ * raison d'etre of these beasts).
+ */
+float         Oc_Nop(float x) { return x; }
+double        Oc_Nop(double x) { return x; }
+long double   Oc_Nop(long double x) { return x; }
+int           Oc_Nop(int x) { return x; }
+long          Oc_Nop(long x) { return x; }
+unsigned int  Oc_Nop(unsigned int x) { return x; }
+unsigned long Oc_Nop(unsigned long x) { return x; }
+const void*   Oc_Nop(const void* x) { return x; }
+const String& Oc_Nop(const String& x) { return x; }
+Tcl_Channel   Oc_Nop(Tcl_Channel x) { return x; }
+#if OC_USE_SSE
+__m128d         Oc_Nop(__m128d x) { return x; }
+__m128i         Oc_Nop(__m128i x) { return x; }
+#endif
+#if OC_SYSTEM_TYPE == OC_WINDOWS
+__int64          Oc_Nop(__int64 x) { return x; }
+unsigned __int64 Oc_Nop(unsigned __int64 x) { return x; }
 #endif

@@ -153,9 +153,20 @@ ThreeVector Oxs_UZeeman::GetAppliedField(OC_UINT4m stage_number) const
   return H;
 }
 
+void Oxs_UZeeman::ComputeEnergyChunkInitialize
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int /* number_of_threads */) const
+{
+  const ThreeVector H = GetAppliedField(state.stage_number);
+  ocedt.energy_density_error_estimate
+    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*Oc_Sqrt(H.MagSq());
+}
+
 void Oxs_UZeeman::ComputeEnergyChunk
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -184,29 +195,55 @@ void Oxs_UZeeman::ComputeEnergyChunk
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
 
   Nb_Xpfloat energy_sum = 0.0;
-  for(OC_INDEX i=node_start;i<node_stop;++i) {
-    OC_REAL8m ei,tx,ty,tz;
-    OC_REAL8m Msi = Ms[i];
-    if(0.0 != Msi) {
-      const ThreeVector& m = spin[i];
-      tz = m.x*H.y;  // t = m x H
-      ty = m.x*H.z;
-      tx = m.y*H.z;
-      ei =  -MU0*Msi*(m.x*H.x + m.y*H.y + m.z*H.z);
-      tz -= m.y*H.x;
-      ty  = m.z*H.x - ty;
-      tx -= m.z*H.y;
-      energy_sum += ei * state.mesh->Volume(i);
-      if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
-      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
-    } else {
-      ei = tx = ty = tz = 0.0;
+  OC_REAL8m cell_volume;
+  if(state.mesh->HasUniformCellVolumes(cell_volume)) {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      OC_REAL8m ei,tx,ty,tz;
+      OC_REAL8m Msi = Ms[i];
+      if(0.0 != Msi) {
+        const ThreeVector& m = spin[i];
+        tz = m.x*H.y;  // t = m x H
+        ty = m.x*H.z;
+        tx = m.y*H.z;
+        ei =  -MU0*Msi*(m.x*H.x + m.y*H.y + m.z*H.z);
+        tz -= m.y*H.x;
+        ty  = m.z*H.x - ty;
+        tx -= m.z*H.y;
+        energy_sum += ei;
+        if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+        if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+      } else {
+        ei = tx = ty = tz = 0.0;
+      }
+      if(ocedt.energy) (*ocedt.energy)[i] = ei;
+      if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
     }
-    if(ocedt.energy) (*ocedt.energy)[i] = ei;
-    if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+    energy_sum *= cell_volume;
+  } else {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      OC_REAL8m ei,tx,ty,tz;
+      OC_REAL8m Msi = Ms[i];
+      if(0.0 != Msi) {
+        const ThreeVector& m = spin[i];
+        tz = m.x*H.y;  // t = m x H
+        ty = m.x*H.z;
+        tx = m.y*H.z;
+        ei =  -MU0*Msi*(m.x*H.x + m.y*H.y + m.z*H.z);
+        tz -= m.y*H.x;
+        ty  = m.z*H.x - ty;
+        tx -= m.z*H.y;
+        energy_sum += ei * state.mesh->Volume(i);
+        if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
+        if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
+      } else {
+        ei = tx = ty = tz = 0.0;
+      }
+      if(ocedt.energy) (*ocedt.energy)[i] = ei;
+      if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+    }
   }
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue();
+  ocedtaux.energy_total_accum += energy_sum;
   // ocedtaux.pE_pt_accum += 0.0;
 }
 

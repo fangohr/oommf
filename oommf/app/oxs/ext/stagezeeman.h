@@ -16,6 +16,7 @@
 
 #include "nb.h"
 
+#include "chunkenergy.h"
 #include "energy.h"
 #include "output.h"
 #include "threevector.h"
@@ -26,7 +27,7 @@ OC_USE_STRING;
 
 /* End includes */
 
-class Oxs_StageZeeman:public Oxs_Energy {
+class Oxs_StageZeeman:public Oxs_ChunkEnergy {
 private:
   OC_REAL8m hmult;
   OC_UINT4m number_of_stages;
@@ -48,6 +49,9 @@ private:
   /// of maximum magnitude in stagefield.  It is cached
   /// for Bapp output below.  Units are A/m.
 
+  mutable OC_REAL8m energy_density_error_estimate;
+  /// Updated at start of each stage
+
   // Vector field may be specified by *either* a list of
   // files, or else a Tcl command that returns a vector
   // field spec.  This is set up in the Oxs_StageZeeman
@@ -61,7 +65,7 @@ private:
 
   // Cache update routines
   void ChangeFieldInitializer(OC_UINT4m stage,const Oxs_Mesh* mesh) const;
-  void FillStageFieldCache(const Oxs_Mesh* mesh) const;
+  void FillStageFieldCache(const Oxs_SimState& state) const;
   void UpdateCache(const Oxs_SimState& state) const;
 
   // Supplied outputs, in addition to those provided by Oxs_Energy.
@@ -74,8 +78,28 @@ private:
   void Fill__Bapp_output(const Oxs_SimState& state);
 
 protected:
+
   virtual void GetEnergy(const Oxs_SimState& state,
-			 Oxs_EnergyData& oed) const;
+			 Oxs_EnergyData& oed) const {
+    GetEnergyAlt(state,oed);
+  }
+
+  virtual void ComputeEnergy(const Oxs_SimState& state,
+                             Oxs_ComputeEnergyData& oced) const {
+    ComputeEnergyAlt(state,oced);
+  }
+
+  virtual void ComputeEnergyChunkInitialize
+  (const Oxs_SimState& state,
+   Oxs_ComputeEnergyDataThreaded& ocedt,
+   Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& thread_ocedtaux,
+   int number_of_threads) const;
+
+  virtual void ComputeEnergyChunk(const Oxs_SimState& state,
+                                  Oxs_ComputeEnergyDataThreaded& ocedt,
+                                  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+                                  OC_INDEX node_start,OC_INDEX node_stop,
+                                  int threadnumber) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is

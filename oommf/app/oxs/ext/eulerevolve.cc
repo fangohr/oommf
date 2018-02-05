@@ -12,7 +12,6 @@
 #include "simstate.h"
 #include "eulerevolve.h"
 #include "key.h"
-#include "energy.h"		// Needed to make MSVC++ 5 happy
 
 // Oxs_Ext registration support
 OXS_EXT_REGISTER(Oxs_EulerEvolve);
@@ -123,30 +122,30 @@ Oxs_EulerEvolve::~Oxs_EulerEvolve()
 OC_REAL8m
 Oxs_EulerEvolve::PositiveTimestepBound
 (OC_REAL8m max_dm_dt)
-{ // Computes an estimate on the minimum time needed to
-  // change the magnetization state, subject to floating
-  // points limits.  This code lifted out of
-  // Oxs_RungeKuttaEvolve, q.v.
-  OC_REAL8m min_timestep = DBL_MAX/64.;
-  if(max_dm_dt>1 || OC_REAL8_EPSILON<min_timestep*max_dm_dt) {
-    min_timestep = OC_REAL8_EPSILON/max_dm_dt;
-    // A timestep of size min_timestep will be hopelessly lost
-    // in roundoff error.  So increase a bit, based on an empirical
-    // fudge factor.  This fudge factor can be tested by running a
-    // problem with start_dm = 0.  If the evolver can't climb its
-    // way out of the stepsize=0 hole, then this fudge factor is too
-    // small.  So far, the most challenging examples have been
-    // problems with small cells with nearly aligned spins, e.g., in
-    // a remanent state with an external field is applied at t=0.
-    // Damping ratio doesn't seem to have much effect, either way.
-    min_timestep *= 64;
+{ // Computes an estimate on the minimum time needed to change the
+  // magnetization state, subject to floating points limits.  This code
+  // lifted out of Oxs_RungeKuttaEvolve, q.v.
+  OC_REAL8m tbound = DBL_MAX/64.;
+  if(max_dm_dt>1 || OC_REAL8_EPSILON<tbound*max_dm_dt) {
+    tbound = OC_REAL8_EPSILON/max_dm_dt;
+    // A timestep of size tbound will be hopelessly lost in roundoff
+    // error.  So increase a bit, based on an empirical fudge factor.
+    // This fudge factor can be tested by running a problem with
+    // start_dm = 0.  If the evolver can't climb its way out of the
+    // stepsize=0 hole, then this fudge factor is too small.  So far,
+    // the most challenging examples have been problems with small
+    // cells with nearly aligned spins, e.g., in a remanent state with
+    // an external field is applied at t=0.  Damping ratio doesn't
+    // seem to have much effect, either way.
+    tbound *= 64;
   } else {
     // Degenerate case: max_dm_dt_ must be exactly or very nearly
     // zero.  Punt.
-    min_timestep = 1.0;
+    tbound = max_timestep;
   }
-  return min_timestep;
+  return tbound;
 }
+
 
 void Oxs_EulerEvolve::Calculate_dm_dt
 (const Oxs_Mesh& mesh_,
@@ -158,50 +157,42 @@ void Oxs_EulerEvolve::Calculate_dm_dt
  OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& timestep_lower_bound_)
 { // Imports: mesh_, Ms_, mxH_, spin_, pE_pt_
   // Exports: dm_dt_, max_dm_dt_, dE_dt_, timestep_lower_bound_
-  const OC_INDEX size = mesh_.Size(); // Assume all imports are compatible
-  OC_REAL8m coef1 = -fabs(gamma);
-  OC_REAL8m coef2 = -fabs(alpha);
-  ThreeVector scratch;
   dm_dt_.AdjustSize(&mesh_);
-  OC_INDEX i;
-  for(i=0;i<size;i++) {
-    if(Ms_[i]==0) {
-      dm_dt_[i].Set(0.0,0.0,0.0);
-    } else {
-      scratch = mxH_[i];
-      scratch *= coef1;
-      if(do_precess) {
-	dm_dt_[i] = scratch;
-      } else {
-	dm_dt_[i].Set(0.0,0.0,0.0);
-      }
-      scratch ^= spin_[i]; // -|gamma|((mxH)xm)
-      scratch *= coef2;  // |alpha.gamma|((mxH)xm) = -|alpha.gamma|(mx(mxH))
-      dm_dt_[i] += scratch;
-    }
-  }
 
-  // Zero dm_dt at fixed spin sites
-  UpdateFixedSpinList(&mesh_);
-  const OC_INDEX fixed_count = GetFixedSpinCount();
-  for(OC_INDEX j=0;j<fixed_count;j++) {
-    dm_dt_[GetFixedSpin(j)].Set(0.,0.,0.); // What about pE_pt???
-  }
+  const OC_REAL8m coef1 = (do_precess ? -1*gamma : 0.0 );
+  const OC_REAL8m coef2 = alpha * gamma;
 
-  // Collect statistics
-  OC_REAL8m max_dm_dt_sq=0.0;
-  OC_REAL8m dE_dt_sum=0.0;
-  for(i=0;i<size;i++) {
-    OC_REAL8m dm_dt_sq = dm_dt_[i].MagSq();
-    if(dm_dt_sq>0.0) {
-      dE_dt_sum += mxH_[i].MagSq() * Ms_[i] * mesh_.Volume(i);
-      if(dm_dt_sq>max_dm_dt_sq) {
-	max_dm_dt_sq=dm_dt_sq;
+  const int number_of_threads = Oc_GetMaxThreadCount();
+  std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,0.0);
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE>
+    thread_dE_dt_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
+
+  Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+    (Ms_,
+     [&](OC_INT4m thread_id,OC_INDEX jstart,OC_INDEX jstop) {
+      Oxs_Energy::SUMTYPE thd_dE_dt_sum = 0.0;   // Local copy
+      OC_REAL8m thd_max_dm_dt_sq = 0.0; // Ditto
+      for(OC_INDEX j=jstart;j<jstop;++j) {
+        Calculate_dm_dt_i(mesh_,Ms_,mxH_,spin_,dm_dt_,
+                          thd_max_dm_dt_sq,
+                          thd_dE_dt_sum,
+                          coef1,coef2,j);
       }
+      thread_dE_dt_sum[thread_id] += thd_dE_dt_sum;
+      if(thread_max_dm_dt_sq[thread_id]<thd_max_dm_dt_sq) {
+        thread_max_dm_dt_sq[thread_id] = thd_max_dm_dt_sq;
+      }
+    });
+
+  OC_REAL8m max_dm_dt_sq = thread_max_dm_dt_sq[0];
+  for(int i=1;i<number_of_threads;++i) {
+    if(thread_max_dm_dt_sq[i] > max_dm_dt_sq) {
+      max_dm_dt_sq = thread_max_dm_dt_sq[i];
     }
+    thread_dE_dt_sum[0] += thread_dE_dt_sum[i];
   }
   max_dm_dt_ = sqrt(max_dm_dt_sq);
-  dE_dt_ = -1 * MU0 * fabs(gamma*alpha) * dE_dt_sum + pE_pt_;
+  dE_dt_ = -1 * MU0 * gamma * alpha * OC_REAL8m(thread_dE_dt_sum[0]) + pE_pt_;
   /// The first term is (partial E/partial M)*dM/dt, the
   /// second term is (partial E/partial t)*dt/dt.  Note that,
   /// provided Ms_[i]>=0, that by constructions dE_dt_sum above
@@ -342,7 +333,7 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
                       const Oxs_DriverStepInfo& /* step_info */,
 		      Oxs_Key<Oxs_SimState>& next_state)
 {
-  OC_INDEX size,i; // Mesh size and indexing variable
+  const int number_of_threads = Oc_GetMaxThreadCount();
 
   const Oxs_SimState& cstate = current_state.GetReadReference();
 
@@ -374,12 +365,13 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   OC_BOOL cache_good = 1;
   OC_REAL8m max_dm_dt,dE_dt,delta_E,pE_pt;
   OC_REAL8m timestep_lower_bound;  // Smallest timestep that can actually
-  /// change spin with max_dm_dt (due to OC_REAL8_EPSILON restrictions).
-  /// The next timestep is based on the error from the last step.  If
-  /// there is no last step (either because this is the first step,
-  /// or because the last state handled by this routine is different
-  /// from the incoming current_state), then timestep is calculated
-  /// so that max_dm_dt * timestep = start_dm.
+  /// change spin with max_dm_dt (due to OC_REAL8_EPSILON
+  /// restrictions).  The next timestep is based on the error from the
+  /// last step.  If there is no last step (either because this is the
+  /// first step, or because the last state handled by this routine is
+  /// different from the incoming current_state), then timestep is
+  /// calculated so that max_dm_dt * timestep = start_dm (subject to
+  /// min/max_timestep constraints).
 
   cache_good &= cstate.GetDerivedData("Max dm/dt",max_dm_dt);
   cache_good &= cstate.GetDerivedData("dE/dt",dE_dt);
@@ -409,14 +401,27 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   }
 
   // Insure step is not outside requested step bounds
+  if(stepsize<timestep_lower_bound) {
+    // Check for this before max_timestep, so max_timestep can
+    // override.  On the one hand, if the timestep is too small to
+    // move any spins, then taking the step just advances the
+    // simulation time without changing the state; instead what would
+    // be small accumulations are just lost.  On the other hand, if
+    // the applied field is changing with time, then perhaps all that
+    // is needed to get the magnetization moving is to advance the
+    // simulation time.  In general, it is hard to tell which is
+    // which, so we assume that the user knews what he was doing when
+    // he set the max_timestep value (or accepted the default), and it
+    // is up to him to notice if the simulation time is advancing
+    // without any changes to the magnetization pattern.
+    stepsize = timestep_lower_bound;
+  }
+
+  // Insure step is not outside requested step bounds
   if(stepsize>max_timestep) stepsize = max_timestep;
   if(stepsize<min_timestep) stepsize = min_timestep;
 
   workstate.last_timestep=stepsize;
-  if(stepsize<timestep_lower_bound) {
-    workstate.last_timestep=timestep_lower_bound;
-  }
-
   if(cstate.stage_number != workstate.stage_number) {
     // New stage
     workstate.stage_start_time = cstate.stage_start_time
@@ -430,40 +435,54 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   workstate.iteration_count = cstate.iteration_count + 1;
   workstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
+  // Additional timestep control
   driver->FillStateSupplemental(workstate);
+
+  // Check for forced step.
+  // Note: The driver->FillStateSupplemental call may increase the
+  //       timestep slightly to match a stage time termination
+  //       criteria.  We should tweak the timestep size check
+  //       to recognize that changes smaller than a few epsilon
+  //       of the stage time are below our effective timescale
+  //       resolution.
   OC_BOOL forcestep=0;
-  if(workstate.last_timestep>stepsize ||
-     workstate.last_timestep<=min_timestep) {
-    // Either driver wants to force this stepsize,
-    // or else suggested stepsize is smaller than
-    // timestep_lower_bound and/or min_timestep.
+  OC_REAL8m timestepcheck = workstate.last_timestep
+                         - 4*OC_REAL8_EPSILON*workstate.stage_elapsed_time;
+  if(timestepcheck<=min_timestep || timestepcheck<=timestep_lower_bound) {
+    // Either driver wants to force stepsize, or else step size can't
+    // be reduced any further.
     forcestep=1;
   }
   stepsize = workstate.last_timestep;
 
   // Put new spin configuration in next_state
   workstate.spin.AdjustSize(workstate.mesh); // Safety
-  size = workstate.spin.Size();
-  ThreeVector tempspin;
-  for(i=0;i<size;++i) {
-    tempspin = dm_dt[i];
-    tempspin *= stepsize;
 
-    // For improved accuracy, adjust step vector so that
-    // to first order m0 + adjusted_step = v/|v| where
-    // v = m0 + step.
-    OC_REAL8m adj = 0.5 * tempspin.MagSq();
-    tempspin -= adj*cstate.spin[i];
-    tempspin *= 1.0/(1.0+adj);
+  // Advance state
+  Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+    (cstate.spin,
+     [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+      for(OC_INDEX j=jstart;j<jstop;++j) {
+        ThreeVector tempspin = dm_dt[j];
+        tempspin *= stepsize;
 
-    tempspin += cstate.spin[i];
-    tempspin.MakeUnit();
-    workstate.spin[i] = tempspin;
-  }
+        // For improved accuracy, adjust step vector so that
+        // to first order m0 + adjusted_step = v/|v| where
+        // v = m0 + step.
+        OC_REAL8m adj = 0.5 * tempspin.MagSq();
+        tempspin -= adj*cstate.spin[j];
+        tempspin *= 1.0/(1.0+adj);
+
+        tempspin += cstate.spin[j];
+        tempspin.MakeUnit();
+        workstate.spin[j] = tempspin;
+      }
+    });
+
   const Oxs_SimState& nstate
     = next_state.GetReadReference();  // Release write lock
 
-  //  Calculate delta E
+  //  Compute energy and torque
   OC_REAL8m new_pE_pt;
   GetEnergyDensity(nstate,new_energy,
 		   &mxH_output.cache.value,
@@ -471,17 +490,39 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   mxH_output.cache.state_id=nstate.Id();
   const Oxs_MeshValue<ThreeVector>& mxH = mxH_output.cache.value;
 
-  OC_REAL8m dE=0.0;
-  OC_REAL8m var_dE=0.0;
-  OC_REAL8m total_E=0.0;
-  for(i=0;i<size;++i) {
-    OC_REAL8m vol = nstate.mesh->Volume(i);
-    OC_REAL8m e = energy[i];
-    total_E += e * vol;
-    OC_REAL8m new_e = new_energy[i];
-    dE += (new_e - e) * vol;
-    var_dE += (new_e*new_e + e*e)*vol*vol;
+  //  Calculate delta E
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE>
+    thread_dE(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE>
+    thread_var_dE(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE>
+    thread_total_E(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
+  Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+    (energy,
+     [&](OC_INT4m thread_id,OC_INDEX jstart,OC_INDEX jstop) {
+      Oxs_Energy::SUMTYPE thd_dE = 0.0;       // Local copy
+      Oxs_Energy::SUMTYPE thd_var_dE = 0.0;   // Ditto
+      Oxs_Energy::SUMTYPE thd_total_E = 0.0;  // Ditto
+      for(OC_INDEX j=jstart;j<jstop;++j) {
+        OC_REAL8m vol = nstate.mesh->Volume(j);
+        OC_REAL8m e = energy[j];
+        thd_total_E += e * vol;
+        OC_REAL8m new_e = new_energy[j];
+        thd_dE += (new_e - e) * vol;
+        thd_var_dE += (new_e*new_e + e*e)*vol*vol;
+      }
+      thread_dE[thread_id]      += thd_dE;
+      thread_var_dE[thread_id]  += thd_var_dE;
+      thread_total_E[thread_id] += thd_total_E;
+    });
+  for(int i=1;i<number_of_threads;++i) {
+    thread_dE[0] += thread_dE[i];
+    thread_var_dE[0] += thread_var_dE[i];
+    thread_total_E[0] += thread_total_E[i];
   }
+  OC_REAL8m total_E = static_cast<OC_REAL8m>(thread_total_E[0]);
+  OC_REAL8m dE      = static_cast<OC_REAL8m>(thread_dE[0]);
+  OC_REAL8m var_dE  = static_cast<OC_REAL8m>(thread_var_dE[0]);
   var_dE *= 256*OC_REAL8_EPSILON*OC_REAL8_EPSILON; // Variance, assuming
   /// error in each energy[i] term is independent, uniformly
   /// distributed, 0-mean, with range +/- 16*OC_REAL8_EPSILON*energy[i].
@@ -492,24 +533,70 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   // Notes II, p72 (18-Jan-2001).  Basically, estimate the error as the
   // difference between the obtained step endpoint and what would have
   // been obtained if a 2nd order Heun step had been taken.
+  const Oxs_Mesh& new_mesh = *(nstate.mesh);
+  new_dm_dt.AdjustSize(&new_mesh);
+  const Oxs_MeshValue<OC_REAL8m>& new_Ms = *(nstate.Ms);
+  const Oxs_MeshValue<ThreeVector>& new_spin = nstate.spin;
+  const OC_REAL8m coef1 = (do_precess ? -1*gamma : 0.0 );
+  const OC_REAL8m coef2 = alpha * gamma;
+  std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,0.0);
+  std::vector<OC_REAL8m> thread_max_error_sq(number_of_threads,0.0);
+  Oc_AlignedVector<Oxs_Energy::SUMTYPE>
+    thread_dE_dt_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
 
-  OC_REAL8m new_max_dm_dt,new_dE_dt,new_timestep_lower_bound;
-  Calculate_dm_dt(*(nstate.mesh),*(nstate.Ms),
-		  mxH,nstate.spin,new_pE_pt,new_dm_dt,
-		  new_max_dm_dt,new_dE_dt,new_timestep_lower_bound);
+  Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+    (new_Ms,
+     [&](OC_INT4m thread_id,OC_INDEX jstart,OC_INDEX jstop) {
+      Oxs_Energy::SUMTYPE thd_dE_dt_sum = 0.0;                // Local copy
+      OC_REAL8m thd_max_dm_dt_sq = thread_max_dm_dt_sq[thread_id]; // Ditto
+      OC_REAL8m thd_max_error_sq = thread_max_error_sq[thread_id]; // Ditto
+      for(OC_INDEX j=jstart;j<jstop;++j) {
+        Calculate_dm_dt_i(new_mesh,new_Ms,mxH,new_spin,new_dm_dt,
+                          thd_max_dm_dt_sq,
+                          thd_dE_dt_sum,
+                          coef1,coef2,j);
+        ThreeVector temp = dm_dt[j];
+        temp -= new_dm_dt[j];
+        OC_REAL8m temp_error_sq = temp.MagSq();
+        if(temp_error_sq>thd_max_error_sq) thd_max_error_sq = temp_error_sq;
+      }
+      thread_dE_dt_sum[thread_id] += thd_dE_dt_sum;
+      thread_max_dm_dt_sq[thread_id] = thd_max_dm_dt_sq;
+      thread_max_error_sq[thread_id] = thd_max_error_sq;
+    });
 
-  OC_REAL8m max_error=0;
-  for(i=0;i<size;++i) {
-    ThreeVector temp = dm_dt[i];
-    temp -= new_dm_dt[i];
-    OC_REAL8m temp_error = temp.MagSq();
-    if(temp_error>max_error) max_error = temp_error;
+  for(int i=1;i<number_of_threads;++i) {
+      thread_dE_dt_sum[0] += thread_dE_dt_sum[i];
+      if(thread_max_dm_dt_sq[0] < thread_max_dm_dt_sq[i]) {
+        thread_max_dm_dt_sq[0] = thread_max_dm_dt_sq[i];
+      }
+      if(thread_max_error_sq[0] < thread_max_error_sq[i]) {
+        thread_max_error_sq[0] = thread_max_error_sq[i];
+      }
   }
-  max_error = sqrt(max_error)/2.0; // Actual (local) error
-  /// estimate is max_error * stepsize
+
+  OC_REAL8m new_dE_dt
+    = -1 * MU0 * gamma * alpha * OC_REAL8m(thread_dE_dt_sum[0]) + new_pE_pt;
+  /// The first term is (partial E/partial M)*dM/dt, the
+  /// second term is (partial E/partial t)*dt/dt.  Note that,
+  /// provided Ms_[i]>=0, that by constructions dE_dt_sum above
+  /// is always non-negative, so dE_dt_ can only be made positive
+  /// by positive pE_pt_.
+
+  // Get bound on smallest stepsize that would actually
+  // change spin new_max_dm_dt_index.  Rather than trying
+  // to do this exactly, instead just require that
+  // dm_dt*stepsize is bigger than OC_REAL8_EPSILON radian.
+  // We assume here that |m| is about 1.0.
+  OC_REAL8m new_max_dm_dt = sqrt(thread_max_dm_dt_sq[0]);
+  OC_REAL8m new_timestep_lower_bound = PositiveTimestepBound(new_max_dm_dt);
+
+  // Actual (local) error estimate is max_error * stepsize
+  OC_REAL8m max_error = sqrt(thread_max_error_sq[0])/2.0;
+
 
   // Energy check control
-#ifdef FOO
+#if 0
   OC_REAL8m expected_dE = 0.5 * (dE_dt+new_dE_dt) * stepsize;
   OC_REAL8m dE_error = dE - expected_dE;
   OC_REAL8m max_allowed_dE = expected_dE + 0.25*fabs(expected_dE);

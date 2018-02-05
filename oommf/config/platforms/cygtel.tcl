@@ -35,9 +35,10 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler
-if {[info exists env(OOMMF_C++)]} {
-   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
+# than OOMMF_C++ because the latter is an invalid name in Unix shells.
+if {[info exists env(OOMMF_CPP)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
 # Support for the automated buildtest scripts
@@ -66,13 +67,17 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # among lines providing alternative values for a feature, uncomment the
 # line containing the proper value.
 #
-# The features in this file are divided into three sections.  The first
-# section (REQUIRED CONFIGURATION) includes features which require you 
-# to provide a value.  The second section (OPTIONAL CONFIGURATION)
-# includes features which have usable default values, but which you
-# may wish to customize.  The third section (ADVANCED CONFIGURATION)
-# contains features which you probably do not need or want to change
-# without a good reason.
+# The features in this file are divided into three sections.  The
+# first section (REQUIRED CONFIGURATION) includes features which
+# require you to provide a value.  The second section (LOCAL
+# CONFIGURATION) includes features which have usable default values,
+# but which you may wish to customize.  These can be edited here, but
+# it is recommended instead that you create a subdirectory named
+# "local", put a copy of the LOCAL CONFIGURATION section there in a
+# file with the same name as this file, and then edit that file.  The
+# third section (BUILD CONFIGURATION) contains features which you
+# probably do not need or want to change without a good reason.
+#
 ########################################################################
 # REQUIRED CONFIGURATION
 
@@ -87,10 +92,10 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # in your path, be sure to use the whole pathname.  Also include any 
 # options required to instruct your compiler to only compile, not link.  
 #
-# If your compiler is not listed below, additional features will
-# have to be added in the ADVANCED CONFIGURATION section below to 
-# describe to the OOMMF software how to operate your compiler.  Send
-# e-mail to the OOMMF developers for assistance.
+# If your compiler is not listed below, additional features will have
+# to be added in the BUILD CONFIGURATION section below to describe to
+# the OOMMF software how to operate your compiler.  Send e-mail to the
+# OOMMF developers for assistance.
 #
 # The GNU C++ compiler 'g++'
 # <URL:http://www.gnu.org/software/gcc/gcc.html>
@@ -117,8 +122,8 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ########################################################################
 # LOCAL CONFIGURATION
 #
-# The following options may be defined in the
-# platforms/local/cygtel.tcl file:
+# The following options may be defined in the platforms/local/cygtel.tcl
+# file:
 #
 ## Set the feature 'path_directory_temporary' to the name of an existing 
 ## directory on your computer in which OOMMF software should write 
@@ -137,6 +142,10 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## for builds with thread support.
 # $config SetValue thread_count 4  ;# Replace '4' with desired thread count.
 #
+## Specify hard limit on the max number of threads per process.  This is
+## only meaningful for builds with thread support.  If not set, then there
+## is no limit.
+# $config SetValue thread_limit 8
 #
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
@@ -150,6 +159,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## specific to that processor model.  The resulting binary will
 ## generally not run on other architectures.
 # $config SetValue program_compiler_c++_cpu_arch host
+#
+## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not
+## use SSE intrinsics.  Leave unset to get the default (which may
+## depend on the compiler).  Note: The cpu_arch selection above must
+## support the desired sse_level.  In particular, on 32-bit systems
+## cpu_arch == generic does not support SSE.
+# $config SetValue sse_level 2  ;# Replace '2' with desired level
 #
 ## Variable type used for array indices, OC_INDEX.  This is a signed
 ## type which by default is sized to match the pointer width.  You can
@@ -248,14 +264,22 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
     $config SetValue program_compiler_c++ $compiler
 }
 
-
-########################################################################
-# ADVANCED CONFIGURATION
-
 # The absolute, native filename of the null device
 # If using a cygwin native build of tclsh, this should be set to /dev/null
 # If using a Windows native build of tclsh, this should be set to nul:
 $config SetValue path_device_null {/dev/null}
+
+# Are we building OOMMF, or running it?
+if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
+       || !$env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} {
+   # Remainder of script concerns the build environment only,
+   # none of which is not relevant at run time.
+   unset config
+   return
+}
+
+########################################################################
+# BUILD CONFIGURATION
 
 # Compiler option processing...
 set ccbasename [file tail [lindex [$config GetValue program_compiler_c++] 0]]
@@ -265,6 +289,14 @@ if {[string match g++* $ccbasename]} {
       set gcc_version [GuessGccVersion \
                           [lindex [$config GetValue program_compiler_c++] 0]]
    }
+   if {[lindex $gcc_version 0]<4 ||
+       ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<7)} {
+      puts stderr "WARNING: This version of OOMMF requires g++ 4.7\
+                   or later (C++ 11 support)"
+   }
+   $config SetValue program_compiler_c++_banner_cmd \
+      [list GetGccBannerVersion  \
+          [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
    # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
@@ -291,7 +323,21 @@ if {[string match g++* $ccbasename]} {
       if {[string match host $cpu_arch]} {
          set cpu_arch [GuessCpu]
       }
+      # Use/don't use SSE intrinsics.  In the cpu_arch!=generic case,
+      # the default behavior is to set this from the third element of
+      # the GuessCpu return.  If cpu_arch==generic, then the default
+      # is no.  You can always override the default behavior setting
+      # the $config sse_level value in the local platform file (see
+      # LOCAL CONFIGURATION above).
+      if {[catch {$config GetValue sse_level}]} {
+         # sse_level not set in LOCAL CONFIGURATION block
+         $config SetValue sse_level [lindex $cpu_arch 2]
+      }
       set cpuopts [GetGccCpuOptFlags $gcc_version $cpu_arch]
+   } else {
+      if {![catch {$config GetValue sse_level} level] && $level!=0} {
+         error "SSE level $level not supported for cpu_arch = generic"
+      }
    }
    unset cpu_arch
    # You can override the above results by directly setting or
@@ -304,19 +350,36 @@ if {[string match g++* $ccbasename]} {
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
-   # gcc 3.x has some problems with SSE instructions
-   # (STATUS_ACCESS_VIOLATION), at least when built against the
-   # ActiveTcl libraries.  This probably arises from data alignment
-   # problems.  Reports are that these problems are fixed on gcc 4.x,
-   # but YMMV. See also the gcc 4.2 -mstackrealign option.  Another
-   # option appears to be to use a Tcl/Tk built using gcc, as opposed
-   # to the ActiveTcl builds that reportedly use Microsoft Visual C++
-   # 6 (from 1998).  The following lines remove SSE enabling flags
-   # from the options list for gcc earlier than 4.0.
-   if {[lindex $gcc_version 0]<4} {
+
+   # SSE support
+   if {[catch {$config GetValue sse_level} sse_level]} {
+      set sse_level 0  ;# Default setting for 32-bit x86
+   }
+   if {$sse_level} {
+      if {[lindex $gcc_version 0]<4 ||
+          ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<2)} {
+         # See notes below about -mstackrealign, which first appears in
+         # gcc 4.2.x.
+         set sse_level 0
+      }
+   }
+   if {$sse_level} {
+      # Note: -mstackrealign adds an alternative prologue and epilogue
+      # to function calls that realigns the stack.  This supports mixing
+      # 4-byte aligned stacks (specified by the 32-bit x86 ABI) with
+      # 16-byte aligned stacks for SSE (and used by gcc).  The stack
+      # realignment somewhat increases function call overhead, but is
+      # needed if linking a gcc build of OOMMF against a Visual C++
+      # build of Tcl/Tk.  An option here may be to use a gcc build of
+      # Tcl/Tk.
+      lappend opts -mstackrealign
+   } else {
+      # Otherwise, strip out all SSE options
       regsub -all -- {-mfpmath=[^ ]*} $opts {} opts
       regsub -all -- {-msse[^ ]*} $opts {} opts
    }
+   $config SetValue sse_level $sse_level
+   unset sse_level
 
    # Default warnings disable
    set nowarn [list -Wno-non-template-friend]
@@ -325,7 +388,7 @@ if {[string match g++* $ccbasename]} {
    }
    catch {unset nowarn}
 
-   # Make user requested tweaks to compile line options
+   # Make user requested tweaks to compile line
    set opts [LocalTweakOptFlags $config $opts]
 
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""

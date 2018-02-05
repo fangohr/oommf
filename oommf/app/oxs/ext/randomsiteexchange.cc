@@ -16,7 +16,7 @@
 #include "threevector.h"
 #include "rectangularmesh.h"
 #include "randomsiteexchange.h"
-#include "energy.h"		// Needed to make MSVC++ 5 happy
+#include "energy.h"             // Needed to make MSVC++ 5 happy
 
 OC_USE_STRING;
 
@@ -40,7 +40,7 @@ Oxs_RandomSiteExchange::Oxs_RandomSiteExchange(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_Energy(name,newdtr,argstr),
-    mesh_id(0)
+    mesh_id(0), energy_density_error_estimate(-1)
 {
   // Process arguments
   Amin = GetRealInitValue("Amin");
@@ -69,13 +69,13 @@ Oxs_RandomSiteExchange::Oxs_RandomSiteExchange(
 
   // Setup outputs
   maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
-			    &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
+                            &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   maxspinangle_output.Register(director,0);
   stage_maxspinangle_output.Setup(this,InstanceName(),"Stage Max Spin Ang","deg",1,
-			    &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
+                            &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   stage_maxspinangle_output.Register(director,0);
   run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang","deg",1,
-			    &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
+                            &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   run_maxspinangle_output.Register(director,0);
 }
 
@@ -85,6 +85,7 @@ Oxs_RandomSiteExchange::~Oxs_RandomSiteExchange()
 OC_BOOL Oxs_RandomSiteExchange::Init()
 {
   mesh_id = 0;
+  energy_density_error_estimate = -1;
   links.clear();
   return Oxs_Energy::Init();
 }
@@ -116,7 +117,6 @@ void Oxs_RandomSiteExchange::FillLinkList
     zperiodic = pmesh->IsPeriodicZ();
   }
 
-
   // Iterate through mesh; at each cell roll iterate through
   // its 3 inferior neighbors.  For each link, roll dice to
   // see if that link gets a non-zero link energy.  If so,
@@ -137,82 +137,78 @@ void Oxs_RandomSiteExchange::FillLinkList
   OC_REAL8m wgty = 1/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = 1/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
+  OC_REAL8m max_Aeff=0.0;
   for(OC_INDEX z=0;z<zdim;z++) {
     for(OC_INDEX y=0;y<ydim;y++) {
       for(OC_INDEX x=0;x<xdim;x++) {
-	for(OC_INDEX li=0;li<3;li++) { // Link index: 0=x, 1=y, 2=z
-	  OC_REAL8m luck=Oc_UnifRand();
-	  if(luck<=linkprob) {
-	    // Make this link
-	    OC_INDEX offset=0;
-	    OC_REAL8m wgt=0.;
-	    switch(li) {
-	      case 0:
+        for(OC_INDEX li=0;li<3;li++) { // Link index: 0=x, 1=y, 2=z
+          OC_REAL8m luck=Oc_UnifRand();
+          if(luck<=linkprob) {
+            // Make this link
+            OC_INDEX offset=0;
+            OC_REAL8m wgt=0.;
+            switch(li) {
+              case 0:
                 wgt=wgtx;
                 if(x+1<xdim)       offset = 1;
                 else if(xperiodic) offset = 1 - xdim;
                 break;
-	      case 1:
+              case 1:
                 wgt=wgty;
                 if(y+1<ydim)       offset = xdim;
                 else if(yperiodic) offset = xdim - xydim;
                 break;
-	      default:
+              default:
                 wgt=wgtz;
                 if(z+1<zdim)       offset = xydim;
                 else if(zperiodic) offset = xydim - xyzdim;
                 break;
-	    }
-	    if(offset!=0) {
-	      // Link partner is also inside mesh
-	      Oxs_RandomSiteExchangeLinkParams link;
-	      link.index1 = mesh->Index(x,y,z); // Get base linear address
-	      link.index2 = link.index1 + offset;
-	      link.Acoef = (Amin + Arange*Oc_UnifRand())*wgt;
-	      links.push_back(link);
-	    }
-	  }
-	}
+            }
+            if(offset!=0) {
+              // Link partner is also inside mesh
+              Oxs_RandomSiteExchangeLinkParams link;
+              link.index1 = mesh->Index(x,y,z); // Get base linear address
+              link.index2 = link.index1 + offset;
+              link.Acoef = (Amin + Arange*Oc_UnifRand())*wgt;
+              if(Oc_Fabs(link.Acoef)>max_Aeff) max_Aeff = Oc_Fabs(link.Acoef);
+              links.push_back(link);
+            }
+          }
+        }
       }
     }
   }
+  energy_density_error_estimate = 16*OC_REAL8m_EPSILON*max_Aeff;
 }
 
-void Oxs_RandomSiteExchange::GetEnergy
+void Oxs_RandomSiteExchange::ComputeEnergy
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
+ Oxs_ComputeEnergyData& oced
  ) const
 {
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
-  energy.AdjustSize(state.mesh);
-  field.AdjustSize(state.mesh);
-
-  const Oxs_Mesh* mesh = state.mesh;
-
   // If mesh has changed, re-pick link selections
+  const Oxs_Mesh* mesh = state.mesh;
   if(mesh_id !=  mesh->Id()) {
     FillLinkList(mesh);
     mesh_id=mesh->Id();
   }
+  oced.energy_density_error_estimate = energy_density_error_estimate;
 
-  // Zero entire energy and field meshes
-  OC_INDEX size=mesh->Size();
-  OC_INDEX index;
-  for(index=0;index<size;index++) energy[index]=0.;
-  for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+  // Since some cells might not have links, zero non-accum arrays.  Note
+  // the Oxs_MeshValue assignment operator runs parallel on threaded
+  // builds.
+  if(oced.energy) *(oced.energy) = 0.0;
+  if(oced.H)           *(oced.H) = Oxs_ThreeVector(0,0,0);
+  if(oced.mxH)       *(oced.mxH) = Oxs_ThreeVector(0,0,0);
 
   // Iterate through link list and accumulate energies and fields
   OC_REAL8m maxdot = 0;
   OC_REAL8m hcoef = 2.0/MU0;
-  vector<Oxs_RandomSiteExchangeLinkParams>::const_iterator it
-    = links.begin();
+  Oxs_Energy::SUMTYPE esum = 0.0;
+  vector<Oxs_RandomSiteExchangeLinkParams>::const_iterator it;
   for(it=links.begin();it!=links.end();++it) {
     OC_INDEX i = it->index1;
     OC_INDEX j = it->index2;
@@ -223,12 +219,48 @@ void Oxs_RandomSiteExchange::GetEnergy
     if(dot>maxdot) maxdot = dot;
     mdiff *= acoef;
     OC_REAL8m elink = mdiff*spin[i]; // Energy
-    energy[i] += elink;
-    energy[j] += elink;
+    esum += elink; // Note that this is half total addition, since elink
+                  /// is added to cells i and j.
     mdiff *= hcoef;
-    field[i] += -1*Ms_inverse[i]*mdiff;
-    field[j] +=    Ms_inverse[j]*mdiff;
+    ThreeVector Hi = -1*Ms_inverse[i]*mdiff;
+    ThreeVector Hj =    Ms_inverse[j]*mdiff;
+    ThreeVector Ti = spin[i]^Hi;
+    ThreeVector Tj = spin[j]^Hj;
+
+    // Note that cells may have multiple links, so we add link energy
+    // and fields into both accum and non-accum outputs.
+    if(oced.energy) {
+      (*oced.energy)[i] += elink;
+      (*oced.energy)[j] += elink;
+    }
+    if(oced.energy_accum) {
+      (*oced.energy_accum)[i] += elink;
+      (*oced.energy_accum)[j] += elink;
+    }
+    if(oced.H) {
+      (*oced.H)[i] += Hi;
+      (*oced.H)[j] += Hj;
+    }
+    if(oced.H_accum) {
+      (*oced.H_accum)[i] += Hi;
+      (*oced.H_accum)[j] += Hj;
+    }
+    if(oced.mxH) {
+      (*oced.mxH)[i] += Ti;
+      (*oced.mxH)[j] += Tj;
+    }
+    if(oced.mxH_accum) {
+      (*oced.mxH_accum)[i] += Ti;
+      (*oced.mxH_accum)[j] += Tj;
+    }
   }
+
+  oced.energy_sum = esum * (2*state.mesh->Volume(0));
+  /// All cells have same volume in an Oxs_RectangularMesh.  Factor "2"
+  /// comes because esum includes contribution from only one side of
+  /// each link.
+
+  oced.pE_pt = 0.0;
 
   // Set maxang data
   const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);

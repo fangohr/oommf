@@ -21,7 +21,7 @@ Oxs_SimState::Oxs_SimState()
     stage_number(0),stage_iteration_count(0),
     stage_start_time(0.),stage_elapsed_time(0.),
     last_timestep(0.),
-    mesh(NULL),Ms(NULL),Ms_inverse(NULL),
+    mesh(NULL),Ms(NULL),Ms_inverse(NULL),max_absMs(-1),
     stage_done(UNKNOWN), run_done(UNKNOWN)
 {}
 
@@ -53,6 +53,7 @@ void Oxs_SimState::Reset()
   mesh=NULL;
   Ms=NULL;
   Ms_inverse=NULL;
+  max_absMs=-1;
 
   stage_done=UNKNOWN;
   run_done=UNKNOWN;
@@ -78,8 +79,6 @@ OC_BOOL Oxs_SimState::AddDerivedData
   // non-const to const, but some compilers are broken.  It doesn't
   // hurt us here to be precise, so we specify const String for
   // portability.
-  //   The static_cast on the righthand side is wanted by some versions
-  // of g++.
   pair<map<DerivedDataKey,OC_REAL8m>::iterator,bool> p
     = derived_data.insert(newdata);
   return p.second;
@@ -113,6 +112,42 @@ void Oxs_SimState::ClearDerivedData()
   derived_data.clear();
 }
 
+void Oxs_SimState::AddAuxData
+(const char* name,
+ OC_REAL8m value) const
+{ // Note: The auxiliary_data map object is mutable.
+  const String csname = name;
+  auxiliary_data[csname] = value;
+}
+
+OC_BOOL Oxs_SimState::GetAuxData
+(const char* name,
+ OC_REAL8m& value) const
+{
+  map<AuxDataKey,OC_REAL8m>::const_iterator it
+    = auxiliary_data.find(String(name));
+  if(it==auxiliary_data.end()) {
+    return 0;
+  }
+  value = it->second;
+  return 1;
+}
+
+void Oxs_SimState::ListAuxData(vector<String>& names) const
+{
+  names.clear();
+  map<AuxDataKey,OC_REAL8m>::const_iterator it = derived_data.begin();
+  while(it!=auxiliary_data.end()) {
+    names.push_back(it->first);
+    ++it;
+  }
+}
+
+void Oxs_SimState::ClearAuxData()
+{
+  auxiliary_data.clear();
+}
+
 void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
 {
   new_state.previous_state_id     = previous_state_id;
@@ -125,8 +160,10 @@ void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
   new_state.mesh                  = mesh;
   new_state.Ms                    = Ms;
   new_state.Ms_inverse            = Ms_inverse;
+  new_state.max_absMs             = max_absMs;
   new_state.spin.AdjustSize(mesh);
   new_state.ClearDerivedData();
+  new_state.ClearAuxData();
 }
 
 void Oxs_SimState::SaveState(const char* filename,
@@ -190,9 +227,12 @@ void Oxs_SimState::SaveState(const char* filename,
   Oc_Snprintf(buf,sizeof(buf),"\nrun_done %d",
 	      run_done);
   desc += String(buf);
+
+  // Derived data
   map<DerivedDataKey,OC_REAL8m>::const_iterator it = derived_data.begin();
   while(it!=derived_data.end()) {
     string_array.clear();
+    string_array.push_back("DRV");
     string_array.push_back(it->first);
     Oc_Snprintf(buf,sizeof(buf),"%.17g",
                 static_cast<double>(it->second));
@@ -200,6 +240,20 @@ void Oxs_SimState::SaveState(const char* filename,
     desc += String("\n");
     desc += Nb_MergeList(string_array);
     ++it;
+  }
+
+  // Auxiliary data
+  map<AuxDataKey,OC_REAL8m>::const_iterator ait = auxiliary_data.begin();
+  while(ait!=auxiliary_data.end()) {
+    string_array.clear();
+    string_array.push_back("AUX");
+    string_array.push_back(ait->first);
+    Oc_Snprintf(buf,sizeof(buf),"%.17g",
+                static_cast<double>(ait->second));
+    string_array.push_back(String(buf));
+    desc += String("\n");
+    desc += Nb_MergeList(string_array);
+    ++ait;
   }
 
   vector<String> valuelabels;
@@ -225,12 +279,14 @@ void Oxs_SimState::RestoreState
  const Oxs_Mesh* import_mesh,
  const Oxs_MeshValue<OC_REAL8m>* import_Ms,
  const Oxs_MeshValue<OC_REAL8m>* import_Ms_inverse,
+ OC_REAL8m import_max_absMs,
  const Oxs_Director* director,
  String& export_MIF_info)
 { // Fill state from channel
   mesh = import_mesh;
   Ms = import_Ms;
   Ms_inverse = import_Ms_inverse;
+  max_absMs = import_max_absMs;
 
   if(mesh==NULL || Ms==NULL || Ms_inverse==NULL) {
     String msg=String("NULL pointer input as parameter to"
@@ -294,13 +350,6 @@ void Oxs_SimState::RestoreState
   // conflicts with the DerivedData names.
   Nb_SplitList desc;
   desc.Split(file_mesh->GetDescription());
-  if(desc.Count()%2 != 0) {
-      String msg=String("Error detected during Oxs_SimState::RestoreState; ");
-      msg += String("Description array has odd number of elements"
-		    " in input file ");
-      msg += String(filename);
-      OXS_THROW(Oxs_BadParameter,msg);
-  }
   if(desc.Count()<22) {
       String msg=String("Error detected during Oxs_SimState::RestoreState; ");
       msg += String("Description array has too few elements"
@@ -335,9 +384,35 @@ void Oxs_SimState::RestoreState
   if(strcmp("run_done",desc[20])!=0) ++errcount;
   else  run_done
 	  = static_cast<Oxs_SimState::SimStateStatus>(atoi(desc[21]));
+
+  if(errcount>0) {
+      String msg=String("Error detected during Oxs_SimState::RestoreState;");
+      msg += String(" Bad header in restart file ");
+      msg += String(filename);
+      OXS_THROW(Oxs_BadData,msg);
+  }
+
   ClearDerivedData();
+  ClearAuxData();
   for(int pair_index=22;pair_index<desc.Count();pair_index+=2) {
     OC_BOOL error;
+    enum DataType { DT_DERIVED, DT_AUXILIARY } dt;
+    if(strcmp("DRV",desc[pair_index])) {
+      dt = DT_DERIVED;
+      ++pair_index; // Skip over type descriptor
+    } else if(strcmp("AUX",desc[pair_index])) {
+      dt = DT_AUXILIARY;
+      ++pair_index; // Skip over type descriptor
+    } else { // Old style (no type descriptor)
+      dt = DT_DERIVED;
+    }
+    if(pair_index+1 >= desc.Count()) {
+      String msg=String("Error detected during Oxs_SimState::RestoreState; ");
+      msg += String("Description array has improper structure"
+		    " in input file ");
+      msg += String(filename);
+      OXS_THROW(Oxs_BadParameter,msg);
+    }
     double val = Nb_Atof(desc[pair_index+1],error);
     if(error) {
       String msg=String("Error detected during Oxs_SimState::RestoreState; ");
@@ -347,23 +422,20 @@ void Oxs_SimState::RestoreState
       delete file_mesh;
       OXS_THROW(Oxs_BadParameter,msg);
     }
-    if(!AddDerivedData(desc[pair_index],val)) {
-      String msg=String("Error detected during Oxs_SimState::RestoreState; ");
-      msg += String("AddDerivedData() error, repeated name?"
-		    " In input file ");
-      msg += String(filename);
-      delete file_mesh;
-      OXS_THROW(Oxs_BadParameter,msg);
-    }    
+    if(dt == DT_AUXILIARY) {
+      AddAuxData(desc[pair_index],val);
+    } else {
+      if(!AddDerivedData(desc[pair_index],val)) {
+        String msg=String("Error detected during Oxs_SimState::RestoreState; ");
+        msg += String("AddDerivedData() error, repeated name?"
+                      " In input file ");
+        msg += String(filename);
+        delete file_mesh;
+        OXS_THROW(Oxs_BadParameter,msg);
+      }
+    }
   }
   delete file_mesh;
-
-  if(errcount>0) {
-      String msg=String("Error detected during Oxs_SimState::RestoreState;");
-      msg += String(" Bad header in restart file ");
-      msg += String(filename);
-      OXS_THROW(Oxs_BadData,msg);
-  }
 
   // Check that current problem matches restored problem.
   if(director->CheckRestartCrc() && director->GetMifCrc()!=mif_crc) {

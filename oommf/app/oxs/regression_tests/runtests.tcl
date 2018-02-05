@@ -178,7 +178,8 @@ if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
 # These are ODT and OVF files.
 #   Parameter spec files are stored in each of the result directories,
 # with the ".subtests" extensions.  There is one such file for
-# each test MIF file.  Each line in a subtest file lists the parameters
+# each test MIF file.  Each line in a subtest file is either a comment
+# line (first non-space character is '#') or else lists the parameters
 # for a separate boxsi run.  An empty .subtest file indicates a
 # single boxsi run with default parameter settings.
 # EXTENSION: If a line in a .subtest file has an odd number of
@@ -1586,10 +1587,15 @@ proc ReadSubtestFile { subfile } {
    set lines [string trim $lines]
    regsub -all "\[ \t]*\n\[ \t]*" $lines "\n" lines
    regsub -all "\n\n+" $lines "\n" lines
-   # Break lines into records
-   set lines [split $lines "\n"]
-   if {[llength $lines]==0} { set lines [list {}] }
-   return $lines
+   # Break lines into records, ignoring comment lines
+   set linesb {}
+   foreach elt [split $lines "\n"] {
+      if {![string match "\#*" $elt]} {
+         lappend linesb $elt
+      }
+   }
+   if {[llength $linesb]==0} { set linesb [list {}] }
+   return $linesb
 }
 
 proc TestCount { testlist } {
@@ -1910,7 +1916,7 @@ foreach test $dotests {
       foreach results_file [glob -nocomplain \
                                [file join $mifdir ${results_basename}*.o??]] {
          set time0 [clock seconds]
-         for {set idelete 0} {$idelete<20} {incr idelete} {
+         for {set idelete 0} {$idelete<200} {incr idelete} {
             if {![catch {file delete $results_file}]} {
                break
             }

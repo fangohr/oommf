@@ -58,10 +58,13 @@ proc GetClangBannerVersion { clang } {
 # the preceding GuessClangVersion proc.  Note that the flags accepted
 # by clang may vary by version.
 #
+# Use a command like
+#   echo 'int;' | clang -xc -Ofast - -o /dev/null -\#\#\#
+# to see what flags combination options like -Ofast enable.
+#
 proc GetClangGeneralOptFlags { clang_version } {
    # At present state of development, this proc ignores the
-   # clang_version import.  Option set is taken from the Clang
-   # 3.1 man page.
+   # clang_version import.
    # NB: In at least some versions of clang (such as the one for the
    # original Mavericks release) the apparently undocumented option
    # -fomit-frame-pointer causes problems with exception handling
@@ -69,6 +72,9 @@ proc GetClangGeneralOptFlags { clang_version } {
    # map STL container.  So just leave it out, for now.
 
    lappend opts -O3
+   lappend opts -std=c++11
+   #lappend opts -ffast-math  ;# Breaks Nb_Xpfloat
+   # Likewise, -Ofast enables -ffast-math
 
    return $opts
 }
@@ -80,6 +86,6 @@ proc GetClangGeneralOptFlags { clang_version } {
 # match output from the GuessCpu proc in x86-support.tcl.  Return
 # value is a list of clang flags.
 proc GetClangCpuOptFlags { clang_version cpu_arch } {
-   # None at this time, but track "-march=native".
-    return {}
+   lappend opts -march=native
+   return $opts
 }

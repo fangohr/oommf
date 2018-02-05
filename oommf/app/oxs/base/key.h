@@ -89,7 +89,15 @@ public:
 
   Oxs_Key() : id(0), lock(INVALID), ptr(0) {}
   Oxs_Key(T* tptr) : id(0), ptr(0), lock(INVALID) { Set(tptr); }
-  ~Oxs_Key() { Release(); }
+  ~Oxs_Key() {
+    // Note: Destructors are not suppose to throw
+    try {
+      Release();
+    } catch (Oxs_Exception& oxserr) {
+      fputs(oxserr.MessageText().c_str(),stderr);
+      std::terminate();
+    }
+  }
 
   void Swap(Oxs_Key<T>& other);
 
@@ -164,8 +172,15 @@ public:
   Oxs_ConstKey() : id(0), ptr(0), lock(INVALID) {}
   Oxs_ConstKey(T* tptr)
     : id(0), ptr(0), lock(INVALID) { Set(tptr); }
-  ~Oxs_ConstKey() { Release(); }
-
+  ~Oxs_ConstKey() {
+    // Note: Destructors are not suppose to throw
+    try {
+      Release();
+    } catch (Oxs_Exception& oxserr) {
+      fputs(oxserr.MessageText().c_str(),stderr);
+      std::terminate();
+    }
+  }
   void Swap(Oxs_ConstKey<T>& other);
 
   // Copy constructor.  Duplicates id and ptr info, and
@@ -231,12 +246,9 @@ void Oxs_Key<T>::Release()
       "Oxs_Key<T>::Release(): NULL pointer");
     if(lock!=DEP && id!=ptr->Id())
       OXS_THROW(Oxs_BadLock,"Oxs_Key<T>::Release(): Bad lock id");
-    OC_BOOL released=0;
-    if(lock==DEP)        released = ptr->ReleaseDepLock();
-    else if(lock==READ)  released = ptr->ReleaseReadLock();
-    else if(lock==WRITE) released = ptr->ReleaseWriteLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-      "Oxs_Key<T>::Release(): Lock release failure");
+    if(lock==DEP)        ptr->ReleaseDepLock();
+    else if(lock==READ)  ptr->ReleaseReadLock();
+    else if(lock==WRITE) ptr->ReleaseWriteLock();
     lock=INVALID;
   }
   id=0;
@@ -248,8 +260,7 @@ void Oxs_Key<T>::Set(T* tptr)
 {
   Release();
   if(tptr!=NULL) {
-    if(!tptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    tptr->SetDepLock();
     ptr=tptr;
     id=ptr->Id();
     lock=DEP;
@@ -279,8 +290,7 @@ Oxs_Key<T>::Oxs_Key(const Oxs_Key<T>& other)
   } else {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
 }
@@ -295,8 +305,7 @@ Oxs_Key<T>::Oxs_Key(const Oxs_ConstKey<T>& other)
   } else {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
 }
@@ -309,8 +318,7 @@ Oxs_Key<T>& Oxs_Key<T>::operator=(const Oxs_Key<T>& other)
   if(other.lock!=INVALID) {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
   return *this;
@@ -329,13 +337,9 @@ const T& Oxs_Key<T>::GetDepReference()
   if(ptr==NULL) OXS_THROW(Oxs_BadPointer,
      "Oxs_Key<T>::GetDepReference(): NULL pointer");
   if(lock!=DEP) {
-    OC_BOOL released=1;
-    if(lock==READ)       released = ptr->ReleaseReadLock();
-    else if(lock==WRITE) released = ptr->ReleaseWriteLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-       "Oxs_Key<T>::GetDepReference(): Lock release failure");
-    if(!ptr->SetDepLock()) OXS_THROW(Oxs_BadLock,
-       "Oxs_Key<T>::GetDepReference(): Unable to acquire dep lock");
+    if(lock==READ)       ptr->ReleaseReadLock();
+    else if(lock==WRITE) ptr->ReleaseWriteLock();
+    ptr->SetDepLock();
     lock=DEP;
   }
   id=ptr->Id();
@@ -348,11 +352,8 @@ const T& Oxs_Key<T>::GetReadReference()
   if(ptr==NULL) OXS_THROW(Oxs_BadPointer,
      "Oxs_Key<T>::GetReadReference(): NULL pointer");
   if(lock!=READ) {
-    OC_BOOL released=1;
-    if(lock==DEP)        released = ptr->ReleaseDepLock();
-    else if(lock==WRITE) released = ptr->ReleaseWriteLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-       "Oxs_Key<T>::GetReadReference(): Lock release failure");
+    if(lock==DEP)        ptr->ReleaseDepLock();
+    else if(lock==WRITE) ptr->ReleaseWriteLock();
     if(!ptr->SetReadLock()) {
       char msg[512];
       Oc_Snprintf(msg,sizeof(msg),
@@ -382,15 +383,17 @@ T& Oxs_Key<T>::GetWriteReference()
   if(ptr==NULL) OXS_THROW(Oxs_BadPointer,
      "Oxs_Key<T>::GetWriteReference(): NULL pointer");
   if(lock!=WRITE) {
-    OC_BOOL released=1;
-    if(lock==DEP)       released = ptr->ReleaseDepLock();
-    else if(lock==READ) released = ptr->ReleaseReadLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-      "Oxs_Key<T>::GetWriteReference(): Lock release failure");
-    if(!ptr->SetWriteLock()) OXS_THROW(Oxs_BadLock,
-      "Oxs_Key<T>::GetWriteReference(): Unable to acquire write lock");
+    if(lock==DEP)       ptr->ReleaseDepLock();
+    else if(lock==READ) ptr->ReleaseReadLock();
+    if(!ptr->SetWriteLock()) {
+      fprintf(stderr,"ERROR: ReadLockCount=%u, WriteLockCount=%u\n",
+              static_cast<unsigned int>(ptr->ReadLockCount()),
+              static_cast<unsigned int>(ptr->WriteLockCount()));
+      OXS_THROW(Oxs_BadLock,
+           "Oxs_Key<T>::GetWriteReference(): Unable to acquire write lock");
+    }
     lock=WRITE;
-    id=ptr->Id();
+    id=ptr->Id(); // Id can't change while a lock is in place
   } else {
     if(id!=ptr->Id()) OXS_THROW(Oxs_BadLock,
       "Oxs_Key<T>::GetWriteReference(): Bad lock id");
@@ -412,11 +415,8 @@ void Oxs_ConstKey<T>::Release()
       "Oxs_ConstKey<T>::Release(): NULL pointer");
     if(lock!=DEP && id!=ptr->Id())
       OXS_THROW(Oxs_BadLock,"Oxs_ConstKey<T>::Release(): Bad lock id");
-    OC_BOOL released=0;
-    if(lock==DEP)        released = ptr->ReleaseDepLock();
-    else if(lock==READ)  released = ptr->ReleaseReadLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-      "Oxs_ConstKey<T>::Release(): Lock release failure");
+    if(lock==DEP)        ptr->ReleaseDepLock();
+    else if(lock==READ)  ptr->ReleaseReadLock();
     lock=INVALID;
   }
   id=0;
@@ -428,8 +428,7 @@ void Oxs_ConstKey<T>::Set(T* tptr)
 {
   Release();
   if(tptr!=NULL) {
-    if(!tptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    tptr->SetDepLock();
     ptr=tptr;
     id=ptr->Id();
     lock=DEP;
@@ -460,8 +459,7 @@ Oxs_ConstKey<T>::Oxs_ConstKey(const Oxs_ConstKey<T>& other)
   } else {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
 }
@@ -476,8 +474,7 @@ Oxs_ConstKey<T>::Oxs_ConstKey(const Oxs_Key<T>& other)
   } else {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
 }
@@ -490,8 +487,7 @@ Oxs_ConstKey<T>::operator=(const Oxs_ConstKey<T>& other)
   if(other.lock!=INVALID) {
     id=other.id;
     ptr=other.ptr;
-    if(!ptr->SetDepLock())
-      OXS_THROW(Oxs_BadLock,"Unable to acquire dep lock");
+    ptr->SetDepLock();
     lock=DEP;
   }
   return *this;
@@ -510,12 +506,8 @@ const T& Oxs_ConstKey<T>::GetDepReference()
   if(ptr==NULL) OXS_THROW(Oxs_BadPointer,
      "Oxs_Key<T>::GetDepReference(): NULL pointer");
   if(lock!=DEP) {
-    OC_BOOL released=1;
-    if(lock==READ) released = ptr->ReleaseReadLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-       "Oxs_ConstKey<T>::GetDepReference(): Lock release failure");
-    if(!ptr->SetDepLock()) OXS_THROW(Oxs_BadLock,
-       "Oxs_ConstKey<T>::GetDepReference(): Unable to acquire dep lock");
+    if(lock==READ) ptr->ReleaseReadLock();
+    ptr->SetDepLock();
     lock=DEP;
   }
   id=ptr->Id();
@@ -528,10 +520,7 @@ const T& Oxs_ConstKey<T>::GetReadReference()
   if(ptr==NULL) OXS_THROW(Oxs_BadPointer,
      "Oxs_ConstKey<T>::GetReadReference(): NULL pointer");
   if(lock!=READ) {
-    OC_BOOL released=1;
-    if(lock==DEP) released = ptr->ReleaseDepLock();
-    if(!released) OXS_THROW(Oxs_BadLock,
-       "Oxs_ConstKey<T>::GetReadReference(): Lock release failure");
+    if(lock==DEP) ptr->ReleaseDepLock();
     if(!ptr->SetReadLock()) {
       char msg[512];
       Oc_Snprintf(msg,sizeof(msg),

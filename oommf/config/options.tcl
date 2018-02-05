@@ -201,6 +201,12 @@ Oc_Option Add * MIFinterp safety custom
 # the generally more reliable oommf/config/platform setting is retained.
 # Oc_Option Add * Threads oommf_thread_count 2
 #
+# If set, oommf_thread_limit sets a hard limit on the number of threads
+# per process.  If unset, then there is no limit.  In parallel with
+# oommf_thread_count, there are also overrides via oommf/config/platform
+# settings and the OOMMF_THREADLIMIT environment variable.
+# Oc_Option Add * Threads oommf_thread_limit 8
+#
 ########################################################################
 # Default numanodes setting, for numa-enabled builds.
 # Oc_Option Add * Numa numanodes auto

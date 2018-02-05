@@ -13,7 +13,6 @@
 #include "output.h"
 
 /* End includes */
-
 #if REPORT_TIME
 # ifndef REPORT_TIME_CGDEVEL
 #  define REPORT_TIME_CGDEVEL 1
@@ -26,6 +25,18 @@
 
 class Oxs_CGEvolve:public Oxs_MinEvolver {
 private:
+
+  // Originally, the user-specified "energy_precision" setting was
+  // used directly to obtain an estimate of error in the computed
+  // energy.  Since OOMMF API 20170801 this has been superseded by
+  // error estimates coming from individual energy terms themselves.
+  // The user controlled error knob has been retained, however,
+  // through the "energy_error_adj" member variable.  This value
+  // scales the error estimate coming from the energy computation,
+  // where energy_error_adj is set to energy_precision/1e-14, where
+  // 1e-14 is the default value for energy_precision.
+  OC_REAL8m energy_error_adj;
+
 #if REPORT_TIME
   mutable Nb_StopWatch steponlytime;
 #if REPORT_TIME_CGDEVEL
@@ -116,33 +127,44 @@ private:
     Basept_Data() : method(FLETCHER_REEVES) { Init(); }
   } basept;
 
-  struct Best_Point {
+  struct Bracket {
     Oxs_ConstKey<Oxs_SimState> key;
-    OC_REAL8m offset; // Offset from basept
-    OC_REAL8m Ep;
-    OC_REAL8m grad_norm;
     Oxs_MeshValue<OC_REAL8m> energy;
     Oxs_MeshValue<ThreeVector> mxHxm;
-    OC_BOOL is_line_minimum;
-    void Init() {
-      key.Release();
-      offset=0.0;
-      Ep=0.0;
-      grad_norm=0.0;
-      energy.Release();
-      mxHxm.Release();
-      is_line_minimum=0;
-    }
-    Best_Point() { Init(); }
-  } bestpt;
-
-  struct Bracket {
     OC_REAL8m offset;  // Location is basept + offset*basedir
-    OC_REAL8m E;       // Energy relative to best_state
+    OC_REAL8m E;       // (Total) energy relative to bestpt state
+    OC_REAL8m E_error_estimate; // Estimated absolute error in E
     OC_REAL8m Ep;      // Derivative of E in direction basedir.
     OC_REAL8m grad_norm; // Weighted L2-norm of mxHxm.  By Cauchy-Schwartz,
     /// |Ep| < mu0*basept.direction_norm * grad_norm
-    void Init() { offset=0.0; E=0.0; Ep=0.0; grad_norm=0.0; }
+    void Init() {
+      key.Release();
+      energy.Release();
+      mxHxm.Release();
+      offset = -1.0;
+      E = E_error_estimate = Ep = grad_norm = 0.0;
+    }
+    void Clear () {
+      key.Release(); // Puts key in INVALID state and set key ptr to 0.
+      // Reserve memory in energy or mxHxm arrays
+      offset = -1.0;
+      E = E_error_estimate = Ep = grad_norm = 0.0;
+    }
+    void Swap(Bracket& other) {
+      if(this == &other) return; // NOP
+      key.Swap(other.key);
+      energy.Swap(other.energy);
+      mxHxm.Swap(other.mxHxm);
+      OC_REAL8m tmpoff = offset; offset = other.offset; other.offset = tmpoff;
+      OC_REAL8m tmpE   = E;           E = other.E;           other.E = tmpE;
+      OC_REAL8m tmpEerr      = E_error_estimate;
+      E_error_estimate       = other.E_error_estimate;
+      other.E_error_estimate = tmpEerr;
+      OC_REAL8m tmpEp  = Ep;         Ep = other.Ep;         other.Ep = tmpEp;
+      OC_REAL8m tmpgrad = grad_norm;
+      grad_norm         = other.grad_norm;
+      other.grad_norm   = tmpgrad;
+    }
     Bracket() { Init(); }
   };
 
@@ -153,9 +175,10 @@ private:
   struct Bracket_Data {
     OC_BOOL min_bracketed;
     OC_BOOL min_found;
+    OC_BOOL bad_Edata;  // true if E data appears noisy
+    OC_UINT4m weak_bracket_count; // for current line direction
     OC_REAL8m minstep;  // Fixed from user data: "minimum_bracket_step"
     OC_REAL8m maxstep;  // Fixed from user data: "maximum_bracket_step"
-    OC_REAL8m energy_precision; // From user data: "energy_precision"
     OC_REAL8m scaled_minstep;
     OC_REAL8m scaled_maxstep;
     OC_REAL8m start_step;
@@ -168,7 +191,8 @@ private:
     Bracket left;
     Bracket right;
     void Init() {
-      min_bracketed=min_found=0;
+      min_bracketed=min_found=bad_Edata=0;
+      weak_bracket_count=0;
       scaled_minstep=scaled_maxstep=start_step=stop_span=0.0;
       last_min_reduction_ratio=0.0;
       next_to_last_min_reduction_ratio=0.0;
@@ -176,10 +200,26 @@ private:
       right.Init();
     }
     Bracket_Data()
-      : minstep(-1.), maxstep(-1.),energy_precision(-1),
+      : minstep(-1.), maxstep(-1.),
         angle_precision(-1),
         relative_minspan(-1) { Init(); }
   } bracket;
+
+  struct Best_Point {
+    OC_UINT4m state_id;
+    const Bracket* bracket;
+    OC_BOOL is_line_minimum;
+    void Init() {
+      state_id = 0;
+      bracket = 0;
+      is_line_minimum=0;
+    }
+    Best_Point() { Init(); }
+    void SetBracket(const Bracket& endpt) {
+      bracket = &endpt;
+      state_id = endpt.key.ObjectId();
+    }
+  } bestpt;
 
   // Preconditioner support.  This is only used inside the
   // SetBasePoint routine.  See NOTES VI, 18-Jul-2011, pp. 6-9.
@@ -201,11 +241,6 @@ private:
   // Scratch space
   Oxs_MeshValue<OC_REAL8m> scratch_energy;
   Oxs_MeshValue<ThreeVector> scratch_field;
-
-  // Temp space
-  OC_UINT4m temp_id;
-  Oxs_MeshValue<OC_REAL8m> temp_energy;
-  Oxs_MeshValue<ThreeVector> temp_mxHxm;
 
   // Field outputs
   void UpdateDerivedFieldOutputs(const Oxs_SimState& state);
@@ -232,11 +267,9 @@ private:
    Oxs_MeshValue<ThreeVector>* Hptr);  // Export
 
   void GetRelativeEnergyAndDerivative
-  (const Oxs_SimState* state, // Import
-   OC_REAL8m time_offset,     // Import
-   OC_REAL8m &relenergy,      // Export
-   OC_REAL8m &derivative,     // Export
-   OC_REAL8m &grad_norm);     // Export
+  (Oxs_ConstKey<Oxs_SimState> statekey, // Import
+   OC_REAL8m time_offset,               // Import
+   Bracket& endpt);                     // Export
 
   static OC_REAL8m EstimateQuadraticMinimum
   (OC_REAL8m wgt,
@@ -246,19 +279,42 @@ private:
    OC_REAL8m fp0,   // f'(0)
    OC_REAL8m fph);  // f'(h)
 
-  void FillBracket(OC_REAL8m offset,
+  static OC_REAL8m FindCubicMinimum
+  (OC_REAL8m Ediff, // f(1) - f(0)
+   OC_REAL8m lEp,   // f'(0)
+   OC_REAL8m rEp);  // f'(1)
+
+  OC_REAL8m EstimateEnergySlack() const;
+  // Uses basept and bracket data to make an estimate on rounding error
+  // in energy computation.  If |E1-E2|<EstimateEnergySlack() then for
+  // practical purposes E1 and E2 should be considered equal.
+
+  OC_BOOL BadPrecisionTest
+  (const Oxs_CGEvolve::Bracket& left,
+   const Oxs_CGEvolve::Bracket& right,
+   OC_REAL8m energy_slack);
+  // Returns 0 if data looks OK, 1 otherwise.
+
+
+  void InitializeWorkState(const Oxs_MinDriver* driver,
+                           const Oxs_SimState* current_state,
+                           Oxs_Key<Oxs_SimState>& work_state_key);
+
+  void FillBracket(const Oxs_MinDriver* driver,
+                   OC_REAL8m offset,
 		   const Oxs_SimState* oldstate,
 		   Oxs_Key<Oxs_SimState>& statekey,
 		   Bracket& endpt);
 
-  void UpdateBrackets(Oxs_ConstKey<Oxs_SimState> tstate_key,
-		      const Bracket& tbracket,
+  void UpdateBrackets(Bracket& tbracket,
 		      OC_BOOL force_bestpt);
 
-  void FindBracketStep(const Oxs_SimState* oldstate,
+  void FindBracketStep(const Oxs_MinDriver* driver,
+                       const Oxs_SimState* oldstate,
 		       Oxs_Key<Oxs_SimState>& statekey);
 
-  void FindLineMinimumStep(const Oxs_SimState* oldstate,
+  void FindLineMinimumStep(const Oxs_MinDriver* driver,
+                           const Oxs_SimState* oldstate,
 			   Oxs_Key<Oxs_SimState>& statekey);
 
   void AdjustDirection(const Oxs_SimState* cstate,OC_REAL8m gamma,
@@ -271,10 +327,12 @@ private:
 
   void SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key);
 
-  void RuffleBasePoint(const Oxs_SimState* oldstate,
+  void RuffleBasePoint(const Oxs_MinDriver* driver,
+                       const Oxs_SimState* oldstate,
                        Oxs_Key<Oxs_SimState>& statekey);
 
-  void NudgeBestpt(const Oxs_SimState* oldstate,
+  void NudgeBestpt(const Oxs_MinDriver* driver,
+                   const Oxs_SimState* oldstate,
 		   Oxs_Key<Oxs_SimState>& statekey);
 
 public:
@@ -292,10 +350,10 @@ public:
                Oxs_ConstKey<Oxs_SimState> prevstate);
 
   virtual OC_BOOL
-  Step(const Oxs_MinDriver* driver,
-       Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
-       Oxs_Key<Oxs_SimState>& next_state);
+  TryStep(const Oxs_MinDriver* driver,
+          Oxs_ConstKey<Oxs_SimState> current_state,
+          const Oxs_DriverStepInfo& step_info,
+          Oxs_ConstKey<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.
 };

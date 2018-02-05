@@ -4,13 +4,13 @@
 #
 # Command line options:
 #
-package require Oc 1.1
-package require Mms 1.1.0.1
+package require Oc 2
+package require Mms 2
 
 Oc_ForceStderrDefaultMessage	;# use stderr, not dialog for messages
 
 Oc_Main SetAppName batchsolve
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 Oc_Main SetDataRole producer
 
 Oc_CommandLine ActivateOptionSet Net
@@ -152,7 +152,7 @@ proc InteractiveServerInit {} {
     if { !$interface } { return }
 
     # Support libraries
-    package require Net 1.2.0.3
+    package require Net 2
 
     array set inputs {}
     # The commands which can be invoked remotely

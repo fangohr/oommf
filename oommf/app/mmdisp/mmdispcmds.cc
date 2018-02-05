@@ -5913,10 +5913,10 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
  * Need at least Oc 1.1.1.2 to get Oc_Snprintf()
  */
     if (Tcl_PkgRequire(interp, OC_CONST84_CHAR("Oc"),
-                       OC_CONST84_CHAR("1.1.1.2"), 0) == NULL) {
+                       OC_CONST84_CHAR("2"), 0) == NULL) {
         Tcl_AppendResult(interp,
                 Oc_AutoBuf("\n\t(Mmdispcmds " MMDISPCMDS_VERSION
-                           " needs Oc 1.1.1.2)").GetStr(), NULL);
+                           " needs Oc 2)").GetStr(), NULL);
         RETURN_TCL_ERROR;
     }
 
@@ -5924,10 +5924,10 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
  * Need at least Nb 1.2.0.4 to get Nb_GetColor
  */
     if (Tcl_PkgRequire(interp, OC_CONST84_CHAR("Nb"),
-                       OC_CONST84_CHAR("1.2.0.4"), 0) == NULL) {
+                       OC_CONST84_CHAR("2"), 0) == NULL) {
         Tcl_AppendResult(interp,
                 Oc_AutoBuf("\n\t(Mmdispcmds " MMDISPCMDS_VERSION
-                           " needs Nb 1.2.0.4)").GetStr(), NULL);
+                           " needs Nb 2)").GetStr(), NULL);
         RETURN_TCL_ERROR;
     }
 
@@ -5935,10 +5935,10 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
  * Need at least Vf 1.2.0.4 to get WriteMesh routines that take Tcl_Channel
  */
     if (Tcl_PkgRequire(interp, OC_CONST84_CHAR("Vf"),
-                       OC_CONST84_CHAR("1.2.0.4"), 0) == NULL) {
+                       OC_CONST84_CHAR("2"), 0) == NULL) {
         Tcl_AppendResult(interp,
                 Oc_AutoBuf("\n\t(Mmdispcmds " MMDISPCMDS_VERSION
-                           " needs Vf 1.2.0.4)").GetStr(), NULL);
+                           " needs Vf 2)").GetStr(), NULL);
         RETURN_TCL_ERROR;
     }
 

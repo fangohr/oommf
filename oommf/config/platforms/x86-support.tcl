@@ -238,6 +238,97 @@ proc GuessCpuArch_NameStr { namestr } {
    return [list $vendor $cputype $sselevel]
 }
 
+########################################################################
+# Routines to determine processor capabilites from the features flags:
+proc GetFlags {} {
+   set flags {}
+   global tcl_platform
+   if {[regexp -nocase -- linux $tcl_platform(os)]} {
+      # Linux; Read and organize cpu info from /proc/cpuinfo
+      set chan [open "/proc/cpuinfo" r]
+      set data [read $chan]
+      close $chan
+      regsub "\n\n.*" $data {} cpu0
+      regsub -all "\[ \t]+" $cpu0 { } cpu0
+      regsub -all " *: *" $cpu0 {:} cpu0
+      regsub -all " *\n *" $cpu0 "\n" cpu0
+      array set cpuarr [split $cpu0 ":\n"]
+      set flags $cpuarr(flags)
+   } elseif {[regexp -nocase -- darwin $tcl_platform(os)]} {
+      # Mac OS X
+      if {![catch {exec sysctl machdep.cpu.features} feats]} {
+         # sysctl returns strings of the form
+         #       machdep.cpu.features: FPU VME DE PSE
+         set flags [regsub {^[^:]+: *} $feats {}]
+      }
+   }
+   return [string tolower $flags]
+}
+
+proc Find_ISE_Level { {flags {}} } {
+   # Returns Instruction Set Extensions, one of
+   #    {}  (= none)
+   #   sse
+   #   sse2
+   #   pni    (aka "Prescott New Instructions" or SSE3)
+   #   ssse3
+   #   sse4_1
+   #   sse4_2
+   #   sse4a
+   #   avx
+   #   avx2
+   # The last matching value in the above list is returned.
+   if {[string match {} $flags]} {
+      set flags [GetFlags]
+   }
+   foreach elt [list avx2 avx sse4a sse4_2 sse4_1 ssse3 pni sse2 sse] {
+      if {[lsearch -exact $flags $elt]>=0} {
+         return $elt
+      }
+   }
+   return {}
+}
+
+proc Find_SSE_Level { {flags {}} } {
+   if {[string match {} $flags]} {
+      set flags [GetFlags]
+   }
+
+   # Determine SSE level from settings in $flags.  For now,
+   # don't try to distinguish between the various sub-levels,
+   # e.g., map ssse3 -> sse3; sse4_1, sse4_2, sse4a -> sse4
+   if {[lsearch $flags sse4*]>=0 || [lsearch $flags nni]} {
+      set sse_level 4
+   } elseif {[lsearch $flags  sse3]>=0 ||
+             [lsearch $flags   pni]>=0 ||
+             [lsearch $flags ssse3]>=0 ||
+             [lsearch $flags   mni]>=0 ||
+             [lsearch $flags   tni]>=0} {
+      set sse_level 3
+   } elseif {[lsearch $flags sse2]>=0} {
+      set sse_level 2
+   } elseif {[lsearch $flags sse]>=0} {
+      set sse_level 1
+   } else {
+      set sse_level 0
+   }
+   return $sse_level
+}
+
+proc Find_FMA_Type { {flags {}} } {
+   if {[string match {} $flags]} {
+      set flags [GetFlags]
+   }
+   if {[lsearch $flags fma]>=0} {
+      set fma_type 3
+   } elseif {[lsearch $flags fma4]>=0} {
+      set fma_type 4
+   } else {
+      set fma_type 0
+   }
+}
+
+########################################################################
 
 # Routine to guess the Intel C++ version.  The import, icpc, is used
 # via "exec $icpc --version" (or, rather, the "open" analogue) to
@@ -272,7 +363,8 @@ proc GetIcpcBannerVersion { icpc } {
 # future.
 proc GetIcpcGeneralOptFlags { icpc_version } {
    set opts [list -O3 -ipo -no-prec-div -ansi_alias \
-                -fp-model fast=2 -fp-speculation fast]
+                -fp-model fast=2 -fp-speculation fast \
+                -std=c++11]
    return $opts
 }
 proc GetIcpcCpuOptFlags { icpc_version cpu_arch } {

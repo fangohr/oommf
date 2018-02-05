@@ -46,7 +46,8 @@ Oxs_SimpleDemag::Oxs_SimpleDemag(
   const char* argstr)   // MIF input block parameters
   : Oxs_Energy(name,newdtr,argstr),
     xdim(0),ydim(0),zdim(0),totalsize(0),
-    pxdim(0),pydim(0),pzdim(0),ptotalsize(0),mesh_id(0),
+    pxdim(0),pydim(0),pzdim(0),ptotalsize(0),
+    mesh_id(0),energy_density_error_estimate(-1),
     A00(NULL),A01(NULL),A02(NULL),A11(NULL),A12(NULL),A22(NULL),
     Mx(NULL),My(NULL),Mz(NULL),Hcomp(NULL)
 {
@@ -56,6 +57,7 @@ Oxs_SimpleDemag::Oxs_SimpleDemag(
 OC_BOOL Oxs_SimpleDemag::Init()
 {
   mesh_id = 0;
+  energy_density_error_estimate = -1;
   ReleaseMemory();
   return Oxs_Energy::Init();
 }
@@ -291,26 +293,36 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   fft.Forward(pxdim,pydim,pzdim,A22);
 }
 
-void Oxs_SimpleDemag::GetEnergy
+void Oxs_SimpleDemag::ComputeEnergy
 (const Oxs_SimState& state,
- Oxs_EnergyData& oed
+ Oxs_ComputeEnergyData& oced
  ) const
 {
+  // This routine was originally coded to the older
+  // Oxs_Energy::GetEnergy interface.  The conversion to the
+  // ::ComputeEnergy interface is serviceable, but could be made more
+  // efficient; in particular, Hdemag is typically not individually
+  // requested, so rather than fill the H output array, as each
+  // inverse x-axis FFT is computed that x-strip could be used to fill
+  // mxH and energy accum arrays.
+
   // (Re)-initialize mesh coefficient array if mesh has changed.
   if(mesh_id != state.mesh->Id()) {
     mesh_id = 0; // Safety
     FillCoefficientArrays(state.mesh);
     mesh_id = state.mesh->Id();
+    energy_density_error_estimate
+      = 0.5*OC_REAL8m_EPSILON*MU0*state.max_absMs*state.max_absMs
+      *log(double(ptotalsize))/log(2.);
   }
+  oced.energy_density_error_estimate = energy_density_error_estimate;
 
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
 
-  // Use supplied buffer space, and reflect that use in oed.
-  oed.energy = oed.energy_buffer;
-  oed.field = oed.field_buffer;
-  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
-  Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+  Oxs_MeshValue<ThreeVector>& field
+    = *(oced.H != 0 ? oced.H : oced.scratch_H);
+  field.AdjustSize(state.mesh);
 
   // Calculate FFT of Mx, My and Mz
   OC_INDEX xydim=xdim*ydim;
@@ -320,14 +332,18 @@ void Oxs_SimpleDemag::GetEnergy
   for(pindex=0;pindex<ptotalsize;pindex++) Mx[pindex].Set(0.,0.);
   for(pindex=0;pindex<ptotalsize;pindex++) My[pindex].Set(0.,0.);
   for(pindex=0;pindex<ptotalsize;pindex++) Mz[pindex].Set(0.,0.);
-  for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
-    index  = i+j*xdim+k*xydim;
-    pindex = i+j*pxdim+k*pxydim;
-    OC_REAL8m scale = Ms[index];
-    const ThreeVector& vec = spin[index];
-    Mx[pindex].Set(scale*(vec.x),0);
-    My[pindex].Set(scale*(vec.y),0);
-    Mz[pindex].Set(scale*(vec.z),0);
+  for(k=0;k<zdim;k++) {
+    for(j=0;j<ydim;j++) {
+      for(i=0;i<xdim;i++) {
+        index  = i+j*xdim+k*xydim;
+        pindex = i+j*pxdim+k*pxydim;
+        OC_REAL8m scale = Ms[index];
+        const ThreeVector& vec = spin[index];
+        Mx[pindex].Set(scale*(vec.x),0);
+        My[pindex].Set(scale*(vec.y),0);
+        Mz[pindex].Set(scale*(vec.z),0);
+      }
+    }
   }
   fft.Forward(pxdim,pydim,pzdim,Mx);
   fft.Forward(pxdim,pydim,pzdim,My);
@@ -372,10 +388,25 @@ void Oxs_SimpleDemag::GetEnergy
     field[index].z=Hcomp[pindex].real();
   }
 
-  // Calculate pointwise energy density: -0.5*MU0*<M,H>
-  OC_REAL8m mult = -0.5 * MU0;
+  // Calculate pointwise energy density: -0.5*MU0*<M,H>, and other terms
+  // as requested.
+  assert(oced.H==0 || oced.H == &field);
+  const OC_REAL8m emult = -0.5 * MU0;
+  Oxs_Energy::SUMTYPE esum = 0.0;
   for(index=0;index<totalsize;index++) {
-    energy[index] = mult * Ms[index] * (spin[index]*field[index]);
+    OC_REAL8m ei = emult * Ms[index] * (spin[index]*field[index]);
+    ThreeVector torque = spin[index]^field[index];
+    esum += ei;
+    if(oced.H_accum)           (*oced.H_accum)[index] += field[index];
+    if(oced.energy)             (*oced.energy)[index]  = ei;
+    if(oced.energy_accum) (*oced.energy_accum)[index] += ei;
+    if(oced.mxH)                   (*oced.mxH)[index]  = torque;
+    if(oced.mxH_accum)       (*oced.mxH_accum)[index] += torque;
+    // If oced.H != NULL then field points to oced.H and so oced.H is
+    // already filled.
   }
+  oced.energy_sum = esum * state.mesh->Volume(0);
+  /// All cells have same volume in an Oxs_RectangularMesh.
 
+  oced.pE_pt = 0.0;
 }

@@ -36,13 +36,13 @@ MakeRule Define {
 			puts $f [format {
 Oc_Application Define {
     -name		omfsh
-    -version		1.2.1.0
+    -version		2.0a0
     -machine		%s
     -file		"%s"
 }
 Oc_Application Define {
     -name		filtersh
-    -version		1.2.1.0
+    -version		2.0a0
     -machine		%s
     -file		"%s"
 }
@@ -60,7 +60,7 @@ MakeRule Define {
 			        [Platform StaticLibraries oc] \
 			        [Platform StaticLibraries nb] \
 			        [Platform StaticLibraries if]]
-    -script		{Platform Link -obj omfsh -lib {if nb oc tk} \
+    -script		{Platform Link -obj omfsh -lib {if nb oc tk tcl} \
                                  -sub WINDOWS -out omfsh
 			} 
 }
@@ -71,7 +71,7 @@ MakeRule Define {
 			        [Platform StaticLibraries oc] \
 			        [Platform StaticLibraries nb] \
 			        [Platform StaticLibraries if]]
-    -script		{Platform Link -obj omfsh -lib {if nb oc tk} \
+    -script		{Platform Link -obj omfsh -lib {if nb oc tk tcl} \
                                  -sub CONSOLE -out filtersh
 			} 
 }

@@ -53,7 +53,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00070000000000000000"></A><A NAME="sec:mmlaunch"></A><A NAME="3679"></A>
+<H1><A NAME="SECTION00070000000000000000"></A><A NAME="sec:mmlaunch"></A><A NAME="3713"></A>
 <BR>
 OOMMF Launcher/Control Interface: mmLaunch
 </H1>
@@ -73,7 +73,7 @@ The application <B>mmLaunch</B> launches, monitors, and controls other
 OOMMF applications.  It is the OOMMF application which is
 most closely connected to the account service directory and host
 service directory applications that run behind the scenes.  It also
-provides user interfaces<A NAME="3686"></A>
+provides user interfaces<A NAME="3720"></A>
 to any applications, notably
 <A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> and
 <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"><B>mmSolve2D</B></A>, that do not have their own user interface
@@ -96,7 +96,7 @@ tclsh oommf.tcl mmLaunch [standard options]
 <FONT SIZE="+2"><B>Controls</B></FONT>
 <BR>
 Upon startup, <B>mmLaunch</B> displays a panel of checkbuttons, one for
-each host service directory<A NAME="3705"></A>
+each host service directory<A NAME="3739"></A>
 to which it is connected.  In the current
 release of OOMMF there is only one checkbutton, named for the host on
 which <B>mmLaunch</B> is running.
@@ -109,9 +109,9 @@ some delay before the host checkbutton appears.
 Toggling the host checkbutton toggles the display of an
 interface to the host service directory.  The host service directory
 interface consists of a row of checkbuttons, one for each account
-service directory<A NAME="3709"></A>
+service directory<A NAME="3743"></A>
 registered with the host service directory.  Each
-checkbutton is labeled with the user ID<A NAME="3710"></A>
+checkbutton is labeled with the user ID<A NAME="3744"></A>
 of the corresponding account
 service directory.  For most users, there will be only one
 checkbutton, labeled with the user's own account
@@ -122,7 +122,7 @@ start one.  In that circumstance, there may be some delay before the
 account checkbutton appears.
 
 <P>
-<A NAME="3713"></A>
+<A NAME="3747"></A>
 Toggling an account checkbutton toggles the display of an interface
 to the corresponding account service directory.  The account
 service directory interface consists of two columns.  The 
@@ -134,12 +134,12 @@ though there will be some delay before the launched application
 displays a window to the user.  Multiple clicks will launch multiple
 copies of the application.  Note: The launching is actually handled by
 the <A HREF="OOMMF_Architecture_Overview.html#sec:arch">account service directory application</A>, which sets the
-initial working directory<A NAME="3719"></A> to the
+initial working directory<A NAME="3753"></A> to the
 OOMMF root directory.
-<A NAME="3720"></A>
+<A NAME="3754"></A>
 
 <P>
-The <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="3722"></A>
+The <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="3756"></A>
 column is a list of all the OOMMF applications
 currently running under the account that are registered with the
 account service directory.  The list includes both the application
@@ -150,7 +150,7 @@ application exits, its entry is automatically removed from the Threads
 list.
 
 <P>
-<A NAME="3723"></A>
+<A NAME="3757"></A>
 Any of the running applications that do not provide their own
 interface window will be displayed in the <FONT COLOR="#800000"><B>Threads</B></FONT> list with a
 checkbutton.  The checkbutton toggles the display of an interface
@@ -162,7 +162,7 @@ the 2D solvers <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"><B>mmSolve2D a
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive</B></A>.
 These interfaces are described in the documentation for the
 corresponding applications.
-<A NAME="3741"></A>
+<A NAME="3775"></A>
 
 <P>
 The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT> terminates the <B>mmLaunch</B>
@@ -188,6 +188,6 @@ The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides the usual help facili
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2016</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
 </BODY>
 </HTML>

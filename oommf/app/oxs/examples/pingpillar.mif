@@ -1,0 +1,184 @@
+# MIF 2.1
+# MIF Example File: pillar.mif
+# Description: Applied field pulse to a pillar (cylinder) geometry.
+#
+# Instructions:
+#
+# 1) Load pingpillar.mif into Oxsii with parameter "relax 1", and run.  The
+#    final state will be an equilibrium remnant (zero field) state.  Save
+#    the magnetization to a file named pingpillar-Co-h150-c5.0-init.omf.
+#    (Here "Co" is the material (Co or Py), h150 is the pillar height in nm,
+#    and c5.0 is the cellsize in nm.
+#
+# 2) Reload pingpillar.mif but with parameter "relax 0".  Set output
+#    schedule to send DataTable output each Stage to either mmArchive or
+#    mmGraph, and run the simulation.  When the run is complete extract the
+#    time vs. my data columns, and compute the spectrum as explained in the
+#    paper Dao et al., Nanotechnology 15, S634-S638 (2004).
+#
+# You should recover the AS=3 curve in Fig 2 of the Dao et al. paper.  You
+# can get the AS=6 curve by repeating the above steps but with parameter
+# "height" set to 300 and the corresponding adjustment to the name of the
+# initial magnetization state file.  To get Fig 3, set parameter "material"
+# to Py.
+#
+#
+# General tips for dynamic susceptibilty simulations:
+#
+# 1) Start the simulation from an equilibrium configuration.  If you don't,
+#    then at t=0 it is as though you are removing a field that held the
+#    configuration in the non-equilibrium state.  This t=0 "step" field will
+#    affect the spectral response.
+#
+# 2) Don't use the min_timestep control in the evolver Specify block.  The
+#    Runge-Kutta evolver has sophisticated error control mechanisms that
+#    protect against too large steps; min_timestep may disable this
+#    protection.  Instead, if you want fixed time step output (to feed into
+#    an FFT, for example), use the stopping_time control in the driver
+#    Specify block to set each stage to a fixed amount of time, and then
+#    schedule output to mmGraph or mmArchive every stage instead of every
+#    step.
+#
+# 2a) If you are running with no min_timestep control (as recommended) and
+#     the time step size collapses (say <= 1e-15 s) and doesn't recover,
+#     then most often the culprit is an algebraic error in computing dH/dt
+#     in your pulse proc.
+#
+# 2b) Be certain the expression for the excitation function is properly
+#     defined for all inputs.  For example, the sinc function implemented as
+#     sin(u)/u is undefined for u=0, and may be numerically bad for |u|<<1.
+#     For small values of u you can replace sin(u)/u with the first few
+#     terms of the Taylor expansion.
+#
+# 2c) Whatever excitation you use, correct the spectrum by dividing the
+#     observed magnetization response by the spectrum of the excitation, as
+#     discussed in the Dao et al. paper referenced above.  But be sure to
+#     check that the excitation spectrum is bounded well away from zero
+#     across the frequency range of interest.  (You don't want to divide by
+#     zero!)
+#
+# 3) For susceptibility measurements you want to stay inside the linear
+#    response regime.  As a test, rerun with reduced excitation amplitude
+#    and check that the shape of the spectrum doesn't change.
+#
+# 4) Keep an eye on the "Run Max Spin Ang" output.  If it gets large then
+#    reduce the cell size and rerun the simulation.
+#
+# The resonance response will vary depending on the applied fields and
+# domain structure.  To simulate FMR response, see the method outlined in
+# S. Jung, J.B. Ketterson, and V. Chandrasekhar, Physical Review B 66,
+# 132405 (2002).
+
+Parameter relax 0     ;# Relax to equilibrium instead of pulse?
+
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+RandomSeed 1
+
+# Pulse control
+Parameter pulse_amplitude 1000 ;# A/m
+Parameter pulse_decay     1e9  ;# 1/sec
+
+# Geometry
+set diameter 50e-9
+Parameter height 150e-9
+Parameter cellsize 5e-9
+
+# Adjust zcellsize so the height is an integral multiple of zcellsize.
+set zcellsize [expr {$height/ceil(double($height)/$cellsize)}]
+
+
+# Material constants
+Parameter material Co  ;# Either Co or Py
+if {[string match Co $material]} {
+   set Ms 1.4e6 ;# A/m
+   set K1 4.5e5  ;# J/m^3
+   set A  30e-12 ;# J/m
+} elseif {[string match Py $material]} {
+   set Ms 8.6e5 ;# A/m
+   set K1 -500  ;# J/m^3
+   set A  13e-12 ;# J/m
+} else {
+   error "Invalid material \"$material\"; should be either Co or Py."
+}
+set alpha 0.015
+
+
+# File names
+set basename  [format "pingpillar-%s-h%03d-c%3.1f" $material \
+                  [expr {int(round($height*1e9))}] [expr {$cellsize*1e9}]]
+set startname "${basename}-init"
+
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $diameter}
+  yrange {0 $diameter}
+  zrange {0 $height}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $zcellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+  K1  $K1
+  axis {0 0 1}
+}]
+
+Specify Oxs_UniformExchange [subst {
+  A  $A
+}]
+
+Specify Oxs_Demag {}
+
+proc Cylinder { Ms x y z } {
+    set xrad [expr {2.*$x - 1.} ]
+    set yrad [expr {2.*$y - 1.} ]
+    set test [expr {$xrad*$xrad+$yrad*$yrad}]
+    if {$test>1.0} {return 0}
+    return $Ms
+}
+
+if {$relax} {
+ Specify Oxs_CGEvolve:evolve {}
+ Specify Oxs_MinDriver [subst {
+    basename $startname
+    evolver :evolve
+    stopping_mxHxm 1e-5
+    mesh :mesh
+    Ms { Oxs_ScriptScalarField {
+       atlas :atlas
+       script {Cylinder $Ms}
+    }}
+    m0 { 0.02 0.01 1.0 }
+ }]
+} else {
+   proc ExpPulse { total_time } {
+      global pulse_amplitude pulse_decay
+      set Hy [expr {$pulse_amplitude*exp(-$pulse_decay*$total_time)}]
+      set dHy [expr {-$pulse_decay*$Hy}]
+      return [list 0 $Hy 0 0 $dHy 0]
+   }
+   Specify Oxs_ScriptUZeeman {
+      script_args total_time
+      script ExpPulse
+   }
+   Specify Oxs_RungeKuttaEvolve:evolve [subst {
+      alpha $alpha
+   }]
+   Specify Oxs_TimeDriver [subst {
+      basename [list $basename]
+      evolver :evolve
+      stopping_time {{1e-12 10000} :expand:}
+      mesh :mesh
+      Ms { Oxs_ScriptScalarField {
+         atlas :atlas
+         script {Cylinder $Ms}
+      } }
+      m0 { Oxs_FileVectorField {
+         atlas :atlas
+         file [list ${startname}.omf]
+      }}
+   }]
+}

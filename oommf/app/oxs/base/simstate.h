@@ -43,10 +43,13 @@ class Oxs_SimState : public Oxs_Lock {
 private:
 #ifdef OC_STL_MAP_BROKEN_CONST_KEY
   typedef String DerivedDataKey;
+  typedef String AuxDataKey;
 #else
   typedef const String DerivedDataKey;
+  typedef const String AuxDataKey;
 #endif
   mutable map<DerivedDataKey,OC_REAL8m> derived_data;
+  mutable map<AuxDataKey,OC_REAL8m> auxiliary_data;
 public:
   Oxs_SimState();
   ~Oxs_SimState();
@@ -81,6 +84,9 @@ public:
 
   const Oxs_MeshValue<OC_REAL8m>* Ms;
   const Oxs_MeshValue<OC_REAL8m>* Ms_inverse; // 1/Ms
+  OC_REAL8m max_absMs;
+  // Note: Client code may assume that Ms and Ms_inverse are fixed for
+  // the lifetime of mesh.
 
   Oxs_MeshValue<ThreeVector> spin;
 
@@ -129,6 +135,24 @@ public:
   /// non-set.  Arguably, the Oxs_Key::GetWriteReference call should
   /// automatically wipe out the derived_data data.
 
+  // Auxiliary data is provided as a convenience to client classes.
+  // It is similar to derived data, but is mutable.  Use with care!
+  // Note: The AddAuxData functions silently overwrite old data with
+  // same key.  If you don't want this behavior use the DerivedData
+  // map.
+  void AddAuxData(const char* name,OC_REAL8m value) const;
+  void AddAuxData(const String& name,OC_REAL8m value) const {
+    AddAuxData(name.c_str(),value);
+  }
+  OC_BOOL GetAuxData(const char* name,OC_REAL8m& value) const;
+  OC_BOOL GetAuxData(const String& name,OC_REAL8m& value) const {
+    // Returns 1 on success, 0 if name is an unknown key.
+    return GetAuxData(name.c_str(),value);
+  }
+  void ListAuxData(vector<String>& names) const;
+  void ClearAuxData();
+
+
   // Routines to write and read state, intended for restart
   // operations.  The Ms, Ms_inverse, and mesh data are not
   // written or read, but must be supplied independently
@@ -140,6 +164,7 @@ public:
 		    const Oxs_Mesh* import_mesh,
 		    const Oxs_MeshValue<OC_REAL8m>* import_Ms,
 		    const Oxs_MeshValue<OC_REAL8m>* import_Ms_inverse,
+                    OC_REAL8m import_max_absMs,
 		    const Oxs_Director* director,
 		    String& export_MIF_info);
   /// Note: RestoreState will throw an error if the input file can't

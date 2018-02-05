@@ -17,8 +17,8 @@
 #define OC_JOIN1(a,b) a##b
 
 #define OC_MAKE_VERSION(x) OC_STRINGIFY(OC_JOIN(x,_MAJOR_VERSION)) "." \
-                           OC_STRINGIFY(OC_JOIN(x,_MINOR_VERSION)) "." \
-                           OC_STRINGIFY(OC_JOIN(x,_RELEASE_LEVEL)) "." \
+                           OC_STRINGIFY(OC_JOIN(x,_MINOR_VERSION)) \
+                           OC_JOIN(x,_RELEASE_LEVEL) \
                            OC_STRINGIFY(OC_JOIN(x,_RELEASE_SERIAL))
 
 /*
@@ -60,6 +60,7 @@
 
 /* Declarations of classes in this extension */
 #include "autobuf.h"
+#include "ocalloc.h"
 #include "ocexcept.h"
 #include "ocfpu.h"
 #include "ocsse.h"

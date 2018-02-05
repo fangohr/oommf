@@ -84,7 +84,7 @@ foreach lib $oommf(libPath) {
 }
 
 # Locate a version of the Oc (OOMMF core) extension and set it up for loading.
-if {[catch {package require Oc 1.1.0.1} msg]} {
+if {[catch {package require Oc 2} msg]} {
     # When can 'package require Oc' raise an error?
     #	1. There's no Oc extension installed.
     #	2. An error occurred in the initialization of the Oc extension.
@@ -100,7 +100,7 @@ if {[catch {package require Oc 1.1.0.1} msg]} {
     # Otherwise, we should just report the error.
     if {[llength [package versions Oc]]
 	    && [string match "" [package provide Oc]]} {
-	package require Oc 1.1.0.1
+	package require Oc 2
     } else {
 	error $msg $errorInfo $errorCode
     }
@@ -126,7 +126,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName oommf.tcl
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for

@@ -45,7 +45,8 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_ChunkEnergy(name,newdtr,argstr),
-    coef_size(0), coef(NULL), mesh_id(0)
+    coef_size(0), coef(NULL), max_abscoef(0),
+    mesh_id(0), energy_density_error_estimate(-1)
 {
   // Process arguments
   OXS_GET_INIT_EXT_OBJECT("atlas",Oxs_Atlas,atlas);
@@ -137,7 +138,8 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
     OC_INDEX ic;
     for(ic=1;ic<coef_size;ic++) coef[ic] = coef[ic-1] + coef_size;
 
-    // Fill A matrix
+    // Fill A/lex matrix
+    max_abscoef=0.0;
     for(ic=0;ic<coef_size*coef_size;ic++) coef[0][ic] = default_coef;
     for(OC_INDEX ip=0;static_cast<size_t>(ip)<params.size();ip+=3) {
       OC_INDEX i1 = atlas->GetRegionId(params[ip]);
@@ -196,6 +198,7 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
       }
       coef[i1][i2]=coefpair;
       coef[i2][i1]=coefpair; // coef should be symmetric
+      if(Oc_Fabs(coefpair)>max_abscoef) max_abscoef=coefpair;
     }
     DeleteInitValue(typestr);
 
@@ -205,10 +208,12 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
     maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
                               &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     maxspinangle_output.Register(director,0);
-    stage_maxspinangle_output.Setup(this,InstanceName(),"Stage Max Spin Ang","deg",1,
+    stage_maxspinangle_output.Setup(this,InstanceName(),
+                                    "Stage Max Spin Ang","deg",1,
                                     &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     stage_maxspinangle_output.Register(director,0);
-    run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang","deg",1,
+    run_maxspinangle_output.Setup(this,InstanceName(),
+                                  "Run Max Spin Ang","deg",1,
                                   &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     run_maxspinangle_output.Register(director,0);
   }
@@ -235,12 +240,13 @@ OC_BOOL Oxs_Exchange6Ngbr::Init()
 {
   mesh_id = 0;
   region_id.Release();
+  energy_density_error_estimate = -1;
   return Oxs_Energy::Init();
 }
 
 void Oxs_Exchange6Ngbr::CalcEnergyA
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -286,7 +292,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyA
 
   OC_REAL8m hcoef = -2/MU0;
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   // Note: For maxangle calculation, it suffices to check
   // spin[j]-spin[i] for j>i.
@@ -385,7 +391,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyA
     }
   }
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0);
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_RectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -394,7 +400,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyA
 
 void Oxs_Exchange6Ngbr::CalcEnergyLex
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,
@@ -438,7 +444,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyLex
   OC_REAL8m wgty = 1.0/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
   OC_REAL8m wgtz = 1.0/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
 
-  Nb_Xpfloat energy_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
   OC_REAL8m thread_maxdot = maxdot[threadnumber];
   // Note: For maxangle calculation, it suffices to check
   // spin[j]-spin[i] for j>i, or j<i, or various mixes of the two.
@@ -537,7 +543,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyLex
     }
   }
 
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0);
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_RectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -546,8 +552,8 @@ void Oxs_Exchange6Ngbr::CalcEnergyLex
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
  int number_of_threads) const
 {
   if(maxdot.size() != (vector<OC_REAL8m>::size_type)number_of_threads) {
@@ -564,11 +570,19 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkInitialize
     // into it, so only threadnumber == 0 can do this processing.  The
     // Oxs_ChunkEnergy interface guarantees that this initialization
     // routine is only run on thread 0.
-    region_id.AdjustSize(state.mesh);
+    const Oxs_CommonRectangularMesh* mesh
+      = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
+    if(mesh==NULL) {
+      String msg=String("Object ")
+        + String(state.mesh->InstanceName())
+        + String(" is not a rectangular mesh.");
+      throw Oxs_ExtError(this,msg);
+    }
+    region_id.AdjustSize(mesh);
     ThreeVector location;
-    const OC_INDEX size = state.mesh->Size();
+    const OC_INDEX size = mesh->Size();
     for(OC_INDEX i=0;i<size;i++) {
-      state.mesh->Center(i,location);
+      mesh->Center(i,location);
       if((region_id[i] = atlas->GetRegionId(location))<0) {
         String msg = String("Import mesh to Oxs_Exchange6Ngbr::GetEnergy()"
                             " routine of object ")
@@ -579,15 +593,43 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkInitialize
       }
     }
     atlaskey.Set(atlas.GetPtr());
+
+    OC_REAL8m minedge = OC_REAL8m_MAX;
+    if(mesh->DimX() > 1) {
+      minedge = mesh->EdgeLengthX();
+    }
+    if(mesh->DimY() > 1 && mesh->EdgeLengthY()<minedge) {
+      minedge = mesh->EdgeLengthY();
+    }
+    if(mesh->DimZ() > 1 && mesh->EdgeLengthZ()<minedge) {
+      minedge = mesh->EdgeLengthZ();
+    }
+    OC_REAL8m working_A = 0.0;
+    if(excoeftype == A_TYPE) {
+      working_A = max_abscoef;
+    } else if(excoeftype == LEX_TYPE) {
+      OC_REAL8m lexMs = max_abscoef*state.max_absMs;
+      if(lexMs>0) {
+        working_A = 0.5*MU0*lexMs*lexMs;
+      }
+    } else {
+      throw Oxs_ExtError(this,"Unsupported ExchangeCoefType.");
+    }
+    energy_density_error_estimate
+      = 16*OC_REAL8m_EPSILON*working_A/minedge/minedge;
+    // Worse case prefactor should be larger than 16, but in practice
+    // error is probably smaller.
     mesh_id = state.mesh->Id();
   }
+  ocedt.energy_density_error_estimate = energy_density_error_estimate;
 }
 
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& /* ocedt */,
- const vector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ Oxs_ComputeEnergyDataThreaded& /* ocedt */,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>&
+    /* thread_ocedtaux */,
  int number_of_threads) const
 {
   // Set max angle data
@@ -685,7 +727,7 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
 
 void Oxs_Exchange6Ngbr::ComputeEnergyChunk
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,
  OC_INDEX node_stop,

@@ -21,9 +21,9 @@
  *	./vf.tcl
  */
 
-#define VF_MAJOR_VERSION	1
-#define VF_MINOR_VERSION	2
-#define VF_RELEASE_LEVEL	1
+#define VF_MAJOR_VERSION	2
+#define VF_MINOR_VERSION	0
+#define VF_RELEASE_LEVEL	"a"
 #define VF_RELEASE_SERIAL	0
 
 #define VF_VERSION OC_MAKE_VERSION(VF)

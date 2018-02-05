@@ -100,6 +100,9 @@ private:
 
   Oxs_MeshValue<OC_REAL8m> Ms;  // Saturation magnetization
   Oxs_MeshValue<OC_REAL8m> Ms_inverse;  // 1/Ms
+  OC_REAL8m max_absMs; // Maximum value of |Ms| across array.  At present,
+  /// Ms is restricted to >=0, so max_absMs is the same as max Ms.
+
   Oxs_OwnedPointer<Oxs_VectorField> m0; // Initial spin configuration
   OC_REAL8m m0_perturb;  // Amount to perturb initial spin configuration
 
@@ -416,7 +419,7 @@ public:
   virtual  OC_BOOL
   Step(Oxs_ConstKey<Oxs_SimState> current_state,
        const Oxs_DriverStepInfo& step_info,
-       Oxs_Key<Oxs_SimState>& next_state)=0;
+       Oxs_ConstKey<Oxs_SimState>& next_state)=0;
   // Returns true if step was successful, false if
   // unable to step as requested.
 
@@ -430,7 +433,9 @@ public:
   // exceptions on errors.
   OC_UINT4m GetIteration() const;
   OC_UINT4m GetCurrentStateId() const;
-  void SetStage(OC_UINT4m requestedStage);
+  void SetStage(OC_UINT4m requestedStage,
+                vector<OxsRunEvent>& events);
+
   OC_UINT4m GetStage() const;
   OC_UINT4m GetNumberOfStages() const { return number_of_stages; }
 

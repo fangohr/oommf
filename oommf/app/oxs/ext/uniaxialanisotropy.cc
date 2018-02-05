@@ -37,6 +37,7 @@ Oxs_UniaxialAnisotropy::Oxs_UniaxialAnisotropy(
   const char* argstr)   // MIF input block parameters
   : Oxs_ChunkEnergy(name,newdtr,argstr),
     aniscoeftype(ANIS_UNKNOWN), mesh_id(0),
+    max_K1(-1.0),
     K1_is_uniform(0), Ha_is_uniform(0), axis_is_uniform(0),
     uniform_K1_value(0.0), uniform_Ha_value(0.0),
     integration_method(UNKNOWN_INTEG),
@@ -149,6 +150,7 @@ OC_BOOL Oxs_UniaxialAnisotropy::Init()
   Ha.Release();
   axis.Release();
 
+  max_K1 = -1.0;
   mult_state_id = 0;
   mult = 1.0;
   dmult = 0.0;
@@ -171,13 +173,13 @@ Oxs_UniaxialAnisotropy::StageRequestCount
 void
 Oxs_UniaxialAnisotropy::GetMultiplier
 (const Oxs_SimState& state, // import
- OC_REAL8m& mult,           // export
- OC_REAL8m& dmult           // export
+ OC_REAL8m& mult_,           // export
+ OC_REAL8m& dmult_           // export
  ) const
 {
   if(!has_multscript) {
-    mult = 1.0;
-    dmult = 0.0;
+    mult_ = 1.0;
+    dmult_ = 0.0;
     return;
   }
 
@@ -205,8 +207,8 @@ Oxs_UniaxialAnisotropy::GetMultiplier
   }
 
   // Convert script string values to OC_REAL8m's.
-  cmd.GetResultListItem(0,mult);
-  cmd.GetResultListItem(1,dmult);
+  cmd.GetResultListItem(0,mult_);
+  cmd.GetResultListItem(1,dmult_);
 
   cmd.RestoreInterpResult();
 }
@@ -214,7 +216,7 @@ Oxs_UniaxialAnisotropy::GetMultiplier
 
 void Oxs_UniaxialAnisotropy::RectIntegEnergy
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
  Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
  OC_INDEX node_start,OC_INDEX node_stop
  ) const
@@ -224,8 +226,8 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
 
-  Nb_Xpfloat energy_sum = 0;
-  Nb_Xpfloat pE_pt_sum = 0;
+  Nb_Xpfloat energy_sum = 0.0;
+  Nb_Xpfloat pE_pt_sum = 0.0;
 
   OC_REAL8m k = uniform_K1_value;
   OC_REAL8m field_mult = uniform_Ha_value;
@@ -328,276 +330,96 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
                            += ThreeVector(Hscale*tx,Hscale*ty,Hscale*tz);
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue();
-  ocedtaux.pE_pt_accum += pE_pt_sum.GetValue();
+  ocedtaux.energy_total_accum += energy_sum;
+  ocedtaux.pE_pt_accum += pE_pt_sum;
 }
 
-void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+void Oxs_UniaxialAnisotropy::ComputeEnergyChunkInitialize
 (const Oxs_SimState& state,
- const Oxs_ComputeEnergyDataThreaded& ocedt,
- Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
- OC_INDEX node_start,OC_INDEX node_stop,
- int threadnumber
- ) const
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oc_AlignedVector<Oxs_ComputeEnergyDataThreadedAux>& /* thread_ocedtaux */,
+ int /* number_of_threads */) const
 {
-  if(node_stop>state.mesh->Size() || node_start>node_stop) {
-    throw Oxs_ExtError(this,"Programming error:"
-                       " Invalid node_start/node_stop values");
-  }
-
   if(mesh_id !=  state.mesh->Id()) {
-    // This is either the first pass through, or else mesh
-    // has changed.  Initialize/update data fields.
-    // NB: At a lower level, this may potentially involve calls back
-    // into the Tcl interpreter.  Per Tcl spec, only the thread
-    // originating the interpreter is allowed to make calls into it, so
-    // only threadnumber == 0 can do this processing.  Any other thread
-    // must block until that processing is complete.
-    thread_control.Lock();
-    if(Oxs_ThreadError::IsError()) {
-      if(thread_control.count>0) {
-        // Release a blocked thread
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
-      return; // What else?
-    }
-    if(threadnumber != 0) {
-      if(mesh_id != state.mesh->Id()) {
-        // If above condition is false, then the main thread came
-        // though and initialized everything between the time of
-        // the previous check and this thread's acquiring of the
-        // thread_control mutex; in which case, "never mind".
-        // Otherwise:
-        ++thread_control.count; // Multiple threads may progress to this
-        /// point before the main thread (threadnumber == 0) grabs the
-        /// thread_control mutex.  Keep track of how many, so that
-        /// afterward they may be released, one by one.  (The main
-        /// thread will Notify control_wait.cond once; after that
-        /// as each waiting thread is released, the newly released
-        /// thread sends a Notify to wake up the next one.
-        thread_control.Wait(0);
-        --thread_control.count;
-        int condcheckerror=0;
-        if(mesh_id !=  state.mesh->Id()) {
-          // Error?
-          condcheckerror=1;
-          Oxs_ThreadPrintf(stderr,"Invalid condition in"
-                           " Oxs_UniaxialAnisotropy::ComputeEnergyChunk(),"
-                           " thread number %d\n",threadnumber);
-        }
-        if(thread_control.count>0) {
-          // Free a waiting thread.
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        if(condcheckerror || Oxs_ThreadError::IsError()) {
-          return; // What else?
-        }
+    // This is either the first pass through, or else mesh has changed.
+    // Initialize/update data fields.  NB: At a lower level, this may
+    // potentially involve calls back into the Tcl interpreter.  Per Tcl
+    // spec, only the thread originating the interpreter is allowed to
+    // make calls into it.  The ComputeEnergyChunkInitialize member is
+    // guaranteed to be called in the main thread.
+    // Note: max_K1 might be initialized here or in
+    // ::IncrementPreconditioner().
+    if(aniscoeftype == K1_TYPE) {
+      if(K1_is_uniform) {
+        max_K1 = Oc_Fabs(uniform_K1_value);
       } else {
-        if(thread_control.count>0) {
-          // Free a waiting thread.  (Actually, it can occur that the
-          // thread_control will be grabbed by another thread that is
-          // blocked at the first thread_control mutex Lock() call above
-          // rather than on the ConditionWait, in which case this
-          // ConditionNotify will be effectively lost.  But that is
-          // okay, because then *that* thread will Notify when it
-          // releases the mutex.)
-          thread_control.Notify();
+        K1_init->FillMeshValue(state.mesh,K1);
+        max_K1=0.0;
+        const OC_INDEX size = state.mesh->Size();
+        for(OC_INDEX i=0;i<size;i++) {
+          OC_REAL8m test = Oc_Fabs(K1[i]);
+          if(test>max_K1) max_K1 = test;
         }
-        thread_control.Unlock();
-      }
-    } else {
-      // Main thread (threadnumber == 0)
-      try {
-        if(aniscoeftype == K1_TYPE) {
-          if(!K1_is_uniform) K1_init->FillMeshValue(state.mesh,K1);
-        } else if(aniscoeftype == Ha_TYPE) {
-          if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
+      } 
+    } else if(aniscoeftype == Ha_TYPE) {
+      if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
+        max_K1=0.0;
+        const OC_INDEX size = state.mesh->Size();
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+        for(OC_INDEX i=0;i<size;i++) {
+          // Note: This code assumes that Ms doesn't change
+          // for the lifetime of state.mesh.
+          OC_REAL8m test = Oc_Fabs(0.5*MU0*Ha[i]*Ms[i]);
+          if(test>max_K1) max_K1 = test;
         }
-        if(!axis_is_uniform) {
-          axis_init->FillMeshValue(state.mesh,axis);
-          const OC_INDEX size = state.mesh->Size();
-          for(OC_INDEX i=0;i<size;i++) {
-            // Check that axis is a unit vector:
-            const OC_REAL8m eps = 1e-14;
-            if(axis[i].MagSq()<eps*eps) {
-              throw Oxs_ExtError(this,"Invalid initialization detected:"
-                                 " Zero length anisotropy axis");
-            } else {
-              axis[i].MakeUnit();
-            }
-          }
-        }
-        mesh_id = state.mesh->Id();
-      } catch(Oxs_ExtError& err) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(err));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(String& serr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(serr);
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(const char* cerr) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(cerr));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      } catch(...) {
-        // Leave unmatched mesh_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String("Error in "
-            "Oxs_UniaxialAnisotropy::ComputeEnergyChunk"));
-        if(thread_control.count>0) {
-          thread_control.Notify();
-        }
-        thread_control.Unlock();
-        throw;
-      }
-      if(thread_control.count>0) {
-        // Free a waiting thread.  (Actually, it can occur that the
-        // thread_control will be grabbed by another thread that is
-        // blocked at the first thread_control mutex Lock() call above
-        // rather than on the ConditionWait, in which case this
-        // ConditionNotify will be effectively lost.  But that is
-        // okay, because then *that* thread will Notify when it
-        // releases the mutex.)
-        thread_control.Notify();
-      }
-      thread_control.Unlock();
     }
+    if(!axis_is_uniform) {
+      axis_init->FillMeshValue(state.mesh,axis);
+      const OC_INDEX size = state.mesh->Size();
+      for(OC_INDEX i=0;i<size;i++) {
+        // Check that axis is a unit vector:
+        const OC_REAL8m eps = 1e-14;
+        if(axis[i].MagSq()<eps*eps) {
+          throw Oxs_ExtError(this,"Invalid initialization detected:"
+                             " Zero length anisotropy axis");
+        } else {
+          axis[i].MakeUnit();
+        }
+      }
+    }
+    mesh_id = state.mesh->Id();
   }
-
   if(has_multscript && mult_state_id !=  state.Id()) {
     // The processing to set mult and dmult involves calls into the Tcl
     // interpreter.  Per Tcl spec, only the thread originating the
     // interpreter is allowed to make calls into it, so only
-    // threadnumber == 0 can do this processing.  Any other thread must
-    // block until that processing is complete.
-    mult_thread_control.Lock();
-    if(Oxs_ThreadError::IsError()) {
-      if(mult_thread_control.count>0) {
-        // Release a blocked thread
-        mult_thread_control.Notify();
-      }
-      mult_thread_control.Unlock();
-      return; // What else?
+    // threadnumber == 0 can do this processing.
+    GetMultiplier(state,mult,dmult);
+    mult_state_id = state.Id();
+  }
+
+  if(integration_method == QUAD_INTEG) {
+    // Base evaluations are written into scratch space
+    if(!ocedt.energy) {
+      ocedt.scratch_energy->AdjustSize(state.mesh);
     }
-    if(threadnumber != 0) {
-      if(mult_state_id !=  state.Id()) {
-        // If above condition is false, then the main thread came
-        // though and set up mult and dmult between the time of
-        // the previous check and this thread's acquiring of the
-        // mult_thread_control mutex; in which case, "never mind".
-        // Otherwise:
-        ++mult_thread_control.count; // Multiple threads may progress to this
-        /// point before the main thread (threadnumber == 0) grabs the
-        /// mult_thread_control mutex.  Keep track of how many, so that
-        /// afterward they may be released, one by one.  (The main
-        /// thread will Notify control_wait.cond once; after that as
-        /// each waiting thread is released, the newly released thread
-        /// sends a Notify to wake up the next one.
-        mult_thread_control.Wait(0);
-        --mult_thread_control.count;
-        int condcheckerror=0;
-        if(mult_state_id !=  state.Id()) {
-          // Error?
-          condcheckerror=1;
-          Oxs_ThreadPrintf(stderr,"Invalid condition (re mult/dmult) in"
-                           " Oxs_UniaxialAnisotropy::ComputeEnergyChunk(),"
-                           " thread number %d\n",threadnumber);
-        }
-        if(mult_thread_control.count>0) {
-          // Free a waiting thread.
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-        if(condcheckerror || Oxs_ThreadError::IsError()) {
-          return; // What else?
-        }
-      } else {
-        if(mult_thread_control.count>0) {
-          // Free a waiting thread.  (Actually, it can occur that the
-          // mult_thread_control will be grabbed by another thread that
-          // is blocked at the first mult_thread_control mutex Lock()
-          // call above rather than on the ConditionWait, in which case
-          // this ConditionNotify will be effectively lost.  But that is
-          // okay, because then *that* thread will Notify when it
-          // releases the mutex.)
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-      }
-    } else {
-      // Main thread (threadnumber == 0)
-      try {
-        GetMultiplier(state,mult,dmult);
-        mult_state_id = state.Id();
-      } catch(Oxs_ExtError& err) {
-        // Leave unmatched mult_state_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(err));
-        if(mult_thread_control.count>0) {
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-        throw;
-      } catch(String& serr) {
-        // Leave unmatched mult_state_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(serr);
-        if(mult_thread_control.count>0) {
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-        throw;
-      } catch(const char* cerr) {
-        // Leave unmatched mult_state_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String(cerr));
-        if(mult_thread_control.count>0) {
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-        throw;
-      } catch(...) {
-        // Leave unmatched mult_state_id as a flag to check
-        // Oxs_ThreadError for an error.
-        Oxs_ThreadError::SetError(String("Error in "
-            "Oxs_UniaxialAnisotropy::ComputeEnergyChunk"));
-        if(mult_thread_control.count>0) {
-          mult_thread_control.Notify();
-        }
-        mult_thread_control.Unlock();
-        throw;
-      }
-      if(mult_thread_control.count>0) {
-        // Free a waiting thread.  (Actually, it can occur that the
-        // mult_thread_control will be grabbed by another thread that is
-        // blocked at the first mult_thread_control mutex Lock() call
-        // above rather than on the ConditionWait, in which case this
-        // ConditionNotify will be effectively lost.  But that is okay,
-        // because then *that* thread will Notify when it releases the
-        // mutex.)
-        mult_thread_control.Notify();
-      }
-      mult_thread_control.Unlock();
+    if(!ocedt.H) {
+      ocedt.scratch_H->AdjustSize(state.mesh);
     }
   }
+
+  ocedt.energy_density_error_estimate = 8*OC_REAL8m_EPSILON*max_K1;
+}
+
+void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+(const Oxs_SimState& state,
+ Oxs_ComputeEnergyDataThreaded& ocedt,
+ Oxs_ComputeEnergyDataThreadedAux& ocedtaux,
+ OC_INDEX node_start,OC_INDEX node_stop,
+ int /* threadnumber */
+ ) const
+{
+  assert(node_start<=node_stop && node_stop<=state.mesh->Size());
 
   if(integration_method != QUAD_INTEG) {
     RectIntegEnergy(state,ocedt,ocedtaux,node_start,node_stop);
@@ -625,6 +447,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
   if(ocedt.energy) {
     work_ocedt.energy = work_ocedt.scratch_energy = ocedt.energy;
   } else {
+    // Note: ocedt.scratch_energy resized in
     ocedt.scratch_energy->AdjustSize(state.mesh); // Thread-safe
     work_ocedt.energy = work_ocedt.scratch_energy = ocedt.scratch_energy;
   }
@@ -634,6 +457,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
     ocedt.scratch_H->AdjustSize(state.mesh); // Thread-safe
     work_ocedt.H      = work_ocedt.scratch_H      = ocedt.scratch_H;
   }
+
   RectIntegEnergy(state,work_ocedt,work_ocedtaux,node_start,node_stop);
 
   // Edge correction if higher-order integration method requested.
@@ -1041,7 +865,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
       energy_sum += energy[i];
     }
   }
-  ocedtaux.energy_total_accum += energy_sum.GetValue() * mesh->Volume(0); // All cells
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); // All cells
   /// have same volume in an Oxs_RectangularMesh.
 
   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
@@ -1100,10 +924,29 @@ Oxs_UniaxialAnisotropy::IncrementPreconditioner(PreconditionerData& pcd)
   if(mesh_id !=  state.mesh->Id()) {
     // This is either the first pass through, or else mesh
     // has changed.  Initialize/update data fields.
+    // Note: max_K1 might be initialized here or in
+    // ::ComputeEnergyChunkInitialize().
     if(aniscoeftype == K1_TYPE) {
-      if(!K1_is_uniform) K1_init->FillMeshValue(state.mesh,K1);
+      if(K1_is_uniform) {
+        max_K1 = Oc_Fabs(uniform_K1_value);
+      } else {
+        K1_init->FillMeshValue(state.mesh,K1);
+        max_K1=0.0;
+        for(OC_INDEX i=0;i<size;i++) {
+          OC_REAL8m test = Oc_Fabs(K1[i]);
+          if(test>max_K1) max_K1 = test;
+        }
+      } 
     } else if(aniscoeftype == Ha_TYPE) {
       if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
+      max_K1=0.0;
+      const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+      for(OC_INDEX i=0;i<size;i++) {
+        // Note: This code assumes that Ms doesn't change
+        // for the lifetime of state.mesh.
+        OC_REAL8m test = Oc_Fabs(0.5*MU0*Ha[i]*Ms[i]);
+        if(test>max_K1) max_K1 = test;
+      }
     }
     if(!axis_is_uniform) {
       axis_init->FillMeshValue(state.mesh,axis);

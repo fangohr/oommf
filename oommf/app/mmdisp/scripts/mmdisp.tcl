@@ -3,10 +3,10 @@
 # Main Tcl/Tk script for OOMMF 2D display program
 
 # Library support (let them eat options)
-package require Oc 1.1   ;# Error & usage handling below requires Oc
-package require Nb 1.2.0.4
-package require Ow 1.2.0.4
-package require Mmdispcmds 1.1
+package require Oc 2   ;# Error & usage handling below requires Oc
+package require Nb 2
+package require Ow 2
+package require Mmdispcmds 2
 
 # Disable Oc's user-invoked auto-size feature---mmDisp handles its own
 # resizing.
@@ -14,7 +14,7 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 1.2.1.0
+Oc_Main SetVersion 2.0a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -63,7 +63,7 @@ wm title . [Oc_Main GetInstanceName]  ;# Window title to display while
 
 # If the -server option appeared on the command line, start a server.
 if {$enableServer} {
-   package require Net 1.2.0.4
+   package require Net 2
     Net_Protocol New mmd_protocol -name [list OOMMF vectorField protocol 0.1]
     $mmd_protocol AddMessage start datafile { fnlist } {
         # CAUTION!!! -- The command [AsyncTempFileDisplayRequest]
