@@ -52,7 +52,7 @@ Specify Oxs_UniaxialAnisotropy:Anisotropy [subst {
 	K1 $KU
 }]
 
-# C_nv DMI
+# D_2d DMI
 Specify Oxs_DMI_D2d [subst {
   default_D $D
   atlas :atlas
