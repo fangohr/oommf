@@ -3,7 +3,7 @@
  * Dzyaloshinsky-Moriya class for materials with D_2d crystallographic
  * symmetry [1]:
  *
- *      w_D = D ( L_{zx}^{(y)} + L_{zy}^{(x)} )
+ *      w_D = D ( L_{xz}^{(y)} + L_{yz}^{(x)} )
  *
  * Modification from Oxs_exchange6ngbr [2] by 
  * V. Nehruji[*], D. Cortes[+], H. Fangohr[+,o], P. Hatton[*]
@@ -249,7 +249,7 @@ void Oxs_DMI_D2d::GetEnergy
           }
           if(Ms_inverse[j] != 0.0) {
             OC_REAL8m Dpair = Drow[region_id[j]];
-            ThreeVector Dij(0.,1.,0);
+            ThreeVector Dij(0.,-1.,0);
             sum += 0.5 * Dpair * wgty * (Dij ^ spin[j]);
           }
         }
@@ -262,7 +262,7 @@ void Oxs_DMI_D2d::GetEnergy
           }
           if(Ms_inverse[j] != 0.0) {
             OC_REAL8m Dpair = Drow[region_id[j]];
-            ThreeVector Dij(-1.,0.,0);
+            ThreeVector Dij(1.,0.,0);
             sum += 0.5 * Dpair * wgtx * (Dij ^ spin[j]);
           }
         }
@@ -275,7 +275,7 @@ void Oxs_DMI_D2d::GetEnergy
           }
           if(Ms_inverse[j] != 0.0) {
             OC_REAL8m Dpair = Drow[region_id[j]];
-            ThreeVector Dij(0.,-1.,0);
+            ThreeVector Dij(0.,1.,0);
             sum += 0.5 * Dpair * wgty * (Dij ^ spin[j]);
           }
         }
@@ -288,7 +288,7 @@ void Oxs_DMI_D2d::GetEnergy
           }
           if (Ms_inverse[j] != 0.0) {
             OC_REAL8m Dpair = Drow[region_id[j]];
-            ThreeVector Dij(1.,0.,0);
+            ThreeVector Dij(-1.,0.,0);
             sum += 0.5 * Dpair * wgtx * (Dij ^ spin[j]);
           }
         }
