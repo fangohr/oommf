@@ -41,3 +41,19 @@ date: Mon Feb  5 11:18:00 GMT 2018
      source-url: http://math.nist.gov/oommf/dist/oommf20a0_20170929.tar.gz
    github-url: https://github.com/fangohr/oommf
    github version: 3f52d43566961af6d79dbb97910154229603cf07
+=======================================================
+date: Thu Feb 15 16:44:17 GMT 2018 
+   unpacked oommf20a0_20170929.tar.gz
+   OOMMF:
+     version: 20a0
+     date: 20170929
+     build: a0
+     source-url: http://math.nist.gov/oommf/dist/oommf20a0_20170929.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: 0108284f79e00b6623c442985a8346d36dd9c55d
+   extensions: ./oommf/app/oxs/local/DMI_T.cc
+               ./oommf/app/oxs/local/DMI_T.h
+               ./oommf/app/oxs/local/DMI_Cnv.cc
+               ./oommf/app/oxs/local/DMI_Cnv.h
+               ./oommf/app/oxs/local/DMI_D2d.cc
+               ./oommf/app/oxs/local/DMI_D2d.h
