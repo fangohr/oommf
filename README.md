@@ -1,13 +1,9 @@
 [![Build Status](https://travis-ci.org/fangohr/oommf.svg?branch=master)](https://travis-ci.org/fangohr/oommf)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf)
 
-# oommf
+# Object Oriented MicroMagnetic Framework (OOMMF)
 
-This is a git repository of the Object Oriented MicroMagnetic Framework software 
-(available at https://github.com/fangohr/oommf/)
-
-The repository holds the OOMMF source files as distributed from NIST at 
-http://math.nist.gov/oommf/software-12.html in the [oommf](https://github.com/fangohr/oommf/tree/master/oommf) subdirectory.
+This is a repository of the [OOMMF](https://math.nist.gov/oommf/oommf.html) software. It holds the OOMMF source files as distributed by [NIST](https://www.nist.gov/) at https://math.nist.gov/oommf/software-20.html in the [oommf](oommf) subdirectory of this repository.
 
 The intention is to provide the OOMMF distribution files in a git repository for those who prefer to pull them via git.
 
