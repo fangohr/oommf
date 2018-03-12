@@ -41,8 +41,8 @@ before_install:
 - echo "Clone oommf repository to /opt"
 - mkdir -p /opt
 - pushd /opt
-- git clone https://github.com/fangohr/oommf.git
-- cd oommf
+#- git clone https://github.com/fangohr/oommf.git
+#- cd oommf
 - pwd
 - make
 - echo "Building Docker container (will take some time)"
