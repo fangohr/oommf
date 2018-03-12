@@ -23,14 +23,6 @@ env:
 
 before_install:
 - sudo apt-get update -y
-#- sudo apt-get -y install python3-pip python-dev
-#- sudo pip3 install -U setuptools
-#- sudo pip3 install -U virtualenvwrapper
-#- python3 -V
-#- pip3 -V
-#- pip3 install matplotlib scipy numpy
-#- python3 -c "import matplotlib"
-#- sudo ln -s /usr/bin/python3 /usr/local/bin/python
 
 - echo "Copy oommf repository to /opt"
 - mkdir -p /opt
@@ -39,8 +31,6 @@ before_install:
 
 - echo "Approach 1 - Build oommf in docker image"
 - echo "Building Docker container (will take some time)"
-#- cd docker/oommf
-# build docker file
 - ls -al
 - pwd
 - docker build -f docker/oommf/Dockerfile -t testimage .
@@ -58,8 +48,8 @@ before_install:
 
 script:
   - pwd
-  #- py.test --version
-  #- python --version
+  - py.test --version
+  - python --version
   - echo $PATH
   - echo $OOMMFTCL
   - echo "We only test that the +version call succeeds.
