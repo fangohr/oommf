@@ -37,7 +37,7 @@ before_install:
 - cp -av /home/travis/build/fangohr/oommf /opt
 - pushd /opt/oommf
 
-- echo "Approach 1: Build oommf in docker image"
+- echo "Approach 1 - Build oommf in docker image"
 - echo "Building Docker container (will take some time)"
 #- cd docker/oommf
 # build docker file
@@ -46,7 +46,7 @@ before_install:
 - docker build -f docker/oommf/docker/Dockerfile -t testimage .
 - ls -al
 
-- echo "Approach 2: Build oommf in (Travis) host system"
+- echo "Approach 2 - Build oommf in (Travis) host system"
 - echo "Installation of OOMMF on host system"
 - export OOMMF_TK_CONFIG=/usr/lib/x86_64-linux-gnu/tk8.6/tkConfig.sh
 - export OOMMF_TCL_CONFIG=/usr/lib/x86_64-linux-gnu/tcl8.6/tclConfig.sh
