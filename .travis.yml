@@ -38,11 +38,12 @@ before_install:
 - sudo apt-get update -y
 - sudo apt-get -y install tk8.6 tcl8.6 tcl8.6-dev tk8.6-dev
 - pwd
-- echo "Clone oommf repository to /opt"
+- echo "Copy oommf repository to /opt"
 - mkdir -p /opt
+- cp -av /home/travis/build/fangohr/oommf /opt
 - pushd /opt
 #- git clone https://github.com/fangohr/oommf.git
-#- cd oommf
+- cd oommf
 - pwd
 - ls -la
 - ls -la oommf
