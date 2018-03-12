@@ -43,7 +43,7 @@ before_install:
 # build docker file
 - ls -al
 - pwd
-- docker build -f docker/oommf/docker/Dockerfile -t testimage .
+- docker build -f docker/oommf/Dockerfile -t testimage .
 - ls -al
 
 - echo "Approach 2 - Build oommf in (Travis) host system"
