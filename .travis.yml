@@ -44,6 +44,8 @@ before_install:
 #- git clone https://github.com/fangohr/oommf.git
 #- cd oommf
 - pwd
+- ls -la
+- ls -la oommf
 - make
 - echo "Building Docker container (will take some time)"
 - cd docker/oommf
