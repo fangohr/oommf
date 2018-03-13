@@ -4,6 +4,8 @@
 
 # Object Oriented MicroMagnetic Framework (OOMMF)
 
+## About
+
 This is a repository of the [OOMMF](https://math.nist.gov/oommf/oommf.html) software. It holds the OOMMF source files as distributed by [NIST](https://www.nist.gov/) available [here](https://math.nist.gov/oommf/software-20.html) in the [oommf](oommf) subdirectory of this repository.
 
 The intention is to provide the OOMMF distribution files in a git repository for those who prefer to pull them via git.
