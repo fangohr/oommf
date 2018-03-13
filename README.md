@@ -15,6 +15,19 @@ The current version of OOMMF code in this repository is the alpha release of OOM
 
 The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
 
+## Clone and build
+
+If you want to build a clean OOMMF (without externally made extensions), clone the repository:
+```
+git clone https://github.com/fangohr/oommf.git
+```
+and build it
+```
+make build
+```
+
+For building OOMMF with different extensions, please refer to the [Extensions](#Extensions) section.
+
 ## Extensions
 
 We provide Dzyaloshinskii-Moriya interaction extensions for three different crystallographic classes:
