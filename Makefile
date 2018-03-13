@@ -30,3 +30,7 @@ get-extension-dmi-d2d:
 	git clone https://github.com/joommf/$(DMID2DREPO).git
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
+
+travis-build:
+	# Dockerfile makes use of targets above
+	docker build -f docker/oommf/Dockerfile -t testimage .

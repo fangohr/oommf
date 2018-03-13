@@ -9,6 +9,7 @@ WORKDIR /usr/local
 COPY . oommf/
 WORKDIR /usr/local/oommf
 RUN make
+# RUN build-with-dmi-extension-all
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 
 # Create executable oommf script

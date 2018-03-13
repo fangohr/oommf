@@ -18,13 +18,7 @@ python:
 
 before_install:
 
-- echo "Approach 1 - Build oommf in docker image"
-- echo "Building Docker container (will take some time)"
-- ls -al
-- pwd
-- docker build -f docker/oommf/Dockerfile -t testimage .
-- ls -al
-
+- make travis-build
 
 script:
   # Now try to build docker file
