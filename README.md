@@ -9,18 +9,18 @@ The intention is to provide the OOMMF distribution files in a git repository for
 
 ## Version
 
-The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0.
+The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0. For further information, please refer to [versionlog.txt](versionlog.txt).
 
 ## License
 
-The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T and O](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
+The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
 
 ## Extensions
 
 We provide Dzyaloshinskii-Moriya interaction extensions for three different crystallographic classes:
 
 1. C<sub>nv</sub> ([repository](https://github.com/joommf/oommf-extension-dmi-cnv)),
-2. T and O ([repository](https://github.com/joommf/oommf-extension-dmi-t)), and
+2. T(O) ([repository](https://github.com/joommf/oommf-extension-dmi-t)), and
 3. D<sub>2d</sub> ([repository](https://github.com/joommf/oommf-extension-dmi-d2d))
 
 After you clone this repository
@@ -48,7 +48,7 @@ make build-with-dmi-extensions-all
 
 Information on how to cite the usage of OOMMF can be found [here](https://math.nist.gov/oommf/oommf_cites.html).
 
-If you use any of the DMI extensions we provide in your research, please refer to the "How to cite" section in the corresponding repositories for the particular crystallographic class ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T and O](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
+If you use any of the DMI extensions we provide in your research, please refer to the "How to cite" section in the corresponding repositories for the particular crystallographic class ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
 
 ## Acknowledgements
 
