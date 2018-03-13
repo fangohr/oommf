@@ -1,11 +1,12 @@
 FROM ubuntu:16.04
 
-RUN apt-get -y update 
+RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
 # Compile oommf and create OOMMFTCL environment variable
 WORKDIR /usr/local
-RUN git clone http://github.com/fangohr/oommf
+# RUN git clone http://github.com/fangohr/oommf
+COPY . oommf/
 WORKDIR /usr/local/oommf
 RUN make
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl

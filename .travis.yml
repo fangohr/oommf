@@ -23,40 +23,33 @@ env:
 
 before_install:
 - sudo apt-get update -y
-#- sudo apt-get -y install python3-pip python-dev
-#- sudo pip3 install -U setuptools
-#- sudo pip3 install -U virtualenvwrapper
-#- python3 -V
-#- pip3 -V
-#- pip3 install matplotlib scipy numpy
-#- python3 -c "import matplotlib"
-#- sudo ln -s /usr/bin/python3 /usr/local/bin/python
 
+- echo "Copy oommf repository to /opt"
+- mkdir -p /opt
+- cp -av /home/travis/build/fangohr/oommf /opt
+- pushd /opt/oommf
+
+- echo "Approach 1 - Build oommf in docker image"
+- echo "Building Docker container (will take some time)"
+- ls -al
+- pwd
+- docker build -f docker/oommf/Dockerfile -t testimage .
+- ls -al
+
+- echo "Approach 2 - Build oommf in (Travis) host system"
 - echo "Installation of OOMMF on host system"
 - export OOMMF_TK_CONFIG=/usr/lib/x86_64-linux-gnu/tk8.6/tkConfig.sh
 - export OOMMF_TCL_CONFIG=/usr/lib/x86_64-linux-gnu/tcl8.6/tclConfig.sh
 - sudo apt-get update -y
 - sudo apt-get -y install tk8.6 tcl8.6 tcl8.6-dev tk8.6-dev
-- pwd
-- echo "Clone oommf repository to /opt"
-- mkdir -p /opt
-- pushd /opt
-- git clone https://github.com/fangohr/oommf.git
-- cd oommf
-- pwd
 - make
-- echo "Building Docker container (will take some time)"
-- cd docker/oommf
-# build docker file
-- docker build -t testimage .
-- pwd
-- popd
-- pwd
+
+
 
 script:
   - pwd
-  #- py.test --version
-  #- python --version
+  - py.test --version
+  - python --version
   - echo $PATH
   - echo $OOMMFTCL
   - echo "We only test that the +version call succeeds.
