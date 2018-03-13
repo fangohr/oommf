@@ -35,9 +35,9 @@ For building OOMMF with different extensions, please refer to the [Extensions](#
 
 We provide Dzyaloshinskii-Moriya interaction extensions for three different crystallographic classes:
 
-1. C<sub>nv</sub> ([repository](https://github.com/joommf/oommf-extension-dmi-cnv)),
-2. T(O) ([repository](https://github.com/joommf/oommf-extension-dmi-t)), and
-3. D<sub>2d</sub> ([repository](https://github.com/joommf/oommf-extension-dmi-d2d))
+1. C<sub>nv</sub> - interfacial DMI ([repository](https://github.com/joommf/oommf-extension-dmi-cnv)),
+2. T(O) - bulk DMI ([repository](https://github.com/joommf/oommf-extension-dmi-t)), and
+3. D<sub>2d</sub> - antiskyrmion DMI ([repository](https://github.com/joommf/oommf-extension-dmi-d2d))
 
 After you clone this repository
 ```
