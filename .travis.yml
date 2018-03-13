@@ -21,16 +21,16 @@ before_install:
 - make travis-build
 
 script:
-  # Now try to build docker file
-  - echo "Now we test the OOMMF installation inside Docker:"
-
-
-  # Ask OOMMF in docker contain for version number
-  - docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
-  # and get some other diagnostic data
-  - docker run testimage hostname
-  - docker run testimage pwd
-  - docker run testimage g++ --version
-  - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
-  - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
-  - docker run testimage cat /etc/issue
+  # # Now try to build docker file
+  # - echo "Now we test the OOMMF installation inside Docker:"
+  #
+  # # Ask OOMMF in docker contain for version number
+  # - docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
+  # # and get some other diagnostic data
+  # - docker run testimage hostname
+  # - docker run testimage pwd
+  # - docker run testimage g++ --version
+  # - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
+  # - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
+  # - docker run testimage cat /etc/issue
+  - make test

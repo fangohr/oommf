@@ -8,7 +8,7 @@ WORKDIR /usr/local
 # RUN git clone http://github.com/fangohr/oommf
 COPY . oommf/
 WORKDIR /usr/local/oommf
-RUN make
+RUN make build-with-dmi-extension-all
 # RUN build-with-dmi-extension-all
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 
