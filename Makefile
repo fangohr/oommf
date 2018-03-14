@@ -1,13 +1,3 @@
-# Commands prefixed with 'docker-' will execute the relevant task in a
-# docker container.
-#
-# If you have docker, the steps are
-#
-# 1. docker-build (creates docker image)
-# 2. docker-test  (runs a few examples in that docker image container)
-# 3. docker-run (open shell, in which oommf commands can be run)
-#
-
 OOMMFPREFIX="oommf"
 DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
