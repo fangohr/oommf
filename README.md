@@ -59,7 +59,7 @@ If you want to build an image yourself, navigate to the `docker/` directory and 
 
 This command builds the image under `joommf/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from DockerHub [`joommf/oommf`](https://hub.docker.com/r/joommf/oommf/) repository
 
-   docker pull joommf/oommf
+    docker pull joommf/oommf
 
 ### Running the container
 
@@ -83,7 +83,9 @@ Please note that OOMMF's graphical user interface (GUI) in Docker container cann
     
 ## Conda
 
-...
+We also made recipes for building [Conda](https://www.anaconda.com/) OOMMF package and they are available [here](https://github.com/conda-forge/oommf-feedstock). Information on how to install Conda on your system as well as how to use it can be found [here](https://conda.io/docs/). Installing `oommf` package using conda can be done by running
+
+    conda install oommf
 
 ## Support
 
