@@ -85,6 +85,10 @@ Please note that OOMMF's graphical user interface (GUI) in Docker container cann
 
 ...
 
+## Support
+
+We do not provide support on OOMMF. However, if you have any difficulties or problems in using any of the features we provide in this repository, you are welcome to raise an issue in our [joommf/help](https://github.com/joommf/help) repository.
+
 ## License
 
 The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
