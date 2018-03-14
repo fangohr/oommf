@@ -31,6 +31,7 @@ get-extension-dmi-d2d:
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
 
+travis-build: SHELL:=/bin/bash
 travis-build:
 	docker build --no-cache -t dockertestimage .
 	docker run -ti -d --name testcontainer dockertestimage
