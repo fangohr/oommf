@@ -31,7 +31,7 @@ get-extension-dmi-d2d:
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
 
-test:
+docker-test:
 	@echo "Now we test the OOMMF installation inside Docker:"
 	docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
 # and get some other diagnostic data
@@ -43,6 +43,6 @@ test:
 	docker run testimage cat /etc/issue
 
 
-travis-build:
+docker-build:
 	# Dockerfile makes use of targets above
 	docker build -f docker/oommf/Dockerfile -t testimage .

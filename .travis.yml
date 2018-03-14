@@ -18,7 +18,7 @@ python:
 
 before_install:
 
-- make travis-build
+- make docker-build
 
 script:
   # # Now try to build docker file
@@ -33,4 +33,4 @@ script:
   # - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
   # - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
   # - docker run testimage cat /etc/issue
-  - make test
+  - make docker-test
