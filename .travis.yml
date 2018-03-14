@@ -14,69 +14,23 @@ dist: trusty
 language: python
 
 python:
-   - "3.5"
-
-
-
-env:
-  OOMMFTCL=/opt/oommf/oommf/oommf.tcl
+   - "3.6"
 
 before_install:
-- sudo apt-get update -y
 
-- echo "Copy oommf repository to /opt"
-- mkdir -p /opt
-- cp -av /home/travis/build/fangohr/oommf /opt
-- pushd /opt/oommf
-
-- echo "Approach 1 - Build oommf in docker image"
-- echo "Building Docker container (will take some time)"
-- ls -al
-- pwd
-- docker build -f docker/oommf/Dockerfile -t testimage .
-- ls -al
-
-- echo "Approach 2 - Build oommf in (Travis) host system"
-- echo "Installation of OOMMF on host system"
-- export OOMMF_TK_CONFIG=/usr/lib/x86_64-linux-gnu/tk8.6/tkConfig.sh
-- export OOMMF_TCL_CONFIG=/usr/lib/x86_64-linux-gnu/tcl8.6/tclConfig.sh
-- sudo apt-get update -y
-- sudo apt-get -y install tk8.6 tcl8.6 tcl8.6-dev tk8.6-dev
-- make
-
-
+- make docker-build
 
 script:
-  - pwd
-  - py.test --version
-  - python --version
-  - echo $PATH
-  - echo $OOMMFTCL
-  - echo "We only test that the +version call succeeds.
-    More tests would be better.
-    Although the joommf repositories cover some system testing.
-    see https://joommf.github.io.
-    We start with OOMMF installed on the host system:"
-  - tclsh ${OOMMFTCL} +version
-  # Get some version information about oommf code
-  - cat oommf-version
-  - cat versionlog.txt
-  # Get system tool versions
-  - g++ --version
-  - echo 'puts $tcl_version;exit 0' | tclsh
-  - echo 'puts [info patchlevel];exit 0' | tclsh
-  - cat /etc/issue
-
-  # Now try to build docker file
-  - echo "Now we test the OOMMF installation inside Docker:"
-
-
-  # Ask OOMMF in docker contain for version number
-  - docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
-  # and get some other diagnostic data
-  - docker run testimage hostname
-  - docker run testimage pwd
-  - docker run testimage g++ --version
-  - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
-  - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
-  - docker run testimage cat /etc/issue
+  # # Now try to build docker file
+  # - echo "Now we test the OOMMF installation inside Docker:"
+  #
+  # # Ask OOMMF in docker contain for version number
+  # - docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
+  # # and get some other diagnostic data
+  # - docker run testimage hostname
+  # - docker run testimage pwd
+  # - docker run testimage g++ --version
+  # - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
+  # - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
+  # - docker run testimage cat /etc/issue
+  - make docker-test
