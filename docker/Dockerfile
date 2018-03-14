@@ -3,22 +3,20 @@ FROM ubuntu:16.04
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
-# Compile oommf and create OOMMFTCL environment variable
+# Compile OOMMF and create OOMMFTCL environment variable
 WORKDIR /usr/local
-# RUN git clone http://github.com/fangohr/oommf
-COPY . oommf/
+RUN git clone https://github.com/fangohr/oommf.git
 WORKDIR /usr/local/oommf
 RUN make build-with-dmi-extension-all
-# RUN build-with-dmi-extension-all
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 
-# Create executable oommf script
+# Create executable OOMMF script.
 WORKDIR /usr/local/bin
 RUN echo "#! /bin/bash" > oommf
 RUN echo "tclsh /usr/local/oommf/oommf/oommf.tcl \"\$@\"" >> oommf
 RUN chmod a+x oommf
 
-# Enable getting oommf version
+# Enable getting oommf-version.
 WORKDIR /usr/local/bin
 RUN echo "#! /bin/bash" > oommf-version
 RUN echo "# see https://github.com/fangohr/oommf/blob/master/versionlog.txt" >> oommf-version

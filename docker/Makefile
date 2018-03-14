@@ -1,8 +1,8 @@
-image:
+build: Dockerfile Makefile
 	docker build -t joommf/oommf:latest .
 
-push: image
-	docker push joommf/oommf
+push: build
+	docker push joommf/oommf:latest
 
-run: image
-	docker run -ti -v `pwd`:/io joommf/oommf bash
+run:
+	docker run -ti -v `pwd`:/io joommf/oommf:latest bash
