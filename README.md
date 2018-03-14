@@ -12,22 +12,18 @@ The intention is to provide the OOMMF distribution files in a git repository for
 
 ## Version
 
-The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0. For further information, please refer to [versionlog.txt](versionlog.txt).
-
-## License
-
-The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
+The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0 (`20a0 20170929 a0`). If you are using `joommf/oommf` Docker image (more details in [Docker](#Docker) section), you can get the currect version of OOMMF by running `oommf-version`. The history of all OOMMF versions hosted in this directory is provided in [versionlog.txt](versionlog.txt).
 
 ## Clone and build
 
 If you want to build a clean OOMMF (without externally made extensions), clone the repository:
-```
-git clone https://github.com/fangohr/oommf.git
-```
+
+    git clone https://github.com/fangohr/oommf.git
+
 and build it
-```
-make build
-```
+
+    make build
+
 
 For building OOMMF with different extensions, please refer to the [Extensions](#Extensions) section.
 
@@ -40,54 +36,58 @@ We provide Dzyaloshinskii-Moriya interaction extensions for three different crys
 3. D<sub>2d</sub> - antiskyrmion DMI ([repository](https://github.com/joommf/oommf-extension-dmi-d2d))
 
 After you clone this repository
-```
-git clone https://github.com/fangohr/oommf.git
-```
+
+    git clone https://github.com/fangohr/oommf.git
+
 you can build OOMMF and add a particular extensions by running
-```
-make build-with-dmi-extensions-XXX
-```
+
+    make build-with-dmi-extensions-XXX
+
 where `XXX` can be `cnv`, `t`, or `d2d` for individual extensions. In case you want to build OOMMF with all three DMI extensions, you can run:
-```
-make build-with-dmi-extensions-all
-```
 
-## Conda
+    make build-with-dmi-extensions-all
 
-...
 
 ## Docker
 
-### Creating the image
+In [`docker/`](docker/) directory we provide [Dockerfile](docker/Dockerfile) and [Makefile](docker/Makefile) for building and running Docker images containg OOMMF. In addition, we also provide pre-built image at [DockerHub `joommf/oommf` repository](https://hub.docker.com/r/joommf/oommf/). More information about Docker as well as how to install it on your system can be found [here](https://www.docker.com/).
 
-The makefile can be used to build a new image, and push it to hub docker.
+### Getting the image
 
-### Using the image
+If you want to build an image with OOMMF, navigate to `docker/` director and run
 
-Users should be able to install docker on their computer, and then run
+    make build
 
-    docker pull joommf/oommf
+This command builds the image under `joommf/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from [DockerHub `joommf/oommf` repository](https://hub.docker.com/r/joommf/oommf/)
 
-to download the image to their computer. To get access to OOMMF, they
-should run:
+   docker pull joommf/oommf
 
-    docker run -ti -v `pwd`:/io joommf/oommf bash
 
-Once inside the container, the `oommf.tcl` file is in
-`/usr/local/oommf/oommf/oommf.tcl`. For convenience, we provide a
-shell script `oommf` in the search path (in `/usr/local/bin`). This can be used, for example:
+### Running the container
+
+To run a container, navigate to `docker/` directory and run
+
+    make run
+
+Once inside the container, the `oommf.tcl` file is in `/usr/local/oommf/oommf/oommf.tcl`. For convenience, we provide a shell script `oommf` in the search path (in `/usr/local/bin`). This can be used, for example:
 
     root@715477218aac:/io# oommf +version
     <23> oommf.tcl 1.2.0.6  info:
     oommf.tcl 1.2.0.6
-    root@715477218aac:/io# 
-
 
 ### No graphical user interface
 
-Note that OOMMF's graphical user interface cannot be used (without further work). It can be used to execute mif files, through boxsi, for example:
+Note that OOMMF's graphical user interface (GUI) in Docker container cannot be used (without further work), but it can be used to execute `.mif` files, through `boxsi`, for example:
 
-    root@715477218aac:/io# oommf boxsi 
+    root@715477218aac:/io# oommf boxsi
+    
+## Conda
+
+...
+
+## License
+
+The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
 
 ## How to cite
 
@@ -98,8 +98,3 @@ If you use any of the DMI extensions we provide in your research, please refer t
 ## Acknowledgements
 
 The repository which holds the OOMMF source code was developed as a part of [OpenDreamKit](http://opendreamkit.org/) – Horizon 2020 European Research Infrastructure project (676541) and the [EPSRC Programme grant on Skyrmionics (EP/N032128/1)](https://www.skyrmions.ac.uk/).
-
-## For developers
-
-To update this repository with a new OOMMF release, please update the variables in `Makefile-update-oommf`, and then run `make -f Makefile-update-oommf all`.
-
