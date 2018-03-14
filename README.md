@@ -47,21 +47,19 @@ where `XXX` can be `cnv`, `t`, or `d2d` for individual extensions. In case you w
 
     make build-with-dmi-extensions-all
 
-
 ## Docker
 
-In [`docker/`](docker/) directory we provide [Dockerfile](docker/Dockerfile) and [Makefile](docker/Makefile) for building and running Docker images containg OOMMF. In addition, we also provide pre-built image at [DockerHub `joommf/oommf` repository](https://hub.docker.com/r/joommf/oommf/). More information about Docker as well as how to install it on your system can be found [here](https://www.docker.com/).
+In [`docker/`](docker/) directory we provide [Dockerfile](docker/Dockerfile) and [Makefile](docker/Makefile) for building and running Docker images containg OOMMF. In addition, we also provide pre-built image at DockerHub under [`joommf/oommf`](https://hub.docker.com/r/joommf/oommf/) repository. More information about Docker as well as on how to install it on your system can be found [here](https://www.docker.com/).
 
 ### Getting the image
 
-If you want to build an image with OOMMF, navigate to `docker/` director and run
+If you want to build an image yourself, navigate to the `docker/` directory and run
 
     make build
 
-This command builds the image under `joommf/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from [DockerHub `joommf/oommf` repository](https://hub.docker.com/r/joommf/oommf/)
+This command builds the image under `joommf/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from DockerHub [`joommf/oommf`](https://hub.docker.com/r/joommf/oommf/) repository
 
    docker pull joommf/oommf
-
 
 ### Running the container
 
@@ -75,9 +73,11 @@ Once inside the container, the `oommf.tcl` file is in `/usr/local/oommf/oommf/oo
     <23> oommf.tcl 1.2.0.6  info:
     oommf.tcl 1.2.0.6
 
+In addition, during the build process, we also set an environment variable `OOMMFTCL` to point to the `/usr/local/oommf/oommf/oommf.tcl` file.
+
 ### No graphical user interface
 
-Note that OOMMF's graphical user interface (GUI) in Docker container cannot be used (without further work), but it can be used to execute `.mif` files, through `boxsi`, for example:
+Please note that OOMMF's graphical user interface (GUI) in Docker container cannot be used (without further work), but it can be used to execute `.mif` files, through `boxsi`, for example:
 
     root@715477218aac:/io# oommf boxsi
     
