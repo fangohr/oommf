@@ -53,5 +53,6 @@ test-all:
 	echo "Which OOMMF version?"
 	tclsh oommf/oommf.tcl +version
 	echo
-	echo "We should run some OOMMF examples here"
-	echo "TODO"
+	echo "Running OOMMF examples (standard problems 3 and 4)."
+	tclsh oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
+	tclsh oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
