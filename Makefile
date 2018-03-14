@@ -55,5 +55,7 @@ test-all:
 	tclsh $(OOMMFTCL) +version
 	echo
 	echo "Running OOMMF examples (standard problems 3 and 4)."
+	ls -lh oommf/app/oxs/examples/*.odt oommf/app/oxs/examples/*.omf
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
+	ls -lh oommf/app/oxs/examples/*.odt oommf/app/oxs/examples/*.omf
