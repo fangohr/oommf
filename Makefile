@@ -1,3 +1,14 @@
+# Commands prefixed with 'docker-' will execute the relevant task in a
+# docker container.
+#
+# If you have docker, the steps are
+#
+# 1. docker-build (creates docker image)
+# 2. docker-test  (runs a few examples in that docker image container)
+# 3. docker-run (open shell, in which oommf commands can be run)
+#
+
+
 OOMMFPREFIX="oommf"
 DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
@@ -36,31 +47,28 @@ test:
 	@echo "get some other diagnostic data about the environment"
 	hostname
 	pwd
+	echo
 	g++ --version
-	echo 'puts $tcl_version;exit 0' | tclsh
+	echo 'puts [info tclversion];exit 0' | tclsh
+	echo
 	echo 'puts [info patchlevel];exit 0' | tclsh
-	cat /etc/issue
-
+	echo
 	echo "Which OOMMF version?"
-	tclsh /usr/local/oommf/oommf/oommf.tcl +version
-	echo "short command available?"
-	oommf +version
-
+	tclsh oommf/oommf.tcl +version
+	echo
 	echo "We should run some OOMMF examples here"
 	echo "TODO"
 
 
 docker-test:
 	@echo "Now we test the OOMMF installation inside Docker:"
-	docker run oommfimage make -f /usr/local/oommf/Makefile test
+	docker run oommfimage cat /etc/issue
+	docker run --workdir /usr/local/oommf oommfimage make test
 
 
 docker-build:
 	@echo "Building Docker image with oommf inside"
 	docker build -f docker/oommf/Dockerfile -t oommfimage .
-
-
-run: docker-run
 
 docker-run:
 	@echo "Fire up container, ready to process 'oommf' command, mount local directory"
