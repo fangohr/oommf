@@ -87,7 +87,7 @@ Please note that OOMMF's graphical user interface (GUI) in Docker container cann
 
 ## Support
 
-We do not provide support on OOMMF. However, if you have any difficulties or problems in using any of the features we provide in this repository, you are welcome to raise an issue in our [joommf/help](https://github.com/joommf/help) repository.
+For support on OOMMF itself, please refer to OOMMF's [web page](https://math.nist.gov/oommf/oommf.html). However, if you have any difficulties or problems in using any of the features we provide in this repository, you are welcome to raise an issue in our [joommf/help](https://github.com/joommf/help) repository.
 
 ## License
 
