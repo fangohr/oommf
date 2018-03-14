@@ -41,7 +41,16 @@ get-extension-dmi-d2d:
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
 
-test:
+travis-build:
+	docker build --no-cache -t dockertestimage .
+	docker run -ti -d --name testcontainer dockertestimage
+	docker exec testcontainer make test-all
+	docker stop testcontainer
+	docker rm testcontainer
+
+test-all:
+	@echo "Now we test the OOMMF installation inside Docker:"
+	cat /etc/issue
 	@echo "get some other diagnostic data about the environment"
 	hostname
 	pwd
@@ -56,17 +65,3 @@ test:
 	echo
 	echo "We should run some OOMMF examples here"
 	echo "TODO"
-
-docker-test:
-	@echo "Now we test the OOMMF installation inside Docker:"
-	docker run oommfimage cat /etc/issue
-	docker run --workdir /usr/local/oommf oommfimage make test
-
-
-docker-build:
-	@echo "Building Docker image with oommf inside"
-	docker build -f docker/oommf/Dockerfile -t oommfimage .
-
-docker-run:
-	@echo "Fire up container, ready to process 'oommf' command, mount local directory"
-	docker run -ti -v `pwd`:/io oommfimage bash

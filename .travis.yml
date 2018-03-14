@@ -3,11 +3,8 @@ sudo: required
 services:
   - docker
 
-before_install:
-  - make docker-build
-
 script:
-  - make docker-test
+  - make travis-build
 
 notifications:
   slack: joommf:eqKxGPXuUP3LxnOfxg7GWgDF
