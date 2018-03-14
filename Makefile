@@ -31,18 +31,37 @@ get-extension-dmi-d2d:
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
 
+
+test:
+	@echo "get some other diagnostic data about the environment"
+	hostname
+	pwd
+	g++ --version
+	echo 'puts $tcl_version;exit 0' | tclsh
+	echo 'puts [info patchlevel];exit 0' | tclsh
+	cat /etc/issue
+
+	echo "Which OOMMF version?"
+	tclsh /usr/local/oommf/oommf/oommf.tcl +version
+	echo "short command available?"
+	oommf +version
+
+	echo "We should run some OOMMF examples here"
+	echo "TODO"
+
+
 docker-test:
 	@echo "Now we test the OOMMF installation inside Docker:"
-	docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
-# and get some other diagnostic data
-	docker run testimage hostname
-	docker run testimage pwd
-	docker run testimage g++ --version
-	docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
-	docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
-	docker run testimage cat /etc/issue
+	docker run oommfimage make -f /usr/local/oommf/Makefile test
 
 
 docker-build:
-	# Dockerfile makes use of targets above
-	docker build -f docker/oommf/Dockerfile -t testimage .
+	@echo "Building Docker image with oommf inside"
+	docker build -f docker/oommf/Dockerfile -t oommfimage .
+
+
+run: docker-run
+
+docker-run:
+	@echo "Fire up container, ready to process 'oommf' command, mount local directory"
+	docker run -ti -v `pwd`:/io oommfimage bash
