@@ -1,36 +1,13 @@
-# If we ever introduce testing here,
-# it is likely to use Python.
-#
-# So we leave the Python installation commands
-# below commented out, but in this .travis.yml file.
-#
-# Hans, 22 October 2016
-
 sudo: required
 
-os: linux
-dist: trusty
-
-language: python
-
-python:
-   - "3.6"
+services:
+  - docker
 
 before_install:
-
-- make docker-build
+  - make docker-build
 
 script:
-  # # Now try to build docker file
-  # - echo "Now we test the OOMMF installation inside Docker:"
-  #
-  # # Ask OOMMF in docker contain for version number
-  # - docker run testimage tclsh /usr/local/oommf/oommf/oommf.tcl +version
-  # # and get some other diagnostic data
-  # - docker run testimage hostname
-  # - docker run testimage pwd
-  # - docker run testimage g++ --version
-  # - docker run testimage echo 'puts $tcl_version;exit 0' | tclsh
-  # - docker run testimage echo 'puts [info patchlevel];exit 0' | tclsh
-  # - docker run testimage cat /etc/issue
   - make docker-test
+
+notifications:
+  slack: joommf:eqKxGPXuUP3LxnOfxg7GWgDF

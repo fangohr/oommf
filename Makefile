@@ -8,7 +8,6 @@
 # 3. docker-run (open shell, in which oommf commands can be run)
 #
 
-
 OOMMFPREFIX="oommf"
 DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
@@ -42,7 +41,6 @@ get-extension-dmi-d2d:
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
 
-
 test:
 	@echo "get some other diagnostic data about the environment"
 	hostname
@@ -58,7 +56,6 @@ test:
 	echo
 	echo "We should run some OOMMF examples here"
 	echo "TODO"
-
 
 docker-test:
 	@echo "Now we test the OOMMF installation inside Docker:"
