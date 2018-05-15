@@ -41,11 +41,11 @@ After you clone this repository
 
 you can build OOMMF and add a particular extensions by running
 
-    make build-with-dmi-extensions-XXX
+    make build-with-dmi-extension-XXX
 
 where `XXX` can be `cnv`, `t`, or `d2d` for individual extensions. In case you want to build OOMMF with all three DMI extensions, you can run:
 
-    make build-with-dmi-extensions-all
+    make build-with-dmi-extension-all
 
 ## Docker
 
