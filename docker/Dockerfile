@@ -1,5 +1,8 @@
 FROM ubuntu:18.04
 
+# Avoid asking for geographic data when installing tzdata
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
