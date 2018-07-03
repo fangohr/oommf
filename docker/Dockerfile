@@ -29,4 +29,10 @@ RUN chmod a+x oommf-version
 
 # Create working directory for mounting.
 RUN mkdir /io
+
+# Make sure the files created on host are not owned by root.
+RUN adduser oommfuser
+RUN chown -R oommfuser /io
+USER oommfuser
+
 WORKDIR /io
