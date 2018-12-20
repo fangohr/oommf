@@ -1,6 +1,6 @@
 #!/bin/sh
-# FILE: async
-# Usage: async <host> <port>
+# FILE: async.tcl
+# Usage: async.tcl <host> <port>
 #
 # The file pkg/net/link.tcl tries to use [socket -async] to make
 # network connections.  Unfortunately, [socket -async] is broken

@@ -806,7 +806,7 @@ Mms##NAME##Ref(Tcl_Interp *interp, const char *name)                    \
 {                                                                       \
     Tcl_CmdInfo info;                                                   \
     if (!Tcl_GetCommandInfo(interp, (char *) name, &info)) {            \
-        panic(Oc_AutoBuf("No object corresponding to name %s"), name);  \
+     Tcl_Panic(Oc_AutoBuf("No object corresponding to name %s"), name); \
     }                                                                   \
     return (CLASS &) (*((CLASS *) info.clientData));                    \
 }

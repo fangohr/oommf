@@ -2,17 +2,23 @@
  *
  * Macros and classes for nonfatal message handling.
  *
+ * NOTE: Oxs_WarningMessage is NOT thread-safe; in particular
+ *       the Send() method calls TkMessage, which should only
+ *       happen from the main thread.  (Also, there is no
+ *       mutex lock around the message count data.)
  */
 
 #ifndef _OXS_WARN
 #define _OXS_WARN
 
+#include <deque>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "oc.h"
 #include "nb.h"
+#include "oxsthread.h"
 
 OC_USE_STRING;
 
@@ -68,25 +74,70 @@ class Oxs_Director; // Forward reference
 class Oxs_WarningMessage {
 public:
   Oxs_WarningMessage(int count_max,Nb_MessageType mt = NB_MSG_WARNING)
-    : instance_id(++ids_in_use), max_message_count(count_max),
-      message_type(mt) {}
+    : max_message_count(count_max),
+      message_type(mt) {
+    mutex.Lock();
+    instance_id = ++ids_in_use;
+    mutex.Unlock();
+  }
 
+  // If called from the root thread, Send() transmits the message
+  // immediately.  When called from a child thread the message is
+  // instead stored in the message hold which should be transmitted
+  // when the thread joins the root thread.  Warning messages
+  // generated in threads which never join (e.g. Oxs_ThreadThrowAway)
+  // are not well handled at present---but they should be reported
+  // upon problem termination (in Oxs_Director::Release()).
+  // Unfortunately, in the last case if problem release is not clean
+  // then potentially helpful warning messages may be lost.
   int Send(const Oxs_WarningMessageRevisionInfo& revinfo,
            const char* line,const char* msg,
            const char* src=NULL,const char* id=NULL);
 
-  int GetMaxCount() const { return max_message_count; }
+  // The design intention is for clients to call Send; HoldMessage and
+  // TransmitMessageHold are intended as helper methods for Send in
+  // the case Send is called from a non-root thread.  However,
+  // TransmitMessageHold needs to be called by Oxs_ThreadTree,
+  // Oxs_ThreadBush, and Oxs_Director to make automatic dumps of the
+  // hold, so both HoldMessage and TransmitMessageHold are made
+  // public.
+  int HoldMessage(const Oxs_WarningMessageRevisionInfo& revinfo,
+                  const char* line,const char* msg,
+                  const char* src,const char* id=NULL);
+  // Call from any thread.  Message is stored and not transmitted
+  // until the main thread call TransmitMessageHold.
+
+  static int TransmitMessageHold();
+  /// Call only from main thread. Return is number of messages transmitted.
+
+
+  int GetMaxCount() const {
+    return max_message_count;
+  }
   int GetCurrentCount() const;
   void SetCurrentCount(int newcount);
 
 private:
-  const int instance_id;
+  int instance_id;  // Initialized in constructor; treat as constant
   const int max_message_count; // -1 => no limit
   const Nb_MessageType message_type;
+  static Oxs_Mutex mutex;
   static int ids_in_use;
   static map<int,int> message_counts;    // Maps id -> message count
-  // NOTE 1: Store message counts centrally to provide easy
-  //         support for the ClearCount() facility.
+
+  struct MessageData {
+    Nb_MessageType msgtype;
+    String text;
+    String errCode;
+    MessageData() : msgtype(NB_MSG_WARNING) {}
+    MessageData(const Nb_MessageType& in_type,
+                const String& in_text,
+                const String& in_errCode)
+      : msgtype(in_type), text(in_text), errCode(in_errCode) {}
+  };
+  static deque<MessageData> message_hold;
+  // NOTE 1: Store message counts and hold centrally to provide easy
+  //         support for the ClearHoldAndCounts() facility.
   // NOTE 2: In the future, we might want to add support for ganging
   //         together multiple warning messages as a single type for
   //         message output counts purposes.  This can be done in the
@@ -94,7 +145,29 @@ private:
   //         at multiple places; this is probably not inconvenient
   //         inside a single file, but is more cumbersome if one wants
   //         to support this behavior across multiple files.
-  static void ClearCounts() { message_counts.clear(); }
+
+  static void ClearHoldAndCounts() {
+    // Drops any messages stored in the hold and clears all message counts.
+    mutex.Lock();
+    try {
+      message_counts.clear();
+      message_hold.clear();
+    } catch(...) {
+      mutex.Unlock();
+      throw;
+    }
+    mutex.Unlock();
+  }
+
+  int FormatMessage
+  (const Oxs_WarningMessageRevisionInfo& revinfo,
+   const char* line,
+   const char* msg,
+   const char* src,
+   const char* id,
+   String& formatted_message, // Export
+   String& errCode);          // Export
+
   friend class Oxs_Director;  // So Oxs_Director can call ClearCounts().
   Oxs_WarningMessage& operator=(const Oxs_WarningMessage&); // Declare
   /// but don't define, just to quiet some noisy compilers.  The

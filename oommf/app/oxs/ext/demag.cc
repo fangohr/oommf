@@ -76,12 +76,10 @@ Oxs_Demag::Oxs_Demag(
     convtime("conv"),dottime("dot"),
 #endif // REPORT_TIME
     rdimx(0),rdimy(0),rdimz(0),cdimx(0),cdimy(0),cdimz(0),
-    fdimx(0),fdimy(0),fdimz(0),
     adimx(0),adimy(0),adimz(0),
     xperiodic(0),yperiodic(0),zperiodic(0),
-    coarse_grid(0),coarse_block_x(1),coarse_block_y(1),coarse_block_z(1),
     mesh_id(0),energy_density_error_estimate(-1),
-    Hxfrm(0),asymptotic_radius(-1),Mtemp(0),Htemp(0),
+    Hxfrm(0),asymptotic_radius(-1),Mtemp(0),
     embed_convolution(0),embed_block_size(0)
 {
   asymptotic_radius = GetRealInitValue("asymptotic_radius",32.0);
@@ -105,25 +103,6 @@ Oxs_Demag::Oxs_Demag(
   /// energy by a constant amount, but since the demag field is changed
   /// by a multiple of m, the torque and therefore the magnetization
   /// dynamics are unaffected.
-
-  // Compute on coarse grid?
-  if(HasInitValue("coarse_grid")) {
-    ThreeVector blockvec = GetThreeVectorInitValue("coarse_grid");
-    coarse_block_x = static_cast<int>(blockvec.x);
-    coarse_block_y = static_cast<int>(blockvec.y);
-    coarse_block_z = static_cast<int>(blockvec.z);
-    if(coarse_block_x<1 || coarse_block_y<1 || coarse_block_z<1
-       || static_cast<OC_REAL8m>(coarse_block_x) != blockvec.x
-       || static_cast<OC_REAL8m>(coarse_block_y) != blockvec.y
-       || static_cast<OC_REAL8m>(coarse_block_z) != blockvec.z) {
-      throw Oxs_ExtError(this,"Invalid values for coarse_grid entry: "
-                         "Each value should be a positive integer.");
-    }
-    if(coarse_block_x>1 || coarse_block_y>1 || coarse_block_z>1) {
-      coarse_grid = 1; // Enable coarse grid
-    }
-  }
-
 
 #if REPORT_TIME
   // Set default names for development timers
@@ -187,9 +166,8 @@ OC_BOOL Oxs_Demag::Init()
 void Oxs_Demag::ReleaseMemory() const
 { // Conceptually const
   A.Free();
-  if(Hxfrm!=0)       { delete[] Hxfrm;    Hxfrm=0; }
-  if(Mtemp!=0)       { delete[] Mtemp;    Mtemp=0; }
-  if(Htemp!=0)       { delete[] Htemp;    Htemp=0; }
+  if(Hxfrm!=0)       { delete[] Hxfrm;       Hxfrm=0;       }
+  if(Mtemp!=0)       { delete[] Mtemp;       Mtemp=0;       }
   rdimx=rdimy=rdimz=0;
   cdimx=cdimy=cdimz=0;
   adimx=adimy=adimz=0;
@@ -301,23 +279,9 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     inittime.Start();
 #endif // REPORT_TIME
   // Fill dimension variables
-  fdimx = rdimx = mesh->DimX();
-  fdimy = rdimy = mesh->DimY();
-  fdimz = rdimz = mesh->DimZ();
-  if(coarse_grid) {
-    // If coarse block dimensions doesn't exactly divide mesh
-    // dimensions, then round up for additional zero padding.
-    rdimx = (rdimx + coarse_block_x - 1)/coarse_block_x;
-    rdimy = (rdimy + coarse_block_y - 1)/coarse_block_y;
-    rdimz = (rdimz + coarse_block_z - 1)/coarse_block_z;
-    if((xperiodic && rdimx*coarse_block_x != fdimx)
-       || (yperiodic && rdimy*coarse_block_y != fdimy)
-       || (zperiodic && rdimz*coarse_block_z != fdimz)) {
-      throw Oxs_ExtError(this,
-             "Coarse block dimensions must divide periodic dimensions");
-    }
-  }
-
+  rdimx = mesh->DimX();
+  rdimy = mesh->DimY();
+  rdimz = mesh->DimZ();
   if(rdimx==0 || rdimy==0 || rdimz==0) return; // Empty mesh!
 
   // Initialize fft object.  If a dimension equals 1, then zero
@@ -350,14 +314,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   Mtemp = new OXS_FFT_REAL_TYPE[ODTV_VECSIZE*rdimx*rdimy*rdimz];
   /// Temporary space to hold Ms[]*m[].  Now that there are FFT
   /// functions that can take Ms as input and do the multiplication on
-  /// the fly, the use of this buffer could be removed for non-coarse
-  /// grid use.
-
-  if(coarse_grid) {
-    Htemp = new OXS_FFT_REAL_TYPE[ODTV_VECSIZE*rdimx*rdimy];
-    /// Temporary space to one xy-plane of H output for coarse grid
-    /// simulations.
-  }
+  /// the fly, the use of this buffer should be removed.
 
   // Allocate memory for FFT xfrm target H
   const OC_INDEX xfrm_size = ODTV_VECSIZE * 2 * cdimx * cdimy * cdimz;
@@ -367,7 +324,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   /// real) quantities.  (Note: If we embed properly we don't really
   /// need all this space.)
 
-  if(Mtemp==0 || (coarse_grid && Htemp==0) || Hxfrm==0) {
+  if(Mtemp==0 || Hxfrm==0) {
     // Safety check for those machines on which new[] doesn't throw
     // BadAlloc.
     String msg = String("Insufficient memory in Demag setup.");
@@ -455,11 +412,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   OC_REAL8m dx = mesh->EdgeLengthX();
   OC_REAL8m dy = mesh->EdgeLengthY();
   OC_REAL8m dz = mesh->EdgeLengthZ();
-  if(coarse_grid) {
-    dx *= coarse_block_x;
-    dy *= coarse_block_y;
-    dz *= coarse_block_z;
-  }
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
@@ -492,26 +444,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   // Note: Using an Oxs_FFT3DThreeVector fft object, this would be just
   //    scale *= fft.GetScaling();
   scale *= fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-  if(coarse_grid) {
-    // Coarse grid scaling done via demag kernel rather than in the
-    // coarse grid averaging of M.
-    scale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                        *coarse_block_y*coarse_block_z);
-  }
-  OC_INDEX i,j,k;
-  OC_INDEX kstop=1; if(rdimz>1) kstop=rdimz+2;
-  OC_INDEX jstop=1; if(rdimy>1) jstop=rdimy+2;
-  OC_INDEX istop=1; if(rdimx>1) istop=rdimx+2;
-  if(scaled_arad>0) {
-    // We don't need to compute analytic formulae outside
-    // asymptotic radius
-    OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dz))+2;
-    if(ktest<kstop) kstop = ktest;
-    OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dy))+2;
-    if(jtest<jstop) jstop = jtest;
-    OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dx))+2;
-    if(itest<istop) istop = itest;
-  }
 
   if(!xperiodic && !yperiodic && !zperiodic) {
     // Calculate Nxx, Nxy and Nxz in first octant, non-periodic case.
@@ -522,17 +454,21 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_INDEX wdim2 = rdimy;
     OC_INDEX wdim3 = rdimz;
     if(scaled_arad>0) {
-      // We don't need to compute analytic formulae outside
-      // asymptotic radius
-      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dx));
+      // We don't need to compute analytic formulae outside asymptotic
+      // radius.  Round up a little (0.5) to protect against rounding
+      // errors to insure that each index is computed by at least one
+      // of the analytic or asymptotic code blocks.
+      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dx));
       if(itest<wdim1) wdim1 = itest;
-      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dy));
+      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dy));
       if(jtest<wdim2) wdim2 = jtest;
-      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dz));
+      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dz));
       if(ktest<wdim3) wdim3 = ktest;
     }
     Oxs_3DArray<OC_REALWIDE> workspace;
     workspace.SetDimensions(wdim1,wdim2+2,wdim3+2);
+
+    OC_INDEX i,j,k;
     ComputeD6f(Oxs_Newell_f_xx,workspace,dx,dy,dz);
     for(k=0;k<wdim3;k++) {
       for(j=0;j<wdim2;j++) {
@@ -585,15 +521,8 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     // Special "SelfDemag" code may be more accurate at index 0,0,0.
     // Note: Using an Oxs_FFT3DThreeVector fft object, this would be
     //    scale *= fft.GetScaling();
-    OXS_FFT_REAL_TYPE selfscale
+    const OXS_FFT_REAL_TYPE selfscale
       = -1 * fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    if(coarse_grid) {
-      // Coarse grid scaling done via demag kernel rather than in the
-      // coarse grid averaging of M.
-      selfscale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                              *coarse_block_y*coarse_block_z);
-    }
-
     A[0].A00 = Oxs_SelfDemagNx(dx,dy,dz);
     A[0].A11 = Oxs_SelfDemagNy(dx,dy,dz);
     A[0].A22 = Oxs_SelfDemagNz(dx,dy,dz);
@@ -622,15 +551,8 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
       // scaled so that dx, dy, and dz are either small integers
       // or else close to 1.0.
       OXS_DEMAG_REAL_ASYMP scaled_arad_sq = scaled_arad*scaled_arad;
-      OXS_FFT_REAL_TYPE tensorscale = -1 *
+      OXS_FFT_REAL_TYPE fft_scaling = -1 *
         fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-      if(coarse_grid) {
-        // Coarse grid scaling done via demag kernel rather than in
-        // the coarse grid averaging of M.
-        tensorscale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                  *coarse_block_y*coarse_block_z);
-      }
-
       /// Note: Since H = -N*M, and by convention with the rest of this
       /// code, we store "-N" instead of "N" so we don't have to multiply
       /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
@@ -665,12 +587,12 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
           for(i=istart;i<rdimx;++i) {
             OC_INDEX index = jkindex + i;
             OXS_DEMAG_REAL_ASYMP x = dx*i;
-            A[index].A00 = tensorscale*ANxx.NxxAsymptotic(x,y,z);
-            A[index].A01 = tensorscale*ANxy.NxyAsymptotic(x,y,z);
-            A[index].A02 = tensorscale*ANxz.NxzAsymptotic(x,y,z);
-            A[index].A11 = tensorscale*ANyy.NyyAsymptotic(x,y,z);
-            A[index].A12 = tensorscale*ANyz.NyzAsymptotic(x,y,z);
-            A[index].A22 = tensorscale*ANzz.NzzAsymptotic(x,y,z);
+            A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
+            A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
+            A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
+            A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
+            A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
+            A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
           }
         }
       }
@@ -683,30 +605,24 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   // NOTE 2: Keep this code in sync with that in
   //         Oxs_Demag::IncrementPreconditioner
   if(xperiodic) {
-    OXS_FFT_REAL_TYPE tensorscale = -1 *
+    OXS_FFT_REAL_TYPE fft_scaling = -1 *
       fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    if(coarse_grid) {
-      // Coarse grid scaling done via demag kernel rather than in
-      // the coarse grid averaging of M.
-      tensorscale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                *coarse_block_y*coarse_block_z);
-    }
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
     Oxs_DemagPeriodicX pbctensor(dx,dy,dz,rdimx*dx,scaled_arad);
-    for(k=0;k<rdimz;++k) {
+    for(OC_INDEX k=0;k<rdimz;++k) {
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<rdimy;++j) {
+      for(OC_INDEX j=0;j<rdimy;++j) {
         const OC_INDEX jkindex = k*astridez + j*astridey;
         OXS_DEMAG_REAL_ASYMP y = dy*j;
-        for(i=0;i<=(rdimx/2);++i) {
+        for(OC_INDEX i=0;i<=(rdimx/2);++i) {
           OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
           pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
           pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-          A_coefs Atmp(tensorscale*Nxx,tensorscale*Nxy,tensorscale*Nxz,
-                       tensorscale*Nyy,tensorscale*Nyz,tensorscale*Nzz);
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
           A[jkindex + i] = Atmp;
           if(0<i && 2*i<rdimx) {
             // Interior point.  Reflect results from left half to
@@ -721,29 +637,25 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     }
   }
   if(yperiodic) {
-    OXS_FFT_REAL_TYPE tensorscale = -1 *
+    OXS_FFT_REAL_TYPE fft_scaling = -1 *
       fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    if(coarse_grid) {
-      tensorscale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                *coarse_block_y*coarse_block_z);
-    }
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
     Oxs_DemagPeriodicY pbctensor(dx,dy,dz,rdimy*dy,scaled_arad);
-    for(k=0;k<rdimz;++k) {
+    for(OC_INDEX k=0;k<rdimz;++k) {
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<=(rdimy/2);++j) {
+      for(OC_INDEX j=0;j<=(rdimy/2);++j) {
         OXS_DEMAG_REAL_ASYMP y = dy*j;
         const OC_INDEX jkindex = k*astridez + j*astridey;
         const OC_INDEX mjkindex = k*astridez + (rdimy-j)*astridey;
-        for(i=0;i<rdimx;++i) {
+        for(OC_INDEX i=0;i<rdimx;++i) {
           OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
           pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
           pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-          A_coefs Atmp(tensorscale*Nxx,tensorscale*Nxy,tensorscale*Nxz,
-                       tensorscale*Nyy,tensorscale*Nyz,tensorscale*Nzz);
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
           A[jkindex + i] = Atmp;
           if(0<j && 2*j<rdimy) {
             // Interior point.  Reflect results from lower half to
@@ -758,29 +670,25 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     }
   }
   if(zperiodic) {
-    OXS_FFT_REAL_TYPE tensorscale = -1 *
+    OXS_FFT_REAL_TYPE fft_scaling = -1 *
       fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    if(coarse_grid) {
-      tensorscale *= 1.0/static_cast<OC_REAL8m>(coarse_block_x
-                                *coarse_block_y*coarse_block_z);
-    }
     /// Note: Since H = -N*M, and by convention with the rest of this
     /// code, we store "-N" instead of "N" so we don't have to multiply
     /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
     Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,rdimz*dz,scaled_arad);
-    for(k=0;k<=(rdimz/2);++k) {
+    for(OC_INDEX k=0;k<=(rdimz/2);++k) {
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      for(j=0;j<rdimy;++j) {
+      for(OC_INDEX j=0;j<rdimy;++j) {
         const OC_INDEX kjindex = k*astridez + j*astridey;
         const OC_INDEX mkjindex = (rdimz-k)*astridez + j*astridey;
         OXS_DEMAG_REAL_ASYMP y = dy*j;
-        for(i=0;i<rdimx;++i) {
+        for(OC_INDEX i=0;i<rdimx;++i) {
           OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
           pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
           pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-          A_coefs Atmp(tensorscale*Nxx,tensorscale*Nxy,tensorscale*Nxz,
-                       tensorscale*Nyy,tensorscale*Nyz,tensorscale*Nzz);
+          A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
+                       fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
           A[kjindex + i] = Atmp;
           if(0<k && 2*k<rdimz) {
             // Interior point.  Reflect results from bottom half to
@@ -817,6 +725,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     /// "ODTV_VECSIZE" is here because we work with arrays of
     /// ThreeVectors.  The target buf has a factor of 2 because the
     /// results are (nominally) complex (as opposed to real) quantities.
+    OC_INDEX i,j,k;
     for(k=0;k<rdimz;++k) {
       for(j=0;j<rdimy;++j) {
         const OC_INDEX aoff = k*astridez +j*astridey;
@@ -1005,67 +914,16 @@ void Oxs_Demag::ComputeEnergy
     = *(oced.H != 0 ? oced.H : oced.scratch_H);
   field.AdjustSize(state.mesh);
 
-  // Fill Mtemp with Ms[]*spin[].  The non-coarse mesh case should
-  // dispense with Mtemp and roll this into the forward FFT routine.
-  const OC_INDEX rsize = rdimx*rdimy*rdimz;
-  if(!coarse_grid) {
-    assert(Ms.Size() == rsize);
-    for(OC_INDEX i=0;i<rsize;++i) {
-      OC_REAL8m scale = Ms[i];
-      const ThreeVector& vec = spin[i];
-      Mtemp[3*i]   = scale*vec.x;
-      Mtemp[3*i+1] = scale*vec.y;
-      Mtemp[3*i+2] = scale*vec.z;
-    }
-  } else {
-    // Average Ms[]*spin[] across each coarse block
-    const OC_INDEX fdimxy = fdimx*fdimy;   // Fine mesh
-    const OC_INDEX rdimxy = rdimx*rdimy;   // Coarse mesh
-
-    // Allow for cases where coarse mesh runs past the edge of the
-    // fine mesh.
-    OC_INDEX k2stop_last = fdimz - (rdimz-1)*coarse_block_z;
-    OC_INDEX j2stop_last = fdimy - (rdimy-1)*coarse_block_y;
-    OC_INDEX i2stop_last = fdimx - (rdimx-1)*coarse_block_x;
-
-    OC_INDEX k2stop = coarse_block_z;
-    for(OC_INDEX k=0;k<rdimz;++k) {
-      if(k==rdimz-1) k2stop = k2stop_last;
-      OC_INDEX kbase = k*coarse_block_z*fdimxy;
-      OC_INDEX koff = k*rdimxy;
-
-      OC_INDEX j2stop = coarse_block_y;
-      for(OC_INDEX j=0;j<rdimy;++j) {
-        if(j==rdimy-1) j2stop = j2stop_last;
-        OC_INDEX kjbase = kbase + j*coarse_block_y*fdimx;
-        OC_INDEX kjoff = koff + j*rdimx;
-
-        OC_INDEX i2stop = coarse_block_x;
-        for(OC_INDEX i=0;i<rdimx;++i) {
-          if(i==rdimx-1) i2stop = i2stop_last;
-          OC_INDEX kjibase = kjbase + i*coarse_block_x;
-
-          // Sum fine mesh value under coarse mesh element (k,j,i).
-          // This could be replaced with a simple subsample (faster)
-          // or some higher order interpolation (slower but perhaps
-          // more accurate).
-          ThreeVector sum(0.,0.,0.);
-          for(int k2=0;k2<k2stop;++k2) {
-            OC_INDEX k2off = kjibase + k2*fdimxy;
-            for(int j2=0;j2<j2stop;++j2) {
-              OC_INDEX kj2off = k2off + j2*fdimx;
-              for(int i2=0;i2<i2stop;++i2) {
-                OC_INDEX index = kj2off + i2;
-                sum += Ms[index]*spin[index];
-              }
-            }
-          }
-          Mtemp[ODTV_VECSIZE*(kjoff+i)]   = sum.x;
-          Mtemp[ODTV_VECSIZE*(kjoff+i)+1] = sum.y;
-          Mtemp[ODTV_VECSIZE*(kjoff+i)+2] = sum.z;
-        }
-      }
-    }
+  // Fill Mtemp with Ms[]*spin[].  The plan is to eventually
+  // roll this step into the forward FFT routine.
+  const OC_INDEX rsize = Ms.Size();
+  assert(rdimx*rdimy*rdimz == rsize);
+  for(OC_INDEX i=0;i<rsize;++i) {
+    OC_REAL8m scale = Ms[i];
+    const ThreeVector& vec = spin[i];
+    Mtemp[3*i]   = scale*vec.x;
+    Mtemp[3*i+1] = scale*vec.y;
+    Mtemp[3*i+2] = scale*vec.z;
   }
 
   if(!embed_convolution) {
@@ -1124,7 +982,7 @@ void Oxs_Demag::ComputeEnergy
         OC_INDEX  jindex =  kindex + j*jstride;
         OC_INDEX ajindex = akindex + j*ajstride;
         for(OC_INDEX i=0;i<cdimx;++i) {
-          OC_INDEX index = ODTV_COMPLEXSIZE*ODTV_VECSIZE*i+jindex;
+          OC_INDEX  index = ODTV_COMPLEXSIZE*ODTV_VECSIZE*i+jindex;
           OXS_FFT_REAL_TYPE Hx_re = Hxfrm[index];
           OXS_FFT_REAL_TYPE Hx_im = Hxfrm[index+1];
           OXS_FFT_REAL_TYPE Hy_re = Hxfrm[index+2];
@@ -1247,20 +1105,6 @@ void Oxs_Demag::ComputeEnergy
         = static_cast<OXS_FFT_REAL_TYPE*>(static_cast<void*>(&field[OC_INDEX(0)]));
       fftz.InverseFFT(Hxfrm); // z-direction transforms
 
-      OC_INDEX fdimxy=0;
-      OC_INDEX i2stop_last=0;
-      OC_INDEX j2stop_last=0;
-      OC_INDEX k2stop=0,k2stop_last=0;
-      if(coarse_grid) {
-        fdimxy = fdimx*fdimy; // Fine mesh
-        // Allow for cases where coarse mesh runs past the edge of the
-        // fine mesh.
-        k2stop_last = fdimz - (rdimz-1)*coarse_block_z;
-        j2stop_last = fdimy - (rdimy-1)*coarse_block_y;
-        i2stop_last = fdimx - (rdimx-1)*coarse_block_x;
-        k2stop = coarse_block_z;
-      }
-
       for(OC_INDEX k=0;k<rdimz;++k) {
         // y-direction transforms
 #if REPORT_TIME
@@ -1270,60 +1114,17 @@ void Oxs_Demag::ComputeEnergy
 #if REPORT_TIME
         fftyinversetime.Stop();
 #endif // REPORT_TIME
-
         // x-direction transforms
-        if(!coarse_grid) {
 #if REPORT_TIME
         fftxinversetime.Start();
 #endif // REPORT_TIME
-          fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,fptr+k*rxydim);
+        fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,fptr+k*rxydim);
 #if REPORT_TIME
         fftxinversetime.Stop();
 #endif // REPORT_TIME
-
-        } else { // Coarse grid
-#if REPORT_TIME
-        fftxinversetime.Start();
-#endif // REPORT_TIME
-          fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,Htemp);
-#if REPORT_TIME
-        fftxinversetime.Stop();
-#endif // REPORT_TIME
-
-          // Copy coarse mesh H xy-plane results to fine mesh
-          if(k==rdimz-1) k2stop = k2stop_last;
-          ThreeVector* f2ptr = &field[k*coarse_block_z*fdimxy];
-          OC_INDEX j2stop = coarse_block_y;
-          for(OC_INDEX j=0;j<rdimy;++j) {
-            if(j==rdimy-1) j2stop = j2stop_last;
-            OC_INDEX jbase = j*coarse_block_y*fdimx;
-            OC_INDEX joff = j*rdimx;
-
-            OC_INDEX i2stop = coarse_block_x;
-            for(OC_INDEX i=0;i<rdimx;++i) {
-              if(i==rdimx-1) i2stop = i2stop_last;
-              OC_INDEX jibase = jbase + i*coarse_block_x;
-
-              // Spread coarse mesh H across corresponding fine mesh
-              // block.  Alternatively, one could replace the stepwise
-              // expansion with an interpolation.
-              const OXS_FFT_REAL_TYPE *Hptr = Htemp + ((joff+i)*ODTV_VECSIZE);
-              const ThreeVector Hcoarse(Hptr[0],Hptr[1],Hptr[2]);
-              for(int k2=0;k2<k2stop;++k2) {
-                OC_INDEX k2off = jibase + k2*fdimxy;
-                for(int j2=0;j2<j2stop;++j2) {
-                  OC_INDEX kj2off = k2off + j2*fdimx;
-                  for(int i2=0;i2<i2stop;++i2) {
-                    f2ptr[kj2off + i2] = Hcoarse;
-                  }
-                }
-              }
-            }
-          }
-        } // Coarse grid
       }
 
-      if(3*sizeof(OXS_FFT_REAL_TYPE)<sizeof(ThreeVector) && !coarse_grid) {
+      if(3*sizeof(OXS_FFT_REAL_TYPE)<sizeof(ThreeVector)) {
         // The fftx.InverseComplexToRealFFT calls above assume the
         // target is an array of OXS_FFT_REAL_TYPE.  If ThreeVector is
         // not tightly packed, then this assumption is false; however we
@@ -1332,8 +1133,6 @@ void Oxs_Demag::ComputeEnergy
         // pack is under the Borland bcc32 compiler on Windows x86 with
         // OXS_FFT_REAL_TYPE equal to "long double".  In that case
         // sizeof(long double) == 10, but sizeof(ThreeVector) == 36.
-        //   Note: In coarse grid case the adjustment is made during
-        // the propagation from the coarse grid to the fine mesh.
         for(OC_INDEX m = rsize - 1; m>=0 ; --m) {
           ThreeVector temp(fptr[ODTV_VECSIZE*m],fptr[ODTV_VECSIZE*m+1],
                            fptr[ODTV_VECSIZE*m+2]);
@@ -1552,20 +1351,6 @@ void Oxs_Demag::ComputeEnergy
       OXS_FFT_REAL_TYPE* fptr
         = static_cast<OXS_FFT_REAL_TYPE*>(static_cast<void*>(&field[OC_INDEX(0)]));
 
-      OC_INDEX fdimxy=0;
-      OC_INDEX i2stop_last=0;
-      OC_INDEX j2stop_last=0;
-      OC_INDEX k2stop=0,k2stop_last=0;
-      if(coarse_grid) {
-        fdimxy = fdimx*fdimy;  // Fine mesh
-        // Allow for cases where coarse mesh runs past the edge of the
-        // fine mesh.
-        k2stop_last = fdimz - (rdimz-1)*coarse_block_z;
-        j2stop_last = fdimy - (rdimy-1)*coarse_block_y;
-        i2stop_last = fdimx - (rdimx-1)*coarse_block_x;
-        k2stop = coarse_block_z;
-      }
-
       for(OC_INDEX k=0;k<rdimz;++k) {
         // y-direction transforms
 #if REPORT_TIME
@@ -1577,59 +1362,16 @@ void Oxs_Demag::ComputeEnergy
 #endif // REPORT_TIME
 
         // x-direction transforms
-        if(!coarse_grid) {
 #if REPORT_TIME
-          fftxinversetime.Start();
+        fftxinversetime.Start();
 #endif // REPORT_TIME
-          fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,fptr+k*rxydim);
+        fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,fptr+k*rxydim);
 #if REPORT_TIME
-          fftxinversetime.Stop();
+        fftxinversetime.Stop();
 #endif // REPORT_TIME
-
-        } else { // Coarse grid
-#if REPORT_TIME
-          fftxinversetime.Start();
-#endif // REPORT_TIME
-          fftx.InverseComplexToRealFFT(Hxfrm+k*cxydim,Htemp);
-#if REPORT_TIME
-          fftxinversetime.Stop();
-#endif // REPORT_TIME
-
-          // Copy coarse mesh H xy-plane results to fine mesh
-          if(k==rdimz-1) k2stop = k2stop_last;
-          ThreeVector* f2ptr = &field[k*coarse_block_z*fdimxy];
-
-          OC_INDEX j2stop = coarse_block_y;
-          for(OC_INDEX j=0;j<rdimy;++j) {
-            if(j==rdimy-1) j2stop = j2stop_last;
-            OC_INDEX jbase = j*coarse_block_y*fdimx;
-            OC_INDEX joff = j*rdimx;
-
-            OC_INDEX i2stop = coarse_block_x;
-            for(OC_INDEX i=0;i<rdimx;++i) {
-              if(i==rdimx-1) i2stop = i2stop_last;
-              OC_INDEX jibase = jbase + i*coarse_block_x;
-
-              // Spread coarse mesh H across corresponding fine mesh
-              // block.  Alternatively, one could replace the stepwise
-              // expansion with an interpolation.
-              const OXS_FFT_REAL_TYPE *Hptr = Htemp + ((joff+i)*ODTV_VECSIZE);
-              const ThreeVector Hcoarse(Hptr[0],Hptr[1],Hptr[2]);
-              for(int k2=0;k2<k2stop;++k2) {
-                OC_INDEX k2off = jibase + k2*fdimxy;
-                for(int j2=0;j2<j2stop;++j2) {
-                  OC_INDEX kj2off = k2off + j2*fdimx;
-                  for(int i2=0;i2<i2stop;++i2) {
-                    f2ptr[kj2off + i2] = Hcoarse;
-                  }
-                }
-              }
-            }
-          }
-        } // Coarse grid
       }
 
-      if(3*sizeof(OXS_FFT_REAL_TYPE)<sizeof(ThreeVector) && !coarse_grid) {
+      if(3*sizeof(OXS_FFT_REAL_TYPE)<sizeof(ThreeVector)) {
         // The fftx.InverseComplexToRealFFT calls above assume the
         // target is an array of OXS_FFT_REAL_TYPE.  If ThreeVector is
         // not tightly packed, then this assumption is false; however we
@@ -1642,7 +1384,8 @@ void Oxs_Demag::ComputeEnergy
         fftxinversetime.Start();
 #endif // REPORT_TIME
         for(OC_INDEX m = rsize - 1; m>=0 ; --m) {
-          ThreeVector temp(fptr[ODTV_VECSIZE*m],fptr[ODTV_VECSIZE*m+1],fptr[ODTV_VECSIZE*m+2]);
+          ThreeVector temp(fptr[ODTV_VECSIZE*m],fptr[ODTV_VECSIZE*m+1],
+                           fptr[ODTV_VECSIZE*m+2]);
           field[m] = temp;
         }
 #if REPORT_TIME
@@ -1775,16 +1518,6 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
   OC_REAL8m dx = mesh->EdgeLengthX();
   OC_REAL8m dy = mesh->EdgeLengthY();
   OC_REAL8m dz = mesh->EdgeLengthZ();
-
-  if(coarse_grid) {
-    dx *= coarse_block_x;
-    dy *= coarse_block_y;
-    dz *= coarse_block_z;
-    dimx = (dimx + coarse_block_x - 1)/coarse_block_x;
-    dimy = (dimy + coarse_block_y - 1)/coarse_block_y;
-    dimz = (dimz + coarse_block_z - 1)/coarse_block_z;
-  }
-
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error

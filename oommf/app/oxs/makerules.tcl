@@ -120,7 +120,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		2.0a0
+                    -version		2.0a1
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]

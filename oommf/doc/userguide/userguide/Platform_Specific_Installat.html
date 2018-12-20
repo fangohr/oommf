@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2008 (1.71)
+<!--Converted with LaTeX2HTML 2012 (1.2)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -189,12 +189,18 @@ Mac OS X Configuration
 The build procedure for Mac OS X is the same as for Unix.  The
 platform name is ``darwin''.  If the <A HREF="Basic_Installation.html#sec:platform.configuration">platform
 configuration check</A> does not find a C++ compiler,
-then you will have to install one.  Refer to your system documentation
-for details.
-<A NAME="1227"></A>
+then you will have to install one.  One option is the Xcode command line
+developer tools provided by Apple.  You can install these from a
+Terminal window via the command
+<PRE>
+xcode-select --install
+</PRE>
+You should run this command even if you install the full Xcode IDE.
+Refer to your system documentation for details.
+<A NAME="1229"></A>
 
 <P>
-<A NAME="1228"></A>
+<A NAME="1230"></A>
 
 <H3><A NAME="SECTION00034300000000000000"></A><A NAME="sec:install.windows"></A>
 <BR>
@@ -207,7 +213,7 @@ This section lists installation options for Microsoft Windows.
 <P>
 
 <H4><A NAME="SECTION00034310000000000000"></A>
-<A NAME="1232"></A>
+<A NAME="1234"></A>
 <BR>
 Using Microsoft Visual C++
 </H4>
@@ -216,15 +222,16 @@ Visual C++ command line compiler, <TT><B>cl.exe</B></TT>, it is necessary to set
 the path and some environment variables before running the compiler.
 There is a batch file distributed with Visual C++ that you can run to do
 this.  The name of the file varies between Visual C++ releases, but for
-example may be <TT><B>vcvarsall.bat</B></TT> or <TT><B>setenv.cmd</B></TT>.  You may want to
-set up your system so this batch file gets run automatically when you
-open a command window.  See your compiler and system documentation for
-details.
+example may be <TT><B>vcvarsall.bat</B></TT> or <TT><B>setenv.cmd</B></TT>.  For 64-bit builds
+you may need to include the ``amd64'' option on the batch file command
+line.  You may want to set up your system so this batch file gets run
+automatically when you open a command window.  See your compiler and
+system documentation for details.
 
 <P>
 
 <H4><A NAME="SECTION00034320000000000000"></A>
-<A NAME="1237"></A>
+<A NAME="1239"></A>
 <BR>
 Using MinGW g++
 </H4>
@@ -244,7 +251,7 @@ Tcl/Tk and g++ the platform file is
 
 <P>
 
-<H4><A NAME="SECTION00034330000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1244"></A>
+<H4><A NAME="SECTION00034330000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1246"></A>
 <BR>
 Using the Cygwin toolkit
 </H4>
@@ -257,12 +264,15 @@ Cygwin environment, start up a Cygwin or Cygwin64 shell and follow the
 usual Unix build procedure.  The platform name will be <TT><B>cygtel</B></TT>
 or <TT><B>cygwin-x86_64</B></TT>, according to whether you are running a 32- or
 64-bit Cygwin <TT><B>tclsh</B></TT>, respectively.  The resulting OOMMF build
-requires the Cygwin environment, so it will need to be launched from
-a Cygwin shell.  Moreover, OOMMF will use X11 as the windowing
-interface, so you will need to have the Cygwin port of X11 installed,
-including the <TT><B>libX11-devel</B></TT>, <TT><B>libXft-devel</B></TT>,
-<TT><B>libfontconfig-devel</B></TT> packages and dependencies.  This means that
-typically OOMMF will be started from an X11 xterm or equivalent.
+requires the Cygwin environment to run, so it will need to be launched
+from a Cygwin shell.  Moreover, OOMMF on Cygwin uses X11 as the
+windowing interface, so you will need to have the Cygwin port of X11
+installed; typically OOMMF will be started from an X11 xterm or
+equivalent.  Of course, you will also need the Tcl and Tk packages
+installed (called <TT><B>tcl</B></TT> and <TT><B>tcl-tk</B></TT>, respectively, by the
+Cygwin package manager).  To build OOMMF from source you will
+need the <TT><B>gcc-g++</B></TT>, <TT><B>tcl-devel</B></TT>, and <TT><B>tcl-tk-devel</B></TT>
+packages and dependencies.
 
 <P>
 If you get errors saying a child process couldn't be forked (typically
@@ -282,18 +292,15 @@ Additional information on this problem can be found in the Cygwin
 documentation.
 
 <P>
-At the time of this writing (Sept. 2013), the Cygwin versions of
-Tcl/Tk are not threaded, so OOMMF built using Cygwin will
-likewise be not threaded.  This will likely change when a Cygwin
-Tcl/Tk 8.6 package becomes available (the current Cygwin
-Tcl/Tk is 8.5.11), but it is possible to build a threaded
-Tcl/Tk in Cygwin from source.  Refer to the Tcl/Tk build
-documentation for details.
+The Cygwin versions of Tcl/Tk prior to 8.6 were not threaded, so
+OOMMF built with Tcl/Tk 8.5 and older will likewise not be
+threaded.  This limitation is removed with the Cygwin Tcl/Tk 8.6
+release.
 
 <P>
 
 <H4><A NAME="SECTION00034340000000000000"></A>
-<A NAME="1258"></A>
+<A NAME="1262"></A>
 <BR>
 Using Borland C++
 </H4>
@@ -391,7 +398,7 @@ After this, continue with the instructions in the
 <P>
 
 <H4><A NAME="SECTION00034350000000000000"></A>
-<A NAME="1311"></A>
+<A NAME="1315"></A>
 <BR>
 Using Digital Mars C++
 </H4>
@@ -460,7 +467,7 @@ After this, continue with the instructions in the
 <P>
 
 <H4><A NAME="SECTION00034360000000000000"></A>
-<A NAME="1335"></A>
+<A NAME="1339"></A>
 <BR>
 Setting the TCL_LIBRARY environment variable
 </H4>
@@ -468,7 +475,7 @@ Setting the TCL_LIBRARY environment variable
 <P>
 If you encounter difficulties during OOMMF start up, you may need to set
 the environment variable 
-TCL_LIBRARY<A NAME="1336"></A>.  (NOTE: This
+TCL_LIBRARY<A NAME="1340"></A>.  (NOTE: This
 is almost never necessary!)
 
 <P>
@@ -504,6 +511,6 @@ Click <FONT COLOR="#800000"><B>Set</B></FONT> and <FONT COLOR="#800000"><B>OK</B
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
 </BODY>
 </HTML>

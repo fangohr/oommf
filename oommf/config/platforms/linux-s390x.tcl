@@ -35,9 +35,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
-# than OOMMF_C++ because the latter is an invalid name in Unix shells.
-if {[info exists env(OOMMF_CPP)]} {
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 

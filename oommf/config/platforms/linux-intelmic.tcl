@@ -35,9 +35,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
-# than OOMMF_C++ because the latter is an invalid name in Unix shells.
-if {[info exists env(OOMMF_CPP)]} {
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
@@ -155,6 +157,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## only meaningful for builds with thread support.  If not set, then there
 ## is no limit.
 # $config SetValue thread_limit 8
+#
+## If problems occur involving the host server, account server, or other
+## interprocess communications, try disabling async socket connections:
+# $config SetValue socket_noasync 1
+#
+## If windows don't auto resize properly, set this value to 1.
+# $config SetValue bad_geom_propagate 1
 #
 ## Use NUMA (non-uniform memory access) libraries?  This is only
 ## supported on Linux systems that have both NUMA runtime (numactl) and

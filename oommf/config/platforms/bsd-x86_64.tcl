@@ -35,9 +35,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
-# than OOMMF_C++ because the latter is an invalid name in Unix shells.
-if {[info exists env(OOMMF_CPP)]} {
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
@@ -101,16 +103,6 @@ $config SetValue program_compiler_c++ {g++ -c}
 # <URL:http://www.pgroup.com/>
 #$config SetValue program_compiler_c++ {pgCC -c}
 
-
-########################################################################
-# OPTIONAL CONFIGURATION
-
-# Set the feature 'path_directory_temporary' to the name of an existing 
-# directory on your computer in which OOMMF software should write 
-# temporary files.  All OOMMF users must have write access to this 
-# directory.
-#
-# $config SetValue path_directory_temporary {/tmp}
 
 ########################################################################
 # SUPPORT PROCEDURES
@@ -180,8 +172,186 @@ proc GuessGccVersion { gcc } {
     return [split $guess "."]
 }
 
+########################################################################
+# LOCAL CONFIGURATION
+#
+# The following options may be defined in the a "local" file, which
+# has the same name as this file but is stored in the
+# platforms/local/ subdirectory.
+#
+## Set the feature 'path_directory_temporary' to the name of an existing
+## directory on your computer in which OOMMF software should write
+## temporary files.  All OOMMF users must have write access to this
+## directory.
+# $config SetValue path_directory_temporary {/tmp}
+#
+## Specify whether or not to build in thread support.
+## Thread support is included automatically if the tclsh interpreter used
+## during the build process is threaded.  If you have a thread enabled
+## tclsh, but don't want oommf_threads, override here.
+# $config SetValue oommf_threads 0  ;# 1 to force threaded build,
+#                                   ## 0 to force non-threaded build.
+#
+## Specify the number of default threads.  This is only meaningful
+## for builds with thread support.
+# $config SetValue thread_count 244  ;# Replace '244' with desired thread count.
+#
+## Specify hard limit on the max number of threads per process.  This is
+## only meaningful for builds with thread support.  If not set, then there
+## is no limit.
+# $config SetValue thread_limit 8
+#
+## If problems occur involving the host server, account server, or other
+## interprocess communications, try disabling async socket connections:
+# $config SetValue socket_noasync 1
+#
+## If windows don't auto resize properly, set this value to 1.
+# $config SetValue bad_geom_propagate 1
+#
+## Use NUMA (non-uniform memory access) libraries?  This is only
+## supported on Linux systems that have both NUMA runtime (numactl) and
+## NUMA development (numactl-devel) packages installed.
+# $config SetValue use_numa 1  ;# 1 to enable, 0 (default) to disable.
+#
+## Override default C++ compiler.  Note the "_override" suffix
+## on the value name.
+# $config SetValue program_compiler_c++_override {icpc -mmic -c}
+#
+## Processor architecture for compiling.  The default is "generic"
+## which should produce an executable that runs on any cpu model for
+## the given platform.  In principle, one may specify "host", in which
+## case the build scripts will try to automatically detect the
+## processor type on the current system, and select compiler options
+## specific to that processor model (in which case he resulting binary
+## will generally not run on other architectures) --- HOWEVER, this
+## is not supported in the generic "unknown" platform script; support
+## would need to be added by the author of a refined platform-specific
+## script.
+# $config SetValue program_compiler_c++_cpu_arch host
+#
+## Variable type used for array indices, OC_INDEX.  This is a signed
+## type which by default is sized to match the pointer width.  You can
+## force the type by setting the following option.  The value should
+## be a three item list, where the first item is the name of the
+## desired (signed) type, the second item is the name of the
+## corresponding unsigned type, and the third is the width of these
+## types, in bytes.  It is assumed that both the signed and unsigned
+## types are the same width, as otherwise significant code breakage is
+## expected.  Example:
+# $config SetValue program_compiler_c++_oc_index_type {int {unsigned int} 4}
+#
+## For OC_INDEX type checks.  If set to 1, then various segments in
+## the code are activated which will detect some array index type
+## mismatches at link time.  These tests are not comprehensive, and
+## will probably break most third party code, but may be useful during
+## development testing.
+# $config SetValue program_compiler_c++_oc_index_checks 1
+#
+## Flags to remove from compiler "opts" string:
+# $config SetValue program_compiler_c++_remove_flags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#
+## Flags to add to compiler "opts" string:
+# $config SetValue program_compiler_c++_add_flags \
+#                          {-funroll-loops}
+#
+## Cross-compiling support:
+##
+## Part of the OOMMF build process involves building a test program
+## (e.g., oommf/pkg/oc/varinfo.cc), and then running it to determine
+## properties of the target platform.  This is complicated, however, when
+## cross-compiling because the executable doesn't run on the host doing
+## the build.  To work around this, the cross_compile_exec property
+## specifies a command (typically ssh) that can be invoked in place of a
+## direct exec call.  If using ssh, then you probably want a key agent
+## running so that the exec call runs without prompting for passwords.
+# $config SetValue cross_compile_exec {ssh target}
+#
+## If the target machine sees the OOMMF executables at some point in its
+## filesystem, then cross_compile_path_to_oommf can be used to direct
+## executable file access.
+# $config SetValue cross_compile_path_to_oommf {/home/jones/oommf}
+#
+# System type (typically $tcl_platform(platform) on target machine)
+# $config SetValue cross_compile_systemtype unix
+#
+## tclConfig.sh, tkConfig.sh and include files for the target are needed
+## for the build.  These files must exist on the host; the following
+## variables specify the paths *on the build host* to these files.
+# $config SetValue cross_compile_host_tcl_config {/home/jones/tcl/lib/tclConfig.sh}
+# $config SetValue cross_compile_host_tcl_include_dir {/home/jones/tcl/include}
+# $config SetValue cross_compile_host_tk_config {/home/jones/tcl/lib/tkConfig.sh}
+# $config SetValue cross_compile_host_tk_include_dir {/home/jones/tcl/include}
+#
+## If the Tcl install on the target does not place the Tcl library in
+## one of the standard search places for the run-time linker, then specify
+## the Tcl library directory (on the target) here.
+# $config SetValue cross_compile_target_tcl_rpath {/home/smith/tcl/lib}
+#
+## If the tclConfig.sh doesn't have the proper target-side path for
+## TCL_PREFIX, then set cross_compiler_target_tcl_library to the path
+## *on the target system* to the directory holding the init.tcl file
+## (typically ${TCL_PREFIX}/lib/tcl${TCL_VERSION}).
+# $config SetValue cross_compile_target_tcl_library /home/smith/tcl/lib/tcl8.6
+
+###################
+# Default handling of local defaults:
+#
+if {[catch {$config GetValue oommf_threads}]} {
+   # Value not set in platforms/local/ script,
+   # so use Tcl setting.
+   global tcl_platform
+   if {[info exists tcl_platform(threaded)] \
+          && $tcl_platform(threaded)} {
+      $config SetValue oommf_threads 1  ;# Yes threads
+   } else {
+      $config SetValue oommf_threads 0  ;# No threads
+   }
+}
+$config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
+## maximum number of "auto" threads to 4.
+if {[catch {$config GetValue thread_count}]} {
+   # Value not set in platforms/local/ script, so use
+   # getconf to report the number of "online" processors
+   if {[catch {exec getconf _NPROCESSORS_ONLN} processor_count]} {
+      # getconf call failed.  Try using /proc/cpuinfo
+      unset processor_count
+      catch {
+         set threadchan [open "/proc/cpuinfo"]
+         set cpuinfo [split [read $threadchan] "\n"]
+         close $threadchan
+         set proclist [lsearch -all -regexp $cpuinfo \
+                          "^processor\[ \t\]*:\[ \t\]*\[0-9\]+$"]
+         if {[llength $proclist]>0} {
+            set processor_count [llength $proclist]
+         }
+      }
+   }
+   if {[info exists processor_count]} {
+      set auto_max [$config GetValue thread_count_auto_max]
+      if {$processor_count>$auto_max} {
+         # Limit automatically set thread count to auto_max
+         set processor_count $auto_max
+      }
+      $config SetValue thread_count $processor_count
+   }
+}
+if {[catch {$config GetValue use_numa}]} {
+   # Default is a non-NUMA aware build, because NUMA builds
+   # require install of system NUMA development package.
+   $config SetValue use_numa 0
+}
+if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
+   $config SetValue program_compiler_c++ $compiler
+}
+
 # The absolute, native filename of the null device
 $config SetValue path_device_null {/dev/null}
+
+# Disable Tk by default (can be overridden in local/intelmic.tcl file).
+if {[catch {$config GetValue use_tk}]} {
+   $config SetValue use_tk 0
+}
 
 # Are we building OOMMF, or running it?
 if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
@@ -192,6 +362,7 @@ if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
    return
 }
 
+########################################################################
 ########################################################################
 # BUILD CONFIGURATION
 
@@ -277,6 +448,9 @@ if {[string match g++ $ccbasename]} {
 
     # Default warnings disable
     set nowarn [list -Wno-non-template-friend]
+    if {[lindex $gcc_version 0]>=6} {
+       lappend nowarn {-Wno-misleading-indentation}
+    }
     if {[info exists nowarn] && [llength $nowarn]>0} {
        set opts [concat $opts $nowarn]
     }

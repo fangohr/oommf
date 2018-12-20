@@ -35,9 +35,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
-# than OOMMF_C++ because the latter is an invalid name in Unix shells.
-if {[info exists env(OOMMF_CPP)]} {
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
@@ -147,6 +149,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## is no limit.
 # $config SetValue thread_limit 8
 #
+## If problems occur involving the host server, account server, or other
+## interprocess communications, try disabling async socket connections:
+# $config SetValue socket_noasync 1
+#
+## If windows don't auto resize properly, set this value to 1.
+# $config SetValue bad_geom_propagate 1
+#
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
 # $config SetValue program_compiler_c++_override {icpc -c}
@@ -216,7 +225,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
-   # Value not set in platforms/local/wintel.tcl,
+   # Value not set in platforms/local file,
    # so use Tcl setting.
    global tcl_platform
    if {[info exists tcl_platform(threaded)] \
@@ -268,6 +277,12 @@ if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
 # If using a cygwin native build of tclsh, this should be set to /dev/null
 # If using a Windows native build of tclsh, this should be set to nul:
 $config SetValue path_device_null {/dev/null}
+
+# Cygwin/Tk circa 2018 has propagation problems
+if {[catch {$config GetValue bad_geom_propagate}]} {
+   # Value not set in platforms/local file, so use safe setting.
+   $config SetValue bad_geom_propagate 1
+}
 
 # Are we building OOMMF, or running it?
 if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
@@ -383,6 +398,9 @@ if {[string match g++* $ccbasename]} {
 
    # Default warnings disable
    set nowarn [list -Wno-non-template-friend]
+   if {[lindex $gcc_version 0]>=6} {
+      lappend nowarn {-Wno-misleading-indentation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }

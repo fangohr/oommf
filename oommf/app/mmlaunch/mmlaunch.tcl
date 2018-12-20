@@ -16,7 +16,7 @@ if {[catch {package require Tk 8}]} {
 wm withdraw .
 
 Oc_Main SetAppName mmLaunch
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:38 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
@@ -62,7 +62,7 @@ wm deiconify .
 
 if {[package vcompare [package provide Tk] 8] >=0 \
 	&& [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0 menubar cleanly
+    # Windows doesn't size Tcl 8.0+ menubar cleanly
     Oc_DisableAutoSize .
     wm geometry . "${menuwidth}x0"
     update
@@ -121,9 +121,9 @@ proc DisplayHostButtons {} {
            }
            pack $btn -side top -fill x
            set displayedhost 1
+           Ow_PropagateGeometry .
         }
     }
-    wm geometry . {}
 }
 Oc_EventHandler New _ Net_Host Ready DisplayHostButtons
 Oc_EventHandler New _ Net_Host Delete DisplayHostButtons

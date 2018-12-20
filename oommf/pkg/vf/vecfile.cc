@@ -1526,7 +1526,7 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
   }
 
   OC_BOOL hints_set = 0;
-  if(ovfseghead.valuerangemaxmag_bool*ovfseghead.valuerangeminmag_bool
+  if(ovfseghead.valuerangemaxmag_bool && ovfseghead.valuerangeminmag_bool
      && (ovfseghead.valuerangeminmag != 0.0 ||
          ovfseghead.valuerangemaxmag != 0.0)) {
     // Use hints.  Inside file, valuerange[max|min]mag are scaled

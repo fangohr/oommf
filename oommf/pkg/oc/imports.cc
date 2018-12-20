@@ -313,10 +313,13 @@ Oc_TclWrappedAtan2(ClientData, Tcl_Interp *interp,
 	switch (errno) {
 	    case ERANGE:
 		Tcl_AppendResult(interp,"ERANGE",NULL);
+                break;
 	    case EDOM:
 		Tcl_AppendResult(interp,"EDOM",NULL);
+                break;
 	    default:
 		Tcl_AppendResult(interp,"unexpected value",NULL);
+                break;
 	}
 	Tcl_AppendResult(interp," by atan2()",NULL);
 	return TCL_ERROR;
@@ -519,10 +522,13 @@ Oc_Exp(ClientData, Tcl_Interp *interp, Tcl_Value *args, Tcl_Value *resultPtr)
 	switch (errno) {
 	    case ERANGE:
 		Tcl_AppendResult(interp,"ERANGE",NULL);
+                break;
 	    case EDOM:
 		Tcl_AppendResult(interp,"EDOM",NULL);
+                break;
 	    default:
 		Tcl_AppendResult(interp,"unexpected value",NULL);
+                break;
 	}
 	Tcl_AppendResult(interp," by exp()",NULL);
 	return TCL_ERROR;
@@ -545,10 +551,13 @@ Oc_Pow(ClientData, Tcl_Interp *interp, Tcl_Value *args, Tcl_Value *resultPtr)
 	switch (errno) {
 	    case ERANGE:
 		Tcl_AppendResult(interp,"ERANGE",NULL);
+                break;
 	    case EDOM:
 		Tcl_AppendResult(interp,"EDOM",NULL);
+                break;
 	    default:
 		Tcl_AppendResult(interp,"unexpected value",NULL);
+                break;
 	}
 	Tcl_AppendResult(interp," by pow()",NULL);
 	return TCL_ERROR;

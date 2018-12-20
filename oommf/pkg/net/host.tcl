@@ -72,8 +72,9 @@ Oc_Class Net_Host {
     private variable btnvar
 
     method ToggleGui { pwin } {
-        set parentWin $pwin
-        $this Configure -gui $btnvar
+       set parentWin $pwin
+       $this Configure -gui $btnvar
+       Ow_PropagateGeometry $pwin
     }
 
     private variable refCount = 0

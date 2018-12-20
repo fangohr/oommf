@@ -16,6 +16,53 @@ if {[catch {set tcl_precision 0}]} {
    set tcl_precision 17
 }
 
+# Check that we're not running as root.
+# Returns 1 if running as root (unix/OS X) or administrator (Windows)
+# Returns 0 if not root/admin
+# Returns -1 if can't tell.
+# NB: This checks the account name, not access levels.
+proc Oc_AmRoot {} {
+   global tcl_platform
+   set resultcode -1
+   switch -exact $tcl_platform(platform) {
+      windows {
+         # Windows platform
+         if {![catch {exec whoami /groups /fo csv /nh} data]} {
+	    set data [split $data "\n"]
+	    set index [lsearch -glob $data {*"S-1-5-32-544"*}]
+	    if {$index>=0 && \
+                   [string match {*Enabled group*} [lindex $data $index]]} {
+               # Yes, admin account
+               set resultcode 1
+            } else {
+               set resultcode 0
+	    }
+         }
+      }
+      darwin -
+      unix {
+         # Unix-like systems
+         if {[string compare root $tcl_platform(user)]==0} {
+            set resultcode 1
+         } else {
+            set resultcode 0
+         }
+      }
+      default {}
+   }
+   return $resultcode
+}
+if {[Oc_AmRoot]>0} {
+   global tcl_platform
+   if {[string compare windows $tcl_platform(platform)]==0} {
+      puts stderr "*** ERROR: Don't run OOMMF as administrator."
+   } else {
+      puts stderr "*** ERROR: Don't run OOMMF as root."
+   }
+   puts stderr "Instead, start OOMMF from a standard user account."
+   exit 666
+}
+
 proc Oc_CheckTclIndex {pkg} {
     if {[llength [info commands Oc_DirectPathname]]} {
         # Cosmetic fix, if it's available
@@ -49,7 +96,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 2.0a0
+package provide Oc 2.0a1
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]

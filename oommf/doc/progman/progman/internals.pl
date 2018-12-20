@@ -1,4 +1,4 @@
-# LaTeX2HTML 2008 (1.71)
+# LaTeX2HTML 2012 (1.2)
 # Associate internals original text with physical files.
 
 

@@ -8,7 +8,7 @@
 Oc_CheckTclIndex Oxs
 
 # NOTE: version number below must match that in ./oxs.h
-package require -exact Oxs 2.0a0
+package require -exact Oxs 2.0a1
 
 # Bind any events from "source" Oxs to the tag "Oxs"
 Oc_EventHandler Bindtags Oxs [list Oxs]

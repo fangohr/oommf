@@ -1,4 +1,4 @@
-# LaTeX2HTML 2008 (1.71)
+# LaTeX2HTML 2012 (1.2)
 # Associate internals original text with physical files.
 
 
@@ -30,12 +30,12 @@ $key = q/sec:optimize/;
 $ref_files{$key} = "$dir".q|Advanced_Installation.html|; 
 $noresave{$key} = "$nosave";
 
-$key = q/sec:killoommf/;
-$ref_files{$key} = "$dir".q|Killing_OOMMF_Processes_kil.html|; 
-$noresave{$key} = "$nosave";
-
 $key = q/fig:batchschedsimpletask/;
 $ref_files{$key} = "$dir".q|OOMMF_2D_Micromagnetic_Solv.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/sec:killoommf/;
+$ref_files{$key} = "$dir".q|Killing_OOMMF_Processes_kil.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/item:ScriptOrientScalarField/;
@@ -138,12 +138,12 @@ $key = q/html:mif2EvalScalarField/;
 $ref_files{$key} = "$dir".q|MIF_2.2.html|; 
 $noresave{$key} = "$nosave";
 
-$key = q/cite_stoner48/;
-$ref_files{$key} = "$dir".q|bibliography.html|; 
-$noresave{$key} = "$nosave";
-
 $key = q/sec:ovfformat/;
 $ref_files{$key} = "$dir".q|OVF_1.0_format.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/cite_stoner48/;
+$ref_files{$key} = "$dir".q|bibliography.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/item:ImageVectorField/;
@@ -298,12 +298,12 @@ $key = q/html:destinationCmd/;
 $ref_files{$key} = "$dir".q|MIF_2.1.html|; 
 $noresave{$key} = "$nosave";
 
-$key = q/item:MaskVectorField/;
-$ref_files{$key} = "$dir".q|Standard_Oxs_Ext_Child_Clas.html|; 
-$noresave{$key} = "$nosave";
-
 $key = q/sec:oxsii/;
 $ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Int.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/item:MaskVectorField/;
+$ref_files{$key} = "$dir".q|Standard_Oxs_Ext_Child_Clas.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/cite_fidler00/;

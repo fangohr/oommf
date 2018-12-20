@@ -355,7 +355,7 @@ Oc_Class Oc_Config {
        # If not a snapshot release, return empty string.
        # Otherwise, return string of the form yyyy.mm.dd
        # return "2009.10.15"
-       return {2017.09.29}
+       return {2018.09.30}
     }
 
     method OommfApiIndex {} {
@@ -370,14 +370,24 @@ Oc_Class Oc_Config {
        global tcl_platform env
        set ret "Platform Name:\t\t$name (cross-compile)\n"
        append ret "C++ compiler:   \t"
-       if {![catch {$this GetValue program_compiler_c++} c]} {
-          set wd [auto_execok [lindex $c 0]]
+       set compiler_found 0
+       if {![catch {$this GetValue program_compiler_c++_name} cn]} {
+          append ret "$cn"
+          set compiler_found 1
+       } elseif {![catch {$this GetValue program_compiler_c++} c]} {
+          set compilertest [lindex $c 0]
+          set wd [auto_execok $compilertest]
           if {![string match {} $wd]} {
-             append ret "$wd "
+             append ret "$wd"
+             set compiler_found 1
           } else {
              append ret "not found - \"[lindex $c 0]\""
           }
-          append ret \n
+       } else {
+          append ret "none selected"
+       }
+       append ret "\n"
+       if {$compiler_found} {
           if {![catch {$this GetValue program_compiler_c++_banner_cmd} \
                    bcmd]} {
              if {![catch {eval $bcmd} banner] && [string length $banner]} {
@@ -387,8 +397,6 @@ Oc_Class Oc_Config {
           if {![catch {$this GetValue program_compiler_c++_cpu_arch} arch]} {
              append ret " Compiler target arch:\t $arch\n"
           }
-       } else {
-          append ret "none selected\n"
        }
        append ret "Shell details ---\n"
        set noe [Oc_DirectPathname [info nameofexecutable]]
@@ -510,27 +518,54 @@ Oc_Class Oc_Config {
        append ret "Tcl name for OS:\t"
        append ret "$tcl_platform(os) $tcl_platform(osVersion)\n"
        append ret "C++ compiler:   \t"
-       if {![catch {$this GetValue program_compiler_c++} c]} {
-          set wd [auto_execok [lindex $c 0]]
+       set compiler_found 0
+       if {![catch {$this GetValue program_compiler_c++_name} cn]} {
+          append ret "$cn"
+          set compiler_found 1
+       } elseif {![catch {$this GetValue program_compiler_c++} c]} {
+          set compilertest [lindex $c 0]
+          set wd [auto_execok $compilertest]
           if {![string match {} $wd]} {
-             append ret "$wd "
+             append ret "$wd"
+             set compiler_found 1
           } else {
              append ret "not found - \"[lindex $c 0]\""
           }
-          append ret \n
+       } else {
+          append ret "none selected"
+       }
+       append ret "\n"
+       if {$compiler_found} {
           if {![catch {$this GetValue program_compiler_c++_banner_cmd} \
                    bcmd]} {
              if {![catch {eval $bcmd} banner] && [string length $banner]} {
                 append ret " Version string:\t $banner\n"
+                if {[string match Darwin $tcl_platform(os)] && \
+                       [string match *Xcode* $banner]} {
+                   # Xcode in use on Mac OS X; check if command line
+                   # tools are installed.  (AFAIK the install always
+                   # goes into /Library/Developer/CommandLineTools.  If
+                   # that is untrue, adjust as necessary.)
+                   set havetools 0
+                   set cmdtoolpath /Library/Developer/CommandLineTools
+                   if {[file isdirectory $cmdtoolpath]} {
+                      set gccpath [file join $cmdtoolpath usr bin gcc]
+                      if {[file exists $gccpath]} {
+                         set havetools 1
+                      }
+                   }
+                   if {$havetools} {
+                      append ret " Xcode command line tools installed at $cmdtoolpath\n"
+                   } else {
+                      append ret " *** WARNING: Xcode command line tools not found. ***\n"
+                   }
+                }
              }
           }
           if {![catch {$this GetValue program_compiler_c++_cpu_arch} arch]} {
              append ret " Compiler target arch:\t $arch\n"
           }
-       } else {
-          append ret "none selected\n"
        }
-
        append ret "Shell details ---\n"
        set noe [Oc_DirectPathname [info nameofexecutable]]
        append ret " tclsh (running): \t$noe\n"
@@ -1631,13 +1666,48 @@ Oc_Class Oc_Config {
     }
 
     private method LoadCache {} {
-        set fn [file join $cacheDir [string tolower \
-                [$this GetValue platform_name]].tcl]
-        if {[file readable $fn]} {
-            if {[catch {uplevel #0 [list source $fn]} msg]} {
-                Oc_Log Log "Error (2) sourcing $fn:\n\t$msg" warning $class
-            }
-        }
+       set fn [file join $cacheDir [string tolower \
+               [$this GetValue platform_name]].tcl]
+       if {[file readable $fn]} {
+          if {[catch {uplevel #0 [list source $fn]} msg]} {
+             Oc_Log Log "Error (2) sourcing $fn:\n\t$msg" warning $class
+          } else {
+             # If the platform file was sourced for building, then
+             # TCL_LIBS and TK_LIBS should defined.  The latter requires
+             # the former, so remove duplicate elements from the latter.
+             # Special case: On Mac OS X, the link line includes
+             # elements of the form "-framework Cocoa", which looks like
+             # two elements in the tklibs list, but is actually one
+             # logical argument.  If the "-framework" flag is removed
+             # but not the target, then you can get a link line with a
+             # bare "Cocoa" (for example) argument, which is wrong.
+             # Patch this by spackling the two together before the match
+             # and separating them afterward.
+             #
+             # NOTE: There may be additional problems, such as -L paths
+             # being stripped from tklibs because they appear also in
+             # tcllibs, but the Tk libs are put first on link line, so
+             # what happens if the -L paths don't appear until later?
+             # We made need a smarter solution here.
+             if {![catch {$this GetValue TCL_LIBS} tcllibs] \
+                    && ![catch {$this GetValue TK_LIBS} tklibs]} {
+                # Mac OS X patch
+                regsub -all -- {-framework *([^ ]+)} $tcllibs \
+                   {-framework_\1} tcllibs
+                regsub -all -- {-framework *([^ ]+)} $tklibs \
+                   {-framework_\1} tklibs
+                set reducedlibs {}
+                foreach elt $tklibs {
+                   if {[lsearch -exact $tcllibs $elt]<0} {
+                      lappend reducedlibs $elt
+                   }
+                }
+                regsub -all -- {-framework_([^ ]+)} $reducedlibs \
+                   {-framework \1} reducedlibs
+                $this SetValue TK_LIBS $reducedlibs
+             }
+          }
+       }
     }
 
 }

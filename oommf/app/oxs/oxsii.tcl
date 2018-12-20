@@ -12,7 +12,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -419,6 +419,9 @@ trace variable problem w [format {
       %s entryconfigure %s -state normal
    } ;# } $omenu [$omenu index end]]
 
+trace variable problem w { after 0 {Ow_PropagateGeometry .} ;# }
+
+
 $omenu add separator
 $omenu add checkbutton -label "Restart flag" -underline 0 \
       -variable restart_flag
@@ -651,9 +654,9 @@ set brace [canvas .brace -width $menuwidth -height 0 -borderwidth 0 \
         -highlightthickness 0]
 pack $brace -side top
 
-if {[package vcompare [package provide Tk] 8] >= 0 \
-        && [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0 menubar cleanly
+if {[package vcompare [package provide Tk] 8] >=0 \
+	&& [string match windows $tcl_platform(platform)]} {
+    # Windows doesn't size Tcl 8.0+ menubar cleanly
     Oc_DisableAutoSize .
     wm geometry . "${menuwidth}x0"
     update
@@ -851,6 +854,7 @@ proc UpdateSchedule {} {
 	    $_ configure -state $state
 	}
     }
+    Ow_PropagateGeometry .
     if {[string compare normal $state]} {return}
     regsub -all {:+} $os : os
     regsub -all "\[ \r\t\n]+" $os _ os
@@ -932,6 +936,7 @@ wm protocol . WM_DELETE_WINDOW DeleteVerify
 pack $oframe -side top -fill both -expand 1
 
 update idletasks ;# Help interface display at natural size
+Ow_PropagateGeometry .
 
 }
 ##########################################################################
@@ -952,6 +957,7 @@ if {[Oc_Main HasTk]} {
 }
 
 # Set up to write log messages to oommf/oxsii.errors (or alternative).
+Oc_FileLogger StderrEcho 0  ;# Don't echo log messages to stderr
 Oc_FileLogger SetFile $logfile
 Oc_Log SetLogHandler [list Oc_FileLogger Log] panic Oc_Log
 Oc_Log SetLogHandler [list Oc_FileLogger Log] error Oc_Log

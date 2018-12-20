@@ -19,7 +19,7 @@
 
 /* End includes */
 
-#define REPORT_TIME_RKDEVEL 1
+#define REPORT_TIME_RKDEVEL 0
 
 #if REPORT_TIME
 # ifndef REPORT_TIME_RKDEVEL

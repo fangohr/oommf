@@ -170,6 +170,7 @@ EXTERN char * Tcl_PkgPresent _ANSI_ARGS_((Tcl_Interp *, char *, char *, int));
     || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0)))
 typedef void (Tcl_PanicProc) _ANSI_ARGS_(TCL_VARARGS(char *, format));
 EXTERN void panic _ANSI_ARGS_(TCL_VARARGS(char *,format));
+# define Tcl_Panic panic
 #endif
 
 /*

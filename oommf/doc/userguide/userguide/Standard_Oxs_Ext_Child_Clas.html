@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2008 (1.71)
+<!--Converted with LaTeX2HTML 2012 (1.2)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -76,7 +76,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H2><A NAME="SECTION00083000000000000000"></A><A NAME="sec:oxsext"></A>
 <BR>
 Standard Oxs_Ext Child Classes
-</H2><A NAME="4494"></A>
+</H2><A NAME="4502"></A>
 An Oxs simulation is built as a collection of <TT>Oxs_Ext</TT> (Oxs
 Extension) objects.  These are defined via Specify blocks in the input
 <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2 file.</A>
@@ -192,7 +192,7 @@ combining multiple atlases, use <TT>Oxs_MultiAtlas</TT>.
 
 <P>
 <DL>
-<DD><A NAME="BA"></A><A NAME="4523"></A></DD>
+<DD><A NAME="BA"></A><A NAME="4531"></A></DD>
 <DT><STRONG>Oxs_BoxAtlas:</STRONG></DT>
 <DD>An axes parallel rectangular parallelepiped,
 containing a single region that is coterminous with the atlas itself.
@@ -215,9 +215,9 @@ region name is taken from the object instance name, i.e.,
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
 
 <P>
-<A NAME="IA"></A><A NAME="4531"></A></DD>
+<A NAME="IA"></A><A NAME="4539"></A></DD>
 <DT><STRONG>Oxs_ImageAtlas:<A NAME="html:oxsImageAtlas"></A></STRONG></DT>
-<DD><A NAME="4533"></A><A NAME="4534"></A>
+<DD><A NAME="4541"></A><A NAME="4542"></A>
 This class is designed to allow an image file
 to be used to define regions in terms of colors in the image.  It is
 intended for use in conjunction with the <TT>Oxs_AtlasScalarField</TT> and
@@ -477,13 +477,13 @@ Pixels with colors that are equidistant to and match more than one color
 in the colormap will be assigned to one of the closest color regions.
 The user should not rely on any particular selection, that is to say,
 the explicit matching procedure in this case is not defined.
-<A NAME="4613"></A><A NAME="4614"></A>
+<A NAME="4621"></A><A NAME="4622"></A>
 
 <P>
 <B>Examples:</B> <TT><B>imageatlas.mif</B></TT>, <TT><B>grill.mif</B></TT>.
 
 <P>
-<A NAME="MA"></A><A NAME="4618"></A></DD>
+<A NAME="MA"></A><A NAME="4626"></A></DD>
 <DT><STRONG>Oxs_MultiAtlas:</STRONG></DT>
 <DD>This atlas is built up as an ordered list of
 other atlases.  The set of regions defined by the <TT>Oxs_MultiAtlas</TT>
@@ -538,7 +538,7 @@ class.
 <TT><B>spinvalve-af.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="SA"></A><A NAME="4658"></A></DD>
+<A NAME="SA"></A><A NAME="4666"></A></DD>
 <DT><STRONG>Oxs_ScriptAtlas:</STRONG></DT>
 <DD>An atlas where the regions are defined via a Tcl script.  The specify
 block has the form
@@ -668,7 +668,7 @@ is accomplished by the ordering of the <TT>regions</TT> list.
 <TT><B>tclshapes.mif</B></TT>, <TT><B>diskarray.mif</B></TT>, <TT><B>ellipsoid-atlasproc.mif</B></TT>.
 
 <P>
-<A NAME="EA"></A><A NAME="4684"></A></DD>
+<A NAME="EA"></A><A NAME="4692"></A></DD>
 <DT><STRONG>Oxs_EllipsoidAtlas:</STRONG></DT>
 <DD>Defines an ellipsoidal region with axes parallel to the coordinate
 axes.  This functionality can be obtained using the
@@ -717,7 +717,7 @@ are periodic along one or more axes, use the
 
 <P>
 <DL>
-<DD><A NAME="RM"></A><A NAME="html:oxsrectangularmesh"></A><A NAME="4704"></A>
+<DD><A NAME="RM"></A><A NAME="html:oxsrectangularmesh"></A><A NAME="4712"></A>
 </DD>
 <DT><STRONG>Oxs_RectangularMesh:</STRONG></DT>
 <DD>This mesh is comprised of a lattice of rectangular prisms.
@@ -742,7 +742,7 @@ name <TT>:mesh</TT>.
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>stdprob4.mif</B></TT>.
 
 <P>
-<A NAME="PRM"></A><A NAME="html:oxsperiodicrectangularmesh"></A><A NAME="4716"></A>
+<A NAME="PRM"></A><A NAME="html:oxsperiodicrectangularmesh"></A><A NAME="4724"></A>
 </DD>
 <DT><STRONG>Oxs_PeriodicRectangularMesh:</STRONG></DT>
 <DD>Like the <TT>Oxs_RectangularMesh</TT>, this mesh is also comprised of a
@@ -813,7 +813,7 @@ calc count'' value provided by the evolver.
 <UL>
 <LI><B>Anisotropy Energy</B>
 <DL>
-<DD><A NAME="UA"></A><A NAME="4749"></A></DD>
+<DD><A NAME="UA"></A><A NAME="4757"></A></DD>
 <DT><STRONG>Oxs_UniaxialAnisotropy:</STRONG></DT>
 <DD>Uniaxial magneto-crystalline
   anisotropy.  The Specify block has the form
@@ -916,7 +916,7 @@ The formulae in the two cases (easy axis vs. easy plane) differ by a
 <B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>grill.mif</B></TT>.
 
 <P>
-<A NAME="CA"></A><A NAME="4782"></A></DD>
+<A NAME="CA"></A><A NAME="4790"></A></DD>
 <DT><STRONG>Oxs_CubicAnisotropy:</STRONG></DT>
 <DD>Cubic magneto-crystalline anisotropy.
   The Specify block has the form
@@ -1113,7 +1113,7 @@ where <!-- MATH
 </LI>
 <LI><B>Exchange Energy</B>
 <DL>
-<DD><A NAME="E6"></A><A NAME="4817"></A></DD>
+<DD><A NAME="E6"></A><A NAME="4825"></A></DD>
 <DT><STRONG>Oxs_Exchange6Ngbr:</STRONG></DT>
 <DD>Standard 6-neighbor exchange energy.  The
    exchange energy density contribution from cell <B><I>i</I></B>
@@ -1332,7 +1332,7 @@ In addition to the standard energy and field outputs,
 <B>Examples:</B> <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
 
 <P>
-<A NAME="UE"></A><A NAME="4855"></A></DD>
+<A NAME="UE"></A><A NAME="4863"></A></DD>
 <DT><STRONG>Oxs_UniformExchange:</STRONG></DT>
 <DD>Similar to <TT>Oxs_Exchange6Ngbr</TT>, except the exchange constant <B><I>A</I></B>
 <!-- MATHEND
@@ -1360,7 +1360,7 @@ In addition to the standard energy and field outputs,
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>.
 
 <P>
-<A NAME="EP"></A><A NAME="4871"></A></DD>
+<A NAME="EP"></A><A NAME="4879"></A></DD>
 <DT><STRONG>Oxs_ExchangePtwise:</STRONG></DT>
 <DD>The exchange coefficient <B><I>A</I><SUB>i</SUB></B>
 <!-- MATHEND
@@ -1574,7 +1574,7 @@ In addition to the standard energy and field outputs,
 <B>Example:</B> <TT><B>antidots-filled.mif</B></TT>.
 
 <P>
-<A NAME="TS"></A><A NAME="4915"></A></DD>
+<A NAME="TS"></A><A NAME="4923"></A></DD>
 <DT><STRONG>Oxs_TwoSurfaceExchange:</STRONG></DT>
 <DD>Provides long-range bilinear and biquadratic exchange.  Typically
    used to simulate RKKY-style coupling across non-magnetic spacers in
@@ -1689,7 +1689,7 @@ E_{ij} =  \frac{\sigma\left[1-\textbf{m}_i\cdot\textbf{m}_j\right]
  -->
 </P>
 where <B><IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img18.gif"
  ALT="$ \sigma$"></B>
 <!-- MATHEND
@@ -1752,7 +1752,7 @@ where <B><IMG
  
  -->
 , in meters.  Note that if <B><IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img18.gif"
  ALT="$ \sigma$"></B>
 <!-- MATHEND
@@ -1841,7 +1841,7 @@ In addition to the standard energy and field outputs,
 <B>Example:</B> <TT><B>spinvalve-af.mif</B></TT>.
 
 <P>
-<A NAME="SE"></A><A NAME="4953"></A></DD>
+<A NAME="SE"></A><A NAME="4961"></A></DD>
 <DT><STRONG>Oxs_RandomSiteExchange:</STRONG></DT>
 <DD>A randomized exchange energy.  The Specify block has the form
    <BLOCKQUOTE><DL><DT>
@@ -1914,7 +1914,7 @@ In addition to the standard energy and field outputs,
 </LI>
 <LI><B>Self-Magnetostatic Energy</B>
 <DL>
-<DD><A NAME="DE"></A><A NAME="html:oxsdemag"></A><A NAME="4979"></A></DD>
+<DD><A NAME="DE"></A><A NAME="html:oxsdemag"></A><A NAME="4987"></A></DD>
 <DT><STRONG>Oxs_Demag:</STRONG></DT>
 <DD>Standard demagnetization energy term, built upon
    the assumption that the magnetization is constant in each cell.
@@ -1949,7 +1949,7 @@ The analytic formulae used to compute the demag kernel are
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>pbcbrick.mif</B></TT>, <TT><B>demagtensor.mif</B></TT>.
 
 <P>
-<A NAME="SD"></A><A NAME="4994"></A></DD>
+<A NAME="SD"></A><A NAME="5002"></A></DD>
 <DT><STRONG>Oxs_SimpleDemag:</STRONG></DT>
 <DD>This is the same as the <TT>Oxs_Demag</TT> object, except that
    periodicity is not supported and asymptotic formulae are not used.
@@ -1972,7 +1972,7 @@ The analytic formulae used to compute the demag kernel are
 </LI>
 <LI><B>Zeeman Energy</B>
 <DL>
-<DD><A NAME="UZ"></A><A NAME="5004"></A></DD>
+<DD><A NAME="UZ"></A><A NAME="5012"></A></DD>
 <DT><STRONG>Oxs_UZeeman:<A NAME="html:UZeeman"></A></STRONG></DT>
 <DD>Uniform (homogeneous) applied field energy.  This class is frequently
    used for simulating hysteresis loops.  The specify block takes an
@@ -2066,7 +2066,7 @@ In addition to the standard energy and field outputs, the
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>marble.mif</B></TT>.
 
 <P>
-<A NAME="FZ"></A><A NAME="5020"></A></DD>
+<A NAME="FZ"></A><A NAME="5028"></A></DD>
 <DT><STRONG>Oxs_FixedZeeman:</STRONG></DT>
 <DD>Non-uniform, non-time varying applied field.
    This can be used to simulate a biasing field.  The specify block
@@ -2083,7 +2083,7 @@ The default value for <I> multiplier</I> is 1.
 <B>Examples:</B> <TT><B>spinvalve.mif</B></TT>, <TT><B>spinvalve-af.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="SU"></A><A NAME="5026"></A></DD>
+<A NAME="SU"></A><A NAME="5034"></A></DD>
 <DT><STRONG>Oxs_ScriptUZeeman:</STRONG></DT>
 <DD>Spatially uniform applied field,
    potentially varying as a function of time and stage, determined by a
@@ -2194,7 +2194,7 @@ In addition to the standard energy and field outputs, the
                    <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="TZ"></A><A NAME="5073"></A></DD>
+<A NAME="TZ"></A><A NAME="5081"></A></DD>
 <DT><STRONG>Oxs_TransformZeeman:</STRONG></DT>
 <DD>Essentially a combination of the <TT>Oxs_FixedZeeman</TT> and
    <TT>Oxs_ScriptUZeeman</TT> classes, where an applied field is produced
@@ -2358,7 +2358,7 @@ block</A>.
 <B>Examples:</B> <TT><B>sample2.mif</B></TT>, <TT><B>tickle.mif</B></TT>, <TT><B>rotatecenter.mif</B></TT>.
 
 <P>
-<A NAME="SZ"></A><A NAME="5146"></A></DD>
+<A NAME="SZ"></A><A NAME="5154"></A></DD>
 <DT><STRONG>Oxs_StageZeeman:</STRONG></DT>
 <DD>The <TT>Oxs_StageZeeman</TT> class provides spatially varying applied
    fields that are updated once per stage.  In its general form, the
@@ -2598,11 +2598,11 @@ standard OOMMF distribution.  The time evolvers are
 The minimization evolver is
 <A HREF="#html:CGEvolve"><TT>Oxs_CGEvolve</TT></A>.
 <DL>
-<DD><A NAME="EE"></A><A NAME="5272"></A></DD>
+<DD><A NAME="EE"></A><A NAME="5280"></A></DD>
 <DT><STRONG>Oxs_EulerEvolve:<A NAME="html:EulerEvolve"></A></STRONG></DT>
 <DD>Time evolver implementing a simple first order forward Euler method with
 step size control on the Landau-Lifshitz
-ODE<A NAME="5274"></A>&nbsp;[<A
+ODE<A NAME="5282"></A>&nbsp;[<A
  HREF="bibliography.html#gilbert55">10</A>,<A
  HREF="bibliography.html#landau35">12</A>]:
 <BR>
@@ -2661,7 +2661,7 @@ field, <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -2728,7 +2728,7 @@ The Specify block has the form
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -2819,7 +2819,7 @@ s and
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -2893,7 +2893,7 @@ irrelevant.)  The default value for <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -2907,7 +2907,7 @@ dynamic studies it is important to assign an appropriate value to
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3278,10 +3278,10 @@ The vector field outputs are
 <B>Example:</B> <TT><B>octant.mif</B></TT>.
 
 <P>
-<A NAME="RK"></A><A NAME="5390"></A></DD>
+<A NAME="RK"></A><A NAME="5398"></A></DD>
 <DT><STRONG>Oxs_RungeKuttaEvolve:<A NAME="html:RungeKuttaEvolve"></A></STRONG></DT>
 <DD>Time evolver implementing several Runge-Kutta methods for integrating
-the Landau-Lifshitz-Gilbert<A NAME="5392"></A> ODE
+the Landau-Lifshitz-Gilbert<A NAME="5400"></A> ODE
 (<A HREF="#eq:oxsllode">2</A>), (<A HREF="#eq:oxsllgode">3</A>), with step size control.  In
 most cases it will greatly outperform the <TT>Oxs_EulerEvolve</TT> class.
 The Specify block has the form
@@ -3292,7 +3292,7 @@ The Specify block has the form
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3455,7 +3455,7 @@ experimenting with <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha<=0\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="58" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="58" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
  SRC="img36.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha&lt;=0\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3575,10 +3575,10 @@ field, and vector field outputs as <TT>Oxs_EulerEvolve</TT>.
                    <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="SX"></A><A NAME="5473"></A></DD>
+<A NAME="SX"></A><A NAME="5481"></A></DD>
 <DT><STRONG>Oxs_SpinXferEvolve:<A NAME="html:SpinXferEvolve"></A></STRONG></DT>
 <DD>Time evolver that integrates an
-Landau-Lifshitz-Gilbert<A NAME="5475"></A> ODE augmented with a
+Landau-Lifshitz-Gilbert<A NAME="5483"></A> ODE augmented with a
 spin momentum term [<A
  HREF="bibliography.html#xiao04">21</A>],
 
@@ -3730,7 +3730,7 @@ extension of that for the
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3847,7 +3847,7 @@ equal to 1; set Lambda=1 to remove the dependence of
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="11" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="11" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img51.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3865,7 +3865,7 @@ equal to 1; set Lambda=1 to remove the dependence of
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon^\prime\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img53.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon^\prime\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3896,7 +3896,7 @@ produces torque that tends to align <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}_p\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="26" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="26" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
  SRC="img55.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}_p\\ \rule{1pt}{0pt}\end{array}$}$">
 <!-- MATHEND
@@ -3929,7 +3929,7 @@ torque'' (which is
  WIDTH="14" HEIGHT="31" ALIGN="MIDDLE" BORDER="0"
  SRC="img48.gif"
  ALT="$ \beta$"><IMG
- WIDTH="11" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="11" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img50.gif"
  ALT="$ \epsilon$"><IMG
  WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
@@ -3950,10 +3950,10 @@ enabled, <TT>mp</TT> is actually <!-- MATH
  WIDTH="25" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img58.gif"
  ALT="$ \Delta_{x}^{}$"><IMG
- WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
  SRC="img59.gif"
  ALT="$ \partial$"><B>m</B>/<IMG
- WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
  SRC="img59.gif"
  ALT="$ \partial$"><B>x</B></B>
 <!-- MATHEND
@@ -4020,7 +4020,7 @@ are located in <TT><B>oommf/app/oxs/local</B></TT> instead of
 <TT><B>spinxfer-onespin.mif</B></TT>.
 
 <P>
-<A NAME="CG"></A><A NAME="5546"></A></DD>
+<A NAME="CG"></A><A NAME="5554"></A></DD>
 <DT><STRONG>Oxs_CGEvolve:<A NAME="html:CGEvolve"></A></STRONG></DT>
 <DD>The minimization evolver is <TT>Oxs_CGEvolve</TT>, which is an
 in-development conjugate gradient minimizer with no preconditioning. The
@@ -4318,7 +4318,7 @@ for controlling minimization evolvers like
 
 <P>
 <DL>
-<DD><A NAME="TD"></A><A NAME="5628"></A></DD>
+<DD><A NAME="TD"></A><A NAME="5636"></A></DD>
 <DT><STRONG>Oxs_TimeDriver:<A NAME="item:TimeDriver"></A></STRONG></DT>
 <DD>The Oxs time driver is <B>Oxs_TimeDriver</B>.  The specify block has
 the form
@@ -4428,7 +4428,7 @@ the full simulation stage length.  In this case, the stage count check
 can be disabled by setting <I> test</I> to 0.
 
 <P>
-The checkpoint<A NAME="html:oxsdrivercheckpoint"></A><A NAME="5663"></A><A NAME="5664"></A>
+The checkpoint<A NAME="html:oxsdrivercheckpoint"></A><A NAME="5671"></A><A NAME="5672"></A>
 options are used to control the saving of solver state to disk; these
 saves are used by the <B>oxsii</B> and <B>boxsi</B> restart feature.
 The value of the <B>checkpoint_file</B> option is the name to
@@ -4478,11 +4478,11 @@ and <B><I>M</I><SUB>z</SUB></B>
  -->
  sent as DataTable output (this includes output sent to
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="5687"><B>mmDataTable</B></A>,
+ NAME="5695"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="5692"><B>mmGraph</B></A>, and
+ NAME="5700"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="5697"><B>mmArchive</B></A>).  If
+ NAME="5705"><B>mmArchive</B></A>).  If
 <I> aveMflag</I> is true (1), then the output values are scaled to lie
 in the range <B>[- 1, 1]</B>
 <!-- MATHEND
@@ -4499,7 +4499,7 @@ additional values: <B>basename</B>,
 <B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format
 these output controls have been moved into the <TT>SetOptions</TT> block.
 See the <A HREF="MIF_2.2.html#html:mif2SetOptions"
- NAME="5708"><TT>SetOptions</TT></A>
+ NAME="5716"><TT>SetOptions</TT></A>
 documentation for details.
 
 <P>
@@ -4613,7 +4613,7 @@ always exporting at full precision.
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>pulse.mif</B></TT>.
 
 <P>
-<A NAME="MD"></A><A NAME="5739"></A></DD>
+<A NAME="MD"></A><A NAME="5747"></A></DD>
 <DT><STRONG>Oxs_MinDriver:<A NAME="html:MinDriver"></A></STRONG></DT>
 <DD>The Oxs driver for controlling minimization evolvers is
 <B>Oxs_MinDriver</B>.  The specify block has the form
@@ -4670,7 +4670,7 @@ output filenames, and output format controls
 <B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format these
 output controls have been moved into the <TT>SetOptions</TT> block.  See the
 <A HREF="MIF_2.2.html#html:mif2SetOptions"
- NAME="5761"><TT>SetOptions</TT></A>
+ NAME="5769"><TT>SetOptions</TT></A>
 documentation for details.
 
 <P>
@@ -4788,7 +4788,7 @@ context in which they are used.
 Scalar field objects are documented first.  Vector field objects are
 considered farther below.
 <DL>
-<DD><A NAME="USF"></A><A NAME="5795"></A></DD>
+<DD><A NAME="USF"></A><A NAME="5803"></A></DD>
 <DT><STRONG>Oxs_UniformScalarField:<A NAME="item:UniformScalarField"></A></STRONG></DT>
 <DD>Returns the same constant value regardless of the import position.
    The Specify block takes one parameter, <B>value</B>, which is the
@@ -4829,7 +4829,7 @@ created with <TT>value</TT> set to <TT>8e5</TT>.
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
 
 <P>
-<A NAME="ASF"></A><A NAME="5821"></A></DD>
+<A NAME="ASF"></A><A NAME="5829"></A></DD>
 <DT><STRONG>Oxs_AtlasScalarField:<A NAME="item:AtlasScalarField"></A></STRONG></DT>
 <DD>Declares values that are defined across individual regions of an
    <TT>Oxs_Atlas</TT>.  The Specify block looks like
@@ -4876,7 +4876,7 @@ The vector field analogue to this class is
 <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
 
 <P>
-<A NAME="LSF"></A><A NAME="5841"></A></DD>
+<A NAME="LSF"></A><A NAME="5849"></A></DD>
 <DT><STRONG>Oxs_LinearScalarField:</STRONG></DT>
 <DD>Returns a value that varies linearly with position.  The Specify
    block has the form:
@@ -4910,7 +4910,7 @@ If optional value <B>norm</B> is specified, then the given
 <B>Example:</B> <TT><B>spinvalve-af.mif</B></TT>.
 
 <P>
-<A NAME="RSF"></A><A NAME="5847"></A></DD>
+<A NAME="RSF"></A><A NAME="5855"></A></DD>
 <DT><STRONG>Oxs_RandomScalarField:</STRONG></DT>
 <DD><A NAME="item:RandomScalarField"></A>Defines a scalar field that varies spatially in a random fashion.
 The Specify block has the form:
@@ -4936,7 +4936,7 @@ mesh.
 <B>Examples:</B> <TT><B>randomshape.mif</B></TT>, <TT><B>stdprob1.mif</B></TT>.
 
 <P>
-<A NAME="SSF"></A><A NAME="5858"></A></DD>
+<A NAME="SSF"></A><A NAME="5866"></A></DD>
 <DT><STRONG>Oxs_ScriptScalarField:<A NAME="item:ScriptScalarField"></A></STRONG></DT>
 <DD>Analogous to the parallel
 <A HREF="#item:ScriptVectorField"><TT>Oxs_ScriptVectorField</TT></A> 
@@ -5080,7 +5080,7 @@ projection of the vector field <TT>:file1</TT> onto the [1,1,1] direction.
 <TT><B>manyspheres.mif</B></TT>, <TT><B>varalpha.mif</B></TT>.
 
 <P>
-<A NAME="VMSF"></A><A NAME="5939"></A></DD>
+<A NAME="VMSF"></A><A NAME="5947"></A></DD>
 <DT><STRONG>Oxs_VecMagScalarField:</STRONG></DT>
 <DD>The <TT>Oxs_VecMagScalarField</TT> class produces a scalar field
 from a vector field by taking the norm of the vector field on a
@@ -5163,7 +5163,7 @@ Specify Oxs_TimeDriver {
 <B>Example:</B> <TT><B>sample-vecrotate.mif</B></TT>.
 
 <P>
-<A NAME="SOSF"></A><A NAME="5961"></A></DD>
+<A NAME="SOSF"></A><A NAME="5969"></A></DD>
 <DT><STRONG>Oxs_ScriptOrientScalarField:<A NAME="item:ScriptOrientScalarField"></A></STRONG></DT>
 <DD>Scalar fields provide scalar values as a function of position across
 three-space.  The <TT>Oxs_ScriptOrientScalarField</TT> class is used to
@@ -5225,7 +5225,7 @@ analogous operations on vector fields.
 <B>Example:</B> <TT><B>sample-reflect.mif</B></TT>.
 
 <P>
-<A NAME="AOSF"></A><A NAME="5988"></A></DD>
+<A NAME="AOSF"></A><A NAME="5996"></A></DD>
 <DT><STRONG>Oxs_AffineOrientScalarField:<A NAME="item:AffineOrientScalarField"></A></STRONG></DT>
 <DD>The <TT>Oxs_AffineOrientScalarField</TT> class is similar to the
 <TT>Oxs_ScriptOrientScalarField</TT> class, except that the transformation
@@ -5472,7 +5472,7 @@ analogous operations on vector fields.
 <B>Example:</B> <TT><B>sample-rotate.mif</B></TT>.
 
 <P>
-<A NAME="ATSF"></A><A NAME="6045"></A></DD>
+<A NAME="ATSF"></A><A NAME="6053"></A></DD>
 <DT><STRONG>Oxs_AffineTransformScalarField:<A NAME="item:AffineTransformScalarField"></A></STRONG></DT>
 <DD>Like the <TT>Oxs_AffineOrientScalarField</TT> class, this class composes
 an affine transform with a separate scalar field, but in this case the
@@ -5556,7 +5556,7 @@ operations on vector fields.
 <B>Example:</B> <TT><B>sample-rotate.mif</B></TT>.
 
 <P>
-<A NAME="ISF"></A><A NAME="6076"></A></DD>
+<A NAME="ISF"></A><A NAME="6084"></A></DD>
 <DT><STRONG>Oxs_ImageScalarField:<A NAME="item:ImageScalarField"></A></STRONG></DT>
 <DD>This class creates a scalar field using an image.  The Specify block has
 the form
@@ -5626,7 +5626,7 @@ is raised if a value is needed for any point outside the image.
 <P>
 The available vector field objects are:
 <DL>
-<DD><A NAME="UVF"></A><A NAME="6104"></A></DD>
+<DD><A NAME="UVF"></A><A NAME="6112"></A></DD>
 <DT><STRONG>Oxs_UniformVectorField:<A NAME="item:UniformVectorField"></A></STRONG></DT>
 <DD>Returns the same constant value regardless of the import position.
    The Specify block takes one required parameter, <B>vector</B>,
@@ -5685,7 +5685,7 @@ created with the value of <TT>vector</TT> set to <TT> {1 0 0 }</TT>.
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
 
 <P>
-<A NAME="AVF"></A><A NAME="6133"></A></DD>
+<A NAME="AVF"></A><A NAME="6141"></A></DD>
 <DT><STRONG>Oxs_AtlasVectorField:<A NAME="item:AtlasVectorField"></A></STRONG></DT>
 <DD>Declares vector values that are defined across individual regions of
    an <TT>Oxs_Atlas</TT>.  The Specify block has the form
@@ -5723,7 +5723,7 @@ The optional <B>norm</B> parameter causes each vector value to be
 <TT><B>imageatlas.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>.
 
 <P>
-<A NAME="SVF"></A><A NAME="6148"></A></DD>
+<A NAME="SVF"></A><A NAME="6156"></A></DD>
 <DT><STRONG>Oxs_ScriptVectorField:<A NAME="item:ScriptVectorField"></A></STRONG></DT>
 <DD>Conceptually similar to the
 <A HREF="#item:ScriptScalarField"><TT>Oxs_ScriptScalarField</TT></A> scalar
@@ -5779,7 +5779,7 @@ for other example uses of the <TT>Oxs_ScriptVectorField</TT> class.
 <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="FVF"></A><A NAME="6175"></A></DD>
+<A NAME="FVF"></A><A NAME="6183"></A></DD>
 <DT><STRONG>Oxs_FileVectorField:<A NAME="item:FileVectorField"></A></STRONG></DT>
 <DD>Provides a file-specified vector field.  The Specify block has the form
       <BLOCKQUOTE><DL><DT>
@@ -5805,7 +5805,7 @@ Required values in the Specify block are the name of the input vector
    specified via the <B>file</B> entry, which names a file
    containing a vector field in one of the formats recognized by
    <A HREF="Vector_Field_File_Format_Co.html#sec:avf2ovf"
- NAME="6182"><B>avf2ovf</B></A>.  If
+ NAME="6190"><B>avf2ovf</B></A>.  If
    <B>atlas</B> or <B>xrange/yrange/zrange</B> are specified,
    then the file will be scaled and translated as necessary to fit that
    scaling region, in the same manner as done, for example, by
@@ -5851,7 +5851,7 @@ The magnitude of the field can be modified by the optional
 <B>Examples:</B> <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 
 <P>
-<A NAME="RVF"></A><A NAME="6210"></A></DD>
+<A NAME="RVF"></A><A NAME="6218"></A></DD>
 <DT><STRONG>Oxs_RandomVectorField:</STRONG></DT>
 <DD>Similar to
 <A HREF="#item:RandomScalarField"><TT>Oxs_RandomScalarField</TT></A>, but defines a vector field rather than a scalar field that
@@ -5882,7 +5882,7 @@ mesh.
 <TT><B>randomshape.mif</B></TT> <TT><B>stdprob1.mif</B></TT>.
 
 <P>
-<A NAME="PRVF"></A><A NAME="6229"></A></DD>
+<A NAME="PRVF"></A><A NAME="6237"></A></DD>
 <DT><STRONG>Oxs_PlaneRandomVectorField:</STRONG></DT>
 <DD>Similar to <TT>Oxs_RandomVectorField</TT>, except that samples are
    drawn from 2D planes rather than 3-space.  The Specify block has the
@@ -5913,7 +5913,7 @@ The <B>min_norm</B>, <B>max_norm</B>, and
 <B>Example:</B> <TT><B>sample2.mif</B></TT>.
 
 <P>
-<A NAME="SOVF"></A><A NAME="6238"></A></DD>
+<A NAME="SOVF"></A><A NAME="6246"></A></DD>
 <DT><STRONG>Oxs_ScriptOrientVectorField:<A NAME="item:ScriptOrientVectorField"></A></STRONG></DT>
 <DD>This class is analogous to the
 <A HREF="#item:ScriptOrientScalarField"><TT>Oxs_ScriptOrientScalarField</TT></A>
@@ -5955,7 +5955,7 @@ object.
 <B>Example:</B> <TT><B>sample-vecreflect.mif</B></TT>.
 
 <P>
-<A NAME="AOVF"></A><A NAME="6259"></A></DD>
+<A NAME="AOVF"></A><A NAME="6267"></A></DD>
 <DT><STRONG>Oxs_AffineOrientVectorField:<A NAME="item:AffineOrientVectorField"></A></STRONG></DT>
 <DD>This class is analogous to the
 <A HREF="#item:AffineOrientScalarField"><TT>Oxs_AffineOrientScalarField</TT></A>
@@ -5992,7 +5992,7 @@ an example.
 <B>Examples:</B> <TT><B>yoyo.mif</B></TT>, <TT><B>sample-vecrotate.mif</B></TT>.
 
 <P>
-<A NAME="ATVF"></A><A NAME="6273"></A></DD>
+<A NAME="ATVF"></A><A NAME="6281"></A></DD>
 <DT><STRONG>Oxs_AffineTransformVectorField:<A NAME="item:AffineTransformVectorField"></A></STRONG></DT>
 <DD>This class applies an affine transform to the output of a vector field.
 It is similar to the
@@ -6164,7 +6164,7 @@ illustrated below.
 <B>Example:</B> <TT><B>sample-vecrotate.mif</B></TT>.
 
 <P>
-<A NAME="MVF"></A><A NAME="6341"></A></DD>
+<A NAME="MVF"></A><A NAME="6349"></A></DD>
 <DT><STRONG>Oxs_MaskVectorField:<A NAME="item:MaskVectorField"></A></STRONG></DT>
 <DD>Multiplies a vector field pointwise by a scalar vector field (the mask)
 to produce a new vector field.  The Specify block has the form:
@@ -6208,7 +6208,7 @@ scalar and vector fields.
 <B>Example:</B> <TT><B>rotatecenterstage.mif</B></TT>.
 
 <P>
-<A NAME="IVF"></A><A NAME="6360"></A></DD>
+<A NAME="IVF"></A><A NAME="6368"></A></DD>
 <DT><STRONG>Oxs_ImageVectorField:<A NAME="item:ImageVectorField"></A></STRONG></DT>
 <DD>This class creates a vector field using an image.  The Specify block has
 the form
@@ -6252,7 +6252,7 @@ the same as for the
 MIF Support Classes</A>
 </H3>
 <A NAME="LV"></A><DL>
-<DD><A NAME="6375"></A></DD>
+<DD><A NAME="6383"></A></DD>
 <DT><STRONG>Oxs_LabelValue:</STRONG></DT>
 <DD>A convenience object that holds label + value
    pairs.  <TT>Oxs_LabelValue</TT> objects may be referenced via the
@@ -6310,6 +6310,6 @@ specification.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
 </BODY>
 </HTML>
