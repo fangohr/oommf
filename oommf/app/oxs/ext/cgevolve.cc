@@ -821,9 +821,9 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
 class _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB : public Oxs_ThreadRunObj {
 public:
   static Oxs_JobControl<OC_REAL8m> job_basket;
-  static std::vector<Nb_Xpfloat> etemp;
-  static std::vector<Nb_Xpfloat> dtemp;
-  static std::vector<Nb_Xpfloat> stemp;
+  static Oc_AlignedVector<Nb_Xpfloat> etemp;
+  static Oc_AlignedVector<Nb_Xpfloat> dtemp;
+  static Oc_AlignedVector<Nb_Xpfloat> stemp;
 
   const Oxs_Mesh* mesh;
   const Oxs_MeshValue<OC_REAL8m>* tmpenergy;
@@ -854,9 +854,9 @@ public:
 };
 
 Oxs_JobControl<OC_REAL8m> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::job_basket;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::etemp;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::dtemp;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::stemp;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::etemp;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::dtemp;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::stemp;
 
 
 void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
@@ -1040,7 +1040,7 @@ public:
   // Note: The following are static, so only one "set" of this class may
   // be run at one time.
   static Oxs_JobControl<OC_REAL8m> job_basket; 
-  static std::vector<Nb_Xpfloat> etemp;
+  static Oc_AlignedVector<Nb_Xpfloat> etemp;
   const Oxs_Mesh* mesh;
   const Oxs_MeshValue<OC_REAL8m>* energy;
 
@@ -1058,7 +1058,7 @@ public:
 };
 
 Oxs_JobControl<OC_REAL8m> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::job_basket;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::etemp;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::etemp;
 
 void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::Cmd(int threadnumber,
                                                   void* /* data */)
@@ -1130,8 +1130,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::Cmd(int threadnumber,
 class _Oxs_CGEvolve_SetBasePoint_ThreadA : public Oxs_ThreadRunObj {
 public:
   static Oxs_JobControl<ThreeVector> job_basket;
-  static std::vector<Nb_Xpfloat> gamma_sum;
-  static std::vector<Nb_Xpfloat> g_sum_sq;
+  static Oc_AlignedVector<Nb_Xpfloat> gamma_sum;
+  static Oc_AlignedVector<Nb_Xpfloat> g_sum_sq;
 
   // Imports
   const Oxs_MeshValue<ThreeVector>* preconditioner_Ms2_V2;
@@ -1158,8 +1158,8 @@ public:
 };
 
 Oxs_JobControl<ThreeVector> _Oxs_CGEvolve_SetBasePoint_ThreadA::job_basket;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadA::gamma_sum;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadA::g_sum_sq;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadA::gamma_sum;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadA::g_sum_sq;
 
 void _Oxs_CGEvolve_SetBasePoint_ThreadA::Cmd(int threadnumber,
                                              void* /* data */)
@@ -1272,9 +1272,9 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadA::Cmd(int threadnumber,
 class _Oxs_CGEvolve_SetBasePoint_ThreadB : public Oxs_ThreadRunObj {
 public:
   static Oxs_JobControl<OC_REAL8m> job_basket;
-  static std::vector<Nb_Xpfloat> normsumsq; // Export
-  static std::vector<Nb_Xpfloat> Ep;        // Export
-  static std::vector<Nb_Xpfloat> gradsumsq; // Export
+  static Oc_AlignedVector<Nb_Xpfloat> normsumsq; // Export
+  static Oc_AlignedVector<Nb_Xpfloat> Ep;        // Export
+  static Oc_AlignedVector<Nb_Xpfloat> gradsumsq; // Export
   static std::vector<OC_REAL8m> maxmagsq;   // Export
 
   // Imports
@@ -1307,9 +1307,9 @@ public:
 
 Oxs_JobControl<OC_REAL8m> _Oxs_CGEvolve_SetBasePoint_ThreadB::job_basket;
 std::vector<OC_REAL8m>  _Oxs_CGEvolve_SetBasePoint_ThreadB::maxmagsq;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::normsumsq;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::Ep;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::gradsumsq;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::normsumsq;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::Ep;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadB::gradsumsq;
 
 void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
                                              void* /* data */)
@@ -1444,9 +1444,9 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadB::Cmd(int threadnumber,
 class _Oxs_CGEvolve_SetBasePoint_ThreadC : public Oxs_ThreadRunObj {
 public:
   static Oxs_JobControl<OC_REAL8m> job_basket;
-  static std::vector<Nb_Xpfloat> sumsq;     // Export
-  static std::vector<Nb_Xpfloat> Ep;        // Export
-  static std::vector<Nb_Xpfloat> gradsumsq; // Export
+  static Oc_AlignedVector<Nb_Xpfloat> sumsq;     // Export
+  static Oc_AlignedVector<Nb_Xpfloat> Ep;        // Export
+  static Oc_AlignedVector<Nb_Xpfloat> gradsumsq; // Export
   static std::vector<OC_REAL8m> maxmagsq;   // Export
 
   // Imports
@@ -1474,9 +1474,9 @@ public:
 };
 
 Oxs_JobControl<OC_REAL8m> _Oxs_CGEvolve_SetBasePoint_ThreadC::job_basket;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::sumsq;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::Ep;
-std::vector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::gradsumsq;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::sumsq;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::Ep;
+Oc_AlignedVector<Nb_Xpfloat> _Oxs_CGEvolve_SetBasePoint_ThreadC::gradsumsq;
 std::vector<OC_REAL8m> _Oxs_CGEvolve_SetBasePoint_ThreadC::maxmagsq;
 
 void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,

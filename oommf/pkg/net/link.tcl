@@ -62,6 +62,7 @@ Oc_Class Net_Link {
     # a socket connection.  Then, it will generate Readable events whenever
     # it has a line to be read (using the Get method).  It will generate a
     # Delete event whenever it is destroyed.
+    private variable checkconnecterror_eventid = {}
     Constructor { args } {
         set user_id_check $checkUserIdentities
         eval $this Configure $args
@@ -72,45 +73,50 @@ Oc_Class Net_Link {
                 error "Missing required options: -hostname and -port"
             }
             #
-	    # Asynchronous connection of client sockets was broken in
-	    # Tcl for Windows until release 8.0.5.  Use -async
-	    # connection if it is available.
-	    global tcl_platform
-            if {[string match windows $tcl_platform(platform)]
-                    && [package vcompare [package provide Tcl] 8.0] <= 0} {
-
-               # On Tcl for Alpha Windows NT platforms, [socket -async]
-               # appears to still be broken in release 8.0.5.  Rather
-               # than get in the business of tracking machine
-               # dependencies, we'll assume use of [socket -async]
-               # needs to wait until at least release 8.1 of Tcl.
-               # global tcl_patchLevel
-               # if {[string compare 8.0.5 $tcl_patchLevel]} {
-                  # socket -async is broken.  Do blocking open
-                  if {[catch {socket $hostname $port} testsocket]} {
-                     set msg "Can't connect to $hostname:$port:\n\t$testsocket"
-                     error $msg $msg
-                  }
-
-                  if {![$this UserIdentityCheck $testsocket]} {
-                     error "User identity check failed on $hostname:$port"
-                  }
-
-                  set socket $testsocket
-
-                  set event [after 0 $this ConfigureSocket]
-                  Oc_EventHandler New _ $this Delete \
-                     [list after cancel $event] -oneshot 1 \
-                     -groups [list $this-ConfigureSocket $this]
-                  return
-               # }
+            # Asynchronous connection of client sockets was broken in
+            # Tcl for Windows prior to release 8.0.5, was broken in
+            # 8.0.5 for Alpha Windows NT, and also broken in various
+            # ways in Tcl 8.5.15 and 8.6.1-8.6.3.  Refer to
+            #   http://wiki.tcl.tk/39687
+            # Given this history, retain the following synchronous
+            # connection code as an option that can be selected
+            # from the platform config file.
+            if {![catch {[Oc_Config RunPlatform] \
+                             GetValue socket_noasync} val] \
+                    && $val} {
+               # Synchronous connect
+               if {[catch {socket $hostname $port} testsocket]} {
+                  set msg "Can't connect to $hostname:$port:\n\t$testsocket"
+                  error $msg $msg
+               }
+               if {![$this UserIdentityCheck $testsocket]} {
+                  error "User identity check failed on $hostname:$port"
+               }
+               set socket $testsocket
+               set event [after 0 $this ConfigureSocket]
+               Oc_EventHandler New _ $this Delete \
+                   [list after cancel $event] -oneshot 1 \
+                   -groups [list $this-ConfigureSocket $this]
+               return
+            } else {
+               # Asynchronous connect
+               if {[catch {socket -async $hostname $port} msg]} {
+                  set msg "Can't connect to $hostname:$port:\n\t$msg"
+                  error $msg $msg
+               }
+               set socket $msg
+               if {![catch {fconfigure $socket -error} msg]} {
+                  # -error option introduced in Tcl 8.2.
+                  # Set up polling for socket errors.  Errors are
+                  # suppose raise a writable event on the socket, so
+                  # this polling should not be necessary, but this
+                  # polling acts as fallback for buggy socket
+                  # libraries.
+                  set checkconnecterror_eventid \
+                      [after 250 [list $this CheckConnectError]]
+               }
+               fileevent $socket writable [list $this VerifyOpen]
             }
-	    if {[catch {socket -async $hostname $port} msg]} {
-		set msg "Can't connect to $hostname:$port:\n\t$msg"
-		error $msg $msg
-	    }
-	    set socket $msg
-	    fileevent $socket writable [list $this VerifyOpen]
         } else {
            # Accepted socket (server side).  Note: User id checks are
            # not performed at this level for server side sockets.
@@ -124,12 +130,25 @@ Oc_Class Net_Link {
 	}
     }
 
+    method CheckConnectError {} {
+       if {![string match {} [fconfigure $socket -error]]} {
+          # Error raised; connection initialization complete
+          $this VerifyOpen
+       } else {
+          # No result; reschedule check
+          after cancel $checkconnecterror_eventid ;# Safety
+          set checkconnecterror_eventid \
+              [after 250 [list $this CheckConnectError]]
+       }
+    }
+
     # An asynchoronous client socket connection reports that it
     # is open.  Verify that, perform user id check if requested,
     # and configure the socket.
     method VerifyOpen {} {
 	global tcl_platform
 	fileevent $socket writable {}
+	after cancel $checkconnecterror_eventid
 	if {![catch {fconfigure $socket -error} msg]} {
 	    # -error recognized
 	    if {![string match {} $msg]} {
@@ -323,6 +342,7 @@ Oc_Class Net_Link {
 
     Destructor {
         # Disable I/O.  Necessary lest event handlers be naughty.
+        after cancel $checkconnecterror_eventid
         fileevent $socket readable {}
         set write_disabled 1
         Oc_EventHandler Generate $this Delete

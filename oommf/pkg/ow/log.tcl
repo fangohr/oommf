@@ -101,7 +101,7 @@ Oc_Class Ow_Log {
        }]
     }
 
-   method AdjustFontSize { delta } { tw font fontsize wrap } {
+   method AdjustFontSize { delta } { tw font fontsize wrap winpath } {
       if {[llength [$tw dlineinfo {end - 2 chars}]]>0} {
          set follow 1 ;# End is currenty visible
       } else {
@@ -125,6 +125,7 @@ Oc_Class Ow_Log {
             $tw see {end - 2 chars linestart}
          }
       }
+      Ow_PropagateGeometry $winpath
    }
 
    method EntryPrefix { seconds type } {} {

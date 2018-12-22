@@ -149,11 +149,6 @@ private:
   mutable OC_INDEX cdimz;
   // 2*(cdimx-1)>=rdimx, cdimy>=rdimy, cdimz>=rdimz
   // cdimx-1 and cdim[yz] should be powers of 2.
-
-  mutable OC_INDEX fdimx; // Dimensions of simulation "fine" mesh when coarse
-  mutable OC_INDEX fdimy; // demag computation is in use.
-  mutable OC_INDEX fdimz;
-
   mutable OC_INDEX adimx; // Dimensions of A## storage (see below).
   mutable OC_INDEX adimy;
   mutable OC_INDEX adimz;
@@ -162,10 +157,6 @@ private:
   mutable int yperiodic;  // periodic in indicated direction.
   mutable int zperiodic;
 
-  int coarse_grid;    // If zero, then normal (full grid).  Otherwise,
-  int coarse_block_x; // compute demag on coarse grid with indicated
-  int coarse_block_y; // block dimensions (measured in units of the
-  int coarse_block_z; // full grid.
 
 #if OOMMF_THREADS
   mutable OC_INDEX Hxfrm_jstride;
@@ -211,14 +202,8 @@ private:
 
 #if !OOMMF_THREADS
   mutable OXS_FFT_REAL_TYPE *Mtemp;  // Temporary space to hold
-  /// Ms[]*m[].  Needed for coarse grid simulations; it is used also
-  /// by fine mesh simulations for historical reasons, but should be
-  /// dropped in that case now that we have FFT routines that can take
-  /// Ms as input and do the multiplication on the fly.
-  mutable OXS_FFT_REAL_TYPE *Htemp;  // Temporary space to hold
-  // field output for coarse grid simulations.  Sized to hold one
-  // xy-plane.  Mtemp space could be re-purposed for this, but
-  // we probably want to keep Mtemp in place for local corrections.
+  /// Ms[]*m[].  Not needed if using FFT routines that can take Ms as
+  /// input and do the multiplication on the fly.
 #endif
 
   // Object to perform FFTs.  All transforms are the same size, so we

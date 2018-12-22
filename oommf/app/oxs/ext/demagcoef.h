@@ -278,7 +278,8 @@ public:
   // Disable the following functions by declaring but not defining them.
   OxsTDemagNabPairData();
   OxsTDemagNabPairData(const OxsTDemagNabPairData<Adapter>&);
-  OxsTDemagNabPairData<Adapter>& operator=(const OxsTDemagNabPairData<Adapter>&);
+  OxsTDemagNabPairData<Adapter>&
+   operator=(const OxsTDemagNabPairData<Adapter>&);
 };
 
 inline void OxsDemagNabData::Set
@@ -382,6 +383,18 @@ public:
   OXS_DEMAG_REAL_ASYMP rdx, rdy, rdz;
   OXS_DEMAG_REAL_ASYMP result_scale;
   OC_INT4m xcount,ycount,zcount;
+private:
+  // Support function
+  static void OrderedRefine(OXS_DEMAG_REAL_ASYMP maxratio,
+                            OXS_DEMAG_REAL_ASYMP a,
+                            OXS_DEMAG_REAL_ASYMP b,
+                            OXS_DEMAG_REAL_ASYMP c,
+                            OXS_DEMAG_REAL_ASYMP& ra,
+                            OXS_DEMAG_REAL_ASYMP& rb,
+                            OXS_DEMAG_REAL_ASYMP& rc,
+                            OC_INT4m& acount,
+                            OC_INT4m& bcount,
+                            OC_INT4m& ccount);
 };
 
 class Oxs_DemagNxxAsymptoticBase {
@@ -393,11 +406,11 @@ public:
   OXS_DEMAG_REAL_ASYMP NxxAsymptotic(const OxsDemagNabData& ptdata) const;
 
 #if OXS_DEMAG_ASYMP_USE_SSE
-  OXS_DEMAG_REAL_ASYMP
-  NxxAsymptoticPair(const OxsDemagNabData& ptA,const OxsDemagNabData& ptB) const;
+  OXS_DEMAG_REAL_ASYMP NxxAsymptoticPair(const OxsDemagNabData& ptA,
+                                         const OxsDemagNabData& ptB) const;
 #else
-  OXS_DEMAG_REAL_ASYMP
-  NxxAsymptoticPair(const OxsDemagNabData& ptA,const OxsDemagNabData& ptB) const
+  OXS_DEMAG_REAL_ASYMP NxxAsymptoticPair(const OxsDemagNabData& ptA,
+                                         const OxsDemagNabData& ptB) const
   { return NxxAsymptotic(ptA) + NxxAsymptotic(ptB); }
 #endif
 
@@ -476,14 +489,15 @@ public:
   // occur across the other (y- or z-) axes, so there is no corresponding
   // PairY or PairZ routines --- in those circumstances just make two
   // calls to NxyAsymptotic.
-  OXS_DEMAG_REAL_ASYMP NxyAsymptoticPairX(const OxsDemagNabPairData& ptdata) const;
+  OXS_DEMAG_REAL_ASYMP
+   NxyAsymptoticPairX(const OxsDemagNabPairData& ptdata) const;
 
 #if OXS_DEMAG_ASYMP_USE_SSE
-  OXS_DEMAG_REAL_ASYMP
-  NxyAsymptoticPair(const OxsDemagNabData& ptA,const OxsDemagNabData& ptB) const;
+  OXS_DEMAG_REAL_ASYMP NxyAsymptoticPair(const OxsDemagNabData& ptA,
+                                         const OxsDemagNabData& ptB) const;
 #else
-  OXS_DEMAG_REAL_ASYMP
-  NxyAsymptoticPair(const OxsDemagNabData& ptA,const OxsDemagNabData& ptB) const
+  OXS_DEMAG_REAL_ASYMP NxyAsymptoticPair(const OxsDemagNabData& ptA,
+                                         const OxsDemagNabData& ptB) const
   { return NxyAsymptotic(ptA) + NxyAsymptotic(ptB); }
 #endif
 
@@ -517,9 +531,10 @@ public:
     return NxyAsymptotic(ptdata);
   }
 
-  OXS_DEMAG_REAL_ASYMP NxyAsymptoticPairX(const OxsDemagNabPairData& ptdata) const;
-  OXS_DEMAG_REAL_ASYMP NxyAsymptoticPairZ(const OxsDemagNabPairData& ptdata) const
-  {
+  OXS_DEMAG_REAL_ASYMP
+   NxyAsymptoticPairX(const OxsDemagNabPairData& ptdata) const;
+  OXS_DEMAG_REAL_ASYMP
+   NxyAsymptoticPairZ(const OxsDemagNabPairData& ptdata) const {
     return NxyAsymptotic(ptdata.ptp) + NxyAsymptotic(ptdata.ptm);
   }
 

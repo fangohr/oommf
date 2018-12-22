@@ -30,7 +30,7 @@ void Oc_AutoBuf::Dup(const char* const_str)
     if(bufsize>0) delete[] str;
     bufsize=needsize;
     str=new char[bufsize];
-    if(str==0) panic((char *)"No memory in Oc_AutoBuf::Dup");
+    if(str==0) Tcl_Panic((char *)"No memory in Oc_AutoBuf::Dup");
   }
   strcpy(str,const_str);
 }
@@ -52,7 +52,7 @@ void Oc_AutoBuf::Append(const char* const_str)
     // efficient.
     bufsize=needsize;
     str=new char[bufsize];
-    if(str==0) panic((char *)"No memory in Oc_AutoBuf::Append");
+    if(str==0) Tcl_Panic((char *)"No memory in Oc_AutoBuf::Append");
     strcpy(str,oldstr);
   }
   strcat(str,const_str);
@@ -64,7 +64,7 @@ Oc_AutoBuf::Oc_AutoBuf(const Oc_AutoBuf& other)
   : bufsize(0), str(NULL)
 { // Make exact copy
   str = new char[other.bufsize];
-  if(str==0) panic((char *)"No memory in Oc_AutoBuf copy constructor");
+  if(str==0) Tcl_Panic((char *)"No memory in Oc_AutoBuf copy constructor");
   bufsize = other.bufsize;
   for(size_t i=0;i<bufsize;++i) str[i] = other.str[i];
 }
@@ -87,27 +87,27 @@ Oc_AutoBuf::Oc_AutoBuf(const Oc_AutoBuf& other)
 
     // Note: Lengths to/from WideCharToMultiByte are type int
     if(widesize>INT_MAX) {
-      panic((char *)
+      Tcl_Panic((char *)
        "Import buffer too big error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
     bufsize = static_cast<size_t>
       (WideCharToMultiByte(CP_ACP,0,const_str,int(widesize),NULL,0,NULL,NULL));
     if(bufsize==0) {
-      panic((char *)
+      Tcl_Panic((char *)
        "Conversion error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
     if(widesize>INT_MAX) {
-      panic((char *)
+      Tcl_Panic((char *)
        "Export buffer too big error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
 
     str = new char[bufsize];
     if(str==0) {
-      panic((char *)"No memory in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
+      Tcl_Panic((char *)"No memory in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
     if(WideCharToMultiByte(CP_ACP, 0, const_str,int(widesize),
                            str,int(bufsize),NULL,NULL)==0) {
-      panic((char *)"Conversion error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
+      Tcl_Panic((char *)"Conversion error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
   }
 #endif // WINDOWS
@@ -119,7 +119,7 @@ Oc_AutoBuf& Oc_AutoBuf::operator=(const Oc_AutoBuf& other)
     if(bufsize>0) delete[] str;
     bufsize = other.bufsize;
     str = new char[bufsize];
-    if(str==0) panic((char *)"No memory in Oc_AutoBuf::operator=");
+    if(str==0) Tcl_Panic((char *)"No memory in Oc_AutoBuf::operator=");
   }
   for(size_t i=0;i<bufsize;++i) str[i] = other.str[i];
   return *this;
@@ -138,7 +138,7 @@ void Oc_AutoBuf::SetLength(size_t newlength)
   if(newsize!=bufsize) {
     char* tempstr = new char[newsize];
     if(tempstr==0)
-      panic((char *)"Insufficient memory in Oc_AutoBuf::SetLength");
+      Tcl_Panic((char *)"Insufficient memory in Oc_AutoBuf::SetLength");
     if(bufsize>0) {
       size_t minsize = ( bufsize<newsize ? bufsize : newsize );
       strncpy(tempstr,str,minsize-1);
@@ -161,18 +161,18 @@ void Oc_AutoWideBuf::Set(const char* const_str)
   size_t chkbufsize
     = static_cast<size_t>(MultiByteToWideChar(CP_ACP,0,const_str,-1,NULL,0));
   if(chkbufsize==0) {
-    panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
+    Tcl_Panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
   if(chkbufsize>bufsize || 8*chkbufsize<bufsize) {
     delete[] wstr;
     bufsize = chkbufsize;
     wstr = new WCHAR[chkbufsize];
   }
-  if(wstr==0) panic((char *)"No memory in Oc_AutoWideBuf::Set");
+  if(wstr==0) Tcl_Panic((char *)"No memory in Oc_AutoWideBuf::Set");
   assert(bufsize<=INT_MAX); // Note: bufsize is unsigned
   if(MultiByteToWideChar(CP_ACP,0,const_str,-1,wstr,
                          static_cast<int>(bufsize))==0) {
-    panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
+    Tcl_Panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
 }
 

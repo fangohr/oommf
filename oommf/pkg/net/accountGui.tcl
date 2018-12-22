@@ -129,6 +129,7 @@ Oc_Class Net_AccountGui {
             lappend threadbuttons $lbl
             grid $lbl $btn -in $threads -sticky e
         }
+       Ow_PropagateGeometry $winpath
     }
     method LaunchProgram { pgm } {
        if {![info exists launchcmd($pgm)]} {

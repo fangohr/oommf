@@ -12,7 +12,7 @@
 # has been initialized
 #
 # NOTE: version number below must match that in ./vf.h
-package require -exact Vf 2.0a0
+package require -exact Vf 2.0a1
 
 Oc_CheckTclIndex Vf
 

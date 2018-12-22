@@ -10,15 +10,26 @@
 # which returns a list of aggressive, processor-specific
 # optimization flags for gcc.
 
-# Routine to guess the gcc version.  The import, gcc, is used via "exec
-# $gcc --version" (or, rather, the "open" analogue) to determine the
-# gcc version (since the flags accepted by gcc vary by version).
-# Return value is the gcc version string as a list of numbers,
+# Routine to guess the gcc version.  The import, gcc, should be
+# an executable command list, which is used via
+#   exec [concat $gcc --version]
+# or, rather, the "open" analogue to determine the gcc version (useful
+# for when the flags accepted by gcc vary by version).  In particular,
+# this means that spaces in the gcc cmd need to be protected
+# appropriately.  For example, if there is a space in the gcc command
+# path, then gcc should be set like so:
+#  set gcc [list {/path with spaces/g++}]
+# For multi-element commands, for example using the xcrun shim from Xcode,
+# this would look like
+#  set gcc [list xcrun {/path with spaces/g++}]
+#
+# The return value is the gcc version string as a list of numbers,
 # for example, {4 1 1} for version 4.1.1.
 proc GuessGccVersion { gcc } {
    set guess {}
+   set testcmd [concat | $gcc --version]
    if {[catch {
-          set fptr [open "|$gcc --version" r]
+          set fptr [open $testcmd r]
           set verstr [read $fptr]
       close $fptr}]} {
       return $guess
@@ -46,11 +57,13 @@ proc GuessGccVersion { gcc } {
 
 proc GetGccBannerVersion { gcc } {
    set banner {}
+   set testcmd [concat | $gcc --version]
    catch {
-      set fptr [open "|$gcc --version" r]
+      set fptr [open $testcmd r]
       set banner [gets $fptr]
       close $fptr
-      set fptr [open "|$gcc -dumpmachine" r]
+      set testcmd [concat | $gcc -dumpmachine]
+      set fptr [open $testcmd r]
       set target [gets $fptr]
       close $fptr
       if {![string match {} $target]} {

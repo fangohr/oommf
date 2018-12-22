@@ -35,6 +35,19 @@
 
 set runseq_start_time [clock seconds]
 
+# Robust puts that doesn't squawk if stdout is broken
+rename puts stock_puts
+proc puts { args } {
+   if {[catch {eval stock_puts $args} errmsg]} {
+      if {[regexp {^error writing [^:]+: broken pipe} $errmsg]} {
+         # Ignore broken pipe and exit
+         exit
+      } else {
+         error $errmsg
+      }
+   }
+}
+
 set VERBOSE 0  ;# For debugging
 
 proc Usage {} {

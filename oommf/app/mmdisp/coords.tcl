@@ -193,7 +193,7 @@ proc DrawOutOfPlaneAxis { canvas size xc yc delta \
 
 proc DrawCoords0 { canvas size xc yc outaxis axis1 axis2 } {
     DrawCoordsSetVars $size arrbase arrsize delta
-    set font [Oc_Font Get compressed_bold]
+    set font [Oc_Font Get small_bold]
     # Plane normal
     DrawOutOfPlaneAxis $canvas $size $xc $yc $delta \
             $arrbase $arrsize $outaxis $font
@@ -229,7 +229,7 @@ proc DrawCoords0 { canvas size xc yc outaxis axis1 axis2 } {
 
 proc DrawCoords90 { canvas size xc yc outaxis axis1 axis2 } {
     DrawCoordsSetVars $size arrbase arrsize delta
-    set font [Oc_Font Get compressed_bold]
+    set font [Oc_Font Get small_bold]
     # Plane normal
     DrawOutOfPlaneAxis $canvas $size $xc $yc $delta \
             $arrbase $arrsize $outaxis $font
@@ -268,7 +268,7 @@ proc DrawCoords90 { canvas size xc yc outaxis axis1 axis2 } {
 
 proc DrawCoords180 { canvas size xc yc outaxis axis1 axis2 } {
     DrawCoordsSetVars $size arrbase arrsize delta
-    set font [Oc_Font Get compressed_bold]
+    set font [Oc_Font Get small_bold]
     # Plane normal
     DrawOutOfPlaneAxis $canvas $size $xc $yc $delta \
             $arrbase $arrsize $outaxis $font
@@ -304,7 +304,7 @@ proc DrawCoords180 { canvas size xc yc outaxis axis1 axis2 } {
 
 proc DrawCoords270 { canvas size xc yc outaxis axis1 axis2 } {
     DrawCoordsSetVars $size arrbase arrsize delta
-    set font [Oc_Font Get compressed_bold]
+    set font [Oc_Font Get small_bold]
     # Plane normal
     DrawOutOfPlaneAxis $canvas $size $xc $yc \
             $delta $arrbase $arrsize $outaxis $font

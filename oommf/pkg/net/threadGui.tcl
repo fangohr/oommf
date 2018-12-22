@@ -85,33 +85,35 @@ Oc_Class Net_ThreadGui {
 	}
     }
     method ReceiveCommands {} {
-        set cmds [$thread Get]
-        if {![lindex $cmds 0]} { ;# Check for error
-	set min_label_width 75
-        if {[info exists cmdbtns] && [winfo exists $cmdbtns]} {
-            destroy $cmdbtns
-        }
-        set cmdbtns [frame $ctrl.cmdbtns]
-        foreach {l group} [lindex $cmds 1] {
-            frame $cmdbtns.w$l
-	    frame $cmdbtns.w$l.labelframe
-	    frame $cmdbtns.w$l.labelspacer -width $min_label_width
-	    label $cmdbtns.w$l.label -text "${l}:"
-	    pack $cmdbtns.w$l.labelspacer -in $cmdbtns.w$l.labelframe -side top
-            pack $cmdbtns.w$l.label -in $cmdbtns.w$l.labelframe -side right \
-		    -anchor e
-            pack $cmdbtns.w$l.labelframe -in $cmdbtns.w$l -side left -fill both
-            foreach c $group {
+       set cmds [$thread Get]
+       if {![lindex $cmds 0]} { ;# Check for error
+          set min_label_width 75
+          if {[info exists cmdbtns] && [winfo exists $cmdbtns]} {
+             destroy $cmdbtns
+          }
+          set cmdbtns [frame $ctrl.cmdbtns]
+          foreach {l group} [lindex $cmds 1] {
+             frame $cmdbtns.w$l
+             frame $cmdbtns.w$l.labelframe
+             frame $cmdbtns.w$l.labelspacer -width $min_label_width
+             label $cmdbtns.w$l.label -text "${l}:"
+             pack $cmdbtns.w$l.labelspacer -in $cmdbtns.w$l.labelframe \
+                 -side top
+             pack $cmdbtns.w$l.label -in $cmdbtns.w$l.labelframe \
+                 -side right -anchor e
+             pack $cmdbtns.w$l.labelframe -in $cmdbtns.w$l \
+                 -side left -fill both
+             foreach c $group {
                 set text [lindex $c 0]
                 # This might impose restriction that labels contain no spaces
                 pack [button $cmdbtns.w$l.w$text -text $text \
-                        -command [concat $thread Send [lrange $c 1 end]]] \
-                        -in $cmdbtns.w$l -side left -fill both
-            }
-            pack $cmdbtns.w$l -in $cmdbtns -side top -fill x
-        }
-        pack $cmdbtns -in $ctrl -side top -fill x
-        }
+                          -command [concat $thread Send [lrange $c 1 end]]] \
+                    -in $cmdbtns.w$l -side left -fill both
+             }
+             pack $cmdbtns.w$l -in $cmdbtns -side top -fill x
+          }
+          pack $cmdbtns -in $ctrl -side top -fill x
+       }
     }
     method ReceiveOutputs {} {
         set op [$thread Get]
@@ -339,6 +341,7 @@ Oc_Class Net_ThreadGui {
             } 
         }
         pack $idt -side left -fill both -expand 1
+        Ow_PropagateGeometry $idt
         catch {unset ithreadselection}
 
         # Set up for redraw when thread dies or new thread becomes ready
@@ -362,6 +365,9 @@ Oc_Class Net_ThreadGui {
             }
         }
         if {!$button(so)} {
+            if {[info exists winpath]} {
+               Ow_PropagateGeometry $winpath
+            }
             return
         }
         set schedw [frame $outputs.sched -bd 4 -relief ridge]
@@ -406,6 +412,7 @@ Oc_Class Net_ThreadGui {
 	set rowcount [lindex [grid size $schedw] 1]
 	grid rowconfigure $schedw [expr $rowcount-1] -weight 1
         pack $schedw -side right -fill both -expand 1
+        Ow_PropagateGeometry $schedw
     }
     method UpdateSchedule { event } {
         global _cb$thread

@@ -17,9 +17,6 @@ Parameter xcellsize 2.5e-9
 Parameter ycellsize 2.5e-9
 Parameter zcellsize   3e-9
 
-Parameter coarse_demag {}  ;# Empty string for normal demag, else a
-        # triplet of positive integers specifying coarse grid size.
-
 Parameter til {} ;# Total iteration limit
 
 if {1 == $subproblem} {
@@ -51,13 +48,7 @@ Specify Oxs_UniformExchange {
   A  13E-12
 }
 
-set coarse_grid {}
-if {![string match {} $coarse_demag]} {
-   set coarse_grid [linsert coarse_grid end $coarse_demag]
-}
-Specify Oxs_Demag [subst {
-   $coarse_grid
-}]
+Specify Oxs_Demag {}
 
 if {$initproblem} {
     Specify Oxs_CGEvolve {}

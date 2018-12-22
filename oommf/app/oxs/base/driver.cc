@@ -1507,7 +1507,10 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
         current_state = temp_state;
         current_state.GetReadReference();
       }
-      // NB: STAGE_END flow continues through STAGE_START block
+      // NB: STAGE_END flow continues through STAGE_START block.
+      // The following "fall through" comment alerts g++ that this is
+      // intended (and suppresses warning messages):
+      // fall through
       case OXSDRIVER_PS_STAGE_START:
         InitNewStage(current_state,previous_state); // Send state to
                                  /// evolver for bookkeeping updates.

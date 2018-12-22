@@ -14,7 +14,7 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -817,7 +817,7 @@ proc PackViewport { {newviewwidth {}} {newviewheight {}} \
         # redraw "bouncing" if 'wm geometry . {}' is placed _after_
         # the $canvas_frame resizing
         $canvas_frame configure -width $vwidth -height $vheight
-        wm geometry . {}
+        Ow_ForcePropagateGeometry .
     }
 
     global UpdateViewCount

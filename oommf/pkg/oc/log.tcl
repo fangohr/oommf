@@ -358,6 +358,11 @@ if {[Oc_Main HasTk]} {
 Oc_Class Oc_FileLogger {
    common filename {}
 
+   # If stderr_echo is 1, then all file log messages are echoed to
+   # stderr too.  This behavior can be modified and queried through the
+   # StderrEcho proc.
+   common stderr_echo 1
+
    proc Log {msg type src} {
       global errorInfo errorCode tcl_platform
 
@@ -396,6 +401,9 @@ Oc_Class Oc_FileLogger {
                                           -format %H:%M:%S.???\ %Y-%m-%d]]
             }
             puts $chanid "\n\[$iipid $timestamp\] $iiver $st:\n$msg"
+            if {$stderr_echo} {
+               puts stderr "\n\[$iipid $timestamp\] $iiver $st:\n$msg"
+            }
             # If we're not logging from an error, errorInfo and
             # errorCode will be detritus from some previous command,
             # likely a catch.  We might want to find a better way to
@@ -428,11 +436,31 @@ Oc_Class Oc_FileLogger {
             # pointing to wherever it was last?  Changing it
             # is arguably correct, but leaving it alone is
             # probably safer and more useful.
+         } else {
+            puts stderr \
+               "ERROR: Unable to open error log file \"$name\": $chanid"
          }
       } else {
          close $chanid
          set filename $name
+         if {$stderr_echo} {
+            puts stderr "Logging to file \"$filename\""
+         }
       }
+   }
+
+   proc StderrEcho { {echo {}}} {
+      # If import "echo" is an empty string then report current setting
+      # without making any changes.
+      switch -exact $echo {
+         0 { set stderr_echo 0 }
+         1 { set stderr_echo 1 }
+         {} {}
+         default {
+            return -error "Invalid StderrEcho request \"$echo\" (should be 0 or 1)"
+         }
+      }
+      return $stderr_echo
    }
 
    proc GetFile {} {

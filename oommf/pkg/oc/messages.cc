@@ -160,7 +160,7 @@ OC_INDEX
 Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
 {
   if(str==NULL || format==NULL) {
-    panic(OC_CONST84_CHAR("NULL pointer passed to Oc_Vsnprintf"));
+    Tcl_Panic(OC_CONST84_CHAR("NULL pointer passed to Oc_Vsnprintf"));
   }
   str[n-1] = '\0';
   OC_INDEX len = OC_SPRINTF_WRAP(vsprintf(str,format,ap));
@@ -169,7 +169,7 @@ Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
     // Since we don't know how serious this may be, we
     // come to a full stop (panic) rather than throw
     // a catchable exception.
-    panic(OC_CONST84_CHAR("Buffer overflow in Oc_Vsnprintf"));
+    Tcl_Panic(OC_CONST84_CHAR("Buffer overflow in Oc_Vsnprintf"));
   }
   return len;
 }

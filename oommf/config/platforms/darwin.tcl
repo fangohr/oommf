@@ -34,9 +34,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler.  Use OOMMF_CPP rather
-# than OOMMF_C++ because the latter is an invalid name in Unix shells.
-if {[info exists env(OOMMF_CPP)]} {
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
+if {[info exists env(OOMMF_C++)]} {
+   $config SetValue program_compiler_c++_override $env(OOMMF_C++)
+} elseif {[info exists env(OOMMF_CPP)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
@@ -116,8 +118,15 @@ $config SetValue program_compiler_c++_set_macosx_appname 1
 # <URL:http://egcs.cygnus.com/>
 #$config SetValue program_compiler_c++ {g++ -c}
 #
-# The Clang C++ compiler 'clang++'
+# The Clang C++ compiler 'clang++', for use with Xcode command line
+# tools.
 $config SetValue program_compiler_c++ {clang++ -c}
+#
+# The Clang C++ compiler 'clang++', for use with Xcode without Xcode
+# command line tools.
+#$config SetValue program_compiler_c++ {xcrun clang++ -c}
+
+
 
 ########################################################################
 # SUPPORT PROCEDURES
@@ -159,6 +168,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## only meaningful for builds with thread support.  If not set, then there
 ## is no limit.
 # $config SetValue thread_limit 8
+#
+## If problems occur involving the host server, account server, or other
+## interprocess communications, try disabling async socket connections:
+# $config SetValue socket_noasync 1
+#
+## If windows don't auto resize properly, set this value to 1.
+# $config SetValue bad_geom_propagate 1
 #
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
@@ -263,9 +279,21 @@ if {[catch {$config GetValue thread_count}]} {
 }
 $config SetValue thread_count_auto_max $auto_max
 
-if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
-    $config SetValue program_compiler_c++ $compiler
+if {[catch {$config GetValue program_compiler_c++_override} cppover] == 0} {
+    $config SetValue program_compiler_c++ $cppover
 }
+set compilercmd \
+   [lindex [$config GetValue program_compiler_c++] 0]
+set compiler [file tail $compilercmd]
+if {[string match xcrun $compiler]} {
+   # xcrun is shim for running Xcode without command line tools install.
+   # In this case the compiler call is the second argument on the
+   # command line.
+   set compilercmd \
+      [lrange [$config GetValue program_compiler_c++] 0 1]
+   set compiler [file tail [lindex $compilercmd 1]]
+}
+$config SetValue program_compiler_c++_name $compilercmd
 
 # The absolute, native filename of the null device
 $config SetValue path_device_null {/dev/null}
@@ -283,19 +311,15 @@ if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
 # BUILD CONFIGURATION
 
 # Compiler option processing...
-if {[string match g++ [file tail [lindex \
-        [$config GetValue program_compiler_c++] 0]]]} {
+if {[string match g++ $compiler]} {
    # ...for GNU g++ C++ compiler
-
    if {![info exists gcc_is_clang]} {
       set gcc_is_clang 0
    }
    if {![info exists gcc_version]} {
-      set gcc_version [GuessGccVersion \
-                          [lindex [$config GetValue program_compiler_c++] 0]]
+      set gcc_version [GuessGccVersion $compilercmd]
       if {[string match {} $gcc_version]} {
-	 set gcc_version [GuessClangVersion \
-                          [lindex [$config GetValue program_compiler_c++] 0]]
+	 set gcc_version [GuessClangVersion $compilercmd]
 	 set gcc_is_clang 1  ;# gcc is actually clang
       }
    }
@@ -306,12 +330,10 @@ if {[string match g++ [file tail [lindex \
                    or later (C++ 11 support)"
       }
       $config SetValue program_compiler_c++_banner_cmd \
-	 [list GetGccBannerVersion  \
-	     [lindex [$config GetValue program_compiler_c++] 0]]
+	 [list GetGccBannerVersion $compilercmd]
    } else {
       $config SetValue program_compiler_c++_banner_cmd \
-	 [list GetClangBannerVersion  \
-	     [lindex [$config GetValue program_compiler_c++] 0]]
+	 [list GetClangBannerVersion $compilercmd]
    }
 
    # Optimization options
@@ -385,7 +407,8 @@ if {[string match g++ [file tail [lindex \
 
    # Uncomment the following to remove loop array prefetch flag
    # regsub -all -- \
-   #   {^-fprefetch-loop-arrays\s+|\s+-fprefetch-loop-arrays(?=\s|$)} $opts {} opts
+   #   {^-fprefetch-loop-arrays\s+|\s+-fprefetch-loop-arrays(?=\s|$)} \
+   #   $opts {} opts
 
    # 32 or 64 bit?
    if {[info exists tcl_platform(pointerSize)]} {
@@ -403,8 +426,11 @@ if {[string match g++ [file tail [lindex \
    # Default warnings disable
    set nowarn {}
    if {!$gcc_is_clang} {
-       # clang doesn't support the -Wno-non-template-friend option.
+       # g++ warnings not in clang
        lappend nowarn -Wno-non-template-friend
+       if {[lindex $gcc_version 0]>=6} {
+          lappend nowarn {-Wno-misleading-indentation}
+       }
    }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
@@ -454,17 +480,13 @@ if {[string match g++ [file tail [lindex \
    $config SetValue \
       program_compiler_c++_system_include_path [list /usr/include]
 
-} elseif {[string match clang++ [file tail [lindex \
-        [$config GetValue program_compiler_c++] 0]]]} {
+} elseif {[string match clang++ $compiler]} {
    # ...for Clang C++ compiler
-
    if {![info exists clang_version]} {
-      set clang_version [GuessClangVersion \
-                          [lindex [$config GetValue program_compiler_c++] 0]]
+      set clang_version [GuessClangVersion $compilercmd]
    }
    $config SetValue program_compiler_c++_banner_cmd \
-      [list GetClangBannerVersion  \
-          [lindex [$config GetValue program_compiler_c++] 0]]
+      [list GetClangBannerVersion  $compilercmd]
 
    # Optimization options
    # set opts [list -O0]  ;# No optimization
@@ -564,11 +586,9 @@ if {[string match g++ [file tail [lindex \
 # (Use the selected compiler to control the linking.)
 #
 # Linker and linker option processing...
-if {[string match g++ [file tail [lindex \
-        [$config GetValue program_compiler_c++] 0]]]} {
+if {[string match g++ $compiler]} {
    # ...for GNU g++ as linker
-   set linkcmdline [lindex \
-                       [$config GetValue program_compiler_c++] 0]
+   set linkcmdline $compilercmd
    # 32 or 64 bit?
    switch -exact $tcl_platform(wordSize) {
       4 { lappend linkcmdline -m32 }
@@ -588,11 +608,9 @@ if {[string match g++ [file tail [lindex \
    $config SetValue program_linker_option_out {format "-o \"%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_uses_-L-l {1}
-} elseif {[string match clang++ [file tail [lindex \
-        [$config GetValue program_compiler_c++] 0]]]} {
+} elseif {[string match clang++ $compiler]} {
    # ...for Clang clang++ as linker
-   set linkcmdline [lindex \
-                       [$config GetValue program_compiler_c++] 0]
+   set linkcmdline $compilercmd
    # 32 or 64 bit?
    switch -exact $tcl_platform(wordSize) {
       4 { lappend linkcmdline -m32 }

@@ -23,7 +23,7 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -192,9 +192,9 @@ wm iconname . [wm title .]
 Ow_SetIcon .
 wm deiconify .
 
-if {[package vcompare [package provide Tk] 8] >= 0 \
+if {[package vcompare [package provide Tk] 8] < 0 \
 	&& [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0 menubar cleanly
+    # Windows doesn't size Tcl 8.0+ menubar cleanly
     Oc_DisableAutoSize .
     wm geometry . "${menuwidth}x0"
     update
@@ -418,7 +418,16 @@ proc DisplayListAppend { label } {
 	    $panel configure -height 0 -width 0
 	}
     }
-    wm geometry . {}   ;# Set geometry to autosize
+    # Hack to work around broken size propagation.  This mostly
+    # works, but doesn't catch the case where the window needs
+    # to resize because a value has grown too big to be fully
+    # displayed at the current window geometry.  That can be
+    # caught with a binding to the <Configure> event, e.g.
+    #    bind $panel <Configure> { Ow_PropagateGeometry . }
+    # but this effectively disables all user resizing.  That
+    # cure is arguably worse than the disease, so instead just
+    # catch selection changes.
+    Ow_PropagateGeometry .
 }
 
 proc ChangeFormat { newformat {labellist {}} } {

@@ -53,13 +53,13 @@ MakeRule Define {
                         puts $f [format {
 Oc_Application Define {
     -name               mmDispSh
-    -version            2.0a0
+    -version            2.0a1
     -machine            %s
     -file               "%s"
 }
 Oc_Application Define {
     -name               conDispSh
-    -version            2.0a0
+    -version            2.0a1
     -machine            %s
     -file               "%s"
 }

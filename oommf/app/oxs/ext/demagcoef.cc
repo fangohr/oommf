@@ -107,6 +107,8 @@
 #ifndef STANDALONE
 # include "oc.h"
 # include "nb.h"
+# include "oxsthread.h"
+# include "oxswarn.h"
 # include "demagcoef.h"
   OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// For some compilers this is needed to get "long double"
@@ -341,7 +343,20 @@ inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)
 
 #include "demagcoef.h"
 
+#else // !STANDALONE
+
+// Revision information; in the original design the data here
+// would be set via CVS keyword substitution.  This needs
+// reworking to do something sensible in a Git environment. *****
+static const Oxs_WarningMessageRevisionInfo revision_info
+  (__FILE__,
+   "$Revision: 1$",
+   "$Date: 2018/01/25 19:09:00 $",
+   "$Author: donahue $",
+   "Michael J. Donahue (michael.donahue@nist.gov)");
+
 #endif // STANDALONE
+
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -801,7 +816,39 @@ Oxs_CalculateSDA01(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
 
 ////////////////////////////////////////////////////////////////////////
 // Asymptotic approximations to N
-// See NOTES IV, 27-Mar-2007, p116-118
+// See NOTES IV: 26-Mar-2007, p112-113
+//               27-Mar-2007, p116-118
+//     NOTES  V:  3-May-2011, p198-199
+//     NOTES VI: 12-May-2011, p  2-5
+//               12-Apr-2012, p 34-37
+//                4-Jun-2012, p 42-44
+//                6-Jun-2012, p 48-61
+//               27-Jul-2012, p 64-67
+
+void OxsDemagAsymptoticRefineData::OrderedRefine
+(OXS_DEMAG_REAL_ASYMP maxratio,
+ OXS_DEMAG_REAL_ASYMP a,
+ OXS_DEMAG_REAL_ASYMP b,
+ OXS_DEMAG_REAL_ASYMP c,
+ OXS_DEMAG_REAL_ASYMP& ra,
+ OXS_DEMAG_REAL_ASYMP& rb,
+ OXS_DEMAG_REAL_ASYMP& rc,
+ OC_INT4m& acount,
+ OC_INT4m& bcount,
+ OC_INT4m& ccount)
+{ // Intended for use with a and b larger than c.  Returned values for
+  // rc and ccount are always c and 1, respectively.
+  assert(a>=c && b>=c);
+  OXS_DEMAG_REAL_ASYMP aratio = ceil(a/(maxratio*c));
+  acount = static_cast<OC_INT4m>(aratio);
+  ra = a/aratio;
+  OXS_DEMAG_REAL_ASYMP bratio = ceil(b/(maxratio*c));
+  bcount = static_cast<OC_INT4m>(bratio);
+  rb = b/bratio;
+  ccount = 1;
+  rc = c;
+}
+
 OxsDemagAsymptoticRefineData::OxsDemagAsymptoticRefineData
 (OXS_DEMAG_REAL_ASYMP dx,
  OXS_DEMAG_REAL_ASYMP dy,
@@ -810,44 +857,87 @@ OxsDemagAsymptoticRefineData::OxsDemagAsymptoticRefineData
   : rdx(0), rdy(0), rdz(0), result_scale(0),
     xcount(0), ycount(0), zcount(0)
 {
+  // The APPROX_MAX_CELL_COUNT value limits the number of subcells in
+  // the refinement of high-aspect cells.  Compute time will be
+  // proportional to the subcell count times the number of cells the
+  // asymptotic approximation to the demag tensor is computed for.  A
+  // large value of APPROX_MAX_CELL_COUNT can improve accuracy for
+  // high-aspect cells, but if set too high (one-time) problem
+  // initialization can appear to freeze to the user.  In principle one
+  // could adjust APPROX_MAX_CELL_COUNT based on problem size and
+  // machine speed, but this is intended as a failure recovery rather
+  // than operative code.
+  //    Incidentally, errors should reduce with larger offsets, so for
+  // a fixed error perhaps maxratio could be adjusted with offset.
+  // This could be especially effective because the number of cells at
+  // a given offset generally grows with the square or cube of the
+  // offset (depending on whether the overall simulated volume is
+  // plate-like or box-like).
+  const OXS_DEMAG_REAL_ASYMP APPROX_MAX_CELL_COUNT = 1000;
   if(dz<=dx && dz<=dy) {
     // dz is minimal
-    OXS_DEMAG_REAL_ASYMP xratio = ceil(dx/(maxratio*dz));
-    xcount = static_cast<OC_INT4m>(xratio);
-    rdx = dx/xratio;
-    OXS_DEMAG_REAL_ASYMP yratio = ceil(dy/(maxratio*dz));
-    ycount = static_cast<OC_INT4m>(yratio);
-    rdy = dy/yratio;
-    zcount = 1;
-    rdz = dz;
+    OrderedRefine(maxratio,dx,dy,dz,rdx,rdy,rdz,xcount,ycount,zcount);
   } else if(dy<=dx && dy<=dz) {
     // dy is minimal
-    OXS_DEMAG_REAL_ASYMP xratio = ceil(dx/(maxratio*dy));
-    xcount = static_cast<OC_INT4m>(xratio);
-    rdx = dx/xratio;
-    OXS_DEMAG_REAL_ASYMP zratio = ceil(dz/(maxratio*dy));
-    zcount = static_cast<OC_INT4m>(zratio);
-    rdz = dz/zratio;
-    ycount = 1;
-    rdy = dy;
+    OrderedRefine(maxratio,dx,dz,dy,rdx,rdz,rdy,xcount,zcount,ycount);
   } else {
     // dx is minimal
-    OXS_DEMAG_REAL_ASYMP yratio = ceil(dy/(maxratio*dx));
-    ycount = static_cast<OC_INT4m>(yratio);
-    rdy = dy/yratio;
-    OXS_DEMAG_REAL_ASYMP zratio = ceil(dz/(maxratio*dx));
-    zcount = static_cast<OC_INT4m>(zratio);
-    rdz = dz/zratio;
-    xcount = 1;
-    rdx = dx;
+    OrderedRefine(maxratio,dy,dz,dx,rdy,rdz,rdx,ycount,zcount,xcount);
   }
+  OXS_DEMAG_REAL_ASYMP countproduct = OXS_DEMAG_REAL_ASYMP(xcount)
+                                     *OXS_DEMAG_REAL_ASYMP(ycount)
+                                     *OXS_DEMAG_REAL_ASYMP(zcount);
+  if(countproduct>APPROX_MAX_CELL_COUNT) {
+    // Number of subcells too many for demag asymptotics to
+    // be computed in a reasonable time.  Make maxratio larger
+    // to reduce cell count --- this will hurt accuracy so
+    // issue a warning.
+#ifdef STANDALONE
+    static int warncount=1;
+    if(warncount>0) {
+      fprintf(stderr,"*** WARNING: Cell aspect ratio too large; asymptotic"
+              " demag tensor approximation may be poor. (%d) ***\n");
+      --warncount;
+    }
+#else // !STANDALONE
+# if 1
+    static Oxs_WarningMessage badcellaspect(1);
+    badcellaspect.Send(revision_info,OC_STRINGIFY(__LINE__),
+                       "Cell aspect ratio too large; asymptotic"
+                       " demag tensor approximation may be poor.");
+# else
+    fprintf(stderr,"WM thread %d\n",Oxs_GetOxsThreadId());
+    static Oxs_WarningMessage badcellaspect(1);
+    if(Oxs_IsRootThread()) {
+      fprintf(stderr,"ROOT\n");
+      badcellaspect.Send(revision_info,OC_STRINGIFY(__LINE__),
+                         "Cell aspect ratio too large; asymptotic"
+                         " demag tensor approximation may be poor.");
+    }
+# endif
+#endif // STANDALONE
+    maxratio *= sqrt(countproduct/APPROX_MAX_CELL_COUNT);
+    if(dz<=dx && dz<=dy) {
+      // dz is minimal
+      OrderedRefine(maxratio,dx,dy,dz,rdx,rdy,rdz,xcount,ycount,zcount);
+    } else if(dy<=dx && dy<=dz) {
+      // dy is minimal
+      OrderedRefine(maxratio,dx,dz,dy,rdx,rdz,rdy,xcount,zcount,ycount);
+    } else {
+      // dx is minimal
+      OrderedRefine(maxratio,dy,dz,dx,rdy,rdz,rdx,ycount,zcount,xcount);
+    }
+    countproduct = OXS_DEMAG_REAL_ASYMP(xcount)
+                  *OXS_DEMAG_REAL_ASYMP(ycount)
+                  *OXS_DEMAG_REAL_ASYMP(zcount);
+  }
+
+
 #if 0
   fprintf(stderr,"In  sizes: %10.6g %10.6g %10.6g\n",dx,dy,dz);
   fprintf(stderr,"Out sizes: %10.6g %10.6g %10.6g\n",rdx,rdy,rdz);
 #endif
-  result_scale = 1.0/(OXS_DEMAG_REAL_ASYMP(xcount)
-                      *OXS_DEMAG_REAL_ASYMP(ycount)
-                      *OXS_DEMAG_REAL_ASYMP(zcount));
+  result_scale = 1.0/countproduct;
 }
 
 Oxs_DemagNxxAsymptoticBase::Oxs_DemagNxxAsymptoticBase
@@ -1670,7 +1760,9 @@ OxsDemagNxxIntegralXBase::Compute
   OXS_DEMAG_REAL_ASYMP INxxm = (term7m + term5m + term3)*iR2m*iRm*xm;
 
   OXS_DEMAG_REAL_ASYMP INxx = INxxm - INxxp;
-  // For error, see NOTES V, 20-22 Feb 2011, pp.154-157.
+  // For error, see NOTES V, 20-22 Feb 2011, pp. 154-157.  See also
+  // NOTES IV, 25-Jan-2007, pp. 93-98, NOTES VI, 4-Jun-2013, p. 160, and
+  // NOTES VII, 2-Dec-2015, p. 118.
 
 #if 0
 printf("CHECK term7p = %#.17g\n",(double)term7p); /**/
@@ -1798,7 +1890,9 @@ OxsDemagNxyIntegralXBase::Compute
 
   const OXS_DEMAG_REAL_ASYMP& y = pairdata.ptp.y; // ptp.y and ptm.y are same
   OXS_DEMAG_REAL_ASYMP INxy = y * (term7 + term5 + term3);
-  // For error, see NOTES V, 20-22 Feb 2011, pp.154-157.
+  // For error, see NOTES V, 20-22 Feb 2011, pp. 154-157.  See also
+  // NOTES IV, 25-Jan-2007, pp. 93-98, NOTES VI, 4-Jun-2013, p. 160, and
+  // NOTES VII, 2-Dec-2015, p. 118.
 
   return INxy;
 }

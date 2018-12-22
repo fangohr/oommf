@@ -110,7 +110,7 @@ Microsoft Visual C++, Borland C++, \\
 \\
 Linux/x86 & Gnu g++, Intel C++, Portland Group pgCC \\
 %Linux/Itanium & Intel C++, Gnu g++ \\
-Mac OS X & Gnu g++, Clang C++ \\
+\MacOSX & Gnu g++, Clang C++ \\
 %MIPS/IRIX 6 (SGI) & MIPSpro C++ \\
 %SPARC/Solaris & Sun Workshop C++ \\
 \hline
@@ -260,7 +260,7 @@ it will print a summary of your
 platform configuration when it is evaluated by \fn{tclsh}.
 This summary describes your platform type, your C++ compiler,
 and your \Tcl/\Tk\ installation.  As an example, 
-here is the typical output on a Mac OS X 10.9 system:
+here is the typical output on a \MacOSX\ 10.9 system:
 \begin{verbatim}
 $ tclsh oommf.tcl +platform
 <5426> oommf.tcl 1.2.0.6  info:
@@ -700,7 +700,7 @@ already exist.
 
 \subsubsection{Parallelization}%
 \label{sec:parallel}\index{parallelization|(}
-The \OOMMF\ Oxs 3D solvers (\cd{oxsii} amd \cd{boxsi}) can be built
+The \OOMMF\ Oxs 3D solvers (\cd{oxsii} and \cd{boxsi}) can be built
 thread-enabled to allow parallel processing on
 multi-processor/multi-core machines.  In order to build and run a
 parallel version of \OOMMF, you must have a thread-enabled version of
@@ -988,8 +988,14 @@ The build procedure for \MacOSX\ is the same as for \Unix.  The
 platform name is ``darwin''.  If the \hyperrefhtml{platform
 configuration check}{platform configuration check
 (Sec.~}{)}{sec:platform.configuration} does not find a C++ compiler,
-then you will have to install one.  Refer to your system documentation
-for details.
+then you will have to install one.  One option is the Xcode command line
+developer tools provided by Apple.  You can install these from a
+Terminal window via the command
+\begin{verbatim}
+xcode-select --install
+\end{verbatim}
+You should run this command even if you install the full Xcode IDE.
+Refer to your system documentation for details.
 \index{platform!MacOSX!configuration|)}
 
 \index{platform!Windows!configuration|(}
@@ -1004,10 +1010,11 @@ Visual C++ command line compiler, \fn{cl.exe}, it is necessary to set up
 the path and some environment variables before running the compiler.
 There is a batch file distributed with Visual C++ that you can run to do
 this.  The name of the file varies between Visual C++ releases, but for
-example may be \fn{vcvarsall.bat} or \fn{setenv.cmd}.  You may want to
-set up your system so this batch file gets run automatically when you
-open a command window.  See your compiler and system documentation for
-details.
+example may be \fn{vcvarsall.bat} or \fn{setenv.cmd}.  For 64-bit builds
+you may need to include the ``amd64'' option on the batch file command
+line.  You may want to set up your system so this batch file gets run
+automatically when you open a command window.  See your compiler and
+system documentation for details.
 
 \paragraph{Using MinGW g++}
 \index{platform!Windows!MinGW~g++}
@@ -1032,12 +1039,15 @@ Cygwin environment, start up a Cygwin or Cygwin64 shell and follow the
 usual \Unix\ build procedure.  The platform name will be \fn{cygtel}
 or \fn{cygwin-x86\_64}, according to whether you are running a 32- or
 64-bit Cygwin \fn{tclsh}, respectively.  The resulting \OOMMF\ build
-requires the Cygwin environment, so it will need to be launched from
-a Cygwin shell.  Moreover, \OOMMF\ will use X11 as the windowing
-interface, so you will need to have the Cygwin port of X11 installed,
-including the \fn{libX11-devel}, \fn{libXft-devel},
-\fn{libfontconfig-devel} packages and dependencies.  This means that
-typically \OOMMF\ will be started from an X11 xterm or equivalent.
+requires the Cygwin environment to run, so it will need to be launched
+from a Cygwin shell.  Moreover, \OOMMF\ on Cygwin uses X11 as the
+windowing interface, so you will need to have the Cygwin port of X11
+installed; typically \OOMMF\ will be started from an X11 xterm or
+equivalent.  Of course, you will also need the \Tcl\ and \Tk\ packages
+installed (called \fn{tcl} and \fn{tcl-tk}, respectively, by the
+Cygwin package manager).  To build \OOMMF\ from source you will
+need the \fn{gcc-g++}, \fn{tcl-devel}, and \fn{tcl-tk-devel}
+packages and dependencies.
 
 If you get errors saying a child process couldn't be forked (typically
 with either ``resource temporarily unavailable'' or ``Loaded to
@@ -1051,13 +1061,10 @@ different address'' error messages), then follow this procedure:
 Additional information on this problem can be found in the Cygwin
 documentation.
 
-At the time of this writing (Sept.\ 2013), the Cygwin versions of
-\Tcl/\Tk\ are not threaded, so \OOMMF\ built using Cygwin will
-likewise be not threaded.  This will likely change when a Cygwin
-\Tcl/\Tk\ 8.6 package becomes available (the current Cygwin
-\Tcl/\Tk\ is 8.5.11), but it is possible to build a threaded
-\Tcl/\Tk\ in Cygwin from source.  Refer to the \Tcl/\Tk\ build
-documentation for details.
+The Cygwin versions of \Tcl/\Tk\ prior to 8.6 were not threaded, so
+\OOMMF\ built with \Tcl/\Tk\ 8.5 and older will likewise not be
+threaded.  This limitation is removed with the Cygwin \Tcl/\Tk\ 8.6
+release.
 
 \paragraph{Using Borland C++}
 \index{platform!Windows!Borland~C++}

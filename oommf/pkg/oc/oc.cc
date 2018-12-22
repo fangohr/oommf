@@ -1063,7 +1063,7 @@ ClearGlobalInterpreter(ClientData, Tcl_Interp *interp)
   if (interp == globalInterp) {
     globalInterp = (Tcl_Interp *) NULL;
   } else {
-    panic(OC_CONST84_CHAR("Global interpreter mismatch!"));
+    Tcl_Panic(OC_CONST84_CHAR("Global interpreter mismatch!"));
   }
 }
 
@@ -1263,7 +1263,7 @@ Oc_Init(Tcl_Interp *interp)
   //
   // Until the Oc_Log cross-platform facility for displaying messages to 
   // the user is supported by evaluating the Tcl portion of this extension 
-  // below, we must fall back on calls to panic().
+  // below, we must fall back on calls to Tcl_Panic().
 
   // Initialize Tcl.  
 #ifdef CONFIG_TCL_LIBRARY
@@ -1282,22 +1282,22 @@ Oc_Init(Tcl_Interp *interp)
   if (Tcl_Init(interp) != TCL_OK) {
     if(strncmp("Can't find a usable",
                Tcl_GetStringResult(interp),19)==0) {
-      panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s\n\n"
+      Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s\n\n"
                "As a workaround, set the environment variable\n"
                "TCL_LIBRARY to the name of a directory\n"
                "containing an error-free init.tcl."),
             Tcl_GetStringResult(interp));
     } else {
-      panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s"),
-            Tcl_GetStringResult(interp));
+      Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s"),
+                Tcl_GetStringResult(interp));
     }
   }
 
   }
 
   if (Nullchannel_Init(interp) != TCL_OK) {
-      panic(OC_CONST84_CHAR("Nullchannel initialization error:\n\n%s"),
-              Tcl_GetStringResult(interp));
+      Tcl_Panic(OC_CONST84_CHAR("Nullchannel initialization error:\n\n%s"),
+                Tcl_GetStringResult(interp));
   }
 
 
@@ -1315,7 +1315,7 @@ Oc_Init(Tcl_Interp *interp)
       (Tcl_PkgPresent(interp,OC_CONST84_CHAR("Tk"),NULL,0) == NULL)) {
     // Patch a bug in Tk 4.2
     if (Tcl_Eval(interp, OC_CONST84_CHAR(patchScript0)) != TCL_OK) {
-      panic(OC_CONST84_CHAR("Tcl/Tk initialization error:\n\n"
+      Tcl_Panic(OC_CONST84_CHAR("Tcl/Tk initialization error:\n\n"
                "Unable to patch installation bug in Tk 4.2\n\n"
                "Patch script returned error:%s"),
 	    Tcl_GetStringResult(interp));
@@ -1356,14 +1356,14 @@ Oc_Init(Tcl_Interp *interp)
       }
       if(strncmp("Can't find a usable",
                  Tcl_GetStringResult(interp),19)==0) {
-        panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s\n\n"
+        Tcl_Panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s\n\n"
                  "As a workaround, set the environment variable\n"
                  "TK_LIBRARY to the name of a directory\n"
                  "containing an error-free tk.tcl."),
               Tcl_GetStringResult(interp));
       } else {
-        panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s"),
-              Tcl_GetStringResult(interp));
+        Tcl_Panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s"),
+                  Tcl_GetStringResult(interp));
       }
     }
 
@@ -1379,8 +1379,8 @@ Oc_Init(Tcl_Interp *interp)
 
     if (consoleRequested && (interp == globalInterp)) {
       if (Tk_CreateConsoleWindow(interp) != TCL_OK) {
-        panic(OC_CONST84_CHAR("Tk console initialization error:\n\n%s"),
-                Tcl_GetStringResult(interp));
+        Tcl_Panic(OC_CONST84_CHAR("Tk console initialization error:\n\n%s"),
+                  Tcl_GetStringResult(interp));
       }
       Tcl_Eval(interp,OC_CONST84_CHAR("console hide"));
     }
@@ -1430,9 +1430,9 @@ Oc_Init(Tcl_Interp *interp)
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
+    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
              "Error evaluating pre-initialization scripts:\n%s"),
-          Tcl_GetStringResult(interp));
+              Tcl_GetStringResult(interp));
   }
 
 #if OC_TCL_TYPE==OC_WINDOWS && defined(__CYGWIN__)
@@ -1440,9 +1440,9 @@ Oc_Init(Tcl_Interp *interp)
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
+    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
              "Error evaluating cygwin pre-initialization script:\n%s"),
-          Tcl_GetStringResult(interp));
+              Tcl_GetStringResult(interp));
   }
 #endif // OC_WINDOWS && __CYGWIN__
 
@@ -1450,7 +1450,7 @@ Oc_Init(Tcl_Interp *interp)
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    panic(OC_CONST84_CHAR("%s"),
+    Tcl_Panic(OC_CONST84_CHAR("%s"),
 	  Tcl_GetVar(interp, OC_CONST84_CHAR("errorInfo"), TCL_GLOBAL_ONLY));
   }
 
@@ -1484,9 +1484,9 @@ Oc_Init(Tcl_Interp *interp)
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
+    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
              "Error evaluating post-initialization scripts:\n%s"),
-          Tcl_GetStringResult(interp));
+              Tcl_GetStringResult(interp));
   }
 
   char buf[1024];  // *Should* be big enough
@@ -1654,13 +1654,13 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
   // (if set), but is afterwards stored elsewhere.
   CFBundleRef mainBundle = CFBundleGetMainBundle();
   if (!mainBundle) {
-    panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
-	  "Unable to get main bundle.");
+    Tcl_Panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+              "Unable to get main bundle.");
   }
   CFDictionaryRef bundleInfoDict = CFBundleGetInfoDictionary(mainBundle);
   if (!bundleInfoDict) {
-    panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
-	  "Unable to get main bundle dictionary.");
+    Tcl_Panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+              "Unable to get main bundle dictionary.");
   }
   CFStringRef key = CFStringCreateWithCString(NULL,"CFBundleName",
 					      kCFStringEncodingUTF8);
@@ -1699,19 +1699,19 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
     Tk_Main(argc,argv,appinit);
   }
   catch (bad_alloc&) {
-    panic(OC_CONST84_CHAR("Out of memory!\n"));
+    Tcl_Panic(OC_CONST84_CHAR("Out of memory!\n"));
   }
   catch (Oc_Exception& err) {
     Oc_AutoBuf msg;
-    panic(OC_CONST84_CHAR("%s"),err.ConstructMessage(msg));
+    Tcl_Panic(OC_CONST84_CHAR("%s"),err.ConstructMessage(msg));
   }
   catch (EXCEPTION& e) {
-    panic(OC_CONST84_CHAR("Uncaught standard exception: %s\n"
-		     "Probably out of memory."),
-          e.what());
+    Tcl_Panic(OC_CONST84_CHAR("Uncaught standard exception: %s\n"
+                              "Probably out of memory."),
+              e.what());
   }
   catch (const char* err) {
-    panic(OC_CONST84_CHAR("%s"),err);
+    Tcl_Panic(OC_CONST84_CHAR("%s"),err);
   }
 }
 
@@ -1748,13 +1748,17 @@ NullifyTclStandardChannel(int type) {
       switch (type)
 	{
 	case TCL_STDIN:
-	  panic(OC_CONST84_CHAR("Couldn't create a standard input channel"));
+	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard input channel"));
+          break; // Keep compilers happy
 	case TCL_STDOUT:
-	  panic(OC_CONST84_CHAR("Couldn't create a standard output channel"));
+	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard output channel"));
+          break; // Keep compilers happy
 	case TCL_STDERR:
-	  panic(OC_CONST84_CHAR("Couldn't create a standard error channel"));
+	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard error channel"));
+          break; // Keep compilers happy
 	default:
-	  panic(OC_CONST84_CHAR("Bad standard channel type: %d"), type);
+	  Tcl_Panic(OC_CONST84_CHAR("Bad standard channel type: %d"), type);
+          break; // Keep compilers happy
         }
     }
     /* This may not be necessary, since Tcl_CreateChannel automatically
@@ -1782,7 +1786,7 @@ CommonMain(CONST char* exename) {
   SetErrorMode(dwMode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
 #endif // OC_WINDOWS
 
-  // Initialize the panic() function to use our customized
+  // Initialize the Tcl_Panic() function to use our customized
   // message display routines.
   Oc_InitPanic(exename);
 
@@ -1931,12 +1935,12 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
   CONST84 char **argv_temp;
   char cmdline[16384];
   if(Tcl_SplitList(NULL,lpszCmdLine,&argc,&argv_temp)!=TCL_OK) {
-    panic(OC_CONST84_CHAR("Bad command line: %s"),lpszCmdLine);
+    Tcl_Panic(OC_CONST84_CHAR("Bad command line: %s"),lpszCmdLine);
   }
   if(size_t(argc+1)>sizeof(argv)/sizeof(argv[0])) {
-    panic(OC_CONST84_CHAR("Too many command line parameters: %d>%lu"),
-          argc+1,
-          static_cast<unsigned long>(sizeof(argv)/sizeof(argv[0])));
+    Tcl_Panic(OC_CONST84_CHAR("Too many command line parameters: %d>%lu"),
+              argc+1,
+              static_cast<unsigned long>(sizeof(argv)/sizeof(argv[0])));
   }
 
   // Copy split string out of temporary memory, and setup
@@ -1948,8 +1952,8 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     argv[i+1]=cmdline+total_length;
     total_length+=strlen(argv_temp[i])+1;
     if(total_length>sizeof(cmdline)) {
-      panic(OC_CONST84_CHAR("Parsed command line too long (%lu)"),
-	    static_cast<unsigned long>(sizeof(cmdline)));
+      Tcl_Panic(OC_CONST84_CHAR("Parsed command line too long (%lu)"),
+                static_cast<unsigned long>(sizeof(cmdline)));
     }
     strcpy(argv[i+1],argv_temp[i]);
   }
