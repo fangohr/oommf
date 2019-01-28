@@ -169,8 +169,9 @@ Oc_Class Net_Account {
     private variable btnvar
 
     method ToggleGui { pwin } {
-        set parentWin $pwin
-        $this Configure -gui $btnvar
+       set parentWin $pwin
+       $this Configure -gui $btnvar
+       Ow_PropagateGeometry $pwin
     }
 
     # Constructor is a non-blocking operation.  After it returns an instance

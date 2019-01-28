@@ -11,7 +11,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 Oc_ForceStderrDefaultMessage	;# Use stderr, not dialog to report errors
 
 Oc_Main SetAppName batchmaster
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{task_script {} {Task definition file}}
@@ -251,7 +251,7 @@ set task(count) 0    ; set task(sched) 0
 set slave(count) 0
 set slave(timeout) 30000
 
-$TaskInfo ModifyHostList +$server(host)
+$TaskInfo ModifyHostList +[string tolower $server(host)]
 
 # Message procs.  These escape newlines.
 proc MyPuts { chan msg } {
@@ -482,7 +482,7 @@ proc SockConnect { chan } {
 proc ServerConnect { chan addr port } {
     global server TaskInfo
     # Check that connection is from allowed host
-    set remote_host [lindex [fconfigure $chan -peername] 1]
+    set remote_host [string tolower [lindex [fconfigure $chan -peername] 1]]
     foreach elt [$TaskInfo GetHostList] {
 	if {[string compare $elt $remote_host]==0 || \
 		[string compare "${elt}.$server(domain)" $remote_host]==0} {
@@ -547,12 +547,13 @@ if {[catch {socket -server ServerConnect -myaddr $server(host) $server(port)} \
     KillMaster
 }
 set temp [fconfigure $server(channel) -sockname]
-set server(host) [lindex $temp 1]
+set hostname [string tolower [lindex $temp 1]]
 set server(port) [lindex $temp 2]
 set server(domain) {}
-regexp -- {[^.]+\.(.*)} $server(host) dummy server(domain)
+regexp -- {[^.]+\.(.*)} $hostname dummy server(domain)
 puts stderr "Slave connect service brought up on $server(host):$server(port)"
 fconfigure $server(channel) -blocking 0 -buffering line
+$TaskInfo ModifyHostList +$hostname
 
 # Launch slaves
 set slaveid 0

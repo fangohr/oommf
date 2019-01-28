@@ -1,4 +1,7 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
+
+# Avoid asking for geographic data when installing tzdata
+ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
@@ -26,4 +29,10 @@ RUN chmod a+x oommf-version
 
 # Create working directory for mounting.
 RUN mkdir /io
+
+# Make sure the files created on host are not owned by root.
+RUN adduser oommfuser
+RUN chown -R oommfuser /io
+USER oommfuser
+
 WORKDIR /io

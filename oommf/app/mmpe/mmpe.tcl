@@ -19,7 +19,7 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -1180,6 +1180,18 @@ proc EntryChange {ButtonNumber} {
  global inbuff MifKnow Mcontents val vals
  global Dchange MenuState ButtonState MifBak
  global TopButton mif_format
+
+ # "val" and "vals" are unfortunate choices for global variable names
+ # as they may be accidentally used elsewhere for temporary use.  Add
+ # a little robustness by insuring they can be used as array
+ # variables:
+ if {[info exists val] && ![array exists val]} {
+    unset val
+ }
+ if {[info exists vals] && ![array exists vals]} {
+    unset vals
+ }
+
 
  set ButtonState ""
  set NULL "NULL"

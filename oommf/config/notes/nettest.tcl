@@ -1,9 +1,9 @@
 # FILE: nettest.tcl
 #
-# This script is used to debug OOMMF's Net package.  It must be
-# evaluated with OOMMF's omfsh shell.  In OOMMF's root directory, type:
+# This script is used to debug OOMMF's Net package. It must be evaluated
+# with OOMMF's filtersh shell.  In OOMMF's root directory, type:
 #
-#	tclsh oommf.tcl omfsh config/notes/nettest.tcl
+#	tclsh oommf.tcl filtersh config/notes/nettest.tcl
 #
 # A long stream of messages will be written to stderr logging the
 # operations of the Net package as it starts up the host directory

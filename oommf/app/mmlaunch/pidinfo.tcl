@@ -165,7 +165,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName pidinfo
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}

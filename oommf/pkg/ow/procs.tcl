@@ -614,6 +614,68 @@ proc Ow_RaiseWindow { win } {
 }
 
 ######################################################
+# Code to force toplevel window resize to size requested by children.
+# Typically this occurs automatically through propagate option of
+# pack.  What follows is primarily a hack to workaround buggy window
+# managers that don't automatically propagate geometry changes.  The
+# proc Ow_PropagateGeometry is a a NOP unless the configuration
+# variable bad_geom_propagate is set true in the platform config file.
+# To force geometry propagation at a code point, use
+# Ow_ForcePropateGeometry, which just calls wm geometry.  (Note: Do
+# default definitions first with "proc" in first column so the procs
+# get indexed.)
+proc Ow_ForcePropagateGeometry { win } {
+   wm geometry [winfo toplevel $win] {}
+}
+proc Ow_PropagateGeometry { w {total_time 0}} {}   ;# NOP
+if {![catch {[Oc_Config RunPlatform] GetValue bad_geom_propagate} _] \
+        && $_} {
+   proc Ow_PropagateGeometry { win } {
+      Ow_ForcePropagateGeometry $win
+   }
+   proc Ow_ForcePropagateGeometry { w {total_time 0}} {
+      global ow_propagategeometry_aid
+      global ow_propagategeometry_dims ow_propagategeometry_reqdims
+      if {[winfo exists $w]} {
+         set w [winfo toplevel $w] ;# Work with top level
+      }
+      if {[info exists ow_propagategeometry_aid($w)]} {
+         ;# Insure at most one stream at a time
+         after cancel $ow_propagategeometry_aid($w)
+      }
+      if {![winfo exists $w]} {
+         return ;# Kill call cycle
+      }
+      set setup_time 1000 ;# Time to allow for window setup (milliseconds)
+      set setup_incr  200 ;# Time increment during setup period
+      set wait_incr 1000  ;# Time between checks after setup period
+      set max_time 10000  ;# Max check time
+      set dims "[winfo width $w]x[winfo height $w]"
+      set reqdims "[winfo reqwidth $w]x[winfo reqheight $w]"
+      if {$total_time <= $setup_time \
+          || [string compare $dims $ow_propagategeometry_dims($w)]!=0 \
+          || [string compare $reqdims $ow_propagategeometry_reqdims($w)]!=0 } {
+         # Force update on first pass, or subsequent passes
+         # if window geometry changes.
+         set ow_propagategeometry_dims($w) $dims
+         set ow_propagategeometry_reqdims($w) $reqdims
+         wm geometry $w {}
+         if {$total_time<$setup_time} {
+            set timestep $setup_incr
+         } else {
+            set timestep $wait_incr
+         }
+         if {[incr total_time $timestep]<=$max_time} {
+            # If geometry update was made and max check time not
+            # reached, then schedule later recheck.
+            set ow_propagategeometry_aid($w) \
+             [after $timestep [list Ow_ForcePropagateGeometry $w $total_time]]
+         }
+      }
+   }
+}
+
+######################################################
 # Routines to push/pop watch cursor in requested
 # windows.
 # Note 1: If multiple Ow_PushWatchCursor calls are made

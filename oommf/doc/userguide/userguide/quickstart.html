@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2008 (1.71)
+<!--Converted with LaTeX2HTML 2012 (1.2)
 original version by:  Nikos Drakos, CBLU, University of Leeds
 * revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
 * with significant contributions from:
@@ -13,7 +13,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -72,7 +72,7 @@ Quick Start: Example OOMMF Session
 
 <UL>
 <LI><B>STEP 1: Start up the
-               mmLaunch<A NAME="2605"></A> window.</B>
+               mmLaunch<A NAME="2613"></A> window.</B>
   
 <UL>
 <LI>At the command prompt, when you are in the OOMMF root
@@ -105,26 +105,26 @@ tclsh oommf.tcl
           This gives a menu of options:
     
 <UL>
-<LI><A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive:</B></A><A NAME="2227"></A>
+<LI><A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive:</B></A><A NAME="2235"></A>
                    to auto-save scalar and vector field data
 </LI>
-<LI><A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"><B>mmDataTable:</B></A><A NAME="2230"></A>
+<LI><A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"><B>mmDataTable:</B></A><A NAME="2238"></A>
                    to display current values of scalar outputs
 </LI>
-<LI><A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp:</B></A><A NAME="2233"></A>
+<LI><A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp:</B></A><A NAME="2241"></A>
                    to display vector fields
 </LI>
-<LI><A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"><B>mmGraph:</B></A><A NAME="2236"></A>
+<LI><A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"><B>mmGraph:</B></A><A NAME="2244"></A>
                    to form x-y plots
 </LI>
-<LI><A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"><B>mmProbEd:</B></A><A NAME="2239"></A>
+<LI><A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"><B>mmProbEd:</B></A><A NAME="2247"></A>
                    to view or modify a problem for <B>mmSolve2D</B>
                    or <B>Oxsii</B>
 </LI>
-<LI><A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"><B>mmSolve2D:</B></A><A NAME="2244"></A>
+<LI><A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"><B>mmSolve2D:</B></A><A NAME="2252"></A>
                    to control the 2D solver
 </LI>
-<LI><A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii:</B></A><A NAME="2247"></A>
+<LI><A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii:</B></A><A NAME="2255"></A>
                    to control the 3D solver
     
 </LI>
@@ -148,7 +148,7 @@ tclsh oommf.tcl
 </LI>
 <LI>In the
             <A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"
- NAME="2263"><B>mmProbEd</B></A>
+ NAME="2271"><B>mmProbEd</B></A>
             window, make menu selection
             <FONT COLOR="#800000"><B>File|Open...</B></FONT>  An <FONT COLOR="#800000"><B>Open File</B></FONT> dialog window
             will appear.  In this window:
@@ -184,13 +184,13 @@ tclsh oommf.tcl
 <LI>In the <B>mmLaunch</B> window, click on the <FONT COLOR="#800000"><B>mmSolve2D</B></FONT>
             button to launch an instance of the program
             <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"
- NAME="2283"><B>mmSolve2D</B></A>.
+ NAME="2291"><B>mmSolve2D</B></A>.
 </LI>
 <LI>Wait for the new solver instance to appear in the 
           <FONT COLOR="#800000"><B>Threads</B></FONT> column in the <B>mmLaunch</B> window.
 </LI>
 <LI>Check the box next to the <B>mmSolve2D</B> entry in the
-          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2288"></A> column.  A window containing an
+          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2296"></A> column.  A window containing an
           <B>mmSolve2D</B> interface will appear.
 </LI>
 <LI>In the <B>mmSolve2D</B> window:
@@ -221,7 +221,7 @@ tclsh oommf.tcl
 <LI>Check the box next to the desired Destination Thread.  
                 This will exhibit Schedule options.
 </LI>
-<LI>Choose a schedule<A NAME="2305"></A>:
+<LI>Choose a schedule<A NAME="2313"></A>:
           
 <UL>
 <LI><B>Iteration:</B> fill in number and check the box.
@@ -248,12 +248,12 @@ tclsh oommf.tcl
 <LI>In the <B>mmSolve2D</B> window, start the calculation with
             <FONT COLOR="#800000"><B>Run</B></FONT> (which runs until problem completion) or
             <FONT COLOR="#800000"><B>Relax</B></FONT> (which runs until the next control point is
-            reached)<A NAME="2318"></A>.
+            reached)<A NAME="2326"></A>.
 </LI>
 <LI>If you requested mmDataTable output, check the boxes for the
             desired quantities on the
             <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="2323"><B>mmDataTable</B></A>
+ NAME="2331"><B>mmDataTable</B></A>
             window under
             the <FONT COLOR="#800000"><B>Data</B></FONT> menu, so that they appear and are updated as
             requested in your schedule.
@@ -261,7 +261,7 @@ tclsh oommf.tcl
 <LI>Similarly, check the box for the desired X, Y1, and Y2
             quantities on the
             <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="2329"><B>mmGraph</B></A>
+ NAME="2337"><B>mmGraph</B></A>
             window(s) under the <FONT COLOR="#800000"><B>X</B></FONT>, <FONT COLOR="#800000"><B>Y1</B></FONT> and <FONT COLOR="#800000"><B>Y2</B></FONT> menus.
     
 </LI>
@@ -269,31 +269,31 @@ tclsh oommf.tcl
     
 </DD>
 <DT><STRONG>Save and/or display results:</STRONG></DT>
-<DD><A NAME="2334"></A> 
+<DD><A NAME="2342"></A> 
     
 <UL>
 <LI>Vector field data (magnetization and effective field) may be
             viewed using <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="2340"><B>mmDisp</B></A>.  You can
-            manually save data to disk<A NAME="2341"></A> using
+ NAME="2348"><B>mmDisp</B></A>.  You can
+            manually save data to disk<A NAME="2349"></A> using
             the <FONT COLOR="#800000"><B>File|Save as...</B></FONT> menu option in
             <B>mmDisp</B>, or you can send scheduled output to
             <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="2348"><B>mmArchive</B></A> for
+ NAME="2356"><B>mmArchive</B></A> for
             automatic storage.  For example, to save the magnetization
             state at the end of each control point, start up an instance
-            of <B>mmArchive</B> and select the <B>            ControlPoint</B><A NAME="2351"></A> check box for
+            of <B>mmArchive</B> and select the <B>            ControlPoint</B><A NAME="2359"></A> check box for
             <B>mmArchive</B> on the <FONT COLOR="#800000"><B>Magnetization</B></FONT> schedule in the
             solver.  This may be done before starting the calculation.
             (Control points are points in the simulation where the applied
             field is stepped.  These are typically
-            equilibrium<A NAME="2354"></A> states, but
+            equilibrium<A NAME="2362"></A> states, but
             depending on the input <TT><B>*.mif</B></TT> file, may be triggered by
             elapsed simulation time or iteration count.)
 </LI>
-<LI>Tabular data<A NAME="2356"></A> may be saved by
-            sending scheduled output<A NAME="2357"></A> from the
-            solver to <B>mmArchive</B><A NAME="2359"></A>,
+<LI>Tabular data<A NAME="2364"></A> may be saved by
+            sending scheduled output<A NAME="2365"></A> from the
+            solver to <B>mmArchive</B><A NAME="2367"></A>,
             which automatically saves all the data it receives.
             Alternatively, <B>mmGraph</B> can be used to save a subset of
             the data: schedule output to <B>mmGraph</B> as desired, and
@@ -306,7 +306,7 @@ tclsh oommf.tcl
             then use the <FONT COLOR="#800000"><B>Options|clear Data</B></FONT> menu item in
             <B>mmGraph</B> to remove the initializing data point.  If you
             want to inspect explict numeric values, use
-            <B>mmDataTable</B><A NAME="2368"></A>, which
+            <B>mmDataTable</B><A NAME="2376"></A>, which
             displays single sets of values in a tabular format.
             <B>mmDataTable</B> has no data save functionality.
     
@@ -319,7 +319,7 @@ tclsh oommf.tcl
     
 <UL>
 <LI>In the <B>mmSolve2D</B> window, buttons can stop and restart the
-            calculation<A NAME="2373"></A>:
+            calculation<A NAME="2381"></A>:
       
 <UL>
 <LI><B>Reset:</B>  Return to beginning of problem.
@@ -369,13 +369,13 @@ tclsh oommf.tcl
 <LI>In the <B>mmLaunch</B> window, click on the <FONT COLOR="#800000"><B>Oxsii</B></FONT>
             button to launch an instance of the program
             <A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"
- NAME="2397"><B>Oxsii</B></A>.
+ NAME="2405"><B>Oxsii</B></A>.
 </LI>
 <LI>Wait for the new solver instance to appear in the 
           <FONT COLOR="#800000"><B>Threads</B></FONT> column in the <B>mmLaunch</B> window.
 </LI>
 <LI>Check the box next to the <B>Oxsii</B> entry in the
-          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2402"></A> column.  A window containing an
+          <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="2410"></A> column.  A window containing an
           <B>Oxsii</B> interface will appear.
     
 </LI>
@@ -409,9 +409,9 @@ tclsh oommf.tcl
         readable by <B>Oxsii</B>, or may be converted to the MIF&nbsp;2.1
         format using the command line tool
         <A HREF="mifconvert.html#sec:mifconvert"
- NAME="2428"><B>mifconvert</B></A>.
+ NAME="2436"><B>mifconvert</B></A>.
         <A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"
- NAME="2433"><B>mmProbEd</B></A>
+ NAME="2441"><B>mmProbEd</B></A>
         also supports an extension to the MIF&nbsp;1.1
         format, namely MIF&nbsp;1.2, which provides limited 3D
         functionality.  MIF&nbsp;1.2 files may also be read directly by
@@ -461,12 +461,12 @@ tclsh oommf.tcl
 <UL>
 <LI>In the <B>Oxsii</B> window, start the calculation with
          <FONT COLOR="#800000"><B>Run</B></FONT>, <FONT COLOR="#800000"><B>Relax</B></FONT>, or
-         <FONT COLOR="#800000"><B>Step</B></FONT><A NAME="2454"></A>.
+         <FONT COLOR="#800000"><B>Step</B></FONT><A NAME="2462"></A>.
 </LI>
 <LI>If you requested mmDataTable output, check the boxes for the
          desired quantities on the
          <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="2459"><B>mmDataTable</B></A>
+ NAME="2467"><B>mmDataTable</B></A>
          window under
          the <FONT COLOR="#800000"><B>Data</B></FONT> menu, so that they appear and are updated as
          requested in your schedule.
@@ -474,7 +474,7 @@ tclsh oommf.tcl
 <LI>Similarly, check the box for the desired X, Y1, and Y2
          quantities on the
          <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="2465"><B>mmGraph</B></A>
+ NAME="2473"><B>mmGraph</B></A>
          window(s) under the <FONT COLOR="#800000"><B>X</B></FONT>, <FONT COLOR="#800000"><B>Y1</B></FONT> and <FONT COLOR="#800000"><B>Y2</B></FONT> menus.
     
 </LI>
@@ -482,32 +482,32 @@ tclsh oommf.tcl
     
 </DD>
 <DT><STRONG>Save and/or display results:</STRONG></DT>
-<DD><A NAME="2470"></A> 
+<DD><A NAME="2478"></A> 
     
 <UL>
 <LI>Vector field data (magnetization and fields) may be
         viewed using
         <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="2476"><B>mmDisp</B></A>.
+ NAME="2484"><B>mmDisp</B></A>.
         You can 
-        manually save data to disk<A NAME="2477"></A> using
+        manually save data to disk<A NAME="2485"></A> using
         the <FONT COLOR="#800000"><B>File|Save as...</B></FONT> menu option in <B>mmDisp</B>,
         or you can send scheduled output to
         <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="2484"><B>mmArchive</B></A> for
+ NAME="2492"><B>mmArchive</B></A> for
         automatic storage.  For example, to save the magnetization state
         at the end of each problem  stage, start up an instance of
         <B>mmArchive</B> and select the
-        <B>Stage</B><A NAME="2487"></A> check box for 
+        <B>Stage</B><A NAME="2495"></A> check box for 
         the <TT>Magnetization</TT> output, <TT>mmArchive</TT> destination pair.
         (Stages denote points in the simulation where some
          significant event occurs, such as when an equilibrium is
          reached or some preset simulation time index is met.
          These criteria are set by the input MIF file.)
 </LI>
-<LI>Tabular data<A NAME="2490"></A> may be saved by sending
-         scheduled output<A NAME="2491"></A> from the solver to
-         <B>mmArchive</B><A NAME="2493"></A>, which
+<LI>Tabular data<A NAME="2498"></A> may be saved by sending
+         scheduled output<A NAME="2499"></A> from the solver to
+         <B>mmArchive</B><A NAME="2501"></A>, which
          automatically saves all the data it receives.  Alternatively,
          <B>mmGraph</B> can be used to save a subset of the data:
          schedule output to <B>mmGraph</B> as desired, and use either the
@@ -520,7 +520,7 @@ tclsh oommf.tcl
          <FONT COLOR="#800000"><B>Options|clear Data</B></FONT> menu item in <B>mmGraph</B> to
          remove the initializing data point.  If you want to inspect
          explict numeric values, use
-         <B>mmDataTable</B><A NAME="2502"></A>, which
+         <B>mmDataTable</B><A NAME="2510"></A>, which
          displays single sets of values in a tabular format.
          <B>mmDataTable</B> has no data save functionality.
       
@@ -533,7 +533,7 @@ tclsh oommf.tcl
     
 <UL>
 <LI>In the <B>Oxsii</B> window, buttons can stop and restart the
-             calculation<A NAME="2507"></A>:
+             calculation<A NAME="2515"></A>:
        
 <UL>
 <LI><B>Reload:</B> Reload the same file from disk.
@@ -569,7 +569,7 @@ tclsh oommf.tcl
              user to interactively output final results via the
              <FONT COLOR="#800000"><B>Send</B></FONT> button.  The batch interface 
             <A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"
- NAME="2529"><B>Boxsi</B></A>
+ NAME="2537"><B>Boxsi</B></A>
              terminates automatically when the termination criteria for
              the final stage are met.
     
@@ -620,6 +620,6 @@ tclsh oommf.tcl
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2017</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
 </BODY>
 </HTML>

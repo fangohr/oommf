@@ -12,17 +12,25 @@ if {[llength [info commands bind]] && [llength [info commands wm]] \
 ################################
 # Bind auto-default resize behavior to all toplevel windows.
     proc Oc_AutoSizeCheck { win w h } {
-	foreach {wmin hmin} [wm minsize $win] {}
-	if { $w <= $wmin && $h <= $hmin } {
-	    wm geometry $win {}   ;# Turn on auto-sizing behavior
-	}
+       set wmin 5
+       set hmin 5
+       if { $w <= $wmin || $h <= $hmin } {
+          wm geometry $win {}   ;# Resize to default
+          ## Note: On windows, and perhaps other systems depending on
+          ## the window manager, the window width is limited by
+          ## decorations in the title bar.  Earlier versions of this
+          ## routine required both $w and $h to be smaller than the
+          ## specified limit to invoke resizing, but there does not
+          ## appear to be any practical way to determine the minimum
+          ## window width the system will allow, so instead we trigger
+          ## if either condition is met.  (All tested systems allow
+          ## height to be sized to 0 (or smaller).)
+       }
     }
     bind AutoSize <Configure> {Oc_AutoSizeCheck %W %w %h}
 
     # Set up root window to use AutoSize binding.
     bindtags . [concat AutoSize [bindtags .]]
-    wm minsize . 5 5  ;# Adjust minimum size so the binding
-    ## is easier for the user to trigger.
 
     # Redefine 'toplevel' so all toplevel windows automatically use the
     # AutoSize binding, and get assigned to the "."  group.
@@ -30,8 +38,6 @@ if {[llength [info commands bind]] && [llength [info commands wm]] \
     proc toplevel { pathName args } {
 	set win [eval Tcl_toplevel $pathName $args]
 	bindtags $win [concat AutoSize [bindtags $win]]
-	wm minsize $win 5 5  ;# Adjust minimum size so the
-	## binding is easier for the user to trigger.
 	wm group $win . ;# By default, bind to root window group
 	return $win
     }

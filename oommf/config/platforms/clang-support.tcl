@@ -11,15 +11,26 @@
 # optimization flags for clang.
 #
 
-# Routine to guess the Clang version.  The import, clang, is used via "exec
-# $clangc --version" (or, rather, the "open" analogue) to determine the
-# clang version (useful for whene the flags accepted by clang vary by version).
-# Return value is the clang version string as a list of numbers,
+# Routine to guess the Clang version.  The import, clang, should be
+# an executable command list, which is used via
+#   exec [concat $clang --version]
+# or, rather, the "open" analogue to determine the clang version (useful
+# for when the flags accepted by clang vary by version).  In particular,
+# this means that spaces in the clang cmd need to be protected
+# appropriately.  For example, if there is a space in the clang command
+# path, then clang should be set like so:
+#  set clang [list {/path with spaces/clang++}]
+# For multi-element commands, for example using the xcrun shim from Xcode,
+# this would look like
+#  set clang [list xcrun {/path with spaces/clang++}]
+#
+# The return value is the clang version string as a list of numbers,
 # for example, {3 1} for version 3.1.
 proc GuessClangVersion { clang } {
    set guess {}
+   set testcmd [concat | $clang --version]
    if {[catch {
-          set fptr [open "|$clang --version" r]
+          set fptr [open $testcmd r]
           set verstr [read $fptr]
       close $fptr}]} {
       return $guess
@@ -40,8 +51,9 @@ proc GuessClangVersion { clang } {
 
 proc GetClangBannerVersion { clang } {
    set banner {}
+   set testcmd [concat | $clang --version]
    catch {
-      set fptr [open "|$clang --version" r]
+      set fptr [open $testcmd r]
       set banner [gets $fptr]
       while {[gets $fptr line]>=0} {
 	 if {[string length $line]} {

@@ -45,64 +45,70 @@ Oxs_WarningMessageRevisionInfo::Oxs_WarningMessageRevisionInfo
   primary_author  = String(primary_author_);
 }
 
-
+// Static member variables for Oxs_WarningMessage
+Oxs_Mutex Oxs_WarningMessage::mutex;
 int Oxs_WarningMessage::ids_in_use = 0;
-map<int,int> Oxs_WarningMessage::message_counts;
+std::map<int,int> Oxs_WarningMessage::message_counts;
+std::deque<Oxs_WarningMessage::MessageData> Oxs_WarningMessage::message_hold;
 
 int
-Oxs_WarningMessage::Send
+Oxs_WarningMessage::FormatMessage
 (const Oxs_WarningMessageRevisionInfo& revinfo,
  const char* line,
  const char* msg,
  const char* src,
- const char* id)
-{
-  // Pull current message count data from message_counts map.
-  int current_count=0;
-  map<int,int>::iterator id_it = message_counts.find(instance_id);
-  if(id_it==message_counts.end()) {
-    message_counts[instance_id] = current_count = 1;
-  } else {
-    current_count = ++(id_it->second);
+ const char* id,
+ String& formatted_message,  // Export
+ String& errCode)            // Export
+{ // Result code values:
+  //  -1 if max_message_count is exceeded
+  //   1 if max_message_count is met
+  //   0 otherwise
+  mutex.Lock();
+  int result=0;
+  try {
+    // Pull current message count data from message_counts map.
+    int current_count=0;
+    map<int,int>::iterator id_it = message_counts.find(instance_id);
+    if(id_it==message_counts.end()) {
+      message_counts[instance_id] = current_count = 1;
+    } else {
+      current_count = ++(id_it->second);
+    }
+    if(current_count==max_message_count) {
+      result = 1;
+    } else if(max_message_count>=0 && current_count>max_message_count) {
+      result = -1;
+    } 
+  } catch(...) {
+    mutex.Unlock();
+    throw;
   }
-  if(max_message_count>=0 && current_count>max_message_count) return -1;
+  mutex.Unlock();
+  if(result<0) return result;
 
-  String expanded_msg;
+  String fullmsg;
   switch(message_type) {
-  case NB_MSG_DEBUG:    expanded_msg = String("DEBUG message: "); break;
-  case NB_MSG_INFO:     expanded_msg = String("INFO message: ");  break;
-  case NB_MSG_WARNING:  expanded_msg = String("WARNING: ");       break;
-  case NB_MSG_ERROR:    expanded_msg = String("ERROR: ");         break;
-  default:              expanded_msg = String("UNKNOWN type: ");  break;
+  case NB_MSG_DEBUG:    fullmsg = String("DEBUG message: "); break;
+  case NB_MSG_INFO:     fullmsg = String("INFO message: ");  break;
+  case NB_MSG_WARNING:  fullmsg = String("WARNING: ");       break;
+  case NB_MSG_ERROR:    fullmsg = String("ERROR: ");         break;
+  default:              fullmsg = String("UNKNOWN type: ");  break;
   }
-
-  expanded_msg += String(msg)
+  fullmsg += String(msg)
     + String("\n   in file: ") + revinfo.file
     + String("\n   at line: ") + String(line)
     + String("\n  revision: ") + revinfo.revision
     + String("\n      date: ") + revinfo.date
     + String("\n    author: ") + revinfo.primary_author;
 
-#ifndef NDEBUG
-  expanded_msg +=
-    String("\n last edit: ") + revinfo.revision_author;
-  char buf[512];
-  Oc_Snprintf(buf,sizeof(buf),"%d",instance_id);
-  expanded_msg +=
-    String("\n msg    id: ") + String(buf);
-  Oc_Snprintf(buf,sizeof(buf),"%d/%d",current_count,max_message_count);
-  expanded_msg +=
-    String("\n msg count: ") + String(buf);
-#endif
-
-  if(current_count==max_message_count) {
-    expanded_msg += String("\n*** NOTE: Further messages of this type"
-			   " will be discarded. ***");
+  if(result==1) {
+    fullmsg += String("\n*** NOTE: Further messages of this type"
+                      " will be discarded. ***");
   }
+  formatted_message = fullmsg;
 
   // Make this an "OOMMF"-style log message
-  const char* errCode_ptr = NULL;
-  String errCode;
   vector<String> ecvec;
   ecvec.push_back("OOMMF");
   if(src!=NULL) {
@@ -114,29 +120,120 @@ Oxs_WarningMessage::Send
     ecvec.push_back(id);
   } else {
     char idbuf[512];
-    Oc_Snprintf(idbuf,sizeof(idbuf),"Oxs_WarningMessage:%04d",instance_id);
-    ecvec.push_back(idbuf);
+    Oc_Snprintf(idbuf,sizeof(idbuf),"Oxs_WarningMessage:%04d",instance_id); 
+   ecvec.push_back(idbuf);
   }
   ecvec.push_back(revinfo.file + String(":") + String(line));
   errCode = Nb_MergeList(ecvec);
-  errCode_ptr = errCode.c_str();
 
-  return TkMessage(message_type,expanded_msg.c_str(),0,errCode_ptr);
+  return result;
+}
+
+int
+Oxs_WarningMessage::HoldMessage
+(const Oxs_WarningMessageRevisionInfo& revinfo,
+ const char* line,
+ const char* msg,
+ const char* src,
+ const char* id)
+{ // Can be called from any thread; message is formatted and placed in
+  // the message_hold.  When threads are joined the main thread should
+  // call TransmitMessageHold to send messages out.
+  String formatted_message;
+  String errCode;
+  int result = FormatMessage(revinfo,line,msg,src,id,
+                             formatted_message,errCode);
+  if(result<0) return result;
+  mutex.Lock();
+  try {
+    message_hold.push_back(MessageData(message_type,
+                                       formatted_message,errCode));
+  } catch(...) {
+    mutex.Unlock();
+    throw;
+  }
+  mutex.Unlock();
+  return result;
+}
+
+int Oxs_WarningMessage::TransmitMessageHold()
+{ // Should be called only from main thread.  Return is
+  // number of messages transmitted.
+  assert(Oxs_IsRootThread());
+  int count = 0;
+  while(1) {
+    MessageData data;
+    int isempty=0;
+    mutex.Lock();
+    try {
+      if(!(isempty=message_hold.empty())) {
+        data = message_hold.front();
+        message_hold.pop_front();
+      }
+    } catch(...) {
+      mutex.Unlock();
+      throw;
+    }
+    mutex.Unlock();
+    if(isempty) break;
+    TkMessage(data.msgtype,data.text.c_str(),0,data.errCode.c_str());
+    ++count;
+  }
+  return count;
+}
+
+int
+Oxs_WarningMessage::Send
+(const Oxs_WarningMessageRevisionInfo& revinfo,
+ const char* line,
+ const char* msg,
+ const char* src,
+ const char* id)
+{
+  if(!Oxs_IsRootThread()) {
+    // TkMessage call can only be made from the root thread.  If this
+    // is not the root thread, then put message into holding area to
+    // be called when thread join occurs.
+    return HoldMessage(revinfo,line,msg,src,id);
+  }
+  String formatted_message;
+  String errCode;
+  int result = FormatMessage(revinfo,line,msg,src,id,
+                             formatted_message,errCode);
+  if(result<0) return result;
+  return TkMessage(message_type,formatted_message.c_str(),0,errCode.c_str());
 }
 
 int Oxs_WarningMessage::GetCurrentCount() const
 {
-  map<int,int>::const_iterator id_it = message_counts.find(instance_id);
-  if(id_it==message_counts.end()) return 0;
-  return id_it->second;
+  int result=0;
+  mutex.Lock();
+  try {
+    map<int,int>::const_iterator id_it = message_counts.find(instance_id);
+    if(id_it!=message_counts.end()) {
+      result = id_it->second;
+    }
+  } catch(...) {
+    mutex.Unlock();
+    throw;
+  }
+  mutex.Unlock();
+  return result;
 }
 
 void Oxs_WarningMessage::SetCurrentCount(int newcount)
 {
-  map<int,int>::iterator id_it = message_counts.find(instance_id);
-  if(id_it==message_counts.end()) {
-    message_counts[instance_id] = newcount;
-  } else {
-    id_it->second = newcount;
+  mutex.Lock();
+  try {
+    map<int,int>::iterator id_it = message_counts.find(instance_id);
+    if(id_it==message_counts.end()) {
+      message_counts[instance_id] = newcount;
+    } else {
+      id_it->second = newcount;
+    }
+  } catch(...) {
+    mutex.Unlock();
+    throw;
   }
+  mutex.Unlock();
 }

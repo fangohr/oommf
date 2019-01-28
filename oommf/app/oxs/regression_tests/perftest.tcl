@@ -75,6 +75,11 @@ if {[regexp -- {-numanodes} $boxsi_help]} {
    set NUMASUPPORT 1
 }
 
+set THREADSUPPORT 0
+if {[regexp -- {-threads} $boxsi_help]} {
+   set THREADSUPPORT 1
+}
+
 # Base name for output .odt files.  Decorate with machine name and pid,
 # so concurrent runs can be made off one file system.
 set BASENAME "perftest-datatable-[info hostname]-[pid]"
@@ -589,7 +594,7 @@ CollectSystemInfo
 set sil 10 ;# Number is iterations per stage (not including init stage)
 set nos  5 ;# Number of stages after the first, initialization stage
 set threads 1
-if {[info exists system_info(thread_count)]} {
+if {$THREADSUPPORT && [info exists system_info(thread_count)]} {
    set threads $system_info(thread_count)
 }
 set default_cellsize(1) [list 10 20/3. 5 4 20/6.]
@@ -603,7 +608,7 @@ set tick_digits 1
 # Usage
 proc Usage {} {
    flush stdout
-   global NUMASUPPORT EXEC_STAGE_TEST_TIMEOUT
+   global NUMASUPPORT THREADSUPPORT EXEC_STAGE_TEST_TIMEOUT
    global test_number default_cellsize
    global sil nos threads cellsize numa
    global tick_digits default_evolver
@@ -611,10 +616,12 @@ proc Usage {} {
    if {$NUMASUPPORT} {
       puts -nonewline stderr " \[-numa \<none\|auto\|\#\[,\#...\]\>\]"
    }
+   if {$THREADSUPPORT} {
+      puts -nonewline stderr " \[-threads \<\# \[\# ...\]\>\]"
+   }
    puts stderr \
        " \[-sil \<\#\>\] \\\n  \
          \[-number_of_stages \<\#\>\]\
-         \[-threads \<\# \[\# ...\]\>\]\
          \[-cellsize \<\# \[\# ...\]\>\] \\\n  \
          \[-digits \<\#\>\]\
          \[-evolver \
@@ -626,9 +633,11 @@ proc Usage {} {
    if {$NUMASUPPORT} {
       puts stderr "  -numa specifies NUMA loading (default $numa)"
    }
+   if {$THREADSUPPORT} {
+      puts stderr "  -threads is thread count list (default $threads)"
+   }
    puts stderr "  -sil is stage iteration limit (default $sil)"
    puts stderr "  -number_of_stages is number of stages (default $nos)"
-   puts stderr "  -threads is thread count list (default $threads)"
    if {![info exists test_number] || \
           ![info exists default_cellsize($test_number)]} {
       puts stderr "  -cellsize is cellsize (in nm) list\
@@ -726,25 +735,27 @@ if {$NUMASUPPORT} {
 }
 
 
-set threads_index [lsearch -regexp $argv {^-+threads$}]
-if {$threads_index >= 0} {
-   set index [expr {$threads_index + 1}]
-   set threads {}
-   while {$index < [llength $argv]} {
-      set elt [lindex $argv $index]
-      if {[string match -* $elt]} { break }
-      if {![regexp {^[1-9][0-9]*$} $elt]} {
-         puts stderr "ERROR: Invalid thread count \"$elt\""
+if {$THREADSUPPORT} {
+   set threads_index [lsearch -regexp $argv {^-+threads$}]
+   if {$threads_index >= 0} {
+      set index [expr {$threads_index + 1}]
+      set threads {}
+      while {$index < [llength $argv]} {
+         set elt [lindex $argv $index]
+         if {[string match -* $elt]} { break }
+         if {![regexp {^[1-9][0-9]*$} $elt]} {
+            puts stderr "ERROR: Invalid thread count \"$elt\""
+            Usage
+         }
+         lappend threads $elt
+         incr index
+      }
+      if {[llength $threads]<1} {
+         puts stderr "ERROR: Empty thread count list"
          Usage
       }
-      lappend threads $elt
-      incr index
+      set argv [lreplace $argv $threads_index [expr {$index - 1}]]
    }
-   if {[llength $threads]<1} {
-      puts stderr "ERROR: Empty thread count list"
-      Usage
-   }
-   set argv [lreplace $argv $threads_index [expr {$index - 1}]]
 }
 
 set cellsize_index [lsearch -regexp $argv {^-+cellsize$}]
@@ -1119,7 +1130,9 @@ foreach cs $cellsize {
          flush stderr
       }
       set boxsi_command $boxsi_base_command
-      lappend boxsi_command -threads $tc
+      if {$THREADSUPPORT} {
+         lappend boxsi_command -threads $tc
+      }
       lappend boxsi_command -parameters [concat $parameter_list cellsize $cs]
       set boxsi_command [concat $boxsi_command $ERR_REDIRECT]
 

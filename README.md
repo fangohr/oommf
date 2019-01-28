@@ -1,8 +1,14 @@
-[![Build Status](https://travis-ci.org/fangohr/oommf.svg?branch=master)](https://travis-ci.org/fangohr/oommf)
-[![License Badge](https://img.shields.io/badge/License-OOMMF-blue.svg)](oommf/LICENSE)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf)
+
+
+
 
 # Object Oriented MicroMagnetic Framework (OOMMF)
+
+| Description | Badge |
+| --- | --- |
+| Release | [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf) |
+| Build | [![Build Status](https://travis-ci.org/fangohr/oommf.svg?branch=master)](https://travis-ci.org/fangohr/oommf) |
+| License | [![License Badge](https://img.shields.io/badge/License-OOMMF-blue.svg)](oommf/LICENSE) |
 
 ## About
 
@@ -41,11 +47,11 @@ After you clone this repository
 
 you can build OOMMF and add a particular extensions by running
 
-    make build-with-dmi-extensions-XXX
+    make build-with-dmi-extension-XXX
 
 where `XXX` can be `cnv`, `t`, or `d2d` for individual extensions. In case you want to build OOMMF with all three DMI extensions, you can run:
 
-    make build-with-dmi-extensions-all
+    make build-with-dmi-extension-all
 
 ## Docker
 

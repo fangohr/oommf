@@ -1,4 +1,4 @@
-# LaTeX2HTML 2008 (1.71)
+# LaTeX2HTML 2012 (1.2)
 # Associate labels original text with physical files.
 
 
@@ -57,7 +57,7 @@ $noresave{$key} = "$nosave";
 1;
 
 
-# LaTeX2HTML 2008 (1.71)
+# LaTeX2HTML 2012 (1.2)
 # labels from external_latex_labels array.
 
 
@@ -85,12 +85,12 @@ $key = q/sec:energyexample/;
 $external_latex_labels{$key} = q|4.1|; 
 $noresave{$key} = "$nosave";
 
-$key = q/fig:energyexamplecode/;
-$external_latex_labels{$key} = q|3|; 
-$noresave{$key} = "$nosave";
-
 $key = q/sec:oxs/;
 $external_latex_labels{$key} = q|4|; 
+$noresave{$key} = "$nosave";
+
+$key = q/fig:energyexamplecode/;
+$external_latex_labels{$key} = q|3|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:overview/;

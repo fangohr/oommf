@@ -34,11 +34,11 @@ if {[catch {$config GetValue program_compiler_c++_override}] \
    $config SetValue program_compiler_c++_override $_
 }
 
-# Environment variable override for C++ compiler
+# Environment variable override for C++ compiler.  The string OOMMF_C++
+# is an invalid name in Unix shells, so also allow OOMMF_CPP
 if {[info exists env(OOMMF_C++)]} {
    $config SetValue program_compiler_c++_override $env(OOMMF_C++)
 } elseif {[info exists env(OOMMF_CPP)]} {
-   # Note: "OOMMF_C++" is an invalid name in Unix shells.
    $config SetValue program_compiler_c++_override $env(OOMMF_CPP)
 }
 
@@ -258,6 +258,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## only meaningful for builds with thread support.  If not set, then there
 ## is no limit.
 # $config SetValue thread_limit 8
+#
+## If problems occur involving the host server, account server, or other
+## interprocess communications, try disabling async socket connections:
+# $config SetValue socket_noasync 1
+#
+## If windows don't auto resize properly, set this value to 1.
+# $config SetValue bad_geom_propagate 1
 #
 ## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not
 ## use SSE intrinsics.  Leave unset to get the default (which may
@@ -920,6 +927,7 @@ if {[string match cl $ccbasename]} {
       set cpuopts [GetGccCpuOptFlags $gcc_version $cpu_arch]
    }
    unset cpu_arch
+
    # You can override the above results by directly setting or
    # unsetting the cpuopts variable, e.g.,
    #
@@ -929,6 +937,13 @@ if {[string match cl $ccbasename]} {
    #
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
+   }
+
+   # Include flag for support of requested sse_level, if necessary
+   if {![catch {$config GetValue sse_level} sse_level] && $sse_level>=2} {
+      if {![regexp -- {-m(sse|avx)} $opts]} {
+         append opts " -msse${sse_level}"
+      }
    }
 
    # Use ANSI conformant printf routines, which in particular
@@ -973,6 +988,9 @@ if {[string match cl $ccbasename]} {
 
    # Default warnings disable
    set nowarn [list -Wno-non-template-friend]
+   if {[lindex $gcc_version 0]>=6} {
+      lappend nowarn {-Wno-misleading-indentation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }

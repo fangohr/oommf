@@ -83,11 +83,11 @@ public:
 #ifndef NDEBUG
     if(i<0 || static_cast<size_t>(i) > bufsize) {
 #if OC_USING_CONST84
-      panic("%s","Out-of-bounds access in"
-	    " Oc_AutoBuf::operator[] const");
+      Tcl_Panic("%s","Out-of-bounds access in"
+                " Oc_AutoBuf::operator[] const");
 #else
-      panic((char*)("%s"),"Out-of-bounds access in"
-	    " Oc_AutoBuf::operator[] const");
+      Tcl_Panic((char*)("%s"),"Out-of-bounds access in"
+                " Oc_AutoBuf::operator[] const");
 #endif
     }
 #endif
@@ -97,11 +97,11 @@ public:
 #ifndef NDEBUG
     if(i<0 || static_cast<size_t>(i) > bufsize) {
 #if OC_USING_CONST84
-      panic("%s","Out-of-bounds access in"
-	    " Oc_AutoBuf::operator[]");
+      Tcl_Panic("%s","Out-of-bounds access in"
+                " Oc_AutoBuf::operator[]");
 #else
-      panic((char*)("%s"),"Out-of-bounds access in"
-	    " Oc_AutoBuf::operator[]");
+      Tcl_Panic((char*)("%s"),"Out-of-bounds access in"
+                " Oc_AutoBuf::operator[]");
 #endif
     }
 #endif

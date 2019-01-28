@@ -21,7 +21,7 @@ package require Nb 2  ;# Needed by socket connection access checks
 Oc_CheckTclIndex Net
 
 # CVS 
-package provide Net 2.0a0
+package provide Net 2.0a1
 
 # Set up for autoloading of Net extension commands
 set _net(library) [file dirname [info script]]

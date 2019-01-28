@@ -92,6 +92,15 @@ void Oxs_ThreadPrintf(FILE* fptr,const char *format, ...);
 
 class Oxs_ThreadControl; // Forward reference
 
+// Oxs thread number access
+#if OOMMF_THREADS
+int Oxs_IsRootThread();
+int Oxs_GetOxsThreadNumber(); // For diagnostic use only!
+#else
+inline int Oxs_IsRootThread() { return 1; }
+inline int Oxs_GetOxsThreadNumber() { return 0; } // For diagnostic use only!
+#endif
+
 // C++ wrapper around Tcl_Mutex
 #if OOMMF_THREADS
 class Oxs_Mutex {
@@ -345,7 +354,6 @@ public:
 
 // NOTE: Oxs_Thread is for oxsthread internal use only!  See
 // Threaded/Non-Threaded Note above
-
 class Oxs_ThreadRunObj; // forward declarations
 class Oxs_ThreadTree;
 
@@ -371,8 +379,9 @@ class Oxs_Thread {
   friend Tcl_ThreadCreateProc _Oxs_Thread_threadmain;
   friend class Oxs_ThreadRunObj;
   friend class Oxs_ThreadTree;
+
   Tcl_ThreadId thread_id;   // Assigned by Tcl and/or OS
-  int thread_number;        // Assigned by Oxs_ThreadTree static control.
+  int thread_number;  // Assigned by Oxs_ThreadTree static control.
   /// These numbers are 1-based, because thread_number 0 is reserved
   /// for the main (parent) thread.
 

@@ -362,7 +362,6 @@ Oxs_Demag::Oxs_Demag(
     rdimx(0),rdimy(0),rdimz(0),cdimx(0),cdimy(0),cdimz(0),
     adimx(0),adimy(0),adimz(0),
     xperiodic(0),yperiodic(0),zperiodic(0),
-    coarse_grid(0),coarse_block_x(1),coarse_block_y(1),coarse_block_z(1),
     mesh_id(0),energy_density_error_estimate(-1),
     asymptotic_radius(-1),
     MaxThreadCount(Oc_GetMaxThreadCount()),
@@ -392,24 +391,6 @@ Oxs_Demag::Oxs_Demag(
   /// energy by a constant amount, but since the demag field is changed
   /// by a multiple of m, the torque and therefore the magnetization
   /// dynamics are unaffected.
-
-  // Compute on coarse grid?
-  if(HasInitValue("coarse_grid")) {
-    ThreeVector blockvec = GetThreeVectorInitValue("coarse_grid");
-    coarse_block_x = static_cast<int>(blockvec.x);
-    coarse_block_y = static_cast<int>(blockvec.y);
-    coarse_block_z = static_cast<int>(blockvec.z);
-    if(coarse_block_x<1 || coarse_block_y<1 || coarse_block_z<1
-       || static_cast<OC_REAL8m>(coarse_block_x) != blockvec.x
-       || static_cast<OC_REAL8m>(coarse_block_y) != blockvec.y
-       || static_cast<OC_REAL8m>(coarse_block_z) != blockvec.z) {
-      throw Oxs_ExtError(this,"Invalid values for coarse_grid entry: "
-                         "Each value should be a positive integer.");
-    }
-    if(coarse_block_x>1 || coarse_block_y>1 || coarse_block_z>1) {
-      coarse_grid = 1; // Enable coarse grid
-    }
-  }
 
 #if REPORT_TIME
   // Set default names for development timers
@@ -709,60 +690,91 @@ void _Oxs_FillCoefficientArraysAsympThread::Cmd(int threadnumber,
   Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz);
   Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz);
 
-  OXS_DEMAG_REAL_ASYMP ytmp
-    = static_cast<OXS_DEMAG_REAL_ASYMP>(rdimy)*dy;
-  const OXS_DEMAG_REAL_ASYMP ytestsq = ytmp*ytmp;
-
   const OC_INDEX astridez = adimy;
   const OC_INDEX astridex = adimz*astridez;
 
-  // The i range for jobs runs across 0 <= i < rdimx, so hand out jobs
-  // across this range.  Note that the memory is sliced to threads
-  // across the range 0 <= i < adimx, and typically adimx > rdimx, so
-  // the simple assignment done here is not efficient wrt memory
-  // accessing.  However, this routine is called only once per run,
-  // during initialization, so it probably isn't worth spending the time
-  // to optimize it --- moreover, this code may be compute rather than
-  // memory bandwidth bound.
+  const int JBLOCK_SIZE = 4;  // sizeof(A_coefs)=6*sizeof(OXS_FFT_REAL_TYPE).
+  /// if sizeof(OXS_FFT_REAL_TYPE)=8, then sizeof(A_coefs)=48 bytes.  Assuming
+  /// a cache line size of 512 bits = 64 bytes, then a run of four A_coefs covers
+  /// 4*48 = 192 bytes = 3 cache lines.
 
-  // Select job by threadnumber:
-  OC_INDEX bitesize = rdimx/number_of_threads;
-  OC_INDEX leftover = rdimx - bitesize*number_of_threads;
-  const OC_INDEX istart = threadnumber*bitesize
-    + (threadnumber*leftover)/number_of_threads;
-  const OC_INDEX istop = (threadnumber+1)*bitesize
-    + ((threadnumber+1)*leftover)/number_of_threads;
+  // The i range for jobs runs across 0 <= i < rdimx, whereas in NUMA
+  // mode memory is sliced to threads across the range 0 <= i < adimx,
+  // with typically adimx > rdimx.  We ignore this detail because this
+  // routine is called only once per run, during initialization, so
+  // performance is not all that critical.  Moreover, this code may well
+  // be compute rather than memory bandwidth bound.
+  // 
+  // Job assignment: It should not be critical to get exactly even job
+  // assignments to each thread, because this is initialization code run
+  // only once per job.  Nonetheless, in the high aspect cell case this
+  // computation can take a good bit of time, so we want to avoid really
+  // bad assignments where all the work is handled by only one thread.
+  // So, as a hopefully reasonable compromise, we take this approach:
+  //
+  //  1) For each i and k, assign base_offset to be
+  //     (i+k+threadnumber)%number_of_threads.  Set jstart to
+  //     JBLOCK_SIZE*base_offset.
+  //
+  //  2) Run j across jstart <= j < min(jstart+JBLOCK_SIZE,rdimy).  If
+  //     (i,j,k) is in the asymptotic region, then compute the
+  //     asymptotic approximations.
+  //
+  //  3) Increment jstart by JBLOCK_SIZE*number_of_threads.  If
+  //     jstart<rdimy goto 2.  Otherwise, increment k, and if needed i,
+  //     and go to 1.
+  //
+  // Note that if number_of_threads is large compared to rdimy, then for
+  // some i and k a thread may have no computations.  But the offset
+  // cycling in step 1 will hopefully give all threads a reasonable
+  // slice of pie.
 
-  for(OC_INDEX i=istart;i<istop;++i) {
+  const OC_INDEX JBLOCK_INCREMENT = JBLOCK_SIZE*number_of_threads;
+  for(OC_INDEX i=0;i<rdimx;++i) {
     OC_INDEX iindex = i*astridex;
     OXS_DEMAG_REAL_ASYMP x = dx*i;
-    OXS_DEMAG_REAL_ASYMP xsq = x*x;
     for(OC_INDEX k=0;k<rdimz;++k) {
+      OC_INDEX base_offset = (i+k+threadnumber) % number_of_threads;
       OC_INDEX ikindex = iindex + k*astridez;
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      OXS_DEMAG_REAL_ASYMP zsq = z*z;
+      OXS_DEMAG_REAL_ASYMP xz_radsq = x*x + z*z;
 
-      OC_INDEX jstart = 0;
-      OXS_DEMAG_REAL_ASYMP test = scaled_arad_sq-xsq-zsq;
-      if(test>0.0) {
-        if(test>ytestsq) {
-          jstart = rdimy+1;  // No asymptotic
-        } else {
-          jstart = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(test)/dy));
-        }
+      OC_INDEX first_j=0;
+      if(xz_radsq<scaled_arad_sq) {
+        first_j
+         = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(scaled_arad_sq-xz_radsq)/dy));
+        /// j smaller than first_j won't satisfy
+        ///    x*x+y*y+z*z<scaled_arad_sq
+        /// condition.
       }
-      for(OC_INDEX j=jstart;j<rdimy;++j) {
-        OC_INDEX index = j+ikindex;
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
-        A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
-        A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
-        A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
-        A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
-        A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
-        A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
+      OC_INDEX jstart = JBLOCK_SIZE * base_offset;
+      if(first_j>(base_offset+1)*JBLOCK_SIZE) {
+        jstart += ((first_j-(base_offset+1)*JBLOCK_SIZE)/JBLOCK_INCREMENT)
+          *JBLOCK_INCREMENT;
+        /// Adjust jstart upward to meet scaled_arad_sq condition.
       }
-    }
-  }
+      OC_INDEX jstop = jstart+JBLOCK_SIZE;
+      if(jstart<first_j) jstart = first_j;
+      do {
+        if(jstop>rdimy) jstop = rdimy;
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          OC_INDEX index = j+ikindex;
+          OXS_DEMAG_REAL_ASYMP y = dy*j;
+          A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
+          A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
+          A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
+          A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
+          A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
+          A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
+        } // for-j
+        // jstart may be tweaked off the start of its thread run
+        // by first_j condition, so increment off of jstop.
+        jstop += JBLOCK_INCREMENT;
+        jstart = jstop - JBLOCK_SIZE;
+      } while(jstart<rdimy);
+
+    } // for-k
+  } // for-i
 }
 
 class _Oxs_FillCoefficientArraysPBCxThread : public Oxs_ThreadRunObj {
@@ -1358,20 +1370,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   rdimx = mesh->DimX();
   rdimy = mesh->DimY();
   rdimz = mesh->DimZ();
-  if(coarse_grid) {
-    // If coarse block dimensions doesn't exactly divide mesh
-    // dimensions, then round up for additional zero padding.
-    rdimx = (rdimx + coarse_block_x - 1)/coarse_block_x;
-    rdimy = (rdimy + coarse_block_y - 1)/coarse_block_y;
-    rdimz = (rdimz + coarse_block_z - 1)/coarse_block_z;
-    if((xperiodic && rdimx*coarse_block_x != mesh->DimX())
-       || (yperiodic && rdimy*coarse_block_y != mesh->DimY())
-       || (zperiodic && rdimz*coarse_block_z != mesh->DimZ())) {
-      throw Oxs_ExtError(this,
-             "Coarse block dimensions must divide periodic dimensions");
-    }
-  }
-
   if(rdimx==0 || rdimy==0 || rdimz==0) return; // Empty mesh!
 
   // Initialize fft object.  If a dimension equals 1, then zero
@@ -1539,11 +1537,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   OC_REAL8m dx = mesh->EdgeLengthX();
   OC_REAL8m dy = mesh->EdgeLengthY();
   OC_REAL8m dz = mesh->EdgeLengthZ();
-  if(coarse_grid) {
-    dx *= coarse_block_x;
-    dy *= coarse_block_y;
-    dz *= coarse_block_z;
-  }
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
@@ -1568,21 +1561,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     * Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
              OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
 
-  OC_INDEX i,j,k;
-  OC_INDEX kstop=1; if(rdimz>1) kstop=rdimz+2;
-  OC_INDEX jstop=1; if(rdimy>1) jstop=rdimy+2;
-  OC_INDEX istop=1; if(rdimx>1) istop=rdimx+2;
-  if(scaled_arad>0) {
-    // We don't need to compute analytic formulae outside
-    // asymptotic radius
-    OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dz))+2;
-    if(ktest<kstop) kstop = ktest;
-    OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dy))+2;
-    if(jtest<jstop) jstop = jtest;
-    OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dx))+2;
-    if(itest<istop) istop = itest;
-  }
-
   if(!xperiodic && !yperiodic && !zperiodic) {
     // Calculate Nxx, Nxy and Nxz in first octant, non-periodic case.
     // Step 1: Evaluate f & g at each cell site.  Offset by (-dx,-dy,-dz)
@@ -1603,17 +1581,21 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_INDEX wdim2 = rdimy;
     OC_INDEX wdim3 = rdimz;
     if(scaled_arad>0) {
-      // We don't need to compute analytic formulae outside
-      // asymptotic radius
-      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dx));
+      // We don't need to compute analytic formulae outside asymptotic
+      // radius.  Round up a little (0.5) to protect against rounding
+      // errors to insure that each index is computed by at least one
+      // of the analytic or asymptotic code blocks.
+      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dx));
       if(itest<wdim1) wdim1 = itest;
-      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dy));
+      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dy));
       if(jtest<wdim2) wdim2 = jtest;
-      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(scaled_arad/dz));
+      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dz));
       if(ktest<wdim3) wdim3 = ktest;
     }
     Oxs_3DArray<OC_REALWIDE> workspace;
     workspace.SetDimensions(wdim1,wdim2+2,wdim3+2);
+
+    OC_INDEX i,j,k;
     ComputeD6f(Oxs_Newell_f_xx,workspace,threadtree,dx,dy,dz,MaxThreadCount);
     for(i=0;i<wdim1;i++) {
       for(k=0;k<wdim3;k++) {
@@ -1867,19 +1849,25 @@ void _Oxs_DemagFFTxThread::Cmd(int threadnumber, void* /* data */)
     if(nstart >= nstop) break; // No more jobs
 
     OC_INDEX kstart = nstart/Ms_kstride;
-    OC_INDEX jstart = nstart - kstart*Ms_kstride;
+    OC_INDEX jstart = (nstart - kstart*Ms_kstride)/Ms_jstride;
+    OC_INDEX istart = nstart - kstart*Ms_kstride - jstart*Ms_jstride;
 
-    OC_INDEX kstop  =  nstop/Ms_kstride;
-    OC_INDEX jstop  =  nstop -  kstop*Ms_kstride;
+    OC_INDEX kstop = nstop/Ms_kstride;
+    OC_INDEX jstop = (nstop - kstop*Ms_kstride)/Ms_jstride;
+    OC_INDEX istop = nstop - kstop*Ms_kstride - jstop*Ms_jstride;
 
-    // Clean-up for endpoints in dead zone
-    if(jstart>=j_dim) {
-      jstart = 0; ++kstart;
+    // Shift start/stop to x-run start (i.e., shift upward if
+    // necessary so istart = istop = 0).
+    if(istart>0) {
+      if(++jstart >= Ms_jstride) {
+        jstart=0;  ++kstart;
+      }
     }
-    if(jstop>j_dim) {
-      jstop = j_dim;
+    if(istop>0) {
+      if(++jstop >= Ms_jstride) {
+        jstop=0;  ++kstop;
+      }
     }
-    if(kstart>kstop) continue;  // Whole range is in dead zone
 
 #if (3*OC_REAL8m_WIDTH) != OC_THREE_VECTOR_REAL8m_WIDTH
 # error Oxs_ThreeVector not tightly packed.
@@ -1988,20 +1976,27 @@ void _Oxs_DemagiFFTxDotThread::Cmd(int threadnumber, void* /* data */)
     OC_INDEX nstart,nstop;
     job_basket.GetJob(threadnumber,nstart,nstop);
     if(nstart >= nstop) break; // No more jobs
+
     OC_INDEX kstart = nstart/Ms_kstride;
-    OC_INDEX jstart = nstart - kstart*Ms_kstride;
+    OC_INDEX jstart = (nstart - kstart*Ms_kstride)/Ms_jstride;
+    OC_INDEX istart = nstart - kstart*Ms_kstride - jstart*Ms_jstride;
 
-    OC_INDEX kstop  =  nstop/Ms_kstride;
-    OC_INDEX jstop  =  nstop -  kstop*Ms_kstride;
+    OC_INDEX kstop = nstop/Ms_kstride;
+    OC_INDEX jstop = (nstop - kstop*Ms_kstride)/Ms_jstride;
+    OC_INDEX istop = nstop - kstop*Ms_kstride - jstop*Ms_jstride;
 
-    // Clean-up for endpoints in dead zone
-    if(jstart>=j_dim) {
-      jstart = 0; ++kstart;
+    // Shift start/stop to x-run start (i.e., shift upward if
+    // necessary so istart = istop = 0).
+    if(istart>0) {
+      if(++jstart >= Ms_jstride) {
+        jstart=0;  ++kstart;
+      }
     }
-    if(jstop>j_dim) {
-      jstop = j_dim;
+    if(istop>0) {
+      if(++jstop >= Ms_jstride) {
+        jstop=0;  ++kstop;
+      }
     }
-    if(kstart>kstop) continue;  // Whole range is in dead zone
 
     for(OC_INDEX k=kstart;k<=kstop;++k,jstart=0) {
       OC_INDEX j_line_stop = j_dim;
@@ -2565,7 +2560,7 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
           StopTimer(6);
 
           if(cdimz>1) {
-            // Forward FFT-z on Hwork.
+            // Inverse FFT-z on Hwork.
             StartTimer(7);
             fftz->InverseFFT(Hzbase);
             StopTimer(7);

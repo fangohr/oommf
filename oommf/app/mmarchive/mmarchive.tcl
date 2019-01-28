@@ -12,7 +12,7 @@ if {[Oc_Main HasTk]} {
 }
 
 Oc_Main SetAppName mmArchive
-Oc_Main SetVersion 2.0a0
+Oc_Main SetVersion 2.0a1
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -136,15 +136,33 @@ append gui {
 
 ##------ Support procs ---------#
 #
-proc CheckFileMove { f1 f2 } {
+proc CheckFileMove { f1 f2 errmsg_var } {
+   upvar $errmsg_var errmsg
    # Returns 1 if it looks okay to move file f1 to f2
    if {[string compare [file extension $f1] [file extension $f2]]!=0} {
+      set errmsg "File extensions don't match"
       return 0  ;# Don't allow extension change
    }
-   if {![file isfile $f1] || [file executable $f1]} {
-      return 0  ;# Only move non-executable, normal files
+   if {![file isfile $f1]} {
+      set errmsg "File \"$f1\" is not a regular file"
+      return 0; ;# Only move regular files
+   }
+   if {[file executable $f1]} {
+      set errmsg "File \"$f1\" is executable"
+      return 0  ;# Only move non-executable files
    }
    if {![file owned $f1]} {
+      set errmsg "File \"$f1\" not owned by current user"
+      if {[Oc_AmRoot]>0} {
+         global tcl_platform
+         if {[string compare windows $tcl_platform(platform)]==0} {
+            append errmsg \
+               "\nOOMMF applications should not be run as administrator"
+         } else {
+            append errmsg \
+               "\nOOMMF applications should not be run as root"
+         }
+      }
       return 0  ;# Require ownership
    }
    return 1
@@ -194,8 +212,8 @@ Net_Protocol New protocol(vf) -name "OOMMF vectorField protocol 0.1"
 $protocol(vf) AddMessage start datafile { fnlist } {
    set tmpfile [lindex $fnlist 0]
    set permfile [lindex $fnlist 1]
-   if {![CheckFileMove $tmpfile $permfile]} {
-      set errmsg "Can't move file $tmpfile to $permfile"
+   if {![CheckFileMove $tmpfile $permfile errmsg]} {
+      set errmsg "Can't move file $tmpfile to $permfile: $errmsg"
       LogMessage error $errmsg ;# Log
       error $errmsg            ;# Throw
    }
@@ -219,8 +237,8 @@ Net_Protocol New protocol(sf) -name "OOMMF scalarField protocol 0.1"
 $protocol(sf) AddMessage start datafile { fnlist } {
    set tmpfile [lindex $fnlist 0]
    set permfile [lindex $fnlist 1]
-   if {![CheckFileMove $tmpfile $permfile]} {
-      set errmsg "Can't move file $tmpfile to $permfile"
+   if {![CheckFileMove $tmpfile $permfile errmsg]} {
+      set errmsg "Can't move file $tmpfile to $permfile: $errmsg"
       LogMessage error $errmsg ;# Log
       error $errmsg            ;# Throw
    }

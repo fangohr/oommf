@@ -782,7 +782,9 @@ void Oxs_Director::Release()
 
     Oxs_ThreadTree::EndThreads();  // Thread cleanup
 
-    Oxs_WarningMessage::ClearCounts(); // Reset warning message counts.
+    // Warning message cleanup
+    Oxs_WarningMessage::TransmitMessageHold();
+    Oxs_WarningMessage::ClearHoldAndCounts();
 
   } catch(...) {
     ForceRelease();

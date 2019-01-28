@@ -1,0 +1,56 @@
+# MIF 2.1
+#
+# The asymptotic approximation code for the demagnetization tensor in
+# Oxs_Demag handles high-aspect cells by refinement into smaller cells
+# with lower aspect ratio.  If the aspect ratio is very high, the
+# refinement set gets very large, and the computation grows with the
+# size of the refinement set.  This test checks that this computation is
+# reasonably bounded.
+
+Parameter xcellsize 20e-6
+Parameter ycellsize 20e-6
+Parameter zcellsize  2e-9
+Parameter arad 32
+Parameter xcount 10
+Parameter ycount 10
+Parameter zcount 1
+Parameter pbc none   ;# One of none, x, y, or z
+
+set x_length [expr {$xcount*$xcellsize}]
+set y_width  [expr {$ycount*$ycellsize}]
+set z_thick  [expr {$zcount*$zcellsize}]
+
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $x_length}
+  yrange {0 $y_width}
+  zrange {0 $z_thick}
+}]
+
+if {[string match none $pbc]} {
+   Specify Oxs_RectangularMesh:mesh [subst {
+      cellsize {$xcellsize $ycellsize $zcellsize}
+      atlas :atlas
+   }]
+} else {
+  Specify Oxs_PeriodicRectangularMesh:mesh [subst {
+     cellsize {$xcellsize $ycellsize $zcellsize}
+     atlas :atlas
+     periodic $pbc
+  }]
+}
+
+Specify Oxs_Demag [subst {
+  asymptotic_radius $arad
+}]
+
+# Evolver
+Specify Oxs_RungeKuttaEvolve:evolve {}
+
+Specify Oxs_TimeDriver [subst {
+ evolver :evolve
+ stopping_time 1e-9
+ total_iteration_limit 10
+ mesh :mesh
+ Ms 8e5
+ m0 {0 0 1}
+}]
