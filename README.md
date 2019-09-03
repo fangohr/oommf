@@ -91,7 +91,7 @@ Please note that OOMMF's graphical user interface (GUI) in Docker container cann
 
 We also made recipes for building [Conda](https://www.anaconda.com/) OOMMF package and they are available [here](https://github.com/conda-forge/oommf-feedstock). Information on how to install Conda on your system as well as how to use it can be found [here](https://conda.io/docs/). Installing `oommf` [package](https://anaconda.org/conda-forge/oommf) using conda can be done by running
 
-    conda install oommf
+    conda install -c conda-forge oommf
 
 ## Support
 
