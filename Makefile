@@ -49,20 +49,5 @@ travis-build:
 	docker rm testcontainer
 
 test-all:
-	@echo "Now we test the OOMMF installation inside Docker:"
-	cat /etc/issue
-	@echo "get some other diagnostic data about the environment"
-	hostname
-	pwd
-	echo
-	g++ --version
-	echo 'puts [info tclversion];exit 0' | tclsh
-	echo
-	echo 'puts [info patchlevel];exit 0' | tclsh
-	echo
-	echo "Which OOMMF version?"
-	tclsh $(OOMMFTCL) +version
-	echo
-	echo "Running OOMMF examples (standard problems 3 and 4)."
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
