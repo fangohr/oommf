@@ -17,11 +17,6 @@ USER oommfuser
 WORKDIR /usr/local
 RUN git clone https://github.com/fangohr/oommf.git
 WORKDIR /usr/local/oommf
-
-# Temp lines.
-RUN git pull origin mel
-RUN git checkout mel
-
 RUN make build-with-all
 
 # Create OOMMFTCL environment variable.
