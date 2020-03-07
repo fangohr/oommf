@@ -6,11 +6,23 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
+# OOMMF cannot be built as root user.
+RUN adduser oommfuser
+RUN chown -R oommfuser /usr/local  # directory where OOMMF is built.
+RUN mkdir /io  # Create working directory for mounting.
+RUN chown -R oommfuser /io
+USER oommfuser
+
 # Compile OOMMF and create OOMMFTCL environment variable
 WORKDIR /usr/local
 RUN git clone https://github.com/fangohr/oommf.git
 WORKDIR /usr/local/oommf
-RUN make build-with-dmi-extension-all
+
+# Temp lines.
+RUN git pull origin mel
+RUN git checkout mel
+
+RUN make build-with-all
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
 
 # Create executable OOMMF script.
@@ -26,13 +38,5 @@ RUN echo "# see https://github.com/fangohr/oommf/blob/master/versionlog.txt" >> 
 RUN echo "# for for meaning of version strings." >> oommf-version
 RUN echo "cat /usr/local/oommf/oommf-version" >> oommf-version
 RUN chmod a+x oommf-version
-
-# Create working directory for mounting.
-RUN mkdir /io
-
-# Make sure the files created on host are not owned by root.
-RUN adduser oommfuser
-RUN chown -R oommfuser /io
-USER oommfuser
 
 WORKDIR /io
