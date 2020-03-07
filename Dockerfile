@@ -7,13 +7,13 @@ RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
 # OOMMF cannot be built as root user.
+WORKDIR /usr/local
+COPY . oommf/
 RUN adduser oommfuser
 RUN chown -R oommfuser /usr/local  # directory where OOMMF is built.
 USER oommfuser
 
 # Compile OOMMF.
-WORKDIR /usr/local
-COPY . oommf/
 WORKDIR /usr/local/oommf
 RUN make build-with-all
 
