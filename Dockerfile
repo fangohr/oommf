@@ -12,13 +12,13 @@ COPY . oommf/
 WORKDIR /opt/oommf
 
 # Add user.
-RUN groupadd -g 999 appuser && \
-    useradd -r -u 999 -g appuser appuser
+RUN groupadd -g 999 oommfuser && \
+    useradd -r -u 999 -g oommfuser oommfuser
 
 # Change owner for oommf directory
-RUN chown -R appuser:appuser /opt/oommf/
+RUN chown -R oommfuser:oommfuser /opt/oommf/
 
-USER appuser
+USER oommfuser
 
 RUN make build-with-dmi-extension-all
 
