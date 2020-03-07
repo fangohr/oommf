@@ -1,5 +1,5 @@
 build: Dockerfile Makefile
-	docker build -t ubermag/oommf:latest .
+	docker build --no-cache -t ubermag/oommf:latest .
 
 push: build
 	docker push ubermag/oommf:latest
