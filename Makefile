@@ -36,8 +36,8 @@ get-d2d:
 
 get-mel:
 	git clone https://github.com/yuyahagi/$(MELREPO).git
-	cp $(MELREPO)/src/*.cc oommf/app/oxs/local/
-	cp $(MELREPO)/src/*.h oommf/app/oxs/local/
+	cp $(MELREPO)/*.cc oommf/app/oxs/local/
+	cp $(MELREPO)/*.h oommf/app/oxs/local/
 	rm -rf $(MELREPO)
 
 travis-build: SHELL:=/bin/bash
