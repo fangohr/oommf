@@ -28,7 +28,7 @@ package require Nb 2	;# [Nb_InputFilter]
 wm withdraw .
 
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -131,6 +131,9 @@ proc SetDefaultConfiguration {} {
        autolimits 1
        auto_offset_y  0
        auto_offset_y2 0
+       xlogscale 0
+       ylogscale 0
+       y2logscale 0
        xmin   0
        xmax   1
        ymin   0
@@ -187,6 +190,15 @@ proc SetDefaultConfiguration {} {
 		-symbol_size $_mmgpsc(symbol_size)
 	$graph SetKeyState $showkey
 	$graph SetSmoothState $smoothcurves
+        $graph SetLogAxes \
+           $_mmgpsc(xlogscale) $_mmgpsc(ylogscale) $_mmgpsc(y2logscale)
+
+       # Update graph limits
+       foreach { _mmgpsc(xmin) _mmgpsc(xmax) \
+                 _mmgpsc(ymin) _mmgpsc(ymax) \
+                 _mmgpsc(y2min) _mmgpsc(y2max) } \
+           [$graph GetGraphLimits] { break }
+
     }
 }
 
@@ -708,6 +720,7 @@ proc SetPlotConfiguration { pscvar }  {
    #            autolabel,xlabel,ylabel,y2label,
    #            xdefaultlabel,ydefaultlabel,y2defaultlabel,
    #            autolimits, auto_offset_y, auto_offset_y2,
+   #            log_scale_x, log_scale_y, log_scale_y2,
    #            xmin,xmax,ymin,ymax,y2min,y2max,
    #            color_selection,canvas_color,curve_width,
    #            symbol_freq,symbol_size,ptbufsize,
@@ -715,11 +728,34 @@ proc SetPlotConfiguration { pscvar }  {
    if {$_mmgpsc(curve_width) != $psc(curve_width)} {
       $graph Configure -curve_width $psc(curve_width)
    }
+
+   # Curve offsets are computed by mmGraph, and the adjusted data is fed
+   # to Ow_GraphWin.  So if offset is turned on or off we need to call
+   # RefreshGraphData.
+   #   On the other hand, logarithmic vs. linear scaling is handled by
+   # Ow_GraphWin, so at first glance it appears that switching between
+   # linear and log scaling shouldn't require a call to RefreshGraphData.
+   # And that is true if curve offsets aren't enabled.  But offsets for
+   # linear y-axis scaling are different from offsets for log y-axis
+   # scaling; in the former offsets are of the form y - ybase, in the
+   # latter offsets are computed as y/ybase.  This means that switching
+   # between log and linear scaling requires a call to RefreshGraphData if
+   # curve offsets are enabled.
    if {$psc(auto_offset_y) != $_mmgpsc(auto_offset_y) || \
           $psc(auto_offset_y2) != $_mmgpsc(auto_offset_y2)} {
+      # Change to offset request
       set offset_change 1
    } else {
-      set offset_change 0
+      # Offset requests unchanged, but linear/log scaling change may
+      # nonetheless affect offsets as explained above.
+      if {($psc(ylogscale) != $_mmgpsc(ylogscale) \
+              && $psc(auto_offset_y)) || \
+          ($psc(y2logscale) != $_mmgpsc(y2logscale) \
+              && $psc(auto_offset_y2))} {
+         set offset_change 1
+      } else {
+         set offset_change 0
+      }
    }
    array set _mmgpsc [array get psc]
    if {$offset_change} {
@@ -751,21 +787,26 @@ proc SetPlotConfiguration { pscvar }  {
       -canvas_color $_mmgpsc(canvas_color) \
       -symbol_freq $_mmgpsc(symbol_freq) \
       -symbol_size $_mmgpsc(symbol_size)
+   $graph SetMargins \
+      $_mmgpsc(lmargin_min) $_mmgpsc(rmargin_min) \
+      $_mmgpsc(tmargin_min) $_mmgpsc(bmargin_min)
+   $graph SetLogAxes \
+      $_mmgpsc(xlogscale) $_mmgpsc(ylogscale) $_mmgpsc(y2logscale)
    if {$_mmgpsc(autolimits)} {
       $graph SetGraphLimits
-      foreach { _mmgpsc(xmin) _mmgpsc(xmax) \
-                   _mmgpsc(ymin) _mmgpsc(ymax) \
-                   _mmgpsc(y2min) _mmgpsc(y2max) } \
-         [$graph GetGraphLimits] { break }
    } else {
       $graph SetGraphLimits \
          $_mmgpsc(xmin) $_mmgpsc(xmax) \
          $_mmgpsc(ymin) $_mmgpsc(ymax) \
          $_mmgpsc(y2min) $_mmgpsc(y2max)
    }
-   $graph SetMargins \
-      $_mmgpsc(lmargin_min) $_mmgpsc(rmargin_min) \
-      $_mmgpsc(tmargin_min) $_mmgpsc(bmargin_min)
+   # Update graph limits; even if limits are explicitly requested
+   # (second branch above), they won't be honored if zero or negative
+   # values are requested on a log scaled axis.
+   foreach { _mmgpsc(xmin) _mmgpsc(xmax) \
+             _mmgpsc(ymin) _mmgpsc(ymax) \
+             _mmgpsc(y2min) _mmgpsc(y2max) } \
+      [$graph GetGraphLimits] { break }
 
    ResetBufferSize
    $graph RefreshDisplay
@@ -924,29 +965,35 @@ bind [$graph GetCanvas] <Configure> {+
 ########################################################################
 ### Keyboard Zoom ######################################################
 ##
-set szf 1.25  ;# Temporay values, that get hard coded into binding
-set zf  2.0   ;# below.
+proc Zoom { factor } {
+   global graph
+   $graph Zoom $factor
+   UpdateLimits
+}
+
+set szf [expr {sqrt(2)}]  ;# Temporay values that get hard coded into
+set zf  2.0               ;# bindings below.
 set lzf 4.0
 set izf [expr {1./$zf}]
 set ilzf [expr {1./$lzf}]
 set iszf [expr {1./$szf}]
-bind . <Key-Prior>         [list $graph Zoom $zf]
-bind . <Shift-Key-Prior>   [list $graph Zoom $lzf]
-bind . <Control-Key-Prior> [list $graph Zoom $szf]
-bind . <Key-Next>          [list $graph Zoom $izf]
-bind . <Shift-Key-Next>    [list $graph Zoom $ilzf]
-bind . <Control-Key-Next>  [list $graph Zoom $iszf]
+
+bind . <Key-Prior>         [list Zoom $zf]
+bind . <Shift-Key-Prior>   [list Zoom $lzf]
+bind . <Control-Key-Prior> [list Zoom $szf]
+bind . <Key-Next>          [list Zoom $izf]
+bind . <Shift-Key-Next>    [list Zoom $ilzf]
+bind . <Control-Key-Next>  [list Zoom $iszf]
 ## NOTE: SunOS apparently doesn't have Page_Up & Page_Down.  For the
 ## record, Prior == Page_Up, and Next == Page_Down.
 # Ditto for KeyPad; Note that the <Shift> keypad values are funky,
 # and might be wrong for some keyboards.
-catch {bind . <Key-KP_Prior>     [list $graph Zoom $zf]}
-catch {bind . <Shift-Key-KP_9>   [list $graph Zoom $lzf]}
-catch {bind . <Control-Key-KP_9> [list $graph Zoom $szf]}
-catch {bind . <Key-KP_Next>      [list $graph Zoom $izf]}
-catch {bind . <Shift-Key-KP_3>   [list $graph Zoom $ilzf]}
-catch {bind . <Control-Key-KP_3> [list $graph Zoom $iszf]}
-
+catch {bind . <Key-KP_Prior>     [list Zoom $zf]}
+catch {bind . <Shift-Key-KP_9>   [list Zoom $lzf]}
+catch {bind . <Control-Key-KP_9> [list Zoom $szf]}
+catch {bind . <Key-KP_Next>      [list Zoom $izf]}
+catch {bind . <Shift-Key-KP_3>   [list Zoom $ilzf]}
+catch {bind . <Control-Key-KP_3> [list Zoom $iszf]}
 
 ########################################################################
 ### Panning ############################################################
@@ -1027,6 +1074,19 @@ foreach prefix {Key Shift-Key Control-Key} fstep {0.5 1.0 0.25} {
     }
 }
 
+proc RecoverState { offset } {
+   global graph
+   $graph RecoverState $offset
+   UpdateLimits ;# Pass changes on to Configure dialog box (if open)
+}
+proc StoreState {} {
+   global graph
+   $graph StoreState
+}
+bind . <Key-Escape> "RecoverState -1"
+bind . <Shift-Key-Escape> "RecoverState 1"
+bind . <Key-Return> "StoreState"
+
 proc ScrollWheelHandler { wFired D horizontal } {
    set D [expr {double($D)*2.*0.0009765625}]  ;# 0.0009765625 = 1./1024.
    if {$horizontal} {
@@ -1038,6 +1098,7 @@ proc ScrollWheelHandler { wFired D horizontal } {
 
 Ow_BindMouseWheelHandler [$graph GetCanvas] ScrollWheelHandler
 
+# Mouse-based zooming
 bind . <Control-ButtonRelease> UpdateLimits
 
 # Proc to reset graph limits, and redraw graph
@@ -1106,42 +1167,44 @@ proc UpdateGraphData { index redraw } {
       if {!$y1axis && !$y2axis} { continue } ;# Skip curve
       set yindex $data_index($ordinate)
       if {![string match {} [set yvalue [lindex $record $yindex]]]} {
-         set yoffset 0.0
+         set yoffset_pair [list {} {}]
          if {[info exists data_base_value($ordinate)]} {
-            set yoffset $data_base_value($ordinate)
-         } else {
+            set yoffset_pair $data_base_value($ordinate)
+         }
+         if {[string match {} [lindex $yoffset_pair 1]]} {
             UpdateBaseValues
-            catch {set yoffset $data_base_value($ordinate)}
+            catch {set yoffset_pair $data_base_value($ordinate)}
+         }
+         foreach {yofflin yofflog} $yoffset_pair { break }
+         if {[string match {} $yofflin]} {
+            set yofflin 0.0
+         }
+         if {[string match {} $yofflog]} {
+            set yoffllog 1.0
          }
          if {$y1axis} {
             set y1value $yvalue
             if {$_mmgpsc(auto_offset_y)} {
-               catch {set y1value [expr {$yvalue - $yoffset}]}
-            }
-            set xmin {}
-            foreach { xmin ymin xmax ymax } \
-               [$graph AddDataPoints $ordinate 1 [list $xvalue $y1value]] {}
-            if {![string match {} $xmin]} {
-               if {$xmin<$gxmin || $ymin<$gymin || \
-                      $xmax>$gxmax || $ymax>$gymax} {
-                  set change_limits 1
+               if {!$_mmgpsc(ylogscale)} {
+                  catch {set y1value [expr {$yvalue - $yofflin}]}
+               } else {
+                  catch {set y1value [expr {$yvalue/$yofflog}]}
                }
             }
+            set change_limits \
+               [$graph AddDataPoints $ordinate 1 [list $xvalue $y1value]]
          }
          if {$y2axis} {
             set y2value $yvalue
             if {$_mmgpsc(auto_offset_y2)} {
-               catch {set y2value [expr {$yvalue - $yoffset}]}
-            }
-            set xmin {}
-            foreach { xmin ymin xmax ymax } \
-               [$graph AddDataPoints $ordinate 2 [list $xvalue $y2value]] {}
-            if {![string match {} $xmin]} {
-               if {$xmin<$gxmin || $ymin<$gy2min || \
-                      $xmax>$gxmax || $ymax>$gy2max} {
-                  set change_limits 1
+               if {!$_mmgpsc(y2logscale)} {
+                  catch {set y2value [expr {$yvalue - $yofflin}]}
+               } else {
+                  catch {set y2value [expr {$yvalue/$yofflog}]}
                }
             }
+            set change_limits \
+               [$graph AddDataPoints $ordinate 2 [list $xvalue $y2value]]
          }
       }
    }
@@ -1167,8 +1230,10 @@ proc ChangeCurve { yaxis ordinate redraw } {
    ## by this name
    if {$yaxis == 2} {
       set ys "y2"
+      set ylog $_mmgpsc(y2logscale)
    } else {
       set ys "y"
+      set ylog $_mmgpsc(ylogscale)
    }
 
    if {![info exists menu_select($ys,$ordinate)]} {
@@ -1186,30 +1251,59 @@ proc ChangeCurve { yaxis ordinate redraw } {
       $graph NewCurve $ordinate $yaxis
       set xindex $data_index($abscissa)
       set yindex $data_index($ordinate)
-      set yoffset 0.0
+      set yoffset [expr {$ylog ? 1.0 : 0.0}]
       if {$_mmgpsc(auto_offset_$ys)} {
+         set yoffset_pair [list {} {}]
          if {[info exists data_base_value($ordinate)]} {
-            set yoffset $data_base_value($ordinate)
-         } else {
+            set yoffset_pair $data_base_value($ordinate)
+         }
+         if {[string match {} [lindex $yoffset_pair 1]]} {
             UpdateBaseValues
-            catch {set yoffset $data_base_value($ordinate)}
-            # If yoffset is not set, then ordinate has no data, so we
-            # shouldn't reach the $yval-$yoffset code below.
+            catch {set yoffset_pair $data_base_value($ordinate)}
+         }
+         if {!$ylog} {
+            set yoffset [lindex $yoffset_pair 0]
+            if {[string match {} $yoffset]} {
+               set yoffset 0.0
+            }
+         } else {
+            set yoffset [lindex $yoffset_pair 1]
+            if {[string match {} $yoffset]} {
+               set yoffset 1.0
+            }
          }
       }
-      for {set i $data_value(count,start)} \
-         {$i<$data_value(count,end)} {incr i} {
-	    set record $data_value($i)
-	    if {[llength $record]==0} {
+      if {!$ylog} {
+         # Linear scale on selected y-axis
+         for {set i $data_value(count,start)} \
+               {$i<$data_value(count,end)} {incr i} {
+            set record $data_value($i)
+            if {[llength $record]==0} {
                lappend data_list {} {}  ;# Curve break
-	    } else {
+            } else {
                set xval [lindex $record $xindex]
                set yval [lindex $record $yindex]
                if {![string match {} $xval] && ![string match {} $yval]} {
                   lappend data_list $xval [expr {$yval - $yoffset}]
                }
-	    }
+            }
          }
+      } else {
+         # Log scale on selected y-axis
+         for {set i $data_value(count,start)} \
+               {$i<$data_value(count,end)} {incr i} {
+            set record $data_value($i)
+            if {[llength $record]==0} {
+               lappend data_list {} {}  ;# Curve break
+            } else {
+               set xval [lindex $record $xindex]
+               set yval [lindex $record $yindex]
+               if {![string match {} $xval] && ![string match {} $yval]} {
+                  lappend data_list $xval [expr {$yval/$yoffset}]
+               }
+            }
+         }
+      }         
       if {[llength $data_list]>0} {
          $graph AddDataPoints $ordinate $yaxis $data_list
       }
@@ -1336,6 +1430,10 @@ proc CreateGraph {} {
 #  records the first non-empty value for each label in the data_value
 #  array lists.  This is used by the auto_offset code.
 #
+# Addendum, 17-Apr-2019 mjd: Changed data_base_value array from a single
+#  value for additive offsets to a two value list where the first entry
+#  is an additive offset as before, but the second is a multiplicative
+#  value used if the corresponding y-axis is logscaled.
 #
 set data_use(count) 0
 set data_value(count,start) 0
@@ -1488,6 +1586,12 @@ proc AddDataRecord { data_list redraw } {
     # runs of break records.
 
     global data_index data_value data_unit data_use _mmgraph
+
+    # Check that import is a valid list
+    if {[catch {llength $data_list}]} {
+       return -code error \
+          [format "Import data_list is not a list: %s" $data_list]
+    }
 
     # If data_list is longer than data_use column list, add
     # dummy column labels
@@ -1827,33 +1931,65 @@ proc RefreshGraphData {} {
    }
 
    foreach ord $data_index(all) {
-      if {($menu_select(y,$ord) && $_mmgpsc(auto_offset_y)) || \
-             ($menu_select(y2,$ord) && $_mmgpsc(auto_offset_y2))} {
-         # One side or the other uses offset data, so compute it.
-         if {![catch {set offsetval $data_base_value($ord)}]} {
-            set offset_data {}
-            foreach {xval yval} $curve_data($ord) {
-               if {[string match {} $yval]} {
-                  lappend offset_data $xval {}
-               } else {
-                  lappend offset_data $xval [expr {$yval - $offsetval}]
-               }
-            }
-         } else {
-            set offset_data $curve_data($ord)
-         }
-      }
+
+      set offset_pair [list {} {}]
+      catch {set offset_pair $data_base_value($ord)}
+      foreach {linoff logoff} $offset_pair { break }
+      if {[string match {} $linoff]} { set linoff 0.0 }
+      if {[string match {} $logoff]} { set logoff 1.0 }
+      
       if {$menu_select(y,$ord)} {
          if {!$_mmgpsc(auto_offset_y)} {
             $graph AddDataPoints $ord 1 $curve_data($ord)
          } else {
+            set offset_data {}
+            if {!$_mmgpsc(ylogscale)} {
+               # Linear scale
+               foreach {xval yval} $curve_data($ord) {
+                  if {[string match {} $yval]} {
+                     lappend offset_data $xval {}
+                  } else {
+                     lappend offset_data $xval [expr {$yval - $linoff}]
+                  }
+               }
+            } else {
+               # Log scale
+               foreach {xval yval} $curve_data($ord) {
+                  if {[string match {} $yval]} {
+                     lappend offset_data $xval {}
+                  } else {
+                     lappend offset_data $xval [expr {$yval/$logoff}]
+                  }
+               }
+            }
             $graph AddDataPoints $ord 1 $offset_data
          }
       }
+
       if {$menu_select(y2,$ord)} {
          if {!$_mmgpsc(auto_offset_y2)} {
             $graph AddDataPoints $ord 2 $curve_data($ord)
          } else {
+            set offset_data {}
+            if {!$_mmgpsc(y2logscale)} {
+               # Linear scale
+               foreach {xval yval} $curve_data($ord) {
+                  if {[string match {} $yval]} {
+                     lappend offset_data $xval {}
+                  } else {
+                     lappend offset_data $xval [expr {$yval - $linoff}]
+                  }
+               }
+            } else {
+               # Log scale
+               foreach {xval yval} $curve_data($ord) {
+                  if {[string match {} $yval]} {
+                     lappend offset_data $xval {}
+                  } else {
+                     lappend offset_data $xval [expr {$yval/$logoff}]
+                  }
+               }
+            }
             $graph AddDataPoints $ord 2 $offset_data
          }
       }
@@ -1994,7 +2130,7 @@ proc ThinDataInteractive { skip } {
    } elseif {$skip==2} {
       set ordinal "second"
    } elseif {$skip==3} {
-      set ordinal "second"
+      set ordinal "third"
    } elseif {$skip==4} {
       set ordinal "fourth"
    } elseif {$skip==5} {
@@ -2025,18 +2161,40 @@ proc UpdateBaseValues {} {
    set istart $data_value(count,start)
    set iend   $data_value(count,end)
    foreach label $data_index(all) {
+      set lin_offset {}
+      set log_offset {}
       if {[info exists data_base_value($label)]} {
-         continue  ;# Keep current setting
+         foreach {lin_offset log_offset} $data_base_value($label) { break }
+      }
+      if {![string match {} $log_offset]} {
+         continue   ;# Keep current settings
       }
       set index $data_index($label)
-      for {set i $istart} {$i<$iend} {incr i} {
-         # Find and store first non-empty value
-         set val [lindex $data_value($i) $index]
-         if {![string match {} $val]} {
-            set data_base_value($label) $val
-            break
+      set i $istart
+      if {[string match {} $lin_offset]} {
+         while {$i<$iend} {
+            # Find and store first non-empty value and non-zero value
+            set val [lindex $data_value($i) $index]
+            incr i
+            if {![string match {} $val]} {
+               set lin_offset $val
+               break
+            }
          }
       }
+      if {![string match {} $lin_offset] && $lin_offset != 0.0} {
+         set log_offset [expr {abs($lin_offset)}]
+      } else {
+         while {$i<$iend} {
+            set val [lindex $data_value($i) $index]
+            incr i
+            if {![string match {} $val] && $val != 0.0} {
+               set log_offset [expr {abs($val)}]
+               break
+            }
+         }
+      }
+      set data_base_value($label) [list $lin_offset $log_offset]
    }
 }
 

@@ -13,6 +13,9 @@
 
 #include "xpfloat.h"
 
+/* Use double-double library from oommf/pkg/xp/ for multiplication. */
+#include "xp.h"    
+
 /* End includes */     
 
 
@@ -47,28 +50,6 @@ Nb_Xpfloat& Nb_Xpfloat::operator-=(const Nb_Xpfloat &y)
   return *this;
 }
 
-Nb_Xpfloat& Nb_Xpfloat::operator*=(const Nb_Xpfloat& y)
-{
-  Nb_Xpfloat z(corr*y.corr);
-  z.Accum(x*y.corr);
-  z.Accum(y.x*corr);
-  z.Accum(x*y.x);
-
-  x = z.x;
-  corr = z.corr;
-
-  return *this;
-}
-
-Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
-{
-  Nb_Xpfloat z(x.corr*y.corr);
-  z.Accum(x.x*y.corr);
-  z.Accum(y.x*x.corr);
-  z.Accum(x.x*y.x);
-  return z;
-}
-
 #else // NB_XPFLOAT_USE_SSE ////////////////////////////////////////////////
 
 void Nb_Xpfloat::Accum(const Nb_Xpfloat &y)
@@ -84,45 +65,10 @@ void Nb_Xpfloat::Accum(const Nb_Xpfloat &y)
 
 Nb_Xpfloat& Nb_Xpfloat::operator-=(const Nb_Xpfloat &y)
 {
-  double a0 = Oc_SseGetLower(xpdata);
-  double b0 = Oc_SseGetLower(y.xpdata);
-  if((a0>0 && b0<0) || (a0<0 && b0>0)) {
-    Accum(Oc_SseGetUpper(y.xpdata)); Accum(Oc_SseGetLower(y.xpdata));
-  } else {
-    Accum(Oc_SseGetLower(y.xpdata)); Accum(Oc_SseGetUpper(y.xpdata));
-  }
+  Nb_Xpfloat tmp = y;
+  tmp *= -1.0;
+  Accum(tmp);
   return *this;
-}
-
-Nb_Xpfloat& Nb_Xpfloat::operator*=(const Nb_Xpfloat& y)
-{
-  NB_XPFLOAT_TYPE ax    = Oc_SseGetLower(xpdata);
-  NB_XPFLOAT_TYPE acorr = Oc_SseGetUpper(xpdata);
-  NB_XPFLOAT_TYPE bx    = Oc_SseGetLower(y.xpdata);
-  NB_XPFLOAT_TYPE bcorr = Oc_SseGetUpper(y.xpdata);
-
-  Nb_Xpfloat z(acorr*bcorr);
-  z.Accum(ax*bcorr);
-  z.Accum(bx*acorr);
-  z.Accum(ax*bx);
-
-  xpdata = z.xpdata;
-  return *this;
-}
-
-Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
-{
-  NB_XPFLOAT_TYPE ax    = Oc_SseGetLower(x.xpdata);
-  NB_XPFLOAT_TYPE acorr = Oc_SseGetUpper(x.xpdata);
-  NB_XPFLOAT_TYPE bx    = Oc_SseGetLower(y.xpdata);
-  NB_XPFLOAT_TYPE bcorr = Oc_SseGetUpper(y.xpdata);
-
-  Nb_Xpfloat z(acorr*bcorr);
-  z.Accum(ax*bcorr);
-  z.Accum(bx*acorr);
-  z.Accum(ax*bx);
-
-  return z;
 }
 
 #endif // NB_XPFLOAT_USE_SSE
@@ -142,10 +88,58 @@ Nb_Xpfloat operator-(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
   return z;
 }
 
+////////////////////////////////////////////////////////////////////////
+// Multiplication
+Nb_Xpfloat& Nb_Xpfloat::operator*=(NB_XPFLOAT_TYPE y) {
+  // Use double-double library to compute product
+#if !NB_XPFLOAT_USE_SSE
+  Xp_DoubleDouble dd(x,corr);
+  dd *= y;
+  x    = static_cast<NB_XPFLOAT_TYPE>(dd.Hi());
+  corr = static_cast<NB_XPFLOAT_TYPE>(dd.Lo());
+#else
+  NB_XPFLOAT_TYPE big,small;
+  GetValue(big,small);
+  Xp_DoubleDouble dd(big,small);
+  dd *= y;
+  xpdata = _mm_set_pd(static_cast<NB_XPFLOAT_TYPE>(dd.Lo()),
+                      static_cast<NB_XPFLOAT_TYPE>(dd.Hi()));
+#endif
+  return *this;
+}
+
 Nb_Xpfloat operator*(const Nb_Xpfloat& x,NB_XPFLOAT_TYPE y)
 {
   Nb_Xpfloat z(x);
-  z*=y;
+  z *= y;
   return z;
 }
 
+
+Nb_Xpfloat& Nb_Xpfloat::operator*=(const Nb_Xpfloat& y)
+{
+#if !NB_XPFLOAT_USE_SSE
+  Xp_DoubleDouble ddx(x,corr);
+  Xp_DoubleDouble ddy(y.x,y.corr);
+  ddx *= ddy;
+  x    = static_cast<NB_XPFLOAT_TYPE>(ddx.Hi());
+  corr = static_cast<NB_XPFLOAT_TYPE>(ddx.Lo());
+#else
+  NB_XPFLOAT_TYPE xbig,xsmall,ybig,ysmall;
+  GetValue(xbig,xsmall);
+  Xp_DoubleDouble ddx(xbig,xsmall);
+  y.GetValue(ybig,ysmall);
+  Xp_DoubleDouble ddy(ybig,ysmall);
+  ddx *= ddy;
+  xpdata = _mm_set_pd(static_cast<NB_XPFLOAT_TYPE>(ddx.Lo()),
+                      static_cast<NB_XPFLOAT_TYPE>(ddx.Hi()));
+#endif
+  return *this;
+}
+
+Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
+{
+  Nb_Xpfloat z(x);
+  z *= y;
+  return z;
+}

@@ -198,7 +198,7 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
       }
       coef[i1][i2]=coefpair;
       coef[i2][i1]=coefpair; // coef should be symmetric
-      if(Oc_Fabs(coefpair)>max_abscoef) max_abscoef=coefpair;
+      if(fabs(coefpair)>max_abscoef) max_abscoef=coefpair;
     }
     DeleteInitValue(typestr);
 
@@ -637,7 +637,7 @@ void Oxs_Exchange6Ngbr::ComputeEnergyChunkFinalize
   for(int i=0;i<number_of_threads;++i) {
     if(maxdot[i]>total_maxdot) total_maxdot = maxdot[i];
   }
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(total_maxdot);
+  const OC_REAL8m arg = 0.5*sqrt(total_maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;

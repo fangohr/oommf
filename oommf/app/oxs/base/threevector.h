@@ -28,20 +28,20 @@ class Oxs_ThreeVector {
 public:
   OC_REAL8m x,y,z;
 
+  // Note: Using default copy constructor and copy assignment operators
+  // in the class allows Oxs_MeshValue<T>::operator=(const
+  // Oxs_MeshValue<T>& other) to use memcpy to copy objects.
+
   // Constructors
   Oxs_ThreeVector(): x(0.), y(0.), z(0.) {}
   Oxs_ThreeVector(OC_REAL8m xi,OC_REAL8m yi,OC_REAL8m zi)
     : x(xi), y(yi), z(zi) {}
   Oxs_ThreeVector(OC_REAL8m *arr) : x(arr[0]), y(arr[1]), z(arr[2]) {}
-  Oxs_ThreeVector(const Oxs_ThreeVector &v) : x(v.x), y(v.y), z(v.z) {}
+  // Note default copy constructor
 
-  // Assignment operators
+  // Assignment operators (note default copy assignment operator)
   Oxs_ThreeVector& Set(OC_REAL8m xi,OC_REAL8m yi,OC_REAL8m zi)
     { x=xi; y=yi; z=zi; return *this; }
-  Oxs_ThreeVector& operator=(const Oxs_ThreeVector &v) {
-    x=v.x; y=v.y; z=v.z;
-    return *this;
-  }
   Oxs_ThreeVector& operator+=(const Oxs_ThreeVector& v) { 
     x+=v.x; y+=v.y; z+=v.z;
     return *this;
@@ -106,6 +106,7 @@ public:
   }
 
   // Misc
+  OC_REAL8m Mag() const { return Oc_Hypot(x,y,z); }
   OC_REAL8m MagSq() const { return x*x+y*y+z*z; }
   OC_REAL8m TaxicabNorm() const { return fabs(x)+fabs(y)+fabs(z); }  // aka L1-norm
   void SetMag(OC_REAL8m mag);  // Adjusts size to "mag"
@@ -216,7 +217,7 @@ inline void Oxs_ThreeVectorPairMagSq
   magsq1 = vec1.x*vec1.x + vec1.y*vec1.y + vec1.z*vec1.z;
 #else
   __m128d tmagsq = Oxs_ThreeVectorPairMagSq(vec0,vec1);
-  _mm_storel_pd(&magsq0,tmagsq);
+  _mm_store_sd(&magsq0,tmagsq);
   _mm_storeh_pd(&magsq1,tmagsq);
 #endif
 }
@@ -243,9 +244,9 @@ inline void Oxs_ThreeVectorPairMakeUnit
 
   Oxs_ThreeVectorPairMakeUnit(tx,ty,tz,magsq0,magsq1);
 
-  _mm_storel_pd(&vec0.x,tx);
-  _mm_storel_pd(&vec0.y,ty);
-  _mm_storel_pd(&vec0.z,tz);
+  _mm_store_sd(&vec0.x,tx);
+  _mm_store_sd(&vec0.y,ty);
+  _mm_store_sd(&vec0.z,tz);
 
   _mm_storeh_pd(&vec1.x,tx);
   _mm_storeh_pd(&vec1.y,ty);

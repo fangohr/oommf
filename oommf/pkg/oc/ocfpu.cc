@@ -2,22 +2,21 @@
  *
  *	Floating point unit control
  *
- * NOTICE: Please see the file ../../LICENSE
+ * NB: This class supports x86/x86_64 hardware.
+ *     It is currently inert for anything else.
  *
- * Last modified on: $Date: 2014/11/19 04:40:35 $
- * Last modified by: $Author: donahue $
+ * NOTICE: Please see the file ../../LICENSE
  *
  */
 
 #include "messages.h"  // Oc_Snprintf
 #include "ocfpu.h"
 
-/* End includes */     /* Optional directive to pimake */
-
-// Single mutex used for thread safety
-#if OOMMF_THREADS
-static Tcl_Mutex ocfpu_mutex = 0;
+#if OC_USE_SSE
+#include <xmmintrin.h>  // SSE (version "1")
 #endif
+
+/* End includes */     /* Optional directive to pimake */
 
 /*
  * x87 (FPU on x86) control code.  This code is x86 and compiler
@@ -169,81 +168,68 @@ void Oc_FpuControlData::SetSSEControlWord (OC_UINT2 mode)
 
 void Oc_FpuControlData::ReadData()
 {
-  Tcl_MutexLock(&ocfpu_mutex);
-  try {
-
 #if OC_USE_X87
-    x87_data = Getx87ControlWord();
+  x87_data = Getx87ControlWord();
 #endif
 #if OC_USE_SSE
-    sse_data = GetSSEControlWord();
+  sse_data = GetSSEControlWord();
 #endif
-
-  } catch(...) {
-    Tcl_MutexUnlock(&ocfpu_mutex);
-    throw;
-  }
-  Tcl_MutexUnlock(&ocfpu_mutex);
 }
 
 void Oc_FpuControlData::WriteData()
 {
-  Tcl_MutexLock(&ocfpu_mutex);
-  try {
-
 #if OC_USE_X87
-    Setx87ControlWord(x87_data);
+  Setx87ControlWord(x87_data);
 #endif
 #if OC_USE_SSE
-    SetSSEControlWord(sse_data);
+  SetSSEControlWord(sse_data);
 #endif
-
-  } catch(...) {
-    Tcl_MutexUnlock(&ocfpu_mutex);
-    throw;
-  }
-  Tcl_MutexUnlock(&ocfpu_mutex);
 }
 
 void Oc_FpuControlData::MaskExceptions()
 {
-  Tcl_MutexLock(&ocfpu_mutex);
-  try {
-
 #if OC_USE_X87
-    OC_INT2 mode = Getx87ControlWord();
-    mode |= 0x3f;
-    Setx87ControlWord(mode);
+  OC_INT2 mode = Getx87ControlWord();
+  mode |= 0x3f;
+  Setx87ControlWord(mode);
 #endif
-
-  } catch(...) {
-    Tcl_MutexUnlock(&ocfpu_mutex);
-    throw;
-  }
-  Tcl_MutexUnlock(&ocfpu_mutex);
 }
+
+// Enable flush subnormals to zero and subnormals are zero
+void Oc_FpuControlData::SetFlushToZero()
+{
+  // No such control for x87
+#if OC_USE_SSE
+    OC_UINT2 csr = GetSSEControlWord();
+    csr  |= 0x8040u;  // Flush to zero and denormals are zero
+    SetSSEControlWord(csr);
+#endif
+}
+
+// Disable flush subnormals to zero and subnormals are zero
+void Oc_FpuControlData::SetNoFlushToZero()
+{
+  // No such control for x87
+#if OC_USE_SSE
+    OC_UINT2 csr = GetSSEControlWord();
+    csr &= 0x7FBFu;  // No flush to zero and denormals aren't zero
+    SetSSEControlWord(csr);
+#endif
+}
+
 
 void Oc_FpuControlData::GetDataString(Oc_AutoBuf& buf)
 {
-  Tcl_MutexLock(&ocfpu_mutex);
-  try {
-
 #if OC_USE_X87
-    Oc_AutoBuf bufx87(16);
-    Oc_Snprintf(bufx87,bufx87.GetLength()+1,
-                " x87=%04X",(unsigned int)x87_data);
-    buf += bufx87;
+  Oc_AutoBuf bufx87(16);
+  Oc_Snprintf(bufx87,bufx87.GetLength()+1,
+              " x87=%04X",(unsigned int)x87_data);
+  buf += bufx87;
 #endif
 #if OC_USE_SSE
-    Oc_AutoBuf bufsse(16);
-    Oc_Snprintf(bufsse,bufsse.GetLength()+1,
-                " sse=%04X",(unsigned int)sse_data);
-    buf += bufsse;
+  Oc_AutoBuf bufsse(16);
+  Oc_Snprintf(bufsse,bufsse.GetLength()+1,
+              " sse=%04X",(unsigned int)sse_data);
+  buf += bufsse;
 #endif
-
-  } catch(...) {
-    Tcl_MutexUnlock(&ocfpu_mutex);
-    throw;
-  }
-  Tcl_MutexUnlock(&ocfpu_mutex);
 }

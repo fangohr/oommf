@@ -68,7 +68,7 @@ void Oxs_FixedZeeman::ComputeEnergyChunkInitialize
       if(test>max_factorsq) max_factorsq = test;
     }
     energy_density_error_estimate
-      = 4*OC_REAL8m_EPSILON*MU0*Oc_Sqrt(max_factorsq);
+      = 4*OC_REAL8m_EPSILON*MU0*sqrt(max_factorsq);
   }
   ocedt.energy_density_error_estimate
     = energy_density_error_estimate;

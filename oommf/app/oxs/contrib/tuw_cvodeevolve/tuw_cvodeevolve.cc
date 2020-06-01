@@ -446,7 +446,7 @@ Tuw_CvodeEvolve::Step(const Oxs_TimeDriver* driver,
     }
 
     // Fill yout with initial spin configuration
-    unsigned int i,j;
+    OC_INDEX i,j;
     real* yout_data = NV_DATA_S(yout);
     for(i=j=0;i<size;++i,j+=3) {
       const ThreeVector& tempspin = cstate.spin[static_cast<OC_INDEX>(i)];
@@ -534,7 +534,7 @@ Tuw_CvodeEvolve::Step(const Oxs_TimeDriver* driver,
 
   if (cvode_reset_request) {
     // Fill yout with initial spin configuration
-    unsigned int i,j;
+    OC_INDEX i,j;
     real* yout_data = NV_DATA_S(yout);
     for(i=j=0;i<size;++i,j+=3) {
       const ThreeVector& tempspin = cstate.spin[static_cast<OC_INDEX>(i)];
@@ -689,7 +689,7 @@ Tuw_CvodeEvolve::Step(const Oxs_TimeDriver* driver,
 
   // Write new spin configuration into next_state
   ThreeVector tempspin;
-  unsigned int i,j;
+  OC_INDEX i,j;
   real* yout_data = NV_DATA_S(yout);
   OC_REAL8m maxdrift = 0;
   for(i=j=0;i<size;++i,j+=3) {

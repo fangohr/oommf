@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 
 Oc_CommandLine Option console {} {}
 
@@ -158,7 +158,7 @@ Oc_CommandLine Option keepbb {} {
 set cliprange 1
 
 Oc_CommandLine Option format {
-	{format {regexp {text|b4|b8} $format} {is one of {text,b4,b8}}}
+	{format {regexp {text|b4|b8} $format} {is one of {text,"text %fmt",b4,b8}}}
     } {
 	upvar #0 format globalformat; set globalformat $format
 } {Format of output file: text, 4-, or 8-byte binary}
@@ -176,7 +176,7 @@ Oc_CommandLine Option grid {
     } {
        global grid ; regexp -- {^(rect|irreg|reg)} $type grid
 } {Grid type of output file: rectangular or irregular}
-set grid rect
+set grid {}
 
 Oc_CommandLine Option info {} {global info; set info 1} \
    {Print mesh info (no file conversion)}
@@ -246,6 +246,11 @@ Oc_CommandLine Parse $argv
 if {[string compare "-" $inputfile]==0} { set inputfile {} }
 if {[string compare "-" $outputfile]==0} { set outputfile {} }
 
+if {$ovfversion<2 && [regexp {^text.+$} $format]} {
+    puts stderr "ERROR: Data format string only accepted for OVF 2 format"
+    exit 15
+}
+
 array set formatmap {
 	text	text
 	b4	binary4
@@ -306,9 +311,20 @@ if {$info} {
     exit 0
 }
 
+
+if {[string match {} $grid]} {
+   # No grid request by user; match import mesh type
+   if {[string match Vf_GeneralMesh3f [GetMeshType]]} {
+      set grid irreg
+   } else {
+      set grid rect
+   }
+}
+
 if {[string match Vf_GeneralMesh3f [GetMeshType]] &&
 	![string match irregular $gridmap($grid)]} {
-    puts stderr "Input file has irregular grid; so must output."
+   puts stderr "ERROR: Input file has irregular grid; so must output."
+   exit 25
 }
 
 # Combine translations, if any, into one absolute translation
@@ -407,7 +423,13 @@ if {!$writemags} {
    if { $ovfversion == 1 } {
       WriteMesh $outputfile $formatmap($format) $gridmap($grid) $title $desc
    } else {
-      WriteMeshOVF2 $outputfile $formatmap($format) $gridmap($grid) \
+      # OVF2 supports user-defined data format specification in text mode
+      if {[regexp "^text\[ \t\r\n\]*(.*)$" $format dummy fmtstr]} {
+         set fmtspec "$formatmap(text) $fmtstr"
+      } else {
+         set fmtspec $formatmap($format)
+      }
+      WriteMeshOVF2 $outputfile $fmtspec $gridmap($grid) \
          $title $desc
    }
 } else {

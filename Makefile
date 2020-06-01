@@ -2,7 +2,6 @@ OOMMFPREFIX="oommf"
 DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
 DMID2DREPO="oommf-extension-dmi-d2d"
-MELREPO="oommf-mel"
 
 build:
 	cd $(OOMMFPREFIX) && ./oommf.tcl pimake distclean
@@ -15,9 +14,7 @@ build-with-t: get-t build
 
 build-with-d2d: get-d2d build
 
-build-with-mel: get-mel build
-
-build-with-all: get-cnv get-d2d get-t get-mel build
+build-with-all: get-cnv get-d2d get-t build
 
 get-cnv:
 	git clone https://github.com/joommf/$(DMICNVREPO).git
@@ -33,12 +30,6 @@ get-d2d:
 	git clone https://github.com/joommf/$(DMID2DREPO).git
 	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
 	rm -rf $(DMID2DREPO)
-
-get-mel:
-	git clone https://github.com/yuyahagi/$(MELREPO).git
-	cp $(MELREPO)/*.cc oommf/app/oxs/local/
-	cp $(MELREPO)/*.h oommf/app/oxs/local/
-	rm -rf $(MELREPO)
 
 travis-build: SHELL:=/bin/bash
 travis-build:

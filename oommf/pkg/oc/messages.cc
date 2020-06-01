@@ -188,15 +188,19 @@ Oc_Snprintf(char *str, size_t n, const char *format, ...)
 static void
 CustomPanic(char *format,...)
 {
-  static char buf[4096];// Good size? -- must be at least long enough for
-			// panicHeader plus the buffer overflow message.
-			// Really long error stacks might still overflow
-			// this.  Consider printing truncated message
-			// even if buffer overflows.
+  const int bufsize = 4096; // Good size? -- must be at least long
+                            // enough for panicHeader plus the buffer
+                            // overflow message. Really long error
+                            // stacks might still overflow this.
+                            // Consider printing truncated message even
+                            // if buffer overflows.
+  static char buf[bufsize];
+
   va_list arg_ptr;
   va_start(arg_ptr,format);
 
-  strncpy(buf,GetPanicHeader(),sizeof(buf));
+  strncpy(buf,GetPanicHeader(),bufsize-1);
+  buf[bufsize-1] = '\0'; // Safety
   Oc_Vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), format, arg_ptr);
   va_end(arg_ptr);
 

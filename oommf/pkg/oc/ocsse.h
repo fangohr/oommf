@@ -12,6 +12,8 @@
 #ifndef _OCSSE
 #define _OCSSE
 
+#include "ocport.h"
+
 #if OC_USE_SSE
 
 #include <emmintrin.h>
@@ -23,7 +25,6 @@
 #  include <x86intrin.h>
 # endif
 #endif
-
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -108,12 +109,28 @@ template<> inline  void Oc_Prefetch<Ocpd_T0>(const void* addr) {
 #if OC_COMPILER_HAS_MM_CVTSD_F54
 # define oc_sse_cvtsd_f64(a) _mm_cvtsd_f64(a)
 #else 
-inline OC_REAL8 oc_sse_cvtsd_f64(__m128d a) {
-   OC_REAL8 osc_f64_;
-   _mm_store_sd(&osc_f64_,(a));
-   return osc_f64_;
+inline OC_REAL8 oc_sse_cvtsd_f64(const __m128d& a) {
+# if !defined(__PGIC__)
+  OC_REAL8 osc_f64_;
+  _mm_store_sd(&osc_f64_,(a));
+  return osc_f64_;
+# else
+  // For some reason Portland Group C++ 16.10-0 chokes on the above
+  // with an internal compiler error.  Use instead this workaround:
+  return *(reinterpret_cast<const OC_REAL8*>(&a));
+# endif
 }
 #endif
+
+#if OC_COMPILER_HAS_BROKEN_MM_STOREL_PD
+// Wrapper replacing SSE2 intrinsic _mm_storel_pd calls with the
+// equivalent SSE2 intrinsic _mm_store_sd.  (_mm_storel_pd
+// implementation is broken on some compilers.)  It is important that
+// this define occurs after #include <emmintrin.h> --- otherwise we
+// create a duplicate definition of _mm_store_sd.
+# define _mm_storel_pd(x,y)  _mm_store_sd(x,y)
+#endif
+
 
 // Utility functions for extracting OC_REAL8 values from an __m128d object
 inline OC_REAL8 Oc_SseGetLower(const __m128d& val)
@@ -192,7 +209,7 @@ public:
   OC_REAL8 GetA() const { return Oc_SseGetLower(value); }
   OC_REAL8 GetB() const { return Oc_SseGetUpper(value); }
 
-  void StoreA(OC_REAL8& Aout) const { _mm_storel_pd(&Aout,value); }
+  void StoreA(OC_REAL8& Aout) const { _mm_store_sd(&Aout,value); }
   void StoreB(OC_REAL8& Bout) const { _mm_storeh_pd(&Bout,value); }
 
   // Write out both values with one call.  Use StoreUnaligned if you
@@ -235,8 +252,8 @@ public:
   friend const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
                               const Oc_Duet& w3); // w1*w2+w3
 
-  friend const Oc_Duet Oc_Sqrt(const Oc_Duet& w);
-  friend const Oc_Duet Oc_Invert(const Oc_Duet& w); // 1.0/w
+  friend const Oc_Duet sqrt(const Oc_Duet& w);
+  friend const Oc_Duet recip(const Oc_Duet& w); // 1.0/w
 
   friend const Oc_Duet Oc_FlipDuet(const Oc_Duet& w); // flips components
 
@@ -284,10 +301,10 @@ inline const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
 #endif
 }
 
-inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)
+inline const Oc_Duet sqrt(const Oc_Duet& w)
 { return Oc_Duet(_mm_sqrt_pd(w.value)); }
 
-inline const Oc_Duet Oc_Invert(const Oc_Duet& w)
+inline const Oc_Duet recip(const Oc_Duet& w)
 { return Oc_Duet(_mm_div_pd(_mm_set1_pd(1.0),w.value)); }
 
 inline const Oc_Duet Oc_FlipDuet(const Oc_Duet& w)
@@ -400,8 +417,8 @@ public:
   friend const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
                               const Oc_Duet& w3); // w1*w2+w3
 
-  friend const Oc_Duet Oc_Sqrt(const Oc_Duet& w);
-  friend const Oc_Duet Oc_Invert(const Oc_Duet& w); // 1.0/w
+  friend const Oc_Duet sqrt(const Oc_Duet& w);
+  friend const Oc_Duet recip(const Oc_Duet& w); // 1.0/w
 
   friend const Oc_Duet Oc_FlipDuet(const Oc_Duet& w); // flips components
 
@@ -467,14 +484,14 @@ inline const Oc_Duet Oc_FMA(const Oc_Duet& w1,const Oc_Duet& w2,
   return Oc_Duet(w1.v0*w2.v0+w3.v0,w1.v1*w2.v1+w3.v1);
 }
 
-inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)
+inline const Oc_Duet sqrt(const Oc_Duet& w)
 {
-  return Oc_Duet(Oc_Sqrt(w.v0),Oc_Sqrt(w.v1));
+  return Oc_Duet(sqrt(w.v0),sqrt(w.v1));
 }
 
-inline const Oc_Duet Oc_Invert(const Oc_Duet& w)
+inline const Oc_Duet recip(const Oc_Duet& w)
 {
-  return Oc_Duet(Oc_Invert(w.v0),Oc_Invert(w.v1));
+  return Oc_Duet(OC_REAL8m(1.0)/w.v0,OC_REAL8m(1.0)/w.v1);
 }
 
 inline const Oc_Duet Oc_FlipDuet(const Oc_Duet& w)

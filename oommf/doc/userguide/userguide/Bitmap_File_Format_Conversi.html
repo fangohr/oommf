@@ -57,14 +57,14 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Bitmap File Format Conversion:
           any2ppm
-</H2><A NAME="16693"></A><A NAME="16694"></A><A NAME="16695"></A><A NAME="16696"></A><A NAME="16697"></A><A NAME="16698"></A>
+</H2><A NAME="16717"></A><A NAME="16718"></A><A NAME="16719"></A><A NAME="16720"></A><A NAME="16721"></A><A NAME="16722"></A>
 The <B>any2ppm</B> program converts bitmap files from the Portable Pixmap
 (PPM), Windows BMP, and GIF formats into the Portable Pixmap P3
 (text) format or the uncompressed 24 bits-per-pixel BMP binary format.
 Additional formats may be available if the Tcl/Tk <A NAME="tex2html19"
   HREF="http://tkimg.sourceforge.net/"><I>Img</I></A>
 package is installed on your system.  (Note: OOMMF support for BMP
-requires Tk 8.0<A NAME="16702"></A> or later.)
+requires Tk 8.0<A NAME="16726"></A> or later.)
 
 <P>
 
@@ -93,7 +93,7 @@ where
 <DT><STRONG><TT><B>-format fmt</B></TT></STRONG></DT>
 <DD>Output file format.  The default is <TT>PPM</TT>, which is the Portable
   Pixmap P3 (text) format.  Setting <TT>fmt</TT> to <TT>BMP</TT> will
-  produce files in the uncompressed Windows BMP<A NAME="16717"></A> 24
+  produce files in the uncompressed Windows BMP<A NAME="16741"></A> 24
   bits-per-pixel format.  If the Tcl/Tk Img package is installed,
   then additional formats, such as PNG, JPEG and TIFF, will be
   available.  The default output file extension depends on the format
@@ -122,14 +122,14 @@ operation the temporary file will be automatically deleted, but this is
 not guaranteed if the program terminates abnormally.
 
 <P>
-<B>Tk Requirement:</B><A NAME="16729"></A> <B>any2ppm</B> uses the
+<B>Tk Requirement:</B><A NAME="16753"></A> <B>any2ppm</B> uses the
 Tk <TT>image</TT> command in its processing.  This requires that Tk be
 properly initialized, which in particular means that a valid display
 must be available.  This is not a problem on Windows, where a desktop
 is always present, but on Unix this means that an X server must be
 running.  The
 <A NAME="tex2html20"
-  HREF="http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml"><I>Xvfb</I></A><A NAME="16734"></A>
+  HREF="http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml"><I>Xvfb</I></A><A NAME="16758"></A>
 virtual framebuffer can be used if desired.  (Xvfb is an X server
 distributed with X11R6 that requires no display hardware or physical
 input devices.)
@@ -154,6 +154,6 @@ input devices.)
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
 </BODY>
 </HTML>

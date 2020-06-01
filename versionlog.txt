@@ -1,6 +1,6 @@
 Thu 24 Sep 2015 12:21:42 BST: unpacked oommf12a5bis_20120928.tar.gz
 =======================================================
-date: Mon 26 Sep 2016 15:05:44 BST 
+date: Mon 26 Sep 2016 15:05:44 BST
    unpacked oommf12a6_20150930.tar.gz
    OOMMF:
      version: 12a6
@@ -10,7 +10,7 @@ date: Mon 26 Sep 2016 15:05:44 BST
    github version: 3e360023f2006169401468360b7dd7b1f619cd79
    patch applied:  patches/darwin.tcl.1.2a6.patch
 =======================================================
-date: Fri 14 Oct 2016 14:47:33 BST 
+date: Fri 14 Oct 2016 14:47:33 BST
    unpacked oommf12b0_20160930.tar.gz
    OOMMF:
      version: 12b0
@@ -20,7 +20,7 @@ date: Fri 14 Oct 2016 14:47:33 BST
    github version: 581ef6639e011a3dfc6558bca85641dec1c2a2f2
    patch applied:  patches/darwin.tcl.1.2a6.patch
 =======================================================
-date: Wed 15 March 2016 12:00:00 BST 
+date: Wed 15 March 2016 12:00:00 BST
    unpacked oommf12b0_20160930.tar.gz
    OOMMF:
      version: 12b0
@@ -32,7 +32,7 @@ date: Wed 15 March 2016 12:00:00 BST
    patch applied:  patches/darwin.tcl.1.2a6.patch
    extensions: github.com/joommf/oommf-bulk-dmi 07e130d0623bc206b57c236a4a7d7a53885a5341
 =======================================================
-date: Mon Feb  5 11:18:00 GMT 2018 
+date: Mon Feb  5 11:18:00 GMT 2018
    unpacked oommf20a0_20170929.tar.gz
    OOMMF:
      version: 20a0
@@ -42,7 +42,7 @@ date: Mon Feb  5 11:18:00 GMT 2018
    github-url: https://github.com/fangohr/oommf
    github version: 3f52d43566961af6d79dbb97910154229603cf07
 =======================================================
-date: Fri Dec 21 10:48:45 CET 2018 
+date: Fri Dec 21 10:48:45 CET 2018
    unpacked oommf20a1_20180930.tar.gz
    OOMMF:
      version: 20a1
@@ -51,3 +51,13 @@ date: Fri Dec 21 10:48:45 CET 2018
      source-url: http://math.nist.gov/oommf/dist/oommf20a1_20180930.tar.gz
    github-url: https://github.com/fangohr/oommf
    github version: 69016368b232975e9eae0addd312ba4309450eb0
+=======================================================
+date: Mon 1 Jun 2020 23:35:33 BST
+   unpacked oommf20a2_20190930.tar.gz
+   OOMMF:
+     version: 20a2
+     date: 20190930
+     build: a2
+     source-url: http://math.nist.gov/oommf/dist/oommf20a2_20190930.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: 4eacba0a47dd1b594685601501d0cf96ed3d2e99

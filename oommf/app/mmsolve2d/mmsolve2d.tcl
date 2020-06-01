@@ -11,7 +11,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 ## goes down.
 
 Oc_Main SetAppName mmSolve2D
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:35 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]

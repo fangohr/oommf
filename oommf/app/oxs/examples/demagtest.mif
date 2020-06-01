@@ -7,14 +7,19 @@ Parameter itlimit 200
 
 Parameter code "new"  ;# "new" or "old"
 
+Parameter ar 32.0
+Parameter xrange 1000e-9
+Parameter yrange  500e-9
+Parameter zrange   20e-9
+
 Parameter cellsize 5 ;# Cell size in nm
 set cellsize [expr {$cellsize*1e-9}] ;# Convert to meters
 
-Specify Oxs_BoxAtlas:atlas {
-  xrange {0 1000e-9}
-  yrange {0  500e-9}
-  zrange {0   20e-9}
-}
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $xrange}
+  yrange {0 $yrange}
+  zrange {0 $zrange}
+}]
 
 Specify Oxs_RectangularMesh:mesh [subst {
   cellsize {$cellsize $cellsize $cellsize}
@@ -31,7 +36,9 @@ Specify Oxs_UniaxialAnisotropy {
 }
 
 if {[string match "new" $code]} {
-   Specify Oxs_Demag {}
+   Specify Oxs_Demag [subst {
+      asymptotic_radius $ar
+   }]
 } else {
    Specify Oxs_DemagOld {}
 }

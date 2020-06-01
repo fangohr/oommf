@@ -33,22 +33,22 @@ public:
   void Set(const ThreeVector& a, const ThreeVector& b) {
     OC_REAL8m dot = a*b;
     ThreeVector cross = a^b;
-    sdotsq = dot * Oc_Fabs(dot);
+    sdotsq = dot * fabs(dot);
     crosssq = cross.MagSq();
   }
   void SetAngle(OC_REAL8m angle) {
     // Note: SetAngle(ang) == SetAngle(|ang|)
     OC_REAL8m dot = cos(angle);     
     OC_REAL8m cross = sin(angle);
-    sdotsq = dot*Oc_Fabs(dot);
+    sdotsq = dot*fabs(dot);
     crosssq = cross*cross;    
   }
   OC_REAL8m GetAngle() {
     // Returns angle in radians, 0<= ang <= pi
     if(sdotsq < 0.0) {
-      return Oc_Atan2(Oc_Sqrt(crosssq),-1*Oc_Sqrt(-1*sdotsq));
+      return Oc_Atan2(sqrt(crosssq),-1*sqrt(-1*sdotsq));
     }
-    return Oc_Atan2(Oc_Sqrt(crosssq),Oc_Sqrt(sdotsq));
+    return Oc_Atan2(sqrt(crosssq),sqrt(sdotsq));
   }
   friend OC_BOOL operator<(const OxsRectangularMeshAngle&,
                            const OxsRectangularMeshAngle&);

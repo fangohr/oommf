@@ -20,11 +20,41 @@
 # canvas height.  The graph limits in data coords are held in xgraphmin,
 # ygraphmin, y2graphmin, xgraphmax, ygraphmax, y2graphmax. The conversion
 # between the two coords
-# (x,y)->(cx,cy) is given by (cx,cy) = (xoff,yoff)+ (x*xscale,y*yscale)
-#                                or (xoff,y2off) + (x*xscale,y*y2scale).
+# (x,y)->(cx,cy) is given by
 #
+#             cx = (x-xgraphmin)*xscale + lmargin
+#    with xscale = plotwidth/(xgraphmax-xgraphmin)
+# and
+#            cy  = (y-ygraphmax)*yscale + tmargin
+#         yscale = -plotheight/(ygraphmax-ygraphmin)
 #
-# Oc_Class GraphWin methods:
+# Although it is possible to remove one addition by rewriting the cx formula
+# as
+#             cx = x*xscale + xoff
+#
+#  with  xoff = lmargin - xgraphmin*xscale precomputed, the numerics
+# should be better with the original form.
+#
+# For logarithmic axes the transformations are
+#             cx = (log(x/xgraphmin))*xscale + lmargin
+#    with xscale = plotwidth/(log(xgraphmax/xgraphmin))
+# and
+#             cy = (log(y/ygraphmax))*yscale + tmargin
+#    with yscale = -plotheight/(log(ygraphmax/ygraphmin))
+#
+# The inverse transforms are
+#
+#              x = (cx-lmargin)/xscale + xgraphmin
+#              y = (cy-tmargin)/yscale + ygraphmax
+#
+# in the linear case and
+#
+#              x = xgraphmin*exp((cx-lmargin)/xscale)
+#              y = ygraphmax*exp((cy-tmargin)/yscale)
+#
+# in the logarithmic case.
+#
+# Oc_Class Ow_GraphWin methods:
 #
 #    callback method ResizeCanvas { width height }
 #       Bound to the $graph <Configure> event.  Includes an
@@ -44,41 +74,50 @@
 #       Routines for changing key (legend) display.
 #    private method GetUserCoords { cx cy yaxis }
 #       Converts from canvas to user coordinates
+#    private method GetCanvasCoords { x y yaxis {round 1}}
+#       Converts from user to canvas coordinates
+#    private proc DisplayFormat {val digits}
+#       For formatting axis limits
+#    private proc RoundGently { min max logscale {pts {}} {tolerance 0.01}}
+#       Tweaks axis limits
 #    callback method ShowPosition { cx cy button state convert tags }
 #    callback method UnshowPosition { state }
 #       Routines for displaying position information.
-#    callback method InitZoomBox { x y button shiftmod }
-#    callback method DrawZoomBox { x2 y2 }
-#    callback method DoZoomBox { x2 y2 }
+#    callback method ZoomBoxInit { x y button shiftmod }
+#    callback method ZoomBoxDraw { x2 y2 }
+#    callback method ZoomBoxDo { x2 y2 }
 #       Routines for mouse-based graph scaling
+#    proc SameStates { a b }
+#    method ResetStoreStack {}
+#    method GetStoreStackSize {}
+#    method StoreState {}
+#    method GetStateIndex { {offset 0} }
+#    method GetState { {offset 0} }
+#    method RecoverState { {offset 0} }
+#       Routines for handling display state stack
+#    method ResetPanZoom {}
+#    method UpdatePanZoomDisplay {}
 #    public method Zoom { factor }
 #       Rescales about center of display.
+#    method Pan { xpan ypan y2pan }
+#       Key based pan
 #    private method DrawRules { x y }
 #       Draws vertical rule at x=$x, and a horizontal rule at y=$y
-#    callback method DragInit { obj x y button state }
-#    callback method Drag { obj x y button state }
 #    callback method ZoomBlock { script }
 #    callback method BindWrap { script }
 #       Bindings to allow the dragging of the key and rules.
+#    callback method DragInit { obj x y button state }
+#    callback method Drag { obj x y button state }
 #    method SetMargins { left right top bottom }
 #       Sets minimum margin values, in pixels.
+#    method SetLogAxes { xlog ylog y2log }
+#       Turns logscaling on and off; updates display if limits change
 #    method DrawAxes {}
 #       Clears canvas, then renders title, axes labels, axes,
 #       horizontal and vertical rules, and key.  Also sets
 #       {t,b,l,r}margin, plotwidth/plotheight, and {x,y}scale,
 #       {x,y}off values.
 #    method NewCurve { curvelabel yaxis}
-#    method DeleteCurve { curvelabel yaxis }
-#    method AddDataPoints { curvelabel yaxis newpts }
-#       The above 3 methods are the only public methods that
-#       access individual curves. In the internal data structure
-#       "curve", each curve is uniquely identified by the string
-#       "$curvelabel,$yaxis".
-#    method DeleteAllCurves {}
-#    private method DeleteCurveByName { curvename }
-#       Private DeleteCurve interface that uses "curvename"
-#       directly, as opposed to the public DeleteCurve method
-#       that constructs "curvename" from "curvelabel" and "yaxis".
 #    private method GetCurveId { curvename } { id }
 #       Curve creation, deletion and identification routines.
 #       Adds new points to data list, and marks display list
@@ -88,6 +127,19 @@
 #       The return value is a bounding box for new data,
 #       in graph coords, unless all x_i in newpts are {}, in
 #       which case the return value is {}.
+#    private method DeleteCurveByName { curvename }
+#       Private DeleteCurve interface that uses "curvename"
+#       directly, as opposed to the public DeleteCurve method
+#       that constructs "curvename" from "curvelabel" and "yaxis".
+#    method DeleteAllCurves {}
+#    method DeleteCurve { curvelabel yaxis }
+#    private method SetCurveExtrema { curveid }
+#    private method CutCurve { curveid }
+#    method AddDataPoints { curvelabel yaxis newpts }
+#       The above 3 methods are the only public methods that
+#       access individual curves. In the internal data structure
+#       "curve", each curve is uniquely identified by the string
+#       "$curvelabel,$yaxis".
 #    method ResetSegmentColors {}
 #       Empties all curve($cid,segcolor) lists, and resets global
 #       segment count (segcount) to 0.
@@ -105,9 +157,20 @@
 #       A value of -1 indicates that the curve should be completely
 #       redrawn, and -2 occurs if no points were added to the display
 #       list.
+#    private method SymbolSquare {clrindex tags index pts}
+#    private method SymbolDiamond {clrindex tags index pts}
+#    private method SymbolCircle12 {clrindex tags index pts}
+#    private method SymbolTriangle {clrindex tags index pts}
+#    private method SymbolInvertTriangle {clrindex tags index pts}
+#    private method SymbolPlus {clrindex tags index pts}
+#    private method SymbolX {clrindex tags index pts}
+#    private method PlotSymbols {symbol color tags under_id offset pts}
+#       Symbol drawing routines.
 #    private method PlotCurve { curveid { startindex 0 }}
 #       Draws specified portion (startindex to 'end') of specified
 #       curve onto the canvas.
+#    method AxisUse {}
+#       Returns number of curves plotted against each y axis.
 #    method GetCurveList { yaxis }
 #       Returns an ordered list of all non-hidden curves on specified
 #       yaxis (1 or 2), by curvelabel
@@ -123,21 +186,24 @@
 #       Returns [list $xmin $xmax
 #                     $ymin $ymax $y2min $y2max]
 #       across all non-hidden curves.
-#    private proc RoundExtents {xmin xmax ymin ymax y2min y2max}
-#       Expands values to "round" coordinates.
-#    private proc NiceExtents {ratio xmin xmax ymin ymax y2min y2max}
-#       Adjusts ?min and ?max by up to +/-(?max-?min)/ratio to
-#       make them "nice" when formatted as a base 10 decimal.
-#       Similar to but generally less aggressive than RoundExtents
+#    private proc RoundRange {min max logscale}
+#       Graph limits automatic rounding; more aggressive than RoundGently
+#    private method SpecifyGraphExtents {xmin xmax ymin ymax y2min y2max}
+#       Internal method used by routines needing to set graph limits
+#       without rounding.
 #    method SetGraphLimits {{xmin {}} {xmax {}} {ymin {}} {ymax {}}
 #                           {y2min {}} {y2max {}}}
 #       Allows client to set graph extents.  Empty-string valued imports
 #       are filled with data from GetDataExtents, rounded outward using
-#       RoundExtents.  The return value is 1 if the graph extents are
+#       RoundRange.  The return value is 1 if the graph extents are
 #       changed, 0 if the new values are the same as the old values.
 #    method GetGraphLimits {}
 #       Returns [list $xgraphmin $xgraphmax
-#                     $ygraphmin $ygraphmax $ygraphmin $ygraphmax]
+#                     $ygraphmin $ygraphmax $y2graphmin $y2graphmax]
+#    method GetGraphLimitsReduced {} {
+#       Same as GetGraphLimits, but any axis without curves plotted
+#       against it has limits set to empty strings.  This is used in
+#       the display state stack to implement transparent limits.
 #    method RefreshDisplay {}
 #       Redraws entire display, using current canvas size and graph
 #       limits.
@@ -148,14 +214,22 @@
 #    method WinDestroy { w } { winpath }
 #        $winpath <Destroy> binding.
 #
-# Non-class procs (used to cut down on call overhead) :
-#   proc OWgwMakeDispPt { xdatabase ydatabase xs ys xdispbase ydispbase \
-#            xmin ymin xmax ymax previnc xprev yprev x y displistname }
-#     Converts (xprev,yprev) (x,y) from data to display coords in
-#     a manner suitable for appending to a canvas create line call.
+# Non-class procs (used to cut down on call overhead):
 #   proc OWgwPutInBox { x y xmin ymin xmax ymax } {
 #     Returns a two element list [list $xnew $ynew], which shifts
 #     x and y as necessary to put it into the specified box.
+#
+#   proc OWgwMakeLogLinDispPt {
+#            dsplstname xlogscale ylogscale
+#            xdatabase ydatabase xs ys
+#            xdispbase ydispbase
+#            xmin ymin xmax ymax
+#            displeft disptop dispright dispbottom
+#            prevdata x y}
+#     Converts (xprev,yprev) (x,y) from data to display coords in
+#     a manner suitable for appending to a canvas create line call.
+#     This is a service proc for the AddDisplayPoints method.
+#
 
 Oc_Class Ow_GraphWin {
 
@@ -282,18 +356,32 @@ Oc_Class Ow_GraphWin {
     private variable curvecount = 0
     private variable segcount   = 0  ;# Note: segcount is reset
     ## by method ResetSegmentColors.
-    private variable xoff    =  0.   ;# Used in conversion from data coords
-    private variable yoff    =  0.   ;#  to graph (display) coords.  Setup
-    private variable y2off   =  0.   ;#  in DrawAxes routine.
     private variable xscale  =  1.
     private variable yscale  = -1.
     private variable y2scale = -1.
+    # For linear case, xscale = (xgraphmax-xgraphmin)/plotwidth
+    # For log scaling, xscale = (log(xgraphmax)-log(xgraphmin))/plotwidth
     private variable xgraphmin  = 0. ;# Graph limits, in data coords.
-    private variable xgraphmax  = 1.
-    private variable ygraphmin  = 0.
+    private variable xgraphmax  = 1. ;# Default *min values set at 0.1 rather
+    private variable ygraphmin  = 0. ;# than 0 if *logscale is true.
     private variable ygraphmax  = 1.
     private variable y2graphmin = 0.
     private variable y2graphmax = 1.
+    private variable xlogscale  = 0
+    private variable ylogscale  = 0
+    private variable y2logscale = 0
+
+    # Display state stack.  Each display state is a six-tuple, xmin xmax
+    # ymin ymax y2min y2max.  The stack gets reset any time
+    # SetGraphLimits is called with all imports set for autoscale.
+    private variable statestack = {}
+    private variable stateindex = -1
+
+    # Pan/Zoom settings
+    private variable pz_base = {}
+    private variable pz_panx = 0.
+    private variable pz_pany = 0.  ;# y and y2 axis share pan count
+    private variable pz_zoom = 1.0
 
     private variable but1x = 0       ;# Mouse coordinates when
     private variable but1y = 0       ;# Button-1 is pressed
@@ -307,9 +395,46 @@ Oc_Class Ow_GraphWin {
     public variable zoombox_ac = #000   ;# Zoom box axis indicator
                                        ;##  arrow color.
 
-    private array variable color     ;# Color array
+    #private array variable color     ;# Color array
+    #private variable symbol_types = 7 ;# Number of different types of symbols
 
-    private variable symbol_types = 6 ;# Number of different types of symbols
+    # Curve colors.  The first color in each pair is the lead
+    # color, which is used to color lines and unfilled symbols.  The
+    # secondary color provides good contrast to the lead color and is
+    # used for coloring filled symbols.
+    #  Index  Lead color              Secondary color
+    #    0    #FF0000 = red           #00FFFF = cyan
+    #    1    #0000FF = blue          #FFFF00 = yellow
+    #    2    #00FF00 = green         #FF00FF = magenta
+    #    3    #FF00FF = magenta       #00FF00 = green
+    #    4    #00868B = turquoise4    #8B0599 = purple
+    #    5    #FF8C00 = darkorange    #0073FF = azure radiance
+    #    6    #000000 = black         #FF69B4 = hotpink
+    #    7    #00FFFF = cyan          #FF0000 = red
+    #    8    #A52A2A = brown         #2AA5A5 = jungle green
+    #    9    #A9A9A9 = darkgray      #907373 = opium
+    #   10    #7D26CD = purple3       #77CD26 = atlantis
+    private variable colorset = \
+       {"#FF0000 #00FFFF"
+        "#0000FF #FFFF00"
+        "#00FF00 #FF00FF"
+        "#FF00FF #00FF00"
+        "#00868B #8B0599"
+        "#FF8C00 #0073FF"
+        "#000000 #FF69B4"
+        "#00FFFF #FF0000"
+        "#A52A2A #2AA5A5"
+        "#A9A9A9 #907373"
+        "#7D26CD #77CD26"}
+    # Note: The combination of curly brackets and # characters plays
+    # havoc with emacs Tcl-mode indentation.  The above combination of
+    # one set of curly braces with double quotes works OK, however.
+
+    # Ordered symbols list.  Each name references an instance
+    # method with name Symbol${name}
+    private variable symbols = {Square Diamond \
+                                   Triangle InvertTriangle \
+                                   Plus X Circle12}
 
     # Limits on number of points to store.  The maximum number of points
     # (per curve) is ptlimit.  When that value is exceeded, the list is
@@ -335,15 +460,14 @@ Oc_Class Ow_GraphWin {
     ##                                   1 => left,  2 => right
     ##       curve($curveid,name)     = id -> Name mapping.  The
     ##                                  name has the form "$label,$yaxis"
-    ##       curve($curveid,color)    = Drawing color, when using curve
-    ##                                  color selection.
-    ##       curve($curveid,segcolor)  = Drawing color, when using segment
-    ##                                  color selection.  This is a list of
-    ##                                  colors, indexed against the pts list.
-    ##       curve($curveid,symbol)    = Drawing symbol for curve selection.
-    ##       curve($curveid,segsymbol) = Drawing symbol for segment selection.
-    ##                                  This is a list like segcolor, but a
-    ##                                  list of integers.
+    ##       curve($curveid,color)    = Drawing color index, when using
+    ##                                  curve color selection.
+    ##       curve($curveid,segcolor)  = Drawing color index, when using
+    ##                                   segment color selection.
+    ##       curve($curveid,symbol)    = Drawing symbol index for curve
+    ##                                   selection.
+    ##       curve($curveid,segsymbol) = Drawing symbol index for segment
+    ##                                   selection.
     ##
     ##       curve($curveid,ptsbreak) = List of indices in pts of last
     ##             point in each "broken" segment of the display curve.
@@ -360,8 +484,12 @@ Oc_Class Ow_GraphWin {
     ##             does not handle long lists very efficiently.
     ##       curve($curveid,xmin)     = Minimum value of x among data points
     ##       curve($curveid,xmax)     = Maximum value of x among data points
+    ##       curve($curveid,xabsmin)  = Minimum value of |x|>0 among data points
+    ##       curve($curveid,xabsmax)  = Maximum value of |x|>0 among data points
     ##       curve($curveid,ymin)     = Minimum value of y among data points
     ##       curve($curveid,ymax)     = Maximum value of y among data points
+    ##       curve($curveid,yabsmin)  = Minimum value of |y|>0 among data points
+    ##       curve($curveid,yabsmax)  = Maximum value of |y|>0 among data points
     ##       curve($curveid,ptsdisp)  = List of lists of display points.
     ##             Each separate "segment" of the curve is stored in its own
     ##             sublist.  These are all integer values.
@@ -467,7 +595,7 @@ Oc_Class Ow_GraphWin {
                 -background $canvas_color \
                 $canvas_options]
         pack $graph -side left -anchor w -fill both -expand 1
-        pack $graph_frame -side left -anchor w -fill both -expand 1 
+        pack $graph_frame -side left -anchor w -fill both -expand 1
 
         # Initialize color array:
         #  red, blue, green, magenta, turquoise4, darkorange,
@@ -486,15 +614,17 @@ Oc_Class Ow_GraphWin {
                            10 #7D26CD \
                            ]
         set color(count) 11
- 
+
         # Widget bindings
         bind $winpath <Destroy> "$this WinDestroy %W"
         bind $graph <Configure> "$this ResizeCanvas %w %h"
 
         # Mouse bindings
 	# Show position
-	$graph bind showpos <<Ow_LeftButton>>  "$this ShowPosition %x %y 1 %s 1 pos"
-	$graph bind showpos <<Ow_RightButton>> "$this ShowPosition %x %y 3 %s 1 pos"
+	$graph bind showpos <<Ow_LeftButton>>  \
+           "$this ShowPosition %x %y 1 %s 1 pos"
+	$graph bind showpos <<Ow_RightButton>> \
+           "$this ShowPosition %x %y 3 %s 1 pos"
         bind $graph <ButtonRelease>  "+ $this UnshowPosition %s"
         bind $graph <Control-ButtonRelease>  "+ $this UnshowPosition %s"
 	# Object dragging
@@ -517,20 +647,10 @@ Oc_Class Ow_GraphWin {
         # Initialize scaling and axes
         $this SetGraphLimits
         $this RefreshDisplay
+        $this ResetStoreStack
 
         # Re-enable callbacks
         set callback $callback_keep
-    }
-    method CanvasCoords {x y {axis 1}} {
-        set cx [expr {$xoff + $x*$xscale}]
-        if {$axis == 1} {
-            set cy [expr {$yoff + $y*$yscale}]
-        } elseif {$axis == 2} {
-            set cy [expr {$y2off + $y*$y2scale}]
-        } else {
-            return -code error "Bad axis $axis: should be 1 or 2"
-        } 
-        return [list $cx $cy]
     }
     callback method ResizeCanvas { width height } { graph } {
         set border [expr {2*[$graph cget -borderwidth] \
@@ -579,8 +699,7 @@ Oc_Class Ow_GraphWin {
         set ypos [lindex $coords 1]
         return [list $xpos $ypos]
     }
-    private method RenderKeyText { x y left_justify ylist } \
-       {graph curve key_font color_selection color symbol_types segcount} {
+    private method RenderKeyText { x y left_justify ylist } {
        # Returns a two item list, {y linecount}, consisting of
        # the next y offset and the number of lines written.
        set linecount 0
@@ -597,12 +716,12 @@ Oc_Class Ow_GraphWin {
              set text $curve($curveid,label)
              incr linecount [expr {1 + [regsub -all "\n" $text {} dummy]}]
              set tempid [$graph create text $x $y \
-                            -anchor $anchor \
-                            -fill $curve($curveid,color) \
-                            -justify $justify \
-                            -tags {key key_text} \
-                            -font $key_font \
-                            -text $text]
+                     -anchor $anchor \
+                     -fill [lindex $colorset $curve($curveid,color) 0] \
+                     -justify $justify \
+                     -tags {key key_text} \
+                     -font $key_font \
+                     -text $text]
              set bbox [$graph bbox $tempid]
              set y [lindex $bbox 3]
           }
@@ -615,17 +734,18 @@ Oc_Class Ow_GraphWin {
                 set text $curve($curveid,label)
                 append text ": 0"
                 incr linecount [expr {1 + [regsub -all "\n" $text {} dummy]}]
-                set clr [lindex $curve($curveid,segcolor) 0]
-                if {[string match {} $clr]} {
-                   set clr $color([expr {$segcount % $color(count)}])
-                   lappend curve($curveid,segcolor) $clr
+                set color_id [lindex $curve($curveid,segcolor) 0]
+                if {[string match {} $color_id]} {
+                   set color_id [expr {$segcount % [llength $colorset]}]
+                   lappend curve($curveid,segcolor) $color_id
                    lappend curve($curveid,segsymbol) \
-                      [expr {$segcount % $symbol_types}]
+                      [expr {$segcount % [llength $symbols]}]
                    incr segcount
                 }
+                set color [lindex $colorset $color_id 0]
                 set tempid [$graph create text $x $y \
                                -anchor nw \
-                               -fill $clr \
+                               -fill $color \
                                -justify left \
                                -tags {key key_text} \
                                -font $key_font \
@@ -634,17 +754,18 @@ Oc_Class Ow_GraphWin {
                 set ynew [lindex $bbox 3]
                 set xtemp [lindex $bbox 2]
                 for {set i 1} {$i<$segno} {incr i} {
-                   set clr [lindex $curve($curveid,segcolor) $i]
-                   if {[string match {} $clr]} {
-                      set clr $color([expr {$segcount % $color(count)}])
-                      lappend curve($curveid,segcolor) $clr
+                   set colorid [lindex $curve($curveid,segcolor) $i]
+                   if {[string match {} $color_id]} {
+                      set color_id [expr {$segcount % [llength $colorset]}]
+                      lappend curve($curveid,segcolor) $color_id
                       lappend curve($curveid,segsymbol) \
-                         [expr {$segcount % $symbol_types}]
+                         [expr {$segcount % [llength $symbols]}]
                       incr segcount
                    }
+                   set color [lindex $colorset $color_id 0]
                    set tempid [$graph create text $xtemp $y \
                                   -anchor nw \
-                                  -fill $clr \
+                                  -fill $color \
                                   -justify left \
                                   -tags {key key_text} \
                                   -font $key_font \
@@ -662,20 +783,21 @@ Oc_Class Ow_GraphWin {
                    [expr {[llength $curve($curveid,ptsbreak)]+1}]
                 for {set i [llength $curve($curveid,segcolor)]} \
                       {$i<$number_of_segments} {incr i} {
-                   set clr $color([expr {$segcount % $color(count)}])
-                   lappend curve($curveid,segcolor) $clr
+                         set color_id [expr {$segcount % [llength $colorset]}]
+                   lappend curve($curveid,segcolor) $color_id
                    lappend curve($curveid,segsymbol) \
-                      [expr {$segcount % $symbol_types}]
+                            [expr {$segcount % [llength $symbols]}]
                    incr segcount
                 }
                 # Write out text string, from right to left
                 set xtemp $x
                 for {set i [expr {$number_of_segments-1}]} \
                       {$i>0} {incr i -1} {
-                   set clr [lindex $curve($curveid,segcolor) $i]
+                   set color_id [lindex $curve($curveid,segcolor) $i]
+                   set color [lindex $colorset $color_id 0]
                    set tempid [$graph create text $xtemp $y \
                                   -anchor ne \
-                                  -fill $clr \
+                                  -fill $color \
                                   -justify right \
                                   -tags {key key_text} \
                                   -font $key_font \
@@ -686,10 +808,11 @@ Oc_Class Ow_GraphWin {
                 set text $curve($curveid,label)
                 append text ": 0"
                 incr linecount [expr {1 + [regsub -all "\n" $text {} dummy]}]
-                set clr [lindex $curve($curveid,segcolor) 0]
+                set color_id [lindex $curve($curveid,segcolor) 0]
+                set color [lindex $colorset $color_id 0]
                 set tempid [$graph create text $xtemp $y \
                                -anchor ne \
-                               -fill $clr \
+                               -fill $color \
                                -justify right \
                                -tags {key key_text} \
                                -font $key_font \
@@ -837,47 +960,165 @@ Oc_Class Ow_GraphWin {
         }
         $this RenderKeyText $x $y $left_justify $y2list
     }
-    method SetColorSelection { newselection } { color_selection } {
-       if {![string match segment $newselection]} {
-          set newselection "curve"   ;# Default
+    private method GetUserCoords { cx cy yaxis } {
+          xscale yscale y2scale
+          xgraphmin ygraphmax y2graphmax
+          lmargin tmargin
+          xlogscale ylogscale y2logscale} {
+       # Given canvas coordinates cx and cy,
+       # returns corresponding user coordinates ux and uy.
+       if {$xscale==0.} {
+          set ux $cx ;# Safety
+       } elseif {!$xlogscale} {
+          set ux [expr {($cx-$lmargin)/double($xscale)+$xgraphmin}]
+       } else { ;# Logscale
+          set ux [expr {$xgraphmin*exp(($cx-$lmargin)/double($xscale))}]
        }
-       if {[string compare $color_selection $newselection]==0} {
-          return   ;# No change
-       }
-       set color_selection $newselection
-       $this DrawCurves 0
-       $this DrawKey
-    }
-    private method GetUserCoords { cx cy yaxis } { \
-            xoff yoff y2off xscale yscale y2scale } {
-        # Given canvas coordinates cx and cy,
-        # returns corresponding user coordinates ux and uy.
-
-        if {$xscale==0.} {
-            set ux $cx ;# Safety
-        } else {
-            set ux [expr {($cx-$xoff)/double($xscale)}]
-        }
-        if {$yaxis!=2} {
-            # Measure off y1 axis
-            if {$yscale==0.} {
-                set uy $cy   ;# Safety
-            } else {
-                set uy [expr {($cy-$yoff)/double($yscale)}]
-            }
-        } else {
-            # Measure off y2 axis
-            if {$y2scale==0.} {
-                set uy $cy   ;# Safety
-            } else {
-                set uy [expr {($cy-$y2off)/double($y2scale)}]
-            }
+       if {$yaxis!=2} {
+          # Measure off y1 axis
+          if {$yscale==0.} {
+             set uy $cy   ;# Safety
+          } elseif {!$ylogscale} {
+             set uy [expr {($cy-$tmargin)/double($yscale)+$ygraphmax}]
+          } else { ;# Logscale
+             set uy [expr {$ygraphmax*exp(($cy-$tmargin)/double($yscale))}]
+          }
+       } else {
+          # Measure off y2 axis
+          if {$y2scale==0.} {
+             set uy $cy   ;# Safety
+          } elseif {!$y2logscale} {
+             set uy [expr {($cy-$tmargin)/double($y2scale)+$y2graphmax}]
+          } else { ;# Logscale
+             set uy [expr {$y2graphmax*exp(($cy-$tmargin)/double($y2scale))}]
+          }
         }
         return [list $ux $uy]
     }
+
+    private method GetCanvasCoords { x y yaxis {round 1}} {
+          xscale yscale y2scale
+          xgraphmin ygraphmax y2graphmax
+          lmargin tmargin
+          xlogscale ylogscale y2logscale} {
+       # Given user coordinates x and y, returns corresponding canvas
+       # coordinates cx and cy.  If x or y is an empty string then the
+       # corresponding return canvas value is set empty.
+       #
+       # The code here is inlined in method AddDisplayPoints (q.v.).
+       if {[string match {} $x]} {
+          set cx {}
+       } else {
+          if {!$xlogscale} {
+             set cx [expr {($x-$xgraphmin)*$xscale + $lmargin}]
+          } else { ;# Logscale
+             set cx [expr {log($x/double($xgraphmin))*$xscale + $lmargin}]
+          }
+          if {$round} { set cx [expr {floor(0.5+$cx)}] }
+       }
+       if {[string match {} $y]} {
+          set cy {}
+       } else {
+          if {$yaxis!=2} {
+             # Measure off y1 axis
+             if {!$ylogscale} {
+                set cy [expr {($y-$ygraphmax)*$yscale + $tmargin}]
+             } else { ;# Logscale
+                set cy [expr {log($y/double($ygraphmax))*$yscale + $tmargin}]
+             }
+          } else {
+             # Measure off y2 axis
+             if {!$y2logscale} {
+                set cy [expr {($y-$y2graphmax)*$y2scale + $tmargin}]
+             } else { ;# Logscale
+                set cy [expr {log($y/double($y2graphmax))*$y2scale + $tmargin}]
+             }
+          }
+          if {$round} { set cy [expr {floor(0.5+$cy)}] }
+       }
+       return [list $cx $cy]
+    }
+
+    private proc DisplayFormat {val digits} {
+       set precision [expr {$digits-1}]
+       if {$val == 0.0} { # Zero special case
+          set dval 0
+       } elseif {abs($val)<1e-5 || 100000<=abs($val)} { # Use exponential format
+          set dval [format "%.${precision}e" $val]
+          # Strip trailing zeros and decimal point in mantissa
+          if {$precision>0} { ;# Require decimal point
+             set dval [regsub {0*e} $dval e]
+             set dval [regsub {\.e} $dval e]
+          }
+       } else { # Use %f formatting
+          set logval [expr {int(floor(log10(abs($val))))}]
+          set decdig [expr {$precision-$logval}]
+          if {$decdig>=0} { # Digits to right of decimal point
+             set dval [format "%.${decdig}f" $val]
+          } else { # All digits to left of decimal point; drop extra precision
+             set dval [format %.0f [format "%.${precision}e" $val]]
+          }
+          # Strip trailing zeros and decimal point
+          if {$decdig>0} {  ;# Require decimal point
+             set dval [string trimright $dval "0"]
+             set dval [string trimright $dval .]
+          }
+       }
+       return $dval
+    }
+
+    private proc RoundGently { min max logscale {pts {}} {tolerance 0.01}} {
+       # If pts is empty, then return is a two item list containing
+       # rounded values for min and max.  Otherwise the return is a list
+       # with the same length of pts containing rounded values for each
+       # element of pts.
+       #
+       # Default tolerance 0.01 == 1%, meaning +/-0.5% for
+       # linear scales, tol_adj = 2 times that for log scales.
+       if {[llength $pts]==0} {
+          set pts [list $min $max]
+       }
+       if {!$logscale} {
+          set delta [expr {0.5*($max-$min)*$tolerance}]
+          if {$delta <= 0.0} {
+             return $pts  ;# Safety
+          }
+          set slack [expr {pow(10,floor(log10($delta)))}]
+          set limits {}
+          foreach val $pts {
+             set tmp [expr {abs($val/$slack)}]
+             if {$tmp < 1.0} {
+                set digs 1  ;# Safety
+             } else {
+                set digs [expr {1+int(floor(log10($tmp)))}]
+             }
+             lappend limits [Ow_GraphWin DisplayFormat $val $digs]
+          }
+       } else { ;# logscale.  Work with ratios rather than differences
+          if {$min<=0} { return $pts } ;# Safety
+          set tol_adj 2.0 ;# Tolerance adjustment for log scale (empirical)
+          set wrktol [expr {0.5*$tol_adj*$tolerance}]
+          set delta [expr {pow($max/double($min),$wrktol)-1}]
+          if {$delta<=0.0} { return [list $min $max] } ;# Safety
+          set limits {}
+          foreach val $pts {
+             set slack [expr {pow(10,floor(log10($val*$delta)))}]
+             set tmp [expr {abs($val/$slack)}]
+             if {$tmp < 1.0} {
+                set digs 1  ;# Safety
+             } else {
+                set digs [expr {1+int(floor(log10($tmp)))}]
+             }
+             lappend limits [Ow_GraphWin DisplayFormat $val $digs]
+          }
+       }
+       return $limits
+    }
+
     callback method ShowPosition { cx cy button state convert tags } { \
 	    graph xgraphmin xgraphmax ygraphmin ygraphmax \
-	    y2graphmin y2graphmax bindblock ShiftMask } {
+            y2graphmin y2graphmax xlogscale ylogscale y2logscale \
+            lmargin plotwidth bindblock ShiftMask } {
 
 	if {$button==3 || ($button==1 && ($state & $ShiftMask))} {
 	    set yaxis 2
@@ -897,9 +1138,10 @@ Oc_Class Ow_GraphWin {
         foreach {ux uy} [$this GetUserCoords $cx $cy $yaxis] {break}
 
         # Determine whether to display text to left or right
-        # of point.
-        set xmid [expr {($xgraphmin+$xgraphmax)/2.}]
-        if {$ux>=$xmid} {
+        # of point.  Use canvas coords so both linear and
+        # logarithmic scales can be treated uniformly.
+        set cxmid [expr {$lmargin + 0.5*$plotwidth}]
+        if {$cx>=$cxmid} {
             set textanchor se
             set cxoff -3
         } else {
@@ -908,19 +1150,18 @@ Oc_Class Ow_GraphWin {
         }
         set cyoff -1
         # Format text for display
-        set fx [expr {[format "%.3g" [expr {$ux-$xgraphmin}]]+$xgraphmin}]
-        if {$yaxis!=2} {
-            set fy [expr \
-                    {[format "%.3g" [expr {$uy-$ygraphmin}]]+$ygraphmin}]
+        set fx [Ow_GraphWin RoundGently $xgraphmin $xgraphmax $xlogscale $ux]
+        if {$yaxis == 1} {
+           set fy \
+              [Ow_GraphWin RoundGently $ygraphmin $ygraphmax $ylogscale $uy]
         } else {
-            set fy [expr \
-                    {[format "%.3g" [expr {$uy-$y2graphmin}]]+$y2graphmin}]
+           set fy \
+              [Ow_GraphWin RoundGently $y2graphmin $y2graphmax $y2logscale $uy]
         }
         # Do display
         set textid [$graph create text \
                 [expr {$cx+$cxoff}] [expr {$cy+$cyoff}] \
-                -text [format "(%.12g,%.12g)" $fx $fy] \
-                -anchor $textanchor -tags $tags]
+                -text "($fx,$fy)" -anchor $textanchor -tags $tags]
         set bbox [$graph bbox $textid]
         eval "$graph create rectangle $bbox -fill white -outline {} \
                 -tags [list $tags]"
@@ -985,204 +1226,276 @@ Oc_Class Ow_GraphWin {
                 -fill $zoombox_ac -width 1 \
                 -arrow last -arrowshape $arrheadshape -tag zoombox
     }
-    private proc RoundNicely { grit minname maxname } {
-        # Utility proc for DoZoomBox
-        upvar 1 $minname min
-        upvar 1 $maxname max
-        if {$grit <= 0.0} { set grit 1.0 } ;# Safety
-        set slop [expr {pow(10,floor(log10($grit)))}]
-        set min [expr {$slop*floor($min/$slop)}]
-        set max [expr {$slop*ceil($max/$slop)}]
-    }
-    callback method ZoomBoxDo { x2 y2 } { graph zoombox_yaxis zoombox_basept zoombox_minsize xgraphmin xgraphmax ygraphmin ygraphmax y2graphmin y2graphmax } {
-       if {$zoombox_yaxis==0} return ;# No zoom in progress
 
+    callback method ZoomBoxDo { sx2 sy2 } {
+       # Imports are screen coordinates
+       if {$zoombox_yaxis==0} return ;# No zoom in progress
        $graph delete zoombox
 
-        set x1 [lindex $zoombox_basept 0]
-        set y1 [lindex $zoombox_basept 1]
-        set x2 [$graph canvasx $x2]
-        set y2 [$graph canvasy $y2]
-        set zw [expr {abs($x1-$x2)}]
-        set zh [expr {abs($y1-$y2)}]
-        if {$zw<$zoombox_minsize || $zh<$zoombox_minsize} {
-            set zoombox_yaxis 0   ;# Don't zoom
-            return
-        }
+       # Convert from screen coords to canvas coords
+       set xa [lindex $zoombox_basept 0]
+       set ya [lindex $zoombox_basept 1]
+       set xb [$graph canvasx $sx2]
+       set yb [$graph canvasy $sy2]
+       set zw [expr {abs($xa-$xb)}]
+       set zh [expr {abs($ya-$yb)}]
+       if {$zw<$zoombox_minsize || $zh<$zoombox_minsize} {
+          set zoombox_yaxis 0   ;# Don't zoom
+          return
+       }
 
-        # Working precision
-        global tcl_precision
-        if {![info exists tcl_precision] || $tcl_precision==0} {
-           set working_precision 17
-        } else {
-           set working_precision $tcl_precision
-        }
+       # Convert from canvas to user coordinates, and round
+       # to nice numbers.
+       foreach {uxa uya} [$this GetUserCoords $xa $ya $zoombox_yaxis] { break }
+       foreach {uxb uyb} [$this GetUserCoords $xb $yb $zoombox_yaxis] { break }
 
-        # Convert from canvas to user coordinates, and round
-        # to nice numbers.
-        if {$zoombox_yaxis==2} {
-            foreach {uxa uy2a} [$this GetUserCoords $x1 $y1 2] {break}
-            foreach {uxb uy2b} [$this GetUserCoords $x2 $y2 2] {break}
+       if {$uxa > $uxb} {
+          set t $uxa ; set uxa $uxb ; set uxb $t
+       }
+       if {$uya > $uyb} {
+          set t $uya ; set uya $uyb ; set uyb $t
+       }
 
-	    # Don't zoom higher than computational precision.
-	    set diff [expr {abs($uxa-$uxb)}]
-	    set sum  [expr {abs($uxa)+abs($uxb)}]
-	    set mindiff [expr {$sum*pow(10,-1*($working_precision-3))}]
-	    if {$diff<$mindiff} {
-		set midpt [expr {($uxa+$uxb)/2.}]
-		set uxa [expr {$midpt-$mindiff/2.}]
-		set uxb [expr {$midpt+$mindiff/2.}]
-	    }
-	    set diff [expr {abs($uy2a-$uy2b)}]
-	    set sum  [expr {abs($uy2a)+abs($uy2b)}]
-	    set mindiff [expr {$sum*pow(10,-1*($working_precision-3))}]
-	    if {$diff<$mindiff} {
-		set midpt [expr {($uy2a+$uy2b)/2.}]
-		set uy2a [expr {$midpt-$mindiff/2.}]
-		set uy2b [expr {$midpt+$mindiff/2.}]
-	    }
+       foreach {rxa rxb} \
+          [Ow_GraphWin RoundGently $uxa $uxb $xlogscale] { break }
+       if {$zoombox_yaxis == 1} {
+          foreach {ry1a ry1b} \
+             [Ow_GraphWin RoundGently $uya $uyb $ylogscale] { break }
+          set ry2a $y2graphmin
+          set ry2b $y2graphmax
+       } else {
+          foreach {ry2a ry2b} \
+             [Ow_GraphWin RoundGently $uya $uyb $y2logscale] { break }
+          set ry1a $ygraphmin
+          set ry1b $ygraphmax
+       }
 
-            Ow_GraphWin RoundNicely \
-                [expr {($xgraphmax-$xgraphmin)/100.}] uxa uxb
-            Ow_GraphWin RoundNicely \
-                [expr {($y2graphmax-$y2graphmin)/100.}] uy2a uy2b
-            set uy1a $ygraphmin
-            set uy1b $ygraphmax
-        } else {
-            foreach {uxa uy1a} [$this GetUserCoords $x1 $y1 1] {break}
-            foreach {uxb uy1b} [$this GetUserCoords $x2 $y2 1] {break}
+       # Update display
+       $this StoreState
+       if {[$this SpecifyGraphExtents $rxa $rxb \
+               $ry1a $ry1b $ry2a $ry2b]} {
+          $this RefreshDisplay
+          $this StoreState
+       }
 
-	    # Don't zoom higher than computational precision.
-	    set diff [expr {abs($uxa-$uxb)}]
-	    set sum  [expr {abs($uxa)+abs($uxb)}]
-	    set mindiff [expr {$sum*pow(10,-1*($working_precision-3))}]
-	    if {$diff<$mindiff} {
-		set midpt [expr {($uxa+$uxb)/2.}]
-		set uxa [expr {$midpt-$mindiff/2.}]
-		set uxb [expr {$midpt+$mindiff/2.}]
-	    }
-	    set diff [expr {abs($uy1a-$uy1b)}]
-	    set sum  [expr {abs($uy1a)+abs($uy1b)}]
-	    set mindiff [expr {$sum*pow(10,-1*($working_precision-3))}]
-	    if {$diff<$mindiff} {
-		set midpt [expr {($uy1a+$uy1b)/2.}]
-		set uy1a [expr {$midpt-$mindiff/2.}]
-		set uy1b [expr {$midpt+$mindiff/2.}]
-	    }
+       # Turn off zoombox-in-progress indicator
+       set zoombox_yaxis 0
+    }
 
-            Ow_GraphWin RoundNicely \
-                [expr {($xgraphmax-$xgraphmin)/100.}] uxa uxb
-            Ow_GraphWin RoundNicely \
-                [expr {($ygraphmax-$ygraphmin)/100.}] uy1a uy1b
-            set uy2a $y2graphmin
-            set uy2b $y2graphmax
-        }
+    #########################################################
+    # Display state (graph limit) store stack ###############
 
-        # Rescale
-	if {[$this SetGraphLimits $uxa $uxb $uy1a $uy1b $uy2a $uy2b]} {
-	    $this RefreshDisplay
-	}
+    # Proc for comparing two display states, where a display state is a
+    # 6-tuple of xmin, xmax, ymin, ymax, y2min, y2max.  Returns 1 if
+    # states are the same, otherwise 0.  Empty strings are treated as
+    # wildcards that match anything.
+    proc SameStates { a b } {
+       if {[llength $a]==0 || [llength $b]==0} {
+          return 1  ;# One state or other is fully empty.
+       }
+       foreach x $a y $b {
+          if {![string match {} $x] && ![string match {} $y] \
+                 && $x != $y} {
+             return 0 ;# States differ
+          }
+       }
+       return 1
+    }
+    method ResetStoreStack {} {
+       set stateindex 0
+       set statestack {}
+       lappend statestack [$this GetGraphLimitsReduced]
+    }
+    method GetStoreStackSize {} {
+       set size [llength $statestack]
+       if {$size == 1 && [string match {} [lindex $statestack 0]]} {
+          set size 0  ;# Dummy first element
+       }
+       return $size
+    }
+    method StoreState {} {
+       # If current display state is different from state at current
+       # stateindex, then increment stateindex, store the current
+       # display state at the new stateindex, and truncate any states on
+       # statestack beyond the new stateindex.
+       #  Do nothing if current display state matches the state at the
+       # current statindex.
+       #  If an axis has no curves currently plotted against it, then
+       # store empty strings as the limits for that axis.  In the
+       # GetState method empty strings are replaced with the then
+       # current axis limits.
+       set displaystate [$this GetGraphLimitsReduced]
+       set refstate [lindex $statestack $stateindex]
+       if {[llength $refstate]==0} {
+          # Empty state on stack; replace it with current state but
+          # don't increment stateindex.
+       } else {
+          if {[Ow_GraphWin SameStates $displaystate $refstate]} {
+             return  ;# Do nothing
+          }
+          incr stateindex
+       }
+       if {[llength $statestack]<=$stateindex} {
+          # Note: lreplace (other branch) requires $stateindex be a
+          # valid index.
+          set stateindex [llength $statestack]
+          lappend statestack $displaystate
+       } else {
+          set statestack [lreplace $statestack $stateindex end $displaystate]
+       }
+       $this ResetPanZoom
+    }
+    method GetStateIndex { {offset 0} } {
+       # If offset is zero then returns stateindex.
+       #
+       # If offset is positive the return stateindex+offset.
+       #
+       # If offset is negative and display matches the state at
+       # stateindex, then return stateindex+offset.  If offset is
+       # negative and the display does not match the state at
+       # stateindex, then return stateindex+offset+1.  In particular, if
+       # the display state does not match the stateindex state then
+       # offset=0 and offset=-1 both return stateindex.
+       set index $stateindex
+       if {$offset < 0} {
+          set displaystate [$this GetGraphLimits]
+          set refstate [lindex $statestack $stateindex]
+          if {![Ow_GraphWin SameStates $displaystate $refstate]} {
+             incr index  ;# States differ
+          }
+       }
+       incr index $offset
+       if {$index<0} {set index 0}
+       if {$index >= [llength $statestack]} {
+          set index [expr {[llength $statestack]-1}]
+       }
+       return $index
+    }
+    method GetState { {offset 0} } {
+       # Returns the state at requested relative offset in the display
+       # state stack.  Empty (transparent) limits are replaced with the
+       # current display limits.
+       set stateindex [$this GetStateIndex $offset]
+       set refstate [lindex $statestack $stateindex]
+       set displaystate [$this GetGraphLimits]
+       set rtnstate {}
+       foreach a $refstate b $displaystate {
+          if {![string match {} $a]} {
+             lappend rtnstate $a
+          } else {
+             lappend rtnstate $b
+          }
+       }
+       return $rtnstate
+    }
+    method RecoverState { {offset 0} } {
+       $this SpecifyGraphExtents {*}[$this GetState $offset]
+       $this RefreshDisplay
+       $this ResetPanZoom
+    }
+    ############### Display state (graph limit) store stack #
+    #########################################################
 
-        # Turn off zoombox-in-progress indicator
-        set zoombox_yaxis 0
+    # Makes current display base configuration for PanZoom control
+    method ResetPanZoom {} {
+       set pz_panx 0.
+       set pz_pany 0.
+       set pz_zoom 1.0
+    }
+
+    # Realize current PanZoom settings on the display
+    method UpdatePanZoomDisplay {} {
+       set pz_base [$this GetState 0]
+       foreach {xmin xmax ymin ymax y2min y2max} $pz_base { break }
+       if {!$xlogscale} {
+          set xwidth [expr {$xmax-$xmin}]
+          set xmid [expr {0.5*($xmin+$xmax)}]
+          set nxmid [expr {$xmid+$xwidth*$pz_panx}]
+          set nxhalfwidth [expr {0.5*$xwidth/$pz_zoom}]
+          set nxmin [expr {$nxmid - $nxhalfwidth}]
+          set nxmax [expr {$nxmid + $nxhalfwidth}]
+       } else {
+          set xrat [expr {double($xmax)/$xmin}]
+          set xmid [expr {sqrt($xmin*$xmax)}]
+          set nxmid [expr {$xmid*pow($xrat,$pz_panx)}]
+          set nxhalfrat [expr {pow($xrat,0.5/$pz_zoom)}]
+          set nxmin [expr {$nxmid/$nxhalfrat}]
+          set nxmax [expr {$nxmid*$nxhalfrat}]
+       }
+       if {!$ylogscale} {
+          set ywidth [expr {$ymax-$ymin}]
+          set ymid [expr {0.5*($ymin+$ymax)}]
+          set nymid [expr {$ymid+$ywidth*$pz_pany}]
+          set nyhalfwidth [expr {0.5*$ywidth/$pz_zoom}]
+          set nymin [expr {$nymid - $nyhalfwidth}]
+          set nymax [expr {$nymid + $nyhalfwidth}]
+       } else {
+          set yrat [expr {double($ymax)/$ymin}]
+          set ymid [expr {sqrt($ymin*$ymax)}]
+          set nymid [expr {$ymid*pow($yrat,$pz_pany)}]
+          set nyhalfrat [expr {pow($yrat,0.5/$pz_zoom)}]
+          set nymin [expr {$nymid/$nyhalfrat}]
+          set nymax [expr {$nymid*$nyhalfrat}]
+       }
+       if {!$y2logscale} {
+          set y2width [expr {$y2max-$y2min}]
+          set y2mid [expr {0.5*($y2min+$y2max)}]
+          set ny2mid [expr {$y2mid+$y2width*$pz_pany}]
+          set ny2halfwidth [expr {0.5*$y2width/$pz_zoom}]
+          set ny2min [expr {$ny2mid - $ny2halfwidth}]
+          set ny2max [expr {$ny2mid + $ny2halfwidth}]
+       } else {
+          set y2rat [expr {double($y2max)/$y2min}]
+          set y2mid [expr {sqrt($y2min*$y2max)}]
+          set ny2mid [expr {$y2mid*pow($y2rat,$pz_pany)}]
+          set ny2halfrat [expr {pow($y2rat,0.5/$pz_zoom)}]
+          set ny2min [expr {$ny2mid/$ny2halfrat}]
+          set ny2max [expr {$ny2mid*$ny2halfrat}]
+       }
+
+       # Round limits
+       foreach {nxmin nxmax} \
+          [Ow_GraphWin RoundGently $nxmin $nxmax $xlogscale] { break }
+       foreach {nymin nymax} \
+          [Ow_GraphWin RoundGently $nymin $nymax $ylogscale] { break }
+       foreach {ny2min ny2max} \
+          [Ow_GraphWin RoundGently $ny2min $ny2max $y2logscale] { break }
+
+       # Update display
+       if {[$this SpecifyGraphExtents $nxmin $nxmax \
+               $nymin $nymax $ny2min $ny2max]} {
+          $this RefreshDisplay
+       }
     }
 
     method Zoom { factor } {
-	if {$factor==0.0} {return}
-	set ifactor [expr {1.0/abs(2.0*$factor)}]
-
-	# Don't zoom beyond floating point precision
-	global tcl_precision
-        if {![info exists tcl_precision]
-            || $tcl_precision==0 || $tcl_precision>16} {
-           set minrat 5.0e-15
-        } else {
-           set minrat [expr {0.5*pow(10,-1*($tcl_precision-3))}]
-        }
-
-	# Rescale about display center
-	set xmid [expr {($xgraphmin+$xgraphmax)/2.}]
-	set xsize [expr {($xgraphmax-$xgraphmin)*$ifactor}]
-	if {$xsize<$minrat*$xmid} {set xsize [expr {$minrat*$xmid}]}
-	set xa [expr {$xmid-$xsize}]
-	set xb [expr {$xmid+$xsize}]
-	Ow_GraphWin RoundNicely \
-                [expr {($xgraphmax-$xgraphmin)/100.}] xa xb
-
-	set ymid [expr {($ygraphmin+$ygraphmax)/2.}]
-	set ysize [expr {($ygraphmax-$ygraphmin)*$ifactor}]
-	if {$ysize<$minrat*$ymid} {set ysize [expr {$minrat*$ymid}]}
-	set ya [expr {$ymid-$ysize}]
-	set yb [expr {$ymid+$ysize}]
-	Ow_GraphWin RoundNicely \
-                [expr {($ygraphmax-$ygraphmin)/100.}] ya yb
-
-	set y2mid [expr {($y2graphmin+$y2graphmax)/2.}]
-	set y2size [expr {($y2graphmax-$y2graphmin)*$ifactor}]
-	if {$y2size<$minrat*$y2mid} {set y2size [expr {$minrat*$y2mid}]}
-	set y2a [expr {$y2mid-$y2size}]
-	set y2b [expr {$y2mid+$y2size}]
-	Ow_GraphWin RoundNicely \
-                [expr {($y2graphmax-$y2graphmin)/100.}] y2a y2b
-
-        # Rescale
-	if {[$this SetGraphLimits $xa $xb $ya $yb $y2a $y2b]} {
-	    $this RefreshDisplay
-	}
+       set pz_zoom [expr {$pz_zoom*$factor}]
+       $this UpdatePanZoomDisplay
     }
 
-    method Pan { xpan y1pan y2pan } {
-        foreach {xa xb y1a y1b y2a y2b} [$this GetGraphLimits] { break }
-
-        set xadj [expr {($xb-$xa)*$xpan}]
-        set xa [expr {$xa+$xadj}]
-        set xb [expr {$xb+$xadj}]
-
-        set y1adj [expr {($y1b-$y1a)*$y1pan}]
-        set y1a [expr {$y1a+$y1adj}]
-        set y1b [expr {$y1b+$y1adj}]
-
-        set y2adj [expr {($y2b-$y2a)*$y2pan}]
-        set y2a [expr {$y2a+$y2adj}]
-        set y2b [expr {$y2b+$y2adj}]
-
-        foreach {txa txb ty1a ty1b ty2a ty2b} [Ow_GraphWin NiceExtents \
-            1000 $xa $xb $y1a $y1b $y2a $y2b] {break}
-
-	if {$xadj!=0}  { set xa  $txa  ; set xb  $txb  }
-	if {$y1adj!=0} { set y1a $ty1a ; set y1b $ty1b }
-	if {$y2adj!=0} { set y2a $ty2a ; set y2b $ty2b }
-
-	if {[$this SetGraphLimits $xa $xb $y1a $y1b $y2a $y2b]} {
-	    $this RefreshDisplay
-	}
+    method Pan { xpan ypan y2pan } {
+       # Independent y2 pan not supported.
+       set pz_panx [expr {$pz_panx+$xpan/$pz_zoom}]
+       set pz_pany [expr {$pz_pany+$ypan/$pz_zoom}]
+       $this UpdatePanZoomDisplay
     }
 
     private method DrawRules { x y } {
         # Note: Imports x and y are in graph (not canvas) coordinates.
         #  If $x=={}, then the vertical rule is drawn on the leftmost
         # edge of the graph.  If $y=={}, then the horizontal rule is
-        # drawn on the bottommost edge of the graph.
+        # drawn on the bottom-most edge of the graph.
         set vrulepos $x
         set hrulepos $y
         foreach {cxmin cymin cxmax cymax} \
                 [list $lmargin $tmargin \
                   [expr {$lmargin+$plotwidth}] \
                   [expr {$tmargin+$plotheight}]] {}
-        set cx {}
-        if {![string match {} $x]} {
-            set cx [expr {$x*$xscale+$xoff}]
-        }
-        set cy {}
-        if {![string match {} $y]} {
-            set cy [expr {$y*$yscale+$yoff}]
-        }
-        if {[string match {} $cx]} { set cx $cxmin }
-        if {[string match {} $cy]} { set cy $cymax }
-        if {$cx<$cxmin} {set cx $cxmin}
+        foreach {cx cy} [$this GetCanvasCoords $x $y 1] break
+        if {[string match {} $x] || $cx<$cxmin} {set cx $cxmin}
         if {$cx>$cxmax} {set cx $cxmax}
+        if {[string match {} $y] || $cy>$cymax} {set cy $cymax}
         if {$cy<$cymin} {set cy $cymin}
-        if {$cy>$cymax} {set cy $cymax}
         if {$hrulestate} {
             $graph raise [$graph create line \
                     $cxmin $cy $cxmax $cy \
@@ -1275,8 +1588,18 @@ Oc_Class Ow_GraphWin {
         set tmargin_min $top
         set bmargin_min $bottom
     }
+    method SetLogAxes { xlog ylog y2log } {
+       set xlogscale  $xlog
+       set ylogscale  $ylog
+       set y2logscale $y2log
+       # Check that graph limits are still valid and adjust as
+       # necessary.
+       if {[$this SpecifyGraphExtents {*}[$this GetGraphLimits]]} {
+          $this RefreshDisplay
+       }
+    }
     method DrawAxes {} {
-        # Clears canvas, then renders title, axes labels, axes,
+        # Clears canvas, then renders axes, title, axes labels, tics,
         # horizontal and vertical rules, and key.
         #   Also sets {t,b,l,r}margin, plotwidth/plotheight, and
         # {x,y,y2}scale, {x,y,y2}off values.
@@ -1328,25 +1651,11 @@ Oc_Class Ow_GraphWin {
             set title_height 0
         }
 
-        # Produce "cleaned up" rendition of {x|y|y2}graph{min|max}
-        foreach v [list xgraphmin xgraphmax ygraphmin ygraphmax \
-                y2graphmin y2graphmax] {
-            set val [set $v]
-            set test [format "%#.12g" $val] ;# The "#" form of the
-            ## %g format guarantees a decimal point is presented.
-            ## This protects against integer overflow problems.
-            if {$test-$val == 0.0} {
-                set ${v}_text [format "%.12g" $val]
-            } else {
-                set ${v}_text [format "%.15g" $val]
-            }
-        }
-
         # Calculate lower bound for margin size from axes coordinate text
         $graph delete margin_test   ;# Safety
-        $graph create text 0 0 -text $xgraphmin_text -font $label_font \
+        $graph create text 0 0 -text $xgraphmin -font $label_font \
                 -anchor sw -tags margin_test
-        $graph create text 0 0 -text $xgraphmax_text -font $label_font \
+        $graph create text 0 0 -text $xgraphmax -font $label_font \
                 -anchor sw -tags margin_test
         set bbox [$graph bbox margin_test]
         set xtext_height [expr {([lindex $bbox 3]-[lindex $bbox 1])*1.2+1}]
@@ -1355,9 +1664,9 @@ Oc_Class Ow_GraphWin {
         $graph delete margin_test
 
         if {$y1ccnt>0} {
-            $graph create text 0 0 -text $ygraphmin_text -font $label_font \
+            $graph create text 0 0 -text $ygraphmin -font $label_font \
                     -anchor sw -tags margin_test
-            $graph create text 0 0 -text $ygraphmax_text -font $label_font \
+            $graph create text 0 0 -text $ygraphmax -font $label_font \
                     -anchor sw -tags margin_test
             set bbox [$graph bbox margin_test]
             set ytext_halfheight \
@@ -1371,9 +1680,9 @@ Oc_Class Ow_GraphWin {
             set ytext_width 0
         }
         if {$y2ccnt>0} {
-            $graph create text 0 0 -text $y2graphmin_text -font $label_font \
+            $graph create text 0 0 -text $y2graphmin -font $label_font \
                     -anchor sw -tags margin_test
-            $graph create text 0 0 -text $y2graphmax_text -font $label_font \
+            $graph create text 0 0 -text $y2graphmax -font $label_font \
                     -anchor sw -tags margin_test
             set bbox [$graph bbox margin_test]
             set y2text_halfheight \
@@ -1439,23 +1748,32 @@ Oc_Class Ow_GraphWin {
 
         # Set instance variables used to transform from graph coords
         # to display coords:
-        set xrange [expr {double($xgraphmax-$xgraphmin)}]   ;# Temporary
+        if {!$xlogscale} {
+           set xrange [expr {double($xgraphmax-$xgraphmin)}]   ;# Temporary
+        } else {
+           set xrange [expr {double(log($xgraphmax)-log($xgraphmin))}]
+        }
         if {$xrange==0.} {set xrange  1.}
         set xscale [expr {double($plotwidth)/$xrange}]
         if {$xscale==0.} {set xscale 1.}
-        set xoff [expr {$lmargin - $xgraphmin * $xscale}]
 
-        set yrange [expr {double($ygraphmax-$ygraphmin)}]   ;# Temporary
+        if {!$ylogscale} {
+           set yrange [expr {double($ygraphmax-$ygraphmin)}]   ;# Temporary
+        } else {
+           set yrange [expr {double(log($ygraphmax)-log($ygraphmin))}]
+        }
         if {$yrange==0.} {set yrange  1.}
         set yscale [expr {double(-$plotheight)/$yrange}]
         if {$yscale==0.} {set yscale -1.}
-        set yoff [expr {$tmargin - $ygraphmax * $yscale}]
 
-        set y2range [expr {double($y2graphmax-$y2graphmin)}] ;# Temporary
+        if {!$y2logscale} {
+           set y2range [expr {double($y2graphmax-$y2graphmin)}] ;# Temporary
+        } else {
+           set y2range [expr {double(log($y2graphmax)-log($y2graphmin))}]
+        }
         if {$y2range==0.} {set y2range  1.}
         set y2scale [expr {double(-$plotheight)/$y2range}]
         if {$y2scale==0.} {set y2scale -1.}
-        set y2off [expr {$tmargin - $y2graphmax * $y2scale}]
 
         set xdispmin $lmargin
         set ydispmin $tmargin
@@ -1507,25 +1825,25 @@ Oc_Class Ow_GraphWin {
 
         $graph create text $xdispmin [expr {$ydispmax+$bmargin*0.1}] \
                 -font $label_font \
-                -text $xgraphmin_text -anchor n -tags axes
+                -text $xgraphmin -anchor n -tags axes
         $graph create text $xdispmax [expr {$ydispmax+$bmargin*0.1}] \
                 -font $label_font \
-                -text $xgraphmax_text -anchor n -tags axes
+                -text $xgraphmax -anchor n -tags axes
         if {$y1ccnt>0} {
             $graph create text [expr {$xdispmin-$lmargin*0.1}] $ydispmax \
                     -font $label_font \
-                    -text $ygraphmin_text -anchor se -tags axes
+                    -text $ygraphmin -anchor se -tags axes
             $graph create text [expr {$xdispmin-$lmargin*0.1}] $ydispmin \
                     -font $label_font \
-                    -text $ygraphmax_text -anchor ne -tags axes
+                    -text $ygraphmax -anchor ne -tags axes
         }
         if {$y2ccnt>0} {
             $graph create text [expr {$xdispmax+$rmargin*0.1}] $ydispmax \
                     -font $label_font \
-                    -text $y2graphmin_text -anchor sw -tags axes
+                    -text $y2graphmin -anchor sw -tags axes
             $graph create text [expr {$xdispmax+$rmargin*0.1}] $ydispmin \
                     -font $label_font \
-                    -text $y2graphmax_text -anchor nw -tags axes
+                    -text $y2graphmax -anchor nw -tags axes
         }
 
         # Render title
@@ -1559,85 +1877,71 @@ Oc_Class Ow_GraphWin {
                     -font $label_font -justify center \
                     -text $y2label -tags axes
         }
-        
+
+        # Tics
+        set ticlength {}
+        foreach len [list 1.4 2.0 1.4] {
+           lappend ticlength [expr {$len*$axeswidth}]
+        }
+        set linoff {}
+        set logoff {}
+        foreach off [list 0.25 0.50 0.75] {
+           lappend linoff $off
+           lappend logoff [expr {log10(10*$off)}]
+        }
+
         # X-axes tics
-        set xquart [expr {($xdispmax-$xdispmin)/4.}]
-        set x1 [expr {$xdispmin+$xquart}]
-        set y1 $ydispmax  ;  set y2 [expr {$y1-1.4*$axeswidth}]
-        set y3 $ydispmin  ;  set y4 [expr {$y3+1.4*$axeswidth}]
-        $graph create line $x1 $y1 $x1 $y2 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
-        $graph create line $x1 $y3 $x1 $y4 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
-        set x1 [expr {$xdispmax-$xquart}]
-        $graph create line $x1 $y1 $x1 $y2 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
-        $graph create line $x1 $y3 $x1 $y4 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
-        set x1 [expr {$xdispmin+2*$xquart}]
-        set y1 $ydispmax  ;  set y2 [expr {$y1-2*$axeswidth}]
-        set y3 $ydispmin  ;  set y4 [expr {$y3+2*$axeswidth}]
-        $graph create line $x1 $y1 $x1 $y2 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
-        $graph create line $x1 $y3 $x1 $y4 \
-                -fill $axescolor -width $axeswidth -tags {axes showpos}
+        if {!$xlogscale} {
+           set offsets $linoff
+        } else {
+           set offsets $logoff
+        }
+        foreach off $offsets tlen $ticlength {
+           set xt [expr {$xdispmin + $off*($xdispmax-$xdispmin)}]
+           $graph create line $xt $ydispmax $xt [expr {$ydispmax - $tlen}] \
+              -fill $axescolor -width $axeswidth -tags {axes showpos}
+           $graph create line $xt $ydispmin $xt [expr {$ydispmin + $tlen}] \
+              -fill $axescolor -width $axeswidth -tags {axes showpos}
+        }
+
         # Y1-axis tics
         if {$y1ccnt>0} {
-            set yquart [expr {($ydispmax-$ydispmin)/4.}]
-            set y1 [expr {$ydispmax-$yquart}]
-            set x1 $xdispmin  ;  set x2 [expr {$x1+1.4*$axeswidth}]
-            $graph create line $x1 $y1 $x2 $y1 \
+           if {!$ylogscale} {
+              set offsets $linoff
+           } else {
+              set offsets $logoff
+           }
+           foreach off $offsets tlen $ticlength {
+              set yt [expr {$ydispmax - $off*($ydispmax-$ydispmin)}]
+              $graph create line \
+                 $xdispmin $yt [expr {$xdispmin + $tlen}] $yt \
+                 -fill $axescolor -width $axeswidth -tags {axes showpos}
+              if {$y2ccnt==0} {
+                 $graph create line \
+                    $xdispmax $yt [expr {$xdispmax - $tlen}] $yt \
                     -fill $axescolor -width $axeswidth -tags {axes showpos}
-            if {$y2ccnt==0} {
-                set x3 $xdispmax  ;  set x4 [expr {$x3-1.4*$axeswidth}]
-                $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
-            set y1 [expr {$ydispmin+$yquart}]
-            $graph create line $x1 $y1 $x2 $y1 \
-                    -fill $axescolor -width $axeswidth -tags {axes showpos}
-            if {$y2ccnt==0} {
-                $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
-            set y1 [expr {$ydispmax-2*$yquart}]
-            set x1 $xdispmin  ;  set x2 [expr {$x1+2*$axeswidth}]
-            $graph create line $x1 $y1 $x2 $y1 \
-                    -fill $axescolor -width $axeswidth -tags {axes showpos}
-            if {$y2ccnt==0} {
-                set x3 $xdispmax  ;  set x4 [expr {$x3-2*$axeswidth}]
-                $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
+              }
+           }
         }
+
         # Y2-axis tics
         if {$y2ccnt>0} {
-            set yquart [expr {($ydispmax-$ydispmin)/4.}]
-            set y1 [expr {$ydispmax-$yquart}]
-            if {$y1ccnt==0} {
-                set x1 $xdispmin  ;  set x2 [expr {$x1+1.4*$axeswidth}]
-                $graph create line $x1 $y1 $x2 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
-            set x3 $xdispmax  ;  set x4 [expr {$x3-1.4*$axeswidth}]
-            $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                    -width $axeswidth -tags {axes showpos}
-            set y1 [expr {$ydispmin+$yquart}]
-            if {$y1ccnt==0} {
-                $graph create line $x1 $y1 $x2 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
-            $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                    -width $axeswidth -tags {axes showpos}
-            set y1 [expr {$ydispmax-2*$yquart}]
-            if {$y1ccnt==0} {
-                set x1 $xdispmin  ;  set x2 [expr {$x1+2*$axeswidth}]
-                $graph create line $x1 $y1 $x2 $y1 -fill $axescolor \
-                        -width $axeswidth -tags {axes showpos}
-            }
-            set x3 $xdispmax  ;  set x4 [expr {$x3-2*$axeswidth}]
-            $graph create line $x3 $y1 $x4 $y1 -fill $axescolor \
-                    -width $axeswidth -tags {axes showpos}
+           if {!$y2logscale} {
+              set offsets $linoff
+           } else {
+              set offsets $logoff
+           }
+           foreach off $offsets tlen $ticlength {
+              set yt [expr {$ydispmax - $off*($ydispmax-$ydispmin)}]
+              if {$y1ccnt==0} {
+                 $graph create line \
+                    $xdispmin $yt [expr {$xdispmin + $tlen}] $yt \
+                    -fill $axescolor -width $axeswidth -tags {axes showpos}
+              }
+              $graph create line \
+                 $xdispmax $yt [expr {$xdispmax - $tlen}] $yt \
+                 -fill $axescolor -width $axeswidth -tags {axes showpos}
+           }
         }
 
         # Draw rules
@@ -1647,8 +1951,7 @@ Oc_Class Ow_GraphWin {
         $this DrawKey $key_pos
     }
 
-    method NewCurve { curvelabel yaxis } \
-            { curvecount id idlist curve color symbol_types } {
+    method NewCurve { curvelabel yaxis } {
         set curvename "$curvelabel,$yaxis"
         if {[info exists id($curvename)]} {
             error "Curve $curvename already exists"
@@ -1656,8 +1959,8 @@ Oc_Class Ow_GraphWin {
 
         lappend idlist $curvecount
         set curveid $curvecount
-        set curvecolor $color([expr {$curvecount % $color(count)}])
-               set symbol [expr {$curvecount % $symbol_types}]
+        set colorid  [expr {$curvecount % [llength $colorset]}]
+        set symbolid [expr {$curvecount % [llength $symbols]}]
         incr curvecount
         set segcolor {} ;# Segcolors are assigned in lazy fashion,
                           ## at time of initial rendering.
@@ -1667,10 +1970,10 @@ Oc_Class Ow_GraphWin {
         array set curve [list              \
                 $curveid,name  $curvename  \
                 $curveid,label $curvelabel \
-                $curveid,color $curvecolor \
-                $curveid,segcolor  $segcolor \
-                $curveid,symbol $symbol \
-                $curveid,segsymbol  $segsymbol \
+                $curveid,color $colorid \
+                $curveid,segcolor  {} \
+                $curveid,symbol $symbolid \
+                $curveid,segsymbol  {} \
                 $curveid,ptsbreak    {}      \
                 $curveid,pts         {}      \
                 $curveid,lastpt   {-2 0. 0.} \
@@ -1682,9 +1985,13 @@ Oc_Class Ow_GraphWin {
                 $curveid,hidden      0       \
                 $curveid,yaxis     $yaxis    \
                 $curveid,xmin        {}      \
-                $curveid,ymin        {}      \
                 $curveid,xmax        {}      \
-                $curveid,ymax        {}       ]
+                $curveid,xabsmin     {}      \
+                $curveid,xabsmax     {}      \
+                $curveid,ymin        {}      \
+                $curveid,ymax        {}      \
+                $curveid,yabsmin     {}      \
+                $curveid,yabsmax     {}       ]
 
         # Update key
         $this DrawKey
@@ -1727,6 +2034,44 @@ Oc_Class Ow_GraphWin {
         set curvename "$curvelabel,$yaxis"
         $this DeleteCurveByName $curvename
     }
+    private method SetCurveExtrema { curveid } { curve } {
+       set xmin [set ymin "z"]
+       set xmax [set ymax {}]
+       set xabsmin [set yabsmin "z"]
+       foreach { x y } $curve($curveid,pts) {
+          if {$x<$xmin} {set xmin $x}
+          if {$x>$xmax} {set xmax $x}
+          if {abs($x)<$xabsmin && $x != 0.0} {
+             set xabsmin [expr {abs($x)}]
+          }
+          if {$y<$ymin} {set ymin $y}
+          if {$y>$ymax} {set ymax $y}
+          if {abs($y)<$yabsmin && $y != 0.0} {
+             set yabsmin [expr {abs($y)}]
+          }
+       }
+       if {[string match {} $xmax]} {
+          # No non-empty points entered
+          set xmin [set ymin {}]
+          set xabsmin [set xabsmax {}]
+          set yabsmin [set yabsmax {}]
+       } else { # Figure out x/yabsmax
+          set xabsmax [expr {abs($xmax)}]
+          if {$xabsmax<abs($xmin)} { set xabsmax [expr {abs($xmin)}] }
+          if {$xabsmax == 0} { set xabsmin [set xabsmax {}] }
+          set yabsmax [expr {abs($ymax)}]
+          if {$yabsmax<abs($ymin)} { set yabsmax [expr {abs($ymin)}] }
+          if {$yabsmax == 0} { set yabsmin [set yabsmax {}] }
+       }
+       set curve($curveid,xmin) $xmin
+       set curve($curveid,xmax) $xmax
+       set curve($curveid,xabsmin) $xabsmin
+       set curve($curveid,xabsmax) $xabsmax
+       set curve($curveid,ymin) $ymin
+       set curve($curveid,ymax) $ymax
+       set curve($curveid,yabsmin) $yabsmin
+       set curve($curveid,yabsmax) $yabsmax
+    }
     private method CutCurve { curveid } { curve ptlimit ptlimitcut } {
        if {$ptlimit<1} { return }
        foreach { lastindex x y } $curve($curveid,lastpt) {}
@@ -1748,17 +2093,9 @@ Oc_Class Ow_GraphWin {
           [lrange $curve($curveid,segcolor) $cutindex end]
        set curve($curveid,segsymbol) \
           [lrange $curve($curveid,segsymbol) $cutindex end]
-       set xmin $x ; set xmax $x ; set ymin $y ; set ymax $y
-       foreach { x y } $curve($curveid,pts) {
-          if {$x<$xmin} { set xmin $x }
-          if {$x>$xmax} { set xmax $x }
-          if {$y<$ymin} { set ymin $y }
-          if {$y>$ymax} { set ymax $y }
-       }
-       set curve($curveid,xmin) $xmin
-       set curve($curveid,xmax) $xmax
-       set curve($curveid,ymin) $ymin
-       set curve($curveid,ymax) $ymax
+
+       $this SetCurveExtrema $curveid
+
        set curve($curveid,lastpt) [list [expr {$newlength - 2}] $x $y]
        set curve($curveid,ptsdisp) {}
        set curve($curveid,lastdpt) {}
@@ -1769,13 +2106,12 @@ Oc_Class Ow_GraphWin {
           $this DrawKey
        }
     }
-    method AddDataPoints { curvelabel yaxis newpts } \
-       { id curve ptlimit color } {
-        # Returns xmin ymin xmax ymax of input data.  (This may
-        # be different from extremes of appended data, if ptlimit
-        # is smaller than the number of appended points.)
+    method AddDataPoints { curvelabel yaxis newpts } {
+       id curve ptlimit xlogscale ylogscale y2logscale } {
+        # Appends points to specified curve.  Returns 1 if x or y axis
+        # data range is extended.  Note that appending may be restricted
+        # if ptlimit is reached.
         # Also sets curve($curveid,dispcurrent) to 0 (false).
-        # Returns {} if no data input.
         set curvename "$curvelabel,$yaxis"
         set argcount [llength $newpts]
         if {$argcount<2} { return {} }
@@ -1793,6 +2129,7 @@ Oc_Class Ow_GraphWin {
         # $x<$xmin and $x>$xmax for *all* numeric $x.
         set xmin [set ymin "z"]
         set xmax [set ymax {}]
+        set xabsmin [set yabsmin "z"]
         foreach { lastindex x y } $curve($curveid,lastpt) {}
         foreach { tx ty } $newpts {
             if {[string match {} $tx]} {
@@ -1814,12 +2151,38 @@ Oc_Class Ow_GraphWin {
                 # Track extreme values
                 if {$x<$xmin} {set xmin $x}
                 if {$x>$xmax} {set xmax $x}
+                if {abs($x)<$xabsmin && $x != 0.0} {
+                   set xabsmin [expr {abs($x)}]
+                }
                 if {$y<$ymin} {set ymin $y}
                 if {$y>$ymax} {set ymax $y}
+                if {abs($y)<$yabsmin && $y != 0.0} {
+                   set yabsmin [expr {abs($y)}]
+                }
                 lappend curve($curveid,pts) $x $y
                 incr lastindex 2
             }
         }
+
+        # Finish up {x,y}abs{min,max} processing
+        if {[string match {} $xmax]} {
+            # No non-empty points entered
+           set xabsmin [set xabsmax {}]
+           set yabsmin [set yabsmax {}]
+        } else { # Figure out x/yabsmax
+           set xabsmax [expr {abs($xmax)}]
+           if {$xabsmax<abs($xmin)} { set xabsmax [expr {abs($xmin)}] }
+           if {$xabsmax == 0} { set xabsmin [set xabsmax {}] }
+           set yabsmax [expr {abs($ymax)}]
+           if {$yabsmax<abs($ymin)} { set yabsmax [expr {abs($ymin)}] }
+           if {$yabsmax == 0} { set yabsmin [set yabsmax {}] }
+        }
+
+        # Adjust range extents
+        set xrangechange 0
+        set yrangechange 0
+        set xabsrangechange 0
+        set yabsrangechange 0
         set curve($curveid,lastpt) [list $lastindex $x $y]
         if {[string match {} $xmax]} {
             # No non-empty points entered
@@ -1827,29 +2190,91 @@ Oc_Class Ow_GraphWin {
         } elseif {[string match {} $curve($curveid,xmin)]} {
             set curve($curveid,xmin) $xmin
             set curve($curveid,xmax) $xmax
+            set curve($curveid,xabsmin) $xabsmin
+            set curve($curveid,xabsmax) $xabsmax
             set curve($curveid,ymin) $ymin
             set curve($curveid,ymax) $ymax
+            set curve($curveid,yabsmin) $yabsmin
+            set curve($curveid,yabsmax) $yabsmax
+            set xrangechange 1
+            set yrangechange 1
+            set xabsrangechange 1
+            set yabsrangechange 1
         } else {
             if {$xmin<$curve($curveid,xmin)} {
                 set curve($curveid,xmin) $xmin
+                set xrangechange 1
             }
             if {$xmax>$curve($curveid,xmax)} {
                 set curve($curveid,xmax) $xmax
+                set xrangechange 1
             }
             if {$ymin<$curve($curveid,ymin)} {
                 set curve($curveid,ymin) $ymin
+                set yrangechange 1
             }
             if {$ymax>$curve($curveid,ymax)} {
                 set curve($curveid,ymax) $ymax
+                set yrangechange 1
             }
         }
+        if {![string match {} $xabsmax]} { # Non-zero values entered
+           if {[string match {} $curve($curveid,xabsmax)]} {
+              set curve($curveid,xabsmin) $xabsmin
+              set curve($curveid,xabsmax) $xabsmax
+              set xabsrangechange 1
+           } else {
+              if {$xabsmin<$curve($curveid,xabsmin)} {
+                 set curve($curveid,xabsmin) $xabsmin
+                 set xabsrangechange 1
+              }
+              if {$xabsmax>$curve($curveid,xabsmax)} {
+                 set curve($curveid,xabsmax) $xabsmax
+                 set xabsrangechange 1
+              }
+           }
+        }
+        if {![string match {} $yabsmax]} { # Non-zero values entered
+           if {[string match {} $curve($curveid,yabsmax)]} {
+              set curve($curveid,yabsmin) $yabsmin
+              set curve($curveid,yabsmax) $yabsmax
+              set yabsrangechange 1
+           } else {
+              if {$yabsmin<$curve($curveid,yabsmin)} {
+                 set curve($curveid,yabsmin) $yabsmin
+                 set yabsrangechange 1
+              }
+              if {$yabsmax>$curve($curveid,yabsmax)} {
+                 set curve($curveid,yabsmax) $yabsmax
+                 set yabsrangechange 1
+              }
+           }
+        }
+        set rangechange 0
+        if {(!$xlogscale && $xrangechange) \
+               || ($xlogscale && $xabsrangechange)} {
+           set rangechange 1
+        }
+        if {$yaxis != 2} {
+           if {(!$ylogscale && $yrangechange) \
+                  || ($ylogscale && $yabsrangechange)} {
+              set rangechange 1
+           }
+        } else {
+           if {(!$y2logscale && $yrangechange) \
+                  || ($y2logscale && $yabsrangechange)} {
+              set rangechange 1
+           }
+        }
+
         set curve($curveid,dispcurrent) 0
         if {$ptlimit>0 && $lastindex+2>[expr {2*$ptlimit}]} {
             $this CutCurve $curveid
         }
-        if {[string match {} $xmin]} { return }
-        return [list $xmin $ymin $xmax $ymax]
+
+        return $rangechange
     }
+
     method ResetSegmentColors {} {
        foreach curveid $idlist {
           set curve($curveid,segcolor) {}
@@ -1857,6 +2282,7 @@ Oc_Class Ow_GraphWin {
        }
        set segcount 0
     }
+
     method DeleteAllData {} {
         # Deletes all data, but leaves curve structures
         foreach curveid $idlist {
@@ -1869,17 +2295,22 @@ Oc_Class Ow_GraphWin {
                     $curveid,dnextpt   0         \
                     $curveid,dispcurrent 1       \
                     $curveid,xmin     {}         \
-                    $curveid,ymin     {}         \
                     $curveid,xmax     {}         \
-                    $curveid,ymax     {}          ]
+                    $curveid,xabsmin  {}         \
+                    $curveid,xabsmax  {}         \
+                    $curveid,ymin     {}         \
+                    $curveid,ymax     {}         \
+                    $curveid,yabsmin  {}         \
+                    $curveid,yabsmax  {}          ]
             $graph delete tag$curveid
         }
         $this DrawKey
     }
     private method AddDisplayPoints { cid datapts } {
-       boundary_clip_size curve xscale yscale y2scale lmargin tmargin
-       plotwidth plotheight xgraphmin xgraphmax  ygraphmin ygraphmax
-       y2graphmin y2graphmax } {
+       boundary_clip_size curve xscale yscale y2scale
+       xlogscale ylogscale y2logscale lmargin tmargin
+       plotwidth plotheight xgraphmin xgraphmax
+       ygraphmin ygraphmax y2graphmin y2graphmax} {
        # Converts datapts to display coordinates, and appends to
        # end of last display segment.
        #   To start a new segment, calling routines should lappend an empty
@@ -1888,72 +2319,52 @@ Oc_Class Ow_GraphWin {
        # for drawing only new points.  Special values: -2 => no
        # new points were added, -3 => last list elt of $curve($cid,ptsdisp)
        # removed.
-
-       # NOTE: For improved accuracy, don't use xoff, yoff or y2off
-       # directly, but replace with these relations:
        #
-       #    xoff   = lmargin - xgraphmin * xscale
-       #    yoff   = tmargin - ygraphmax * yscale
-       #    y2off  = tmargin - ygraphmax * y2scale
-       #
-       # So, e.g.,
-       #             xdisp = x*xscale + xoff
-       #                   = x*xscale + (lmargin - xgraphmin*xscale)
-       #                   = (x-xgraphmin)*xscale + lmargin
-       #
-       # The last form has one extra addition, but is more accurate
-       # because x*scale and xgraphmin*xscale may be on a very
-       # different scale from lmargin, so the parenthesized expression
-       # above may loose all precision.   -mjd, 25-Jan-2001
-
        # NOTE: Although the canvas widget uses floating point coordinates,
        #  the canvas here is setup with pixels corresponding to integral
-       #  coordinates.  So we go ahead and do the rounding ourselves to
-       #  integer values.
+       #  coordinates.  So we round to nearest integer as part of this
+       #  processing.
 
        # Determine y-axis scaling
        if { $curve($cid,yaxis) != 2 } {
           set ys $yscale
+          set yls $ylogscale
           set ygmin $ygraphmin
           set ygmax $ygraphmax
        } else {
           set ys $y2scale
+          set yls $y2logscale
           set ygmin $y2graphmin
           set ygmax $y2graphmax
        }
 
-       # Specify draw bounding box
-       if {$xscale!=0.0} {
-          set xfudge [expr {abs($boundary_clip_size/double($xscale))}]
-       } else {
-          set xfudge 0.0;
-       }
-       set xminbound [expr {$xgraphmin-$xfudge}]
-       set xmaxbound [expr {$xgraphmax+$xfudge}]
-       if {$ys!=0.0} {
-          set yfudge [expr {abs($boundary_clip_size/double($ys))}]
-       } else {
-          set yfudge 0.0;
-       }
-       set yminbound [expr {$ygmin-$yfudge}]
-       set ymaxbound [expr {$ygmax+$yfudge}]
-
-
+       # The draw bounding box is canvas graph extents expanded by
+       # boundary_clip_size.  Invert the data-to-canvas transform to
+       # find the matching values in data coords. Add half a pixel fudge
+       # to allow for floating point to integer rounding.
+       set displeft [expr {$lmargin-$boundary_clip_size}]
+       set dispright [expr {$lmargin+$plotwidth+$boundary_clip_size}]
+       set dispbottom [expr {$tmargin+$plotheight+$boundary_clip_size}]
+       set disptop [expr {$tmargin-$boundary_clip_size}]
+       foreach {xminbound yminbound} \
+          [$this GetUserCoords [expr {$displeft-0.5}] [expr {$dispbottom+0.5}] \
+              $curve($cid,yaxis)] { break }
+       foreach {xmaxbound ymaxbound} \
+          [$this GetUserCoords [expr {$dispright+0.5}] [expr {$disptop-0.5}] \
+              $curve($cid,yaxis)] { break }
        set displist [lindex $curve($cid,ptsdisp) end]
        set startindex [llength $displist]
+       set datapts_start 0
        if {[llength $curve($cid,lastdpt)]==3} {
-          foreach { xprev yprev previnc } \
-             $curve($cid,lastdpt) {}
+          foreach { xprev yprev previnc } $curve($cid,lastdpt) { break }
+          set cprev [$this GetCanvasCoords $xprev $yprev $curve($cid,yaxis)]
           if {$startindex>0} {
              if {$previnc} {incr startindex -2}
           } else {
              # No points drawn yet
              if {$xminbound<$xprev && $xprev<$xmaxbound \
                     && $yminbound<$yprev && $yprev<$ymaxbound} {
-                lappend displist \
-                   [expr {round(($xprev-$xgraphmin)*$xscale+$lmargin)}]
-                lappend displist \
-                   [expr {round(($yprev-$ygmax)*$ys+$tmargin)}]
+                lappend displist {*}$cprev
                 set previnc 1
              } else {
                 set previnc 0
@@ -1962,7 +2373,9 @@ Oc_Class Ow_GraphWin {
        } else {
           # Fresh segment
           set xprev [lindex $datapts 0]
+          if {$xlogscale} { set xprev [expr {abs($xprev)}] }
           set yprev [lindex $datapts 1]
+          if {$yls} { set yprev [expr {abs($yprev)}] }
           if {[string match {} $yprev]} {
              # Hmm, no data... Handle case where displist is
              # too short, and return.  This should be a rare
@@ -1982,13 +2395,12 @@ Oc_Class Ow_GraphWin {
              }
              return -2
           } else {
-             set datapts [lreplace $datapts 0 1]
+             set datapts_start 2
              if {$xminbound<$xprev && $xprev<$xmaxbound \
                     && $yminbound<$yprev && $yprev<$ymaxbound} {
-                lappend displist \
-                   [expr {round(($xprev-$xgraphmin)*$xscale+$lmargin)}]
-                lappend displist \
-                   [expr {round(($yprev-$ygmax)*$ys+$tmargin)}]
+                set cprev [$this GetCanvasCoords $xprev $yprev \
+                              $curve($cid,yaxis)]
+                lappend displist {*}$cprev
                 set previnc 1
              } else {
                 set previnc 0
@@ -2002,12 +2414,59 @@ Oc_Class Ow_GraphWin {
           curve($cid,lastdpt): $curve($cid,lastdpt)
           displist: $displist}  ;###
 
-       # Add all points that will display at distinct screen locations
+       # Add all points that will display at distinct screen locations.
+       # For linear axes we just check that the difference between
+       # successive points is bigger than 1/axis_scaling.  For log
+       # scaling the corresponding check is that the ratio of successive
+       # points lies between 10^(-1/axis_scaling) and
+       # 10^(1/axis_scaling).
        set xdiff 1.  ; set ydiff 1.   ;# Safety init
-       if {$xscale!=0.} {set xdiff [expr {1./abs($xscale)}] }
-       if {$ys!=0.} {set ydiff [expr {1./abs($ys)}] }
-       foreach { x y } $datapts {
-          if { abs($x-$xprev)<$xdiff && abs($y-$yprev)<$ydiff } {
+       set xrat 1.   ; set yrat  1.
+       if {$xscale!=0.} {
+          if {!$xlogscale} {
+             set xdiff [expr {1./abs($xscale)}]
+          } else { ;# Log scale
+             set xrat [expr {exp(1./abs($xscale))}]
+          }
+       }
+       if {$ys!=0.} {
+          if {!$yls} {
+             set ydiff [expr {1./abs($ys)}]
+          } else { ;# Log scale
+             set yrat [expr {exp(1./abs($ys))}]
+          }
+       }
+       set prevdata [list $previnc $xprev $yprev]
+       if {$previnc} {
+          lappend prevdata {*}$cprev
+       }
+       foreach { x y } [lrange $datapts $datapts_start end] {
+          set tooclose 0
+          if {!$xlogscale} {
+             if {abs($x-$xprev)<$xdiff} {
+                incr tooclose
+             }
+          } else {
+             # Note: If xprev is 0 then it shouldn't be on the display list!
+             if {$x == 0.0} { continue }
+             set x [expr {abs($x)}]
+             if {$x<$xrat*$xprev && $xprev<$xrat*$x} {
+                incr tooclose
+             }
+          }
+          if {!$yls} {
+             if {abs($y-$yprev)<$ydiff} {
+                incr tooclose
+             }
+          } else {
+             # Note: If yprev is 0 then it shouldn't be on the display list!
+             if {$y == 0.0} { continue }
+             set y [expr {abs($y)}]
+             if {$y<$yrat*$yprev && $yprev<$yrat*$y} {
+                incr tooclose
+             }
+          }
+          if {$tooclose == 2} {
              # Points too close to distinguish
              continue
           }
@@ -2018,19 +2477,18 @@ Oc_Class Ow_GraphWin {
              # Bounding box of (xprev,yprev) and (x,y) doesn't
              # intersect display box, so no part of the line
              # segment between (xprev,yprev) and (x,y) is visible.
-             set previnc 0
-             set xprev $x
-             set yprev $y
+             set prevdata [list 0 $x $y]
              continue
           }
-          set previnc [OWgwMakeDispPt displist \
-                          $xgraphmin $ygmax $xscale $ys \
-                          $lmargin $tmargin \
-                          $xminbound $yminbound $xmaxbound $ymaxbound \
-                          $previnc $xprev $yprev $x $y]
-          set xprev $x
-          set yprev $y
+          set prevdata [OWgwMakeLogLinDispPt displist $xlogscale $yls \
+                           $xgraphmin $ygmax $xscale $ys \
+                           $lmargin $tmargin \
+                           $xminbound $yminbound $xmaxbound $ymaxbound \
+                           $displeft $disptop $dispright $dispbottom \
+                           $prevdata $x $y]
+          foreach {previnc xprev yprev} $prevdata { break }
        }
+
        # Update display point list.
        set newlength [llength $displist]
        set curve($cid,ptsdisp) \
@@ -2134,68 +2592,149 @@ Oc_Class Ow_GraphWin {
         set curve($cid,dispcurrent) 1
         return $startindex
     }
-    private proc PlotSymbols { graph color symbol size width freq \
-                                  tags underid offset_index pts} {
-       # This proc draws a '+' at a subset of pts, determined by freq.
-       if {$freq<1} { return } ;# freq == 0 ==> draw no symbols
-       set index [expr {$offset_index/2 - 1}]
-       # offset_index is offset into ptlist, which is twice the points
-       # count, because each (x,y) coordinate pair is stored as two
-       # elements in ptlist.  'freq', though, is counted wrt points.
-       #   Return value is gid list for all drawn points.  This will
-       # be an empty list if no points were rendered.
+
+    # Each Symbol proc draws the specified symbol onto the
+    # instance $graph canvas at locations specified by pts.
+    # Points are skipped according to symbol_freq, starting
+    # at offset offset_index.  Import clrindex is the index
+    # to color for the symbol in the list colorset.  Return
+    # is the canvas ids for the rendered symbols.
+    private method SymbolSquare { clrindex tags index pts} {
+       set color [lindex [lindex $colorset $clrindex] 0]
        set gids {}
        foreach {x y} $pts {
           incr index
-          if { $index % $freq != 0 } { continue }
-          set x1 [expr {$x-0.5*$size}]
-          set x2 [expr {$x1 + $size}]
-          set y1 [expr {$y-0.5*$size}]
-          set y2 [expr {$y1 + $size}]
-          if {0 == $symbol} {
-             # "+" symbol
-             lappend gids [$graph create line $x1 $y $x2 $y \
-                              -fill $color -width $width -tags $tags]
-             lappend gids [$graph create line $x $y1 $x $y2 \
-                              -fill $color -width $width -tags $tags]
-          } elseif {1 == $symbol} {
-             # "X" symbol
-             lappend gids [$graph create line $x1 $y1 $x2 $y2 \
-                              -fill $color -width $width -tags $tags]
-             lappend gids [$graph create line $x2 $y1 $x1 $y2 \
-                              -fill $color -width $width -tags $tags]
-          } elseif {2 == $symbol} {
-             # Square symbol
-             lappend gids [$graph create line \
-                              $x1 $y1 $x2 $y1 $x2 $y2 $x1 $y2 $x1 $y1 \
-                              -fill $color -width $width -tags $tags]
-          } elseif {3 == $symbol} {
-             # Diamond symbol
-             lappend gids [$graph create line \
-                              $x1 $y $x $y1 $x2 $y $x $y2 $x1 $y \
-                              -fill $color -width $width -tags $tags]
-          } elseif {4 == $symbol} {
-             # Triangle symbol
-             lappend gids [$graph create line \
-                              $x1 $y1 $x2 $y1 $x $y2 $x1 $y1 \
-                              -fill $color -width $width -tags $tags]
-          } elseif {5 == $symbol} {
-             # Inverted triangle symbol
-             lappend gids [$graph create line \
-                              $x1 $y2 $x $y1 $x2 $y2 $x1 $y2 \
-                              -fill $color -width $width -tags $tags]
-          } else {
-             error "Invalid symbol code $symbol; should be 0 - 5"
-          }
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line \
+                           $x1 $y1 $x2 $y1 $x2 $y2 $x1 $y2 $x1 $y1 \
+                           -fill $color -width $curve_width -tags $tags]
        }
-       foreach g $gids { $graph lower $g $underid }
        return $gids
     }
-    private method PlotCurve { curveid update_only} \
-            { graph curve curve_width segmax smoothcurves matteid \
-              usedrawpiece drawpiece drawsmoothpiece \
-              symbol_freq symbol_size color symbol_types \
-              color_selection segcount} {
+    private method SymbolDiamond { clrindex tags index pts} {
+       set color [lindex [lindex $colorset $clrindex] 0]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line \
+                           $x1 $y $x $y1 $x2 $y $x $y2 $x1 $y \
+                           -fill $color -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+    private method SymbolCircle12 { clrindex tags index pts} {
+       # Circle with vertical radius mark at clock position 12 o'clock
+       set fill [lindex [lindex $colorset $clrindex] 0]
+       set outline [lindex [lindex $colorset $clrindex] 1]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create arc \
+            $x1 $y1 $x2 $y2 -start 90 -extent 359 \
+            -fill $fill -outline $outline -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+    private method SymbolTriangle { clrindex tags index pts} {
+       set color [lindex [lindex $colorset $clrindex] 0]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line \
+                           $x1 $y1 $x2 $y1 $x $y2 $x1 $y1 \
+                           -fill $color -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+    private method SymbolInvertTriangle { clrindex tags index pts} {
+       # Inverted triangle symbol
+       set color [lindex [lindex $colorset $clrindex] 0]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line \
+                           $x1 $y2 $x $y1 $x2 $y2 $x1 $y2 \
+                           -fill $color -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+    private method SymbolPlus { clrindex tags index pts} {
+       # "+" symbol
+       set color [lindex [lindex $colorset $clrindex] 0]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line $x1 $y $x2 $y \
+                           -fill $color -width $curve_width -tags $tags]
+          lappend gids [$graph create line $x $y1 $x $y2 \
+                           -fill $color -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+    private method SymbolX { clrindex tags index pts} {
+       # "X" symbol
+       set color [lindex [lindex $colorset $clrindex] 0]
+       set gids {}
+       foreach {x y} $pts {
+          incr index
+          if { $index % $symbol_freq != 0 } { continue }
+          set x1 [expr {$x-0.5*$symbol_size}]
+          set x2 [expr {$x1 + $symbol_size}]
+          set y1 [expr {$y-0.5*$symbol_size}]
+          set y2 [expr {$y1 + $symbol_size}]
+          lappend gids [$graph create line $x1 $y1 $x2 $y2 \
+                           -fill $color -width $curve_width -tags $tags]
+          lappend gids [$graph create line $x2 $y1 $x1 $y2 \
+                           -fill $color -width $curve_width -tags $tags]
+       }
+       return $gids
+    }
+
+    private method PlotSymbols { symbol_id color_id tags \
+                                    under_id offset_index pts } {
+       # Draws symbols at a subset of pts, determined by freq.
+       if {$symbol_freq<1} { return {} } ;# freq == 0 ==> draw no symbols
+
+       # Call symbol method
+       set index [expr {$offset_index/2 - 1}]
+       set symname [lindex $symbols $symbol_id]
+       set gids [$this Symbol${symname} $color_id $tags $index $pts]
+
+       # Finish up
+       foreach g $gids { $graph lower $g $under_id }
+       return $gids
+    }
+
+    private method PlotCurve { curveid update_only} {
         # NOTE 1: If update_only is 0, then tag$curveid is
         #  first deleted, and then the entire curve is
         #  redrawn.  Otherwise only that portion of the
@@ -2224,32 +2763,32 @@ Oc_Class Ow_GraphWin {
             OWgwAssert {[llength $ptlist]%2==0} \
                     {PC-a Bad ptlist: $ptlist}                     ;###
             if {![string match "segment" $color_selection]} {
-               set clr $curve($curveid,color)
-               set sym $curve($curveid,symbol)
+               set color_id $curve($curveid,color)
+               set symbol_id $curve($curveid,symbol)
             } else {
                while {[string match {} \
-                [set clr [lindex $curve($curveid,segcolor) $segindex]]]} {
+                [set color_id [lindex $curve($curveid,segcolor) $segindex]]]} {
                   # Segment colors and symbols are assigned in lazy fashion
                   lappend curve($curveid,segcolor) \
-                     $color([expr {$segcount % $color(count)}])
+                     [expr {$segcount % [llength $colorset]}]
                   lappend curve($curveid,segsymbol) \
-                     [expr {$segcount % $symbol_types}]
+                     [expr {$segcount % [llength $symbol]}]
                   incr segcount
                }
-               set sym [lindex $curve($curveid,segsymbol) $segindex]
+               set symbol_id [lindex $curve($curveid,segsymbol) $segindex]
             }
+            set color [lindex $colorset $color_id 0]
             if {[llength $ptlist]>=4} {
                set gid [eval $graph create line $ptlist \
-                           -fill $clr \
+                           -fill $color \
                            -width $curve_width \
                            -smooth $smoothcurves \
                            -tags {[list tag$curveid showpos]}]
                $graph lower $gid $matteid
             }
-            Ow_GraphWin PlotSymbols $graph $clr $sym \
-               $symbol_size $curve_width $symbol_freq \
+            $this PlotSymbols $symbol_id $color_id \
                [list tag$curveid showpos] $matteid $startindex $ptlist
-        } else {
+         } else {
             # Redraw all segments
             set curve($curveid,segcount) 1
             $graph delete tag$curveid
@@ -2257,40 +2796,40 @@ Oc_Class Ow_GraphWin {
                set color_by_segment 1
             } else {
                set color_by_segment 0
-               set clr $curve($curveid,color)
-               set sym $curve($curveid,symbol)
+               set color_id $curve($curveid,color)
+               set symbol_id $curve($curveid,symbol)
             }
             set segindex 0
             foreach ptlist $curve($curveid,ptsdisp) {
                if {$color_by_segment} {
-                  while {[string match {} [set clr \
+                  while {[string match {} [set color_id \
                           [lindex $curve($curveid,segcolor) $segindex]]]} {
                      # Segment colors and symbols are assigned in lazy fashion
                      lappend curve($curveid,segcolor) \
-                        $color([expr {$segcount % $color(count)}])
+                        [expr {$segcount % [llength $colorset]}]
                      lappend curve($curveid,segsymbol) \
-                        [expr {$segcount % $symbol_types}]
+                        [expr {$segcount % [llength $symbols]}]
                      incr segcount
                   }
-                  set sym [lindex $curve($curveid,segsymbol) $segindex]
+                  set symbol_id [lindex $curve($curveid,segsymbol) $segindex]
                   incr segindex
                }
                set totalsize [llength $ptlist]
                if {$totalsize==0} { continue }
                OWgwAssert {$totalsize%2==0} \
                   {PC-b Bad ptlist: $ptlist}                     ;###
+               set color [lindex $colorset $color_id 0]
                if {!$usedrawpiece} {
                   if {$totalsize>=4} {
                      set cmd [linsert $ptlist 0 $graph create line]
-                     lappend cmd -fill $clr \
+                     lappend cmd -fill $color \
                         -width $curve_width \
                         -smooth $smoothcurves \
                         -tags [list tag$curveid showpos]
                      set gid [eval $cmd]
                      $graph lower $gid $matteid
                   }
-                  Ow_GraphWin PlotSymbols $graph $clr $sym \
-                     $symbol_size $curve_width $symbol_freq \
+                  $this PlotSymbols $symbol_id $color_id \
                      [list tag$curveid showpos] $matteid 0 $ptlist
                } else {
                   if {$smoothcurves} {
@@ -2304,7 +2843,7 @@ Oc_Class Ow_GraphWin {
                      set cmd [linsert \
                                  [lrange $ptlist $piecestart $piecestop] \
                                  0 $graph create line]
-                     lappend cmd -fill $clr \
+                     lappend cmd -fill $color \
                         -width $curve_width \
                         -smooth $smoothcurves \
                         -tags [list tag$curveid showpos]
@@ -2316,15 +2855,14 @@ Oc_Class Ow_GraphWin {
                   if {$piecestart<[expr {$totalsize-2}]} {
                      set cmd [linsert [lrange $ptlist $piecestart end] \
                                  0 $graph create line]
-                     lappend cmd -fill $clr \
+                     lappend cmd -fill $color \
                         -width $curve_width \
                         -smooth $smoothcurves \
                         -tags [list tag$curveid showpos]
                      set gid [eval $cmd]
                      $graph lower $gid $matteid
                   }
-                  Ow_GraphWin PlotSymbols $graph $clr $sym \
-                     $symbol_size $curve_width $symbol_freq \
+                  $this PlotSymbols $symbol_id $color_id \
                      [list tag$curveid showpos] $matteid 0 $ptlist
                }
             }
@@ -2334,9 +2872,27 @@ Oc_Class Ow_GraphWin {
            $this DrawKey
         }
     }
+    method AxisUse {} {
+       # Returns a two item list specifying the number of
+       # active (non-hidden) curves plotted against the y
+       # and y2 axes.
+       set y1count 0
+       set y2count 0
+       foreach curveid $idlist {
+          if {! $curve($curveid,hidden)} {
+             if {$curve($curveid,yaxis) == 2} {
+                incr y2count
+             } else {
+                incr y1count
+             }
+          }
+       }
+       return [list $y1count $y2count]
+    }
     method GetCurveList { yaxis } {
-        # Returns an ordered list two-tuples of all non-hidden curves,
-        # where each two-tuple is { curvelabel yaxis }
+       # Returns a list of all non-hidden curves on the specified
+       # axis, identified by name.  (This is the same name that
+       # appears in the graph key.)
         set curvelist {}
         foreach curveid $idlist {
             if {! $curve($curveid,hidden) && \
@@ -2372,6 +2928,12 @@ Oc_Class Ow_GraphWin {
             $this PlotCurve $curveid $update_only
             incr curves_drawn
         }
+        if {[llength $y1list]==0 && [llength $y2list]==0} {
+           # No curves selected; reset display state stack
+           $this ResetStoreStack
+        } elseif {[$this GetStoreStackSize]==0} {
+           $this StoreState
+        }
         return $curves_drawn
     }
     private method InvalidateDisplay { curvelist } { curve } {
@@ -2391,298 +2953,408 @@ Oc_Class Ow_GraphWin {
         }
     }
     private method GetDataExtents {} {
-        # Initialize {x|y|y2}min to "z", {x|y|y2}max to {}, so
-        # $x<$xmin and $x>$xmax for *all* numeric $x, etc.
-        set xmin [set ymin [set y2min "z"]]
-        set xmax [set ymax [set y2max {}]]
-        set ptcount 0
-        foreach cid $idlist {
-            if {[string match {} $curve($cid,xmin)] || \
-                    $curve($cid,hidden) } {
-                continue     ;# Empty or hidden curve
-            }
-            set test $curve($cid,xmin)
-            if {$test<$xmin} {set xmin $test}
-            set test $curve($cid,xmax)
-            if {$test>$xmax} {set xmax $test}
-            if {$curve($cid,yaxis)!=2} {
-                set test $curve($cid,ymin)
-                if {$test<$ymin} {set ymin $test}
-                set test $curve($cid,ymax)
-                if {$test>$ymax} {set ymax $test}
-            } else {
-                set test $curve($cid,ymin)
-                if {$test<$y2min} {set y2min $test}
-                set test $curve($cid,ymax)
-                if {$test>$y2max} {set y2max $test}
-            }
-            set cidptcount [expr [llength $curve($cid,pts)]/2 - 1]
-            if {$cidptcount>0} { incr ptcount $cidptcount }
-        }
-        # Fill in missing data with dummy values
-        if {[string match {} $xmax]} {
-            set xmin 0.0 ; set xmax 1.0
-        }
-        if {[string match {} $ymax]} {
-            set ymin 0.0 ; set ymax 1.0
-        }
-        if {[string match {} $y2max]} {
-            set y2min 0.0 ; set y2max 1.0
-        }
-        if {$ptcount == 0} {
-            # No curve has more than 1 point in it, so expand
-            # empty ranges by 10% so auto-limit calculations
-            # don't try to display out to 17 digits.
-            if { $xmin == $xmax } {
-                set xmin [expr $xmin * 0.95]
-                set xmax [expr $xmax * 1.05]
-            }
-            if { $ymin == $ymax } {
-                set ymin [expr $ymin * 0.95]
-                set ymax [expr $ymax * 1.05]
-            }
-            if { $y2min == $y2max } {
-                set y2min [expr $y2min * 0.95]
-                set y2max [expr $y2max * 1.05]
-            }
-        }
+       # Initialize {x|y|y2}min to "z", {x|y|y2}max to {}, so
+       # $x<$xmin and $x>$xmax for *all* numeric $x, etc.
+       set xmin [set ymin [set y2min "z"]]
+       set xmax [set ymax [set y2max {}]]
+       set xabsmin [set yabsmin [set y2absmin "z"]]
+       set xabsmax [set yabsmax [set y2absmax {}]]
+       set ptcount 0
+       foreach cid $idlist {
+          if {[string match {} $curve($cid,xmin)] || \
+                 $curve($cid,hidden) } {
+             continue     ;# Empty or hidden curve
+          }
+          set test $curve($cid,xmin)
+          if {$test<$xmin} {set xmin $test}
+          set test $curve($cid,xmax)
+          if {$test>$xmax} {set xmax $test}
+          set test $curve($cid,xabsmin)
+          if {![string match {} $test] && $test<$xabsmin} {
+             set xabsmin $test
+          }
+          set test $curve($cid,xabsmax)
+          if {$test>$xabsmax} {set xabsmax $test}
+          if {$curve($cid,yaxis)!=2} {
+             set test $curve($cid,ymin)
+             if {$test<$ymin} {set ymin $test}
+             set test $curve($cid,ymax)
+             if {$test>$ymax} {set ymax $test}
+             set test $curve($cid,yabsmin)
+             if {![string match {} $test] && $test<$yabsmin} {
+                set yabsmin $test
+             }
+             set test $curve($cid,yabsmax)
+             if {$test>$yabsmax} {set yabsmax $test}
+          } else {
+             set test $curve($cid,ymin)
+             if {$test<$y2min} {set y2min $test}
+             set test $curve($cid,ymax)
+             if {$test>$y2max} {set y2max $test}
+             set test $curve($cid,yabsmin)
+             if {![string match {} $test] && $test<$y2absmin} {
+                set y2absmin $test
+             }
+             set test $curve($cid,yabsmax)
+             if {$test>$y2absmax} {set y2absmax $test}
+          }
+          set cidptcount [expr [llength $curve($cid,pts)]/2 - 1]
+          if {$cidptcount>0} { incr ptcount $cidptcount }
+       }
+       # Check: If {x,y,y2}absmin == "z", then there should be no
+       # non-zero values for any curve on that axis, and therefore the
+       # corresponding absmax value should be empty.
+       OWgwAssert \
+          {![string match z $xabsmin] || [string match {} $xabsmax]} \
+          "xabsmin/max logic error in Ow_GraphWin GetDataExtents"
+       OWgwAssert \
+          {![string match z $yabsmin] || [string match {} $yabsmax]} \
+          "xabsmin/max logic error in Ow_GraphWin GetDataExtents"
+       OWgwAssert \
+          {![string match z $y2absmin] || [string match {} $y2absmax]} \
+          "xabsmin/max logic error in Ow_GraphWin GetDataExtents"
 
-        return [list $xmin $xmax $ymin $ymax $y2min $y2max]
+       # Fill in missing data with dummy values
+       if {[string match {} $xmax]} {
+          set xmin 0.0 ; set xmax 1.0
+       }
+       if {[string match {} $ymax]} {
+          set ymin 0.0 ; set ymax 1.0
+       }
+       if {[string match {} $y2max]} {
+          set y2min 0.0 ; set y2max 1.0
+       }
+       if {[string match {} $xabsmax]} {
+          set xabsmin 0.1 ; set xabsmax 1.0
+       }
+       if {[string match {} $yabsmax]} {
+          set yabsmin 0.1 ; set yabsmax 1.0
+       }
+       if {[string match {} $y2absmax]} {
+          set y2absmin 0.1 ; set y2absmax 1.0
+       }
+       if {$xlogscale} {
+          set xmin $xabsmin ; set xmax $xabsmax
+       }
+       if {$ylogscale} {
+          set ymin $yabsmin ; set ymax $yabsmax
+       }
+       if {$y2logscale} {
+          set y2min $y2absmin ; set y2max $y2absmax
+       }
+
+       if {$ptcount == 0} {
+          # No curve has more than 1 point in it, so expand
+          # empty ranges by 10% so auto-limit calculations
+          # don't try to display out to 17 digits.
+          if { $xmin == $xmax } {
+             if {$xmin<0.0} {
+                set xmin [expr {$xmin * 1.05}]
+                set xmax [expr {$xmax * 0.95}]
+             } else {                        
+                set xmin [expr {$xmin * 0.95}]
+                set xmax [expr {$xmax * 1.05}]
+             }
+          }
+          if { $ymin == $ymax } {
+             if {$ymin<0.0} {
+                set ymin [expr {$ymin * 1.05}]
+                set ymax [expr {$ymax * 0.95}]
+             } else {                        
+                set ymin [expr {$ymin * 0.95}]
+                set ymax [expr {$ymax * 1.05}]
+             }
+          }
+          if { $y2min == $y2max } {
+             if {$y2min<0.0} {
+                set y2min [expr {$y2min * 1.05}]
+                set y2max [expr {$y2max * 0.95}]
+             } else {
+                set y2min [expr {$y2min * 0.95}]
+                set y2max [expr {$y2max * 1.05}]
+             }
+          }
+       }
+       return [list $xmin $xmax $ymin $ymax $y2min $y2max]
     }
-    private proc RoundExtents {xmin xmax ymin ymax y2min y2max} {
-        # Adjust to "round" numbers
-        set xdelta [expr {($xmax-$xmin)*0.999}]  ;# Allow a *little* slack
-        if {$xdelta<=0.0 || \
-		[catch {expr {pow(10,ceil(-log10($xdelta)))}} xrangescale]} {
-            # Probably underflow; treat the same as if $xdelta were 0,
-            # i.e., set xdelta and xrangescale to 1
-            set xdelta 1
-            set xrangescale 1
-        }
-        set xmin [expr {(floor($xmin*$xrangescale))/$xrangescale}]
-        set xmax [expr {(ceil($xmax*$xrangescale))/$xrangescale}]
-        set ydelta [expr {($ymax-$ymin)*0.999}]  ;# Allow a *little* slack
-        if {$ydelta<=0.0 || \
-		[catch {expr {pow(10,ceil(-log10($ydelta)))}} yrangescale]} {
-	    set ydelta 1.
-            set yrangescale 1
-	}
-        set ymin [expr {(floor($ymin*$yrangescale))/$yrangescale}]
-        set ymax [expr {(ceil($ymax*$yrangescale))/$yrangescale}]
-        set y2delta [expr {($y2max-$y2min)*0.999}] ;# Allow a *little* slack
-        if {$y2delta<=0.0 || \
-		[catch {expr {pow(10,ceil(-log10($y2delta)))}} y2rangescale]} {
-            set y2delta 1
-            set y2rangescale 1
-        }
-        set y2min [expr {(floor($y2min*$y2rangescale))/$y2rangescale}]
-        set y2max [expr {(ceil($y2max*$y2rangescale))/$y2rangescale}]
-        
-        # Round and save for future use. (Zero needs to be handled
-        # specially because scaling adjustment above falls flat.)
-        # Use "#" form of g format to insure decimal point is written.
-        # Otherwise, it is possible to convert a floating point value
-        # that is too large to represent as an integer into an integer
-        # expression that Tcl won't handle, e.g.:
-        #  set x 1e10 ; set y [format "%.12g" $x] ; expr double($y)
-        # The last command produces an error because y has the
-        # string value "10000000000".
-        if {$xmin==0 && $xmax==0} {
-            set xmin -0.5
-            set xmax  0.5
-        } else {
-            set xtestmin [format "%#.12g" $xmin]
-            set xtestmax [format "%#.12g" $xmax]
-            if { $xtestmax<=$xtestmin } {
-                # Too much rounding.  Try again
-                set xtestmin [format "%#.15g" $xmin]
-                set xtestmax [format "%#.15g" $xmax]
-            }
-            set xmin [expr {double($xtestmin)}] ;# Make _certain_ these
-            set xmax [expr {double($xtestmax)}] ;# are f.p. values.
-        }
-
-        if {$ymin==0 && $ymax==0} {
-            set ymin -0.5
-            set ymax  0.5
-        } else {
-            set ytestmin [format "%#.12g" $ymin]
-            set ytestmax [format "%#.12g" $ymax]
-            if { $ytestmax<=$ytestmin } {
-                # Too much rounding.  Try again
-                set ytestmin [format "%#.15g" $ymin]
-                set ytestmax [format "%#.15g" $ymax]
-            }
-            set ymin [expr {double($ytestmin)}] ;# Make _certain_ these
-            set ymax [expr {double($ytestmax)}] ;# are f.p. values.
-        }
-
-        if {$y2min==0 && $y2max==0} {
-            set y2min -0.5
-            set y2max  0.5
-        } else {
-            set y2testmin [format "%#.12g" $y2min]
-            set y2testmax [format "%#.12g" $y2max]
-            if { $y2testmax<=$y2testmin } {
-                # Too much rounding.  Try again
-                set y2testmin [format "%#.15g" $y2min]
-                set y2testmax [format "%#.15g" $y2max]
-            }
-            set y2min [expr {double($y2testmin)}] ;# Make _certain_ these
-            set y2max [expr {double($y2testmax)}] ;# are f.p. values.
-        }
-
-        return [list $xmin $xmax $ymin $ymax $y2min $y2max]
+    private proc RoundRange {min max logscale} {
+       # Assumes min<=max, and if logscale is true then also 0<min
+       OWgwAssert {$min<=$max && (!$logscale || 0<$min)} \
+          "Bad imports to RoundRange: ${min}, ${max}, ${logscale}"
+       if {$min<0 && $max>0} {
+          # Min and max have opposite signs; keep one digit
+          # (Note: logscale must be false)
+          set scale [expr {pow(10,floor(log10($max)))}]
+          set tmax [expr {ceil($max/$scale)*$scale}]
+          set scale [expr {pow(10,floor(log10(-$min)))}]
+          set tmin [expr {floor($min/$scale)*$scale}]
+          set minsigfig [set maxsigfig 1]
+       } else {
+          # Min and max have same sign
+          set absmin [expr {abs($min)}]
+          set absmax [expr {abs($max)}]
+          if {$min<0.0} {
+             set t $absmin ; set absmin $absmax ; set absmax $t
+          }
+          if {$absmax>=10*$absmin} {
+             # Ratio bigger than 10; keep one digit on larger
+             # value.  Round smaller value to zero for linear
+             # scale axes, or one digit on log scale axes.
+             if {$absmax == 0.0} {
+                set tmax 1
+             } else {
+                set scale [expr {pow(10,floor(log10($absmax)))}]
+                set tmax [expr {ceil($absmax/$scale)*$scale}]
+             }
+             if {!$logscale} {
+                set tmin 0
+             } else {
+                set scale [expr {pow(10,floor(log10($absmin)))}]
+                set tmin [expr {floor($absmin/$scale)*$scale}]
+                OWgwAssert {0<$tmin} "Coding error; tmin = $tmin <= 0"
+             }
+             set minsigfig [set maxsigfig 1]
+          } else {
+             # Ratio smaller than 10; compute number of digits
+             # necessary to distinguish min from max
+             set diff [expr {$absmax-$absmin}]
+             if {$diff <= 0.0} {
+                # min == max.  Inflate +/- 6.25%.
+                set absmax [expr {$absmax*1.0625}]
+                set absmin [expr {$absmin/1.0625}]
+                set diff [expr {$absmax-$absmin}]
+             }
+             set scale [expr {pow(10,floor(log10($diff)))}]
+             set tmax [expr {ceil($absmax/$scale)}]
+             set maxsigfig [expr {1+int(floor(log10($tmax)))}]
+             set tmax [expr {$tmax*$scale}]
+             set tmin [expr {floor($absmin/$scale)}]
+             if {$logscale && $tmin<=0.0} {
+                set tmin 0.1 ;# Safety; sample case: min=9, max=89
+                set minsigfig 1
+             } else {
+                set minsigfig \
+                   [expr {$tmin==0.0 ? 1 : 1+int(floor(log10($tmin)))}]
+             }
+             set tmin [expr {$tmin*$scale}]
+          }
+          if {$min<0.0} {
+             # Change sign and swap order
+             set t $tmin
+             set tmin [expr {-1*$tmax}]
+             set tmax [expr {-1*$t}]
+          }
+       }
+       set tmin [Ow_GraphWin DisplayFormat $tmin $minsigfig]
+       set tmax [Ow_GraphWin DisplayFormat $tmax $maxsigfig]
+       return [list $tmin $tmax]
     }
-    private proc NiceExtents { ratio xmin xmax ymin ymax y2min y2max} {
-        # Adjusts ?min and ?max by up to +/-(?max-?min)/ratio to
-        # make them "nice" when formatted as a base 10 decimal.
-        # Similar to but generally less aggressive than RoundExtents,
-        # q.v.
-        #   Note: We use floor(0.5+x) rather than round(x), because
-        # the latter converts to an int, which has a smaller range
-        # than double.
-        if {$ratio<=0.0} {
-            return [list $xmin $xmax $ymin $ymax $y2min $y2max]
-        }
-        set slop [expr {($xmax-$xmin)/double($ratio)}]
-        if {$slop<=0.} {
-            lappend results $xmin $xmax
-        } else {
-            set slop [expr {double(pow(10,floor(log10($slop))))}]
-            lappend results [expr {$slop*floor(0.5+$xmin/$slop)}]
-            lappend results [expr {$slop*floor(0.5+$xmax/$slop)}]
-        }
-        set slop [expr {($ymax-$ymin)/double($ratio)}]
-        if {$slop<=0.} {
-            lappend results $ymin $ymax
-        } else {
-            set slop [expr {double(pow(10,floor(log10($slop))))}]
-            lappend results [expr {$slop*floor(0.5+$ymin/$slop)}]
-            lappend results [expr {$slop*floor(0.5+$ymax/$slop)}]
-        }
-        set slop [expr {($y2max-$y2min)/double($ratio)}]
-        if {$slop<=0.} {
-            lappend results $y2min $y2max
-        } else {
-            set slop [expr {double(pow(10,floor(log10($slop))))}]
-            lappend results [expr {$slop*floor(0.5+$y2min/$slop)}]
-            lappend results [expr {$slop*floor(0.5+$y2max/$slop)}]
-        }
-        return $results
+
+    private method SpecifyGraphExtents {xmin xmax ymin ymax y2min y2max} {
+       # Performs some validity checks, and if satisfied sets
+       # {x,y,y2}graph{min,max} to given imports as strings without
+       # reformatting.  This routine is intended for internal use by
+       # Ow_GraphWin only; external code should use the SetGraphLimits
+       # interface.  SetGraphLimits rounds the imports to "nice" values,
+       # formats the values, calls this routine, and then updates the
+       # pan/zoom base state.  SetGraphLimits can optionally select
+       # graph extents automatically based on curve data.
+       #
+       # Returns 1 if the graph limits were changed (as strings).
+
+       # Sanity checks
+       if {$xmin>$xmax} {
+          set t $xmin ; set xmin $xmax ; set xmax $xmin
+       }
+       if {$ymin>$ymax} {
+          set t $ymin ; set ymin $ymax ; set ymax $ymin
+       }
+       if {$y2min>$y2max} {
+          set t $y2min ; set y2min $y2max ; set y2max $y2min
+       }
+
+       # Log scale safety
+       set deflogrange 1e-6
+       set digs 6
+       if {$xlogscale && $xmin <= 0.0} {
+          if {$xmax <= 0.0} { # Both limits non-positive
+             if {$xmin == 0.0} {
+                set xmin $deflogrange ; set xmax 1.0
+             } elseif {$xmax == 0.0} {
+                set xmax [expr {abs($xmin)}]
+                set xmin [expr {$deflogrange*$xmax}]
+             } else {
+                set t [expr {abs($xmax)}]
+                set xmax [expr {abs($xmin)}]
+                set xmin $t
+             }
+             set xmax [Ow_GraphWin DisplayFormat $xmax $digs]
+             set xmin [Ow_GraphWin DisplayFormat $xmin $digs]
+          } else { # xmin non-positive, xmax positive
+             set xmin [expr {abs($xmin)}]
+             if {$xmin>$xmax} {
+                set xmax [Ow_GraphWin DisplayFormat $xmin $digs]
+             }
+             set xmin [expr {$deflogrange*$xmax}]
+             set xmin [Ow_GraphWin DisplayFormat $xmin $digs]
+          }
+       }
+       if {$ylogscale && $ymin <= 0.0} {
+          if {$ymax <= 0.0} { # Both limits non-positive
+             if {$ymin == 0.0} {
+                set ymin $deflogrange ; set ymax 1.0
+             } elseif {$ymax == 0.0} {
+                set ymax [expr {abs($ymin)}]
+                set ymin [expr {$deflogrange*$ymax}]
+             } else {
+                set t [expr {abs($ymax)}]
+                set ymax [expr {abs($ymin)}]
+                set ymin $t
+             }
+             set ymax [Ow_GraphWin DisplayFormat $ymax $digs]
+             set ymin [Ow_GraphWin DisplayFormat $ymin $digs]
+          } else { # ymin non-positive, ymax positive
+             set ymin [expr {abs($ymin)}]
+             if {$ymin>$ymax} {
+                set ymax [Ow_GraphWin DisplayFormat $ymin $digs]
+             }
+             set ymin [expr {$deflogrange*$ymax}]
+             set ymin [Ow_GraphWin DisplayFormat $ymin $digs]
+          }
+       }
+       if {$y2logscale && $y2min <= 0.0} {
+          if {$y2max <= 0.0} { # Both limits non-positive
+             if {$y2min == 0.0} {
+                set y2min $deflogrange ; set y2max 1.0
+             } elseif {$y2max == 0.0} {
+                set y2max [expr {abs($y2min)}]
+                set y2min [expr {$deflogrange*$y2max}]
+             } else {
+                set t [expr {abs($y2max)}]
+                set y2max [expr {abs($y2min)}]
+                set y2min $t
+             }
+             set y2max [Ow_GraphWin DisplayFormat $y2max $digs]
+             set y2min [Ow_GraphWin DisplayFormat $y2min $digs]
+          } else { # y2min non-positive, y2max positive
+             set y2min [expr {abs($y2min)}]
+             if {$y2min>$y2max} {
+                set y2max [Ow_GraphWin DisplayFormat $y2min $digs]
+             }
+             set y2min [expr {$deflogrange*$y2max}]
+             set y2min [Ow_GraphWin DisplayFormat $y2min $digs]
+          }
+       }
+
+       # Safety adjustment
+       set eps 1e-12
+       set digs 14
+       if {$xmax<=$xmin} {
+          set xmax [expr {$xmin+$eps*abs($xmin)}]
+          set xmin [expr {$xmin-$eps*abs($xmin)}]
+          set xmin [Ow_GraphWin DisplayFormat $xmin $digs]
+          set xmax [Ow_GraphWin DisplayFormat $xmax $digs]
+       }
+       if {$ymax<=$ymin} {
+          set ymax [expr {$ymin+$eps*abs($ymin)}]
+          set ymin [expr {$ymin-$eps*abs($ymin)}]
+          set ymin [Ow_GraphWin DisplayFormat $ymin $digs]
+          set ymax [Ow_GraphWin DisplayFormat $ymax $digs]
+       }
+       if {$y2max<=$y2min} {
+          set y2max [expr {$y2min+$eps*abs($y2min)}]
+          set y2min [expr {$y2min-$eps*abs($y2min)}]
+          set y2min [Ow_GraphWin DisplayFormat $y2min $digs]
+          set y2max [Ow_GraphWin DisplayFormat $y2max $digs]
+       }
+       if {[string compare $xmin $xgraphmin]!=0 || \
+           [string compare $xmax $xgraphmax]!=0 || \
+           [string compare $ymin $ygraphmin]!=0 || \
+           [string compare $ymax $ygraphmax]!=0 || \
+           [string compare $y2min $y2graphmin]!=0 || \
+           [string compare $y2max $y2graphmax]!=0} {
+          # Change limits
+          set xgraphmin $xmin
+          set xgraphmax $xmax
+          set ygraphmin $ymin
+          set ygraphmax $ymax
+          set y2graphmin $y2min
+          set y2graphmax $y2max
+          # Mark all curve displays invalid
+          $this InvalidateDisplay $idlist
+          return 1
+       }
+       return 0 ;# No change
     }
+
     method SetGraphLimits {{xmin {}} {xmax {}} \
-            {ymin {}} {ymax {}} {y2min {}} {y2max {}}} {
-        # Sets the graph numerical limits.  Any blank values are
-        # filled in using data values.  This routine does not update
-        # the display.
-        #  If any change is made, all curve displays are marked invalid,
-        # and 1 is returned.  If no change is made, then 0 is returned.
+                           {ymin {}} {ymax {}} {y2min {}} {y2max {}} } {
+       # Sets the graph numerical limits.  Any blank values are filled
+       # in using data values (autoscale).  If all values are set to
+       # autoscale then the display state stack is reset (i.e., cleared).
+       # This routine does not update the display, but does add the
+       # new state onto the display state stack.
+       set autocount 0
+       foreach chk [list $xmin $xmax $ymin $ymax $y2min $y2max] {
+          if {[string match {} $chk]} { incr autocount }
+       }
+       if {$autocount>0} {
+          # Autoscale one or more limit values
+          foreach {txmin txmax tymin tymax ty2min ty2max} \
+             [$this GetDataExtents] { break }
 
-        # Make certain inputs use floating point representation
-        if {![string match {} $xmin]}  { set xmin [expr {double($xmin)}] }
-        if {![string match {} $xmax]}  { set xmax [expr {double($xmax)}] }
-        if {![string match {} $ymin]}  { set ymin [expr {double($ymin)}] }
-        if {![string match {} $ymax]}  { set ymax [expr {double($ymax)}] }
-        if {![string match {} $y2min]} { set y2min [expr {double($y2min)}] }
-        if {![string match {} $y2max]} { set y2max [expr {double($y2max)}] }
+          # Make "nice" limits
+          foreach {txmin txmax} \
+             [Ow_GraphWin RoundRange $txmin $txmax $xlogscale] { break }
+          foreach {tymin tymax} \
+             [Ow_GraphWin RoundRange $tymin $tymax $ylogscale] { break }
+          foreach {ty2min ty2max} \
+             [Ow_GraphWin RoundRange $ty2min $ty2max $y2logscale] { break }
 
-	# Compute padding amount
-        global tcl_precision
-	if {[info exists tcl_precision]
-            && 0<$tcl_precision && $tcl_precision<15} {
-           set eps [expr {pow(10.,1-$tcl_precision)}]
-	} else {
-           # If tcl_precision is 17 (or 0, which means
-           # 17 but with short display), then effective
-           # precision is actually IEEE REAL*8 EPSILON,
-           # which is approximately 2.22e-16.  We round
-           # up to 1e-14 to be safe, and to play nicely
-           # with RoundExtents, which uses %.15g format.
-           set eps [expr {pow(10.,-14)}]
-	}
-        foreach {oxmin oxmax oymin oymax oy2min oy2max} \
-                [list $xgraphmin $xgraphmax \
-                $ygraphmin $ygraphmax $y2graphmin $y2graphmax] {}
-
-        if {[string match {} $xmin] || [string match {} $xmax] \
-                || [string match {} $ymin] || [string match {} $ymax] \
-                || [string match {} $y2min] || [string match {} $y2max]} {
-            foreach {xgraphmin xgraphmax \
-                    ygraphmin ygraphmax y2graphmin y2graphmax} \
-                    [$this GetDataExtents] {}
-            # Add some luft in case data are constant (no variation)
-            if {$xgraphmax<=$xgraphmin} {
-                set xgraphmax [expr {$xgraphmin+$eps*abs($xgraphmin)}]
-                set xgraphmin [expr {$xgraphmin-$eps*abs($xgraphmin)}]
-            }
-            if {$ygraphmax<=$ygraphmin} {
-                set ygraphmax [expr {$ygraphmin+$eps*abs($ygraphmin)}]
-                set ygraphmin [expr {$ygraphmin-$eps*abs($ygraphmin)}]
-            }
-            if {$y2graphmax<=$y2graphmin} {
-                set y2graphmax [expr {$y2graphmin+$eps*abs($y2graphmin)}]
-                set y2graphmin [expr {$y2graphmin-$eps*abs($y2graphmin)}]
-            }
-            # Make "nice" limits
-            foreach { xgraphmin xgraphmax \
-                    ygraphmin ygraphmax y2graphmin y2graphmax } \
-                    [Ow_GraphWin RoundExtents $xgraphmin $xgraphmax \
-                    $ygraphmin $ygraphmax $y2graphmin $y2graphmax] {}
-            if {![string match {} $xmin]} { set xgraphmin $xmin }
-            if {![string match {} $xmax]} { set xgraphmax $xmax }
-            if {![string match {} $ymin]} { set ygraphmin $ymin }
-            if {![string match {} $ymax]} { set ygraphmax $ymax }
-            if {![string match {} $y2min]} { set y2graphmin $y2min }
-            if {![string match {} $y2max]} { set y2graphmax $y2max }
-        } else {
-            if {$xmin<=$xmax} {
-                set xgraphmin $xmin ; set xgraphmax $xmax
-            } else {
-                set xgraphmin $xmax ; set xgraphmax $xmin
-            }
-            if {$ymin<=$ymax} {
-                set ygraphmin $ymin ; set ygraphmax $ymax
-            } else {
-                set ygraphmin $ymax ; set ygraphmax $ymin
-            }
-            if {$y2min<=$y2max} {
-                set y2graphmin $y2min ; set y2graphmax $y2max
-            } else {
-                set y2graphmin $y2max ; set y2graphmax $y2min
-            }
-        }
-
-        # Safety adjustment
-        if {$xgraphmax<=$xgraphmin} {
-            set xgraphmax [expr {$xgraphmin+$eps*abs($xgraphmin)}]
-            set xgraphmin [expr {$xgraphmin-$eps*abs($xgraphmin)}]
-        }
-        if {$ygraphmax<=$ygraphmin} {
-            set ygraphmax [expr {$ygraphmin+$eps*abs($ygraphmin)}]
-            set ygraphmin [expr {$ygraphmin-$eps*abs($ygraphmin)}]
-        }
-        if {$y2graphmax<=$y2graphmin} {
-            set y2graphmax [expr {$y2graphmin+$eps*abs($y2graphmin)}]
-            set y2graphmin [expr {$y2graphmin-$eps*abs($y2graphmin)}]
-        }
-
-        if {$oxmin!=$xgraphmin || $oxmax!=$xgraphmax || \
-                $oymin!=$ygraphmin || $oymax!=$ygraphmax || \
-                $oy2min!=$y2graphmin || $oy2max!=$y2graphmax} {
-            # Mark all curve displays invalid
-            $this InvalidateDisplay $idlist
-            return 1
-        }
-
-        # Otherwise, no change
-        return 0
+          if {[string match {} $xmin]} { set xmin $txmin }
+          if {[string match {} $xmax]} { set xmax $txmax }
+          if {[string match {} $ymin]} { set ymin $tymin }
+          if {[string match {} $ymax]} { set ymax $tymax }
+          if {[string match {} $y2min]} { set y2min $ty2min }
+          if {[string match {} $y2max]} { set y2max $ty2max }
+       }
+       set change [$this SpecifyGraphExtents \
+                      $xmin $xmax $ymin $ymax $y2min $y2max]
+       if {$autocount == 6} {
+          $this ResetStoreStack  ;# Dump old stack states
+       } else {
+          $this StoreState ;# Add new state to stack
+       }
+       return $change
     }
+
     method GetGraphLimits {} { \
             xgraphmin xgraphmax \
             ygraphmin ygraphmax y2graphmin y2graphmax} {
         return [list $xgraphmin $xgraphmax \
                 $ygraphmin $ygraphmax $y2graphmin $y2graphmax]
+    }
+    method GetGraphLimitsReduced {} {
+       # Same as GetGraphLimits, but any axis without curves plotted
+       # against it has limits set to empty strings.  This is used in
+       # the display state stack to implement transparent limits.
+       #   As a special case, if no curves are plotted then the return
+       # is an empty string.
+       foreach {c1cnt c2cnt} [$this AxisUse] { break }
+       if {$c1cnt + $c2cnt == 0} {
+          # No curves set
+          return {}
+       }
+       set displaystate [$this GetGraphLimits]
+       if {$c1cnt == 0} {
+          # Disable limit settings for y1 axis
+          set displaystate [lreplace $displaystate 2 3 {} {}]
+       }
+       if {$c2cnt == 0} {
+          # Disable limit settings for y2 axis
+          set displaystate [lreplace $displaystate 4 5 {} {}]
+       }
+       return $displaystate
     }
     method RefreshDisplay {} {
         $this DrawAxes
@@ -2692,15 +3364,17 @@ Oc_Class Ow_GraphWin {
     method Reset {} {
         # Re-initializes most of the graph properties to initial defaults
         $this DeleteAllCurves
-        $this SetGraphLimits 0. 1. 0. 1.
+        $this SetGraphLimits
         set hrule {} ; set vrule {}
         set title  {}
         set xlabel {}
         set ylabel {}
-        $this DrawAxes
+        $this RefreshDisplay
+        $this ResetStoreStack
     }
     private method PrintData { curvepat } {
-        foreach curvename [array names id $curvepat] {
+       # For debugging
+       foreach curvename [array names id $curvepat] {
             set curveid $id($curvename)
             foreach i [lsort -ascii [array names curve $curveid,*]] {
                 puts "$i = $curve($i)"
@@ -2736,221 +3410,382 @@ Oc_Class Ow_GraphWin {
     return [list $x $y]
 }
 
-# OWgwMakeDispPt converts points from data coordinates to display
-# coordinates.  The imports xdatamin, ydatamin, xs, ys, xdispbase,
-# and ydispbase define the transformation, via
-#     xdisp = (x-xdatabase)*xs + xdispbase
-#     ydisp = (y-ydatabase)*ys + ydispbase
-# The return value is a boolean (0 or 1) indicating whether
-# or not the point (x,y) is inside the display box.  The
-# display box is defined by the imports xmin, ymin, xmax,
-# ymax, which are specified in data coordinates.  The other export
-# are points in display coordinates, which are appended to the
-# import displistname.  These can be used to build up a polyline
-# vertex list for a canvas create line call.  The imports xprev,
-# yprev are the preceding vertex on the polyline, in data coordinates.
-# The import boolean previnc is true (1) if (xprev,yprev) is
-# inside the display box, and has therefore already been
-# included on the polyline display list.  In the usual case,
-# previnc is 1 and (x,y) is inside the display box, the return
-# value is 1 and display list has two elements appended: xdisp ydisp.
-#   If previnc is 0, then the first point pair appended to the
-# displist will be the display coordinates of the projection of
-# (xprev,yprev) to the display box along the line connecting
-# (xprev,yprev) to (x,y).
-#   Following the display coordinates for (xprev,yprev), if any,
-# on the display list are display coordinates for (x,y).  If
-# curinc is true, then these values are (xdisp,ydisp) as defined
-# above.  If curinc is false, then these values will be the
-# display coordinates of the projection of (x,y) to the display
-# box along the line connecting (x,y) to (xprev,yprev).  If
-# curinc is false, and if (x,y) falls in one of the "corner"
-# regions of the display box, then an additional point pair
-# is included in the display list, representing the display
-# coordinates of the corresponding corner point.  (A point
-# is in a corner region of the display box if *both* x and
-# y are outside the box bounds: x<xmin && y<ymin, or
-# x<xmin && y>ymax, etc.  There are 4 corner regions.)  The
-# extra corner point is needed on the display list to guard
-# against the following circumstance:
+# OWgwMakeLogLinDispPt : Service proc of AddDisplayPoints method.
+#
+# Given two points P0=(u0,v0) and P1=(u1,v1) in linear (e.g., display)
+# coordinates, the line through those points is P(t) = (1-t)*P0 + t*P1 =
+# [(1-t)*u0+t*u1, (1-t)*v0+t*v1].  So P(0) = P0, P(1) = P1, and
+# {P(t):0<t<1} is the line segment between P0 and P1.  The intersection
+# between that line and the vertical line x=a is
+#
+#     a = (1-t)*u0 + t*u1 = u0 + t*(u1-u0) => t = (a-u0)/(u1-u0)
+#  => v = (1-t)*v0 + t*v1 = v0 + (v1-v0)*t = v0 + (v1-v0)*(a-u0)/(u1-u0)
+#
+# The point (u(t),v(t)) = (a,v0 + (v1-v0)*(a-u0)/(u1-u0)) lies between
+# P0 and P1 iff 0<t<1 <=> 0 < (a-u0)/(u1-u0) < 1
+#                     <=> 0 < (a-u0)*(u1-u0) && |a-u0| < |u1-u0|
+#
+# The computation is analogous for horizontal lines, say y=b
+#
+#     b = (1-s)*v0 + s*v1 = v0 + s*(v1-v0) => s = (b-v0)/(v1-v0)
+#  => u = (1-s)*u0 + s*u1 = u0 + (u1-u0)*s = u0 + (u1-u0)*(b-v0)/(v1-v0)
+#
+# The point (u(s),v(s)) = (u0 + (u1-u0)*(b-v0)/(v1-v0)) lies between
+# P0 and P1 iff 0<s<1 <=> 0 < (b-v0)/(v1-v0) < 1
+#                     <=> 0 < (b-v0)*(v1-v0) && |b-v0| < |v1-v0|
 #
 #
-#                       ...b
-#                 b' ...  ,
-#     +-----------...---+,<--- q = corner point
-#     |        ...      |,
-#     |       a         ,b"
-#     |                 ,
-#     |                c|
-#     +-----------------+
+# Imports ---
+#  dsplstname : Name of display list in caller (canvas coords)
+#  {x,y}logscale : 0 => linear axis, 1 => log scale axis
+#  {x,y}database : data coords corresponding to canvas origin,
+#                  namely (xgraphmin,ygmax)
+#  xs, ys : scaling, canvas coords/data coords.  For log scaled
+#           axes this is the scaling ratio after taking log of
+#           the data.
+#  {x,y}dispbase : canvas origin, (lmargin,tmargin)
+#  {x,y}{min,max} : data coords corresponding to fudged viewing window
+#  disp{left,top,right,bottom} : canvas coords of viewing window
+#                                +/- fudge
+#  prevdata : list {previnc, xprev, yprev, xprevdisp, yprevdisp}
+#             where previnc is true iff previous point was inside
+#             fudged viewing window, (xprev,yprev) are data coords
+#             of preceding point, and (xprevdisp,yprevdisp) are
+#             canvas coords of preceding point.  The last two elements
+#             are optional, and are included only if the coords were
+#             computed by previous necessity.
+#  x, y : Current point, data coords
 #
-# When given imports a and a, the return list holds a.
-# When given imports a and b, the return list holds b' and q.
-# When given imports b and c, the return list holds b" and c.
-# Thus the full display list is "a b' q b" c".  Assuming the
-# "display box" as specified to this proc is actually a little
-# bit bigger than the canvas viewport, then the corner line
-# running from b' to q to b" won't be visible.  However, if
-# we don't include q, then a line would be drawn between b'
-# and b", which might cross into the viewport.  This possibility
-# can be avoided if the margin between the viewport and the
-# stated display box is big enough---the margin has to be half
-# the adjoining edge dimension---but this is probably an
-# uncommon enough case that it shouldn't hurt too much to
-# throw in the extra point q.
-#   If the entire line segment (xprev,yprev) to (x,y) is outside
-# the display box, then the display list will be unchanged,
-# and the return value will be 0.
+# Export ---
+#  List {curinc, x, y, xdisp, ydisp} corresponding to prevdata import
+#  for new data.  Here (xdisp, ydisp) are included iff needed during
+#  processing.  This list can be used directly as prevdata for the
+#  next call to this routine.
 #
-# NOTE: For best results, the calling routine should perform a simple
-# overlap test between the display box and the rectangle bounding
-# (xprev,yprev) and (x,y).  If there is no overlap, then no part
-# of the line segment between (xprev,yprev) and (x,y) is visible,
-# in which case it isn't necessary to call this routine.  This is a very
-# common occurrence with zoomed views.  The speedup can be considerable;
-# >50% has been observed with big data sets.  This proc originally
-# included the overlap check within itself, but now it assumes this
-# has been checked beforehand.  No testing has been done on the
-# correctness of this proc if the overlap condition fails.
+# If curinc is true then {xdisp ydisp} required, if inc is false then
+# {xdisp ydisp} are put on list if they were computed for other reasons.
+# The lastdsp (last display) point pair is checked in the case where
+# previnc was false but computations indicate that a new segment is to
+# be added to dsplst because either the current point is inside the
+# display region or else the segment between the previous point and the
+# current point crosses the display region.  The issue is that if the
+# last point on dsplst is on the other side of the display region then a
+# false segment can be introduced.  For example:
 #
-# NB: Imports must satisfy xmin<xmax, ymin<ymax
+#             b      ------ q1
+#         b' /------/        |
+#     +-----*-----------+    |
+#     |    / \          |    |
+#     |   a   \     g   |    |
+#     |        \   /    |    |
+#     |         \ /     |    |
+#     +----------#------+    |
+#               / f'-\       |
+#              /      -- \   |
+#            f            -- q2
 #
-;proc OWgwMakeDispPt { displistname \
-	xdatabase ydatabase xs ys xdispbase ydispbase \
-	xmin ymin xmax ymax previnc xprev yprev x y } {
-    set xlo [expr {$xmin-$x}]
-    set xhi [expr {$xmax-$x}]
-    set ylo [expr {$ymin-$y}]
-    set yhi [expr {$ymax-$y}]
-    if {$xlo*$xhi>0 || $ylo*$yhi>0} {
-	set curinc 0
-    } else {
-	set curinc 1
-    }
-    upvar $displistname dsplst
-    if {$curinc && $previnc} {
-	# The canonical case: (xprev,yprev) already in display
-	# list, and (x,y) inside display box.
-	lappend dsplst [expr {round(($x-$xdatabase)*$xs+$xdispbase)}]
-	lappend dsplst [expr {round(($y-$ydatabase)*$ys+$ydispbase)}]
-	return 1
-    }
-    # Otherwise, either the previous or the current point
-    # is not inside the display box
+#
+# The scenario is that points a and b appeared earlier, with a inside
+# the display region and b not.  So points a and intermediary b' are
+# placed onto dsplst.  Next several additional points, terminating with
+# point f, are processed, but they are all outside the display region
+# and have no effect on dsplst.  Then point g is added.  It is inside
+# the display region, so we want to produce a segment from f' to g.
+# However, if we simply add f' to dsplst, then we'll get an anomalous
+# segment running from b' to f' (since b' immediately precedes f' on
+# dsplst).  The only provision in the drawing routines for adding a
+# break to a curve creates separate segments that may be colored
+# differently, which is not what we want.  So instead this code needs
+# to detect this occurrence and introduce one or two corner posts,
+# here labeled q1 and q2, such that line segments from b' to q1 to q2 to f'
+# all lie outside the display region and so do not affect the display.
+#
+# NOTE: All canvas coords should be integer-valued doubles,
+#       e.g., 7.0, -3.0, 0.0.  This includes in particular
+#       the disp{left,top,right,bottom} values.
+#
+;proc OWgwMakeLogLinDispPt { dsplstname xlogscale ylogscale
+                             xdatabase ydatabase xs ys
+                             xdispbase ydispbase
+                             xmin ymin xmax ymax
+                             displeft disptop dispright dispbottom
+                             prevdata x y} {
+   # Extract values from prevdata. Note that last two elements
+   # (xprevdisp and yprevdisp) are optional.
 
-    set xP [expr {double($xprev-$x)}]
-    if {$xP>0} {
-	set xA $xlo ; set xB $xhi
-    } else {
-	set xA $xhi ; set xB $xlo
-    }
-    set yP [expr {double($yprev-$y)}]
-    if {$yP>0} {
-	set yA $ylo ; set yB $yhi
-    } else {
-	set yA $yhi ; set yB $ylo
-    }
+   # NOTE: This routine applies log to x and y as needed, but assumes
+   # all data imports are positive.  The caller should weed out zero
+   # values and either pitch negative values or apply abs() before
+   # calling this routine.
 
-    if {!$previnc} {
-	# The (prevx,prevy) projection to display box is
-	# the point (xB,?) or (?,yB) which is closest to
-	# (x,y).
-	if {abs($xB)<abs($xP)} {
-	    set tx [expr {$xB/$xP}]
-	} else { ;# Overflow protection
-	    if {$xB*$xP>=0} {set tx 1} else {set tx -1}
-	}
-	if {abs($yB)<abs($yP)} {
-	    set ty [expr {$yB/$yP}]
-	} else { ;# Overflow protection
-	    if {$yB*$yP>=0} {set ty 1} else {set ty -1}
-	}
-	if {$tx<$ty} {
-	    set test [expr {$y+$yP*$tx}]
-	    if {$test<$ymin || $test>$ymax} {
-		return 0 ;# No intersection with display box
-	    }
-	    lappend dsplst \
-		    [expr {round((($x+$xB)-$xdatabase)*$xs+$xdispbase)}]
-	    lappend dsplst \
-		    [expr {round(($test-$ydatabase)*$ys+$ydispbase)}]
-	} else {
-	    set test [expr {$x+$xP*$ty}]
-	    if {$test<$xmin || $test>$xmax} {
-		return 0 ;# No intersection with display box
-	    }
-	    lappend dsplst \
-		    [expr {round(($test-$xdatabase)*$xs+$xdispbase)}]
-	    lappend dsplst \
-		    [expr {round((($y+$yB)-$ydatabase)*$ys+$ydispbase)}]
-	}
-    }
+# DATAUSE:
+#  x, xmin, xmax, y, ymin, ymax  # data coords, used to find points
+#                                # that may cross display
+#  previnc, xlogscale, ylogscale
+#  xdatabase, ydatabase, xs, ys, displeft, disptop   <-- for transform
+#  displeft, disptop, dispright, dispbottom <- canvas coords corresponding
+#                                              to x/y-min/max; for corners
+#  dsplst                        # Append to, also find corner needs
+#  xprev, yprev or u0, v0 (data / canvas coords) # x/yprev needed for coarse
+#                             # winnowing, u/v0 needed for inbound crossings
 
-    if {$curinc} {
-	lappend dsplst [expr {round(($x-$xdatabase)*$xs+$xdispbase)}]
-	lappend dsplst [expr {round(($y-$ydatabase)*$ys+$ydispbase)}]
-    } else {
-	# The (x,y) projection to display box is the
-	# farther of (xA,?) and (?,yA).
-	# Note: If we reach here, then we know we (x,y)
-	#  has a valid projection to the display box
-	#  edge because either (xprev,yprev) is inside
-	#  the display box, or (xprev,yprev) has a valid
-	#  projection to the display box (i.e., we didn't
-	#  kick out of this proc in the !$previnc stanza
-	#  above.  Well, we know this modulo rounding
-	#  errors...)
-	if {abs($xA)<abs($xP)} {
-	    set tx [expr {$xA/$xP}]
-	} else { ;# Overflow protection
-	    if {$xA*$xP>0} {set tx 1} else {set tx -1}
-	}
-	if {abs($yA)<abs($yP)} {
-	    set ty [expr {$yA/$yP}]
-	} else { ;# Overflow protection
-	    if {$yA*$yP>0} {set ty 1} else {set ty -1}
-	}
-	if {$tx>$ty} {
-	    lappend dsplst \
-		    [expr {round((($x+$xA)-$xdatabase)*$xs+$xdispbase)}]
-	    lappend dsplst \
-		    [expr {round(($y+$yP*$tx-$ydatabase)*$ys+$ydispbase)}]
-	} else {
-	    lappend dsplst \
-		    [expr {round(($x+$xP*$ty-$xdatabase)*$xs+$xdispbase)}]
-	    lappend dsplst \
-		    [expr {round((($y+$yA)-$ydatabase)*$ys+$ydispbase)}]
-	}
-	# Include corner point, if needed
-	if {$xlo>0} {
-	    if {$yhi<0} {
-		lappend dsplst \
-			[expr {round(($xmin-$xdatabase)*$xs+$xdispbase)}]
-		lappend dsplst \
-			[expr {round(($ymax-$ydatabase)*$ys+$ydispbase)}]
-	    } elseif {$ylo>0} {
-		lappend dsplst \
-			[expr {round(($xmin-$xdatabase)*$xs+$xdispbase)}]
-		lappend dsplst \
-			[expr {round(($ymin-$ydatabase)*$ys+$ydispbase)}]
-	    }
-	} elseif {$xhi<0} {
-	    if {$yhi<0} {
-		lappend dsplst \
-			[expr {round(($xmax-$xdatabase)*$xs+$xdispbase)}]
-		lappend dsplst \
-			[expr {round(($ymax-$ydatabase)*$ys+$ydispbase)}]
-	    } elseif {$ylo>0} {
-		lappend dsplst \
-			[expr {round(($xmax-$xdatabase)*$xs+$xdispbase)}]
-		lappend dsplst \
-			[expr {round(($ymin-$ydatabase)*$ys+$ydispbase)}]
-	    }
-	}
-    }
-    return $curinc
+# Next rewrite: Might want to not bother with computing display border
+# crossing points, but instead just give canvas computed display
+# coordinates and let the canvas figure the boundary crossing.  Would
+# probably be faster in the case when the curve goes in and out of the
+# display window a lot.  OTOH, corner insertions would still be needed,
+# and that code would change a bit; in particular, corner repeats might
+# be harder to determine.  OTOOH, we could change the display list to be
+# a list of lists, where each list is a polyline, with breaks in
+# polylines when a curve exits the canvas.  This would require reworking
+# the curve rendering code.
+
+   upvar $dsplstname dsplst
+   foreach {previnc xprev yprev u0 v0} $prevdata { break }
+
+   if {$xmin<=$x && $x<=$xmax && $ymin<=$y && $y<=$ymax} {
+      set curinc 1
+   } else {
+      set curinc 0
+   }
+
+   if {$curinc && $previnc} {
+      # The canonical case: (xprev,yprev) already in display
+      # list, and (x,y) inside display box.
+      if {$xlogscale} {
+         set xdisp [expr {floor(log($x/$xdatabase)*$xs+$xdispbase+0.5)}]
+      } else {
+         set xdisp [expr {floor(($x-$xdatabase)*$xs+$xdispbase+0.5)}]
+      }
+      if {$ylogscale} {
+         set ydisp [expr {floor(log($y/$ydatabase)*$ys+$ydispbase+0.5)}]
+      } else {
+         set ydisp [expr {floor(($y-$ydatabase)*$ys+$ydispbase+0.5)}]
+      }
+      lappend dsplst $xdisp $ydisp
+      return [list 1 $x $y $xdisp $ydisp]
+   }
+   # Otherwise, either the previous or the current point
+   # is not inside the display box
+
+   # Dispose of simple no display effect case.  This is currently
+   # commented out because this case is weeded out by calling routine.
+   # if {!$curinc && !$previnc} {
+   #    # If display box and prev+cur box don't overlap,
+   #    # then cur has no effect on display.
+   #    if {($x<$xmin && $xprev<$xmin) || ($xmax<$x && $xmax<$xprev) || \
+   #        ($y<$ymin && $yprev<$ymin) || ($ymax<$y && $ymax<$yprev)} {
+   #       return [list 0 $x $y]
+   #    }
+   # }
+
+   # It can still happen that current point does not change dsplst,
+   # but to figure this out we might as well convert x and y to display
+   # coordinates, since this is needed for the log axis case and is not
+   # terribly expensive in the linear case.
+   if {$xlogscale} {
+      set u1 [expr {log($x/$xdatabase)*$xs+$xdispbase}]
+   } else {
+      set u1 [expr {($x-$xdatabase)*$xs+$xdispbase}]
+   }
+   set ru1 [expr {floor($u1+0.5)}]
+   if {$ylogscale} {
+      set v1 [expr {log($y/$ydatabase)*$ys+$ydispbase}]
+   } else {
+      set v1 [expr {($y-$ydatabase)*$ys+$ydispbase}]
+   }
+   set rv1 [expr {floor($v1+0.5)}]
+   if {[llength $prevdata]<5} {
+      # Display coordinates xprevdisp and yprevdisp (u0, v0) not
+      # computed previously; do so now.  Round to match behavior
+      # in case u0, v0 are computed in previous pass.
+      if {$xlogscale} {
+         set u0 [expr {floor(log($xprev/$xdatabase)*$xs+$xdispbase+0.5)}]
+      } else {
+         set u0 [expr {floor(($xprev-$xdatabase)*$xs+$xdispbase+0.5)}]
+      }
+      if {$ylogscale} {
+         set v0 [expr {floor(log($yprev/$ydatabase)*$ys+$ydispbase+0.5)}]
+      } else {
+         set v0 [expr {floor(($yprev-$ydatabase)*$ys+$ydispbase+0.5)}]
+      }
+   }
+
+   # Find display boundary crossings, and put in false points to mimic
+   # display of fully plotted curve.  This doesn't work exactly right
+   # with "smooth" curves --- do we care?
+   set crossings {}
+   set ulo $displeft  ;  set uhi $dispright
+   set vlo $disptop   ;  set vhi $dispbottom
+   set udiff [expr {$u1-$u0}] ; set absudiff [expr {abs($udiff)}]
+   set vdiff [expr {$v1-$v0}] ; set absvdiff [expr {abs($vdiff)}]
+
+   # Check left and right vertical crossings, u=ulo and u=uhi.
+   # Round computed y coords to integer.  (We assume ulo and uhi
+   # are integers.)  No crossing is added if udiff==0, ediff==0,
+   # or ediff==udiff.  AFAICT this is OK.  In the first case
+   # the line segment from (u0,v0) to (u1,v1) runs parallel to
+   # the left and right vertical boundaries, and so can't "cross"
+   # them.  In the latter two cases one point or the other lies
+   # on the boundary.  There might be a small hole for rounding
+   # error in the latter cases, if a point on a boundary is
+   # somehow classified as being outside the boundary, so watch
+   # for that.
+   foreach ubdry [list $ulo $uhi] {
+      set ediff [expr {$ubdry-$u0}]
+      if {$udiff*$ediff>0 && abs($ediff)<$absudiff} {
+         # 0 < t = ediff/udiff < 1.  Check crossing is between top and
+         # bottom edges
+         set tst [expr {abs($ediff)*$vdiff}]
+         if {$absudiff*($vlo-$v0)<= $tst && $tst <= $absudiff*($vhi-$v0)} {
+            # Tests passed
+            set t [expr {$ediff/$udiff}]  ;#  t should be in (0,1) (i.e.,
+            set vt [expr {floor($v0+$vdiff*$t+0.5)}] ;## no overflow)
+            lappend crossings [list $t $ubdry $vt]
+         }
+      }
+   }
+
+   # Check top and bottom horizontal crossings, v=vlo and v=vhi.
+   # Round computed x coords to integer.  (We assume vlo and vhi
+   # are integers.)
+   foreach vbdry [list $vlo $vhi] {
+      set ediff [expr {$vbdry-$v0}]
+      if {$vdiff*$ediff>0 && abs($ediff)<$absvdiff} {
+         # 0 < t = ediff/vdiff < 1.  Check crossing is between left and
+         # right edges
+         set tst [expr {abs($ediff)*$udiff}]
+         if {$absvdiff*($ulo-$u0)<= $tst && $tst <= $absvdiff*($uhi-$u0)} {
+            # Tests passed
+            set t [expr {$ediff/$vdiff}]  ;#  t should be in (0,1) (i.e.,
+            set ut [expr {floor($u0+$udiff*$t+0.5)}] ;## no overflow)
+            lappend crossings [list $t $ut $vbdry]
+         }
+      }
+   }
+
+   # In principle there shouldn't be more than two crossings, but protect
+   # against rounding errors by coalescing close points.
+   if {[llength $crossings]>1} {
+      set crossings [lsort -real -index 0 $crossings]
+      set newcrossings [list [set keeppt [lindex $crossings 0]]]
+      foreach tst [lrange $crossings 1 end] {
+         if {abs([lindex $keeppt 1]-[lindex $tst 1])>=1 || \
+                abs([lindex $keeppt 2]-[lindex $tst 2])>=1} {
+            # Points don't overlap.  Keep new point
+            lappend newcrossings [set keeppt $tst]
+         }
+      }
+      set crossings $newcrossings
+   }
+
+   # Construct display list additions from crossings list and, if the
+   # current point is inside the display window, the current point.
+   set dspadditions {}
+   foreach elt $crossings {
+      lappend dspadditions [lindex $elt 1] [lindex $elt 2]
+   }
+   if {$curinc} {
+      lappend dspadditions $ru1 $rv1
+   }
+
+   # It remains to check if corner points are needed to wrap
+   # curve trace around the display window.
+   if {!$previnc && [llength $crossings]>0 && [llength $dsplst]>0} {
+      # Since previnc is false, the first point on dspadditions is a
+      # crossing into the display region, which must lie on one of the
+      # display edges.  Likewise, (xlastdsp,ylastdsp) is the point where
+      # the curve previously left the display, so it must also lie on
+      # the border.  In principle a border crossing might be at a
+      # corner, in which case it actually lies on two edges, but that
+      # occurrence should be rare, so we'll arbitrarily assign corner
+      # points to one edge.  At worse this will generated a corner
+      # repeat, which we'll check for at the end.
+      #   Enumerate the edges like so
+      #     C0          1          C1
+      #       +------------------+  <- vlo
+      #       |                  |
+      #       |                  |
+      #    0  |                  | 2
+      #       |                  |
+      #       |                  |
+      #       +------------------+  <- vhi
+      #    C3 ^        3         ^ C2
+      #       |                  |
+      #      ulo                uhi
+      #
+      # Each corner is assigned the same number as the adjacent edge on
+      # the counterclockwise (e.g., the corner between edges 1 and 2 is
+      # corner C1, the corner between edges 3 and 0 is corner C3).
+      #
+      set xlastdsp [lindex $dsplst end-1]
+      set ylastdsp [lindex $dsplst end]
+      if {$xlastdsp == $ulo} {
+         set lastedge 0
+      } elseif {$ylastdsp == $vlo} {
+         set lastedge 1
+      } elseif {$xlastdsp == $uhi} {
+         set lastedge 2
+      } elseif {$ylastdsp == $vhi} {
+         set lastedge 3
+      } else {
+         error "ERROR: lastdsp ($xlastdsp,$ylastdsp)\
+          not on display boundary ($ulo,$vlo,$uhi,$vhi)"
+      }
+      if {[lindex $dspadditions 0] == $ulo} {
+         set newedge 0
+      } elseif {[lindex $dspadditions 1] == $vlo} {
+         set newedge 1
+      } elseif {[lindex $dspadditions 0] == $uhi} {
+         set newedge 2
+      } elseif {[lindex $dspadditions 1] == $vhi} {
+         set newedge 3
+      } else {
+         set details "Corners: $ulo $vlo $uhi $vhi"
+         append details ", new: $dspadditions"
+         error "ERROR: Curve entry not on display boundary\n$details"
+      }
+      set edgediff [expr {$newedge - $lastedge}]
+      if {$edgediff!=0} {
+         # Exit and entry points on different edges.  Add corner points.
+         if {$edgediff<0} { incr edgediff 4 }
+         if {$edgediff == 3} {
+            set cornerlist $newedge
+         } else {
+            set cornerlist $lastedge
+            if {$edgediff == 2} {
+               lappend cornerlist [expr {$lastedge<3 ? $lastedge+1 : 0}]
+            }
+         }
+         # Convert corner ids to display coordinates
+         set cornerpts {}
+         foreach corner $cornerlist {
+            switch $corner {
+               0 { lappend cornerpts $ulo $vlo }
+               1 { lappend cornerpts $uhi $vlo }
+               2 { lappend cornerpts $uhi $vhi }
+               3 { lappend cornerpts $ulo $vhi }
+            }
+         }
+         # Pitch the first corner if it matches lastdsp, or the last
+         # corner if it matches the first point in dspadditions.
+         if {[lindex $cornerpts 0] == $xlastdsp && \
+                [lindex $cornerpts 1] == $ylastdsp} {
+            set cornerpts [lreplace $cornerpts 0 1]
+         }
+         if {[lindex $cornerpts end-1] == [lindex $dspadditions 0] && \
+                [lindex $cornerpts end] == [lindex $dspadditions 1]} {
+            set cornerpts [lreplace $cornerpts end-1 end]
+         }
+
+         set dspadditions [concat $cornerpts $dspadditions]
+      }
+   } ;# End corner addition block
+
+   lappend dsplst {*}$dspadditions  ;# Much faster than concat
+
+   return [list $curinc $x $y $ru1 $rv1]
 }
-
 
 
 # Debugging proc.  If 'expr $test' is false, then raises

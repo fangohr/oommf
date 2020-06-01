@@ -16,6 +16,8 @@
 #   dothreads    0 or 1
 #   donuma       0 or 1
 #   sselevel     {} or level
+#   ddbasetype   {} or setting for SetValue xp_doubledouble_basetype
+#   ddaltsingle  {} or setting for SetValue xp_doubledouble_altsingle
 #   numanodes    Node list, none or auto
 #   threadcount  List of thread counts
 #
@@ -230,7 +232,8 @@ if {$show_hosts_flag} {
 
 # Check that test labels match known labels
 set known_labels [list tclsh initscript compiler cpuarch \
-                     real8m realwide dothreads donuma numanodes threadcount sselevel]
+                     real8m realwide dothreads donuma numanodes \
+                     threadcount sselevel ddbasetype ddaltsingle]
 foreach label $buildtest_labels {
    if {[lsearch -exact $known_labels $label]<0} {
       puts stderr "ERROR: Unknown test label: \"$label\""
@@ -502,7 +505,14 @@ foreach test $buildtest_values {
           ![string match {} $tcv(sselevel)]} {
       set env(OOMMF_BUILDTEST_SSELEVEL)     $tcv(sselevel)
    }
-
+   if {[info exists tcv(ddbasetype)] && \
+          ![string match {} $tcv(ddbasetype)]} {
+      set env(OOMMF_BUILDTEST_DOUBLEDOUBLE_BASETYPE) $tcv(ddbasetype)
+   }
+   if {[info exists tcv(ddaltsingle)] && \
+          ![string match {} $tcv(ddaltsingle)]} {
+      set env(OOMMF_BUILDTEST_DOUBLEDOUBLE_ALTSINGLE) $tcv(ddaltsingle)
+   }
 
    if {$list_tests_flag} { continue }
 

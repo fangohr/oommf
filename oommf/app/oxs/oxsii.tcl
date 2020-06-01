@@ -12,7 +12,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]

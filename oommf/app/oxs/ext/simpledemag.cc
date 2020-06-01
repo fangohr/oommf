@@ -174,12 +174,13 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   if(dy>maxedge) maxedge=dy;
   if(dz>maxedge) maxedge=dz;
   dx/=maxedge; dy/=maxedge; dz/=maxedge;
-  OC_REALWIDE scale = -1./(4*WIDE_PI*dx*dy*dz);
+  const OC_REALWIDE scale = -1.;
   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA00(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNxx(x,y,z,dx,dy,dz).Hi());
     A00[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A00[(pxdim-i)+j*pxdim+k*pxydim].Set(coef,0.);
     if(j>0) A00[i+(pydim-j)*pxdim+k*pxydim].Set(coef,0.);
@@ -197,7 +198,8 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA11(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNyy(x,y,z,dx,dy,dz).Hi());
     A11[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A11[(pxdim-i)+j*pxdim+k*pxydim].Set(coef,0.);
     if(j>0) A11[i+(pydim-j)*pxdim+k*pxydim].Set(coef,0.);
@@ -215,7 +217,8 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA22(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNzz(x,y,z,dx,dy,dz).Hi());
     A22[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A22[(pxdim-i)+j*pxdim+k*pxydim].Set(coef,0.);
     if(j>0) A22[i+(pydim-j)*pxdim+k*pxydim].Set(coef,0.);
@@ -233,7 +236,8 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA01(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNxy(x,y,z,dx,dy,dz).Hi());
     A01[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A01[(pxdim-i)+j*pxdim+k*pxydim].Set(-coef,0.);
     if(j>0) A01[i+(pydim-j)*pxdim+k*pxydim].Set(-coef,0.);
@@ -251,7 +255,8 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA02(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNxz(x,y,z,dx,dy,dz).Hi());
     A02[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A02[(pxdim-i)+j*pxdim+k*pxydim].Set(-coef,0.);
     if(j>0) A02[i+(pydim-j)*pxdim+k*pxydim].Set(coef,0.);
@@ -269,7 +274,8 @@ void Oxs_SimpleDemag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA12(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef = scale
+      * static_cast<OC_REALWIDE>(Oxs_CalculateNyz(x,y,z,dx,dy,dz).Hi());
     A12[i+j*pxdim+k*pxydim].Set(coef,0.);
     if(i>0) A12[(pxdim-i)+j*pxdim+k*pxydim].Set(coef,0.);
     if(j>0) A12[i+(pydim-j)*pxdim+k*pxydim].Set(-coef,0.);
@@ -348,7 +354,7 @@ void Oxs_SimpleDemag::ComputeEnergy
   fft.Forward(pxdim,pydim,pzdim,Mx);
   fft.Forward(pxdim,pydim,pzdim,My);
   fft.Forward(pxdim,pydim,pzdim,Mz);
-  
+
   // Calculate field components in frequency domain, then to iFFT
   // to transform back to space domain.
 
@@ -363,7 +369,7 @@ void Oxs_SimpleDemag::ComputeEnergy
     pindex = i+j*pxdim+k*pxydim;
     field[index].x=Hcomp[pindex].real();
   }
-  
+
   // Hy component
   for(pindex=0;pindex<ptotalsize;pindex++) {
     Hcomp[pindex] = A01[pindex]*Mx[pindex]
@@ -375,7 +381,7 @@ void Oxs_SimpleDemag::ComputeEnergy
     pindex = i+j*pxdim+k*pxydim;
     field[index].y=Hcomp[pindex].real();
   }
-  
+
   // Hz component
   for(pindex=0;pindex<ptotalsize;pindex++) {
     Hcomp[pindex] = A02[pindex]*Mx[pindex]

@@ -67,6 +67,11 @@ public:
             OXS_FFT_REAL_TYPE iA02,OXS_FFT_REAL_TYPE iA11,
             OXS_FFT_REAL_TYPE iA12,OXS_FFT_REAL_TYPE iA22)
       : A00(iA00), A01(iA01), A02(iA02), A11(iA11), A12(iA12), A22(iA22) {}
+    A_coefs& operator+=(const A_coefs& other) {
+      A00 += other.A00;   A01 += other.A01;   A02 += other.A02;
+      A11 += other.A11;   A12 += other.A12;   A22 += other.A22;
+      return *this;
+    }
   };
 
 #if OOMMF_THREADS
@@ -187,25 +192,13 @@ private:
   /// slowest.  Multi-threaded code flips this so that j increments
   /// fastest and i slowest.
 
+  // Max asymptotic method order
+  int asymptotic_order;
+
+  // Demag tensor computation accuracy
+  OC_REAL8m demag_tensor_error;
+  
 #if !OOMMF_THREADS
-  mutable OXS_FFT_REAL_TYPE *Hxfrm;
-#else
-  // In the threaded code, the memory pointed to by Hxfrm
-  // is managed by an Oxs_StripedArray object
-  mutable Oxs_StripedArray<OXS_FFT_REAL_TYPE> Hxfrm_base;
-#endif
-
-  OC_REAL8m asymptotic_radius;
-  /// If >=0, then radius beyond which demag coefficients A_coefs
-  /// are computed using asymptotic (dipolar and higher) approximation
-  /// instead of Newell's analytic formulae.
-
-#if !OOMMF_THREADS
-  mutable OXS_FFT_REAL_TYPE *Mtemp;  // Temporary space to hold
-  /// Ms[]*m[].  Not needed if using FFT routines that can take Ms as
-  /// input and do the multiplication on the fly.
-#endif
-
   // Object to perform FFTs.  All transforms are the same size, so we
   // only need one Oxs_FFT3DThreeVector object.  (Note: A
   // multi-threaded version of this code might want to have a separate
@@ -220,12 +213,18 @@ private:
   // each "convolution" (really matrix-vector multiply) computation.
   // These are set inside the FillCoefficientArrays member function,
   // and used inside GetEnergy.
-#if !OOMMF_THREADS
   mutable Oxs_FFT1DThreeVector fftx;
   mutable Oxs_FFTStrided ffty;
   mutable Oxs_FFTStrided fftz;
+  mutable OXS_FFT_REAL_TYPE *Hxfrm;
+  // In the threaded code, the memory pointed to by Hxfrm
+  // is managed by an Oxs_StripedArray object
+  mutable OXS_FFT_REAL_TYPE *Mtemp;  // Temporary space to hold
+  /// Ms[]*m[].  Not needed if using FFT routines that can take Ms as
+  /// input and do the multiplication on the fly.
   mutable OC_BOOL embed_convolution; // Note: Always true in threaded version
-#else
+#else // OOMMF_THREADS
+  mutable Oxs_StripedArray<OXS_FFT_REAL_TYPE> Hxfrm_base;
   const int MaxThreadCount;
   mutable Oxs_ThreadTree threadtree;
 
@@ -275,7 +274,8 @@ private:
     return name;
   }
 
-#endif
+#endif // OOMMF_THREADS
+
   mutable OC_INDEX embed_block_size;
   OC_INDEX cache_size; // Cache size in bytes.  Used in selecting
                        // embed_block_size.
@@ -288,11 +288,16 @@ private:
   /// demag field is changed by a multiple of m, the torque and
   /// therefore the magnetization dynamics are unaffected.
 
+  String saveN;
+  /// If non-empty, name of file to save demag tensor, as a six column
+  /// OVF 2.0 file, with order Nxx Nxy Nxz Nyy Nyz Nzz.
+
+  String saveN_fmt;  // File format for saveN
+  
   void FillCoefficientArrays(const Oxs_Mesh* mesh) const;
 
   void ReleaseMemory() const;
-
-
+  
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
 			 Oxs_EnergyData& oed) const {
@@ -313,6 +318,10 @@ public:
 
   // Optional interface for conjugate-gradient evolver.
   virtual OC_INT4m IncrementPreconditioner(PreconditionerData& pcd);
+
+  // For debugging.  Don't use this if A is big!
+  void DumpA(FILE* fptr) const;
+
 };
 
 inline bool operator==(const Oxs_Demag::A_coefs& lhs,

@@ -191,7 +191,7 @@ f(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
     OC_REALWIDE temp1,temp2,temp3;
     piece[piececount++] = 2*(2*xsq-ysq-zsq)*R;
     if((temp1=x*y*z)>0.)
-      piece[piececount++] = -12*temp1*atan2(y*z,x*R);
+      piece[piececount++] = -12*temp1*Oc_Atan2(y*z,x*R);
     if(y>0. && (temp2=xsq+zsq)>0.) {
       OC_REALWIDE dummy = log(((y+R)*(y+R))/temp2);
       piece[piececount++] = 3*y*zsq*dummy;
@@ -341,8 +341,8 @@ g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
   if(z>0.) { // For 2D grids, 1/3 of the calls from GetSDA01 have z==0.
     OC_REALWIDE temp1,temp2,temp3;
     result += 
-      -z*(zsq*atan2(x*y,z*R)
-	  +3.*(ysq*atan2(x*z,y*R)+xsq*atan2(y*z,x*R)));
+      -z*(zsq*Oc_Atan2(x*y,z*R)
+	  +3.*(ysq*Oc_Atan2(x*z,y*R)+xsq*Oc_Atan2(y*z,x*R)));
 
     if((temp1=xsq+ysq)>0.)
       result += 6*x*y*z*log((z+R)/sqrt(temp1));
@@ -385,9 +385,9 @@ g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
   int piececount=0;
   piece[piececount++] = -2*x*y*R;;
   if(z>0.) { // For 2D grids, 1/3 of the calls from GetSDA01 have z==0.
-    piece[piececount++] = -z*zsq*atan2(x*y,z*R);
-    piece[piececount++] = -3*z*ysq*atan2(x*z,y*R);
-    piece[piececount++] = -3*z*xsq*atan2(y*z,x*R);
+    piece[piececount++] = -z*zsq*Oc_Atan2(x*y,z*R);
+    piece[piececount++] = -3*z*ysq*Oc_Atan2(x*z,y*R);
+    piece[piececount++] = -3*z*xsq*Oc_Atan2(y*z,x*R);
 
     OC_REALWIDE temp1,temp2,temp3;
     if((temp1=xsq+ysq)>0.)

@@ -139,8 +139,11 @@ public:
    ) const =0 ;
 
   // Version of WriteOvf that takes a filename instead of a Tcl_Channel.
-  // This is for backwards compatibility and convenience.
-  void WriteOvf
+  // This is for backwards compatibility and convenience.  (Note: By
+  // giving this routine a different name than WriteOvf, as opposed to
+  // relying on the signature, we allow it to be directly visible in
+  // child classes.)
+  void WriteOvfFile
   (const char* filename,  // Name of output file
    OC_BOOL headers,          // If false, then output only raw data
    const char* title,     // Long filename or title
@@ -154,6 +157,27 @@ public:
    const Oxs_MeshValue<OC_REAL8m>* scale=NULL  // Optional scaling for vec
                       /// Set scale to NULL to use vec values directly.
    ) const;
+
+  // Deprecated interface to the previous routine.  This can not
+  // be called directly from a derived class; instead you must
+  // upcast to Oxs_Mesh.
+  void WriteOvf
+  (const char* filename,  // Name of output file
+   OC_BOOL headers,          // If false, then output only raw data
+   const char* title,     // Long filename or title
+   const char* desc,      // Description to embed in output file
+   const char* valueunit, // Field units, such as "A/m".
+   const char* meshtype,  // Either "rectangular" or "irregular"
+   const char* datatype,  // Either "binary" or "text"
+   const char* precision, // For binary, "4" or "8";
+                          ///  for text, a printf-style format
+   const Oxs_MeshValue<ThreeVector>* vec,   // Vector array
+   const Oxs_MeshValue<OC_REAL8m>* scale=NULL  // Optional scaling for vec
+                      /// Set scale to NULL to use vec values directly.
+   ) const {
+    WriteOvfFile(filename,headers,title,desc,valueunit,meshtype,datatype,
+                 precision,vec,scale);
+  }
 
   virtual const char* NaturalOutputType() const { return "irregular"; }
   /// Returns a string suitable for use as the "meshtype" field

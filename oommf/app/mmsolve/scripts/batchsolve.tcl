@@ -10,7 +10,7 @@ package require Mms 2
 Oc_ForceStderrDefaultMessage	;# use stderr, not dialog for messages
 
 Oc_Main SetAppName batchsolve
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 Oc_Main SetDataRole producer
 
 Oc_CommandLine ActivateOptionSet Net

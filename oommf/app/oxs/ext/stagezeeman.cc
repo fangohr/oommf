@@ -210,7 +210,7 @@ Oxs_StageZeeman::FillStageFieldCache(const Oxs_SimState& state) const
     }
     max_field = stagefield[max_i];
     energy_density_error_estimate
-      = 4*OC_REAL8m_EPSILON*MU0*Oc_Sqrt(max_energysq);
+      = 4*OC_REAL8m_EPSILON*MU0*sqrt(max_energysq);
   }
 }
 

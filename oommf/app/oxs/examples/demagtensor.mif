@@ -8,7 +8,8 @@
 #  parameter tensor_column to either 1, 2, or 3 to select the
 #  demagnetization tensor column.  Then load the problem and examine the
 #  Oxs_Demag::Field output, either in mmDisp or by writing to a file via
-#  mmArchive.
+#  mmArchive.  Use Parameter dumpfile to automatically write to the
+#  field output to disk.
 #    In mmDisp, a Ctrl-Shift-MouseClick will display the field values
 #  and position for the vector under the mouse.  For mmArchive file
 #  output, the OOMMF command line utility avf2odt can be used to create
@@ -40,6 +41,12 @@ Parameter xcount 20
 Parameter ycount 10
 Parameter zcount  3
 
+Parameter til 1 ;# total_iteration_limit should be 1 unless running a
+                ## timing study.
+
+Parameter output_format "binary 8"
+# Usually either "binary 8" or "text %25.16e"
+
 Parameter tensor_column 1  ;# Should be either 1, 2 or 3.
 if {![catch {expr {int($tensor_column)}} check]} {
    set tensor_column $check
@@ -53,21 +60,47 @@ switch -exact $tensor_column {
            \"$tensor_column\".  Should be one of 1, 2, or 3."
    }
 }
+
+
+Parameter aord 11
+Parameter ama 1.5 ;# asymptotic_max_aspect
+Parameter arad 32
+
+Parameter saveN {}
+Parameter saveN_fmt "text %25.16e"
+
+Parameter dumpfile {}
+
+set basename demagtensor
+if {![string match {} $dumpfile]} {
+   set basename $dumpfile
+}
+set basename [format "%s-cs_%gx%gx%g-arad_%g-column%d-counts_%04dx%04dx%04d" \
+                 $basename $xcellsize $ycellsize $zcellsize \
+                 $arad $tensor_column $xcount $ycount $zcount]
 SetOptions [subst {
-   basename "demagtensor-column${tensor_column}"
+   basename [list $basename]
+   vector_field_output_format [list $output_format]
 }]
 
 
-Parameter arad 32  ;# Default setting for asymptotic_radius is 32
-
 Parameter Ms 1
 Parameter celloffset {0 0 0}  ;# Non-empty cell location, in cell units
+set xoff [lindex $celloffset 0]
+set yoff [lindex $celloffset 1]
+set zoff [lindex $celloffset 2]
 
 Parameter simple_demag 0 ;# Change to 1 to use Oxs_SimpleDemag
 
 Parameter periodic {}  ;# One of {}, x, y, or z
 
-Specify Oxs_BoxAtlas:atlas [subst {
+Specify Oxs_MultiAtlas:atlas [subst {
+   atlas { Oxs_BoxAtlas {
+      xrange {[expr {($xoff-0.5)*$xcellsize}] [expr {($xoff+0.5)*$xcellsize}]}
+      yrange {[expr {($yoff-0.5)*$ycellsize}] [expr {($yoff+0.5)*$ycellsize}]}
+      zrange {[expr {($zoff-0.5)*$zcellsize}] [expr {($zoff+0.5)*$zcellsize}]}
+      name activecell
+   }}
    xrange {[expr {-0.5*$xcellsize}] [expr {($xcount-0.5)*$xcellsize}]}
    yrange {[expr {-0.5*$ycellsize}] [expr {($ycount-0.5)*$ycellsize}]}
    zrange {[expr {-0.5*$zcellsize}] [expr {($zcount-0.5)*$zcellsize}]}
@@ -92,38 +125,46 @@ if {[string match {} $periodic]} {
 if {$simple_demag} {
    Specify Oxs_SimpleDemag {}
 } else {
+   if {![string match {} $saveN]} {
+      set writeN [list saveN $saveN saveN_fmt $saveN_fmt]
+      
+   } else {
+      set writeN {}
+   }
    Specify Oxs_Demag [subst {
+      asymptotic_order $aord
       asymptotic_radius $arad
+      asymptotic_max_aspect $ama
+      $writeN
    }]
 }
 
 Specify Oxs_CGEvolve:evolve {}
 
-proc OneCell { x y z } {
-   global Ms celloffset xcellsize ycellsize zcellsize
-   foreach {xcelloff ycelloff zcelloff} $celloffset break
-   if {abs($x - $xcelloff*$xcellsize) > 0.5*$xcellsize \
-          || abs($y - $ycelloff*$ycellsize) > 0.5*$ycellsize \
-          || abs($z - $zcelloff*$zcellsize) > 0.5*$zcellsize} {
-      return 0.0
+if {$til>1} {
+   # Include a non-zero field for timing studies, as otherwise
+   # Oxs_CGEvolve chokes on rounding error.
+   Specify Oxs_FixedZeeman {
+      field {9 13 5}
    }
-   return $Ms
 }
 
-# Note: Include a stopping_mxHxm record in the following Specify block
-# as a sop to the regression test suite.
 Specify Oxs_MinDriver [subst {
  evolver :evolve
  mesh :mesh
- Ms { Oxs_ScriptScalarField {
-    script OneCell
-    script_args rawpt
+ Ms { Oxs_AtlasScalarField {
     atlas :atlas
+    default_value 0.0
+    values {
+       activecell $Ms
+    }
  }}
  m0 [list $m0]
- total_iteration_limit 1
- stopping_mxHxm 0.01  
+ total_iteration_limit $til
+ checkpoint_interval -1
 }]
 
-#Destination archive mmArchive
-#Schedule DataTable archive Step 1
+if {![string match {} $dumpfile]} {
+   Destination archive mmArchive
+   Schedule Oxs_Demag::Field archive Step 1
+}

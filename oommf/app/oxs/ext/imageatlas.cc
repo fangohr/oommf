@@ -4,7 +4,7 @@
  * image file for region demarcation.
  */
 
-#include <ctype.h>  // For isspace
+#include <cctype>  // For isspace
 
 #include "nb.h"
 #include "director.h"

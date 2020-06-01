@@ -238,6 +238,217 @@ proc GuessCpuArch_NameStr { namestr } {
    return [list $vendor $cputype $sselevel]
 }
 
+
+# Routine that determines processor specific optimization flags for gcc
+# for x86 processors.  The first import is the gcc version, as returned
+# by the GuessGccVersion proc.  Note that the flags accepted by gcc vary
+# by version.  The second import, cpu_arch, should match output from the
+# GuessCpu proc above.  Return value is a list of gcc flags.
+proc GetGccCpuOptFlags { gcc_version cpu_arch } {
+   global tcl_platform
+
+   if {[llength $gcc_version]<2} {
+      # Unable to determine gcc version.  Return an empty string.
+      return {}
+   }
+   set verA [lindex $gcc_version 0]
+   set verB [lindex $gcc_version 1]
+
+   if {![regexp -- {[0-9]+} $verA] || ![regexp -- {[0-9]+} $verB]} {
+      return -code error "Invalid input:\
+         gcc_version should be a list of numbers, not\
+         \"$gcc_version\""
+   }
+
+   # Extract cpu information from cpu_arch import
+   set cpu_vendor "unknown"
+   set cpu_type   "unknown"
+   set cpu_sse    0
+   foreach {cpu_vendor cpu_type cpu_sse} $cpu_arch { break }
+
+   # Construct optimization flags
+   # Note: -fprefetch-loop-arrays is available in gcc 3.1
+   # and later, for Intel processors pentium3 or better,
+   # and for AMD processors k6-2 or better.
+   set cpuopts {}
+   if {$verA==2 && $verB>=95} {
+      # Don't bother setting -march in case of
+      # i386, i486, or k5
+      switch -glob -- $cpu_type {
+         k6*         { set cpuopts [list -march=k6] }
+         pentium  -
+         pentium-mmx { set cpuopts [list -march=pentium] }
+         pentium* -
+         prescott -
+         nocona   -
+         core*    -
+         athlon*  -
+         opteron  -
+         k8          { set cpuopts [list -march=pentiumpro] }
+      }
+      set cpu_sse 0
+   } elseif {$verA==3 && $verB<1} {
+      # Don't bother setting -march in case of
+      # i386, i486, or k5
+      switch -glob -- $cpu_type {
+         pentium  -
+         pentium-mmx { set cpuopts [list -march=pentium] }
+         pentium* -
+         prescott -
+         nocona   -
+         core*       { set cpuopts [list -march=pentiumpro] }
+         k6*         { set cpuopts [list -march=k6] }
+         athlon*  -
+         opteron  -
+         k8          { set cpuopts [list -march=athlon] }
+      }
+      set cpu_sse 0
+   } elseif {$verA==3  && $verB<3} {
+      # Don't bother setting -march in case of
+      # i386, i486, or k5
+      switch -glob -- $cpu_type {
+         pentium    -
+         pentium-mmx { set cpuopts [list -march=pentium] }
+         pentiumpro { set cpuopts [list -march=pentiumpro] }
+         pentium2   { set cpuopts [list -march=pentium2] }
+         pentium3   -
+         pentium-m  { set cpuopts [list -march=pentium3 \
+                                      -fprefetch-loop-arrays] }
+         pentium*   -
+         prescott   -
+         nocona     -
+         core*      { set cpuopts [list -march=pentium4 \
+                                      -fprefetch-loop-arrays] }
+         k6         { set cpuopts [list -march=k6] }
+         k6-2       { set cpuopts [list -march=k6-2 -fprefetch-loop-arrays] }
+         k6-3       { set cpuopts [list -march=k6-3 -fprefetch-loop-arrays] }
+         athlon     { set cpuopts [list -march=athlon -fprefetch-loop-arrays] }
+         athlon-tbird { set cpuopts [list -march=athlon-tbird \
+                                        -fprefetch-loop-arrays] }
+         athlon*    -
+         opteron    -
+         k8         { set cpuopts [list -march=athlon-4 \
+                                      -fprefetch-loop-arrays] }
+      }
+      if {$cpu_sse>=2} { set cpu_sse 2 }
+   } elseif {$verA==3 && $verB==3} {
+      # Don't bother setting -march in case of
+      # i386, i486, or k5
+      switch -glob -- $cpu_type {
+         pentium     -
+         pentium-mmx { set cpuopts [list -march=pentium] }
+         pentiumpro  { set cpuopts [list -march=pentiumpro] }
+         pentium2    { set cpuopts [list -march=pentium2] }
+         pentium3    -
+         pentium-m   { set cpuopts [list -march=pentium3 \
+                                       -fprefetch-loop-arrays] }
+         pentium4    { set cpuopts [list -march=pentium4 \
+                                       -fprefetch-loop-arrays] }
+         prescott    { set cpuopts [list -march=prescott \
+                                       -fprefetch-loop-arrays] }
+         nocona      -
+         pentium*    -
+         core*       { set cpuopts [list -march=nocona \
+                                       -fprefetch-loop-arrays] }
+         k6          { set cpuopts [list -march=k6] }
+         k6-2        { set cpuopts [list -march=k6-2 -fprefetch-loop-arrays] }
+         k6-3        { set cpuopts [list -march=k6-3 -fprefetch-loop-arrays] }
+         athlon      { set cpuopts [list -march=athlon \
+                                       -fprefetch-loop-arrays] }
+         athlon-tbird { set cpuopts [list -march=athlon-tbird \
+                                        -fprefetch-loop-arrays] }
+         athlon*     -
+         opteron     -
+         k8          { set cpuopts [list -march=athlon-4 \
+                                       -fprefetch-loop-arrays] }
+      }
+      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
+  } elseif {($verA==3 && $verB>=4) || ($verA==4 && $verB<=1) \
+		|| [string compare "Darwin" $tcl_platform(os)]==0} {
+      # On Mac Os X Lion (others?), despite what 'man gcc' reports,
+      # gcc doesn't support "-march=native", although it does support
+      # "mtune=native".
+
+      # Don't bother setting -march in case of i386, i486, or k5
+      switch -glob -- $cpu_type {
+         pentium     -
+         pentium-mmx { set cpuopts [list -march=pentium] }
+         pentiumpro  { set cpuopts [list -march=pentiumpro] }
+         pentium2    { set cpuopts [list -march=pentium2] }
+         pentium3    { set cpuopts [list -march=pentium3 \
+                                       -fprefetch-loop-arrays] }
+         pentium-m   { set cpuopts [list -march=pentium-m \
+                                       -fprefetch-loop-arrays] }
+         pentium4    { set cpuopts [list -march=pentium4 \
+                                       -fprefetch-loop-arrays] }
+         prescott    { set cpuopts [list -march=prescott \
+                                       -fprefetch-loop-arrays] }
+         nocona      -
+         pentium*    -
+         core*       { set cpuopts [list -march=nocona \
+                                       -fprefetch-loop-arrays] }
+         k6          { set cpuopts [list -march=k6 -fprefetch-loop-arrays] }
+         k6-2        { set cpuopts [list -march=k6-2 -fprefetch-loop-arrays] }
+         k6-3        { set cpuopts [list -march=k6-3 -fprefetch-loop-arrays] }
+         athlon      { set cpuopts [list -march=athlon \
+                                       -fprefetch-loop-arrays] }
+         athlon-4    { set cpuopts [list -march=athlon-4 \
+                                       -fprefetch-loop-arrays] }
+         opteron     -
+         k8          { set cpuopts [list -march=k8 -fprefetch-loop-arrays] }
+         default {
+	     # Assume cputype is newer than any on above list, and
+	     # so use flags for core on intel and k8 on amd
+	     if {[string match intel $cpu_vendor]} {
+		 set cpuopts [list -march=nocona -fprefetch-loop-arrays]
+	     } elseif {[string match amd $cpu_vendor]} {
+		 set cpuopts [list -march=k8 -fprefetch-loop-arrays]
+	     }
+         }
+      }
+      if {($verA==4 && $verB>=2)} {
+         lappend cpuopts "-mtune=native"
+      }
+      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
+   } elseif {$verA>4 || ($verA==4 && $verB>=2)} {
+      set cpuopts [list -march=native]
+      # -march/-mtune=native setting introduced with gcc 4.2
+      switch -glob -- $cpu_type {
+         pentium     -
+         pentium-mmx -
+         pentiumpro  -
+         pentium2    {}
+         pentium*    -
+         prescott    -
+         nocona      -
+         pentium*    -
+         core*       { lappend cpuopts -fprefetch-loop-arrays }
+         k6          {}
+         k6-*        -
+         athlon*     -
+         opteron     -
+         k8          { lappend cpuopts -fprefetch-loop-arrays }
+      }
+      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
+   }
+   if {$cpu_sse>0} {
+      lappend cpuopts -mfpmath=sse -msse
+      for {set sl 2} {$sl<=$cpu_sse} {incr sl} {
+         lappend cpuopts -msse$sl
+      }
+   }
+
+   # Frame pointer: Some versions of gcc don't handle exceptions
+   # properly w/o frame-pointers.  This typically manifests as
+   # Oxs dying without an error message while loading a MIF file.
+   # Interestingly, including -momit-leaf-frame-pointer appears
+   # to work around this problem, at least on some systems.  YMMV;
+   # Comment this out if the aforementioned problem occurs.
+   lappend cpuopts -momit-leaf-frame-pointer
+
+   return $cpuopts
+}
+
 ########################################################################
 # Routines to determine processor capabilites from the features flags:
 proc GetFlags {} {
@@ -330,6 +541,9 @@ proc Find_FMA_Type { {flags {}} } {
 
 ########################################################################
 
+########################################################################
+########################################################################
+
 # Routine to guess the Intel C++ version.  The import, icpc, is used
 # via "exec $icpc --version" (or, rather, the "open" analogue) to
 # determine the icpc version (since the flags accepted by icpc vary by
@@ -362,9 +576,18 @@ proc GetIcpcBannerVersion { icpc } {
 # are mostly placeholders, but they may be expanded and refined in the
 # future.
 proc GetIcpcGeneralOptFlags { icpc_version } {
-   set opts [list -O3 -ipo -no-prec-div -ansi_alias \
+   set opts [list -xHost -O3 -ipo -no-prec-div -ansi_alias \
                 -fp-model fast=2 -fp-speculation fast \
                 -std=c++11]
+   return $opts
+}
+proc GetIcpcValueSafeOptFlags { icpc_version } {
+   set opts [list -xHost -O3 -ipo -ansi_alias \
+                -fp-model precise -no-ftz -fp-speculation fast \
+                -std=c++11]
+   # AFAICT, the -no-ftz (no flush to zero) flag doesn't hurt, but
+   # is only operative when compiling main().  All other routines
+   # inherit the FPU settings from the caller.
    return $opts
 }
 proc GetIcpcCpuOptFlags { icpc_version cpu_arch } {
@@ -433,11 +656,15 @@ proc GetIcpcCpuOptFlags { icpc_version cpu_arch } {
    return $cpuopts
 }
 
-# Routines to obtain version from Portland Group pgCC compiler.
-proc GuessPgccVersion { icpc } {
+########################################################################
+########################################################################
+
+
+# Routines to obtain version from Portland Group pgc++ compiler.
+proc GuessPgccVersion { pgcc } {
    set guess {}
    catch {
-      set fptr [open "|$icpc --version" r]
+      set fptr [open "|$pgcc --version" r]
       set verstr [string trim [read $fptr]]
       close $fptr
       set verstr [lindex [split $verstr "\n"] 0]
@@ -448,13 +675,47 @@ proc GuessPgccVersion { icpc } {
    return [split $guess ".-"]
 }
 
-proc GetPgccBannerVersion { icpc } {
+proc GetPgccBannerVersion { pgcc } {
    set banner {}
    catch {
-      set fptr [open "|$icpc --version" r]
+      set fptr [open "|$pgcc --version" r]
       set verstr [string trim [read $fptr]]
       close $fptr
       set banner [lindex [split $verstr "\n"] 0]
    }
    return $banner
+}
+
+proc GetPgccGeneralOptFlags { pgcc_version } {
+   # Note: If flags -mp and --exceptions are both used, the latter must
+   # come later in the option sequence.
+   set opts [list -std=c++11]
+   if {[lindex $pgcc_version 0]<=16} {
+       lappend opts --exceptions
+   }
+   return $opts
+}
+proc GetPgccValueSafeOptFlags { pgcc_version cpu_arch} {
+   set opts  [list -O2 -Kieee -Mvect=noassoc,fuse,prefetch \
+                 -Mcache_align -Mprefetch -Msmartalloc -Mnoframe \
+                 -Munroll -Mnoautoinline]
+   return $opts
+}
+proc GetPgccFastOptFlags { pgcc_version cpu_arch } {
+   # CPU model architecture specific options.
+   set opts [list -fast -Knoieee -Mnoautoinline]
+   return $opts
+}
+
+proc GetPgccLinkOptFlags { pgcc_version } {
+   # Linker flags
+   set opts {-Mnoeh_frame}
+   ## Without -Mnoen_frame, threads in Oxs abort during
+   ## Tcl_ExitThread() processing with the error "terminate called
+   ## without an active exception" if the thread code contains a
+   ## try/catch block.  (At least for pgc++ version 16.10-0.)
+   if {[lindex $pgcc_version 0]<=16} {
+       lappend opts -latomic
+   }
+   return $opts
 }

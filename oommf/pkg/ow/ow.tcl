@@ -21,7 +21,7 @@ package require Nb 2			;# [Nb_RatApprox]
 Oc_CheckTclIndex Ow
 
 # CVS 
-package provide Ow 2.0a1
+package provide Ow 2.0a2
 
 # Provide Oc_Log dialogs for message reporting 
 Oc_Log SetLogHandler Ow_Message panic Oc_Log

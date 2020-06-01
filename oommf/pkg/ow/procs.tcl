@@ -420,6 +420,7 @@ proc Ow_PositionChild { child {parent .} {xrat .25} {yrat .25} } {
         if { $childposy >= 0 } then { set childposy "+$childposy" }
         wm geometry $child "$childposx$childposy"
     }
+    raise $child
 }
 
 ######################################################################

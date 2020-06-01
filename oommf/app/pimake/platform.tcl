@@ -209,6 +209,10 @@ Oc_Class Platform {
                 }
                 continue
             }
+            if {[catch {$configuration GetValue EXTRA_LIBS_$stem} extra_libs]} {
+               # Supplemental libs needed with library $stem
+               set extra_libs {}
+            }
             if {[$configuration GetValue program_linker_uses_-L-l]} {
   	       set libdir [file dirname [$class StaticLibraries [list $stem]]]
 	       if {[file isdirectory $libdir]} {
@@ -217,6 +221,7 @@ Oc_Class Platform {
 		  lappend ret -L$libdir
 	       }
 	       lappend ret -l$stem
+               foreach xtra $extra_libs { lappend ret -l$xtra }
             } elseif {[$configuration GetValue program_linker_uses_-I-L-l]} {
   	       set libdir [file dirname [$class StaticLibraries [list $stem]]]
 	       if {[file isdirectory $libdir]} {
@@ -235,6 +240,7 @@ Oc_Class Platform {
 		  lappend ret -L$libdir
 	       }
 	       lappend ret -l$stem
+               foreach xtra $extra_libs { lappend ret -l$xtra }
             } else {
 	       set lf [$class StaticLibraries [list $stem]]
 	       if {[file isfile $lf]} {
@@ -242,6 +248,7 @@ Oc_Class Platform {
 	       } else {
 		  # Assume this is a system library
 		  lappend ret $stem
+                  set ret [concat $ret $extra_libs]
 	       }
             }
         }
@@ -255,7 +262,7 @@ Oc_Class Platform {
         return $ret
     }
 
-    proc Compile {language args} {
+    proc CompileCmd {language args} {
         set pfx program_compiler_[string tolower $language]
         set compcmd [$configuration GetValue $pfx]
         set args [concat $cflags $args]
@@ -298,6 +305,11 @@ Oc_Class Platform {
         if {[llength $args]} {
             return -code error "Expected option, but saw '[lindex $args 0]'"
         }
+        return $compcmd
+    }
+
+    proc Compile {language args} {
+        set compcmd [eval Platform CompileCmd {$language} $args]
         if {[catch {eval Oc_Exec Foreground $compcmd} msg]} {
             global errorCode
             return -code error -errorcode $errorCode $msg

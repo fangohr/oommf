@@ -126,7 +126,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName oommf.tcl
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for

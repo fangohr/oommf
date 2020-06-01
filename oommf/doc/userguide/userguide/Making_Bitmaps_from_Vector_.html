@@ -57,16 +57,16 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Making Bitmaps from Vector Fields:
             avf2ppm
-</H2><A NAME="16995"></A><A NAME="16996"></A><A NAME="16997"></A><A NAME="16998"></A>
+</H2><A NAME="17019"></A><A NAME="17020"></A><A NAME="17021"></A><A NAME="17022"></A>
 
 <P>
-The <B>avf2ppm</B><A NAME="17000"></A> utility converts a
+The <B>avf2ppm</B><A NAME="17024"></A> utility converts a
 collection of vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>) into color
 bitmaps suitable for inclusion into documents or collating into movies.
 The command line arguments control filename and format selection, while
 plain-text configuration files, modeled after the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="17007"><B>mmDisp</B></A> configuration dialog
+ NAME="17031"><B>mmDisp</B></A> configuration dialog
 box, specify display parameters.
 
 <P>
@@ -100,9 +100,9 @@ where
 </DD>
 <DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>P3|P6|B24<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>Specify the output image file format.  Currently supported formats are
-  the true color <EM>Portable Pixmap</EM> (PPM)<A NAME="17028"></A> formats P3
+  the true color <EM>Portable Pixmap</EM> (PPM)<A NAME="17052"></A> formats P3
   (ASCII text) and P6 (binary), and the uncompressed Windows
-  BMP<A NAME="17029"></A> 24 bits-per-pixel format.  The default is P6.
+  BMP<A NAME="17053"></A> 24 bits-per-pixel format.  The default is P6.
 </DD>
 <DT><STRONG><TT><B>-ipat pattern</B></TT></STRONG></DT>
 <DD>Specify input files using a pattern with ``glob-style'' wildcards.
@@ -139,7 +139,7 @@ wildcards before handing control over to the invoked application, so the
 <TT>-ipat</TT> option is not needed (although it is useful in case of a
 ``command-line too long'' error).  DOS does not do this expansion, so
 you must use <TT>-ipat</TT> to get
-wildcard expansion<A NAME="17047"></A> in Windows.
+wildcard expansion<A NAME="17071"></A> in Windows.
 
 <P>
 As each input file is processed, a name for the output file is produced
@@ -154,13 +154,13 @@ default <TT>-opatsub</TT> string replaces this with the extension
 
 <P>
 If you have command line image processing ``filter'' programs, e.g.,
-<B>ppmtogif</B><A NAME="17059"></A> (part of the
-NetPBM<A NAME="17060"></A> package), then you can use the <TT>-filter</TT>
+<B>ppmtogif</B><A NAME="17083"></A> (part of the
+NetPBM<A NAME="17084"></A> package), then you can use the <TT>-filter</TT>
 option to pipe the output of <B>avf2ppm</B> through that filter before it
 is written to the output file specified by the <TT>-opat*</TT>
 expressions.  If the processing changes the format of the file, (e.g.,
-<B>ppmtogif</B> converts from PPM<A NAME="17065"></A> to
-GIF<A NAME="17066"></A>), then you will likely want to specify a
+<B>ppmtogif</B> converts from PPM<A NAME="17089"></A> to
+GIF<A NAME="17090"></A>), then you will likely want to specify a
 <TT>-opatsub</TT> different from the default.
 
 <P>
@@ -173,7 +173,7 @@ tclsh oommf.tcl avf2ppm -ipat *.omf -opatsub .gif -filter ppmtogif
 (On Unix, either drop the <TT>-ipat</TT> flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
 <TT>-ipat '*.omf'</TT>.)  You may also pipe together multiple filters, e.g.,
-<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="17076"></A>.
+<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="17100"></A>.
 
 <P>
 
@@ -182,7 +182,7 @@ the input file specification string from expansion by the shell, as in
 <P>
 <FONT SIZE="+1"><B>Configuration
 files<A NAME="sec:avf2ppmconfig"></A></B></FONT>
-<BR><A NAME="17078"></A>
+<BR><A NAME="17102"></A>
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration
@@ -209,7 +209,7 @@ documentation, except that <B>avf2ppm</B> ignores the
 parameters, and the following additional parameters are available:
 <DL>
 <DT><STRONG><TT><B>arrow,antialias</B></TT></STRONG></DT>
-<DD>If 1<A NAME="17100"></A>, then each pixel along the edge of an arrow is
+<DD>If 1<A NAME="17124"></A>, then each pixel along the edge of an arrow is
  drawn not with the color of the arrow, but with a mixture of the arrow
  color and the background color.  This makes arrow boundaries appear
  less jagged, but increases computation time.  Also, the colors used in
@@ -330,6 +330,6 @@ file <TT><B>avf2ppm.config</B></TT>.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
 </BODY>
 </HTML>

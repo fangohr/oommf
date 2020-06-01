@@ -55,22 +55,7 @@ public:
   }
   T MagSq() const { return x*x+y*y+z*z; }
   T Mag() const {
-    // Using scaling to provide some protection against overflow.
-    // Underflow protection is not provided.  To make this operation
-    // bulletproof, see James L. Blue, "A Portable Fortran Program to
-    // Find the Euclidean Norm of a Vector," ACM Transactions on
-    // Mathematical Software, 4, 15-23 (1978).
-    T ax = abs(x);
-    T ay = abs(y);
-    T az = abs(z);
-    T scale = ax + ay + az;
-    if(scale < OC_SQRT_REAL4_MAX/4.0) {
-      // Hopefully this is the usual branch.
-      return (T)Oc_Sqrt(ax*ax + ay*ay + az*az);
-    }
-    // Might want to check for scale == infinity
-    ax /= scale;  ay /= scale;  az /= scale;
-    return (T)(Oc_Sqrt(ax*ax + ay*ay + az*az)*scale);
+    return Oc_Hypot(x,y,z);
   }
   Nb_Vec3<T> & operator+=(const Nb_Vec3<T>& v);
   Nb_Vec3<T> & operator-=(const Nb_Vec3<T>& v);

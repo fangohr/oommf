@@ -176,6 +176,13 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## If windows don't auto resize properly, set this value to 1.
 # $config SetValue bad_geom_propagate 1
 #
+## Use SSE intrinsics?  If so, specify level here.  Set to 0 to not
+## use SSE intrinsics.  Leave unset to get the default (which may
+## depend on the compiler).  Note: The cpu_arch selection below must
+## support the desired sse_level.  In particular, on 64-bit systems
+## cpu_arch == generic supports only SSE 2 or lower.
+# $config SetValue sse_level 2  ;# Replace '2' with desired level
+#
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
 # $config SetValue program_compiler_c++_override {icpc -c}
@@ -214,6 +221,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## Flags to add to compiler "opts" string:
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
+#
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
 #
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
@@ -337,17 +372,6 @@ if {[string match g++ $compiler]} {
    }
 
    # Optimization options
-   # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   if {!$gcc_is_clang} {
-      set opts [GetGccGeneralOptFlags $gcc_version]
-   } else {
-      set opts [GetClangGeneralOptFlags $gcc_version]
-   }
-   # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.  CPU
-   # specific opts are introduced below.
-
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
    # oommf/config/platform/local/darwin.tcl.  See note about SSE
@@ -401,8 +425,11 @@ if {[string match g++ $compiler]} {
    # or
    #    unset cpuopts
    #
+
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
+      set opts $cpuopts
+   } else {
+      set opts {}
    }
 
    # Uncomment the following to remove loop array prefetch flag
@@ -431,16 +458,38 @@ if {[string match g++ $compiler]} {
        if {[lindex $gcc_version 0]>=6} {
           lappend nowarn {-Wno-misleading-indentation}
        }
+       if {[lindex $gcc_version 0]>=8} {
+          # Allow strncpy to truncate strings
+          lappend nowarn {-Wno-stringop-truncation}
+       }
    }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   if {!$gcc_is_clang} {
+      set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
+      set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   } else {
+      set valuesafeopts \
+         [concat $opts [GetClangValueSafeOptFlags $gcc_version]]
+      set opts [concat $opts [GetClangGeneralOptFlags $gcc_version]]
+   }
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
 
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
@@ -464,9 +513,23 @@ if {[string match g++ $compiler]} {
         -Woverloaded-virtual -Wsynth -Werror \
         -Wno-unused-function"}
 
-   # Widest natively support floating point type
+   # Widest natively support floating point type.
+   # The x86_64 architecture provides 8-byte floating point registers in
+   # addition to the 8 10-byte (80 bits) floating point registers of the
+   # x86 architecture.  (On x86_64, "long double" values are padded out
+   # in memory to 16-bytes, as compared to 12-bytes on x86_32.)  If you
+   # specify "long double" as the realwide type, then in some parts of
+   # the program OOMMF will be restricted to using the higher precision
+   # 10-byte registers.  (The 10-byte format provides about 19 decimal
+   # digits of precision, as opposed to 16 decimal digits for the 8-byte
+   # format.)  However, in this case the extra 8-byte x86_64 registers
+   # will be under utilized.  If you specify "double" as the realwide
+   # type, then the 8-byte registers can be used in all instances.
+   #   Use of realwide is restricted in the code so that the speed
+   # advantage of using "double" over "long double" should be pretty
+   # minimal on this platform, but YMMV.
    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-      $config SetValue program_compiler_c++_typedef_realwide "double"
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
    }
 
    # Mac OS X 10.9 uses libc++ rather than libstdc++ by default, and
@@ -489,13 +552,6 @@ if {[string match g++ $compiler]} {
       [list GetClangBannerVersion  $compilercmd]
 
    # Optimization options
-   # set opts [list -O0]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetClangGeneralOptFlags $clang_version]
-   # Aggressive optimization flags, some of which are specific to
-   # particular clang versions, but are all processor agnostic.  CPU
-   # specific opts are introduced below.
-
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
    # oommf/config/platform/local/darwin.tcl.  See note about SSE
@@ -542,8 +598,11 @@ if {[string match g++ $compiler]} {
    # or
    #    unset cpuopts
    #
+
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
+      set opts $cpuopts
+   } else {
+      set opts {}
    }
 
    # 32 or 64 bit?
@@ -559,10 +618,23 @@ if {[string match g++ $compiler]} {
       }
    }
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular clang versions, but are all processor agnostic.
+   set valuesafeopts \
+      [concat $opts [GetClangValueSafeOptFlags $clang_version]]
+   set opts [concat $opts [GetClangGeneralOptFlags $clang_version]]
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
 
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
@@ -570,9 +642,23 @@ if {[string match g++ $compiler]} {
    $config SetValue program_compiler_c++_option_debug {format "-g"}
    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
-   # Widest natively support floating point type
+   # Widest natively support floating point type.
+   # The x86_64 architecture provides 8-byte floating point registers in
+   # addition to the 8 10-byte (80 bits) floating point registers of the
+   # x86 architecture.  (On x86_64, "long double" values are padded out
+   # in memory to 16-bytes, as compared to 12-bytes on x86_32.)  If you
+   # specify "long double" as the realwide type, then in some parts of
+   # the program OOMMF will be restricted to using the higher precision
+   # 10-byte registers.  (The 10-byte format provides about 19 decimal
+   # digits of precision, as opposed to 16 decimal digits for the 8-byte
+   # format.)  However, in this case the extra 8-byte x86_64 registers
+   # will be under utilized.  If you specify "double" as the realwide
+   # type, then the 8-byte registers can be used in all instances.
+   #   Use of realwide is restricted in the code so that the speed
+   # advantage of using "double" over "long double" should be pretty
+   # minimal on this platform, but YMMV.
     if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
+       $config SetValue program_compiler_c++_typedef_realwide "long double"
     }
 
    # Mac OS X 10.9 uses libc++ rather than libstdc++ by default, and

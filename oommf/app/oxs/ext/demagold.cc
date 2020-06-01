@@ -195,7 +195,7 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
   OC_INDEX ctotalsize=cstridez*cdimz;
   OC_INDEX rtotalsize=2*ctotalsize;
   if(rtotalsize<2*cdimx || rtotalsize<cdimy || rtotalsize<cdimz ||
-     long(rtotalsize) != 
+     long(rtotalsize) !=
      long(2)*long(cdimz)*long(cdimy)*long(cstridey)) {
     // Partial overflow check
     char msgbuf[1024];
@@ -319,9 +319,17 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rxcomp[index] = scale*Oxs_Newell_f(x,y,z);
-	rycomp[index] = scale*Oxs_Newell_f(y,x,z);
-	rzcomp[index] = scale*Oxs_Newell_f(z,y,x);
+	rxcomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(x,y,z)).Hi());
+	rycomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(y,x,z)).Hi());
+	rzcomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(z,y,x)).Hi());
+        // WARNING: Significant cancellation occurs when difference
+        // operators are applied do the rx/y/zcomp values.  It is
+        // better to work with Xp_DoubleDouble values (as output from
+        // the Oxs_Newell functions) until after differencing is
+        // complete (as is done in the new Oxs_Demag code).
       }
     }
   }
@@ -339,11 +347,14 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rxcomp[index] -= scale*Oxs_Newell_f(x,y,0);
+	rxcomp[index] -=
+          static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(x,y,0)).Hi());
 	rxcomp[index] *= 2;
-	rycomp[index] -= scale*Oxs_Newell_f(y,x,0);
+	rycomp[index] -=
+          static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(y,x,0)).Hi());
 	rycomp[index] *= 2;
-	rzcomp[index] -= scale*Oxs_Newell_f(0,y,x);
+	rzcomp[index] -=
+          static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_f(0,y,x)).Hi());
 	rzcomp[index] *= 2;
 	/// Use f is even in z, so for example
 	/// f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
@@ -390,17 +401,20 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rxcomp[index] -= scale * 
-	  ((Oxs_Newell_f(x,0,z-dz)+Oxs_Newell_f(x,0,z+dz))
-                                -2*Oxs_Newell_f(x,0,z));
+	rxcomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((Oxs_Newell_f(x,0,z-dz)
+                                     +Oxs_Newell_f(x,0,z+dz))
+                                    -2*Oxs_Newell_f(x,0,z)).Hi());
 	rxcomp[index] *= 2;
-	rycomp[index] -= scale * 
-	  ((Oxs_Newell_f(0,x,z-dz)+Oxs_Newell_f(0,x,z+dz))
-                                -2*Oxs_Newell_f(0,x,z));
+	rycomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((Oxs_Newell_f(0,x,z-dz)
+                                     +Oxs_Newell_f(0,x,z+dz))
+                                    -2*Oxs_Newell_f(0,x,z)).Hi());
 	rycomp[index] *= 2;
-	rzcomp[index] -= scale * 
-	  ((Oxs_Newell_f(z-dz,0,x)+Oxs_Newell_f(z+dz,0,x))
-                                -2*Oxs_Newell_f(z,0,x));
+	rzcomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((Oxs_Newell_f(z-dz,0,x)
+                                     +Oxs_Newell_f(z+dz,0,x))
+                                    -2*Oxs_Newell_f(z,0,x)).Hi());
 	rzcomp[index] *= 2;
 	/// Use f is even in y
       }
@@ -443,26 +457,26 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
       for(j=0;j<rdimy;j++) {
 	OC_INDEX index = kindex + j*rstridey;
 	OC_REALWIDE y = dy*j;
-	rxcomp[index] -= scale * 
-	  ((4*Oxs_Newell_f(0,y,z)
+	rxcomp[index] -= scale *
+          static_cast<OC_REALWIDE>(((4*Oxs_Newell_f(0,y,z)
 	    +Oxs_Newell_f(0,y+dy,z+dz)+Oxs_Newell_f(0,y-dy,z+dz)
 	    +Oxs_Newell_f(0,y+dy,z-dz)+Oxs_Newell_f(0,y-dy,z-dz))
 	   -2*(Oxs_Newell_f(0,y+dy,z)+Oxs_Newell_f(0,y-dy,z)
-	       +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz)));
+	       +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz))).Hi());
 	rxcomp[index] *= 2;
-	rycomp[index] -= scale * 
-	  ((4*Oxs_Newell_f(y,0,z)
+	rycomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((4*Oxs_Newell_f(y,0,z)
 	    +Oxs_Newell_f(y+dy,0,z+dz)+Oxs_Newell_f(y-dy,0,z+dz)
 	    +Oxs_Newell_f(y+dy,0,z-dz)+Oxs_Newell_f(y-dy,0,z-dz))
 	   -2*(Oxs_Newell_f(y+dy,0,z)+Oxs_Newell_f(y-dy,0,z)
-	       +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz)));
+	       +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz))).Hi());
 	rycomp[index] *= 2;
-	rzcomp[index] -= scale * 
-	  ((4*Oxs_Newell_f(z,y,0)
+	rzcomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((4*Oxs_Newell_f(z,y,0)
 	    +Oxs_Newell_f(z+dz,y+dy,0)+Oxs_Newell_f(z+dz,y-dy,0)
 	    +Oxs_Newell_f(z-dz,y+dy,0)+Oxs_Newell_f(z-dz,y-dy,0))
 	   -2*(Oxs_Newell_f(z,y+dy,0)+Oxs_Newell_f(z,y-dy,0)
-	       +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0)));
+	       +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0))).Hi());
 	rzcomp[index] *= 2;
 	/// Use f is even in x.
       }
@@ -558,9 +572,12 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
   OC_REALWIDE sizescale = -2.0 * static_cast<OC_REALWIDE>(cdimx*cdimy*cdimz);
   /// Careful... cdimx, cdimy, cdimz are unsigned, so don't try
   ///  -2*cdimx*cdimy*cdimz (although -2.0*cdimx*cdimy*cdimz is OK).
-  rxcomp[0] = Oxs_SelfDemagNx(dx,dy,dz)/sizescale;
-  rycomp[0] = Oxs_SelfDemagNy(dx,dy,dz)/sizescale;
-  rzcomp[0] = Oxs_SelfDemagNz(dx,dy,dz)/sizescale;
+  rxcomp[0]
+    = static_cast<OC_REALWIDE>(Oxs_SelfDemagNx(dx,dy,dz).Hi())/sizescale;
+  rycomp[0]
+    = static_cast<OC_REALWIDE>(Oxs_SelfDemagNy(dx,dy,dz).Hi())/sizescale;
+  rzcomp[0]
+    = static_cast<OC_REALWIDE>(Oxs_SelfDemagNz(dx,dy,dz).Hi())/sizescale;
 
 #if 0 && !defined(NDEBUG)
   for(k=0;k<cdimz;++k) {
@@ -638,9 +655,12 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rxcomp[index] = scale*Oxs_Newell_g(x,y,z);
-	rycomp[index] = scale*Oxs_Newell_g(x,z,y);
-	rzcomp[index] = scale*Oxs_Newell_g(y,z,x);
+	rxcomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_g(x,y,z)).Hi());
+	rycomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_g(x,z,y)).Hi());
+	rzcomp[index]
+         = static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_g(y,z,x)).Hi());
       }
     }
   }
@@ -658,7 +678,8 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rxcomp[index] -= scale*Oxs_Newell_g(x,y,0);
+	rxcomp[index] -=
+          static_cast<OXS_COMPLEX_REAL_TYPE>((scale*Oxs_Newell_g(x,y,0)).Hi());
 	rxcomp[index] *= 2;
 	// NOTE: g is even in z.
 	// If zdim==1, then rycomp and rzcomp, i.e., Nxz and Nyz,
@@ -706,9 +727,10 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
 	OC_REALWIDE x = 0.0;
 	if(i==0) x = -dx;
 	else if(i>1) x = dx*(i-1);
-	rycomp[index] -= scale * 
-	  ((Oxs_Newell_g(x,z-dz,0)+Oxs_Newell_g(x,z+dz,0))
-                                -2*Oxs_Newell_g(x,z,0));
+	rycomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((Oxs_Newell_g(x,z-dz,0)
+                                     +Oxs_Newell_g(x,z+dz,0))
+                                    -2*Oxs_Newell_g(x,z,0)).Hi());
 	rycomp[index] *= 2;
 	// Note: g is even in its third argument.
 	// If ydim==1, then rxcomp and rzcomp, i.e., Nxy and Nyz,
@@ -754,12 +776,12 @@ void Oxs_DemagOld::FillCoefficientArraysFast(const Oxs_Mesh* genmesh) const
       for(j=0;j<rdimy;j++) {
 	OC_INDEX index = kindex + j*rstridey;
 	OC_REALWIDE y = dy*j;
-	rzcomp[index] -= scale * 
-	  ((4*Oxs_Newell_g(y,z,0)
+	rzcomp[index] -= scale *
+	  static_cast<OC_REALWIDE>(((4*Oxs_Newell_g(y,z,0)
 	    +Oxs_Newell_g(y+dy,z+dz,0)+Oxs_Newell_g(y-dy,z+dz,0)
 	    +Oxs_Newell_g(y+dy,z-dz,0)+Oxs_Newell_g(y-dy,z-dz,0))
 	   -2*(Oxs_Newell_g(y+dy,z,0)+Oxs_Newell_g(y-dy,z,0)
-	       +Oxs_Newell_g(y,z+dz,0)+Oxs_Newell_g(y,z-dz,0)));
+	       +Oxs_Newell_g(y,z+dz,0)+Oxs_Newell_g(y,z-dz,0))).Hi());
 	rzcomp[index] *= 2;
 	// Note: g is even in its third argument.
 	// If xdim==1, then rxcomp and rycomp, i.e., Nxy and Nxz,
@@ -1018,11 +1040,9 @@ void Oxs_DemagOld::FillCoefficientArraysStandard(const Oxs_Mesh* genmesh) const
   if(dz>maxedge) maxedge=dz;
   dx/=maxedge; dy/=maxedge; dz/=maxedge;
 
-  OC_REALWIDE scale = -1./(4*WIDE_PI*dx*dy*dz);
-
-  // Also throw in FFT scaling.  This allows the "NoScale" FFT routines
+  // FFT scaling.  This allows the "NoScale" FFT routines
   // to be used.
-  scale *= 1.0/(2*cdimx*cdimy*cdimz);
+  OC_REALWIDE scale = -1.0/(2*cdimx*cdimy*cdimz);
 
   for(index=0;index<ctotalsize;index++) {
     // Initialize temp space to 0
@@ -1034,26 +1054,29 @@ void Oxs_DemagOld::FillCoefficientArraysStandard(const Oxs_Mesh* genmesh) const
 
 #ifdef DUMP_COEF_TEST
 fprintf(stderr,"Nxy(1,2,3,1,2,3)=%.17g   Nxy(10,1,1,1,2,3)=%.17g\n",
-	(double)Oxs_CalculateSDA01(1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
-	(double)Oxs_CalculateSDA01(10.,1.,1.,1.,2.,3.)/(4*PI*1.*2.*3.));
+	(double)Oxs_CalculateNxy(1.,2.,3.,1.,2.,3.),
+	(double)Oxs_CalculateNxy(10.,1.,1.,1.,2.,3.));
 fprintf(stderr,"Nxy(-1,2,3,1,2,3)=%.17g   Nxy(10,1,-1,1,2,3)=%.17g\n",
-	(double)Oxs_CalculateSDA01(-1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
-	(double)Oxs_CalculateSDA01(10.,1.,-1.,1.,2.,3.)/(4*PI*1.*2.*3.));
+	(double)Oxs_CalculateNxy(-1.,2.,3.,1.,2.,3.),
+	(double)Oxs_CalculateNxy(10.,1.,-1.,1.,2.,3.));
 fprintf(stderr,"Nxy(1,1,0,1,2,3)=%.17g   Nxy(1,1,0,2,1,3)=%.17g\n",
-	(double)Oxs_CalculateSDA01(1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
-	(double)Oxs_CalculateSDA01(1.,1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
+	(double)Oxs_CalculateNxy(1.,1.,0.,1.,2.,3.),
+	(double)Oxs_CalculateNxy(1.,1.,0.,2.,1.,3.));
 fprintf(stderr,"Nxy(-1,1,0,1,2,3)=%.17g   Nxy(1,-1,0,2,1,3)=%.17g\n",
-	(double)Oxs_CalculateSDA01(-1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
-	(double)Oxs_CalculateSDA01(1.,-1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
+	(double)Oxs_CalculateNxy(-1.,1.,0.,1.,2.,3.),
+	(double)Oxs_CalculateNxy(1.,-1.,0.,2.,1.,3.));
 #endif // DUMP_COEF_TEST
 
   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) for(i=0;i<rdimx;i++) {
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE a00=scale*Oxs_CalculateSDA00(x,y,z,dx,dy,dz);
-    OC_REALWIDE a01=scale*Oxs_CalculateSDA01(x,y,z,dx,dy,dz);
-    OC_REALWIDE a02=scale*Oxs_CalculateSDA02(x,y,z,dx,dy,dz);
+    OC_REALWIDE a00 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNxx(x,y,z,dx,dy,dz)).Hi());
+    OC_REALWIDE a01 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNxy(x,y,z,dx,dy,dz)).Hi());
+    OC_REALWIDE a02 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNxz(x,y,z,dx,dy,dz)).Hi());
 
     index = i+j*rstridey+k*rstridez;
 
@@ -1148,9 +1171,12 @@ fprintf(stderr,"Nxy(-1,1,0,1,2,3)=%.17g   Nxy(1,-1,0,2,1,3)=%.17g\n",
 
   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) for(i=0;i<rdimx;i++) {
     OC_REALWIDE x = dx*i;    OC_REALWIDE y = dy*j;    OC_REALWIDE z = dz*k;
-    OC_REALWIDE a11=scale*Oxs_CalculateSDA11(x,y,z,dx,dy,dz);
-    OC_REALWIDE a12=scale*Oxs_CalculateSDA12(x,y,z,dx,dy,dz);
-    OC_REALWIDE a22=scale*Oxs_CalculateSDA22(x,y,z,dx,dy,dz);
+    OC_REALWIDE a11 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNyy(x,y,z,dx,dy,dz)).Hi());
+    OC_REALWIDE a12 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNyz(x,y,z,dx,dy,dz)).Hi());
+    OC_REALWIDE a22 =
+     static_cast<OC_REALWIDE>((scale*Oxs_CalculateNzz(x,y,z,dx,dy,dz)).Hi());
     index = i+j*rstridey+k*rstridez;
     rxcomp[index]=a11;
     rycomp[index]=a12;

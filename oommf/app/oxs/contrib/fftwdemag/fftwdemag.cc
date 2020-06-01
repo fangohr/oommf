@@ -227,18 +227,16 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
   if(dz>maxedge) maxedge=dz;
   dx/=maxedge; dy/=maxedge; dz/=maxedge;
 
-  OC_REALWIDE scale = -1./(4*PI*dx*dy*dz);
-
   // The FFTW routines don't include the DFT transform scaling,
   // so throw the scaling into the demag coefs.
-  scale *= 1.0/static_cast<OC_REALWIDE>(lxdim*lydim*lzdim);
+  OC_REALWIDE scale *= -1.0/static_cast<OC_REALWIDE>(lxdim*lydim*lzdim);
 
   for(index=0;index<3*rvtotalsize;index++) rV1[index] = 0.0;
   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA00(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNxx(x,y,z,dx,dy,dz);
     rV1[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV1[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
     if(j>0) rV1[i+(lydim-j)*rvystride+k*rvzstride] = coef;
@@ -256,7 +254,7 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA11(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNyy(x,y,z,dx,dy,dz);
     rV2[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV2[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
     if(j>0) rV2[i+(lydim-j)*rvystride+k*rvzstride] = coef;
@@ -274,7 +272,7 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA22(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNzz(x,y,z,dx,dy,dz);
     rV3[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV3[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
     if(j>0) rV3[i+(lydim-j)*rvystride+k*rvzstride] = coef;
@@ -305,7 +303,7 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA01(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNxy(x,y,z,dx,dy,dz);
     rV1[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV1[(lxdim-i)+j*rvystride+k*rvzstride] = -coef;
     if(j>0) rV1[i+(lydim-j)*rvystride+k*rvzstride] = -coef;
@@ -323,7 +321,7 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA02(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNxz(x,y,z,dx,dy,dz);
     rV2[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV2[(lxdim-i)+j*rvystride+k*rvzstride] = -coef;
     if(j>0) rV2[i+(lydim-j)*rvystride+k*rvzstride] =  coef;
@@ -341,7 +339,7 @@ void FFTW_Demag::StandardInitializeMemory(const Oxs_Mesh* genmesh) const
     OC_REALWIDE x = dx*i;
     OC_REALWIDE y = dy*j;
     OC_REALWIDE z = dz*k;
-    OC_REALWIDE coef=scale*Oxs_CalculateSDA12(x,y,z,dx,dy,dz);
+    OC_REALWIDE coef=scale*Oxs_CalculateNyz(x,y,z,dx,dy,dz);
     rV3[i+j*rvystride+k*rvzstride] = coef;
     if(i>0) rV3[(lxdim-i)+j*rvystride+k*rvzstride] =  coef;
     if(j>0) rV3[i+(lydim-j)*rvystride+k*rvzstride] = -coef;
