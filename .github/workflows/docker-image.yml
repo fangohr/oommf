@@ -1,0 +1,20 @@
+name: docker-image
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 1 * *'  # run once-a-month
+
+jobs:
+  docker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Pull ubermag/oommf:latest
+      run: docker pull ubermag/oommf:latest
+
+    - name: Run stdprob3 in ubermag/oommf:latest
+      run: docker run ubermag/oommf:latest bash -c "tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1"
+
+    - name: Run stdprob4 in ubermag/oommf:latest
+      run: docker run ubermag/oommf:latest bash -c "tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1"
