@@ -19,6 +19,9 @@ jobs:
     - name: Initialisation
       uses: actions/checkout@v2
 
+    - name: Install dependencies
+      run: apt-get install -y tk-dev tcl-dev
+      
     - name: Build OOMMF
       run: make build-with-all
 
