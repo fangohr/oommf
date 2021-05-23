@@ -26,6 +26,9 @@ jobs:
     - name: Build OOMMF
       run: make build-with-all
 
+    - name: Debug2 towards environment veriable
+      run: pwd; echo $OOMMFTCL; ls oommf
+
     - name: Test OOMMF
       # run: make test-all-on-ubuntu-latest
       run: make test-all-docker
