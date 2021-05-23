@@ -11,13 +11,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-
+    env:
+      OOMMF_TCL: oommf/oommf.tcl
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
 
     - name: Install dependencies
       run: sudo apt-get install -y tk-dev tcl-dev
+
+    - debug: Debug towards environment veriable
+      run: pwd
+      run: echo $OOMMF_TCL
       
     - name: Build OOMMF
       run: make build-with-all
