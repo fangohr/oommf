@@ -20,14 +20,8 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get install -y tk-dev tcl-dev
 
-    - name: Debug towards environment veriable
-      run: pwd; echo $OOMMFTCL; ls oommf
-      
     - name: Build OOMMF
       run: make build-with-all
-
-    - name: Debug2 towards environment veriable
-      run: pwd; echo $OOMMFTCL; ls oommf
 
     - name: Test OOMMF
       run: make test-all
