@@ -1,4 +1,4 @@
-name: workflow
+name: on-ubuntu-latest
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * 1'  # run every Monday
 
 jobs:
-  workflow:
+  on-ubuntu-latest:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -22,9 +22,5 @@ jobs:
     - name: Build OOMMF
       run: make build-with-all
 
-    - name: Test stdprob3
-      run: tclsh oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
-      
-    - name: Test stdprob4
-      run: tclsh oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
-    
+    - name: Test OOMMF
+      run: make test-all-on-ubuntu-latest

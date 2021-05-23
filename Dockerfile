@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive

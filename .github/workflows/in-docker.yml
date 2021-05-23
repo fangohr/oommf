@@ -1,4 +1,4 @@
-name: docker
+name: in-docker
 
 on:
   push:
@@ -6,18 +6,15 @@ on:
     - cron: '0 0 * * 1'  # run every Monday
 
 jobs:
-  docker:
+  in-docker:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-    defaults:
-      run:
-        shell: bash -l {0}
 
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
       
     - name: Build and test inside container
-      run: make travis-build
+      run: make in-docker
