@@ -1,0 +1,28 @@
+name: workflow
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  workflow:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+
+    - name: Build OOMMF
+      run: make build-with-all
+
+    - name: Test OOMMF
+      run: make test-all
+
+    
