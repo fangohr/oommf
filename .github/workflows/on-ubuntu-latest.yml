@@ -21,8 +21,7 @@ jobs:
       run: sudo apt-get install -y tk-dev tcl-dev
 
     - name: Debug towards environment veriable
-      run: pwd
-      run: echo $OOMMF_TCL
+      run: pwd; echo $OOMMF_TCL
       
     - name: Build OOMMF
       run: make build-with-all
