@@ -1,0 +1,26 @@
+name: docker
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  docker:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get install -y tk-dev tcl-dev
+      
+    - name: Build and test inside container
+      run: make travis-build
