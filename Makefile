@@ -51,3 +51,7 @@ travis-build:
 test-all:
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
+
+test-all-actions:
+	tclsh oommf/oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
+	tclsh oommf/oommf/oommf.tcl boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1

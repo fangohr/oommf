@@ -26,6 +26,6 @@ jobs:
       run: make build-with-all
 
     - name: Test OOMMF
-      run: make test-all
+      run: make test-all-actions
 
     
