@@ -1,13 +1,16 @@
 # Compose name of OOMMF tar ball as available on NIST webpages
-# (as of September 2015)
+# (as of September 2015, still valid 2021)
 OOMMFPREFIX="oommf"
-OOMMFVERSION="20a1"
+OOMMFVERSION="20a2"
 # USE dot in conda version numbers:
-OOMMFVERSIONCONDA="2.0a1"
-OOMMFDATE="20180930"
-OOMMFBUILD="a1"
+OOMMFVERSIONCONDA="2.0a2"
+# The release date shown on webpage
+OOMMFDATE="20200608"
+OOMMFBUILD="a2"
 OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
-OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE).tar.gz
+# Any additional modifier (could be empty, was first needed for "-hotfix" 2.0a2, 20200608)
+OOMMFSOURCEMODIFIER="-hotfix"
+OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE)$(OOMMFSOURCEMODIFIER).tar.gz
 OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
 GITREPOHASH=$(shell git rev-list HEAD -1)
 
@@ -39,6 +42,7 @@ update-logfile:
 	echo "     version: $(OOMMFVERSION)" >> versionlog.txt
 	echo "     date: $(OOMMFDATE)" >> versionlog.txt
 	echo "     build: $(OOMMFBUILD)" >> versionlog.txt
+	echo "     modified: $(OOMMFSOURCEMODIFIER)" >> versionlog.txt
 	echo "     source-url: $(OOMMFSOURCEURL)" >> versionlog.txt
 	echo "   github-url: https://github.com/fangohr/oommf" >> versionlog.txt
 	echo "   github version: $(GITREPOHASH)" >> versionlog.txt
