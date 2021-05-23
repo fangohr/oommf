@@ -30,5 +30,4 @@ jobs:
       run: pwd; echo $OOMMFTCL; ls oommf
 
     - name: Test OOMMF
-      # run: make test-all-on-ubuntu-latest
-      run: make test-all-docker
+      run: make test-all
