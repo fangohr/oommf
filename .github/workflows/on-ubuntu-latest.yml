@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     env:
-      OOMMFTCL: /home/runner/work/oommf/oommf.tcl
+      OOMMFTCL: /home/runner/work/oommf/oommf/oommf/oommf.tcl
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
