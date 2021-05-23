@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     env:
-      OOMMF_TCL: oommf/oommf.tcl
+      OOMMF_TCL: /home/runner/work/oommf/oommf/oommf.tcl
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
@@ -21,10 +21,11 @@ jobs:
       run: sudo apt-get install -y tk-dev tcl-dev
 
     - name: Debug towards environment veriable
-      run: pwd; echo $OOMMF_TCL
+      run: pwd; echo $OOMMF_TCL; ls oommf
       
     - name: Build OOMMF
       run: make build-with-all
 
     - name: Test OOMMF
-      run: make test-all-on-ubuntu-latest
+      # run: make test-all-on-ubuntu-latest
+      run: make test-all-docker
