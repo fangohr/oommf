@@ -44,7 +44,7 @@ in-docker: SHELL:=/bin/bash
 in-docker:
 	docker build --no-cache -t dockertestimage .
 	docker run -ti -d --name testcontainer dockertestimage
-	docker exec testcontainer make test-all
+	docker exec testcontainer make test-all-docker
 	docker stop testcontainer
 	docker rm testcontainer
 
