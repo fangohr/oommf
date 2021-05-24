@@ -1,3 +1,17 @@
+doc = """
+This programm will
+(i) clone a git repo (which is an OOMMF extension) with name REPONAME
+(ii) copy from a particular folder in that direcotry (typically 'src') 
+     all files into the oommf/app/oxs/local/REPONAME folder
+(iii) create a provenance-REPONAME-HEAD.zip folder that contains a zipped
+     version of the git repo HEAD at the time of the copy
+(iv) store some additional information about that extension repository
+     in provenance-REPONAME.log 
+
+See helpstring and source code for details.
+"""
+
+
 import os
 import subprocess
 import sys
@@ -65,9 +79,15 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("python3 clone-log-and-extract-src.py URL FROMPATH\n")
         print("- Provide URL of repo from which we should git-clone.")
-        print("\ Provide the path from which to copy (FROMPATH).\n")
+        print("- Provide the path from which to copy (FROMPATH).\n")
         print("Examples:\n")
         print("   python3 clone-log-and-extract-src.py https://github.com/joommf/oommf-extension-dmi-cnv.git src")
         print("   python3 clone-log-and-extract-src.py https://github.com/yuyahagi/oommf-mel.git .\n")
-        
-    main(sys.argv)
+
+        print("More context:\n")
+        print(doc)
+        print()
+        print(f"I received {len(sys.argv)} arguments ({sys.argv}), but need 3.")
+        print()
+    else:
+        main(sys.argv)
