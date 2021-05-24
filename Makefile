@@ -17,28 +17,22 @@ build-with-d2d: get-d2d build
 
 build-with-mel: get-mel build
 
-build-with-all: get-cnv get-d2d get-t get-mel build
+build-with-all: get-all build
 
 get-cnv:
-	git clone https://github.com/joommf/$(DMICNVREPO).git
-	cp $(DMICNVREPO)/src/* oommf/app/oxs/local/
-	rm -rf $(DMICNVREPO)
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
 
 get-t:
-	git clone https://github.com/joommf/$(DMITREPO).git
-	cp $(DMITREPO)/src/* oommf/app/oxs/local/
-	rm -rf $(DMITREPO)
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMITREPO).git src
 
 get-d2d:
-	git clone https://github.com/joommf/$(DMID2DREPO).git
-	cp $(DMID2DREPO)/src/* oommf/app/oxs/local/
-	rm -rf $(DMID2DREPO)
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMID2DREPO).git src
 
 get-mel:
-	git clone https://github.com/yuyahagi/$(MELREPO).git
-	cp $(MELREPO)/*.cc oommf/app/oxs/local/
-	cp $(MELREPO)/*.h oommf/app/oxs/local/
-	rm -rf $(MELREPO)
+	python3 clone-log-and-extract-src.py https://github.com/yuyahagi/$(MELREPO).git .
+
+get-all: get-cnv get-d2d get-t get-mel 
+
 
 in-docker: SHELL:=/bin/bash
 in-docker:
