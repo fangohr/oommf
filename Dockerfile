@@ -6,6 +6,9 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
 
+# need python3 for fetching extensions
+RUN apt-get install -y python3 rsync
+
 # OOMMF cannot be built as root user.
 WORKDIR /usr/local
 COPY . oommf/
