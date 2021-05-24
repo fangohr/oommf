@@ -5,7 +5,7 @@
  *
  */
 
-#include <ctype.h>
+#include <cctype>
 
 #include <string>
 
@@ -803,7 +803,7 @@ Oxs_UniformExchange::ComputeAngle
   //         angle is larger than pi/2.  Instead, we compute
   //         the arcsin of half the angle, and then double.
   ThreeVector d = u1 - u2;
-  return 2*asin(0.5*Oc_Sqrt(d.MagSq()));
+  return 2*asin(0.5*d.Mag());
 }
 
 void
@@ -2909,13 +2909,7 @@ void Oxs_UniformExchange::ComputeEnergyChunkInitialize
     maxdot[i] = 0.0; // Minimum possible value for (m_i-m_j).MagSq()
   }
 
-  // (Re)-initialize coefficients if mesh has changed.  Note: Unlike
-  // initialization code in some of the other Oxs_ChunkEnergy classes,
-  // this initialization does not make calls back into the Tcl
-  // interpreter.  Therefore, this initialization can be done by any one
-  // thread; it doesn't have to be threadnumber == -1 (main thread).  So
-  // we can manage with a simple mutex lock (as opposed to a more
-  // complicated scheme involving ConditionWait calls.)
+  // (Re)-initialize coefficients if mesh has changed.
   const Oxs_CommonRectangularMesh* mesh
     = dynamic_cast<const Oxs_CommonRectangularMesh*>(state.mesh);
   if(mesh==NULL) {
@@ -2984,7 +2978,7 @@ void Oxs_UniformExchange::ComputeEnergyChunkFinalize
   for(int i=0;i<number_of_threads;++i) {
     if(maxdot[i]>total_maxdot) total_maxdot = maxdot[i];
   }
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(total_maxdot);
+  const OC_REAL8m arg = 0.5*sqrt(total_maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;

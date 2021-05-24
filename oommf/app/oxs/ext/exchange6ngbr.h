@@ -32,7 +32,6 @@ private:
   OC_REAL8m max_abscoef;
   mutable Oxs_Key<Oxs_Atlas> atlaskey;  
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
-  mutable Oxs_ThreadControl thread_control;
   mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_INDEX> region_id;
 

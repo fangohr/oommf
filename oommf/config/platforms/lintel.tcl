@@ -1,4 +1,4 @@
-# FILE: lintel.tcl
+ FILE: lintel.tcl
 #
 # Configuration feature definitions for the configuration 'lintel'
 #
@@ -98,48 +98,13 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # <URL:http://egcs.cygnus.com/>
 $config SetValue program_compiler_c++ {g++ -c}
 #
-# The Portland Group 'pgCC'
+# The Portland Group C++ compiler, 'pgc++'
 # <URL:http://www.pgroup.com/>
-#$config SetValue program_compiler_c++ {pgCC -c}
-#
-# Temporary kludge to get pgCC to play with pimake.  First, create
-# a shell script with the contents:
-#
-#      #!/bin/sh
-#      # Arguments: CFLAGS library objs
-#      flags="$1"
-#      shift
-#      library="$1"
-#      shift
-#      objs="$*"
-#      pgCC --prelink_objects $flags $objs
-#      ar cr $library lintel/*.o
-#
-# Call this pgcclib.sh and place it in the PATH.  Then, edit this
-# file to include
-#
-#         --one_instantiation_per_object
-#
-# in the "opts" variable of the pgCC compiler section below, and
-# exclude
-#
-#         -Minline
-#
-# (all flavors).  Then cd into the oommf/pkg directory, and run
-# pimake from there, to build all the libraries.  Then re-edit
-# this file to remove --one_instantiation_per_object from opts,
-# and re-include -Minline (if desired).  Then cd back to the
-# oommf top level directory, and re-run pimake to complete
-# the build process.
-#
+# $config SetValue program_compiler_c++ {pgc++ -c}
 #
 # The Intel C++ compiler 'icpc'
 # <URL:http://www.intel.com>
 #$config SetValue program_compiler_c++ {icpc -c}
-#
-# The Open64 C++ compiler 'openCC'
-# <URL:http://www.open64.net/>
-# $config SetValue program_compiler_c++ {openCC -c}
 #
 
 ########################################################################
@@ -245,6 +210,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
+#
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
 # $config SetValue program_compiler_extra_include_dirs /opt/local/include
@@ -332,30 +325,38 @@ if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
 
 # Compiler option processing...
 set ccbasename [file tail [lindex [$config GetValue program_compiler_c++] 0]]
-if {[string match g++* $ccbasename]} {
-    # ...for GNU g++ C++ compiler
+if {[string match *g++* $ccbasename]} {
+   # ...for GNU g++ C++ compiler
+   set gccexec [lindex [$config GetValue program_compiler_c++] 0]
+
+   # This file is for 32-bit linux.  Include -m32 on compiler string if
+   # default target looks like 64-bit.
+   if {![info exists gcc_target]} {
+      set gcc_target [GetGccDefaultTarget $gccexec]
+   }
+   if {[string match {*64*} $gcc_target]} {
+      # Looks like 64-bit target.
+      set pcstr [$config GetValue program_compiler_c++]
+      if {[lsearch -exact $pcstr "-m32"]<0} {
+         # -m32 not on command line
+         set pcstr [linsert $pcstr 1 -m32]
+         $config SetValue program_compiler_c++ $pcstr
+      }
+   }
 
    if {![info exists gcc_version]} {
-      set gcc_version [GuessGccVersion \
-                          [lindex [$config GetValue program_compiler_c++] 0]]
+      set gcc_version [GuessGccVersion $gccexec]
    }
    if {[lindex $gcc_version 0]<4 ||
        ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<7)} {
       puts stderr "WARNING: This version of OOMMF requires g++ 4.7\
-                   or later (C++ 11 support)"
+                   or later (C++11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetGccBannerVersion  \
           [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
-   # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetGccGeneralOptFlags $gcc_version]
-   # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # x86-support.tcl for details.
 
    # CPU model architecture specific options.  To override, set Option
    # program_compiler_c++_cpu_arch in oommf/config/options.tcl (or,
@@ -372,9 +373,18 @@ if {[string match g++* $ccbasename]} {
       # matches the format and known types as returned from GuessCpu.
       if {[string match host $cpu_arch]} {
          set cpu_arch [GuessCpu]
-         if {[catch {$config GetValue sse_level} sse_level]} {
-            # sse_level not set in local/lintel.tcl; use SSE
-            # level returned by GuessCpu
+         if {[catch {$config GetValue sse_level}]} {
+            # In principle, the result from Find_SSE_Level may be more
+            # accurate than what comes from GuessCpu.
+            $config SetValue sse_level [Find_SSE_Level]
+         }
+         if {[catch {$config GetValue fma_type}]} {
+            $config SetValue fma_type [Find_FMA_Type]
+         }
+      } else {
+         if {[catch {$config GetValue sse_level}]} {
+            # sse_level not set in LOCAL CONFIGURATION block;
+            # Take value from cpu_arch
             $config SetValue sse_level [lindex $cpu_arch 2]
          }
       }
@@ -388,6 +398,7 @@ if {[string match g++* $ccbasename]} {
    # or
    #    unset cpuopts
    #
+   set opts {}
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
@@ -410,19 +421,31 @@ if {[string match g++* $ccbasename]} {
    if {[lindex $gcc_version 0]>=6} {
       lappend nowarn {-Wno-misleading-indentation}
    }
+   if {[lindex $gcc_version 0]>=8} {
+      # Allow strncpy to truncate strings
+      lappend nowarn {-Wno-stringop-truncation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
@@ -474,9 +497,8 @@ if {[string match g++* $ccbasename]} {
    $config SetValue \
       program_compiler_c++_property_optimization_breaks_varargs 0
 
-} elseif {[string match pgCC $ccbasename]} {
-    # ...for Portland Group C++ compiler
-
+} elseif {[string match pgc++ $ccbasename]} {
+   # ...for Portland Group C++ compiler
    if {![info exists pgcc_version]} {
       set pgcc_version [GuessPgccVersion \
            [lindex [$config GetValue program_compiler_c++] 0]]
@@ -485,102 +507,106 @@ if {[string match g++* $ccbasename]} {
       [list GetPgccBannerVersion  \
           [lindex [$config GetValue program_compiler_c++] 0]]
 
+   # CPU model architecture specific options.  To override, set value
+   # program_compiler_c++_cpu_arch in
+   # oommf/config/platform/local/linux-x86_64.tcl.
+   if {[catch {$config GetValue program_compiler_c++_cpu_arch} cpu_arch]} {
+      set cpu_arch generic
+   }
 
-    # Optimization options
-    # set opts [list -O0]  ;# No optimization
-    # set opts [list -O%s] ;# Minimal
-    set opts [list -fast -Mlre=assoc \
-	    -Minline=levels:10 \
-            -Mvect=noaltcode,assoc,idiom,recog,notransform \
-	    --instantiation_dir lintel]
-    #set opts [list -fast -Minline=levels:10,lib:lintel \
-    #    --instantiation_dir lintel -Mvect -Mcache_align]
-    # Some suggested options: -fast, -Minline=levels:10,
-    # -O3, -Mipa, -Mcache_align, -Mvect, -Mvect=sse, -Mconcur.
-    #    WRT -Mvect, the transform suboption produces segfault upon
-    # execution.  Use notransform to explicitly disable.
-    #    If you use -Mconcur, be sure to include -Mconcur on the
-    # link line as well, and set the environment variable NCPUS
-    # to the number of CPU's to use at execution time.
-    #    If you use -Mipa, include it also on the link
-    # line.  Using IPA info requires two build passes.  After
-    # building once, wipe away the object modules with
-    # 'tclsh oommf.tcl pimake objclean', and then rebuild.
-    # In theory, anyway.  I haven't been able to get this
-    # switch to work with pgCC 5.0-2.
-    #
-    # The -fast option sets processor specific options.  You can
-    # override these by directly setting the cpuopts variable, e.g.,
-    #
-    # set cpuopts [list -tp k8-32]
-    #
-    # See the compiler documentation for options to the -tp
-    # flag, but possibilities include p5, p6, p7, k8-32,
-    # k8-64, and px.  The last is generic x86.
-    if {[info exists cpuopts] && [llength $cpuopts]>0} {
-	set opts [concat $opts $cpuopts]
-    }
-    #
-    # Template handling for libraries
-    # lappend opts --one_instantiation_per_object
+   # Optimization options
+   set opts -m32   ;# 32-bit target
+   set opts [concat $opts [GetPgccGeneralOptFlags $pgcc_version]]
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+   }
 
-    # Make user requested tweaks to compile line options
-    set opts [LocalTweakOptFlags $config $opts]
+   
+   # Use/don't use SSE intrinsics.  The default is yes, at level 2,
+   # since x86_64 guarantees at least SSE2.
+   #    You can override the value by setting the $config sse_level
+   # value in the local platform file (see LOCAL CONFIGURATION above).
+   if {[catch {$config GetValue sse_level}]} {
+      $config SetValue sse_level 2
+   }
 
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   # Disable selected warnings
+   # Warning 1301: non-template friend of a template class
+   # Warning  177: Variable declared but not referenced
+   # Warning  550: Unused parameter
+   # The last 2 are needed to quiet warnings from the SSE *intrin.h
+   # header files for pgc++ 16.10-0.
+   set nowarn {}
+   foreach nw {1301 177 550} {
+      lappend nowarn "--diag_suppress$nw"
+   }
+   lappend opts --display_error_number
+   if {[info exists nowarn] && [llength $nowarn]>0} {
+      set opts [concat $opts $nowarn]
+   }
+   catch {unset nowarn}
 
-    # Use/don't use SSE intrinsics, and at what level.  The default,
-    # "0" indicates no SSE.  Level "1" (indicating SSE level 1, i.e.,
-    # the first SSE specification) is in effect the same as 0, because
-    # OOMMF calculations overwhelmingly use double precision floating
-    # point operations; these aren't available as SSE instructions
-    # earlier than level 2.
-    #    You can override the value by setting the $config sse_level
-    # value in the local platform file (see LOCAL CONFIGURATION above).
-    if {[catch {$config GetValue sse_level}]} {
-       $config SetValue sse_level 2
-    }
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [GetPgccValueSafeOptFlags $pgcc_version $cpu_arch]
+   set fastopts [GetPgccFastOptFlags $pgcc_version $cpu_arch]
 
-    # pgCC version 7.2-5 doesn't include the _mm_cvtsd_f64 intrinsic.
-    # Use the oc_sse_cvtsd_f64 wrapper workaround by default; we
-    # can change this if we learn of a later version of pgCC that
-    # supports _mm_cvtsd_f64.
-    if {[catch {$config GetValue program_compiler_c++_missing_cvtsd_f64}]} {
-       $config SetValue program_compiler_c++_missing_cvtsd_f64 1
-    }
+   set valuesafeopts [concat $opts $valuesafeopts]
+   set opts [concat $opts $fastopts]
+   
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
-    # pgCC version 7.2-5 has a broken implementation of the SSE2
-    # intrinsic _mm_storel_pd.  Invoke a workaround
-    if {[catch {$config GetValue program_compiler_c++_broken_storel_pd}]} {
-       $config SetValue program_compiler_c++_broken_storel_pd 1
-    }
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
+   $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
+   $config SetValue program_compiler_c++_option_src {format \"%s\"}
+   $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
 
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    #  or ../local/options.tcl to include the line
-    #    Oc_Option Add * Platform cflags {-def NDEBUG}
-    #  so that the NDEBUG symbol is defined during compile.
-    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
-    $config SetValue program_compiler_c++_option_src {format \"%s\"}
-    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
+   # Compiler warnings:
+   $config SetValue program_compiler_c++_option_warn {format \
+                                                         "-Minform=warn"}
+   $config SetValue program_compiler_c++_option_debug {format "-g"}
+   $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
-    # Compiler warnings:
-    $config SetValue program_compiler_c++_option_warn {format \
-	    "-Minformlevel=warn"}
-    $config SetValue program_compiler_c++_option_debug {format "-g"}
-    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
+   # Widest natively support floating point type.  See note about
+   # "realwide" in the g++ block above.
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
 
-    # Wide floating point type.  Default is double.
-    # $config SetValue program_compiler_c++_typedef_realwide "long double"
+   # Experimental: The OC_REAL8m type is intended to be at least
+   # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
+   # but you can try setting this to "long double" for extra
+   # precision (and extra slowness).  If this is set to "long double",
+   # then so should realwide in the preceding stanza.
+   if {[catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_real8m "double"
+   }
 
-    # Directories to exclude from explicit include search path, i.e.,
-    # the -I list.  Some of the gcc versions don't play well with
-    # the Portland Group compilers, so keep them off the compile line.
-    $config SetValue \
-    	program_compiler_c++_system_include_path [list /usr/include]
+   # Directories to exclude from explicit include search path, i.e.,
+   # the -I list.  Some of the gcc versions don't play well with
+   # the Portland Group compilers, so keep them off the compile line.
+   $config SetValue \
+      program_compiler_c++_system_include_path [list /usr/include]
 
-    # Other compiler properties
-    $config SetValue \
-            program_compiler_c++_property_optimization_breaks_varargs 0
+   # Other compiler properties
+   $config SetValue \
+      program_compiler_c++_property_optimization_breaks_varargs 0
+
+   # pgc++ has _mm_cvtsd_f64, but for at least some releases (16.10-0)
+   # it appears to return the upper instead of lower floating point
+   # value.  Request workaround:
+   $config SetValue program_compiler_c++_missing_cvtsd_f64 1
+
 } elseif {[string match icpc $ccbasename]} {
    # ...for Intel's icpc C++ compiler
 
@@ -591,6 +617,27 @@ if {[string match g++* $ccbasename]} {
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetIcpcBannerVersion  \
           [lindex [$config GetValue program_compiler_c++] 0]]
+
+   # Intel compiler on Linux relies on parts of gcc install.
+   # Assume here that g++ or gcc is on PATH:
+   if {![info exists gcc_version]} {
+      set gcc_version [GuessGccVersion g++]
+      if {[llength $gcc_version]==0} {
+         set gcc_version [GuessGccVersion gcc]
+      }
+   }
+   set gcc_bad 0
+   if {[llength $gcc_version]>0} {
+      if {[lindex $gcc_version 0]<4 || 
+          ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]<8)} {
+         set gcc_bad 1
+      }
+   }
+   if {[lindex $icpc_version]<14 || $gcc_bad} {
+      puts stderr "WARNING: This version of OOMMF requires\
+                   Intel icpc version 14 or later and g++ 4.8\
+                   or later (C++ 11 support)"
+   }
 
    # NOTES on program_compiler_c++_option_opt:
    #   If you use -ipo, or any other flag that enables interprocedural
@@ -613,13 +660,6 @@ if {[string match g++* $ccbasename]} {
    #   The -wd1624 option disables warnings about non-template
    #     friends of templated classes.
 
-   # set opts [list -O0]
-   # set opts [list -O%s]
-   # set opts [list -fast -ansi_alias -wd1572]
-   # set opts [list -O3 -ipo -no-prec-div -ansi_alias \
-   #             -fp-model fast=2 -fp-speculation fast]
-   set opts [GetIcpcGeneralOptFlags $icpc_version]
-
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
    # oommf/config/platform/local/lintel.tcl.
@@ -640,6 +680,7 @@ if {[string match g++* $ccbasename]} {
    unset cpu_arch
    # You can override the above results by directly setting or
    # unsetting the cpuopts variable.
+   set opts {}
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
@@ -651,11 +692,22 @@ if {[string match g++* $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts [GetIcpcValueSafeOptFlags $icpc_version]]
+   set opts [concat $opts [GetIcpcGeneralOptFlags $icpc_version]]
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
@@ -678,131 +730,6 @@ if {[string match g++* $ccbasename]} {
    # precision (and extra slowness).  If this is set to "long double",
    # then so should realwide in the preceding stanza.
    # $config SetValue program_compiler_c++_typedef_real8m "long double"
-} elseif {[string match openCC* $ccbasename]} {
-   # Optimization options
-   set opts -Ofast
-   # Additional options:
-   lappend opts -ffast-math
-   lappend opts -fp-accuracy=aggressive ;# strict, strict-contract,
-                                       ;## relaxed, or aggressive
-   lappend opts -funsafe-math-optimizations
-   lappend opts -mso ;# Optimize for multicore scalability
-
-   # CPU model architecture specific options.  To override, set value
-   # program_compiler_c++_cpu_arch in
-   # oommf/config/platform/local/lintel.tcl.
-   if {[catch {$config GetValue program_compiler_c++_cpu_arch} cpu_arch]} {
-      set cpu_arch generic
-   }
-   set cpuopts {}
-   if {![string match generic [string tolower $cpu_arch]]} {
-      # Arch specific build.  If cpu_arch is "host", then use "auto".
-      # Otherwise, assume user knows what he is doing and has inserted
-      # an appropriate cpu_arch string, e.g., barcelona, core, opteron,
-      # ...  You can replace -mtune with -march if you don't care if
-      # the executable doesn't run on other x86 architectures.
-      if {[string match host $cpu_arch]} {
-         set cpuopts -mtune=auto
-      } else {
-         set cpuopts -mtune=$cpu_arch
-      }
-   }
-   # You can override the above results by directly setting or
-   # unsetting the cpuopts variable, e.g.,
-   #
-   #    set cpuopts [list -mtune=athlon]
-   # or
-   #    unset cpuopts
-   #
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
-   }
-
-   # Disable some default warnings in the opts switch, as opposed
-   # to the warnings switch below, so that these warnings are always
-   # muted, even if '-warn' option in file options.tcl is disabled.
-   lappend nowarn -Wno-non-template-friend ;# OOMMF code conforms to
-   ## the new standard.  Silence this "helpful" but inaccurate warning.
-   lappend nowarn -Wno-uninitialized ;# This warning appears to be
-   ## badly broken in Open64 v4.2.4 + IPA.
-   if {[info exists nowarn] && [llength $nowarn]>0} {
-      set opts [concat $opts $nowarn]
-   }
-   catch {unset nowarn}
-
-   # Make user requested tweaks to compile line options
-   set opts [LocalTweakOptFlags $config $opts]
-
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-   # NOTE: If you want good performance, be sure to edit ../options.tcl
-   #  or ../local/options.tcl to include the line
-   #    Oc_Option Add * Platform cflags {-def NDEBUG}
-   #  so that the NDEBUG symbol is defined during compile.
-   $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
-   $config SetValue program_compiler_c++_option_src {format \"%s\"}
-   $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
-   $config SetValue program_compiler_c++_option_debug {format "-g"}
-   $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
-
-   # Compiler warnings:
-   # Omitted: -Wredundant-decls -Wshadow -Wcast-align
-   # I would also like to use -Wcast-qual, but casting away const is
-   # needed on some occasions to provide "conceptual const" functions in
-   # place of "bitwise const"; cf. p76-78 of Meyer's book, "Effective C++."
-   #
-   # NOTE: -Wno-uninitialized is required after -Wall by gcc 2.8+ because
-   # of an apparent bug.  -Winline is out because of failures in the STL.
-   # Depending on the gcc version, the following options may also be
-   # available:     -Wbad-function-cast     -Wstrict-prototypes
-   #                -Wmissing-declarations  -Wnested-externs
-   $config SetValue program_compiler_c++_option_warn {format "-Wall \
-        -W -Wpointer-arith -Wwrite-strings \
-        -Woverloaded-virtual -Wsynth -Werror \
-        -Wno-unused-function"}
-
-   # Widest natively support floating point type.
-   # The x86_64 architecture provides 8-byte floating point registers
-   # in addition to the 8 12-byte floating point registers of the x86
-   # architecture.  If you specify "long double" as the realwide type,
-   # then in some parts of the program OOMMF will be restricted to
-   # using the higher precision 12-byte registers.  (The 12-byte format
-   # provides about 19 decimal digits of precision, as opposed to 16
-   # decimal digits for the 8-byte format.)  However, in this case the
-   # extra 8-byte x86_64 registers will be under utilized.  If you
-   # specify "double" as the realwide type, then the 8-byte registers
-   # can be used in all instances.
-   #   Use of realwide is restricted in the code so that the speed
-   # advantage of using "double" over "long double" should be pretty
-   # minimal on this platform, but YMMV.
-   # Default is "double" (because on some platforms "long double"
-   # is a wide type simulated via software and is very slow).
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
-
-   # Experimental: The OC_REAL8m type is intended to be at least
-   # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
-   # but you can try setting this to "long double" for extra
-   # precision (and extra slowness).  If this is set to "long double",
-   # then so should realwide in the preceding stanza.
-   #$config SetValue program_compiler_c++_typedef_real8m "long double"
-
-   # The long double versions of floor() and ceil() are badly broken
-   # on some machines.  If the following option is set to 1, then
-   # then the standard double versions of floor() and ceil() will be
-   # used instead.  The double versions don't provide the same range
-   # as the long double versions, but the accuracy is not affected if
-   # the operand is inside the double range.  This is not an issue
-   # unless you have selected "long double" in one of the preceding
-   # two stanzas.  If you have, though, then you should check this
-   # sample test case: see what floorl(-0.253L) and x-floorl(x) with
-   # x=-0.253L return.  If you get 0 for the first or NAN for the
-   # second, then you should enable this option.
-   # $config SetValue program_compiler_c++_property_bad_wide2int 1
-
-   # Other compiler properties
-   $config SetValue \
-      program_compiler_c++_property_optimization_breaks_varargs 0
 } else {
    puts stderr "Warning: Requested compiler \"$ccbasename\" is not supported."
    exit 1
@@ -818,25 +745,37 @@ if {[set compileonly [lsearch -exact $linkername "-c"]]>=0} {
     set linkername [lreplace $linkername $compileonly $compileonly]
 }
 unset compileonly
-if {[string match g++* $ccbasename]} {
+if {[string match *g++* $ccbasename]} {
     # ...for GNU g++ as linker
+    lappend linkername -pthread  ;# Apparently needed by some gcc installs
     $config SetValue program_linker $linkername
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
     $config SetValue program_linker_rpath {format "-Wl,-rpath=%s"}
     $config SetValue program_linker_uses_-L-l {1}
-} elseif {[string match pgCC $ccbasename]} {
-    # ...for Portland Group pgCC as linker
+} elseif {[string match pgc++ $ccbasename]} {
+    # ...for Portland Group pgc++ as linker
     $config SetValue program_linker $linkername
+    set linkeropts [GetPgccLinkOptFlags $pgcc_version]
+    ## Without -Mnoen_frame, threads in Oxs abort during
+    ## Tcl_ExitThread() processing with the error "terminate called
+    ## without an active exception" if the thread code contains a
+    ## try/catch block.  (At least for pgc++ version 16.10-0.)
     if {[info exists opts]} {
-	$config SetValue program_linker [concat $linkername $opts]
+       set linkeropts [concat $opts $linkeropts]
     }
+    $config SetValue program_linker [concat $linkername $linkeropts]
+    unset linkeropts
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
+    $config SetValue program_linker_rpath {format "-Wl,-rpath=%s"}
     $config SetValue program_linker_uses_-L-l {1}
     $config SetValue program_linker_uses_-I-L-l {0}
+    # Some PGI/GCC installations need to explicitly include
+    # the C++ atomic library on the link line.
+    $config SetValue program_linker_extra_libs [list -latomic]
 } elseif {[string match icpc $ccbasename]} {
     # ...for Intel's icpc as linker
     set linkcmdline $linkername
@@ -859,23 +798,6 @@ if {[string match g++* $ccbasename]} {
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
     $config SetValue program_linker_rpath {format "-Qoption,ld,-rpath=%s"}
-    $config SetValue program_linker_uses_-L-l {1}
- } elseif {[string match openCC* $ccbasename]} {
-    # ...for openCC as linker
-    set linkcmdline $linkername
-    # If -Ofast or other flags that enable interprocedural optimizations
-    # (IPO) appear in the program_compiler_c++_option_opt value above,
-    # then append those flags into program_linker too.
-    if {[lsearch -exact $opts -Ofast]>=0 || \
-           [lsearch -glob [string tolower $opts] -ipa*]>=0} {
-       lappend linkcmdline -ipa
-    }
-    $config SetValue program_linker $linkcmdline
-    unset linkcmdline
-    $config SetValue program_linker_option_obj {format \"%s\"}
-    $config SetValue program_linker_option_out {format "-o \"%s\""}
-    $config SetValue program_linker_option_lib {format \"%s\"}
-    $config SetValue program_linker_rpath {format "-Wl,-rpath=%s"}
     $config SetValue program_linker_uses_-L-l {1}
 }
 unset linkername

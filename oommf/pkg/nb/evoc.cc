@@ -347,153 +347,146 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time, OC_BOOL)
 #else // NO_CLOCKS
 void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
 {
-  TCL_DECLARE_MUTEX(time_mutex);  // Thread-safe hack.  Ideally,
-  /// this code should be re-written to better support thread safety.
-  Tcl_MutexLock(&time_mutex);
-  try {
-    static OC_BOOL first_time=1;
-    if(reset) {
-      first_time = 1;
-    }
+  static Oc_Mutex time_mutex;
+  Oc_LockGuard lck(time_mutex);
+  static OC_BOOL first_time=1;
+  if(reset) {
+    first_time = 1;
+  }
 
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
 #ifdef OC_HAS_GETPROCESSTIMES
-    // Use GetProcessTimes if available, because the clock() function
-    // appears to return wall time on Win2K.  Note: The tick interval
-    // for GetProcessTimes is 100 ns.
-    static Oc_TimeVal cpu_accum(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
-    static Oc_TimeVal cpu_last(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
-    static Oc_TimeVal cpu_now(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
-    static Oc_TimeVal wall_accum(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    static Oc_TimeVal wall_last(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    static Oc_TimeVal wall_now(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    if(reset) {
-      cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
-      wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
-    }
-    HANDLE current_process = GetCurrentProcess();
-    FILETIME create_time,exit_time,kernel_time,user_time;
-    if(GetProcessTimes(current_process,&create_time,&exit_time,
-                       &kernel_time,&user_time)) {
-      OC_TIMEVAL_TICK_TYPE kticks = 
-        (static_cast<OC_TIMEVAL_TICK_TYPE>(kernel_time.dwHighDateTime)<<32)
-        | static_cast<OC_TIMEVAL_TICK_TYPE>(kernel_time.dwLowDateTime);
-      OC_TIMEVAL_TICK_TYPE uticks =
-        (static_cast<OC_TIMEVAL_TICK_TYPE>(user_time.dwHighDateTime)<<32)
-        | static_cast<OC_TIMEVAL_TICK_TYPE>(user_time.dwLowDateTime);
-      cpu_now.ticks = kticks + uticks;
-      cpu_now.overflow=cpu_last.overflow;
-      if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
-    } else {
-      cpu_now.ticks = 0;
-      cpu_now.overflow = 0; // Punt
-    }
-    wall_now.ticks=GetTickCount();
-    wall_now.overflow=wall_last.overflow;
-    if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
-#else // !OC_HAS_GETPROCESSTIMES
-    // Use clock() to get cpu time, GetTickCount() to get wall time.
-    // GetTickCount() is in the Windows API; it returns number of ms
-    // since Windows was started
-    static Oc_TimeVal cpu_accum(CLOCKS_PER_SEC,
-                                (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_last(CLOCKS_PER_SEC,
-                               (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_now(CLOCKS_PER_SEC,
-                              (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal wall_accum(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    static Oc_TimeVal wall_last(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    static Oc_TimeVal wall_now(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
-    if(reset) {
-      cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
-      wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
-    }
-    cpu_now.ticks=clock();
-    wall_now.ticks=GetTickCount();
+  // Use GetProcessTimes if available, because the clock() function
+  // appears to return wall time on Win2K.  Note: The tick interval
+  // for GetProcessTimes is 100 ns.
+  static Oc_TimeVal cpu_accum(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
+  static Oc_TimeVal cpu_last(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
+  static Oc_TimeVal cpu_now(10000000,(OC_TIMEVAL_TICK_TYPE)(-1));
+  static Oc_TimeVal wall_accum(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  static Oc_TimeVal wall_last(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  static Oc_TimeVal wall_now(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  if(reset) {
+    cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
+    wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
+  }
+  HANDLE current_process = GetCurrentProcess();
+  FILETIME create_time,exit_time,kernel_time,user_time;
+  if(GetProcessTimes(current_process,&create_time,&exit_time,
+                     &kernel_time,&user_time)) {
+    OC_TIMEVAL_TICK_TYPE kticks = 
+      (static_cast<OC_TIMEVAL_TICK_TYPE>(kernel_time.dwHighDateTime)<<32)
+      | static_cast<OC_TIMEVAL_TICK_TYPE>(kernel_time.dwLowDateTime);
+    OC_TIMEVAL_TICK_TYPE uticks =
+      (static_cast<OC_TIMEVAL_TICK_TYPE>(user_time.dwHighDateTime)<<32)
+      | static_cast<OC_TIMEVAL_TICK_TYPE>(user_time.dwLowDateTime);
+    cpu_now.ticks = kticks + uticks;
     cpu_now.overflow=cpu_last.overflow;
     if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
-    wall_now.overflow=wall_last.overflow;
-    if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
+  } else {
+    cpu_now.ticks = 0;
+    cpu_now.overflow = 0; // Punt
+  }
+  wall_now.ticks=GetTickCount();
+  wall_now.overflow=wall_last.overflow;
+  if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
+#else // !OC_HAS_GETPROCESSTIMES
+  // Use clock() to get cpu time, GetTickCount() to get wall time.
+  // GetTickCount() is in the Windows API; it returns number of ms
+  // since Windows was started
+  static Oc_TimeVal cpu_accum(CLOCKS_PER_SEC,
+                              (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal cpu_last(CLOCKS_PER_SEC,
+                             (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal cpu_now(CLOCKS_PER_SEC,
+                            (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal wall_accum(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  static Oc_TimeVal wall_last(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  static Oc_TimeVal wall_now(1000,(OC_TIMEVAL_TICK_TYPE)DWORD(-1));
+  if(reset) {
+    cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
+    wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
+  }
+  cpu_now.ticks=clock();
+  wall_now.ticks=GetTickCount();
+  cpu_now.overflow=cpu_last.overflow;
+  if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
+  wall_now.overflow=wall_last.overflow;
+  if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
 #endif // OC_HAS_GETPROCESSTIMES
 #else // OC_SYSTEM_TYPE != OC_WINDOWS
-    // gettimeofday tends to have better resolution than times()
-    // so use gettimeofday if possible.
+  // gettimeofday tends to have better resolution than times()
+  // so use gettimeofday if possible.
 
 #if defined(OC_HAS_TIMES) && (!defined(OC_HAS_GETTIMEOFDAY) || !defined(OC_HAS_CLOCK))
-    // We are going to use these below:
-    static const long clktck = CLK_TCK;
-    static struct tms buf;
+  // We are going to use these below:
+  static const long clktck = CLK_TCK;
+  static struct tms buf;
 #endif
 
 # if defined(OC_HAS_GETTIMEOFDAY)
-    // Store microseconds in .tick, seconds in .overflow
-    static Oc_TimeVal wall_accum(1000000,999999);
-    static Oc_TimeVal wall_last(1000000,999999);
-    static Oc_TimeVal wall_now(1000000,999999);
-    if(reset) {
-      wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
-    }
-    static struct timeval tv;
-    gettimeofday(&tv,NULL);
-    wall_now.overflow=tv.tv_sec;  // Seconds
-    wall_now.ticks=tv.tv_usec;    // Microseconds
+  // Store microseconds in .tick, seconds in .overflow
+  static Oc_TimeVal wall_accum(1000000,999999);
+  static Oc_TimeVal wall_last(1000000,999999);
+  static Oc_TimeVal wall_now(1000000,999999);
+  if(reset) {
+    wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
+  }
+  static struct timeval tv;
+  gettimeofday(&tv,NULL);
+  wall_now.overflow=tv.tv_sec;  // Seconds
+  wall_now.ticks=tv.tv_usec;    // Microseconds
 # elif defined(OC_HAS_TIMES)
-    // Use the Unix times(2) call
-    static Oc_TimeVal wall_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal wall_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal wall_now(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    if(reset) {
-      wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
-    }
-    wall_now.ticks = (OC_TIMEVAL_TICK_TYPE)times(&buf);
-    wall_now.overflow=wall_last.overflow;
-    if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
+  // Use the Unix times(2) call
+  static Oc_TimeVal wall_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal wall_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal wall_now(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  if(reset) {
+    wall_accum.Reset();  wall_last.Reset();  wall_now.Reset();
+  }
+  wall_now.ticks = (OC_TIMEVAL_TICK_TYPE)times(&buf);
+  wall_now.overflow=wall_last.overflow;
+  if(wall_now.ticks<wall_last.ticks) wall_now.overflow++;
 # else // !OC_HAS_GETTIMEOFDAY
-    static Oc_TimeVal wall_accum,wall_last,wall_now;
+  static Oc_TimeVal wall_accum,wall_last,wall_now;
 # endif // OC_HAS_GETTIMEOFDAY
 
 # ifdef OC_HAS_CLOCK
-    static Oc_TimeVal cpu_accum(CLOCKS_PER_SEC,
-                                (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_last(CLOCKS_PER_SEC,
-                               (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_now(CLOCKS_PER_SEC,
+  static Oc_TimeVal cpu_accum(CLOCKS_PER_SEC,
                               (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    if(reset) {
-      cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
-    }
-    cpu_now.ticks=clock();
-    cpu_now.overflow=cpu_last.overflow;
-    if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
+  static Oc_TimeVal cpu_last(CLOCKS_PER_SEC,
+                             (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal cpu_now(CLOCKS_PER_SEC,
+                            (OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  if(reset) {
+    cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
+  }
+  cpu_now.ticks=clock();
+  cpu_now.overflow=cpu_last.overflow;
+  if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
 # elif defined(OC_HAS_TIMES)
-    // Use the Unix times(2) call
-    static Oc_TimeVal cpu_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    static Oc_TimeVal cpu_now(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
-    if(reset) {
-      cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
-    }
-    cpu_now.ticks=(OC_TIMEVAL_TICK_TYPE)(buf.tms_utime+buf.tms_stime);
-    cpu_now.overflow=cpu_last.overflow;
-    if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
+  // Use the Unix times(2) call
+  static Oc_TimeVal cpu_accum(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal cpu_last(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  static Oc_TimeVal cpu_now(clktck,(OC_TIMEVAL_TICK_TYPE)clock_t(-1));
+  if(reset) {
+    cpu_accum.Reset();   cpu_last.Reset();   cpu_now.Reset();
+  }
+  cpu_now.ticks=(OC_TIMEVAL_TICK_TYPE)(buf.tms_utime+buf.tms_stime);
+  cpu_now.overflow=cpu_last.overflow;
+  if(cpu_now.ticks<cpu_last.ticks) cpu_now.overflow++;
 # else // !OC_HAS_CLOCK
-    static Oc_TimeVal cpu_accum,cpu_last,cpu_now;
+  static Oc_TimeVal cpu_accum,cpu_last,cpu_now;
 # endif // OC_HAS_CLOCK
 
 #endif // ...OC_SYSTEM_TYPE == OC_WINDOWS
-    if(!first_time) {
-      cpu_accum+=(cpu_now-cpu_last);
-      wall_accum+=(wall_now-wall_last);
-    } else {
-      first_time=0;
-    }
-    cpu_last=cpu_now;     wall_last=wall_now;
-    cpu_time=cpu_accum;   wall_time=wall_accum;
-  } catch(...) {
-    Tcl_MutexUnlock(&time_mutex);
-    throw;
+  if(!first_time) {
+    cpu_accum+=(cpu_now-cpu_last);
+    wall_accum+=(wall_now-wall_last);
+  } else {
+    first_time=0;
   }
-  Tcl_MutexUnlock(&time_mutex);
+  cpu_last=cpu_now;     wall_last=wall_now;
+  cpu_time=cpu_accum;   wall_time=wall_accum;
 }
 #endif // NO_CLOCKS
 

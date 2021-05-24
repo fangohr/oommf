@@ -142,10 +142,17 @@ private:
   Oc_Ticks wall_last;  // Clock values when watch was
                       /// last started.
 public:
+#ifdef __clang__
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wself-assign-field"
+#endif
   void Reset() {
     wall_last.ReadWallClock();
     wall_total -= wall_total;  // Zero accumulated time
   }
+#ifdef __clang__
+# pragma clang diagnostic pop
+#endif
 
   Nb_WallWatch(OC_BOOL _running=0) : running(_running) {
     Reset();

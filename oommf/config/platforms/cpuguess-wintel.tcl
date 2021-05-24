@@ -92,7 +92,10 @@ proc GuessCpu {} {
 # Routine to guess the cl version
 proc GuessClVersion { cl } {
     set guess {}
-    catch {exec $cl} usage_str
+    if {[catch {exec $cl} usage_str]} {
+       # Run failure; return blank string
+       return {}
+    }
     if {[regexp -- {Version ([0-9]+)[.][0-9]+[.][0-9]+} \
              $usage_str dummy version]} {
         set guess [expr {$version - 6}]
@@ -175,6 +178,21 @@ proc GetClGeneralOptFlags { cl_version platform } {
 
    return $opts
 }
+
+proc GetClValueSafeOptFlags { cl_version platform } {
+   # Import "platform" not presently used, but should
+   # be one of "x86" or "x86_64".
+   set cl_version [lindex $cl_version 0] ;# Safety
+
+   # Max optimization
+   set opts "/Ox"
+   if {$cl_version>7} {
+      lappend opts /fp:precise
+   }
+
+   return $opts
+}
+
 
 # Routine that determines processor specific optimization flags for
 # Microsoft Visual C++ compiler cl.  The first import is the compiler

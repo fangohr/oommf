@@ -1,0 +1,32 @@
+# OOMMF: rectangular mesh v1.0
+# Segment count: 1
+# Begin: Segment
+# Begin: Header
+# Title: N-diag
+# Desc: PBC_Demag_2D::DemagTensors: Nxx, Nyy, Nzz
+# meshtype: rectangular
+# meshunit: m
+# xbase: 2.0000000000000001e-09
+# ybase: 2.0000000000000001e-09
+# zbase: 2.0000000000000001e-09
+# xstepsize: 4.0000000000000002e-09
+# ystepsize: 4.0000000000000002e-09
+# zstepsize: 4.0000000000000002e-09
+# xnodes: 1
+# ynodes: 1
+# znodes: 1
+# xmin: 0
+# ymin: 0
+# zmin: 0
+# xmax: 4.0000000000000002e-09
+# ymax: 4.0000000000000002e-09
+# zmax: 4.0000000000000002e-09
+# valueunit: 1
+# valuemultiplier: 1
+# ValueRangeMinMag: 0.70601918898618132
+# ValueRangeMaxMag: 0.70608979796597793
+# End: Header
+# Begin: Data Binary 8
+BÜ!ƒwÞ@?W™ó¤Âê?ßô3t-ž?ßô3t-ž
+# End: Data Binary 8
+# End: Segment

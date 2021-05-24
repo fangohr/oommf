@@ -56,7 +56,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000130000000000000000"></A><A NAME="sec:mmgraph"></A>
 <BR>
 Data Graph Display: mmGraph
-</H1><A NAME="13948"></A>
+</H1><A NAME="13951"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -71,7 +71,7 @@ Data Graph Display: mmGraph
 <BR>
 The application <B>mmGraph</B> provides a data display service similar to
 that of <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="13959"><B>mmDataTable</B></A>.  The usual
+ NAME="13962"><B>mmDataTable</B></A>.  The usual
 data source is a running solver, but rather than the textual output
 provided by <B>mmDataTable</B>, <B>mmGraph</B> produces 2D line plots.
 <B>mmGraph</B> also stores the data it receives, so it can produce
@@ -109,26 +109,26 @@ tclsh oommf.tcl mmGraph [standard options] [-net &lt;0|1&gt;] [loadfile ...]
 <BR>
 Input to <B>mmGraph</B> may come from either a file in the 
 <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
- NAME="13982">ODT format</A>, 
+ NAME="13985">ODT format</A>, 
 or when <TT>-net 1</TT> (the default) is active, from a client application
 (typically a running solver).  The
 <FONT COLOR="#800000"><B>File|Open...</B></FONT> dialog box is used to select an input file.
 Receipt of data from client applications is the same as for
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="13989"><B>mmDataTable</B></A>.  In either
+ NAME="13992"><B>mmDataTable</B></A>.  In either
 case, input data are appended to any previously held data.
 
 <P>
 When reading from a file, <B>mmGraph</B> will automatically
-decompress<A NAME="13991"></A>
+decompress<A NAME="13994"></A>
 data using the <A HREF="Advanced_Installation.html#sec:custom"
- NAME="13996">local customization</A>
+ NAME="13999">local customization</A>
 ``Nb_InputFilter decompress'' option to <TT>Oc_Option</TT>.  For details,
 see the discussion on file translation in the Inputs section of the 
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp</B> documentation</A>.
 
 <P>
-Curve breaks<A NAME="14002"></A> (i.e., separation of a curve into
+Curve breaks<A NAME="14005"></A> (i.e., separation of a curve into
 disjoint segments) are recorded in the data storage buffer via <EM>curve break records.</EM>  These records are generated whenever a new data
 table is detected by <B>mmGraph</B>, or when requested by the user using
 the <B>mmGraph</B> <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> menu option.
@@ -139,12 +139,12 @@ the <B>mmGraph</B> <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> menu
 <FONT SIZE="+2"><B>Outputs</B></FONT>
 <BR>
 <P>
-Unlike <B>mmDataTable</B><A NAME="14009"></A>, <B>mmGraph</B>
+Unlike <B>mmDataTable</B><A NAME="14012"></A>, <B>mmGraph</B>
 internally stores the data sent to it.  These data may be written to
 disk via the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box.  If the file
 specified already exists, then <B>mmGraph</B> output is appended to that
 file.  The output is in the tabular <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
- NAME="14017">ODT format</A>.  The
+ NAME="14020">ODT format</A>.  The
 data are segmented into separate <TT>Table Start/Table End</TT> blocks
 across each curve break record.
 
@@ -156,7 +156,7 @@ currently selected for display.  In either case, the graph display
 limits do <EM>not</EM> affect the output.
 
 <P>
-The save operation<A NAME="14023"></A> writes records that are held by
+The save operation<A NAME="14026"></A> writes records that are held by
 <B>mmGraph</B> at the time the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box
 <FONT COLOR="#800000"><B>OK</B></FONT> button is invoked.  Additionally, the <FONT COLOR="#800000"><B>Auto Save</B></FONT> option in
 this dialog box may be used to automatically append to the specified
@@ -169,10 +169,10 @@ continues until either a new output file is specified, the
 terminated.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14032"></A> dialog is used to
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14035"></A> dialog is used to
 produce a Postscript file of the current graph.  On Unix systems, the
 output may be sent directly to a 
-printer<A NAME="14033"></A> 
+printer<A NAME="14036"></A> 
 by filling the <FONT COLOR="#800000"><B>Print to:</B></FONT>
 entry with the appropriate pipe command, e.g., <TT>|lpr</TT>.  (The
 exact form is system dependent.)
@@ -211,10 +211,18 @@ ranges automatically adjust to track incoming data.
 <P>
 Use the <FONT COLOR="#800000"><B>Auto Offset Y1</B></FONT> and <FONT COLOR="#800000"><B>Auto Offset Y2</B></FONT> to automatically
 translate each curve plotted against the specified axis up or down so
-that the first point on the curve has a y-value of zero.  This feature
-is especially useful for comparing variations between different energy
-curves, because for these curves one is typically interested in
-changes is values rather than the absolute energy value itself.
+that the first point on the curve has a y-value of zero for a linear
+axis or one for a logarithmic axis.  This feature is especially useful
+for comparing variations between different energy curves, because for
+these curves one is typically interested in changes is values rather
+than the absolute energy value itself.
+
+<P>
+By default the scaling on each axis is linear.  The <FONT COLOR="#800000"><B>Log scale axes</B></FONT>
+check boxes enables logarithmic scaling on the selected axes.  If
+logarithmic scaling is selected then any point with a zero value is
+dropped and negative values are replaced with their corresponding
+positive absolute value.
 
 <P>
 The size of the margin surrounding the plot region is computed
@@ -228,7 +236,7 @@ The initial curve width is determined by the <TT>Ow_GraphWin
 default_curve_width</TT> setting in the <TT><B>config/options.tcl</B></TT> and
 <TT><B>config/local/options.tcl</B></TT> files, following the usual method of
 <A HREF="Advanced_Installation.html#sec:custom"
- NAME="14059">local customization</A>.  The current curve
+ NAME="14063">local customization</A>.  The current curve
 width can be changed by specifying the desired width in the <FONT COLOR="#800000"><B>Curve
 Width</B></FONT> entry in the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
 The units are pixels.  Long curves will be rendered more quickly,
@@ -237,7 +245,7 @@ especially on Windows, if the curve width is set to 1.
 <P>
 As mentioned earlier, <B>mmGraph</B> stores in memory all data it
 receives.  Over the course of a long run, the amount of data stored can
-grow to many megabytes<A NAME="14063"></A>.  This storage can be limited
+grow to many megabytes<A NAME="14067"></A>.  This storage can be limited
 by specifying a positive (<B>&gt; 0</B>
 <!-- MATHEND
  
@@ -332,10 +340,18 @@ are rescaled.  An arrow is drawn against the rectangle indicating which
 y-axis will be rescaled.  The rescaling may be canceled by positioning
 the mouse pointer over the initial point before releasing the mouse
 button.  The zoom box feature is similar to the mouse zoom control in
-the
-<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="14093"><B>mmDisp</B></A> application, except
-that here there is no ``un-zooming'' mouse control.
+the <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
+ NAME="14097"><B>mmDisp</B></A> application, except
+that here there is no ``un-zooming'' mouse control.  However, the
+coordinate limits for each zoom are stored in a list, and the <TT><B>Esc</B></TT>
+and <TT><B>Shift+Esc</B></TT> keys may be used to move backwards and forwards,
+respectively, through this list.  The <TT><B>Enter</B></TT>/<TT><B>Return</B></TT> key will
+copy the current coordinate limits to the list.  A pointer is kept to
+the selected display configuration state, and new states are added after
+that point; if a display state is added in the interior of the list
+(i.e. ahead of the last state), then all configurations following the
+new entry are deleted.  The entire list is cleared any time automatic
+scaling is invoked.
 
 <P>
 The <TT><B>PageUp</B></TT> and <TT><B>PageDown</B></TT> keys may also be used to zoom the
@@ -377,7 +393,7 @@ it may be a long time after starting a problem in the solver before the
 graph widget can be configured.  Because <B>mmGraph</B> keeps all data up
 to the limit imposed by the <TT>Point buffer size</TT>, data loss is usually
 not a problem.  Of more importance is the fact that automatic data
-saving<A NAME="14113"></A> can not be set up until the first data point is
+saving<A NAME="14121"></A> can not be set up until the first data point is
 received.  As a workaround, the solver initial state may be sent
 interactively as a dummy point to initialize the graph widget axes
 menus.  Select the desired quantities off the axes menus, and use the
@@ -407,6 +423,6 @@ will be written to this file as they arrive.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
 </BODY>
 </HTML>

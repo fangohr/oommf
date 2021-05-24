@@ -32,7 +32,6 @@ private:
   Oxs_OwnedPointer<Oxs_ScalarField> K1_init;
   Oxs_OwnedPointer<Oxs_ScalarField> Ha_init;
   Oxs_OwnedPointer<Oxs_VectorField> axis_init;
-  mutable Oxs_ThreadControl thread_control;
   mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_REAL8m> K1;
   mutable Oxs_MeshValue<OC_REAL8m> Ha;
@@ -77,7 +76,6 @@ private:
   // Variables to track and store multiplier value for each simulation
   // state.  This data is computed once per state by the main thread,
   // and shared with all the children.
-  mutable Oxs_ThreadControl mult_thread_control;
   mutable OC_UINT4m mult_state_id;
   mutable OC_REAL8m mult;
   mutable OC_REAL8m dmult; // Partial derivative of multiplier wrt t

@@ -11,8 +11,7 @@
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// For some compilers this is needed to get "long double"
-/// versions of the basic math library functions, e.g.,
-/// long double atan(long double);
+/// versions of the basic math library functions.
 
 /* End includes */
 
@@ -137,7 +136,7 @@ void Oxs_ThreeVectorPairMakeUnit
 
   __m128d tmagsq = _mm_sub_pd(_mm_set1_pd(1.0),error);
 
-  if(magsq0) _mm_storel_pd(magsq0,tmagsq);
+  if(magsq0) _mm_store_sd(magsq0,tmagsq);
   if(magsq1) _mm_storeh_pd(magsq1,tmagsq);
 
   // cmpZ is a two-bit mask; bit 0 is low term result,
@@ -148,9 +147,9 @@ void Oxs_ThreeVectorPairMakeUnit
     if(cmpZ & 0x1) { // Low term <= 0
       t0.Random(1.0);
     } else {
-      _mm_storel_pd(&t0.x,tx);
-      _mm_storel_pd(&t0.y,ty);
-      _mm_storel_pd(&t0.z,tz);
+      _mm_store_sd(&t0.x,tx);
+      _mm_store_sd(&t0.y,ty);
+      _mm_store_sd(&t0.z,tz);
     }
     if(cmpZ & 0x2) { // High term <= 0
       t1.Random(1.0);
@@ -288,15 +287,15 @@ void Oxs_ThreeVectorPairMakeUnit
     error.Set(error.GetA(),terr);
   }
 
-  if(Oc_Fabs(error.GetA())<=2*OC_REAL8_EPSILON &&
-     Oc_Fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
+  if(fabs(error.GetA())<=2*OC_REAL8_EPSILON &&
+     fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
     // In general, it is not possible to do better than 2*eps.
     return;
   }
-  if(Oc_Fabs(error.GetA())<=2*OC_REAL8_EPSILON) {
+  if(fabs(error.GetA())<=2*OC_REAL8_EPSILON) {
     // Short-circuit correction; this reduces chatter
     error.Set(0.0,error.GetB());
-  } else if(Oc_Fabs(error.GetA())>OC_CUBE_ROOT_REAL8_EPSILON) {
+  } else if(fabs(error.GetA())>OC_CUBE_ROOT_REAL8_EPSILON) {
     OC_REAL8m mult = 1.0/sqrt(1.0-error.GetA());
     OC_REAL8m ax = tx.GetA() * mult;    tx.Set(ax,tx.GetB());
     OC_REAL8m ay = ty.GetA() * mult;    ty.Set(ay,ty.GetB());
@@ -304,10 +303,10 @@ void Oxs_ThreeVectorPairMakeUnit
     OC_REAL8m aerror = 1.0 - ax*ax;   aerror -= ay*ay;   aerror -= az*az;
     error.Set(aerror,error.GetB());
   }
-  if(Oc_Fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
+  if(fabs(error.GetB())<=2*OC_REAL8_EPSILON) {
     // Short-circuit Halley step; this reduces chatter
     error.Set(error.GetA(),0.0);
-  } else if(Oc_Fabs(error.GetB())>OC_CUBE_ROOT_REAL8_EPSILON) {
+  } else if(fabs(error.GetB())>OC_CUBE_ROOT_REAL8_EPSILON) {
     OC_REAL8m mult = 1.0/sqrt(1.0-error.GetB());
     OC_REAL8m bx = tx.GetB() * mult;    tx.Set(tx.GetA(),bx); 
     OC_REAL8m by = ty.GetB() * mult;    ty.Set(ty.GetA(),by);

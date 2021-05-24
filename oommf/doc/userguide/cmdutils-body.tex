@@ -1469,6 +1469,34 @@ values of earlier new columns may be used to compute the values of later
 new columns.  The order of command line arguments controls the order of
 the new columns that are added to the right side of the data table.
 
+\sssechead{Example}
+Suppose \fn{ring.odt} contains hysteresis loop data from an \app{Oxsii}
+simulation where the field was applied in the $xy$-plane at an angle of
+$30^\circ$ from the $x$-axis.  The data file holds field and average
+magnetization axis component values $B_x$, $B_y$, $m_x$, and $m_y$.  We
+want field and magnetization data projected onto the applied field
+axis.  We can create those values using \app{odtcalc} like so:
+\begin{verbatim}
+tclsh oommf.tcl odtcalc B '$Bx*0.86602540378443865+$By*0.5' mT \
+   m '$mx*0.86602540378443865+$my*0.5' '' \
+   < ring.odt > ring-augmented.odt
+\end{verbatim}
+Here $\cos(30^\circ)=0.8660254037844365$ and $\sin(30^\circ)=0.5$.  The
+\fn{ring-augmented.odt} file will have all the data in the original
+\fn{ring.odt} file, plus two additional columns, labeled B with
+units of mT and m with empty units.  (Note: On \Windows\ replace the
+single quotes in the above command with double quotes.  Also, the
+\Windows\ command line uses the caret character \verb+^+ for line
+continuation instead of the backslash \verb+\+.)
+
+To extract just the B and m columns and prepare for import into a
+spreadsheet program supporting CSV (comma separated value) format,
+post-process with \app{odtcols}:
+\begin{verbatim}
+tclsh oommf.tcl odtcols -t csv B m < ring-augmented.odt > ring-export.dat
+\end{verbatim}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{\ODT\ Table Concatenation: odtcat}\label{sec:odtcat}%

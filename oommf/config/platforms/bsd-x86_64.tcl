@@ -451,6 +451,10 @@ if {[string match g++ $ccbasename]} {
     if {[lindex $gcc_version 0]>=6} {
        lappend nowarn {-Wno-misleading-indentation}
     }
+    if {[lindex $gcc_version 0]>=8} {
+       # Allow strncpy to truncate strings
+       lappend nowarn {-Wno-stringop-truncation}
+    }
     if {[info exists nowarn] && [llength $nowarn]>0} {
        set opts [concat $opts $nowarn]
     }

@@ -1785,7 +1785,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
   // is for dm_dt7 at m1+h*k6 = m1+h*Da, which is the candidate
   // next state.  (Da=k6; see FSAL note below.)
 
-  // Four temporary arrays, A-D, are used:
+  // Four temporary arrays, A-D, are used.  The original implementation
+  // of this routine broke down into 12 steps, with usage pattern
   //
   // Step \  Temp
   // Index \ Array:  A         B         C         D
@@ -1818,6 +1819,18 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
   // 7 is the number of stages, and 5(4) is the main/subsidiary
   // integration formula order.  See the D&P 1986 paper for
   // details and additional references.)
+  //   When the code was parallelized the steps were collapsed and
+  // data movement reduced.  Usage is now
+  //
+  // Step \  Temp
+  // Index \ Array:  A         B         C         D
+  // ------+---------------------------------------------
+  //  1-2  |      dm_dt2       -         -         -
+  //  3-4  |      dm_dt2     dm_dt3      -         -
+  //  5-6  |      dm_dt2     dm_dt3    dm_dt4      -
+  //  7-8  |      dm_dt2     dm_dt3    dm_dt4    dm_dt5
+  //  9-11 |      dm_dt6     dD(3,6)   dm_dt4    dm_dt5
+  //  12   |      dm_dt7       dD      dm_dt4    dm_dt5
 
   // Coefficient arrays, a, b, dc, defined by:
   //
@@ -2017,7 +2030,7 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
   RKTIME_START(3);
   AdjustState(stepsize*a1,stepsize*b11,*cstate,current_dm_dt,
               next_state_key.GetWriteReference());
-  RKTIME_STOP(3,"RKF54 step 1",(cstate->mesh->Size())*(9*sizeof(OC_REAL8m)));
+  RKTIME_STOP(3,"RKF54 step 1",(cstate->mesh->Size())*9*sizeof(OC_REAL8m));
 
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
                    &vtmpA,NULL,pE_pt);
@@ -2047,12 +2060,11 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     UpdateTimeFields(*cstate,newstate,a2*stepsize);
   }
   RKTIME_STOP(4,"RKF54 step 2",
-                (cstate->mesh->Size())*(3*(7+1)*sizeof(OC_REAL8m)));
+              (cstate->mesh->Size())*(11+3*4)*sizeof(OC_REAL8m));
 
   // Steps 3 and 4
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
                    &vtmpB,NULL,pE_pt);
-
   RKTIME_START(5);
   {
     DMDT dmdt(this,next_state_key.GetReadReference(),vtmpB,vtmpB);
@@ -2077,6 +2089,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     dmdt.FinalizeCore();
     UpdateTimeFields(*cstate,newstate,a3*stepsize);
   }
+  RKTIME_STOP(5,"RKF54 step 5-6",
+              (cstate->mesh->Size())*(11+3*5)*sizeof(OC_REAL8m));
 
   // Steps 5 and 6
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
@@ -2106,8 +2120,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     dmdt.FinalizeCore();
     UpdateTimeFields(*cstate,newstate,a4*stepsize);
   }
-  RKTIME_STOP(6,"RKF54 step 6",
-              (cstate->mesh->Size())*(3*(7+3)*sizeof(OC_REAL8m)));
+  RKTIME_STOP(6,"RKF54 step 5-6",
+              (cstate->mesh->Size())*(11+3*6)*sizeof(OC_REAL8m));
 
   // Steps 7 and 8
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
@@ -2138,8 +2152,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     dmdt.FinalizeCore();
     UpdateTimeFields(*cstate,newstate,stepsize); // a5==1.0
   }
-  RKTIME_STOP(7,"RKF54 step 8",
-              (cstate->mesh->Size())*(3*(7+4)*sizeof(OC_REAL8m)));
+  RKTIME_STOP(7,"RKF54 step 7-8",
+              (cstate->mesh->Size())*(11+3*7)*sizeof(OC_REAL8m));
 
   // Steps 9-11
   GetEnergyDensity(next_state_key.GetReadReference(),temp_energy,
@@ -2193,13 +2207,13 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
   }
   const Oxs_SimState& endstate
     = next_state_key.GetReadReference(); // Candidate next state
-  RKTIME_STOP(8,"RKF54 step 9",
-              (cstate->mesh->Size())*(3*(7+4)*sizeof(OC_REAL8m)));
+  RKTIME_STOP(8,"RKF54 step 9-11",
+              (cstate->mesh->Size())*(11+3*7)*sizeof(OC_REAL8m));
 
+  // Step 12
   OC_REAL8m total_E;
   GetEnergyDensity(endstate,temp_energy,&mxH_output.cache.value,
                    NULL,pE_pt,total_E);
-
   RKTIME_START(9);
   OC_REAL8m max_dD_sq=0.0;
   OC_REAL8m max_dm_dt_sq=0.0,pE_pM_sum=0.0; // Be certain to initialize these!
@@ -2219,9 +2233,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
         OC_REAL8m thd_max_dD_sq = 0.0;
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_REAL8m dummy=0.0;
-          dmdt.Compute(j,thd_max_dm_dt_sq,dummy);
+          dmdt.Compute(j,thd_max_dm_dt_sq,dummy);  // Fills vtmpA with dmdt
           thd_pE_pM_sum += dummy;
-          /// Fills vtmpA with dmdt
           vtmpB[j] += dc1*current_dm_dt[j]
             + dc4*vtmpC[j]
             + dc5*vtmpD[j]
@@ -2252,8 +2265,8 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     dmdt.Finalize(max_dm_dt_sq,pE_pM_sum);
   }
   mxH_output.cache.state_id=endstate.Id();
-  RKTIME_STOP(9,"RKF54 step 10",
-              (cstate->mesh->Size())*(3*5*sizeof(OC_REAL8m)));
+  RKTIME_STOP(9,"RKF54 step 12",
+              (cstate->mesh->Size())*(11+3*5)*sizeof(OC_REAL8m));
 
   OC_REAL8m max_dm_dt = sqrt(max_dm_dt_sq);
   OC_REAL8m timestep_lower_bound = PositiveTimestepBound(max_dm_dt);
@@ -2268,7 +2281,7 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
                  "Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54:"
                  " Programming error; data cache already set.");
   }
-  // Array holdings: A=dm_dt7   B=dD(3,6)   C=dm_dt4   D=dm_dt5
+  // Array holdings: A=dm_dt7   B=dD   C=dm_dt4   D=dm_dt5
 
   error_estimate = stepsize * sqrt(max_dD_sq);
   global_error_order = 5.0;

@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef FFT3V_H
-#define FFT3V_H
+#ifndef _OXS_FFT3V_H
+#define _OXS_FFT3V_H
 
 #ifndef STANDALONE
 #include "oc.h" // OC_REAL8m, OC_INT4m, OC_UINT4m, OC_INDEX declarations
@@ -956,4 +956,4 @@ private:
 
 };
 
-#endif /* FFT3V_H */
+#endif /* _OXS_FFT3V_H */

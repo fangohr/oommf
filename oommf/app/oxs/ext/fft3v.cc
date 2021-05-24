@@ -12,15 +12,24 @@
  * bottom of this file for test details.
  */
 
-#include <assert.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #ifndef STANDALONE
 
+#define OXS_FFT_TRY_XP 0
+/// Optional; set to either 0 or 1
+
 # include "nb.h"  // For constants PI and SQRT1_2
 # include "oxsexcept.h" // OXS_THROW
+
+#if OXS_FFT_TRY_XP
+# include "xp.h"  // Double-double calculations
+typedef Xp_DoubleDouble OXS_FFT_XP_TYPE;
+# define OXS_FFT_XP_PI Xp_DoubleDouble::DD_PI
+#endif
 
 #else // STANDALONE
 ////////////////////////////////////////////////////////////////////////
@@ -34,6 +43,9 @@ using namespace std;
 
 #define WIDE_PI  OC_REALWIDE(3.141592653589793238462643383279502884L)
 #define	WIDE_SQRT1_2   OC_REALWIDE(0.7071067811865475244008443621048490393L)
+
+// Xp double-double functions not ported to STANDALONE
+#define OXS_FFT_TRY_XP 0
 
 typedef int OC_INT4m;
 typedef long OC_INDEX;
@@ -210,11 +222,22 @@ void Oxs_FFT1DThreeVector::FillRootsOfUnity()
   // half of complex plane, so imaginary parts are non-positive for
   // all roots.  To make code easier to follow, compute roots in
   // the first quadrant, and adjust signs as necessary.
+#if OXS_FFT_TRY_XP
+  OXS_FFT_XP_TYPE theta_real_base = OXS_FFT_XP_PI/OXS_FFT_XP_TYPE(fftsize);
+#else
   OXS_FFT_REAL_TYPE theta_real_base = WIDE_PI/fftsize;
+#endif
   for(i=1;i<fftsize/4;++i) {
+#if OXS_FFT_TRY_XP
+    OXS_FFT_XP_TYPE theta = i * theta_real_base;
+    OXS_FFT_XP_TYPE ddst,ddct;   SinCos(theta,ddst,ddct);
+    OXS_FFT_REAL_TYPE st,ct;
+    ddst.DownConvert(st);   ddct.DownConvert(ct);
+#else
     OXS_FFT_REAL_TYPE theta = i * theta_real_base;
-    OXS_FFT_REAL_TYPE ct = cos(theta);
     OXS_FFT_REAL_TYPE st = sin(theta);
+    OXS_FFT_REAL_TYPE ct = cos(theta);
+#endif
     UReals[2*i]               =    ct;
     UReals[2*i+1]             = -1*st;
     UReals[2*(fftsize/2-i)]   =    st;
@@ -17274,7 +17297,7 @@ void Usage()
   exit(1);
 }
 
-#include <ctype.h>
+#include <cctype>
 
 int main(int argc,char** argv)
 {

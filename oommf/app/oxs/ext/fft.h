@@ -8,8 +8,8 @@
  * Last modified by: $Author: donahue $
  */
 
-#ifndef _FFT_H
-#define _FFT_H
+#ifndef _OXS_FFT_H
+#define _OXS_FFT_H
 
 #include "oc.h" // OC_REALWIDE defn
 
@@ -354,6 +354,4 @@ public:
 
 };
 
-#endif /* _FFT_H */
-
-
+#endif /* _OXS_FFT_H */

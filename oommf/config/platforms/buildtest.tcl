@@ -17,6 +17,8 @@
 #   OOMMF_BUILDTEST_REAL8m
 #   OOMMF_BUILDTEST_REALWIDE
 #   OOMMF_BUILDTEST_SSELEVEL
+#   OOMMF_BUILDTEST_DOUBLEDOUBLE_BASETYPE
+#   OOMMF_BUILDTEST_DOUBLEDOUBLE_ALTSINGLE
 #
 # Also, the "config" variable should be set to [Oc_Config RunPlatform]
 #
@@ -44,10 +46,19 @@ if {[info exists env(OOMMF_BUILDTEST_REALWIDE)] && \
    $config SetValue program_compiler_c++_typedef_realwide \
        $env(OOMMF_BUILDTEST_REALWIDE)
 }
-
 if {[info exists env(OOMMF_BUILDTEST_SSELEVEL)] && \
        ![string match {} $env(OOMMF_BUILDTEST_SSELEVEL)]} {
    $config SetValue sse_level $env(OOMMF_BUILDTEST_SSELEVEL)
+}
+if {[info exists env(OOMMF_BUILDTEST_DOUBLEDOUBLE_BASETYPE)] && \
+       ![string match {} $env(OOMMF_BUILDTEST_DOUBLEDOUBLE_BASETYPE)]} {
+   $config SetValue xp_doubledouble_basetype \
+      $env(OOMMF_BUILDTEST_DOUBLEDOUBLE_BASETYPE)
+}
+if {[info exists env(OOMMF_BUILDTEST_DOUBLEDOUBLE_ALTSINGLE)] && \
+       ![string match {} $env(OOMMF_BUILDTEST_DOUBLEDOUBLE_ALTSINGLE)]} {
+   $config SetValue xp_doubledouble_altsingle \
+      $env(OOMMF_BUILDTEST_DOUBLEDOUBLE_ALTSINGLE)
 }
 
 

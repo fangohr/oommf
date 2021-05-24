@@ -202,6 +202,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
+#
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
 # $config SetValue program_compiler_extra_include_dirs /opt/local/include
@@ -314,13 +342,6 @@ if {[string match g++* $ccbasename]} {
           [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
-   # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetGccGeneralOptFlags $gcc_version]
-   # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # x86-support.tcl for details.
 
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
@@ -362,6 +383,7 @@ if {[string match g++* $ccbasename]} {
    # or
    #    unset cpuopts
    #
+   set opts {}
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
@@ -401,19 +423,31 @@ if {[string match g++* $ccbasename]} {
    if {[lindex $gcc_version 0]>=6} {
       lappend nowarn {-Wno-misleading-indentation}
    }
+   if {[lindex $gcc_version 0]>=8} {
+      # Allow strncpy to truncate strings
+      lappend nowarn {-Wno-stringop-truncation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
-   # Make user requested tweaks to compile line
-   set opts [LocalTweakOptFlags $config $opts]
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
 
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   # Make user requested tweaks to compile line options
+   set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
+
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
@@ -438,13 +472,13 @@ if {[string match g++* $ccbasename]} {
         -Woverloaded-virtual -Wsynth -Werror -Wno-uninitialized \
         -Wno-unused-function"}
 
-   # Wide floating point type.
-   # At this time cygwin uses the Windows math libraries,
-   # which don't provide long double support
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
-   $config SetValue program_compiler_c++_property_floorl_flag -DNO_FLOORL_CHECK
+   # Wide floating point type.  Defaults to "long double" which provides
+   # extra precision.  Change to "double" for somewhat faster runs with
+   # reduced precision.
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+      # Not set
+      $config SetValue program_compiler_c++_typedef_realwide "long double"
+   }
 
    # Directories to exclude from explicit include search path, i.e.,
    # the -I list.  Some versions of gcc complain if "system" directories
@@ -459,6 +493,8 @@ if {[string match g++* $ccbasename]} {
    # Missing function prototypes
    $config SetValue program_compiler_c++_prototype_supply_nice \
       {extern "C" int nice(int);}
+} else {
+   puts stderr "Warning: Requested compiler \"$ccbasename\" is not supported."
 }
 
 # The program to run on this platform to link together object files and

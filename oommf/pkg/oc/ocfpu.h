@@ -2,10 +2,10 @@
  *
  *	Floating point unit control
  *
- * NOTICE: Please see the file ../../LICENSE
+ * NB: This class supports x86/x86_64 hardware.
+ *     It is currently inert for anything else.
  *
- * Last modified on: $Date: 2014/03/02 05:36:38 $
- * Last modified by: $Author: donahue $
+ * NOTICE: Please see the file ../../LICENSE
  *
  */
 
@@ -19,24 +19,33 @@
 # define OC_USE_SSE 0
 #endif
 
-#if OC_USE_SSE
-#include <xmmintrin.h>  // SSE (version "1")
-#endif
-
 #include "autobuf.h"
 
 /* End includes */     /* Optional directive to pimake */
 
 class Oc_FpuControlData {
  public:
-
-  // NOTE: In multi-threaded builds, the following public members are
-  //       made thread safe via a single mutex in the ocfpu.cc file.
-  void ReadData();  // Fills class data from thread FPU control registers
-  void WriteData(); // Sets FPU control registers from class data
+  // Note: Each thread has a separate set of FPU control registers,
+  //       so there shouldn't be any thread safety issues
+  void ReadData();  // Fills instance data from thread FPU control registers
+  void WriteData(); // Sets FPU control registers from instance data
   void GetDataString(Oc_AutoBuf& buf);
+
   static void MaskExceptions(); // Disables floating-point exceptions.
   /// This allows for rolling infs and NaNs.
+
+  // Enable/disable flush subnormals to zero and subnormals are zero
+  static void SetFlushToZero();
+  static void SetNoFlushToZero();
+
+  // Note: The static members MaskExceptions(), SetFlushToZero() and
+  //       SetNoFlushToZero() do not affect instance data set via
+  //       ReadData() (obviously).  Typical usage pattern is
+  //        Oc_FpuControlData foo;
+  //        foo.ReadData();  // Save current FPU flag state
+  //        Oc_FpuControlData::SetNoFlushToZero();
+  //        ... code requiring gradual underflow ...
+  //        foo.WriteData(); // Reset FPU flag state
 
  private:
 

@@ -161,7 +161,7 @@ void Oxs_UZeeman::ComputeEnergyChunkInitialize
 {
   const ThreeVector H = GetAppliedField(state.stage_number);
   ocedt.energy_density_error_estimate
-    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*Oc_Sqrt(H.MagSq());
+    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*H.Mag();
 }
 
 void Oxs_UZeeman::ComputeEnergyChunk

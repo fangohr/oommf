@@ -66,9 +66,10 @@ proc GetClangBannerVersion { clang } {
 }
 
 # Routine that returns aggressive, processor agnostic, optimization
-# flags for clang.  The import is the clang version, as returned by
-# the preceding GuessClangVersion proc.  Note that the flags accepted
-# by clang may vary by version.
+# flags for clang.  The import is the clang version, as returned by the
+# preceding GuessClangVersion proc.  Note that the flags accepted by
+# clang may vary by version.  This proc is called by
+# GetClangValueSafeFlags; changes here may require adjustments there.
 #
 # Use a command like
 #   echo 'int;' | clang -xc -Ofast - -o /dev/null -\#\#\#
@@ -83,11 +84,29 @@ proc GetClangGeneralOptFlags { clang_version } {
    # through class constructors, and apparently some problems with the
    # map STL container.  So just leave it out, for now.
 
-   lappend opts -O3
+   # Note: -Ofast enables -ffast-math, which includes non-value-safe
+   # optimizations.  If this causes problems replace -Ofast with -O3.
+   lappend opts -Ofast
    lappend opts -std=c++11
    #lappend opts -ffast-math  ;# Breaks Nb_Xpfloat
    # Likewise, -Ofast enables -ffast-math
 
+   return $opts
+}
+
+# Routine that returns optimization flags for gcc which are floating
+# point value-safe.  The import is the gcc version, as returned by the
+# preceding GuessGccVersion proc.  Note that the flags accepted by gcc
+# vary by version.
+#
+proc GetClangValueSafeOptFlags { clang_version } {
+   set opts [GetClangGeneralOptFlags $clang_version]
+   foreach check {-Ofast} {
+      while {[set index [lsearch -exact $opts $check]]>=0} {
+         set opts [lreplace $opts $index $index]
+      }
+   }
+   lappend opts {-O3}
    return $opts
 }
 

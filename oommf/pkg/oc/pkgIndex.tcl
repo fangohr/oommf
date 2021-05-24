@@ -4,5 +4,5 @@
 # Last modified by: $Author: dgp $
 #
 # Do not override an existing ifneeded script (from C, for example).
-if {![string match "" [package ifneeded Oc 2.0a1]]} {return}
-package ifneeded Oc 2.0a1 [list uplevel #0 [list source [file join $dir oc.tcl]]]
+if {![string match "" [package ifneeded Oc 2.0a2]]} {return}
+package ifneeded Oc 2.0a2 [list uplevel #0 [list source [file join $dir oc.tcl]]]

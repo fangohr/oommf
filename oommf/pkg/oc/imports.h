@@ -17,9 +17,11 @@
 #ifndef _OC_IMPORTS
 #define _OC_IMPORTS
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <limits>
+#include <mutex>     // std::mutex, std::lock
 #include "ocport.h"
 
 /*
@@ -369,14 +371,16 @@ public:
 
   // Mutex-locked calls to global random state
   static void Srandom(OC_UINT4m seed) {
-    Tcl_MutexLock(&random_state_mutex);
+#if OOMMF_THREADS
+    std::lock_guard<std::mutex> lck(random_state_mutex);
+#endif // OOMMF_THREADS
     state.Init(seed);
-    Tcl_MutexUnlock(&random_state_mutex);
   }
   static OC_INT4m Random() {
-    Tcl_MutexLock(&random_state_mutex);
+#if OOMMF_THREADS
+    std::lock_guard<std::mutex> lck(random_state_mutex);
+#endif // OOMMF_THREADS
     OC_UINT4m step_result = state.Step();
-    Tcl_MutexUnlock(&random_state_mutex);
     return static_cast<OC_INT4m>(step_result>>1);
   }
 
@@ -393,8 +397,8 @@ public:
 
 private:
 #if OOMMF_THREADS
-  static Tcl_Mutex random_state_mutex;  // Thread-safe hack.
-#endif
+  static std::mutex random_state_mutex;  // Thread-safe hack.
+#endif // OOMMF_THREADS
   static Oc_RandomState state;  // global random state
 };
 
@@ -420,74 +424,81 @@ int Oc_Fsync(Tcl_Channel chan);
 /* Utility math commands. */
 double Oc_Polynomial(double x, double *coef, int N);
 double Oc_Erf(double x);
-double Oc_Hypot(double x,double y);
-double Oc_Log1p(double x);
-double Oc_Atan2(double y,double x); // Domain-checked
 
-/* Wrappers for wide versions of math routines */
-# if OC_REALWIDE_IS_REAL8==0  // OC_REALWIDE is long double
-// Definitions for long double versions of standard math functions.
-inline OC_REALWIDE Oc_SqrtRW(OC_REALWIDE x) { return sqrtl(x); }
-inline OC_REALWIDE Oc_FloorRW(OC_REALWIDE x) { return floorl(x); }
-inline OC_REALWIDE Oc_CeilRW(OC_REALWIDE x) { return ceill(x); }
-inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return logl(x); }
-inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)
-{ return powl(x,y); }
-inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabsl(x); }
-inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atanl(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x)
-{
-#if OC_DOMAIN_CHECK_ATAN2
-  if(x==0.0 && y==0.0) return OC_REALWIDE(0.0);
-#endif
-  return atan2l(y,x);
+// Math routines; std:: version self-select by type
+// Note: With some compilers, #include <cmath> without a "using"
+// statement will cause math library calls to revert to the old C
+// standard where the argument(s) is converted to a double and the
+// double version of the routine is called.  Note that the alternative
+// of explicitly calling for example std::sin(x) requires an extension
+// to the std namespace for x other than float, double, or long double.
+using std::atan;
+using std::atan2;
+using std::ceil;
+using std::exp;
+using std::expm1;
+using std::fabs;
+using std::floor;
+using std::hypot;
+using std::log;
+using std::log1p;
+using std::pow;
+using std::sqrt;
+using std::signbit;  // Return 1 if import is negative, 0 if positive
+using std::copysign;
+
+// Standard version of atan2 throws a domain error if y=x=0.  Oc_Atan2
+// is modeled on the x87 FPATAN (floating-point partial arctangent)
+// instruction that is defined at y=x=0 depending on the sign of x and y:
+//      y     x     Oc_Atan2(y,x)
+//    +0.0  +0.0      y = +0.0
+//    -0.0  +0.0      y = -0.0
+//    +0.0  -0.0      atan2(y,-1) which should be +pi
+//    -0.0  -0.0      atan2(y,-1) which should be -pi
+template<typename T>
+T Oc_Atan2(T y,T x) {
+  if(y!=0 || x!=0) return atan2(y,x);
+  if(signbit(x)) { // x == -0.0
+    return atan2(y,-1.0);
+  }
+  return y;  // x == +0.0
 }
 
-/* Wrappers that self-select by type */
-inline long double Oc_Sqrt(long double x) { return sqrtl(x); }
-inline long double Oc_Floor(long double x) { return floorl(x); }
-inline long double Oc_Ceil(long double x) { return ceill(x); }
-inline long double Oc_Log(long double x) { return logl(x); }
-inline long double Oc_Pow(long double x,long double y) { return powl(x,y); }
-inline long double Oc_Fabs(long double x) { return fabsl(x); }
-inline long double Oc_Atan(long double x) { return atanl(x); }
-inline long double Oc_Invert(long double x) { return 1.0L/x; }
-inline long double Oc_Atan2(long double y,long double x)
-{
-#if OC_DOMAIN_CHECK_ATAN2
-  if(x==0.0 && y==0.0) return 0.0L;
-#endif
-  return atan2l(y,x);
+// Three parameter hypot which guards against overflow and underflow.
+// TODO: Compare this code to James L. Blue, "A Portable Fortran Program
+// to Find the Euclidean Norm of a Vector," ACM Transactions on
+// Mathematical Software, 4, 15-23 (1978).
+template <typename T>
+T Oc_Hypot(T x,T y,T z) {
+  x=fabs(x); y=fabs(y); z=fabs(z);
+  if(y<x) {
+    T t = y; y = x; x = t;
+  }
+  if(z<y) {
+    T t = z; z = y; y = t;
+  }
+  if(y<x) {
+    T t = y; y = x; x = t;
+  }
+  if(z>sqrt(std::numeric_limits<T>::max()/3.)) { // z too big to square
+    x /= z;
+    y /= z;
+    return z*sqrt(x*x+y*y+1);
+  }
+  if(x<sqrt(std::numeric_limits<T>::min())) { // x too small to square
+    if(z<x*sqrt(std::numeric_limits<T>::max())) {
+      y /= x;
+      z /= x; 
+      return x*sqrt(1.0+y*y+z*z);
+    }
+    if(z<y*sqrt(std::numeric_limits<T>::max())) {
+      x /= y;
+      z /= y; 
+      return y*sqrt(x*x+1.0+z*z);
+    }
+  }
+  return sqrt(x*x+y*y+z*z);
 }
-
-# else   // OC_REALWIDE is double
-inline OC_REALWIDE Oc_SqrtRW(OC_REALWIDE x) { return sqrt(x); }
-inline OC_REALWIDE Oc_FloorRW(OC_REALWIDE x) { return floor(x); }
-inline OC_REALWIDE Oc_CeilRW(OC_REALWIDE x) { return ceil(x); }
-inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return log(x); }
-inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)
-{ return pow(x,y); }
-inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabs(x); }
-inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atan(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x)
-{
-#if OC_DOMAIN_CHECK_ATAN2
-  if(x==0.0 && y==0.0) return 0.0;
-#endif
-  return atan2(y,x);
-}
-# endif // OC_REALWIDE == double?
-OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x);
-
-/* Wrappers that self-select by type */
-inline double Oc_Sqrt(double x) { return sqrt(x); }
-inline double Oc_Floor(double x) { return floor(x); }
-inline double Oc_Ceil(double x) { return ceil(x); }
-inline double Oc_Log(double x) { return log(x); }
-inline double Oc_Pow(double x,double y) { return pow(x,y); }
-inline double Oc_Fabs(double x) { return fabs(x); }
-inline double Oc_Atan(double x) { return atan(x); }
-inline double Oc_Invert(double x) { return 1.0/x; }
 
 /*
  * Extra goodies for Tcl's expr command.  The Tcl_CmdProc version
@@ -509,8 +520,8 @@ Tcl_CmdProc OcUnifRand;
 Tcl_CmdProc OcCygwinChDir;
 #endif //  OC_WINDOWS && __CYGWIN__
 Tcl_MathProc Oc_TclWrappedAtan2;
-Tcl_MathProc Oc_Exp;
-Tcl_MathProc Oc_Pow;
+Tcl_MathProc Oc_Exp; // Versions of exp and pow that don't
+Tcl_MathProc Oc_Pow; // raise an exception on underflow.
 
 Tcl_CmdProc OcAddTclExprExtensions;
 

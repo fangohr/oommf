@@ -32,6 +32,10 @@ set objects {
     xpfloat
 }
 
+set valuesafe {
+   xpfloat
+}
+
 MakeRule Define {
     -targets            all
     -dependencies       [concat configure [Platform StaticLibrary nb]]
@@ -69,7 +73,19 @@ MakeRule Define {
 }
 
 foreach o $objects { 
-    MakeRule Define {
+   if {[lsearch -exact $valuesafe $o] >= 0} {
+      # File requires value-safe optimizations only
+      MakeRule Define {
+        -targets	[Platform Objects $o]
+        -dependencies	[concat [list [Platform Name]] \
+			        [[CSourceFile New _ $o.cc] Dependencies]]
+        -script		[format {Platform Compile C++ -valuesafeopt 1 \
+			        -inc [[CSourceFile New _ %s.cc] DepPath] \
+			        -out %s -src %s.cc
+			} $o $o $o]
+      }
+   } else {
+      MakeRule Define {
         -targets	[Platform Objects $o]
         -dependencies	[concat [list [Platform Name]] \
 			        [[CSourceFile New _ $o.cc] Dependencies]]
@@ -77,7 +93,8 @@ foreach o $objects {
 			        -inc [[CSourceFile New _ %s.cc] DepPath] \
 			        -out %s -src %s.cc
 			} $o $o $o]
-    }
+      }
+   }
 }
 
 # Compilation of errhandlers.cc is handled specially because optimization level

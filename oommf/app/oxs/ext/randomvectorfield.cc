@@ -68,13 +68,13 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
     if(count<1) {
       throw Oxs_ExtError(this,"Empty mesh");
     }
-    results_cache.reserve(count);
+    results_cache.AdjustSize(cache_mesh.GetPtr());
     ThreeVector value;
     if(min_norm == max_norm) {
       // No spread in magnitudes
       for(OC_INDEX i=0;i<count;++i) {
         value.Random(max_norm);
-        results_cache.push_back(value);
+        results_cache[i] = value;
       }
     } else {
       // Vary both direction and magnitude.  Magnitude needs to be
@@ -84,10 +84,10 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
         OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
                             OC_REAL8m(1.)/OC_REAL8m(3.));
         value.Random(mag);
-        results_cache.push_back(value);
+        results_cache[i] = value;
       }
     }
-  } // use_cache
+  }
 }
 
 void
@@ -97,10 +97,11 @@ Oxs_RandomVectorField::Value
 {
   if(use_cache) {
     OC_INDEX index = cache_mesh->FindNearestIndex(pt);
-    if(size_t(index)>results_cache.size()) {
+    if(index>results_cache.Size()) {
       String msg = String("Import pt not mapped, indicating that mesh \"");
       msg += String(cache_mesh->InstanceName());
-      msg += String("\" has changed since initialization of Oxs_RandomVectorField \"");
+      msg += String("\" has changed since initialization of"
+                    " Oxs_RandomVectorField \"");
       msg += String(InstanceName());
       msg += String("\"");
       throw Oxs_ExtError(this,msg);

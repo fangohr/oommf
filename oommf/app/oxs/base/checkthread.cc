@@ -45,7 +45,7 @@
 
 class ThreadA : public Oxs_ThreadRunObj {
 public:
-  static Oxs_Mutex job_control;
+  static std::mutex job_control;
   static int offset;
 
   int id;
@@ -58,25 +58,25 @@ public:
   void Cmd(int threadnumber, void* data);
 };
 
-Oxs_Mutex ThreadA::job_control;
+std::mutex ThreadA::job_control;
 int ThreadA::offset(0);
 
 void ThreadA::Cmd(int threadnumber,void* /* data */)
 {
   while(1) {
-    job_control.Lock();
+    std::unique_lock<std::mutex> lck(job_control);
     int istart = offset;
     int istop = ( offset += blocksize );
-    job_control.Unlock();
+    lck.unlock();
 
     if(istart>=vecsize) break;
     if(istop>vecsize) istop=vecsize;
 
-    job_control.Lock();
+    job_control.lock();
     printf("Job %d (thread %d) computing range %d - %d\n",
            id,threadnumber,istart,istop-1);
     fflush(stdout);
-    job_control.Unlock();
+    lck.unlock();
 
     for(int i=istart;i<istop;++i) {
       threadsum += i;
@@ -107,9 +107,10 @@ int Oc_AppMain(int argc, char** argv)
   vector<ThreadA> threaddata;
   threaddata.resize(threadcount);
 
-  ThreadA::job_control.Lock();
-  ThreadA::offset = 0;
-  ThreadA::job_control.Unlock();
+  {
+    std::lock_guard<std::mutex> lck(ThreadA::job_control);
+    ThreadA::offset = 0;
+  }
 
   OC_INT4m ithread;
   for(ithread=0;ithread<threadcount;++ithread) {

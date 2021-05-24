@@ -10,9 +10,13 @@ set INSTALLDIR [file join .. local]
 # Directory names to exclude from package search
 set EXCLUDEPKG [list CVS newcontrib tmp]
 
+# Glob strings for package readme file search.  This is used in both
+# EXCLUDEFILES and in program package README report.  In the latter,
+# only the first matching file is reported.
+set READMEGLOB [list README* readme* Readme* ReadMe* READ.ME *README.*]
+
 # Files to exclude from package list (glob-style match)
-set EXCLUDEFILES [list versdate.txt readme.txt copying.txt \
-		      README* *README.*]
+set EXCLUDEFILES [list versdate.txt copying.txt {*}$READMEGLOB]
 
 # Patch program
 set PATCH patch
@@ -29,6 +33,7 @@ foreach elt [list INSTALLDIR EXCLUDEPKG PATCH] {
 proc Usage {} {
    puts stderr "Usage: oxspkg list"
    puts stderr "  or   oxspkg listfiles pkg \[pkg ...\]"
+   puts stderr "  or   oxspkg readme pkg \[pkg ...\]"
    puts stderr "  or   oxspkg install \[-v\] \[-nopatch\] pkg \[pkg ...\]"
    puts stderr "  or   oxspkg uninstall pkg \[pkg ...\]"
    puts stderr "  or   oxspkg copyout   pkg \[pkg ...\] destination"
@@ -111,13 +116,29 @@ proc ListFiles { pkg } {
    puts "---"
 }
 
-proc MakeInstallName { pkgname filename } {
-   global INSTALLDIR
-   set installname [file tail $filename]
-   if [regexp -nocase {^readme} $installname] {
-      set installname "${pkgname}-${installname}"
+proc Readme { pkg } {
+   global READMEGLOB
+   set files [glob -nocomplain -directory $pkg -types f {*}$READMEGLOB]
+   if {[llength $files]>=1} {
+      puts "README for package \"$pkg\" ---"
+      set chan [open [lindex $files 0]]
+      while {[gets $chan line]>=0} {
+         puts $line
+      }
+      close $chan
+      puts "-------------------------------"
+   } else {
+      puts "No README for package \"$pkg\""
    }
-   set installname [file join $INSTALLDIR $installname]
+}
+
+proc FindInstallDir { pkgname } {
+   global INSTALLDIR
+   return [file join $INSTALLDIR $pkgname]
+}
+
+proc MakeInstallName { pkgname filename } {
+   set installname [file join [FindInstallDir $pkgname] [file tail $filename]]
    return $installname
 }
 
@@ -166,6 +187,9 @@ proc Install { dopatch pkg } {
 
    # Copy files
    set filelist [FindFiles $pkg]
+   if {[llength $filelist]>0} {
+      file mkdir [FindInstallDir $pkg]
+   }
    foreach elt $filelist {
       file copy -force -- $elt [MakeInstallName $pkg $elt]
    }
@@ -205,7 +229,7 @@ proc Install { dopatch pkg } {
       global PATCH INSTALLDIR
       set cmd [linsert $PATCH 0 exec]
       set cmdargs [list -f -p1 --no-backup-if-mismatch \
-                      -d $INSTALLDIR "<" $patchfile]
+                      -d [FindInstallDir $pkg] "<" $patchfile]
       # Test with --dry-run first, so if any errors then we can kick out
       # without leaving behind .rej files.  Also, on Windows, test both
       # with and w/o --binary option.
@@ -248,6 +272,10 @@ proc Uninstall { pkg } {
    } else {
       puts [format "%2d files deleted\
        (package contains [llength $filelist] files)." $count]
+   }
+   set pkgdir [FindInstallDir $pkg]
+   if {[catch {file delete $pkgdir} msg]} {
+      puts "ERROR: Unable to delete package directory \"$pkgdir\" --- $msg"
    }
 }
 
@@ -309,6 +337,20 @@ switch -exact $cmd {
       }
       foreach pkg $pkglist  {
          ListFiles $pkg
+      }
+   }
+   readme {
+      if {$argc<2} {
+         puts stderr "ERROR: Too few arguments"
+         Usage
+      }
+      set pkglist [MatchPackages $contrib_packages [lrange $argv 1 end]]
+      if {[llength $pkglist]<1} {
+         puts stderr "ERROR: No matching packages"
+         Usage
+      }
+      foreach pkg $pkglist  {
+         Readme $pkg
       }
    }
    install {

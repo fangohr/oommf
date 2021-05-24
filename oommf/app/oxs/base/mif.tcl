@@ -140,6 +140,12 @@ Oc_Class Oxs_Mif {
         ##    support raw output, in which case output.tcl can be
         ##    modified to query this value and adjust its output stream
         ##    accordingly.
+
+        ## Let child know if regression test is running.
+        global regression_test
+        if {[info exists regression_test] && $regression_test} {
+           interp eval $mif_interp set regression_test 1
+        }
     }
 
     method KillOids {killtags} {

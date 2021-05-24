@@ -145,11 +145,11 @@ private:
 public:
 
 #if !NB_XPFLOAT_USE_SSE
-  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
+  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) const {
     big = x; small = corr;
   }
 #else // NB_XPFLOAT_USE_SSE
-  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) {
+  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) const {
     big = Oc_SseGetLower(xpdata);
     small = Oc_SseGetUpper(xpdata);
   }
@@ -178,7 +178,7 @@ public:
 
   NB_XPFLOAT_TYPE GetValue() const { return x; }
 
-  Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y) { x*=y; corr*=y; return *this; }
+  Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y);
 
 #else // NB_XPFLOAT_USE_SSE ////////////////////////////////////////////////
 
@@ -209,16 +209,14 @@ public:
 
   NB_XPFLOAT_TYPE GetValue() const { return Oc_SseGetLower(xpdata); }
 
-  Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y) {
-    xpdata = _mm_mul_pd(xpdata,_mm_set1_pd(y));
-    return *this;
-  }
+  Nb_Xpfloat& operator*=(NB_XPFLOAT_TYPE y);
 
 #endif // NB_XPFLOAT_USE_SSE
 
 #if !NB_XPFLOAT_USE_SSE && defined(__GNUC__) \
   && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)) \
-  && !defined(__INTEL_COMPILER)
+  && !defined(__INTEL_COMPILER) \
+  && !defined(__PGI) && !defined(__PGI__)
   void Accum(NB_XPFLOAT_TYPE y) __attribute__((optimize(2,"no-fast-math")));
 #else
   void Accum(NB_XPFLOAT_TYPE y);

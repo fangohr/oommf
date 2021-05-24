@@ -145,7 +145,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}

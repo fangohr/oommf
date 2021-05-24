@@ -92,6 +92,9 @@ Oc_Class PlotConfigure {
            autolimits 1
            auto_offset_y  0
            auto_offset_y2 0
+           xlogscale  0
+           ylogscale  0
+           y2logscale 0
            xmin   0
            xmax   1
            ymin   0
@@ -138,204 +141,242 @@ Oc_Class PlotConfigure {
                 -label {Title:} -valuewidth 15 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(title)
-	pack [$_ Cget -winpath] -fill x -expand 1 -padx 10 -pady 10
+	pack [$_ Cget -winpath] -fill x -expand 0 -padx 10 -pady 10
 
-	# Frame for interior grid
+	# Frames for interior grid
 	set gf [frame $winpath.gf]
-	
+        set lf [frame $winpath.gf.lf]  ;# Left half of dialog box
+        set rf [frame $winpath.gf.rf]  ;# Right half of dialog box
+        $lf configure -borderwidth 3 -relief ridge
+        $rf configure -borderwidth 3 -relief ridge
+        pack $lf $rf -side left -expand 1 -fill both -padx 10
+        pack $gf -side top -expand 1 -fill both
+
+        ################## Left side ################################
 	# Labels
+        set spacer_rows {}
 	set dep(autolabel) {}
-        checkbutton $gf.autolabel -text "Auto Label" \
+        checkbutton $lf.autolabel -text "Auto Label" \
                 -variable ${gpsc}(autolabel) \
                 -onvalue 1 -offvalue 0 \
 		-command "$this UpdateState autolabel"
-	grid $gf.autolabel -columnspan 6 -sticky sw
+	grid $lf.autolabel -columnspan 6 -sticky sw
 
-	label $gf.xlabel -text "X Label:"
-        Ow_EntryBox New _ $gf \
+	label $lf.xlabel -text "X Label:"
+        Ow_EntryBox New _ $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 10 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(xlabel)
-	lappend dep(autolabel) $gf.xlabel $_
-	grid x $gf.xlabel [$_ Cget -winpath] - - -
-	grid $gf.xlabel -sticky e
+	lappend dep(autolabel) $lf.xlabel $_
+	grid x $lf.xlabel [$_ Cget -winpath] - - -
+	grid $lf.xlabel -sticky e
 	grid [$_ Cget -winpath] -sticky ew
 
-	label $gf.ylabel -text "Y1 Label:"
-        Ow_EntryBox New _ $gf \
+	label $lf.ylabel -text "Y1 Label:"
+        Ow_EntryBox New _ $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 10 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(ylabel)
-	lappend dep(autolabel) $gf.ylabel $_
-	grid x $gf.ylabel [$_ Cget -winpath] - - -
-	grid $gf.ylabel -sticky w
+	lappend dep(autolabel) $lf.ylabel $_
+	grid x $lf.ylabel [$_ Cget -winpath] - - -
+	grid $lf.ylabel -sticky w
 	grid [$_ Cget -winpath] -sticky ew
         $this UpdateState autolabel
 
-	label $gf.y2label -text "Y2 Label:"
-        Ow_EntryBox New _ $gf \
+	label $lf.y2label -text "Y2 Label:"
+        Ow_EntryBox New _ $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 10 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(y2label)
-	lappend dep(autolabel) $gf.y2label $_
-	grid x $gf.y2label [$_ Cget -winpath] - - -
-	grid $gf.y2label -sticky w
+	lappend dep(autolabel) $lf.y2label $_
+	grid x $lf.y2label [$_ Cget -winpath] - - -
+	grid $lf.y2label -sticky w
 	grid [$_ Cget -winpath] -sticky ew
         $this UpdateState autolabel
 
 	# Spacer
-	set rowcnt [lindex [grid size $gf] 1]
-	grid rowconfigure $gf $rowcnt -minsize 10
+	set rowcnt [lindex [grid size $lf] 1]
+	grid rowconfigure $lf $rowcnt -minsize 12
+        lappend spacer_rows $rowcnt
 	incr rowcnt
 
 	# Scaling
 	set dep(autolimits) {}
-        checkbutton $gf.autolimits -text "Auto Scale" \
+        checkbutton $lf.autolimits -text "Auto Scale" \
                 -variable ${gpsc}(autolimits) \
                 -onvalue 1 -offvalue 0 \
 		-command "$this UpdateState autolimits"
-	grid $gf.autolimits -columnspan 6 -sticky sw -row $rowcnt
+	grid $lf.autolimits -columnspan 6 -sticky sw -row $rowcnt
 
-	label $gf.xmin -text "X Min:"
-        Ow_EntryBox New aval $gf \
+	label $lf.xmin -text "X Min:"
+        Ow_EntryBox New aval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(xmin) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.xmin $aval
-	label $gf.xmax -text "X Max:"
-        Ow_EntryBox New bval $gf \
+	lappend dep(autolimits) $lf.xmin $aval
+	label $lf.xmax -text "X Max:"
+        Ow_EntryBox New bval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(xmax) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.xmax $bval
-	grid    x $gf.xmin [$aval Cget -winpath] \
-		x $gf.xmax [$bval Cget -winpath]
-	grid $gf.xmin $gf.xmax -sticky e
+	lappend dep(autolimits) $lf.xmax $bval
+	grid    x $lf.xmin [$aval Cget -winpath] \
+		x $lf.xmax [$bval Cget -winpath]
+	grid $lf.xmin $lf.xmax -sticky e
 	grid [$aval Cget -winpath] [$bval Cget -winpath] -sticky ew
 
-	label $gf.ymin -text "Y1 Min:"
-        Ow_EntryBox New aval $gf \
+	label $lf.ymin -text "Y1 Min:"
+        Ow_EntryBox New aval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(ymin) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.ymin $aval
+	lappend dep(autolimits) $lf.ymin $aval
 
-	label $gf.ymax -text "Y1 Max:"
-        Ow_EntryBox New bval $gf \
+	label $lf.ymax -text "Y1 Max:"
+        Ow_EntryBox New bval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(ymax) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.ymax $bval
-	grid    x $gf.ymin [$aval Cget -winpath] \
-		x $gf.ymax [$bval Cget -winpath]
-	grid $gf.ymin $gf.ymax -sticky e
+	lappend dep(autolimits) $lf.ymax $bval
+	grid    x $lf.ymin [$aval Cget -winpath] \
+		x $lf.ymax [$bval Cget -winpath]
+	grid $lf.ymin $lf.ymax -sticky e
 	grid [$aval Cget -winpath] [$bval Cget -winpath] -sticky ew
 
-	label $gf.y2min -text "Y2 Min:"
-        Ow_EntryBox New aval $gf \
+	label $lf.y2min -text "Y2 Min:"
+        Ow_EntryBox New aval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(y2min) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.y2min $aval
+	lappend dep(autolimits) $lf.y2min $aval
 
-	label $gf.y2max -text "Y2 Max:"
-        Ow_EntryBox New bval $gf \
+	label $lf.y2max -text "Y2 Max:"
+        Ow_EntryBox New bval $lf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 6 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(y2max) \
 		-valuetype float -valuejustify right
-	lappend dep(autolimits) $gf.y2max $bval
-	grid    x $gf.y2min [$aval Cget -winpath] \
-		x $gf.y2max [$bval Cget -winpath]
-	grid $gf.y2min $gf.y2max -sticky e
+	lappend dep(autolimits) $lf.y2max $bval
+	grid    x $lf.y2min [$aval Cget -winpath] \
+		x $lf.y2max [$bval Cget -winpath]
+	grid $lf.y2min $lf.y2max -sticky e
 	grid [$aval Cget -winpath] [$bval Cget -winpath] -sticky ew
 
 	$this UpdateState autolimits
 
 	# Spacer
-	set rowcnt [lindex [grid size $gf] 1]
-	grid rowconfigure $gf $rowcnt -minsize 10
+	set rowcnt [lindex [grid size $lf] 1]
+	grid rowconfigure $lf $rowcnt -minsize 12
+        lappend spacer_rows $rowcnt
 	incr rowcnt
 
         # Auto offsets
-        checkbutton $gf.auto_offset_y -text "Auto Offset Y1" \
+        checkbutton $lf.auto_offset_y -text "Auto Offset Y1" \
                 -variable ${gpsc}(auto_offset_y) \
                 -onvalue 1 -offvalue 0
-        checkbutton $gf.auto_offset_y2 -text "Auto Offset Y2" \
+        checkbutton $lf.auto_offset_y2 -text "Auto Offset Y2" \
                 -variable ${gpsc}(auto_offset_y2) \
                 -onvalue 1 -offvalue 0
-        grid $gf.auto_offset_y - - $gf.auto_offset_y2 - - \
-           -sticky w -row $rowcnt
-
-	# Spacer
-	set rowcnt [lindex [grid size $gf] 1]
-	grid rowconfigure $gf $rowcnt -minsize 10
+        grid $lf.auto_offset_y - - $lf.auto_offset_y2 - - -row $rowcnt
 	incr rowcnt
 
+	# Spacer
+	set rowcnt [lindex [grid size $lf] 1]
+	grid rowconfigure $lf $rowcnt -minsize 10
+        lappend spacer_rows $rowcnt
+	incr rowcnt
+
+        # Logarithmic axes
+        set logf [frame $lf.logf]
+	label $logf.loglab -text "Log scale axes:"
+        checkbutton $logf.log_x -text "X" \
+                -variable ${gpsc}(xlogscale) \
+                -onvalue 1 -offvalue 0
+        checkbutton $logf.log_y -text "Y1" \
+                -variable ${gpsc}(ylogscale) \
+                -onvalue 1 -offvalue 0
+        checkbutton $logf.log_y2 -text "Y2" \
+                -variable ${gpsc}(y2logscale) \
+                -onvalue 1 -offvalue 0
+        pack $logf.loglab $logf.log_x $logf.log_y $logf.log_y2 \
+           -side left
+        grid $logf -columnspan 6 -row $rowcnt
+	incr rowcnt
+
+	# Pack lf frame
+        grid columnconfigure $lf 0 -weight 0 -minsize 10
+        grid columnconfigure $lf 1 -weight 0
+        grid columnconfigure $lf 2 -weight 1
+        grid columnconfigure $lf 3 -weight 0 -minsize 15
+        grid columnconfigure $lf 4 -weight 0
+        grid columnconfigure $lf 5 -weight 1
+        grid rowconfigure $lf all -weight 0
+        grid rowconfigure $lf $spacer_rows -weight 1
+        
+        ################# Right side ################################
 	# Margins
-	label $gf.marginrequests -text "Margin Requests"
-	grid $gf.marginrequests -sticky w -columnspan 6 -row $rowcnt
-	label $gf.left -text "Left:"
-	Ow_EntryBox New lval $gf \
+        set spacer_rows {}
+	label $rf.marginrequests -text "Margin Requests"
+	grid $rf.marginrequests -sticky sw -columnspan 6
+	label $rf.left -text "Left:"
+	Ow_EntryBox New lval $rf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 5 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(lmargin_min) \
 		-valuetype posint -valuejustify right
-	label $gf.right -text "Right:"
-	Ow_EntryBox New rval $gf \
+	label $rf.right -text "Right:"
+	Ow_EntryBox New rval $rf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 5 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(rmargin_min) \
 		-valuetype posint -valuejustify right
-	grid    x $gf.left [$lval Cget -winpath] \
-		x $gf.right [$rval Cget -winpath]
-	grid $gf.left $gf.right -sticky e
-	grid [$lval Cget -winpath] [$rval Cget -winpath] -sticky w
-	label $gf.top -text "Top:"
-	Ow_EntryBox New tval $gf \
+	grid    x $rf.left [$lval Cget -winpath] \
+		x $rf.right [$rval Cget -winpath]
+	grid $rf.left $rf.right -sticky e
+	grid [$lval Cget -winpath] [$rval Cget -winpath] -sticky ew
+	label $rf.top -text "Top:"
+	Ow_EntryBox New tval $rf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 5 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(tmargin_min) \
 		-valuetype posint -valuejustify right
-	label $gf.bottom -text "Bottom:"
-	Ow_EntryBox New bval $gf \
+	label $rf.bottom -text "Bottom:"
+	Ow_EntryBox New bval $rf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {} -valuewidth 5 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(bmargin_min) \
 		-valuetype posint -valuejustify right
-	grid    x $gf.top [$tval Cget -winpath] \
-		x $gf.bottom [$bval Cget -winpath]
-	grid $gf.top $gf.bottom -sticky e
-	grid [$tval Cget -winpath] [$bval Cget -winpath] -sticky w
+	grid    x $rf.top [$tval Cget -winpath] \
+		x $rf.bottom [$bval Cget -winpath]
+	grid $rf.top $rf.bottom -sticky e
+	grid [$tval Cget -winpath] [$bval Cget -winpath] -sticky ew
 
-	# Pack gf frame
-	grid columnconfigure $gf 0 -minsize 10
-	grid columnconfigure $gf 2 -weight 1
-	grid columnconfigure $gf 3 -minsize 15
-	grid columnconfigure $gf 5 -weight 1
-	pack $gf -fill x -expand 1 -padx 10
+	# Spacer
+	set rowcnt [lindex [grid size $rf] 1]
+	grid rowconfigure $rf $rowcnt -minsize 10
+        lappend spacer_rows $rowcnt
+	incr rowcnt
 
         # Color selections
-        pack [frame $winpath.cfspacer -height 10] -side top
-        set cf [frame $winpath.cf]
+        set cf [frame $rf.cf]
 
         # Canvas color
         label $cf.cclab -text "Canvas color:"
@@ -355,10 +396,17 @@ Oc_Class PlotConfigure {
         grid configure $cf.cslab -row 1 -sticky e
         grid configure x $cf.csb1 $cf.csb2 -row 1 -sticky w
 
-	pack $cf -fill x -expand 1 -padx 10 -pady 2
+	grid $cf -columnspan 6 -row $rowcnt
+
+        
+	# Spacer
+	set rowcnt [lindex [grid size $rf] 1]
+	grid rowconfigure $rf $rowcnt -minsize 10
+        lappend spacer_rows $rowcnt
+	incr rowcnt
 
         # Curve width and point buffer size (miscellaneous frame)
-        set mf [frame $winpath.mf]
+        set mf [frame $rf.mf]
         Ow_EntryBox New cw $mf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {Curve Width:} -valuewidth 5 \
@@ -383,16 +431,23 @@ Oc_Class PlotConfigure {
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(ptbufsize) \
                 -valuetype posint -valuejustify right
-        pack [$pbs Cget -winpath] \
-           -fill none -expand 0 -anchor e -padx 10 -pady 8 -side bottom
-        pack [$ss Cget -winpath] \
-           -fill none -expand 0 -anchor e -padx 10 -side bottom
-        pack [$sf Cget -winpath] \
-           -fill none -expand 0 -anchor e -padx 10 -side bottom
-        pack [$cw Cget -winpath] \
-           -fill none -expand 0 -anchor e -padx 10 -side bottom
-        pack $mf -anchor w -ipady 5
+        grid [$cw Cget -winpath]   -sticky e
+        grid [$sf Cget -winpath]   -sticky e
+        grid [$ss Cget -winpath]   -sticky e
+        grid [$pbs Cget -winpath]  -sticky e
 
+	grid $mf -columnspan 6 -row $rowcnt
+
+        grid columnconfigure $rf 0 -weight 0 -minsize 10
+        grid columnconfigure $rf 1 -weight 0
+        grid columnconfigure $rf 2 -weight 1
+        grid columnconfigure $rf 3 -weight 0 -minsize 15
+        grid columnconfigure $rf 4 -weight 0
+        grid columnconfigure $rf 5 -weight 1
+        grid rowconfigure $rf all -weight 0
+        grid rowconfigure $rf $spacer_rows -weight 1
+
+        
         # Control buttons
 	set ctrlframe [frame $winpath.ctrlframe]
 
@@ -404,7 +459,7 @@ Oc_Class PlotConfigure {
                 -command "$this Action ok" ]
         pack $close $apply $ok -side left -expand 1 -padx 20
 
-	pack $ctrlframe -fill x -expand 1 -padx 10 -pady 10
+	pack $ctrlframe -fill x -expand 0 -padx 10 -pady 10
 
         wm protocol $winpath WM_DELETE_WINDOW "$close invoke"
 	Ow_SetIcon $winpath

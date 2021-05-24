@@ -22,12 +22,12 @@ Oxs_Lock::~Oxs_Lock()
 {
   // Note: Destructors aren't suppose to throw
   const char* errmsg = 0;
-  OC_UINT8 test = lock_data.load();
+  LOCK_DATA_TYPE test = lock_data.load();
   if(test & WRITE_MASK) {
     errmsg = "Oxs_BadLock: Delete with open write lock";
   } else if(test & READ_MASK) {
     errmsg = "Oxs_BadLock: Delete with open read lock(s)";
-  } else if(dep_lock>0) {
+  } else if(dep_lock.load()>0) {
     errmsg = "Oxs_BadLock: Delete with open dep lock(s)";
   }
   if(errmsg != 0) {
@@ -50,8 +50,8 @@ void Oxs_Lock::ReleaseDepLock()
 
 OC_BOOL Oxs_Lock::SetReadLock()
 {
-  OC_UINT8 newval;
-  OC_UINT8 testval = lock_data.load();
+  LOCK_DATA_TYPE newval;
+  LOCK_DATA_TYPE testval = lock_data.load();
   do {
     if(testval & WRITE_MASK) return 0;  // Fail; write lock held
     newval = (((testval >> READ_SHIFT) + 1 ) << READ_SHIFT)
@@ -62,8 +62,8 @@ OC_BOOL Oxs_Lock::SetReadLock()
 
 void Oxs_Lock::ReleaseReadLock()
 {
-  OC_UINT8 newval;
-  OC_UINT8 testval = lock_data.load();
+  LOCK_DATA_TYPE newval;
+  LOCK_DATA_TYPE testval = lock_data.load();
   do {
     if((testval & READ_MASK) == 0) {
       OXS_THROW(Oxs_ProgramLogicError,
@@ -76,8 +76,8 @@ void Oxs_Lock::ReleaseReadLock()
 
 OC_BOOL Oxs_Lock::SetWriteLock()
 {
-  OC_UINT8 newval = WRITE_MASK; // obj_id is zero when write lock is held
-  OC_UINT8 testval = lock_data.load();
+  LOCK_DATA_TYPE newval = WRITE_MASK; // obj_id is zero when write lock is held
+  LOCK_DATA_TYPE testval = lock_data.load();
   do {
     if(testval & (WRITE_MASK | READ_MASK)) {
       return 0;  // Fail; either read or write lock already held
@@ -88,8 +88,8 @@ OC_BOOL Oxs_Lock::SetWriteLock()
 
 void Oxs_Lock::ReleaseWriteLock()
 {
-  OC_UINT8 newval = GetNextFreeId(); // No write or read locks on success
-  OC_UINT8 testval = lock_data.load();
+  LOCK_DATA_TYPE newval = GetNextFreeId(); // No write or read locks on success
+  LOCK_DATA_TYPE testval = lock_data.load();
   do {
     if((testval & WRITE_MASK) == 0) {
       OXS_THROW(Oxs_ProgramLogicError,

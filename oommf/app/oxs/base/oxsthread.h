@@ -9,7 +9,6 @@
  *
  *           Oxs_ThreadPrintf
  *           Oxs_ThreadRunObj
- *           Oxs_Mutex
  *           Oxs_ThreadControl
  *           Oxs_ThreadTree
  *           Oxs_ThreadMapDataObject
@@ -26,7 +25,7 @@
  * an array of length equal to the number of threads, with each entry
  * in the array holding either an array of timers (one array for each
  * thread) or else a map that provides a reworked version of
- * oxs_ThreadLocalMap.  The advantage of such a structure is that the
+ * Oxs_ThreadLocalMap.  The advantage of such a structure is that the
  * threads, in particular the main thread, could access
  * thread-specific data from other threads.  Of course, one needs to
  * do that in a thread-safe manner, but the main thread can do this
@@ -35,7 +34,7 @@
  * the thread local array, but as it is currently constituted the main
  * thread (thread 0) is not represented in the Oxs_Thread array.  This
  * actually makes code maintenance trickier because many places one has
- * to iterate through the oxs_Thread array but remember that the
+ * to iterate through the Oxs_Thread array but remember that the
  * length of this array is one less than the total number of threads,
  * and include special handling for main thread (aka thread 0, which
  * is not element 0 of the Oxs_Thread array).  It might be nice to
@@ -48,11 +47,17 @@
 
 #include <assert.h>
 #include <string.h> // For memset
-#include <map>    // Used for thread local storage
+#include <unordered_map> // Used for thread local storage
 #include <vector>
 
 #include <functional>   // Provides support for std::function<>, which
 /// is helpful for using lambda expression as template parameters.
+
+#if OOMMF_THREADS
+# include <thread>    // std::thread
+# include <mutex>     // std::mutex, std::lock
+# include <condition_variable> // std::condition_variable
+#endif // OOMMF_THREADS
 
 #include "oc.h"  /* includes tcl.h */
 #include "nb.h"  /* Nb_WallWatch */
@@ -101,112 +106,33 @@ inline int Oxs_IsRootThread() { return 1; }
 inline int Oxs_GetOxsThreadNumber() { return 0; } // For diagnostic use only!
 #endif
 
-// C++ wrapper around Tcl_Mutex
 #if OOMMF_THREADS
-class Oxs_Mutex {
-  friend class Oxs_ThreadControl;
-private:
-  // Note: Tcl docs say to declare Tcl_Mutex variables via
-  //   TCL_DECLARE_MUTEX(mutex) In the TCL_THREADS #define'd case this
-  //   expands to static Tcl_Mutex mutex; If I do that here I get only
-  //   one mutex across all Oxs_Mutex instances --- not what I want.
-  //   So instead we use a bare Tcl_Mutex declaration and initialize
-  //   it to 0 (which is what happens to statics) in the Oxs_Mutex
-  //   constructor.  But are there other reasons requiring Tcl_Mutex
-  //   objects to be statics?  For example, a static variable has a
-  //   unique address held for the lifetime of the process, so can be
-  //   safely used as a unique key.  Addresses of variables on the
-  //   heap may be re-used.  If the Oxs_Mutex instance is static then
-  //   mutex will be too.  But what happens otherwise???
-  Tcl_Mutex mutex;
-  volatile int lock_held;
-public:
-  Oxs_Mutex() : mutex(0), lock_held(0) {}
-  ~Oxs_Mutex() { Tcl_MutexFinalize(&mutex); }
-
-  int IsLockProbablyFree() {
-    // This routine returns true is the mutex is *probably* free, by
-    // looking at the value of lock_held.  This is intended as a
-    // probabilistic aid to cooperative locking.  The idea is that a
-    // thread can call here to check if the mutex is free, and if not
-    // then do some other useful work and try again later.  However,
-    // it can happen that IsLockProbablyFree returns true, but that an
-    // immediately following Lock call will block because some other
-    // thread grabbed the mutex between the IsLockProbablyFree call
-    // and the Lock call (or already had it and just hadn't set
-    // lock_held yet, or had reset lock_held but not yet released the
-    // mutex).  So, no guarantees, but most of the time one hopes that
-    // a Lock call following a true return from IsLockProbablyFree
-    // will return without blocking.
-    //    BTW, in some circumstances on some shared memory architectures,
-    // a read check (of say lock_held) may be possible without causing
-    // any processor-to-processor communication.
-    //    Note: Presumably lock_held is written and read atomically (since
-    // it is an "int"), but I don't know if that really matters.
-    return !lock_held;
-  }
-
-  void Lock()   {
-    Tcl_MutexLock(&mutex);
-    const_cast<int&>(lock_held)=1;  // lock_held not volatile inside mutex
-  }
-
-  void Unlock() {
-    const_cast<int&>(lock_held)=0;
-    Tcl_MutexUnlock(&mutex);
-  }
-
-  void Reset() {
-    if(lock_held) {
-      Oxs_ThreadPrintf(stderr,
-                "\n*** Error? Oxs_Mutex finalized while locked. ***\n");
-    }
-    Tcl_MutexFinalize(&mutex);
-    lock_held = 0;
-    mutex = 0;
-  }
-
-};
-
 class Oxs_ThreadError {
 private:
-  static Oxs_Mutex mutex;
+  static std::mutex mutex;
   static int error;
   static String msg;
 public:
   static void SetError(String errmsg) {
-    mutex.Lock();
+    std::lock_guard<std::mutex> lck(mutex);
     if(error) msg += String("\n---\n");
     error=1;
     msg += errmsg;
-    mutex.Unlock();
   }
   static void ClearError() {
-    mutex.Lock();
+    std::lock_guard<std::mutex> lck(mutex);
     error=0;
     msg.clear();
-    mutex.Unlock();
   }
   static int IsError(String* errmsg=0)  {
-    int check;
-    mutex.Lock();
-    check=error;
+    std::lock_guard<std::mutex> lck(mutex);
+    int check=error;
     if(check && errmsg!=0) *errmsg = msg;
-    mutex.Unlock();
     return check;
   }
 };
 
 #else  // OOMMF_THREADS
-class Oxs_Mutex {
-public:
-  Oxs_Mutex() {}
-  ~Oxs_Mutex() {}
-  void Lock() {}
-  void Unlock() {}
-  int IsLockProbablyFree() { return 1; }
-};
-
 class Oxs_ThreadError {
 public:
   static void SetError(String) {}
@@ -220,134 +146,116 @@ public:
 // Thread control trio: mutex, condition, counter
 #if OOMMF_THREADS
 class Oxs_ThreadControl {
+  // Thread control trio: mutex, condition, counter
+  // NB: Be certain to lock mutex, typically using std::lock_guard or
+  // std::unique_lock, before accessing count or calling cond.wait();
+  //
+  // TODO: The class needs to be given some thought and redesigned.
 private:
-  Oxs_Mutex mutex;    // In general, this mutex should be acquired
-  Tcl_Condition cond; // before changing either cond or count.
-  const OC_INT4m default_spin_count;
-  Tcl_Time default_nap_time;
-
+  std::unique_lock<std::mutex> control_lock; // This lock is associated
+  /// with mutex at object construction.  It is use for long-term
+  /// locking across client routines.
 public:
-  volatile int count; // In typical usage, count is used to protect
-  /// against spurious notifies; if count>0 then a thread is waiting
-  /// on cond.  Code should Lock mutex before changing count.
-  Oxs_ThreadControl() : cond(0), default_spin_count(1000000), count(0) {
-    default_nap_time.sec = 10;    // Nap time seconds
-    default_nap_time.usec = 100000; // Nap time microseconds
+  std::mutex mutex;
+  std::condition_variable cond;
+  int count;
+  Oxs_ThreadControl() : control_lock(mutex,defer_lock), count(0) {}
+  ~Oxs_ThreadControl() {}
+  void LockAndIncrement(int offset) {
+    std::lock_guard<std::mutex> lck(mutex);
+    count += offset;
   }
-
-  ~Oxs_ThreadControl() {
-    Tcl_ConditionFinalize(&cond);    cond=0;
-    mutex.Lock();
-    count=0;  // Safety
-    mutex.Unlock();
-    // Oxs_Mutex "mutex" is automatically finalized on destruction.
+  void LockAndSet(int newval) {
+    std::lock_guard<std::mutex> lck(mutex);
+    count = newval;
   }
-
-  // Disable copy constructor and assignment operator by declaring them
-  // but then not providing a definition.
-  Oxs_ThreadControl(const Oxs_ThreadControl&);
-  Oxs_ThreadControl& operator=(const Oxs_ThreadControl&);
-
-  void Lock() { mutex.Lock(); }
-  void Unlock() { mutex.Unlock(); }
-
-  void GetStatus(int& locked, int& count_value) {
-    // For debugging only.  Results are not reliable, in "thread" sense.
-    locked = mutex.IsLockProbablyFree();
-    count_value = count;
+  void LockAndWaitForZero() {
+    std::unique_lock<std::mutex> lck(mutex);
+    while(count!=0) cond.wait(lck);
+    // Note: Lock is freed on exit, when lck is destroyed.
   }
-
-  // Code should acquire mutex (through Lock()) before calling
-  // Wait() or Notify().  Mutex is automatically freed while
-  // inside Tcl_ConditionWait(), but automatically re-acquired
-  // upon exit of Tcl_ConditionWait().
-  void Wait(OC_UINT4m wait_interval=0) {
-    // Import wait_interval is time in microseconds.  Set to
-    // 0 for no timeout.
-    if(wait_interval==0) {
-      mutex.lock_held = 0;
-      Tcl_ConditionWait(&cond,&mutex.mutex,NULL);
-      mutex.lock_held = 1;
-    } else {
-      Tcl_Time ttinterval;
-      ttinterval.sec = (long)(wait_interval/1000000);
-      ttinterval.usec = (long)(wait_interval - 1000000*ttinterval.sec);
-      mutex.lock_held = 0;
-      Tcl_ConditionWait(&cond,&mutex.mutex,&ttinterval);
-      mutex.lock_held = 1;
-    }
-  }
-
-  // Caller of WaitForZero should be holding mutex at point of call.
-  // The WaitForZero code checks that member variable count is
-  // non-zero, and if so releases the mutex and waits for a different
-  // thread to a) grab mutex, b) set count to 0, c) call Notify, and
-  // d) release mutex.  At this point in time the WaitUntilZero code
-  // re-grabs the mutex and exits.  The routine is functionally
-  // equivalent to wrapping the above Wait routine inside a while loop
-  // that checks for count == 0, but in this case a spin-loop is used
-  // to initially wait for count to change.  If count does not change
-  // in a timely fashion, then the routine falls back to a
-  // Tcl_ConditionWait.
+  void Lock() { control_lock.lock(); }
+  void Unlock() { control_lock.unlock(); }
   void WaitForZero() {
-    if(count != 0) {
-      Tcl_Time ttinterval;
-      ttinterval.sec = (long)(0);
-      ttinterval.usec = (long)(0);
-      mutex.Unlock();
-      for(OC_INT4m i=0; i<default_spin_count; ++i) {
-        if(count == 0) break;
-#if USE_SSE
-        _mm_pause();
-#endif
-        if(i % 0x10000 == 0) {
-          mutex.Lock();
-          mutex.lock_held = 0;
-          Tcl_ConditionWait(&cond,&mutex.mutex,&ttinterval);
-          mutex.lock_held = 1;
-          mutex.Unlock();
-        }
-
+    // Wait until "count" is zero.  This routine must be used in
+    // conjunction with Lock() and Unlock().  In particular, Lock() must
+    // be called prior to WaitForZero(), and Unlock() called sometime
+    // after WaitForZero() returns.
+    while(count!=0) cond.wait(control_lock);
+  }
+  void Wait(OC_UINT4m wait_interval=0) {
+    // Wait for up to wait_interval microseconds for "count" to change.
+    // Set wait_interval to 0 for no (i.e. infinite) timeout.
+    //   Like WaitForZero(), this routine is to be used in conjunction
+    // with Lock() and Unlock().
+    int refcount = count;  // We assume lock held on entry
+    if(wait_interval==0) {
+      while(count == refcount) cond.wait(control_lock);
+    } else {
+      while(count == refcount) {
+        cond.wait_for(control_lock,
+                      std::chrono::microseconds(wait_interval));
       }
-      mutex.Lock();  // Code will block if mutex isn't free
-    }
-
-    while(count != 0) {
-      mutex.lock_held = 0;
-      Tcl_ConditionWait(&cond,&mutex.mutex,&default_nap_time);
-      mutex.lock_held = 1;
     }
   }
+  bool OwnsLock() const noexcept { return control_lock.owns_lock(); }
 
-  void Notify() {
-    Tcl_ConditionNotify(&cond);
-  }
-
+  // The following notes concerning notify are from
+  //  https://en.cppreference.com/w/cpp/thread/condition_variable/notify_one
+  //
+  //  The effects of notify_one()/notify_all() and each of the three
+  //  atomic parts of wait()/wait_for()/wait_until() (unlock+wait,
+  //  wakeup, and lock) take place in a single total order that can be
+  //  viewed as modification order of an atomic variable: the order is
+  //  specific to this individual condition_variable. This makes it
+  //  impossible for notify_one() to, for example, be delayed and
+  //  unblock a thread that started waiting just after the call to
+  //  notify_one() was made.
+  //
+  //  The notifying thread does not need to hold the lock on the same
+  //  mutex as the one held by the waiting thread(s); in fact doing so
+  //  is a pessimization, since the notified thread would immediately
+  //  block again, waiting for the notifying thread to release the
+  //  lock. However, some implementations (in particular many
+  //  implementations of pthreads) recognize this situation and avoid
+  //  this "hurry up and wait" scenario by transferring the waiting
+  //  thread from the condition variable's queue directly to the queue
+  //  of the mutex within the notify call, without waking it up.
+  //
+  //  Notifying while under the lock may nevertheless be necessary when
+  //  precise scheduling of events is required, e.g. if the waiting
+  //  thread would exit the program if the condition is satisfied,
+  //  causing destruction of the notifying thread's
+  //  condition_variable. A spurious wakeup after mutex unlock but
+  //  before notify would result in notify called on a destroyed object.
 };
-#else
-// Thread control trio: mutex, condition, counter
+
+#else // ! OOMMF_THREADS
+
 class Oxs_ThreadControl {
+  // Thread control trio: mutex, condition, counter
+  // NB: Be certain to lock mutex, typically using std::lock_guard or
+  // std::unique_lock, before accessing count or calling cond.wait();
 public:
   int count;
   Oxs_ThreadControl() : count(0) {}
-  ~Oxs_ThreadControl() { count=0; }
-
-  // Disable copy constructor and assignment operator by declaring them
-  // but then not providing a definition.
-  Oxs_ThreadControl(const Oxs_ThreadControl&);
-  Oxs_ThreadControl& operator=(const Oxs_ThreadControl&);
-
-  void Lock() {}
-  void Unlock() {}
-  void GetStatus(int& locked,int& count_value) {
-    locked = 0; count_value = count;
+  ~Oxs_ThreadControl() {}
+  void LockAndIncrement(int offset) {
+    count += offset;
   }
-  void Wait(OC_UINT4m /* wait_interval */=0) {}
-  void WaitForZero() {}
-
-  void Notify() {}
+  void LockAndSet(int newval) {
+    count = newval;
+  }
+  void LockAndWaitForZero() {
+    if(count!=0) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Waiting on thread control counter to go"
+                " zero without parallel threads.");
+    }
+  }
 };
-#endif
+
+#endif //  OOMMF_THREADS
 
 #if OOMMF_THREADS
 // IMPLEMENTATION FOR THREADED BUILDS //////////////////////////////////
@@ -376,17 +284,18 @@ class Oxs_Thread {
   void GetStatus(String& results); // For debugging.
 
  private:
-  friend Tcl_ThreadCreateProc _Oxs_Thread_threadmain;
+  friend void _Oxs_Thread_threadmain(Oxs_Thread*);
   friend class Oxs_ThreadRunObj;
   friend class Oxs_ThreadTree;
 
-  Tcl_ThreadId thread_id;   // Assigned by Tcl and/or OS
   int thread_number;  // Assigned by Oxs_ThreadTree static control.
   /// These numbers are 1-based, because thread_number 0 is reserved
   /// for the main (parent) thread.
 
-  Oxs_ThreadControl start;  // Unique to thread object
-  Oxs_ThreadControl* stop;  // Assigned by and unique to tree object
+  Oxs_ThreadControl start; // Unique to thread object
+  Oxs_ThreadControl* stop; // Assigned by and unique to tree object.
+  // The stop ptr is set in RunCmd call before child thread is notified.
+  // stop should only be accessed while holding the start mutex.
   Oxs_ThreadRunObj* runobj; // Assigned by user code through Oxs_ThreadTree
   void* data;               // Ditto
 
@@ -465,7 +374,7 @@ private:
   /// Mirrors stop.count, except modified only by *this, not
   /// client threads.
 
-  static Oxs_Mutex launch_mutex;
+  static std::mutex launch_mutex;
   static std::vector<Oxs_Thread*> threads;
   /// Note: Child thread_number's are one larger than their index into
   /// the "threads" vector, because thread_number 0 is reserved for the
@@ -497,42 +406,45 @@ public:
   virtual ~Oxs_ThreadMapDataObject() {}
 };
 
-typedef map<String,Oxs_ThreadMapDataObject*> OXS_THREADMAP;
+// Note: In practice, locker is likely to be quite small,
+// so std::map (available in the original STL) could be used
+// instead of std::unordered_map (new in C++11) with reasonable
+// performance.  However, with one compiler inserting items into a
+// thread_local std::map from a child thread generated segfaults.
+// It was found that using the std::unordered_map reserve()
+// member in the child mainline before first map access protected
+// against this problem.
+using std::unordered_map;
+typedef unordered_map<String,Oxs_ThreadMapDataObject*> OXS_THREADMAP;
 
 // Auto-initializing map object, used for thread local storage.
 class Oxs_ThreadLocalMap {
 private:
 
 #if OOMMF_THREADS
-  Tcl_ThreadDataKey* mapkey;
-  OXS_THREADMAP* GetLockerPointer();
-  /// Automatically initialized on first access in each thread.
+  static thread_local OXS_THREADMAP locker;
 #else
-  static OXS_THREADMAP nothreads_locker;
-  OXS_THREADMAP* GetLockerPointer() { return &nothreads_locker; }
+  static OXS_THREADMAP locker;
 #endif
+  OXS_THREADMAP* GetLockerPointer() { return &locker; }
 
   // Routine to remove all items from locker map, and call destructor on
   // each.  This routine should be called as part of problem release.
   // To help prevent abuse, this is a private function, accessible only
   // by friends --- it is not called by any Oxs_ThreadLocalMap member,
   // including in particular ~Oxs_ThreadLocalMap.
-  static void DeleteLocker(Tcl_ThreadDataKey* import_mapkey);
+  static void DeleteLocker();
 
   // Friend access for DeleteLocker
 #if OOMMF_THREADS
-  friend Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData);
+  friend void _Oxs_Thread_threadmain(Oxs_Thread*);
   friend void Oxs_ThreadTree::EndThreads();
 #else
   friend class Oxs_ThreadTree;
 #endif
 
 public:
-#if OOMMF_THREADS
-  Oxs_ThreadLocalMap(Tcl_ThreadDataKey* key) : mapkey(key) {}
-#else
-  Oxs_ThreadLocalMap(Tcl_ThreadDataKey* /* key */)  {}
-#endif
+  Oxs_ThreadLocalMap() {}
 
   ~Oxs_ThreadLocalMap() {} // Note: Destructor does *not* delete
   /// any objects in locker map.  Instead, friend functions should
@@ -581,12 +493,8 @@ public:
 // builds.
 class Oxs_ThreadRunObj {
 private:
-  static Tcl_ThreadDataKey thread_data_map; // Key for thread-local
-  // storage.  This storage is a map<string,void*> object.
-
-  // Friend access for thread_data_map key.
 #if OOMMF_THREADS
-  friend Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData);
+  friend void _Oxs_Thread_threadmain(Oxs_Thread*);
   friend void Oxs_ThreadTree::LaunchTree(Oxs_ThreadRunObj&,void*);
   friend void Oxs_ThreadTree::EndThreads();
   int multilevel;
@@ -599,11 +507,11 @@ protected:
   Oxs_ThreadLocalMap local_locker;
 
 public:
-  Oxs_ThreadRunObj() :
+  Oxs_ThreadRunObj()
 #if OOMMF_THREADS
-    multilevel(0),
+    : multilevel(0)
 #endif
-    local_locker(&thread_data_map) {}
+  {}
 
   virtual void Cmd(int threadnumber,void* data) =0;
   virtual ~Oxs_ThreadRunObj() {}
@@ -636,10 +544,7 @@ public:
   ~Oxs_ThreadTree() {}
   static void InitThreads(int) {}
   static void EndThreads() {
-    Oxs_ThreadLocalMap::DeleteLocker(&Oxs_ThreadRunObj::thread_data_map);
-    // Note: thread_data_map is not used by no-threads version of
-    // DeleteLocker, so in this case we may alternatively pass in a NULL
-    // pointer.
+    Oxs_ThreadLocalMap::DeleteLocker();
     Oxs_ThreadError::ClearError();
   }
 
@@ -664,9 +569,8 @@ public:
   }
 
   void DeleteLockerItem(String name) {
-    Oxs_ThreadLocalMap locker(&Oxs_ThreadRunObj::thread_data_map);
-    /// Actually, There is only one locker in no-thread case, so
-    /// key value doesn't matter.
+    // There is only one locker in non-threaded build
+    Oxs_ThreadLocalMap locker;
     if(locker.GetItem(name)) {
       locker.DeleteItem(name);
     }
@@ -712,34 +616,39 @@ public:
 };
 
 #if OOMMF_THREADS
-Tcl_ThreadCreateProc _Oxs_ThreadBush_main; // Forward declaration
-/// of helper function for Oxs_ThreadBush::RunAllThreads().
-#endif // OOMMF_THREADS
-
 class Oxs_ThreadBush
 {
 public:
   void RunAllThreads(Oxs_ThreadTwig* twig);
 private:
-  Oxs_ThreadControl task_stop;
   struct TwigBundle {
   public:
     Oxs_ThreadTwig* twig;
     Oxs_ThreadControl* thread_control;
     int oc_thread_id;
     TwigBundle() : twig(0), thread_control(0), oc_thread_id(-1) {}
+    TwigBundle(Oxs_ThreadTwig* twigptr,Oxs_ThreadControl* ctrl, int id)
+      : twig(twigptr), thread_control(ctrl), oc_thread_id(id) {}
   };
-#if OOMMF_THREADS
-  friend Tcl_ThreadCreateProc _Oxs_ThreadBush_main;
-#endif // OOMMF_THREADS
+  friend void _Oxs_ThreadBush_main(Oxs_ThreadBush::TwigBundle&&);
 };
+#endif // OOMMF_THREADS
 
 #if !OOMMF_THREADS
-inline void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
+class Oxs_ThreadBush
 {
-  twig->Task(0);
-  // All done!
-}
+public:
+  void RunAllThreads(Oxs_ThreadTwig* twig) {
+    twig->Task(0);
+  }
+private:
+  struct TwigBundle {
+  public:
+    Oxs_ThreadTwig* twig;
+    int oc_thread_id;
+    TwigBundle() : twig(0), oc_thread_id(-1) {}
+  };
+};
 #endif // OOMMF_THREADS
 
 
@@ -755,7 +664,7 @@ inline void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
 // the original use case, as we want background threads to run wherever
 // they can with the least disruption to the main compute threads.  This
 // should be easy to change, however, if the need arises.  See the
-// Oc_NumaRunOnAnyNode() call in _Oxs_ThreadThrowaway_main(ClientData).
+// Oc_NumaRunOnAnyNode() call in _Oxs_ThreadThrowaway_main().
 //
 // This base class does not provide any way for the launcher to
 // determine when or if the child thread finishes.  If that is needed,
@@ -782,8 +691,8 @@ protected:
   virtual void Task() = 0;
 private:
 #if OOMMF_THREADS
-  friend Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData);
-  mutable Oxs_Mutex mutex;
+  friend void _Oxs_ThreadThrowaway_main(Oxs_ThreadThrowaway*);
+  mutable std::mutex mutex;
 #endif
   OC_INDEX active_thread_count;
   // Declare but don't define the following members
@@ -1132,7 +1041,7 @@ private:
   struct JobData {
     OC_INDEX start;
     OC_INDEX stop;
-    Oxs_Mutex mutex;
+    std::mutex mutex;
     int all_done;
     JobData() : start(-1), stop(-1), all_done(0) {}
   };
@@ -1140,7 +1049,6 @@ private:
   JobData* threadjob;
 
   void ReassignJobs(OC_INT4m thread_id, OC_INDEX& start, OC_INDEX& stop);
-  Oxs_Mutex rejuggle; // Used for reassigning unfinished jobs.
 
   OC_INT4m thread_count;
 
@@ -1271,11 +1179,13 @@ template<class T> inline void Oxs_JobControl<T>::GetJob
 
   OC_INDEX test_start,test_stop;
 
-  job.mutex.Lock();
-  test_start = job.start;
-  job.start = test_stop  = job.stop;
-  int fini = job.all_done;
-  job.mutex.Unlock();
+  int fini = 0;
+  {
+    std::lock_guard<std::mutex> lck(job.mutex);
+    test_start = job.start;
+    job.start = test_stop  = job.stop;
+    fini = job.all_done;
+  }
 
   if(test_start<test_stop) {
     // Job found in bucket for thread_id
@@ -1305,9 +1215,10 @@ template<class T> void Oxs_JobControl<T>::ReassignJobs
   start = stop = -1;
 
   JobData& job = threadjob[thread_id];
-  job.mutex.Lock();
-  job.all_done = 1;
-  job.mutex.Unlock();
+  {
+    std::lock_guard<std::mutex> lck(job.mutex);
+    job.all_done = 1;
+  }
 
   return;
 }

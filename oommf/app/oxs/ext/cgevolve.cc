@@ -4,11 +4,10 @@
  *
  */
 
-#include <assert.h>
-#include <ctype.h>
-#include <float.h>
+#include <cassert>
+#include <cctype>
+#include <cfloat>
 
-#include <algorithm>
 #include <string>
 
 #include "nb.h"
@@ -32,6 +31,11 @@
 #if OC_USE_NUMA
 # include <numaif.h>
 #endif
+
+// Read <algorithm> last, because with some pgc++ installs the
+// <emmintrin.h> header is not interpreted properly if <algorithm> is
+// read first.
+#include <algorithm>
 
 OC_USE_STRING;
 
@@ -112,7 +116,7 @@ Oxs_CGEvolve::Oxs_CGEvolve(
   gradient_reset_angle_cotangent
     = GetRealInitValue("gradient_reset_angle",87.5);
   gradient_reset_angle_cotangent
-    = tan(Oc_Fabs(90.0-gradient_reset_angle_cotangent)*PI/180.);
+    = tan(fabs(90.0-gradient_reset_angle_cotangent)*PI/180.);
 
   gradient_reset_count = GetUIntInitValue("gradient_reset_count",5000);
 
@@ -736,7 +740,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
       Oc_Duet dvx(scratch_direction[j].x); // Fills both upper and lower
       Oc_Duet dvy(scratch_direction[j].y); // parts with same value.
       Oc_Duet dvz(scratch_direction[j].z);
-      Oc_Duet mult = Oc_Sqrt(Oc_Duet(1)
+      Oc_Duet mult = sqrt(Oc_Duet(1)
                              +Oc_Duet(tsq)*(dvx*dvx+dvy*dvy+dvz*dvz));
       Oc_Duet bsx(scratch_best_spin[j].x);
       Oc_Duet bsy(scratch_best_spin[j].y);
@@ -768,7 +772,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
 #endif
       Oc_Duet dvx,dvy,dvz;
       Oxs_ThreeVectorPairLoadAligned(&(scratch_direction[j]),dvx,dvy,dvz);
-      Oc_Duet mult = Oc_Sqrt(Oc_Duet(1)
+      Oc_Duet mult = sqrt(Oc_Duet(1)
                              +Oc_Duet(tsq)*(dvx*dvx+dvy*dvy+dvz*dvz));
 
       Oc_Duet bsx,bsy,bsz;
@@ -799,7 +803,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
       Oc_Duet dvx(scratch_direction[j].x); // Fills both upper and lower
       Oc_Duet dvy(scratch_direction[j].y); // parts with same value.
       Oc_Duet dvz(scratch_direction[j].z);
-      Oc_Duet mult = Oc_Sqrt(Oc_Duet(1)
+      Oc_Duet mult = sqrt(Oc_Duet(1)
                              +Oc_Duet(tsq)*(dvx*dvx+dvy*dvy+dvz*dvz));
       Oc_Duet bsx(scratch_best_spin[j].x);
       Oc_Duet bsy(scratch_best_spin[j].y);
@@ -934,7 +938,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
        Oc_Duet vtx,vty,vtz; Oxs_ThreeVectorPairLoadAligned(&(sdir[j]),
                                                            vtx,vty,vtz);
        Oc_Duet vt_magsq = vtx*vtx + vty*vty + vtz*vtz;
-       Oc_Duet denom = Oc_Sqrt(Oc_Duet(1.) + dt_offset_sq * vt_magsq);
+       Oc_Duet denom = sqrt(Oc_Duet(1.) + dt_offset_sq * vt_magsq);
 
        Oc_Duet scale_adj;
        scale_adj.LoadAligned(sMs[j]);
@@ -950,7 +954,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
 
        Nb_XpfloatDualAccum(work_etemp,work_etemp_b,(ste-sbe));
        Nb_XpfloatDualAccum(work_dtemp,work_dtemp_b,mh_dot_vt*scale_adj);
-       Nb_XpfloatDualAccum(work_stemp,work_stemp_b,mh_magsq*scale_adj*scale_adj);
+       Nb_XpfloatDualAccum(work_stemp,work_stemp_b,
+                           mh_magsq*scale_adj*scale_adj);
      }
      for(;j<jsize;++j) {
        const ThreeVector& vtemp = sdir[j];
@@ -997,7 +1002,7 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
        Oc_Duet vtx,vty,vtz; Oxs_ThreeVectorPairLoadAligned(&(sdir[j]),
                                                            vtx,vty,vtz);
        Oc_Duet vt_magsq = vtx*vtx + vty*vty + vtz*vtz;
-       Oc_Duet denom = Oc_Sqrt(Oc_Duet(1.) + dt_offset_sq * vt_magsq);
+       Oc_Duet denom = sqrt(Oc_Duet(1.) + dt_offset_sq * vt_magsq);
 
        Oc_Duet dt_Ms;  dt_Ms.LoadAligned(sMs[j]);
        Oc_Duet numer = dt_Ms*vol;
@@ -1013,7 +1018,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadB::Cmd(int threadnumber,
 
        Nb_XpfloatDualAccum(work_etemp,work_etemp_b,(ste-sbe)*vol);
        Nb_XpfloatDualAccum(work_dtemp,work_dtemp_b,mh_dot_vt*scale_adj);
-       Nb_XpfloatDualAccum(work_stemp,work_stemp_b,mh_magsq*scale_adj*scale_adj);
+       Nb_XpfloatDualAccum(work_stemp,work_stemp_b,
+                           mh_magsq*scale_adj*scale_adj);
      }
      for(;j<jsize;++j) {
        OC_REAL8m vol = mesh->Volume(istart+j);
@@ -1867,7 +1873,7 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
     }
     relenergy = etemp.GetValue();
     derivative = -MU0 * dtemp.GetValue();
-    grad_norm = Oc_Sqrt(stemp.GetValue());
+    grad_norm = sqrt(stemp.GetValue());
     OC_REAL8m cell_volume = 0.0;
     if(mesh->HasUniformCellVolumes(cell_volume)) {
       // If (and only if) mesh has uniform cells, then threaded
@@ -1891,10 +1897,10 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
   /// Note: Relative energy is relative to energy in best state.
 
   endpt.E_error_estimate
-    = Oc_Fabs(relenergy)*OC_REAL8m_EPSILON*8; // 8 is fudge
+    = fabs(relenergy)*OC_REAL8m_EPSILON*8; // 8 is fudge
   if(mesh->Size()>0) {
     endpt.E_error_estimate += energy_density_error_estimate
-      * mesh->TotalVolume()/Oc_Sqrt(2.0*OC_REAL8m(mesh->Size()));
+      * mesh->TotalVolume()/sqrt(2.0*OC_REAL8m(mesh->Size()));
     // See NOTES VII, 5-7 July 2017, p 154-155.  
     // Might want to revisit scaling if mesh is not uniform.  Here
     // cell volume is TotalVolume()/Size(), error grows like
@@ -1930,8 +1936,8 @@ OC_REAL8m Oxs_CGEvolve::EstimateEnergySlack() const
   if(bracket.right.offset>0) {
     // bracket.right.offset has value -1 if it has not been initialized
     edelta_guess
-      = (Oc_Fabs(basept.Ep)
-         + Oc_Fabs(bracket.left.Ep) + Oc_Fabs(bracket.right.Ep)) * 0.5
+      = (fabs(basept.Ep)
+         + fabs(bracket.left.Ep) + fabs(bracket.right.Ep)) * 0.5
       * bracket.right.offset;  /// 0.5 is 0.33 plus fudge.
   }
   OC_REAL8m slack
@@ -1956,8 +1962,8 @@ OC_BOOL Oxs_CGEvolve::BadPrecisionTest
   OC_REAL8m lEp = left.Ep * span;
   OC_REAL8m rEp = right.Ep * span;
   if(span<=256*bracket.stop_span
-     && Oc_Fabs(rEp-lEp)<Oc_Fabs(lEp)/16.
-     && Oc_Fabs(lEp) < energy_slack) {
+     && fabs(rEp-lEp)<fabs(lEp)/16.
+     && fabs(lEp) < energy_slack) {
     // The numerics appear bad -- in principle this could happen by
     // chance, but it seems unlikely.
     return 1;
@@ -2128,7 +2134,7 @@ Oxs_CGEvolve::UpdateBrackets
       /// over close minimum.
       if(bracket.right.E<=bracket.left.E - energy_slack ||
          (bracket.right.E <= bracket.left.E + energy_slack
-          && Oc_Fabs(bracket.right.Ep) <= Oc_Fabs(bracket.left.Ep))) {
+          && fabs(bracket.right.Ep) <= fabs(bracket.left.Ep))) {
         // A related but perhaps better secondary test might be
         //  ave_slope = (bracket.right.E - bracket.left.E)/(bracket.right.offset - bracket.left.offset);
         //  Test: bracket.left.Ep < ave_slope < bracket.right.Ep
@@ -2197,7 +2203,7 @@ Oxs_CGEvolve::UpdateBrackets
     const Bracket* best_endpt = &(bracket.left);
     if(bracket.right.E < bracket.left.E - energy_slack ||
        (bracket.right.E < bracket.left.E + energy_slack &&
-        Oc_Fabs(bracket.right.Ep) < Oc_Fabs(bracket.left.Ep))) {
+        fabs(bracket.right.Ep) < fabs(bracket.left.Ep))) {
       best_endpt = &(bracket.right);
     }
     bestpt.SetBracket(*best_endpt);
@@ -2248,7 +2254,7 @@ OC_REAL8m Oxs_CGEvolve::EstimateQuadraticMinimum
   OC_REAL8m numer = wgt*(0.5*fpdiff - h*fdiff) - 4.*(1.-wgt)*fp0;
   OC_REAL8m denom = (wgt*h*h + 4.*(1.-wgt))*fpdiff;
 
-  assert(Oc_Fabs(h*numer)<=OC_REAL8m_MAX);
+  assert(fabs(h*numer)<=OC_REAL8m_MAX);
 
   OC_REAL8m offset = OC_REAL8m_MAX;
   if(denom>=1.0 || h*numer < OC_REAL8m_MAX*denom) {
@@ -2285,10 +2291,10 @@ OC_REAL8m Oxs_CGEvolve::FindCubicMinimum
     if(disc<=0.0) disc=0.0;          // Safety check.  See NOTES II,
     else          disc = sqrt(disc); // 1-Sep-2001, p135.
     if(b>=0.) {
-      if(Oc_Fabs(c)>=b+disc) lambda = Nb_Signum(-c);
+      if(fabs(c)>=b+disc) lambda = Nb_Signum(-c);
       else                   lambda = -c/(b + disc);
     } else {
-      if(Oc_Fabs(3*a)<=(-b + disc)) lambda = Nb_Signum(a);
+      if(fabs(3*a)<=(-b + disc)) lambda = Nb_Signum(a);
       else                          lambda = (-b + disc)/(3*a);
     }
   }
@@ -2351,7 +2357,7 @@ void Oxs_CGEvolve::FindBracketStep
       }
     }
   }
-  if(Oc_Fabs(offset-bestpt.bracket->offset)*basept.direction_max_mag
+  if(fabs(offset-bestpt.bracket->offset)*basept.direction_max_mag
      <16*OC_REAL8m_EPSILON) {
     // If LHS above is smaller that OC_REAL8m_EPSILON, and we assume
     // that the bestpt spins are unit vectors, then there is a
@@ -2467,7 +2473,7 @@ void Oxs_CGEvolve::FindLineMinimumStep
   // that differs from that used in SetBasePoint().
   //   The last test group are sanity checks, and the obsoleted span
   // size control.
-  if(Oc_Fabs(bestpt.bracket->Ep)
+  if(fabs(bestpt.bracket->Ep)
      < MU0 * bestpt.bracket->grad_norm * basept.direction_norm
        * bracket.angle_precision * (1+2*sum_error_estimate)
      && (bestpt.bracket->Ep==0 || bestpt.bracket->Ep > basept.Ep)
@@ -2557,7 +2563,7 @@ void Oxs_CGEvolve::FindLineMinimumStep
     // Aside from rounding error, cubic_chk_b should be strictly greater than
     // cubic_chk_a --- see NOTES VII, 20-Jul-2017, p156-163.
     if(0<cubic_chk_a && cubic_chk_b<1.0) {
-      cubic_error = Oc_Fabs(cubic_chk_b-cubic_chk_a);
+      cubic_error = fabs(cubic_chk_b-cubic_chk_a);
       // Absolute value is safety to handle rounding error
     }
   }
@@ -2662,7 +2668,7 @@ void Oxs_CGEvolve::FindLineMinimumStep
       OC_REAL8m denominator = 2*(Ediff - lEp);
       // denominator must also be >0, because rightpt.E>=leftpt.E
       // if a minimum is bracketed with rightpt.Ep<0.
-      denominator = Oc_Fabs(denominator); // But play it safe, because
+      denominator = fabs(denominator); // But play it safe, because
       /// checks below depend on denominator>0.
       if(numerator<reduce_limit*denominator) {
         alt_testpt = reduce_limit;
@@ -2764,7 +2770,7 @@ void Oxs_CGEvolve::FindLineMinimumStep
   // see if the conjugation procedure applied to mxHxm will yield
   // a downhill direction.  See note in the up-front check for
   // additional details.
-  if(Oc_Fabs(bestpt.bracket->Ep)
+  if(fabs(bestpt.bracket->Ep)
      < MU0 * bestpt.bracket->grad_norm * basept.direction_norm
        * bracket.angle_precision * (1+2*sum_error_estimate)
      && (bestpt.bracket->Ep==0 || bestpt.bracket->Ep > basept.Ep)
@@ -2983,7 +2989,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
   bracket.left.offset  = 0.;
   bracket.left.E       = 0.;
   bracket.left.E_error_estimate = edee
-    * mesh->TotalVolume()/Oc_Sqrt(2.0*OC_REAL8m(mesh->Size()));
+    * mesh->TotalVolume()/sqrt(2.0*OC_REAL8m(mesh->Size()));
   // See NOTES VII, 5-7 July 2017, p 154-155.  
   bestpt.SetBracket(bracket.left);
 
@@ -3310,7 +3316,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
     }
 #endif // !OOMMF_THREADS
 
-    basept.direction_max_mag = Oc_Sqrt(maxmagsq);
+    basept.direction_max_mag = sqrt(maxmagsq);
     Nb_NOP(basept.direction_max_mag); // Workaround for icpc optimization bug
     basept.g_sum_sq = sumsq;
     basept.direction_norm = sqrt(sumsq);
