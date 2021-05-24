@@ -22,11 +22,13 @@ all:
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
 	@echo "things to do now:"
-	@echo "1. Comment on DMI extension in source in versionlog.txt?"
-	@echo "2. Run git 'commit -a' or similar to update git repo with new release"
-	@echo "3. Tag the revisision (conda-forge recipe needs this):"
+	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
+  @echo "2. Run 'make get-all' to get all additional extensions. "
+	@echo "3. Run git 'commit -a' or similar to update git repo with new release [if tests pass]"
+	@echo "4. Tag the revisision (conda-forge recipe needs this):"
 	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
 	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
+  @echo "5. Update oommf/package.py in Spack to support the new release"
 
 
 clean:
