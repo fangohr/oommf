@@ -1,0 +1,22 @@
+== git-repo-url: https://github.com/joommf/oommf-extension-dmi-d2d.git
+== repo-name: oommf-extension-dmi-d2d
+== snap-shot-of-repo: provenance-oommf-extension-dmi-d2d-HEAD.zip
+== cloned-on-date: Mon May 24 22:07:48 2021
+== copied-files-from-path-in-repo: src/
+last commit:
+commit 9ce00156458a3cf9f5c5e139ba2f5814fe041444
+Author: Marijan Beg <m.beg@imperial.ac.uk>
+Date:   Mon May 24 12:09:00 2021 +0100
+
+    Update README.md
+
+== src file-list:
+total 48
+-rw-r--r-- 1 fangohr exfel 8791 May 24 22:07 DMI_D2d_x.cc
+-rw-r--r-- 1 fangohr exfel 1682 May 24 22:07 DMI_D2d_x.h
+-rw-r--r-- 1 fangohr exfel 8782 May 24 22:07 DMI_D2d_y.cc
+-rw-r--r-- 1 fangohr exfel 1682 May 24 22:07 DMI_D2d_y.h
+-rw-r--r-- 1 fangohr exfel 8809 May 24 22:07 DMI_D2d_z.cc
+-rw-r--r-- 1 fangohr exfel 1682 May 24 22:07 DMI_D2d_z.h
+
+== see contents of provenance-oommf-extension-dmi-d2d-HEAD.zip for additional info, examples, etc.
