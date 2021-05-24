@@ -16,6 +16,7 @@ GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
 all:
+	make -f Makefile-update-oommf clean
 	make -f Makefile-update-oommf get-oommf
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
@@ -26,6 +27,10 @@ all:
 	@echo "3. Tag the revisision (conda-forge recipe needs this):"
 	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
 	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
+
+
+clean:
+	rm -rf oommf
 
 get-oommf:
 	mkdir -p Downloads
