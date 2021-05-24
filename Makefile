@@ -40,8 +40,8 @@ get-mel:
 	cp $(MELREPO)/*.h oommf/app/oxs/local/
 	rm -rf $(MELREPO)
 
-travis-build: SHELL:=/bin/bash
-travis-build:
+in-docker: SHELL:=/bin/bash
+in-docker:
 	docker build --no-cache -t dockertestimage .
 	docker run -ti -d --name testcontainer dockertestimage
 	docker exec testcontainer make test-all

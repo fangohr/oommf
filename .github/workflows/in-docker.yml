@@ -1,0 +1,20 @@
+name: in-docker
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  in-docker:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+      
+    - name: Build and test inside container
+      run: make in-docker
