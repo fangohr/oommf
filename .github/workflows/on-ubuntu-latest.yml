@@ -1,0 +1,27 @@
+name: on-ubuntu-latest
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  on-ubuntu-latest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    env:
+      OOMMFTCL: /home/runner/work/oommf/oommf/oommf/oommf.tcl
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: sudo apt-get install -y tk-dev tcl-dev
+
+    - name: Build OOMMF
+      run: make build-with-all
+
+    - name: Test OOMMF
+      run: make test-all
