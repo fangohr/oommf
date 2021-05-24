@@ -22,7 +22,7 @@ jobs:
     - name: Build OOMMF
       run: make build-with-all
 
-    - name: set OOMMFTCL
+    - name: Set OOMMFTCL
       run: echo "OOMMFTCL=$GITHUB_WORKSPACE/oommf/oommf.tcl" >> $GITHUB_ENV
 
     - name: Test OOMMF
