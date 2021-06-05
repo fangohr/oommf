@@ -5,6 +5,11 @@
 # 1. Fetch the oommf sources (in preration to adding them to
 # this repository).
 #
+# This appears somewhat lengthy because we want to add some
+# additional files to the repository, that make it easy to
+# reconstruct exactly from which sources this version of OOMMF
+# originates.
+#
 
 # Compose name of OOMMF tar ball as available on NIST webpages
 # (as of September 2015, still valid 2021)
@@ -81,17 +86,19 @@ apply-patches:
 #
 # 2. OOMMF extensions that we fetch and add to the repository
 #
+# Again, this appears somewhat lengthy because we want to add some
+# additional files to the repository, that make it easy to
+# reconstruct exactly from which repository each added extensions
+# originates, and which version of the repository it is.
+# We also add a snapshot of teh extension repository as a zip file.
+# This may contain useful documentation or examples.
+#
 
-OOMMFPREFIX="oommf"
 DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
 DMID2DREPO="oommf-extension-dmi-d2d"
 MELREPO="oommf-mel"
 
-build:
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake distclean
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake upgrade
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake
 
 get-cnv:
 	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
@@ -110,10 +117,16 @@ fetch-all-extensions: get-cnv get-d2d get-t get-mel
 
 
 #
-# 3. Master target that does everything:
+# 3. Master target that fetches OOMMF and the extensions
 #
 
 all:
-  make -f Makefile-update-oommf fetch-oommf
-  make -f Makefile-update-oommf fetch-all-extensions
-  make -f Makefile-update-oommf build
+	make -f Makefile-update-oommf fetch-oommf
+	make -f Makefile-update-oommf fetch-all-extensions
+	@echo "to build and test use 'make build test-all'"
+
+in-docker-all:
+	@echo "Not implemented  yet"
+	docker build -t dockertestimage .
+	docker run -rm -ti  --name testcontainer dockertestimage
+
