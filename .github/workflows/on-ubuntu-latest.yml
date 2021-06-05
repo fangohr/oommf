@@ -21,7 +21,7 @@ jobs:
       run: sudo apt-get install -y tk-dev tcl-dev
 
     - name: Build OOMMF
-      run: make build-with-all
+      run: make build
 
     - name: Test OOMMF
       run: make test-all
