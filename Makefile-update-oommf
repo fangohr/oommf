@@ -142,7 +142,7 @@ in-docker-all:
 #
 # - download of sources fail
 # - compilation fails, for example because the extensions has changed. In this
-    case ...
+#   case ...
 
 in-docker-replay-oommf-update:
 	docker build -t dockertestimage .
