@@ -5,9 +5,8 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get -y update
 RUN apt-get install -y git tk-dev tcl-dev
-
-# need python3 for fetching extensions
-RUN apt-get install -y python3 rsync
+# Needed only for updating-oommf-sources 
+RUN apt-get install -y wget python3 rsync
 
 # OOMMF cannot be built as root user.
 WORKDIR /usr/local
@@ -18,7 +17,8 @@ USER oommfuser
 
 # Compile OOMMF.
 WORKDIR /usr/local/oommf
-RUN make build-with-all
+# RUN make build
+# RUN make test-all
 
 # Create OOMMFTCL environment variable.
-ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
+# ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl

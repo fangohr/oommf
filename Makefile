@@ -8,11 +8,20 @@
 
 OOMMFPREFIX="oommf"
 
+OOMMFTCL=$(OOMMFPREFIX)/oommf.tcl
+
+test-all:
+	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
+	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1
+
+
 build:
 	cd $(OOMMFPREFIX) && ./oommf.tcl pimake distclean
 	cd $(OOMMFPREFIX) && ./oommf.tcl pimake upgrade
 	cd $(OOMMFPREFIX) && ./oommf.tcl pimake
 
+# The next target is checking if the OOMMF version in this repository
+# builds fine. This is the useful check for users.
 
 in-docker: SHELL:=/bin/bash
 in-docker:
@@ -23,8 +32,3 @@ in-docker:
 	docker stop testcontainer
 	docker rm testcontainer
 
-OOMMFTCL=oommf/oommf.tcl
-
-test-all:
-	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
-	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob4.mif -exitondone 1

@@ -1,7 +1,4 @@
 
-
-
-
 # Object Oriented MicroMagnetic Framework (OOMMF)
 
 | Description | Badge |
@@ -16,9 +13,19 @@ This is a repository of the [OOMMF](https://math.nist.gov/oommf/oommf.html) soft
 
 The intention is to provide the OOMMF distribution files in a git repository for those who prefer to pull them via git.
 
+In addition to the OOMMF source code that is offered from NIST (and the OOMMF
+extension coming from NIST), this repository contains some additional
+user-contributed extensions. Those can be seen from the [Makefile-update-oommf](Makefile-update-oommf). Search for 
+
 ## Version
 
-The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0 (`20a0 20170929 a0`). If you are using `joommf/oommf` Docker image (more details in [Docker](#Docker) section), you can get the currect version of OOMMF by running `oommf-version`. The history of all OOMMF versions hosted in this directory is provided in [versionlog.txt](versionlog.txt).
+The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0 (`20a0 20170929 a0`). 
+
+You can check which version you have, by inspecting the content of the [oommf-version](oommf-version) file. 
+
+The history of all OOMMF versions hosted in this directory is provided in [versionlog.txt](versionlog.txt).
+
+
 
 ## Clone and build
 

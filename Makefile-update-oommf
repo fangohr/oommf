@@ -130,3 +130,28 @@ in-docker-all:
 	docker build -t dockertestimage .
 	docker run -rm -ti  --name testcontainer dockertestimage
 
+
+
+
+# For continuous integration
+#
+# Note: it is not clear how sensible the steps below are.
+# These can fail for a number of reasons, that do not matter
+# to people using this git repository of OOMMF source code with
+# additional extensions:
+#
+# - download of sources fail
+# - compilation fails, for example because the extensions has changed. In this
+    case ...
+
+in-docker-replay-oommf-update:
+	docker build -t dockertestimage .
+	docker run -ti -d --name testcontainer2 dockertestimage
+	@# rm all oommf files from repo
+	docker exec testcontainer2 make -f Makefile-update-oommf clean
+	docker exec testcontainer2 make -f Makefile-update-oommf fetch-oommf
+	docker exec testcontainer2 make -f Makefile-update-oommf fetch-all-extensions
+	docker exec testcontainer2 make build
+	docker exec testcontainer2 make test-all
+	docker stop testcontainer2
+	docker rm testcontainer2
