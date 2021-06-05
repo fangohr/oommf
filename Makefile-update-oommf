@@ -1,3 +1,11 @@
+# This file is run rarely - only when there is a new version of OOMMF
+# (or if one of the extensions we add in part 2. is updated).
+
+#
+# 1. Fetch the oommf sources (in preration to adding them to
+# this repository).
+#
+
 # Compose name of OOMMF tar ball as available on NIST webpages
 # (as of September 2015, still valid 2021)
 OOMMFPREFIX="oommf"
@@ -15,20 +23,21 @@ OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
 GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
-all:
+fetch-oommf:
 	make -f Makefile-update-oommf clean
 	make -f Makefile-update-oommf get-oommf
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
-	@echo "things to do now:"
-	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
-  @echo "2. Run 'make get-all' to get all additional extensions. "
-	@echo "3. Run git 'commit -a' or similar to update git repo with new release [if tests pass]"
-	@echo "4. Tag the revisision (conda-forge recipe needs this):"
-	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
-	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
-  @echo "5. Update oommf/package.py in Spack to support the new release"
+
+	@#	@echo "things to do now:"
+	@#	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
+	@#  @echo "2. Run 'make get-all' to get all additional extensions. "
+	@#	@echo "3. Run git 'commit -a' or similar to update git repo with new release [if tests pass]"
+	@#	@echo "4. Tag the revisision (conda-forge recipe needs this):"
+	@#	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
+	@#	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
+	@#  @echo "5. Update oommf/package.py in Spack to support the new release"
 
 
 clean:
@@ -67,3 +76,44 @@ apply-patches:
 	# record original file in repository.
 	# git add oommf/config/platforms/darwin.tcl.orig
 	# when this patch is removed, the file above should also be removed from the repo.
+
+
+#
+# 2. OOMMF extensions that we fetch and add to the repository
+#
+
+OOMMFPREFIX="oommf"
+DMICNVREPO="oommf-extension-dmi-cnv"
+DMITREPO="oommf-extension-dmi-t"
+DMID2DREPO="oommf-extension-dmi-d2d"
+MELREPO="oommf-mel"
+
+build:
+	cd $(OOMMFPREFIX) && ./oommf.tcl pimake distclean
+	cd $(OOMMFPREFIX) && ./oommf.tcl pimake upgrade
+	cd $(OOMMFPREFIX) && ./oommf.tcl pimake
+
+get-cnv:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
+
+get-t:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMITREPO).git src
+
+get-d2d:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMID2DREPO).git src
+
+get-mel:
+	python3 clone-log-and-extract-src.py https://github.com/yuyahagi/$(MELREPO).git .
+
+fetch-all-extensions: get-cnv get-d2d get-t get-mel 
+
+
+
+#
+# 3. Master target that does everything:
+#
+
+all:
+  make -f Makefile-update-oommf fetch-oommf
+  make -f Makefile-update-oommf fetch-all-extensions
+  make -f Makefile-update-oommf build
