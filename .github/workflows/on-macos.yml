@@ -1,0 +1,29 @@
+name: on-macos
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  on-ubuntu-latest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-11] # macos-latest
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+
+    # - name: Install dependencies
+    #   run: sudo apt-get install -y tk-dev tcl-dev
+
+    - name: Build OOMMF
+      run: make build-with-all
+
+    - name: Set OOMMFTCL
+      run: echo "OOMMFTCL=$GITHUB_WORKSPACE/oommf/oommf.tcl" >> $GITHUB_ENV
+
+    - name: Test OOMMF
+      run: make test-all
