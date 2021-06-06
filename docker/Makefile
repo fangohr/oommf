@@ -5,4 +5,4 @@ push: build
 	docker push ubermag/oommf:latest
 
 run:
-	docker run -ti -v `pwd`:/io ubermag/oommf:latest bash
+	docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest bash
