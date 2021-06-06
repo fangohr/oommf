@@ -6,9 +6,9 @@
 #
 
 
-OOMMFPREFIX="oommf"
+OOMMF_ROOT="oommf"
 
-OOMMFTCL=$(OOMMFPREFIX)/oommf.tcl
+OOMMFTCL=$(OOMMF_ROOT)/oommf.tcl
 
 test-all:
 	tclsh $(OOMMFTCL) boxsi +fg oommf/app/oxs/examples/stdprob3.mif -exitondone 1
@@ -16,9 +16,9 @@ test-all:
 
 
 build:
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake distclean
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake upgrade
-	cd $(OOMMFPREFIX) && ./oommf.tcl pimake
+	cd $(OOMMF_ROOT) && ./oommf.tcl pimake distclean
+	cd $(OOMMF_ROOT) && ./oommf.tcl pimake upgrade
+	cd $(OOMMF_ROOT) && ./oommf.tcl pimake
 
 # The next target is checking if the OOMMF version in this repository
 # builds fine. This is the useful check for users.
