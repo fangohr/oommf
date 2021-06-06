@@ -58,7 +58,7 @@ And
 
 ## Docker
 
-In [`docker/`](docker/) directory we provide [Dockerfile](docker/Dockerfile) and [Makefile](docker/Makefile) for building and running Docker images containg OOMMF. In addition, we also provide pre-built image at DockerHub under [`joommf/oommf`](https://hub.docker.com/r/joommf/oommf/) repository. More information about Docker as well as on how to install it on your system can be found [here](https://www.docker.com/).
+In [`docker/`](docker/) directory we provide [Dockerfile](docker/Dockerfile) and [Makefile](docker/Makefile) for building and running Docker images containg OOMMF. In addition, we also provide pre-built image at DockerHub under [`ubermag/oommf`](https://hub.docker.com/r/ubermag/oommf/) repository. More information about Docker as well as on how to install it on your system can be found [here](https://www.docker.com/).
 
 ### Getting the image
 
@@ -66,9 +66,9 @@ If you want to build an image yourself, navigate to the `docker/` directory and 
 
     make build
 
-This command builds the image under `joommf/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from DockerHub [`joommf/oommf`](https://hub.docker.com/r/joommf/oommf/) repository
+This command builds the image under the `ubermag/oommf:latest` name. Otherwise, you can obtain the most recent image by pulling it from DockerHub [`ubermag/oommf`](https://hub.docker.com/r/joommf/oommf/) repository
 
-    docker pull joommf/oommf
+    docker pull ubermag/oommf
 
 ### Running the container
 
@@ -82,7 +82,7 @@ Once inside the container, the `oommf.tcl` file is in `/usr/local/oommf/oommf/oo
     <23> oommf.tcl 1.2.0.6  info:
     oommf.tcl 1.2.0.6
 
-In addition, during the build process, we also set an environment variable `OOMMFTCL` to point to the `/usr/local/oommf/oommf/oommf.tcl` file.
+In addition, during the build process, we also set an environment variable `OOMMFTCL` to point to the `/usr/local/oommf/oommf/oommf.tcl` file. 
 
 ### No graphical user interface
 
@@ -98,7 +98,7 @@ We also made recipes for building [Conda](https://www.anaconda.com/) OOMMF packa
 
 ## Support
 
-For support on OOMMF itself, please refer to OOMMF's [web page](https://math.nist.gov/oommf/oommf.html). However, if you have any difficulties or problems in using any of the features we provide in this repository, you are welcome to raise an issue in our [joommf/help](https://github.com/joommf/help) repository.
+For support on OOMMF itself, please refer to OOMMF's [web page](https://math.nist.gov/oommf/oommf.html). However, if you have any difficulties or problems in using any of the features we provide in this repository, you are welcome to raise an issue in our [ubermag/help](https://github.com/ubermag/help) repository.
 
 ## License
 
@@ -114,3 +114,15 @@ If you use any of the DMI extensions we provide in your research, please refer t
 ## Acknowledgements
 
 The repository which holds the OOMMF source code was developed as a part of [OpenDreamKit](http://opendreamkit.org/) – Horizon 2020 European Research Infrastructure project (676541) and the [EPSRC Programme grant on Skyrmionics (EP/N032128/1)](https://www.skyrmions.ac.uk/).
+
+
+
+
+## Information for Developers
+
+| Description            | Badge                  | 
+| ---                    | ---                    |
+| Build on-latest-ubuntu | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+) |
+| Build in-container | [![workflow](https://github.com/fangohr/oommf/workflows/in-docker/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)        |      
+| Replay-OOMMF-update | [![workflow](https://github.com/fangohr/oommf/workflows/in-docker-repeat-oommf-update/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)                          |
+| ---                    | ---                    |
