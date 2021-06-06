@@ -18,6 +18,9 @@ In addition to the OOMMF source code that is offered from NIST (and the OOMMF
 extension coming from NIST), this repository contains some additional
 user-contributed extensions. Those can be seen from the [Makefile-update-oommf](Makefile-update-oommf). See also [Extensions](#Extensions) below.
 
+Compilation of OOMMF (for example by running `make build`) is expected 
+to work on Linux and OS X.
+
 ## Version
 
 The current version of OOMMF code in this repository is the alpha release of OOMMF 2.0 (`20a0 20170929 a0`). 
@@ -43,7 +46,16 @@ A number of OOMMF extensions come with the source. Some of those are packaged by
 
 All extension files are at this location [oommf/app/oxs/local](https://github.com/fangohr/oommf/tree/master/oommf/app/oxs/local) in the source code.
 
+## Smoke test
+
+You can compute standard problems 3 and 4 as a test of your build by running:
+
+    make test-all
+
+
 ## Extensions
+
+A number of OOMMF extensions are included:
 
 We provide Dzyaloshinskii-Moriya interaction extensions for three different crystallographic classes:
 
@@ -134,4 +146,4 @@ The repository which holds the OOMMF source code was developed as a part of [Ope
 | Build on-latest-ubuntu | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+) |
 | Build in-container | [![workflow](https://github.com/fangohr/oommf/workflows/in-docker/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)        |      
 | Replay-OOMMF-update | [![workflow](https://github.com/fangohr/oommf/workflows/in-docker-repeat-oommf-update/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)                          |
-| ---                    | ---                    |
+
