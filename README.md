@@ -1,11 +1,12 @@
-
 # Object Oriented MicroMagnetic Framework (OOMMF)
 
 | Description | Badge |
 | --- | --- |
 | Release | [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf) |
-| Build | [![Build Status](https://travis-ci.org/fangohr/oommf.svg?branch=master)](https://travis-ci.org/fangohr/oommf) |
+| Build | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)
 | License | [![License Badge](https://img.shields.io/badge/License-OOMMF-blue.svg)](oommf/LICENSE) |
+
+
 
 ## About
 
@@ -15,7 +16,7 @@ The intention is to provide the OOMMF distribution files in a git repository for
 
 In addition to the OOMMF source code that is offered from NIST (and the OOMMF
 extension coming from NIST), this repository contains some additional
-user-contributed extensions. Those can be seen from the [Makefile-update-oommf](Makefile-update-oommf). Search for 
+user-contributed extensions. Those can be seen from the [Makefile-update-oommf](Makefile-update-oommf). See also [Extensions](#Extensions) below.
 
 ## Version
 
@@ -29,7 +30,7 @@ The history of all OOMMF versions hosted in this directory is provided in [versi
 
 ## Clone and build
 
-If you want to build a clean OOMMF (without externally made extensions), clone the repository:
+If you want to build OOMMF from source, clone the repository:
 
     git clone https://github.com/fangohr/oommf.git
 
@@ -38,7 +39,9 @@ and build it
     make build
 
 
-For building OOMMF with different extensions, please refer to the [Extensions](#Extensions) section.
+A number of OOMMF extensions come with the source. Some of those are packaged by the OOMMF authors (Mike Donahue et al) at NIST together with the OOMMF source. Some (see section [Extensions](#Extensions)) have been added to this repository. 
+
+All extension files are at this location [oommf/app/oxs/local](https://github.com/fangohr/oommf/tree/master/oommf/app/oxs/local) in the source code.
 
 ## Extensions
 
@@ -48,17 +51,10 @@ We provide Dzyaloshinskii-Moriya interaction extensions for three different crys
 2. T(O) - bulk DMI ([repository](https://github.com/joommf/oommf-extension-dmi-t)), and
 3. D<sub>2d</sub> - antiskyrmion DMI ([repository](https://github.com/joommf/oommf-extension-dmi-d2d))
 
-After you clone this repository
+And 
 
-    git clone https://github.com/fangohr/oommf.git
+- the OOMMF Magnetoelastic Extension Module (https://github.com/yuyahagi/oommf-mel) from Yu Yahagi.
 
-you can build OOMMF and add a particular extensions by running
-
-    make build-with-dmi-extension-XXX
-
-where `XXX` can be `cnv`, `t`, or `d2d` for individual extensions. In case you want to build OOMMF with all three DMI extensions, you can run:
-
-    make build-with-dmi-extension-all
 
 ## Docker
 
@@ -106,7 +102,8 @@ For support on OOMMF itself, please refer to OOMMF's [web page](https://math.nis
 
 ## License
 
-The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t), or [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d)).
+The License for the OOMMF code can be found [here](oommf/LICENSE). If you use any of the DMI extensions (that are not part of this repository), please refer to the [3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause) and licenses in corresponding repositories ([C<sub>nv</sub>](https://github.com/joommf/oommf-extension-dmi-cnv), [T(O)](https://github.com/joommf/oommf-extension-dmi-t),  [D<sub>2d</sub>](https://github.com/joommf/oommf-extension-dmi-d2d), and 
+[magnetoelastic](https://github.com/yuyahagi/oommf-mel)).
 
 ## How to cite
 

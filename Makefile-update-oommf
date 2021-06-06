@@ -143,6 +143,8 @@ in-docker-all:
 # - download of sources fail
 # - compilation fails, for example because the extensions has changed. In this
 #   case ...
+#
+# This is used by the in-docker-replay-oommf-update github workflow.
 
 in-docker-replay-oommf-update:
 	docker build -t dockertestimage .
