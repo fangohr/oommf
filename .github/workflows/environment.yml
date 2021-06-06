@@ -1,2 +1,8 @@
-python==3.9
-tk
+name: conda-environment
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python==3.9
+  - tk
