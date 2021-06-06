@@ -75,14 +75,23 @@ This command builds the image under the `ubermag/oommf:latest` name. Otherwise, 
 To run a container, navigate to `docker/` directory and run
 
     make run
+    
+Or you can type the full command yourself:
+
+	docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest bash
 
 Once inside the container, the `oommf.tcl` file is in `/usr/local/oommf/oommf/oommf.tcl`. For convenience, we provide a shell script `oommf` in the search path (in `/usr/local/bin`). This can be used, for example:
 
-    root@715477218aac:/io# oommf +version
+    oommfuser@715477218aac:/io# oommf +version
     <23> oommf.tcl 1.2.0.6  info:
     oommf.tcl 1.2.0.6
 
 In addition, during the build process, we also set an environment variable `OOMMFTCL` to point to the `/usr/local/oommf/oommf/oommf.tcl` file. 
+
+There is also the `OOMMF_ROOT` variable which points to the base directory
+of the OOMMF sources (that's currently `/usr/local/oommf/oommf`). It can be used, for example, to execute an OOMMF example:
+
+    oommf boxsi +fg $OOMMF_ROOT/app/oxs/examples/stdprob3.mif -exitondone 1
 
 ### No graphical user interface
 
