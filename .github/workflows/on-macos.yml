@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11] # macos-latest
+        os: [macos-latest]
 
     steps:
     - name: Initialisation
