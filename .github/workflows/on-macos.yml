@@ -23,11 +23,6 @@ jobs:
         activate-environment: conda-environment
         environment-file: .github/workflows/environment.yml
 
-    - name: Env vars
-      run: |
-        export OOMMF_TCL_CONFIG=${PREFIX}/lib/tclConfig.sh
-        export OOMMF_TK_CONFIG=${PREFIX}/lib/tkConfig.sh
-
     - name: Build OOMMF
       run: make build-with-all
 
