@@ -249,7 +249,7 @@ void Oxs_TransformZeeman::ComputeEnergyChunkInitialize
         thread_maxvalsq[0] = thread_maxvalsq[i];
       }
     }
-    max_fixedfield = Oc_Sqrt(thread_maxvalsq[0]);
+    max_fixedfield = sqrt(thread_maxvalsq[0]);
     mesh_id = state.mesh->Id();
   }
   OC_REAL8m Tmax=1;
@@ -261,7 +261,7 @@ void Oxs_TransformZeeman::ComputeEnergyChunkInitialize
     if(tmp2>Tmax) Tmax=tmp2;
     OC_REAL8m tmp3 = tfrm_row3.MagSq();
     if(tmp3>Tmax) Tmax=tmp3;
-    Tmax = Oc_Sqrt(Tmax);
+    Tmax = sqrt(Tmax);
   }
 
   ocedt.energy_density_error_estimate

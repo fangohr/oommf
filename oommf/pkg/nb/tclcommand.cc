@@ -273,7 +273,12 @@ void Nb_TclCommand::ReleaseBaseCommand()
 
   interp=NULL;
 
-  if(unbalanced && !uncaught_exception()
+  if(unbalanced &&
+#if defined(__cplusplus) && __cplusplus>201700
+ !uncaught_exceptions()
+#else
+ !uncaught_exception()
+#endif
      && !no_too_few_restores_warning) {
     char item[4000];
     Oc_EllipsizeMessage(item,sizeof(item),exception_prefix.c_str());

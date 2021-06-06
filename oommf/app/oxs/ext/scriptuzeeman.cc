@@ -143,7 +143,7 @@ void Oxs_ScriptUZeeman::ComputeEnergyChunkInitialize
 {
   GetAppliedField(state,H_work,dHdt_work);
   ocedt.energy_density_error_estimate
-    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*Oc_Sqrt(H_work.MagSq());
+    = 4*OC_REAL8m_EPSILON*MU0*state.max_absMs*H_work.Mag();
 }
 
 void Oxs_ScriptUZeeman::ComputeEnergyChunk

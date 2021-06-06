@@ -56,10 +56,10 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H2><A NAME="SECTION0001714000000000000000"></A><A NAME="sec:odtcalc"></A>
 <BR>
 ODT Derived Quantity Calculator: odtcalc
-</H2><A NAME="17625"></A>
+</H2><A NAME="17649"></A>
 
 <P>
-The <B>odtcalc</B><A NAME="17627"></A> utility reads an
+The <B>odtcalc</B><A NAME="17651"></A> utility reads an
 <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT</A> file on stdin
 that contains one or more tables, and prints to stdout an ODT file
 consisting of the same tables augmented by additional columns as
@@ -119,6 +119,80 @@ new columns.  The order of command line arguments controls the order of
 the new columns that are added to the right side of the data table.
 
 <P>
+
+<P>
+<FONT SIZE="+1"><B>Example</B></FONT>
+<BR>
+Suppose <TT><B>ring.odt</B></TT> contains hysteresis loop data from an <B>Oxsii</B>
+simulation where the field was applied in the <B><I>xy</I></B>
+<!-- MATHEND
+ 
+ -->
+-plane at an angle of
+<B>30<SUP><TT>o</TT></SUP></B>
+<!-- MATHEND
+ 
+ -->
+ from the <B><I>x</I></B>
+<!-- MATHEND
+ 
+ -->
+-axis.  The data file holds field and average
+magnetization axis component values <B><I>B</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>B</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, <B><I>m</I><SUB>x</SUB></B>
+<!-- MATHEND
+ 
+ -->
+, and <B><I>m</I><SUB>y</SUB></B>
+<!-- MATHEND
+ 
+ -->
+.  We
+want field and magnetization data projected onto the applied field
+axis.  We can create those values using <B>odtcalc</B> like so:
+<PRE>
+tclsh oommf.tcl odtcalc B '$Bx*0.86602540378443865+$By*0.5' mT \
+   m '$mx*0.86602540378443865+$my*0.5' '' \
+   &lt; ring.odt &gt; ring-augmented.odt
+</PRE>
+Here <!-- MATH
+ $\cos(30^\circ)=0.8660254037844365$
+ -->
+<B>cos(30<SUP><TT>o</TT></SUP>) = 0.8660254037844365</B>
+<!-- MATHEND
+ 
+ -->
+ and <!-- MATH
+ $\sin(30^\circ)=0.5$
+ -->
+<B>sin(30<SUP><TT>o</TT></SUP>) = 0.5</B>
+<!-- MATHEND
+ 
+ -->
+.  The
+<TT><B>ring-augmented.odt</B></TT> file will have all the data in the original
+<TT><B>ring.odt</B></TT> file, plus two additional columns, labeled B with
+units of mT and m with empty units.  (Note: On Windows replace the
+single quotes in the above command with double quotes.  Also, the
+Windows command line uses the caret character <code>^</code> for line
+continuation instead of the backslash <code>\</code>.)
+
+<P>
+To extract just the B and m columns and prepare for import into a
+spreadsheet program supporting CSV (comma separated value) format,
+post-process with <B>odtcols</B>:
+<PRE>
+tclsh oommf.tcl odtcols -t csv B m &lt; ring-augmented.odt &gt; ring-export.dat
+</PRE>
+
+<P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
@@ -138,6 +212,6 @@ the new columns that are added to the right side of the data table.
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
 </BODY>
 </HTML>

@@ -49,7 +49,6 @@ private:
   // of the CalcEnergy routines.  (Well, currently just 12NgbrZD1.)
   // They are "mutable" so they can be changed from inside the
   // (const) CalcEnergy routines.
-  mutable Oxs_Mutex thread_mutex;
   mutable OC_UINT4m mesh_id;
   mutable Nb_2DArrayWrapper<OC_REAL8m> xcoef;
   mutable Nb_2DArrayWrapper<OC_REAL8m> ycoef;

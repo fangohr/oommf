@@ -18,8 +18,14 @@ Specify Oxs_BoxAtlas:atlas [subst {
   zrange {[expr {-$thickness/2}] [expr {$thickness/2}]}
 }]
 
+if {[info exists regression_test] && $regression_test} {
+   set def_ip 1 ;# Running regression test, default to initialization pass
+} else {
+   set def_ip 0 ;# Standard default is normal run
+}
+
 # Simulation parameters
-Parameter initproblem	0	;# 1 = initialization pass; 0 = normal run
+Parameter initproblem	$def_ip ;# 1 = initialization pass; 0 = normal run
 Parameter cellsize	2e-9	;# m
 Parameter stop		0.01	;# rad/ns
 #Parameter stop		20	;# rad/ns

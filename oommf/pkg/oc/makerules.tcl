@@ -73,16 +73,11 @@ MakeRule Define {
 }
 unset acceptslm
 
-# Some platforms don't have floorl; build varinfo.cc appropriately.
-set FLOORL_CHECK {}
-if {![catch {[Oc_Config RunPlatform] GetValue program_compiler_c++_property_floorl_flag} _]} {
-   set FLOORL_CHECK "-[Platform Name] [list $_]"
-}
 MakeRule Define {
     -targets		[Platform Objects varinfo]
     -dependencies	[concat [list [Platform Name]] \
 			        [[CSourceFile New _ varinfo.cc] Dependencies]]
-   -script		[subst -nocommands {Platform Compile C++ -opt 1 $FLOORL_CHECK \
+   -script		[subst -nocommands {Platform Compile C++ -opt 1 \
 			        -inc [[CSourceFile New _ varinfo.cc] DepPath] \
 			        -out varinfo -src varinfo.cc 
                          }]
@@ -124,13 +119,17 @@ MakeRule Define {
 }
 
 # The object-building rules are uglier than I would like because of a
-# "chicken and egg" problem with ocport.h .
+# "chicken and egg" problem with ocport.h.
 # When ocport.h doesn't exist, the $include dependency search checks
 # to see if there is a MakeRule for it.  To do that it must source
 # this file.  That causes the MakeRule immediately above to be
 # evaluated, and dependencies of autobuf.cc are sought.  They include
 # oc.h, which is what leads us to ocport.h in the first place.  
 # The Dependencies check regards this as a circular dependency and fails.
+# The workaround is to avoid the CSourceFile Dependencies call where a
+# circular dependency occurs, and to instead directly insert all the
+# dependencies into the MakeRule -dependencies.  (Of course, this is
+# a maintenance headache.)
 
 MakeRule Define {
     -targets		[Platform Objects oc]

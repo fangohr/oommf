@@ -122,8 +122,8 @@ Oxs_Driver::BackgroundCheckpoint::Init
   checkpoint_interval = in_interval;
   checkpoint_time.ReadWallClock();
   checkpoint_id = 0;
-  mutex.Lock();
-  try {
+  {
+    Oc_LockGuard lck(mutex);
     checkpoint_writes = 0;
     backup_request.Release(); // Release any backup in holding area
     backup_inprogress.Release();
@@ -133,11 +133,7 @@ Oxs_Driver::BackgroundCheckpoint::Init
       throw Oxs_BadCode("checkpoint_mode in improper state");
     }
     checkpoint_mode = OXSDRIVER_CMT_ENABLED;
-  } catch(...) {
-    mutex.Unlock();
-    throw;
   }
-  mutex.Unlock();
 
   SetDisposal(in_disposal);
 
@@ -162,11 +158,10 @@ Oxs_Driver::BackgroundCheckpoint::WaitForBackupThread
   }
 
   // Remove backup request from holding pen, if any
-  mutex.Lock();
-  try {
+  {
+    Oc_LockGuard lck(mutex);
     checkpoint_mode = newmode;
-  } catch(...) { mutex.Unlock(); throw; }
-  mutex.Unlock();
+  }
 
   timeout *= 2; // Sleep time is 0.5s
   OC_BOOL backup_thread_stopped=1;
@@ -234,8 +229,8 @@ Oxs_Driver::BackgroundCheckpoint::RequestBackup
     throw("Invalid checkpoint backup request.");
   }
   int dolaunch = 0;
-  mutex.Lock();
-  try {
+  {
+    Oc_LockGuard lck(mutex);
     // Ignore request if new state is already last state on stack
     const OC_UINT4m req_id = statekey.GetPtr()->Id();
     OC_BOOL do_request = 1;
@@ -259,11 +254,6 @@ Oxs_Driver::BackgroundCheckpoint::RequestBackup
       checkpoint_id = req_id;
     }
   }
-  catch(...) { // Safety
-    mutex.Unlock();
-    throw;
-  }
-  mutex.Unlock();
   if(dolaunch) Launch();
 }
 
@@ -293,8 +283,8 @@ Oxs_Driver::BackgroundCheckpoint::Task()
 {
   while(1) {
     const Oxs_SimState* ptr = 0;
-    mutex.Lock();
-    try {
+    {
+      Oc_LockGuard lck(mutex);
       if(backup_inprogress.GetPtr()!=0) {
         ++checkpoint_writes;
         backup_inprogress.Release();
@@ -307,11 +297,6 @@ Oxs_Driver::BackgroundCheckpoint::Task()
       }
       ptr = backup_inprogress.GetPtr();
     }
-    catch(...) { // Safety
-      mutex.Unlock();
-      throw;
-    }
-    mutex.Unlock();
 
     if(ptr==0) break;  // Done
 
@@ -354,33 +339,38 @@ Oxs_Driver::BackgroundCheckpoint::Task()
       //       file checkpoint_filename_tmpB.
 #endif
     } catch (Oxs_Exception& oxserr) {
-      mutex.Lock();
-      try { backup_inprogress.Release(); } catch(...) {}
-      mutex.Unlock();
+      try {
+        Oc_LockGuard lck(mutex);
+        backup_inprogress.Release();
+      } catch(...) {}
       oxserr.Prepend(errinfo);
       throw;
     } catch (Oc_Exception& ocerr) {
-      mutex.Lock();
-      try { backup_inprogress.Release(); } catch(...) {}
-      mutex.Unlock();
+      try {
+        Oc_LockGuard lck(mutex);
+        backup_inprogress.Release();
+      } catch(...) {}
       ocerr.PrependMessage(errinfo.c_str());
       throw;
     } catch (const String& errstr) {
-      mutex.Lock();
-      try { backup_inprogress.Release(); } catch(...) {}
-      mutex.Unlock();
+      try {
+        Oc_LockGuard lck(mutex);
+        backup_inprogress.Release();
+      } catch(...) {}
       errinfo += errstr;
       throw errinfo;
     } catch (const char* errmsg) {
-      mutex.Lock();
-      try { backup_inprogress.Release(); } catch(...) {}
-      mutex.Unlock();
+      try {
+        Oc_LockGuard lck(mutex);
+        backup_inprogress.Release();
+      } catch(...) {}
       errinfo += errmsg;
       throw errinfo;
     } catch (...) {
-      mutex.Lock();
-      try { backup_inprogress.Release(); } catch(...) {}
-      mutex.Unlock();
+      try {
+        Oc_LockGuard lck(mutex);
+        backup_inprogress.Release();
+      } catch(...) {}
       throw;
     }
   } // while(1)
@@ -506,8 +496,11 @@ Oxs_Driver::Oxs_Driver
     Nb_DString foopath = Nb_TclFileJoin(pathparts);
     tmp_checkpoint_file = foopath.GetStr();
   }
-  double tmp_checkpoint_interval // Convert from minutes to seconds.
-    = 60*GetRealInitValue("checkpoint_interval",15.0);
+  double tmp_checkpoint_interval = GetRealInitValue("checkpoint_interval",15.0);
+  if(tmp_checkpoint_interval>0) {
+    tmp_checkpoint_interval *= 60; // Convert from minutes to seconds.
+    // Note: checkpoint_interval<0 disables checkpointing.
+  }
   String tmp_checkpoint_disposal = "standard";
   // The deprecated "checkpoint_cleanup" init value with default
   // value "normal" has been replaced with "checkpoint_disposal"

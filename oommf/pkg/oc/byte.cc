@@ -8,7 +8,6 @@
  * Last modified by: $Author: donahue $
  */
 
-#include "ocport.h"
 #include "byte.h"
 /* End includes */     /* Optional directive to pimake */
 

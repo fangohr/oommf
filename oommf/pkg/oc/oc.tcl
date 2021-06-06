@@ -96,7 +96,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 2.0a1
+package provide Oc 2.0a2
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]

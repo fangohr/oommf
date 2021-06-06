@@ -106,7 +106,7 @@ Nb_DString& Nb_DString::Dup(const char *cptr)
     str=new char[size_t(bufsize)];
     if(str==0) FatalError(-1,STDDOC,"No memory");
   }
-  strncpy(str,cptr,size_t(new_length));   // Safety
+  strncpy(str,cptr,size_t(new_length)+1);
   str[new_length]='\0';           // Safety
   return *this;
 #undef MEMBERNAME

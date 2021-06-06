@@ -175,7 +175,7 @@ set omfhb_debug 0
 source [file join [file dirname [info script]] counter.tcl]
 
 Oc_Main SetAppName mmHelp
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:31 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author

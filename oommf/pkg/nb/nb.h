@@ -39,7 +39,7 @@
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// This insures standard math functions like floor, ceil, sqrt
-/// are available.
+/// are available and overloaded properly by argument type.
 
 /* End includes */     // Optional directive to pimake
 

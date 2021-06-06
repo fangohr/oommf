@@ -67,52 +67,62 @@ int Oxs_GetOxsThreadNumber() { return oxs_thread_number; }
 
 // Thread-safe fprintf
 void Oxs_ThreadPrintf(FILE* fptr,const char *format, ...) {
-  static Oxs_Mutex oxs_threadprintf_mutex;
-  oxs_threadprintf_mutex.Lock();
-
+#if OOMMF_THREADS
+  static std::mutex oxs_threadprintf_mutex;
+  std::lock_guard<std::mutex> lck(oxs_threadprintf_mutex);
+#endif
   va_list arg_ptr;
   va_start(arg_ptr,format);
   vfprintf(fptr,format,arg_ptr);
   va_end(arg_ptr);
-
   fflush(fptr);
-
-  oxs_threadprintf_mutex.Unlock();
 }
 
 #if OOMMF_THREADS
-Oxs_Mutex Oxs_ThreadError::mutex;
+std::mutex Oxs_ThreadError::mutex;
 int Oxs_ThreadError::error(0);
 String Oxs_ThreadError::msg;
 #endif
 
-// Notes on Tcl_MutexLock, Tcl_ConditionNotify, and Tcl_ConditionWait:
-//  1) A lock should be held on a mutex before issuing a
-//     notify or performing a wait.
-//  2) When a wait is issued, the mutex lock is released.
-//     When the thread awakens, it automatically reclaims
-//     the mutex lock.
-//  3) After issuing a notify, the code needs to explicitly
-//     release the mutex lock.  Threads waiting on the
-//     notify condition will not begin executing until
-//     they can grab the mutex (as explained in 2).
-//  4) After a notify is issued, there is no guarantee that
+// Notes on mutexes, locks, and condition variables:
+
+//  1) A lock does not need to be held on a mutex before issuing a
+//     notify. In principle there is a performance advantage for the
+//     thread doing the notify to not hold a lock since the target can't
+//     wake up until can grab the mutex.  In practice, threading
+//     libraries often code around this issue.  Also, in many
+//     circumstances proper behavior requires the notifying thread to
+//     have a lock on the mutex when issuing the notify.
+//
+//  2) OTOH, a thread the wants to wait needs to grab the mutex before
+//     calling wait.  When a wait is issued, the mutex lock is released.
+//     When the thread awakens, it automatically reclaims the mutex
+//     lock.
+
+
+//  3) After a notify is issued, there is no guarantee that
 //     upon release of the mutex that the next mutex lock
 //     will go to a thread waiting at a condition wait.  In
 //     particular, consider this scenario:
 //
-//        Initially, count=0, thread 1 has a lock on mutex.
+//        int count;
+//        std::condition_variable cond;
+//        std::mutex mutex;
+//        std:unique_lock<std::mutex> lck1(mutex,defer_lock);
+//        std:unique_lock<std::mutex> lck2(mutex,defer_lock);
+//
+//        Initially, count=0, thread 1 has a lock (lck1) on mutex.
 //
 //        Thread 1:
-//           Tcl_ConditionWait(&cond,&mutex,NULL);
+//           cond.wait(lck1);
 //           cout << count;
-//           Tcl_MutexUnlock(mutex);
+//           lck1.unlock();
 //
 //        Threads 2 & 3:
-//           Tcl_Lock(&mutex);
+//           lck2.lock()
 //           ++count;
-//           Tcl_ConditionNotify(&cond);
-//           Tcl_Unlock(&mutex);
+//           cond.notify_all();
+//           lck2.unlock();
 //
 //     The value for count output by thread 1 may be either 1 or 2.
 //     For example, suppose thread 2 succeeds in acquiring mutex first.
@@ -128,21 +138,21 @@ String Oxs_ThreadError::msg;
 //     thread is awaken.  For example, if Thread 1 above is changed to
 //
 //        Thread 1: (BAD BAD BAD!)
-//           Tcl_ConditionWait(&cond,&mutex,NULL);
+//           cond.wait(lck1);
 //           cout << count;
-//           Tcl_ConditionWait(&cond,&mutex,NULL);
+//           cond.wait(lck1);
 //           cout << count;
-//           Tcl_MutexUnlock(mutex);
+//           lck.unlock();
 //
 //     then this may hang at the second wait.  The correct way to
 //     wait on multiple notifies is like so:
 //
 //        Thread 1: (GOOD)
 //           while(count<2) { // Assume mutex held coming in
-//              Tcl_ConditionWait(&cond,&mutex,NULL);
+//              cond.wait(lck1);
 //           }
 //           count << count;
-//           Tcl_MutexUnlock(mutex);
+//           lck.unlock();
 //
 
 
@@ -150,70 +160,27 @@ String Oxs_ThreadError::msg;
 // Thread local storage.  Each thread gets its own instance.
 
 #if OOMMF_THREADS //    --- threads version ----------------------------
-
-void Oxs_ThreadLocalMap::DeleteLocker(Tcl_ThreadDataKey* mapkey)
-{ // Destroy locker items, version for threaded builds
-  void** vtmp = (void**)Tcl_GetThreadData(mapkey,sizeof(void*));
-  assert(vtmp != NULL);
-  if(*vtmp != NULL) {
-    OXS_THREADMAP* lockerptr = static_cast<OXS_THREADMAP*>(*vtmp);
-    OXS_THREADMAP::iterator it;
-    for(it = lockerptr->begin();it!=lockerptr->end();++it) {
-      // Delete object pointed to by Oxs_ThreadMapDataObject*
-      delete it->second;
-    }
-    delete lockerptr;
-    *vtmp = NULL; // Safety
-  }
-}
-
-OXS_THREADMAP*
-Oxs_ThreadLocalMap::GetLockerPointer()
-{ // Returns pointer to thread-specific instance of map.
-  // If map does not exist, then automatically creates it.
-  // (Threaded version.)
-
-  void** vtmp = (void**)Tcl_GetThreadData(mapkey,sizeof(void*));
-  assert(vtmp != NULL);
-
-  OXS_THREADMAP* lockerptr = NULL;
-
-  if(*vtmp == NULL) {
-    // Map doesn't exist.  Create it.
-    lockerptr = new OXS_THREADMAP;
-    *vtmp = lockerptr;
-  } else {
-    // Map already exists.  Return pointer.
-    lockerptr = static_cast<OXS_THREADMAP*>(*vtmp);
-  }
-
-  return lockerptr;
-}
-
+thread_local OXS_THREADMAP Oxs_ThreadLocalMap::locker;
 #else // OOMMF_THREADS   --- no-threads version ------------------------
+OXS_THREADMAP Oxs_ThreadLocalMap::locker;
+#endif // OOMMF_THREADS
 
-OXS_THREADMAP Oxs_ThreadLocalMap::nothreads_locker;
-
-void Oxs_ThreadLocalMap::DeleteLocker(Tcl_ThreadDataKey*)
+void Oxs_ThreadLocalMap::DeleteLocker()
 { // Destroy locker items, version for non-threaded builds
   OXS_THREADMAP::iterator it;
-  for(it = nothreads_locker.begin();it!=nothreads_locker.end();++it) {
+  for(it = locker.begin();it!=locker.end();++it) {
     // Delete object pointed to by Oxs_ThreadMapDataObject*
     delete it->second;
   }
-  nothreads_locker.clear();
+  locker.clear();
 }
 
-// No-threads version of GetLockerPointer() is inlined in oxsthread.h
-
-#endif // OOMMF_THREADS
 
 void
 Oxs_ThreadLocalMap::AddItem
 (String name,
  Oxs_ThreadMapDataObject* obj)
 { // Throws an exception if "name" is already in map
-  OXS_THREADMAP& locker = *GetLockerPointer();
 
   OXS_THREADMAP::iterator it = locker.find(name);
   if(it != locker.end()) {
@@ -228,7 +195,6 @@ Oxs_ThreadMapDataObject*
 Oxs_ThreadLocalMap::GetItem
 (String name)
 { // Returns null pointer if "name" is not in map.
-  OXS_THREADMAP& locker = *GetLockerPointer();
   OXS_THREADMAP::iterator it = locker.find(name);
   if(it == locker.end()) {
     return NULL;
@@ -242,7 +208,6 @@ Oxs_ThreadLocalMap::UnmapItem
 { // Removes item from map, and returns pointer to item.  Destructor
   // for item is not called.  Throws an exception if "name" is not in
   // map.
-  OXS_THREADMAP& locker = *GetLockerPointer();
   OXS_THREADMAP::iterator it = locker.find(name);
   if(it == locker.end()) {
     OXS_THROW(Oxs_ProgramLogicError, String("Map item \"") + name
@@ -262,8 +227,6 @@ Oxs_ThreadLocalMap::DeleteItem
   delete objptr;
 }
 
-Tcl_ThreadDataKey Oxs_ThreadRunObj::thread_data_map;
-
 #if OOMMF_THREADS
 ////////////////////////////////////////////////////////////////////////
 // Mainline for actual (OS) threads
@@ -281,10 +244,11 @@ void thread_abort_handler(int)
 }}
 #endif // OC_WINDOWS
 
-Tcl_ThreadCreateProc _Oxs_Thread_threadmain;
-Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
+void _Oxs_Thread_threadmain(Oxs_Thread* othread)
 { // NB: Be careful, this routine and any routine called from inside
   //     must be re-entrant!
+  // NB: It is assumed that the pointer to object "othread" remains
+  //     valid throughout the life of the thread.
 
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
   signal(SIGABRT,thread_abort_handler); // "assert" handling
@@ -292,39 +256,41 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
   /// handling with Windows Visual C++
 #endif // OC_WINDOWS
 
-  // Cast and dereference clientdata
-  // NB: It is assumed that the referenced object remains valid
-  // throughout the life of the thread.
-  Oxs_Thread& othread = *static_cast<Oxs_Thread *>(clientdata);
-  Oc_NumaRunOnNode(othread.thread_number);
+  Oc_NumaRunOnNode(othread->thread_number);
 
+  // Reserve capacity in thread_local locker.  This can protect against
+  // implementation bugs in thread_local associative containers.
+  Oxs_ThreadLocalMap::locker.reserve(256);
+  
   // Break out references to object data.  Copy thread_number on the
   // assumption that it is fixed throughout object lifetime.
   // The stop, runobj, and data objects may change between calls
   // (i.e., wakeups); we hold a references to these pointers to keep
   // this up-to-date.
-  int thread_number         = othread.thread_number;
-  Oxs_ThreadControl& start  = othread.start;
-  Oxs_ThreadControl* &stop  = othread.stop;
-  Oxs_ThreadRunObj* &runobj = othread.runobj;
-  void* &data               = othread.data;
+  int thread_number         = othread->thread_number;
+  Oxs_ThreadControl& start = othread->start;
+  std::unique_lock<std::mutex> startlck(start.mutex);
+  Oxs_ThreadControl* &stop = (othread->stop);
+  // Note: At this point stop is a NULL pointer
+  Oxs_ThreadRunObj* &runobj = othread->runobj;
+  void* &data               = othread->data;
 
   oxs_thread_number = thread_number; // Set thread-local copy
 
-  std::vector<Oxs_Thread*> &launch_threads = othread.launch_threads;
+  std::vector<Oxs_Thread*> &launch_threads = othread->launch_threads;
 
 #if OC_CHILD_COPY_FPU_CONTROL_WORD
   // Copy FPU control data (which includes floating point precision
   // and rounding) from parent to child.
-  Oc_FpuControlData fpu_control_data = othread.fpu_control_data;
+  Oc_FpuControlData fpu_control_data = othread->fpu_control_data;
   fpu_control_data.WriteData();
   {
     Oc_AutoBuf ab;
     Oc_FpuControlData fpu_data;
     fpu_data.ReadData();
     fpu_data.GetDataString(ab);
-    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
-    //                 thread_number,ab.GetStr());
+    Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+                    thread_number,ab.GetStr());
   }
 #endif // OC_CHILD_COPY_FPU_CONTROL_WORD
 
@@ -341,10 +307,10 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
   Tcl_Interp *thread_interp = Tcl_CreateInterp();
 #endif
 
-  // Notify parent Oxs_Thread that we are ready and waiting
-  start.Lock();
+  // Notify parent Oxs_Thread that we are ready and waiting.  Note
+  // that we are already holding a lock on the start mutex.
   start.count = 1; // Ready to wait
-  start.Notify();
+  start.cond.notify_all();
 
   // Error handling
   char errbuf[256];
@@ -355,8 +321,14 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
 
   // Action loop
   while(1) {
-    start.WaitForZero();
-    if(0==runobj) break;
+    assert(startlck.owns_lock());
+    while(start.count != 0) start.cond.wait(startlck);
+    if(nullptr==runobj) break; // Private signal to exit thread
+
+    // At this point *stop should be a valid pointer.  We can check and
+    // use this pointer as long as we hold the start mutex.
+    assert(nullptr != stop && startlck.owns_lock());
+
     try {
       if(runobj->multilevel) {
         // Wake up siblings
@@ -383,27 +355,36 @@ Tcl_ThreadCreateType _Oxs_Thread_threadmain(ClientData clientdata)
                   thread_number);
       Oxs_ThreadError::SetError(String(errbuf));
     }
-    stop->Lock();
-    // NB: stop->mutex must be acquired before changing stop->count.
-    //     Note too that only the last thread to finish needs to
-    //     notify .
-    if((--stop->count) == 0) stop->Notify();
-    start.count = 1; // Ready to wait.  Set this before freeing stop
-    /// mutex, so that the thread signals as ready if tested from
-    /// inside Oxs_ThreadTree::Launch.
-    stop->Unlock();
+    assert(nullptr != stop && startlck.owns_lock());
+
+    // stop.mutex must be acquired before changing stop.count.  All
+    // child threads are sharing a single stop.mutex.  Each thread needs
+    // to have it's own lock object, so we can't use the
+    // stop->Lock()/Unlock() calls (unless/until we rewrite
+    // Lock()/Unlock() to call mutex.lock()/unlock() directly.  Note too
+    // that only the last thread to finish needs to notify.
+    {
+      std::lock_guard<std::mutex> stoplck(stop->mutex);
+      if((--stop->count) == 0) {
+        stop->cond.notify_one();
+      }
+      start.count = 1; // Ready to wait.  Set this before freeing stop
+      /// mutex, so that the thread signals as ready if tested from
+      /// inside Oxs_ThreadTree::Launch.
+    }
+    // Note: *stop should not be accessed after start is released.
+
   }
+  assert(startlck.owns_lock());
   start.count = 1;
-  start.Notify();
-  start.Unlock();
+  start.cond.notify_one();
+  startlck.unlock();
 
   // Clean-up thread-local storage
-  Oxs_ThreadLocalMap::DeleteLocker(&Oxs_ThreadRunObj::thread_data_map);
+  Oxs_ThreadLocalMap::DeleteLocker();
 #if _OXS_THREAD_MAKE_CHILD_INTERPS
   Tcl_DeleteInterp(thread_interp);
 #endif
-  Tcl_ExitThread(TCL_OK);
-  TCL_THREAD_CREATE_RETURN;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -432,7 +413,7 @@ public:
 };
 
 class _Oxs_ThreadTree_GetThreadTimers : public Oxs_ThreadRunObj {
-public: 
+public:
   _Oxs_ThreadTree_GetThreadTimers() {}
   void Cmd(int threadnumber, void* data) {
     std::vector< std::vector<Nb_WallWatch> > *foo
@@ -473,53 +454,39 @@ public:
 Oxs_Thread::Oxs_Thread
 (int thread_number_x)
   : thread_number(thread_number_x),
-    stop(0), runobj(0), data(0)
+    stop(nullptr), runobj(nullptr), data(nullptr)
 {
+  // Note: We may want to wrap start and stop controls into
+  // a single dual mutex interlocked object.
 
 #if OC_CHILD_COPY_FPU_CONTROL_WORD
   fpu_control_data.ReadData(); // Save (current) parent FPU state.
   { // Print FPU state of master thread
     Oc_AutoBuf ab;
     fpu_control_data.GetDataString(ab);
-    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
-    //                 0,ab.GetStr());
+    Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+                     0,ab.GetStr());
   }
 #endif // OC_CHILD_COPY_FPU_CONTROL_WORD
-  start.Lock();
-  if(TCL_OK
-     != Tcl_CreateThread(&thread_id, _Oxs_Thread_threadmain, this,
-                         TCL_THREAD_STACK_DEFAULT, TCL_THREAD_NOFLAGS)) {
-    start.Unlock();
-    OXS_THROW(Oxs_BadResourceAlloc,"Thread creation failed."
-              "(Is the Tcl library thread enabled?)");
-  }
+  // Start child thread
+  std::unique_lock<std::mutex> startlck(start.mutex);
+  std::thread (_Oxs_Thread_threadmain,this).detach();
+  // Wait for child thread to finish initialization.
   start.count = 0;
-  while(0 == start.count) {
-    // I don't know that this loop is really necessary, because
-    // this is the only thread waiting on start.cond and only
-    // one thread is notifying on start.cond, but all the
-    // references say to do this, and it shouldn't hurt.
-    start.Wait(0);
-  }
-  start.Unlock();
+  while(start.count == 0) start.cond.wait(startlck);
+  startlck.unlock();
 }
 
 Oxs_Thread::~Oxs_Thread()
 {
-  start.Lock();
-  stop = 0;
-  runobj = 0;
-  data = 0;
+  std::unique_lock<std::mutex> startlck(start.mutex);
+  stop = nullptr;
+  runobj = nullptr;
+  data = nullptr;
   start.count = 0;
-  start.Notify();
-  while(0 == start.count) {
-    // Is this loop necessary?  Cf. notes in check_start
-    // loop in Oxs_Thread constructor.
-    start.Wait(0);
-  }
-  start.Unlock();
-  // Note: start.cond and start.mutex are automatically finalized
-  // inside the Oxs_ThreadControl destructor
+  start.cond.notify_all();
+  while(start.count == 0) start.cond.wait(startlck);
+  startlck.unlock();
 }
 
 void Oxs_Thread::RunCmd
@@ -530,18 +497,19 @@ void Oxs_Thread::RunCmd
   // runobj == NULL is used as a message to threadmain to
   // terminate.  Don't expose this implementation detail
   // to the user.  Instead, raise an error.
-  if(0 == runobj_x) {
+  if(nullptr == runobj_x) {
     OXS_THROW(Oxs_BadParameter,"NULL thread runobj reference.");
   }
-  start.Lock();
+  std::unique_lock<std::mutex> startlck(start.mutex);
   stop = &stop_x;
   runobj = runobj_x;
   data = data_x;
   start.count = 0; // Run signal
-  start.Notify();
-  start.Unlock();
+  startlck.unlock();
+  start.cond.notify_one(); // Tell child to start
 }
 
+#if 0
 void Oxs_Thread::GetStatus(String& results)
 { // For debugging.
   char buf[1024];
@@ -550,7 +518,7 @@ void Oxs_Thread::GetStatus(String& results)
   Oc_Snprintf(buf,sizeof(buf),"start (%p) mutex %s/count %d",
               &start,(start_locked ? "locked" : "free"),start_count);
   results += String(buf);
-  
+
   if(stop) {
     int stop_locked,stop_count;
     stop->GetStatus(stop_locked,stop_count);
@@ -559,6 +527,9 @@ void Oxs_Thread::GetStatus(String& results)
     results += String(buf);
   }
 }
+#else
+void Oxs_Thread::GetStatus(String&) {}
+#endif
 
 ////////////////////////////////////////////////////////////////////////
 // ThreadTree class, manager for Oxs_Thread objects
@@ -566,17 +537,22 @@ void Oxs_Thread::GetStatus(String& results)
 //       first Launch command, and is held until Join
 //       is called.  Each tree has its own stop control,
 //       but the thread array is shared by all trees.
-Oxs_Mutex Oxs_ThreadTree::launch_mutex;
+std::mutex Oxs_ThreadTree::launch_mutex;
 std::vector<Oxs_Thread*> Oxs_ThreadTree::threads;
 std::vector<Oxs_Thread*> Oxs_ThreadTree::root_launch_threads;
 int Oxs_ThreadTree::multi_level_thread_count = 0;
 
 void Oxs_ThreadTree::Launch(Oxs_ThreadRunObj& runobj,void* data)
 { // Launched threads, one at a time.
+
+  // The stop mutex should be held any time threads_unjoined
+  // is bigger than zero.  No child threads access threads_unjoined,
+  // so we can test and modify it without a lock.
   if(0==threads_unjoined) stop.Lock();
 
-  launch_mutex.Lock(); // Make sure no new threads get
-  /// run while we're looking for a free thread.
+  std::lock_guard<std::mutex> launchlck(launch_mutex);
+  /// Make sure no new threads get run while we're looking for a free
+  /// thread.
   int free_thread=0;
   while(size_t(free_thread)<threads.size()) {
     if(!threads[free_thread]->IsRunning()) break;
@@ -594,7 +570,6 @@ void Oxs_ThreadTree::Launch(Oxs_ThreadRunObj& runobj,void* data)
   ++threads_unjoined;
   ++stop.count;
   threads[free_thread]->RunCmd(stop,&runobj,data);
-  launch_mutex.Unlock();
 }
 
 void Oxs_ThreadTree::Join()
@@ -668,110 +643,104 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
     Oc_FpuControlData fpu_data;
     fpu_data.ReadData();
     fpu_data.GetDataString(ab);
-    // Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
-    //                 0,ab.GetStr());
+    Oxs_ThreadPrintf(stderr,"Thread %d FPU control data:%s\n",
+                     0,ab.GetStr());
   }
 #endif // OC_CHILD_COPY_FPU_CONTROL_WORD
 
-  launch_mutex.Lock(); // Insures that no new threads get started
-  /// somewhere else during this routine.  However, only the root
-  /// thread should be starting threads, so if this is actually needed
-  /// then other code is most likely badly broken.  Nonetheless, this
-  /// routine should only be called once per simulation, so the lock
-  /// overhead is negligible.
+  std::lock_guard<std::mutex> launchlck(launch_mutex);
+  /// Insures that no new threads get started somewhere else during this
+  /// routine.  However, only the root thread should be starting
+  /// threads, so if this is actually needed then other code is most
+  /// likely badly broken.  Nonetheless, this routine should only be
+  /// called once per simulation, so the lock overhead is negligible.
 
-  try {
-    // If current number of threads is smaller than requested,
-    // then create new threads to match.
+  // If current number of threads is smaller than requested,
+  // then create new threads to match.
 #if OC_USE_NUMA
-    if(threads.size()==0) { // Initial initialize
-      // Print node mask for master thread
-      Oc_AutoBuf runmask;
-      Oc_NumaGetRunMask(runmask);
-      Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
-                       0,runmask.GetStr());
-    }
+  if(threads.size()==0) { // Initial initialize
+    // Print node mask for master thread
+    Oc_AutoBuf runmask;
+    Oc_NumaGetRunMask(runmask);
+    Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
+                     0,runmask.GetStr());
+  }
 #endif
 
-    int it;
-    for(it=static_cast<int>(threads.size());it<import_threadcount-1;++it) {
-      // Note: The thread_number is one larger than the index into
-      // the "threads" vector, because thread_number 0 is reserved
-      // for the main (parent) thread, which is not referenced in
-      // the "threads" vector.  (The "threads" vector only holds
-      // child threads.)
-      threads.push_back(new Oxs_Thread(it+1));
-    }
-    multi_level_thread_count = import_threadcount - 1;
-
-    // Clear all launch lists
-    root_launch_threads.clear();
-    for(it=0;it<import_threadcount-1;++it) {
-      threads[it]->launch_threads.clear();
-    }
-
-    // If NUMA is engaged, then make one thread on each node
-    // a launch leader, and the rest slaves.  Otherwise, break
-    // leader and slaves up so that the number of slaves for
-    // each leader roughly matches the number of leaders.
-    if(Oc_NumaReady()) {
-      std::vector< _Oxs_ThreadTree_NodeDistData > nodedist;
-      for(int ti=0;ti<import_threadcount;++ti) {
-        int runnode = Oc_NumaGetRunNode(ti);
-        int ni;
-        for(ni=0;ni<int(nodedist.size());++ni) {
-          if(runnode == nodedist[ni].nodenumber) {
-            nodedist[ni].threads.push_back(ti);
-            break;
-          }
-        }
-        if(ni >= int(nodedist.size())) {
-          // Unmapped node.  Add a new entry
-          nodedist.push_back(_Oxs_ThreadTree_NodeDistData(runnode,ti));
-        }
-      }
-
-      // First, push leader threads launched by root thread into root
-      // launch list, and set up each leader launch list.  Once those
-      // are all filled, go back and append non-leader threads
-      // launched by root thread into the root launch list.
-      // NOTE: Accesses into threads[] have a "-1" offset to account for
-      //       the difference between thread id's and the thread[]
-      //       indices.  Thread id 0 refers to the root thread and is is
-      //       not included in threads[].
-      for(int ni=1;ni<static_cast<int>(nodedist.size());++ni) {
-        Oxs_Thread* tt = threads[nodedist[ni].threads[0]-1];
-        root_launch_threads.push_back(tt);
-        for(int si=1;si<static_cast<int>(nodedist[ni].threads.size());++si) {
-          tt->launch_threads.push_back(threads[nodedist[ni].threads[si]-1]);
-        }
-      } 
-      for(int si=1;si<static_cast<int>(nodedist[0].threads.size());++si) {
-        root_launch_threads.push_back(threads[nodedist[0].threads[si]-1]);
-      }
-    } else {
-      int leadercount = int(ceil(sqrt(double(import_threadcount))));
-      int slavestep = import_threadcount/leadercount;
-      int slaveextra = import_threadcount % leadercount;
-      int ni = slavestep - 1; // "-1" because thread 0 not in threads[]
-      for(int li=1;li<leadercount;++li) {
-        int nni = ni + slavestep + (li<=slaveextra? 1 : 0);
-        root_launch_threads.push_back(threads[ni]);
-        for(int si=ni+1;si<nni;++si) {
-          threads[ni]->launch_threads.push_back(threads[si]);
-        }
-        ni = nni;
-      }
-      for(ni=1;ni<slavestep;++ni) {
-        root_launch_threads.push_back(threads[ni-1]);
-        /// "-1" to account for thread 0 being outside threads[].
-      }
-    }
-  } catch(...) {
-    launch_mutex.Unlock();
-    throw;
+  int it;
+  for(it=static_cast<int>(threads.size());it<import_threadcount-1;++it) {
+    // Note: The thread_number is one larger than the index into
+    // the "threads" vector, because thread_number 0 is reserved
+    // for the main (parent) thread, which is not referenced in
+    // the "threads" vector.  (The "threads" vector only holds
+    // child threads.)
+    threads.push_back(new Oxs_Thread(it+1));
   }
-  launch_mutex.Unlock();
+  multi_level_thread_count = import_threadcount - 1;
+
+  // Clear all launch lists
+  root_launch_threads.clear();
+  for(it=0;it<import_threadcount-1;++it) {
+    threads[it]->launch_threads.clear();
+  }
+
+  // If NUMA is engaged, then make one thread on each node
+  // a launch leader, and the rest slaves.  Otherwise, break
+  // leader and slaves up so that the number of slaves for
+  // each leader roughly matches the number of leaders.
+  if(Oc_NumaReady()) {
+    std::vector< _Oxs_ThreadTree_NodeDistData > nodedist;
+    for(int ti=0;ti<import_threadcount;++ti) {
+      int runnode = Oc_NumaGetRunNode(ti);
+      int ni;
+      for(ni=0;ni<int(nodedist.size());++ni) {
+        if(runnode == nodedist[ni].nodenumber) {
+          nodedist[ni].threads.push_back(ti);
+          break;
+        }
+      }
+      if(ni >= int(nodedist.size())) {
+        // Unmapped node.  Add a new entry
+        nodedist.push_back(_Oxs_ThreadTree_NodeDistData(runnode,ti));
+      }
+    }
+
+    // First, push leader threads launched by root thread into root
+    // launch list, and set up each leader launch list.  Once those
+    // are all filled, go back and append non-leader threads
+    // launched by root thread into the root launch list.
+    // NOTE: Accesses into threads[] have a "-1" offset to account for
+    //       the difference between thread id's and the thread[]
+    //       indices.  Thread id 0 refers to the root thread and is is
+    //       not included in threads[].
+    for(int ni=1;ni<static_cast<int>(nodedist.size());++ni) {
+      Oxs_Thread* tt = threads[nodedist[ni].threads[0]-1];
+      root_launch_threads.push_back(tt);
+      for(int si=1;si<static_cast<int>(nodedist[ni].threads.size());++si) {
+        tt->launch_threads.push_back(threads[nodedist[ni].threads[si]-1]);
+      }
+    }
+    for(int si=1;si<static_cast<int>(nodedist[0].threads.size());++si) {
+      root_launch_threads.push_back(threads[nodedist[0].threads[si]-1]);
+    }
+  } else {
+    int leadercount = int(ceil(sqrt(double(import_threadcount))));
+    int slavestep = import_threadcount/leadercount;
+    int slaveextra = import_threadcount % leadercount;
+    int ni = slavestep - 1; // "-1" because thread 0 not in threads[]
+    for(int li=1;li<leadercount;++li) {
+      int nni = ni + slavestep + (li<=slaveextra? 1 : 0);
+      root_launch_threads.push_back(threads[ni]);
+      for(int si=ni+1;si<nni;++si) {
+        threads[ni]->launch_threads.push_back(threads[si]);
+      }
+      ni = nni;
+    }
+    for(ni=1;ni<slavestep;++ni) {
+      root_launch_threads.push_back(threads[ni-1]);
+      /// "-1" to account for thread 0 being outside threads[].
+    }
+  }
 
 #if OXS_THREAD_TIMER_COUNT
   { // Create thread timers in each thread
@@ -825,9 +794,8 @@ void Oxs_ThreadTree::LaunchTree(Oxs_ThreadRunObj& runobj,void* data)
     return;
   }
 
-  stop.Lock();
-  stop.count = multi_level_thread_count;
-  stop.Unlock();
+
+  stop.LockAndSet(multi_level_thread_count);
 
   try {
     runobj.multilevel=1; // Inform group leaders to launch slaves
@@ -841,9 +809,7 @@ void Oxs_ThreadTree::LaunchTree(Oxs_ThreadRunObj& runobj,void* data)
     throw;
   }
 
-  stop.Lock();
-  stop.WaitForZero();
-  stop.Unlock();
+  stop.LockAndWaitForZero();
 
   String errmsg;
   if(Oxs_ThreadError::IsError(&errmsg)) OXS_THROW(Oxs_BadThread,errmsg);
@@ -869,8 +835,9 @@ Oxs_ThreadTree::RunOnThreadRange
   String errmsg;
   if(Oxs_ThreadError::IsError(&errmsg)) OXS_THROW(Oxs_BadThread,errmsg);
 
-  launch_mutex.Lock(); // Make sure nothing new gets launched
-  /// before this routine is complete.
+  std::lock_guard<std::mutex> launchlck(launch_mutex);
+  /// Make sure nothing new gets launched before this routine is
+  /// complete.
 
   // Join any running threads, and grab stop.mutex
   Join();
@@ -905,7 +872,6 @@ Oxs_ThreadTree::RunOnThreadRange
       } else {
         stop.Unlock();  // Make sure this gets released.
       }
-      launch_mutex.Unlock();
       throw;
     }
   }
@@ -917,7 +883,6 @@ Oxs_ThreadTree::RunOnThreadRange
     stop.Unlock();  // Make sure this gets released.
   }
 
-  launch_mutex.Unlock();
   if(Oxs_ThreadError::IsError(&errmsg)) OXS_THROW(Oxs_BadThread,errmsg);
 }
 
@@ -948,6 +913,7 @@ Oxs_ThreadTree::GetStatus(String& results)
   // string detailing "probable" status for all mutexes Oxs_ThreadTree
   // knows about, in human readable format.
   results.clear();
+#if 0
   results += String("launch_mutex ");
   if(launch_mutex.IsLockProbablyFree()) {
     results += String("free");
@@ -961,15 +927,11 @@ Oxs_ThreadTree::GetStatus(String& results)
     results += String(buf);
     threads[i]->GetStatus(results);
   }
-
-  return;
+#endif
 }
 
 Oxs_ThreadTree::~Oxs_ThreadTree()
-{ // Note: The mutex and condition variables in stop are automatically
-  // finalized.
-
-  // If we get here during error processing, it is possible that there
+{ // If we get here during error processing, it is possible that there
   // are unjoined threads running.  Try to kill these.
   // NB: This code is not well-tested and is probably holey.
   if(threads_unjoined>0) {
@@ -982,10 +944,13 @@ Oxs_ThreadTree::~Oxs_ThreadTree()
     threads_unjoined = 0;
     stop.Unlock();
   }
-  if(stop.count>0) {
+  stop.Lock();
+  int refcount = stop.count;
+  stop.Unlock();
+  if(refcount>0) {
     Oxs_ThreadPrintf(stderr,
                      "WARNING: Oxs_ThreadTree destruction with %d"
-                     " unjoined threads\n",stop.count);
+                     " unjoined threads\n",refcount);
   }
 }
 
@@ -1071,38 +1036,40 @@ void Oxs_ThreadTree::EndThreads()
   // If one of the child threads throws an exception during
   // deletion, then an exit handler may be called which ends
   // back here.  Protect against that reentrancy:
-  static Oxs_Mutex handler_lock;
+  static std::mutex handler;
   static int inprocess = 0;
-  handler_lock.Lock();
-  if(inprocess) {
-    // Routine is already active.  No show here, go home.
-    handler_lock.Unlock();
-    return;
+  {
+    std::lock_guard<std::mutex> handler_lock(handler);
+    if(inprocess) {
+      // Routine is already active.  No show here, go home.
+      return;
+    }
+    inprocess=1;
+    // Note: Lock on handler released when handler_lock
+    // goes out of scope.
   }
-  inprocess=1;
-  handler_lock.Unlock();
 
-  launch_mutex.Lock();
-
-  size_t i = threads.size();
-  while(i>0) {
-    // Oxs_ThreadPrintf(stderr,"Ending child thread #%d\n",i); /**/
-    delete threads[--i];
+  {
+    std::lock_guard<std::mutex> launchlck(launch_mutex);
+    size_t i = threads.size();
+    while(i>0) {
+      // Oxs_ThreadPrintf(stderr,"Ending child thread #%d\n",i); /**/
+      delete threads[--i];
+    }
+    threads.clear();
   }
-  threads.clear();
-  launch_mutex.Unlock();
-  launch_mutex.Reset();
 
   // Clean up multi-level launch controls
   root_launch_threads.clear();
 
   // Destroy local locker data in thread 0 (mainline)
-  Oxs_ThreadLocalMap::DeleteLocker(&Oxs_ThreadRunObj::thread_data_map);
+  Oxs_ThreadLocalMap::DeleteLocker();
   Oxs_ThreadError::ClearError();
 
-  handler_lock.Lock();
-  inprocess=0;
-  handler_lock.Unlock();
+  {
+    std::lock_guard<std::mutex> handler_lock(handler);
+    inprocess=0;
+  }
 }
 
 #endif // OOMMF_THREADS
@@ -1113,15 +1080,9 @@ void Oxs_ThreadTree::EndThreads()
 
 #if OOMMF_THREADS
 
-Tcl_ThreadCreateType _Oxs_ThreadBush_main(ClientData clientdata)
+void _Oxs_ThreadBush_main(Oxs_ThreadBush::TwigBundle&& bundle)
 { // Helper function for Oxs_ThreadBush::RunAllThreads().  There
   // is a declaration of this function in oxsthread.h
-
-  // Cast and dereference clientdata
-  // NB: It is assumed that the referenced object remains valid
-  // throughout the life of the thread.
-  Oxs_ThreadBush::TwigBundle& bundle
-    = *static_cast<Oxs_ThreadBush::TwigBundle *>(clientdata);
 
   const int oc_thread_id = bundle.oc_thread_id;
   oxs_thread_number = 1 + oc_thread_id; // Not root thread
@@ -1163,49 +1124,26 @@ Tcl_ThreadCreateType _Oxs_ThreadBush_main(ClientData clientdata)
     Oxs_ThreadError::SetError(String(errbuf));
   }
 
-  thread_control.Lock();
+  std::lock_guard<std::mutex> ctrllck(thread_control.mutex);
   --thread_control.count;
-  thread_control.Notify();
-  thread_control.Unlock();
-  // NOTE: After this point, the bundle ptr may go invalid.
-
-  // All done.
-#if _OXS_THREAD_MAKE_CHILD_INTERPS
-  Tcl_DeleteInterp(thread_interp);
-#endif
-  Tcl_ExitThread(TCL_OK);
-
-  TCL_THREAD_CREATE_RETURN; // pro forma
+  thread_control.cond.notify_one();
+  // Note: When the lock is removed the bundle ptr may go invalid, so it
+  // necessary to notify before releasing the lock.
 }
 
 void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
 {
   const int thread_count = Oc_GetMaxThreadCount();
-  task_stop.count = thread_count;  // Do we need to Lock() here???
-
-  TwigBundle* bundle = new TwigBundle[thread_count];
 
   // Launch all threads (including thread 0)
+  Oxs_ThreadControl control;
+  control.LockAndSet(thread_count);
   for(int i=0;i<thread_count;++i) {
-    Tcl_ThreadId tcl_id;  // Not used
-    bundle[i].twig = twig;
-    bundle[i].thread_control = &task_stop;
-    bundle[i].oc_thread_id = i;
-    if(TCL_OK
-       != Tcl_CreateThread(&tcl_id, _Oxs_ThreadBush_main, &bundle[i],
-                           TCL_THREAD_STACK_DEFAULT, TCL_THREAD_NOFLAGS)) {
-      OXS_THROW(Oxs_BadResourceAlloc,"Thread creation failed."
-                "(Is the Tcl library thread enabled?)");
-    }
+    std::thread (_Oxs_ThreadBush_main,TwigBundle(twig,&control,i)).detach();
   }
 
-  // Wait for all threads to finish
-  task_stop.Lock();
-  while(task_stop.count>0) task_stop.Wait();
-  task_stop.Unlock();
-
-  delete[] bundle; // Child threads must not access bundle array
-  /// after they decrement task_stop.count.
+  // Wait for threads to run
+  control.LockAndWaitForZero();
 
   // Report any warning messages generated by child threads
   Oxs_WarningMessage::TransmitMessageHold();
@@ -1224,17 +1162,15 @@ void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
 // THROWAWAY THREADS ///////////////////////////////////////////////////
 
 #if OOMMF_THREADS
-Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
+void _Oxs_ThreadThrowaway_main(Oxs_ThreadThrowaway* obj)
 { // Helper function for Oxs_ThreadThrowaway class.  There
   // is a declaration of this function in oxsthread.h
 
-  // Cast and dereference clientdata
-  // NB: It is assumed that the referenced object remains valid
-  // throughout the life of the thread.
-  Oxs_ThreadThrowaway& obj
-    = *static_cast<Oxs_ThreadThrowaway *>(clientdata);
-  String threadstr = "\nException thrown in thread ";
-  threadstr += obj.name;
+  // Save a copy of obj->name in case something bad happens.
+  String objname = obj->name;
+
+  String threadstr = "\nException thrown in thread "
+    + objname;
 
   oxs_thread_number = -1; // Not root thread
 
@@ -1246,7 +1182,7 @@ Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
     if(Oc_NumaReady()) {
       Oc_NumaRunOnAnyNode();
     }
-    obj.Task();
+    obj->Task();
   } catch(Oxs_Exception& oxserr) {
     Oxs_ThreadError::SetError(oxserr.MessageText() + threadstr);
   } catch(Oc_Exception& ocerr) {
@@ -1263,45 +1199,43 @@ Tcl_ThreadCreateType _Oxs_ThreadThrowaway_main(ClientData clientdata)
     Oxs_ThreadError::SetError(errstr);
   } catch(...) {
     String errstr = "\nUnrecognized exception thrown in thread ";
-    errstr += obj.name;
+    errstr += obj->name;
     Oxs_ThreadError::SetError(errstr);
   }
 
   // All done.
-  obj.mutex.Lock();
-  try {
-    if(obj.active_thread_count>0) {
-      --obj.active_thread_count;
-    } else {
-      String errstr = "\nActive thread count error in thread ";
-      errstr += obj.name;
-      Oxs_ThreadError::SetError(errstr);
+
+  {
+    std::lock_guard<std::mutex> lck(obj->mutex);
+    try {
+      if(obj->active_thread_count>0) {
+        --(obj->active_thread_count);
+      } else {
+        String errstr = "\nActive thread count error in thread "
+          + objname;
+        Oxs_ThreadError::SetError(errstr);
+      }
     }
+    catch(...) {}
+    // Lock on mutex released here
   }
-  catch(...) {}
-  obj.mutex.Unlock();
 
 #if _OXS_THREAD_MAKE_CHILD_INTERPS
   Tcl_DeleteInterp(thread_interp);
 #endif
-
-  Tcl_ExitThread(TCL_OK);
-
-  TCL_THREAD_CREATE_RETURN; // pro forma
 }
 
 void Oxs_ThreadThrowaway::Launch()
 {
-  Tcl_ThreadId tcl_id;  // Not used
-  mutex.Lock();
+  std::unique_lock<std::mutex> lck(mutex);
   ++active_thread_count;
-  mutex.Unlock();
-  if(TCL_OK
-     != Tcl_CreateThread(&tcl_id, _Oxs_ThreadThrowaway_main, this,
-                         TCL_THREAD_STACK_DEFAULT, TCL_THREAD_NOFLAGS)) {
-    mutex.Lock();
+  lck.unlock();
+  try {
+    std::thread (_Oxs_ThreadThrowaway_main,this).detach();
+  } catch(...) {
+    lck.lock();
     --active_thread_count;
-    mutex.Unlock();
+    lck.unlock();
     OXS_THROW(Oxs_BadResourceAlloc,
               "Thread creation failed in ThreadThrowaway::Launch()."
               "(Is the Tcl library thread enabled?)");
@@ -1310,11 +1244,8 @@ void Oxs_ThreadThrowaway::Launch()
 
 OC_INDEX Oxs_ThreadThrowaway::ActiveThreadCount() const
 {
-  OC_INDEX count;
-  mutex.Lock();
-  count = active_thread_count;
-  mutex.Unlock();
-  return count;
+  std::lock_guard<std::mutex> lck(mutex);
+  return active_thread_count;
 }
 
 Oxs_ThreadThrowaway::~Oxs_ThreadThrowaway()
@@ -1323,14 +1254,14 @@ Oxs_ThreadThrowaway::~Oxs_ThreadThrowaway()
   const OC_INDEX sleep = 500;  // Sleep time, in milliseconds
   OC_INDEX timeout = 100; // Timeout, in seconds
   timeout *= (1000/sleep);
-  mutex.Lock();
+  std::unique_lock<std::mutex> lck(mutex);
   while(timeout>0 && active_thread_count>0) {
-    mutex.Unlock();
+    lck.unlock();
     Oc_MilliSleep(sleep);
     timeout -= sleep;
-    mutex.Lock();
+    lck.lock();
   }
-  mutex.Unlock();
+  lck.unlock();  // Safety
 }
 
 #endif // OOMMF_THREADS

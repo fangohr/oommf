@@ -13,6 +13,7 @@
 #include "output.h"
 
 /* End includes */
+
 #if REPORT_TIME
 # ifndef REPORT_TIME_CGDEVEL
 #  define REPORT_TIME_CGDEVEL 1
@@ -21,7 +22,6 @@
 #ifndef REPORT_TIME_CGDEVEL
 # define REPORT_TIME_CGDEVEL 0
 #endif
-
 
 class Oxs_CGEvolve:public Oxs_MinEvolver {
 private:

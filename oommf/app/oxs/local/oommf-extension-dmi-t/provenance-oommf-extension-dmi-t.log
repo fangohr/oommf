@@ -1,0 +1,18 @@
+== git-repo-url: https://github.com/joommf/oommf-extension-dmi-t.git
+== repo-name: oommf-extension-dmi-t
+== snap-shot-of-repo: provenance-oommf-extension-dmi-t-HEAD.zip
+== cloned-on-date: Mon May 24 22:07:49 2021
+== copied-files-from-path-in-repo: src/
+last commit:
+commit 097240b1236819146f6da60fd24a5e3d7163c28b
+Author: Marijan Beg <m.beg@imperial.ac.uk>
+Date:   Mon May 24 12:08:28 2021 +0100
+
+    Update README.md
+
+== src file-list:
+total 16
+-rw-r--r-- 1 fangohr exfel 9727 May 24 22:07 DMI_T.cc
+-rw-r--r-- 1 fangohr exfel 1671 May 24 22:07 DMI_T.h
+
+== see contents of provenance-oommf-extension-dmi-t-HEAD.zip for additional info, examples, etc.

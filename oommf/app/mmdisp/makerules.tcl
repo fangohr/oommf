@@ -53,13 +53,13 @@ MakeRule Define {
                         puts $f [format {
 Oc_Application Define {
     -name               mmDispSh
-    -version            2.0a1
+    -version            2.0a2
     -machine            %s
     -file               "%s"
 }
 Oc_Application Define {
     -name               conDispSh
-    -version            2.0a1
+    -version            2.0a2
     -machine            %s
     -file               "%s"
 }
@@ -74,12 +74,12 @@ Oc_Application Define {
 MakeRule Define {
     -targets            [Platform Executables mmdispsh]
     -dependencies       [concat [Platform Objects $allObjects] \
-			        [Platform StaticLibraries {vf nb oc}] \
+			        [Platform StaticLibraries {vf nb xp oc}] \
 			        [list [file join .. .. pkg ow tclIndex] \
 			        [file join .. .. pkg net tclIndex] \
 			        tclIndex]]
     -script		[format {
-			    Platform Link -obj {%s} -lib {vf nb oc tk tcl} \
+			    Platform Link -obj {%s} -lib {vf nb xp oc tk tcl} \
 			            -sub WINDOWS -out mmdispsh
 			} $allObjects]
 }
@@ -87,14 +87,14 @@ MakeRule Define {
 MakeRule Define {
     -targets            [Platform Executables condispsh]
     -dependencies       [concat [Platform Objects $allObjects] \
-			        [Platform StaticLibraries {vf nb oc}] \
+			        [Platform StaticLibraries {vf nb xp oc}] \
 			        [list [file join .. .. pkg oc tclIndex] \
 			        [file join .. .. pkg ow tclIndex] \
 			        [file join .. .. pkg net tclIndex] \
 			        [file join .. .. pkg vf tclIndex] \
 			        tclIndex]]
     -script		[format {
-			    Platform Link -obj {%s} -lib {vf nb oc tk tcl} \
+			    Platform Link -obj {%s} -lib {vf nb xp oc tk tcl} \
 			            -sub CONSOLE -out condispsh
 			} $allObjects]
 }

@@ -1,0 +1,33 @@
+Generic process for updating patch files for contributed packages:
+
+1) Use the 'tclsh oommf.tcl oxspkg' command to install the package of
+   interest into the oommf/app/oxs/local directory.
+
+2) Edit the files in oommf/app/oxs/local as necessary.
+
+3) Create a temporary holding directory, say oommf/app/oxs/contrib/foo
+   and use the oxspkg copyout command to copy the package files from
+   oxs/local to the holding directory.
+
+4) Working in the oxs/contrib directory, move the copied files like so
+
+     mv foo/my_great_package ./my_great_package-new
+
+5) Create the new patch set, indexed with the current date
+
+    diff -ru my_great_package my_great_package-new \
+       > my_great_package-20181107.patch
+
+   Check the patch file and make sure any files in one directory but not
+   the other are handled properly.  For example, README and version date
+   files are not copied out of the contrib area by oxspkg install.
+
+6) Delete any older patch files for this package.
+
+7) Use oommf.tcl oxspkg to uninstall the package and then re-install.
+   Check that the new patch file is applied during the install.  Run
+   pimake and double-check the build.
+
+-mjd, 7-Nov-2018
+
+

@@ -19,7 +19,7 @@ proc Oc_StderrLogMessage {msg type src} {
    global errorInfo errorCode
    set ei $errorInfo
    set ec $errorCode
-   set maxLines 20
+   set maxLines 42
    set mintext "<[pid]> [Oc_Main GetInstanceName] $src $type:\n$msg"
    set text $mintext
    if {[string compare $type error] == 0} {
@@ -63,7 +63,7 @@ proc Oc_ForceNoTkDefaultMessage {} {
             global errorInfo errorCode
 	    set ei $errorInfo
 	    set ec $errorCode
-            set maxLines 40
+            set maxLines 42
            set text "<[pid]> [Oc_Main GetInstanceName] $src $type:\n$msg"
 	    if {[string compare $type error] == 0} {
                 append text "\n----------- "

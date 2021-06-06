@@ -113,10 +113,11 @@ private:
   // more read locks are in place.  A dep lock may always be set or
   // removed, regardless of the read/write lock state.
 
-  std::atomic<OC_UINT8> lock_data;
-  const OC_UINT8 WRITE_MASK = 0x8000000000000000;
-  const OC_UINT8  READ_MASK = 0x7FFFFFFF00000000;
-  const OC_UINT8    ID_MASK = 0x00000000FFFFFFFF;
+  typedef OC_UINT8 LOCK_DATA_TYPE;
+  std::atomic<LOCK_DATA_TYPE> lock_data;
+  const LOCK_DATA_TYPE WRITE_MASK = 0x8000000000000000;
+  const LOCK_DATA_TYPE  READ_MASK = 0x7FFFFFFF00000000;
+  const LOCK_DATA_TYPE    ID_MASK = 0x00000000FFFFFFFF;
   const unsigned int READ_SHIFT  = 32;
   const unsigned int WRITE_SHIFT = 63;
 
@@ -138,15 +139,15 @@ public:
   virtual ~Oxs_Lock();
 
   OC_UINT4m Id() const {
-    OC_UINT8 tmp = lock_data.load();
+    LOCK_DATA_TYPE tmp = lock_data.load();
     return static_cast<OC_UINT4m>(tmp & ID_MASK);
   }
   OC_UINT4m ReadLockCount() const {
-    OC_UINT8 tmp = lock_data.load();
+    LOCK_DATA_TYPE tmp = lock_data.load();
     return static_cast<OC_UINT4m>((tmp & READ_MASK) >> READ_SHIFT);
   }
   OC_UINT4m WriteLockCount() const {
-    OC_UINT8 tmp = lock_data.load();
+    LOCK_DATA_TYPE tmp = lock_data.load();
     return static_cast<OC_UINT4m>(tmp >> WRITE_SHIFT);
   }
 

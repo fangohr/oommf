@@ -344,9 +344,15 @@ Oc_Class Oc_Application {
     }
     
     private method WillRun {} {
-        set execfile [file join $directory $file]
+       if {![info exists file] || [string match {} $file]} {
+          set fileset 0
+          set execfile [file join $directory $platformName $machine]
+       } else {
+          set fileset 1
+          set execfile [file join $directory $file]
+       }
         # Try to resolve the machine into a supporting shell application
-        if {![catch {eval $class Resolve $machine} app]} {
+        if {$fileset && ![catch {eval $class Resolve $machine} app]} {
             # Found a shell app which WillRun
             if {[file readable $execfile]} {
 		set suboptions {}
@@ -361,7 +367,7 @@ Oc_Class Oc_Application {
             }
         }
         # No shell app -- try as a binary
-        if {[string match $platformName $machine]} {
+        if {!$fileset || [string match $platformName $machine]} {
             if {[file executable [lindex [auto_execok $execfile] 0]]} {
 		set suboptions {}
 		foreach o $options {

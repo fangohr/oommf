@@ -27,7 +27,7 @@ private:
 
   // Caching
   Oxs_OwnedPointer<Oxs_Mesh> cache_mesh;
-  std::vector<ThreeVector> results_cache;
+  Oxs_MeshValue<ThreeVector> results_cache;
   OC_BOOL use_cache;
 
 public:

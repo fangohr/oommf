@@ -625,8 +625,8 @@ void Grid2D::Initialize(MIF &mif,MagEltAnisType new_magelt_anistype)
         if((dtemp=OC_SQ(2*i+1)+4*OC_SQ(k))<0)
           PlainError(1,"Error in Grid2D::Initialize: %s","Integer overflow");
         ADemagCoef[i][k]=
-          atan2(double(4*i-2),double(OC_SQ(2*i-1)+4*OC_SQ(k)-1))
-          -atan2(double(4*i+2),double(OC_SQ(2*i+1)+4*OC_SQ(k)-1));
+          Oc_Atan2(double(4*i-2),double(OC_SQ(2*i-1)+4*OC_SQ(k)-1))
+          -Oc_Atan2(double(4*i+2),double(OC_SQ(2*i+1)+4*OC_SQ(k)-1));
         dtemp=4*OC_SQ(OC_SQ(i))+8*OC_SQ(i)*OC_SQ(k)+4*OC_SQ(OC_SQ(k))+1;
         CDemagCoef[i][k]=0.5*log((dtemp+8*i*k)/(dtemp-8*i*k));
         ADemagCoef[i][k]/=2*PI; // I don't know if this is the proper

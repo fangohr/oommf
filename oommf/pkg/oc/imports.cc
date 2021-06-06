@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <float.h>
+#include <limits>  // For std::numeric_limits<T>::max()/min()
 
 /* Other classes and functions in this extension.  In particular,
  * imports.h includes ocport.h, which defined the OC_TCL_TYPE
@@ -113,7 +114,7 @@ OC_UINT4m Oc_RandomState::Step()
 
 Oc_RandomState Oc_Random::state;
 #if OOMMF_THREADS
-Tcl_Mutex Oc_Random::random_state_mutex = 0;  // Thread-safe hack.
+std::mutex Oc_Random::random_state_mutex;  // Thread-safe hack.
 #endif
 
 void Oc_Srand(unsigned int seed)
@@ -281,81 +282,6 @@ int OcUnifRandTclMathProc(ClientData,Tcl_Interp*,
 #endif // TCL_MAJOR_VERSION == 7
 
 //////////////////////////////////////////////////////////////////////////
-/* Domain checked atan2 functions */
-double Oc_Atan2(double y,double x)
-{
-  // The following #define trick allows atan2 to be defined
-  // to be Oc_Atan2 in ocport.h, but allows us to call the system
-  // atan2 function from inside this routine.  When the atan2 call
-  // is processed by the compiler, if it has previously been
-  // #define'd to be Oc_Atan2, then the macro #define'd here kicks
-  // in and sets it back to atan2.  Since atan2 is the name of the
-  // original macro that is being expanded, macro expansion stops
-  // (as per Section 16.3 (?) of the ARM).  If atan2 was not
-  // #define'd, or if it was #define'd to something other than
-  // Oc_Atan2, then the macro here has no effect.
-#define Oc_Atan2(y,x) atan2((y),(x))
-  if(x==0.0 && y==0.0) return 0.0;
-  return atan2(y,x);
-#undef Oc_Atan2
-}
-
-/* Tcl wrapper for the above */
-int
-Oc_TclWrappedAtan2(ClientData, Tcl_Interp *interp,
-		   Tcl_Value *args, Tcl_Value *resultPtr)
-{
-    errno = 0;
-    double result = Oc_Atan2(args[0].doubleValue,args[1].doubleValue);
-    if (errno != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"errno set to ",NULL);
-	switch (errno) {
-	    case ERANGE:
-		Tcl_AppendResult(interp,"ERANGE",NULL);
-                break;
-	    case EDOM:
-		Tcl_AppendResult(interp,"EDOM",NULL);
-                break;
-	    default:
-		Tcl_AppendResult(interp,"unexpected value",NULL);
-                break;
-	}
-	Tcl_AppendResult(interp," by atan2()",NULL);
-	return TCL_ERROR;
-    }
-    resultPtr->doubleValue = result;
-    resultPtr->type = TCL_DOUBLE;
-    return TCL_OK;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Routines to calculate log(1+x), accurate for small x.
-// The log1p function is in the C99 spec.  That version
-// is probably fast and more accurate than the version below,
-// so should probably change the code to use that if available.
-double Oc_Log1p(double x)
-{ if(fabs(x)>=0.5) return log(1.0+x);
-  // Otherwise, use little trick.  One should check that
-  // compiler doesn't screw this up with "extra" precision.
-  double y1 = Oc_Nop(1.0 + x);
-  if(y1 == 1.0) return x;
-  double y2 = y1 - 1.0;
-  double rat = log(y1)/y2;
-  return x*rat;
-}
-
-OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x)
-{ // OC_REALWIDE version
-  if(Oc_FabsRW(x)>0.5) return Oc_LogRW(1.0+x);
-  OC_REALWIDE y1 = Oc_Nop(1.0 + x);
-  if(y1 == OC_REALWIDE(1.0)) return x;
-  OC_REALWIDE y2 = y1 - OC_REALWIDE(1.0);
-  OC_REALWIDE rat = Oc_LogRW(y1)/y2;
-  return x*rat;
-}
-
-//////////////////////////////////////////////////////////////////////////
 // Utility filesystem command
 //  Oc_FSync mimics the unix fysnc() or Windows _commit()/FlushFileBuffers()
 // routines, which force data buffered by the OS to disk.  Note that this
@@ -430,6 +356,35 @@ double Oc_Erf(double x)
     }
 }
 
+/* Tcl wrapper for Oc_Atan2 */
+int
+Oc_TclWrappedAtan2(ClientData, Tcl_Interp *interp,
+		   Tcl_Value *args, Tcl_Value *resultPtr)
+{
+    errno = 0;
+    double result = Oc_Atan2(args[0].doubleValue,args[1].doubleValue);
+    if (errno != 0) {
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp,"errno set to ",NULL);
+	switch (errno) {
+	    case ERANGE:
+		Tcl_AppendResult(interp,"ERANGE",NULL);
+                break;
+	    case EDOM:
+		Tcl_AppendResult(interp,"EDOM",NULL);
+                break;
+	    default:
+		Tcl_AppendResult(interp,"unexpected value",NULL);
+                break;
+	}
+	Tcl_AppendResult(interp," by atan2()",NULL);
+	return TCL_ERROR;
+    }
+    resultPtr->doubleValue = result;
+    resultPtr->type = TCL_DOUBLE;
+    return TCL_OK;
+}
+
 //////////////////////////////////////////////////////////////////
 // Version of chdir for use when using the cygwin libraries.  The
 // problem arises when a Windows version of Tcl/Tk is used in the
@@ -476,34 +431,6 @@ int OcCygwinChDir(ClientData,Tcl_Interp *interp,
   return TCL_OK;
 }
 #endif // OC_WINDOWS && __CYGWIN__
-
-
-//////////////////////////////////////////////////////////////////////////
-// Implementation of hypot(x,y) for use on systems where it isn't
-// in the system libraries.  On those systems a macro in ocport.h
-// will #define hypot(x,y) to be Oc_Hypot((x),(y)).
-//    The accuracy of Oc_Hypot is close to but occasionally
-// slightly less than what is obtained from the library version
-// (where available), and is in all likelihood slower.
-double Oc_Hypot(double x,double y)
-{
-  x = fabs(x);
-  y = fabs(y);
-  if(y<x) {
-    double t = y; y = x; x = t;
-  }
-  if(y>0.5*sqrt(DBL_MAX)) { // y too big to square
-    x /= y;
-    return y*sqrt(1.0+x*x);
-  }
-  if(x<sqrt(DBL_MIN)) { // x too small to square
-    if(y<x*sqrt(DBL_MAX)) {
-      y /= x;
-      return x*sqrt(1.0+y*y);
-    }
-  }
-  return sqrt(x*x+y*y);
-}
 
 
 //////////////////////////////////////////////////////////////////////////

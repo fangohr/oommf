@@ -338,7 +338,7 @@ if {[string match icpc $ccbasename]} {
    # Intel compiler on Linux relies on parts of gcc install.
    # Assume here that g++ or gcc is on PATH:
    if {![info exists gcc_version]} {
-      set gcc_version [GuessGccVersion g++x]
+      set gcc_version [GuessGccVersion g++]
       if {[llength $gcc_version]==0} {
          set gcc_version [GuessGccVersion gcc]
       }

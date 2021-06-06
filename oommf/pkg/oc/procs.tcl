@@ -119,6 +119,38 @@ proc Oc_ResolveLink { pathname } {
     return -code error "Link $pathname cannot be resolved: > $depth levels"
 }
 
+# Routine to find all subdirectories of a given directory (startdir), up
+# to a specified maximum depth.  If maxdepth is 0, then the returned
+# list is just startdir (unless startdir is not a directory, in which
+# case an empty list is returned).  If maxdepth is 1 then the return is
+# startdir and all of its immediate children.  The default setting for
+# maxdepth is 16.  During processing the candidates are converted to
+# normalized form to check for uniqueness and protect against infinite
+# loops caused by symbolic links, but the return list will have the same
+# path type (absolute, relative, etc.) as startdir.
+proc Oc_FindSubdirectories { startdir {maxdepth 16}} {
+   if {![file isdirectory $startdir]} { return {} }
+   set dirlist $startdir
+   set chklist [file normalize $startdir]
+   set unsearched $dirlist
+   while {[llength $unsearched]>0 && [incr maxdepth -1]>=0} {
+      set dosearch $unsearched
+      set unsearched [list]
+      foreach d $dosearch {
+         foreach child [glob -directory $d -nocomplain -type d *] {
+            set chkchild [file normalize $child]
+            if {[lsearch -exact $chklist $chkchild]<0} {
+               # New child directory
+               lappend chklist $chkchild
+               lappend dirlist $child
+               lappend unsearched $child
+            }
+         }
+      }
+   }
+   return $dirlist
+}
+
 proc Oc_MakeHeaderWrappers {outdir} {
     # Some C++ compiler systems (HP's aCC) have only old-style
     # header files, e.g., <iostream.h> instead of <iostream>.
@@ -180,7 +212,7 @@ proc Oc_IsCygwinPlatform {} {
    if {[string match cygwin* [string tolower $tcl_platform(os)]]} {
       return 1
    }
-   if {[info exists env(OSTYPE)] && 
+   if {[info exists env(OSTYPE)] &&
        [string match cygwin* [string tolower $env(OSTYPE)]]} {
       return 1
    }
@@ -204,7 +236,7 @@ proc Oc_IsCygwin64Platform {} {
    if {[string match cygwin* [string tolower $tcl_platform(os)]]} {
       return 1
    }
-   if {[info exists env(OSTYPE)] && 
+   if {[info exists env(OSTYPE)] &&
        [string match cygwin* [string tolower $env(OSTYPE)]]} {
       return 1
    }
@@ -390,17 +422,20 @@ proc Oc_MakePortHeader {varinfo outfile} {
 	}
     }
 
+    # Check std::floor(long double)
+    if {[regexp -- \
+            "\nBad std::floor\\\(long double\\\) -- failure type (.)\n" \
+             $varlist dummy failtype]} {
+       puts stderr \
+        "*** WARNING: Bad std::floor(long double); failure mode $failtype ***"
+    }
 
-    if {[catch {
-       $config GetValue program_compiler_c++_property_bad_wide2int
-    }]} {
-       # Config value program_compiler_c++_property_bad_wide2int
-       # has not been set, so make use of varinfo test.
-       if {[regexp -- "\nGood floorl.\n" $varlist]} {
-          $config SetValue program_compiler_c++_property_bad_wide2int 0
-       } else {
-          $config SetValue program_compiler_c++_property_bad_wide2int 1
-       }
+    # Check std::ceil(long double)
+    if {[regexp -- \
+            "\nBad std::ceil\\\(long double\\\) -- failure type (.)\n" \
+             $varlist dummy failtype]} {
+       puts stderr \
+        "*** WARNING: Bad std::ceil(long double); failure mode $failtype ***"
     }
 
     if {[catch {
@@ -495,15 +530,18 @@ proc Oc_MakePortHeader {varinfo outfile} {
     # Windows specific includes
     if {[string compare $systemtype windows] == 0} {
         append porth {
-
-/* getpid() prototype for Windows*/
-#include <process.h>
-
 /* Windows header file.  NB: This defines a lot of stuff we      */
 /* don't need or really want, like macros min(x,y) and max(x,y). */
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
+#undef NOMINMAX
+
+/* getpid() prototype for Windows */
+#include <process.h>
 }
     }
 
@@ -587,26 +625,12 @@ proc Oc_MakePortHeader {varinfo outfile} {
 	$config GetValue program_compiler_c++_property_strict_atan2
     } _] && $_} {
 	append porth "
-/* Substitute domain checked atan2 */
-#define OC_DOMAIN_CHECK_ATAN2 1
-#define atan2(y,x) Oc_Atan2((y),(x))\n"
+/* Use OOMMF-supplied domain checked atan2 */
+#define OC_DOMAIN_CHECK_ATAN2 1\n"
     } else {
 	append porth "
 /* System atan2 returns a finite results to (0,0) input. */
 #define OC_DOMAIN_CHECK_ATAN2 0\n"
-    }
-
-    # Does compiler have bad long double -> to integer routines?
-    if {![catch {
-	$config GetValue program_compiler_c++_property_bad_wide2int
-    } _] && $_} {
-	append porth "
-/* Force use of double versions of real to int functions */
-/* to work around bug in long double library.            */
-#define floor(x)  floor(double(x))
-#define floorl(x) floor(double(x))
-#define ceil(x)   ceil(double(x))
-#define ceill(x)  ceil(double(x))\n"
     }
 
     # Does compiler have erf function?
@@ -795,7 +819,7 @@ inline int Oc_GetPid() { return getpid(); }\n"
 
     # Fill in missing function prototypes
     set missing_protos \
-	[$config Features program_compiler_c++_prototype_supply_*] 
+	[$config Features program_compiler_c++_prototype_supply_*]
     if {[llength $missing_protos]>0} {
        append porth \
            "\n/* Function prototypes requested by config/platforms */\n"
@@ -828,29 +852,38 @@ typedef  unsigned char      OC_UCHAR;
     # Write integer typedef's
     set int_type_widths {}
     set imodstr {}
+    set short_type_map {}
+    set int_type_map {}
+    set long_type_map {}
+    set int64_type_map {}
+    set longlong_type_map {}
     append porth "\n"
     if { $varsize(short) < $varsize(int) } {
        append porth "typedef  short              OC_INT$varsize(short);\n"
        append porth "typedef  unsigned short     OC_UINT$varsize(short);\n"
        append imodstr "#define OC_INT$varsize(short)_MOD \"h\"\n"
        lappend int_type_widths $varsize(short)
+       lappend short_type_map $varsize(short)
     }
     append porth "typedef  int                OC_INT$varsize(int);\n"
     append porth "typedef  unsigned int       OC_UINT$varsize(int);\n"
     append imodstr "#define OC_INT$varsize(int)_MOD \"\"\n"
     lappend int_type_widths $varsize(int)
+    lappend int_type_map $varsize(int)
     if { $varsize(long) > $varsize(int) } {
 	append porth "typedef  long               OC_INT$varsize(long);\n"
 	append porth "typedef  unsigned long      OC_UINT$varsize(long);\n"
         append imodstr "#define OC_INT$varsize(long)_MOD \"l\"\n"
         lappend int_type_widths $varsize(long)
+        lappend long_type_map $varsize(long)
     }
     if {[string compare $systemtype windows] == 0 \
            && $varsize(long) < 8} {
-       append porth "typedef  __int64            OC_INT8;\n"
-       append porth "typedef  unsigned __int64   OC_UINT8;\n"
-       append imodstr "#define OC_INT8_MOD \"I64\"\n"
-       lappend int_type_widths 8
+        append porth "typedef  __int64            OC_INT8;\n"
+        append porth "typedef  unsigned __int64   OC_UINT8;\n"
+        append imodstr "#define OC_INT8_MOD \"I64\"\n"
+        lappend int_type_widths 8
+        lappend int64_type_map 8
     } elseif { $varsize(long) < $varsize(long\ long)} {
 	append porth \
            "typedef  long long          OC_INT$varsize(long\ long);\n"
@@ -858,6 +891,7 @@ typedef  unsigned char      OC_UCHAR;
            "typedef  unsigned long long OC_UINT$varsize(long\ long);\n"
         append imodstr "#define OC_INT$varsize(long\ long)_MOD \"ll\"\n"
         lappend int_type_widths $varsize(long\ long)
+        lappend longlong_type_map $varsize(long\ long)
     }
     foreach msize { 2 4 8 16 } {
 	if { $varsize(int) >= $msize } {
@@ -887,6 +921,14 @@ typedef  unsigned char      OC_UCHAR;
         }
     }
     append porth "\n"
+
+    foreach t {short int long int64 longlong} {
+       foreach w [set ${t}_type_map] {
+          append porth "#define OC_[string toupper $t]_IS_INT${w}\n"
+       }
+    }
+    append porth "\n"
+
     foreach vs { 2 4 8 16 } {
        if {[lsearch -exact $int_type_widths $vs] >= 0} {
           append porth "#define OC_HAS_INT$vs 1\n"
@@ -1223,13 +1265,14 @@ typedef  unsigned char      OC_UCHAR;
       if {$_} {
          # _mm_storel_pd broken (or missing).  Provide workaround.
          append porth {
-/* Wrapper replacing SSE2 intrinsic _mm_storel_pd calls with the */
-/* equivalent SSE2 intrinsic _mm_store_sd.  (_mm_storel_pd       */
-/* implementation is broken on some compilers.)                  */
-#define _mm_storel_pd(x,y)  _mm_store_sd(x,y)
-}
-      }
-   }
+/* Compiler implementation of SSE2 intrinsic _mm_storel_pd may be broken */
+#define OC_COMPILER_HAS_BROKEN_MM_STOREL_PD 1
+}} else {
+         append porth {
+/* Compiler has good implementation of SSE2 intrinsic _mm_storel_pd */
+#define OC_COMPILER_HAS_BROKEN_MM_STOREL_PD 0
+}}
+   } ;# $sse_level >=2
 
    # Alignment issues?  AFAIK this is only a problem when using
    # SSE on 32-bit Windows.
@@ -1273,7 +1316,7 @@ typedef  unsigned char      OC_UCHAR;
    append porth   "/*   wide and not narrower than the pointer type.     */\n"
    append porth   "/* OC_UINDEX is the unsigned version of OC_INDEX.  It */\n"
    append porth   "/*   is intended for special-purpose use only; use    */\n"
-   append porth   "/*   OC_INDEX where possible.                         */\n"  
+   append porth   "/*   OC_INDEX where possible.                         */\n"
    if {![catch {
       $config GetValue program_compiler_c++_oc_index_type
    } oc_index_type_data]} {
@@ -1311,7 +1354,7 @@ typedef  unsigned char      OC_UCHAR;
          set oc_index_type __int64
          set oc_uindex_type {unsigned __int64}
          set oc_index_width 8
-      } else { 
+      } else {
          # If the above don't work, fallback is long
          set oc_index_type long
          set oc_uindex_type {unsigned long}
@@ -1361,7 +1404,7 @@ typedef  unsigned char      OC_UCHAR;
        append porth {
 /* Build in thread (multi-processing) support */
 #define OOMMF_THREADS 1
-} 
+}
        if {![catch {$config GetValue \
           program_compiler_c++_property_init_thread_fpu_control_word} _] \
            && $_} {
@@ -1575,7 +1618,7 @@ typedef void(*omf_sighandler)(int);             /* ANSI version */
         append porth {
 /* For Windows */
 #define rint(x) (floor(x+0.5))
- 
+
 /* NICE_DEFAULT is the priority level passed to SetPriorityClass() */
 /* inside MakeNice().                                              */
 #define NICE_DEFAULT IDLE_PRIORITY_CLASS
@@ -1747,7 +1790,7 @@ proc Oc_ThreadSafe { thread_id script {wait 500}} {
         if { $errcode != 0 } {
             error $errmsg $errorInfo $errorCode
         }
-    }    
+    }
 }
 
 # Some event bindings, in particular mouse drag events, can generate a

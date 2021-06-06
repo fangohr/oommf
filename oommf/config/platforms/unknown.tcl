@@ -128,9 +128,9 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # has the same name as this file but is stored in the
 # platforms/local/ subdirectory.
 #
-## Set the feature 'path_directory_temporary' to the name of an existing 
-## directory on your computer in which OOMMF software should write 
-## temporary files.  All OOMMF users must have write access to this 
+## Set the feature 'path_directory_temporary' to the name of an existing
+## directory on your computer in which OOMMF software should write
+## temporary files.  All OOMMF users must have write access to this
 ## directory.
 # $config SetValue path_directory_temporary {/tmp}
 #
@@ -161,14 +161,11 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 #
 ## Processor architecture for compiling.  The default is "generic"
 ## which should produce an executable that runs on any cpu model for
-## the given platform.  In principle, one may specify "host", in which
+## the given platform.  Optionally, one may specify "host", in which
 ## case the build scripts will try to automatically detect the
 ## processor type on the current system, and select compiler options
-## specific to that processor model (in which case he resulting binary
-## will generally not run on other architectures) --- HOWEVER, this
-## is not supported in the generic "unknown" platform script; support
-## would need to be added by the author of a refined platform-specific 
-## script.
+## specific to that processor model.  The resulting binary will
+## generally not run on other architectures.
 # $config SetValue program_compiler_c++_cpu_arch host
 #
 ## Variable type used for array indices, OC_INDEX.  This is a signed
@@ -191,17 +188,64 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 #
 ## Flags to remove from compiler "opts" string:
 # $config SetValue program_compiler_c++_remove_flags \
-   #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
 ## Flags to add to compiler "opts" string:
 # $config SetValue program_compiler_c++_add_flags \
-   #                          {-funroll-loops}
+#                          {-funroll-loops}
 #
-###################
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
+#
+## EXTERNAL PACKAGE SUPPORT:
+## Extra include directories for compiling:
+# $config SetValue program_compiler_extra_include_dirs /opt/local/include
+#
+## Extra directories to search for libraries.
+# $config SetValue program_linker_extra_lib_dirs [list "/opt/local/lib"]
+#
+## Script to form library full name from stem name, for external libraries.
+## This is usually not needed, as default scripts suffice.
+# $config SetValue program_linker_extra_lib_scripts [list {format "lib%s.lib"}]
+#
+## Extra library flags to throw onto link command.  Use sparingly ---
+## for most needs program_linker_extra_lib_dirs and
+## program_linker_extra_lib_scripts should suffice.
+# $config SetValue program_linker_extra_args
+#    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
+#
+# END LOCAL CONFIGURATION
+########################################################################
+#
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
-   # Value not set in platforms/local/ script,
+   # Value not set in platforms/local/linux-x86_64.tcl,
    # so use Tcl setting.
    global tcl_platform
    if {[info exists tcl_platform(threaded)] \
@@ -214,8 +258,11 @@ if {[catch {$config GetValue oommf_threads}]} {
 $config SetValue thread_count_auto_max 4 ;# Arbitrarily limit
 ## maximum number of "auto" threads to 4.
 if {[catch {$config GetValue thread_count}]} {
-   # Value not set in platforms/local/ script, so use
-   # getconf to report the number of "online" processors
+   # Value not set in platforms/local/linux-x86_64.tcl, so use getconf
+   # to report the number of "online" processors.  NOTE: Neither
+   # _NPROCESSORS_ONLN nor processor_count in /proc/cpuinfo
+   # distinguish between physical cores and logical cores introduced
+   # via hyperthreading.
    if {[catch {exec getconf _NPROCESSORS_ONLN} processor_count]} {
       # getconf call failed.  Try using /proc/cpuinfo
       unset processor_count
@@ -239,13 +286,8 @@ if {[catch {$config GetValue thread_count}]} {
       $config SetValue thread_count $processor_count
    }
 }
-if {[catch {$config GetValue use_numa}]} {
-   # Default is a non-NUMA aware build, because NUMA builds
-   # require install of system NUMA development package.
-   $config SetValue use_numa 0
-}
 if {[catch {$config GetValue program_compiler_c++_override} compiler] == 0} {
-   $config SetValue program_compiler_c++ $compiler
+    $config SetValue program_compiler_c++ $compiler
 }
 
 # The absolute, native filename of the null device
@@ -273,6 +315,10 @@ if {[string match g++ [file tail [lindex \
    set nowarn [list -Wno-non-template-friend]
    if {[lindex $gcc_version 0]>=6} {
       lappend nowarn {-Wno-misleading-indentation}
+   }
+   if {[lindex $gcc_version 0]>=8} {
+      # Allow strncpy to truncate strings
+      lappend nowarn {-Wno-stringop-truncation}
    }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]

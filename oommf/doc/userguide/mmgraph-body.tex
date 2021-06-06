@@ -124,10 +124,17 @@ ranges automatically adjust to track incoming data.
 
 Use the \btn{Auto Offset Y1} and \btn{Auto Offset Y2} to automatically
 translate each curve plotted against the specified axis up or down so
-that the first point on the curve has a y-value of zero.  This feature
-is especially useful for comparing variations between different energy
-curves, because for these curves one is typically interested in
-changes is values rather than the absolute energy value itself.
+that the first point on the curve has a y-value of zero for a linear
+axis or one for a logarithmic axis.  This feature is especially useful
+for comparing variations between different energy curves, because for
+these curves one is typically interested in changes is values rather
+than the absolute energy value itself.
+
+By default the scaling on each axis is linear.  The \btn{Log scale axes}
+check boxes enables logarithmic scaling on the selected axes.  If
+logarithmic scaling is selected then any point with a zero value is
+dropped and negative values are replaced with their corresponding
+positive absolute value.
 
 The size of the margin surrounding the plot region is computed
 automatically.  Larger margins may be specified by filling in the
@@ -230,10 +237,18 @@ are rescaled.  An arrow is drawn against the rectangle indicating which
 y-axis will be rescaled.  The rescaling may be canceled by positioning
 the mouse pointer over the initial point before releasing the mouse
 button.  The zoom box feature is similar to the mouse zoom control in
-the
-\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
-(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} application, except
-that here there is no ``un-zooming'' mouse control.
+the \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
+  (Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} application, except
+that here there is no ``un-zooming'' mouse control.  However, the
+coordinate limits for each zoom are stored in a list, and the \key{Esc}
+and \key{Shift+Esc} keys may be used to move backwards and forwards,
+respectively, through this list.  The \key{Enter}/\key{Return} key will
+copy the current coordinate limits to the list.  A pointer is kept to
+the selected display configuration state, and new states are added after
+that point; if a display state is added in the interior of the list
+(i.e. ahead of the last state), then all configurations following the
+new entry are deleted.  The entire list is cleared any time automatic
+scaling is invoked.
 
 The \key{PageUp} and \key{PageDown} keys may also be used to zoom the
 display in and out.  Use in conjuction with the \key{Shift} key to jump

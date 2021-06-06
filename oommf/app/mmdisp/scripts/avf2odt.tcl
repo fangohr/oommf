@@ -54,7 +54,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2odt
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 
 Oc_CommandLine Option console {} {}
 

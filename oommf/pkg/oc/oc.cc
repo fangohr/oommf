@@ -30,6 +30,7 @@
 /* Header file for this extension */
 #include "autobuf.h"
 #include "oc.h"
+#include "octhread.h"
 
 /* Implementation-defined limits (ANSI C) */
 #include <limits.h>
@@ -43,8 +44,12 @@
 # include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#include <algorithm>
 #include <list>
+
+// Read <algorithm> last, because with some pgc++ installs the
+// <emmintrin.h> header is not interpreted properly if <algorithm> is
+// read first.
+#include <algorithm>
 
 OC_USE_STD_NAMESPACE;
 OC_USE_EXCEPTION;
@@ -737,17 +742,13 @@ extern "C" { void OcSigTermHandler(int); }
 extern "C" { typedef void ocsighandler_type(int); }
 static ocsighandler_type *OcSavedTermHandler = SIG_DFL;
 static std::list< pair<OcSigFunc*,ClientData> > sigterm_handlers;
-#if OOMMF_THREADS
-// Without this #if test, in the no-threads case g++ complains
-// 'ocsigtermhandler_mutex' defined but not used.
-static Tcl_Mutex ocsigtermhandler_mutex = 0;
-#endif
+static Oc_Mutex ocsigtermhandler_mutex;
 
 void OcSigTermHandler(int signo)
 { // On unix, signo should be SIGTERM (from kill) or SIGINT (from
   // Ctrl-C); on Windows it may be SIGINT (from Ctrl-C), SIGBREAK (from
   // Ctrl-Break/Pause, or window close).
-  Tcl_MutexLock(&ocsigtermhandler_mutex);
+  Oc_LockGuard lck(ocsigtermhandler_mutex);
   try {
     // Loop through handlers, from back (last registered) to
     // front(first registered).
@@ -763,7 +764,6 @@ void OcSigTermHandler(int signo)
     // Note: OcSigTermHandler is extern "C" type, and shouldn't throw
     // exceptions.
   }
-  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
   // Note that OcSavedTermHandler may be SIG_IGN or SIG_DFL
   signal(signo,OcSavedTermHandler);
   raise(signo);
@@ -771,49 +771,37 @@ void OcSigTermHandler(int signo)
 
 void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData cd)
 {
-  Tcl_MutexLock(&ocsigtermhandler_mutex);
-  try {
-    sigterm_handlers.push_back(pair<OcSigFunc*,ClientData>(handler,cd));
-    if(sigterm_handlers.size()==1) {
+  Oc_LockGuard lck(ocsigtermhandler_mutex);
+  sigterm_handlers.push_back(pair<OcSigFunc*,ClientData>(handler,cd));
+  if(sigterm_handlers.size()==1) {
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
-      OcSavedTermHandler = signal(SIGINT,OcSigTermHandler);
-      signal(SIGBREAK,OcSigTermHandler); // Should we save SIGBREAK
-      signal(SIGTERM,OcSigTermHandler);  // handler too?
+    OcSavedTermHandler = signal(SIGINT,OcSigTermHandler);
+    signal(SIGBREAK,OcSigTermHandler); // Should we save SIGBREAK
+    signal(SIGTERM,OcSigTermHandler);  // handler too?
 #else
-      OcSavedTermHandler = signal(SIGTERM,OcSigTermHandler);
-      signal(SIGINT,OcSigTermHandler); // Save?
+    OcSavedTermHandler = signal(SIGTERM,OcSigTermHandler);
+    signal(SIGINT,OcSigTermHandler); // Save?
 #endif
-    }
-  } catch(...) {
-    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
-    throw;
   }
-  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
 }
 void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData cd)
 {
-  Tcl_MutexLock(&ocsigtermhandler_mutex);
-  try {
-    std::list< pair<OcSigFunc*,ClientData> >::iterator it
-      = std::find(sigterm_handlers.begin(),
-                  sigterm_handlers.end(),
-                  pair<OcSigFunc*,ClientData>(handler,cd));
-    if(it != sigterm_handlers.end()) {
-      sigterm_handlers.erase(it);
-      if(sigterm_handlers.size()==0) {
+  Oc_LockGuard lck(ocsigtermhandler_mutex);
+  std::list< pair<OcSigFunc*,ClientData> >::iterator it
+    = std::find(sigterm_handlers.begin(),
+                sigterm_handlers.end(),
+                pair<OcSigFunc*,ClientData>(handler,cd));
+  if(it != sigterm_handlers.end()) {
+    sigterm_handlers.erase(it);
+    if(sigterm_handlers.size()==0) {
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
-        signal(SIGINT,OcSavedTermHandler);
+      signal(SIGINT,OcSavedTermHandler);
 #else
-        signal(SIGTERM,OcSavedTermHandler);
+      signal(SIGTERM,OcSavedTermHandler);
 #endif
-        OcSavedTermHandler = SIG_DFL;
-      }
+      OcSavedTermHandler = SIG_DFL;
     }
-  } catch(...) {
-    Tcl_MutexUnlock(&ocsigtermhandler_mutex);
-    throw;
   }
-  Tcl_MutexUnlock(&ocsigtermhandler_mutex);
 }
 
 // Multi-platform version of strerror_r.  Thread-safe.
@@ -833,13 +821,9 @@ void Oc_StrError(int errnum,char* buf,size_t buflen)
   // this is not performance critical code, fall back to C89 strerror.
   // Wrap with mutex locking since strerror is not guaranteed to be
   // thread-safe.
-# if OOMMF_THREADS
-  // Without this #if test, in the no-threads case g++ complains
-  // 'ocstrerror_mutex' defined but not used.
-  static Tcl_Mutex ocstrerror_mutex = 0;
-# endif
-  Tcl_MutexLock(&ocstrerror_mutex);
+  static Oc_Mutex ocstrerror_mutex;
   try {
+    Oc_LockGuard lck(ocstrerror_mutex);
     const char* cptr = strerror(errnum);
     size_t j=0;
     for(;j<buflen-1;++j) {
@@ -847,11 +831,8 @@ void Oc_StrError(int errnum,char* buf,size_t buflen)
       buf[j] = cptr[j];
     }
     buf[j] = '\0';
-    Tcl_MutexUnlock(&ocstrerror_mutex);
     return;
-  } catch(...) {
-    Tcl_MutexUnlock(&ocstrerror_mutex);
-  }
+  } catch(...) {}
 #endif // OC_SYSTEM_TYPE
  const char* unk = "Unknown error";
  size_t i=0;
@@ -1693,7 +1674,7 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
   }
   if(key) CFRelease(key);
   if(val) CFRelease(val);
-#endif // OC_SET_MACOSX_APPNAME
+# endif // OC_SET_MACOSX_APPNAME
 
   try {
     Tk_Main(argc,argv,appinit);

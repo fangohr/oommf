@@ -4,11 +4,15 @@
  *
  */
 
-#include <algorithm>   // "sort" algorithm used on fixed_spin_list
 #include <assert.h>
 
 #include "director.h"
 #include "evolver.h"
+
+// Read <algorithm> last, because with some pgc++ installs the
+// <emmintrin.h> header is not interpreted properly if <algorithm> is
+// read first.
+#include <algorithm>   // "sort" algorithm used on fixed_spin_list
 
 /* End includes */
 

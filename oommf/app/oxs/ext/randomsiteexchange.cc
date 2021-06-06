@@ -170,7 +170,7 @@ void Oxs_RandomSiteExchange::FillLinkList
               link.index1 = mesh->Index(x,y,z); // Get base linear address
               link.index2 = link.index1 + offset;
               link.Acoef = (Amin + Arange*Oc_UnifRand())*wgt;
-              if(Oc_Fabs(link.Acoef)>max_Aeff) max_Aeff = Oc_Fabs(link.Acoef);
+              if(fabs(link.Acoef)>max_Aeff) max_Aeff = fabs(link.Acoef);
               links.push_back(link);
             }
           }
@@ -263,7 +263,7 @@ void Oxs_RandomSiteExchange::ComputeEnergy
   oced.pE_pt = 0.0;
 
   // Set maxang data
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);
+  const OC_REAL8m arg = 0.5*sqrt(maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;

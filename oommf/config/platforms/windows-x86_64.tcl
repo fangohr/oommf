@@ -102,7 +102,7 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # <URL:http://msdn.microsoft.com/visualc/>
 $config SetValue program_compiler_c++ {cl /c}
 #
-# MINGW32 + gcc
+# MINGW + gcc
 #$config SetValue program_compiler_c++ {g++ -c}
 #
 
@@ -223,6 +223,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
+#
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
 # $config SetValue program_compiler_extra_include_dirs /opt/local/include
@@ -317,9 +345,10 @@ if {[string match cl $ccbasename]} {
    if {![info exists cl_version]} {
       set cl_version [GuessClVersion [lindex $compilestr 0]]
    }
-   if {[lindex $cl_version 0]<12} {
+   if {![string match {} $cl_version] && [lindex $cl_version 0]<12} {
       puts stderr "WARNING: This version of OOMMF requires\
-                   Visual C++ 12.0 or later (C++ 11 support)"
+                   Visual C++ 12.0 (aka Visual Studio 2013)\
+                   or later (C++ 11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetClBannerVersion  [lindex $compilestr 0]]
@@ -350,17 +379,10 @@ if {[string match cl $ccbasename]} {
    #                   Require AVX  support: /arch:AVX
    #                   Require AVX2 support: /arch:AVX2
    # Fast (less predictable) floating point: /fp:fast
+   #         Value safe floating point opts: /fp:precise
    #     Use portable but insecure lib fcns: /D_CRT_SECURE_NO_DEPRECATE
    # Note: x86_64 guarantees SSE2 support.
    #
-   # Default optimization
-   #   set opts {}
-   # Max optimization
-   set opts [GetClGeneralOptFlags $cl_version x86_64]
-   # Aggressive optimization flags, some of which are specific to
-   # particular cl versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # cpuguess-windows-x86_64.tcl and x86-support.tcl for details.
 
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
@@ -403,9 +425,6 @@ if {[string match cl $ccbasename]} {
    # or
    #    unset cpuopts
    #
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
-   }
 
    # Use/don't use SSE source-code intrinsics (as opposed to compiler
    # generated SSE instructions, which are controlled by the /arch:
@@ -417,20 +436,33 @@ if {[string match cl $ccbasename]} {
       $config SetValue sse_level 2
    }
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular cl versions, but are all processor agnostic.
+   set opts [GetClGeneralOptFlags $cl_version x86_64]
+   set valuesafeopts [GetClValueSafeOptFlags $cl_version x86_64]
+
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+      set valuesafeopts [concat $valuesafeopts $cpuopts]
+   }
+
    # Silence security warnings
    if {$cl_major_version>7} {
       lappend opts /D_CRT_SECURE_NO_DEPRECATE
+      lappend valuesafeopts /D_CRT_SECURE_NO_DEPRECATE
    }
 
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
    $config SetValue program_compiler_c++_option_src {format "\"/Tp%s\""}
    $config SetValue program_compiler_c++_option_inc {format "\"/I%s\""}
@@ -514,8 +546,14 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
-   $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
-   $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
+   if {[catch {$config SetValue TCL_LIB_SPEC \
+                  [$config GetValue TCL_VC_LIB_SPEC]} _]} {
+      puts stderr "WARNING: $_"
+   }
+   if {[catch {$config SetValue TK_LIB_SPEC \
+                  [$config GetValue TK_VC_LIB_SPEC]} _]} {
+      puts stderr "WARNING: $_"
+   }
    # Note 1: advapi32 is needed for GetUserName function in Nb package.
    # Note 2: shell32.lib is needed for SetCurrentProcessExplicitAppUserModelID
    #   function called inside WinMain in pkg/oc/oc.cc to tie all OOMMF
@@ -530,7 +568,7 @@ if {[string match cl $ccbasename]} {
    unset cl_version
    unset cl_major_version
 } elseif {[string match g++* $ccbasename]} {
-   # ... for MINGW32 + GNU g++ C++ compiler
+   # ... for MINGW + GNU g++ C++ compiler
    if {![info exists gcc_version]} {
       set gcc_version [GuessGccVersion \
                           [lindex [$config GetValue program_compiler_c++] 0]]
@@ -545,14 +583,6 @@ if {[string match cl $ccbasename]} {
           [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
-   # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetGccGeneralOptFlags $gcc_version]
-   # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # x86-support.tcl for details.
-
    # CPU model architecture specific options.  To override, set Option
    # program_compiler_c++_cpu_arch in oommf/config/options.tcl (or,
    # preferably, in oommf/config/local/options.tcl).  See note about SSE
@@ -589,20 +619,48 @@ if {[string match cl $ccbasename]} {
    # or
    #    unset cpuopts
    #
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
-   }
 
-   # Use ANSI conformant printf routines, which in particular support
-   # the L format modifier for long double types.  The
-   # __USE_MINGW_ANSI_STDIO macro is an internal compiler macro; with
-   # the 32-bit MinGW compiler 4.7.2 the -ansi and -posix switches set
-   # this macro, but on 64-bit 4.7.3 they do not.  BTW, this macro
-   # needs to be set before any system header file inclusion.  For
-   # more on this macro see the mingw header file _mingw.h in the
-   # mingw32/include directory, or os_defines.h deep in the
-   # mingw64/include/c++/ tree.
-   lappend opts "-D__USE_MINGW_ANSI_STDIO=1"
+   # The gcc x86 toolchain supports 80-bit long doubles, and the "L"
+   # length modifier (e.g., %Le, %Lf, %Lg, %La) to the printf family for
+   # formatting long double values.  However, the long double type in
+   # Windows is the same width as double, namely 64-bits.  The result is
+   # that gcc 80-bit long doubles can't be printed through the Windows
+   # I/O libraries.  This can be checked looking at the long double
+   # output from oommf/pkg/oc/<platform>/varinfo.
+   #
+   #  MinGW provides an alternative, POSIX/ISOC99 compliant, I/O
+   # library.  This is selected (1) or deselected (0) by the macro
+   # __USE_MINGW_ANSI_STDIO.  Older references recommendation setting
+   # this macro to 1 before #including any system header files.
+   # However, beginning with a 23-Dec-2018 commit of _mingw.h, a
+   # deprecation warning is triggered if __USE_MINGW_ANSI_STDIO is
+   # user-defined.  Instead, one is suppose to #define one of the
+   # following feature macros:
+   #
+   #    _POSIX, _POSIX_SOURCE, _POSIX_C_SOURCE, _SVID_SOURCE,
+   #    _ISOC99_SOURCE,_XOPEN_SOURCE, _XOPEN_SOURCE_EXTENDED,
+   #
+   # (or _GNU_SOURCE with __cplusplus).  If any of these is #defined
+   # and __USE_MINGW_ANSI_STDIO is not defined, then the _mingw.h
+   # header will define __USE_MINGW_ANSI_STDIO to 1 and thus enable
+   # the MinGW stdio routines.
+   #
+   #  If __USE_MINGW_ANSI_STDIO is not defined, then C++ may or may not
+   # enable the MinGW I/O, depending upon the MinGW/gcc release and
+   # "bitness" (32- or 64-).  The os_defines.h file buried deep in the
+   # mingw{32,64}/include/c++/ tree implies that the MinGW I/O routines
+   # are required for libstdc++, but my Sep 2019 gcc 9.2.0-2 install
+   # enables them for 64-bit builds but not for 32-bit builds.  YMMV.
+   # See the _mingw.h header in
+   #
+   #    mingw32/i686-w64-mingw32/include/
+   # or
+   #    mingw64/x86_64-w64-mingw32/include/
+   #
+   # for additional details.  My best guess at the most robust solution
+   # at this time is to define _POSIX_SOURCE on the compile line.  (mjd,
+   # 2019/09)
+   lappend opts "-D_POSIX_SOURCE"
 
    # SSE support
    if {[catch {$config GetValue sse_level} sse_level]} {
@@ -621,19 +679,37 @@ if {[string match cl $ccbasename]} {
    if {[lindex $gcc_version 0]>=6} {
       lappend nowarn {-Wno-misleading-indentation}
    }
+   if {[lindex $gcc_version 0]>=8} {
+      # Allow strncpy to truncate strings
+      lappend nowarn {-Wno-stringop-truncation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+      set valuesafeopts [concat $valuesafeopts $cpuopts]
+   }
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
+
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}

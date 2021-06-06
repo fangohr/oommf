@@ -32,10 +32,8 @@ void Nb_NOP(void*);
 template<class T> T Nb_Signum(T x) { return (x>0 ? 1 : (x<0 ? -1 : 0)); }
 
 // Greatest common divisor, computed via Euclid's algorithm
-template<class T> T Nb_Gcd(T x,T y);
-/// Explicit, separate declaration to help HP CC auto-instantiation.
 template<class T> T Nb_Gcd(T m,T n)
-{ // Include definition in header to aid GCC's auto-instantiation.
+{
   if(n==0) return 0;
   if(n<0) n *= -1;
   if(m<0) m *= -1;
@@ -46,8 +44,21 @@ template<class T> T Nb_Gcd(T m,T n)
 
 Tcl_CmdProc NbGcdCmd;
 
-// Greatest Common Divisor, OC_REALWIDE version
-OC_REALWIDE Nb_GcdRW(OC_REALWIDE m,OC_REALWIDE n);
+// Greatest common divisor via Euclid's algorithm, "Float" version.
+// Inputs and outputs are integer values stored in a floating point
+// variable.  This is useful because integer range of floating point
+// types is usually wider than for type int; for 8-byte IEEE format the
+// width is 53 bits, and for 10-byte format 64 bits.
+template<typename T>
+T Nb_GcdFloat(T m,T n)
+{
+  assert(m == floor(m) && n == floor(n));
+  m = floor(fabs(m));  n = floor(fabs(n));
+  if(m==0.0 || n==0.0) return 0.0;
+  T temp;
+  while( (temp=(m - floor(m/n)*n)) > 0.0) { m=n; n=temp; }
+  return n;
+}
 
 // Simple continued fraction like rational approximator
 void Nb_RatApprox(double x,int steps,int &num,int &denom);

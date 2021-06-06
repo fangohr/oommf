@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "nb.h"
 #include "director.h"
@@ -36,9 +37,6 @@
 OC_USE_STRING;
 
 /* End includes */
-
-// Oxs_Ext registration support
-OXS_EXT_REGISTER(Oxs_Demag);
 
 #ifndef VERBOSE_DEBUG
 # define VERBOSE_DEBUG 0
@@ -76,7 +74,7 @@ private:
   OC_INDEX big_blocksize;
   OC_INDEX small_blocksize;
   OC_INDEX next_job_start;
-  Oxs_Mutex job_mutex;
+  std::mutex job_mutex;
 };
 
 void _Oxs_DemagJobControl::Init
@@ -152,17 +150,18 @@ if(foocount<5) {
 void _Oxs_DemagJobControl::ClaimJob(OC_INDEX& istart,OC_INDEX& istop)
 {
   OC_INDEX tmp_start,tmp_stop;
-  job_mutex.Lock();
-  if((tmp_start = next_job_start)<big_block_limit) {
-    if(next_job_start + big_blocksize>big_block_limit) {
-      tmp_stop = next_job_start = big_block_limit;
+  {
+    std::lock_guard<std::mutex> lck(job_mutex);
+    if((tmp_start = next_job_start)<big_block_limit) {
+      if(next_job_start + big_blocksize>big_block_limit) {
+        tmp_stop = next_job_start = big_block_limit;
+      } else {
+        tmp_stop = (next_job_start += big_blocksize);
+      }
     } else {
-      tmp_stop = (next_job_start += big_blocksize);
+      tmp_stop = (next_job_start += small_blocksize);
     }
-  } else {
-    tmp_stop = (next_job_start += small_blocksize);
   }
-  job_mutex.Unlock();
   if(tmp_stop>imax) tmp_stop=imax;  // Guarantee that istop is in-range.
   istart = tmp_start;
   istop  = tmp_stop;
@@ -191,7 +190,7 @@ Oxs_Demag::Oxs_FFTLocker::Oxs_FFTLocker
   assert(info.rdimx>0 && info.rdimy>0 && info.rdimz>0 &&
          info.cdimx>0 && info.cdimy>0 && info.cdimz>0 &&
          info.embed_block_size>0);
-         
+
   // FFT objects
   fftx.SetDimensions(info.rdimx,
                      (info.cdimx==1 ? 1 : 2*(info.cdimx-1)), info.rdimy);
@@ -346,137 +345,34 @@ Oxs_Demag::Oxs_FFTLocker::~Oxs_FFTLocker()
 }
 
 ////////////////////////////////////////////////////////////////////////
-// Oxs_Demag Constructor
-Oxs_Demag::Oxs_Demag(
-  const char* name,     // Child instance id
-  Oxs_Director* newdtr, // App director
-  const char* argstr)   // MIF input block parameters
-  : Oxs_Energy(name,newdtr,argstr),
-#if REPORT_TIME
-    inittime("init"),fftforwardtime("f-fft"),
-    fftxforwardtime("f-fftx"),fftyforwardtime("f-ffty"),
-    fftinversetime("i-fft"),fftxinversetime("i-fftx"),
-    fftyinversetime("i-ffty"),
-    convtime("conv"),dottime("dot"),
-#endif // REPORT_TIME
-    rdimx(0),rdimy(0),rdimz(0),cdimx(0),cdimy(0),cdimz(0),
-    adimx(0),adimy(0),adimz(0),
-    xperiodic(0),yperiodic(0),zperiodic(0),
-    mesh_id(0),energy_density_error_estimate(-1),
-    asymptotic_radius(-1),
-    MaxThreadCount(Oc_GetMaxThreadCount()),
-    embed_block_size(0)
-{
-  asymptotic_radius = GetRealInitValue("asymptotic_radius",32.0);
-  /// Units of (dx*dy*dz)^(1/3) (geometric mean of cell dimensions),
-  /// which is the appropriate scale for estimating the numeric error in
-  /// the demag analytic formulae evaluation.  See NOTES V, 15-Mar-2011,
-  /// pp 185-193.
-  ///   Value of -1 disables use of asymptotic approximation on
-  /// non-periodic grids.  For periodic grids zero or negative values
-  /// for asymptotic_radius are reset to half the width of the
-  /// simulation window in the periodic dimenions.  This may be
-  /// counterintuitive, so it might be better to disallow or modify the
-  /// behavior in the periodic setting.
-
-  cache_size = 1024*GetIntInitValue("cache_size_KB",1024);
-  /// Cache size in KB.  Default is 1 MB.  Code wants bytes, so multiply
-  /// user input by 1024.  cache_size is used to set embed_block_size in
-  /// FillCoefficientArrays member function.
-
-  zero_self_demag = GetIntInitValue("zero_self_demag",0);
-  /// If true, then diag(1/3,1/3,1/3) is subtracted from the self-demag
-  /// term.  In particular, for cubic cells this makes the self-demag
-  /// field zero.  This will change the value computed for the demag
-  /// energy by a constant amount, but since the demag field is changed
-  /// by a multiple of m, the torque and therefore the magnetization
-  /// dynamics are unaffected.
-
-#if REPORT_TIME
-  // Set default names for development timers
-  char buf[256];
-  for(int i=0;i<dvltimer_number;++i) {
-    Oc_Snprintf(buf,sizeof(buf),"dvl[%d]",i);
-    dvltimer[i].name = buf;
-  }
-#endif // REPORT_TIME
-  VerifyAllInitArgsUsed();
-}
-
-Oxs_Demag::~Oxs_Demag() {
-#if REPORT_TIME
-  const char* prefix="      subtime ...";
-  inittime.Print(stderr,prefix,InstanceName());
-  fftforwardtime.Print(stderr,prefix,InstanceName());
-  fftinversetime.Print(stderr,prefix,InstanceName());
-  fftxforwardtime.Print(stderr,prefix,InstanceName());
-  fftxinversetime.Print(stderr,prefix,InstanceName());
-  fftyforwardtime.Print(stderr,prefix,InstanceName());
-  fftyinversetime.Print(stderr,prefix,InstanceName());
-  convtime.Print(stderr,prefix,InstanceName());
-  dottime.Print(stderr,prefix,InstanceName());
-  for(int i=0;i<dvltimer_number;++i) {
-    dvltimer[i].Print(stderr,prefix,InstanceName());
-  }
-#endif // REPORT_TIME
-  ReleaseMemory();
-}
-
-OC_BOOL Oxs_Demag::Init()
-{
-#if REPORT_TIME
-  const char* prefix="      subtime ...";
-  inittime.Print(stderr,prefix,InstanceName());
-  fftforwardtime.Print(stderr,prefix,InstanceName());
-  fftinversetime.Print(stderr,prefix,InstanceName());
-  fftxforwardtime.Print(stderr,prefix,InstanceName());
-  fftxinversetime.Print(stderr,prefix,InstanceName());
-  fftyforwardtime.Print(stderr,prefix,InstanceName());
-  fftyinversetime.Print(stderr,prefix,InstanceName());
-  convtime.Print(stderr,prefix,InstanceName());
-  dottime.Print(stderr,prefix,InstanceName());
-  for(int i=0;i<dvltimer_number;++i) {
-    dvltimer[i].Print(stderr,prefix,InstanceName());
-    dvltimer[i].Reset();
-  }
-  inittime.Reset();
-  fftforwardtime.Reset();  fftinversetime.Reset();
-  fftxforwardtime.Reset(); fftxinversetime.Reset();
-  fftyforwardtime.Reset(); fftyinversetime.Reset();
-  convtime.Reset();        dottime.Reset();
-#endif // REPORT_TIME
-  mesh_id = 0;
-  energy_density_error_estimate = -1;
-  ReleaseMemory();
-  return Oxs_Energy::Init();
-}
-
-void Oxs_Demag::ReleaseMemory() const
-{ // Conceptually const
-  A.Free();
-  Hxfrm_base.Free();
-  rdimx=rdimy=rdimz=0;
-  cdimx=cdimy=cdimz=0;
-  adimx=adimy=adimz=0;
-}
+// Oxs_Demag Constructor, Destructor, Init(), and ReleaseMemory()
+// routines are in the demag.cc file.
 
 // Thread for computing Dx2 of f.  This is the first component
 // of the D6f computation
 class _Oxs_FillCoefficientArraysDx2fThread : public Oxs_ThreadRunObj {
 public:
-  OC_REALWIDE (*f)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE);
-  Oxs_3DArray<OC_REALWIDE>& arr;
-  OC_REALWIDE dx,dy,dz;
+  OXS_DEMAG_REAL_ANALYTIC (*f)(OXS_DEMAG_REAL_ANALYTIC,
+                               OXS_DEMAG_REAL_ANALYTIC,
+                               OXS_DEMAG_REAL_ANALYTIC);
+  OXS_DEMAG_REAL_ASYMP arad; // Radial bound for analytic demag
+  Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr;
+  OXS_DEMAG_REAL_ANALYTIC dx,dy,dz;
   int number_of_threads;
 
   _Oxs_FillCoefficientArraysDx2fThread
-  (OC_REALWIDE (*g)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE),
-   Oxs_3DArray<OC_REALWIDE>& iarr,
-   OC_REALWIDE idx,OC_REALWIDE idy,OC_REALWIDE idz,
-   int inumber_of_threads)
-    : f(g),arr(iarr),
-      dx(idx), dy(idy), dz(idz),
-      number_of_threads(inumber_of_threads) {}
+  (OXS_DEMAG_REAL_ANALYTIC (*g)(OXS_DEMAG_REAL_ANALYTIC,
+                                OXS_DEMAG_REAL_ANALYTIC,
+                                OXS_DEMAG_REAL_ANALYTIC),
+   OXS_DEMAG_REAL_ASYMP arad_in,
+   Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr_in,
+   OXS_DEMAG_REAL_ANALYTIC dx_in,
+   OXS_DEMAG_REAL_ANALYTIC dy_in,
+   OXS_DEMAG_REAL_ANALYTIC dz_in,
+   int number_of_threads_in)
+    : f(g),arad(arad_in),arr(arr_in),
+      dx(dx_in), dy(dy_in), dz(dz_in),
+      number_of_threads(number_of_threads_in) {}
 
   void Cmd(int threadnumber, void*);
 
@@ -511,16 +407,41 @@ void _Oxs_FillCoefficientArraysDx2fThread::Cmd(int threadnumber,void*)
   const OC_INDEX kstop  = jobstop / ydim;
   const OC_INDEX jstop  = jobstop - ydim*kstop;
 
+  // Further than one step outside asymptotic radius, insert zeros for f.
+  OXS_DEMAG_REAL_ASYMP asdx,scaled_asdy,scaled_asdz,scaled_arad2;
+  dx.DownConvert(asdx);
+  dy.DownConvert(scaled_asdy);  scaled_asdy /= asdx;
+  dz.DownConvert(scaled_asdz);  scaled_asdz /= asdx;
+  scaled_arad2 = (arad<0 ? -1 : (arad/asdx)*(arad/asdx));
+
   for(OC_INDEX k=kstart;k<=kstop;++k) {
+    OXS_DEMAG_REAL_ANALYTIC z = OXS_DEMAG_REAL_ANALYTIC(k-1)*dz;
+    OXS_DEMAG_REAL_ASYMP zchk = (k>2 ? (k-2)*scaled_asdz : 0); zchk *= zchk;
     const OC_INDEX ja = (k!=kstart ? 0 : jstart);
     const OC_INDEX jb = (k!=kstop  ? ydim : jstop);
     for(OC_INDEX j=ja;j<jb;++j) {
-      OC_REALWIDE a0 = f(0.0,(j-1)*dy,(k-1)*dz);
-      OC_REALWIDE b0 = a0 - f(-1*dx,(j-1)*dy,(k-1)*dz);
-      for(OC_INDEX i=0;i<xdim;++i) {
-        OC_REALWIDE a1 = f((i+1)*dx,(j-1)*dy,(k-1)*dz);
-        OC_REALWIDE b1 = a1 - a0;  a0 = a1;
+      OXS_DEMAG_REAL_ANALYTIC y = OXS_DEMAG_REAL_ANALYTIC(j-1)*dy;
+      OC_INDEX ias_start = xdim;
+      if(scaled_arad2>=0) {
+        OXS_DEMAG_REAL_ASYMP ychk = (j>2 ? (j-2)*scaled_asdy : 0); ychk *= ychk;
+        OXS_DEMAG_REAL_ASYMP xchk = scaled_arad2-zchk-ychk+0.0625;
+        /// 0.0625 allows for floating point rounding error.  This value
+        /// should be slightly larger than the corresponding value in
+        /// _Oxs_FillCoefficientArraysDy2z2Thread.
+        ias_start = (xchk>0 ? static_cast<OC_INDEX>(floor(sqrt(xchk)))+1
+                            : 0);
+        if(ias_start>xdim) ias_start = xdim;
+      }
+      OXS_DEMAG_REAL_ANALYTIC a0 = f(0.0,y,z);
+      OXS_DEMAG_REAL_ANALYTIC b0 = a0 - f(OXS_DEMAG_REAL_ANALYTIC(-1)*dx,y,z);
+      OC_INDEX i = 0;
+      for(;i<ias_start;++i) {
+        OXS_DEMAG_REAL_ANALYTIC a1 = f(OXS_DEMAG_REAL_ANALYTIC(i+1)*dx,y,z);
+        OXS_DEMAG_REAL_ANALYTIC b1 = a1 - a0;  a0 = a1;
         arr(i,j,k) = b1 - b0; b0 = b1;
+      }
+      for(;i<xdim;++i) {
+        arr(i,j,k) = 0;  // Asymptotic region
       }
     }
   }
@@ -530,13 +451,24 @@ void _Oxs_FillCoefficientArraysDx2fThread::Cmd(int threadnumber,void*)
 // components of the D6f computation.
 class _Oxs_FillCoefficientArraysDy2z2Thread : public Oxs_ThreadRunObj {
 public:
-  Oxs_3DArray<OC_REALWIDE>& arr;
+
+  Oxs_DemagAsymptotic& fasymp;
+  OXS_DEMAG_REAL_ANALYTIC dx,dy,dz;
+  OXS_DEMAG_REAL_ASYMP arad;
+
+  Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr;
   int number_of_threads;
 
   _Oxs_FillCoefficientArraysDy2z2Thread
-  (Oxs_3DArray<OC_REALWIDE>& iarr,int inumber_of_threads)
-    : arr(iarr),
-      number_of_threads(inumber_of_threads) {}
+  (Oxs_DemagAsymptotic& fasymp_in,
+   OXS_DEMAG_REAL_ANALYTIC dx_in,
+   OXS_DEMAG_REAL_ANALYTIC dy_in,
+   OXS_DEMAG_REAL_ANALYTIC dz_in,
+   OXS_DEMAG_REAL_ASYMP arad_in,
+   Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr_in,int number_of_threads_in)
+    : fasymp(fasymp_in),dx(dx_in),dy(dy_in),dz(dz_in),arad(arad_in),
+      arr(arr_in),
+      number_of_threads(number_of_threads_in) {}
 
   void Cmd(int threadnumber, void*);
 
@@ -555,6 +487,10 @@ void _Oxs_FillCoefficientArraysDy2z2Thread::Cmd(int threadnumber,void*)
   const OC_INDEX xdim = arr.GetDim1();
   const OC_INDEX ydim = arr.GetDim2()-2;
   const OC_INDEX zdim = arr.GetDim3()-2;
+
+  // Scaling for analytic computation
+  OXS_DEMAG_REAL_ANALYTIC analytic_scale
+               = -1.0/(4.0*dx*dy*dz*OXS_DEMAG_REAL_ANALYTIC_PI);
 
   // Select job by threadnumber:
   OC_INDEX bitesize = xdim/number_of_threads;
@@ -586,86 +522,119 @@ void _Oxs_FillCoefficientArraysDy2z2Thread::Cmd(int threadnumber,void*)
       }
     }
   }
-  // Compute D2z.  Block a little bit on k.
-  const OC_INDEX kstop = zdim - zdim%4;
+
+  // Inside asymptotic radius, compute D2z.  Outside, use fasymp;
+  OXS_DEMAG_REAL_ASYMP asdx,asdy,asdz;
+  dx.DownConvert(asdx);
+  dy.DownConvert(asdy);
+  dz.DownConvert(asdz);
+  OXS_DEMAG_REAL_ASYMP scaled_dy,scaled_dz,scaled_arad2;
+  scaled_dy = asdy/asdx;
+  scaled_dz = asdz/asdx;
+  scaled_arad2 = (arad<0 ? -1 : (arad/asdx)*(arad/asdx));
+
   for(OC_INDEX j=0;j<ydim;++j) {
-    for(OC_INDEX k=0;k<kstop;k+=4) {
-      for(OC_INDEX i=istart;i<istop;++i) {
+    OXS_DEMAG_REAL_ASYMP y = j*asdy;
+    OXS_DEMAG_REAL_ASYMP ychk = j*scaled_dy; ychk *= ychk;
+    for(OC_INDEX k=0;k<zdim;++k) {
+      OXS_DEMAG_REAL_ASYMP z = k*asdz;
+      OC_INDEX ias_start = istop;
+      if(scaled_arad2>=0) {
+        OXS_DEMAG_REAL_ASYMP zchk = k*scaled_dz; zchk *= zchk;
+        OXS_DEMAG_REAL_ASYMP xchk = scaled_arad2-zchk-ychk+0.03125;
+        // 0.03125 allows for floating point rounding error.  This value
+        // should be slightly less that corresponding value in
+        // _Oxs_FillCoefficientArraysDx2fThread.
+        ias_start = (xchk>0 ? static_cast<OC_INDEX>(floor(sqrt(xchk)))+1 : 0);
+        if(ias_start>istop) ias_start = istop;
+      }
+      OC_INDEX i=istart;
+      for(;i<ias_start;++i) {
         arr(i,j,k)  =  arr(i,j,k+1) - arr(i,j,k);
         arr(i,j,k) += (arr(i,j,k+1) - arr(i,j,k+2));
-        arr(i,j,k+1)  =  arr(i,j,k+2) - arr(i,j,k+1);
-        arr(i,j,k+1) += (arr(i,j,k+2) - arr(i,j,k+3));
-        arr(i,j,k+2)  =  arr(i,j,k+3) - arr(i,j,k+2);
-        arr(i,j,k+2) += (arr(i,j,k+3) - arr(i,j,k+4));
-        arr(i,j,k+3)  =  arr(i,j,k+4) - arr(i,j,k+3);
-        arr(i,j,k+3) += (arr(i,j,k+4) - arr(i,j,k+5));
+        arr(i,j,k) *= analytic_scale;
       }
-    }
-    for(OC_INDEX k=kstop;k<zdim;++k) {
-      for(OC_INDEX i=istart;i<istop;++i) {
-        arr(i,j,k) = arr(i,j,k+1) - arr(i,j,k);
-        arr(i,j,k) += (arr(i,j,k+1) - arr(i,j,k+2));
+      for(;i<istop;++i) {
+        arr(i,j,k) = fasymp.Asymptotic(i*asdx,y,z);
       }
     }
   }
 }
 
-// Given a function f, and an array arr pre-sized to dimensions
-// xdim, ydim+2, zdim+2, computes D6[f] = D2z[D2y[D2x[f]]] across
-// the range [0,xdim-1] x [0,ydim-1] x [0,zdim-1].  The results are
-// stored in arr.  The outer planes j=ydim,ydim+1 and k=zdim,zdim+1
-// are used as workspace.
-void ComputeD6f(OC_REALWIDE (*f)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE),
-                Oxs_3DArray<OC_REALWIDE>& arr,
-                Oxs_ThreadTree& threadtree,
-                OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz,
-                int maxthreadcount)
+// Given a function f and radius arad of the analytic/asymptotic
+// boundary, and an array arr pre-sized to dimensions xdim, ydim+2,
+// zdim+2, computes D6[f] = D2z[D2y[D2x[f]]] across the range [0,xdim-1]
+// x [0,ydim-1] x [0,zdim-1] inside sphere of radius arad.  The results
+// are stored in arr.  The outer planes j=ydim,ydim+1 and k=zdim,zdim+1
+// are used as workspace.  For offsets outside arad the import function
+// fasymp is used instead to directly compute the tensor value (i.e.,
+// fasymp ~= analytic_scale*D6[f]).
+void ComputeD6f
+(OXS_DEMAG_REAL_ANALYTIC (*f)(OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC),
+ Oxs_DemagAsymptotic& fasymp,
+ OXS_DEMAG_REAL_ASYMP arad,
+ Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr,
+ Oxs_ThreadTree& threadtree,
+ OXS_DEMAG_REAL_ANALYTIC dx,
+ OXS_DEMAG_REAL_ANALYTIC dy,
+ OXS_DEMAG_REAL_ANALYTIC dz,
+ int maxthreadcount)
 {
   // Compute f values and Dx2
-  _Oxs_FillCoefficientArraysDx2fThread dx2f(f,arr,dx,dy,dz,maxthreadcount);
+  _Oxs_FillCoefficientArraysDx2fThread dx2f(f,arad,arr,dx,dy,dz,maxthreadcount);
   threadtree.LaunchTree(dx2f,0);
 
   // Compute Dy2 and Dz2
-#if 1 // Multi-thread
-  _Oxs_FillCoefficientArraysDy2z2Thread dy2z2(arr,maxthreadcount);
+  OXS_DEMAG_REAL_ASYMP as_dx,as_dy,as_dz;
+  dx.DownConvert(as_dx);  dy.DownConvert(as_dy);  dz.DownConvert(as_dz);
+  _Oxs_FillCoefficientArraysDy2z2Thread dy2z2(fasymp,as_dx,as_dy,as_dz,arad,
+                                              arr,maxthreadcount);
   threadtree.LaunchTree(dy2z2,0);
-#else // Single-thread
-  _Oxs_FillCoefficientArraysDy2z2Thread dy2z2(arr,1);
-  dy2z2.Cmd(0,0);
-#endif
 }
 
 
 class _Oxs_FillCoefficientArraysAsympThread : public Oxs_ThreadRunObj {
 public:
   Oxs_StripedArray<Oxs_Demag::A_coefs>& A;
-  const OC_INDEX rdimx;
+  const OC_INDEX rdimx; // Dimensions of simulation window
   const OC_INDEX rdimy;
   const OC_INDEX rdimz;
-  const OC_INDEX adimx;
+
+  const OC_INDEX adimx; // Dimensions of demag tensor array A
   const OC_INDEX adimy;
   const OC_INDEX adimz;
+
+  const OC_INDEX wdimx; // Dimensions of window in which analytic
+  const OC_INDEX wdimy; // values are already computed.
+  const OC_INDEX wdimz;
+
   const int number_of_threads;
   const OC_REAL8m dx;
   const OC_REAL8m dy;
   const OC_REAL8m dz;
-  const OXS_DEMAG_REAL_ASYMP scaled_arad_sq;
+  const OXS_DEMAG_REAL_ASYMP max_error;
+  const int asympt_order;
   const OXS_FFT_REAL_TYPE fft_scaling;
 
   _Oxs_FillCoefficientArraysAsympThread
   (Oxs_StripedArray<Oxs_Demag::A_coefs>& iA,
    OC_INDEX irdimx,OC_INDEX irdimy,OC_INDEX irdimz,
    OC_INDEX iadimx,OC_INDEX iadimy,OC_INDEX iadimz,
+   OC_INDEX iwdimx,OC_INDEX iwdimy,OC_INDEX iwdimz,
    int inumber_of_threads,
    OC_REAL8m idx,OC_REAL8m idy,OC_REAL8m idz,
-   OXS_DEMAG_REAL_ASYMP iscaled_arad_sq,
+   OXS_DEMAG_REAL_ASYMP imax_error,
+   int iasympt_order,
    OXS_FFT_REAL_TYPE ifft_scaling)
     : A(iA),
       rdimx(irdimx), rdimy(irdimy), rdimz(irdimz),
       adimx(iadimx), adimy(iadimy), adimz(iadimz),
+      wdimx(iwdimx), wdimy(iwdimy), wdimz(iwdimz),
       number_of_threads(inumber_of_threads),
       dx(idx), dy(idy), dz(idz),
-      scaled_arad_sq(iscaled_arad_sq),
+      max_error(imax_error),asympt_order(iasympt_order),
       fft_scaling(ifft_scaling) {}
 
   void Cmd(int threadnumber, void*);
@@ -683,20 +652,20 @@ private:
 void _Oxs_FillCoefficientArraysAsympThread::Cmd(int threadnumber,
                                                 void* /* data */)
 {
-  Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz);
-  Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz);
-  Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz);
-  Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz);
-  Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz);
-  Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz);
+  Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz,max_error,asympt_order);
+  Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz,max_error,asympt_order);
+  Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz,max_error,asympt_order);
+  Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz,max_error,asympt_order);
+  Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz,max_error,asympt_order);
+  Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz,max_error,asympt_order);
 
   const OC_INDEX astridez = adimy;
   const OC_INDEX astridex = adimz*astridez;
 
   const int JBLOCK_SIZE = 4;  // sizeof(A_coefs)=6*sizeof(OXS_FFT_REAL_TYPE).
-  /// if sizeof(OXS_FFT_REAL_TYPE)=8, then sizeof(A_coefs)=48 bytes.  Assuming
-  /// a cache line size of 512 bits = 64 bytes, then a run of four A_coefs covers
-  /// 4*48 = 192 bytes = 3 cache lines.
+  /// if sizeof(OXS_FFT_REAL_TYPE)=8, then sizeof(A_coefs)=48 bytes.
+  /// Assuming a cache line size of 512 bits = 64 bytes, then a run of
+  /// four A_coefs covers 4*48 = 192 bytes = 3 cache lines.
 
   // The i range for jobs runs across 0 <= i < rdimx, whereas in NUMA
   // mode memory is sliced to threads across the range 0 <= i < adimx,
@@ -704,7 +673,7 @@ void _Oxs_FillCoefficientArraysAsympThread::Cmd(int threadnumber,
   // routine is called only once per run, during initialization, so
   // performance is not all that critical.  Moreover, this code may well
   // be compute rather than memory bandwidth bound.
-  // 
+  //
   // Job assignment: It should not be critical to get exactly even job
   // assignments to each thread, because this is initialization code run
   // only once per job.  Nonetheless, in the high aspect cell case this
@@ -728,30 +697,20 @@ void _Oxs_FillCoefficientArraysAsympThread::Cmd(int threadnumber,
   // some i and k a thread may have no computations.  But the offset
   // cycling in step 1 will hopefully give all threads a reasonable
   // slice of pie.
-
   const OC_INDEX JBLOCK_INCREMENT = JBLOCK_SIZE*number_of_threads;
   for(OC_INDEX i=0;i<rdimx;++i) {
     OC_INDEX iindex = i*astridex;
     OXS_DEMAG_REAL_ASYMP x = dx*i;
-    for(OC_INDEX k=0;k<rdimz;++k) {
+    for(OC_INDEX k= 0 ; k<rdimz; ++k) {
       OC_INDEX base_offset = (i+k+threadnumber) % number_of_threads;
       OC_INDEX ikindex = iindex + k*astridez;
       OXS_DEMAG_REAL_ASYMP z = dz*k;
-      OXS_DEMAG_REAL_ASYMP xz_radsq = x*x + z*z;
 
-      OC_INDEX first_j=0;
-      if(xz_radsq<scaled_arad_sq) {
-        first_j
-         = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(scaled_arad_sq-xz_radsq)/dy));
-        /// j smaller than first_j won't satisfy
-        ///    x*x+y*y+z*z<scaled_arad_sq
-        /// condition.
-      }
+      OC_INDEX first_j = (i>=wdimx || k>=wdimz ? 0 : wdimy);
       OC_INDEX jstart = JBLOCK_SIZE * base_offset;
-      if(first_j>(base_offset+1)*JBLOCK_SIZE) {
-        jstart += ((first_j-(base_offset+1)*JBLOCK_SIZE)/JBLOCK_INCREMENT)
-          *JBLOCK_INCREMENT;
-        /// Adjust jstart upward to meet scaled_arad_sq condition.
+      if(first_j >= jstart + JBLOCK_SIZE) {
+        jstart += ((first_j-jstart)/JBLOCK_INCREMENT)*JBLOCK_INCREMENT;
+        /// Adjust jstart upward to match asymptotic start fill condition.
       }
       OC_INDEX jstop = jstart+JBLOCK_SIZE;
       if(jstart<first_j) jstart = first_j;
@@ -760,12 +719,12 @@ void _Oxs_FillCoefficientArraysAsympThread::Cmd(int threadnumber,
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_INDEX index = j+ikindex;
           OXS_DEMAG_REAL_ASYMP y = dy*j;
-          A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
-          A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
-          A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
-          A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
-          A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
-          A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
+          A[index].A00 = fft_scaling*ANxx.Asymptotic(x,y,z);
+          A[index].A01 = fft_scaling*ANxy.Asymptotic(x,y,z);
+          A[index].A02 = fft_scaling*ANxz.Asymptotic(x,y,z);
+          A[index].A11 = fft_scaling*ANyy.Asymptotic(x,y,z);
+          A[index].A12 = fft_scaling*ANyz.Asymptotic(x,y,z);
+          A[index].A22 = fft_scaling*ANzz.Asymptotic(x,y,z);
         } // for-j
         // jstart may be tweaked off the start of its thread run
         // by first_j condition, so increment off of jstop.
@@ -783,29 +742,36 @@ public:
   const OC_INDEX rdimx;
   const OC_INDEX rdimy;
   const OC_INDEX rdimz;
+  const OC_INDEX wdimx;
+  const OC_INDEX wdimy;
+  const OC_INDEX wdimz;
   const OC_INDEX astridex;
   const OC_INDEX astridez;
   const int number_of_threads;
   const OC_REAL8m dx;
   const OC_REAL8m dy;
   const OC_REAL8m dz;
-  const OXS_DEMAG_REAL_ASYMP scaled_arad;
+  const OXS_DEMAG_REAL_ASYMP maxerror;
+  const int asymptorder;
   const OXS_FFT_REAL_TYPE fft_scaling;
 
   _Oxs_FillCoefficientArraysPBCxThread
   (Oxs_StripedArray<Oxs_Demag::A_coefs>& iA,
    OC_INDEX irdimx,OC_INDEX irdimy,OC_INDEX irdimz,
+   OC_INDEX iwdimx,OC_INDEX iwdimy,OC_INDEX iwdimz,
    OC_INDEX iastridex,OC_INDEX iastridez,
    int inumber_of_threads,
    OC_REAL8m idx,OC_REAL8m idy,OC_REAL8m idz,
-   OXS_DEMAG_REAL_ASYMP iscaled_arad,
+   OXS_DEMAG_REAL_ASYMP imaxerror,
+   int iasymptorder,
    OXS_FFT_REAL_TYPE ifft_scaling)
     : A(iA),
       rdimx(irdimx), rdimy(irdimy), rdimz(irdimz),
+      wdimx(iwdimx), wdimy(iwdimy), wdimz(iwdimz),
       astridex(iastridex), astridez(iastridez),
       number_of_threads(inumber_of_threads),
       dx(idx), dy(idy), dz(idz),
-      scaled_arad(iscaled_arad),
+      maxerror(imaxerror),asymptorder(iasymptorder),
       fft_scaling(ifft_scaling) {}
 
   void Cmd(int threadnumber, void*);
@@ -822,7 +788,11 @@ private:
 void _Oxs_FillCoefficientArraysPBCxThread::Cmd(int threadnumber,
                                                void* /* data */)
 {
-  Oxs_DemagPeriodicX pbctensor(dx,dy,dz,rdimx*dx,scaled_arad);
+  // On entry, tensor array A contains images for all x,y,z with
+  // |x|<wdimx && |y|<wdimy && |z|<wdimz.
+
+  Oxs_DemagPeriodicX pbctensor(dx,dy,dz,maxerror,asymptorder,
+                               rdimx,wdimx,wdimy,wdimz);
 
   // The i range for jobs runs across 0 <= i <= rdimx/2, so hand out
   // jobs across this range.  Note that the memory is sliced to threads
@@ -843,25 +813,21 @@ void _Oxs_FillCoefficientArraysPBCxThread::Cmd(int threadnumber,
     + ((threadnumber+1)*leftover)/number_of_threads;
 
   for(OC_INDEX i=istart;i<istop;++i) {
-    OXS_DEMAG_REAL_ASYMP x = dx*i;
     for(OC_INDEX k=0;k<rdimz;++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(OC_INDEX j=0;j<rdimy;++j) {
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-        pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-        pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+        pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
         Oxs_Demag::A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,
                                 fft_scaling*Nxz,fft_scaling*Nyy,
                                 fft_scaling*Nyz,fft_scaling*Nzz);
-        A[i*astridex + k*astridez + j] = Atmp;
+        A[i*astridex + k*astridez + j] += Atmp;
         if(0<i && 2*i<rdimx) {
           // Interior point.  Reflect results from left half to
           // right half.  Note that wrt x, Nxy and Nxz are odd,
           // the other terms are even.
           Atmp.A01 *= -1.0;
           Atmp.A02 *= -1.0;
-          A[(rdimx-i)*astridex + k*astridez + j] = Atmp;
+          A[(rdimx-i)*astridex + k*astridez + j] += Atmp;
         }
       }
     }
@@ -874,29 +840,36 @@ public:
   const OC_INDEX rdimx;
   const OC_INDEX rdimy;
   const OC_INDEX rdimz;
+  const OC_INDEX wdimx;
+  const OC_INDEX wdimy;
+  const OC_INDEX wdimz;
   const OC_INDEX astridex;
   const OC_INDEX astridez;
   const int number_of_threads;
   const OC_REAL8m dx;
   const OC_REAL8m dy;
   const OC_REAL8m dz;
-  const OXS_DEMAG_REAL_ASYMP scaled_arad;
+  const OXS_DEMAG_REAL_ASYMP maxerror;
+  const int asymptorder;
   const OXS_FFT_REAL_TYPE fft_scaling;
 
   _Oxs_FillCoefficientArraysPBCyThread
   (Oxs_StripedArray<Oxs_Demag::A_coefs>& iA,
    OC_INDEX irdimx,OC_INDEX irdimy,OC_INDEX irdimz,
+   OC_INDEX iwdimx,OC_INDEX iwdimy,OC_INDEX iwdimz,
    OC_INDEX iastridex,OC_INDEX iastridez,
    int inumber_of_threads,
    OC_REAL8m idx,OC_REAL8m idy,OC_REAL8m idz,
-   OXS_DEMAG_REAL_ASYMP iscaled_arad,
+   OXS_DEMAG_REAL_ASYMP imaxerror,
+   int iasymptorder,
    OXS_FFT_REAL_TYPE ifft_scaling)
     : A(iA),
       rdimx(irdimx), rdimy(irdimy), rdimz(irdimz),
+      wdimx(iwdimx), wdimy(iwdimy), wdimz(iwdimz),
       astridex(iastridex), astridez(iastridez),
       number_of_threads(inumber_of_threads),
       dx(idx), dy(idy), dz(idz),
-      scaled_arad(iscaled_arad),
+      maxerror(imaxerror),asymptorder(iasymptorder),
       fft_scaling(ifft_scaling) {}
 
   void Cmd(int threadnumber, void*);
@@ -914,7 +887,8 @@ private:
 void _Oxs_FillCoefficientArraysPBCyThread::Cmd(int threadnumber,
                                                void* /* data */)
 {
-  Oxs_DemagPeriodicY pbctensor(dx,dy,dz,rdimy*dy,scaled_arad);
+  Oxs_DemagPeriodicY pbctensor(dx,dy,dz,maxerror,asymptorder,
+                               rdimy,wdimx,wdimy,wdimz);
 
   // Select job by threadnumber:
   OC_INDEX bitesize = rdimx/number_of_threads;
@@ -925,26 +899,22 @@ void _Oxs_FillCoefficientArraysPBCyThread::Cmd(int threadnumber,
     + ((threadnumber+1)*leftover)/number_of_threads;
 
   for(OC_INDEX i=istart;i<istop;++i) {
-    OXS_DEMAG_REAL_ASYMP x = dx*i;
     for(OC_INDEX k=0;k<rdimz;++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       OC_INDEX ikoff = i*astridex + k*astridez;
       for(OC_INDEX j=0;j<=(rdimy/2);++j) {
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-        pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-        pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+        pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
         Oxs_Demag::A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,
                                 fft_scaling*Nxz,fft_scaling*Nyy,
                                 fft_scaling*Nyz,fft_scaling*Nzz);
-        A[ikoff + j] = Atmp;
+        A[ikoff + j] += Atmp;
         if(0<j && 2*j<rdimy) {
           // Interior point.  Reflect results from lower half to
           // upper half.  Note that wrt y, Nxy and Nyz are odd,
           // the other terms are even.
           Atmp.A01 *= -1.0;
           Atmp.A12 *= -1.0;
-          A[ikoff + (rdimy-j)] = Atmp;
+          A[ikoff + (rdimy-j)] += Atmp;
         }
       }
     }
@@ -958,29 +928,35 @@ public:
   const OC_INDEX rdimx;
   const OC_INDEX rdimy;
   const OC_INDEX rdimz;
+  const OC_INDEX wdimx;
+  const OC_INDEX wdimy;
+  const OC_INDEX wdimz;
   const OC_INDEX astridex;
   const OC_INDEX astridez;
   const int number_of_threads;
   const OC_REAL8m dx;
   const OC_REAL8m dy;
   const OC_REAL8m dz;
-  const OXS_DEMAG_REAL_ASYMP scaled_arad;
+  const OXS_DEMAG_REAL_ASYMP maxerror;
+  const int asymptorder;
   const OXS_FFT_REAL_TYPE fft_scaling;
 
   _Oxs_FillCoefficientArraysPBCzThread
   (Oxs_StripedArray<Oxs_Demag::A_coefs>& iA,
    OC_INDEX irdimx,OC_INDEX irdimy,OC_INDEX irdimz,
+   OC_INDEX iwdimx,OC_INDEX iwdimy,OC_INDEX iwdimz,
    OC_INDEX iastridex,OC_INDEX iastridez,
    int inumber_of_threads,
    OC_REAL8m idx,OC_REAL8m idy,OC_REAL8m idz,
-   OXS_DEMAG_REAL_ASYMP iscaled_arad,
+   OXS_DEMAG_REAL_ASYMP imaxerror,int iasymptorder,
    OXS_FFT_REAL_TYPE ifft_scaling)
     : A(iA),
       rdimx(irdimx), rdimy(irdimy), rdimz(irdimz),
+      wdimx(iwdimx), wdimy(iwdimy), wdimz(iwdimz),
       astridex(iastridex), astridez(iastridez),
       number_of_threads(inumber_of_threads),
       dx(idx), dy(idy), dz(idz),
-      scaled_arad(iscaled_arad),
+      maxerror(imaxerror),asymptorder(iasymptorder),
       fft_scaling(ifft_scaling) {}
 
   void Cmd(int threadnumber, void*);
@@ -998,7 +974,8 @@ private:
 void _Oxs_FillCoefficientArraysPBCzThread::Cmd(int threadnumber,
                                                void* /* data */)
 {
-  Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,rdimz*dz,scaled_arad);
+  Oxs_DemagPeriodicZ pbctensor(dx,dy,dz, maxerror,asymptorder,
+                               rdimz,wdimx,wdimy,wdimz);
 
   // Select job by threadnumber:
   OC_INDEX bitesize = rdimx/number_of_threads;
@@ -1009,25 +986,21 @@ void _Oxs_FillCoefficientArraysPBCzThread::Cmd(int threadnumber,
     + ((threadnumber+1)*leftover)/number_of_threads;
 
   for(OC_INDEX i=istart;i<istop;++i) {
-    OXS_DEMAG_REAL_ASYMP x = dx*i;
     for(OC_INDEX k=0;k<=(rdimz/2);++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(OC_INDEX j=0;j<rdimy;++j) {
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-        pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-        pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+        pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
         Oxs_Demag::A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,
                                 fft_scaling*Nxz,fft_scaling*Nyy,
                                 fft_scaling*Nyz,fft_scaling*Nzz);
-        A[i*astridex + k*astridez + j] = Atmp;
+        A[i*astridex + k*astridez + j] += Atmp;
         if(0<k && 2*k<rdimz) {
           // Interior point.  Reflect results from bottom half to
           // top half.  Note that wrt z, Nxz and Nyz are odd, the
           // other terms are even.
           Atmp.A02 *= -1.0;
           Atmp.A12 *= -1.0;
-          A[i*astridex + (rdimz-k)*astridez + j] = Atmp;
+          A[i*astridex + (rdimz-k)*astridez + j] += Atmp;
         }
       }
     }
@@ -1305,7 +1278,6 @@ void _Oxs_FillCoefficientArraysFFTyzThread::Cmd(int threadnumber,
   }
 }
 
-
 void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
 { // This routine is conceptually const.
 #if REPORT_TIME
@@ -1326,7 +1298,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
   if(pmesh==NULL) {
-    const Oxs_RectangularMesh* rmesh 
+    const Oxs_RectangularMesh* rmesh
       = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
     if (rmesh!=NULL) {
       // Rectangular, non-periodic mesh
@@ -1424,8 +1396,8 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
 
   // Routine-local, dummy copies of FFT objects used to determine
   // logical dimensions and scaling.  These objects could be replaced
-  // with static calls that reported this information, without initialize
-  // full FFT objects including roots of unity.
+  // with static calls that reported this information, without
+  // initializing full FFT objects including roots of unity.
   //
   // In the threaded code, each thread creates its own FFT instances,
   // using keyword "Oxs_DemagFFTObject" to Oxs_ThreadRunObj::local_locker.
@@ -1452,6 +1424,13 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   adimy = (ldimy/2)+1;
   adimz = (ldimz/2)+1;
 
+  // FFT scaling
+  // Note: Since H = -N*M, and by convention with the rest of this code,
+  // we store "-N" instead of "N" so we don't have to multiply the
+  // output from the FFT + iFFT by -1 in GetEnergy() below.
+  const OXS_FFT_REAL_TYPE fft_scaling = -1 *
+               fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
+
   // Access strides for Hxfrm.  Adjust these so that each row starts on
   // a cache line, and make each dimension odd to protect against cache
   // thrash.
@@ -1471,13 +1450,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   locker_info.Set(rdimx,rdimy,rdimz,cdimx,cdimy,cdimz,
                   Hxfrm_jstride,Hxfrm_kstride,embed_block_size,
                   MakeLockerName());
-
-  // FFT scaling
-  // Note: Since H = -N*M, and by convention with the rest of this code,
-  // we store "-N" instead of "N" so we don't have to multiply the
-  // output from the FFT + iFFT by -1 in GetEnergy() below.
-  const OXS_FFT_REAL_TYPE fft_scaling = -1 *
-               fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
 
 #if (VERBOSE_DEBUG && !defined(NDEBUG))
   fprintf(stderr,"RDIMS: (%ld,%ld,%ld)\n",
@@ -1510,7 +1482,6 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   OC_INDEX asize = astridex*adimx;
   A.SetSize(asize);
 
-
   // According (16) in Newell's paper, the demag field is given by
   //                        H = -N*M
   // where N is the "demagnetizing tensor," with components Nxx, Nxy,
@@ -1534,119 +1505,225 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   //                                      A22:=fs*Nzz
   //  where fs = -1/((ldimx/2)*ldimy*ldimz)
 
-  OC_REAL8m dx = mesh->EdgeLengthX();
-  OC_REAL8m dy = mesh->EdgeLengthY();
-  OC_REAL8m dz = mesh->EdgeLengthZ();
+  OXS_DEMAG_REAL_ANALYTIC ddx = mesh->EdgeLengthX();
+  OXS_DEMAG_REAL_ANALYTIC ddy = mesh->EdgeLengthY();
+  OXS_DEMAG_REAL_ANALYTIC ddz = mesh->EdgeLengthZ();
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
   // a wee bit.  If not possible, then rescale so largest
   // value is 1.0.
   {
-    OC_REALWIDE p1,q1,p2,q2;
-    if(Nb_FindRatApprox(dx,dy,1e-12,1000,p1,q1)
-       && Nb_FindRatApprox(dz,dy,1e-12,1000,p2,q2)) {
-      OC_REALWIDE gcd = Nb_GcdRW(q1,q2);
-      dx = p1*q2/gcd;
-      dy = q1*q2/gcd;
-      dz = p2*q1/gcd;
+    OXS_DEMAG_REAL_ANALYTIC p1,q1,p2,q2;
+    if(Xp_FindRatApprox(ddx,ddy,1e-12,1000,p1,q1)
+       && Xp_FindRatApprox(ddz,ddy,1e-12,1000,p2,q2)) {
+      OC_REALWIDE q1w,q2w;
+      q1.DownConvert(q1w); q2.DownConvert(q2w);
+      OXS_DEMAG_REAL_ANALYTIC gcd = Nb_GcdFloat(q1w,q2w);
+      ddx = p1*q2/gcd;
+      ddy = q1*q2/gcd;
+      ddz = p2*q1/gcd;
     } else {
-      OC_REALWIDE maxedge=dx;
-      if(dy>maxedge) maxedge=dy;
-      if(dz>maxedge) maxedge=dz;
-      dx/=maxedge; dy/=maxedge; dz/=maxedge;
+      OXS_DEMAG_REAL_ANALYTIC maxedge=ddx;
+      if(ddy>maxedge) maxedge=ddy;
+      if(ddz>maxedge) maxedge=ddz;
+      ddx/=maxedge; ddy/=maxedge; ddz/=maxedge;
     }
   }
-  const OXS_DEMAG_REAL_ASYMP scaled_arad = asymptotic_radius
-    * Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
-             OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
 
-  if(!xperiodic && !yperiodic && !zperiodic) {
-    // Calculate Nxx, Nxy and Nxz in first octant, non-periodic case.
-    // Step 1: Evaluate f & g at each cell site.  Offset by (-dx,-dy,-dz)
-    //  so we can do 2nd derivative operations "in-place".
+  OXS_DEMAG_REAL_ASYMP dx,dy,dz;
+  ddx.DownConvert(dx);  ddy.DownConvert(dy);  ddz.DownConvert(dz);
+
+  Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+
+  const OXS_DEMAG_REAL_ASYMP scaled_arad = ANxx.GetAsymptoticStart();
+  // NB: Previous to 2019-09, scaled_arad < 0 was interpreted to mean no
+  // asymptotic approximation to demag tensor (i.e., use analytic form
+  // only), and scaled_arad == 0 to mean asymptotic form only (no
+  // analytic).  Support for these cases ceased in Sept 2019, but branch
+  // routing has been left in place for future consideration.
+
+  OC_INDEX wdimx = rdimx;
+  OC_INDEX wdimy = rdimy;
+  OC_INDEX wdimz = rdimz;
+  if(scaled_arad>=0) {
+    // We don't need to compute analytic formulae outside asymptotic
+    // radius.  Round up a little (0.5) to protect against rounding
+    // errors to insure that each index is computed by at least one
+    // of the analytic or asymptotic code blocks.
+    OC_INDEX itest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dx));
+    if(xperiodic || itest<wdimx) wdimx = itest;
+    OC_INDEX jtest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dy));
+    if(yperiodic || jtest<wdimy) wdimy = jtest;
+    OC_INDEX ktest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dz));
+    if(zperiodic || ktest<wdimz) wdimz = ktest;
+  }
+
+  {
+    // Calculate Nxx, Nxy and Nxz in first octant, near-field case.  For
+    // non-periodic directions, the extents are the smaller of arad and
+    // the simulation window.  For periodic directions the extent is arad,
+    // unless arad<0 in which case it set to the same as the non-periodic
+    // case (i.e., the simulation window).  The periodic arad<0 case is
+    // not intuitive, and perhaps should just be disallowed altogether,
+    // but the point is in the periodic setting some analytic limit is
+    // needed because the integral tail computation uses the asymptotic
+    // form.
 #if REPORT_TIME
     dvltimer[1].name="initA_anal";
     dvltimer[1].Start();
 #endif // REPORT_TIME
 
-    // Tensor scale factor and FFT scaling.  This allows the "NoScale" FFT
-    // routines to be used.  NB: There is effectively a "-1" built into
-    // the differencing sections below, because we compute d^6/dx^2 dy^2
-    // dz^2 instead of -d^6/dx^2 dy^2 dz^2 as required.
-    OC_REALWIDE scale = fftx.GetScaling() * ffty.GetScaling()
-      * fftz.GetScaling() / (4*WIDE_PI*dx*dy*dz);
+    Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC> workspace;
+    workspace.SetDimensions(wdimx,wdimy+2,wdimz+2);
 
-    OC_INDEX wdim1 = rdimx;
-    OC_INDEX wdim2 = rdimy;
-    OC_INDEX wdim3 = rdimz;
-    if(scaled_arad>0) {
-      // We don't need to compute analytic formulae outside asymptotic
-      // radius.  Round up a little (0.5) to protect against rounding
-      // errors to insure that each index is computed by at least one
-      // of the analytic or asymptotic code blocks.
-      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dx));
-      if(itest<wdim1) wdim1 = itest;
-      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dy));
-      if(jtest<wdim2) wdim2 = jtest;
-      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dz));
-      if(ktest<wdim3) wdim3 = ktest;
-    }
-    Oxs_3DArray<OC_REALWIDE> workspace;
-    workspace.SetDimensions(wdim1,wdim2+2,wdim3+2);
+    // For each N component, compute either precursor f or g at each
+    // workspace site, offset by (-dx,-dy,-dz) so we can do 2nd
+    // derivative operations "in-place".  Compute D6 across the
+    // workspace, and then copy results into the corresponding component
+    // in tensor array A.  For periodic components collate values across
+    // periodic images, using symmetries for images outside the first
+    // octant.  In the periodic setting we have to be careful to not
+    // accumulate each image more than once in the sum.
+    // 
+    // Symmetries: A00, A11, A22 are even in each coordinate
+    //             A01 is odd in x and y, even in z.
+    //             A02 is odd in x and z, even in y.
+    //             A12 is odd in y and z, even in x.
 
-    OC_INDEX i,j,k;
-    ComputeD6f(Oxs_Newell_f_xx,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A00 = scale*workspace(i,j,k);
+    const OC_INDEX istop = (xperiodic ? rdimx : wdimx);
+    const OC_INDEX jstop = (yperiodic ? rdimy : wdimy);
+    const OC_INDEX kstop = (zperiodic ? rdimz : wdimz);
+    const int not_periodic = !(xperiodic || yperiodic || zperiodic);
+    OXS_DEMAG_REAL_ANALYTIC val;
+    // Asymptotic portions of code fill only outside wdimx x wdimy x
+    // wdimz window.  This has two benefits. 1) Simplifies outer
+    // asymptotic fill code, and 2) insures no leakage or smearing at
+    // boundary between analytic and asymptotic computations.  The
+    // latter is important mostly for the periodic setting, where we
+    // don't want to double count a cell.
+    ComputeD6f(Oxs_Newell_f_xx,ANxx,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A00);
+          /// FFT scaling allows  "NoScale" FFT routines to be used.
         }
       }
     }
-    ComputeD6f(Oxs_Newell_g_xy,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A01 = scale*workspace(i,j,k);
+
+    ComputeD6f(Oxs_Newell_g_xy,ANxy,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,1,1,0,val,i,j,k);
+            /// x odd, y odd, z even
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A01);
+          /// FFT scaling allows  "NoScale" FFT routines to be used.
         }
       }
     }
-    ComputeD6f(Oxs_Newell_g_xz,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A02 = scale*workspace(i,j,k);
+    
+    ComputeD6f(Oxs_Newell_g_xz,ANxz,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,1,0,1,val,i,j,k);
+            /// x odd, y even, z odd
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A02);
         }
       }
     }
-    ComputeD6f(Oxs_Newell_f_yy,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A11 = scale*workspace(i,j,k);
+
+    ComputeD6f(Oxs_Newell_f_yy,ANyy,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A11);
         }
       }
     }
-    ComputeD6f(Oxs_Newell_g_yz,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A12 = scale*workspace(i,j,k);
+
+    ComputeD6f(Oxs_Newell_g_yz,ANyz,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,1,1,val,i,j,k);
+            /// x even, y odd, z odd
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A12);
         }
       }
     }
-    ComputeD6f(Oxs_Newell_f_zz,workspace,threadtree,dx,dy,dz,MaxThreadCount);
-    for(i=0;i<wdim1;i++) {
-      for(k=0;k<wdim3;k++) {
-        for(j=0;j<wdim2;j++) {
-          A[i*astridex + k*astridez + j].A22 = scale*workspace(i,j,k);
+
+    ComputeD6f(Oxs_Newell_f_zz,ANzz,scaled_arad,
+               workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
+    for(OC_INDEX i=0;i<istop;i++) {
+      for(OC_INDEX k=0;k<kstop;k++) {
+        for(OC_INDEX j=0;j<jstop;j++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[i*astridex+k*astridez+j].A22);
         }
       }
     }
+
 #if REPORT_TIME
-    dvltimer[1].Stop(wdim1*wdim2*wdim3*sizeof(A_coefs));
+    dvltimer[1].Stop(wdimx*wdimy*wdimz*sizeof(A_coefs));
 #endif // REPORT_TIME
+  }
+
+  if(!xperiodic && !yperiodic && !zperiodic) {
+    // Calculate tensor asymptotics in first octant, non-periodic case.
 
     // Step 2.5: Use asymptotic (dipolar + higher) approximation for far field
     /*   Dipole approximation:
@@ -1666,12 +1743,14 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
       // Note that all distances here are in "reduced" units,
       // scaled so that dx, dy, and dz are either small integers
       // or else close to 1.0.
-      OXS_DEMAG_REAL_ASYMP scaled_arad_sq = scaled_arad*scaled_arad;
       _Oxs_FillCoefficientArraysAsympThread
-        asymp_thread(A,rdimx,rdimy,rdimz,adimx,adimy,adimz,MaxThreadCount,
-                     dx,dy,dz,scaled_arad_sq,fft_scaling);
+        asymp_thread(A,rdimx,rdimy,rdimz,adimx,adimy,adimz,
+                     wdimx,wdimy,wdimz,MaxThreadCount,
+                     dx,dy,dz,demag_tensor_error,asymptotic_order,
+                     fft_scaling);
       threadtree.LaunchTree(asymp_thread,0);
     }
+  // TODO: Add asymptotic order parameter /**/
 #if REPORT_TIME
     dvltimer[2].Stop((rdimx*rdimy*rdimz
                       -OC_INDEX(ceil(4./3.*PI*scaled_arad*scaled_arad
@@ -1682,19 +1761,26 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     // Special "SelfDemag" code may be more accurate at index 0,0,0.
     // Note: Using an Oxs_FFT3DThreeVector fft object, this would be
     //    scale *= fft.GetScaling();
-    const OXS_FFT_REAL_TYPE selfscale
-      = -1 * fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    A[0].A00 = Oxs_SelfDemagNx(dx,dy,dz);
-    A[0].A11 = Oxs_SelfDemagNy(dx,dy,dz);
-    A[0].A22 = Oxs_SelfDemagNz(dx,dy,dz);
-    if(zero_self_demag) {
-      A[0].A00 -= 1./3.;
-      A[0].A11 -= 1./3.;
-      A[0].A22 -= 1./3.;
+    {
+      OXS_DEMAG_REAL_ANALYTIC selfscale = -1 * fftx.GetScaling();
+      selfscale *= ffty.GetScaling();  selfscale *= fftz.GetScaling();
+      OXS_DEMAG_REAL_ANALYTIC selfoffset = 0.0;
+      if(zero_self_demag) {
+        selfoffset = OXS_DEMAG_REAL_ANALYTIC(1.)/OXS_DEMAG_REAL_ANALYTIC(3.);
+      }
+      OXS_DEMAG_REAL_ANALYTIC tmp00
+        = (Oxs_SelfDemagNx(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp00.DownConvert(A[0].A00);
+
+      OXS_DEMAG_REAL_ANALYTIC tmp11
+        = (Oxs_SelfDemagNy(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp11.DownConvert(A[0].A11);
+
+      OXS_DEMAG_REAL_ANALYTIC tmp22
+        = (Oxs_SelfDemagNz(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp22.DownConvert(A[0].A22);
+
     }
-    A[0].A00 *= selfscale;
-    A[0].A11 *= selfscale;
-    A[0].A22 *= selfscale;
     A[0].A01 = A[0].A02 = A[0].A12 = 0.0;
   }
 
@@ -1709,8 +1795,10 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     dvltimer[1].Start();
 #endif // REPORT_TIME
     _Oxs_FillCoefficientArraysPBCxThread
-      pbcx_thread(A,rdimx,rdimy,rdimz,astridex,astridez,MaxThreadCount,
-                  dx,dy,dz,scaled_arad,fft_scaling);
+      pbcx_thread(A,rdimx,rdimy,rdimz,wdimx,wdimy,wdimz,
+                  astridex,astridez,MaxThreadCount,
+                  dx,dy,dz,
+                  demag_tensor_error,asymptotic_order,fft_scaling);
     threadtree.LaunchTree(pbcx_thread,0);
 #if REPORT_TIME
     dvltimer[1].Stop();
@@ -1722,8 +1810,10 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     dvltimer[1].Start();
 #endif // REPORT_TIME
     _Oxs_FillCoefficientArraysPBCyThread
-      pbcy_thread(A,rdimx,rdimy,rdimz,astridex,astridez,MaxThreadCount,
-                  dx,dy,dz,scaled_arad,fft_scaling);
+      pbcy_thread(A,rdimx,rdimy,rdimz,wdimx,wdimy,wdimz,
+                  astridex,astridez,MaxThreadCount,
+                  dx,dy,dz,
+                  demag_tensor_error,asymptotic_order,fft_scaling);
     threadtree.LaunchTree(pbcy_thread,0);
 #if REPORT_TIME
     dvltimer[1].Stop();
@@ -1735,12 +1825,107 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     dvltimer[1].Start();
 #endif // REPORT_TIME
     _Oxs_FillCoefficientArraysPBCzThread
-      pbcz_thread(A,rdimx,rdimy,rdimz,astridex,astridez,MaxThreadCount,
-                  dx,dy,dz,scaled_arad,fft_scaling);
+      pbcz_thread(A,rdimx,rdimy,rdimz,wdimx,wdimy,wdimz,
+                  astridex,astridez,MaxThreadCount,
+                  dx,dy,dz,
+                  demag_tensor_error,asymptotic_order,fft_scaling);
     threadtree.LaunchTree(pbcz_thread,0);
 #if REPORT_TIME
     dvltimer[1].Stop();
 #endif // REPORT_TIME
+  }
+
+  // Step 2.7: Save real-space version of tensor N, if requested.
+  if(saveN.size() != 0) {
+    // Save demag tensor to specified file, as a six column OVF 2.0
+    // file, with column order Nxx Nxy Nxz Nyy Nyz Nzz.
+    String errors;
+    Vf_Ovf20FileHeader fileheader;
+    mesh->DumpGeometry(fileheader,vf_ovf20mesh_rectangular);
+    fileheader.title.Set("Oxs_Demag demag tensor field");
+    fileheader.valuedim.Set(6);  // 6 component field
+    fileheader.valuelabels.SetFromString("Nxx Nxy Nxz Nyy Nyz Nzz");
+    fileheader.valueunits.SetFromString("{} {} {} {} {} {}");
+    fileheader.desc.Set(String("Oxs_Demag demag tensor field:"
+                               " Nxx, Nxy, Nxz, Nyy, Nyz, Nzz"));
+    fileheader.ovfversion = vf_ovf_latest;
+    if(!fileheader.IsValid(errors)) {
+      errors = String("Oxs_Demag::FillCoefficientArray:"
+                      " failed to create a valid OVF fileheader for saveN: ")
+        + errors;
+      OXS_THROW(Oxs_ProgramLogicError,errors);
+    }
+
+    // Determine file format
+    Vf_OvfDataStyle datastyle = vf_oinvalid;
+    const char* textfmt=0; // Active iff datastyle==vf_oascii
+    if(saveN_fmt.compare(0,strlen("binary"),"binary")==0) {
+      // Binary format
+      size_t offset = saveN_fmt.find_first_not_of(" \t\n\r",strlen("binary"));
+      if(offset!=string::npos) {
+        if(saveN_fmt[offset] == '8')      datastyle = vf_obin8;
+        else if(saveN_fmt[offset] == '4') datastyle = vf_obin4;
+      }
+      if(datastyle == vf_oinvalid) {
+        errors = String("Oxs_Demag::FillCoefficientArray:"
+                        " requested binary output format type \"")
+          + saveN_fmt
+          + String("\" is not recognized.  Should be one of"
+                   " \"binary 8\" or \"binary 4\"");
+        OXS_THROW(Oxs_BadUserInput,errors);
+      }
+    } else if(saveN_fmt.compare(0,strlen("text"),"text")==0) {
+      // Text format
+      datastyle = vf_oascii;
+      size_t offset = saveN_fmt.find_first_not_of(" \t\n\r",strlen("text"));
+      if(offset==string::npos) {
+        textfmt="%.16e";  // Default format string
+      } else {
+        textfmt = saveN_fmt.c_str()+offset;
+      }
+    } else {
+      errors = String("Oxs_Demag::FillCoefficientArray:"
+                      " requested saveN output format type \"")
+        + saveN_fmt
+        + String("\" is not recognized.  Should be one of"
+                 " \"binary 8\", \"binary 4\", or \"text [fmt]\"");
+      OXS_THROW(Oxs_BadUserInput,errors);
+    }
+
+    // A is sized to FFT-space dimensions, adimy x adimz x adimx.  Copy
+    // out real-space data to an array of reduced size and order rdimx x
+    // rdimy x rdimz for output.  Also, at this point fft_scaling has already
+    // been applied to A, so correct for that.
+    //   Note: If the FFT's are power-of-two, then the scaling is a
+    // power of two so this adjustment should not introduce any
+    // additional rounding error.
+    vector<OC_REAL8m> data;
+    data.reserve(6*rdimx*rdimy*rdimz);
+    OXS_FFT_REAL_TYPE N_scaling = 1.0/fft_scaling;
+    for(OC_INDEX k=0;k<rdimx;++k) {
+      for(OC_INDEX j=0;j<rdimy;++j) {
+        for(OC_INDEX i=0;i<rdimx;++i) {
+          OC_INDEX index = k*astridez+j+i*astridex;
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A00));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A01));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A02));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A11));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A12));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A22));
+        }
+      }
+    }
+    Vf_Ovf20VecArrayConst data_array;
+    data_array.vector_dimension=6;
+    data_array.array_length=rdimx*rdimy*rdimz;
+    data_array.data=data.data();
+
+    String Nfilename = saveN;
+    if(Nfilename.find('.') == String::npos) Nfilename += String(".ovf");
+    Nb_FileChannel channel(Nfilename.c_str(),"w");
+    fileheader.WriteHeader(channel);
+    fileheader.WriteData(channel,datastyle,textfmt,0,data_array);
+    channel.Close();
   }
 
   // Step 3: Do FFTs.  We only need store 1/8th of the results because
@@ -2093,7 +2278,7 @@ void _Oxs_DemagiFFTxDotThread::Cmd(int threadnumber, void* /* data */)
             for(;i+STRIDE-1<i_dim;i+=STRIDE) {
               Oc_Duet mx,my,mz;
               Oxs_ThreeVectorPairLoadAligned(&(ispin[i]),mx,my,mz);
-              
+
               Oc_Duet tHx,tHy,tHz;
               Oxs_ThreeVectorPairLoadAligned
                 ((Oxs_ThreeVector*)(&(scratch[3*i])),tHx,tHy,tHz);
@@ -2114,7 +2299,7 @@ void _Oxs_DemagiFFTxDotThread::Cmd(int threadnumber, void* /* data */)
             for(;i+STRIDE-1<i_dim;i+=STRIDE) {
               Oc_Duet mx,my,mz;
               Oxs_ThreeVectorPairLoadAligned(&(ispin[i]),mx,my,mz);
-              
+
               Oc_Duet tHx,tHy,tHz;
               Oxs_ThreeVectorPairLoadAligned
                 ((Oxs_ThreeVector*)(&(scratch[3*i])),tHx,tHy,tHz);
@@ -2435,7 +2620,7 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
             OXS_FFT_REAL_TYPE* const Htmpa = Hzbase + ka*Hz_kstride;
             OXS_FFT_REAL_TYPE* const Htmpb
               = (0<ka && ka<adimz-1 ? Hzbase + (cdimz-ka)*Hz_kstride : 0);
-            
+
             for(OC_INDEX ja=jstart;ja<jstop;++ja) {
               Oc_Prefetch<Ocpd_NTA>(Atmp+(astridek+ja));
               const Oxs_Demag::A_coefs& Aref = Atmp[ja];
@@ -2817,7 +3002,7 @@ void Oxs_Demag::ComputeEnergy
     fftyzconv.locker_info = &locker_info;
     fftyzconv.adimx=adimx; fftyzconv.adimy=adimy; fftyzconv.adimz=adimz;
     fftyzconv.thread_count = MaxThreadCount;
-      
+
     threadtree.LaunchTree(fftyzconv,0);
   }
 #if REPORT_TIME

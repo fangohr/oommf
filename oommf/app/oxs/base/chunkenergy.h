@@ -227,7 +227,9 @@ protected:
   // Update May-2009: The now preferred initialization method is to
   // use ComputeEnergyChunkInitialize.  The guarantee that threadnumber
   // 0 will always run is honored for backward compatibility, but new
-  // code should use ComputeEnergyChunkInitialize instead.
+  // code should use ComputeEnergyChunkInitialize instead. (NB:
+  // ComputeEnergyChunkInitialize is run on thread 0 so the main
+  // Tcl interpreter is accessible.)
 
   // ComputeEnergyAlt is an adapter that can (optionally) be used to
   // allow ComputeEnergyChunk code to provide the parent
