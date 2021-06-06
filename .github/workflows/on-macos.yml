@@ -10,14 +10,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11] # macos-11
+        os: [macos-11] # macos-latest
 
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
-
-    - name: Install dependencies
-      run: sudo apt-get install -y tk-dev tcl-dev
 
     - name: Build OOMMF
       run: make build-with-all
