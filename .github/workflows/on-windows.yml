@@ -28,6 +28,8 @@ jobs:
       - name: Make Install Location
         working-directory: tcl
         run: |
+          pwd
+          dir
           echo "TCLDIR=`pwd`" >> $GITHUB_ENV
           cd ../tk
           echo "TKDIR=`pwd`" >> $GITHUB_ENV
