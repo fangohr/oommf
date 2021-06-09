@@ -30,13 +30,13 @@ jobs:
         run: |
           pwd
           dir
-          echo "TCLDIR=`pwd`" >> $GITHUB_ENV
-          cd ../tk
-          echo "TKDIR=`pwd`" >> $GITHUB_ENV
-          cd ..
-          mkdir install
-          cd install
-          echo "INSTALLDIR=`pwd`" >> $GITHUB_ENV
+          # echo "TCLDIR=`pwd`" >> $GITHUB_ENV
+          # cd ../tk
+          # echo "TKDIR=`pwd`" >> $GITHUB_ENV
+          # cd ..
+          # mkdir install
+          # cd install
+          # echo "INSTALLDIR=`pwd`" >> $GITHUB_ENV
       - name: Build Tcl
         working-directory: tcl/win
         run: |
