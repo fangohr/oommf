@@ -34,7 +34,7 @@ jobs:
           cd ..
           mkdir install
           cd install
-          echo "INSTALLDIR=`pwd` >>$ $GITHUB_ENV
+          echo "INSTALLDIR=`pwd`" >>$ $GITHUB_ENV
       - name: Build Tcl
         working-directory: tcl/win
         run: |
