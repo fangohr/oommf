@@ -53,6 +53,11 @@ jobs:
           if ($lastexitcode -ne 0) {
               throw "nmake exit code: $lastexitcode"
           }
+      - name: check user
+        run: |
+          whoami /priv
+          pwd
+          dir
       - name: Build OOMMF and test
         working-directory: oommf/oommf
         run: |
