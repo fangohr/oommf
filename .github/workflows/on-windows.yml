@@ -1,0 +1,74 @@
+name: Windows
+on: [push]
+jobs:
+  msvc:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: oommf
+      - name: Init MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Clone Tcl
+        uses: actions/checkout@v2
+        with:
+          repository: tcltk/tcl
+          path: tcl
+          ref: core-8-6-branch
+      - name: Clone Tk
+        uses: actions/checkout@v2
+        with:
+          repository: tcltk/tk
+          path: tk
+          ref: core-8-6-branch
+      - name: Make Install Location
+        working-directory: tcl
+        run: |
+          echo "TCLDIR=`pwd`" >> $GITHUB_ENV
+          cd ../tk
+          echo "TKDIR=`pwd`" >> $GITHUB_ENV
+          cd ..
+          mkdir install
+          cd install
+          echo "INSTALLDIR=`pwd` >>$ $GITHUB_ENV
+      - name: Build Tcl
+        working-directory: tcl/win
+        run: |
+          &nmake -f makefile.vc release install
+          if ($lastexitcode -ne 0) {
+              throw "nmake exit code: $lastexitcode
+          }
+      - name: Build Tk
+        working-directory: tk/win
+        run: |
+          &nmake -f makefile.vc release install
+          if ($lastexitcode -ne 0) {
+              throw "nmake exit code: $lastexitcode
+          }
+      - name: Build OOMMF and test
+        working-directory: oommf/oommf
+        run: |
+          tclsh oommf.tcl pimake distclean
+          if ($lastexitcode -ne 0) {
+              throw "distclean exit code: $lastexitcode
+          }
+          tclsh oommf.tcl pimake upgrade
+          if ($lastexitcode -ne 0) {
+              throw "upgrade exit code: $lastexitcode
+          }
+          tclsh oommf.tcl pimake
+          if ($lastexitcode -ne 0) {
+              throw "pimake exit code: $lastexitcode
+          }
+          tclsh oommf.tcl boxsi +fg app/oxs/examples/stdprobe3.mif -exitondone 1
+          if ($lastexitcode -ne 0) {
+              throw "stbprobe3 exit code: $lastexitcode
+          }
+          tclsh oommft.cl boxsi +fg app/oxs/examples/stbprobe4.mif -exitondone 1
+          if ($lastexitcode -ne 0) {
+              throw "stbprobe4 exit code: $lastexitcode
+          }
