@@ -55,9 +55,8 @@ jobs:
           }
       - name: check user
         run: |
-          whoami /priv
-          pwd
-          dir
+          tclsh oommf.tcl +platform
+        working-directory: oommf/oommf
       - name: Build OOMMF and test
         working-directory: oommf/oommf
         run: |
