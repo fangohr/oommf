@@ -30,7 +30,7 @@ jobs:
         run: |
           echo "TCLDIR=`pwd`" >> $GITHUB_ENV
           cd ../tk
-          # echo "TKDIR=`pwd`" >> $GITHUB_ENV
+          echo "TKDIR=`pwd`" >> $GITHUB_ENV
           cd ..
           mkdir install
           cd install
