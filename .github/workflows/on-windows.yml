@@ -34,42 +34,45 @@ jobs:
           cd ..
           mkdir install
           cd install
+          echo DEBUG
+          pwd
           dir
+          echo DEBUG_END
           #echo "INSTALLDIR=`pwd`" >> $GITHUB_ENV
       - name: Build Tcl
         working-directory: tcl/win
         run: |
           &nmake -f makefile.vc release install
           if ($lastexitcode -ne 0) {
-              throw "nmake exit code: $lastexitcode
+              throw "nmake exit code: $lastexitcode"
           }
       - name: Build Tk
         working-directory: tk/win
         run: |
           &nmake -f makefile.vc release install
           if ($lastexitcode -ne 0) {
-              throw "nmake exit code: $lastexitcode
+              throw "nmake exit code: $lastexitcode"
           }
       - name: Build OOMMF and test
         working-directory: oommf/oommf
         run: |
           tclsh oommf.tcl pimake distclean
           if ($lastexitcode -ne 0) {
-              throw "distclean exit code: $lastexitcode
+              throw "distclean exit code: $lastexitcode"
           }
           tclsh oommf.tcl pimake upgrade
           if ($lastexitcode -ne 0) {
-              throw "upgrade exit code: $lastexitcode
+              throw "upgrade exit code: $lastexitcode"
           }
           tclsh oommf.tcl pimake
           if ($lastexitcode -ne 0) {
-              throw "pimake exit code: $lastexitcode
+              throw "pimake exit code: $lastexitcode"
           }
           tclsh oommf.tcl boxsi +fg app/oxs/examples/stdprobe3.mif -exitondone 1
           if ($lastexitcode -ne 0) {
-              throw "stbprobe3 exit code: $lastexitcode
+              throw "stbprobe3 exit code: $lastexitcode"
           }
           tclsh oommft.cl boxsi +fg app/oxs/examples/stbprobe4.mif -exitondone 1
           if ($lastexitcode -ne 0) {
-              throw "stbprobe4 exit code: $lastexitcode
+              throw "stbprobe4 exit code: $lastexitcode"
           }
