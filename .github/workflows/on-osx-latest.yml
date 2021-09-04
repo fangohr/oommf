@@ -1,0 +1,32 @@
+name: on-osx-latest
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+#      - name: Install GitHub CLI
+#        run: |
+#          brew update
+#          brew install gh
+      - name: compile oommf
+        run: |
+          cat oommf-version
+          pwd
+          ls -l
+          make build
+      - name: run version and platform
+        run: |
+          pwd
+          tclsh oommf/oommf.tcl +version
+          tclsh oommf/oommf.tcl +platform
+      - name: run standard problem 3 directly
+        run: |
+          make test-all
