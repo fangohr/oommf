@@ -1,7 +1,6 @@
 name: on-osx-latest
 
 on:
-  push:
   pull_request:
 
 
@@ -11,13 +10,14 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-#      - name: Install GitHub CLI
-#        run: |
-#          brew update
-#          brew install gh
+      - name: Install GitHub CLI
+        run: |
+          brew update
+          brew install gh
       - name: compile oommf
         run: |
           pwd
+          ls -l
           make build
       - name: run version and platform
         run: |
