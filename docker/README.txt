@@ -8,7 +8,7 @@ This can be ignored by most users.
 
 We have a workflow that creates the container periodically:
 
-[![ubermag-oommf-container](https://github.com/fangohr/oommf/workflows/ubermag-container/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)
+[![ubermag-container](https://github.com/fangohr/oommf/actions/workflows/ubermag-container.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/ubermag-container.yml)
 
 Pushing the image to dockerhub (`make push`) is a manual procedure.
 
