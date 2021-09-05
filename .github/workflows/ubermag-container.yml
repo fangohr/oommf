@@ -1,0 +1,27 @@
+name: ubermag-container
+
+on:
+  push
+  schedule:
+    - cron: '0 0 * * 1'  # run every Monday
+
+jobs:
+  on-ubuntu-latest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+
+    - name: cd into docker directory
+      run: cd docker
+
+    - name: Build OOMMF in Container from master branch
+      run: make build
+
+    - name: Run stdproblem 3
+      run: make test
+

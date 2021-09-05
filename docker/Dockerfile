@@ -1,4 +1,8 @@
-FROM ubuntu:18.04
+# Container to host OOMMF
+#
+# Takes the most recent version on https://github.com/fangohr/oommf.git
+
+FROM ubuntu:21.04
 
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive
@@ -17,7 +21,9 @@ USER oommfuser
 WORKDIR /usr/local
 RUN git clone https://github.com/fangohr/oommf.git
 WORKDIR /usr/local/oommf
-RUN make build-with-all
+
+# This Makefile target builds oommf
+RUN make build
 
 # Create OOMMFTCL environment variable. Can be used by Ubermag to find
 # OOMMF
@@ -36,3 +42,7 @@ RUN chmod a+x oommf
 
 # Mounting directory.
 WORKDIR /io
+
+# Quick sanity check:
+RUN oommf +version
+RUN oommf +platform
