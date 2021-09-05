@@ -2,10 +2,9 @@
 
 | Description | Badge |
 | --- | --- |
-| Release | [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf) |
-| Build | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)
+| Release (conda-forge)| [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf) |
+| Build (this repo) | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)
 | License | [![License Badge](https://img.shields.io/badge/License-OOMMF-blue.svg)](oommf/LICENSE) |
-
 
 
 ## About
