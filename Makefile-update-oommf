@@ -34,7 +34,7 @@ fetch-oommf:
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
-  make -f Makefile-update-oommf apply-patches
+	make -f Makefile-update-oommf apply-patches
 
 	@#	@echo "things to do now:"
 	@#	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
@@ -75,13 +75,13 @@ update-oommf-version:
 
 apply-patches:
 	echo "Applying patches ..."
-	# patch from Ryan Pepper to allow compilation on OS X 10.11
-	# (already applied into latest OOMMF version)
-	# patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
-	# echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
-	# record original file in repository.
-	# git add oommf/config/platforms/darwin.tcl.orig
-	# when this patch is removed, the file above should also be removed from the repo.
+	@# patch from Ryan Pepper to allow compilation on OS X 10.11
+	@# (already applied into latest OOMMF version)
+	@# patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
+	@# echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
+	@# record original file in repository.
+	@# git add oommf/config/platforms/darwin.tcl.orig
+	@# when this patch is removed, the file above should also be removed from the repo.
 
 
 #
@@ -142,21 +142,21 @@ all:
 # This is used by the in-docker-replay-oommf-update github workflow.
 
 in-docker-replay-oommf-update:
-  @# Create Docker container with tk and tcl
+	@# Create Docker container with tk and tcl
 	docker build -t dockertestimage .
-  @# Start this as a daemon
-  docker run -ti -d --name testcontainer2 dockertestimage
+	@# Start this as a daemon
+	docker run -ti -d --name testcontainer2 dockertestimage
 	@# rm all oommf files from repo
 	docker exec testcontainer2 make -f Makefile-update-oommf clean
-  @# fetch all oommf from NIST
+	@# fetch all oommf from NIST
 	docker exec testcontainer2 make -f Makefile-update-oommf fetch-oommf
-  @# fetch extensinos to be added
+	@# fetch extensinos to be added
 	docker exec testcontainer2 make -f Makefile-update-oommf fetch-all-extensions
-  @# build the vanilla version with extensions
+	@# build the vanilla version with extensions
 	docker exec testcontainer2 make build
-  @# run some tests
+	@# run some tests
 	docker exec testcontainer2 make test-all
-  @# stop docker container
+	@# stop docker container
 	docker stop testcontainer2
-  @# and remove it
+	@# and remove it
 	docker rm testcontainer2
