@@ -1,3 +1,6 @@
+# Build OOMMF in Debian container
+# see ../../Makefile for details
+
 name: in-docker
 
 on:

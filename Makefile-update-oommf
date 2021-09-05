@@ -34,6 +34,7 @@ fetch-oommf:
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
+  make -f Makefile-update-oommf apply-patches
 
 	@#	@echo "things to do now:"
 	@#	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
@@ -115,9 +116,8 @@ get-mel:
 fetch-all-extensions: get-cnv get-d2d get-t get-mel 
 
 
-
 #
-# 3. Master target that fetches OOMMF and the extensions
+# 3. Master target that fetches OOMMF (step 1) and the extensions (step 2)
 #
 
 all:
@@ -125,14 +125,8 @@ all:
 	make -f Makefile-update-oommf fetch-all-extensions
 	@echo "to build and test use 'make build test-all'"
 
-in-docker-all:
-	@echo "Not implemented  yet"
-	docker build -t dockertestimage .
-	docker run -rm -ti  --name testcontainer dockertestimage
 
-
-
-
+#
 # For continuous integration
 #
 # Note: it is not clear how sensible the steps below are.
@@ -144,16 +138,25 @@ in-docker-all:
 # - compilation fails, for example because the extensions has changed. In this
 #   case ...
 #
+#
 # This is used by the in-docker-replay-oommf-update github workflow.
 
 in-docker-replay-oommf-update:
+  @# Create Docker container with tk and tcl
 	docker build -t dockertestimage .
-	docker run -ti -d --name testcontainer2 dockertestimage
+  @# Start this as a daemon
+  docker run -ti -d --name testcontainer2 dockertestimage
 	@# rm all oommf files from repo
 	docker exec testcontainer2 make -f Makefile-update-oommf clean
+  @# fetch all oommf from NIST
 	docker exec testcontainer2 make -f Makefile-update-oommf fetch-oommf
+  @# fetch extensinos to be added
 	docker exec testcontainer2 make -f Makefile-update-oommf fetch-all-extensions
+  @# build the vanilla version with extensions
 	docker exec testcontainer2 make build
+  @# run some tests
 	docker exec testcontainer2 make test-all
+  @# stop docker container
 	docker stop testcontainer2
+  @# and remove it
 	docker rm testcontainer2

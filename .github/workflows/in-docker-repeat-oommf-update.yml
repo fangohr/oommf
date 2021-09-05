@@ -1,3 +1,6 @@
+# Workflow to go through the steps required if there is a new
+# oommf upgrade.
+
 name: in-docker-repeat-oommf-update
 
 on:
