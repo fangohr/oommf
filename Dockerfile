@@ -1,4 +1,6 @@
-FROM ubuntu:20.04
+# Container to host compilation of OOMMF in
+
+FROM ubuntu:21.04
 
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive
@@ -15,10 +17,4 @@ RUN adduser oommfuser
 RUN chown -R oommfuser /usr/local  # directory where OOMMF is built.
 USER oommfuser
 
-# Compile OOMMF.
 WORKDIR /usr/local/oommf
-# RUN make build
-# RUN make test-all
-
-# Create OOMMFTCL environment variable.
-# ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
