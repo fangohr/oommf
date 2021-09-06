@@ -12,10 +12,6 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-#      - name: Install GitHub CLI
-#        run: |
-#          brew update
-#          brew install gh
       - name: how many cores in hardware
         run: |
           sysctl -n hw.ncpu
