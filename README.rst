@@ -17,6 +17,9 @@ Object Oriented MicroMagnetic Framework (OOMMF)
 |                                   |                                   |
 +-----------------------------------+-----------------------------------+
 
+
+.. contents:: Overview
+
 About
 -----
 
@@ -29,16 +32,11 @@ the OOMMF source files as distributed by
 
 The intention is to
 
--  
+- (i) provide the OOMMF distribution files in a git repository for those who
+       prefer to pull them via git
 
-   (i) provide the OOMMF distribution files in a git repository for
-       those who prefer to pull them via git
-
--  
-
-   (ii) include additional OOMMF extensions, which have not made it into
-        the official distribution from NIST into this git repository
-        (see below).
+- (ii) include additional OOMMF extensions, which have not made it into the
+        official distribution from NIST into this git repository (see below).
 
 In addition to the OOMMF source code that is offered from NIST (and the
 OOMMF extension coming from NIST), this repository contains some
