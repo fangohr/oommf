@@ -2,10 +2,11 @@
 
 | Description | Badge |
 | --- | --- |
+| Build (this repo) on Ubuntu | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)|
+[ Build (this repo) on OSX | ![on-osx-latest](https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml)|
 | Release (conda-forge)| [![Anaconda-Server Badge](https://anaconda.org/conda-forge/oommf/badges/version.svg)](https://anaconda.org/conda-forge/oommf) |
-| Build (this repo) on Ubuntu | [![workflow](https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg)](https://github.com/fangohr/oommf/actions?query=branch%3Amaster+)
 | License | [![License Badge](https://img.shields.io/badge/License-OOMMF-blue.svg)](oommf/LICENSE) |
-
+|         |                                                                                        |
 
 ## About
 
@@ -159,11 +160,13 @@ We have a github workflow to run through the targets in this
 
 ## Github workflows
 
-* Installing OOMMF on latest Ubuntu on Github's systems:  
+* Compile OOMMF on latest Ubuntu on Github's systems:  
 [![on-ubuntu-latest](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml)
 
-* Installing OOMMF on Ubuntu 21:04 (in Docker container):
+* Compile OOMMF on Ubuntu 21:04 (in Docker container):
 [![in-docker](https://github.com/fangohr/oommf/actions/workflows/in-docker.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/in-docker.yml)
+
+* Compile OOMMF on latest OSX:  [![on-osx-latest](https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml)
 
 * Replay OOMMF upgrade procedure (see above): [![in-docker-repeat-oommf-update](https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml)
 
