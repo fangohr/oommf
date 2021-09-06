@@ -160,8 +160,7 @@ We have a github workflow to run through the targets in this
 
 ## Github workflows
 
-* Compile OOMMF on latest Ubuntu on Github's systems:  
-[![on-ubuntu-latest](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml)
+* Compile OOMMF on latest Ubuntu on Github's systems: [![on-ubuntu-latest](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml)
 
 * Compile OOMMF on Ubuntu 21:04 (in Docker container):
 [![in-docker](https://github.com/fangohr/oommf/actions/workflows/in-docker.yml/badge.svg)](https://github.com/fangohr/oommf/actions/workflows/in-docker.yml)
