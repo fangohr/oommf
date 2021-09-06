@@ -1,0 +1,29 @@
+name: on-osx-latest
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: how many cores in hardware
+        run: |
+          sysctl -n hw.ncpu
+      - name: compile oommf
+        run: |
+          cat oommf-version
+          make build
+      - name: run version and platform
+        run: |
+          pwd
+          tclsh oommf/oommf.tcl +version
+          tclsh oommf/oommf.tcl +platform
+      - name: run standard problems 3 and 4 directly
+        run: |
+          make test-all
