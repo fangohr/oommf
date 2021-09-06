@@ -16,11 +16,12 @@ jobs:
 #        run: |
 #          brew update
 #          brew install gh
+      - name: how many cores in hardware
+        run: |
+          sysctl -n hw.ncpu
       - name: compile oommf
         run: |
           cat oommf-version
-          pwd
-          ls -l
           make build
       - name: run version and platform
         run: |
