@@ -1,24 +1,27 @@
+===============================================
 Object Oriented MicroMagnetic Framework (OOMMF)
 ===============================================
+
 
 +-----------------------------------+-----------------------------------+
 | Description                       | Badge                             |
 +===================================+===================================+
-| Build (this repo) on Ubuntu       | |workflow|                        |
+| Build (this repo) on latest Ubuntu| |on-ubuntu-latest|                |
 +-----------------------------------+-----------------------------------+
-| [ Build (this repo) on OSX        | |on-osx-latest|](htt              |
-|                                   | ps://github.com/fangohr/oommf/act |
-|                                   | ions/workflows/on-osx-latest.yml) |
+| Build (this repo) on OSX          | |badge-osx|                       |
 +-----------------------------------+-----------------------------------+
-| Release (conda-forge)             | |Anaconda-Server Badge|           |
+| Release on conda-forge            | |Anaconda-Server Badge|           |
 +-----------------------------------+-----------------------------------+
 | License                           | |License Badge|                   |
 +-----------------------------------+-----------------------------------+
-|                                   |                                   |
-+-----------------------------------+-----------------------------------+
 
+.. sectnum::
 
-.. contents:: Overview
+.. contents:: 
+
+OOMMF Git repository
+====================
+
 
 About
 -----
@@ -32,11 +35,9 @@ the OOMMF source files as distributed by
 
 The intention is to
 
-- (i) provide the OOMMF distribution files in a git repository for those who
-       prefer to pull them via git
+1. provide the OOMMF distribution files in a git repository for those who prefer to pull them via git
 
-- (ii) include additional OOMMF extensions, which have not made it into the
-        official distribution from NIST into this git repository (see below).
+2. include additional OOMMF extensions, which have not made it into the official distribution from NIST into this git repository (see below).
 
 In addition to the OOMMF source code that is offered from NIST (and the
 OOMMF extension coming from NIST), this repository contains some
@@ -103,16 +104,16 @@ different crystallographic classes:
 And
 
 -  the OOMMF Magnetoelastic Extension Module
-   (https://github.com/yuyahagi/oommf-mel) from Yu Yahagi.
+   (`repository <https://github.com/yuyahagi/oommf-mel>`__) from Yu Yahagi.
 
 Docker
 ------
 
-In the ```docker/`` <docker/>`__ directory we provide
+In the `docker <docker/>`__ directory we provide
 `Dockerfile <docker/Dockerfile>`__ and `Makefile <docker/Makefile>`__
 for building and running Docker images containg OOMMF. In addition, we
 also provide pre-built image at DockerHub under
-```ubermag/oommf`` <https://hub.docker.com/r/ubermag/oommf/>`__
+`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
 repository. More information about Docker as well as on how to install
 it on your system can be found `here <https://www.docker.com/>`__. This
 Docker image is also used by
@@ -121,7 +122,7 @@ Docker image is also used by
 Getting the image
 ~~~~~~~~~~~~~~~~~
 
-If you want to build an image yourself, navigate to the ``docker/``
+If you want to build an image yourself, navigate to the `docker/ <docker>`__
 directory and run
 
 ::
@@ -131,7 +132,7 @@ directory and run
 This command builds the image under the ``ubermag/oommf:latest`` name.
 Otherwise, you can obtain the most recent image by pulling it from
 DockerHub
-```ubermag/oommf`` <https://hub.docker.com/r/ubermag/oommf/>`__
+`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
 repository
 
 ::
@@ -141,7 +142,7 @@ repository
 Running the container
 ~~~~~~~~~~~~~~~~~~~~~
 
-To run a container, navigate to ``docker/`` directory and run
+To run a container, navigate to `docker <docker>`__ directory and run
 
 ::
 
@@ -291,14 +292,11 @@ Github workflows
 
 -  Compile OOMMF on Ubuntu 21:04 (in Docker container): |in-docker|
 
--  Compile OOMMF on latest OSX: |image1|
+-  Compile OOMMF on latest OSX: |badge-osx|
 
 -  Replay OOMMF upgrade procedure (see above):
    |in-docker-repeat-oommf-update|
 
-.. |workflow| image:: https://github.com/fangohr/oommf/workflows/on-ubuntu-latest/badge.svg
-   :target: https://github.com/fangohr/oommf/actions?query=branch%3Amaster+
-.. |on-osx-latest| image:: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
    :target: https://anaconda.org/conda-forge/oommf
 .. |License Badge| image:: https://img.shields.io/badge/License-OOMMF-blue.svg
@@ -307,7 +305,7 @@ Github workflows
    :target: https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml
 .. |in-docker| image:: https://github.com/fangohr/oommf/actions/workflows/in-docker.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/in-docker.yml
-.. |image1| image:: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg
+.. |badge-osx| image:: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml
 .. |in-docker-repeat-oommf-update| image:: https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml
