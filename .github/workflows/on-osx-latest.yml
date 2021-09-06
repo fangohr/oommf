@@ -28,6 +28,6 @@ jobs:
           pwd
           tclsh oommf/oommf.tcl +version
           tclsh oommf/oommf.tcl +platform
-      - name: run standard problem 3 directly
+      - name: run standard problems 3 and 4 directly
         run: |
           make test-all
