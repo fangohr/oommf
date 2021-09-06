@@ -11,20 +11,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-    defaults:
-      run:
-        shell: bash -l {0}
 
     steps:
     - name: Initialisation
       uses: actions/checkout@v2
 
-    - name: cd into docker directory
-      run: cd docker
-
     - name: Build OOMMF in Container from master branch
-      run: make build
+      run: cd docker && make build
 
     - name: Run stdproblem 3
-      run: make test
+      run: cd docker && make test
 
