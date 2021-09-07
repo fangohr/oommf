@@ -12,6 +12,8 @@ Object Oriented MicroMagnetic Framework (OOMMF)
 +-----------------------------------+-----------------------------------+
 | Release on conda-forge            | |Anaconda-Server Badge|           |
 +-----------------------------------+-----------------------------------+
+| ubermag/oommf Docker image        | |ubermag-oommf-docker-image|      |
++-----------------------------------+-----------------------------------+
 | License                           | |License Badge|                   |
 +-----------------------------------+-----------------------------------+
 
@@ -309,3 +311,5 @@ Github workflows
    :target: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml
 .. |in-docker-repeat-oommf-update| image:: https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml
+.. |ubermag-oommf-docker-image| image:: https://github.com/fangohr/oommf/actions/workflows/ubermag-container.yml/badge.svg
+   :target: https://github.com/fangohr/oommf/actions/workflows/ubermag-container.yml
