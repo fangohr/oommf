@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 0 2 * *'  # run once per month
+
 
 
 jobs:

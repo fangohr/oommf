@@ -6,7 +6,7 @@ name: in-docker
 on:
   push:
   schedule:
-    - cron: '0 0 * * 1'  # run every Monday
+    - cron: '0 0 2 * *'  # run once per month
 
 jobs:
   in-docker:

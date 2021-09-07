@@ -6,7 +6,7 @@ name: in-docker-repeat-oommf-update
 on:
   push:
   schedule:
-    - cron: '0 0 * * 2'  # run every Tuesday
+    - cron: '0 0 2 * *'  # run once per month
 
 jobs:
   in-docker:
