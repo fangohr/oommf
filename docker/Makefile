@@ -6,3 +6,8 @@ push: build
 
 run:
 	docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest bash
+
+test:
+	docker run --rm -v `pwd`:/io ubermag/oommf:latest oommf boxsi +fg /usr/local/oommf/oommf/app/oxs/examples/stdprob3.mif -exitondone 1
+
+
