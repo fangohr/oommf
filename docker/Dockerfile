@@ -1,7 +1,6 @@
 # Container to host OOMMF
 #
 # Takes the most recent version on https://github.com/fangohr/oommf.git
-
 FROM ubuntu:21.04
 
 # Avoid asking for geographic data when installing tzdata.
@@ -19,7 +18,7 @@ USER oommfuser
 
 # Compile OOMMF and create OOMMFTCL environment variable
 WORKDIR /usr/local
-RUN git clone https://github.com/fangohr/oommf.git
+RUN git clone --depth 1 https://github.com/fangohr/oommf.git
 WORKDIR /usr/local/oommf
 
 # This Makefile target builds oommf
