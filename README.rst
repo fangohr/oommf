@@ -2,11 +2,12 @@
 Object Oriented MicroMagnetic Framework (OOMMF)
 ===============================================
 
-
 +-----------------------------------+-----------------------------------+
 | Description                       | Badge                             |
 +===================================+===================================+
 | Build (this repo) on latest Ubuntu| |on-ubuntu-latest|                |
++-----------------------------------+-----------------------------------+
+| Build (this repo) on Ubuntu 21.4| | |in-docker|                       |
 +-----------------------------------+-----------------------------------+
 | Build (this repo) on OSX          | |badge-osx|                       |
 +-----------------------------------+-----------------------------------+
@@ -298,6 +299,8 @@ Github workflows
 
 -  Replay OOMMF upgrade procedure (see above):
    |in-docker-repeat-oommf-update|
+   
+-  Building Docker image used by Ubermag: |ubermag-oommf-docker-image|
 
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
    :target: https://anaconda.org/conda-forge/oommf
