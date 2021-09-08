@@ -256,15 +256,37 @@ the particular crystallographic class
 `T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__, or
 `D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__).
 
+If you want to acknowledge the packaging of OOMMF as a git repository, a Docker
+container, a conda-forge package or the use of Ubermag, please cite this paper:
+
+M. Beg, M. Lang and H. Fangohr,
+*“Ubermag: Towards more effective micromagnetic workflows,”*
+in `IEEE Transactions on Magnetics, DOI: 10.1109/TMAG.2021.3078896
+<https://doi.org/10.1109/TMAG.2021.3078896>`__ (2021)
+
+BibTeX snippet::
+
+    @article{beg2021,
+      author = {Beg, Marijan and Lang, Martin and Fangohr, Hans},
+      journal = {IEEE Transactions on Magnetics},
+      title = {Ubermag: Towards more effective micromagnetic workflows},
+      year = {2021},
+      volume = {},
+      number = {},
+      pages = {1-1},
+      doi = {10.1109/TMAG.2021.3078896}
+    }
+
+
 Acknowledgements
 ----------------
 
-The repository which holds the OOMMF source code was developed as a part
-of `OpenDreamKit <http://opendreamkit.org/>`__ – Horizon 2020 European
-Research Infrastructure project (676541) and the `EPSRC Programme grant
-on Skyrmionics (EP/N032128/1) <https://www.skyrmions.ac.uk/>`__. Further
-thanks go to the University of Southampton and the Max Planck Institute
-for the Structure and Dynamics of Matter.
+The repository which holds the OOMMF source code was developed as a part of
+`OpenDreamKit <http://opendreamkit.org/>`__ – Horizon 2020 European Research
+Infrastructure project (676541) and the `EPSRC Programme grant on Skyrmionics
+(EP/N032128/1) <https://www.skyrmions.ac.uk/>`__. Further thanks go to the
+`University of Southampton <https://www.soton.ac.uk>`__ and the `Max Planck
+Institute for the Structure and Dynamics of Matter <https://mpsd.mpg.de>`__.
 
 Information for Developers
 ==========================
