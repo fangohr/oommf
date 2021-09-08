@@ -116,8 +116,8 @@ it on your system can be found `here <https://www.docker.com/>`__. This
 Docker image is also used by
 `Ubermag <https://ubermag.github.io/installation.html#how-does-ubermag-find-oommf>`__.
 
-Getting the image
-~~~~~~~~~~~~~~~~~
+Getting the Docker image
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you want to build an image yourself, navigate to the `docker/ <docker>`__
 directory and run
@@ -136,8 +136,8 @@ repository
 
    docker pull ubermag/oommf
 
-Running the container
-~~~~~~~~~~~~~~~~~~~~~
+Using the Docker container
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To run a container, navigate to `docker <docker>`__ directory and run
 
@@ -179,6 +179,10 @@ How can I exchange files between the host and the container?
   - create the ``mif`` file on host the host
   - then run docker to tell oommf to process the file and the create data files in the process
   - then analyse data files on the host.
+
+
+Environment variables in the image 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 During the build process of the container, we also set an environment variable
 ``OOMMFTCL`` to point to the ``/usr/local/oommf/oommf/oommf.tcl`` file. This is
