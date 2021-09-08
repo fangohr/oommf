@@ -306,14 +306,14 @@ makefile (see comments in makefile). They will (in summary):
 1. fetch new OOMMF sources from NIST. The Makefile will update the
    `versionlog.txt <versionlog.txt>`__ and `oommf-version <oommf-version>`__
    files so that these reflect the new version automatically.
-2. fetch extensions. The script
-   `clone-log-and-extract-src.py <clone-log-and-extract-src.py>`__ is used to copy the relevant files from
+2. fetch extensions. The script `clone-log-and-extract-src.py
+   <clone-log-and-extract-src.py>`__ is used to copy the relevant files from
    each extension into the right place with the OOMMF directory structure
-   (`oommf/app/oxs/local/ <oommf/oommf/app/oxs/local/>`__) into a dedicated
+   (`oommf/app/oxs/local/ <oommf/app/oxs/local/>`__) into a dedicated
    subdirectory. The script will also add a ``NAME.log`` and ``NAME-HEAD.zip``
-   file for each extensions with name ``NAME`` which contain additional
-   information about the extension (to provide better provenance and
-   reproducibility).
+   file for each extensions with name ``NAME`` into the relevant subdirectory.
+   These files contain additional information about the extension (to provide
+   better provenance and reproducibility).
 
 The `Makefile <Makefile-update-oommf>`__ will need manual updating (for example
 new version number, ...) before being used.
