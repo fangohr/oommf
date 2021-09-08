@@ -40,16 +40,13 @@ The intention is to
 
 1. provide the OOMMF distribution files in a git repository for those who prefer to pull them via git
 
-2. include additional OOMMF extensions, which have not made it into the official distribution from NIST into this git repository (see below).
+2. include additional user-contributed OOMMF extensions, which have not made it
+   into the official distribution from NIST into this git repository. Those can
+   be seen from the `Makefile-update-oommf <Makefile-update-oommf>`__. See also
+   `Extensions <#Extensions>`__ below.
 
-In addition to the OOMMF source code that is offered from NIST (and the
-OOMMF extension coming from NIST), this repository contains some
-additional user-contributed extensions. Those can be seen from the
-`Makefile-update-oommf <Makefile-update-oommf>`__. See also
-`Extensions <#Extensions>`__ below.
-
-Compilation of OOMMF (for example by running ``make build``) is expected
-to work on Linux and OS X.
+Compilation of OOMMF (for example by running ``make build``) is expected to work
+on Linux and OS X.
 
 Version
 -------
@@ -76,6 +73,7 @@ and build it
 
 ::
 
+   cd oommf
    make build
 
 Smoke test
@@ -100,13 +98,9 @@ different crystallographic classes:
    (`repository <https://github.com/joommf/oommf-extension-dmi-cnv>`__),
 2. T(O) - bulk DMI
    (`repository <https://github.com/joommf/oommf-extension-dmi-t>`__),
-   and
 3. D2d - antiskyrmion DMI
    (`repository <https://github.com/joommf/oommf-extension-dmi-d2d>`__)
-
-And
-
--  the OOMMF Magnetoelastic Extension Module
+4. The OOMMF Magnetoelastic Extension Module
    (`repository <https://github.com/yuyahagi/oommf-mel>`__) from Yu Yahagi.
 
 Docker
@@ -177,16 +171,18 @@ example:
    <7> oommf.tcl 2.0a1  info:
    oommf.tcl 2.0a1
 
-The current working directory in the host is shared with the ``/io``
-directory in the container: this can be used to exchange ``mif`` files
-and data files with the container environment: create ``mif`` file in
-host, run docker to tell oommf to process the file and create data
-files, then analyse data files on the host.
+How can I exchange files between the host and the container?
 
-During the build process of the container, we also set an environment
-variable ``OOMMFTCL`` to point to the
-``/usr/local/oommf/oommf/oommf.tcl`` file. This is used by Ubermag, for
-example, to find the ``oommf.tcl`` file.
+- The current working directory in the host is shared with the ``/io`` directory in the container
+- This can be used to exchange ``mif`` files and data files with the container environment. For example:
+
+  - create the ``mif`` file on host the host
+  - then run docker to tell oommf to process the file and the create data files in the process
+  - then analyse data files on the host.
+
+During the build process of the container, we also set an environment variable
+``OOMMFTCL`` to point to the ``/usr/local/oommf/oommf/oommf.tcl`` file. This is
+used by Ubermag, for example, to find the ``oommf.tcl`` file.
 
 There is also the ``OOMMF_ROOT`` variable which points to the base
 directory of the OOMMF sources (that’s currently
@@ -235,15 +231,13 @@ this repository, you are welcome to raise an issue in our
 License
 -------
 
-The License for the OOMMF code can be found `here <oommf/LICENSE>`__. If
-you use any of the DMI extensions (that are not part of this
-repository), please refer to the `3-Clause BSD
-License <https://opensource.org/licenses/BSD-3-Clause>`__ and licenses
-in corresponding repositories
-(`Cnv <https://github.com/joommf/oommf-extension-dmi-cnv>`__,
-`T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__,
-`D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__, and
-`magnetoelastic <https://github.com/yuyahagi/oommf-mel>`__).
+The License for the OOMMF code can be found `here <oommf/LICENSE>`__. If you use
+any of the following extensions (which do not come with the OOMMF code from NIST
+at the moment), please refer to the licenses in the corresponding repositories
+(`Cnv <https://github.com/joommf/oommf-extension-dmi-cnv>`__, `T(O)
+<https://github.com/joommf/oommf-extension-dmi-t>`__, `D2d
+<https://github.com/joommf/oommf-extension-dmi-d2d>`__, and `magnetoelastic
+<https://github.com/yuyahagi/oommf-mel>`__).
 
 How to cite
 -----------
