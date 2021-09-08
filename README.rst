@@ -7,7 +7,7 @@ Object Oriented MicroMagnetic Framework (OOMMF)
 +===================================+===================================+
 | Build (this repo) on latest Ubuntu| |on-ubuntu-latest|                |
 +-----------------------------------+-----------------------------------+
-| Build (this repo) on Ubuntu 21.4| | |on-ubuntu-in-docker|             |
+| Build (this repo) on Ubuntu 21.4  | |on-ubuntu-in-docker|             |
 +-----------------------------------+-----------------------------------+
 | Build (this repo) on OSX          | |badge-osx|                       |
 +-----------------------------------+-----------------------------------+
