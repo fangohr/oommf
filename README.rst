@@ -162,7 +162,7 @@ can be used, for example:
    <7> oommf.tcl 2.0a1  info:
    oommf.tcl 2.0a1
 
-You can also add oommf commands to the command line from the host, for
+You can also add ``oommf`` commands to the command line from the host, for
 example:
 
 ::
@@ -173,11 +173,11 @@ example:
 
 How can I exchange files between the host and the container?
 
-- The current working directory in the host is shared with the ``/io`` directory in the container
+- The current working directory in the host is shared with the ``/io`` directory in the container.
 - This can be used to exchange ``mif`` files and data files with the container environment. For example:
 
-  - create the ``mif`` file on host the host
-  - then run docker to tell oommf to process the file and the create data files in the process
+  - create the ``mif`` file on the host
+  - then run docker to tell OOMMF to process the ``mif`` file and create data files in the process
   - then analyse data files on the host.
 
 
@@ -293,7 +293,7 @@ Institute for the Structure and Dynamics of Matter <https://mpsd.mpg.de>`__.
 Information for Developers
 ==========================
 
-This repository is providing a git repository of oommf source files and
+This repository is providing a git repository of OOMMF source files and
 additional extensions (see above for details).
 
 Updating to new OOMMF releases, or including new extensions
@@ -330,7 +330,8 @@ Once this is done, one can
 This `README <README.rst>`__ will need updating (where specific version numbers are mentioned).
 
 Even though steps 1 and 2 above only need to be exercised where there is a new
-OOMMF-version (or new extensions to include), we have a github workflow to run
+OOMMF-version (or new extensions to include), we have a 
+`github workflow <.github/workflows/in-docker-repeat-oommf-update.yml>`__ to run
 through the targets in this `Makefile-update-oommf <Makefile-update-oommf>`__
 makefile periodically. 
 
