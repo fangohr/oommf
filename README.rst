@@ -303,15 +303,24 @@ If a new OOMMF release (from NIST) should be included here, one should
 use the targets in the `Makefile-update-oommf <Makefile-update-oommf>`__
 makefile (see comments in makefile). They will (in summary):
 
-1. fetch new OOMMF sources from NIST 
-2. fetch extensions
+1. fetch new OOMMF sources from NIST. The Makefile will update the
+   `versionlog.txt <versionlog.txt>`__ and `oommf-version <oommf-version>`__
+   files so that these reflect the new version automatically.
+2. fetch extensions. The script
+   `clone-log-and-extract-src.py <clone-log-and-extract-src.py>`__ is used to copy the relevant files from
+   each extension into the right place with the OOMMF directory structure
+   (`oommf/app/oxs/local/ <oommf/oommf/app/oxs/local/>`__) into a dedicated
+   subdirectory. The script will also add a ``NAME.log`` and ``NAME-HEAD.zip``
+   file for each extensions with name ``NAME`` which contain additional
+   information about the extension (to provide better provenance and
+   reproducibility).
 
 The `Makefile <Makefile-update-oommf>`__ will need manual updating (for example
 new version number, ...) before being used.
 
 Once this is done, one can
 
-3. commit all of those retrieved and unzipped/untarred files to this repository 
+3. commit all of those retrieved (and newly created ``zip`` and ``log``) files to this repository 
 4. make a new release for this repository (for example using Github GUI)
 5. if desired, push a new docker image to docker hub (see `docker/Makefile <docker/Makefile>`__)
 6. if desired, update other packaging systems providing OOMMF (for example
