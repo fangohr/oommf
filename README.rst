@@ -303,10 +303,12 @@ If a new OOMMF release (from NIST) should be included here, one should
 use the targets in the `Makefile-update-oommf <Makefile-update-oommf>`__
 makefile (see comments in makefile). They will (in summary):
 
-1. fetch new OOMMF sources from NIST. The Makefile will update the
+1. Using ``make -f Makefile-update-oommf fetch-oommf`` fetch new OOMMF sources from NIST.
+   The Makefile will update the
    `versionlog.txt <versionlog.txt>`__ and `oommf-version <oommf-version>`__
    files so that these reflect the new version automatically.
-2. fetch extensions. The script `clone-log-and-extract-src.py
+2. Using ``make -f Makefile-update-oommf fetch-all-extensions`` fetch extensions.
+   The script `clone-log-and-extract-src.py
    <clone-log-and-extract-src.py>`__ is used to copy the relevant files from
    each extension into the right place with the OOMMF directory structure
    (`oommf/app/oxs/local/ <oommf/app/oxs/local/>`__) into a dedicated
@@ -316,13 +318,32 @@ makefile (see comments in makefile). They will (in summary):
    better provenance and reproducibility).
 
 The `Makefile <Makefile-update-oommf>`__ will need manual updating (for example
-new version number, ...) before being used.
+new version number, ...) before being used in steps 1 and 2.
+
+A recommendation is to:
+- iterate through steps 1 and 2 until everything works automatically. You can
+  use ``make -f Makefile-update-oommf clean`` to remove all downloaded and
+  extracted files before starting over.
+- then run `make build` to build the new OOMMF and `make test-all` to run
+  standard problem 3 and 4 as a smoke test. Iterate 1 and 2 until the tests pass.
+
+3. At that point, the modifications to ``Makefile-update-oommf`` should be
+   committed to the repository (other modifications of scripts as well if any
+   were necessary).
+
+4. Remove all generated files (such as `*.o`) using ``make -f Makefile-update-oommf clean``, and
+   repeat steps 1 and 2 (so that we only have those files in the directories
+   that we like to commit to this repository as part of the new released).
 
 Once this is done, one can
 
-3. commit all of those retrieved (and newly created ``zip`` and ``log``) files to this repository 
+5. commit all of the retrieved (and newly created ``zip`` and ``log``) files to
+   this repository
+
 4. make a new release for this repository (for example using Github GUI)
+ 
 5. if desired, push a new docker image to docker hub (see `docker/Makefile <docker/Makefile>`__)
+
 6. if desired, update other packaging systems providing OOMMF (for example
    `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__,
    `spack <http://github.com/fangohr/oommf-in-spack>`__)
