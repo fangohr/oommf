@@ -299,13 +299,29 @@ Updating to new OOMMF releases, or including new extensions
 
 If a new OOMMF release (from NIST) should be included here, one should
 use the targets in the `Makefile-update-oommf <Makefile-update-oommf>`__
-makefile (see documentation there). The file will need manual updating
-(for the new version), before being used. Once it has run through, the
-new files need to be committed to the repository. This README might need
-updating (where specific version numbers are mentioned).
+makefile (see comments in makefile). They will (in summary):
 
-We have a github workflow to run through the targets in this
-`Makefile-update-oommf <Makefile-update-oommf>`__ makefile periodically:
+1. fetch new OOMMF sources from NIST 
+2. fetch extensions
+
+The `Makefile <Makefile-update-oommf>`__ will need manual updating (for example
+new version number, ...) before being used.
+
+Once this is done, one can
+
+3. commit all of those retrieved and unzipped/untarred files to this repository 
+4. make a new release for this repository (for example using Github GUI)
+5. if desired, push a new docker image to docker hub (see `docker/Makefile <docker/Makefile>`__)
+6. if desired, update other packaging systems providing OOMMF (for example
+   `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__,
+   `spack <http://github.com/fangohr/oommf-in-spack>`__)
+
+This `README <README.rst>`__ will need updating (where specific version numbers are mentioned).
+
+Even though steps 1 and 2 above only need to be exercised where there is a new
+OOMMF-version (or new extensions to include), we have a github workflow to run
+through the targets in this `Makefile-update-oommf <Makefile-update-oommf>`__
+makefile periodically. 
 
 Github workflows
 ----------------
