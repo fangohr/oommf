@@ -162,7 +162,7 @@ can be used, for example:
    <7> oommf.tcl 2.0a1  info:
    oommf.tcl 2.0a1
 
-You can also add oommf commands to the command line from the host, for
+You can also add ``oommf`` commands to the command line from the host, for
 example:
 
 ::
@@ -173,11 +173,11 @@ example:
 
 How can I exchange files between the host and the container?
 
-- The current working directory in the host is shared with the ``/io`` directory in the container
+- The current working directory in the host is shared with the ``/io`` directory in the container.
 - This can be used to exchange ``mif`` files and data files with the container environment. For example:
 
   - create the ``mif`` file on the host
-  - then run docker to tell oommf to process the ``mif`` file and create data files in the process
+  - then run docker to tell OOMMF to process the ``mif`` file and create data files in the process
   - then analyse data files on the host.
 
 
@@ -293,7 +293,7 @@ Institute for the Structure and Dynamics of Matter <https://mpsd.mpg.de>`__.
 Information for Developers
 ==========================
 
-This repository is providing a git repository of oommf source files and
+This repository is providing a git repository of OOMMF source files and
 additional extensions (see above for details).
 
 Updating to new OOMMF releases, or including new extensions
