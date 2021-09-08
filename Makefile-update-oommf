@@ -49,6 +49,8 @@ fetch-oommf:
 clean:
 	rm -rf oommf
 	rm -rf tmp_git_clone
+	rm -rf Downloads
+  
 
 get-oommf:
 	mkdir -p Downloads
