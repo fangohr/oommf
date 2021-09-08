@@ -58,13 +58,11 @@ def main(argv):
     # create target directory
     subprocess.check_call(f"mkdir -p -v oommf/app/oxs/local/{repo_name}", shell=True)
 
-    # silly hack - there must be a more elegant solution
-    if copy_from == "./":
-        frompath = ""
-    else:
-        frompath = copy_from
-    # copy the important source files
-    subprocess.check_call(f"rsync -v tmp_git_clone/{frompath}* oommf/app/oxs/local/{repo_name}", shell=True)
+    src_path = os.path.relpath(os.path.join('tmp_git_clone', copy_from)) 
+    copy_command = f"rsync -v {src_path}/* oommf/app/oxs/local/{repo_name}"
+    print(f"Copy src files from {repo_name}:")
+    print(f"    {copy_command}")
+    subprocess.check_call(copy_command, shell=True)
 
     # copy additional information to target directory
     print(f"Provenance information recorded in {filename}")
