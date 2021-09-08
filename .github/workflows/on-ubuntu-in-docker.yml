@@ -1,7 +1,11 @@
-# Build OOMMF in Debian container
-# see ../../Makefile for details
+# Build OOMMF on Ubuntu in Docker container.
+# Useful to be able to reproduce this outside of Github's systems.
+# Note that the Ubuntu version does not update automatically here:
+# it needs to be changed in ../../Dockerfile .
+#
+# See also ../../Makefile for details.
 
-name: in-docker
+name: on-ubuntu-in-docker
 
 on:
   push:

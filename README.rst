@@ -7,7 +7,7 @@ Object Oriented MicroMagnetic Framework (OOMMF)
 +===================================+===================================+
 | Build (this repo) on latest Ubuntu| |on-ubuntu-latest|                |
 +-----------------------------------+-----------------------------------+
-| Build (this repo) on Ubuntu 21.4| | |in-docker|                       |
+| Build (this repo) on Ubuntu 21.4| | |on-ubuntu-in-docker|             |
 +-----------------------------------+-----------------------------------+
 | Build (this repo) on OSX          | |badge-osx|                       |
 +-----------------------------------+-----------------------------------+
@@ -293,14 +293,15 @@ Github workflows
 -  Compile OOMMF on latest Ubuntu on Github’s systems:
    |on-ubuntu-latest|
 
--  Compile OOMMF on Ubuntu 21:04 (in Docker container): |in-docker|
+-  Compile OOMMF on Ubuntu 21:04 (in Docker container): |on-ubuntu-in-docker|
 
--  Compile OOMMF on latest OSX: |badge-osx|
+-  Compile OOMMF on latest OSX on Github's systems: |badge-osx|
 
 -  Replay OOMMF upgrade procedure (see above):
    |in-docker-repeat-oommf-update|
    
--  Building Docker image used by Ubermag: |ubermag-oommf-docker-image-status|
+-  Building `Dockerhub image <https://hub.docker.com/u/ubermag/oommf>`__ used by
+   Ubermag: |ubermag-oommf-docker-image-status|
 
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
    :target: https://anaconda.org/conda-forge/oommf
@@ -308,8 +309,8 @@ Github workflows
    :target: oommf/LICENSE
 .. |on-ubuntu-latest| image:: https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-latest.yml
-.. |in-docker| image:: https://github.com/fangohr/oommf/actions/workflows/in-docker.yml/badge.svg
-   :target: https://github.com/fangohr/oommf/actions/workflows/in-docker.yml
+.. |on-ubuntu-in-docker| image:: https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-in-docker.yml/badge.svg
+   :target: https://github.com/fangohr/oommf/actions/workflows/on-ubuntu-in-docker.yml
 .. |badge-osx| image:: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml/badge.svg
    :target: https://github.com/fangohr/oommf/actions/workflows/on-osx-latest.yml
 .. |in-docker-repeat-oommf-update| image:: https://github.com/fangohr/oommf/actions/workflows/in-docker-repeat-oommf-update.yml/badge.svg
