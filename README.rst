@@ -176,8 +176,8 @@ How can I exchange files between the host and the container?
 - The current working directory in the host is shared with the ``/io`` directory in the container
 - This can be used to exchange ``mif`` files and data files with the container environment. For example:
 
-  - create the ``mif`` file on host the host
-  - then run docker to tell oommf to process the file and the create data files in the process
+  - create the ``mif`` file on the host
+  - then run docker to tell oommf to process the ``mif`` file and create data files in the process
   - then analyse data files on the host.
 
 
