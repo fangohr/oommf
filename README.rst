@@ -321,7 +321,8 @@ Once this is done, one can
 This `README <README.rst>`__ will need updating (where specific version numbers are mentioned).
 
 Even though steps 1 and 2 above only need to be exercised where there is a new
-OOMMF-version (or new extensions to include), we have a github workflow to run
+OOMMF-version (or new extensions to include), we have a 
+`github workflow <.github/workflows/in-docker-repeat-oommf-update.yml>`__ to run
 through the targets in this `Makefile-update-oommf <Makefile-update-oommf>`__
 makefile periodically. 
 
