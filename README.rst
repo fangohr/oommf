@@ -321,6 +321,7 @@ The `Makefile <Makefile-update-oommf>`__ will need manual updating (for example
 new version number, ...) before being used in steps 1 and 2.
 
 A recommendation is to:
+
 - iterate through steps 1 and 2 until everything works automatically. You can
   use ``make -f Makefile-update-oommf clean`` to remove all downloaded and
   extracted files before starting over.
