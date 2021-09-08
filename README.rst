@@ -246,36 +246,38 @@ at the moment), please refer to the licenses in the corresponding repositories
 How to cite
 -----------
 
-Information on how to cite the usage of OOMMF can be found
-`here <https://math.nist.gov/oommf/oommf_cites.html>`__.
+- Information on how to cite the *usage of OOMMF* can be found
+  `here <https://math.nist.gov/oommf/oommf_cites.html>`__.
 
-If you use any of the DMI extensions we provide in your research, please
-refer to the “How to cite” section in the corresponding repositories for
-the particular crystallographic class
-(`Cnv <https://github.com/joommf/oommf-extension-dmi-cnv>`__,
-`T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__, or
-`D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__).
+- If you want to acknowledge the *packaging of OOMMF as a git repository, a
+  Docker container, a conda-forge package or the use of Ubermag*, please cite
+  this paper:
 
-If you want to acknowledge the packaging of OOMMF as a git repository, a Docker
-container, a conda-forge package or the use of Ubermag, please cite this paper:
+  M. Beg, M. Lang and H. Fangohr,
+  *“Ubermag: Towards more effective micromagnetic workflows,”*
+  in `IEEE Transactions on Magnetics, DOI: 10.1109/TMAG.2021.3078896
+  <https://doi.org/10.1109/TMAG.2021.3078896>`__ (2021)
+  
+  BibTeX snippet::
+  
+      @article{beg2021,
+        author = {Beg, Marijan and Lang, Martin and Fangohr, Hans},
+        journal = {IEEE Transactions on Magnetics},
+        title = {Ubermag: Towards more effective micromagnetic workflows},
+        year = {2021},
+        volume = {},
+        number = {},
+        pages = {1-1},
+        doi = {10.1109/TMAG.2021.3078896}
+      }
 
-M. Beg, M. Lang and H. Fangohr,
-*“Ubermag: Towards more effective micromagnetic workflows,”*
-in `IEEE Transactions on Magnetics, DOI: 10.1109/TMAG.2021.3078896
-<https://doi.org/10.1109/TMAG.2021.3078896>`__ (2021)
+- If you use *any of the DMI extensions* in your research, please
+  refer to the “How to cite” section in the corresponding repositories for
+  the particular crystallographic class
+  (`Cnv <https://github.com/joommf/oommf-extension-dmi-cnv>`__,
+  `T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__, or
+  `D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__).
 
-BibTeX snippet::
-
-    @article{beg2021,
-      author = {Beg, Marijan and Lang, Martin and Fangohr, Hans},
-      journal = {IEEE Transactions on Magnetics},
-      title = {Ubermag: Towards more effective micromagnetic workflows},
-      year = {2021},
-      volume = {},
-      number = {},
-      pages = {1-1},
-      doi = {10.1109/TMAG.2021.3078896}
-    }
 
 
 Acknowledgements
