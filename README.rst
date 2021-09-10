@@ -122,7 +122,7 @@ Docker image is also used by
 Getting the Docker image
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to build an image yourself, navigate to the `docker/ <docker>`__
+If you want to build an image yourself, navigate to the `docker <docker>`__
 directory and run
 
 ::
