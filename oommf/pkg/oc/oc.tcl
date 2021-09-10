@@ -52,16 +52,16 @@ proc Oc_AmRoot {} {
    }
    return $resultcode
 }
-if {[Oc_AmRoot]>0} {
-   global tcl_platform
-   if {[string compare windows $tcl_platform(platform)]==0} {
-      puts stderr "*** ERROR: Don't run OOMMF as administrator."
-   } else {
-      puts stderr "*** ERROR: Don't run OOMMF as root."
-   }
-   puts stderr "Instead, start OOMMF from a standard user account."
-   exit 666
-}
+#if {[Oc_AmRoot]>0} {
+#   global tcl_platform
+#   if {[string compare windows $tcl_platform(platform)]==0} {
+#      puts stderr "*** ERROR: Don't run OOMMF as administrator."
+#   } else {
+#      puts stderr "*** ERROR: Don't run OOMMF as root."
+#   }
+#   puts stderr "Instead, start OOMMF from a standard user account."
+#   exit 666
+#}
 
 proc Oc_CheckTclIndex {pkg} {
     if {[llength [info commands Oc_DirectPathname]]} {
