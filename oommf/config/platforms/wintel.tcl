@@ -106,102 +106,9 @@ $config SetValue program_compiler_c++ {cl /c}
 # <URL:http://www.intel.com>
 # $config SetValue program_compiler_c++ {icl /nologo /c /GX /GR}
 #
-# Borland C++ 5.5 Win32 command line tools.
-# <URL:http://www.inprise.com/>
-#$config SetValue program_compiler_c++ {bcc32 -c}
-#
-#   It may also be necessary to add something like the following to
-# the C++ code:
-#
-#      #ifndef STATIC_BUILD
-#      #if defined(_MSC_VER)
-#      #   define EXPORT(a,b) __declspec(dllexport) a b
-#      #   define DllEntryPoint DllMain
-#      #else
-#      #   if defined(__BORLANDC__)
-#      #       define EXPORT(a,b) a _export b
-#      #   else
-#      #       define EXPORT(a,b) a b
-#      #   endif
-#      #endif
-#      #endif
-#
 # MINGW32 + gcc
 #$config SetValue program_compiler_c++ {g++ -c}
 #
-# Digital Mars compiler.  Note: Setup below assumes that
-# the STLport "C++ Standard Library" is installed.
-#$config SetValue program_compiler_c++ {dmc -c -Aa -Ae -Ar}
-#
-# Open Watcom C++
-#  Configuration notes:
-#    This build tested with the Open Watcom 1.3 release, with the
-#  4.6.2 release of STLport.  A mostly functional STL is required
-#  to build and use OOMMF.  Unfortunately, Open Watcom 1.3 does not
-#  ship with an STL, and the 4.6.2 release of STLport does not
-#  support Open Watcom "out-of-the-box."  However, the OS2 port of
-#  STLport for Watcom,
-#          STLport-4.6.2_os2watcom-01.zip
-#  is pretty close to working for OOMMF.  Be sure to get the directory
-#  <STLport-4.6.2>/stlport in front of the other Watcom directories in
-#  the include path.  The most convenient way to do this is to place
-#  it at the front of the INCLUDE environment variable.  Then, you
-#  also need to enable ARROW_OPERATOR by commenting out
-#          #define _STLP_NO_ARROW_OPERATOR 1
-#  in file stlport/config/stl_watcom.h, line 57.
-#     If you plan to use Tcl/Tk libraries built with the Microsoft VC++
-#  compiler, such as those distributed by ActiveState, you will need to
-#  patch the tcl.h file, to inform the Watcom linker about the parameter
-#  passing and symbol naming conventions in those libraries:
-#
-#      A) Around line 200, add:
-#       #   elif defined(__WATCOMC__)
-#       #       define DLLIMPORT __declspec(__cdecl)
-#       #       define DLLEXPORT __declspec(__cdecl)
-#
-#      B) Around line 702, change
-#       typedef TCL_STORAGE_CLASS int (Tcl_PackageInitProc) \
-#                                _ANSI_ARGS_((Tcl_Interp *interp));
-#
-#  Diff output for tcl.h, version 8.4.11:
-#
-#   --- tcl.h~      2005-06-18 15:24:16.000000000 -0400
-#   +++ tcl.h       2005-09-01 17:37:15.404608000 -0400
-#   @@ -196,6 +196,9 @@
-#    #   if (defined(__WIN32__) && (defined(_MSC_VER) || (__BORLANDC__ >= 0x0550) || (defined(__GNUC__) && defined(__declspec)))) || (defined(MAC_TCL) && FUNCTION_DECLSPEC)
-#    #      define DLLIMPORT __declspec(dllimport)
-#    #      define DLLEXPORT __declspec(dllexport)
-#   +#   elif defined(__WATCOMC__)
-#   +#       define DLLIMPORT __declspec(__cdecl)
-#   +#       define DLLEXPORT __declspec(__cdecl)
-#    #   else
-#    #      define DLLIMPORT
-#    #      define DLLEXPORT
-#   @@ -697,7 +700,8 @@
-#    typedef void (Tcl_NamespaceDeleteProc) _ANSI_ARGS_((ClientData clientData));
-#    typedef int (Tcl_ObjCmdProc) _ANSI_ARGS_((ClientData clientData,
-#           Tcl_Interp *interp, int objc, struct Tcl_Obj * CONST * objv));
-#   -typedef int (Tcl_PackageInitProc) _ANSI_ARGS_((Tcl_Interp *interp));
-#   +typedef TCL_STORAGE_CLASS int (Tcl_PackageInitProc)
-#   +         _ANSI_ARGS_((Tcl_Interp *interp));
-#    typedef void (Tcl_PanicProc) _ANSI_ARGS_(TCL_VARARGS(CONST char *, format));
-#    typedef void (Tcl_TcpAcceptProc) _ANSI_ARGS_((ClientData callbackData,
-#            Tcl_Channel chan, char *address, int port));
-#
-#
-#  Another (untested) possibility is to use "#pragma aux <function> frame;"
-#  to get parameters passed via the stack.
-#
-#  IMPORTANT NOTE: Open Watcom 1.3 has issues with spaces in
-#  pathnames.  Build oommf in a directory without spaces anywhere in
-#  its path, e.g., C:\oommf or C:\users\bjones\oommf are okay, but
-#  "C:\Program Files\oommf" is not.
-#
-#  Uncomment the following SetValue line to select the Open Watcom
-#  compiler.  The -xr switch enables RTTI, -xs enables exceptions.
-#  The -6s option specifies Pentium Pro architecture with stack
-#  calling convention.
-#$config SetValue program_compiler_c++ {wcl386 -c -xr -xs -6s}
 
 ########################################################################
 # SUPPORT PROCEDURES
@@ -312,6 +219,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
+## Flags to add (resp. remove) from "valuesafeopts" string:
+# $config SetValue program_compiler_c++_remove_valuesafeflags \
+#                          {-fomit-frame-pointer -fprefetch-loop-arrays}
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                          {-funroll-loops}
+#
+### Options for Xp_DoubleDouble high precision package
+## Select base variable type.  One of auto (default), double, long double
+# $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+#
+### Perform range checks?  Enable to pass vcv tests. Default follows NDEBUG.
+# $config SetValue program_compiler_xp_doubledouble_rangecheck 1
+#
+## Use alternative single variable option, with variable one of double,
+## long double, or MPFR.  The last requires installation of the Boost
+## multiprecision C++ libraries.
+# $config SetValue program_compiler_xp_doubledouble_altsingle {long double}
+#
+## Disable (0) or enable (1) use of std::fma (fused-multiply-add) in the
+## Xp_DoubleDouble package.  Only use this if your architecture supports
+## a true fma instruction with a single rounding.  Default is to
+## auto-detect at build time and use fma if it is single rounding.
+# $config SetValue program_compiler_xp_use_fma 0
+#
+## Disable (1) or enable (0, default) testing of Xp_DoubleDouble package.
+# $config SetValue program_pimake_xp_doubledouble_disable_test 1
+###
+#
 ## EXTERNAL PACKAGE SUPPORT:
 ## Extra include directories for compiling:
 # $config SetValue program_compiler_extra_include_dirs /opt/local/include
@@ -406,9 +341,10 @@ if {[string match cl $ccbasename]} {
    if {![info exists cl_version]} {
       set cl_version [GuessClVersion [lindex $compilestr 0]]
    }
-   if {[lindex $cl_version 0]<12} {
+   if {![string match {} $cl_version] && [lindex $cl_version 0]<12} {
       puts stderr "WARNING: This version of OOMMF requires\
-                   Visual C++ 12.0 or later (C++ 11 support)"
+                   Visual C++ 12.0 (aka Visual Studio 2013)\
+                   or later (C++ 11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
       [list GetClBannerVersion  [lindex $compilestr 0]]
@@ -435,16 +371,8 @@ if {[string match cl $ccbasename]} {
    #                   Require AVX  support: /arch:AVX
    #                   Require AVX2 support: /arch:AVX2
    # Fast (less predictable) floating point: /fp:fast
+   #         Value safe floating point opts: /fp:precise
    #     Use portable but insecure lib fcns: /D_CRT_SECURE_NO_DEPRECATE
-   #
-   # Default optimization
-   #   set opts {}
-   # Max optimization
-   set opts [GetClGeneralOptFlags $cl_version x86]
-   # Aggressive optimization flags, some of which are specific to
-   # particular cl versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # cpuguess-wintel.tcl and x86-support.tcl for details.
 
    # CPU model architecture specific options.  To override, set value
    # program_compiler_c++_cpu_arch in
@@ -487,9 +415,6 @@ if {[string match cl $ccbasename]} {
    # or
    #    unset cpuopts
    #
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
-   }
 
    # Use/don't use SSE source-code intrinsics (as opposed to compiler
    # generated SSE instructions, which are controlled by the /arch:
@@ -506,20 +431,33 @@ if {[string match cl $ccbasename]} {
    # necessarily be 16-byte aligned.
    $config SetValue program_compiler_c++_stack_alignment 8
 
+   set opts {}
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+   }
+
    # Silence security warnings
    if {$cl_major_version>7} {
       lappend opts /D_CRT_SECURE_NO_DEPRECATE
    }
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular cl versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts \
+                          [GetClValueSafeOptFlags $cl_version x86_64]]
+   set opts [concat $opts [GetClGeneralOptFlags $cl_version x86]]
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
    $config SetValue program_compiler_c++_option_src {format "\"/Tp%s\""}
    $config SetValue program_compiler_c++_option_inc {format "\"/I%s\""}
@@ -604,9 +542,14 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
-
-   $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
-   $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
+   if {[catch {$config SetValue TCL_LIB_SPEC \
+                  [$config GetValue TCL_VC_LIB_SPEC]} _]} {
+      puts stderr "WARNING: $_"
+   }
+   if {[catch {$config SetValue TK_LIB_SPEC \
+                  [$config GetValue TK_VC_LIB_SPEC]} _]} {
+      puts stderr "WARNING: $_"
+   }
    # Note 1: advapi32 is needed for GetUserName function in Nb package.
    # Note 2: We could add here support for the Windows 7 API call
    #   SetCurrentProcessExplicitAppUserModelID(), which can be used to
@@ -628,38 +571,22 @@ if {[string match cl $ccbasename]} {
    unset cl_major_version
 } elseif {[string match icl $ccbasename]} {
     # ... for Intel C++
-    # Default optimization
-    # $config SetValue program_compiler_c++_option_opt {}
-    # Options:
-    #             Maximum optimization: /O3
-    #          multi-file optimization: /Qipo
-    #   80 bit register floating point: /Qpc80
-    #      Enable runtime debug checks: /GZ
-    #   Optimize for Pentium processor: /G5
-    #   Optimize for Pentium Pro, Pentium II and Pentium III: /G6
-    #           Optimize for Pentium 4: /G7
-    # Improved fp precision (some speed penalty): /Qprec
-    #
-    set opts [list /Qpc80 /O3]
-    #
-    # Note: Unfortunately, Intel C++ 5 fails with an "internal compiler
-    #  error" when building Oxs if /Qipo is enabled. -mjd, 2002-10-30
-    #
-    # NOTE 2: If you want good performance, be sure to edit ../options.tcl
-    # or ../local/options.tcl to include the line
-    #  Oc_Option Add * Platform cflags {-def NDEBUG}
-    # so that the NDEBUG symbol is defined during compile.
-    #
+
+    set opts [list /QxHost /O3 /Qfp-speculation:fast /Qansi-alias /Qstd=c++11]
+    set valuesafeopts [concat $opts /fp:precise]
+    lappend opts /fp:fast=2 
 
     # Make user requested tweaks to compile line options
     set opts [LocalTweakOptFlags $config $opts]
+    set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
-   # NOTE: If you want good performance, be sure to edit ../options.tcl
-   #  or ../local/options.tcl to include the line
-   #    Oc_Option Add * Platform cflags {-def NDEBUG}
-   #  so that the NDEBUG symbol is defined during compile.
+    # NOTE: If you want good performance, be sure to edit ../options.tcl
+    #  or ../local/options.tcl to include the line
+    #    Oc_Option Add * Platform cflags {-def NDEBUG}
+    #  so that the NDEBUG symbol is defined during compile.
     $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
+    $config SetValue program_compiler_c++_option_valuesafeopt \
+        "format \"$valuesafeopts\""
     $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
     $config SetValue program_compiler_c++_option_src {format "\"/Tp%s\""}
     $config SetValue program_compiler_c++_option_inc {format "\"/I%s\""}
@@ -704,172 +631,6 @@ if {[string match cl $ccbasename]} {
     $config SetValue program_linker_uses_-L-l {0}
     $config SetValue program_linker_uses_-I-L-l {0}
 
-} elseif {[string match bcc32 $ccbasename]} {
-    # ... for Borland C++
-    $config SetValue program_compiler_c++_banner_cmd \
-       [list GetBcc32BannerVersion  \
-           [lindex [$config GetValue program_compiler_c++] 0]]
-
-
-    ### Compile line should look like
-    ###    bcc32 -c -oOUT.obj -P infile.cc
-    ### Multi-threaded builds require -WM switch
-    ### NOTE: Options must come first.
-    $config SetValue program_compiler_c++_option_out {format "\"-o%s\""}
-    $config SetValue program_compiler_c++_option_src {format "-P \"%s\""}
-    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
-    $config SetValue program_compiler_c++_option_warn \
-            {format "-w"}
-    $config SetValue program_compiler_c++_option_debug {format "-v"}
-    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
-
-    # Use OOMMF supplied erf() error function
-    $config SetValue program_compiler_c++_property_no_erf 1
-
-    # Optimization
-    # No optimizations:
-    #set opts [list -Od]
-    #set opts [list -Od -xs]
-    # Standard optimization:
-    #set opts [list -O%s]
-    # High optimizations:
-    set opts [list -6 -O2 -ff]
-    ## Where -6: pentiumpro instructions, -O2: fastest code,
-    ## -ff fast (non-comforming) floating point
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    # or ../local/options.tcl to include the line
-    #  Oc_Option Add * Platform cflags {-def NDEBUG}
-    # so that the NDEBUG symbol is defined during compile.
-
-    # Threads?
-    if {![catch {$config GetValue oommf_threads} _] && $_} {
-       lappend opts -WM    ;# Multi-threaded build
-    }
-
-    # Disable some default warnings in the opts switch, as opposed
-    # to the warnings switch, so that these warnings are always
-    # muted, even if '-warn' option in file options.tcl is disabled.
-    # -w-8027 turns off warning messages about for and while loops not
-    # being inlineable.  8004 is warning message about assigned value
-    # being unused.  8026 warns about non-inlining of function because
-    # of class pass by value.  8008 is conditionals that are always
-    # true or false.  8066 notifies about unreachable code.
-    set nowarn [list -w-8027 -w-8004 -w-8026]
-
-    if {[info exists nowarn] && [llength $nowarn]>0} {
-        set opts [concat $opts $nowarn]
-    }
-    catch {unset nowarn}
-
-    # Wide floating point type.
-    # NOTE: "long double" provides somewhat better precision than
-    # "double", but at a cost of increased memory usage and a decrease
-    # in speed.  (At this writing, long double takes 10 bytes of
-    # storage as opposed to 8 for double, but provides the x86 native
-    # floating point format having approx.  19 decimal digits
-    # precision as opposed to 16 for double.)  Default is "double".
-    # NOTE BCC: Some of the demag code in oxs (perhaps elsewhere too?)
-    # requires structs of OC_REALWIDE and OC_REAL8m to be tight packed.  The
-    # default alignment with the BCC compiler is 4 bytes, which results
-    # in a 2 byte hole between long double members.  To remove this
-    # hole, you must include the "-a2" option in the C++ compiler
-    # options.
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
-
-    # Experimental: The OC_REAL8m type is intended to be at least
-    # 8 bytes wide.  Generally OC_REAL8m is typedef'ed to double,
-    # but you can try setting this to "long double" for extra
-    # precision (and extra slowness).  If this is set to "long double",
-    # then so should realwide in the preceding stanza.
-    # NOTE: If you use long double, then include the -a2 switch
-    # in the options, as discussed in the "realwide" stanza above.
-    if {![catch {$config GetValue program_compiler_c++_typedef_real8m}]} {
-       $config SetValue program_compiler_c++_typedef_real8m "double"
-    }
-
-    if {![catch {join [$config GetValue program_compiler_c++_typedef_real8m]} \
-              _] && [string match {long double} $_]} {
-       ## join command above drops spurious whitespace
-       lappend opts -a2
-    }
-
-    # Make user requested tweaks to compile line options
-    set opts [LocalTweakOptFlags $config $opts]
-
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    #  or ../local/options.tcl to include the line
-    #    Oc_Option Add * Platform cflags {-def NDEBUG}
-    #  so that the NDEBUG symbol is defined during compile.
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
-    # Work arounds
-    # $config SetValue program_compiler_c++_property_strict_atan2 1
-    ## The above should be set automatically based on the results
-    ## from oommf/ext/oc/varinfo.cc.
-
-    # Borland C++ 5.5.1 does not have placement new[].  Workaround
-    # by using the single item placement new in an explicit loop.
-    # If you are using a more recent verion of Borland C++ that
-    # supports placement new[], then you may comment this out.
-    $config SetValue program_compiler_c++_no_placment_new_array 1
-
-    # The program to run on this platform to create a single library file out
-    # of many object files.
-    # Borland librarian
-    $config SetValue program_libmaker {tlib}
-    proc fibar { name } { return [list +[file nativename $name]] }
-    $config SetValue program_libmaker_option_obj {fibar}
-    proc fifibar { name } { return [list [file nativename $name]] }
-    $config SetValue program_libmaker_option_out {fifibar}
-
-    # The program to run on this platform to link together object files and
-    # library files to create an executable binary.
-    # Borland linker
-    # $config SetValue program_linker {ilink32 -Gn -aa -x c0x32}
-    $config SetValue program_linker {ilink32 -Gn -x c0x32}
-
-    # ...for Borland linker
-    ### Seems link line should look like
-    ###     ilink32 -Gn -aa -x c0x32.obj OBJS, outfile.exe,,LIBS import32 cw32
-    ### For multi-threaded builds, use cw32mt instead of cw32.
-    ### Order is important.  The Tcl 7.5 build has the options
-    ### -Tpe -ap -c pasted on in front (before c0x32.obj).  I think
-    ### -c means case sensitive, but not sure about the rest.
-    ### -a? is application type, where -aa=Windows GUI, -ad=Native,
-    ### and -ap=Windows character.  -T?? is "output file type".
-    ### Here -Gn=no state files, -x=no map. (Another option is
-    ### -C=clear state before linking.)
-    proc fubar { name } { return [list [file nativename $name]] }
-    $config SetValue program_linker_option_obj {fubar}
-    if {![catch {$config GetValue oommf_threads} _] && $_} {
-       # Multi-threaded
-       proc fufubar { name } { return " , [fubar $name] , , import32 cw32mt" }
-    } else {
-       # Single-threaded
-       proc fufubar { name } { return " , [fubar $name] , , import32 cw32" }
-    }
-    $config SetValue program_linker_option_out {fufubar}
-    $config SetValue program_linker_option_lib {fubar}
-    proc fufufubar { subsystem } {
-        if {[string match CONSOLE $subsystem]} {
-            return "-ap"  ;# Windows character
-        }
-        return "-aa"      ;# Windows GUI
-    }
-    $config SetValue program_linker_option_sub {fufufubar}
-    set dummy [$config GetValue TCL_VC_LIB_SPEC]
-    regsub {\.lib$} $dummy bc.lib dummy
-    $config SetValue TCL_LIB_SPEC $dummy
-    set dummy [$config GetValue TK_VC_LIB_SPEC]
-    regsub {\.lib$} $dummy bc.lib dummy
-    $config SetValue TK_LIB_SPEC $dummy
-    unset dummy
-    $config SetValue TK_LIBS {}
-    $config SetValue TCL_LIBS {}
-    $config SetValue program_linker_uses_-L-l {0}
-    $config SetValue program_linker_uses_-I-L-l {0}
 } elseif {[string match g++* $ccbasename]} {
    # ... for MINGW32 + GNU g++ C++ compiler
    if {![info exists gcc_version]} {
@@ -886,18 +647,6 @@ if {[string match cl $ccbasename]} {
           [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
-   # set opts [list -O0 -fno-inline -ffloat-store]  ;# No optimization
-   # set opts [list -O%s]                      ;# Minimal optimization
-   set opts [GetGccGeneralOptFlags $gcc_version]
-   # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.  CPU
-   # specific opts are introduced in farther below.  See
-   # x86-support.tcl for details.
-
-   # Some versions of MinGW g++ have broken headers.  A workaround
-   # is to replace -std=c++11 with -std=gnu++11
-   regsub -all -- {-std=c\+\+11} $opts {-std=gnu++11} opts
-
    # CPU model architecture specific options.  To override, set Option
    # program_compiler_c++_cpu_arch in oommf/config/options.tcl (or,
    # preferably, in oommf/config/local/options.tcl).  See note about SSE
@@ -935,9 +684,6 @@ if {[string match cl $ccbasename]} {
    # or
    #    unset cpuopts
    #
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
-   }
 
    # Include flag for support of requested sse_level, if necessary
    if {![catch {$config GetValue sse_level} sse_level] && $sse_level>=2} {
@@ -946,15 +692,47 @@ if {[string match cl $ccbasename]} {
       }
    }
 
-   # Use ANSI conformant printf routines, which in particular
-   # support the L format modifier for long double types.  The
-   # __USE_MINGW_ANSI_STDIO macro is an internal compiler macro,
-   # and arguably one should use -ansi or -posix (or ...?) instead,
-   # but those switches introduces additional changes to compiler
-   # behavior that we might not want.  BTW, this macro needs to
-   # be set before any header file inclusion.  For more on this
-   # macro see the mingw header file _mingw.h
-   lappend opts "-D__USE_MINGW_ANSI_STDIO=1"
+   # The gcc x86 toolchain supports 80-bit long doubles, and the "L"
+   # length modifier (e.g., %Le, %Lf, %Lg, %La) to the printf family for
+   # formatting long double values.  However, the long double type in
+   # Windows is the same width as double, namely 64-bits.  The result is
+   # that gcc 80-bit long doubles can't be printed through the Windows
+   # I/O libraries.  This can be checked looking at the long double
+   # output from oommf/pkg/oc/<platform>/varinfo.
+   #
+   #  MinGW provides an alternative, POSIX/ISOC99 compliant, I/O
+   # library.  This is selected (1) or deselected (0) by the macro
+   # __USE_MINGW_ANSI_STDIO.  Older references recommendation setting
+   # this macro to 1 before #including any system header files.
+   # However, beginning with a 23-Dec-2018 commit of _mingw.h, a
+   # deprecation warning is triggered if __USE_MINGW_ANSI_STDIO is
+   # user-defined.  Instead, one is suppose to #define one of the
+   # following feature macros:
+   #
+   #    _POSIX, _POSIX_SOURCE, _POSIX_C_SOURCE, _SVID_SOURCE,
+   #    _ISOC99_SOURCE,_XOPEN_SOURCE, _XOPEN_SOURCE_EXTENDED,
+   #
+   # (or _GNU_SOURCE with __cplusplus).  If any of these is #defined
+   # and __USE_MINGW_ANSI_STDIO is not defined, then the _mingw.h
+   # header will define __USE_MINGW_ANSI_STDIO to 1 and thus enable
+   # the MinGW stdio routines.
+   #
+   #  If __USE_MINGW_ANSI_STDIO is not defined, then C++ may or may not
+   # enable the MinGW I/O, depending upon the MinGW/gcc release and
+   # "bitness" (32- or 64-).  The os_defines.h file buried deep in the
+   # mingw{32,64}/include/c++/ tree implies that the MinGW I/O routines
+   # are required for libstdc++, but my Sep 2019 gcc 9.2.0-2 install
+   # enables them for 64-bit builds but not for 32-bit builds.  YMMV.
+   # See the _mingw.h header in
+   #
+   #    mingw32/i686-w64-mingw32/include/
+   # or
+   #    mingw64/x86_64-w64-mingw32/include/
+   #
+   # for additional details.  My best guess at the most robust solution
+   # at this time is to define _POSIX_SOURCE on the compile line.  (mjd,
+   # 2019/09)
+   lappend opts "-D_POSIX_SOURCE"
 
    # SSE support
    if {[catch {$config GetValue sse_level} sse_level]} {
@@ -991,19 +769,41 @@ if {[string match cl $ccbasename]} {
    if {[lindex $gcc_version 0]>=6} {
       lappend nowarn {-Wno-misleading-indentation}
    }
+   if {[lindex $gcc_version 0]>=8} {
+      # Allow strncpy to truncate strings
+      lappend nowarn {-Wno-stringop-truncation}
+   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
-   # Make user requested tweaks to compile line
-   set opts [LocalTweakOptFlags $config $opts]
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
 
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+      set valuesafeopts [concat $valuesafeopts $cpuopts]
+   }
+
+   # Some versions of MinGW g++ have broken headers.  A workaround
+   # is to replace -std=c++11 with -std=gnu++11
+   regsub -all -- {-std=c\+\+11} $opts {-std=gnu++11} opts
+   regsub -all -- {-std=c\+\+11} $valuesafeopts {-std=gnu++11} valuesafeopts
+
+   # Make user requested tweaks to compile line options 
+   set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
+
    # NOTE: If you want good performance, be sure to edit ../options.tcl
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
+   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
@@ -1132,208 +932,6 @@ if {[string match cl $ccbasename]} {
    $config SetValue TCL_LIBS {}
 
    unset gcc_version
-} elseif {[string match dmc $ccbasename]} {
-    # ... for Digital Mars C++
-    $config SetValue program_compiler_c++_option_out {format "\"-o%s\""}
-    $config SetValue program_compiler_c++_option_src {format "-cpp \"%s\""}
-    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
-    $config SetValue program_compiler_c++_option_warn \
-            {format ""}
-    $config SetValue program_compiler_c++_option_debug {format "-g"}
-    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
-
-    # Use OOMMF supplied erf() error function
-    $config SetValue program_compiler_c++_property_no_erf 1
-
-    # Digital Marc C++ version 8.57 doesn't support partial
-    # template instantiation.  Implement workarounds.
-    $config SetValue program_compiler_c++_no_partial_instantiation 1
-
-    # Optimization
-    # Standard optimization:
-    #set opts [list -6 -ff]
-    # High optimizations:
-    set opts [list -6 -o -ff]
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    # or ../local/options.tcl to include the line
-    #  Oc_Option Add * Platform cflags {-def NDEBUG}
-    # so that the NDEBUG symbol is defined during compile.
-
-    # Default maximum memory limit for dmc is apparently 30 MB (8.57,
-    # Aug-2013).  This is too small for some of the files in Oxs.  The
-    # -HPnn option allows the limit to be increased to nn MB.  (Some
-    # online discussion indicates that as of DMC 8.50, the max value
-    # for "nn" is 299.)
-    lappend opts "-HP99"
-
-    # Make user requested tweaks to compile line options
-    set opts [LocalTweakOptFlags $config $opts]
-
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    #  or ../local/options.tcl to include the line
-    #     Oc_Option Add * Platform cflags {-def NDEBUG}
-    #  so that the NDEBUG symbol is defined during compile.
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
-    # Wide floating point type.  Defaults to double, but you can
-    # change this to "long double" for extra precision and somewhat
-    # reduced speed.
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
-
-    # Experimental: The OC_REAL8m type is intended to be at least 8 bytes
-    # wide.  Generally OC_REAL8m is typedef'ed to double, but you can try
-    # setting this to "long double" for extra precision (and extra
-    # slowness).  If this is set to "long double", then so should
-    # realwide in the preceding stanza.
-    # $config SetValue program_compiler_c++_typedef_real8m "long double"
-
-    # Digital Mars C++ 8.57 has a placement new[], but for some reason
-    # sometimes it increments the requested offset by 4 bytes?!  Work
-    # around this bug by using the single item placement new in an
-    # explicit loop.  If you are using a verion of Digital Mars C++
-    # with a working placement new[], then you may comment this out.
-    # (BTW, there is an assert in oommf/app/oxs/base/oxsthread.h to
-    # catch this error.)
-    $config SetValue program_compiler_c++_no_placment_new_array 1
-
-    # The program to run on this platform to create a single library file out
-    # of many object files.
-    # ... Digital Mars lib ...
-    # NOTE: The -p32 switch sets the pagesize.  The default is
-    # apparently -p16, which is apparently too small for some of the
-    # OOMMF libraries.
-    $config SetValue program_libmaker {lib -p32 -c}
-    proc fibar { name } { return [list [file nativename $name]] }
-    $config SetValue program_libmaker_option_obj {fibar}
-    proc fifibar { name } { return [list [file nativename $name]] }
-    $config SetValue program_libmaker_option_out {fifibar}
-
-    # The program to run on this platform to link together object files and
-    # library files to create an executable binary.
-    # ... Digital Mars link ...
-    # Seems link line should look like
-    #     link OBJS, outfile.exe,,LIBS
-    # Order is important.
-    # Note: This linker uses Borland-style libraries
-    $config SetValue program_linker {link}
-    proc fubar { name } { return [list [file nativename $name]] }
-    proc fubarmap { name } { return [list [file nativename "[file rootname $name].map"]] }
-    $config SetValue program_linker_option_obj {fubar}
-    proc fufubar { name } { return " , [fubar $name] , [fubarmap $name] , " }
-    $config SetValue program_linker_option_out {fufubar}
-    $config SetValue program_linker_option_lib {fubar}
-    proc fufufubar { subsystem } {
-        if {[string match CONSOLE $subsystem]} {
-            return "-DELEXECUTABLE -EXETYPE:NT -SUBSYSTEM:CONSOLE -ENTRY:mainCRTStartup"
-	    ;# Console application
-        }
-        return "-DELEXECUTABLE -EXETYPE:NT -SUBSYSTEM:WINDOWS:4.0 -ENTRY:WinMainCRTStartup"
-	;# Windows GUI
-    }
-    $config SetValue program_linker_option_sub {fufufubar}
-    set dummy [$config GetValue TCL_VC_LIB_SPEC]
-    regsub {\.lib$} $dummy bc.lib dummy
-    $config SetValue TCL_LIB_SPEC $dummy
-    set dummy [$config GetValue TK_VC_LIB_SPEC]
-    regsub {\.lib$} $dummy bc.lib dummy
-    $config SetValue TK_LIB_SPEC $dummy
-    unset dummy
-    # Note: advapi32 is needed for GetUserName function in Nb package.
-    $config SetValue TK_LIBS {advapi32.lib}
-    $config SetValue TCL_LIBS {advapi32.lib}
-    #$config SetValue TK_LIBS {}
-    #$config SetValue TCL_LIBS {}
-    $config SetValue program_linker_uses_-L-l {0}
-    $config SetValue program_linker_uses_-I-L-l {0}
-} elseif {[string match wcl386 $ccbasename]} {
-    # ... for Open Watcom compiler
-    proc fibar { prefix name } {
-        return [list ${prefix}[file nativename $name]]
-    }
-    $config SetValue program_compiler_c++_option_out {fibar "-fo="}
-    $config SetValue program_compiler_c++_option_src {fibar ""}
-    $config SetValue program_compiler_c++_option_inc {fibar "-i="}
-    $config SetValue program_compiler_c++_option_warn {format "-wx"}
-    # Debugging option -d2 provides full debugging symbols, but
-    # disables most optimizations.  Use -d1 for line-number info
-    # but allowing full optimization.
-    $config SetValue program_compiler_c++_option_debug {format "-d1"}
-    $config SetValue program_compiler_c++_option_def {format "\"-d%s\""}
-
-    # Use OOMMF supplied erf() error function
-    $config SetValue program_compiler_c++_property_no_erf 1
-
-    # Broken exception handling: uncaught_exception() undefined.
-    $config SetValue program_compiler_c++_property_missing_uncaught_exception 1
-
-    # Open Watcom or maybe STLport specific bug, involving
-    # vector<> and class member function returns with reference
-    # parameters.  This bug bites in the
-    #    void Oxs_Ext::GetGroupedUIntListInitValue(const String&,
-    #                                           vector<OC_UINT4m>&)
-    # function in oommf/app/oxs/base/ext.cc.
-    $config SetValue \
-       program_compiler_c++_property_watcom_broken_vector_return 1
-
-    # Optimization
-    # No optimizations:
-    #set opts [list -od]
-    # Standard optimization:
-    #set opts [list]
-    # High optimizations:
-    set opts [list -onatx -oh -oi+ -ei -zp8 -fp6]
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    # or ../local/options.tcl to include the line
-    #  Oc_Option Add * Platform cflags {-def NDEBUG}
-    # so that the NDEBUG symbol is defined during compile.
-
-    # Make user requested tweaks to compile line options
-    set opts [LocalTweakOptFlags $config $opts]
-
-    # NOTE: If you want good performance, be sure to edit ../options.tcl
-    #  or ../local/options.tcl to include the line
-    #    Oc_Option Add * Platform cflags {-def NDEBUG}
-    #  so that the NDEBUG symbol is defined during compile.
-    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
-    # Widest natively support floating point type
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
-       $config SetValue program_compiler_c++_typedef_realwide "double"
-    }
-
-    # The program to run on this platform to create a single library file out
-    # of many object files.
-    # Watcom librarian
-    $config SetValue program_libmaker {wlib -n -b}
-    $config SetValue program_libmaker_option_obj {fibar "+"}
-    $config SetValue program_libmaker_option_out {fibar ""}
-
-    # The program to run on this platform to link together object files and
-    # library files to create an executable binary.
-    # Watcom linker
-    $config SetValue program_linker {wlink}
-    proc fifibar { directive name } {
-       return [list $directive [file nativename $name]]
-    }
-    $config SetValue program_linker_option_obj {fifibar "FILE"}
-    $config SetValue program_linker_option_out {fifibar "NAME"}
-    $config SetValue program_linker_option_lib {fifibar "LIBRARY"}
-    # OPTION START=entrypoint
-    proc fififibar { subsystem } {
-        if {[string match CONSOLE $subsystem]} {
-            return "SYSTEM nt OPTION START=mainCRTStartup" ;# Windows character
-        }
-        return "SYSTEM nt_win OPTION START=WinMainCRTStartup" ;# Windows GUI
-    }
-    $config SetValue program_linker_option_sub {fififibar}
-    $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
-    $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
-    $config SetValue TK_LIBS {}
-    $config SetValue TCL_LIBS {}
-    $config SetValue program_linker_uses_-L-l {0}
-    $config SetValue program_linker_uses_-I-L-l {0}
 } else {
    puts stderr "Warning: Requested compiler \"$ccbasename\" is not supported."
 }

@@ -1,0 +1,23 @@
+# Workflow to go through the steps required if there is a new
+# oommf upgrade.
+
+name: in-docker-repeat-oommf-update
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 2 * *'  # run once per month
+
+jobs:
+  in-docker:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+      
+    - name: Build and test inside container
+      run: make -f Makefile-update-oommf in-docker-replay-oommf-update

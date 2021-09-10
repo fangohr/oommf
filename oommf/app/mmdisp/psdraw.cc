@@ -487,7 +487,7 @@ OommfPSDraw::DrawFilledArrow
                     red/255.,green/255.,blue/255.,
                     static_cast<double>(size*sqrt(1.-zcos*zcos)),
                     static_cast<double>(size),
-                    static_cast<double>(atan2(ycos,xcos)*180./PI),
+                    static_cast<double>(Oc_Atan2(ycos,xcos)*180./PI),
                     static_cast<double>(xc),
                     static_cast<double>(yc));
 }

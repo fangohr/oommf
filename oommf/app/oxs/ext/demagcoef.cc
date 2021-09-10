@@ -32,7 +32,7 @@
  *  provides approximately 16 decimal digits of accuracy, and so-called
  *  "quadruple" precision provides about 34 decimal digits.
  *
- * 
+ *
  *  x  y  z  dx dy dz |  Nxx(x,y,z,dx,dy,dz)
  * -------------------+-------------------------------------------------------
  *  0  0  0  50 10  1 |  0.021829576458713811627717362556500594396802771830582
@@ -70,33 +70,27 @@
  *  3  6  9   1  2  3 | -0.00015720240165711869024193166157368874130207143569916
  *  6  6  6   1  2  3 | -0.00043908646098482886546108269881031774163900540796564
  *
- *
- *
- * STANDALONE NOTE: This file can also be built as a standalone
- * executable to test the computed tensor elements for periodic
- * and non-periodic boundary conditions.  For example:
- *
- *    g++ -DSTANDALONE -DOC_USE_SSE=1 demagcoef.cc -lm -o pbctest
- *
- * See '#ifdef STANDALONE / #endif' blocks for details.
- *
  */
 
-#if defined(STANDALONE) && STANDALONE==0
-# undef STANDALONE
+// The "STANDALONE" blocks provide support for building this file with
+// ../demagtensor.cc and demagcoef.h as a standalone application for
+// testing and development.
+#ifndef STANDALONE
+# define STANDALONE 0
 #endif
 
-// By default, MinGW uses I/O from the Windows Microsoft C runtime,
-// which doesn't support 80-bit floats.  Substitute MinGW versions for
-// printf etc.  This macro must be set before stdio.h is included.
-#if defined(STANDALONE) && (defined(__MINGW32__) || defined(__MINGW64__))
-# define __USE_MINGW_ANSI_STDIO 1
+#ifndef DUMPKNOTS
+# define DUMPKNOTS 0
 #endif
+#if DUMPKNOTS
+#include <sstream>
+#endif // DUMPKNOTS
 
-#include <assert.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
+#include <limits>
 
 #ifndef USE_LOG1P
 # define USE_LOG1P 1  // Use log1p in place of log(1+x) where possible.
@@ -104,247 +98,21 @@
 /// mixed.
 #endif
 
-#ifndef STANDALONE
+#if !STANDALONE
 # include "oc.h"
 # include "nb.h"
 # include "oxsthread.h"
 # include "oxswarn.h"
-# include "demagcoef.h"
   OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// For some compilers this is needed to get "long double"
-/// versions of the basic math library functions, e.g.,
-/// long double atan(long double);
+/// versions of the basic math library functions.
 #endif // STANDALONE
+
+# include "demagcoef.h"
 
 /* End includes */
 
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-//
-// The "STANDALONE" blocks provide support for building this file
-// + demagcoef.h as a standalone application for PBC testing.
-//
-#ifdef STANDALONE
-
-#ifndef OC_REALWIDE_IS_REAL8
-# define OC_REALWIDE_IS_REAL8 0
-#endif
-
-typedef long OC_INDEX;
-typedef int  OC_INT4m;
-typedef double OC_REAL8m;
-
-#ifndef OC_USE_SSE
-# define OC_USE_SSE 0
-#endif
-
-#ifndef OXS_DEMAG_ASYMP_USE_SSE
-# if OC_USE_SSE
-#  define OXS_DEMAG_ASYMP_USE_SSE 1
-   /// Assumes OXS_DEMAG_REAL_ASYMP is OC_REAL8m is double!
-# else
-#  define OXS_DEMAG_ASYMP_USE_SSE 0
-# endif
-#endif
-
-
-#if OC_REALWIDE_IS_REAL8==0  // OC_REALWIDE is long double
-
-typedef long double OC_REALWIDE;
-// Define wrappers for long double versions of standard math functions.
-inline OC_REALWIDE Oc_SqrtRW(OC_REALWIDE x) { return sqrtl(x); }
-inline OC_REALWIDE Oc_FloorRW(OC_REALWIDE x) { return floorl(x); }
-inline OC_REALWIDE Oc_CeilRW(OC_REALWIDE x) { return ceill(x); }
-inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return logl(x); }
-inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)  { return powl(x,y); }
-inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabsl(x); }
-inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atanl(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) {
-  if(x==0.0 && y==0.0) return 0.0L;
-  return atan2l(y,x);
-}
-#else   // OC_REALWIDE is double
-
-typedef double OC_REALWIDE;
-// Define wrappers for double versions of standard math functions.
-inline OC_REALWIDE Oc_SqrtRW(OC_REALWIDE x) { return sqrt(x); }
-inline OC_REALWIDE Oc_FloorRW(OC_REALWIDE x) { return floor(x); }
-inline OC_REALWIDE Oc_CeilRW(OC_REALWIDE x) { return ceil(x); }
-inline OC_REALWIDE Oc_LogRW(OC_REALWIDE x) { return log(x); }
-inline OC_REALWIDE Oc_PowRW(OC_REALWIDE x,OC_REALWIDE y)  { return pow(x,y); }
-inline OC_REALWIDE Oc_FabsRW(OC_REALWIDE x) { return fabs(x); }
-inline OC_REALWIDE Oc_AtanRW(OC_REALWIDE x) { return atan(x); }
-inline OC_REALWIDE Oc_Atan2RW(OC_REALWIDE y,OC_REALWIDE x) {
-  if(x==0.0 && y==0.0) return 0.0;
-  return atan2(y,x);
-}
-#endif // OC_REALWIDE == double?
-
-OC_REALWIDE Oc_Nop(OC_REALWIDE);  // Declaration; definition is a end of file.
-
-OC_REALWIDE Oc_Log1pRW(OC_REALWIDE x)
-{ // Routine to calculate log(1+x), accurate for small x.
-  // The log1p function is in the C99 spec.  That version
-  // is probably fast and more accurate than the version below,
-  // so should probably use that if available.
-  //    BTW, for very small values of x a short series expansion
-  // of log(1+x) will be faster than the following code.
-  if(Oc_FabsRW(x)>=0.5) return Oc_LogRW(1.0+x);
-  // Otherwise, use little trick.  One should check that
-  // compiler doesn't screw this up with "extra" precision.
-  OC_REALWIDE y1 = Oc_Nop(1.0 + x);
-  if(y1 == 1.0) return x;
-  OC_REALWIDE y2 = y1 - 1.0;
-  OC_REALWIDE rat = Oc_LogRW(y1)/y2;
-  return x*rat;
-}
-
-/* Wrappers that self-select by type */
-inline double Oc_Floor(double x) { return floor(x); }
-inline double Oc_Ceil(double x) { return ceil(x); }
-inline double Oc_Sqrt(double x) { return sqrt(x); }
-inline double Oc_Fabs(double x) { return fabs(x); }
-inline double Oc_Pow(double x,double y) { return pow(x,y); }
-
-inline long double Oc_Floor(long double x) { return floorl(x); }
-inline long double Oc_Ceil(long double x) { return ceill(x); }
-inline long double Oc_Sqrt(long double x) { return sqrtl(x); }
-inline long double Oc_Fabs(long double x) { return fabsl(x); }
-inline long double Oc_Pow(long double x,long double y) { return powl(x,y); }
-
-#if 0
-inline double Oc_Log(double x) { return log(x); }
-inline double Oc_Atan(double x) { return atan(x); }
-inline double Oc_Atan2(double y,double x) { return atan2(y,x); }
-
-inline long double Oc_Log(long double x) { return logl(x); }
-inline long double Oc_Atan(long double x) { return atanl(x); }
-inline long double Oc_Atan2(long double y,long double x) { return atan2l(y,x); }
-#endif
-
-#if OXS_DEMAG_ASYMP_USE_SSE
-// Wrapper for SSE __m128d object
-#include <emmintrin.h>
-class Oc_Duet {
-public:
-  Oc_Duet& Set(double a,double b) { value = _mm_set_pd(b,a); return *this; }
-  // Stores "a" in low (first) half of value, "b" in high (second) half.
-
-  Oc_Duet& Set(double x) { value = _mm_set1_pd(x); return *this; } // a=b=x
-  Oc_Duet(double a,double b) { Set(a,b); }
-  Oc_Duet(double x) { Set(x); }
-  Oc_Duet(const __m128d& newval) : value(newval) {}
-  Oc_Duet(const Oc_Duet& other) : value(other.value) {}
-  Oc_Duet() {}
-
-  Oc_Duet& operator=(const Oc_Duet &other) { value = other.value; return *this; }
-
-
-  Oc_Duet& SetZero() { value = _mm_setzero_pd(); return *this; }
-
-
-  Oc_Duet& operator+=(const Oc_Duet& other) {
-    value = _mm_add_pd(value,other.value); return *this;
-  }
-  Oc_Duet& operator+=(const double& x) {
-    value = _mm_add_pd(value,_mm_set1_pd(x)); return *this;
-  }
-  Oc_Duet& operator-=(const Oc_Duet& other) {
-    value = _mm_sub_pd(value,other.value); return *this;
-  }
-  Oc_Duet& operator-=(const double& x) {
-    value = _mm_sub_pd(value,_mm_set1_pd(x)); return *this;
-  }
-  Oc_Duet& operator*=(const Oc_Duet& other) {
-    value = _mm_mul_pd(value,other.value); return *this;
-  }
-  Oc_Duet& operator*=(const double& x) {
-    value = _mm_mul_pd(value,_mm_set1_pd(x)); return *this;
-  }
-  Oc_Duet& operator/=(const Oc_Duet& other) {
-    value = _mm_div_pd(value,other.value); return *this;
-  }
-  Oc_Duet& operator/=(const double& x) {
-    value = _mm_div_pd(value,_mm_set1_pd(x)); return *this;
-  }
-
-  // Use GetA/GetB for temporary use, but StoreA/StoreB
-  // are more efficient for permanent storage.
-  double GetA() const { return ((double *)&value)[0]; }
-  double GetB() const { return ((double *)&value)[1]; }
-
-  void StoreA(double& Aout) const { _mm_storel_pd(&Aout,value); }
-  void StoreB(double& Bout) const { _mm_storeh_pd(&Bout,value); }
-
-  friend const Oc_Duet operator+(const Oc_Duet& w1,const Oc_Duet& w2);
-  friend const Oc_Duet operator+(double x,const Oc_Duet& w);
-  friend const Oc_Duet operator+(const Oc_Duet& w,double x);
-
-  friend const Oc_Duet operator-(const Oc_Duet& w1,const Oc_Duet& w2);
-  friend const Oc_Duet operator-(double x,const Oc_Duet& w);
-  friend const Oc_Duet operator-(const Oc_Duet& w,double x);
-
-  friend const Oc_Duet operator*(const Oc_Duet& w1,const Oc_Duet& w2);
-  friend const Oc_Duet operator*(double x,const Oc_Duet& w);
-  friend const Oc_Duet operator*(const Oc_Duet& w,double x);
-
-  friend const Oc_Duet operator/(const Oc_Duet& w1,const Oc_Duet& w2);
-  friend const Oc_Duet operator/(double x,const Oc_Duet& w);
-  friend const Oc_Duet operator/(const Oc_Duet& w,double x);
-
-  friend const Oc_Duet Oc_Sqrt(const Oc_Duet& w);
-
-private:
-  __m128d value;
-};
-
-inline const Oc_Duet operator+(const Oc_Duet& w1,const Oc_Duet& w2)
-{ return Oc_Duet(_mm_add_pd(w1.value,w2.value)); }
-inline const Oc_Duet operator+(double x,const Oc_Duet& w)
-{ return Oc_Duet(_mm_add_pd(_mm_set1_pd(x),w.value)); }
-inline const Oc_Duet operator+(const Oc_Duet& w,double x)
-{ return Oc_Duet(_mm_add_pd(w.value,_mm_set1_pd(x))); }
-
-inline const Oc_Duet operator-(const Oc_Duet& w1,const Oc_Duet& w2)
-{ return Oc_Duet(_mm_sub_pd(w1.value,w2.value)); }
-inline const Oc_Duet operator-(double x,const Oc_Duet& w)
-{ return Oc_Duet(_mm_sub_pd(_mm_set1_pd(x),w.value)); }
-inline const Oc_Duet operator-(const Oc_Duet& w,double x)
-{ return Oc_Duet(_mm_sub_pd(w.value,_mm_set1_pd(x))); }
-
-inline const Oc_Duet operator*(const Oc_Duet& w1,const Oc_Duet& w2)
-{ return Oc_Duet(_mm_mul_pd(w1.value,w2.value)); }
-inline const Oc_Duet operator*(double x,const Oc_Duet& w)
-{ return Oc_Duet(_mm_mul_pd(_mm_set1_pd(x),w.value)); }
-inline const Oc_Duet operator*(const Oc_Duet& w,double x)
-{ return Oc_Duet(_mm_mul_pd(w.value,_mm_set1_pd(x))); }
-
-inline const Oc_Duet operator/(const Oc_Duet& w1,const Oc_Duet& w2)
-{ return Oc_Duet(_mm_div_pd(w1.value,w2.value)); }
-inline const Oc_Duet operator/(double x,const Oc_Duet& w)
-{ return Oc_Duet(_mm_div_pd(_mm_set1_pd(x),w.value)); }
-inline const Oc_Duet operator/(const Oc_Duet& w,double x)
-{ return Oc_Duet(_mm_div_pd(w.value,_mm_set1_pd(x))); }
-
-
-inline const Oc_Duet Oc_Sqrt(const Oc_Duet& w)
-{ return Oc_Duet(_mm_sqrt_pd(w.value)); }
-
-#endif // OXS_DEMAG_ASYMP_USE_SSE
-
-
-#ifndef PI
-# define PI       OC_REAL8m(3.141592653589793238462643383279502884L)
-#endif
-
-#ifndef WIDE_PI
-# define WIDE_PI  OC_REALWIDE(3.141592653589793238462643383279502884L)
-#endif
-
-#include "demagcoef.h"
-
-#else // !STANDALONE
-
+#if !STANDALONE
 // Revision information; in the original design the data here
 // would be set via CVS keyword substitution.  This needs
 // reworking to do something sensible in a Git environment. *****
@@ -354,116 +122,27 @@ static const Oxs_WarningMessageRevisionInfo revision_info
    "$Date: 2018/01/25 19:09:00 $",
    "$Author: donahue $",
    "Michael J. Donahue (michael.donahue@nist.gov)");
-
 #endif // STANDALONE
 
+#if STANDALONE
+const Xp_DoubleDouble Xp_DoubleDouble::DD_PI
+   = 3.141592653589793238462643383279502884L;
+const Xp_DoubleDouble Xp_DoubleDouble::DD_SQRT2
+   = 1.414213562373095048801688724209698079L;
+#endif // STANDALONE
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////
-// Routines to do accurate summation
-extern "C" {
-static int AS_Compare(const void* px,const void* py)
-{
-  // Comparison based on absolute values
-  OC_REALWIDE x=Oc_FabsRW(*((const OC_REALWIDE *)px));
-  OC_REALWIDE y=Oc_FabsRW(*((const OC_REALWIDE *)py));
-  if(x<y) return 1;
-  if(x>y) return -1;
-  return 0;
-}
-}
-
-static OC_REALWIDE
-Oxs_AccurateSum(int n,OC_REALWIDE *arr)
-{
-  // Order by decreasing magnitude
-  qsort(arr,n,sizeof(OC_REALWIDE),AS_Compare);
-
-  // Add up using doubly compensated summation.  If necessary, mark
-  // these variables "volatile" to protect against problems arising
-  // from extra precision.  Also, don't expect the compiler to respect
-  // order with respect to parentheses at high levels of optimization,
-  // i.e., write "u=x; u-=(y-corr)" as opposed to "u=x-(y-corr)".
-#if (OC_REALWIDE_IS_REAL8 && OC_FP_DOUBLE_EXTRA_PRECISION) \
-  || (!OC_REALWIDE_IS_REAL8 && OC_FP_LONG_DOUBLE_EXTRA_PRECISION)
-  volatile OC_REALWIDE sum;  volatile OC_REALWIDE corr;
-  volatile OC_REALWIDE y;    volatile OC_REALWIDE u;
-  volatile OC_REALWIDE t;    volatile OC_REALWIDE v;
-  volatile OC_REALWIDE z;    volatile OC_REALWIDE x;
-  volatile OC_REALWIDE tmp;
-#else
-  OC_REALWIDE sum,corr,y,u,t,v,z,x,tmp;
-#endif
-
-  sum=arr[0]; corr=0;
-  for(int i=1;i<n;i++) {
-    x=arr[i];
-    y=corr+x;
-    tmp=y-corr;
-    u=x-tmp;
-    t=y+sum;
-    tmp=t-sum;
-    v=y-tmp;
-    z=u+v;
-    sum=t+z;
-    tmp=sum-t;
-    corr=z-tmp;
-  }
-  return sum;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////
 // Routines to calculate kernel coefficients
 // See Newell et al. for details. The code below follows the
 // naming conventions in that paper.
 
-#ifdef OLDE_CODE
-OC_REALWIDE Oxs_SelfDemagNx(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
-{ // Here Hx = -Nxx.Mx (formula (16) in Newell).
-  // Note: egcs-2.91.57 on Linux/x86 with -O1 mangles this
-  //  function (produces NaN's) unless we manually group terms.
-
-  if(x<=0.0 || y<=0.0 || z<=0.0) return 0.0;
-  if(x==y && y==z) {  // Special case: cube
-    return OC_REALWIDE(1.)/OC_REALWIDE(3.);
-  }
-
-  OC_REALWIDE xsq=x*x,ysq=y*y,zsq=z*z;
-  OC_REALWIDE diag=Oc_SqrtRW(xsq+ysq+zsq);
-  OC_REALWIDE arr[15];
-
-  OC_REALWIDE mpxy = (x-y)*(x+y);
-  OC_REALWIDE mpxz = (x-z)*(x+z);
-
-  arr[0] = -4*(2*xsq*x-ysq*y-zsq*z);
-  arr[1] =  4*(xsq+mpxy)*Oc_SqrtRW(xsq+ysq);
-  arr[2] =  4*(xsq+mpxz)*Oc_SqrtRW(xsq+zsq);
-  arr[3] = -4*(ysq+zsq)*Oc_SqrtRW(ysq+zsq);
-  arr[4] = -4*diag*(mpxy+mpxz);
-
-  arr[5] = 24*x*y*z*Oc_AtanRW(y*z/(x*diag));
-  arr[6] = 12*(z+y)*xsq*Oc_LogRW(x);
-
-  arr[7] =  12*z*ysq*Oc_LogRW((Oc_SqrtRW(ysq+zsq)+z)/y);
-  arr[8] = -12*z*xsq*Oc_LogRW(Oc_SqrtRW(xsq+zsq)+z);
-  arr[9] =  12*z*mpxy*Oc_LogRW(diag+z);
-  arr[10] = -6*z*mpxy*Oc_LogRW(xsq+ysq);
-
-  arr[11] =  12*y*zsq*Oc_LogRW((Oc_SqrtRW(ysq+zsq)+y)/z);
-  arr[12] = -12*y*xsq*Oc_LogRW(Oc_SqrtRW(xsq+ysq)+y);
-  arr[13] =  12*y*mpxz*Oc_LogRW(diag+y);
-  arr[14] =  -6*y*mpxz*Oc_LogRW(xsq+zsq);
-
-  OC_REALWIDE Nxx = Oxs_AccurateSum(15,arr)/(12*WIDE_PI*x*y*z);
-  return Nxx;
-}
-#endif // OLDE_CODE
-
-OC_REALWIDE Oxs_SelfDemagNx(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
+OXS_DEMAG_REAL_ANALYTIC Oxs_SelfDemagNx
+(OXS_DEMAG_REAL_ANALYTIC x,
+ OXS_DEMAG_REAL_ANALYTIC y,
+ OXS_DEMAG_REAL_ANALYTIC z)
 { // Here Hx = -Nxx.Mx (formula (16) in Newell).
   // Note: egcs-2.91.57 on Linux/x86 with -O1 mangles this
   //  function (produces NaN's) unless we manually group terms.
@@ -472,224 +151,236 @@ OC_REALWIDE Oxs_SelfDemagNx(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
 
   if(x<=0.0 || y<=0.0 || z<=0.0) return 0.0;
   if(x==y && y==z) {  // Special case: cube
-    return OC_REALWIDE(1.)/OC_REALWIDE(3.);
+    return OXS_DEMAG_REAL_ANALYTIC(1.)/OXS_DEMAG_REAL_ANALYTIC(3.);
   }
 
-  OC_REALWIDE xsq=x*x,ysq=y*y,zsq=z*z;
-  OC_REALWIDE R   = Oc_SqrtRW(xsq+ysq+zsq);
-  OC_REALWIDE Rxy = Oc_SqrtRW(xsq+ysq);
-  OC_REALWIDE Rxz = Oc_SqrtRW(xsq+zsq);
-  OC_REALWIDE Ryz = Oc_SqrtRW(ysq+zsq);
+  // NOTE: The sqrt, Atan, log1p, etc. functions resolve to
+  //       calls in the Xp_DoubleDouble class.
 
+  OXS_DEMAG_REAL_ANALYTIC xsq=x*x,ysq=y*y,zsq=z*z;
+  OXS_DEMAG_REAL_ANALYTIC R   = sqrt(xsq+ysq+zsq);
+  OXS_DEMAG_REAL_ANALYTIC Rxy = sqrt(xsq+ysq);
+  OXS_DEMAG_REAL_ANALYTIC Rxz = sqrt(xsq+zsq);
+  OXS_DEMAG_REAL_ANALYTIC Ryz = sqrt(ysq+zsq);
 
-  OC_REALWIDE arr[8];
+  OXS_DEMAG_REAL_ANALYTIC sum;
 
-  arr[0] = 2*x*y*z
+  sum = 2*x*y*z
     * ( (x/(x+Rxy)+(2*xsq+ysq+zsq)/(R*Rxy+x*Rxz))
         /(x+Rxz)
       + (x/(x+Rxz)+(2*xsq+ysq+zsq)/(R*Rxz+x*Rxy))
         /(x+Rxy))
     / ((x+R)*(Rxy+Rxz+R));
-  arr[1] = -1*x*y*z
+  sum += -1*x*y*z
     * ( (y/(y+Rxy)+(2*ysq+xsq+zsq)/(R*Rxy+y*Ryz))
         /(y+Ryz)
       + (y/(y+Ryz)+(2*ysq+xsq+zsq)/(R*Ryz+y*Rxy))
         /(y+Rxy))
     / ((y+R)*(Rxy+Ryz+R));
-  arr[2] = -1*x*y*z
+  sum += -1*x*y*z
     * ( (z/(z+Rxz)+(2*zsq+xsq+ysq)/(R*Rxz+z*Ryz))
         /(z+Ryz)
       + (z/(z+Ryz)+(2*zsq+xsq+ysq)/(R*Ryz+z*Rxz))
         /(z+Rxz))
     / ((z+R)*(Rxz+Ryz+R));
 
-  arr[3] =  6*Oc_AtanRW(y*z/(x*R));
+  sum +=  6*atan(y*z/(x*R));
 
-  OC_REALWIDE piece4 = -y*z*z*(1/(x+Rxz)+y/(Rxy*Rxz+x*R))/(Rxz*(y+Rxy));
+  OXS_DEMAG_REAL_ANALYTIC piece4
+    = -y*z*z*(1/(x+Rxz)+y/(Rxy*Rxz+x*R))/(Rxz*(y+Rxy));
   if(piece4 > -0.5) {
 #if USE_LOG1P
-    arr[4] = 3*x*Oc_Log1pRW(piece4)/z;
+    sum += 3*x*log1p(piece4)/z;
 #else
-    arr[4] = 3*x*Oc_LogRW(1.0+piece4)/z;
+    sum += 3*x*log(1.0+piece4)/z;
 #endif
   } else {
-    arr[4] = 3*x*Oc_LogRW(x*(y+R)/(Rxz*(y+Rxy)))/z;
+    sum += 3*x*log(x*(y+R)/(Rxz*(y+Rxy)))/z;
   }
 
-  OC_REALWIDE piece5 = -y*y*z*(1/(x+Rxy)+z/(Rxy*Rxz+x*R))/(Rxy*(z+Rxz));
+  OXS_DEMAG_REAL_ANALYTIC piece5
+    = -y*y*z*(1/(x+Rxy)+z/(Rxy*Rxz+x*R))/(Rxy*(z+Rxz));
   if(piece5 > -0.5) {
 #if USE_LOG1P
-    arr[5] = 3*x*Oc_Log1pRW(piece5)/y;
+    sum += 3*x*log1p(piece5)/y;
 #else
-    arr[5] = 3*x*Oc_LogRW(1.0+piece5)/y;
+    sum += 3*x*log(1.0+piece5)/y;
 #endif
   } else {
-    arr[5] = 3*x*Oc_LogRW(x*(z+R)/(Rxy*(z+Rxz)))/y;
+    sum += 3*x*log(x*(z+R)/(Rxy*(z+Rxz)))/y;
   }
 
-  OC_REALWIDE piece6 = -x*x*z*(1/(y+Rxy)+z/(Rxy*Ryz+y*R))/(Rxy*(z+Ryz));
+  OXS_DEMAG_REAL_ANALYTIC piece6
+    = -x*x*z*(1/(y+Rxy)+z/(Rxy*Ryz+y*R))/(Rxy*(z+Ryz));
   if(piece6 > -0.5) {
 #if USE_LOG1P
-    arr[6] = -3*y*Oc_Log1pRW(piece6)/x;
+    sum += -3*y*log1p(piece6)/x;
 #else
-    arr[6] = -3*y*Oc_LogRW(1.0+piece6)/x;
+    sum += -3*y*log(1.0+piece6)/x;
 #endif
   } else {
-    arr[6] = -3*y*Oc_LogRW(y*(z+R)/(Rxy*(z+Ryz)))/x;
+    sum += -3*y*log(y*(z+R)/(Rxy*(z+Ryz)))/x;
   }
 
-  OC_REALWIDE piece7 = -x*x*y*(1/(z+Rxz)+y/(Rxz*Ryz+z*R))/(Rxz*(y+Ryz));
+  OXS_DEMAG_REAL_ANALYTIC piece7
+    = -x*x*y*(1/(z+Rxz)+y/(Rxz*Ryz+z*R))/(Rxz*(y+Ryz));
   if(piece7 > -0.5) {
 #if USE_LOG1P
-    arr[7] = -3*z*Oc_Log1pRW(piece7)/x;
+    sum += -3*z*log1p(piece7)/x;
 #else
-    arr[7] = -3*z*Oc_LogRW(1.0+piece7)/x;
+    sum += -3*z*log(1.0+piece7)/x;
 #endif
   } else {
-    arr[7] = -3*z*Oc_LogRW(z*(y+R)/(Rxz*(y+Ryz)))/x;
+    sum += -3*z*log(z*(y+R)/(Rxz*(y+Ryz)))/x;
   }
 
-  OC_REALWIDE Nxx = Oxs_AccurateSum(8,arr)/(3*WIDE_PI);
+  OXS_DEMAG_REAL_ANALYTIC scale = 3 * OXS_DEMAG_REAL_ANALYTIC_PI;
+  OXS_DEMAG_REAL_ANALYTIC Nxx = sum/scale;
   return Nxx;
 }
 
-OC_REALWIDE
-Oxs_SelfDemagNy(OC_REALWIDE xsize,OC_REALWIDE ysize,OC_REALWIDE zsize)
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_SelfDemagNy(OXS_DEMAG_REAL_ANALYTIC xsize,
+                OXS_DEMAG_REAL_ANALYTIC ysize,
+                OXS_DEMAG_REAL_ANALYTIC zsize)
 { return Oxs_SelfDemagNx(ysize,zsize,xsize); }
 
-OC_REALWIDE
-Oxs_SelfDemagNz(OC_REALWIDE xsize,OC_REALWIDE ysize,OC_REALWIDE zsize)
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_SelfDemagNz(OXS_DEMAG_REAL_ANALYTIC xsize,
+                OXS_DEMAG_REAL_ANALYTIC ysize,
+                OXS_DEMAG_REAL_ANALYTIC zsize)
 { return Oxs_SelfDemagNx(zsize,xsize,ysize); }
 
 
-OC_REALWIDE
-Oxs_Newell_f(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_Newell_f
+(OXS_DEMAG_REAL_ANALYTIC x,
+ OXS_DEMAG_REAL_ANALYTIC y,
+ OXS_DEMAG_REAL_ANALYTIC z)
 { // There is mucking around here to handle case where imports
   // are near zero.  In particular, asinh(t) is written as
   // log(t+sqrt(1+t)) because the latter appears easier to
   // handle if t=y/x (for example) as x -> 0.
 
- // This function is even; the fabs()'s just simplify special case handling.
-  x=Oc_FabsRW(x); OC_REALWIDE xsq=x*x;
-  y=Oc_FabsRW(y); OC_REALWIDE ysq=y*y;
-  z=Oc_FabsRW(z); OC_REALWIDE zsq=z*z; 
+  // NOTE: The sqrt, atan, log1p, etc. functions resolve to
+  //       calls in the Xp_DoubleDouble class.
 
-  OC_REALWIDE Rsq=xsq+ysq+zsq;
+  // This function is even; the fabs()'s just simplify special case handling.
+  x=fabs(x); OXS_DEMAG_REAL_ANALYTIC xsq=x*x;
+  y=fabs(y); OXS_DEMAG_REAL_ANALYTIC ysq=y*y;
+  z=fabs(z); OXS_DEMAG_REAL_ANALYTIC zsq=z*z;
+
+  OXS_DEMAG_REAL_ANALYTIC Rsq=xsq+ysq+zsq;
   if(Rsq<=0.0) return 0.0;
-  OC_REALWIDE R=Oc_SqrtRW(Rsq);
+  OXS_DEMAG_REAL_ANALYTIC R=sqrt(Rsq);
 
   // f(x,y,z)
-  OC_REALWIDE piece[8];
-  int piececount=0;
+  OXS_DEMAG_REAL_ANALYTIC sum = 0.0;
   if(z>0.) { // For 2D grids, half the calls from F1 have z==0.
-    OC_REALWIDE temp1,temp2,temp3;
-    piece[piececount++] = 2*(2*xsq-ysq-zsq)*R;
+    OXS_DEMAG_REAL_ANALYTIC temp1,temp2,temp3;
+    sum += 2*(2*xsq-ysq-zsq)*R;
     if((temp1=x*y*z)>0.)
-      piece[piececount++] = -12*temp1*Oc_Atan2RW(y*z,x*R);
+      sum += -12*temp1*Oc_Atan2(y*z,x*R);
     if(y>0. && (temp2=xsq+zsq)>0.) {
 #if USE_LOG1P
-      OC_REALWIDE dummy = Oc_Log1pRW(2*y*(y+R)/temp2);
+      OXS_DEMAG_REAL_ANALYTIC dummy = log1p(2*y*(y+R)/temp2);
 #else
-      OC_REALWIDE dummy = Oc_LogRW(((y+R)*(y+R))/temp2);
+      OXS_DEMAG_REAL_ANALYTIC dummy = log(((y+R)*(y+R))/temp2);
 #endif
-      piece[piececount++] = 3*y*(zsq-xsq)*dummy;
+      sum += 3*y*(zsq-xsq)*dummy;
     }
     if((temp3=xsq+ysq)>0.) {
 #if USE_LOG1P
-      OC_REALWIDE dummy = Oc_Log1pRW(2*z*(z+R)/temp3);
+      OXS_DEMAG_REAL_ANALYTIC dummy = log1p(2*z*(z+R)/temp3);
 #else
-      OC_REALWIDE dummy = Oc_LogRW(((z+R)*(z+R))/temp3);
+      OXS_DEMAG_REAL_ANALYTIC dummy = log(((z+R)*(z+R))/temp3);
 #endif
-      piece[piececount++] = 3*z*(ysq-xsq)*dummy;
+      sum += 3*z*(ysq-xsq)*dummy;
     }
   } else {
     // z==0
     if(x==y) {
-      const OC_REALWIDE K = 2*Oc_SqrtRW(static_cast<OC_REALWIDE>(2.0))
-        -6*Oc_LogRW(1+Oc_SqrtRW(static_cast<OC_REALWIDE>(2.0)));
+      const OXS_DEMAG_REAL_ANALYTIC K
+        = 2*OXS_DEMAG_REAL_ANALYTIC_SQRT2
+        -6*log(1+OXS_DEMAG_REAL_ANALYTIC_SQRT2);
       /// K = -2.4598143973710680537922785014593576970294L
-      piece[piececount++] = K*xsq*x;
+      sum += K*xsq*x;
     } else {
-      piece[piececount++] = 2*(2*xsq-ysq)*R;
+      sum += 2*(2*xsq-ysq)*R;
       if(y>0. && x>0.) {
 #if USE_LOG1P
-	piece[piececount++] = -3*y*xsq*Oc_Log1pRW(2*y*(y+R)/(x*x));
+	sum += -3*y*xsq*log1p(2*y*(y+R)/(x*x));
 #else
-	piece[piececount++] = -6*y*xsq*Oc_LogRW((y+R)/x);
+	sum += -6*y*xsq*log((y+R)/x);
 #endif
       }
     }
   }
 
-  return Oxs_AccurateSum(piececount,piece)/12.;
+  return sum/12.;
 }
 
-#if 1 // For debugging
-OC_INDEX SDA00_count = 0;
-OC_INDEX SDA01_count = 0;
-#endif
-
-OC_REALWIDE
-Oxs_CalculateSDA00(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
-                   OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
-{ // This is Nxx*(4*PI*tau) in Newell's paper,
-  // where tau = dx*dy*dz.
-#if 1
-  ++SDA00_count;
-#endif
-  OC_REALWIDE result=0.;
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_CalculateNxx
+(OXS_DEMAG_REAL_ANALYTIC x,
+ OXS_DEMAG_REAL_ANALYTIC y,
+ OXS_DEMAG_REAL_ANALYTIC z,
+ OXS_DEMAG_REAL_ANALYTIC dx,
+ OXS_DEMAG_REAL_ANALYTIC dy,
+ OXS_DEMAG_REAL_ANALYTIC dz)
+{ // This is Nxx in Newell's paper.
+  OXS_DEMAG_REAL_ANALYTIC result=0.;
   if(x==0. && y==0. && z==0.) {
     // Self demag term.  The base routine can handle x==y==z==0,
     // but this should be more accurate.
-    result = Oxs_SelfDemagNx(dx,dy,dz)*(4*WIDE_PI*dx*dy*dz);
+    result = Oxs_SelfDemagNx(dx,dy,dz);
   } else {
     // Simplified (collapsed) formula based on Newell's paper.
     // This saves about half the calls to f().  There is still
     // quite a bit of redundancy from one cell site to the next,
     // but as this is an initialization-only issue speed shouldn't
     // be too critical.
-    OC_REALWIDE arr[27];
-    arr[ 0] = -1*Oxs_Newell_f(x+dx,y+dy,z+dz);
-    arr[ 1] = -1*Oxs_Newell_f(x+dx,y-dy,z+dz);
-    arr[ 2] = -1*Oxs_Newell_f(x+dx,y-dy,z-dz);
-    arr[ 3] = -1*Oxs_Newell_f(x+dx,y+dy,z-dz);
-    arr[ 4] = -1*Oxs_Newell_f(x-dx,y+dy,z-dz);
-    arr[ 5] = -1*Oxs_Newell_f(x-dx,y+dy,z+dz);
-    arr[ 6] = -1*Oxs_Newell_f(x-dx,y-dy,z+dz);
-    arr[ 7] = -1*Oxs_Newell_f(x-dx,y-dy,z-dz);
+    result = -1*Oxs_Newell_f(x+dx,y+dy,z+dz);
+    result += -1*Oxs_Newell_f(x+dx,y-dy,z+dz);
+    result += -1*Oxs_Newell_f(x+dx,y-dy,z-dz);
+    result += -1*Oxs_Newell_f(x+dx,y+dy,z-dz);
+    result += -1*Oxs_Newell_f(x-dx,y+dy,z-dz);
+    result += -1*Oxs_Newell_f(x-dx,y+dy,z+dz);
+    result += -1*Oxs_Newell_f(x-dx,y-dy,z+dz);
+    result += -1*Oxs_Newell_f(x-dx,y-dy,z-dz);
 
-    arr[ 8] =  2*Oxs_Newell_f(x,y-dy,z-dz);
-    arr[ 9] =  2*Oxs_Newell_f(x,y-dy,z+dz);
-    arr[10] =  2*Oxs_Newell_f(x,y+dy,z+dz);
-    arr[11] =  2*Oxs_Newell_f(x,y+dy,z-dz);
-    arr[12] =  2*Oxs_Newell_f(x+dx,y+dy,z);
-    arr[13] =  2*Oxs_Newell_f(x+dx,y,z+dz);
-    arr[14] =  2*Oxs_Newell_f(x+dx,y,z-dz);
-    arr[15] =  2*Oxs_Newell_f(x+dx,y-dy,z);
-    arr[16] =  2*Oxs_Newell_f(x-dx,y-dy,z);
-    arr[17] =  2*Oxs_Newell_f(x-dx,y,z+dz);
-    arr[18] =  2*Oxs_Newell_f(x-dx,y,z-dz);
-    arr[19] =  2*Oxs_Newell_f(x-dx,y+dy,z);
+    result +=  2*Oxs_Newell_f(x,y-dy,z-dz);
+    result +=  2*Oxs_Newell_f(x,y-dy,z+dz);
+    result +=  2*Oxs_Newell_f(x,y+dy,z+dz);
+    result +=  2*Oxs_Newell_f(x,y+dy,z-dz);
+    result +=  2*Oxs_Newell_f(x+dx,y+dy,z);
+    result +=  2*Oxs_Newell_f(x+dx,y,z+dz);
+    result +=  2*Oxs_Newell_f(x+dx,y,z-dz);
+    result +=  2*Oxs_Newell_f(x+dx,y-dy,z);
+    result +=  2*Oxs_Newell_f(x-dx,y-dy,z);
+    result +=  2*Oxs_Newell_f(x-dx,y,z+dz);
+    result +=  2*Oxs_Newell_f(x-dx,y,z-dz);
+    result +=  2*Oxs_Newell_f(x-dx,y+dy,z);
 
-    arr[20] = -4*Oxs_Newell_f(x,y-dy,z);
-    arr[21] = -4*Oxs_Newell_f(x,y+dy,z);
-    arr[22] = -4*Oxs_Newell_f(x,y,z-dz);
-    arr[23] = -4*Oxs_Newell_f(x,y,z+dz);
-    arr[24] = -4*Oxs_Newell_f(x+dx,y,z);
-    arr[25] = -4*Oxs_Newell_f(x-dx,y,z);
+    result += -4*Oxs_Newell_f(x,y-dy,z);
+    result += -4*Oxs_Newell_f(x,y+dy,z);
+    result += -4*Oxs_Newell_f(x,y,z-dz);
+    result += -4*Oxs_Newell_f(x,y,z+dz);
+    result += -4*Oxs_Newell_f(x+dx,y,z);
+    result += -4*Oxs_Newell_f(x-dx,y,z);
 
-    arr[26] =  8*Oxs_Newell_f(x,y,z);
-
-    result=Oxs_AccurateSum(27,arr);
+    result +=  8*Oxs_Newell_f(x,y,z);
+    result /= (4*OXS_DEMAG_REAL_ANALYTIC_PI*dx*dy*dz);
   }
   return result;
-  /// Multiply result by 1./(4*PI*dx*dy*dz) to get effective "demag"
-  /// factor Nxx from Newell's paper.
 }
 
 
-OC_REALWIDE
-Oxs_Newell_g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_Newell_g
+(OXS_DEMAG_REAL_ANALYTIC x,
+ OXS_DEMAG_REAL_ANALYTIC y,
+ OXS_DEMAG_REAL_ANALYTIC z)
 { // There is mucking around here to handle case where imports
   // are near zero.  In particular, asinh(t) is written as
   // log(t+sqrt(1+t)) because the latter appears easier to
@@ -697,122 +388,396 @@ Oxs_Newell_g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
 
   // This function is even in z and odd in x and y.  The fabs()'s
   // simplify special case handling.
-  OC_REALWIDE result_sign=1.0;
+  OXS_DEMAG_REAL_ANALYTIC result_sign=1.0;
   if(x<0.0) result_sign *= -1.0;  if(y<0.0) result_sign *= -1.0;
-  x=Oc_FabsRW(x); OC_REALWIDE xsq=x*x;
-  y=Oc_FabsRW(y); OC_REALWIDE ysq=y*y;
-  z=Oc_FabsRW(z); OC_REALWIDE zsq=z*z;
+  x=fabs(x); OXS_DEMAG_REAL_ANALYTIC xsq=x*x;
+  y=fabs(y); OXS_DEMAG_REAL_ANALYTIC ysq=y*y;
+  z=fabs(z); OXS_DEMAG_REAL_ANALYTIC zsq=z*z;
 
-  OC_REALWIDE Rsq=xsq+ysq+zsq;
+  OXS_DEMAG_REAL_ANALYTIC Rsq=xsq+ysq+zsq;
   if(Rsq<=0.0) return 0.0;
-  OC_REALWIDE R=Oc_SqrtRW(Rsq);
+  OXS_DEMAG_REAL_ANALYTIC R=sqrt(Rsq);
 
   // g(x,y,z)
-  OC_REALWIDE piece[7];
-  int piececount=0;
-  piece[piececount++] = -2*x*y*R;;
+  OXS_DEMAG_REAL_ANALYTIC sum;
+  sum = -2*x*y*R;;
   if(z>0.) {
-    // For 2D grids, 1/3 of the calls from Oxs_CalculateSDA01 have z==0.
-    piece[piececount++] = -z*zsq*Oc_Atan2RW(x*y,z*R);
-    piece[piececount++] = -3*z*ysq*Oc_Atan2RW(x*z,y*R);
-    piece[piececount++] = -3*z*xsq*Oc_Atan2RW(y*z,x*R);
+    // For 2D grids, 1/3 of the calls from Oxs_CalculateNxy have z==0.
+    sum +=   -z*zsq*Oc_Atan2(x*y,z*R);
+    sum += -3*z*ysq*Oc_Atan2(x*z,y*R);
+    sum += -3*z*xsq*Oc_Atan2(y*z,x*R);
 
-    OC_REALWIDE temp1,temp2,temp3;
+    OXS_DEMAG_REAL_ANALYTIC temp1,temp2,temp3;
     if((temp1=xsq+ysq)>0.) {
 #if USE_LOG1P
-      piece[piececount++] = 3*x*y*z*Oc_Log1pRW(2*z*(z+R)/temp1);
+      sum += 3*x*y*z*log1p(2*z*(z+R)/temp1);
 #else
-      piece[piececount++] = 3*x*y*z*Oc_LogRW((z+R)*(z+R)/temp1);
+      sum += 3*x*y*z*log((z+R)*(z+R)/temp1);
 #endif
     }
 
     if((temp2=ysq+zsq)>0.){
 #if USE_LOG1P
-      piece[piececount++] = 0.5*y*(3*zsq-ysq)*Oc_Log1pRW(2*x*(x+R)/temp2);
+      sum += 0.5*y*(3*zsq-ysq)*log1p(2*x*(x+R)/temp2);
 #else
-      piece[piececount++] = 0.5*y*(3*zsq-ysq)*Oc_LogRW((x+R)*(x+R)/temp2);
+      sum += 0.5*y*(3*zsq-ysq)*log((x+R)*(x+R)/temp2);
 #endif
     }
 
     if((temp3=xsq+zsq)>0.) {
 #if USE_LOG1P
-      piece[piececount++] = 0.5*x*(3*zsq-xsq)*Oc_Log1pRW(2*y*(y+R)/temp3);
+      sum += 0.5*x*(3*zsq-xsq)*log1p(2*y*(y+R)/temp3);
 #else
-      piece[piececount++] = 0.5*x*(3*zsq-xsq)*Oc_LogRW((y+R)*(y+R)/temp3);
+      sum += 0.5*x*(3*zsq-xsq)*log((y+R)*(y+R)/temp3);
 #endif
     }
 
   } else {
     // z==0.
 #if USE_LOG1P
-    if(y>0.) piece[piececount++] = -0.5*y*ysq*Oc_Log1pRW(2*x*(x+R)/(y*y));
-    if(x>0.) piece[piececount++] = -0.5*x*xsq*Oc_Log1pRW(2*y*(y+R)/(x*x));
+    if(y>0.) sum += -0.5*y*ysq*log1p(2*x*(x+R)/(y*y));
+    if(x>0.) sum += -0.5*x*xsq*log1p(2*y*(y+R)/(x*x));
 #else
-    if(y>0.) piece[piececount++] = -y*ysq*Oc_LogRW((x+R)/y);
-    if(x>0.) piece[piececount++] = -x*xsq*Oc_LogRW((y+R)/x);
+    if(y>0.) sum += -y*ysq*log((x+R)/y);
+    if(x>0.) sum += -x*xsq*log((y+R)/x);
 #endif
   }
 
-  return result_sign*Oxs_AccurateSum(piececount,piece)/6.;
+  return result_sign*sum/6.;
 }
 
-OC_REALWIDE
-Oxs_CalculateSDA01(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
-                   OC_REALWIDE l,OC_REALWIDE h,OC_REALWIDE e)
-{ // This is Nxy*(4*PI*tau) in Newell's paper.
-#if 1
-  ++SDA01_count;
-#endif
-
-  // A01 (aka Nxy) is odd in x, odd in y, and even in z
-  // This implies that the return value is zero if (x,y,z)
-  // lies in the yz-plane (i.e., x=0) or xz-planes (y=0).
-  if(x==0.0 || y==0.0) return OC_REALWIDE(0.0);
+OXS_DEMAG_REAL_ANALYTIC
+Oxs_CalculateNxy
+(OXS_DEMAG_REAL_ANALYTIC x,
+ OXS_DEMAG_REAL_ANALYTIC y,
+ OXS_DEMAG_REAL_ANALYTIC z,
+ OXS_DEMAG_REAL_ANALYTIC dx,
+ OXS_DEMAG_REAL_ANALYTIC dy,
+ OXS_DEMAG_REAL_ANALYTIC dz)
+{ // This is Nxy in Newell's paper.
+  // Nxy is odd in x, odd in y, and even in z This implies that the
+  // return value is zero if (x,y,z) lies in the yz-plane (i.e., x=0) or
+  // xz-planes (y=0).
+  if(x==0.0 || y==0.0) return OXS_DEMAG_REAL_ANALYTIC(0.0);
 
   // Simplified (collapsed) formula based on Newell's paper.
   // This saves about half the calls to g().  There is still
   // quite a bit of redundancy from one cell site to the next,
   // but as this is an initialization-only issue speed shouldn't
   // be too critical.
-  OC_REALWIDE arr[27];
+  OXS_DEMAG_REAL_ANALYTIC sum;
 
-  arr[ 0] = -1*Oxs_Newell_g(x-l,y-h,z-e);
-  arr[ 1] = -1*Oxs_Newell_g(x-l,y-h,z+e);
-  arr[ 2] = -1*Oxs_Newell_g(x+l,y-h,z+e);
-  arr[ 3] = -1*Oxs_Newell_g(x+l,y-h,z-e);
-  arr[ 4] = -1*Oxs_Newell_g(x+l,y+h,z-e);
-  arr[ 5] = -1*Oxs_Newell_g(x+l,y+h,z+e);
-  arr[ 6] = -1*Oxs_Newell_g(x-l,y+h,z+e);
-  arr[ 7] = -1*Oxs_Newell_g(x-l,y+h,z-e);
+  sum = -1*Oxs_Newell_g(x-dx,y-dy,z-dz);
+  sum += -1*Oxs_Newell_g(x-dx,y-dy,z+dz);
+  sum += -1*Oxs_Newell_g(x+dx,y-dy,z+dz);
+  sum += -1*Oxs_Newell_g(x+dx,y-dy,z-dz);
+  sum += -1*Oxs_Newell_g(x+dx,y+dy,z-dz);
+  sum += -1*Oxs_Newell_g(x+dx,y+dy,z+dz);
+  sum += -1*Oxs_Newell_g(x-dx,y+dy,z+dz);
+  sum += -1*Oxs_Newell_g(x-dx,y+dy,z-dz);
 
-  arr[ 8] =  2*Oxs_Newell_g(x,y+h,z-e);
-  arr[ 9] =  2*Oxs_Newell_g(x,y+h,z+e);
-  arr[10] =  2*Oxs_Newell_g(x,y-h,z+e);
-  arr[11] =  2*Oxs_Newell_g(x,y-h,z-e);
-  arr[12] =  2*Oxs_Newell_g(x-l,y-h,z);
-  arr[13] =  2*Oxs_Newell_g(x-l,y+h,z);
-  arr[14] =  2*Oxs_Newell_g(x-l,y,z-e);
-  arr[15] =  2*Oxs_Newell_g(x-l,y,z+e);
-  arr[16] =  2*Oxs_Newell_g(x+l,y,z+e);
-  arr[17] =  2*Oxs_Newell_g(x+l,y,z-e);
-  arr[18] =  2*Oxs_Newell_g(x+l,y-h,z);
-  arr[19] =  2*Oxs_Newell_g(x+l,y+h,z);
+  sum +=  2*Oxs_Newell_g(x,y+dy,z-dz);
+  sum +=  2*Oxs_Newell_g(x,y+dy,z+dz);
+  sum +=  2*Oxs_Newell_g(x,y-dy,z+dz);
+  sum +=  2*Oxs_Newell_g(x,y-dy,z-dz);
+  sum +=  2*Oxs_Newell_g(x-dx,y-dy,z);
+  sum +=  2*Oxs_Newell_g(x-dx,y+dy,z);
+  sum +=  2*Oxs_Newell_g(x-dx,y,z-dz);
+  sum +=  2*Oxs_Newell_g(x-dx,y,z+dz);
+  sum +=  2*Oxs_Newell_g(x+dx,y,z+dz);
+  sum +=  2*Oxs_Newell_g(x+dx,y,z-dz);
+  sum +=  2*Oxs_Newell_g(x+dx,y-dy,z);
+  sum +=  2*Oxs_Newell_g(x+dx,y+dy,z);
 
-  arr[20] = -4*Oxs_Newell_g(x-l,y,z);
-  arr[21] = -4*Oxs_Newell_g(x+l,y,z);
-  arr[22] = -4*Oxs_Newell_g(x,y,z+e);
-  arr[23] = -4*Oxs_Newell_g(x,y,z-e);
-  arr[24] = -4*Oxs_Newell_g(x,y-h,z);
-  arr[25] = -4*Oxs_Newell_g(x,y+h,z);
+  sum += -4*Oxs_Newell_g(x-dx,y,z);
+  sum += -4*Oxs_Newell_g(x+dx,y,z);
+  sum += -4*Oxs_Newell_g(x,y,z+dz);
+  sum += -4*Oxs_Newell_g(x,y,z-dz);
+  sum += -4*Oxs_Newell_g(x,y-dy,z);
+  sum += -4*Oxs_Newell_g(x,y+dy,z);
 
-  arr[26] =  8*Oxs_Newell_g(x,y,z);
+  sum +=  8*Oxs_Newell_g(x,y,z);
 
-  return Oxs_AccurateSum(27,arr);
-  /// Multiply result by 1./(4*PI*l*h*e) to get effective "demag"
-  /// factor Nxy from Newell's paper.
+  return sum/(4*OXS_DEMAG_REAL_ANALYTIC_PI*dx*dy*dz);
 }
 
 
+////////////////////////////////////////////////////////////////////////
+//
+// This routine computes D6[f] = D2z[D2y[D2x[f]]] across the range the
+// specified range, for |(x,y,z)| < Arad, and divides the result by
+// 4*Pi*dx*dy*dz.  If f is the precursor function Oxs_Newell_f or
+// Oxs_Newell_g then the result is Nxx or Nxy, respectively.
+//
+// For points |(x,y,z)|>=Arad, fasymp(x,y,z) is computed instead.
+//
+// Import arr should be pre-sized to dimensions xdim, ydim+2, zdim+2.
+// Imports (ioff,joff,koff) represent the offset of the mesh base point,
+// so that (x,y,z) runs over
+//
+//    [ioff*dx,(ioff+xdim)*dx)
+//      x [joff*dy,(joff+ydim)*dy)
+//      x [koff*dz,(koff+zdim)*dz).
+//
+// The offset allows this routine to be as one component of the
+// computation for periodic boundary conditions (PBC).  For non-PBC,
+// call this routine once with offset = 0.
+//
+// Results are stored in arr, for i across [0,xdim), j across [0,ydim),
+// and z across [0,zdim).  The outer planes j=ydim,ydim+1 and
+// k=zdim,zdim+1 are used as workspace for the D2y and D2z computations.
+//
+
+#if 0  // Debug helper routine
+void PrintArr(const Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr)
+{
+  const OC_INDEX xdim = arr.GetDim1();
+  const OC_INDEX ydim = arr.GetDim2();
+  const OC_INDEX zdim = arr.GetDim3();
+
+  for(OC_INDEX k=0;k<zdim;++k) {
+    for(OC_INDEX j=0;j<ydim;++j) {
+      for(OC_INDEX i=0;i<xdim;++i) {
+        fprintf(stderr,"   (%d,%d,%d)=%11.7f",i,j,k,arr(i,j,k));
+      }
+      fprintf(stderr,"\n");
+    }
+    fprintf(stderr,"\n");
+  }
+}
+#endif // PrintArr
+
+void ComputeD6f
+(OXS_DEMAG_REAL_ANALYTIC (*f)(OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC),
+ const Oxs_DemagAsymptotic& fasymp,
+ Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr,
+ OXS_DEMAG_REAL_ASYMP hx,
+ OXS_DEMAG_REAL_ASYMP hy,
+ OXS_DEMAG_REAL_ASYMP hz,
+ OXS_DEMAG_REAL_ASYMP Arad,
+ OC_INDEX ioff,
+ OC_INDEX joff,
+ OC_INDEX koff
+ )
+{
+  const OC_INDEX xdim = arr.GetDim1();
+  const OC_INDEX ydim = arr.GetDim2()-2;
+  const OC_INDEX zdim = arr.GetDim3()-2;
+
+  OXS_DEMAG_REAL_ANALYTIC dx = hx;
+  OXS_DEMAG_REAL_ANALYTIC dy = hy;
+  OXS_DEMAG_REAL_ANALYTIC dz = hz;
+
+  OXS_DEMAG_REAL_ASYMP Aradsq = Arad*Arad;
+  if(Arad<0) {
+    // Asymptotic interface disabled; set Aradsq big enough
+    // so that fasymp won't be called.
+    OC_INDEX imax = (-ioff > ioff + xdim ? -ioff : ioff + xdim );
+    OXS_DEMAG_REAL_ASYMP xmax
+      = (imax+8)*static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+    OC_INDEX jmax = (-joff > joff + ydim ? -joff : joff + ydim );
+    OXS_DEMAG_REAL_ASYMP ymax
+      = (jmax+8)*static_cast<OXS_DEMAG_REAL_ASYMP>(dy.Hi());
+    OC_INDEX kmax = (-koff > koff + zdim ? -koff : koff + zdim );
+    OXS_DEMAG_REAL_ASYMP zmax
+      = (kmax+8)*static_cast<OXS_DEMAG_REAL_ASYMP>(dz.Hi());
+    Aradsq = xmax*xmax + ymax*ymax + zmax*zmax;
+  }
+
+  // Compute f values and D2x.
+  // Note: We don't need to compute f for |(x,|y|-dx,|z|-dz)|>=Arad
+  {
+    OC_INDEX k=0,j=0,i=0;
+    OC_INDEX n=0;
+    OC_INDEX nstop=OC_INDEX(zdim+2)*OC_INDEX(ydim+2)*OC_INDEX(xdim);
+
+    OXS_DEMAG_REAL_ANALYTIC z = (k+koff-1)*dz;
+    // -1 is because we compute on shifted grid and then collapse
+    OXS_DEMAG_REAL_ANALYTIC y = (j+joff-1)*dy;
+    // -1 is because we compute on shifted grid and then collapse
+
+    // Compute bound to include 3x3x3 stencil border.
+    OXS_DEMAG_REAL_ASYMP zshift
+      = fabs(static_cast<OXS_DEMAG_REAL_ASYMP>(z.Hi()))
+      - static_cast<OXS_DEMAG_REAL_ASYMP>(dz.Hi());
+    OXS_DEMAG_REAL_ASYMP yshift
+      = fabs(static_cast<OXS_DEMAG_REAL_ASYMP>(y.Hi()))
+      - static_cast<OXS_DEMAG_REAL_ASYMP>(dy.Hi());
+    OXS_DEMAG_REAL_ASYMP iBound
+      = sqrt(Aradsq - yshift*yshift- zshift*zshift)
+      /static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+
+    OC_INDEX imax = (xdim <= nstop-n ? xdim : nstop-n);
+    OC_INDEX i1 = static_cast<OC_INDEX>(floor(-iBound - ioff))+1;
+    if(i1>imax)    i1 = imax;
+    OC_INDEX i2 = static_cast<OC_INDEX>(ceil(iBound - ioff));
+    if(i2>imax)    i2 = imax;
+    
+    while(n<nstop) {
+      n += imax - i; // Value of n after i increments
+      for(;i<i1;++i) {
+        // Case |(x,y,z)| - shift >= Arad
+        arr(i,j,k) = 0.0;  // Proper value overlaid in D2z stage
+      }
+      OXS_DEMAG_REAL_ANALYTIC x = (ioff+i)*dx;
+      OXS_DEMAG_REAL_ANALYTIC a = f(x-dx,y,z);
+      OXS_DEMAG_REAL_ANALYTIC b = f(x,y,z);
+      for(;i<i2;++i) {
+        // Case |(x,y,z)| - shift < Arad
+        x += dx;
+        OXS_DEMAG_REAL_ANALYTIC c = f(x,y,z);
+        arr(i,j,k) = (b-a)+(b-c);  // -f(x-dx) + 2*f(x) - f(x+dx)
+        a = b;  b = c;
+      }
+      for(;i<imax;++i) {
+        // Case |(x,y,z)| - shift >= Arad
+        arr(i,j,k) = 0.0;
+      }
+      if(n >= nstop) break;  // All done!
+      if(++j >= ydim) {
+        ++k; j=0;
+        z = (k+koff-1)*dz;
+        // -1 is because we compute on shifted grid and then collapse
+        zshift = fabs(static_cast<OXS_DEMAG_REAL_ASYMP>(z.Hi()))
+          -static_cast<OXS_DEMAG_REAL_ASYMP>(dz.Hi());
+      }
+      y = (j+joff-1)*dy;
+      // -1 is because we compute on shifted grid and then collapse
+      yshift = fabs(static_cast<OXS_DEMAG_REAL_ASYMP>(y.Hi()))
+        -static_cast<OXS_DEMAG_REAL_ASYMP>(dy.Hi());
+
+      imax = (xdim <= nstop-n ? xdim : nstop-n);
+      iBound = sqrt(Aradsq - yshift*yshift - zshift*zshift)
+        /static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+      i1 = static_cast<OC_INDEX>(floor(-iBound - ioff))+1;
+      if(i1>imax)    i1 = imax;
+      i2 = static_cast<OC_INDEX>(ceil(iBound - ioff));
+      if(i2>imax)    i2 = imax;
+      i=0;
+    }
+  }
+
+  // Compute D2y.  Here we compute D2y for all (i,j,k), but we could
+  // skip values outside Arad, provided we leave a margin for the D2z
+  // stencil.
+  for(OC_INDEX k=0;k<zdim+2;++k) {
+    for(OC_INDEX j=0;j<ydim;++j) {
+      for(OC_INDEX i=0;i<xdim;++i) {
+        // -f(y-dy) + 2*f(y) - f(y+dy)
+        arr(i,j,k) = arr(i,j+1,k) - arr(i,j,k);
+        arr(i,j,k) += (arr(i,j+1,k) - arr(i,j+2,k));
+      }
+    }
+  }
+
+  // Compute D2z and do clean-up for |(x,y,z)|>=Arad.
+  // NB: The analytic computations need to be divided by 4*PI*dx*dy*dz
+  //     to get demag tensor values Nxx and etc.; the asymptotic
+  //     routines return the properly scaled value.
+  const OXS_DEMAG_REAL_ANALYTIC analytic_scaling
+    = 1.0/(4*Xp_DoubleDouble::DD_PI*dx*dy*dz);
+
+  for(OC_INDEX k=0;k<zdim;++k) {
+    OXS_DEMAG_REAL_ASYMP z
+      = (koff+k)*static_cast<OXS_DEMAG_REAL_ASYMP>(dz.Hi());
+    for(OC_INDEX j=0;j<ydim;++j) {
+      OXS_DEMAG_REAL_ASYMP y
+        = (joff+j)*static_cast<OXS_DEMAG_REAL_ASYMP>(dy.Hi());
+
+      const OXS_DEMAG_REAL_ASYMP iBound
+        = sqrt(Aradsq - y*y - z*z)/static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+      OC_INDEX i1 = static_cast<OC_INDEX>(floor(-iBound - ioff))+1;
+      if(i1>xdim) i1 = xdim;
+      OC_INDEX i2 = static_cast<OC_INDEX>(ceil(iBound - ioff));
+      if(i2>xdim) i2 = xdim;
+
+      OC_INDEX i=0;
+      for(;i<i1;++i) {
+        // Case |(x,y,z)|>=Arad
+        OXS_DEMAG_REAL_ASYMP x
+          = (ioff+i)*static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+        arr(i,j,k)
+          = static_cast<OXS_DEMAG_REAL_ANALYTIC>(fasymp.Asymptotic(x,y,z));
+      }
+      for(;i<i2;++i) {
+        // Case |(x,y,z)|<Arad
+        // If |(x,y,z)|<Arad, compute -f(z-dz) + 2*f(z) - f(z+dz)
+        arr(i,j,k) = arr(i,j,k+1) - arr(i,j,k);
+        arr(i,j,k) += (arr(i,j,k+1) - arr(i,j,k+2));
+        arr(i,j,k) *= analytic_scaling;
+      }
+      for(;i<xdim;++i) {
+        // Case |(x,y,z)|>=Arad
+        OXS_DEMAG_REAL_ASYMP x
+          = (ioff+i)*static_cast<OXS_DEMAG_REAL_ASYMP>(dx.Hi());
+        arr(i,j,k)
+          = static_cast<OXS_DEMAG_REAL_ANALYTIC>(fasymp.Asymptotic(x,y,z));
+      }
+    }
+  }
+}
+
+// Helper function for filling arrays of demag tensor coefficients with
+// periodic boundaries.  NOTE: This routine not intended for in-place
+// use, i.e., the export val should not be an element of workspace.
+void Oxs_FoldWorkspace
+(Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& workspace,
+ OC_INDEX wdimx,OC_INDEX wdimy,OC_INDEX wdimz,
+ OC_INDEX rdimx,OC_INDEX rdimy,OC_INDEX rdimz,
+ int xperiodic,int yperiodic,int zperiodic,
+ int xodd, int yodd, int zodd,
+ OXS_DEMAG_REAL_ANALYTIC& val,
+ OC_INDEX i,OC_INDEX j,OC_INDEX k)
+{
+  OXS_DEMAG_REAL_ANALYTIC sum = 0.0;
+  if(xperiodic) {
+    // For a given i,j,k in the base window, reflect the computed values
+    // across the yz-plane.
+    //    Alternatively, we could sum all positive images into the root
+    // window, and then do a single add about the midline to fold in the
+    // negative images.  However, doing that would require separate
+    // looping across the root window before the A-index selection loop.
+    for(OC_INDEX i2=i+rdimx;i2<wdimx;i2+=rdimx) sum += workspace(i2,j,k);
+    OXS_DEMAG_REAL_ANALYTIC mirror = 0.0;
+    for(OC_INDEX i2=rdimx-i;i2<wdimx;i2+=rdimx) mirror += workspace(i2,j,k);
+    if(xodd) sum -= mirror;  // Odd symmetry
+    else     sum += mirror;  // Even symmetry
+  }
+  if(yperiodic) {
+    for(OC_INDEX j2=j+rdimy;j2<wdimy;j2+=rdimy) sum += workspace(i,j2,k);
+    OXS_DEMAG_REAL_ANALYTIC mirror = 0.0;
+    for(OC_INDEX j2=rdimy-j;j2<wdimy;j2+=rdimy) mirror += workspace(i,j2,k);
+    if(yodd) sum -= mirror;  // Odd symmetry
+    else     sum += mirror;  // Even symmetry
+  }
+  if(zperiodic) {
+    for(OC_INDEX k2=k+rdimz;k2<wdimz;k2+=rdimz) sum += workspace(i,j,k2);
+    OXS_DEMAG_REAL_ANALYTIC mirror = 0.0;
+    for(OC_INDEX k2=rdimz-k;k2<wdimz;k2+=rdimz) mirror += workspace(i,j,k2);
+    if(zodd) sum -= mirror;  // Odd symmetry
+    else     sum += mirror;  // Even symmetry
+  }
+  val += sum;
+}
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// TODO: I think symmetry considerations suggest that the window sum
+//       should run across [-Wcount,Wcount), so that 0 is in the middle
+//       of the window range; as it is now the the sum runs across
+//       [-Wcount,Wcount], which makes the middle W/2.
+//
+//    Q: What happens if the asymptotic cutoff Arad is smaller than W?
+//       Should dimx/y/z be limited to asymptotic box?  Or should the
+//       outside values be filled instead with asymptotic values?  What
+//       about case where Arad is slightly larger than an integral
+//       number of W.  Should we sum up to the smaller number and then
+//       add in a combination of analytic values and asymptotic ones?  A
+//       combination platter can be handled more easily if we sum D6
+//       values instead of D2 values, although that would require
+//       additional workspace.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ////////////////////////////////////////////////////////////////////////
 // Asymptotic approximations to N
@@ -825,129 +790,15 @@ Oxs_CalculateSDA01(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
 //                6-Jun-2012, p 48-61
 //               27-Jul-2012, p 64-67
 
-void OxsDemagAsymptoticRefineData::OrderedRefine
-(OXS_DEMAG_REAL_ASYMP maxratio,
- OXS_DEMAG_REAL_ASYMP a,
- OXS_DEMAG_REAL_ASYMP b,
- OXS_DEMAG_REAL_ASYMP c,
- OXS_DEMAG_REAL_ASYMP& ra,
- OXS_DEMAG_REAL_ASYMP& rb,
- OXS_DEMAG_REAL_ASYMP& rc,
- OC_INT4m& acount,
- OC_INT4m& bcount,
- OC_INT4m& ccount)
-{ // Intended for use with a and b larger than c.  Returned values for
-  // rc and ccount are always c and 1, respectively.
-  assert(a>=c && b>=c);
-  OXS_DEMAG_REAL_ASYMP aratio = ceil(a/(maxratio*c));
-  acount = static_cast<OC_INT4m>(aratio);
-  ra = a/aratio;
-  OXS_DEMAG_REAL_ASYMP bratio = ceil(b/(maxratio*c));
-  bcount = static_cast<OC_INT4m>(bratio);
-  rb = b/bratio;
-  ccount = 1;
-  rc = c;
-}
-
-OxsDemagAsymptoticRefineData::OxsDemagAsymptoticRefineData
+Oxs_DemagNxxAsymptoticBase::Oxs_DemagNxxAsymptoticBase
 (OXS_DEMAG_REAL_ASYMP dx,
  OXS_DEMAG_REAL_ASYMP dy,
  OXS_DEMAG_REAL_ASYMP dz,
- OXS_DEMAG_REAL_ASYMP maxratio)
-  : rdx(0), rdy(0), rdz(0), result_scale(0),
-    xcount(0), ycount(0), zcount(0)
+ int in_max_order)
+  : max_order(in_max_order)
 {
-  // The APPROX_MAX_CELL_COUNT value limits the number of subcells in
-  // the refinement of high-aspect cells.  Compute time will be
-  // proportional to the subcell count times the number of cells the
-  // asymptotic approximation to the demag tensor is computed for.  A
-  // large value of APPROX_MAX_CELL_COUNT can improve accuracy for
-  // high-aspect cells, but if set too high (one-time) problem
-  // initialization can appear to freeze to the user.  In principle one
-  // could adjust APPROX_MAX_CELL_COUNT based on problem size and
-  // machine speed, but this is intended as a failure recovery rather
-  // than operative code.
-  //    Incidentally, errors should reduce with larger offsets, so for
-  // a fixed error perhaps maxratio could be adjusted with offset.
-  // This could be especially effective because the number of cells at
-  // a given offset generally grows with the square or cube of the
-  // offset (depending on whether the overall simulated volume is
-  // plate-like or box-like).
-  const OXS_DEMAG_REAL_ASYMP APPROX_MAX_CELL_COUNT = 1000;
-  if(dz<=dx && dz<=dy) {
-    // dz is minimal
-    OrderedRefine(maxratio,dx,dy,dz,rdx,rdy,rdz,xcount,ycount,zcount);
-  } else if(dy<=dx && dy<=dz) {
-    // dy is minimal
-    OrderedRefine(maxratio,dx,dz,dy,rdx,rdz,rdy,xcount,zcount,ycount);
-  } else {
-    // dx is minimal
-    OrderedRefine(maxratio,dy,dz,dx,rdy,rdz,rdx,ycount,zcount,xcount);
-  }
-  OXS_DEMAG_REAL_ASYMP countproduct = OXS_DEMAG_REAL_ASYMP(xcount)
-                                     *OXS_DEMAG_REAL_ASYMP(ycount)
-                                     *OXS_DEMAG_REAL_ASYMP(zcount);
-  if(countproduct>APPROX_MAX_CELL_COUNT) {
-    // Number of subcells too many for demag asymptotics to
-    // be computed in a reasonable time.  Make maxratio larger
-    // to reduce cell count --- this will hurt accuracy so
-    // issue a warning.
-#ifdef STANDALONE
-    static int warncount=1;
-    if(warncount>0) {
-      fprintf(stderr,"*** WARNING: Cell aspect ratio too large; asymptotic"
-              " demag tensor approximation may be poor. (%d) ***\n");
-      --warncount;
-    }
-#else // !STANDALONE
-# if 1
-    static Oxs_WarningMessage badcellaspect(1);
-    badcellaspect.Send(revision_info,OC_STRINGIFY(__LINE__),
-                       "Cell aspect ratio too large; asymptotic"
-                       " demag tensor approximation may be poor.");
-# else
-    fprintf(stderr,"WM thread %d\n",Oxs_GetOxsThreadId());
-    static Oxs_WarningMessage badcellaspect(1);
-    if(Oxs_IsRootThread()) {
-      fprintf(stderr,"ROOT\n");
-      badcellaspect.Send(revision_info,OC_STRINGIFY(__LINE__),
-                         "Cell aspect ratio too large; asymptotic"
-                         " demag tensor approximation may be poor.");
-    }
-# endif
-#endif // STANDALONE
-    maxratio *= sqrt(countproduct/APPROX_MAX_CELL_COUNT);
-    if(dz<=dx && dz<=dy) {
-      // dz is minimal
-      OrderedRefine(maxratio,dx,dy,dz,rdx,rdy,rdz,xcount,ycount,zcount);
-    } else if(dy<=dx && dy<=dz) {
-      // dy is minimal
-      OrderedRefine(maxratio,dx,dz,dy,rdx,rdz,rdy,xcount,zcount,ycount);
-    } else {
-      // dx is minimal
-      OrderedRefine(maxratio,dy,dz,dx,rdy,rdz,rdx,ycount,zcount,xcount);
-    }
-    countproduct = OXS_DEMAG_REAL_ASYMP(xcount)
-                  *OXS_DEMAG_REAL_ASYMP(ycount)
-                  *OXS_DEMAG_REAL_ASYMP(zcount);
-  }
-
-
-#if 0
-  fprintf(stderr,"In  sizes: %10.6g %10.6g %10.6g\n",dx,dy,dz);
-  fprintf(stderr,"Out sizes: %10.6g %10.6g %10.6g\n",rdx,rdy,rdz);
-#endif
-  result_scale = 1.0/countproduct;
-}
-
-Oxs_DemagNxxAsymptoticBase::Oxs_DemagNxxAsymptoticBase
-(const OxsDemagAsymptoticRefineData& refine_data)
-{
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
-
-  self_demag = Oxs_SelfDemagNx(dx,dy,dz);  // Special case
+  self_demag           // Special case
+    = static_cast<OXS_DEMAG_REAL_ASYMP>(Oxs_SelfDemagNx(dx,dy,dz).Hi());
 
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
@@ -1041,7 +892,7 @@ Oxs_DemagNxxAsymptoticBase::Oxs_DemagNxxAsymptoticBase
 }
 
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxxAsymptoticBase::NxxAsymptotic
+Oxs_DemagNxxAsymptoticBase::Asymptotic
 (const OxsDemagNabData& ptdata) const
 { // Asymptotic approximation to Nxx term.
 
@@ -1050,6 +901,10 @@ Oxs_DemagNxxAsymptoticBase::NxxAsymptotic
     // to self-demag calculation.
     return self_demag;
   }
+
+  // term3 provides 5th order error,
+  // term5 provides 7th order error,
+  // etc.
 
   const OXS_DEMAG_REAL_ASYMP& tx2 = ptdata.tx2;
   const OXS_DEMAG_REAL_ASYMP& ty2 = ptdata.ty2;
@@ -1060,31 +915,39 @@ Oxs_DemagNxxAsymptoticBase::NxxAsymptotic
   const OXS_DEMAG_REAL_ASYMP term3 = (2*tx2 - ty2 - tz2)*lead_weight;
   OXS_DEMAG_REAL_ASYMP term5 = 0.0;
   OXS_DEMAG_REAL_ASYMP term7 = 0.0;
+  OXS_DEMAG_REAL_ASYMP term9 = 0.0;
   if(cubic_cell) {
-    const OXS_DEMAG_REAL_ASYMP ty4 = ty2*ty2; 
-    term7 = ((b1*tx2
-              + (b2*ty2 + b3*tz2))*tx2
-             + (b4*ty4 + b6*tz4))*tx2
-      + b7*ty4*ty2 + b10*tz6;
+    if(max_order>7) {
+      const OXS_DEMAG_REAL_ASYMP ty4 = ty2*ty2;
+      term7 = ((b1*tx2
+                + (b2*ty2 + b3*tz2))*tx2
+               + (b4*ty4 + b6*tz4))*tx2
+        + b7*ty4*ty2 + b10*tz6;
+    }
   } else {
-    term5 = (a1*tx2 + (a2*ty2 + a3*tz2))*tx2
-      + (a4*ty2 + a5*tz2)*ty2 + a6*tz4;
-    term7 = ((b1*tx2
-              + (b2*ty2 + b3*tz2))*tx2
-             + ((b4*ty2 + b5*tz2)*ty2 + b6*tz4))*tx2
-      + ((b7*ty2 + b8*tz2)*ty2 + b9*tz4)*ty2
-      + b10*tz6;
+    if(max_order>5) {
+      term5 = (a1*tx2 + (a2*ty2 + a3*tz2))*tx2
+        + (a4*ty2 + a5*tz2)*ty2 + a6*tz4;
+      if(max_order>7) {
+        term7 = ((b1*tx2
+                  + (b2*ty2 + b3*tz2))*tx2
+                 + ((b4*ty2 + b5*tz2)*ty2 + b6*tz4))*tx2
+          + ((b7*ty2 + b8*tz2)*ty2 + b9*tz4)*ty2
+          + b10*tz6;
+      }
+    }
   }
-  const OXS_DEMAG_REAL_ASYMP term9
-    =  (((c1*tx2
-          +  (c2*ty2 +  c3*tz2))*tx2
-         +  ((c4*ty2 +  c5*tz2)*ty2 +  c6*tz4))*tx2
-        +  (  ((c7*ty2 +  c8*tz2)*ty2 +  c9*tz4)*ty2 + c10*tz6  ))*tx2
-    +  (((c11*ty2 + c12*tz2)*ty2 + c13*tz4)*ty2 + c14*tz6)*ty2
-    + c15*tz4*tz4;
+  if(max_order>9) {
+    term9 =  (((c1*tx2
+                +  (c2*ty2 +  c3*tz2))*tx2
+               +  ((c4*ty2 +  c5*tz2)*ty2 +  c6*tz4))*tx2
+              +  (  ((c7*ty2 +  c8*tz2)*ty2 +  c9*tz4)*ty2 + c10*tz6  ))*tx2
+      +  (((c11*ty2 + c12*tz2)*ty2 + c13*tz4)*ty2 + c14*tz6)*ty2
+      + c15*tz4*tz4;
+  }
 
   const OXS_DEMAG_REAL_ASYMP Nxx = (term9 + term7 + term5 + term3)*ptdata.iR;
-  // Error should be of order 1/R^11
+  // Error should be of order 1/R^11 if all terms are active
 
   return Nxx;
 }
@@ -1092,7 +955,7 @@ Oxs_DemagNxxAsymptoticBase::NxxAsymptotic
 
 #if OXS_DEMAG_ASYMP_USE_SSE
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxxAsymptoticBase::NxxAsymptoticPair
+Oxs_DemagNxxAsymptoticBase::AsymptoticPair
 (const OxsDemagNabData& ptA,
  const OxsDemagNabData& ptB) const
 { // Asymptotic approximation to Nxx term.  This routine takes a pair of
@@ -1104,7 +967,7 @@ Oxs_DemagNxxAsymptoticBase::NxxAsymptoticPair
     // This means we can't use the parallel computation below, so
     // pass both points through to the single-point NxxAsymptotic
     // routine, and let it sort them out.
-    return NxxAsymptotic(ptA) + NxxAsymptotic(ptB);
+    return Asymptotic(ptA) + Asymptotic(ptB);
   }
 
   const Oc_Duet tx2(ptA.tx2,ptB.tx2);
@@ -1117,66 +980,603 @@ Oxs_DemagNxxAsymptoticBase::NxxAsymptoticPair
   const Oc_Duet term3 = lead_weight*(2*tx2 - ty2 - tz2);
 
   Oc_Duet Nxx(0.0);
-  Oc_Duet term7;
+  Oc_Duet term7(0.0);
   if(cubic_cell) {
-    const Oc_Duet ty4 = ty2*ty2; 
-    term7 = b7*ty4*ty2
-      + tx2*(tx2*(b1*tx2 + b2*ty2 + b3*tz2) + b4*ty4 + b6*tz4);
+    if(max_order>7) {
+      const Oc_Duet ty4 = ty2*ty2;
+      term7 = b7*ty4*ty2
+        + tx2*(tx2*(b1*tx2 + b2*ty2 + b3*tz2) + b4*ty4 + b6*tz4)
+        + b10*tz6;
+    }
   } else {
-    const Oc_Duet term5
-      = a6*tz4
-      + ty2*(a4*ty2 + a5*tz2)
-      + tx2*(a1*tx2 + a2*ty2 + a3*tz2);
-    Nxx = term5;
-
-    term7 = ty2*(ty2*(b7*ty2 + b8*tz2) + b9*tz4)
-      + tx2*(tx2*(b1*tx2 + b2*ty2 + b3*tz2) + ty2*(b4*ty2 + b5*tz2) + b6*tz4);
+    if(max_order>5) {
+      const Oc_Duet term5
+        = a6*tz4
+        + ty2*(a4*ty2 + a5*tz2)
+        + tx2*(a1*tx2 + a2*ty2 + a3*tz2);
+      Nxx = term5;
+      if(max_order>7) {
+        term7 = ty2*(ty2*(b7*ty2 + b8*tz2) + b9*tz4)
+          + tx2*(tx2*(b1*tx2 + b2*ty2 + b3*tz2) + ty2*(b4*ty2 + b5*tz2)
+                 + b6*tz4)
+          + b10*tz6;
+      }
+    }
   }
-  term7 += b10*tz6;
-  const Oc_Duet term9
-    = c15*tz4*tz4
-    + ty2*(ty2*(ty2*(c11*ty2 + c12*tz2) + c13*tz4) + c14*tz6)
-    + tx2*(tx2*(tx2*(c1*tx2 +  c2*ty2 +  c3*tz2)
-                +  ty2*(c4*ty2 +  c5*tz2) +  c6*tz4)
-           + ty2*(ty2*(c7*ty2 +  c8*tz2) +  c9*tz4) + c10*tz6);
-
+  Oc_Duet term9(0.0);
+  if(max_order>9) {
+    term9 = c15*tz4*tz4
+      + ty2*(ty2*(ty2*(c11*ty2 + c12*tz2) + c13*tz4) + c14*tz6)
+      + tx2*(tx2*(tx2*(c1*tx2 +  c2*ty2 +  c3*tz2)
+                  +  ty2*(c4*ty2 +  c5*tz2) +  c6*tz4)
+             + ty2*(ty2*(c7*ty2 +  c8*tz2) +  c9*tz4) + c10*tz6);
+  }
   Nxx += (term7 + term9);
   Nxx += term3;
   Nxx *= Oc_Duet(ptA.iR,ptB.iR);
-  // Error should be of order 1/R^11
+  // Error should be of order 1/R^11 if all terms are active
 
   return Nxx.GetA() + Nxx.GetB();
 }
-#endif // OXS_DEMAG_ASYMP_USE_SSE 
+#endif // OXS_DEMAG_ASYMP_USE_SSE
+
+OC_INDEX
+Oxs_DemagAsymptotic::FindRefinementCount
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OXS_DEMAG_REAL_ASYMP h,
+ OC_INDEX& enx,OC_INDEX& eny,OC_INDEX& enz)
+{
+  assert(dx>0. && dy>0. && dz>0. && h>0.0);
+  OXS_DEMAG_REAL_ASYMP nx = ceil(dx/h);
+  OXS_DEMAG_REAL_ASYMP ny = ceil(dy/h);
+  OXS_DEMAG_REAL_ASYMP nz = ceil(dz/h);
+  OXS_DEMAG_REAL_ASYMP n = nx*ny*nz;
+  OC_INDEX ni = static_cast<OC_INDEX>(n);
+  if(static_cast<OXS_DEMAG_REAL_ASYMP>(ni) != n || ni <= 0) {
+    char buf[256];
+    Oc_Snprintf(buf,sizeof(buf),
+                "Overflow error in Oxs_DemagAsymptotic::FindRefinementCount"
+                " with imports %g, %g, %g",dx,dy,dz);
+    OXS_THROW(Oxs_BadParameter,buf);
+  }
+  enx = static_cast<OC_INDEX>(nx);
+  eny = static_cast<OC_INDEX>(ny);
+  enz = static_cast<OC_INDEX>(nz);
+  return ni;
+}
+
+/*
+ * Oxs_DemagAsymptotic::FindBestRefinement
+ *
+ * Given rectangular brick R of dimensions dx x dy x dz, and count
+ * request nrequest, this routine solves the problem of finding an exact
+ * uniform subdivision of R into rectangular subcells with dimensions hx
+ * x hy x hz, with minimal max(hx,hy,hz), subject to the constraint that
+ * the the total number of subcells is no more than nrequest.  This
+ * implementation using a "pinsheet" approach, where the axis division
+ * counts nx, ny, nz are set all initially to 1 and then are gradually
+ * raised to reduce max h subject to the constraint nx*ny*nz<=nrequest.
+ * (Here hx=dx/nx, hy=dy/ny, hz=dz/nz.)
+ *
+ * Note: The implementation here is for three dimensional R, but the
+ * method extends easily to an arbitrary number of dimensions.
+ */
+#ifdef _MSC_VER  // Visual C++
+# pragma warning(push)
+# pragma warning(disable : 4244)   // Ignore loss of data warnings
+                   /// for conversions between double and OC_INDEX.
+#endif // _MSC_VER
+void Oxs_DemagAsymptotic::FindBestRefinement
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OC_INDEX nrequest,
+ OC_INDEX& nx_out,OC_INDEX& ny_out,OC_INDEX& nz_out)
+{
+  // Compute ratios directly.  If any two dimensions are the same then
+  // drat will be exactly 1.0 which should help protect against rounding
+  // errors.
+  OXS_DEMAG_REAL_ASYMP dratxy=dx/dy, dratxz=dx/dz;
+  OXS_DEMAG_REAL_ASYMP dratyx=dy/dx, dratyz=dy/dz;
+  OXS_DEMAG_REAL_ASYMP dratzx=dz/dx, dratzy=dz/dy;
+
+  OC_INDEX nx=1,ny=1,nz=1;
+  while(1) {
+    double ntst=0;
+    if(nx*dy <= ny*dx && nx*dz <= nz*dx) { // nx/dx smallest
+      if(ny*dz <= nz*dy) ntst = OC_INDEX(floor(double(ny)*dratxy+1.));
+      else               ntst = OC_INDEX(floor(double(nz)*dratxz+1.));
+      if(ntst*ny*nz<nrequest) nx=ntst;
+      else { nx=(nrequest/(ny*nz)); break; }
+    } else if(ny*dx <= nx*dy && ny*dz <= nz*dy) { // ny/dy smallest
+      if(nx*dz <= nz*dx) ntst = OC_INDEX(floor(double(nx)*dratyx+1.));
+      else               ntst = OC_INDEX(floor(double(nz)*dratyz+1.));
+      if(nx*ntst*nz<=nrequest) ny=ntst;
+      else { ny=(nrequest/(nx*nz)); break; }
+    } else { // nz/dz is smallest
+      if(nx*dy <= ny*dx) ntst = OC_INDEX(floor(double(nx)*dratzx+1.));
+      else               ntst = OC_INDEX(floor(double(ny)*dratzy+1.));
+      if(nx*ny*ntst<=nrequest) nz=ntst;
+      else { nz=(nrequest/(nx*ny)); break; }
+    }
+  }
+  assert(nx*ny*nz<=nrequest);
+  // Deflate any ni as much as possible without raising hmax.
+  if(nx*dy <= ny*dx && nx*dz <= nz*dx) { // nx/dx smallest
+    OC_INDEX tny = OC_INDEX(ceil(nx*dratyx)); if(tny<ny) ny = tny;
+    OC_INDEX tnz = OC_INDEX(ceil(nx*dratzx)); if(tnz<nz) nz = tnz;
+  } else if(ny*dx <= nx*dy && ny*dz <= nz*dy) { // ny/dy smallest
+    OC_INDEX tnx = OC_INDEX(ceil(ny*dratxy)); if(tnx<nx) nx = tnx;
+    OC_INDEX tnz = OC_INDEX(ceil(ny*dratzy)); if(tnz<nz) nz = tnz;
+  } else { // nz/dz is smallest
+    OC_INDEX tnx = OC_INDEX(ceil(nz*dratxz)); if(tnx<nx) nx = tnx;
+    OC_INDEX tny = OC_INDEX(ceil(nz*dratyz)); if(tny<ny) ny = tny;
+  }
+  // Q: Could rounding error cause the ceil() calls above to
+  //    return the wrong value?  The if-tests should protect
+  //    against the worse failures.
+  nx_out = nx;
+  ny_out = ny;
+  nz_out = nz;
+  assert(nx_out*ny_out*nz_out<=nrequest);
+}
+#ifdef _MSC_VER  // Visual C++
+# pragma warning(pop)
+#endif // _MSC_VER
+
+/*
+ * Oxs_DemagAsymptotic::FindNeededRefinement
+ *
+ * Given a rectangular brick of dimensions dx x dy x dz, offset R,
+ * allowed relative error allowed_error, and asymptotic method order,
+ * computes the refinement (if any) needed to match the error
+ * constraint.  The return value is the number of cells in the
+ * refinement.  This routine uses the error estimate
+ *
+ *   Rel Error ~ (8/5) (h/R)^(n-3) sqrt(M)
+ *
+ * where h is max of refined dimensions, R is offset, n is the
+ * asymptotic method order, and M is the number of cells in the
+ * refinement.  This code assumes M = (h0/h)^3, where h is the maximum
+ * of the original dimensions dx, dy, and dz.  An improvement to this
+ * code would tighten the M estimate.
+ * 
+ */
+OC_INDEX
+Oxs_DemagAsymptotic::FindNeededRefinement
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OXS_DEMAG_REAL_ASYMP R,
+ OXS_DEMAG_REAL_ASYMP allowed_error,
+ int order,  // method order
+ OC_INDEX& nx_out,OC_INDEX& ny_out,OC_INDEX& nz_out)
+{
+  // First compute error without refinement
+  OXS_DEMAG_REAL_ASYMP h0 = (dx>dy ? (dx>dz ? dx : dz) : (dy>dz ? dy : dz));
+  OXS_DEMAG_REAL_ASYMP E0 = 1.6*pow(h0/R,order-3);
+
+  // If no refinement meets error bound, done.
+  if(E0 <= allowed_error) {
+    nx_out = ny_out = nz_out = 1;
+    return 1;
+  }
+
+  // Else compute refinement relative to original
+  OXS_DEMAG_REAL_ASYMP hmax = h0*pow(allowed_error/E0,1.0/(order - 4.5));
+  nx_out = static_cast<OC_INDEX>(ceil(dx/hmax));
+  ny_out = static_cast<OC_INDEX>(ceil(dy/hmax));
+  nz_out = static_cast<OC_INDEX>(ceil(dz/hmax));
+
+  return nx_out*ny_out*nz_out;
+}
 
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxxAsymptotic::NxxAsymptotic(const OxsDemagNabData& ptdata) const
-{ // Presumably at least one of xcount, ycount, or zcount is 1, but this
-  // fact is not used in following code.
+Oxs_DemagAsymptotic::FindKnotSchedule
+(OXS_DEMAG_REAL_ASYMP dx,    // Import
+ OXS_DEMAG_REAL_ASYMP dy,    // Import
+ OXS_DEMAG_REAL_ASYMP dz,    // Import
+ OXS_DEMAG_REAL_ASYMP maxerror, // Desired max error; Import
+ int asymptotic_order,       // Max asymptoric method order
+ std::vector<Oxs_DemagAsymptotic::DemagKnot>& knots) // Export
+{ // Using built-in assumptions about analytic, asymptotic, and refined
+  // asymptotic method errors and speed, builds an ordered list of knots
+  // yielding an optimal demag schedule.  The return value is the
+  // smallest (i.e., last) schedule radius --- smaller than that radius
+  // the analytic method should be used.
 
-  // Alias data from refine_data structure.
-  const OC_INT4m& xcount = refine_data.xcount;
-  const OC_INT4m& ycount = refine_data.ycount;
-  const OC_INT4m& zcount = refine_data.zcount;
-  const OXS_DEMAG_REAL_ASYMP& rdx = refine_data.rdx;
-  const OXS_DEMAG_REAL_ASYMP& rdy = refine_data.rdy;
-  const OXS_DEMAG_REAL_ASYMP& rdz = refine_data.rdz;
-  const OXS_DEMAG_REAL_ASYMP& result_scale = refine_data.result_scale;
+  // Model assumptions:
+  //   The analytic method is assumed to be "analytic_speed_factor"
+  //   slower than the base asymptotic method using order
+  //   "asymptotic_order".  It is further assumed that the speed of the
+  //   asymptotic method using a refined subgrid with N elements is N
+  //   times slower than the base asymptotic method.  So in this model a
+  //   refined asymptotic model with analytic_speed_factor subcells runs
+  //   at the same speed as the analytic method.  (This is a simplistic
+  //   assumption that could be improved.)
+  //
+  //   It is assumed that the (absolute) error in the analytic method is
+  //
+  //      Error_analytic = eps*R^3/V
+  //
+  //   where eps is the machine epsilon for the floating point type, R
+  //   is the distance between the cells, and V is the volume of the
+  //   cell.  Note that this is a dimensionless quantity.  This table
+  //   lists the machine epsilon for several floating point types:
+  //
+  //         Type           width       eps
+  //         float         4 bytes     2^-23   ~  1 x 10^-7
+  //         double        8 bytes     2^-52   ~  2 x 10^-16
+  //       long double  10-16 bytes    2^-63   ~  1 x 10^-19
+  //       double-double  16 bytes     2^-106  ~  1 x 10^-32
+  //
+  //   (This is some ambiguity in the literature on the definition of
+  //   machine epsilon; some source define machine epsilon to be half
+  //   the values given in this table.  The formula for Error_analytic
+  //   assumes the machine epsilon definition matching the values in
+  //   this table, which matches the ISO C and C++ definition as
+  //   implemented in std::numeric_limits<T>::epsilon().)
+  //
+  //   It is assumed that the (absolute) error in the base asymptotic
+  //   method is
+  //
+  //      Error_asymptotic = V*R^2/(5*(R^2-hmax^2) * hmax^(n-3)/R^n
+  //
+  //   where V is the cell volume (h1*h2*h3), hmax is the max cell edge
+  //   length (max(h1,h2,h3)), R is the distance between the cells, and
+  //   n is the method order.  Note that this is a dimensionless
+  //   quantity.  (See NOTES VIII, 3-July-2019, p. 61.)
+  //
+  //   For refined asymptotic, if the base cell is divided into M
+  //   subcells, then the error is assumed to be sqrt(M) times the error
+  //   computed using the preceding formula using the refined cell edge
+  //   dimensions.
+  //
+  //   For large R, the demag tensor values converge to the dipole
+  //   approximation, e.g.
+  //
+  //      Nxx ~ -V/(4*pi)*(2x^2-y^2-z^2)/R^5
+  //
+  //      Nxy ~ -V/(4*pi)*(3*x*y)/R^5
+  //
+  //   which decay like V/R^3.  A practical relative error estimate is
+  //   therefore absolute error above multiplied by say 2*pi*R^3/V.
+  //   I say "practical" because at some points the demag tensor goes
+  //   through zero, so relative error is a not-so-useful quantity.
+  //
+  //   Therefore, the requested "error" imported is interpreted with
+  //   respect to the practical relative error, namely
+  //   
+  //      PracRelErr_analytic = 8*eps*R^6/V^2
+  //
+  //      PracRelErr_asymptotic = 8*R^2/(5*(R^2-hmax^2) * (hmax/R)^(n-3)
+  //
+  //                            ~ (8/5)(hmax/R)^(n-3)  if R>>hmax
+  //
+  //      PracRelErr_refined_asymptotic(M) = sqrt(M)*PracRelErr_asymptotic
+  //
+  //   Here the 2*pi factor has been rounded up to 8 to give a little
+  //   extra cushion.
+
+  const OXS_DEMAG_REAL_ASYMP asymptotic_machine_eps
+    = std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::epsilon();
+  if(maxerror<asymptotic_machine_eps) {
+    // Can't actually compute errors smaller than machine epsilon for
+    // the floating point type.
+    maxerror =  asymptotic_machine_eps;
+  }
+
+  const OXS_DEMAG_REAL_ASYMP analytic_machine_eps = XP_DD_EPS;
+
+  const OXS_DEMAG_REAL_ASYMP Vol = dx*dy*dz;
+  const OXS_DEMAG_REAL_ASYMP hmax
+    = (dx>dy ? (dx>dz ? dx : dz) : (dy>dz ? dy : dz));
+
+  const OXS_DEMAG_REAL_ASYMP analytic_speed_factor = 60;
+  
+  assert(analytic_speed_factor>4); // Else asymptotic refinements for
+                                   // speed don't make sense.
+  assert(asymptotic_order>=5);  // Some code below assumes (order-4.5)>0
+
+  const OXS_DEMAG_REAL_ASYMP R_analytic_max_happy = 32*pow(Vol,1./3.);
+  // For speed considerations, we'd like to not compute analytic
+  // demag bigger than this.
+
+  const OXS_DEMAG_REAL_ASYMP R_asymptotic_min_rule = 15*hmax;
+  // As a rule, don't trust asymptotics below this radius.  However,
+  // currently the code below ignores this rule when computing
+  // refinements.
+
+  // Compute maximum R that analytic method can be used.
+  const OXS_DEMAG_REAL_ASYMP R_analytic_max
+    = pow(maxerror*Vol*Vol/(8*analytic_machine_eps),1./6.);
+
+  // Compute minimum R that base asymptotic method can be used.  We drop
+  // the R^2/(R^2-hmax^2) here because in practice this
+  // appears to be a pretty minor adjustment.  If necessary, one could
+  // add a couple of Newton steps to refine the estimate.  Instead,
+  // we add the constraint R >= 2*h
+  OXS_DEMAG_REAL_ASYMP R_asymptotic_min
+    = hmax*pow(8/(5*maxerror),1./(asymptotic_order-3));
+  if(R_asymptotic_min<R_asymptotic_min_rule ) {
+    R_asymptotic_min=R_asymptotic_min_rule;
+  }
+  if(R_asymptotic_min<2*hmax) {
+    R_asymptotic_min = 2*hmax; // Stay away from pole.
+  }
+
+  // Place the outermost knot at R_asymptotic_min
+  knots.clear();  // Make sure import knot vector is empty
+#if DUMPKNOTS
+  std::ostringstream sbuf;
+  sbuf << "\n*** Knot start: Geom = < " << dx << ", " << dy << ", " << dz << " >; hmax= " << hmax << " ***\n"; /**/
+  double da = pow(dx*dy*dz,1./3.);
+#endif // DUMPKNOTS
+  knots.push_back(DemagKnot(R_asymptotic_min,1,1,1,asymptotic_order));
+
+  // If R_asymptotic_min is smaller than both R_analytic_max and
+  // R_analytic_max_happy then declare victory.
+  if(R_asymptotic_min < R_analytic_max
+     && R_asymptotic_min < R_analytic_max_happy) {
+#if DUMPKNOTS
+    sbuf << "*** A Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+    return R_asymptotic_min;
+  }
+  // Otherwise asymptotic refinements are needed.
+
+  if(R_asymptotic_min <= R_analytic_max) {
+    // If R_asymptotic_min is smaller than R_analytic_max (but larger
+    // than R_analytic_max_happy), then error requirements are met by
+    // the one knot already added, but we can speed things up a bit by
+    // including a refinement.  First question: What size hmax_refined
+    // is needed to reach desired error at R_analytic_max_happy, and
+    // what would be the number of cells in this refinement?  For this
+    // calculation we assume subdivision count M ~ (hmax/hrefinemax)^3.
+    OXS_DEMAG_REAL_ASYMP hrefinemax
+      = hmax*pow(R_analytic_max_happy/R_asymptotic_min,
+                 (2*asymptotic_order-6.)/(2*asymptotic_order-9.));
+    if(hrefinemax>0.5*R_analytic_max_happy) {
+      hrefinemax = 0.5*R_analytic_max_happy; // Stay away from pole.
+    }
+    OC_INDEX rnx,rny,rnz;
+    OC_INDEX hrefinecount
+      = FindRefinementCount(dx,dy,dz,hrefinemax,rnx,rny,rnz);
+    
+    // If hrefinecount will significantly speed things up, then do so
+    // and done.
+    if(OXS_DEMAG_REAL_ASYMP(hrefinecount)<0.5*analytic_speed_factor) {
+      knots.push_back(DemagKnot(R_analytic_max_happy,
+                                rnx,rny,rnz,asymptotic_order));
+#if DUMPKNOTS
+    sbuf << "*** B Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+      return R_analytic_max_happy;
+    }
+    
+    // Otherwise, find a reasonable middle point between
+    // R_analytic_max_happy and R_asymptotic_min to stop refinement
+    // use.
+    FindBestRefinement(dx,dy,dz,
+                       static_cast<OC_INDEX>(0.5*analytic_speed_factor),
+                       rnx,rny,rnz);
+    double rncount
+      = double(rnx)*double(rny)*double(rnz);
+    OXS_DEMAG_REAL_ASYMP rhx = dx/rnx;
+    OXS_DEMAG_REAL_ASYMP rhy = dy/rny;
+    OXS_DEMAG_REAL_ASYMP rhz = dz/rnz;
+    OXS_DEMAG_REAL_ASYMP rhmax
+      = (rhx>rhy ? (rhx>rhz ? rhx : rhz) : (rhy>rhz ? rhy : rhz));
+    OXS_DEMAG_REAL_ASYMP Rmiddle
+      = R_asymptotic_min*(rhmax/hmax)*pow(rncount,0.5/(asymptotic_order-3));
+    if(Rmiddle<2*rhmax) {
+      Rmiddle = 2*rhmax;  // Stay away from pole.
+    }
+    if(Rmiddle>R_asymptotic_min) {
+#if DUMPKNOTS
+    sbuf << "*** C Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+      return R_asymptotic_min; // Use only knot already added.
+    }
+    if(Rmiddle<R_analytic_max_happy) Rmiddle = R_analytic_max_happy;
+    knots.push_back(DemagKnot(Rmiddle,rnx,rny,rnz,asymptotic_order));
+#if DUMPKNOTS
+    sbuf << "*** D Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+    return Rmiddle;
+  }
+
+  // Otherwise, R_asymptotic_min > R_analytic_max.  This is a slow,
+  // unhappy place.  Add (potentially) two knots.  One below R_asymptotic_min
+  // that's refined for speed, and then a second below that to meet the
+  // error threshold from R_analytic_max
+
+  // First, compute refinement necessary to match R_analytic_max.
+  OXS_DEMAG_REAL_ASYMP hrefinemax
+    = hmax*pow(R_analytic_max/R_asymptotic_min,
+               (2*asymptotic_order-6.)/(2*asymptotic_order-9.));
+  if(hrefinemax>0.5*R_analytic_max) {
+    hrefinemax = 0.5*R_analytic_max; // Stay away from pole.
+  }
+  OC_INDEX rnx,rny,rnz;
+  OC_INDEX needed_refinecount
+    = FindRefinementCount(dx,dy,dz,hrefinemax,rnx,rny,rnz);
+  DemagKnot needed_knot(R_analytic_max,
+                        rnx,rny,rnz,asymptotic_order);
+  // We should check that this refinement meets the error constraint,
+  // but the place where this fails is too scary to go to.
+
+  // OTOH, if it happens that needed_knot is not too slow, then add just
+  // this one and return.
+  if(OXS_DEMAG_REAL_ASYMP(needed_refinecount)<0.5*analytic_speed_factor) {
+    knots.push_back(needed_knot);
+#if DUMPKNOTS
+    sbuf << "*** E Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+    return R_analytic_max;
+  }
+
+  // Otherwise, compute a faster refinement to patch in-between.
+  FindBestRefinement(dx,dy,dz,
+                     static_cast<OC_INDEX>(0.25*analytic_speed_factor),
+                     rnx,rny,rnz);
+  double rncount = double(rnx)*double(rny)*double(rnz);
+  OXS_DEMAG_REAL_ASYMP rhx = dx/rnx;
+  OXS_DEMAG_REAL_ASYMP rhy = dy/rny;
+  OXS_DEMAG_REAL_ASYMP rhz = dz/rnz;
+  OXS_DEMAG_REAL_ASYMP rhmax
+    = (rhx>rhy ? (rhx>rhz ? rhx : rhz) : (rhy>rhz ? rhy : rhz));
+  OXS_DEMAG_REAL_ASYMP Rmiddle
+      = R_asymptotic_min*(rhmax/hmax)*pow(rncount,0.5/(asymptotic_order-3));
+  if(Rmiddle<2*rhmax) {
+    Rmiddle = 2*rhmax;  // Stay away from pole.
+  }
+
+  if(Rmiddle<R_asymptotic_min && rncount<needed_refinecount) {
+    // Only use this refinement if can be used inside the
+    // base refinement, and is also faster than the "needed"
+    // refinement.
+    if(Rmiddle<R_analytic_max) Rmiddle = R_analytic_max;
+    knots.push_back(DemagKnot(Rmiddle,rnx,rny,rnz,asymptotic_order));
+  }
+
+  assert(R_analytic_max < R_asymptotic_min);
+
+  if(Rmiddle>R_analytic_max || rncount>=needed_refinecount) {
+    // Included "needed" knot
+    knots.push_back(needed_knot);
+  }
+
+#if DUMPKNOTS
+    sbuf << "*** F Knot: ";
+    for(auto&& dk : knots) {
+      sbuf << " (" << dk.r/da << " : " << dk.nx << ", " << dk.ny << ", "<< dk.nz << ")";
+    }
+    sbuf << " ***\n";
+    std::cerr << sbuf.str();
+#endif // DUMPKNOTS
+  return R_analytic_max;
+}
+
+void Oxs_DemagNxxAsymptotic::FillNxxvec
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ const std::vector<DemagKnot>& spec)
+{ // Support code for constructors
+  OXS_DEMAG_REAL_ASYMP rlast
+    = std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::max();
+  for(auto&& dk : spec) {
+    if(dk.r >= rlast) {
+      OXS_THROW(Oxs_BadParameter,
+                "Knot radii not in strictly decreasing order "
+                "(Oxs_DemagNxxAsymptotic constructor)");
+    }
+    rlast = dk.r;
+    // Fill Nxxvec
+    OxsDemagAsymptoticRefineInfo refine_info(dx,dy,dz,dk.nx,dk.ny,dk.nz);
+    Nxxvec.push_back(SubregionApproximate(dk.r,refine_info,dk.order));
+  }
+}
+
+Oxs_DemagNxxAsymptotic::Oxs_DemagNxxAsymptotic
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ const std::vector<DemagKnot>& spec)
+{ // NOTE: Import spec should be ordered with decreasing r
+  FillNxxvec(dx,dy,dz,spec);
+}
+
+Oxs_DemagNxxAsymptotic::Oxs_DemagNxxAsymptotic
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OXS_DEMAG_REAL_ASYMP maxerror,
+ int asymptotic_order)
+{
+  if(maxerror<=0.0) {
+    // Use default error setting
+    maxerror = 8*std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::epsilon();
+  }
+  std::vector<DemagKnot> knots;
+  FindKnotSchedule(dx,dy,dz,maxerror,asymptotic_order,knots);
+  FillNxxvec(dx,dy,dz,knots);
+}
+
+
+OXS_DEMAG_REAL_ASYMP
+Oxs_DemagNxxAsymptotic::Asymptotic(const OxsDemagNabData& ptdata) const
+{
+  // Match pt to approximate.  The elements of Nxxvec are ordered with
+  // outside (biggest rsq) first.  Since the farther out one goes the
+  // more points there are, this ordering reduces the overall number of
+  // comparisons necessary to determine the approximate.
+  OXS_DEMAG_REAL_ASYMP rsq
+    = ptdata.x*ptdata.x+ptdata.y*ptdata.y+ptdata.z*ptdata.z;
+  const OxsDemagAsymptoticRefineInfo* refine_info = 0;
+  const Oxs_DemagNxxAsymptoticBase* Nxx = 0;
+  for(auto&& approx : Nxxvec) {
+    if(rsq>=approx.rsq) { // Use this approximate
+      refine_info = &approx.refine_info;
+      Nxx = &approx.Nxx;
+    }
+  }
+  if(Nxx == nullptr) {
+    OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
+                        "(Oxs_DemagNxxAsymptotic::Asymptotic)");
+  }
+  
+  // Copy data from refine_info structure.
+  const OC_INDEX xcount = refine_info->xcount;
+  const OC_INDEX ycount = refine_info->ycount;
+  const OC_INDEX zcount = refine_info->zcount;
+  const OXS_DEMAG_REAL_ASYMP rdx = refine_info->rdx;
+  const OXS_DEMAG_REAL_ASYMP rdy = refine_info->rdy;
+  const OXS_DEMAG_REAL_ASYMP rdz = refine_info->rdz;
+  const OXS_DEMAG_REAL_ASYMP result_scale = refine_info->result_scale;
 
   OxsDemagNabData rptdata,mrptdata;
   OXS_DEMAG_REAL_ASYMP zsum = 0.0;
-  for(OC_INT4m k=1-zcount;k<zcount;++k) {
+  for(OC_INDEX k=1-zcount;k<zcount;++k) {
     OXS_DEMAG_REAL_ASYMP zoff = ptdata.z+k*rdz;
     OXS_DEMAG_REAL_ASYMP ysum = 0.0;
-    for(OC_INT4m j=1-ycount;j<ycount;++j) {
+    for(OC_INDEX j=1-ycount;j<ycount;++j) {
       // Compute interactions for x-strip
       OXS_DEMAG_REAL_ASYMP yoff = ptdata.y+j*rdy;
       rptdata.Set(ptdata.x,yoff,zoff);
-      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxx.NxxAsymptotic(rptdata);
-      for(OC_INT4m i=1;i<xcount;++i) {
+      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxx->Asymptotic(rptdata);
+      for(OC_INDEX i=1;i<xcount;++i) {
         rptdata.Set(ptdata.x+i*rdx,yoff,zoff);
         mrptdata.Set(ptdata.x-i*rdx,yoff,zoff);
-        xsum += (xcount-i) * Nxx.NxxAsymptoticPair(rptdata,mrptdata);
+        xsum += (xcount-i) * Nxx->AsymptoticPair(rptdata,mrptdata);
       }
       // Weight x-strip interactions into xy-plate
       ysum += (ycount - abs(j))*xsum;
@@ -1189,11 +1589,12 @@ Oxs_DemagNxxAsymptotic::NxxAsymptotic(const OxsDemagNabData& ptdata) const
 
 
 Oxs_DemagNxyAsymptoticBase::Oxs_DemagNxyAsymptoticBase
-(const OxsDemagAsymptoticRefineData& refine_data) {
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
-
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ int in_max_order)
+  : max_order(in_max_order)
+{
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
   OXS_DEMAG_REAL_ASYMP dz2 = dz*dz;
@@ -1277,7 +1678,7 @@ Oxs_DemagNxyAsymptoticBase::Oxs_DemagNxyAsymptoticBase
 }
 
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptoticBase::NxyAsymptotic
+Oxs_DemagNxyAsymptoticBase::Asymptotic
 (const OxsDemagNabData& ptdata) const
 { // Asymptotic approximation to Nxy term.
 
@@ -1287,6 +1688,10 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptotic
     return static_cast<OXS_DEMAG_REAL_ASYMP>(0.0);
   }
 
+  // term3 provides 5th order error,
+  // term5 provides 7th order error,
+  // etc.
+
   const OXS_DEMAG_REAL_ASYMP& tx2 = ptdata.tx2;
   const OXS_DEMAG_REAL_ASYMP& ty2 = ptdata.ty2;
   const OXS_DEMAG_REAL_ASYMP& tz2 = ptdata.tz2;
@@ -1295,18 +1700,24 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptotic
 
   OXS_DEMAG_REAL_ASYMP term5 = 0.0;
   if(!cubic_cell) {
-    term5 = a1*tx2 + a2*ty2 + a3*tz2;
+    if(max_order>5) {
+      term5 = a1*tx2 + a2*ty2 + a3*tz2;
+    }
   }
 
   const OXS_DEMAG_REAL_ASYMP tz4 = tz2*tz2;
-  const OXS_DEMAG_REAL_ASYMP term7
-    = (b1*tx2 + (b2*ty2 + b3*tz2))*tx2 + (b4*ty2 + b5*tz2)*ty2 + b6*tz4;
+  OXS_DEMAG_REAL_ASYMP term7 = 0.0;
+  if(max_order>7) {
+    term7 = (b1*tx2 + (b2*ty2 + b3*tz2))*tx2 + (b4*ty2 + b5*tz2)*ty2 + b6*tz4;
+  }
 
-  const OXS_DEMAG_REAL_ASYMP term9
-    = ((c1*tx2 + (c2*ty2 + c3*tz2))*tx2 + ((c4*ty2 + c5*tz2)*ty2 + c6*tz4))*tx2
-    + ((c7*ty2 + c8*tz2)*ty2 + c9*tz4)*ty2
-    + c10*tz4*tz2;
-
+  OXS_DEMAG_REAL_ASYMP term9 = 0.0;
+  if(max_order>9) {
+    term9 =
+      ((c1*tx2 + (c2*ty2 + c3*tz2))*tx2 + ((c4*ty2 + c5*tz2)*ty2 + c6*tz4))*tx2
+      + ((c7*ty2 + c8*tz2)*ty2 + c9*tz4)*ty2
+      + c10*tz4*tz2;
+  }
   const OXS_DEMAG_REAL_ASYMP& x = ptdata.x;
   const OXS_DEMAG_REAL_ASYMP& y = ptdata.y;
   const OXS_DEMAG_REAL_ASYMP& iR2 = ptdata.iR2;
@@ -1314,14 +1725,14 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptotic
   const OXS_DEMAG_REAL_ASYMP iR5 = iR2*iR2*iR;
   const OXS_DEMAG_REAL_ASYMP Nxy
     = (term9 + term7 + term5 + term3)*iR5*x*y;
-  // Error should be of order 1/R^11
+  // Error should be of order 1/R^11 if all terms are active
 
   return Nxy;
 }
 
 #if !OXS_DEMAG_ASYMP_USE_SSE
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
+Oxs_DemagNxyAsymptoticBase::AsymptoticPairX
 (const OxsDemagNabPairData& ptdata) const
 { // Evaluates asymptotic approximation to
   //    Nxy(x+xoff,y,z) + Nxy(x-xoff,y,z)
@@ -1340,8 +1751,8 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
 
   // Both R2p and R2m must be positive, since asymptotics
   // don't apply for R==0.
-  if(R2p<=0.0) return NxyAsymptotic(ptdata.ptm);
-  if(R2m<=0.0) return NxyAsymptotic(ptdata.ptp);
+  if(R2p<=0.0) return Asymptotic(ptdata.ptm);
+  if(R2m<=0.0) return Asymptotic(ptdata.ptp);
 
   // Cancellation primarily in 1/R^3 term.
   const OXS_DEMAG_REAL_ASYMP& xbase = ptdata.ubase;
@@ -1369,7 +1780,7 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
   const OXS_DEMAG_REAL_ASYMP& tz2m = ptdata.ptm.tz2;
   OXS_DEMAG_REAL_ASYMP term5p = 0.0;
   OXS_DEMAG_REAL_ASYMP term5m = 0.0;
-  if(!cubic_cell) {
+  if(!cubic_cell && max_order>5) {
     term5p = a1*tx2p + a2*ty2p + a3*tz2p;
     term5m = a1*tx2m + a2*ty2m + a3*tz2m;
   }
@@ -1377,24 +1788,28 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
   // 1/R^7 terms
   OXS_DEMAG_REAL_ASYMP tz4p = tz2p*tz2p;
   OXS_DEMAG_REAL_ASYMP tz4m = tz2m*tz2m;
-  OXS_DEMAG_REAL_ASYMP term7p
-    = (b1*tx2p + (b2*ty2p + b3*tz2p))*tx2p
-    + (b4*ty2p + b5*tz2p)*ty2p + b6*tz4p;
-  OXS_DEMAG_REAL_ASYMP term7m
-    = (b1*tx2m + (b2*ty2m + b3*tz2m))*tx2m
-    + (b4*ty2m + b5*tz2m)*ty2m + b6*tz4m;
+  OXS_DEMAG_REAL_ASYMP term7p = 0.0;
+  OXS_DEMAG_REAL_ASYMP term7m = 0.0;
+  if(max_order>7) {
+    term7p = (b1*tx2p + (b2*ty2p + b3*tz2p))*tx2p
+      + (b4*ty2p + b5*tz2p)*ty2p + b6*tz4p;
+    term7m = (b1*tx2m + (b2*ty2m + b3*tz2m))*tx2m
+      + (b4*ty2m + b5*tz2m)*ty2m + b6*tz4m;
+  }
 
   // 1/R^9 terms
-  OXS_DEMAG_REAL_ASYMP term9p
-    = ((c1*tx2p + (c2*ty2p + c3*tz2p))*tx2p
-       + ((c4*ty2p + c5*tz2p)*ty2p + c6*tz4p))*tx2p
+  OXS_DEMAG_REAL_ASYMP term9p = 0.0;
+  OXS_DEMAG_REAL_ASYMP term9m = 0.0;
+  if(max_order>9) {
+  term9p = ((c1*tx2p + (c2*ty2p + c3*tz2p))*tx2p
+            + ((c4*ty2p + c5*tz2p)*ty2p + c6*tz4p))*tx2p
     + ((c7*ty2p + c8*tz2p)*ty2p + c9*tz4p)*ty2p
     + c10*tz4p*tz2p;
-  OXS_DEMAG_REAL_ASYMP term9m
-    = ((c1*tx2m + (c2*ty2m + c3*tz2m))*tx2m
-       + ((c4*ty2m + c5*tz2m)*ty2m + c6*tz4m))*tx2m
+  term9m = ((c1*tx2m + (c2*ty2m + c3*tz2m))*tx2m
+            + ((c4*ty2m + c5*tz2m)*ty2m + c6*tz4m))*tx2m
     + ((c7*ty2m + c8*tz2m)*ty2m + c9*tz4m)*ty2m
     + c10*tz4m*tz2m;
+  }
 
   // Totals
   const OXS_DEMAG_REAL_ASYMP& iRp = ptdata.ptp.iR;
@@ -1408,7 +1823,7 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
   OXS_DEMAG_REAL_ASYMP Nxy =  y*(term3cancel
      + (xp*(term9p + term7p + term5p)+term3x)*iR5p
      + (xm*(term9m + term7m + term5m)+term3x)*iR5m);
-  // Error should be of order 1/R^11
+  // Error should be of order 1/R^11 if all terms are active.
 
   return Nxy;
 }
@@ -1416,7 +1831,7 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
 #else // !OXS_DEMAG_ASYMP_USE_SSE
 
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
+Oxs_DemagNxyAsymptoticBase::AsymptoticPairX
 (const OxsDemagNabPairData& ptdata) const
 { // Evaluates asymptotic approximation to
   //    Nxy(x+xoff,y,z) + Nxy(x-xoff,y,z)
@@ -1435,8 +1850,8 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
 
   // Both R2p and R2m must be positive, since asymptotics
   // don't apply for R==0.
-  if(R2p<=0.0) return NxyAsymptotic(xm,y,z);
-  if(R2m<=0.0) return NxyAsymptotic(xp,y,z);
+  if(R2p<=0.0) return Asymptotic(xm,y,z);
+  if(R2m<=0.0) return Asymptotic(xp,y,z);
 
   // Cancellation primarily in 1/R^3 term.
   const OXS_DEMAG_REAL_ASYMP& xbase = ptdata.ubase;
@@ -1462,23 +1877,27 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
 
   // 1/R^5 terms; Note these are zero if cells are cubes
   Oc_Duet term5; term5.SetZero();
-  if(!cubic_cell) {
+  if(!cubic_cell && max_order>5) {
     term5 = a1*tx2 + a2*ty2 + a3*tz2;
   }
 
   // 1/R^7 terms
   Oc_Duet tz4 = tz2*tz2;
-  Oc_Duet term7
-    = b6*tz4
-    + ty2*(b4*ty2 + b5*tz2)
-    + tx2*(b1*tx2 + b2*ty2 + b3*tz2);
+  Oc_Duet term7; term7.SetZero();
+  if(max_order>7) {
+    term7 = b6*tz4
+      + ty2*(b4*ty2 + b5*tz2)
+      + tx2*(b1*tx2 + b2*ty2 + b3*tz2);
+  }
 
   // 1/R^9 terms
-  Oc_Duet term9
-    = c10*tz4*tz2
-    + ty2*(ty2*(c7*ty2 + c8*tz2) + c9*tz4)
-    + tx2*(tx2*(c1*tx2 + c2*ty2 + c3*tz2)
-           + ty2*(c4*ty2 + c5*tz2) + c6*tz4);
+  Oc_Duet term9; term9.SetZero();
+  if(max_order>7) {
+    term9 = c10*tz4*tz2
+      + ty2*(ty2*(c7*ty2 + c8*tz2) + c9*tz4)
+      + tx2*(tx2*(c1*tx2 + c2*ty2 + c3*tz2)
+             + ty2*(c4*ty2 + c5*tz2) + c6*tz4);
+  }
 
   // Totals
   Oc_Duet iR(ptdata.ptp.iR, ptdata.ptm.iR);
@@ -1494,15 +1913,15 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPairX
 
 #if OXS_DEMAG_ASYMP_USE_SSE
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPair
+Oxs_DemagNxyAsymptoticBase::AsymptoticPair
 (const OxsDemagNabData& ptA,const OxsDemagNabData& ptB) const
 { // Asymptotic approximation to Nxy term.  This routine takes a pair of
   // points and uses SSE intrinsics to accelerate the computation.
 
   // Both R2p and R2m must be positive, since asymptotics don't apply
   // for R==0.  Note self-demag term for Nxy == 0.
-  if(ptA.R2<=0.0) return NxyAsymptotic(ptB);
-  if(ptB.R2<=0.0) return NxyAsymptotic(ptA);
+  if(ptA.R2<=0.0) return Asymptotic(ptB);
+  if(ptB.R2<=0.0) return Asymptotic(ptA);
 
   const Oc_Duet tx2(ptA.tx2,ptB.tx2);
   const Oc_Duet ty2(ptA.ty2,ptB.ty2);
@@ -1511,19 +1930,23 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPair
   const Oc_Duet term3 = 3*lead_weight;
   Oc_Duet Nxy = term3;
 
-  if(!cubic_cell) {
+  if(!cubic_cell && max_order>5) {
     const Oc_Duet term5 = a1*tx2 + a2*ty2 + a3*tz2;
     Nxy += term5;
   }
 
   const Oc_Duet tz4 = tz2*tz2;
-  const Oc_Duet term7
-    =  b6*tz4 + ty2*(b4*ty2 + b5*tz2) + tx2*(b1*tx2 + b2*ty2 + b3*tz2);
+  Oc_Duet term7 = 0.0;
+  if(max_order>7) {
+    term7 =  b6*tz4 + ty2*(b4*ty2 + b5*tz2) + tx2*(b1*tx2 + b2*ty2 + b3*tz2);
+  }
 
-  const Oc_Duet term9
-    = c10*tz4*tz2
-    + ty2*(ty2*(c7*ty2 + c8*tz2) + c9*tz4)
-    + tx2*(tx2*(c1*tx2 + c2*ty2 + c3*tz2) + ty2*(c4*ty2 + c5*tz2) + c6*tz4);
+  Oc_Duet term9 = 0.0;
+  if(max_order>9) {
+    term9 = c10*tz4*tz2
+      + ty2*(ty2*(c7*ty2 + c8*tz2) + c9*tz4)
+      + tx2*(tx2*(c1*tx2 + c2*ty2 + c3*tz2) + ty2*(c4*ty2 + c5*tz2) + c6*tz4);
+  }
 
   Nxy += (term7 + term9);
 
@@ -1540,34 +1963,97 @@ Oxs_DemagNxyAsymptoticBase::NxyAsymptoticPair
 }
 #endif // OXS_DEMAG_ASYMP_USE_SSE
 
-OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptotic::NxyAsymptotic(const OxsDemagNabData& ptdata) const
-{ // Presumably at least one of xcount, ycount, or zcount is 1, but this
-  // fact is not used in following code.
+void Oxs_DemagNxyAsymptotic::FillNxyvec
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ const std::vector<DemagKnot>& spec)
+{ // Support code for constructors
+  OXS_DEMAG_REAL_ASYMP rlast
+    = std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::max();
+  for(auto&& dk : spec) {
+    if(dk.r >= rlast) {
+      OXS_THROW(Oxs_BadParameter,
+                "Knot radii not in strictly decreasing order "
+                "(Oxs_DemagNxyAsymptotic constructor)");
+    }
+    rlast = dk.r;
+    // Fill Nxyvec
+    OxsDemagAsymptoticRefineInfo refine_info(dx,dy,dz,dk.nx,dk.ny,dk.nz);
+    Nxyvec.push_back(SubregionApproximate(dk.r,refine_info,dk.order));
+  }
+}
 
-  // Alias data from refine_data structure.
-  const OC_INT4m& xcount = refine_data.xcount;
-  const OC_INT4m& ycount = refine_data.ycount;
-  const OC_INT4m& zcount = refine_data.zcount;
-  const OXS_DEMAG_REAL_ASYMP& rdx = refine_data.rdx;
-  const OXS_DEMAG_REAL_ASYMP& rdy = refine_data.rdy;
-  const OXS_DEMAG_REAL_ASYMP& rdz = refine_data.rdz;
-  const OXS_DEMAG_REAL_ASYMP& result_scale = refine_data.result_scale;
+Oxs_DemagNxyAsymptotic::Oxs_DemagNxyAsymptotic
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ const std::vector<DemagKnot>& spec)
+{ // NOTE: Import spec should be ordered with decreasing r
+  FillNxyvec(dx,dy,dz,spec);
+}
+
+Oxs_DemagNxyAsymptotic::Oxs_DemagNxyAsymptotic
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OXS_DEMAG_REAL_ASYMP maxerror,
+ int asymptotic_order)
+{
+  if(maxerror<=0.0) {
+    // Use default error setting
+    maxerror = 8*std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::epsilon();
+  }
+  std::vector<DemagKnot> knots;
+  FindKnotSchedule(dx,dy,dz,maxerror,asymptotic_order,knots);
+  FillNxyvec(dx,dy,dz,knots);
+}
+
+OXS_DEMAG_REAL_ASYMP
+Oxs_DemagNxyAsymptotic::Asymptotic(const OxsDemagNabData& ptdata) const
+{
+  // Match pt to approximate.  The elements of Nxyvec are ordered with
+  // outside (biggest rsq) first.  Since the farther out one goes the
+  // more points there are, this ordering reduces the overall number of
+  // comparisons necessary to determine the approximate.
+  OXS_DEMAG_REAL_ASYMP rsq
+    = ptdata.x*ptdata.x+ptdata.y*ptdata.y+ptdata.z*ptdata.z;
+  const OxsDemagAsymptoticRefineInfo* refine_info = 0;
+  const Oxs_DemagNxyAsymptoticBase* Nxy = 0;
+  for(auto&& approx : Nxyvec) {
+    if(rsq>=approx.rsq) { // Use this approximate
+      refine_info = &approx.refine_info;
+      Nxy = &approx.Nxy;
+    }
+  }
+  if(Nxy == nullptr) {
+    OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
+                        "(Oxs_DemagNxyAsymptotic::Asymptotic)");
+  }
+  
+  // Copy data from refine_info structure.
+  const OC_INDEX xcount = refine_info->xcount;
+  const OC_INDEX ycount = refine_info->ycount;
+  const OC_INDEX zcount = refine_info->zcount;
+  const OXS_DEMAG_REAL_ASYMP rdx = refine_info->rdx;
+  const OXS_DEMAG_REAL_ASYMP rdy = refine_info->rdy;
+  const OXS_DEMAG_REAL_ASYMP rdz = refine_info->rdz;
+  const OXS_DEMAG_REAL_ASYMP result_scale = refine_info->result_scale;
 
   OxsDemagNabData rptdata,mrptdata;
   OXS_DEMAG_REAL_ASYMP zsum = 0.0;
-  for(OC_INT4m k=1-zcount;k<zcount;++k) {
+  for(OC_INDEX k=1-zcount;k<zcount;++k) {
     OXS_DEMAG_REAL_ASYMP zoff = ptdata.z+k*rdz;
     OXS_DEMAG_REAL_ASYMP ysum = 0.0;
-    for(OC_INT4m j=1-ycount;j<ycount;++j) {
+    for(OC_INDEX j=1-ycount;j<ycount;++j) {
       // Compute interactions for x-strip
       OXS_DEMAG_REAL_ASYMP yoff = ptdata.y+j*rdy;
       rptdata.Set(ptdata.x,yoff,zoff);
-      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxy.NxyAsymptotic(rptdata);
-      for(OC_INT4m i=1;i<xcount;++i) {
+      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxy->Asymptotic(rptdata);
+      for(OC_INDEX i=1;i<xcount;++i) {
         rptdata.Set(ptdata.x+i*rdx,yoff,zoff);
         mrptdata.Set(ptdata.x-i*rdx,yoff,zoff);
-        xsum += (xcount-i) * Nxy.NxyAsymptoticPair(rptdata,mrptdata);
+        xsum += (xcount-i) * Nxy->AsymptoticPair(rptdata,mrptdata);
       }
       // Weight x-strip interactions into xy-plate
       ysum += (ycount - abs(j))*xsum;
@@ -1579,7 +2065,7 @@ Oxs_DemagNxyAsymptotic::NxyAsymptotic(const OxsDemagNabData& ptdata) const
 }
 
 OXS_DEMAG_REAL_ASYMP
-Oxs_DemagNxyAsymptotic::NxyAsymptoticPairX
+Oxs_DemagNxyAsymptotic::AsymptoticPairX
 (const OxsDemagNabPairData& ptdata) const
 { // Evaluates asymptotic approximation to
   //    Nxy(x+xoff,y,z) + Nxy(x-xoff,y,z)
@@ -1588,44 +2074,61 @@ Oxs_DemagNxyAsymptotic::NxyAsymptoticPairX
   assert(ptdata.ptp.y == ptdata.ptm.y &&
          ptdata.ptp.z == ptdata.ptm.z);
 
-  // Presumably at least one of xcount, ycount, or zcount is 1, but this
-  // fact is not used in following code.
-
-  // Alias data from refine_data structure.
-  const OC_INT4m& xcount = refine_data.xcount;
-  const OC_INT4m& ycount = refine_data.ycount;
-  const OC_INT4m& zcount = refine_data.zcount;
-  const OXS_DEMAG_REAL_ASYMP& rdx = refine_data.rdx;
-  const OXS_DEMAG_REAL_ASYMP& rdy = refine_data.rdy;
-  const OXS_DEMAG_REAL_ASYMP& rdz = refine_data.rdz;
-  const OXS_DEMAG_REAL_ASYMP& result_scale = refine_data.result_scale;
-
+  // Match pt to approximate.  The elements of Nxyvec are ordered with
+  // outside (biggest rsq) first.  Since the farther out one goes the
+  // more points there are, this ordering reduces the overall number of
+  // comparisons necessary to determine the approximate.
+  OXS_DEMAG_REAL_ASYMP smallx
+    = (ptdata.ptm.x<ptdata.ptp.x ? ptdata.ptm.x : ptdata.ptp.x);
+  OXS_DEMAG_REAL_ASYMP rsq
+    = smallx*smallx+ptdata.ptp.y*ptdata.ptp.y+ptdata.ptp.z*ptdata.ptp.z;
+  const OxsDemagAsymptoticRefineInfo* refine_info = 0;
+  const Oxs_DemagNxyAsymptoticBase* Nxy = 0;
+  for(auto&& approx : Nxyvec) {
+    if(rsq>=approx.rsq) { // Use this approximate
+      refine_info = &approx.refine_info;
+      Nxy = &approx.Nxy;
+    }
+  }
+  if(Nxy == nullptr) {
+    OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
+                        "(Oxs_DemagNxyAsymptotic::Asymptotic)");
+  }
+  
+  // Copy data from refine_info structure.
+  const OC_INDEX xcount = refine_info->xcount;
+  const OC_INDEX ycount = refine_info->ycount;
+  const OC_INDEX zcount = refine_info->zcount;
+  const OXS_DEMAG_REAL_ASYMP rdx = refine_info->rdx;
+  const OXS_DEMAG_REAL_ASYMP rdy = refine_info->rdy;
+  const OXS_DEMAG_REAL_ASYMP rdz = refine_info->rdz;
+  const OXS_DEMAG_REAL_ASYMP result_scale = refine_info->result_scale;
 
   OxsDemagNabPairData work;
   work.ubase = ptdata.ubase;
   OXS_DEMAG_REAL_ASYMP zsum = 0.0;
-  for(OC_INT4m k=1-zcount;k<zcount;++k) {
+  for(OC_INDEX k=1-zcount;k<zcount;++k) {
     OXS_DEMAG_REAL_ASYMP zoff = ptdata.ptp.z+k*rdz; // .ptm.z == .ptp.z
     OXS_DEMAG_REAL_ASYMP ysum = 0.0;
-    for(OC_INT4m j=1-ycount;j<ycount;++j) {
+    for(OC_INDEX j=1-ycount;j<ycount;++j) {
       // Compute interactions for x-strip
       OXS_DEMAG_REAL_ASYMP yoff = ptdata.ptp.y+j*rdy; // .ptm.y == .ptp.y
       work.uoff = ptdata.uoff;
       OxsDemagNabData::SetPair(work.ubase + work.uoff,yoff,zoff,
                                work.ubase - work.uoff,yoff,zoff,
                                work.ptp, work.ptm);
-      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxy.NxyAsymptoticPairX(work);
-      for(OC_INT4m i=1;i<xcount;++i) {
+      OXS_DEMAG_REAL_ASYMP xsum = xcount * Nxy->AsymptoticPairX(work);
+      for(OC_INDEX i=1;i<xcount;++i) {
         work.uoff = ptdata.uoff + i*rdx;
         OxsDemagNabData::SetPair(work.ubase + work.uoff,yoff,zoff,
                                  work.ubase - work.uoff,yoff,zoff,
                                  work.ptp, work.ptm);
-        OXS_DEMAG_REAL_ASYMP tmpsum = Nxy.NxyAsymptoticPairX(work);
+        OXS_DEMAG_REAL_ASYMP tmpsum = Nxy->AsymptoticPairX(work);
         work.uoff = ptdata.uoff - i*rdx;
         OxsDemagNabData::SetPair(work.ubase + work.uoff,yoff,zoff,
                                  work.ubase - work.uoff,yoff,zoff,
                                  work.ptp, work.ptm);
-        tmpsum += Nxy.NxyAsymptoticPairX(work);
+        tmpsum += Nxy->AsymptoticPairX(work);
         xsum += (xcount-i) * tmpsum;
       }
       // Weight x-strip interactions into xy-plate
@@ -1653,22 +2156,22 @@ Oxs_DemagNxyAsymptotic::NxyAsymptoticPairX
 //
 // See NOTES V, 17-Feb-2011/2-Mar-2011, p150-167, and also Maple
 // worksheets from that time.
-
+//
 // These classes are intended for internal use only.
 //
 
 OxsDemagNxxIntegralXBase::OxsDemagNxxIntegralXBase
-(const OxsDemagAsymptoticRefineData& refine_data,
- OXS_DEMAG_REAL_ASYMP Wx)
-  : scale((refine_data.rdx*refine_data.rdy*refine_data.rdz)/(4*WIDE_PI*Wx))
+(OXS_DEMAG_REAL_ASYMP rdx,OXS_DEMAG_REAL_ASYMP rdy,
+ OXS_DEMAG_REAL_ASYMP rdz,OXS_DEMAG_REAL_ASYMP Wx)
+  : scale((rdx*rdy*rdz)/(4*WIDE_PI*Wx))
 {
   // In "scale", 1/Wx comes from scaling of the integration variable,
   // and the sign takes into account that we evaluate the +infinity
   // integral at the lower end (the upper end being 0).
 
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
+  OXS_DEMAG_REAL_ASYMP dx = rdx;
+  OXS_DEMAG_REAL_ASYMP dy = rdy;
+  OXS_DEMAG_REAL_ASYMP dz = rdz;
 
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
@@ -1775,17 +2278,17 @@ printf("CHECK INxx = %#.17g\n",(double)INxx); /**/
 
 
 OxsDemagNxyIntegralXBase::OxsDemagNxyIntegralXBase
-(const OxsDemagAsymptoticRefineData& refine_data,
- OXS_DEMAG_REAL_ASYMP Wx)
-  : scale((refine_data.rdx*refine_data.rdy*refine_data.rdz)/(4*WIDE_PI*Wx))
+(OXS_DEMAG_REAL_ASYMP rdx,OXS_DEMAG_REAL_ASYMP rdy,
+ OXS_DEMAG_REAL_ASYMP rdz,OXS_DEMAG_REAL_ASYMP Wx)
+  : scale((rdx*rdy*rdz)/(4*WIDE_PI*Wx))
 {
   // In "scale", 1/Wx comes from scaling of the integration variable,
   // and the sign takes into account that we evaluate the +infinity
   // integral at the lower end (the upper end being 0).
 
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
+  OXS_DEMAG_REAL_ASYMP dx = rdx;
+  OXS_DEMAG_REAL_ASYMP dy = rdy;
+  OXS_DEMAG_REAL_ASYMP dz = rdz;
 
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
@@ -1854,7 +2357,7 @@ OxsDemagNxyIntegralXBase::Compute
   const OXS_DEMAG_REAL_ASYMP R3m  = pairdata.ptm.R2*pairdata.ptm.R;
 
   const OXS_DEMAG_REAL_ASYMP term3 = scale *
-    4*xoffset*xbase*(x2m*x2m 
+    4*xoffset*xbase*(x2m*x2m
                      + (3*R2yz+x2p)*2*(xbase*xbase+xoffset*xoffset)
                      + 3*R2yz*R2yz)
     / (R3p*R3m*(R3p+R3m));
@@ -1975,17 +2478,17 @@ OXS_DEMAG_REAL_ASYMP Q)     // z/R
 
 
 OxsDemagNxxIntegralZBase::OxsDemagNxxIntegralZBase
-(const OxsDemagAsymptoticRefineData &refine_data,
- OXS_DEMAG_REAL_ASYMP Wz)
-  : scale((refine_data.rdx*refine_data.rdy*refine_data.rdz)/(4*WIDE_PI*Wz))
+(OXS_DEMAG_REAL_ASYMP rdx,OXS_DEMAG_REAL_ASYMP rdy,
+ OXS_DEMAG_REAL_ASYMP rdz,OXS_DEMAG_REAL_ASYMP Wz)
+  : scale((rdx*rdy*rdz)/(4*WIDE_PI*Wz))
 {
   // In "scale", 1/Wz comes from scaling of the integration variable,
   // and the sign takes into account that we evaluate the +infinity
   // integral at the lower end (the upper end being 0).
 
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
+  OXS_DEMAG_REAL_ASYMP dx = rdx;
+  OXS_DEMAG_REAL_ASYMP dy = rdy;
+  OXS_DEMAG_REAL_ASYMP dz = rdz;
 
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
@@ -2050,7 +2553,7 @@ OxsDemagNxxIntegralZBase::Compute
   OXS_DEMAG_REAL_ASYMP zm = pairdata.ptm.z;
 
   assert(zp>0.0 && zm<0.0);
-  zm = Oc_Fabs(zm);
+  zm = fabs(zm);
 
   const OXS_DEMAG_REAL_ASYMP& Rp = pairdata.ptp.R;
   const OXS_DEMAG_REAL_ASYMP& Rm = pairdata.ptm.R;
@@ -2122,17 +2625,17 @@ OxsDemagNxxIntegralZBase::Compute
 }
 
 OxsDemagNxyIntegralZBase::OxsDemagNxyIntegralZBase
-(const OxsDemagAsymptoticRefineData& refine_data,
- OXS_DEMAG_REAL_ASYMP Wz)
-  : scale((refine_data.rdx*refine_data.rdy*refine_data.rdz)/(4*WIDE_PI*Wz))
+(OXS_DEMAG_REAL_ASYMP rdx,OXS_DEMAG_REAL_ASYMP rdy,
+ OXS_DEMAG_REAL_ASYMP rdz,OXS_DEMAG_REAL_ASYMP Wz)
+  : scale((rdx*rdy*rdz)/(4*WIDE_PI*Wz))
 {
   // In "scale", 1/Wz comes from scaling of the integration variable,
   // and the sign takes into account that we evaluate the +infinity
   // integral at the lower end (the upper end being 0).
 
-  OXS_DEMAG_REAL_ASYMP dx = refine_data.rdx;
-  OXS_DEMAG_REAL_ASYMP dy = refine_data.rdy;
-  OXS_DEMAG_REAL_ASYMP dz = refine_data.rdz;
+  OXS_DEMAG_REAL_ASYMP dx = rdx;
+  OXS_DEMAG_REAL_ASYMP dy = rdy;
+  OXS_DEMAG_REAL_ASYMP dz = rdz;
 
   OXS_DEMAG_REAL_ASYMP dx2 = dx*dx;
   OXS_DEMAG_REAL_ASYMP dy2 = dy*dy;
@@ -2186,7 +2689,7 @@ OxsDemagNxyIntegralZBase::Compute
   OXS_DEMAG_REAL_ASYMP zm = pairdata.ptm.z;
 
   assert(zp>0.0 && zm<0.0);
-  zm = Oc_Fabs(zm);
+  zm = fabs(zm);
 
   const OXS_DEMAG_REAL_ASYMP& Rp = pairdata.ptp.R;
   const OXS_DEMAG_REAL_ASYMP& Rm = pairdata.ptm.R;
@@ -2240,7 +2743,7 @@ OxsDemagNxyIntegralZBase::Compute
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-const OXS_DEMAG_REAL_ASYMP OxsDemagPeriodic::D[TAIL_TWEAK_COUNT] = {
+const OXS_DEMAG_REAL_ASYMP Oxs_DemagPeriodic::D[TAIL_TWEAK_COUNT] = {
   464514259. / OXS_DEMAG_REAL_ASYMP(464486400.),
   464115227. / OXS_DEMAG_REAL_ASYMP(464486400.),
   467323119. / OXS_DEMAG_REAL_ASYMP(464486400.),
@@ -2251,20 +2754,12 @@ const OXS_DEMAG_REAL_ASYMP OxsDemagPeriodic::D[TAIL_TWEAK_COUNT] = {
      -27859. / OXS_DEMAG_REAL_ASYMP(464486400.)
 };
 
-OxsDemagPeriodic::OxsDemagPeriodic
-(OXS_DEMAG_REAL_ASYMP dx, OXS_DEMAG_REAL_ASYMP dy, OXS_DEMAG_REAL_ASYMP dz,
- OXS_DEMAG_REAL_ASYMP iW,OXS_DEMAG_REAL_ASYMP iAsymptoticRadius)
-  : W(iW),
-    SDA_scaling(4*WIDE_PI*dx*dy*dz),
-    AsymptoticStart(iAsymptoticRadius>0
-                    ? iAsymptoticRadius : iW/2),
-    /// Arithmetic mean is larger than geometric mean, but not sure
-    /// which to use in this context.  Note that if import
-    /// i_AsymptoticRadius is <=0, then use half the periodic width
-    /// as the asymptotic start point.  The code in this method
-    /// requires some value for this, because the tail computation
-    /// uses the asymptotic approximation.
-    ktail(0) // Kludged below
+OC_INDEX
+Oxs_DemagPeriodic::ComputeTailOffset
+(OXS_DEMAG_REAL_ASYMP dx,
+ OXS_DEMAG_REAL_ASYMP dy,
+ OXS_DEMAG_REAL_ASYMP dz,
+ OC_INDEX rdimx)
 {
   // ktail is big enough that the outer sum of asymptotic approximates
   // can be replaced by integrals from ktail*W to infinity, and from
@@ -2275,42 +2770,87 @@ OxsDemagPeriodic::OxsDemagPeriodic
   const OXS_DEMAG_REAL_ASYMP CHECK_VALUE
     = 43.15L; // Value for 1e-16 absolute error
   const OXS_DEMAG_REAL_ASYMP gamma
-    = Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
-             OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
-  const_cast<OC_INDEX&>(ktail)
-    = OC_INDEX(Oc_Ceil(CHECK_VALUE/Oc_Sqrt(Oc_Sqrt(W/gamma))-2.0));
+    = pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
+          OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
+  return OC_INDEX(ceil(CHECK_VALUE/sqrt(sqrt(rdimx*dx/gamma))-2.0));
 }
 
-void OxsDemagPeriodic::ComputeAsymptoticLimits
-(OXS_DEMAG_REAL_ASYMP u, // base offset along periodic direction
- OXS_DEMAG_REAL_ASYMP v, OXS_DEMAG_REAL_ASYMP w, // Other coordinates
+
+Oxs_DemagPeriodic::Oxs_DemagPeriodic
+(OXS_DEMAG_REAL_ASYMP idx, OXS_DEMAG_REAL_ASYMP idy, OXS_DEMAG_REAL_ASYMP idz,
+ OXS_DEMAG_REAL_ASYMP maxerror,
+ int asymptotic_order,
+ OC_INDEX irdimx, // Periodic window dimension,
+ OC_INDEX iwdimx, // Pre-computed (mostly) analytic
+ OC_INDEX iwdimy, // window dimensions
+ OC_INDEX iwdimz)
+  : dx(idx), dy(idy), dz(idz),
+    rdimx(irdimx),
+    wdimx(iwdimx),wdimy(iwdimy),wdimz(iwdimz),
+    ktail(ComputeTailOffset(idx,idy,idz,irdimx)),
+    Nxx(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail),
+    Nxy(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail),
+    Nxz(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail),
+    Nyy(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail),
+    Nyz(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail),
+    Nzz(idx,idy,idz,maxerror,asymptotic_order,irdimx*idx,ktail)
+{
+  assert(wdimx>=0 && wdimy>=0 && wdimz>=0);
+}
+
+void Oxs_DemagPeriodic::ComputeAsymptoticLimits
+(OC_INDEX i,
+ /// x = i*dx = base offset along periodic (x) direction.
+ /// Member value wdimx = width of analytic computation window in units of dx
+ OC_INDEX j, OC_INDEX k, // Other coordinate indices
  OC_INDEX& k1, OC_INDEX& k2,   // Near field terms
  OC_INDEX& k1a, OC_INDEX& k2a, // Asymmetric far field
- OXS_DEMAG_REAL_ASYMP& newu, OXS_DEMAG_REAL_ASYMP& newoffset // Symmetric far field
+ OXS_DEMAG_REAL_ASYMP& newx,   // Symmetric far field
+ OXS_DEMAG_REAL_ASYMP& newoffset
  ) const
 {
-  OXS_DEMAG_REAL_ASYMP ulimit = 0.0;
-  OXS_DEMAG_REAL_ASYMP Asq = AsymptoticStart*AsymptoticStart - v*v - w*w;
-  if(Asq>0) ulimit = sqrt(Asq);
+  OXS_DEMAG_REAL_ASYMP y = j*dy;
+  OXS_DEMAG_REAL_ASYMP z = k*dz;
 
-  k1 = OC_INDEX(Oc_Floor((-ulimit-u)/W));
-  k2 = OC_INDEX(Oc_Ceil((ulimit-u)/W));
-  if(k1==k2) --k1; // Special case: ulimit=0 and u/W is an integer
-  /// (Actually, not ulimit==0 but (u +/- ulimit) == u.)
+  OXS_DEMAG_REAL_ASYMP xlimit = 0.0;
+
+  OXS_DEMAG_REAL_ASYMP Arad = GetAsymptoticStart();
+  OXS_DEMAG_REAL_ASYMP Asq = Arad*Arad - y*y - z*z;
+  if(Asq>0) xlimit = sqrt(Asq);
+
+  OXS_DEMAG_REAL_ASYMP x = i*dx;
+  OXS_DEMAG_REAL_ASYMP W = rdimx*dx;
+
+  k1 = OC_INDEX(floor((-xlimit-x)/W));
+  k2 = OC_INDEX(ceil((xlimit-x)/W));
+
+  if(j<wdimy && k<wdimz) {
+    // Insure we don't include pre-computed (mostly analytic) values
+    // into the computation.  Note: Integer division involving negative
+    // values may be implementation defined, so just use floating point
+    // ceil and floor to keep it simple.
+    if(-wdimx<i+k1*rdimx) k1 = OC_INDEX(floor(double(-wdimx-i)/rdimx));
+    if(i+k2*rdimx<wdimx)  k2 = OC_INDEX(ceil(double(wdimx-i)/rdimx));
+  }
+
+  if(k1==k2) --k1; // Special case: xlimit=0 and x/W is an integer
+  /// (Actually, not xlimit==0 but (x +/- xlimit) == x.)
 
   assert(k1<k2);
-  assert(u+k1*W <= -ulimit);
-  assert(u+k2*W >=  ulimit);
+  assert(x+k1*W <= -xlimit);
+  assert(x+k2*W >=  xlimit);
+  assert(j>=wdimy || k>=wdimz || i+k1*rdimx <= -wdimx);
+  assert(j>=wdimy || k>=wdimz || wdimx <= i+k2*rdimx);
 
-  // k1 and k2 are selected above so that u + k1*W < -ulimit
-  // and u + k2*W > ulimit.  But we also want u + k1*W and
-  // u + k2*W to be as symmetric about the origin as possible,
+  // k1 and k2 are selected above so that x + k1*W < -xlimit
+  // and x + k2*W > xlimit.  But we also want x + k1*W and
+  // x + k2*W to be as symmetric about the origin as possible,
   // so that we get better canceling on odd terms.  We insure
   // that with this tweak:
   k1a = k1;    k2a = k2;
-  if(u+k1*W + u+k2*W > W/2) {
+  if(2*(i+k1*rdimx + i+k2*rdimx) > rdimx) {
     k1a = k1-1;
-  } else if(u+k1*W + u+k2*W < -W/2) {
+  } else if(2*(i+k1*rdimx + i+k2*rdimx) < -rdimx) {
     k2a = k2+1;
   }
 
@@ -2319,23 +2859,44 @@ void OxsDemagPeriodic::ComputeAsymptoticLimits
   // the original u. But newu and newoffset are computed so
   // that asymptotic approximate pairs are computed for
   // newu +/- (newoffset + k*W), for k = 0, 1, 2, ...
-  newu = u + (k2a + k1a)*W/2;
+  newx = x + (k2a + k1a)*W/2;
   newoffset = (k2a - k1a)*W/2;
 }
 
+void Oxs_DemagPeriodic::ComputeHoleTensorPBCx
+(OC_INDEX ipos,
+ OC_INDEX jpos,
+ OC_INDEX kpos,
+ OXS_DEMAG_REAL_ASYMP& pbcNxx,
+ OXS_DEMAG_REAL_ASYMP& pbcNxy,
+ OXS_DEMAG_REAL_ASYMP& pbcNxz,
+ OXS_DEMAG_REAL_ASYMP& pbcNyy,
+ OXS_DEMAG_REAL_ASYMP& pbcNyz,
+ OXS_DEMAG_REAL_ASYMP& pbcNzz) const
+{ // Computes tensor assuming periodic direction is x, excluding
+  // x = i*dx positions with |i|<wdimx.  If wdimx==0, then there
+  // is no exclusion hole.
+  //   Asymptotic formulae are used for x outside the asymptotic radius,
+  // analytic formulae inside.  The latter are computed individually,
+  // which is considerably slower than the bulk method which can reuse
+  // precursor evaluations between neighboring cells.
+  //   The intention of this routine is that the client code uses the
+  // fast bulk analytic method for computing all tensor values in a
+  // rectangular volume encompassing the asymptotic boundary, and then
+  // add in the values computed by this routine for the exterior volume.
+  //   However, if you need only isolated tensor values, then you can
+  // call this routine with wdimx==0 to compute the full periodic
+  // tensor (i.e., no hole).
+  //   This routine computes x-periodic BC's.  Other periodic directions
+  // can be handled by rotating coordinates.  The necessary coordinate
+  // rotations involve the dx, dy, dz constructor imports, the i,j,k
+  // imports for this function, and the pbcN?? outputs.  The necessary
+  // gyrations are implemented in child classes.
 
-void
-Oxs_DemagPeriodicX::ComputeTensor
-(const OxsDemagNabPeriodic& Nab,
- const OxsDemagNabPeriodic& Ncd,
- const OxsDemagNabPeriodic& Nef,
- OXS_DEMAG_REAL_ASYMP x,
- OXS_DEMAG_REAL_ASYMP y,
- OXS_DEMAG_REAL_ASYMP z,
- OXS_DEMAG_REAL_ASYMP& pbcNab,
- OXS_DEMAG_REAL_ASYMP& pbcNcd,
- OXS_DEMAG_REAL_ASYMP& pbcNef) const
-{ // Note: *Does* include Nab term from base window.
+  const OXS_DEMAG_REAL_ASYMP x = ipos*dx;
+  const OXS_DEMAG_REAL_ASYMP W = rdimx*dx;
+  const OXS_DEMAG_REAL_ASYMP y = jpos*dy;
+  const OXS_DEMAG_REAL_ASYMP z = kpos*dz;
 
   // Two break points: ASYMPTOTIC_START is the limit beyond
   // which the asymptotic approximations to the tensor are
@@ -2355,17 +2916,20 @@ Oxs_DemagPeriodicX::ComputeTensor
   /// +/- asymptotic estimates.
 
   OXS_DEMAG_REAL_ASYMP xoffasm; // Base offset used in asymptotic regime.
-  ComputeAsymptoticLimits(x,y,z,k1,k2,k1a,k2a,xasm,xoffasm);
+  ComputeAsymptoticLimits(ipos,jpos,kpos,k1,k2,k1a,k2a,xasm,xoffasm);
 
-  OXS_DEMAG_REAL_ASYMP resultNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNef = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNxx = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNxy = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNxz = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNyy = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNyz = 0.0;
+  OXS_DEMAG_REAL_ASYMP resultNzz = 0.0;
 
   // First compute integral approximations for tails.  See NOTES V, 7-20
   // Jan 2011, pp. 102-108.  The version below uses the n=4 variant on
   // p. 108:
-  const OC_INDEX kstop = (ktail - OC_INDEX(Oc_Floor(xoffasm/W)) > 0 ?
-                          ktail - OC_INDEX(Oc_Floor(xoffasm/W)) : 0);
+  const OC_INDEX kstop = (ktail - OC_INDEX(floor(xoffasm/W)) > 0 ?
+                          ktail - OC_INDEX(floor(xoffasm/W)) : 0);
   OC_INDEX k;
   OxsDemagNabPairData pairpt;  pairpt.ubase = xasm;
   for(k=0;k<TAIL_TWEAK_COUNT;++k) {
@@ -2373,17 +2937,23 @@ Oxs_DemagPeriodicX::ComputeTensor
     OxsDemagNabData::SetPair(xasm+pairpt.uoff,y,z,
                              xasm-pairpt.uoff,y,z,
                              pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt) * D[k];
-    resultNcd += Ncd.FarFieldPair(pairpt) * D[k];
-    resultNef += Nef.FarFieldPair(pairpt) * D[k];
+    resultNxx += Nxx.FarFieldPair(pairpt) * D[k];
+    resultNxy += Nxy.FarFieldPair(pairpt) * D[k];
+    resultNxz += Nxz.FarFieldPair(pairpt) * D[k];
+    resultNyy += Nyy.FarFieldPair(pairpt) * D[k];
+    resultNyz += Nyz.FarFieldPair(pairpt) * D[k];
+    resultNzz += Nzz.FarFieldPair(pairpt) * D[k];
   }
   pairpt.uoff = xoffasm+(kstop+(TAIL_TWEAK_COUNT-1)/2.)*W;
   OxsDemagNabData::SetPair(xasm+pairpt.uoff,y,z,
                            xasm-pairpt.uoff,y,z,
                            pairpt.ptp,pairpt.ptm);
-  resultNab += Nab.FarIntegralPair(pairpt);
-  resultNcd += Ncd.FarIntegralPair(pairpt);
-  resultNef += Nef.FarIntegralPair(pairpt);
+  resultNxx += Nxx.FarIntegralPair(pairpt);
+  resultNxy += Nxy.FarIntegralPair(pairpt);
+  resultNxz += Nxz.FarIntegralPair(pairpt);
+  resultNyy += Nyy.FarIntegralPair(pairpt);
+  resultNyz += Nyz.FarIntegralPair(pairpt);
+  resultNzz += Nzz.FarIntegralPair(pairpt);
 
   // Next, sum in asymptotic terms that are paired off, +/-.
   //  These use the offset base (xasm+xoffasm,yasm,zasm)
@@ -2392,9 +2962,12 @@ Oxs_DemagPeriodicX::ComputeTensor
     OxsDemagNabData::SetPair(xasm+pairpt.uoff,y,z,
                              xasm-pairpt.uoff,y,z,
                              pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt);
-    resultNcd += Ncd.FarFieldPair(pairpt);
-    resultNef += Nef.FarFieldPair(pairpt);
+    resultNxx += Nxx.FarFieldPair(pairpt);
+    resultNxy += Nxy.FarFieldPair(pairpt);
+    resultNxz += Nxz.FarFieldPair(pairpt);
+    resultNyy += Nyy.FarFieldPair(pairpt);
+    resultNyz += Nyz.FarFieldPair(pairpt);
+    resultNzz += Nzz.FarFieldPair(pairpt);
   }
 
   // Add in assymetric "tweak" terms.  These use the same base
@@ -2402,480 +2975,88 @@ Oxs_DemagPeriodicX::ComputeTensor
   OxsDemagNabData pt;
   for(k=k1a+1;k<=k1;++k) {
     pt.Set(x+k*W,y,z);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
+    resultNxx += Nxx.FarField(pt);
+    resultNxy += Nxy.FarField(pt);
+    resultNxz += Nxz.FarField(pt);
+    resultNyy += Nyy.FarField(pt);
+    resultNyz += Nyz.FarField(pt);
+    resultNzz += Nzz.FarField(pt);
   }
   for(k=k2;k<k2a;++k) {
     pt.Set(x+k*W,y,z);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
+    resultNxx += Nxx.FarField(pt);
+    resultNxy += Nxy.FarField(pt);
+    resultNxz += Nxz.FarField(pt);
+    resultNyy += Nyy.FarField(pt);
+    resultNyz += Nyz.FarField(pt);
+    resultNzz += Nzz.FarField(pt);
   }
 
-  // Finally compute terms that are too close to the origin to use
-  // asymptotics.  These are likely to be the largest individual terms.
-  OXS_DEMAG_REAL_ASYMP nearNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNef = 0.0;
-  for(k = k1+1;k<k2;k++) {
-    pt.Set(x+k*W,y,z);
-    nearNab += Nab.NearField(pt);
-    nearNcd += Ncd.NearField(pt);
-    nearNef += Nef.NearField(pt);
-  }
-  resultNab += nearNab/SDA_scaling; // SDA## = Nab*(4*PI*dx*dy*dz)
-  resultNcd += nearNcd/SDA_scaling;
-  resultNef += nearNef/SDA_scaling;
-
-  pbcNab = resultNab;   pbcNcd = resultNcd;   pbcNef = resultNef;
-}
-
-void
-Oxs_DemagPeriodicY::ComputeTensor
-(const OxsDemagNabPeriodic& Nab,
- const OxsDemagNabPeriodic& Ncd,
- const OxsDemagNabPeriodic& Nef,
- OXS_DEMAG_REAL_ASYMP x,
- OXS_DEMAG_REAL_ASYMP y,
- OXS_DEMAG_REAL_ASYMP z,
- OXS_DEMAG_REAL_ASYMP& pbcNab,
- OXS_DEMAG_REAL_ASYMP& pbcNcd,
- OXS_DEMAG_REAL_ASYMP& pbcNef) const
-{ // Note: *Does* include Nab term from base window.
-
-  // Two break points: ASYMPTOTIC_START is the limit beyond
-  // which the asymptotic approximations to the tensor are
-  // used, and INTEGRAL_START is the point where sums of
-  // asymptotic terms are replaced with an integral.
-  // The range (k1,k2) is the non-asymptotic regime,
-  // (k1a,k1) and (k2,k2a) are potential asymmetric tweaks
-  // in the asymptotic regime.  The ranges (-infty,k1a]
-  // and [k2a,infty) are roughly symmetric wings in
-  // the asymptotic regime. Control ktail specifies
-  // the start of the integral regime in this wings.
-  OC_INDEX k1, k2;   // k1  < k2
-  OC_INDEX k1a, k2a; // k1a <= k1, k2 <= k2a
-
-  OXS_DEMAG_REAL_ASYMP yasm; // Used in place of y in asymptotic regime.
-  /// This coordinate is tweaked to improve balance in
-  /// +/- asymptotic estimates.
-
-  OXS_DEMAG_REAL_ASYMP yoffasm; // Base offset used in asymptotic regime.
-  ComputeAsymptoticLimits(y,x,z,k1,k2,k1a,k2a,yasm,yoffasm);
-
-  OXS_DEMAG_REAL_ASYMP resultNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNef = 0.0;
-
-  // First compute integral approximations for tails.  See NOTES V, 7-20
-  // Jan 2011, pp. 102-108.  The version below uses the n=4 variant on
-  // p. 108:
-  const OC_INDEX kstop = (ktail - OC_INDEX(Oc_Floor(yoffasm/W)) > 0 ?
-                          ktail - OC_INDEX(Oc_Floor(yoffasm/W)) : 0);
-  OC_INDEX k;
-  OxsDemagNabPairData pairpt;  pairpt.ubase = yasm;
-  for(k=0;k<TAIL_TWEAK_COUNT;++k) {
-    pairpt.uoff = yoffasm+(kstop+k)*W;
-    OxsDemagNabData::SetPair(x,yasm+pairpt.uoff,z,
-                             x,yasm-pairpt.uoff,z,
-                             pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt) * D[k];
-    resultNcd += Ncd.FarFieldPair(pairpt) * D[k];
-    resultNef += Nef.FarFieldPair(pairpt) * D[k];
-  }
-  pairpt.uoff = yoffasm+(kstop+(TAIL_TWEAK_COUNT-1)/2.)*W;
-  OxsDemagNabData::SetPair(x,yasm+pairpt.uoff,z,
-                           x,yasm-pairpt.uoff,z,
-                           pairpt.ptp,pairpt.ptm);
-  resultNab += Nab.FarIntegralPair(pairpt);
-  resultNcd += Ncd.FarIntegralPair(pairpt);
-  resultNef += Nef.FarIntegralPair(pairpt);
-
-  // Next, sum in asymptotic terms that are paired off, +/-.
-  //  These use the offset base (xasm+xoffasm,yasm,zasm)
-  for(k=0;k<kstop;++k) {
-    pairpt.uoff = yoffasm+k*W;
-    OxsDemagNabData::SetPair(x,yasm+pairpt.uoff,z,
-                             x,yasm-pairpt.uoff,z,
-                             pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt);
-    resultNcd += Ncd.FarFieldPair(pairpt);
-    resultNef += Nef.FarFieldPair(pairpt);
-  }
-
-  // Add in assymetric "tweak" terms.  These use the same base
-  // (x,y,z) as the NearField.
-  OxsDemagNabData pt;
-  for(k=k1a+1;k<=k1;++k) {
-    pt.Set(x,y+k*W,z);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
-  }
-  for(k=k2;k<k2a;++k) {
-    pt.Set(x,y+k*W,z);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
-  }
-
-  // Finally compute terms that are too close to the origin to use
-  // asymptotics.  These are likely to be the largest individual terms.
-  OXS_DEMAG_REAL_ASYMP nearNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNef = 0.0;
-  for(k = k1+1;k<k2;k++) {
-    pt.Set(x,y+k*W,z);
-    nearNab += Nab.NearField(pt);
-    nearNcd += Ncd.NearField(pt);
-    nearNef += Nef.NearField(pt);
-  }
-  resultNab += nearNab/SDA_scaling; // SDA## = Nab*(4*PI*dx*dy*dz)
-  resultNcd += nearNcd/SDA_scaling;
-  resultNef += nearNef/SDA_scaling;
-
-  pbcNab = resultNab;   pbcNcd = resultNcd;   pbcNef = resultNef;
-}
-
-void
-Oxs_DemagPeriodicZ::ComputeTensor
-(const OxsDemagNabPeriodic& Nab,
- const OxsDemagNabPeriodic& Ncd,
- const OxsDemagNabPeriodic& Nef,
- OXS_DEMAG_REAL_ASYMP x,
- OXS_DEMAG_REAL_ASYMP y,
- OXS_DEMAG_REAL_ASYMP z,
- OXS_DEMAG_REAL_ASYMP& pbcNab,
- OXS_DEMAG_REAL_ASYMP& pbcNcd,
- OXS_DEMAG_REAL_ASYMP& pbcNef) const
-{ // Note: *Does* include Nab term from base window.
-
-  // Two break points: ASYMPTOTIC_START is the limit beyond
-  // which the asymptotic approximations to the tensor are
-  // used, and INTEGRAL_START is the point where sums of
-  // asymptotic terms are replaced with an integral.
-  // The range (k1,k2) is the non-asymptotic regime,
-  // (k1a,k1) and (k2,k2a) are potential asymmetric tweaks
-  // in the asymptotic regime.  The ranges (-infty,k1a]
-  // and [k2a,infty) are roughly symmetric wings in
-  // the asymptotic regime. Control ktail specifies
-  // the start of the integral regime in this wings.
-  OC_INDEX k1, k2;   // k1  < k2
-  OC_INDEX k1a, k2a; // k1a <= k1, k2 <= k2a
-
-  OXS_DEMAG_REAL_ASYMP zasm; // Used in place of x in asymptotic regime.
-  /// This coordinate is tweaked to improve balance in
-  /// +/- asymptotic estimates.
-
-  OXS_DEMAG_REAL_ASYMP zoffasm; // Base offset used in asymptotic regime.
-  ComputeAsymptoticLimits(z,x,y,k1,k2,k1a,k2a,zasm,zoffasm);
-
-  OXS_DEMAG_REAL_ASYMP resultNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP resultNef = 0.0;
-
-  // First compute integral approximations for tails.  See NOTES V, 7-20
-  // Jan 2011, pp. 102-108.  The version below uses the n=4 variant on
-  // p. 108:
-  const OC_INDEX kstop = (ktail - OC_INDEX(Oc_Floor(zoffasm/W)) > 0 ?
-                          ktail - OC_INDEX(Oc_Floor(zoffasm/W)) : 0);
-  OC_INDEX k;
-  OxsDemagNabPairData pairpt;  pairpt.ubase = zasm;
-  for(k=0;k<TAIL_TWEAK_COUNT;++k) {
-    pairpt.uoff = zoffasm+(kstop+k)*W;
-    OxsDemagNabData::SetPair(x,y,zasm+pairpt.uoff,
-                             x,y,zasm-pairpt.uoff,
-                             pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt) * D[k];
-    resultNcd += Ncd.FarFieldPair(pairpt) * D[k];
-    resultNef += Nef.FarFieldPair(pairpt) * D[k];
-  }
-  pairpt.uoff = zoffasm+(kstop+(TAIL_TWEAK_COUNT-1)/2.)*W;
-  OxsDemagNabData::SetPair(x,y,zasm+pairpt.uoff,
-                           x,y,zasm-pairpt.uoff,
-                           pairpt.ptp,pairpt.ptm);
-  resultNab += Nab.FarIntegralPair(pairpt);
-  resultNcd += Ncd.FarIntegralPair(pairpt);
-  resultNef += Nef.FarIntegralPair(pairpt);
-
-  // Next, sum in asymptotic terms that are paired off, +/-.
-  //  These use the offset base (xasm+xoffasm,yasm,zasm)
-  for(k=0;k<kstop;++k) {
-    pairpt.uoff = zoffasm+k*W;
-    OxsDemagNabData::SetPair(x,y,zasm+pairpt.uoff,
-                             x,y,zasm-pairpt.uoff,
-                             pairpt.ptp,pairpt.ptm);
-    resultNab += Nab.FarFieldPair(pairpt);
-    resultNcd += Ncd.FarFieldPair(pairpt);
-    resultNef += Nef.FarFieldPair(pairpt);
-  }
-
-  // Add in assymetric "tweak" terms.  These use the same base
-  // (x,y,z) as the NearField.
-  OxsDemagNabData pt;
-  for(k=k1a+1;k<=k1;++k) {
-    pt.Set(x,y,z+k*W);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
-  }
-  for(k=k2;k<k2a;++k) {
-    pt.Set(x,y,z+k*W);
-    resultNab += Nab.FarField(pt);
-    resultNcd += Ncd.FarField(pt);
-    resultNef += Nef.FarField(pt);
-  }
-
-  // Finally compute terms that are too close to the origin to use
-  // asymptotics.  These are likely to be the largest individual terms.
-  OXS_DEMAG_REAL_ASYMP nearNab = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNcd = 0.0;
-  OXS_DEMAG_REAL_ASYMP nearNef = 0.0;
-  for(k = k1+1;k<k2;k++) {
-    pt.Set(x,y,z+k*W);
-    nearNab += Nab.NearField(pt);
-    nearNcd += Ncd.NearField(pt);
-    nearNef += Nef.NearField(pt);
-  }
-  resultNab += nearNab/SDA_scaling; // SDA## = Nab*(4*PI*dx*dy*dz)
-  resultNcd += nearNcd/SDA_scaling;
-  resultNef += nearNef/SDA_scaling;
-
-  pbcNab = resultNab;   pbcNcd = resultNcd;   pbcNef = resultNef;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-
-#ifdef STANDALONE
-
-void Usage()
-{
-  fprintf(stderr,
-          "Usage: pbctest x y z hx hy hz W periodic_direction [arad]\n");
-  fprintf(stderr,
-          " where x y z is offset,\n"
-          "       hx hy hz are cell dimensions,\n"
-          "       W is window length in periodic direction,\n"
-          "   and periodic_direction is one of x, y, z or n"
-          " (n -> not periodic)\n");
-  exit(1);
-}
-
-#include <ctype.h>
-#include <stdio.h>
-
-#ifdef _MSC_VER
-#define snprintf _snprintf
-#endif
-
-void PrettyFormat(long double x,char* buf,size_t bufsize)
-{
-  char tmpbuf[64];
-  snprintf(tmpbuf,sizeof(tmpbuf),"% .18Le",x);
-  char *cptr = tmpbuf;
-  int mode = 0;
-  int grpcnt = 0;
-  size_t i = 0;
-  while(i<bufsize-1 && *cptr != '\0') {
-    unsigned int ctmp = (unsigned int)(*(cptr++));
-    buf[i++] = (char)ctmp;
-    switch(mode) {
-    case 0:
-      if(ctmp == '.') {
-        mode = 1;
-        grpcnt = 0;
+  // All far-field elements outside dx*wdimx computed.  In normal
+  // usage wdimx is chosen so that dx*wdimx > asymptotic radius,
+  // in which case this routine is complete.  This routine should
+  // only continue in the case wdimx=wdimy=wdimz=0.  Throw a warning
+  // if this is not the case, but compute the remainder using
+  // analytic formulae regardless.
+  if(ipos+(k1+1)*rdimx<=-wdimx || wdimx<=(k2-1)*rdimx+ipos) {
+    // Near field computation requested
+    if(wdimx>0) {
+#if STANDALONE
+      static int warncount=1;
+      if(warncount>0) {
+        fprintf(stderr,"*** WARNING: "
+                "Bad use of ComputePeriodicHoleTensor; hole should"
+                " be either 0 or include full near-field volume. ***\n");
+        --warncount;
       }
-      break;
-    case 1:
-      if( ctmp < '0' || '9'< ctmp) {
-        mode = 2;
-      } else {
-        if(++grpcnt == 4) {
-          grpcnt = 0;
-          if(i<bufsize-1) buf[i++] = ' ';
-        }
-      }
-      break;
-    default:
-      break;
-    }
-  }
-  buf[i] = '\0';
-}
-
-
-int main(int argc,char** argv)
-{
-  if(argc<9 || argc>10) Usage();
-
-#if defined(_MSC_VER)
-# define strtold(x,y) strtod((x),(y))
-#elif defined(__BORLANDC__)
-# define strtold(x,y) _strtold((x),(y))
-#endif
-
-#if OXS_DEMAG_ASYMP_USE_SSE
-  printf("SSE-enabled code\n");
-#else
-  printf("Non-SSE code\n");
-#endif
-
-  OXS_DEMAG_REAL_ASYMP  x = strtold(argv[1],0);
-  OXS_DEMAG_REAL_ASYMP  y = strtold(argv[2],0);
-  OXS_DEMAG_REAL_ASYMP  z = strtold(argv[3],0);
-  OXS_DEMAG_REAL_ASYMP hx = strtold(argv[4],0);
-  OXS_DEMAG_REAL_ASYMP hy = strtold(argv[5],0);
-  OXS_DEMAG_REAL_ASYMP hz = strtold(argv[6],0);
-  OXS_DEMAG_REAL_ASYMP  W = strtold(argv[7],0);
-
-  OXS_DEMAG_REAL_ASYMP gamma
-    = Oc_Pow(hx*hy*hz,OXS_DEMAG_REAL_ASYMP(1)/OXS_DEMAG_REAL_ASYMP(3));
-  OXS_DEMAG_REAL_ASYMP pdist = Oc_Sqrt(x*x+y*y+z*z)/gamma;
-  printf("gamma=%Lg, pdist=%Lg\n",(long double)gamma,(long double)pdist);
-
-  char direction = tolower(argv[8][0]);
-  if(direction != 'x' && direction != 'y' && direction != 'z'
-     && direction != 'n') Usage();
-
-  OXS_DEMAG_REAL_ASYMP asymptotic_radius = 32;
-  if(argc>9) asymptotic_radius = strtold(argv[9],0);
-
-  OXS_DEMAG_REAL_ASYMP Nxx,Nxy,Nxz,Nyy,Nyz,Nzz;
-
-  if(direction=='x') {
-    Oxs_DemagPeriodicX pbctensor(hx,hy,hz,W,asymptotic_radius);
-    pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-  } else if(direction=='y') {
-    Oxs_DemagPeriodicY pbctensor(hx,hy,hz,W,asymptotic_radius);
-    pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-  } else if(direction=='z') {
-    Oxs_DemagPeriodicZ pbctensor(hx,hy,hz,W,asymptotic_radius);
-    pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
-  } else {
-    if(pdist<asymptotic_radius) {
-      // Near field
-      Nxx = Oxs_CalculateSDA00(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-      Nxy = Oxs_CalculateSDA01(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-      Nxz = Oxs_CalculateSDA02(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-      Nyy = Oxs_CalculateSDA11(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-      Nyz = Oxs_CalculateSDA12(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-      Nzz = Oxs_CalculateSDA22(x,y,z,hx,hy,hz)/(4*WIDE_PI*hx*hy*hz);
-    } else {
-      // Far field
-      Oxs_DemagNxxAsymptotic ANxx(hx,hy,hz,1.5);
-      Nxx = ANxx.NxxAsymptotic(x,y,z);
-      Oxs_DemagNxyAsymptotic ANxy(hx,hy,hz);
-      Nxy = ANxy.NxyAsymptotic(x,y,z);
-      Oxs_DemagNxzAsymptotic ANxz(hx,hy,hz);
-      Nxz = ANxz.NxzAsymptotic(x,y,z);
-      Oxs_DemagNyyAsymptotic ANyy(hx,hy,hz);
-      Nyy = ANyy.NyyAsymptotic(x,y,z);
-      Oxs_DemagNyzAsymptotic ANyz(hx,hy,hz);
-      Nyz = ANyz.NyzAsymptotic(x,y,z);
-      Oxs_DemagNzzAsymptotic ANzz(hx,hy,hz);
-      Nzz = ANzz.NzzAsymptotic(x,y,z);
-    }
-  }
-
-  char buf0[64];
-  char buf1[64];
-  char buf2[64];
-
-  printf("--- Demag tensor; point offset=%g, asympt rad=%g:\n",
-         (double)pdist,(double)asymptotic_radius);
-
-  PrettyFormat(Nxx,buf0,sizeof(buf0));
-  PrettyFormat(Nxy,buf1,sizeof(buf1));
-  PrettyFormat(Nxz,buf2,sizeof(buf2));
-  printf("%30s %30s %30s\n",buf0,buf1,buf2);
-
-  PrettyFormat(Nyy,buf0,sizeof(buf0));
-  PrettyFormat(Nyz,buf1,sizeof(buf1));
-  PrettyFormat(Nzz,buf2,sizeof(buf2));
-  printf("%30s %30s %30s\n",
-         "",buf0,buf1);
-  printf("%30s %30s %30s\n",
-         "", "",buf2);
-  printf("-------------------\n");
-
-#if 0
-  OXS_DEMAG_REAL_ASYMP dx,dy,dz;
-  OXS_DEMAG_REAL_ASYMP maxedge=hx;
-  if(hy>maxedge) maxedge=hy;
-  if(hz>maxedge) maxedge=hz;
-  OXS_DEMAG_REAL_ASYMP qdx = hx/maxedge;
-  OXS_DEMAG_REAL_ASYMP qdy = hy/maxedge;
-  OXS_DEMAG_REAL_ASYMP qdz = hz/maxedge;
-  OXS_DEMAG_REAL_ASYMP qx = x/maxedge;
-  OXS_DEMAG_REAL_ASYMP qy = y/maxedge;
-  OXS_DEMAG_REAL_ASYMP qz = z/maxedge;
-  Oxs_DemagNxxAsymptotic ANxxC(hx,hy,hz);
-  printf("ANxxC= %#.18Le\n",(long double)ANxxC.NxxAsymptotic(x,y,z));
-  Oxs_DemagNxxAsymptotic ANxx(qdx,qdy,qdz);
-  printf("ANxx = %#.18Le\n",(long double)ANxx.NxxAsymptotic(qx,qy,qz));
-  Oxs_DemagNxyAsymptotic ANxy(qdx,qdy,qdz);
-  printf("ANxy = %#.18Le\n",(long double)ANxy.NxyAsymptotic(qx,qy,qz));
-#endif    
-
-
-#if 0
-  OxsDemagNxxIntegralX integral_xx(hx,hy,hz,W);
-  printf("Nxx integral x = %# .18Le\n",
-         (long double)integral_xx.Compute(x,y,z,16*asymptotic_radius));
-  OxsDemagNxyIntegralX integral_yx(hx,hy,hz,W);
-  printf("Nxy integral x = %# .18Le\n",
-         (long double)integral_yx.Compute(x,y,z,16*asymptotic_radius));
-  OxsDemagNxxIntegralZ integral_xz(hx,hy,hz,W);
-  printf("Nxx integral z = %# .18Le\n",
-         (long double)integral_xz.Compute(x,y,z,16*asymptotic_radius));
-  OxsDemagNxyIntegralZ integral_yz(hx,hy,hz,W);
-  printf("Nxy integral z = %# .18Le\n",
-         (long double)integral_yz.Compute(x,y,z,16*asymptotic_radius));
-#endif
-#if 0
-  OxsDemagNxxPeriodicX chkNxx(hx,hy,hz,W,asymptotic_radius);
-  printf("Nxx periodic x = %# .18Le\n",(long double)chkNxx.NabPeriodic(x,y,z));
-#endif
-
-#if 0
-  Oxs_DemagNxyAsymptotic chkNxyA(1,2,3);
-  OXS_DEMAG_REAL_ASYMP chkNxyAa = chkNxyA.NxyAsymptotic(1+1000,90000,-10)
-                       + chkNxyA.NxyAsymptotic(1-1000,90000,-10);
-  OXS_DEMAG_REAL_ASYMP chkNxyAb = chkNxyA.NxyAsymptoticPair(1,1000,90000,-10);
-
-  Oxs_DemagNxyAsymptotic chkNxyB(1,1,1);
-  OXS_DEMAG_REAL_ASYMP chkNxyBa = chkNxyB.NxyAsymptotic(1+1000,-90000,10)
-                       + chkNxyB.NxyAsymptotic(1-1000,-90000,10);
-  OXS_DEMAG_REAL_ASYMP chkNxyBb = chkNxyB.NxyAsymptoticPair(1,1000,-90000,10);
-
-  printf("ANxy checks: non-cube singlet = %# .18Le\n",chkNxyAa);
-  printf("             non-cube    pair = %# .18Le\n",chkNxyAb);
-  printf("                 cube singlet = %# .18Le\n",chkNxyBa);
-  printf("                 cube    pair = %# .18Le\n",chkNxyBb);
-#endif
-
-#if 0
-  fprintf(stderr,"TEST CASE: (x,y,z,dx,dy,dz,Wx,x) = 35 73 37 21 7 1.25 71 x\n");
-  fprintf(stderr,"Nxx = -1.6143 7575 0748 6188 48e-06\n");
-  fprintf(stderr,"Nxy = -6.7854 3365 2804 0251 64e-08\n");
-  fprintf(stderr,"Nxz =  3.4748 9767 7164 0223 78e-08\n");
-  fprintf(stderr,"Nyy = -3.4872 2508 3919 4894 20e-05\n");
-  fprintf(stderr,"Nyz = -4.8955 3905 0807 7719 87e-05\n");
-  fprintf(stderr,"Nzz =  3.6486 6265 8994 3513 05e-05\n");
-  fprintf(stderr,"See maple script maple-20110225-demag_tensor.mw\n");
-#endif
-  return 0;
-}
-
-OC_REALWIDE Oc_Nop(OC_REALWIDE x) { return x; }
-
+#else // !STANDALONE
+      static Oxs_WarningMessage badhole(1);
+      badhole.Send(revision_info,OC_STRINGIFY(__LINE__),
+                   "Bad use of ComputePeriodicHoleTensor; hole should"
+                   " be either 0 or include full near-field volume.");
 #endif // STANDALONE
+    }
+    OXS_DEMAG_REAL_ASYMP nearNxx = 0.0;
+    OXS_DEMAG_REAL_ASYMP nearNxy = 0.0;
+    OXS_DEMAG_REAL_ASYMP nearNxz = 0.0;
+    OXS_DEMAG_REAL_ASYMP nearNyy = 0.0;
+    OXS_DEMAG_REAL_ASYMP nearNyz = 0.0;
+    OXS_DEMAG_REAL_ASYMP nearNzz = 0.0;
+
+    // Ranges are inclusive
+    const OC_INDEX k1start = k1+1;
+    const OC_INDEX k1stop  = OC_INDEX(floor(double(-wdimx-ipos)/rdimx));
+    const OC_INDEX k2start = OC_INDEX(ceil(double(wdimx-ipos)/rdimx));
+    const OC_INDEX k2stop  = k2-1;
+    OC_INDEX kstopx = k1stop;
+    k=k1start;
+    while(1) {
+      if(k>kstopx) {
+        kstopx=k2stop;
+        if(k<k2start) k = k2start; // Handles case wdimx==0 with k1stop==k2stop
+        if(k>kstopx) break;
+      }
+      pt.Set(x+k*W,y,z);
+      nearNxx += Nxx.NearField(pt);
+      nearNxy += Nxy.NearField(pt);
+      nearNxz += Nxz.NearField(pt);
+      nearNyy += Nyy.NearField(pt);
+      nearNyz += Nyz.NearField(pt);
+      nearNzz += Nzz.NearField(pt);
+      ++k;
+    }
+    resultNxx += nearNxx;
+    resultNxy += nearNxy;
+    resultNxz += nearNxz;
+    resultNyy += nearNyy;
+    resultNyz += nearNyz;
+    resultNzz += nearNzz;
+  }
+
+  pbcNxx = resultNxx;
+  pbcNxy = resultNxy;
+  pbcNxz = resultNxz;
+  pbcNyy = resultNyy;
+  pbcNyz = resultNyz;
+  pbcNzz = resultNzz;
+}

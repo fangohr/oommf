@@ -4,7 +4,7 @@
 # operating system running on the x86_64 architecture.
 
 Oc_Config New _ [string tolower [file rootname [file tail [info script]]]] {
-   global tcl_platform env
+   global tcl_platform
 
    if {[llength [info commands LocalNameCheck]] == 0} {
       # If local/mynames.tcl exists and defines LocalNameCheck,
@@ -33,6 +33,10 @@ Oc_Config New _ [string tolower [file rootname [file tail [info script]]]] {
    }
    if {[info exists tcl_platform(wordSize)] &&
        $tcl_platform(wordSize) != 8} {
+      return 0
+   }
+   if {[info exists tcl_platform(pointerSize)] &&
+       $tcl_platform(pointerSize) != 8} {
       return 0
    }
    return 1

@@ -320,7 +320,7 @@ OC_REAL8m Oxs_ComputeEnergiesErrorEstimate
   if(energy_density_error_estimate>=0.0) {
     return energy_density_error_estimate;
   }
-  OC_REAL8m term_energy_density = Oc_Fabs(energy_sum);
+  OC_REAL8m term_energy_density = fabs(energy_sum);
   const OC_REAL8m simulation_volume = state.mesh->TotalVolume();
   if(simulation_volume >= 1.0
      || term_energy_density < OC_REAL8m_MAX*simulation_volume) {

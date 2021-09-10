@@ -10,7 +10,6 @@
 /// #include'd after a C++-style header, then printf format modifiers
 /// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
 
-#include <algorithm>
 #include <limits>
 #include <string>
 #include <vector>
@@ -27,6 +26,11 @@
 #include "meshvalue.h"
 #include "threevector.h"
 #include "oxswarn.h"
+
+// Read <algorithm> last, because with some pgc++ installs the
+// <emmintrin.h> header is not interpreted properly if <algorithm> is
+// read first.
+#include <algorithm>
 
 #ifdef REPORT_CONSTRUCT_TIMES
 #include "nb.h"
@@ -521,7 +525,7 @@ int Oxs_Director::ExtCreateAndRegister
     } else {
       errcheck = 0;
     }
-  } catch (Oxs_ExtErrorUnregisteredType) {
+  } catch (Oxs_ExtErrorUnregisteredType&) {
     // Drop exception, but append to bad_spec list for later reporting.
     bad_specs += String("\n  ") + String(key);
   } catch (Oxs_ExtError& err) {

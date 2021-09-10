@@ -19,7 +19,8 @@
  * Note that OOMMF_THREADS is defined in ocport.h, so this should come
  * before the #if OOMMF_THREADS line below.
  */
-#include "imports.h"
+
+#include <mutex>     // std::mutex, std::lock
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -32,6 +33,35 @@ inline int   Oc_HaveThreads() { return 0; }
 inline int   Oc_GetMaxThreadCount() { return 1; }
 inline void  Oc_SetMaxThreadCount(int) {}
 #endif
+
+// Wrappers around std mutex and lock facilities.  These are defined
+// to be empty classes if OOMMF_THREADS is false, and so can be
+// used w/o penalty in non-threaded OOMMF builds.
+#if OOMMF_THREADS
+
+class Oc_Mutex {
+  friend class Oc_LockGuard;
+private:
+  std::mutex mutex;
+};
+
+class Oc_LockGuard {
+private:
+  std::lock_guard<std::mutex> lck;
+public:
+  Oc_LockGuard();  // Disallow
+  Oc_LockGuard(Oc_Mutex& mtx) : lck(mtx.mutex) {}
+};
+
+#else  // OOMMF_THREADS
+
+class Oc_Mutex {};
+class Oc_LockGuard {
+public:
+  Oc_LockGuard(Oc_Mutex&) {}
+};
+
+#endif // OOMMF_THREADS
 
 /* Tcl wrappers for some of the above. */
 #ifdef __cplusplus

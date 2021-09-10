@@ -311,7 +311,7 @@ void Oxs_Mesh::WriteOvfIrregular
 
 // Version of WriteOvf that takes a filename instead of a Tcl_Channel.
 // This is for backwards compatibility and convenience.
-void Oxs_Mesh::WriteOvf
+void Oxs_Mesh::WriteOvfFile
 (const char* filename,  // Name of output file
  OC_BOOL headers,          // If false, then output only raw data
  const char* title,     // Long filename or title

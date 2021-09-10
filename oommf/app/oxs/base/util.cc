@@ -5,7 +5,7 @@
  */
 
 #include <string.h>
-#include <ctype.h>
+#include <cctype>
 
 #include "oc.h"
 #include "nb.h"

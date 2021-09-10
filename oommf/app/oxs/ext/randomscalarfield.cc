@@ -60,9 +60,9 @@ Oxs_RandomScalarField::Oxs_RandomScalarField(
     if(count<1) {
       throw Oxs_ExtError(this,"Empty mesh");
     }
-    results_cache.reserve(count);
+    results_cache.AdjustSize(cache_mesh.GetPtr());
     for(OC_INDEX i=0;i<count;++i) {
-      results_cache.push_back((range_max-range_min)*Oc_UnifRand() + range_min);
+      results_cache[i] = (range_max-range_min)*Oc_UnifRand() + range_min;
     }
   }
 }
@@ -71,7 +71,7 @@ OC_REAL8m Oxs_RandomScalarField::Value(const ThreeVector& pt) const
 {
   if(use_cache) {
     OC_INDEX index = cache_mesh->FindNearestIndex(pt);
-    if(size_t(index)>results_cache.size()) {
+    if(index>results_cache.Size()) {
       String msg = String("Import pt not mapped, indicating that mesh \"");
       msg += String(cache_mesh->InstanceName());
       msg += String("\" has changed since initialization of"
@@ -110,20 +110,40 @@ Oxs_RandomScalarField::FillMeshValue
       array[i] = spread*Oc_UnifRand() + range_min;
     }
   } else { // Use cache
-    if(size_t(size) != results_cache.size()) {
-      String msg = String("Cache and mesh sizes differ,"
-                          " indicating that mesh \"");
-      msg += String(cache_mesh->InstanceName());
-      msg += String("\" has changed since initialization of"
-                    " Oxs_ScalarVectorField \"");
-      msg += String(InstanceName());
-      msg += String("\"");
-      throw Oxs_ExtError(this,msg);
+    if(mesh != cache_mesh.GetPtr()) {
+      // Import mesh is not the same mesh as the cache mesh,
+      // so interpolate between meshes.
+      ThreeVector pt;
+      for(OC_INDEX i=0;i<size;++i) {
+        mesh->Center(i,pt);
+        OC_INDEX cache_index = cache_mesh->FindNearestIndex(pt);
+        if(cache_index>results_cache.Size()) {
+          String msg = String("Import pt not mapped, indicating that mesh \"");
+          msg += String(cache_mesh->InstanceName());
+          msg += String("\" has changed since initialization of"
+                        " Oxs_ScalarVectorField \"");
+          msg += String(InstanceName());
+          msg += String("\"");
+          throw Oxs_ExtError(this,msg);
+        }
+        array[i] = results_cache[cache_index];
+      }
+    } else {
+      // Import mesh is same as cache mesh, so just copy
+      // values between arrays.
+      if(size != results_cache.Size()) {
+        String msg = String("Cache and mesh sizes differ,"
+                            " indicating that mesh \"");
+        msg += String(cache_mesh->InstanceName());
+        msg += String("\" has changed since initialization of"
+                      " Oxs_ScalarVectorField \"");
+        msg += String(InstanceName());
+        msg += String("\"");
+        throw Oxs_ExtError(this,msg);
+      }
+      array = results_cache; // Threaded copy
     }
-    for(OC_INDEX i=0;i<size;i++) {
-      array[i] = results_cache[i];
-    }
-  } // cache
+  }
 }
 
 void
@@ -138,29 +158,47 @@ Oxs_RandomScalarField::IncrMeshValue
   OC_INDEX size=mesh->Size();
   if(range_min>=range_max) {
     // No spread
-    for(OC_INDEX i=0;i<size;i++) {
-      array[i] += range_max;
-    }
+    array += range_max; // Threaded increment
   } else if(!use_cache) {
     OC_REAL8m spread = range_max - range_min;
     for(OC_INDEX i=0;i<size;i++) {
       array[i] += spread*Oc_UnifRand() + range_min;
     }
   } else { // Use cache
-    if(size_t(size) != results_cache.size()) {
-      String msg = String("Cache and mesh sizes differ,"
-                          " indicating that mesh \"");
-      msg += String(cache_mesh->InstanceName());
-      msg += String("\" has changed since initialization of"
-                    " Oxs_ScalarVectorField \"");
-      msg += String(InstanceName());
-      msg += String("\"");
-      throw Oxs_ExtError(this,msg);
+    if(mesh != cache_mesh.GetPtr()) {
+      // Import mesh is not the same mesh as the cache mesh,
+      // so interpolate between meshes.
+      ThreeVector pt;
+      for(OC_INDEX i=0;i<size;++i) {
+        mesh->Center(i,pt);
+        OC_INDEX cache_index = cache_mesh->FindNearestIndex(pt);
+        if(cache_index>results_cache.Size()) {
+          String msg = String("Import pt not mapped, indicating that mesh \"");
+          msg += String(cache_mesh->InstanceName());
+          msg += String("\" has changed since initialization of"
+                        " Oxs_ScalarVectorField \"");
+          msg += String(InstanceName());
+          msg += String("\"");
+          throw Oxs_ExtError(this,msg);
+        }
+        array[i] += results_cache[cache_index];
+      }
+    } else {
+      // Import mesh is same as cache mesh, so just copy
+      // values between arrays.
+      if(size != results_cache.Size()) {
+        String msg = String("Cache and mesh sizes differ,"
+                            " indicating that mesh \"");
+        msg += String(cache_mesh->InstanceName());
+        msg += String("\" has changed since initialization of"
+                      " Oxs_ScalarVectorField \"");
+        msg += String(InstanceName());
+        msg += String("\"");
+        throw Oxs_ExtError(this,msg);
+      }
+      array += results_cache; // Threaded increment
     }
-    for(OC_INDEX i=0;i<size;i++) {
-      array[i] += results_cache[i];
-    }
-  } // cache
+  }
 }
 
 void
@@ -170,32 +208,50 @@ Oxs_RandomScalarField::MultMeshValue
 {
   if(array.Size() != mesh->Size()) {
     Oxs_ExtError("Import array not initialized in "
-                   "Oxs_RandomScalarField::IncrMeshValue");
+                   "Oxs_RandomScalarField::MultMeshValue");
   }
   OC_INDEX size=mesh->Size();
   if(range_min>=range_max) {
     // No spread
-    for(OC_INDEX i=0;i<size;i++) {
-      array[i] *= range_max;
-    }
+    array *= range_max; // Threaded multiply
   } else if(!use_cache) {
     OC_REAL8m spread = range_max - range_min;
     for(OC_INDEX i=0;i<size;i++) {
       array[i] *= spread*Oc_UnifRand() + range_min;
     }
   } else { // Use cache
-    if(size_t(size) != results_cache.size()) {
-      String msg = String("Cache and mesh sizes differ,"
-                          " indicating that mesh \"");
-      msg += String(cache_mesh->InstanceName());
-      msg += String("\" has changed since initialization of"
-                    " Oxs_ScalarVectorField \"");
-      msg += String(InstanceName());
-      msg += String("\"");
-      throw Oxs_ExtError(this,msg);
+    if(mesh != cache_mesh.GetPtr()) {
+      // Import mesh is not the same mesh as the cache mesh,
+      // so interpolate between meshes.
+      ThreeVector pt;
+      for(OC_INDEX i=0;i<size;++i) {
+        mesh->Center(i,pt);
+        OC_INDEX cache_index = cache_mesh->FindNearestIndex(pt);
+        if(cache_index>results_cache.Size()) {
+          String msg = String("Import pt not mapped, indicating that mesh \"");
+          msg += String(cache_mesh->InstanceName());
+          msg += String("\" has changed since initialization of"
+                        " Oxs_ScalarVectorField \"");
+          msg += String(InstanceName());
+          msg += String("\"");
+          throw Oxs_ExtError(this,msg);
+        }
+        array[i] *= results_cache[cache_index];
+      }
+    } else {
+      // Import mesh is same as cache mesh, so just copy
+      // values between arrays.
+      if(size != results_cache.Size()) {
+        String msg = String("Cache and mesh sizes differ,"
+                            " indicating that mesh \"");
+        msg += String(cache_mesh->InstanceName());
+        msg += String("\" has changed since initialization of"
+                      " Oxs_ScalarVectorField \"");
+        msg += String(InstanceName());
+        msg += String("\"");
+        throw Oxs_ExtError(this,msg);
+      }
+      array *= results_cache; // Threaded multiply
     }
-    for(OC_INDEX i=0;i<size;i++) {
-      array[i] *= results_cache[i];
-    }
-  } // cache
+  }
 }

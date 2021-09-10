@@ -24,9 +24,15 @@ WORKDIR /usr/local/oommf
 # This Makefile target builds oommf
 RUN make build
 
-# Create OOMMFTCL environment variable.
+# Create OOMMFTCL environment variable. Can be used by Ubermag to find
+# OOMMF
 ENV OOMMFTCL /usr/local/oommf/oommf/oommf.tcl
-
+# OOMMF_ROOT can be used by oommf itself (shouldn't be necessary here
+# as the oommf sources are in the same place as oommf.tcl, but can also
+# be used to locate the provided examples at
+# $OOMMF_ROOT/app/oxs/examples/stdprob3.mif for example:
+# oommf boxsi +fg $OOMMF_ROOT/app/oxs/examples/stdprob3.mif -exitondone 1
+ENV OOMMF_ROOT /usr/local/oommf/oommf
 # Create executable OOMMF script.
 WORKDIR /usr/local/bin
 RUN echo "#! /bin/bash" > oommf

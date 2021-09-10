@@ -97,22 +97,6 @@ int NbGcdCmd(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Greatest common divisor via Euclid's algorithm, "OC_REALWIDE"
-// version.  Inputs and outputs are integers, but this is useful because
-// integer range of floating point types is usually wider than for type
-// int; for 8-byte IEEE format the width is 53 bits, and for 10-byte
-// format 64 bits.
-OC_REALWIDE Nb_GcdRW(OC_REALWIDE m,OC_REALWIDE n)
-{
-  assert(m == Oc_FloorRW(m) && n == Oc_FloorRW(n));
-  m = Oc_FloorRW(Oc_FabsRW(m));  n = Oc_FloorRW(Oc_FabsRW(n));
-  if(m==0.0 || n==0.0) return 0.0;
-  OC_REALWIDE temp;
-  while( (temp=(m - Oc_FloorRW(m/n)*n)) > 0.0) { m=n; n=temp; }
-  return n;
-}
-
-//////////////////////////////////////////////////////////////////////////
 // Simple continued fraction-like rational approximator.  Unlike the usual
 // continued fraction expansion, here we allow +/- on each term (rounds to
 // nearest integer rather than truncating).  This converges faster (by
@@ -206,14 +190,14 @@ int Nb_FindRatApprox
   OC_REALWIDE p0 = 0;  OC_REALWIDE p1 = 1;
   OC_REALWIDE q0 = 1;  OC_REALWIDE q1 = 0;
 
-  OC_REALWIDE m = Oc_FloorRW(x/y);
+  OC_REALWIDE m = floor(x/y);
   OC_REALWIDE r = x - m*y;
   OC_REALWIDE p2 = m*p1 + p0;
   OC_REALWIDE q2 = m*q1 + q0;
-  while(q2<maxq && Oc_FabsRW(x0*q2 - p2*y0) > relerr*x0*q2) {
+  while(q2<maxq && fabs(x0*q2 - p2*y0) > relerr*x0*q2) {
     x = y;
     y = r;
-    m = Oc_FloorRW(x/y);
+    m = floor(x/y);
     r = x - m*y;
     p0 = p1; p1 = p2; p2 = m*p1 + p0;
     q0 = q1; q1 = q2; q2 = m*q1 + q0;
@@ -224,7 +208,7 @@ int Nb_FindRatApprox
   } else {
     p = q2;  q = p2;
   }
-  return (Oc_FabsRW(x0*q2 - p2*y0) <= relerr*x0*q2);
+  return (fabs(x0*q2 - p2*y0) <= relerr*x0*q2);
 }
 
 //////////////////////////////////////////////////////////////////////////

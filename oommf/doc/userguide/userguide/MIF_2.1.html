@@ -95,16 +95,16 @@ MIF 2.1
 <A NAME="pt:mif2format"></A>
 The MIF&nbsp;2.x format was introduced with the
 <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
- NAME="20275">Oxs 3D solver</A><A NAME="20276"></A>.
+ NAME="20349">Oxs 3D solver</A><A NAME="20350"></A>.
 It is <I>not</I> backwards compatible with the MIF&nbsp;1.x formats,
 however a conversion utility,
 <A HREF="mifconvert.html#sec:mifconvert"
- NAME="20282"><B>mifconvert</B></A>, is available
+ NAME="20356"><B>mifconvert</B></A>, is available
 to aid in converting MIF&nbsp;1.x files to the MIF&nbsp;2.1 format.
 
 <P>
 
-<H3><A NAME="SECTION000183100000000000000"></A><A NAME="sec:mif2overview"></A><A NAME="20285"></A>
+<H3><A NAME="SECTION000183100000000000000"></A><A NAME="sec:mif2overview"></A><A NAME="20359"></A>
 <BR>
 MIF 2.1 File Overview
 </H3>
@@ -238,7 +238,7 @@ of the Oxs documentation.
 
 <P>
 
-<H3><A NAME="SECTION000183200000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="20385"></A>
+<H3><A NAME="SECTION000183200000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="20459"></A>
 <BR>
 MIF&nbsp;2.1 Extension Commands
 </H3>
@@ -260,7 +260,7 @@ and <A HREF="#html:scheduleCmd"><TT>Schedule</TT></A>.
 <P>
 <DL>
 <DT><STRONG>Specify<A NAME="html:specifyCmd"></A></STRONG></DT>
-<DD><A NAME="20412"></A>
+<DD><A NAME="20486"></A>
 An Oxs simulation is built as a collection of <TT>Oxs_Ext</TT> (Oxs
 Extension) objects.  In general, <TT>Oxs_Ext</TT> objects are specified and
 initialized in the input MIF&nbsp;2.1 file using the <TT>Specify</TT> command,
@@ -287,7 +287,7 @@ The first part of this name, up to the colon, is the the C++ class name of the o
 class.  Here, <TT>Oxs_EulerEvolve</TT> is a class that integrates the
 Landau-Lifshitz ODE using a simple forward Euler method.  The second
 part of the name, i.e., the part following the colon, is
-the <I>instance name</I><A NAME="20427"></A> for
+the <I>instance name</I><A NAME="20501"></A> for
 this particular instance of the object.  In general, it is possible to
 have multiple instances of an <TT>Oxs_Ext</TT> child class in a simulation,
 but each instance must have a unique name.  These names are used for
@@ -327,7 +327,7 @@ preceding Specify blocks are removed.
 <P>
 </DD>
 <DT><STRONG>Destination<A NAME="html:destinationCmd"></A></STRONG></DT>
-<DD><A NAME="20445"></A><A NAME="20446"></A>
+<DD><A NAME="20519"></A><A NAME="20520"></A>
 The format for the <TT>Destination</TT> command is
 <BLOCKQUOTE>
 <PRE>
@@ -476,7 +476,7 @@ files in other parts of the OOMMF directory tree.
 
 <P>
 The translation specification should be one of <TT>binary</TT>, <TT>auto</TT>
-(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="20521"></A>.  The
+(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="20595"></A>.  The
 first two translation modes provide the functionality of the
 <TT>-translation</TT> option of the Tcl <TT>fconfigure</TT> command.  Refer to
 the Tcl documentation for details.  Specifying <TT>image</TT> causes the
@@ -528,7 +528,7 @@ eval [ReadFile extra_mif_commands.tcl]
 can be used to embed a separate Tcl file into a MIF&nbsp;2.1 file.
 
 <P>
-<A NAME="20535"></A>Here's a more complicated example that uses a color image file to
+<A NAME="20609"></A>Here's a more complicated example that uses a color image file to
 create a vector field:
 <BLOCKQUOTE>
 <PRE>
@@ -559,7 +559,7 @@ Specify Oxs_ScriptVectorField:sample {
    script ColorField
 }
 </PRE>
-</BLOCKQUOTE><A NAME="20538"></A>
+</BLOCKQUOTE><A NAME="20612"></A>
 If the input image is large, then it is best to work with the image list
 (i.e., the variable <TT>colorimage</TT> in the preceding example) directly,
 as illustrated above.  The image list as returned by <TT>ReadFile</TT> is in
@@ -620,7 +620,7 @@ option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
 <P>
 </DD>
 <DT><STRONG>Schedule<A NAME="html:scheduleCmd"></A></STRONG></DT>
-<DD><A NAME="20576"></A>
+<DD><A NAME="20650"></A>
 The <TT>Schedule</TT> command is used to setup outputs from the MIF file.
 This functionality is critical for solvers running in batch mode, but is
 also useful for setting up default connections in interactive mode.
@@ -696,7 +696,7 @@ every third stage.  Note that double quotes enclose the
 
 <P>
 
-<H3><A NAME="SECTION000183300000000000000"></A><A NAME="sec:specConventions"></A><A NAME="20630"></A>
+<H3><A NAME="SECTION000183300000000000000"></A><A NAME="sec:specConventions"></A><A NAME="20704"></A>
 <BR>
 Specify Conventions
 </H3>
@@ -717,7 +717,7 @@ of this document.
 
 <P>
 
-<H4><A NAME="SECTION000183310000000000000"></A><A NAME="par:specInitString"></A><A NAME="20646"></A>
+<H4><A NAME="SECTION000183310000000000000"></A><A NAME="par:specInitString"></A><A NAME="20720"></A>
 <BR>
 Initialization string format
 </H4>
@@ -731,12 +731,12 @@ Specify Oxs_EulerEvolve:foo {
 </PRE>
 </BLOCKQUOTE>
 The first convention is that the initialization string be structured as
-a Tcl list<A NAME="20649"></A> with an even number of elements, with
+a Tcl list<A NAME="20723"></A> with an even number of elements, with
 consecutive elements consisting of a label + value pairs.  In the above
 example, the initialization string consists of two label + value pairs,
 ``alpha 0.5'' and ``start_dm 0.01''.  The first specifies that the
 damping parameter <B><IMG
- WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img23.gif"
  ALT="$ \alpha$"></B>
 <!-- MATHEND
@@ -777,7 +777,7 @@ the present discussion.)
 
 <P>
 
-<H4><A NAME="SECTION000183320000000000000"></A><A NAME="par:oxsExtReferencing"></A><A NAME="20658"></A>
+<H4><A NAME="SECTION000183320000000000000"></A><A NAME="par:oxsExtReferencing"></A><A NAME="20732"></A>
 <BR>
 <TT>Oxs_Ext</TT> referencing
 </H4>
@@ -888,7 +888,7 @@ blocks, and not as embedded objects.
 
 <P>
 
-<H4><A NAME="SECTION000183330000000000000"></A><A NAME="par:groupedLists"></A><A NAME="20696"></A>
+<H4><A NAME="SECTION000183330000000000000"></A><A NAME="par:groupedLists"></A><A NAME="20770"></A>
 <BR>
 Grouped lists
 </H4>
@@ -965,7 +965,7 @@ state so in its documentation.
 
 <P>
 
-<H4><A NAME="SECTION000183340000000000000"></A><A NAME="par:specifyComments"></A><A NAME="20726"></A>
+<H4><A NAME="SECTION000183340000000000000"></A><A NAME="par:specifyComments"></A><A NAME="20800"></A>
 <BR>
 Comments
 </H4>
@@ -995,7 +995,7 @@ other value element.
 
 <P>
 
-<H4><A NAME="SECTION000183350000000000000"></A><A NAME="par:specifyAttributes"></A><A NAME="20733"></A>
+<H4><A NAME="SECTION000183350000000000000"></A><A NAME="par:specifyAttributes"></A><A NAME="20807"></A>
 <BR>
 Attributes
 </H4>
@@ -1026,7 +1026,7 @@ imported using the <TT>ReadFile</TT> MIF extension command.
 
 <P>
 
-<H4><A NAME="SECTION000183360000000000000"></A><A NAME="par:supportProcs"></A><A NAME="20745"></A>
+<H4><A NAME="SECTION000183360000000000000"></A><A NAME="par:supportProcs"></A><A NAME="20819"></A>
 <BR>
 User defined support procedures
 </H4>
@@ -1166,7 +1166,7 @@ multiple substitution where such bracing cannot be applied.  See the
 Tcl documentation for the <TT>expr</TT> command for details.
 
 <P>
-<A NAME="20785"></A>Sometimes externally defined data can be put to good use inside a
+<A NAME="20859"></A>Sometimes externally defined data can be put to good use inside a
 Tcl support proc, as in this example:
 <BLOCKQUOTE>
 <PRE>
@@ -1211,11 +1211,11 @@ is 0 or 1.  This is essentially the same technique used in the
 documented above,
 except that there the data structure values are built from a separate
 image file rather than from data embedded inside the MIF file.
-<A NAME="20795"></A>
+<A NAME="20869"></A>
 
 <P>
 
-<H4><A NAME="SECTION000183370000000000000"></A><A NAME="par:userScalarOutputs"></A><A NAME="20798"></A>
+<H4><A NAME="SECTION000183370000000000000"></A><A NAME="par:userScalarOutputs"></A><A NAME="20872"></A>
 <BR>
 User defined scalar outputs
 </H4>
@@ -1266,10 +1266,10 @@ output is computed according to
 <TABLE WIDTH="100%" ALIGN="CENTER">
 <TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG>
 <B><IMG
- WIDTH="29" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="28" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
  SRC="img81.gif"
  ALT="$\displaystyle \sum_{i}^{}$"><I>W</I><SUB>select</SUB>[<I>i</I>]<SUP> . </SUP><I>V</I><SUB>source</SUB>[<I>i</I>]/<IMG
- WIDTH="29" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="28" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
  SRC="img81.gif"
  ALT="$\displaystyle \sum_{i}^{}$">| <I>W</I><SUB>select</SUB>[<I>i</I>]|</B>
 </BIG></TD>
@@ -1319,7 +1319,7 @@ affects the denominator in (<A HREF="#eq:UserScalarOutput">6</A>).  If
 as shown in (<A HREF="#eq:UserScalarOutput">6</A>).  If <I> norm_request</I> is 0,
 then instead the denominator is replaced with the number of cells in the
 simulation, i.e., <B><IMG
- WIDTH="24" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="24" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
  SRC="img82.gif"
  ALT="$ \sum_{i}^{}$">1</B>
 <!-- MATHEND
@@ -1437,7 +1437,7 @@ files <TT><B>ext.h</B></TT> and <TT><B>ext.cc</B></TT> in the directory
 
 <P>
 
-<H3><A NAME="SECTION000183400000000000000"></A><A NAME="sec:varSubst"></A><A NAME="20848"></A>
+<H3><A NAME="SECTION000183400000000000000"></A><A NAME="sec:varSubst"></A><A NAME="20922"></A>
 <BR>
 Variable Substitution
 </H3>
@@ -1668,6 +1668,6 @@ Figure 8:
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2018</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
 </BODY>
 </HTML>

@@ -147,6 +147,8 @@ if {[string match g++ $ccbasename]} {
 
     # Default warnings disable
     set nowarn [list -Wno-non-template-friend]
+    # Allow strncpy to truncate strings
+    lappend nowarn {-Wno-stringop-truncation}
     if {[info exists nowarn] && [llength $nowarn]>0} {
        set opts [concat $opts $nowarn]
     }

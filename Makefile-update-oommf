@@ -1,28 +1,56 @@
+# This file is run rarely - only when there is a new version of OOMMF
+# (or if one of the extensions we add in part 2. is updated).
+
+#
+# 1. Fetch the oommf sources (in preration to adding them to
+# this repository).
+#
+# This appears somewhat lengthy because we want to add some
+# additional files to the repository, that make it easy to
+# reconstruct exactly from which sources this version of OOMMF
+# originates.
+#
+
 # Compose name of OOMMF tar ball as available on NIST webpages
-# (as of September 2015)
-OOMMFPREFIX="oommf"
-OOMMFVERSION="20a1"
+# (as of September 2015, still valid 2021)
+OOMMF_ROOT="oommf"
+OOMMFVERSION="20a2"
 # USE dot in conda version numbers:
-OOMMFVERSIONCONDA="2.0a1"
-OOMMFDATE="20180930"
-OOMMFBUILD="a1"
-OOMMFROOTNAME=$(OOMMFPREFIX)$(OOMMFVERSION)
-OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE).tar.gz
+OOMMFVERSIONCONDA="2.0a2"
+# The release date shown on webpage
+OOMMFDATE="20200608"
+OOMMFBUILD="a2"
+OOMMFROOTNAME=$(OOMMF_ROOT)$(OOMMFVERSION)
+# Any additional modifier (could be empty, was first needed for "-hotfix" 2.0a2, 20200608)
+OOMMFSOURCEMODIFIER="-hotfix"
+OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE)$(OOMMFSOURCEMODIFIER).tar.gz
 OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
 GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
-all:
+fetch-oommf:
+	make -f Makefile-update-oommf clean
 	make -f Makefile-update-oommf get-oommf
 	make -f Makefile-update-oommf untar-oommf
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
-	@echo "things to do now:"
-	@echo "1. Comment on DMI extension in source in versionlog.txt?"
-	@echo "2. Run git 'commit -a' or similar to update git repo with new release"
-	@echo "3. Tag the revisision (conda-forge recipe needs this):"
-	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
-	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
+	make -f Makefile-update-oommf apply-patches
+
+	@#	@echo "things to do now:"
+	@#	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
+	@#  @echo "2. Run 'make get-all' to get all additional extensions. "
+	@#	@echo "3. Run git 'commit -a' or similar to update git repo with new release [if tests pass]"
+	@#	@echo "4. Tag the revisision (conda-forge recipe needs this):"
+	@#	@# something like: " git tag 1.2b0_20160930b1 d4e20846611d545441c0d71267d8d59f1ea99823"
+	@#	@echo "git tag $(OOMMFVERSIONCONDA)_$(OOMMFDATE)$(OOMMFBUILD) XXXHASHFROMLASTCOMMITXXX"
+	@#  @echo "5. Update oommf/package.py in Spack to support the new release"
+
+
+clean:
+	rm -rf oommf
+	rm -rf tmp_git_clone
+	rm -rf Downloads
+  
 
 get-oommf:
 	mkdir -p Downloads
@@ -39,6 +67,7 @@ update-logfile:
 	echo "     version: $(OOMMFVERSION)" >> versionlog.txt
 	echo "     date: $(OOMMFDATE)" >> versionlog.txt
 	echo "     build: $(OOMMFBUILD)" >> versionlog.txt
+	echo "     modified: $(OOMMFSOURCEMODIFIER)" >> versionlog.txt
 	echo "     source-url: $(OOMMFSOURCEURL)" >> versionlog.txt
 	echo "   github-url: https://github.com/fangohr/oommf" >> versionlog.txt
 	echo "   github version: $(GITREPOHASH)" >> versionlog.txt
@@ -49,10 +78,88 @@ update-oommf-version:
 
 apply-patches:
 	echo "Applying patches ..."
-	# patch from Ryan Pepper to allow compilation on OS X 10.11
-	# (already applied into latest OOMMF version)
-	# patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
-	# echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
-	# record original file in repository.
-	# git add oommf/config/platforms/darwin.tcl.orig
-	# when this patch is removed, the file above should also be removed from the repo.
+	@# patch from Ryan Pepper to allow compilation on OS X 10.11
+	@# (already applied into latest OOMMF version)
+	@# patch -b oommf/config/platforms/darwin.tcl < patches/darwin.tcl.1.2a6.patch
+	@# echo "   patch applied:  patches/darwin.tcl.1.2a6.patch" >> versionlog.txt
+	@# record original file in repository.
+	@# git add oommf/config/platforms/darwin.tcl.orig
+	@# when this patch is removed, the file above should also be removed from the repo.
+
+
+#
+# 2. OOMMF extensions that we fetch and add to the repository
+#
+# Again, this appears somewhat lengthy because we want to add some
+# additional files to the repository, that make it easy to
+# reconstruct exactly from which repository each added extensions
+# originates, and which version of the repository it is.
+# We also add a snapshot of teh extension repository as a zip file.
+# This may contain useful documentation or examples.
+#
+
+DMICNVREPO="oommf-extension-dmi-cnv"
+DMITREPO="oommf-extension-dmi-t"
+DMID2DREPO="oommf-extension-dmi-d2d"
+MELREPO="oommf-mel"
+
+
+get-cnv:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
+
+get-t:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMITREPO).git src
+
+get-d2d:
+	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMID2DREPO).git src
+
+get-mel:
+	python3 clone-log-and-extract-src.py https://github.com/yuyahagi/$(MELREPO).git .
+
+fetch-all-extensions: get-cnv get-d2d get-t get-mel 
+
+
+#
+# 3. Master target that fetches OOMMF (step 1) and the extensions (step 2)
+#
+
+all:
+	make -f Makefile-update-oommf fetch-oommf
+	make -f Makefile-update-oommf fetch-all-extensions
+	@echo "to build and test use 'make build test-all'"
+
+
+#
+# For continuous integration
+#
+# Note: it is not clear how sensible the steps below are.
+# These can fail for a number of reasons, that do not matter
+# to people using this git repository of OOMMF source code with
+# additional extensions:
+#
+# - download of sources fail
+# - compilation fails, for example because the extensions has changed. In this
+#   case ...
+#
+#
+# This is used by the in-docker-replay-oommf-update github workflow.
+
+in-docker-replay-oommf-update:
+	@# Create Docker container with tk and tcl
+	docker build -t dockertestimage .
+	@# Start this as a daemon
+	docker run -ti -d --name testcontainer2 dockertestimage
+	@# rm all oommf files from repo
+	docker exec testcontainer2 make -f Makefile-update-oommf clean
+	@# fetch all oommf from NIST
+	docker exec testcontainer2 make -f Makefile-update-oommf fetch-oommf
+	@# fetch extensinos to be added
+	docker exec testcontainer2 make -f Makefile-update-oommf fetch-all-extensions
+	@# build the vanilla version with extensions
+	docker exec testcontainer2 make build
+	@# run some tests
+	docker exec testcontainer2 make test-all
+	@# stop docker container
+	docker stop testcontainer2
+	@# and remove it
+	docker rm testcontainer2

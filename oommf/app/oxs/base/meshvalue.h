@@ -195,6 +195,7 @@ public:
   Oxs_MeshValue<T>& operator-=(const Oxs_MeshValue<T> &other);
   Oxs_MeshValue<T>& operator*=(const Oxs_MeshValue<T> &other);
   Oxs_MeshValue<T>& operator/=(const Oxs_MeshValue<T> &other);
+  Oxs_MeshValue<T>& operator+=(const T &value);
   Oxs_MeshValue<T>& operator*=(OC_REAL8m mult);
 
   Oxs_MeshValue<T>& operator=(const T &value); // Fills out
@@ -529,7 +530,22 @@ Oxs_MeshValue<T>::operator/=(const Oxs_MeshValue<T>& other)
   return *this;
 }
 
-
+template<class T> Oxs_MeshValue<T>&
+Oxs_MeshValue<T>::operator+=(const T& value)
+{
+  if(size<MIN_THREADING_SIZE) {
+    for(OC_INDEX i=0;i<size;i++) arr[i]+=value;
+  } else {
+    Oxs_RunThreaded<T,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+      (*this,
+       [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
+        for(OC_INDEX j=jstart;j<jstop;++j) {
+          arr[j] += value;
+        }
+      });
+  }
+  return *this;
+}
 
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator*=(OC_REAL8m mult)

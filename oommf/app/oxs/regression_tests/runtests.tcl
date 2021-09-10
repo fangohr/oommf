@@ -182,7 +182,7 @@ if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
 # line (first non-space character is '#') or else lists the parameters
 # for a separate boxsi run.  An empty .subtest file indicates a
 # single boxsi run with default parameter settings.
-# EXTENSION: If a line in a .subtest file has an odd number of
+#   EXTENSION: If a line in a .subtest file has an odd number of
 # arguments, and one of the arguments at an even-indexed location is
 # "REFERRS", then the parameters list stops with the item preceding
 # REFERRS.  The items following REFERRS are output names and allowed
@@ -323,7 +323,7 @@ if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin] \
 set PID_INFO_TIMEOUT 60   ;# Max time to wait for mmArchive to start,
                           ## in seconds.
 
-set EXEC_TEST_TIMEOUT 150 ;# Max time to wait for any single test to
+set EXEC_TEST_TIMEOUT 600 ;# Max time to wait for any single test to
 ## run, in seconds.
 
 set HOME  [file dirname [info script]]
@@ -401,7 +401,7 @@ proc Usage {} {
    puts stderr "  -sigfigs is number of significant figures (default $SIGFIGS)"
    puts stderr "  -threads is number of threads to run (threaded builds only)"
    puts stderr "  -timeout is max seconds to wait for one test\
-                   (default 150; 0 == no timeout)"
+                   (default $EXEC_TEST_TIMEOUT; 0 == no timeout)"
    puts stderr "  -updaterefdata to overwrite reference data\
                    with new results"
    puts stderr "  -v enable verbose output"
@@ -582,6 +582,31 @@ proc exit { args } {
    eval orig_exit $args
 }
 
+proc FindLocalMifs {} {
+    # Find all .mif and .mif2 files in local or in one subdirectory
+    # under local.
+    global local_examples_dir
+
+    # First find all .mif and mif2 files at sublevel 0
+    set miflist [glob -nocomplain -directory $local_examples_dir \
+                     -tails -type f *.mif{2,}]
+
+    # Next find all directories at sublevel 0
+    set subdirlist [glob -nocomplain -directory $local_examples_dir \
+                         -tails -type d *]
+
+    # Find all .mif and .mif2 files in each subdirectory
+    foreach sd $subdirlist {
+        set check [file join $local_examples_dir $sd]
+        set tmplist [glob -nocomplain -directory $check \
+                          -tails -type f *.mif{2,}]
+        foreach f $tmplist {
+            lappend miflist [file join $sd $f]
+        }
+    }
+    
+    return [lsort -dictionary $miflist]
+}
 
 if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage }
 
@@ -777,22 +802,13 @@ if {![string match {} $alt_test_dir]} {
    # Silently omit any missing local MIF files, so that
    # extensions can be removed from local w/o breaking
    # regression test suite.
-   set local_load_list \
-      [glob -nocomplain [file join $local_load_dir *.subtests]]
-   set local_examples_list \
-      [glob -nocomplain [file join $local_examples_dir *.mif] \
-          [file join $local_examples_dir *.mif2]]
    set localtests {}
-   foreach test $local_load_list {
-      set root [file rootname [file tail $test]]
-      set check [file join $local_examples_dir ${root}.mif]
-      if {[lsearch -exact $local_examples_list $check]>=0} {
-         lappend localtests $root
-      } else {
-         set check [file join $local_examples_dir ${root}.mif2]
-         if {[lsearch -exact $local_examples_list $check]>=0} {
-            lappend localtests $root
-         }
+   set localmiflist [FindLocalMifs]
+   foreach mif $localmiflist {
+      set basename [file rootname $mif]
+      set check [file join $local_load_dir "${basename}.subtests"]
+      if {[file exists $check]} {
+         lappend localtests $basename
       }
    }
 }
@@ -952,6 +968,8 @@ proc ParseSubtestLine { line } {
    # match taking precedence, so more general glob patterns can be
    # placed first, followed by more specific glob patterns that
    # override earlier values.
+   #   If one of the REFERRS names is "OVFERRS" then the associated
+   # value is the absolute error allowed in all .ovf file comparisons.
    #   The return value is a two item list; the first item is the
    # parameter name+value list.  The second item is the referrs output
    # name + error values.
@@ -1350,7 +1368,7 @@ proc TestCompareODT { oldfile newfile suberrors } {
    return 1
 }
 
-proc TestCompareOVF { oldfile newfile } {
+proc TestCompareOVF { oldfile newfile ovferrors } {
    global TCLSH OOMMF verbose
    global avfdiff_basecmd nuldevice
    if {$verbose} {
@@ -1419,9 +1437,15 @@ proc TestCompareOVF { oldfile newfile } {
       return 1
    }
 
-   global SIGFIGS
-   set allowed_err [expr {5.0*pow(10,-1*$SIGFIGS)*$maxmag}]
-   ## See notes on "errmult" in proc TestCompareODT
+   if {[string match {} $ovferrors]} {
+      # No test-specific OVF error setting; use SIGFIGS with
+      # maxmag to set error tolerance.
+      global SIGFIGS
+      set allowed_err [expr {5.0*pow(10,-1*$SIGFIGS)*$maxmag}]
+      ## See notes on "errmult" in proc TestCompareODT
+   } else {
+      set allowed_err $ovferrors
+   }
    if {$maxdiff > $allowed_err} {
       # Error too big
       puts "OVF compare error on \"$oldfile\":"
@@ -1433,13 +1457,13 @@ proc TestCompareOVF { oldfile newfile } {
    return 0
 }
 
-proc TestCompare { oldfile newfile suberrors } {
+proc TestCompare { oldfile newfile suberrors ovferrors} {
    set file_ext [string tolower [file extension $oldfile]]
    if {[string compare ".odt" $file_ext]==0} {
       return [TestCompareODT $oldfile $newfile $suberrors]
    }
    if {[string match ".o?f" $file_ext]} {
-      return [TestCompareOVF $oldfile $newfile]
+      return [TestCompareOVF $oldfile $newfile $ovferrors]
    }
    puts "UNKNOWN FILE TYPE; NO COMPARISON: \"$oldfile\" \"$newfile\""
    return 0
@@ -1777,7 +1801,10 @@ foreach test $dotests {
          set subtestname $subtest
          set subcomp_base ${subtest}
       }
-
+      # Save size of test basename prefix, minus one to
+      # make it easy to strip using string replace.
+      set basestrip [expr {[string length [file tail $subcomp_base]]-1}]
+      
       puts [format "TEST $tstfmt/$tstfmt: $subtestname ---------------" \
                $testcount $number_of_tests ]
       flush stdout
@@ -1799,8 +1826,13 @@ foreach test $dotests {
       } 
       set subparams [lindex $lineparts 0]
       set suberrors [lindex $lineparts 1]
-
-      set results_file_odt [file join $mifdir ${results_basename}.odt]
+      set ovferrors {}
+      if {[set index [lsearch $suberrors OVFERRS]]>=0} {
+         set ovferrors [lindex $suberrors [expr {$index+1}]]
+         set suberrors [lreplace $suberrors $index [expr {$index+1}]]
+      }
+      set results_file_odt [file join $mifdir [file dir ${subcomp_base}] \
+                               ${results_basename}.odt]
       if {[file exists $results_file_odt]} {
          # Make sure we start on a clean slate
          file delete $results_file_odt
@@ -1862,12 +1894,10 @@ foreach test $dotests {
             incr newcount
             file rename $results_file_odt [lindex $subcomp 0]
          } elseif {$updaterefdata} {
-            set blen [expr {[string length $subcomp_base]-1}]
             foreach check_file $subcomp {
-               set results_file [file tail $check_file]
-               set results_file [string replace $results_file 0 $blen \
-                                    $results_basename]
-               set results_file [file join $mifdir $results_file]
+               set results_file \
+                  [file join $mifdir [file dir $subcomp_base] \
+                      "${results_basename}[file ext $check_file]"]
                if {![file exists $results_file]} {
                   set code 1
                   puts "ERROR: Missing output file $results_file"
@@ -1878,21 +1908,20 @@ foreach test $dotests {
             }
          } else {
             # Otherwise, do comparison
-            set blen [expr {[string length $subcomp_base]-1}]
             if {$verbose && [llength $subcomp]==0} {
                puts "No check file comparisons"
             }
             foreach check_file $subcomp {
-               set results_file [file tail $check_file]
-               set results_file [string replace $results_file 0 $blen \
-                                    $results_basename]
-               set results_file [file join $mifdir $results_file]
+               set tmp [string replace [file tail $check_file] \
+                           0 $basestrip $results_basename]
+               set results_file \
+                  [file join $mifdir [file dir $subcomp_base] $tmp]
                if {![file exists $results_file]} {
                   set code 1
                   puts "ERROR: Missing output file $results_file"
                } else {
                   set testresults \
-                     [TestCompare $check_file $results_file $suberrors]
+                     [TestCompare $check_file $results_file $suberrors $ovferrors]
                   if {$testresults != 0} {
                      set code 1
                      if {$keepfail} {
@@ -1914,7 +1943,8 @@ foreach test $dotests {
       }
       # Delete any "non-saved" results files
       foreach results_file [glob -nocomplain \
-                               [file join $mifdir ${results_basename}*.o??]] {
+                            [file join $mifdir [file dir $subcomp_base] \
+                            ${results_basename}*.o??]] {
          set time0 [clock seconds]
          for {set idelete 0} {$idelete<200} {incr idelete} {
             if {![catch {file delete $results_file}]} {
@@ -1974,7 +2004,16 @@ if {[info exists skipped_tests] && [llength $skipped_tests]>0} {
    puts "Skipped tests:"
    set colwidthA -1
    set colwidthB -1
+   set narrowed_skipped_tests {}
    foreach elt $skipped_tests {
+      # To save horizontal space in the output report, if test name has
+      # form gilgamesh/gilgamesh-cheery, shorten it to gilgamesh-cheery.
+      set bits [file split [lindex $elt 0]]
+      if {[llength $bits]==2 &&
+          [string match [lindex $bits 0]* [lindex $bits 1]]} {
+         set elt [lreplace $elt 0 0 [lindex $bits 1]]
+      }
+      lappend narrowed_skipped_tests $elt
       set cwA [string length [lindex $elt 0]]
       if {$cwA>$colwidthA} {
          set colwidthA $cwA
@@ -1984,7 +2023,7 @@ if {[info exists skipped_tests] && [llength $skipped_tests]>0} {
          set colwidthB $cwB
       }
    }
-   foreach elt $skipped_tests {
+   foreach elt $narrowed_skipped_tests {
       puts [format " %${colwidthA}s  %-${colwidthB}s  Reason: %s" \
                [lindex $elt 0] [lindex $elt 1] [lindex $elt 2]]
    }

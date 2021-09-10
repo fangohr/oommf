@@ -30,7 +30,6 @@ private:
   Oxs_OwnedPointer<Oxs_ScalarField> Ha_init;
   Oxs_OwnedPointer<Oxs_VectorField> axis1_init;
   Oxs_OwnedPointer<Oxs_VectorField> axis2_init;
-  mutable Oxs_ThreadControl thread_control;
   mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_REAL8m> K1;
   mutable Oxs_MeshValue<OC_REAL8m> Ha;

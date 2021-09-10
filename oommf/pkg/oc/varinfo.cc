@@ -7,6 +7,14 @@
  *
  */
 
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * !!! NOTE: The plain text output from this program is parsed by the !!!
+ * !!!       Oc_MakePortHeader proc in oommf/pkg/oc/procs.tcl during  !!!
+ * !!!       the OOMMF build process.  Any changes to the output of   !!!
+ * !!!       this program should be reflected in that proc.           !!!
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ */
+
 #ifndef OOMMF_ATOMIC
 # define OOMMF_ATOMIC 0
 #endif
@@ -82,15 +90,7 @@
  * type is supported.
  */
 # endif
-
-# ifdef __cplusplus
-#  if !defined(EXTRALONGDOUBLE) && !defined(__SUNPRO_CC) && !defined(__sun)
-/* Some(?) releases of Sun Forte compiler missing floorl support. */
-/* Some(?) g++ installations on Solaris missing floorl support. */
-#   define EXTRALONGDOUBLE 1
-#  endif
-# endif
-#endif /* EXTRALONG */
+#endif // EXTRALONG
 
 #if EXTRALONG
 # ifndef EXTRALONGINT
@@ -926,20 +926,42 @@ char **argv;
     }
   }
 
-#if EXTRALONGDOUBLE
-# ifdef NO_FLOORL_CHECK
-  printf("\nLibrary function floorl assumed bad or missing.\n");
-# else
-  /* Check for bad long double floor and ceil */
+#ifdef EXTRALONGDOUBLE
+  /* Check for bad long double floor and ceil.                */
+  /* Note: Use "std::floor" rather than "floor" because there */
+  /*       might not be an overload in place for the latter.  */
   ld = -0.253L;
-  if(floorl(ld) != -1.0L || (ld - floorl(ld)) != 1.0L - 0.253L) {
-    printf("\nBad floorl.  You should set "
-            "program_compiler_c++_property_bad_wide2int"
-            " to 1 in the platform oommf/config/platforms/ file.\n");
+  if(std::floor(ld) != -1.0L || (ld - std::floor(ld)) != 1.0L - 0.253L) {
+    printf("\nBad std::floor(long double) -- failure type A\n");
   } else {
-    printf("\nGood floorl.\n");
+    ld = 1.0L - LDBL_EPSILON;
+    if(std::floor(ld) != 0.0L) {
+      printf("\nBad std::floor(long double) -- failure type B\n");
+    } else {
+      ld = -1.0L - LDBL_EPSILON;
+      if(std::floor(ld) != -2.0L) {
+        printf("\nBad std::floor(long double) -- failure type C\n");
+      } else {
+        printf("\nGood std::floor(long double)\n");
+      }
+    }
   }
-# endif
+  ld = -0.253L;
+  if(std::ceil(ld) != 0.0L || (ld - std::ceil(ld)) != 0.0L - 0.253L) {
+    printf("Bad std::ceil(long double) -- failure type A\n");
+  } else {
+    ld = 1.0L + LDBL_EPSILON;
+    if(std::ceil(ld) != 2.0L) {
+      printf("Bad std::ceil(long double) -- failure type B\n");
+    } else {
+      ld = -1.0L + LDBL_EPSILON;
+      if(std::ceil(ld) != 0.0L) {
+        printf("Bad std::ceil(long double) -- failure type C\n");
+      } else {
+        printf("Good std::ceil(long double)\n");
+      }
+    }
+  }
 #endif /* EXTRALONGDOUBLE */
 
 #if REPORT_PAGESIZE

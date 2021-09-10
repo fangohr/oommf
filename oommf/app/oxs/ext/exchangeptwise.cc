@@ -153,8 +153,8 @@ void Oxs_ExchangePtwise::ComputeEnergyChunkInitialize
             }
             if(j<0) continue; // Edge case; skip
             OC_REAL8m Aj=A[j];
-            if(Oc_Fabs(Ai+Aj)<1.0
-               && Oc_Fabs(Ai*Aj)>(DBL_MAX/2.)*(Oc_Fabs(Ai+Aj))) {
+            if(fabs(Ai+Aj)<1.0
+               && fabs(Ai*Aj)>(DBL_MAX/2.)*(fabs(Ai+Aj))) {
               char buf[2000];
               Oc_Snprintf(buf,sizeof(buf),
                           "Exchange coefficient A initialization in"
@@ -165,7 +165,7 @@ void Oxs_ExchangePtwise::ComputeEnergyChunkInitialize
                           x2,y2,z2,static_cast<double>(Aj));
               throw Oxs_ExtError(buf);
             }
-            OC_REAL8m testA = Oc_Fabs(2*Ai*Aj*dir_wgt/(Ai+Aj));
+            OC_REAL8m testA = fabs(2*Ai*Aj*dir_wgt/(Ai+Aj));
             if(testA>max_Aeff) max_Aeff = testA;
           }
         } // x++
@@ -198,7 +198,7 @@ void Oxs_ExchangePtwise::ComputeEnergyChunkFinalize
   for(int i=0;i<number_of_threads;++i) {
     if(maxdot[i]>total_maxdot) total_maxdot = maxdot[i];
   }
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(total_maxdot);
+  const OC_REAL8m arg = 0.5*sqrt(total_maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;
@@ -231,7 +231,7 @@ void Oxs_ExchangePtwise::ComputeEnergyChunkFinalize
     OC_REAL8m diff = (dummy_value-maxang)*(PI/180.);
     OC_REAL8m sum  = (dummy_value+maxang)*(PI/180.);
     if(sum > PI ) sum = 2*PI - sum;
-    if(Oc_Fabs(diff*sum)>8*OC_REAL8_EPSILON) {
+    if(fabs(diff*sum)>8*OC_REAL8_EPSILON) {
       char errbuf[1024];
       Oc_Snprintf(errbuf,sizeof(errbuf),
                   "Programming error:"

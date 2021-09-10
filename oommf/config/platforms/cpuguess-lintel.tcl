@@ -1,10 +1,10 @@
 # FILE: cpuguess-lintel.tcl
 #
-# One Tcl proc for use on Linux x86 systems:
+# This file defines a Tcl proc for use on Linux x86 systems,
 #    GuessCpu
 # to guess the CPU model.
 #   Additionally, this script sources x86-support.tcl, which defines
-# these five Tcl procs:
+# the following Tcl procs:
 #    GuessCpuArch_VendorFamilyModel
 # which returns a cpu-arch list, {vendor type sse-level} given the
 # vendor, processor family and model id numbers.

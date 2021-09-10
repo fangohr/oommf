@@ -26,8 +26,10 @@
 # endif // Mac OS X
 #endif // OC_SYSTEM_TYPE
 
-
 #include <time.h>
+
+using std::ceil;
+using std::floor;
 
 /* End includes */     /* Optional directive to build.tcl */
 
@@ -95,6 +97,10 @@ extern int Verbosity;
 // Napping
 inline void Oc_MilliSleep(unsigned int milliseconds)
 {
+  // May want to change this to use C++ sleep_for function
+  //  #include <chrono>
+  //  #include <thread>
+  //  std::this_thread::sleep_for(std::chrono::milliseconds(x));
   Tcl_Sleep(milliseconds);
 }
 

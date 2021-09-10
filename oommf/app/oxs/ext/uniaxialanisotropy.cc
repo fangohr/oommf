@@ -351,13 +351,13 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunkInitialize
     // ::IncrementPreconditioner().
     if(aniscoeftype == K1_TYPE) {
       if(K1_is_uniform) {
-        max_K1 = Oc_Fabs(uniform_K1_value);
+        max_K1 = fabs(uniform_K1_value);
       } else {
         K1_init->FillMeshValue(state.mesh,K1);
         max_K1=0.0;
         const OC_INDEX size = state.mesh->Size();
         for(OC_INDEX i=0;i<size;i++) {
-          OC_REAL8m test = Oc_Fabs(K1[i]);
+          OC_REAL8m test = fabs(K1[i]);
           if(test>max_K1) max_K1 = test;
         }
       } 
@@ -371,7 +371,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunkInitialize
         // Note: This code assumes that Ms doesn't change
         // for the lifetime of state.mesh.
         if(!Ha_is_uniform) tmpHa = Ha[i];
-        OC_REAL8m test = Oc_Fabs(tmpHa*Ms[i]);
+        OC_REAL8m test = fabs(tmpHa*Ms[i]);
         if(test>max_K1) max_K1 = test;
       }
       max_K1 *= 0.5*MU0;
@@ -931,12 +931,12 @@ Oxs_UniaxialAnisotropy::IncrementPreconditioner(PreconditionerData& pcd)
     // ::ComputeEnergyChunkInitialize().
     if(aniscoeftype == K1_TYPE) {
       if(K1_is_uniform) {
-        max_K1 = Oc_Fabs(uniform_K1_value);
+        max_K1 = fabs(uniform_K1_value);
       } else {
         K1_init->FillMeshValue(state.mesh,K1);
         max_K1=0.0;
         for(OC_INDEX i=0;i<size;i++) {
-          OC_REAL8m test = Oc_Fabs(K1[i]);
+          OC_REAL8m test = fabs(K1[i]);
           if(test>max_K1) max_K1 = test;
         }
       } 
@@ -949,7 +949,7 @@ Oxs_UniaxialAnisotropy::IncrementPreconditioner(PreconditionerData& pcd)
         // Note: This code assumes that Ms doesn't change
         // for the lifetime of state.mesh.
         if(!Ha_is_uniform) tmpHa = Ha[i];
-        OC_REAL8m test = Oc_Fabs(tmpHa*Ms[i]);
+        OC_REAL8m test = fabs(tmpHa*Ms[i]);
         if(test>max_K1) max_K1 = test;
       }
       max_K1 *= 0.5*MU0;

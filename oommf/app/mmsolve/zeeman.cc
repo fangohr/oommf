@@ -202,12 +202,12 @@ void RibbonZeeman::FieldCalc(double dpar,double riblength,double dperp,
        && fabs(dpar)<OC_SQ(EPSILON*EPSILON))
       hperp=0.0;
     else
-      hperp=atan2(fabs(dpar)*ribheight,(2*fabs(dperp)*radtop0));
+      hperp=Oc_Atan2(fabs(dpar)*ribheight,(2*fabs(dperp)*radtop0));
     if(fabs(dperp)<OC_SQ(EPSILON*EPSILON) 
        && fabs(dpar+riblength)<OC_SQ(EPSILON*EPSILON))
       hperp+=0.0;
     else
-      hperp-=atan2(fabs(dpar+riblength)*ribheight,(2*fabs(dperp)*radtop1));
+      hperp-=Oc_Atan2(fabs(dpar+riblength)*ribheight,(2*fabs(dperp)*radtop1));
     hperp*=2;  // Symmetry
 
     // Adjust for the octant we are in

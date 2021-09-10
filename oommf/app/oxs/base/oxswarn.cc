@@ -46,7 +46,7 @@ Oxs_WarningMessageRevisionInfo::Oxs_WarningMessageRevisionInfo
 }
 
 // Static member variables for Oxs_WarningMessage
-Oxs_Mutex Oxs_WarningMessage::mutex;
+Oc_Mutex Oxs_WarningMessage::mutex;
 int Oxs_WarningMessage::ids_in_use = 0;
 std::map<int,int> Oxs_WarningMessage::message_counts;
 std::deque<Oxs_WarningMessage::MessageData> Oxs_WarningMessage::message_hold;
@@ -64,9 +64,9 @@ Oxs_WarningMessage::FormatMessage
   //  -1 if max_message_count is exceeded
   //   1 if max_message_count is met
   //   0 otherwise
-  mutex.Lock();
   int result=0;
-  try {
+  {
+    Oc_LockGuard lck(mutex);
     // Pull current message count data from message_counts map.
     int current_count=0;
     map<int,int>::iterator id_it = message_counts.find(instance_id);
@@ -80,11 +80,7 @@ Oxs_WarningMessage::FormatMessage
     } else if(max_message_count>=0 && current_count>max_message_count) {
       result = -1;
     } 
-  } catch(...) {
-    mutex.Unlock();
-    throw;
   }
-  mutex.Unlock();
   if(result<0) return result;
 
   String fullmsg;
@@ -144,15 +140,9 @@ Oxs_WarningMessage::HoldMessage
   int result = FormatMessage(revinfo,line,msg,src,id,
                              formatted_message,errCode);
   if(result<0) return result;
-  mutex.Lock();
-  try {
-    message_hold.push_back(MessageData(message_type,
-                                       formatted_message,errCode));
-  } catch(...) {
-    mutex.Unlock();
-    throw;
-  }
-  mutex.Unlock();
+  Oc_LockGuard lck(mutex);
+  message_hold.push_back(MessageData(message_type,
+                                     formatted_message,errCode));
   return result;
 }
 
@@ -164,17 +154,13 @@ int Oxs_WarningMessage::TransmitMessageHold()
   while(1) {
     MessageData data;
     int isempty=0;
-    mutex.Lock();
-    try {
+    {
+      Oc_LockGuard lck(mutex);
       if(!(isempty=message_hold.empty())) {
         data = message_hold.front();
         message_hold.pop_front();
       }
-    } catch(...) {
-      mutex.Unlock();
-      throw;
     }
-    mutex.Unlock();
     if(isempty) break;
     TkMessage(data.msgtype,data.text.c_str(),0,data.errCode.c_str());
     ++count;
@@ -207,33 +193,21 @@ Oxs_WarningMessage::Send
 int Oxs_WarningMessage::GetCurrentCount() const
 {
   int result=0;
-  mutex.Lock();
-  try {
-    map<int,int>::const_iterator id_it = message_counts.find(instance_id);
-    if(id_it!=message_counts.end()) {
-      result = id_it->second;
-    }
-  } catch(...) {
-    mutex.Unlock();
-    throw;
+  Oc_LockGuard lck(mutex);
+  map<int,int>::const_iterator id_it = message_counts.find(instance_id);
+  if(id_it!=message_counts.end()) {
+    result = id_it->second;
   }
-  mutex.Unlock();
   return result;
 }
 
 void Oxs_WarningMessage::SetCurrentCount(int newcount)
 {
-  mutex.Lock();
-  try {
-    map<int,int>::iterator id_it = message_counts.find(instance_id);
-    if(id_it==message_counts.end()) {
-      message_counts[instance_id] = newcount;
-    } else {
-      id_it->second = newcount;
-    }
-  } catch(...) {
-    mutex.Unlock();
-    throw;
+  Oc_LockGuard lck(mutex);
+  map<int,int>::iterator id_it = message_counts.find(instance_id);
+  if(id_it==message_counts.end()) {
+    message_counts[instance_id] = newcount;
+  } else {
+    id_it->second = newcount;
   }
-  mutex.Unlock();
 }

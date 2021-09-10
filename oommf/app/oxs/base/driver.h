@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include "oc.h"
 #include "nb.h"
 #include "ext.h"
 #include "labelvalue.h"
@@ -214,7 +215,7 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
     /// friend OxsDriverCheckpointShutdownHandler to Oxs_Driver as
     /// well.
   private:
-    Oxs_Mutex mutex;
+    Oc_Mutex mutex;
     OC_INDEX checkpoint_writes; // Number of successful backup requests.
     Oxs_ConstKey<Oxs_SimState> backup_request;  // Holding pen
     Oxs_ConstKey<Oxs_SimState> backup_inprogress; // Active backup.
@@ -311,16 +312,18 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
     void Reset(const Oxs_SimState* start_state) {
       Oc_RemoveSigTermHandler(OxsDriverCheckpointShutdownHandler,this);
       WaitForBackupThread(100,OXSDRIVER_CMT_DISABLED);
-      mutex.Lock();
-      // Note: The following resets might not "take" if
-      // WaitForBackupThread failed.  But this is probably not worth
-      // worrying about.
-      checkpoint_writes = 0;
-      if(checkpoint_mode != OXSDRIVER_CMT_DISABLED) {
-        throw Oxs_BadCode("checkpoint_mode in improper state");
+      {
+        Oc_LockGuard lck(mutex);
+        // Note: The following resets might not "take" if
+        // WaitForBackupThread failed.  But this is probably not worth
+        // worrying about.
+        checkpoint_writes = 0;
+        if(checkpoint_mode != OXSDRIVER_CMT_DISABLED) {
+          throw Oxs_BadCode("checkpoint_mode in improper state");
+        }
+        checkpoint_mode = OXSDRIVER_CMT_ENABLED;
       }
-      checkpoint_mode = OXSDRIVER_CMT_ENABLED;
-      mutex.Unlock();
+
       if(start_state) {
         // Insure that the start state is not saved as a checkpoint.
         checkpoint_id = start_state->Id();
@@ -467,9 +470,14 @@ public:
   // test harness.)  Limit all stages to 5 steps, and total step limit
   // to 35.
   void LoadTestSetup() {
-    stage_iteration_limit.clear();
-    stage_iteration_limit.push_back(5);
-    total_iteration_limit = 35;
+    for(size_t i=0;i<stage_iteration_limit.size();++i) {
+      if(stage_iteration_limit[i]==0 || stage_iteration_limit[i]>5) {
+        stage_iteration_limit[i] = 5;
+      }
+    }
+    if(total_iteration_limit==0 || total_iteration_limit>35) {
+      total_iteration_limit = 35;
+    }
   }
 
   virtual void FillStateMemberData(const Oxs_SimState& old_state,

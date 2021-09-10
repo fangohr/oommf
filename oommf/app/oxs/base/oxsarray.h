@@ -1,6 +1,9 @@
 /* FILE: oxsarray.h              -*-Mode: c++-*-
  */
 
+#ifndef _OXS_OXSARRAY
+#define _OXS_OXSARRAY
+
 #include "oxsexcept.h"
 #include "oxsthread.h"
 
@@ -71,4 +74,10 @@ public:
   /// Ranged checked versions.
 #endif
 
+  // Use pointer access with care.  There is no bounds checking and the
+  // client is responsible for insuring proper indexing.
+  T* GetArrBase() const { return objs.GetArrBase(); }
+
 };
+
+#endif // _OXS_OXSARRAY

@@ -350,8 +350,8 @@ void Oxs_TwoSurfaceExchange::FillLinkList
 
       links.push_back(ltemp);
 
-      OC_REAL8m Atest = 2*Oc_Fabs(ltemp.exch_coef1)
-        + 4*Oc_Fabs(ltemp.exch_coef2);
+      OC_REAL8m Atest = 2*fabs(ltemp.exch_coef1)
+        + 4*fabs(ltemp.exch_coef2);
       if(Atest>max_Awork) max_Awork = Atest;
     }
     ++it1;
@@ -446,7 +446,7 @@ void Oxs_TwoSurfaceExchange::ComputeEnergy
   oced.pE_pt = 0.0;
 
   // Set maxang data
-  const OC_REAL8m arg = 0.5*Oc_Sqrt(maxdot);
+  const OC_REAL8m arg = 0.5*sqrt(maxdot);
   const OC_REAL8m maxang = ( arg >= 1.0 ? 180.0 : asin(arg)*(360.0/PI));
 
   OC_REAL8m dummy_value;

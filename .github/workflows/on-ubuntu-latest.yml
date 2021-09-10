@@ -3,7 +3,7 @@ name: on-ubuntu-latest
 on:
   push:
   schedule:
-    - cron: '0 0 * * 1'  # run every Monday
+    - cron: '0 0 2 * *'  # run once per month
 
 jobs:
   on-ubuntu-latest:
@@ -20,7 +20,7 @@ jobs:
       run: sudo apt-get install -y tk-dev tcl-dev
 
     - name: Build OOMMF
-      run: make build-with-all
+      run: make build
 
     - name: Set OOMMFTCL
       run: echo "OOMMFTCL=$GITHUB_WORKSPACE/oommf/oommf.tcl" >> $GITHUB_ENV

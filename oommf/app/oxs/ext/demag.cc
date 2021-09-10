@@ -26,13 +26,11 @@
 #include "demagcoef.h" // Used by both single-threaded code, and
 /// also common single/multi-threaded code at bottom of this file.
 
-////////////////// SINGLE-THREADED IMPLEMENTATION  ///////////////
-#if !OOMMF_THREADS
-
 #include <assert.h>
 #include <string>
 
 #include "nb.h"
+#include "vf.h"
 #include "director.h"
 #include "key.h"
 #include "mesh.h"
@@ -79,18 +77,58 @@ Oxs_Demag::Oxs_Demag(
     adimx(0),adimy(0),adimz(0),
     xperiodic(0),yperiodic(0),zperiodic(0),
     mesh_id(0),energy_density_error_estimate(-1),
-    Hxfrm(0),asymptotic_radius(-1),Mtemp(0),
-    embed_convolution(0),embed_block_size(0)
+    asymptotic_order(11),
+    demag_tensor_error(1e-15),
+#if !OOMMF_THREADS
+    Hxfrm(0),Mtemp(0),embed_convolution(0),
+#else
+    MaxThreadCount(Oc_GetMaxThreadCount()),
+#endif
+    embed_block_size(0)
 {
-  asymptotic_radius = GetRealInitValue("asymptotic_radius",32.0);
-  /// Units of (dx*dy*dz)^(1/3) (geometric mean of cell dimensions).
-  /// Value of -1 disables use of asymptotic approximation on
-  /// non-periodic grids.  For periodic grids zero or negative values
-  /// for asymptotic_radius are reset to half the width of the
-  /// simulation window in the periodic dimenions.  This may be
-  /// counterintuitive, so it might be better to disallow or modify
-  /// the behavior in the periodic setting.
+  // Asymptotic_order is the order of the absolute error in the
+  // asymptotic approximation.  Supported values are 5, 7, 9, and 11,
+  // where asymptotic-order=5 is the dipole approximation.
+  asymptotic_order = GetIntInitValue("asymptotic_order",11);
 
+  // For practical purposes, relative error for the analytic and
+  // asymptotic tensor computations is estimated to be
+  //
+  //      PracRelErr_analytic = 8*eps*R^6/V^2
+  //
+  //      PracRelErr_asymptotic = (8/5)(hmax/R)^(n-3)  if R>>hmax
+  //
+  // where hmax = max(h1,h2,h3) is the largest cell edge length,
+  // V is the cell volume = h1*h2*h3, and n is the asymptotic order,
+  // See the demagcoef.cc file for additional details.
+
+  if(HasInitValue("asymptotic_radius")
+     || HasInitValue("asymptotic_max_aspect")) {
+    if(HasInitValue("demag_tensor_error")) {
+      throw Oxs_ExtError(this,"Invalid demag tensor parameter request:"
+                         " demag_tensor_error supersedes"
+                         " asymptotic_radius and asymptotic_max_aspect");
+    }
+    OC_REAL8m arad = GetRealInitValue("asymptotic_radius",32.0);
+    OC_REAL8m maxaspect = GetRealInitValue("asymptotic_max_aspect",1.5);
+    // Set demag_tensor_error to the corresponding asymptotic
+    // approximation error.  In the old API arad==0 was a request to
+    // compute the demag tensor using only the asymptotic form, and
+    // arad<0 a request to compute using only the analytic form.  The
+    // current interface doesn't support these requests, but closest try
+    // is to set the error high for arad==0 and very small for arad<0.
+    if(arad>0.0) {
+      demag_tensor_error = 1.6*maxaspect*pow(1./arad,asymptotic_order-3);
+    } else if(arad==0.0) {
+      demag_tensor_error = 1;  // User requests asymptotic only
+    } else {
+      demag_tensor_error = 1e-20; // User requests analytic only
+    }
+  } else {
+    demag_tensor_error = GetRealInitValue("demag_tensor_error",
+                                          demag_tensor_error);
+  }
+  
   cache_size = 1024*GetIntInitValue("cache_size_KB",1024);
   /// Cache size in KB.  Default is 1 MB.  Code wants bytes, so multiply
   /// user input by 1024.  cache_size is used to set embed_block_size in
@@ -103,6 +141,16 @@ Oxs_Demag::Oxs_Demag(
   /// energy by a constant amount, but since the demag field is changed
   /// by a multiple of m, the torque and therefore the magnetization
   /// dynamics are unaffected.
+
+  saveN = GetStringInitValue("saveN","");
+  /// If non-empty, name of file to save demag tensor, as a six column
+  /// OVF 2.0 file, with order Nxx Nxy Nxz Nyy Nyz Nzz.
+
+  saveN_fmt = GetStringInitValue("saveN_fmt","binary 8");
+  /// If saveN is active, this string specifies the OVF 2 file format to
+  /// use.  Should be one of "binary 4", "binary 8", or "text [fmt]" where
+  /// fmt is an optional printf-style format; the default value for fmt
+  /// is %.16e.
 
 #if REPORT_TIME
   // Set default names for development timers
@@ -166,40 +214,91 @@ OC_BOOL Oxs_Demag::Init()
 void Oxs_Demag::ReleaseMemory() const
 { // Conceptually const
   A.Free();
+#if OOMMF_THREADS
+  Hxfrm_base.Free();
+#else
   if(Hxfrm!=0)       { delete[] Hxfrm;       Hxfrm=0;       }
   if(Mtemp!=0)       { delete[] Mtemp;       Mtemp=0;       }
+#endif
   rdimx=rdimy=rdimz=0;
   cdimx=cdimy=cdimz=0;
   adimx=adimy=adimz=0;
 }
 
-// Given a function f, and an array arr pre-sized to dimensions
-// xdim, ydim+2, zdim+2, computes D6[f] = D2z[D2y[D2x[f]]] across
-// the range [0,xdim-1] x [0,ydim-1] x [0,zdim-1].  The results are
-// stored in arr.  The outer planes j=ydim,ydim+1 and k=zdim,zdim+1
-// are used as workspace.
-void ComputeD6f(OC_REALWIDE (*f)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE),
-                Oxs_3DArray<OC_REALWIDE>& arr,
-                OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
+////////////////// SINGLE-THREADED IMPLEMENTATION  ///////////////
+#if !OOMMF_THREADS
+
+// Given a function f and radius arad of the analytic/asymptotic
+// boundary, and an array arr pre-sized to dimensions xdim, ydim+2,
+// zdim+2, computes D6[f] = D2z[D2y[D2x[f]]] across the range [0,xdim-1]
+// x [0,ydim-1] x [0,zdim-1] inside sphere of radius arad.  The results
+// are stored in arr.  The outer planes j=ydim,ydim+1 and k=zdim,zdim+1
+// are used as workspace.  For offsets outside arad the import function
+// fasymp is used instead to directly compute the tensor value (i.e.,
+// fasymp ~= analytic_scale*D6[f]).
+void ComputeD6f
+(OXS_DEMAG_REAL_ANALYTIC (*f)(OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC,
+                              OXS_DEMAG_REAL_ANALYTIC),
+ Oxs_DemagAsymptotic& fasymp,
+ OXS_DEMAG_REAL_ASYMP arad,
+ Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC>& arr,
+ OXS_DEMAG_REAL_ANALYTIC dx,
+ OXS_DEMAG_REAL_ANALYTIC dy,
+ OXS_DEMAG_REAL_ANALYTIC dz)
 {
   const OC_INDEX xdim = arr.GetDim1();
   const OC_INDEX ydim = arr.GetDim2()-2;
   const OC_INDEX zdim = arr.GetDim3()-2;
 
+  // Scaling for analytic computation
+  OXS_DEMAG_REAL_ANALYTIC analytic_scale
+               = -1.0/(4.0*dx*dy*dz*OXS_DEMAG_REAL_ANALYTIC_PI);
+
+  // Further than one step outside asymptotic radius, insert zeros for f.
+  OXS_DEMAG_REAL_ASYMP asdx,asdy,asdz;
+  dx.DownConvert(asdx);
+  dy.DownConvert(asdy);
+  dz.DownConvert(asdz);
+  OXS_DEMAG_REAL_ASYMP scaled_dy,scaled_dz,scaled_arad2;
+  scaled_dy = asdy/asdx;
+  scaled_dz = asdz/asdx;
+  scaled_arad2 = (arad<0 ? -1 : (arad/asdx)*(arad/asdx));
+
+
   // Compute f values and D2x
   for(OC_INDEX k=0;k<zdim+2;++k) {
+    OXS_DEMAG_REAL_ANALYTIC z = OXS_DEMAG_REAL_ANALYTIC(k-1)*dz;
+    OXS_DEMAG_REAL_ASYMP zchk = (k>2 ? (k-2)*scaled_dz : 0); zchk *= zchk;
     for(OC_INDEX j=0;j<ydim+2;++j) {
-      OC_REALWIDE a0 = f(0.0,(j-1)*dy,(k-1)*dz);
-      OC_REALWIDE b0 = a0 - f(-1*dx,(j-1)*dy,(k-1)*dz);
-      for(OC_INDEX i=0;i<xdim;++i) {
-        OC_REALWIDE a1 = f((i+1)*dx,(j-1)*dy,(k-1)*dz);
-        OC_REALWIDE b1 = a1 - a0;  a0 = a1;
+      OXS_DEMAG_REAL_ANALYTIC y = OXS_DEMAG_REAL_ANALYTIC(j-1)*dy;
+      OC_INDEX ias_start = xdim;
+      if(scaled_arad2>=0) {
+        OXS_DEMAG_REAL_ASYMP ychk = (j>2 ? (j-2)*scaled_dy : 0); ychk *= ychk;
+        OXS_DEMAG_REAL_ASYMP xchk = scaled_arad2-zchk-ychk+0.0625;
+        /// 0.0625 allows for floating point rounding error.  This value
+        /// should be slightly larger than the corresponding value in
+        /// _Oxs_FillCoefficientArraysDy2z2Thread.
+        ias_start = (xchk>0 ? static_cast<OC_INDEX>(floor(sqrt(xchk)))+1
+                            : 0);
+        if(ias_start>xdim) ias_start = xdim;
+      }
+      OXS_DEMAG_REAL_ANALYTIC a0 = f(0.0,y,z);
+      OXS_DEMAG_REAL_ANALYTIC b0 = a0 - f(OXS_DEMAG_REAL_ANALYTIC(-1)*dx,y,z);
+      OC_INDEX i = 0;
+      for(;i<ias_start;++i) {
+        OXS_DEMAG_REAL_ANALYTIC a1 = f(OXS_DEMAG_REAL_ANALYTIC(i+1)*dx,y,z);
+        OXS_DEMAG_REAL_ANALYTIC b1 = a1 - a0;  a0 = a1;
         arr(i,j,k) = b1 - b0; b0 = b1;
+      }
+      for(;i<xdim;++i) {
+        arr(i,j,k) = 0;  // Asymptotic region
       }
     }
   }
 
-  // Compute D2y.
+
+  // Compute D2y
   for(OC_INDEX k=0;k<zdim+2;++k) {
     for(OC_INDEX j=0;j<ydim;++j) {
       for(OC_INDEX i=0;i<xdim;++i) {
@@ -209,12 +308,30 @@ void ComputeD6f(OC_REALWIDE (*f)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE),
     }
   }
 
-  // Compute D2z.
-  for(OC_INDEX k=0;k<zdim;++k) {
-    for(OC_INDEX j=0;j<ydim;++j) {
-      for(OC_INDEX i=0;i<xdim;++i) {
-        arr(i,j,k) = arr(i,j,k+1) - arr(i,j,k);
+  // Inside asymptotic radius, compute D2z.  Outside, use fasymp;
+  for(OC_INDEX j=0;j<ydim;++j) {
+    OXS_DEMAG_REAL_ASYMP y = j*asdy;
+    OXS_DEMAG_REAL_ASYMP ychk = j*scaled_dy; ychk *= ychk;
+    for(OC_INDEX k=0;k<zdim;++k) {
+      OXS_DEMAG_REAL_ASYMP z = k*asdz;
+      OC_INDEX ias_start = xdim;
+      if(scaled_arad2>=0) {
+        OXS_DEMAG_REAL_ASYMP zchk = k*scaled_dz; zchk *= zchk;
+        OXS_DEMAG_REAL_ASYMP xchk = scaled_arad2-zchk-ychk+0.03125;
+        // 0.03125 allows for floating point rounding error.  This value
+        // should be slightly less that corresponding value in
+        // _Oxs_FillCoefficientArraysDx2fThread.
+        ias_start = (xchk>0 ? static_cast<OC_INDEX>(floor(sqrt(xchk)))+1 : 0);
+        if(ias_start>xdim) ias_start = xdim;
+      }
+      OC_INDEX i=0;
+      for(;i<ias_start;++i) {
+        arr(i,j,k)  =  arr(i,j,k+1) - arr(i,j,k);
         arr(i,j,k) += (arr(i,j,k+1) - arr(i,j,k+2));
+        arr(i,j,k) *= analytic_scale;
+      }
+      for(;i<xdim;++i) {
+        arr(i,j,k) = fasymp.Asymptotic(i*asdx,y,z);
       }
     }
   }
@@ -358,6 +475,13 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   adimy = (ldimy/2)+1;
   adimz = (ldimz/2)+1;
 
+  // FFT scaling
+  // Note: Since H = -N*M, and by convention with the rest of this code,
+  // we store "-N" instead of "N" so we don't have to multiply the
+  // output from the FFT + iFFT by -1 in GetEnergy() below.
+  const OXS_FFT_REAL_TYPE fft_scaling = -1 *
+               fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
+
 #if (VERBOSE_DEBUG && !defined(NDEBUG))
   fprintf(stderr,"RDIMS: (%ld,%ld,%ld)\n",(long)rdimx,(long)rdimy,(long)rdimz);
   fprintf(stderr,"CDIMS: (%ld,%ld,%ld)\n",(long)cdimx,(long)cdimy,(long)cdimz);
@@ -409,132 +533,211 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   //                                      A22:=fs*Nzz
   //  where fs = -1/((ldimx/2)*ldimy*ldimz)
 
-  OC_REAL8m dx = mesh->EdgeLengthX();
-  OC_REAL8m dy = mesh->EdgeLengthY();
-  OC_REAL8m dz = mesh->EdgeLengthZ();
+  OXS_DEMAG_REAL_ANALYTIC ddx = mesh->EdgeLengthX();
+  OXS_DEMAG_REAL_ANALYTIC ddy = mesh->EdgeLengthY();
+  OXS_DEMAG_REAL_ANALYTIC ddz = mesh->EdgeLengthZ();
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
   // a wee bit.  If not possible, then rescale so largest
   // value is 1.0.
   {
-    OC_REALWIDE p1,q1,p2,q2;
-    if(Nb_FindRatApprox(dx,dy,1e-12,1000,p1,q1)
-       && Nb_FindRatApprox(dz,dy,1e-12,1000,p2,q2)) {
-      OC_REALWIDE gcd = Nb_GcdRW(q1,q2);
-      dx = p1*q2/gcd;
-      dy = q1*q2/gcd;
-      dz = p2*q1/gcd;
+    OXS_DEMAG_REAL_ANALYTIC p1,q1,p2,q2;
+    if(Xp_FindRatApprox(ddx,ddy,1e-12,1000,p1,q1)
+       && Xp_FindRatApprox(ddz,ddy,1e-12,1000,p2,q2)) {
+      OC_REALWIDE q1w,q2w;
+      q1.DownConvert(q1w); q2.DownConvert(q2w);
+      OXS_DEMAG_REAL_ANALYTIC gcd = Nb_GcdFloat(q1w,q2w);
+      ddx = p1*q2/gcd;
+      ddy = q1*q2/gcd;
+      ddz = p2*q1/gcd;
     } else {
-      OC_REALWIDE maxedge=dx;
-      if(dy>maxedge) maxedge=dy;
-      if(dz>maxedge) maxedge=dz;
-      dx/=maxedge; dy/=maxedge; dz/=maxedge;
+      OXS_DEMAG_REAL_ANALYTIC maxedge=ddx;
+      if(ddy>maxedge) maxedge=ddy;
+      if(ddz>maxedge) maxedge=ddz;
+      ddx/=maxedge; ddy/=maxedge; ddz/=maxedge;
     }
   }
-  OC_REALWIDE scale = 1.0/(4*WIDE_PI*dx*dy*dz);
-  const OXS_DEMAG_REAL_ASYMP scaled_arad = asymptotic_radius
-    * Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
-             OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
 
-  // Also throw in FFT scaling.  This allows the "NoScale" FFT routines
-  // to be used.  NB: There is effectively a "-1" built into the
-  // differencing sections below, because we compute d^6/dx^2 dy^2 dz^2
-  // instead of -d^6/dx^2 dy^2 dz^2 as required.
-  // Note: Using an Oxs_FFT3DThreeVector fft object, this would be just
-  //    scale *= fft.GetScaling();
-  scale *= fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
+  OXS_DEMAG_REAL_ASYMP dx,dy,dz;
+  ddx.DownConvert(dx);  ddy.DownConvert(dy);  ddz.DownConvert(dz);
+
+  Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+  Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz,demag_tensor_error,asymptotic_order);
+
+  const OXS_DEMAG_REAL_ASYMP scaled_arad = ANxx.GetAsymptoticStart();
+  // NB: Previous to 2019-09, scaled_arad < 0 was interpreted to mean no
+  // asymptotic approximation to demag tensor (i.e., use analytic form
+  // only), and scaled_arad == 0 to mean asymptotic form only (no
+  // analytic).  Support for these cases ceased in Sept 2019, but branch
+  // routing has been left in place for future consideration.
+
+  OC_INDEX wdimx = rdimx;
+  OC_INDEX wdimy = rdimy;
+  OC_INDEX wdimz = rdimz;
+  if(scaled_arad>=0) {
+    // We don't need to compute analytic formulae outside asymptotic
+    // radius.  Round up a little (0.5) to protect against rounding
+    // errors to insure that each index is computed by at least one
+    // of the analytic or asymptotic code blocks.
+    OC_INDEX itest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dx));
+    if(xperiodic || itest<wdimx) wdimx = itest;
+    OC_INDEX jtest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dy));
+    if(yperiodic || jtest<wdimy) wdimy = jtest;
+    OC_INDEX ktest = static_cast<OC_INDEX>(ceil(0.5+scaled_arad/dz));
+    if(zperiodic || ktest<wdimz) wdimz = ktest;
+  }
+
+  {
+    // Calculate Nxx, Nxy and Nxz in first octant, near-field case.  For
+    // non-periodic directions, the extents are the smaller of arad and
+    // the simulation window.  For periodic directions the extent is arad,
+    // unless arad<0 in which case it set to the same as the non-periodic
+    // case (i.e., the simulation window).  The periodic arad<0 case is
+    // not intuitive, and perhaps should just be disallowed altogether,
+    // but the point is in the periodic setting some analytic limit is
+    // needed because the integral tail computation uses the asymptotic
+    // form.
+
+    Oxs_3DArray<OXS_DEMAG_REAL_ANALYTIC> workspace;
+    workspace.SetDimensions(wdimx,wdimy+2,wdimz+2);
+
+    // For each N component, compute either precursor f or g at each
+    // workspace site, offset by (-dx,-dy,-dz) so we can do 2nd
+    // derivative operations "in-place".  Compute D6 across the
+    // workspace, and then copy results into the corresponding component
+    // in tensor array A.  For periodic components collate values across
+    // periodic images, using symmetries for images outside the first
+    // octant.  In the periodic setting we have to be careful to not
+    // accumulate each image more than once in the sum.
+    // 
+    // Symmetries: A00, A11, A22 are even in each coordinate
+    //             A01 is odd in x and y, even in z.
+    //             A02 is odd in x and z, even in y.
+    //             A12 is odd in y and z, even in x.
+
+    const OC_INDEX istop = (xperiodic ? rdimx : wdimx);
+    const OC_INDEX jstop = (yperiodic ? rdimy : wdimy);
+    const OC_INDEX kstop = (zperiodic ? rdimz : wdimz);
+    const int not_periodic = !(xperiodic || yperiodic || zperiodic);
+    OXS_DEMAG_REAL_ANALYTIC val;
+    // Asymptotic portions of code fill only outside wdimx x wdimy x
+    // wdimz window.  This has two benefits. 1) Simplifies outer
+    // asymptotic fill code, and 2) insures no leakage or smearing at
+    // boundary between analytic and asymptotic computations.  The
+    // latter is important mostly for the periodic setting, where we
+    // don't want to double count a cell.
+    ComputeD6f(Oxs_Newell_f_xx,ANxx,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A00);
+          /// FFT scaling allows  "NoScale" FFT routines to be used.
+        }
+      }
+    }
+
+    ComputeD6f(Oxs_Newell_g_xy,ANxy,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,1,1,0,val,i,j,k);
+            /// x odd, y odd, z even
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A01);
+          /// FFT scaling allows  "NoScale" FFT routines to be used.
+        }
+      }
+    }
+    
+    ComputeD6f(Oxs_Newell_g_xz,ANxz,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,1,0,1,val,i,j,k);
+            /// x odd, y even, z odd
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A02);
+        }
+      }
+    }
+
+    ComputeD6f(Oxs_Newell_f_yy,ANyy,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A11);
+        }
+      }
+    }
+
+    ComputeD6f(Oxs_Newell_g_yz,ANyz,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,1,1,val,i,j,k);
+            /// x even, y odd, z odd
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A12);
+        }
+      }
+    }
+
+    ComputeD6f(Oxs_Newell_f_zz,ANzz,scaled_arad,workspace,ddx,ddy,ddz);
+    for(OC_INDEX k=0;k<kstop;k++) {
+      for(OC_INDEX j=0;j<jstop;j++) {
+        for(OC_INDEX i=0;i<istop;i++) {
+          if(not_periodic) {
+            val = workspace(i,j,k);
+          } else {
+            val = (i<wdimx && k<wdimz && j<wdimy ? workspace(i,j,k) : 0);
+            Oxs_FoldWorkspace(workspace,wdimx,wdimy,wdimz,rdimx,rdimy,rdimz,
+                              xperiodic,yperiodic,zperiodic,0,0,0,val,i,j,k);
+            /// All symmetries even
+          }
+          (fft_scaling*val).DownConvert(A[k*astridez+j*astridey+i].A22);
+        }
+      }
+    }
+  }
 
   if(!xperiodic && !yperiodic && !zperiodic) {
-    // Calculate Nxx, Nxy and Nxz in first octant, non-periodic case.
-    // Step 1: Evaluate f & g at each cell site.  Offset by (-dx,-dy,-dz)
-    //  so we can do 2nd derivative operations "in-place".
-
-    OC_INDEX wdim1 = rdimx;
-    OC_INDEX wdim2 = rdimy;
-    OC_INDEX wdim3 = rdimz;
-    if(scaled_arad>0) {
-      // We don't need to compute analytic formulae outside asymptotic
-      // radius.  Round up a little (0.5) to protect against rounding
-      // errors to insure that each index is computed by at least one
-      // of the analytic or asymptotic code blocks.
-      OC_INDEX itest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dx));
-      if(itest<wdim1) wdim1 = itest;
-      OC_INDEX jtest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dy));
-      if(jtest<wdim2) wdim2 = jtest;
-      OC_INDEX ktest = static_cast<OC_INDEX>(Oc_Ceil(0.5+scaled_arad/dz));
-      if(ktest<wdim3) wdim3 = ktest;
-    }
-    Oxs_3DArray<OC_REALWIDE> workspace;
-    workspace.SetDimensions(wdim1,wdim2+2,wdim3+2);
-
-    OC_INDEX i,j,k;
-    ComputeD6f(Oxs_Newell_f_xx,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A00 = scale*workspace(i,j,k);
-        }
-      }
-    }
-    ComputeD6f(Oxs_Newell_g_xy,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A01 = scale*workspace(i,j,k);
-        }
-      }
-    }
-    ComputeD6f(Oxs_Newell_g_xz,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A02 = scale*workspace(i,j,k);
-        }
-      }
-    }
-    ComputeD6f(Oxs_Newell_f_yy,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A11 = scale*workspace(i,j,k);
-        }
-      }
-    }
-    ComputeD6f(Oxs_Newell_g_yz,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A12 = scale*workspace(i,j,k);
-        }
-      }
-    }
-    ComputeD6f(Oxs_Newell_f_zz,workspace,dx,dy,dz);
-    for(k=0;k<wdim3;k++) {
-      for(j=0;j<wdim2;j++) {
-        for(i=0;i<wdim1;i++) {
-          A[k*astridez + j*astridey + i].A22 = scale*workspace(i,j,k);
-        }
-      }
-    }
-
-    // Special "SelfDemag" code may be more accurate at index 0,0,0.
-    // Note: Using an Oxs_FFT3DThreeVector fft object, this would be
-    //    scale *= fft.GetScaling();
-    const OXS_FFT_REAL_TYPE selfscale
-      = -1 * fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    A[0].A00 = Oxs_SelfDemagNx(dx,dy,dz);
-    A[0].A11 = Oxs_SelfDemagNy(dx,dy,dz);
-    A[0].A22 = Oxs_SelfDemagNz(dx,dy,dz);
-    if(zero_self_demag) {
-      A[0].A00 -= 1./3.;
-      A[0].A11 -= 1./3.;
-      A[0].A22 -= 1./3.;
-    }
-    A[0].A00 *= selfscale;
-    A[0].A11 *= selfscale;
-    A[0].A22 *= selfscale;
-    A[0].A01 = A[0].A02 = A[0].A12 = 0.0;
+    // Calculate tensor asymptotics in first octant, non-periodic case.
 
     // Step 2.5: Use asymptotic (dipolar + higher) approximation for far field
     /*   Dipole approximation:
@@ -547,56 +750,49 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
      */
     // See Notes IV, 26-Feb-2007, p102.
     if(scaled_arad>=0.0) {
-      // Note that all distances here are in "reduced" units,
-      // scaled so that dx, dy, and dz are either small integers
-      // or else close to 1.0.
-      OXS_DEMAG_REAL_ASYMP scaled_arad_sq = scaled_arad*scaled_arad;
-      OXS_FFT_REAL_TYPE fft_scaling = -1 *
-        fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-      /// Note: Since H = -N*M, and by convention with the rest of this
-      /// code, we store "-N" instead of "N" so we don't have to multiply
-      /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
-
-      OXS_DEMAG_REAL_ASYMP xtest
-        = static_cast<OXS_DEMAG_REAL_ASYMP>(rdimx)*dx;
-      xtest *= xtest;
-
-      Oxs_DemagNxxAsymptotic ANxx(dx,dy,dz);
-      Oxs_DemagNxyAsymptotic ANxy(dx,dy,dz);
-      Oxs_DemagNxzAsymptotic ANxz(dx,dy,dz);
-      Oxs_DemagNyyAsymptotic ANyy(dx,dy,dz);
-      Oxs_DemagNyzAsymptotic ANyz(dx,dy,dz);
-      Oxs_DemagNzzAsymptotic ANzz(dx,dy,dz);
-
-      for(k=0;k<rdimz;++k) {
+      for(OC_INDEX k=0;k<rdimz;++k) {
         OXS_DEMAG_REAL_ASYMP z = dz*k;
-        OXS_DEMAG_REAL_ASYMP zsq = z*z;
-        for(j=0;j<rdimy;++j) {
+        for(OC_INDEX j=0;j<rdimy;++j) {
           OC_INDEX jkindex = k*astridez + j*astridey;
           OXS_DEMAG_REAL_ASYMP y = dy*j;
-          OXS_DEMAG_REAL_ASYMP ysq = y*y;
-          OC_INDEX istart = 0;
-          OXS_DEMAG_REAL_ASYMP test = scaled_arad_sq-ysq-zsq;
-          if(test>0.0) {
-            if(test>xtest) {
-              istart = rdimx+1;  // No asymptotic
-            } else {
-              istart = static_cast<OC_INDEX>(Oc_Ceil(Oc_Sqrt(test)/dx));
-            }
-          }
-          for(i=istart;i<rdimx;++i) {
+          const OC_INDEX istart = (k<wdimz && j<wdimy ? wdimx : 0);
+          for(OC_INDEX i=istart;i<rdimx;++i) {
             OC_INDEX index = jkindex + i;
             OXS_DEMAG_REAL_ASYMP x = dx*i;
-            A[index].A00 = fft_scaling*ANxx.NxxAsymptotic(x,y,z);
-            A[index].A01 = fft_scaling*ANxy.NxyAsymptotic(x,y,z);
-            A[index].A02 = fft_scaling*ANxz.NxzAsymptotic(x,y,z);
-            A[index].A11 = fft_scaling*ANyy.NyyAsymptotic(x,y,z);
-            A[index].A12 = fft_scaling*ANyz.NyzAsymptotic(x,y,z);
-            A[index].A22 = fft_scaling*ANzz.NzzAsymptotic(x,y,z);
+            A[index].A00 = fft_scaling*ANxx.Asymptotic(x,y,z);
+            A[index].A01 = fft_scaling*ANxy.Asymptotic(x,y,z);
+            A[index].A02 = fft_scaling*ANxz.Asymptotic(x,y,z);
+            A[index].A11 = fft_scaling*ANyy.Asymptotic(x,y,z);
+            A[index].A12 = fft_scaling*ANyz.Asymptotic(x,y,z);
+            A[index].A22 = fft_scaling*ANzz.Asymptotic(x,y,z);
           }
         }
       }
     }
+
+    // Special "SelfDemag" code may be more accurate at index 0,0,0.
+    // Note: Using an Oxs_FFT3DThreeVector fft object, this would be
+    //    scale *= fft.GetScaling();
+    {
+      OXS_DEMAG_REAL_ANALYTIC selfscale = -1 * fftx.GetScaling();
+      selfscale *= ffty.GetScaling();  selfscale *= fftz.GetScaling();
+      OXS_DEMAG_REAL_ANALYTIC selfoffset = 0.0;
+      if(zero_self_demag) {
+        selfoffset = OXS_DEMAG_REAL_ANALYTIC(1.)/OXS_DEMAG_REAL_ANALYTIC(3.);
+      }
+      OXS_DEMAG_REAL_ANALYTIC tmp00
+        = (Oxs_SelfDemagNx(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp00.DownConvert(A[0].A00);
+
+      OXS_DEMAG_REAL_ANALYTIC tmp11
+        = (Oxs_SelfDemagNy(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp11.DownConvert(A[0].A11);
+
+      OXS_DEMAG_REAL_ANALYTIC tmp22
+        = (Oxs_SelfDemagNz(ddx,ddy,ddz)-selfoffset)*selfscale;
+      tmp22.DownConvert(A[0].A22);
+    }
+    A[0].A01 = A[0].A02 = A[0].A12 = 0.0;
   }
 
   // Step 2.6: If periodic boundaries selected, compute periodic tensors
@@ -605,102 +801,170 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   // NOTE 2: Keep this code in sync with that in
   //         Oxs_Demag::IncrementPreconditioner
   if(xperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
-    Oxs_DemagPeriodicX pbctensor(dx,dy,dz,rdimx*dx,scaled_arad);
+    Oxs_DemagPeriodicX pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 rdimx,wdimx,wdimy,wdimz);
     for(OC_INDEX k=0;k<rdimz;++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(OC_INDEX j=0;j<rdimy;++j) {
         const OC_INDEX jkindex = k*astridez + j*astridey;
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         for(OC_INDEX i=0;i<=(rdimx/2);++i) {
-          OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+          pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
           A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
                        fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
-          A[jkindex + i] = Atmp;
+          A[jkindex + i] += Atmp;
           if(0<i && 2*i<rdimx) {
             // Interior point.  Reflect results from left half to
             // right half.  Note that wrt x, Nxy and Nxz are odd,
             // the other terms are even.
             Atmp.A01 *= -1.0;
             Atmp.A02 *= -1.0;
-            A[jkindex + rdimx - i] = Atmp;
+            A[jkindex + rdimx - i] += Atmp;
           }
         }
       }
     }
   }
   if(yperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
-    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,rdimy*dy,scaled_arad);
+    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 rdimy,wdimx,wdimy,wdimz);
     for(OC_INDEX k=0;k<rdimz;++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(OC_INDEX j=0;j<=(rdimy/2);++j) {
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         const OC_INDEX jkindex = k*astridez + j*astridey;
         const OC_INDEX mjkindex = k*astridez + (rdimy-j)*astridey;
         for(OC_INDEX i=0;i<rdimx;++i) {
-          OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+          pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
           A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
                        fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
-          A[jkindex + i] = Atmp;
+          A[jkindex + i] += Atmp;
           if(0<j && 2*j<rdimy) {
             // Interior point.  Reflect results from lower half to
             // upper half.  Note that wrt y, Nxy and Nyz are odd,
             // the other terms are even.
             Atmp.A01 *= -1.0;
             Atmp.A12 *= -1.0;
-            A[mjkindex + i] = Atmp;
+            A[mjkindex + i] += Atmp;
           }
         }
       }
     }
   }
   if(zperiodic) {
-    OXS_FFT_REAL_TYPE fft_scaling = -1 *
-      fftx.GetScaling() * ffty.GetScaling() * fftz.GetScaling();
-    /// Note: Since H = -N*M, and by convention with the rest of this
-    /// code, we store "-N" instead of "N" so we don't have to multiply
-    /// the output from the FFT + iFFT by -1 in ComputeEnergy() below.
-    Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,rdimz*dz,scaled_arad);
+    Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 rdimz,wdimx,wdimy,wdimz);
     for(OC_INDEX k=0;k<=(rdimz/2);++k) {
-      OXS_DEMAG_REAL_ASYMP z = dz*k;
       for(OC_INDEX j=0;j<rdimy;++j) {
         const OC_INDEX kjindex = k*astridez + j*astridey;
         const OC_INDEX mkjindex = (rdimz-k)*astridez + j*astridey;
-        OXS_DEMAG_REAL_ASYMP y = dy*j;
         for(OC_INDEX i=0;i<rdimx;++i) {
-          OXS_DEMAG_REAL_ASYMP x = dx*i;
           OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-          pbctensor.NxxNxyNxz(x,y,z,Nxx,Nxy,Nxz);
-          pbctensor.NyyNyzNzz(x,y,z,Nyy,Nyz,Nzz);
+          pbctensor.ComputePeriodicHoleTensor(i,j,k,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
           A_coefs Atmp(fft_scaling*Nxx,fft_scaling*Nxy,fft_scaling*Nxz,
                        fft_scaling*Nyy,fft_scaling*Nyz,fft_scaling*Nzz);
-          A[kjindex + i] = Atmp;
+          A[kjindex + i] += Atmp;
           if(0<k && 2*k<rdimz) {
             // Interior point.  Reflect results from bottom half to
             // top half.  Note that wrt z, Nxz and Nyz are odd, the
             // other terms are even.
             Atmp.A02 *= -1.0;
             Atmp.A12 *= -1.0;
-            A[mkjindex + i] = Atmp;
+            A[mkjindex + i] += Atmp;
           }
         }
       }
     }
+  }
+
+  // Step 2.7: Save real-space version of tensor N, if requested.
+  if(saveN.size() != 0) {
+    // Save demag tensor to specified file, as a six column OVF 2.0
+    // file, with column order Nxx Nxy Nxz Nyy Nyz Nzz.
+    String errors;
+    Vf_Ovf20FileHeader fileheader;
+    mesh->DumpGeometry(fileheader,vf_ovf20mesh_rectangular);
+    fileheader.title.Set("Oxs_Demag demag tensor field");
+    fileheader.valuedim.Set(6);  // 6 component field
+    fileheader.valuelabels.SetFromString("Nxx Nxy Nxz Nyy Nyz Nzz");
+    fileheader.valueunits.SetFromString("{} {} {} {} {} {}");
+    fileheader.desc.Set(String("Oxs_Demag demag tensor field:"
+                               " Nxx, Nxy, Nxz, Nyy, Nyz, Nzz"));
+    fileheader.ovfversion = vf_ovf_latest;
+    if(!fileheader.IsValid(errors)) {
+      errors = String("Oxs_Demag::FillCoefficientArray:"
+                      " failed to create a valid OVF fileheader for saveN: ")
+        + errors;
+      OXS_THROW(Oxs_ProgramLogicError,errors);
+    }
+
+    // Determine file format
+    Vf_OvfDataStyle datastyle = vf_oinvalid;
+    const char* textfmt=0; // Active iff datastyle==vf_oascii
+    if(saveN_fmt.compare(0,strlen("binary"),"binary")==0) {
+      // Binary format
+      size_t offset = saveN_fmt.find_first_not_of(" \t\n\r",strlen("binary"));
+      if(offset!=string::npos) {
+        if(saveN_fmt[offset] == '8')      datastyle = vf_obin8;
+        else if(saveN_fmt[offset] == '4') datastyle = vf_obin4;
+      }
+      if(datastyle == vf_oinvalid) {
+        errors = String("Oxs_Demag::FillCoefficientArray:"
+                        " requested binary output format type \"")
+          + saveN_fmt
+          + String("\" is not recognized.  Should be one of"
+                   " \"binary 8\" or \"binary 4\"");
+        OXS_THROW(Oxs_BadUserInput,errors);
+      }
+    } else if(saveN_fmt.compare(0,strlen("text"),"text")==0) {
+      // Text format
+      datastyle = vf_oascii;
+      size_t offset = saveN_fmt.find_first_not_of(" \t\n\r",strlen("text"));
+      if(offset==string::npos) {
+        textfmt="%.16e";  // Default format string
+      } else {
+        textfmt = saveN_fmt.c_str()+offset;
+      }
+    } else {
+      errors = String("Oxs_Demag::FillCoefficientArray:"
+                      " requested saveN output format type \"")
+        + saveN_fmt
+        + String("\" is not recognized.  Should be one of"
+                 " \"binary 8\", \"binary 4\", or \"text [fmt]\"");
+      OXS_THROW(Oxs_BadUserInput,errors);
+    }
+    
+    // A is sized to FFT-space dimensions, adimy x adimz x adimx.  Copy
+    // out real-space data to an array of reduced size for output.
+    vector<OC_REAL8m> data;
+    data.reserve(6*rdimx*rdimy*rdimz);
+    OXS_FFT_REAL_TYPE N_scaling = 1.0/fft_scaling;
+    for(OC_INDEX k=0;k<rdimx;++k) {
+      for(OC_INDEX j=0;j<rdimy;++j) {
+        const OC_INDEX kjindex = k*astridez + j*astridey;
+        for(OC_INDEX i=0;i<rdimx;++i) {
+          OC_INDEX index = kjindex + i;
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A00));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A01));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A02));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A11));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A12));
+          data.push_back(static_cast<OC_REAL8m>(N_scaling*A[index].A22));
+        }
+      }
+    }
+    Vf_Ovf20VecArrayConst data_array;
+    data_array.vector_dimension=6;
+    data_array.array_length=rdimx*rdimy*rdimz;
+    data_array.data=data.data();
+
+    String Nfilename = saveN;
+    if(Nfilename.find('.') == String::npos) Nfilename += String(".ovf");
+    Nb_FileChannel channel(Nfilename.c_str(),"w");
+    fileheader.WriteHeader(channel);
+    fileheader.WriteData(channel,datastyle,textfmt,0,data_array);
+    channel.Close();
   }
 
   // Step 3: Do FFTs.  We only need store 1/8th of the results because
@@ -1511,13 +1775,13 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
     throw Oxs_ExtError(this,msg.c_str());
   }
 
-  OC_REAL8m dimx = static_cast<OC_REAL8m>(mesh->DimX());
-  OC_REAL8m dimy = static_cast<OC_REAL8m>(mesh->DimY());
-  OC_REAL8m dimz = static_cast<OC_REAL8m>(mesh->DimZ());
-
-  OC_REAL8m dx = mesh->EdgeLengthX();
-  OC_REAL8m dy = mesh->EdgeLengthY();
-  OC_REAL8m dz = mesh->EdgeLengthZ();
+  OC_INDEX dimx = mesh->DimX();
+  OC_INDEX dimy = mesh->DimY();
+  OC_INDEX dimz = mesh->DimZ();
+  
+  OXS_DEMAG_REAL_ASYMP dx = mesh->EdgeLengthX();
+  OXS_DEMAG_REAL_ASYMP dy = mesh->EdgeLengthY();
+  OXS_DEMAG_REAL_ASYMP dz = mesh->EdgeLengthZ();
   // For demag calculation, all that matters is the relative
   // size of dx, dy and dz.  If possible, rescale these to
   // integers, as this may help reduce floating point error
@@ -1527,7 +1791,7 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
     OC_REALWIDE p1,q1,p2,q2;
     if(Nb_FindRatApprox(dx,dy,1e-12,1000,p1,q1)
        && Nb_FindRatApprox(dz,dy,1e-12,1000,p2,q2)) {
-      OC_REALWIDE gcd = Nb_GcdRW(q1,q2);
+      OC_REALWIDE gcd = Nb_GcdFloat(q1,q2);
       dx = p1*q2/gcd;
       dy = q1*q2/gcd;
       dz = p2*q1/gcd;
@@ -1538,39 +1802,42 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
       dx/=maxedge; dy/=maxedge; dz/=maxedge;
     }
   }
-  const OXS_DEMAG_REAL_ASYMP scaled_arad = asymptotic_radius
-    * Oc_Pow(OXS_DEMAG_REAL_ASYMP(dx*dy*dz),
-             OXS_DEMAG_REAL_ASYMP(1.)/OXS_DEMAG_REAL_ASYMP(3.));
-
 
   // NOTE: Code currently assumes that periodicity is either
   // 0 or 1D.
   OXS_DEMAG_REAL_ASYMP Nxx, Nxy, Nxz, Nyy, Nyz, Nzz;
-  Nxy = Nxz = Nyz = 0.0;
   if(xperiodic) {
-    Oxs_DemagPeriodicX pbctensor(dx,dy,dz,dimx*dx,scaled_arad);
-    pbctensor.NxxNxyNxz(0,0,0,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(0,0,0,Nyy,Nyz,Nzz);
+    Oxs_DemagPeriodicX pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 dimx,0,0,0);
+    /// Note: Setting constructor parameters wdimx/y/z to 0 makes
+    /// "hole" in ComputePeriodicHoleTensor empty.
+    pbctensor.ComputePeriodicHoleTensor(0,0,0,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
   } else if(yperiodic) {
-    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,dimy*dy,scaled_arad);
-    pbctensor.NxxNxyNxz(0,0,0,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(0,0,0,Nyy,Nyz,Nzz);
+    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 dimy,0,0,0);
+    pbctensor.ComputePeriodicHoleTensor(0,0,0,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
   } else if(zperiodic) {
-    Oxs_DemagPeriodicZ pbctensor(dx,dy,dz,dimz*dz,scaled_arad);
-    pbctensor.NxxNxyNxz(0,0,0,Nxx,Nxy,Nxz);
-    pbctensor.NyyNyzNzz(0,0,0,Nyy,Nyz,Nzz);
+    Oxs_DemagPeriodicY pbctensor(dx,dy,dz,
+                                 demag_tensor_error,asymptotic_order,
+                                 dimz,0,0,0);
+    pbctensor.ComputePeriodicHoleTensor(0,0,0,Nxx,Nxy,Nxz,Nyy,Nyz,Nzz);
   } else {
     // Non-periodic
-    Nxx = Oxs_SelfDemagNx(dx,dy,dz);
-    Nyy = Oxs_SelfDemagNy(dx,dy,dz);
-    Nzz = Oxs_SelfDemagNz(dx,dy,dz);
+    Nxx = static_cast<OXS_DEMAG_REAL_ASYMP>(Oxs_SelfDemagNx(dx,dy,dz).Hi());
+    Nyy = static_cast<OXS_DEMAG_REAL_ASYMP>(Oxs_SelfDemagNy(dx,dy,dz).Hi());
+    Nzz = static_cast<OXS_DEMAG_REAL_ASYMP>(Oxs_SelfDemagNz(dx,dy,dz).Hi());
   }
   // Nxx + Nyy + Nzz should equal 1, up to rounding errors.
   // Off-diagonal terms should be zero.
+  Nxy = Nxz = Nyz = 0.0;
+#if (VERBOSE_DEBUG && !defined(NDEBUG))
   fprintf(stderr,"Nxx=%g, Nyy=%g, Nzz=%g, Nxy=%g, Nxz=%g, Nyz=%g, sum=%g\n",
           double(Nxx),double(Nyy),double(Nzz),
           double(Nxy),double(Nxz),double(Nyz),
-          double(Nxx+Nyy+Nzz)); /**/ // asdf
+          double(Nxx+Nyy+Nzz));
+#endif
 
   // Nyy + Nzz = Nsum - Nxx where Nsum = Nxx + Nyy + Nzz, etc.
   ThreeVector cvec(MU0*(Nyy+Nzz),MU0*(Nxx+Nzz),MU0*(Nxx+Nyy));
@@ -1580,4 +1847,24 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
   }
 
   return 1;
+}
+
+// For debugging.
+// CAUTION: This routine prints the entire 6-component A_coefs structure
+//          across the entire A array.  You probably don't want to do
+//          this if A is big!
+void Oxs_Demag::DumpA(FILE* fptr) const
+{
+  OC_INDEX astridez = adimy;
+  OC_INDEX astridex = astridez*adimz;
+  for(OC_INDEX i=0;i<adimx;i++) {
+    for(OC_INDEX k=0;k<adimz;k++) {
+      for(OC_INDEX j=0;j<adimy;j++) {
+        fprintf(fptr,"[%2d,%2d,%2d] : ",int(i),int(j),int(k));
+        A_coefs& a = A[i*astridex+k*astridez+j];
+        fprintf(fptr,"%12.9f %12.9f %12.9f %12.9f %12.9f %12.9f\n",
+                a.A00,a.A01,a.A02,a.A11,a.A12,a.A22);
+      }
+    }
+  }
 }

@@ -5,10 +5,7 @@
 # which runs gcc to guess the version of GCC being used.
 #    GetGccGeneralOptFlags
 # which returns a list of aggressive, non-processor-specific
-# optimization flags that can be passed to gcc, and
-#    GetGccCpuOptFlags
-# which returns a list of aggressive, processor-specific
-# optimization flags for gcc.
+# optimization flags that can be passed to gcc.
 
 # Routine to guess the gcc version.  The import, gcc, should be
 # an executable command list, which is used via
@@ -55,6 +52,20 @@ proc GuessGccVersion { gcc } {
    return [concat $verno $verdate]
 }
 
+
+# Return leading element of gcc target triplet
+proc GetGccDefaultTarget { gcc } {
+   set testcmd [concat | $gcc -dumpmachine]
+   if {[catch {
+        set fptr [open $testcmd r]
+        set targetstr [read $fptr]
+        close $fptr}]} {
+      return {}
+   }
+   return [lindex [split $targetstr -] 0]
+}
+
+
 proc GetGccBannerVersion { gcc } {
    set banner {}
    set testcmd [concat | $gcc --version]
@@ -76,8 +87,8 @@ proc GetGccBannerVersion { gcc } {
 # Routine that returns aggressive, processor agnostic, optimization
 # flags for gcc.  The import is the gcc version, as returned by the
 # preceding GuessGccVersion proc.  Note that the flags accepted by gcc
-# vary by version.
-#
+# vary by version.  This proc is called by GetGccValueSafeFlags; changes
+# here may require adjustments there.
 proc GetGccGeneralOptFlags { gcc_version } {
 
    if {[llength $gcc_version]<2} {
@@ -94,13 +105,18 @@ proc GetGccGeneralOptFlags { gcc_version } {
    }
 
    # Version specific options
-   set opts [list -O2]
+   set opts {}
+   if {$verA>4 || ($verA==4 && $verB>=6)} {
+      lappend opts -Ofast   ;# Note: -Ofast is NOT standards conforming
+   } else {
+      lappend opts -O3
+   }
    if {$verA>4 || ($verA==4 && $verB>=4)} {
       # -ffast-math breaks compensated summation in Nb_Xpfloat class.
       # GCC 4.4 and later support function attribute
       #          __attribute__((optimize("no-fast-math")))
       # which disables fast-math on a function-by-function basis,
-      # thereby providing a work around.
+      # thereby providing a workaround.
       lappend opts -ffast-math
    }
    if {$verA>4 || ($verA==4 && $verB>=3)} {
@@ -115,7 +131,6 @@ proc GetGccGeneralOptFlags { gcc_version } {
    }
    if {$verA>=3} {
       lappend opts -frename-registers
-
       # Docs say -fstrict-aliasing is in 2.95.  I can't find docs
       # for 2.8, but one extant installation I have (on SGI) doesn't
       # recognize -fscrict-aliasing.  To be safe, just require 3.x.
@@ -125,7 +140,6 @@ proc GetGccGeneralOptFlags { gcc_version } {
       if {$verA!=4 || $verB>0} {
          lappend opts -fstrict-aliasing
       }
-
       if {$verA>=4 || $verB>=4} {
          lappend opts -fweb
       }
@@ -138,10 +152,174 @@ proc GetGccGeneralOptFlags { gcc_version } {
    # -momit-leaf-frame-pointer makes the problem go away.
    # (See proc GetGccCpuOptFlags in x86-support.tcl).
    # Comment this out if the aforementioned problem occurs.
-   lappend opts -fomit-frame-pointer
+   lappend opts -fomit-frame-pointer -momit-leaf-frame-pointer
 
    return $opts
 }
+
+# Routine that returns optimization flags for gcc which are floating
+# point value-safe.  The import is the gcc version, as returned by the
+# preceding GuessGccVersion proc.  Note that the flags accepted by gcc
+# vary by version.
+#
+proc GetGccValueSafeOptFlags { gcc_version } {
+   set opts [GetGccGeneralOptFlags $gcc_version]
+   foreach check {-ffast-math -funsafe-math-optimizations -ffinite-math-only} {
+      while {[set index [lsearch -exact $opts $check]]>=0} {
+         set opts [lreplace $opts $index $index]
+      }
+   }
+   if {[set index [lsearch -exact $opts -Ofast]]>=0} {
+         set opts [lreplace $opts $index $index -O3]
+   }
+
+   if {[llength $gcc_version]>=2} {
+      set verA [lindex $gcc_version 0]
+      set verB [lindex $gcc_version 1]
+      if {$verA>4 || ($verA==4 && $verB>=6)} {
+         # The -ffp-contract=off control, which disables contraction of
+         # floating point operations (such as changing a*b+c into an fma
+         # instruction) appears in gcc 4.6.
+         set check -ffp-contract=off
+         if {[lsearch -exact $opts $check]<0} {
+            lappend opts $check
+         }
+      }
+   }
+
+   return $opts
+}
+
+proc GetGccNativeFlags { gcc_version } {
+   # Returns -march=native if gcc_version supports it, otherwise
+   # returns empty string.
+   if {[llength $gcc_version]<2} {
+      # Unable to determine gcc version.  Return an empty string.
+      return {}
+   }
+   set verA [lindex $gcc_version 0]
+   set verB [lindex $gcc_version 1]
+
+   if {![regexp -- {[0-9]+} $verA] || ![regexp -- {[0-9]+} $verB]} {
+      return -code error "Invalid input:\
+         gcc_version should be a list of numbers, not\
+         \"$gcc_version\""
+   }
+
+   # -march/-mtune=native setting introduced with gcc 4.2
+   set march {}
+   if {$verA>4 || ($verA==4 && 2<=$verB)} {
+      set march [list -march=native]
+   }
+   return $march
+}
+
+proc GetGccx86ExtFlags { gcc_version cpu_flags } {
+   # Returns a list of gcc flags based on gcc_version and cpu_flags,
+   # where cpu_flags is a list of supported instruction extensions,
+   # modeled on the "flags" line in /proc/cpuinfo on Linux systems.
+   # For example,
+   #   mmx sse sse2 ssse3 sse4_1 sse4_2 avx
+   #
+   if {[llength $gcc_version]<2} {
+      # Unable to determine gcc version.  Return an empty string.
+      return {}
+   }
+   set verA [lindex $gcc_version 0]
+   set verB [lindex $gcc_version 1]
+
+   if {![regexp -- {[0-9]+} $verA] || ![regexp -- {[0-9]+} $verB]} {
+      return -code error "Invalid input:\
+         gcc_version should be a list of numbers, not\
+         \"$gcc_version\""
+   }
+
+   # Internally defined cpuvect levels:
+   # 0 - no vect      5 - avx
+   # 1 - sse          6 - avx2
+   # 2 - sse2         7 - avx512f, pf, er, cd
+   # 3 - sse3         8 - avx512vl, bw, dq, ifma, vbmi
+   # 4 - ssse3,sse4*
+   #
+   # Note: Three argument fma support via -mfma (as opposed to -mfma4)
+   #  was introduced to gcc along with avx2 support.
+
+   # Determine highest vectorization level supported by compiler.
+   if {$verA<3} {
+      set gccvect 0
+   } elseif {$verA==3 && $verB<3} {
+      set gccvect 2
+   } elseif {$verA==3 || ($verA==4 && $verB<3)} {
+      set gccvect 3
+   } elseif {$verA==4 && $verB<4} {
+      set gccvect 4
+   } elseif {$verA==4 && $verB<7} {
+      set gccvect 5
+   } elseif {$verA==4 && $verB<9} {
+      set gccvect 6
+   } elseif {$verA<6} {
+      set gccvect 7
+   } else {
+      set gccvect 8
+   }
+
+   # Combine gccvect with cpu_flags to set options
+   set cpuopts {}
+   if {$gccvect<5} {
+      # SSE instructions
+      if {$gccvect>=1 && [lsearch -exact $cpu_flags sse]>=0} {
+         lappend cpuopts -msse
+      }
+      if {$gccvect>=2 && [lsearch -exact $cpu_flags sse2]>=0} {
+         lappend cpuopts -msse2
+      }
+      if {$cpuvect>=3 && [lsearch -glob $cpu_flags *sse3]>=0} {
+         lappend cpuopts -msse3
+      }
+      if {$cpuvect>=4} {
+         foreach lvl [list ssse3 sse4 sse4_1 sse4_2] {
+            if {[lsearch -exact $cpu_flags $lvl]>=0} {
+               lappend cpuopts -m[regsub _ $lvl .]
+            }
+         }
+      }
+   } else {
+      # AVX instructions
+      if {$cpuvect>=5 && [lsearch -exact $cpu_flags avx]>=0} {
+         lappend cpuopts -mavx
+      }
+      if {$cpuvect>=6 && [lsearch -exact $cpu_flags avx2]>=0} {
+         lappend cpuopts -mavx2
+         if {[lsearch -exact $cpu_flags fma]>=0} {
+            lappend cpuopts -mfma
+         }
+      }
+      if {$cpuvect>=7} {
+         foreach sfx {f pf ef cd} {
+            if {[lsearch -exact $cpu_flags avx512$sfx]>=0} {
+               lappend cpuopts -mavx512$sfx
+            }
+         }
+      }
+      if {$cpuvect>=8} {
+         foreach sfx {vl bw dq ifma vbmi} {
+            if {[lsearch -exact $cpu_flags avx512$sfx]>=0} {
+               lappend cpuopts -mavx512$sfx
+            }
+         }
+      }
+   }
+
+   # Frame pointer: Some versions of gcc don't handle exceptions
+   # properly w/o frame-pointers.  This typically manifests as
+   # Oxs dying without an error message while loading a MIF file.
+   # Interestingly, including -momit-leaf-frame-pointer appears
+   # to work around this problem, at least on some systems.  YMMV;
+   # Comment this out if the aforementioned problem occurs.
+   lappend cpuopts -momit-leaf-frame-pointer
+
+   return $cpuopts
+   }
 
 # Routine that determines processor specific optimization flags for
 # gcc.  The first import is the gcc version, as returned by the
@@ -168,8 +346,18 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
    # Extract cpu information from cpu_arch import
    set cpu_vendor "unknown"
    set cpu_type   "unknown"
-   set cpu_sse    0
-   foreach {cpu_vendor cpu_type cpu_sse} $cpu_arch { break }
+   set cpu_flags   {}
+   foreach {cpu_vendor cpu_type cpu_flags} $cpu_arch { break }
+
+   # Internally defined cpuvect levels:
+   # 0 - no vect      5 - avx
+   # 1 - sse          6 - avx2
+   # 2 - sse2         7 - avx512f, pf, er, cd
+   # 3 - sse3         8 - avx512vl, bw, dq, ifma, vbmi
+   # 4 - sse4
+   # These are set based on compiler support.  Comparison is
+   # made to the cpu_arch flags to set cpu_flags
+   set cpuvect 0
 
    # Construct optimization flags
    # Note: -fprefetch-loop-arrays is available in gcc 3.1
@@ -191,7 +379,6 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          opteron  -
          k8          { set cpuopts [list -march=pentiumpro] }
       }
-      set cpu_sse 0
    } elseif {$verA==3 && $verB<1} {
       # Don't bother setting -march in case of
       # i386, i486, or k5
@@ -207,7 +394,6 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          opteron  -
          k8          { set cpuopts [list -march=athlon] }
       }
-      set cpu_sse 0
    } elseif {$verA==3  && $verB<3} {
       # Don't bother setting -march in case of
       # i386, i486, or k5
@@ -235,7 +421,7 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          k8         { set cpuopts [list -march=athlon-4 \
                                       -fprefetch-loop-arrays] }
       }
-      if {$cpu_sse>=2} { set cpu_sse 2 }
+      set cpuvect 2
    } elseif {$verA==3 && $verB==3} {
       # Don't bother setting -march in case of
       # i386, i486, or k5
@@ -267,8 +453,8 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          k8          { set cpuopts [list -march=athlon-4 \
                                        -fprefetch-loop-arrays] }
       }
-      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
-  } elseif {($verA==3 && $verB>=4) || ($verA==4 && $verB<=1) \
+      set cpuvect 3
+   } elseif {($verA==3 && $verB>=4) || ($verA==4 && $verB<=1) \
 		|| [string compare "Darwin" $tcl_platform(os)]==0} {
       # On Mac Os X Lion (others?), despite what 'man gcc' reports,
       # gcc doesn't support "-march=native", although it does support
@@ -314,8 +500,8 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
       if {($verA==4 && $verB>=2)} {
          lappend cpuopts "-mtune=native"
       }
-      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
-   } elseif {$verA>4 || ($verA==4 && $verB>=2)} {
+      set cpuvect 3
+   } elseif {$verA==4 && 2<=$verB && $verB<4} {
       set cpuopts [list -march=native]
       # -march/-mtune=native setting introduced with gcc 4.2
       switch -glob -- $cpu_type {
@@ -334,22 +520,61 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          opteron     -
          k8          { lappend cpuopts -fprefetch-loop-arrays }
       }
-      if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
-   }
-   if {$cpu_sse>0} {
-      lappend cpuopts -mfpmath=sse -msse
-      for {set sl 2} {$sl<=$cpu_sse} {incr sl} {
-         lappend cpuopts -msse$sl
+      if {$verB>=3} {
+         set cpuvect 4
+      } else {
+         set cpuvect 3
       }
+   } elseif {$verA==4 && 4<=$verB && $verB<7} {
+      set cpuvect 5
+   } elseif {$verA==4 && 7<=$verB && $verB<9} {
+      set cpuvect 6
+   } elseif {($verA==4 && 9<=$verB) || $verA==5} {
+      set cpuvect 7
+   } elseif {$verA>=6} {
+      set cpuvect 8
    }
 
-   # Frame pointer: Some versions of gcc don't handle exceptions
-   # properly w/o frame-pointers.  This typically manifests as
-   # Oxs dying without an error message while loading a MIF file.
-   # Interestingly, including -momit-leaf-frame-pointer appears
-   # to work around this problem, at least on some systems.  YMMV;
-   # Comment this out if the aforementioned problem occurs.
-   lappend cpuopts -momit-leaf-frame-pointer
+   if {$cpuvect<5} {
+      # SSE instructions
+      if {$cpuvect>=1 && [lsearch -exact $cpu_flags sse]>=0} {
+         lappend cpuopts -msse
+      }
+      if {$cpuvect>=2 && [lsearch -exact $cpu_flags sse2]>=0} {
+         lappend cpuopts -msse2
+      }
+      if {$cpuvect>=3 && [lsearch -glob $cpu_flags *sse3]>=0} {
+         lappend cpuopts -msse3
+      }
+      if {$cpuvect>=4 && [lsearch -glob $cpu_flags sse4*]>=0} {
+         lappend cpuopts -msse4
+      }
+   } else {
+      # AVX instructions
+      if {$cpuvect>=5 && [lsearch -exact $cpu_flags avx]>=0} {
+         lappend cpuopts -mavx
+      }
+      if {$cpuvect>=6 && [lsearch -exact $cpu_flags avx2]>=0} {
+         lappend cpuopts -mavx2
+      }
+      if {$cpuvect>=7} {
+         foreach sfx {f pf ef cd} {
+            if {[lsearch -exact $cpu_flags avx512$sfx]>=0} {
+               lappend cpuopts -mavx512$sfx
+            }
+         }
+         if {[lsearch -exact $cpu_flags fma]>=0} {
+            lappend cpuopts -mfma
+         }
+      }
+      if {$cpuvect>=8} {
+         foreach sfx {vl bw dq ifma vbmi} {
+            if {[lsearch -exact $cpu_flags avx512$sfx]>=0} {
+               lappend cpuopts -mavx512$sfx
+            }
+         }
+      }
+   }
 
    return $cpuopts
 }

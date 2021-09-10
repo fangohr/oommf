@@ -18,8 +18,7 @@ OC_USE_STRING;
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// For some compilers this is needed to get "long double"
-/// versions of the basic math library functions, e.g.,
-/// long double atan(long double);
+/// versions of the basic math library functions.
 
 /* End includes */
 

@@ -16,7 +16,7 @@ if {[info exists env(OOMMF_NO_BUILD_OXS)]} {
     return -code continue
 }
 
-set executables [list oxs]
+set executables [list oxs demagtensor]
 # We do not yet distribute any Preisach models
 #if {![info exists env(OOMMF_NO_BUILD_PREISACH)]} {
 #    lappend executables opmsh
@@ -62,11 +62,17 @@ foreach src $extsrcs {
     lappend extobjs [file rootname [file tail $src]]
 }
 
-set lclsrcs [lsort [glob -nocomplain -- [file join local *.cc]]]
+set lclsrcs [list]
+foreach subdir [Oc_FindSubdirectories local] {
+   lappend lclsrcs {*}[glob -nocomplain -directory $subdir -- *.cc *.cpp *.C *.cxx]
+}
+set lclsrcs [lsort $lclsrcs]
 set lclobjs {}
 foreach src $lclsrcs {
-    lappend lclobjs [file rootname [file tail $src]]
+   lappend lclobjs [join [file split [file rootname $src]] _]
 }
+# Note: The lclsrcs compilation command further down assumes that the
+# number and order of lclsrcs and lclobjs match.
 set lcllibs {}
 foreach src $lclsrcs {
    # Check src.rules files for external library info. If it exists, the
@@ -120,7 +126,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		2.0a1
+                    -version		2.0a2
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -130,7 +136,7 @@ MakeRule Define {
     } $executables]
 }
 
-set oxslibs {vf nb oc}
+set oxslibs {vf xp nb oc}
 set fn [file join local makeextras.tcl]
 if {[file readable $fn]} { source $fn }
 MakeRule Define {
@@ -146,6 +152,29 @@ MakeRule Define {
 			            -lib {%s %s tk tcl} \
 			            -sub CONSOLE -out oxs
 			} $objects $extobjs $lclobjs $oxslibs $lcllibs]
+}
+
+set dtobjs [list demagtensor demagcoef oxswarn oxsthread oxsexcept]
+MakeRule Define {
+    -targets		[Platform Executables demagtensor]
+    -dependencies	[concat [Platform Objects $dtobjs] \
+			        [Platform StaticLibraries $oxslibs] \
+				[file join base tclIndex]]
+    -script		[format {
+			    Platform Link -obj {%s} \
+			            -lib {%s tk tcl} \
+			            -sub CONSOLE -out demagtensor
+			} $dtobjs $oxslibs]
+}
+unset dtobjs
+MakeRule Define {
+   -targets	     [Platform Objects demagtensor]
+   -dependencies     [concat [list [Platform Name]] \
+           [[CSourceFile New _ demagtensor.cc -inc base] Dependencies]]
+   -script           [format {Platform Compile C++ -opt 1 \
+                         -inc [[CSourceFile New _ %s -inc base] DepPath] \
+                         -out %s -src %s
+                      } demagtensor.cc demagtensor demagtensor.cc]
 }
 
 MakeRule Define {
@@ -191,8 +220,7 @@ catch {unset src}
 unset path
 
 set path [list base ext]
-foreach src $lclsrcs {
-    set obj [file rootname [file tail $src]]
+foreach src $lclsrcs obj $lclobjs {
     MakeRule Define {
         -targets      [Platform Objects $obj]
         -dependencies [concat [list [Platform Name]] \

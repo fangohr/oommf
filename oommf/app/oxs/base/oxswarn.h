@@ -76,9 +76,8 @@ public:
   Oxs_WarningMessage(int count_max,Nb_MessageType mt = NB_MSG_WARNING)
     : max_message_count(count_max),
       message_type(mt) {
-    mutex.Lock();
+    Oc_LockGuard lck(mutex);
     instance_id = ++ids_in_use;
-    mutex.Unlock();
   }
 
   // If called from the root thread, Send() transmits the message
@@ -121,7 +120,7 @@ private:
   int instance_id;  // Initialized in constructor; treat as constant
   const int max_message_count; // -1 => no limit
   const Nb_MessageType message_type;
-  static Oxs_Mutex mutex;
+  static Oc_Mutex mutex;
   static int ids_in_use;
   static map<int,int> message_counts;    // Maps id -> message count
 
@@ -148,15 +147,9 @@ private:
 
   static void ClearHoldAndCounts() {
     // Drops any messages stored in the hold and clears all message counts.
-    mutex.Lock();
-    try {
-      message_counts.clear();
-      message_hold.clear();
-    } catch(...) {
-      mutex.Unlock();
-      throw;
-    }
-    mutex.Unlock();
+    Oc_LockGuard lck(mutex);
+    message_counts.clear();
+    message_hold.clear();
   }
 
   int FormatMessage

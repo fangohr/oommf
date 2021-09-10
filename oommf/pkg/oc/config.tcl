@@ -355,7 +355,7 @@ Oc_Class Oc_Config {
        # If not a snapshot release, return empty string.
        # Otherwise, return string of the form yyyy.mm.dd
        # return "2009.10.15"
-       return {2018.09.30}
+       return {}
     }
 
     method OommfApiIndex {} {
@@ -363,7 +363,7 @@ Oc_Class Oc_Config {
        # primarily by external extension writers.  This value is
        # echoed in the ocport.h header by the Oc_MakePortHeader proc
        # in oc/procs.tcl. Format is "yyyymmdd".
-       return 20170916
+       return 20181207
     }
 
     method CrossCompileSummary {} {
@@ -543,21 +543,26 @@ Oc_Class Oc_Config {
                 if {[string match Darwin $tcl_platform(os)] && \
                        [string match *Xcode* $banner]} {
                    # Xcode in use on Mac OS X; check if command line
-                   # tools are installed.  (AFAIK the install always
-                   # goes into /Library/Developer/CommandLineTools.  If
-                   # that is untrue, adjust as necessary.)
+                   # tools are installed.
                    set havetools 0
-                   set cmdtoolpath /Library/Developer/CommandLineTools
-                   if {[file isdirectory $cmdtoolpath]} {
-                      set gccpath [file join $cmdtoolpath usr bin gcc]
-                      if {[file exists $gccpath]} {
-                         set havetools 1
+                   if {[file exists /usr/bin/gcc]} {
+                      set cmdtoolpath /usr/bin
+                      set havetools 1
+                   } else {
+                      set cmdtoolpath /Library/Developer/CommandLineTools
+                      if {[file isdirectory $cmdtoolpath]} {
+                         set gccpath [file join $cmdtoolpath usr bin gcc]
+                         if {[file exists $gccpath]} {
+                            set havetools 1
+                         }
                       }
                    }
                    if {$havetools} {
-                      append ret " Xcode command line tools installed at $cmdtoolpath\n"
+                      append ret \
+                      " Xcode command line tools installed under $cmdtoolpath\n"
                    } else {
-                      append ret " *** WARNING: Xcode command line tools not found. ***\n"
+                      append ret \
+                      " *** WARNING: Xcode command line tools not found. ***\n"
                    }
                 }
              }
@@ -1224,6 +1229,9 @@ Oc_Class Oc_Config {
           set search [list]
           if {[catch {::tcl::pkgconfig get includedir,runtime} idir] == 0} {
              lappend search $idir
+             if {[string match Darwin $tcl_platform(os)]} {
+                lappend search "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/$idir"
+             }
           }
           if {[string match Darwin $tcl_platform(os)]} {
              lappend search /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version/Headers
@@ -1261,6 +1269,12 @@ Oc_Class Oc_Config {
           set search [list]
           if {[catch {::tcl::pkgconfig get includedir,runtime} idir] == 0} {
              lappend search $idir
+             if {[string match Darwin $tcl_platform(os)]} {
+                lappend search "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/$idir"
+                if {[regsub Tcl.framework $idir Tk.framework _]} {
+                   lappend search "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/$_"
+                }
+             }
           }
           if {[string match Darwin $tcl_platform(os)]} {
              lappend search /System/Library/Frameworks/Tk.framework/Versions/$tcl_version/Headers
@@ -1277,6 +1291,16 @@ Oc_Class Oc_Config {
                 [file join $tp include tk[$this GetValue TK_VERSION]]
              lappend search \
                 [file join $tp include tcl[$this GetValue TCL_VERSION]]
+          }
+          if {[info exists env(OOMMF_TCL_INCLUDE_DIR)]} {
+             if {[lsearch -exact $search $env(OOMMF_TCL_INCLUDE_DIR)]<0} {
+                lappend search $env(OOMMF_TCL_INCLUDE_DIR)
+             }
+             if {[regsub -all Tcl $env(OOMMF_TCL_INCLUDE_DIR) Tk _]} {
+                if {[lsearch -exact $search $_]<0} {
+                   lappend search $_
+                }
+             }
           }
           foreach dir $search {
              set ifile [file join $dir tk.h]
@@ -1378,6 +1402,9 @@ Oc_Class Oc_Config {
              } else {
                 lappend chklist $elt
              }
+          }
+          if {[catch {::tcl::pkgconfig get libdir,runtime} libdir] == 0} {
+             lappend chklist "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/$libdir"
           }
           lappend chklist \
              /System/Library/Frameworks/Tcl.framework/Versions/$tcl_version \
@@ -1658,6 +1685,23 @@ Oc_Class Oc_Config {
 		regsub -all {\${(T(CL|K)_[A-Z_]+)}} $val \
 			{[$this GetValue "\1"]} val
 		set val [subst -novariables $val]
+                # Special case: TCL_RANLIB
+                # The ranlib specified in tclConfig.sh comes from the
+                # Tcl build system environment and might not exist on
+                # the OOMMF build system.  Test, and replace with a
+                # fallback if possible.
+                if {[string compare TCL_RANLIB $feat]==0 \
+                       && [string match {} [auto_execok $val]]} {
+                   # Bad ranlib
+                   if {![string match {} [auto_execok [file tail $val]]]} {
+                      # Dropping path yields an executable command
+                      set val [file tail $val]
+                   } elseif {[string match *ranlib* $val] \
+                                && ![string match {} [auto_execok ranlib]]} {
+                      # Last chance try, bare "ranlib", is executable
+                      set val ranlib
+                   }
+                }
 		$this SetValue $feat $val
 	    }
 	    gets $f line

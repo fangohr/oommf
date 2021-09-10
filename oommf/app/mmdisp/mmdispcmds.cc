@@ -19,8 +19,7 @@
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// For some compilers this is needed to get "long double"
-/// versions of the basic math library functions, e.g.,
-/// long double atan(long double);
+/// versions of the basic math library functions.
 
 /* End includes */
 
@@ -50,6 +49,9 @@ static DisplayFrame myFrame;
 
 #define MY_BUF_SIZE 32000
 static OC_CHAR buf[MY_BUF_SIZE];
+#if MY_BUF_SIZE < 1
+# error "buf size must be greater than 0"
+#endif
 
 static OC_REAL4m CoordsToAngle(CoordinateSystem coords)
 {
@@ -624,8 +626,9 @@ int GetMeshType(ClientData,Tcl_Interp *interp,int argc,CONST84 char**)
     return TCL_ERROR;
   }
   const char *name=myMeshArray[activeMeshId]->GetMeshType();
-  if(name!=NULL) strncpy(buf,name,sizeof(buf));
+  if(name!=NULL) strncpy(buf,name,sizeof(buf)-1);
   else           buf[0]='\0';
+  buf[sizeof(buf)-1] = '\0'; // Safety
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
 }
@@ -803,8 +806,9 @@ int GetMeshName(ClientData,Tcl_Interp *interp,int argc,
     return TCL_ERROR;
   }
   const char *name=myMeshArray[meshId]->GetName();
-  if(name!=NULL) strncpy(buf,name,sizeof(buf));
+  if(name!=NULL) strncpy(buf,name,sizeof(buf)-1);
   else           buf[0]='\0';
+  buf[sizeof(buf)-1] = '\0'; // Safety
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
 }
@@ -969,9 +973,10 @@ int GetMeshTitle(ClientData,Tcl_Interp *interp,int argc,
     return TCL_ERROR;
   }
   const char *title=myMeshArray[meshId]->GetTitle();
-  if(title!=NULL) strncpy(buf,title,sizeof(buf));
+  if(title!=NULL) strncpy(buf,title,sizeof(buf)-1);
   else            buf[0]='\0';
   Tcl_AppendResult(interp,buf,(char *)NULL);
+  buf[sizeof(buf)-1] = '\0'; // Safety
   return TCL_OK;
 }
 
@@ -1024,8 +1029,9 @@ int GetMeshDescription(ClientData,Tcl_Interp *interp,
     return TCL_ERROR;
   }
   const char *desc=myMeshArray[meshId]->GetDescription();
-  if(desc!=NULL) strncpy(buf,desc,sizeof(buf));
+  if(desc!=NULL) strncpy(buf,desc,sizeof(buf)-1);
   else           buf[0]='\0';
+  buf[sizeof(buf)-1] = '\0'; // Safety
   Tcl_AppendResult(interp,buf,(char *)NULL);
   return TCL_OK;
 }
@@ -2201,10 +2207,16 @@ int WriteMeshOVF2
 
   int errcode=TCL_OK;
 
+  const char *text_fmt = "%# .17g"; // Default format for data in text mode
   Vf_OvfDataStyle ods=vf_oascii;
   if(strcmp("binary4",argv[2])==0)      ods=vf_obin4;
   else if(strcmp("binary8",argv[2])==0) ods=vf_obin8;
-
+  else if(strncmp("text",argv[2],4)==0 && argv[2][4]!='\0') {
+    // User specified text data format
+    size_t skip = strspn(argv[2]+4," \t\r\n"); // Skip whitespace
+    text_fmt = argv[2]+4+skip;
+  }
+  
   Vf_Ovf20_MeshType reqtype = vf_ovf20mesh_rectangular;
   if(strcmp("irregular",argv[3])==0) {
     reqtype = vf_ovf20mesh_irregular;
@@ -2274,8 +2286,7 @@ int WriteMeshOVF2
   try {
     Vf_Ovf20VecArrayConst data_info(3,size,vecvals.GetPtr());
     header.WriteHeader(channel);
-    header.WriteData(channel, ods,
-                     "%# .17g",  // Might want to allow user to set this
+    header.WriteData(channel, ods,text_fmt,
                      &meshnodes,data_info);
   } catch(...) {
     writecheck = 1;
@@ -3511,11 +3522,8 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
     }
 
     if(headtype == fullhead) {
-#if WMA_USE_OBJ
-      tmpobj = Tcl_ObjPrintf(
-#else
-      Oc_Snprintf(buf,sizeof(buf),
-#endif
+      // NB: Tcl_ObjPrintf doesn't handle 64-bit integer format specifier.
+      OC_INDEX len = Oc_Snprintf(buf,sizeof(buf),
         "## Active volume: (%.15g,%.15g,%.15g) x (%.15g,%.15g,%.15g)\n"
         "## Cell size: %.15g x %.15g x %.15g\n"
         "## Cells in active volume: %" OC_INDEX_MOD "d\n",
@@ -3530,6 +3538,7 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         static_cast<double>(fabs(step.z)),
         volume_point_count);
 #if WMA_USE_OBJ
+      tmpobj = Tcl_NewStringObj(buf,static_cast<int>(len));
       Tcl_IncrRefCount(tmpobj);
       Tcl_WriteObj(channel,tmpobj);
       Tcl_DecrRefCount(tmpobj);

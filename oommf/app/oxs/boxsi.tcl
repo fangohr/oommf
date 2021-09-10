@@ -24,7 +24,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 2.0a1
+Oc_Main SetVersion 2.0a2
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -965,8 +965,8 @@ proc ReleaseProblem {} {
 
    # Note: There are traces on the following variables.
    global status stagerequest number_of_stages problem
-   set stagerequest {}
-   set number_of_stages {}
+   set stagerequest $stagerequest
+   set number_of_stages $number_of_stages
    if {[info exists problem]} {
       Oc_Log Log "End \"[file tail $problem]\"" infolog
    }
@@ -1235,31 +1235,24 @@ proc Loop {type} {
 trace variable problem w {uplevel #0 set status Loading... ;#}
 
 # Update Stage and Step counts for Oxs_Schedule
+proc ChangeStageRequestTraceCmd { args } {
+   global stage stagerequest
+   if {[info exists stage] && $stage != $stagerequest} {
+      set results [Oxs_SetStage $stagerequest]
+      set stage [lindex $results 0]
+      GenerateRunEvents [lindex $results 1]
+   }
+}
 Oc_EventHandler New _ Oxs Step [list set step %step]
 Oc_EventHandler New _ Oxs Step [list set stage %stage]
 Oc_EventHandler New _ Oxs Step {
    if {$stagerequest != %stage} {
-      trace vdelete stagerequest w {
-         if {[info exists stage] && $stage != $stagerequest} {
-            set results [Oxs_SetStage $stagerequest]
-            set stage [lindex $results 0]
-            GenerateRunEvents [lindex $results 1]
-      } ;#}
+      trace remove variable stagerequest write ChangeStageRequestTraceCmd
       set stagerequest %stage
-      trace variable stagerequest w {
-         if {[info exists stage] && $stage != $stagerequest} {
-            set results [Oxs_SetStage $stagerequest]
-            set stage [lindex $results 0]
-            GenerateRunEvents [lindex $results 1]
-         } ;#}
+      trace add variable stagerequest write ChangeStageRequestTraceCmd
    }
 }
-trace variable stagerequest w {
-    if {[info exists stage] && $stage != $stagerequest} {
-       set results [Oxs_SetStage $stagerequest]
-       set stage [lindex $results 0]
-       GenerateRunEvents [lindex $results 1]
-} ;#}
+trace add variable stagerequest write ChangeStageRequestTraceCmd
 
 # Terminate Loop when solver is Done. Put this on the after idle list so
 # that all other Done event handlers have an opportunity to fire first.

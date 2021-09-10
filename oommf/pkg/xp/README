@@ -1,0 +1,295 @@
+File: oommf/pkg/xp/README
+Desc: Overview of the OOMMF Xp extension
+
+Summary:
+
+This package provides the C++ class Xp_DoubleDouble, which is a high
+precision floating point numeric library with values stored and
+manipulated as a pair of standard floating point variables.  Typically
+the type of variable used in the pair (the "base" type) is a C++ double,
+hence the common name "double-double" for this type of value.  The
+numeric range for the double class is the same as for the underlying
+base type, but the precision is doubled.  For example, the standard IEEE
+8-byte float (usual "double" type) has a range of roughly 5e-324 to
+1e308 and a precision of about 16 decimal digits.  The a double-double
+object built from two such doubles with have the same range but 32
+decimal digits precision.
+
+For comparison, the IEEE extended precision 10-byte float (available as
+the "long double" type on some compilers; frequently this type will be
+padded out to 12 or 16 bytes for improved memory access) has a range of
+4e-4951 to 1e4932 and a precision of about 19 decimal digits.  A
+double-double object built from two such "long double" variables will
+have the same range of 4e-4951 to 1e4932 but about 38 decimal digits
+precision.
+
+The code in the Xp_DoubleDouble package is sensitive to compiler
+optimizations.  In particular, the code may fail if the compiler applies
+"non-value safe" floating point optimizations, such as replacing (a+b)+c
+with a+(b+c).  (Floating point operations are generally not
+associative.)  To guard against this, after the package is built a short
+test is run.  Several workarounds are provided in case testing fails.
+
+First, see if you can fix the problem by changing the compiler options
+used to build the Xp_DoubleDouble package.  You can see which options
+are used by looking at the output of the pimake build process, which
+echos each command to the terminal.  To change the options, create a the
+file oommf/config/platform/local/<platform>.tcl where <platform> is the
+platform name, e.g., linux-x86_64, darwin, windows-x86_64.  In this file
+add the line
+
+ $config SetValue program_compiler_c++_remove_valuesafeflags { remove_opts }
+
+to remove or
+
+ $config SetValue program_compiler_c++_add_valuesafeflags { add_opts }
+
+to add options from the compile command, where remove_opts and add_opts
+are compiler-specific lists of options.  For example, for the GNU g++
+compiler you might have
+
+ $config SetValue program_compiler_c++_remove_valuesafeflags { -ffast-math -O. }
+ $config SetValue program_compiler_c++_add_valuesafeflags { -O0 }
+
+(Each element of remove_opts is treated as a regular expression, so
+"-O." matches against any string starting with -O and having one
+additional character, for example -02, or -Ox.)  On Windows with the
+Visual C++ compiler you might need
+
+ $config SetValue program_compiler_c++_remove_valuesafeflags { /fp:.* }
+ $config SetValue program_compiler_c++_add_valuesafeflags { /Od /fp:precise }
+
+Note that the remove_opts are removed first, and then the add_opts are
+added.
+
+Another difficulty in the Xp_DoubleDouble library is that on some
+architectures intermediate operations are performed at a wider precision
+than the variable type, and at some later point rounded to the narrower
+variable width.  In this case there are two floating point rounding
+operations (once during the computation at high precision, and then
+again to narrow the results).  This upsets the delicate cancellations
+assumed in the Xp_DoubleDouble code, and must be avoided.  The build
+process attempts to detect this and selects the base variable type
+accordingly, but you can force the base variable type to "long double"
+with this command in the local/<platform>.tcl file:
+
+ $config SetValue program_compiler_xp_doubledouble_basetype {long double}
+
+The long double type is generally the widest precision available on the
+hardware, and so no double rounding occurs.  On the other hand, if the
+auto selection process chooses "long double" but double is actually OK,
+you can use
+
+ $config SetValue program_compiler_xp_doubledouble_basetype double
+
+To see what type your build is using, either look in the file
+
+ oommf/pkg/xp/<platform>/xpport.h 
+
+for the XP_DDFLOAT_TYPE typedef, e.g.
+
+ typedef double XP_DDFLOAT_TYPE;
+
+or run the command
+
+ oommf/pkg/xp/<platform>/ddtest quicktest -v
+
+which will output something like
+
+ Standard Xp_DoubleDouble; base type=double, mantissa width=2*53+1=107 bits total
+ QuickTest passed.
+
+Here the base type is "double", with 53 bits of precision.  Two doubles
+paired provide 2*53+1=107 bits of precision.  (The extra +1 comes from
+the sign bit on the second double).
+
+On most x86_64 based platforms either double or long double may be used.
+On some, for example Windows with the Visual C++ compiler, long double
+and double are the same (53 bits), so the choice doesn't matter.  But
+with other compilers, for example GNU g++, type double is implemented
+using SSE2 or AVX registers, with 53 bits of mantissa (IEEE 8-byte/64
+bit floating point type), while long double has 64 bits of mantissa
+(IEEE 80 bit extended precision floating point) implemented on the
+historic x87 floating point unit.  In this case the double type will be
+considerably faster, but you may want to select the long double type for
+extra precision (129 as opposed to 107 bits, or roughly 32 decimal
+digits compared to 16).
+
+If the options above fail to provide a working Xp_DoubleDouble build, or
+if you want to try an alternative for some other reason, you can use
+
+ $config SetValue program_compiler_xp_doubledouble_altsingle {vartype}
+
+where vartype is one of double, long double, or MPFR.  If you select
+this option then Xp_DoubleDouble works with a single variable of the
+specified type rather than pair of variables.  This "single" option with
+the "double" or "long double" type selection should be quite robust
+against compiler chicanery, and will typically run 10 to 100 times
+faster than the double-double pair, though of coarse at half the
+precision.
+
+The MPFR vartype selection makes Xp_DoubleDouble a thin wrapper around
+the C++ Boost library high-precision MPFR/GMP floating-point library.
+To use this option you need to have the Boost libraries installed.  On
+unix systems (including cygwin) this is usually a simple matter of
+installing the Boost and MPFR development libraries.  I haven't yet
+tried to use this option on Windows.
+
+On cygwin you need to install:
+ libboost-devel
+ libmpfr-devel
+
+On Ubuntu Linux:
+ libboost-all-dev
+ libmpfr-dev
+
+On RedHat Linux:
+ boost-devel
+ mpfr-devel
+
+On Mac OS X use homebrew or MacPorts to install
+ boost
+ mpfr
+You may need to add directories to the include and library paths for the
+compiler to access these tools.  Homebrew installs under /usr/local, and
+Macports uses /opt/local.  The relevant environment variables are
+CPLUS_INCLUDE_PATH and and LIBRARY_PATH, or you can use
+ $config SetValue program_compiler_extra_include_dirs /opt/local/include
+ $config SetValue program_linker_extra_lib_dirs /opt/local/lib
+TODO: program_compiler_extra_include_dirs adds directories to the dep
+search path, but doesn't include them to the compile command; this
+ should be fixed.
+
+On other systems install boost and GMP or MPIR.
+
+The default variable precision with the MPFR vartype selection is 32
+decimal digits, which is comparable to the precision obtained with the
+standard Xp_DoubleDouble type using a pair of double precision
+variables.  However, you can select a different MPFR precision as an
+optional precision value in the $config SetValue command.  For example,
+
+ $config SetValue program_compiler_xp_doubledouble_altsingle {MPFR 50}
+
+would select the MPFR type with 50 decimal digits of precision.  Higher
+precisions will of course run more slowly (see table below).
+
+Another option controls use of fused-multiply-add (fma) instructions in
+the double-double code.  The C++11 standard includes std::fma(x,y,z),
+but depending on your hardware and math libraries this may or may not be
+implemented as a true fma instruction with single rounding.  By default
+Xp_DoubleDouble tries to determine at build time if fma is single
+rounding or not, and uses fma if it is.  However, if the detection fails
+or if the build machine is different than run machine, then you can
+disable fma use with the control
+
+ $config SetValue program_compiler_xp_use_fma 0
+
+Change 0 to 1 to enable fma use.
+
+As mentioned earlier, the last stage of the Xp_DoubleDouble package
+build process is a quick sanity test,
+
+ oommf/pkg/xp/<platform>ddtest basetest
+
+If this fails then the rest of the OOMMF build will abort.  If the build
+is actually OK but for some reason the test fails, then you can disable
+the test by setting the configuration variable
+
+ $config SetValue program_pimake_xp_doubledouble_disable_test 1
+
+Use this option with caution!
+
+The ddtest program can also be used for simple speed testing.  The
+following table shows results running
+
+  ./cygwin-x86_64/ddtest.exe Atan -quiet -2 2 1000 -v -repeat <num>
+
+where <num> is a run appropriate loop count, on an Intel i7-7600U cpu @
+2.80GHz, 2 Cores, Windows 10 + cygwin64:
+
+-------------------------------------------------------------------------
+                          Mantissa        time per           time/
+          Type          width (bits)    iteration (ns)   time for double
+-------------------------------------------------------------------------
+         float              24                11              0.9
+         double             53                12              1.0
+      long double           64                70              5.8
+     double+double         107               800             67.
+long double+long double    129              2400            200
+       MPFR  15             51             16000           1300
+       MPFR  20             68             16000           1300
+       MPFR  32            107             19000           1600
+       MPFR  38            128             21000           1750
+       MPFR  50            168             25000           2000
+       MPFR  64            214             26000           2200
+       MPFR  76            254             32000           2700
+       MPFR 100            334             35000           2900
+-------------------------------------------------------------------------
+
+Running ddtest without -repeat will output a set of sample points with
+computed values.  The Tcl script ddtest.tcl is designed to read this
+output and check it for errors.  The ddtest.tcl script requires the
+Mpexpr multiple precision math Tcl extension.
+
+The "test" option to ddtest can be used to do more comprehensive testing
+of the Xp_DoubleDouble class.  Two reference files are provided for this
+purpose, vcv-107.dat and vcv-129.dat.  These files are based on the work
+
+   B. Verdonk, A. Cuyt, and D. Verschaeren, "A precision- and
+   range-independent tool for testing floating-point arithmetric I:
+   basic operations, square root, and remainder," ACM Transactions on
+   Mathematical Software, Volume 27 Issue 1, March 2001, pp. 92-118.
+
+adapted for double-double arithmetic with fixed mantissa width.  The
+vcv-107.dat file is for testing with base floating point type having 53
+bits precision (IEEE 8-byte floating point), the vcv-129.dat file is for
+use with base floating point type having 64 bits precision (IEEE 80-bit
+extended precision).  Sample usage:
+
+  windows-x86_64\ddtest.exe test vcv-107.dat
+
+See file vcv-xxx.dat for additional details.
+
+If the macro XP_RANGE_CHECK is 0, then Inf handling in Xp_DoubleDouble
+is weakened and tests in this test suite dealing with non-finite
+handling will fail.  This is the default setting if NDEBUG is defined,
+but XP_RANGE_CHECK can be independently set via the
+
+ $config SetValue program_compiler_xp_doubledouble_rangecheck VAL
+
+command in the local/<platform>.tcl file, where VAL is either 0 to
+disable range checking or 1 to enable it.
+
+-------------------------------------------------------------------------
+
+Injecting Xp_DoubleDouble into std::numeric_limits:
+
+It is possible to do things like
+
+   namespace std
+   {
+     template<> class numeric_limits<Xp_DoubleDouble>
+       {
+       public:
+         static Xp_DoubleDouble epsilon()
+         {
+           return Xp_DoubleDouble(XP_DD_EPS);
+         }
+       };
+   }
+
+after which std::numeric_limits<Xp_DoubleDouble>::epsilon() will return
+XP_DD_EPS cast to a Xp_DoubleDouble type.  Two issues with this are that
+XP_DD_EPS is not the full-width epsilon for Xp_DoubleDouble, and also
+since C++11 the members of std::numeric_limits are suppose to be
+declared as static constexpr.  This is currently in the "things to do in
+the future" bin.
+
+-------------------------------------------------------------------------
+
+
+DISCLAIMER: Commercial equipment and software referred to on these pages
+are identified for informational purposes only, and does not imply
+recommendation of or endorsement by the National Institute of Standards
+and Technology, nor does it imply that the products so identified are
+necessarily the best available for the purpose.

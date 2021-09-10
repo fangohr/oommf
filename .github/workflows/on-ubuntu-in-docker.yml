@@ -1,0 +1,27 @@
+# Build OOMMF on Ubuntu in Docker container.
+# Useful to be able to reproduce this outside of Github's systems.
+# Note that the Ubuntu version does not update automatically here:
+# it needs to be changed in ../../Dockerfile .
+#
+# See also ../../Makefile for details.
+
+name: on-ubuntu-in-docker
+
+on:
+  push:
+  schedule:
+    - cron: '0 0 2 * *'  # run once per month
+
+jobs:
+  in-docker:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Initialisation
+      uses: actions/checkout@v2
+      
+    - name: Build and test inside container
+      run: make in-docker
