@@ -100,7 +100,10 @@ different crystallographic classes:
    (`repository <https://github.com/joommf/oommf-extension-dmi-t>`__),
 3. D2d - antiskyrmion DMI
    (`repository <https://github.com/joommf/oommf-extension-dmi-d2d>`__)
-4. The OOMMF Magnetoelastic Extension Module
+
+and
+
+4. the OOMMF Magnetoelastic Extension Module
    (`repository <https://github.com/yuyahagi/oommf-mel>`__) from Yu Yahagi.
 
 Docker
