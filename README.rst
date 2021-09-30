@@ -335,7 +335,9 @@ A recommendation is to:
    committed to the repository (other modifications of scripts as well if any
    were necessary).
 
-4. Remove all generated files (such as `*.o`) using ``make -f Makefile-update-oommf clean``, and
+4. Remove all generated files (such as `*.o`) using
+   ``make -f Makefile-update-oommf clean``,
+   remove all modifications using ``git checkout .``, and
    repeat steps 1 and 2 (so that we only have those files in the directories
    that we like to commit to this repository as part of the new released).
 
