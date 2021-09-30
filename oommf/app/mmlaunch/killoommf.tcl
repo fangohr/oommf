@@ -2,6 +2,14 @@
 #
 # This file must be evaluated by omfsh
 
+# TODO: This app operates by sending an "exit" message to Net_Server
+#       objects. Applications such as mmLaunch that don't have server
+#       components can't be closed this way. Instead, killoommf should
+#       be changed to use the account server "kill" message which can
+#       terminate any application connected to the account
+#       server. This is the method used by the current mmLaunch
+#       iterate.
+
 ########################################################################
 # Support procs
 
@@ -64,7 +72,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName killoommf
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}
@@ -149,8 +157,8 @@ if {[llength $oidlist]==0} {
 set host localhost
 
 if {[catch {socket $host $hostport} hostchan]} {
-   puts "No OOMMF applications detected."
-   puts "(No host server responding on host $host, port $hostport.)"
+   Oc_RobustPuts "No OOMMF applications detected."
+   Oc_RobustPuts "(No host server responding on host $host, port $hostport.)"
    exit
 }
 if {[catch {AskServer $hostchan lookup $acctname} acctport]} {
@@ -275,7 +283,7 @@ if {[string match all $oidlist]} {
 }
 
 if {[llength $oidlist]==0} {
-    puts "No applications match oid list"
+    Oc_RobustPuts "No applications match oid list"
     close $acctchan
     exit
 }
@@ -303,9 +311,9 @@ foreach oid $oidlist {
 }
 
 if {$showonly} {
-    puts "Application selection (no exit requests sent):"
+    Oc_RobustPuts "Application selection (no exit requests sent):"
     foreach oid $oidlist {
-	puts [format " <%*d> %*s" \
+	Oc_RobustPuts [format " <%*d> %*s" \
 		  $oidstrsize $oid $appstrsize $oidapp($oid)]
     }
     close $acctchan
@@ -313,7 +321,7 @@ if {$showonly} {
 }
 
 if {$shownamesonly} {
-   puts "Application selection (no exit requests sent):"
+   Oc_RobustPuts "Application selection (no exit requests sent):"
    set appstrsize [expr {$appstrsize+1+$oidstrsize}]
    foreach oid $oidlist {
       if {[catch {AskServer $acctchan names $oid} nicknames]} {
@@ -336,7 +344,7 @@ if {$shownamesonly} {
          set defaultname {}
       }
 
-      puts [format " <%*d> %*s %s" \
+      Oc_RobustPuts [format " <%*d> %*s %s" \
                $oidstrsize $oid $appstrsize $defaultname $nicknames]
    }
    close $acctchan
@@ -360,26 +368,26 @@ foreach oid $oidlist {
 
     if {!$testflag} {
 	if {[catch {AskServer $chan exit} exitreply]} {
-	    puts [format " <%*d> %*s not responding: $exitreply" \
+	    Oc_RobustPuts [format " <%*d> %*s not responding: $exitreply" \
 		      $oidstrsize $oid $appstrsize $oidapp($oid)]
 	    close $chan
 	    continue
 	}
 	close $chan
 	if {!$quietflag} {
-	    puts [format " <%*d> %*s killed" \
+	    Oc_RobustPuts [format " <%*d> %*s killed" \
 		      $oidstrsize $oid $appstrsize $oidapp($oid)]
 	}
     } else {
 	if {[catch {AskServer $chan bye} byereply]} {
-	    puts [format " <%*d> %*s not responding: $byereply" \
+	    Oc_RobustPuts [format " <%*d> %*s not responding: $byereply" \
 		      $oidstrsize $oid $appstrsize $oidapp($oid)]
 	    close $chan
 	    continue
 	}
 	close $chan
 	if {!$quietflag} {
-	    puts [format " <%*d> %*s is alive" \
+	    Oc_RobustPuts [format " <%*d> %*s is alive" \
 		      $oidstrsize $oid $appstrsize $oidapp($oid)]
 	}
     }

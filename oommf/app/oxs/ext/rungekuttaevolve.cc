@@ -25,19 +25,15 @@ OXS_EXT_REGISTER(Oxs_RungeKuttaEvolve);
 
 /* End includes */
 
-//#define NOAH
-#ifdef NOAH
-void ShowDouble(char* buf,const void* addr)
-{
-  const double* dptr = static_cast<const double*>(addr);
-  const unsigned char* cptr = static_cast<const unsigned char*>(addr);
-  Oc_Snprintf(buf,100,"Addr %p: %25.16e :",addr,*dptr);
-  for(int i=0;i<sizeof(double);++i) {
-    Oc_Snprintf(buf+strlen(buf),100," %02x",cptr[i]);
-  }
-  Oc_Snprintf(buf+strlen(buf),100,"\n");
-}
+#define DO_M_SUM 0     // Compute ave M only (see AdjustState)
+#define DO_MdM_SUM 1   // Compute ave M and dM/dt together in
+                      /// stepper routines (endstates only)
+#if DO_M_SUM && DO_MdM_SUM
+# error At most one of DO_M_SUM and DO_MdM_SUM can be enabled.
 #endif
+
+#define USE_XPFLOATDUALACCUM 1 // Optional use of Nb_XpfloatDualAccum in
+                              /// M + dM sums
 
 /////////////////////////////////////////////////////////////////////////
 ///////// DEBUGGING DEBUGGING DEBUGGING DEBUGGING DEBUGGING /////////////
@@ -408,9 +404,6 @@ void Oxs_RungeKuttaEvolve::UpdateMeshArrays(const Oxs_Mesh* mesh)
 
   alpha_init->FillMeshValue(mesh,alpha);
   gamma_init->FillMeshValue(mesh,gamma);
-#ifdef NOAH
-  fprintf(stderr,"alpha[  1]=%25.16e\nalpha[256]=%25.16e\n",alpha[1],alpha[256]);
-#endif
   if(gamma_style == GS_G) { // Convert to LL form
     for(i=0;i<size;++i) {
       OC_REAL8m cell_alpha = alpha[i];
@@ -511,6 +504,10 @@ void Oxs_RungeKuttaEvolve::Calculate_dm_dt
 
   OC_REAL8m dE_dt_sum=0.0;
   OC_REAL8m max_dm_dt_sq = 0.0;
+#if DO_MdM_SUM
+  ThreeVector ave_M;
+  ThreeVector ave_dM_dt;
+#endif // DO_MdM_SUM
 
   { // Compute dm_dt with damping type determined by template parameter
     // DMDT
@@ -521,20 +518,58 @@ void Oxs_RungeKuttaEvolve::Calculate_dm_dt
     std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,-1.0);
     Oc_AlignedVector<Oxs_Energy::SUMTYPE>
       thread_pE_pM_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
+#if DO_MdM_SUM
+    std::vector<ThreeVector>
+      thread_M_sum(number_of_threads,ThreeVector(0.,0.,0.));
+    std::vector<ThreeVector>
+      thread_dM_dt_sum(number_of_threads,ThreeVector(0.,0.,0.));
+#endif // DO_MdM_SUM
     Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
       (*(state_.Ms),
       [&](OC_INT4m threadid,OC_INDEX jstart,OC_INDEX jstop) {
-        Oxs_Energy::SUMTYPE thd_pE_pM_sum = 0.0;
+        Oxs_Energy::SUMTYPE thd_pE_pM_sum = 0.0; // Thread local storage
         OC_REAL8m thd_max_dm_dt_sq = 0.0;
+#if DO_MdM_SUM
+        Nb_Xpfloat thd_M_sum_x(0.),thd_M_sum_y(0.),thd_M_sum_z(0.);
+        Nb_Xpfloat thd_dM_dt_sum_x(0.),thd_dM_dt_sum_y(0.),thd_dM_dt_sum_z(0.);
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(state_.Ms);
+        const Oxs_MeshValue<ThreeVector>& spin = state_.spin;
+#endif
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_REAL8m dummy=0.0;
-          dmdt.Compute(j,thd_max_dm_dt_sq,dummy); // Fills vtmpB with dmdt
+          dmdt.Compute(j,thd_max_dm_dt_sq,dummy); // Fills dm_dt_ with dmdt
           thd_pE_pM_sum += dummy;
+#if DO_MdM_SUM
+          const OC_REAL8m Mtmp = Ms[j];
+# if USE_XPFLOATDUALACCUM
+          Nb_XpfloatDualAccum(thd_dM_dt_sum_x,Mtmp*dm_dt_[j].x,
+                              thd_dM_dt_sum_y,Mtmp*dm_dt_[j].y);
+          Nb_XpfloatDualAccum(thd_dM_dt_sum_z,Mtmp*dm_dt_[j].z,
+                              thd_M_sum_x,Mtmp*spin[j].x);
+          Nb_XpfloatDualAccum(thd_M_sum_y,Mtmp*spin[j].y,
+                              thd_M_sum_z,Mtmp*spin[j].z);
+# else // USE_XPFLOATDUALACCUM
+          thd_dM_dt_sum_x.Accum(Mtmp*dm_dt_[j].x);
+          thd_dM_dt_sum_y.Accum(Mtmp*dm_dt_[j].y);
+          thd_dM_dt_sum_z.Accum(Mtmp*dm_dt_[j].z);
+          thd_M_sum_x.Accum(Mtmp*spin[j].x);
+          thd_M_sum_y.Accum(Mtmp*spin[j].y);
+          thd_M_sum_z.Accum(Mtmp*spin[j].z);
+# endif // USE_XPFLOATDUALACCUM
+#endif
         }
+        // Allow for multiple jstart/jstop chunks
         thread_max_dm_dt_sq[threadid]
           = OC_MAX(thd_max_dm_dt_sq,thread_max_dm_dt_sq[threadid]);
         thread_pE_pM_sum[threadid] += thd_pE_pM_sum;
-        /// Allow for multiple jstart/jstop chunks
+#if DO_MdM_SUM
+        thread_M_sum[threadid].x += thd_M_sum_x.GetValue();
+        thread_M_sum[threadid].y += thd_M_sum_y.GetValue();
+        thread_M_sum[threadid].z += thd_M_sum_z.GetValue();
+        thread_dM_dt_sum[threadid].x += thd_dM_dt_sum_x.GetValue();
+        thread_dM_dt_sum[threadid].y += thd_dM_dt_sum_y.GetValue();
+        thread_dM_dt_sum[threadid].z += thd_dM_dt_sum_z.GetValue();
+#endif
       });
     max_dm_dt_sq = thread_max_dm_dt_sq[0];
     for(int i=1;i<number_of_threads;++i) {
@@ -542,10 +577,24 @@ void Oxs_RungeKuttaEvolve::Calculate_dm_dt
         max_dm_dt_sq = thread_max_dm_dt_sq[i];
       }
       thread_pE_pM_sum[0] += thread_pE_pM_sum[i];
+#if DO_MdM_SUM
+      thread_M_sum[0]     += thread_M_sum[i];
+      thread_dM_dt_sum[0] += thread_dM_dt_sum[i];
+#endif // DO_MdM_SUM
     }
     dE_dt_sum = thread_pE_pM_sum[0];
 
     dmdt.Finalize(max_dm_dt_sq,dE_dt_sum); // Scale max_dm_dt_sq and dE_dt_sum
+
+#if DO_MdM_SUM
+    const OC_INDEX meshsize = state_.mesh->Size();
+    ave_M.x = thread_M_sum[0].x/meshsize;
+    ave_M.y = thread_M_sum[0].y/meshsize;
+    ave_M.z = thread_M_sum[0].z/meshsize;
+    ave_dM_dt.x = thread_dM_dt_sum[0].x/meshsize;
+    ave_dM_dt.y = thread_dM_dt_sum[0].y/meshsize;
+    ave_dM_dt.z = thread_dM_dt_sum[0].z/meshsize;
+#endif // DO_MdM_SUM
   }
 
   max_dm_dt_ = sqrt(max_dm_dt_sq);
@@ -560,7 +609,53 @@ void Oxs_RungeKuttaEvolve::Calculate_dm_dt
   // change spin new_max_dm_dt_index:
   min_timestep_export = PositiveTimestepBound(max_dm_dt_);
 
-  return;
+#if DO_MdM_SUM
+  // Store average M and dM_dt data in state derived data space.
+  // The ave M value might already be set; if so, check that it
+  // agrees with the current computation.
+  if(!state_.AddDerivedData(DataName("Mx"),ave_M.x) ||
+     !state_.AddDerivedData(DataName("My"),ave_M.y) ||
+     !state_.AddDerivedData(DataName("Mz"),ave_M.z)) {
+    // Cache already set.  Check that values agree
+    OC_REAL8m mx,my,mz;
+    if(!state_.GetDerivedData(DataName("Mx"),mx) ||
+       !state_.GetDerivedData(DataName("My"),my) ||
+       !state_.GetDerivedData(DataName("Mz"),mz)) {
+      throw Oxs_ExtError(this,
+         "Oxs_RungeKuttaEvolve::Calculate_dm_dt:"
+                         " Programming error; ave M cache not properly set.");
+    }
+
+    const OC_INDEX meshsize = state_.mesh->Size();
+    OC_REAL8m slop = 4*OC_REAL8m_EPSILON*state_.max_absMs*sqrt(meshsize);
+    if(fabs(ave_M.x-mx) > slop || fabs(ave_M.y-my) > slop
+       || fabs(ave_M.z-mz) > slop) {
+      char msg[1000];
+      snprintf(msg,sizeof(msg),
+               "Oxs_RungeKuttaEvolve::Calculate_dm_dt:"
+               " Programming error; Inconsistent ave M cache values:\n"
+               " ave_M=(%25.16e,%25.16e,%25.16e)\n"
+               "     m=(%25.16e,%25.16e,%25.16e)\n",
+               ave_M.x,ave_M.y,ave_M.z,mx,my,mz);
+      throw Oxs_ExtError(this,msg);
+      // NB: If USE_XPFLOATDUALACCUM is set, then failure here might
+      // trace back to floating point non-associativity issues in
+      //   void Nb_XpfloatDualAccum(Nb_Xpfloat&,Nb_Xpfloat&,__m128d)
+      // or
+      //   void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
+      // in file oommf/pkg/nb/xpfloat.h.
+    }
+  }
+
+  if(!state_.AddDerivedData(DataName("dMx/dt"),ave_dM_dt.x) ||
+     !state_.AddDerivedData(DataName("dMy/dt"),ave_dM_dt.y) ||
+     !state_.AddDerivedData(DataName("dMz/dt"),ave_dM_dt.z)) {
+      throw Oxs_ExtError(this,
+         "Oxs_RungeKuttaEvolve::Calculate_dm_dt:"
+         " Programming error; ave dM/dt cache already set.");
+    }
+#endif // DO_MdM_SUM
+    return;
 }
 
 void Oxs_RungeKuttaEvolve::CheckCache(const Oxs_SimState& cstate)
@@ -586,11 +681,11 @@ void Oxs_RungeKuttaEvolve::CheckCache(const Oxs_SimState& cstate)
   /// from the incoming current_state), then timestep is calculated
   /// so that max_dm_dt * timestep = start_dm.
 
-  cache_good &= cstate.GetDerivedData("Max dm/dt",max_dm_dt);
-  cache_good &= cstate.GetDerivedData("dE/dt",dE_dt);
-  cache_good &= cstate.GetDerivedData("Delta E",delta_E);
-  cache_good &= cstate.GetDerivedData("pE/pt",pE_pt);
-  cache_good &= cstate.GetDerivedData("Timestep lower bound",
+  cache_good &= cstate.GetDerivedData(DataName("Max dm/dt"),max_dm_dt);
+  cache_good &= cstate.GetDerivedData(DataName("dE/dt"),dE_dt);
+  cache_good &= cstate.GetDerivedData(DataName("Delta E"),delta_E);
+  cache_good &= cstate.GetDerivedData(DataName("pE/pt"),pE_pt);
+  cache_good &= cstate.GetDerivedData(DataName("Timestep lower bound"),
                                       timestep_lower_bound);
   cache_good &= (energy_state_id == cstate.Id());
   cache_good &= (dm_dt_output.cache.state_id == cstate.Id());
@@ -640,6 +735,34 @@ Oxs_RungeKuttaEvolve::AdjustState
   new_spin.AdjustSize(old_state.mesh);
 
   // Advance spins (threaded using lambda expression)
+#if DO_M_SUM // Compute ave M and store results in state AuxData store
+  const Oxs_MeshValue<OC_REAL8m>& Ms = *(new_state.Ms);
+  const int number_of_threads = Oc_GetMaxThreadCount();
+  std::vector<ThreeVector>
+    thread_sumM(number_of_threads,ThreeVector(0.,0.,0.));
+  Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+                  (old_spin,
+                   [&](OC_INT4m thread_id,OC_INDEX jstart,OC_INDEX jstop) {
+                     ThreeVector local_sumM(0.,0.,0.);
+                     for(OC_INDEX j=jstart;j<jstop;++j) {
+                      ThreeVector tempspin = old_spin[j];
+                      tempspin.Accum(mstep,dm_dt[j]);
+                      tempspin.MakeUnit();
+                      new_spin[j] = tempspin;
+                      local_sumM.Accum(Ms[j],tempspin);
+                     }
+                     thread_sumM[thread_id] += local_sumM;
+  });
+  for(int i=1;i<number_of_threads;++i) {
+    thread_sumM[0] += thread_sumM[i];
+  }
+  new_state.AddAuxData(String(InstanceName()) + String("Mx"),
+     thread_sumM[0].x/static_cast<OC_REAL8m>(new_spin.Size()));
+  new_state.AddAuxData(String(InstanceName()) + String("My"),
+     thread_sumM[0].y/static_cast<OC_REAL8m>(new_spin.Size()));
+  new_state.AddAuxData(String(InstanceName()) + String("Mz"),
+     thread_sumM[0].z/static_cast<OC_REAL8m>(new_spin.Size()));
+#else // !DO_M_SUM (original code)
   Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
                   (old_spin,
                    [&](OC_INT4m,OC_INDEX jstart,OC_INDEX jstop) {
@@ -649,6 +772,7 @@ Oxs_RungeKuttaEvolve::AdjustState
                       tempspin.MakeUnit();
                       new_spin[j] = tempspin;
                     }});
+#endif // DO_M_SUM
 
   // Adjust time fields in new_state
   UpdateTimeFields(old_state,new_state,hstep);
@@ -677,13 +801,13 @@ void Oxs_RungeKuttaEvolve::NegotiateTimeStep
 
   // Pull needed cached values out from cstate.
   OC_REAL8m max_dm_dt;
-  if(!cstate.GetDerivedData("Max dm/dt",max_dm_dt)) {
+  if(!cstate.GetDerivedData(DataName("Max dm/dt"),max_dm_dt)) {
     throw Oxs_ExtError(this,
        "Oxs_RungeKuttaEvolve::NegotiateTimeStep: max_dm_dt not cached.");
   }
   OC_REAL8m timestep_lower_bound=0.;  // Smallest timestep that can actually
   /// change spin with max_dm_dt (due to OC_REAL8_EPSILON restrictions).
-  if(!cstate.GetDerivedData("Timestep lower bound",
+  if(!cstate.GetDerivedData(DataName("Timestep lower bound"),
                             timestep_lower_bound)) {
     throw Oxs_ExtError(this,
        "Oxs_RungeKuttaEvolve::NegotiateTimeStep: "
@@ -982,6 +1106,10 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
   // To estimate error, compute dm_dt at end state.
   OC_REAL8m total_E;
   OC_REAL8m max_err_sq;
+#if DO_MdM_SUM
+  ThreeVector ave_M;
+  ThreeVector ave_dM_dt;
+#endif // DO_MdM_SUM
   GetEnergyDensity(*endstate,temp_energy,&mxH_output.cache.value,
                    NULL,pE_pt,total_E);
   mxH_output.cache.state_id=endstate->Id();
@@ -991,6 +1119,12 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
     const int number_of_threads = Oc_GetMaxThreadCount();
     std::vector<OC_REAL8m> thread_err_sq(number_of_threads,-1.0);
     std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,-1.0);
+#if DO_MdM_SUM
+    std::vector<ThreeVector>
+      thread_M_sum(number_of_threads,ThreeVector(0.,0.,0.));
+    std::vector<ThreeVector>
+      thread_dM_dt_sum(number_of_threads,ThreeVector(0.,0.,0.));
+#endif // DO_MdM_SUM
     Oc_AlignedVector<Oxs_Energy::SUMTYPE>
       thread_pE_pM_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
     Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
@@ -999,9 +1133,23 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
         Oxs_Energy::SUMTYPE thd_pE_pM_sum = 0.0;
         OC_REAL8m thd_max_dm_dt_sq = 0.0;
         OC_REAL8m thd_max_err_sq = 0.0;
+#if DO_MdM_SUM
+        Nb_Xpfloat thd_M_sum_x(0.),thd_M_sum_y(0.),thd_M_sum_z(0.);
+        Nb_Xpfloat thd_dM_dt_sum_x(0.),thd_dM_dt_sum_y(0.),thd_dM_dt_sum_z(0.);
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(endstate->Ms);
+        const Oxs_MeshValue<ThreeVector>& spin = endstate->spin;
+#endif
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_REAL8m dummy=0.0;
           dmdt.Compute(j,thd_max_dm_dt_sq,dummy); // Fills vtmpB with dmdt
+#if DO_MdM_SUM
+          thd_dM_dt_sum_x.Accum(Ms[j]*vtmpB[j].x);
+          thd_dM_dt_sum_y.Accum(Ms[j]*vtmpB[j].y);
+          thd_dM_dt_sum_z.Accum(Ms[j]*vtmpB[j].z);
+          thd_M_sum_x.Accum(Ms[j]*spin[j].x);
+          thd_M_sum_y.Accum(Ms[j]*spin[j].y);
+          thd_M_sum_z.Accum(Ms[j]*spin[j].z);
+#endif
           thd_pE_pM_sum += dummy;
           ThreeVector tvec = current_dm_dt[j];
           tvec += vtmpB[j];
@@ -1011,12 +1159,20 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
           if(err_sq>thd_max_err_sq) thd_max_err_sq = err_sq;
           // NB: No spin advancement
         }
+        // Allow for multiple jstart/jstop chunks
         thread_err_sq[threadid]
           = OC_MAX(thd_max_err_sq,thread_err_sq[threadid]);
         thread_max_dm_dt_sq[threadid]
           = OC_MAX(thd_max_dm_dt_sq,thread_max_dm_dt_sq[threadid]);
         thread_pE_pM_sum[threadid] += thd_pE_pM_sum;
-        /// Allow for multiple jstart/jstop chunks
+#if DO_MdM_SUM
+        thread_M_sum[threadid].x += thd_M_sum_x.GetValue();
+        thread_M_sum[threadid].y += thd_M_sum_y.GetValue();
+        thread_M_sum[threadid].z += thd_M_sum_z.GetValue();
+        thread_dM_dt_sum[threadid].x += thd_dM_dt_sum_x.GetValue();
+        thread_dM_dt_sum[threadid].y += thd_dM_dt_sum_y.GetValue();
+        thread_dM_dt_sum[threadid].z += thd_dM_dt_sum_z.GetValue();
+#endif
       });
     max_err_sq = thread_err_sq[0];
     OC_REAL8m max_dm_dt_sq = thread_max_dm_dt_sq[0];
@@ -1028,6 +1184,10 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
         max_dm_dt_sq = thread_max_dm_dt_sq[i];
       }
       thread_pE_pM_sum[0] += thread_pE_pM_sum[i];
+#if DO_MdM_SUM
+      thread_M_sum[0]     += thread_M_sum[i];
+      thread_dM_dt_sum[0] += thread_dM_dt_sum[i];
+#endif // DO_MdM_SUM
     }
     OC_REAL8m pE_pM_sum = thread_pE_pM_sum[0];
     dmdt.Finalize(max_dm_dt_sq,pE_pM_sum); // Scale max_dm_dt_sq and pE_pM_sum
@@ -1035,13 +1195,30 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2
     max_dm_dt = sqrt(max_dm_dt_sq);
     timestep_lower_bound = PositiveTimestepBound(max_dm_dt);
     dE_dt = pE_pt + pE_pM_sum;
+#if DO_MdM_SUM
+    ave_M.x = thread_M_sum[0].x/endstate->Ms->Size();
+    ave_M.y = thread_M_sum[0].y/endstate->Ms->Size();
+    ave_M.z = thread_M_sum[0].z/endstate->Ms->Size();
+    ave_dM_dt.x = thread_dM_dt_sum[0].x/endstate->Ms->Size();
+    ave_dM_dt.y = thread_dM_dt_sum[0].y/endstate->Ms->Size();
+    ave_dM_dt.z = thread_dM_dt_sum[0].z/endstate->Ms->Size();
+#endif // DO_MdM_SUM
   }
-  if(!endstate->AddDerivedData("Timestep lower bound",
+  if(!endstate->AddDerivedData(DataName("Timestep lower bound"),
                                timestep_lower_bound) ||
-     !endstate->AddDerivedData("Max dm/dt",max_dm_dt) ||
-     !endstate->AddDerivedData("pE/pt",pE_pt) ||
-     !endstate->AddDerivedData("Total E",total_E) ||
-     !endstate->AddDerivedData("dE/dt",dE_dt)) {
+     !endstate->AddDerivedData(DataName("Max dm/dt"),max_dm_dt) ||
+#if DO_MdM_SUM
+     !endstate->AddDerivedData(DataName("Mx"),ave_M.x) ||
+     !endstate->AddDerivedData(DataName("My"),ave_M.y) ||
+     !endstate->AddDerivedData(DataName("Mz"),ave_M.z) ||
+     !endstate->AddDerivedData(DataName("dMx/dt"),ave_dM_dt.x) ||
+     !endstate->AddDerivedData(DataName("dMy/dt"),ave_dM_dt.y) ||
+     !endstate->AddDerivedData(DataName("dMz/dt"),ave_dM_dt.z) ||
+#endif // DO_MdM_SUM
+     !endstate->AddDerivedData(DataName("pE/pt"),pE_pt) ||
+     !endstate->AddDerivedData(DataName("Total E"),total_E) ||
+     !endstate->AddDerivedData(DataName("dE/dt"),dE_dt)
+     ) {
     throw Oxs_ExtError(this,
                        "Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2:"
                        " Programming error; data cache already set.");
@@ -1155,6 +1332,10 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun
   // To estimate error, compute dm_dt at end state.
   OC_REAL8m total_E;
   OC_REAL8m max_err_sq;
+#if DO_MdM_SUM
+  ThreeVector ave_M;
+  ThreeVector ave_dM_dt;
+#endif // DO_MdM_SUM
   GetEnergyDensity(*endstate,temp_energy,&mxH_output.cache.value,
                    NULL,pE_pt,total_E);
   mxH_output.cache.state_id=endstate->Id();
@@ -1166,6 +1347,12 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun
     const int number_of_threads = Oc_GetMaxThreadCount();
     std::vector<OC_REAL8m> thread_err_sq(number_of_threads,-1.0);
     std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,-1.0);
+#if DO_MdM_SUM
+    std::vector<ThreeVector>
+      thread_M_sum(number_of_threads,ThreeVector(0.,0.,0.));
+    std::vector<ThreeVector>
+      thread_dM_dt_sum(number_of_threads,ThreeVector(0.,0.,0.));
+#endif // DO_MdM_SUM
     Oc_AlignedVector<Oxs_Energy::SUMTYPE>
       thread_pE_pM_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
     Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
@@ -1174,21 +1361,43 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun
         Oxs_Energy::SUMTYPE thd_pE_pM_sum = 0.0;
         OC_REAL8m thd_max_dm_dt_sq = 0.0;
         OC_REAL8m thd_max_err_sq = 0.0;
+#if DO_MdM_SUM
+        Nb_Xpfloat thd_M_sum_x(0.),thd_M_sum_y(0.),thd_M_sum_z(0.);
+        Nb_Xpfloat thd_dM_dt_sum_x(0.),thd_dM_dt_sum_y(0.),thd_dM_dt_sum_z(0.);
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(endstate->Ms);
+        const Oxs_MeshValue<ThreeVector>& spin = endstate->spin;
+#endif
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_REAL8m dummy=0.0;
           dmdt.Compute(j,thd_max_dm_dt_sq,dummy); // Fills vtmpB with dmdt
+#if DO_MdM_SUM
+          thd_dM_dt_sum_x.Accum(Ms[j]*vtmpB[j].x);
+          thd_dM_dt_sum_y.Accum(Ms[j]*vtmpB[j].y);
+          thd_dM_dt_sum_z.Accum(Ms[j]*vtmpB[j].z);
+          thd_M_sum_x.Accum(Ms[j]*spin[j].x);
+          thd_M_sum_y.Accum(Ms[j]*spin[j].y);
+          thd_M_sum_z.Accum(Ms[j]*spin[j].z);
+#endif
           thd_pE_pM_sum += dummy;
           ThreeVector tvec = vtmpC[j]-vtmpB[j];
           OC_REAL8m err_sq = tvec.MagSq();
           if(err_sq>thd_max_err_sq) thd_max_err_sq = err_sq;
           // NB: No spin advancement
         }
+        // Allow for multiple jstart/jstop chunks
         thread_err_sq[threadid]
           = OC_MAX(thd_max_err_sq,thread_err_sq[threadid]);
         thread_max_dm_dt_sq[threadid]
           = OC_MAX(thd_max_dm_dt_sq,thread_max_dm_dt_sq[threadid]);
         thread_pE_pM_sum[threadid] += thd_pE_pM_sum;
-        /// Allow for multiple jstart/jstop chunks
+#if DO_MdM_SUM
+        thread_M_sum[threadid].x += thd_M_sum_x.GetValue();
+        thread_M_sum[threadid].y += thd_M_sum_y.GetValue();
+        thread_M_sum[threadid].z += thd_M_sum_z.GetValue();
+        thread_dM_dt_sum[threadid].x += thd_dM_dt_sum_x.GetValue();
+        thread_dM_dt_sum[threadid].y += thd_dM_dt_sum_y.GetValue();
+        thread_dM_dt_sum[threadid].z += thd_dM_dt_sum_z.GetValue();
+#endif
       });
     max_err_sq = thread_err_sq[0];
     OC_REAL8m max_dm_dt_sq = thread_max_dm_dt_sq[0];
@@ -1200,6 +1409,10 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun
         max_dm_dt_sq = thread_max_dm_dt_sq[i];
       }
       thread_pE_pM_sum[0] += thread_pE_pM_sum[i];
+#if DO_MdM_SUM
+      thread_M_sum[0]     += thread_M_sum[i];
+      thread_dM_dt_sum[0] += thread_dM_dt_sum[i];
+#endif // DO_MdM_SUM
     }
     OC_REAL8m pE_pM_sum = thread_pE_pM_sum[0];
     dmdt.Finalize(max_dm_dt_sq,pE_pM_sum); // Scale max_dm_dt_sq and pE_pM_sum
@@ -1207,15 +1420,31 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun
     max_dm_dt = sqrt(max_dm_dt_sq);
     timestep_lower_bound = PositiveTimestepBound(max_dm_dt);
     dE_dt = pE_pt + pE_pM_sum;
+#if DO_MdM_SUM
+    ave_M.x = thread_M_sum[0].x/endstate->Ms->Size();
+    ave_M.y = thread_M_sum[0].y/endstate->Ms->Size();
+    ave_M.z = thread_M_sum[0].z/endstate->Ms->Size();
+    ave_dM_dt.x = thread_dM_dt_sum[0].x/endstate->Ms->Size();
+    ave_dM_dt.y = thread_dM_dt_sum[0].y/endstate->Ms->Size();
+    ave_dM_dt.z = thread_dM_dt_sum[0].z/endstate->Ms->Size();
+#endif // DO_MdM_SUM
   }
-  if(!endstate->AddDerivedData("Timestep lower bound",
+  if(!endstate->AddDerivedData(DataName("Timestep lower bound"),
                                timestep_lower_bound) ||
-     !endstate->AddDerivedData("Max dm/dt",max_dm_dt) ||
-     !endstate->AddDerivedData("pE/pt",pE_pt) ||
-     !endstate->AddDerivedData("Total E",total_E) ||
-     !endstate->AddDerivedData("dE/dt",dE_dt)) {
+     !endstate->AddDerivedData(DataName("Max dm/dt"),max_dm_dt) ||
+#if DO_MdM_SUM
+     !endstate->AddDerivedData(DataName("Mx"),ave_M.x) ||
+     !endstate->AddDerivedData(DataName("My"),ave_M.y) ||
+     !endstate->AddDerivedData(DataName("Mz"),ave_M.z) ||
+     !endstate->AddDerivedData(DataName("dMx/dt"),ave_dM_dt.x) ||
+     !endstate->AddDerivedData(DataName("dMy/dt"),ave_dM_dt.y) ||
+     !endstate->AddDerivedData(DataName("dMz/dt"),ave_dM_dt.z) ||
+#endif // DO_MdM_SUM
+     !endstate->AddDerivedData(DataName("pE/pt"),pE_pt) ||
+     !endstate->AddDerivedData(DataName("Total E"),total_E) ||
+     !endstate->AddDerivedData(DataName("dE/dt"),dE_dt)) {
     throw Oxs_ExtError(this,
-                       "Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2:"
+                       "Oxs_RungeKuttaEvolve::TakeRungeKuttaStep2Heun:"
                        " Programming error; data cache already set.");
   }
   // Move end dm_dt data into vtmpA, for use by calling routine.
@@ -1422,7 +1651,7 @@ void Oxs_RungeKuttaEvolve::TakeRungeKuttaStep4
 
   // At this point, temp_state holds the middle point, and vtmpC holds
   // 0.5*dm_dt1 + dm_dt2 + dm_dt3 + 0.5*dm_dt4 for first half.
-  
+
   // Calculate dm_dt for this middle state, and store in vtmpB.
   tstate = NULL; // Disable non-const access
   const Oxs_SimState* midstate
@@ -2212,6 +2441,10 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
 
   // Step 12
   OC_REAL8m total_E;
+#if DO_MdM_SUM
+  ThreeVector ave_M;
+  ThreeVector ave_dM_dt;
+#endif // DO_MdM_SUM
   GetEnergyDensity(endstate,temp_energy,&mxH_output.cache.value,
                    NULL,pE_pt,total_E);
   RKTIME_START(9);
@@ -2223,6 +2456,12 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
     const int number_of_threads = Oc_GetMaxThreadCount();
     std::vector<OC_REAL8m> thread_dD_sq(number_of_threads,-1.0);
     std::vector<OC_REAL8m> thread_max_dm_dt_sq(number_of_threads,-1.0);
+#if DO_MdM_SUM
+    std::vector<ThreeVector>
+      thread_M_sum(number_of_threads,ThreeVector(0.,0.,0.));
+    std::vector<ThreeVector>
+      thread_dM_dt_sum(number_of_threads,ThreeVector(0.,0.,0.));
+#endif // DO_MdM_SUM
     Oc_AlignedVector<Oxs_Energy::SUMTYPE>
       thread_pE_pM_sum(number_of_threads,Oxs_Energy::SUMTYPE(0.0));
     Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
@@ -2231,9 +2470,33 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
         Oxs_Energy::SUMTYPE thd_pE_pM_sum = 0.0;
         OC_REAL8m thd_max_dm_dt_sq = 0.0;
         OC_REAL8m thd_max_dD_sq = 0.0;
+#if DO_MdM_SUM
+        Nb_Xpfloat thd_M_sum_x(0.),thd_M_sum_y(0.),thd_M_sum_z(0.);
+        Nb_Xpfloat thd_dM_dt_sum_x(0.),thd_dM_dt_sum_y(0.),thd_dM_dt_sum_z(0.);
+        const Oxs_MeshValue<OC_REAL8m>& Ms = *(endstate.Ms);
+        const Oxs_MeshValue<ThreeVector>& spin = endstate.spin;
+#endif
         for(OC_INDEX j=jstart;j<jstop;++j) {
           OC_REAL8m dummy=0.0;
           dmdt.Compute(j,thd_max_dm_dt_sq,dummy);  // Fills vtmpA with dmdt
+#if DO_MdM_SUM
+          const OC_REAL8m Mtmp = Ms[j];
+# if USE_XPFLOATDUALACCUM
+          Nb_XpfloatDualAccum(thd_dM_dt_sum_x,Mtmp*vtmpA[j].x,
+                              thd_dM_dt_sum_y,Mtmp*vtmpA[j].y);
+          Nb_XpfloatDualAccum(thd_dM_dt_sum_z,Mtmp*vtmpA[j].z,
+                              thd_M_sum_x,Mtmp*spin[j].x);
+          Nb_XpfloatDualAccum(thd_M_sum_y,Mtmp*spin[j].y,
+                              thd_M_sum_z,Mtmp*spin[j].z);
+# else // USE_XPFLOATDUALACCUM
+          thd_dM_dt_sum_x.Accum(Mtmp*vtmpA[j].x);
+          thd_dM_dt_sum_y.Accum(Mtmp*vtmpA[j].y);
+          thd_dM_dt_sum_z.Accum(Mtmp*vtmpA[j].z);
+          thd_M_sum_x.Accum(Mtmp*spin[j].x);
+          thd_M_sum_y.Accum(Mtmp*spin[j].y);
+          thd_M_sum_z.Accum(Mtmp*spin[j].z);
+# endif // USE_XPFLOATDUALACCUM
+#endif
           thd_pE_pM_sum += dummy;
           vtmpB[j] += dc1*current_dm_dt[j]
             + dc4*vtmpC[j]
@@ -2243,12 +2506,20 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
           OC_REAL8m magsq = vtmpB[j].MagSq();
           if(magsq>thd_max_dD_sq) thd_max_dD_sq = magsq;
         }
+        // Allow for multiple jstart/jstop chunks
         thread_dD_sq[threadid]
           = OC_MAX(thd_max_dD_sq,thread_dD_sq[threadid]);
         thread_max_dm_dt_sq[threadid]
           = OC_MAX(thd_max_dm_dt_sq,thread_max_dm_dt_sq[threadid]);
         thread_pE_pM_sum[threadid] += thd_pE_pM_sum;
-        /// Allow for multiple jstart/jstop chunks
+#if DO_MdM_SUM
+        thread_M_sum[threadid].x += thd_M_sum_x.GetValue();
+        thread_M_sum[threadid].y += thd_M_sum_y.GetValue();
+        thread_M_sum[threadid].z += thd_M_sum_z.GetValue();
+        thread_dM_dt_sum[threadid].x += thd_dM_dt_sum_x.GetValue();
+        thread_dM_dt_sum[threadid].y += thd_dM_dt_sum_y.GetValue();
+        thread_dM_dt_sum[threadid].z += thd_dM_dt_sum_z.GetValue();
+#endif
       });
     max_dD_sq = thread_dD_sq[0];
     max_dm_dt_sq = thread_max_dm_dt_sq[0];
@@ -2260,9 +2531,21 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
         max_dm_dt_sq = thread_max_dm_dt_sq[i];
       }
       thread_pE_pM_sum[0] += thread_pE_pM_sum[i];
+#if DO_MdM_SUM
+      thread_M_sum[0]     += thread_M_sum[i];
+      thread_dM_dt_sum[0] += thread_dM_dt_sum[i];
+#endif // DO_MdM_SUM
     }
     pE_pM_sum = thread_pE_pM_sum[0];
     dmdt.Finalize(max_dm_dt_sq,pE_pM_sum);
+#if DO_MdM_SUM
+    ave_M.x = thread_M_sum[0].x/endstate.Ms->Size();
+    ave_M.y = thread_M_sum[0].y/endstate.Ms->Size();
+    ave_M.z = thread_M_sum[0].z/endstate.Ms->Size();
+    ave_dM_dt.x = thread_dM_dt_sum[0].x/endstate.Ms->Size();
+    ave_dM_dt.y = thread_dM_dt_sum[0].y/endstate.Ms->Size();
+    ave_dM_dt.z = thread_dM_dt_sum[0].z/endstate.Ms->Size();
+#endif // DO_MdM_SUM
   }
   mxH_output.cache.state_id=endstate.Id();
   RKTIME_STOP(9,"RKF54 step 12",
@@ -2271,12 +2554,20 @@ void Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54
   OC_REAL8m max_dm_dt = sqrt(max_dm_dt_sq);
   OC_REAL8m timestep_lower_bound = PositiveTimestepBound(max_dm_dt);
   OC_REAL8m dE_dt = pE_pt + pE_pM_sum;
-  if(!endstate.AddDerivedData("Timestep lower bound",
+  if(!endstate.AddDerivedData(DataName("Timestep lower bound"),
                                 timestep_lower_bound) ||
-     !endstate.AddDerivedData("Max dm/dt",max_dm_dt) ||
-     !endstate.AddDerivedData("pE/pt",pE_pt) ||
-     !endstate.AddDerivedData("Total E",total_E) ||
-     !endstate.AddDerivedData("dE/dt",dE_dt)) {
+     !endstate.AddDerivedData(DataName("Max dm/dt"),max_dm_dt) ||
+#if DO_MdM_SUM
+     !endstate.AddDerivedData(DataName("Mx"),ave_M.x) ||
+     !endstate.AddDerivedData(DataName("My"),ave_M.y) ||
+     !endstate.AddDerivedData(DataName("Mz"),ave_M.z) ||
+     !endstate.AddDerivedData(DataName("dMx/dt"),ave_dM_dt.x) ||
+     !endstate.AddDerivedData(DataName("dMy/dt"),ave_dM_dt.y) ||
+     !endstate.AddDerivedData(DataName("dMz/dt"),ave_dM_dt.z) ||
+#endif // DO_MdM_SUM
+     !endstate.AddDerivedData(DataName("pE/pt"),pE_pt) ||
+     !endstate.AddDerivedData(DataName("Total E"),total_E) ||
+     !endstate.AddDerivedData(DataName("dE/dt"),dE_dt)) {
     throw Oxs_ExtError(this,
                  "Oxs_RungeKuttaEvolve::RungeKuttaFehlbergBase54:"
                  " Programming error; data cache already set.");
@@ -2400,7 +2691,7 @@ Oxs_RungeKuttaEvolve::ComputeEnergyChange
     thread_var_dE(thread_count,Oxs_Energy::SUMTYPE(0.0));
   Oc_AlignedVector<Oxs_Energy::SUMTYPE>
     thread_total_E(thread_count,Oxs_Energy::SUMTYPE(0.0));
-  
+
   OC_REAL8m common_volume;
   if(mesh->HasUniformCellVolumes(common_volume)) {
     Oxs_RunThreaded<OC_REAL8m,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
@@ -2469,15 +2760,53 @@ Oxs_RungeKuttaEvolve::InitNewStage
  Oxs_ConstKey<Oxs_SimState> state,
  Oxs_ConstKey<Oxs_SimState> prevstate)
 {
-  // Update derived data in state.
-  const Oxs_SimState& cstate = state.GetReadReference();
-  const Oxs_SimState* pstate_ptr = prevstate.GetPtr();
-  UpdateDerivedOutputs(cstate,pstate_ptr);
-
   // Note 1: state is a copy-by-value import, so its read lock
   //         will be released on exit.
   // Note 2: pstate_ptr will be NULL if prevstate has
   //         "INVALID" status.
+  const Oxs_SimState& cstate = state.GetReadReference();
+  const Oxs_SimState* pstate_ptr = prevstate.GetPtr();
+  const Oxs_MeshValue<OC_REAL8m>& Ms = *(cstate.Ms);
+  const Oxs_MeshValue<ThreeVector>& spin = cstate.spin;
+
+  // Compute ave M values in derived data area.  If prevstate!=0 (i.e.,
+  // this is not the very first stage) then we could copy the values
+  // from prevstate.  But there is no prohibition against the new state
+  // initialization code changing the magnetization state (which for
+  // example could be useful for running FORC simulations), so instead
+  // we just compute ave M from scratch.  We don't expect new stages to
+  // be that frequent, but if that expectation is not borne out then we
+  // could implement a flag to indicate when M isn't changed across stage
+  // boundaries and then copy ave M.
+  const int number_of_threads = Oc_GetMaxThreadCount();
+  std::vector<ThreeVector>
+    thread_M_sum(number_of_threads,ThreeVector(0.,0.,0.));
+  Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+                  (spin,
+                   [&](OC_INT4m threadid,OC_INDEX jstart,OC_INDEX jstop) {
+                     Nb_Xpfloat thd_M_sum_x(0.),thd_M_sum_y(0.),thd_M_sum_z(0.);
+                     for(OC_INDEX j=jstart;j<jstop;++j) {
+                      thd_M_sum_x.Accum(Ms[j]*spin[j].x);
+                      thd_M_sum_y.Accum(Ms[j]*spin[j].y);
+                      thd_M_sum_z.Accum(Ms[j]*spin[j].z);
+                     }
+                     thread_M_sum[threadid].x += thd_M_sum_x.GetValue();
+                     thread_M_sum[threadid].y += thd_M_sum_y.GetValue();
+                     thread_M_sum[threadid].z += thd_M_sum_z.GetValue();
+
+  });
+  for(int i=1;i<number_of_threads;++i) {
+    thread_M_sum[0] += thread_M_sum[i];
+  }
+  cstate.AddDerivedData(DataName("Mx"),
+     thread_M_sum[0].x/static_cast<OC_REAL8m>(spin.Size()));
+  cstate.AddDerivedData(DataName("My"),
+     thread_M_sum[0].y/static_cast<OC_REAL8m>(spin.Size()));
+  cstate.AddDerivedData(DataName("Mz"),
+     thread_M_sum[0].z/static_cast<OC_REAL8m>(spin.Size()));
+
+  // Update additional derived data in state.
+  UpdateDerivedOutputs(cstate,pstate_ptr);
 
   return 1;
 }
@@ -2493,9 +2822,7 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
 #endif // REPORT_TIME
   const OC_REAL8m bad_energy_cut_ratio = 0.75;
   const OC_REAL8m bad_energy_step_increase = 1.3;
-
   const OC_REAL8m previous_next_timestep = next_timestep;
-
   const Oxs_SimState& cstate = current_state_key.GetReadReference();
 
   CheckCache(cstate);
@@ -2514,8 +2841,8 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
       // Automatic detection based on energy values across
       // stage boundary.
       OC_REAL8m total_E,E_diff;
-      if(cstate.GetDerivedData("Total E",total_E) &&
-         cstate.GetDerivedData("Delta E",E_diff)  &&
+      if(cstate.GetDerivedData(DataName("Total E"),total_E) &&
+         cstate.GetDerivedData(DataName("Delta E"),E_diff)  &&
          fabs(E_diff) <= 256*OC_REAL8_EPSILON*fabs(total_E) ) {
         // The factor of 256 in the preceding line is a fudge factor,
         // selected with no particular justification.
@@ -2553,7 +2880,7 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
   driver->FillStateDerivedData(cstate,nstate);
 
   OC_REAL8m max_dm_dt;
-  cstate.GetDerivedData("Max dm/dt",max_dm_dt);
+  cstate.GetDerivedData(DataName("Max dm/dt"),max_dm_dt);
   OC_REAL8m reference_stepsize = stepsize;
   if(driver_set_step) reference_stepsize = previous_next_timestep;
   OC_BOOL good_step = CheckError(global_error_order,error_estimate,
@@ -2609,23 +2936,23 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
   // that which can be attributed to numerical errors.  Of course, this
   // doesn't take into account the expected energy decrease (which depends
   // on the damping ratio alpha), which is another reason to try to build
-  // it into the high order RK step routines.
+  // it directly into the high order RK step routines.
   OC_REAL8m pE_pt,new_pE_pt=0.;
-  cstate.GetDerivedData("pE/pt",pE_pt);
+  cstate.GetDerivedData(DataName("pE/pt"),pE_pt);
   if(new_energy_and_dmdt_computed) {
-    nstate.GetDerivedData("pE/pt",new_pE_pt);
+    nstate.GetDerivedData(DataName("pE/pt"),new_pE_pt);
   } else {
     OC_REAL8m new_total_E;
     GetEnergyDensity(nstate,temp_energy,
                      &mxH_output.cache.value,
                      NULL,new_pE_pt,new_total_E);
     mxH_output.cache.state_id=nstate.Id();
-    if(!nstate.AddDerivedData("pE/pt",new_pE_pt)) {
+    if(!nstate.AddDerivedData(DataName("pE/pt"),new_pE_pt)) {
       throw Oxs_ExtError(this,
            "Oxs_RungeKuttaEvolve::Step:"
            " Programming error; data cache (pE/pt) already set.");
     }
-    if(!nstate.AddDerivedData("Total E",new_total_E)) {
+    if(!nstate.AddDerivedData(DataName("Total E"),new_total_E)) {
       throw Oxs_ExtError(this,
            "Oxs_RungeKuttaEvolve::Step:"
            " Programming error; data cache (Total E) already set.");
@@ -2637,7 +2964,7 @@ timer[0].Start();
 #endif // REPORT_TIME_RKDEVEL
   OC_REAL8m dE,var_dE,total_E;
   ComputeEnergyChange(nstate.mesh,energy,temp_energy,dE,var_dE,total_E);
-  if(!nstate.AddDerivedData("Delta E",dE)) {
+  if(!nstate.AddDerivedData(DataName("Delta E"),dE)) {
     throw Oxs_ExtError(this,
          "Oxs_RungeKuttaEvolve::Step:"
          " Programming error; data cache (Delta E) already set.");
@@ -2705,10 +3032,10 @@ timer[0].Stop();
                                  mxH_output.cache.value,new_pE_pt,
                                  dm_dt_output.cache.value,new_max_dm_dt,
                                  new_dE_dt,new_timestep_lower_bound);
-    if(!nstate.AddDerivedData("Timestep lower bound",
+    if(!nstate.AddDerivedData(DataName("Timestep lower bound"),
                               new_timestep_lower_bound) ||
-       !nstate.AddDerivedData("Max dm/dt",new_max_dm_dt) ||
-       !nstate.AddDerivedData("dE/dt",new_dE_dt)) {
+       !nstate.AddDerivedData(DataName("Max dm/dt"),new_max_dm_dt) ||
+       !nstate.AddDerivedData(DataName("dE/dt"),new_dE_dt)) {
       throw Oxs_ExtError(this,
                            "Oxs_RungeKuttaEvolve::Step:"
                            " Programming error; data cache already set.");
@@ -2748,12 +3075,16 @@ Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
     = 0;  // Mark change in progress
 
   OC_REAL8m dummy_value;
-  if(!state.GetDerivedData("Max dm/dt",max_dm_dt_output.cache.value) ||
-     !state.GetDerivedData("dE/dt",dE_dt_output.cache.value) ||
-     !state.GetDerivedData("Delta E",delta_E_output.cache.value) ||
-     !state.GetDerivedData("pE/pt",dummy_value) ||
-     !state.GetDerivedData("Total E",dummy_value) ||
-     !state.GetDerivedData("Timestep lower bound",dummy_value) ||
+  if(!state.GetDerivedData(DataName("Max dm/dt"),
+                           max_dm_dt_output.cache.value) ||
+     !state.GetDerivedData(DataName("dE/dt"),
+                           dE_dt_output.cache.value) ||
+     !state.GetDerivedData(DataName("Delta E"),
+                           delta_E_output.cache.value) ||
+     !state.GetDerivedData(DataName("pE/pt"),dummy_value) ||
+     !state.GetDerivedData(DataName("Total E"),dummy_value) ||
+     !state.GetDerivedData(DataName("Timestep lower bound"),
+                           dummy_value) ||
      (dm_dt_output.GetCacheRequestCount()>0
       && dm_dt_output.cache.state_id != state.Id()) ||
      (mxH_output.GetCacheRequestCount()>0
@@ -2762,17 +3093,17 @@ Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
     // Missing at least some data, so calculate from scratch
 
     // Check ahead for trouble computing Delta E:
-    if(!state.GetDerivedData("Delta E",dummy_value)
+    if(!state.GetDerivedData(DataName("Delta E"),dummy_value)
        && state.previous_state_id != 0
        && prevstate_ptr!=NULL
        && state.previous_state_id == prevstate_ptr->Id()) {
       OC_REAL8m old_E;
-      if(!prevstate_ptr->GetDerivedData("Total E",old_E)) {
+      if(!prevstate_ptr->GetDerivedData(DataName("Total E"),old_E)) {
 	// Previous state doesn't have stored Total E.  Compute it
 	// now.
 	OC_REAL8m old_pE_pt;
 	GetEnergyDensity(*prevstate_ptr,energy,NULL,NULL,old_pE_pt,old_E);
-	prevstate_ptr->AddDerivedData("Total E",old_E);
+	prevstate_ptr->AddDerivedData(DataName("Total E"),old_E);
       }
     }
 
@@ -2782,11 +3113,11 @@ Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
     GetEnergyDensity(state,energy,&mxH,NULL,pE_pt,total_E);
     energy_state_id=state.Id();
     mxH_output.cache.state_id=state.Id();
-    if(!state.GetDerivedData("pE/pt",dummy_value)) {
-      state.AddDerivedData("pE/pt",pE_pt);
+    if(!state.GetDerivedData(DataName("pE/pt"),dummy_value)) {
+      state.AddDerivedData(DataName("pE/pt"),pE_pt);
     }
-    if(!state.GetDerivedData("Total E",dummy_value)) {
-      state.AddDerivedData("Total E",total_E);
+    if(!state.GetDerivedData(DataName("Total E"),dummy_value)) {
+      state.AddDerivedData(DataName("Total E"),total_E);
     }
 
     // Calculate dm/dt, Max dm/dt and dE/dt
@@ -2800,27 +3131,28 @@ Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
                                  timestep_lower_bound);
     dm_dt_output.cache.state_id=state.Id();
 
-    if(!state.GetDerivedData("Max dm/dt",dummy_value)) {
-      state.AddDerivedData("Max dm/dt",max_dm_dt_output.cache.value);
+    if(!state.GetDerivedData(DataName("Max dm/dt"),dummy_value)) {
+      state.AddDerivedData(DataName("Max dm/dt"),
+                           max_dm_dt_output.cache.value);
     }
 
-    if(!state.GetDerivedData("dE/dt",dummy_value)) {
-      state.AddDerivedData("dE/dt",dE_dt_output.cache.value);
+    if(!state.GetDerivedData(DataName("dE/dt"),dummy_value)) {
+      state.AddDerivedData(DataName("dE/dt"),dE_dt_output.cache.value);
     }
 
-    if(!state.GetDerivedData("Timestep lower bound",dummy_value)) {
-      state.AddDerivedData("Timestep lower bound",
+    if(!state.GetDerivedData(DataName("Timestep lower bound"),dummy_value)) {
+      state.AddDerivedData(DataName("Timestep lower bound"),
                            timestep_lower_bound);
     }
 
-    if(!state.GetDerivedData("Delta E",dummy_value)) {
+    if(!state.GetDerivedData(DataName("Delta E"),dummy_value)) {
       if(state.previous_state_id == 0) {
         // No previous state
         dummy_value = 0.0;
       } else if(prevstate_ptr!=NULL
                 && state.previous_state_id == prevstate_ptr->Id()) {
         OC_REAL8m old_E;
-        if(!prevstate_ptr->GetDerivedData("Total E",old_E)) {
+        if(!prevstate_ptr->GetDerivedData(DataName("Total E"),old_E)) {
           throw Oxs_ExtError(this,
                              "Oxs_RungeKuttaEvolve::UpdateDerivedOutputs:"
                              " \"Total E\" not set in previous state.");
@@ -2834,10 +3166,9 @@ Oxs_RungeKuttaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state,
            "Oxs_RungeKuttaEvolve::UpdateDerivedOutputs:"
            " Can't derive Delta E from single state.");
       }
-      state.AddDerivedData("Delta E",dummy_value);
+      state.AddDerivedData(DataName("Delta E"),dummy_value);
     }
     delta_E_output.cache.value=dummy_value;
-
   }
 
   max_dm_dt_output.cache.value*=(180e-9/PI);

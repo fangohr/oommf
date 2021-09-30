@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>The 2D Micromagnetic Solver</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html406"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html408"
   HREF="2D_Micromagnetic_Interactiv.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html402"
+<A NAME="tex2html404"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html396"
+<A NAME="tex2html398"
   HREF="Micromagnetic_Problem_File_.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html408"
+<A NAME="tex2html410"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html404"
+<A NAME="tex2html406"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html407"
+<B> Next:</B> <A NAME="tex2html409"
   HREF="2D_Micromagnetic_Interactiv.html">The 2D Micromagnetic Interactive</A>
-<B> Up:</B> <A NAME="tex2html403"
+<B> Up:</B> <A NAME="tex2html405"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html397"
+<B> Previous:</B> <A NAME="tex2html399"
   HREF="Micromagnetic_Problem_File_.html">Micromagnetic Problem File Source:</A>
 <BR>
 <BR>
@@ -56,7 +52,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000110000000000000000"></A><A NAME="sec:mmsolve"></A>
 <BR>
 The 2D Micromagnetic Solver
-</H1><A NAME="11377"></A>
+</H1><A NAME="11331"></A>
 
 <P>
 The OOMMF 2D micromagnetic computation engine, mmSolve, is capable of
@@ -84,29 +80,17 @@ MIF&nbsp;1.1 format to MIF&nbsp;2.1.
 <P>
 mmSolve will also accept files in the <A HREF="MIF_1.2.html#sec:mif12format">MIF&nbsp;1.2
 format</A> format, provided the
-<TT>CellSize</TT> record meets the restriction that the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-- and
-<B><I>y</I></B>
-<!-- MATHEND
- 
- -->
--dimensions are the same, and that the <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
--dimension equals the part
+<TT>CellSize</TT> record meets the restriction that the <B><I>x</I></B>- and
+<B><I>y</I></B>-dimensions are the same, and that the <B><I>z</I></B>-dimension equals the part
 thickness.
 
 <P>
 Note on Tk dependence: If a problem is loaded that uses a
-<A HREF="MIF_1.1.html#sec:partgeometry">bitmap mask file</A><A NAME="11411"></A><A NAME="11412"></A>, and
+<A HREF="MIF_1.1.html#sec:partgeometry">bitmap mask file</A><A NAME="11365"></A><A NAME="11366"></A>, and
 if that mask file is not in the PPM P3 (text) format, then
-<B>mmSolve2D</B> will launch <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm">any2ppm</A><A NAME="11418"></A> to convert it into
+<B>mmSolve2D</B> will launch <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm">any2ppm</A><A NAME="11372"></A> to convert it into
 the PPM P3 format.  Since <B>any2ppm</B>
-requires<A NAME="11420"></A><A NAME="11421"></A> Tk, at the
+requires<A NAME="11374"></A><A NAME="11375"></A> Tk, at the
 time the mask file is read a valid display must be available.  See the
 <B>any2ppm</B> documentation for details.
 
@@ -116,36 +100,36 @@ time the mask file is read a valid display must be available.  See the
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html410"
+<LI><A NAME="tex2html412"
   HREF="2D_Micromagnetic_Interactiv.html">The 2D Micromagnetic Interactive Solver: mmSolve2D</A>
-<LI><A NAME="tex2html411"
+<LI><A NAME="tex2html413"
   HREF="OOMMF_2D_Micromagnetic_Solv.html">OOMMF 2D Micromagnetic Solver Batch System</A>
 <UL>
-<LI><A NAME="tex2html412"
+<LI><A NAME="tex2html414"
   HREF="OOMMF_2D_Micromagnetic_Solv.html#SECTION000112100000000000000">2D Micromagnetic Solver Batch Interface: batchsolve</A>
-<LI><A NAME="tex2html413"
+<LI><A NAME="tex2html415"
   HREF="OOMMF_2D_Micromagnetic_Solv.html#SECTION000112200000000000000">2D Micromagnetic Solver Batch Scheduling System</A>
 </UL></UL>
 <!--End of Table of Child-Links-->
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html406"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html408"
   HREF="2D_Micromagnetic_Interactiv.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html402"
+<A NAME="tex2html404"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html396"
+<A NAME="tex2html398"
   HREF="Micromagnetic_Problem_File_.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html409"
+<A NAME="tex2html411"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html404"
+<A NAME="tex2html406"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

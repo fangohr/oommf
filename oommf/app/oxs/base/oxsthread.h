@@ -130,6 +130,16 @@ public:
     if(check && errmsg!=0) *errmsg = msg;
     return check;
   }
+  static int CheckAndClearError(String* errmsg=0) {
+    std::lock_guard<std::mutex> lck(mutex);
+    int check=error;
+    if(check) {
+      if(errmsg!=0) *errmsg = msg;
+      error=0;
+      msg.clear();
+    }
+    return check;
+  }
 };
 
 #else  // OOMMF_THREADS
@@ -138,6 +148,7 @@ public:
   static void SetError(String) {}
   static void ClearError() {}
   static int IsError(String* =0)  { return 0; }
+  static int CheckAndClearError(String* =0) { return 0; }
 };
 
 #endif // OOMMF_THREADS
@@ -545,7 +556,6 @@ public:
   static void InitThreads(int) {}
   static void EndThreads() {
     Oxs_ThreadLocalMap::DeleteLocker();
-    Oxs_ThreadError::ClearError();
   }
 
   void Launch(Oxs_ThreadRunObj& runobj,void* data) {

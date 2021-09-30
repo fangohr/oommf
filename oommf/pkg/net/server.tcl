@@ -2,12 +2,13 @@
 #
 # A generic server that can be instantiated and customized.
 #
-# Last modified on: $Date: 2015/09/30 07:41:35 $
-# Last modified by: $Author: donahue $
-#
+# Note: Deleting a Net_Server object immediately closes all
+#       Net_Connection instances spun off from the listening server
+#       socket. Use the Net_Server Stop method to disallow new
+#       connections by closing the server socket while allowing
+#       existing connections to continue running.
 
 Oc_Class Net_Server {
-
   # Options settable through the oommf/config/options.tcl file:
   #
   # forbidRemoteConnections either allows (0) or denies (1)
@@ -35,7 +36,7 @@ Oc_Class Net_Server {
 
   # Protocol to be used on connections established by this server
   # Need good check that doesn't depend on naming conventions
-  const public variable protocol 
+  const public variable protocol
 
   # The alias by which this server identifies itself
   const public variable alias = {}
@@ -68,9 +69,26 @@ Oc_Class Net_Server {
 
   private variable port
 
+  # List of Net_Connection objects tied to this server instance.
+  # These are stored as a dict with empty values rather than a list,
+  # so that deletions can be made via dict's fast hash lookup instead
+  # of a list search.
+  private variable connections
+
+  # List of after delete command id's. These are recorded so they can
+  # be canceled in the destructor. (BTW, the 'after cancel script' command
+  # cancels at most one instance of a matching after "script" command. For
+  # example
+  #   after 20000 puts Hi
+  #   after 30000 puts Hi
+  #   after cancel puts Hi
+  # will print "Hi" one time after 20 seconds.
+  private variable after_delete_list = {}
+
   Constructor {args} {
     set allow $defaultAllowList
     set deny $defaultDenyList
+    set connections [dict create]
     set user_id_check $checkUserIdentities
     set alias [Oc_Main GetAppName]  ;# Default alias is application name
     eval $this Configure $args
@@ -89,7 +107,7 @@ Oc_Class Net_Server {
   }
 
   # Start the server accepting connections port
-  method Start { _port } { 
+  method Start { _port } {
     if {[info exists socket]} {
       error "Server already started"
     }
@@ -155,7 +173,12 @@ Oc_Class Net_Server {
         }
      }
 
-     Net_Connection New _ -socket $accsock -protocol $protocol
+     # Tie socket to Net_Connection object and set up exit handling
+     Net_Connection New netconn -socket $accsock -protocol $protocol
+     dict set connections $netconn {}
+     Oc_EventHandler New _ $netconn Delete \
+        [list dict unset [$this GlobalName connections] $netconn] \
+        -groups [list $this]
   }
 
   private method RefuseConnection {accsock rhost cport {errmsg {}}} {
@@ -187,6 +210,7 @@ Oc_Class Net_Server {
       error "Server not started"
     }
     Oc_EventHandler DeleteGroup $this-AccountRebirth
+    Oc_EventHandler DeleteGroup $this-RegisterFail
     Oc_Log Log "Stopping server $this ..." status $class
     if {$register} {
         set socketinfo [fconfigure $socket -sockname]
@@ -210,7 +234,8 @@ Oc_Class Net_Server {
         # account server through a Net_Account instance.  Consider whether
         # this can be relaxed after a successful registration?
         Oc_EventHandler New _ $account Delete \
-                [list $this RegisterFail "account died" {}] -groups [list $this]
+           [list $this RegisterFail "account died" {}] \
+           -groups [list $this $this-RegisterFail]
         if {[$account Ready]} {
             $this AccountReady
         } else {
@@ -256,7 +281,7 @@ Oc_Class Net_Server {
     }
 
     method RegisterFail {msg qid} {
-       Oc_EventHandler Generate $this RegisterFail
+        Oc_EventHandler Generate $this RegisterFail
         Oc_EventHandler DeleteGroup $this-$qid
         set accountname [Net_Account DefaultAccountName]
         $this Delete
@@ -304,17 +329,89 @@ Oc_Class Net_Server {
                 localhost:$accountname:\n\t$msg" warning $class
     }
 
+    private variable inside_Shutdown = 0
+    method Shutdown {} {
+       # Shutdown server nicely. This is analogous to the SafeClose
+       # methods in Net_Thread and Net_Connection.
+       #
+       # NB: This method puts a call to $this Delete onto the after
+       #     idle call stack once all client connections are closed.
+       if {![info exists inside_Shutdown] || $inside_Shutdown} {
+          return ;# Recursive callback.
+       }
+       set inside_Shutdown 1
+       Oc_EventHandler Generate $this Shutdown
+
+       $this ForbidServiceStart
+       if {[info exists socket]} {
+          # Stop method launches Deregister in background.
+          $this Stop
+       }
+
+       # Send serverclose message to all clients
+       dict for {netconn val} $connections {
+          # When all client connections have closed, delete server
+          Oc_EventHandler New handler $netconn DeleteEnd \
+             [list $this FinishShutdown $netconn] \
+             -oneshot 1 -groups $this
+          if {[catch {$netconn CloseServer} errmsg]} {
+             Oc_Log Log "Error shutting down Net_Connection\
+                         $netconn:\n\ t$errmsg" warning $class
+             $handler Delete
+             dict unset connections $netconn
+          }
+       }
+       if {[dict size $connections]==0} {
+          # If no connections, call $this Delete directly.
+          # Otherwise, FinishShutdown should be triggered
+          # by Net_Connection deletions.
+          lappend after_delete_list [after idle $this Delete]
+       }
+    }
+
+    private method FinishShutdown { netconn } {
+       # Track number of client connections, and close when zero.
+       dict unset connections $netconn
+       if {[dict size $connections]>0} { return }
+       lappend after_delete_list [after idle $this Delete]
+       # Call Delete from event stack in case FinishShutdown
+       # was triggered from inside Shutdown. This will allow Shutdown to complete
+       # before the destructor destroys instance variables.
+    }
+
   Destructor {
+    # NB: For most purposes it is better to call method Shutdown than
+    #     to call here directly.
+    foreach id $after_delete_list {
+       after cancel $id
+    }
+    $this ForbidServiceStart
     if {[info exists socket]} {
         # Stop method launches Deregister in background.  Should we wait
         # to confirm it before dying?   Proper usage is to Stop server,
         # then delete it.  More thought needed here...
         $this Stop
     }
-    Oc_EventHandler DeleteGroup $this
-    if {$imadeprotocol} {
-        $protocol Delete
+    Oc_EventHandler Generate $this Delete
+
+    # Send serverclose message to each client and abruptly close
+    # connections. Use method Shutdown for a more graceful shutdown.
+    dict for {netconn val} $connections {
+       if {[catch {$netconn CloseServer} errmsg]} {
+          Oc_Log Log "Error shutting down Net_Connection\
+           $netconn:\n\t$errmsg" warning $class
+       }
     }
+    unset connections
+
+    # Delete protocol if this instance is the owner.
+    # Note: protocol may be deleted by its Net_Connection owner.
+    if {$imadeprotocol} {
+       catch {$protocol Delete}
+    }
+
+    Oc_EventHandler Generate $this DeleteEnd
+    Oc_EventHandler DeleteGroup $this
   }
 
 }

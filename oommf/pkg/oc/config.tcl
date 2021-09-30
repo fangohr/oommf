@@ -724,7 +724,7 @@ Oc_Class Oc_Config {
        if {[info exists env(OOMMF_TCL_CONFIG)]} {
           append ret "$env(OOMMF_TCL_CONFIG)\n"
        } elseif {[string match windows $tcl_platform(platform)]} {
-          append ret "not required on Windows\n"
+          append ret "none (not required on Windows)\n"
        } else {
           append ret "none found\n"
        }
@@ -791,7 +791,7 @@ Oc_Class Oc_Config {
           if {[info exists env(OOMMF_TK_CONFIG)]} {
              append ret "$env(OOMMF_TK_CONFIG)\n"
           } elseif {[string match windows $tcl_platform(platform)]} {
-             append ret "not required on Windows\n"
+             append ret "none (not required on Windows)\n"
           } else {
              append ret "none found\n"
           }
@@ -910,6 +910,20 @@ Oc_Class Oc_Config {
     }
 
     private method SetWindowsTclTkLibValues {} {
+       # Sets TCL_LIB_SPEC and TK_LIB_SPEC config values, provided they
+       # are not already set. If you want overwrite preset values, you
+       # must unset them first.
+       set need_tcl_lib_spec [set need_tk_lib_spec 1]
+       if {![catch {$this GetValue TCL_LIB_SPEC}]} {
+          set need_tcl_lib_spec 0
+       }
+       if {![catch {$this GetValue TK_LIB_SPEC}]} {
+          set need_tk_lib_spec 0
+       }
+       if {$need_tcl_lib_spec==0 && $need_tk_lib_spec==0} {
+          return
+       }
+
        # Assumes the following config values are already set:
        set root [$this GetValue TCL_PREFIX]
        set tlma [$this GetValue TCL_MAJOR_VERSION]
@@ -923,11 +937,76 @@ Oc_Class Oc_Config {
 	  set vc ""
        }
 
+       # Tcl provides support for accessing the Windows registry, and in
+       # principle we might get some information about the Tcl install
+       # from that, but there doesn't currently (2020) appear to be any
+       # commonality between Tcl installers on registry settings. OTOH,
+       # some Windows Tcl installations (but not all) include a
+       # tclConfig.sh file. This file typically has build as opposed to
+       # install information, but the TCL_LIB_FILE setting should be
+       # correct. Use environment variable OOMMF_TCL_CONFIG if set,
+       # otherwise use FindTclConfig method.
+       global env
+       if {[info exists env(OOMMF_TCL_CONFIG)]} {
+          # Either the user or a parent app is trying to tell us
+          # what tclConfig.sh file to use.
+          if {![string match absolute \
+               [file pathtype $env(OOMMF_TCL_CONFIG)]]} {
+             set msg "Error in environment variable:\nOOMMF_TCL_CONFIG =\
+	     		$env(OOMMF_TCL_CONFIG)\nMust be absolute pathname"
+             error $msg $msg
+          }
+          if {![file readable $env(OOMMF_TCL_CONFIG)]} {
+             set msg "Error in environment variable:\nOOMMF_TCL_CONFIG =\
+	     		$env(OOMMF_TCL_CONFIG)\nFile not readable"
+             error $msg $msg
+          }
+          if {[catch {set env(OOMMF_BUILD_ENVIRONMENT_NEEDED)} \
+               build_environment_needed]} {
+             set build_environment_needed 0
+          }
+          if {!$build_environment_needed \
+                 && ![$this CheckTclConfigVersion $env(OOMMF_TCL_CONFIG)]} {
+             global errorInfo
+             set errorInfo [Oc_StackTrace]
+             Oc_Log Log "Tcl version mismatch:\n\t$env(OOMMF_TCL_CONFIG)\
+               version info doesn't match running Tcl version\
+               [package provide Tcl]" warning $class 
+          }
+       } else {
+          if {![catch {$this FindTclConfig} _]} {
+             set env(OOMMF_TCL_CONFIG) [Oc_DirectPathname $_]
+          }
+       }
+       if {[info exists env(OOMMF_TCL_CONFIG)]} {
+          set config_dict [$this ReadConfigFile $env(OOMMF_TCL_CONFIG)]
+          if {[dict exists $config_dict TCL_LIB_FILE]} {
+             set tlf [dict get $config_dict TCL_LIB_FILE]
+	     set test [file join $root lib $tlf]
+	     if {$need_tcl_lib_spec && [file exists $test]} {
+                $this SetValue TCL_LIB_SPEC $test
+                set need_tcl_lib_spec 0
+             }
+             if {[regsub TCL $test TK test] || [regsub {(T|t)cl} $test {\1k} test]} {
+                if {$need_tk_lib_spec && [file exists $test]} {
+                   $this SetValue TK_LIB_SPEC $test
+                   set need_tk_lib_spec 0
+                }
+             }
+          }
+          if {$need_tcl_lib_spec==0 && $need_tk_lib_spec==0} {
+             return
+          }
+       }
+
        # The following are relative to TCL_EXEC_PREFIX, thus $root
        # in our "standard" Tcl/Tk install on Windows.
        set Tcllib_base tcl$tlma$tlmi
        set Tklib_base tk$tkma$tkmi
        foreach elt {Tcl Tk} {
+          if {[set need_[string tolower $elt]_lib_spec] == 0} {
+             continue
+          }
 	  set base [set ${elt}lib_base]
 	  set test [file join $root lib $base$vc.lib]
 	  if {![file exists $test]} {
@@ -950,96 +1029,81 @@ Oc_Class Oc_Config {
 		}
 	     }
 	  }
-	  $this SetValue [string toupper $elt]_VC_LIB_SPEC $test
+	  $this SetValue [string toupper $elt]_LIB_SPEC $test
        }
     }
 
-    private method RecordStandardWindowsTclTkConfiguration {root} {
-	# Note that a "standard" Tcl/Tk configuration on Windows
-	# is one where TCL_PREFIX, TK_PREFIX, TCL_EXEC_PREFIX,
-	# and TK_EXEC_PREFIX are all the same directory, $root.
-	#
-	# There are reportedly other variations of installation on
-	# Windows (TclPro?), but the best answer to bug report
-	# concerning them is probably to advise use of something
-	# like ActiveTcl that follows the "standard".
-	#
-	# Turn "Program Files" into Progra~1 -- This is technically
-	# invalid, but no bug reports on it yet.
-	set pathlist [list]
-	foreach p [file split $root] {
-	    if {[regexp " " $p]} {
-		lappend pathlist [string range $p 0 5]~1
-	    } else {
-		lappend pathlist $p
-	    }
-	}
-	set root [eval file join $pathlist]
-	$this SetValue TCL_EXEC_PREFIX $root
-	$this SetValue TCL_PREFIX $root
-	$this SetValue TK_EXEC_PREFIX $root
-	$this SetValue TK_PREFIX $root
-	$this SetValue TK_XINCLUDES [file join $root include X11]
-	regexp {^([0-9]+)\.([0-9]+)} [package provide Tcl] dummy tlma tlmi
-	regexp {^([0-9]+)\.([0-9]+)} [$class TkVersion] dummy tkma tkmi
-	$this SetValue TCL_VERSION [info tclversion]
-	$this SetValue TCL_MAJOR_VERSION $tlma
-	$this SetValue TCL_MINOR_VERSION $tlmi
-	regsub {^[0-9]+\.[0-9]+} [info patchlevel] {} pl
-	$this SetValue TCL_PATCH_LEVEL $pl
-	$this SetValue TK_VERSION [$class TkVersion]
-	$this SetValue TK_MAJOR_VERSION $tkma
-	$this SetValue TK_MINOR_VERSION $tkmi
-	if {[string length [package provide Tk]]} {
-	    global tk_patchLevel
-	    regsub {^[0-9]+\.[0-9]+} $tk_patchLevel {} pl
-	}
-	$this SetValue TK_PATCH_LEVEL $pl
-	$this SetWindowsTclTkLibValues
+    private method RecordWindowsTclTkConfiguration {} {
+       # Note that a "standard" Tcl/Tk configuration on Windows
+       # is one where TCL_PREFIX, TK_PREFIX, TCL_EXEC_PREFIX,
+       # and TK_EXEC_PREFIX are all the same directory, $root.
+       #
+       # There are reportedly other variations of installation on
+       # Windows (TclPro?), but the best answer to bug report
+       # concerning them is probably to advise use of something
+       # like ActiveTcl that follows the "standard".
 
-	# Add other *_LIB_SPEC (f.e. Borland, Watcom, ...) on request.
-	# Compiler-specific configurations (f.e. TCL_LIBS) must be
-	# completed in the config/platforms/*.tcl file.
+       set root [file dirname [file dirname \
+                  [Oc_DirectPathname [info library]]]]
+
+       # The following commented block creates a short-form file name
+       # without spaces, for example, changing "Program Files" into
+       # Progra~1. This is not technically valid (in some cases the
+       # short form could end with ~2, ~3, etc. instead of ~1), and
+       # moreover shouldn't be needed. But it was in place for older
+       # code so it is retained here in case of emergency.
+       #
+       # set pathlist [list]
+       # foreach p [file split $root] {
+       #     if {[regexp " " $p]} {
+       #         lappend pathlist [string range $p 0 5]~1
+       #     } else {
+       #         lappend pathlist $p
+       #     }
+       # }
+       # set root [eval file join $pathlist]
+
+       $this SetValue TCL_EXEC_PREFIX $root
+       $this SetValue TCL_PREFIX $root
+       $this SetValue TK_EXEC_PREFIX $root
+       $this SetValue TK_PREFIX $root
+       $this SetValue TK_XINCLUDES [file join $root include X11]
+       regexp {^([0-9]+)\.([0-9]+)} [package provide Tcl] dummy tlma tlmi
+       regexp {^([0-9]+)\.([0-9]+)} [$class TkVersion] dummy tkma tkmi
+       $this SetValue TCL_VERSION [info tclversion]
+       $this SetValue TCL_MAJOR_VERSION $tlma
+       $this SetValue TCL_MINOR_VERSION $tlmi
+       regsub {^[0-9]+\.[0-9]+} [info patchlevel] {} pl
+       $this SetValue TCL_PATCH_LEVEL $pl
+       $this SetValue TK_VERSION [$class TkVersion]
+       $this SetValue TK_MAJOR_VERSION $tkma
+       $this SetValue TK_MINOR_VERSION $tkmi
+       if {[string length [package provide Tk]]} {
+          global tk_patchLevel
+          regsub {^[0-9]+\.[0-9]+} $tk_patchLevel {} pl
+       }
+       $this SetValue TK_PATCH_LEVEL $pl
+       $this SetWindowsTclTkLibValues
+
+       # Add other *_LIB_SPEC (f.e. Borland, Watcom, ...) on request.
+       # Compiler-specific configurations (f.e. TCL_LIBS) must be
+       # completed in the config/platforms/*.tcl file.
     }
 
     private method RecordTclTkConfiguration {} {
 	# Record values for a set of features which describe the
 	# Tcl/Tk configuration.
-	#
 	global env tcl_platform
-	# If there's a Windows registry available to us, and it contains
-	# an entry holding the Tcl/Tk installation root, use it.
+
+        # Special handling for Windows
 	if {[string match windows $tcl_platform(platform)]
 		&& (![info exists env(OSTYPE)]
-			|| ![string match cygwin* $env(OSTYPE)])
-		&& ![catch {package require registry}]} {
-	    # Registry available
-	    set pfx [join {HKEY_LOCAL_MACHINE SOFTWARE} \\]
-	    if {![catch {registry get [join [list $pfx Scriptics Tcl \
-		    [package provide Tcl]] \\] Root} result]
-		    || ![catch {registry get [join [list $pfx Scriptics Tcl \
-		    [package provide Tcl]] \\] {}} result]
-		    || ![catch {registry get [join [list $pfx Sun Tcl \
-		    [package provide Tcl]] \\] Root} result]} {
-		# Since registry entry is set, assume the standard Tcl/Tk
-		# installation on Windows established by the installer
-		# program from Sun/Scriptics or a clone.
-		$this RecordStandardWindowsTclTkConfiguration $result
-		return
-	    } elseif {![info exists env(OOMMF_TCL_CONFIG)]
-		    && ![info exists env(OOMMF_TK_CONFIG)]} {
-		# We have a working registry package, so we're on Windows,
-		# and the user isn't telling us to look elsewhere with
-		# environment variables, but there's no entry in the
-		# registry pointing to the Tcl/Tk root, so assume it's a
-		# proper installation relative to [info library]
-		set result [file dirname [file dirname [Oc_DirectPathname \
-			[info library]]]]
-		$this RecordStandardWindowsTclTkConfiguration $result
-		return
-	    }
-	}
-	# No registry information.  Look for tclConfig.sh.
+             || ![string match cygwin* $env(OSTYPE)])} {
+           $this RecordWindowsTclTkConfiguration
+           return
+        }
+
+	# Not Windows or cygwin.  Look for tclConfig.sh.
 	if {[info exists env(OOMMF_TCL_CONFIG)]} {
 	    # Either the user or a parent app is trying to tell us
 	    # what tclConfig.sh file to use.
@@ -1208,7 +1272,7 @@ Oc_Class Oc_Config {
           set checkver [format "%g" [expr {$checkver - 3.4}]]
           ## Round slightly
        }
-       if {[string compare $checkver $verno]!=0} {
+       if {[package vcompare $checkver 9.0] < 0 && [string compare $checkver $verno]!=0} {
           return 0  ;# Mismatch
        }
        return 1 ;# Version strings match
@@ -1342,7 +1406,10 @@ Oc_Class Oc_Config {
        global tcl_pkgPath tcl_platform tcl_version
        set searchdirs {}
        # In Tcl 8.5 and later, libdir,runtime is first place to look
-       if {[catch {::tcl::pkgconfig get libdir,runtime} libdir] == 0} {
+       # (except on Windows, where ::tcl::pkgconfig provide build as
+       # opposed to install info)
+       if {![string match windows $tcl_platform(platform)] && \
+            [catch {::tcl::pkgconfig get libdir,runtime} libdir] == 0} {
           lappend searchdirs $libdir
        }
        # If tcl_pkgPath isn't broken :( ...
@@ -1479,7 +1546,7 @@ Oc_Class Oc_Config {
           set checkver [format "%g" [expr {$checkver - 3.4}]]
           ## Round slightly
        }
-       if {[string compare $checkver $verno]!=0} {
+       if {[package vcompare $checkver 9.0] < 0 && [string compare $checkver $verno]!=0} {
           return 0  ;# Mismatch
        }
        return 1 ;# Version strings match
@@ -1673,9 +1740,11 @@ Oc_Class Oc_Config {
         return [$this RelToDir $exe $cf]
     }
 
-    private method LoadConfigFile {fn} {
+    private method ReadConfigFile {fn} {
+        # Returns a dictionary filled with values from the *Config.sh file $fn.
 	set f [open $fn r]
 	gets $f line
+        set config_dict [dict create]
 	while {![eof $f]} {
 	    if {[regexp {^([A-Z0-9_]+)='([^']*)'} $line _ feat val]
 	    || [regexp "^(\[A-Z0-9_]+)=(\[^ \t\r\n]*)" $line _ feat val]} {
@@ -1702,11 +1771,19 @@ Oc_Class Oc_Config {
                       set val ranlib
                    }
                 }
-		$this SetValue $feat $val
-	    }
+                dict set config_dict $feat $val
+            }
 	    gets $f line
 	}
-	close $f
+        close $f
+        return $config_dict
+    }      
+
+    private method LoadConfigFile {fn} {
+        set config_dict [$this ReadConfigFile $fn]
+        dict for {feat val} $config_dict {
+           $this SetValue $feat $val
+        }
     }
 
     private method LoadCache {} {

@@ -8,7 +8,7 @@ portable to many varieties of \Unix, \Windows, and \MacOSX.
 
 \Tcl\ and \Tk\ must be installed before installing \OOMMF.  
 \Tcl\ and \Tk\ are available for free from the
-\htmladdnormallinkfoot{Tcl Developer Xchange}{http://www.tcl.tk/}.
+\htmladdnormallinkfoot{Tcl Developer Xchange}{https://www.tcl-lang.org/}.
 We recommend the latest stable 
 versions of \Tcl\ and \Tk\ concurrent with this release of \OOMMF.
 \OOMMF\ requires\index{requirement!Tcl/Tk}
@@ -47,7 +47,7 @@ without display hardware or software, you may need to start the
 application with command line option 
 \hyperrefhtml{\texttt{\textbf{-tk 0}}}{\textsf{\textbf{-tk 0}} (see Sec.~}{)}{sec:cll}
 or use the
-\htmladdnormallinkfoot{Xvfb}{http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}
+\htmladdnormallinkfoot{Xvfb}{https://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}
 virtual frame buffer.
 \index{application!Xvfb|)}
 
@@ -93,6 +93,13 @@ should not be too difficult:
 %   This is with Perl v5.8.0.  So, we have to render the table
 %   directly.  This is actually preferred with real HTML browsers,
 %   but as of this writing (Dec-2004) mmHelp doesn't do tables.
+% Note 3: Update, Mar-2021: mmHelp does tables now, so one can build
+%   with or without the \begin{makeimage}/\end{makeimage}
+%   environment. The table renders a bit cleaner with makeimage, but
+%   some versions of latex2html don't seem to handle the makeimage
+%   environment. Specifically, the version reporting to be "Version 2012
+%   (1.2)" doesn't work. OTOH, on some machines we have installed
+%   "Version 2018" which handles the makeimage enviroment fine.
 \begin{center}
 \begin{makeimage}
 \htmlimage{no_transparent}
@@ -104,25 +111,22 @@ Platform & Compilers \\ \hline
 %Alpha/Windows NT & Microsoft Visual C++ \\
 %HP-UX & aCC \\
 Windows &
-Microsoft Visual C++, Borland C++, \\
- & Digital Mars dmc, MinGW g++, Cygwin
+Microsoft Visual C++, MinGW g++, Cygwin g++
+%Microsoft Visual C++, Borland C++, \\
+% & Digital Mars dmc, MinGW g++, Cygwin
 %, Intel C++
 \\
-Linux/x86 & Gnu g++, Intel C++, Portland Group pgCC \\
+Linux/x86 & Gnu g++, Intel C++
+% , Portland Group pgCC
+\\
 %Linux/Itanium & Intel C++, Gnu g++ \\
-\MacOSX & Gnu g++, Clang C++ \\
+\MacOSX & Clang C++, Gnu g++\\
 %MIPS/IRIX 6 (SGI) & MIPSpro C++ \\
 %SPARC/Solaris & Sun Workshop C++ \\
 \hline
 \end{tabular}
 \end{makeimage}
 \end{center}
-
-\par\noindent
-Both 32- and 64-bit builds are supported on each of the above
-platforms, though most uses of \OOMMF\ will prefer a 64-bit
-build to avoid limits on simulation sizes.
-
 
 \subsection{Basic Installation}
 
@@ -134,7 +138,7 @@ to prepare \OOMMF\ software for use on your computer.
 
 The latest release of the \OOMMF\ software may be retrieved from the
 \htmladdnormallinkfoot{\OOMMF\ download
-page}{http://math.nist.gov/oommf/software.html}.  Each release is
+page}{https://math.nist.gov/oommf/software.html}.  Each release is
 available in two formats.  The first format is a gzipped tar file
 containing an archive of all the \OOMMF\ source code.  The second format
 is a \fn{.zip} compressed archive containing source code and
@@ -265,28 +269,29 @@ here is the typical output on a \MacOSX\ 10.9 system:
 $ tclsh oommf.tcl +platform
 <5426> oommf.tcl 1.2.0.6  info:
 OOMMF release 1.2.0.6, snapshot 2015.03.25
-Platform Name:		darwin
-Tcl name for OS:	Darwin 13.4.0
-C++ compiler:   	/usr/bin/g++ 
- Version string:	 Apple LLVM version 6.0 (clang-600.0.57) (based on LLVM 3.5svn) / Target: x86_64-apple-darwin13.4.0 / Thread model: posix
+Platform Name:    darwin
+Tcl name for OS:  Darwin 13.4.0
+C++ compiler:     /usr/bin/g++ 
+ Version string:  Apple LLVM version 6.0 (clang-600.0.57) (based on
+     LLVM 3.5svn) / Target: x86_64-apple-darwin13.4.0 / Thread model: posix
 Shell details ---
- tclsh (running): 	/usr/bin/tclsh
-                  	(links to /usr/bin/tclsh8.5)
-                  	(links to /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclsh8.5)
-                  	 --> Version 8.5.9, 64 bit, threaded
- tclsh (OOMMF): 	/usr/bin/tclsh8.5
-                  	 --> Version 8.5.9, 64 bit, threaded
- filtersh:           	/Users/dgp/oommf/app/omfsh/darwin/filtersh
-                  	 --> Version 8.5.9, 64 bit, threaded
- tclConfig.sh:        	/System/Library/Frameworks/Tcl.framework/Versions/8.5/tclConfig.sh
-                      	 --> Version 8.5.9
- wish (OOMMF):        	/usr/bin/wish8.5
-                  	 --> Version 8.5.9, Tk 8.5.9, 64 bit, threaded
- tkConfig.sh:         	/System/Library/Frameworks/Tk.framework/Versions/8.5/tkConfig.sh
-                      	 --> Tk Version 8.5.9
-OOMMF threads:         	Yes: Default thread count = 2
-OOMMF API index:       	20150129
-Temp file directory: 	/var/folders/dy/srfj33512f51kc5knp_lph_r0000gp/T/
+ tclsh (running): /usr/bin/tclsh
+     (links to /usr/bin/tclsh8.5)
+     (links to /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclsh8.5)
+                      --> Version 8.5.9, 64 bit, threaded
+ tclsh (OOMMF):   /usr/bin/tclsh8.5
+                   --> Version 8.5.9, 64 bit, threaded
+ filtersh:        /Users/xerxes/oommf/app/omfsh/darwin/filtersh
+                   --> Version 8.5.9, 64 bit, threaded
+ tclConfig.sh:    /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclConfig.sh
+                   --> Version 8.5.9
+ wish (OOMMF):    /usr/bin/wish8.5
+                   --> Version 8.5.9, Tk 8.5.9, 64 bit, threaded
+ tkConfig.sh:     /System/Library/Frameworks/Tk.framework/Versions/8.5/tkConfig.sh
+                   --> Tk Version 8.5.9
+OOMMF threads:    Yes: Default thread count = 2
+OOMMF API index:  20150129
+Temp file directory: /var/folders/dy/srfj33512f51kc5knp_lph_r0000gp/T/
 \end{verbatim}
 
 If \cd{oommf.tcl +platform} doesn't print a summary similar to the
@@ -727,7 +732,7 @@ from the \OOMMF\ root directory to create a fresh build.
 You can use the \cd{tclsh oommf.tcl +platform} command to see the
 default number of compute threads that will be run by the Oxs 3D
 solver programs \cd{oxsii} and \cd{boxsi}.  You can modify the default
-as explained in the \hyperrefhtml{Check You Platform
+as explained in the \hyperrefhtml{Check Your Platform
 Configuration}{Platform Configuration
 (Sec.~}{)}{sec:platform.configuration} section, or you can override 
 the default at run time via the command line option \cd{-threads} to
@@ -920,7 +925,7 @@ installing a ``development'' version of \Tcl/\Tk, which may be found on
 the operating system installation disks, or may be available from the
 system vendor.  There are also binary releases of \Tcl/\Tk\ for a number
 of systems available from ActiveState, under the name
-\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/Products/ActiveTcl/}.
+\htmladdnormallinkfoot{ActiveTcl}{https://www.activestate.com/products/tcl/}.
 Alternatively, one may download the sources for \Tcl\ and \Tk\ from the
 \htmladdnormallinkfoot{Tcl Developer
 Xchange}{http://purl.org/tcl/home/}, and build and install \Tcl/\Tk\
@@ -947,7 +952,7 @@ directory, and look for the lines
     # You can override the GuessCPU results by directly setting or
     # unsetting the cpuopts variable, e.g.,
     #
-    #    set cpuopts [list -march=athlon]
+    #    set cpuopts [list -march=skylake]
     # or
     #    unset cpuopts
     #
@@ -983,7 +988,7 @@ time.
 
 
 \subsubsection{\MacOSX\ Configuration}\label{sec:install.macosx}
-\index{platform!MacOSX!configuration|(}
+\index{platform!macOS!configuration|(}
 The build procedure for \MacOSX\ is the same as for \Unix.  The
 platform name is ``darwin''.  If the \hyperrefhtml{platform
 configuration check}{platform configuration check
@@ -996,7 +1001,7 @@ xcode-select --install
 \end{verbatim}
 You should run this command even if you install the full Xcode IDE.
 Refer to your system documentation for details.
-\index{platform!MacOSX!configuration|)}
+\index{platform!macOS!configuration|)}
 
 \index{platform!Windows!configuration|(}
 \subsubsection{Microsoft \Windows\ Options}\label{sec:install.windows}
@@ -1022,7 +1027,7 @@ system documentation for details.
 Both 32-bit and 64-bit builds are supported using the MinGW ports of
 g++.  (The 32-bit and 64-bit versions of g++ are separate downloads.)
 Use a standard Windows \Tcl/\Tk, such as the
-\htmladdnormallinkfoot{ActiveTcl}{http://www.activestate.com/Products/ActiveTcl/}
+\htmladdnormallinkfoot{ActiveTcl}{https://www.activestate.com/products/tcl/}
 release from ActiveState.  You will also need to edit the appropriate
 platform file to select g++ as the compiler.  If you are using a 32-bit
 \Tcl/\Tk\ and g++, then the platform file is
@@ -1065,151 +1070,6 @@ The Cygwin versions of \Tcl/\Tk\ prior to 8.6 were not threaded, so
 \OOMMF\ built with \Tcl/\Tk\ 8.5 and older will likewise not be
 threaded.  This limitation is removed with the Cygwin \Tcl/\Tk\ 8.6
 release.
-
-\paragraph{Using Borland C++}
-\index{platform!Windows!Borland~C++}
-\OOMMF\ has been successfully built and tested using the
-Borland C++ command line compiler version 5.5.
-However, a couple preparatory steps are necessary before building
-\OOMMF\ with this compiler.
-\begin{enumerate}
-\item Properly complete bcc55 compiler installation.
-
-Be sure to read the \fn{readme.txt} file in the \fn{BCC55}
-subdirectory of the Borland install directory.  In particular, check
-that the \fn{bcc32.cfg} and \fn{ilink32.cfg} configuration files exist
-in the \fn{BIN} subdirectory, and have appropriate contents.  If you
-omit this step you will get error messages during the \OOMMF\ build
-process relating to the inability of the Borland compiler to find
-system header files and libraries.  You will probably also need to add
-the Borland \fn{BIN} directory to your \cd{PATH} environment variable.
-Some of the Borland tools are fragile with respect to spaces in their
-pathnames, so you should either select the Borland install directory
-to be one without spaces anywhere in the pathname (e.g., use
-\fn{C:\bs Borland\bs} instead of
-\fn{"C:\bs Program~Files\bs Borland\bs "}), or at least when setting
-the \cd{PATH} use the ``8dot3'' style short name version of each
-component of the Borland install directory, e.g.,
-\begin{quote}
-\begin{verbatim}
-PATH=C:\Progra~1\Borland\BCC55\Bin;%PATH%
-\end{verbatim}
-\end{quote}
-Use ``\cd{dir /x}'' to display both the short and long versions of
-filenames.  The Borland Developer Studio 2006 install automatically sets
-the path to include the long name version of the Borland \fn{BIN}
-directory; you should manually change this via the System dialog box
-from the Control Panel.  Select the Advanced tab, and pull up the
-Environment Variables sub-dialog.  Edit the \cd{Path} variable as
-discussed above; check both the ``User variables'' and the ``System
-variables'' settings.  You will need to launch a new shell (command
-prompt) for the changes to take effect.
-
-\item Create Borland compatible \Tcl\ and \Tk\ libraries.
-
-The import libraries distributed with \Tcl/\Tk, release 8.0.3 and later,
-are not compatible with the Borland~C++ linker.  However, the command
-line utility \fn{coff2omf}, which is distributed with
-the Borland compiler, can be used to create suitable libraries from
-the \Tcl/\Tk\ .lib's.  In the \Tcl/\Tk\ library directory (typically
-\fn{C:\bs Tcl\bs lib} or \fn{"C:\bs Program~Files\bs Tcl\bs lib"}),
-issue the following commands
-\begin{quote}
-\begin{verbatim}
-coff2omf tcl84.lib tcl84bc.lib
-coff2omf  tk84.lib  tk84bc.lib
-\end{verbatim}
-\end{quote}
-Here \fn{tcl84.lib} and \fn{tk84.lib} are the input libraries (in COFF
-format) and \fn{tcl84bc.lib} and \fn{tk84bc.lib} are the new libraries
-(in OMF format).
-
-If \fn{coff2omf} doesn't work, you can try creating the necessary import
-libraries directly from the \Tcl/\Tk\ DLL's.  From the \Tcl/\Tk\ library
-directory issue the following commands:
-\begin{quote}
-\begin{verbatim}
-impdef -a tcl84bc.def ..\bin\tcl84.dll
-implib tcl84bc.lib tcl84bc.def
-\end{verbatim}
-\end{quote}
-This creates the Borland compatible import library \fn{tcl84bc.lib}.
-Repeat with ``tk'' in place of ``tcl'' to create \fn{tk84bc.lib}.  The
-``-a'' switch requests \fn{impdef} to add a leading underscore to
-function names.  This is sufficient for the DLL's shipped with \Tcl/\Tk\
-8.4, but other releases may require additional tweaking.  The module
-definition file output by \fn{impdef}, e.g., \fn{tcl84bc.def} above,
-is a plain text file.  You may need to edit this file to add or modify
-entries.
-
-
-\item Edit \fn{oommf\bs config\bs platforms\bs wintel.tcl}
-
-At a minimum, you will have to change the \cd{program\_compiler\_c++}
-value to point to the Borland C++ compiler.  The sample \fn{wintel.tcl}
-file assumes the librarian \fn{tlib} and the linker \fn{ilink32}
-are in the execution path, and that the Borland compatible import
-libraries, with names as specified above, are in the \Tcl/\Tk\ library
-directory.  If this is not the case then you will have to make
-appropriate modifications.  Also, you may need to add the ``-o'' switch
-to the linker command to force ordinal usage of the Borland compatible
-\Tcl/\Tk\ libraries produced in the previous step.
-
-\end{enumerate}
-After this, continue with the instructions in \html{the}
-\hyperrefhtml{Compiling and Linking}{Sec.~}{, Compiling and
-Linking.}{sec:install.compile} \html{section.}
-
-\paragraph{Using Digital Mars C++}
-\index{platform!Windows!Digital~Mars~C++}
-
-To build using the \htmladdnormallinkfoot{Digital
-Mars}{http://www.digitalmars.com/} C++ 
-command line compiler (dmc), follow these instructions:
-\begin{enumerate}
-\item Install the Digital Mars C++ compiler, tools, and STL.
-
-  Unpack the dmc archive into a convenient location.  The default name
-  for the root directory of the dmc installation area is ``dm''.  Unpack
-  the STLport (C++ Standard Library) into the dmc installation area.
-  The top-level directory in the STLport archive is ``dm'', so if you
-  unzip this archive from the parent directory to the dmc installation
-  area it will naturally unpack into its standard location.  Then modify
-  the dmc configuration to include the STL header files.  The
-  \fn{dm{\bs}bin{\bs}sc.ini} file should be edited so that the first
-  element of the \cd{INCLUDE} path is \verb+"%@P%\..\stlport\stlport";+
-
-  Next, use ``\cd{set INCLUDE}'' and ``\cd{set LIBRARY}'' from the DOS
-  command prompt to check that these environment variables are either
-  not set, or else set to values as needed by the Digital Mars compiler.
-  (These variables names may be used by other applications, which will
-  conflict with values expected by dmc.)  To unset these variables, use
-  the commands ``\cd{set INCLUDE=}'' and ``\cd{set LIBRARY=}''.  For
-  convenience, you probably also want to put the \fn{dm{\bs}bin}
-  directory into your environment \cd{PATH} variable.
-
-\item Create compatible \Tcl/\Tk\ import libraries.
-
-  The Digital Mars linker uses the same library format as the Borland
-  linker, and as in that case, you will have to build compatible
-  import libraries for the \Tcl/\Tk\ libraries.  The ``basic
-  utilities'' package available from Digital Mars includes the
-  \cd{implib} import librarian that can be used for this purpose.
-  Alternatively, you can use the Borland tools.  See the section above
-  on using Borland C++ for details.
-
-\item Edit \fn{oommf\bs config\bs platforms\bs wintel.tcl}.
-
-  You will need to uncomment the entry for the dmc compiler, and comment
-  out the other compiler selections.  (The comment character is '\#'.)
-  The configuration file assumes that the dmc compiler and associated
-  tools are in a directory included in your environment \cd{PATH}
-  variable.
-
-\end{enumerate}
-After this, continue with the instructions in \html{the}
-\hyperrefhtml{Compiling and Linking}{Sec.~}{, Compiling and
-Linking.}{sec:install.compile} \html{section.}
 
 \paragraph{Setting the TCL\_LIBRARY environment variable}
 \index{platform!Windows!setting~environment~variables}

@@ -10,16 +10,130 @@
 #
 # For debugging:
 # Oc_ForceStderrDefaultMessage
-# Oc_Log SetLogHandler Oc_DefaultMessage status
+# Oc_Log SetLogHandler Oc_DefaultLogMessage status
+# Oc_Log SetLogHandler Oc_DefaultLogMessage debug
 # or
-#Oc_FileLogger SetFile \
+#  Oc_FileLogger SetFile \
 #    [format "C:/Users/donahue/oommf/account-[clock seconds]-%05d.log" [pid]]
-#Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
-#Oc_Log SetLogHandler [list Oc_FileLogger Log] error
-#Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
-#Oc_Log SetLogHandler [list Oc_FileLogger Log] info
-#Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] error
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] info
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+#  Oc_Log SetLogHandler [list Oc_FileLogger Log] debug
+#
+# DEBUGGING ACCOUNT SERVER ISSUES:
 
+# The most versatile approach is to enable Oc_ForceStderrDefaultMessage
+# as above, kill all OOMMF processes, and then launch omfsh via
+#
+#  tclsh oommf.tcl omfsh
+#
+# In the console window run
+#
+#  set argv 0
+#  source oommf/pkg/net/threads/account.tcl
+#
+# to launch an account server inside the console interpreter.  Bring
+# up mmLaunch and/or other OOMMF apps, and use Tcl to inspect the
+# state of the interpreter.
+#
+# However, this approach may present problems with event loop servicing,
+# so a more straightforward approach is to open host and account servers
+# in separate terminals, and then connect to the account server in a
+# third terminal using a telnet session.
+#   First, enable status and debug log messages as explained above. Then
+# start the host server via
+#
+#  app/omfsh/linux-x86_64/omfsh pkg/net/threads/host.tcl -tk 0 15136
+#
+# where the last arg is the host port. Launch the account server with
+#
+#  app/omfsh/linux-x86_64/omfsh pkg/net/threads/account.tcl -tk 0 12345
+#
+# here the last arg is the port number for the account server, which can
+# be any unused port > 1024, or use 0 to have a random port
+# assigned. The account server will attempt to talk to the host server
+# using the host port as configured in config/options.tcl, or by the
+# OOMMF_HOSTPORT environment variable override. Connect to the account
+# server with
+#
+#  telnet localhost 12345
+#
+# and send queries to the account server as desired. Here is an example
+# session:
+#
+# $ oommf pidinfo -v -ports
+# -----------------------
+#         Host: localhost
+#     Host PID: 38103
+#    Host port: 15163
+#      Account: donahue
+#  Account PID: 38107
+# Account port: 51468
+# -----------------------
+# OID   PID Application Ports
+#   0 38099    mmLaunch
+#   2 38121 mmDataTable 51481
+#   3 38124      mmDisp 51484 51485
+#   4 38128       Oxsii 51490
+# $ telnet localhost 51468
+# Trying ::1...
+# Connected to localhost.
+# Escape character is '^]'.
+# tell OOMMF account protocol 1.0
+# query 1 messages
+# reply 1 0 {find threads serveroid trackoids kill associate names serverpid deregister newoid getpids messages bye notrackoids ::tcl::mathfunc::min lookup exit ::tcl::mathfunc::max services getoid datarole register freeoid claim}
+# query 2 services
+# reply 2 0 {mmDataTable 2:0 51481 {OOMMF DataTable protocol 0.1}} {mmDisp 3:0 51484 {OOMMF vectorField protocol 0.1}} {Oxsii 4:0 51490 {OOMMF GeneralInterface protocol 0.1}} {mmDisp 3:1 51485 {OOMMF scalarField protocol 0.1}}
+# query 3 bye
+# reply 3 0 Bye!
+# Connection closed by foreign host.
+#
+# Notes:
+#   1) In the above 'oommf' is a script wrapper around 'tclsh
+#      oommf.tcl'.
+#   2) telnet is not distributed as part of macOS. However, it is
+#      available as 'gtelnet' in the macports inetutils package.
+#   3) The 'query' lines in the telnet session are entered by the user, the
+#      'reply' lines are the response from the account server. The query
+#      request has the format
+#         query <tag> <request> [request arguments]
+#      where tag is an arbitrary string used match queries with
+#      responses, and request is one of the server recognized
+#      requests. All OOMMF protocols support the "message" request,
+#      which returns a list of all supported requests. Some requests
+#      take arguments. If you don't provide the correct number or type
+#      of arguments the reply will be an error message. For example:
+#         query 7 kill
+#         reply 7 1 {wrong # args: should be "kill connection oidpats ?arg ...?"}
+#         query 8 kill *
+#         reply 8 0 2 3 4
+#      The error "help" message includes a superfluous "connection"
+#      argument. Sorry about that.
+#    4) The 'reply' lines have the format
+#         reply <tag> <errorcode> <response>
+#       where tag matches the query tag, and errorcode is 0 on success,
+#       1 on error.
+#
+# Yet another approach: Getting stdout and stderr output on Windows is
+# tricky. Here's a simple workaround:
+#   close stderr
+#   set chanstderr [open acct-[pid].log a]
+#   fconfigure $chanstderr -buffering none
+#   close stdout
+#   set chanstdout [open acct-[pid].log a]
+#   fconfigure $chanstdout -buffering none
+#   Oc_ForceStderrDefaultMessage
+#   Oc_Log SetLogHandler Oc_DefaultLogMessage status
+#   Oc_Log SetLogHandler Oc_DefaultLogMessage debug
+# When a channel is opened, if any compatible standard channel is
+# not open then it will be attached to the new channel. So the
+# close/open calls connect stderr and stdout to the acct*log file.
+# The following commands direct comprehensive logging output
+# to the acct*log file.
+#
+# See also the "DEBUGGING TOOLS" section below.
 
 if {([llength $argv] > 3) || ([llength $argv] == 0)} {
     error "usage: account.tcl <service_port> ?<creator_port>? ?<oid>?"
@@ -35,7 +149,7 @@ if {([llength $argv] > 3) || ([llength $argv] == 0)} {
 array set process [list]
 if {[llength $argv] > 2} {
     set nextOOMMFId [lindex $argv 2]
-    if {[catch {incr nextOOMMFId 100}]} {
+    if {[catch {incr nextOOMMFId 1000}]} {
 	error "usage: account.tcl <service_port> ?<creator_port>? ?<oid>?"
     }
 } else {
@@ -105,17 +219,13 @@ Reap
 Oc_IgnoreTermLoss
 
 proc FatalError {msg} {
-    global master
-    if {![string match *expired. $msg]} {
-        Oc_Log Log $msg panic
-    } else {
-        Oc_Log Log $msg status
-    }
-    if {$master(registered)} {
-        Deregister
-        return
-    }
-    exit
+   global master
+   Oc_Log Log $msg status
+   catch {Deregister}
+   Oc_EventHandler DeleteGroup cleanup-host
+   ## One of the cleanup-host handlers does an exit.  We don't want to
+   ## exit inside exit.
+   exit
 }
 
 Oc_EventHandler Bindtags NotifyClaim NotifyClaim
@@ -126,10 +236,12 @@ proc FreeOid {oid} {
     Oc_Log Log "Freeing OID $oid" status
     Oc_EventHandler DeleteGroup oid-$oid
     foreach n [array names service $oid:*] {
+        set proto $protocol($n)
         unset service($n)
         unset protocol($n)
         unset regname($n)
         Oc_EventHandler Generate Oc_Main DeleteThread -id $n
+        Oc_EventHandler Generate Oc_Main DeleteService -sid $n -proto $proto
     }
     Oc_EventHandler Generate Oc_Main DeleteOid -oid $oid
     set app [lindex $info($oid) 0]
@@ -179,11 +291,12 @@ $master(protocol) AddMessage start exit {} {
     return [list start [list 0 ""]]
 }
 
-$master(protocol) AddMessage start newoid {app pid start {oid -1}} {
-    # Generate an "OOMMF ID" for the instance of application named $app
-    # (for example, mmDisp) with system process id $pid that was started
-    # up at time $start (protection against $pid re-use by system).
-    # Return the "OOMMF ID" (a non-negative integer) to the sender.
+$master(protocol) AddMessage start newoid {appname pid start {oid -1}} {
+    # Generate an "OOMMF ID" for the instance of application named
+    # $appname (for example, mmDisp) with system process id $pid that
+    # was started up at time $start (protection against $pid re-use by
+    # system).  Return the "OOMMF ID" (a non-negative integer) to the
+    # sender.
     global nextOOMMFId process info name
 
     # Check for re-use of $pid
@@ -200,7 +313,7 @@ $master(protocol) AddMessage start newoid {app pid start {oid -1}} {
     }
     set process($pid,$start) $oid
     Oc_EventHandler Generate NotifyNewOid $pid -oid $oid
-    Oc_EventHandler Generate Oc_Main NewOid -oid $oid
+    Oc_EventHandler Generate Oc_Main NewOid -oid $oid -appname $appname
     
     foreach x [array names info] {
 	set c [lindex $info($x) 1]
@@ -210,10 +323,10 @@ $master(protocol) AddMessage start newoid {app pid start {oid -1}} {
     }
 
     if {[info exists info($oid)]} {
-       set info($oid) [list $app $connection $pid [lindex $info($oid) 3]]
+       set info($oid) [list $appname $connection $pid [lindex $info($oid) 3]]
     } else {
-       set unique [string tolower $app:$oid]
-       set info($oid) [list $app $connection $pid [list $unique]]
+       set unique [string tolower $appname:$oid]
+       set info($oid) [list $appname $connection $pid [list $unique]]
        set name($unique) [list associate $oid]
        Oc_EventHandler Generate NotifyClaim $unique
     }
@@ -482,7 +595,17 @@ $master(protocol) AddMessage start getpids {oidpats args} {
 $master(protocol) AddMessage start kill {oidpats args} {
    # Given a list of glob-style oid patterns (probably either a single
    # oid or "*"), does a tell "die" on each account server connection.
-   # This requests each app to shutdown.
+   # This requests each app to shutdown. (Note: An alternative way to
+   # kill an application having a Net_Server is to connect to the
+   # server and send a "query x exit" to the server. The base
+   # Net_Protocol class interprets that as a request to kill the
+   # server application.  This is the method used by the original
+   # mmLaunch and killoommf applications. The main downside to the
+   # query x exit approach is that it only works on applications that
+   # have a Net_Server. In particular it is not possible to kill
+   # mmLaunch that way. The account server "kill" message on the other
+   # hand can terminate any OOMMF application connected to the account
+   # server.)
    set appname 0
    if {[llength $args]} {
       set option [lindex $args 0]
@@ -514,11 +637,17 @@ $master(protocol) AddMessage start kill {oidpats args} {
 }
 
 $master(protocol) AddMessage start threads {} {
-    # Function is to return a list of running services registered
-    # with this account server.  A quartet for each one: 
-    # ($regName $serviceId $port $protocol).
-    #
-    # Name of this message should really be "services"
+    # Function is to return a list of running services registered with
+    # this account server.  A quartet for each one: ($regName $serviceId
+    # $port $protocol). This function, and the associated
+    # newthread/deletethread messages, are deprecated in favor of
+    # services/newservice/deleteservice. Do note the following
+    # differences between this function and the services trio: First,
+    # the argument order in the for newthread is id port protocol
+    # appname, but the order for newservice is appname id port protocol
+    # (which matches the order of the message services response. Second,
+    # this function generates newoid/deleteoid messages in addition to
+    # newthread/deletethread, which services does not do.
     global service protocol regname info
     set ret [list]
     foreach sid [array names service] {
@@ -533,19 +662,122 @@ $master(protocol) AddMessage start threads {} {
     # created/freed, but only one handler per connection.
     Oc_EventHandler DeleteGroup NewThread-$connection
     Oc_EventHandler New _ Oc_Main NewThread \
-            [list $connection Tell newthread %id] \
+            [list $connection Tell newthread %id %port %proto %appname] \
             -groups [list $connection NewThread-$connection]
     Oc_EventHandler New _ Oc_Main DeleteThread \
             [list catch [list $connection Tell deletethread %id]] \
             -groups [list $connection NewThread-$connection]
     Oc_EventHandler New _ Oc_Main NewOid \
-            [list $connection Tell newoid %oid] \
+            [list $connection Tell newoid %oid %appname] \
             -groups [list $connection NewThread-$connection]
     Oc_EventHandler New _ Oc_Main DeleteOid \
             [list catch [list $connection Tell deleteoid %oid]] \
             -groups [list $connection NewThread-$connection]
     return [list start [concat 0 $ret]]
 }
+
+$master(protocol) AddMessage start trackoids {} {
+   # Returns list of all active OIDs (with appnames), and marks
+   # connection to receive notification of all future OID assignments
+   # and deletions.
+   global info
+   set oidnames [list]
+   foreach oid [lsort -integer [array names info]] {
+      lappend oidnames [list $oid [lindex $info($oid) 0]]
+   }
+   Oc_EventHandler New _ Oc_Main NewOid \
+      [list $connection Tell newoid %oid %appname] \
+      -groups [list $connection TrackOids-$connection]
+   Oc_EventHandler New _ Oc_Main DeleteOid \
+      [list catch [list $connection Tell deleteoid %oid]] \
+      -groups [list $connection TrackOids-$connection]
+   return [list start [concat 0 $oidnames]]
+}
+
+$master(protocol) AddMessage start notrackoids {} {
+   # Stop oid updates
+   Oc_EventHandler DeleteGroup TrackOids-$connection]
+   return [list start 0]
+}
+
+$master(protocol) AddMessage start services { {filter {}} } {
+   # Function is to return a list of running services registered with
+   # this account server.  A quartet for each one: ($regName $serviceId
+   # $port $protocol).
+   #
+   # If import filter is nonempty, then it is a list of protocol names
+   # that the client wants to know about. Only exact matches against
+   # this list are returned, both here and in later NewService
+   # messages. If the protocol version is specified, such as
+   #    OOMMF scalarField protocol 0.1
+   # then only that exact protocol version is matched. (The protocol
+   # version is the last element of the protocol name.) If no version is
+   # specified then any version will match.  If filter is empty, then
+   # all services are returned.
+   # Note: If filter consists of a single protocol, say
+   #    OOMMF DataTable protocol
+   # then it needs to be defined so that import "filter" is a single
+   # element list, e.g.
+   #   set filter { {OOMMF DataTable protocol} }
+   # or
+   #   set filter [list {OOMMF DataTable protocol} ]
+   #
+   # This message is intended as a replacement for the "threads"
+   # message.  It differs in that "services" accepts a protocol filter,
+   # does not set up "newoid" message handlers, and the argument order
+   # for "newservice" messages matches that of the list elements
+   # returned by this message.
+   #
+   # NB: Only one NewService handler is maintained per connection.
+   #     If a client makes multiple "services" request, the filter
+   #     request from the last request is the active filter for
+   #     further NewService messages.
+   global service protocol regname info
+   set ret [list]
+   foreach sid [array names service] {
+      set protocolname $protocol($sid)
+      if {[llength $filter]==0
+          || [lsearch -exact $filter $protocolname]>=0
+          || [lsearch -exact $filter [lrange $protocolname 0 end-1]]>=0} {
+         set port $service($sid)
+         set advertisedname $regname($sid)
+         lappend ret [list $advertisedname $sid $port $protocolname]
+      }
+   }
+   # In the above, [lrange $protocolname 0 end-1] is the protocol name
+   # with the version string removed.
+
+   # Assume any client who asked for a list of services wants to be
+   # informed when services are (de)registered, but only ONE handler
+   # (and hence one filter) per connection. Note that registration
+   # and deregistration notices are only sent out for services
+   # matching filter.
+   Oc_EventHandler DeleteGroup NewService-$connection
+   if {[llength $filter]==0} {
+      Oc_EventHandler New _ Oc_Main NewService \
+         [list $connection Tell newservice %appname %sid %port %proto] \
+         -groups [list $connection NewService-$connection]
+      Oc_EventHandler New _ Oc_Main DeleteService \
+         [list catch [list $connection Tell deleteservice %sid]] \
+         -groups [list $connection NewService-$connection]
+   } else {
+      Oc_EventHandler New _ Oc_Main NewService [subst -nocommands {
+         if {[lsearch -exact {$filter} %proto]>=0 ||
+             [lsearch -exact {$filter} [lrange %proto 0 end-1]]>=0} {
+            $connection Tell newservice %appname %sid %port %proto
+         }
+      }] -groups [list $connection NewService-$connection]
+      Oc_EventHandler New _ Oc_Main DeleteService [subst -nocommands {
+         if {[lsearch -exact {$filter} %proto]>=0 ||
+             [lsearch -exact {$filter} [lrange %proto 0 end-1]]>=0} {
+            catch {$connection Tell deleteservice %sid}
+         }
+      }] -groups [list $connection NewService-$connection]
+   }
+   return [list start [concat 0 $ret]]
+}
+
+
 $master(protocol) AddMessage start lookup {sid} {
     # Return information about a service, given a service ID
     global service protocol regname info
@@ -577,7 +809,10 @@ $master(protocol) AddMessage start register {sid alias port protocolname} {
 	set service($sid) $port
         set protocol($sid) $protocolname
         set regname($sid) $alias
-	Oc_EventHandler Generate Oc_Main NewThread -id $sid
+	Oc_EventHandler Generate Oc_Main NewThread \
+           -id $sid -port $port -proto $protocolname -appname $alias
+	Oc_EventHandler Generate Oc_Main NewService \
+           -sid $sid -port $port -proto $protocolname -appname $alias
     }
     return [list start [list 0 {}]]
 }
@@ -594,10 +829,174 @@ $master(protocol) AddMessage start deregister { sid } {
 
     # Should add error check
     # Could also add service-death notification
+    set proto $protocol($sid)
     set result [unset service($sid) protocol($sid) regname($sid)]
     Oc_EventHandler Generate Oc_Main DeleteThread -id $sid
+    Oc_EventHandler Generate Oc_Main DeleteService -sid $sid -proto $proto
     return [list start [list 0 $result]]
 }
+
+### DEBUGGING TOOLS ####################################################
+### vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+#
+# Enabling the following if block adds the 'eval' message to the
+# account protocol, and defines the DumpArray proc.  The eval message
+# allows a telnet client to introspect the state of the account
+# server, and DumpArray is a simple tool make it easier to check the
+# content of global arrays. Sample use:
+#
+# $ oommf pidinfo -v -ports | grep 'Account port'
+# Account port: 37033
+# $ telnet localhost 37033
+# Trying 127.0.0.1...
+# Connected to localhost.
+# Escape character is '^]'.
+# tell OOMMF account protocol 1.0
+# query 1 messages
+# reply 1 0 {find threads serveroid trackoids kill associate names    \
+#   serverpid deregister newoid eval getpids messages bye notrackoids \
+#   ::tcl::mathfunc::min lookup exit ::tcl::mathfunc::max services    \
+#   getoid datarole register freeoid claim}
+# query 2 eval Net_Link Instances
+# reply 2 0 {_Net_Link0 _Net_Link1 _Net_Link4}
+# query 3 eval DumpArray __Net_Link4
+# reply 3 0 {{_lineFromSocket {query 3 eval DumpArray __Net_Link4}}   \
+#   {_port 52542} {_socket sock223fe60} {_read_error 0}               \
+#   {_write_disabled 0} {_hostname localhost.localdomain}             \
+#   {_user_id_check 0} {_checkconnecterror_eventid {}}                \
+#   {_write_error 0}}
+# query 4 bye
+# reply 4 0 Bye!
+#
+# If the connection doesn't close, type 'Ctrl+[' to go into telnet
+# command mode and type 'close'.
+#
+# Notes:
+#  1) Each Oc_Class instance maintains an array holding class instance
+#     variables. The name of the array is the instance name preceding
+#     by (an additional) underscore.
+#  2) There is also an array holding class common variables, with the
+#     class name prefixed with an underscore. For example, for
+#     Net_Link the class array is _Net_Link.
+#  3) In addition to DumpArray, you can also query global variables
+#     directly using the '::' namespace. For example:
+#         query 3 eval set ::__Net_Link4(_socket)
+#         reply 3 0 sock223fe60
+#  4) Use 'info globals ...' to find variables in the global
+#     namespace.
+#
+if {0} {
+   $master(protocol) AddMessage start eval { args } {
+      set result [eval {*}$args]
+      return [list start [list 0 $result]]
+   }
+   proc DumpArray { arrayname } {
+      upvar #0 $arrayname arr
+      set result {}
+      foreach _ [array names arr] {
+         lappend result [list $_ $arr($_)]
+      }
+      return $result
+   }
+   proc RunEL { secs } {
+      global runel_var
+      set runel_var 0
+      after [expr {$secs*1000}] [list incr runel_var]
+      vwait runel_var
+   }
+
+   # Debug logging
+   global logfile
+   set logfile account.log
+   Oc_FileLogger SetFile [file join [Oc_Main GetOOMMFRootDir] $logfile]
+   Oc_Log SetDefaultHandler [list Oc_FileLogger Log]
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] panic
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] error
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] info
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+   Oc_Log SetLogHandler [list Oc_FileLogger Log] debug
+
+   proc ConnectReport { object event } {
+      global logfile
+      if {![catch {clock milliseconds} ms]} {
+         set secs [expr {$ms/1000}]
+         set ms [format {%03d} [expr {$ms - 1000*$secs}]]
+         set timestamp [clock format $secs \
+                            -format "%H:%M:%S.$ms %Y-%m-%d"]
+      } else {
+         set secs [clock seconds]
+         set timestamp [format [clock format $secs \
+                                    -format %H:%M:%S.???\ %Y-%m-%d]]
+      }
+      switch -exact $event {
+         connect { set msg "CONNECTION: $object" }
+         read {
+            if {[catch {$object Get} reply]} {
+               set reply "ERROR: $reply"
+            }
+            set msg "Read $object: $reply"
+         }
+         query {
+            if {[catch {$object Get} reply]} {
+               set reply "ERROR: $reply"
+            }
+            set msg "Query $object: $reply"
+         }
+         die { set msg "DIE: $object" }
+      }
+      set chan [open $logfile a]
+      puts $chan [format "%s %6d %s" $timestamp [pid] $msg]
+      close $chan
+   }
+   Oc_EventHandler New _ Net_Connection Ready \
+       [list ConnectReport %object connect]
+   Oc_EventHandler New _ Net_Connection Readable \
+       [list ConnectReport %object read]
+   Oc_EventHandler New _ Net_Connection Query \
+       [list ConnectReport %object query]
+   Oc_EventHandler New _ Net_Connection Delete \
+       [list ConnectReport %object die]
+
+   proc LinkReport { object event {detail {}} } {
+      global logfile
+      if {![catch {clock milliseconds} ms]} {
+         set secs [expr {$ms/1000}]
+         set ms [format {%03d} [expr {$ms - 1000*$secs}]]
+         set timestamp [clock format $secs \
+                            -format "%H:%M:%S.$ms %Y-%m-%d"]
+      } else {
+         set secs [clock seconds]
+         set timestamp [format [clock format $secs \
+                                    -format %H:%M:%S.???\ %Y-%m-%d]]
+      }
+      set msg "LINK: $object  EVENT: $event"
+      if {[string length $detail]>0} {
+         append msg "  WHAT: $detail"
+      }
+      set chan [open $logfile a]
+      puts $chan [format "%s %6d %s" $timestamp [pid] $msg]
+      close $chan
+   }
+
+   Oc_EventHandler New _ Net_Link Ready \
+      [list LinkReport %object connect]
+   Oc_EventHandler New _ Net_Link SocketError \
+      [list LinkReport %object SocketError %msg]
+   Oc_EventHandler New _ Net_Link SocketEOF \
+      [list LinkReport %object SocketEOF]
+   Oc_EventHandler New _ Net_Link SocketBlocked \
+      [list LinkReport %object SocketBlocked [list readcount=%readCount]]
+   Oc_EventHandler New _ Net_Link Receive \
+       [list LinkReport %object "Read " %line]
+   Oc_EventHandler New _ Net_Link Write \
+       [list LinkReport %object Write %line]
+   Oc_EventHandler New _ Net_Link Delete \
+       [list LinkReport %object die]
+
+}
+### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+### DEBUGGING TOOLS ####################################################
 
 # Define and start server 
 # add -allow and -deny options to control access
@@ -676,14 +1075,19 @@ SourceExportFiles
 
 # The host we register with
 Net_Host New master(host) -hostname localhost
-Oc_EventHandler New _ $master(host) Delete [list FatalError "host died"]
-Oc_EventHandler New _ $master(host) Ready Register
+Oc_EventHandler New _ $master(host) Delete HostDelete
+Oc_EventHandler New _ $master(host) Delete \
+   exit -groups cleanup-host
+Oc_EventHandler New _ $master(host) Ready \
+   Register -groups cleanup-host
 proc Register {} {
     global master
     Oc_Log Log "Sending registration message to host" status
     set qid [$master(host) Send register $master(account) $master(port)]
-    Oc_EventHandler New _ $master(host) Reply$qid RegisterReply -oneshot 1
-    Oc_EventHandler New _ $master(host) Timeout$qid RegisterTimeout
+    Oc_EventHandler New _ $master(host) Reply$qid RegisterReply \
+       -oneshot 1 -groups cleanup-host
+    Oc_EventHandler New _ $master(host) Timeout$qid RegisterTimeout \
+       -oneshot 1 -groups cleanup-host
 }
 proc RegisterTimeout {} {
     FatalError "Timed out waiting to complete registration"
@@ -701,9 +1105,8 @@ proc RegisterReply {} {
            # beat us.
            after [expr {500 + int(500*rand())}]
            CallbackCreator
-           exit
-           # set master(registered) 0
-           # FatalError "Registration error: [lrange $reply 1 end]"
+           set master(registered) 0
+           FatalError "Registration error: [lrange $reply 1 end]"
         }
     }
 }
@@ -728,75 +1131,60 @@ proc CallbackCreator {} {
     }
 }
 proc Deregister {} {
-    global master
-    Oc_Log Log "Sending deregistration message to host" status
-    if {[catch {
-            $master(host) Send deregister $master(account) $master(port)
-            } qid]} {
-        # Can't send message -- host is probably dead.
-        Oc_Log Log "Dying without deregistering!" warning
-        exit
-    }
-    Oc_EventHandler New _ $master(host) Reply$qid DeregisterReply
-    Oc_EventHandler New _ $master(host) Timeout$qid DeregisterTimeout
+   global master
+   if {![info exists master(registered)] || !$master(registered)} {
+      return
+   }
+   Oc_Log Log "Sending deregistration message to host" status
+   if {[catch {
+      $master(host) Send deregister $master(account) $master(port)
+   } qid]} {
+      # Can't send message -- host is probably dead.
+      Oc_Log Log "Dying without deregistering!" warning
+      return
+   }
+   Oc_EventHandler New _ $master(host) Reply$qid DeregisterReply \
+      -oneshot 1 -groups deregister-host
+   Oc_EventHandler New _ $master(host) Timeout$qid DeregisterTimeout \
+      -oneshot 1 -groups deregister-host
 }
 proc DeregisterReply {} {
-    global master
-    set reply [$master(host) Get]
-    switch -- [lindex $reply 0] {
-        0 {
+   global master
+   Oc_EventHandler DeleteGroup deregister-host
+   if {[catch {$master(host) Get} reply]} {
+      Oc_Log Log "Deregistration error:\
+                  $reply\n\tExiting dirty." warning
+   } else {
+      switch -- [lindex $reply 0] {
+         0 {
+            set master(registered) 0
             Oc_Log Log "Deregistered.  Exiting clean." status
-            exit
-        }
-        default {
+         }
+         default {
             Oc_Log Log "Deregistration error:\
-                    [lrange $reply 1 end]\n\tExiting dirty." warning
-            exit
-        }
-    }
+                        [lrange $reply 1 end]\n\tExiting dirty." warning
+         }
+      }
+   }
 }
 proc DeregisterTimeout {} {
-    Oc_Log Log "Deregistration timeout.  Exiting dirty." warning
-    exit
+   Oc_EventHandler DeleteGroup deregister-host
+   Oc_Log Log "Deregistration timeout.  Exiting dirty." warning
 }
-
-if {0} {
-   # Debug logging
-   Oc_EventHandler New _ Net_Connection Ready \
-       [list ConnectReport %object connect]
-   Oc_EventHandler New _ Net_Connection Readable \
-       [list ConnectReport %object read]
-   Oc_EventHandler New _ Net_Connection Query \
-       [list ConnectReport %object query]
-   Oc_EventHandler New _ Net_Connection Delete \
-       [list ConnectReport %object die]
-   proc ConnectReport { object event } {
-      if {![catch {clock milliseconds} ms]} {
-         set secs [expr {$ms/1000}]
-         set ms [format {%03d} [expr {$ms - 1000*$secs}]]
-         set timestamp [clock format $secs \
-                            -format "%H:%M:%S.$ms %Y-%m-%d"]
-      } else {
-         set secs [clock seconds]
-         set timestamp [format [clock format $secs \
-                                    -format %H:%M:%S.???\ %Y-%m-%d]]
-      }
-      switch -exact $event {
-         connect { set msg "CONNECTION: $object" }
-         read { set msg "Read $object: [$object Get]" }
-         query { set msg "Query $object: [$object Get]" }
-         die { set msg "DIE: $object" }
-      }
-      set chan [open "C:/Users/donahue/tmp/oommf/account.log" a]
-      puts $chan [format "%s %6d %s" $timestamp [pid] $msg]
-      close $chan
+proc HostDelete {} {
+   global master
+   if {![info exists master(host)]} { return }
+   unset master(host)
+   if {[info exists master(registered)] && $master(registered)} {
+      Oc_Log Log "Host died dirty." warning
    }
 }
 
 
 # Once a connection becomes ready, set up handler to catch
 # connection destructions.  On last one, exit.
-Oc_EventHandler New _ Net_Connection Delete [list CheckConnect %object]
+Oc_EventHandler New _ Net_Connection Delete \
+   [list CheckConnect %object] -groups cleanup-host
 
 proc CheckConnect { object } {
    # A Net_Connection is being destroyed.  If there are no connections
@@ -827,15 +1215,12 @@ proc CheckConnect { object } {
          return  ;# Don't die on host destruction
       }
    }
-   # Begin account server shutdown: First, stop accepting new
-   # connections.
-   $master(server) ForbidServiceStart
-   if {[$master(server) IsListening]} {
-      $master(server) Stop
+   Oc_Log Log "All connections closed.  Account server expired." status
+   Oc_EventHandler DeleteGroup cleanup-host
+   if {$master(registered)} {
+      Deregister
    }
-   # Shut down
-   after idle [list FatalError\
-                   "All connections closed.  Account server expired."]
+   exit
 }
 
 vwait master(forever)

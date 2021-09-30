@@ -10,6 +10,8 @@
  *
  */
 
+#include <assert.h>
+
 #include <string>
 #include <vector>
 
@@ -20,6 +22,7 @@
 #include "oc.h"
 #include "outputderiv.h"
 #include "oxsthread.h"
+#include "oxswarn.h"
 #include "scalarfield.h"
 #include "util.h"
 #include "vectorfield.h"
@@ -74,6 +77,7 @@ Oxs_CmdProc Oxs_ListOutputObjects;
 Oxs_CmdProc Oxs_OutputGet;
 Oxs_CmdProc Oxs_GetAllScalarOutputs;
 Oxs_CmdProc Oxs_OutputNames;
+Oxs_CmdProc Oxs_QueryState;
 Oxs_CmdProc Oxs_EvalScalarField;
 Oxs_CmdProc Oxs_EvalVectorField;
 Oxs_CmdProc Oxs_GetAtlasRegions;
@@ -88,8 +92,8 @@ Oxs_CmdProc Oxs_SetCheckpointInterval;
 Oxs_CmdProc Oxs_GetCheckpointAge;
 Oxs_CmdProc Oxs_DirectorDevelopTest;
 Oxs_CmdProc Oxs_DriverLoadTestSetup;
-Tcl_CmdProc Oxs_ProbRelease;
 
+Tcl_CmdProc Oxs_ProbRelease;
 Tcl_CmdProc OxsCmdsSwitchboard;
 
 /*
@@ -303,6 +307,14 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
   int fatal_error = 1;
   OxsCmdsClientData* ocd = static_cast<OxsCmdsClientData*>(cd);
   try {
+    // Check for warnings and errors from background threads
+    Oxs_WarningMessage::TransmitMessageHold();
+    String bkgerr;
+    if(Oxs_ThreadError::CheckAndClearError(&bkgerr)) {
+      ocd->director->SetErrorStatus(1);
+      OXS_THROW(Oxs_BadThread,bkgerr);
+    }
+    // Run command
     result_message.erase();
     result_message = ocd->cmd(ocd->director,interp,argc,argv);
     result_code = TCL_OK;
@@ -1387,6 +1399,97 @@ String Oxs_OutputNames(Oxs_Director* director, Tcl_Interp *interp,
 /*
  *----------------------------------------------------------------------
  *
+ * Oxs_QueryState--
+ *      Read access to Oxs_SimState data.  This routine is intended to
+ *      be used through the Oc_Class Oxs_Mif wrapper procs GetStateKeys
+ *      and GetStageValues, which provide wildcard expansions.
+ *
+ * Results:
+ *      String.  If the subcmd is "keys", then the return is a list of
+ *      key names.  If the subcmd is "values" then the return is a list
+ *      of alternating key value elements, suitable for importing into
+ *      a Tcl dict via create/replace or a Tcl array using set.
+ *
+ *      The present implementation does not support any wildcards.  In
+ *      particular, the keys subcommand takes no arguments and returns
+ *      the entire list of keys, and for the values subcommand each key
+ *      name must be an exact match to a key in the state key list.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_QueryState(Oxs_Director* director,Tcl_Interp *interp,
+		     int argc,CONST84 char** argv)
+{
+    if (argc < 3) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0], " stateid subcmd ...\"", (char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+    }
+
+    // Locate state
+    OC_UINT4m id = static_cast<OC_UINT4m>(std::stoul(String(argv[1])));
+    const Oxs_SimState* simstate = director->FindExistingSimulationState(id);
+    if(!simstate) { // State not found
+      Tcl_AppendResult(interp, "Requested state id=",
+                       argv[1], " not found", (char *) NULL);
+      throw OxsCmdsProcTclException(TCL_ERROR);
+    }
+
+    // Process command
+    vector<String> result;
+    if(strcmp("keys",argv[2])==0) {
+      if(argc!=3) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"",
+		     argv[0], " stateid keys\"", (char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+      }
+      simstate->QueryScalarNames(result);
+    } else if(strcmp("values",argv[2])==0) {
+      if(argc<4) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"",
+                         argv[0], " stateid values key ?key ...?\"",
+                         (char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+      }
+      // Request values
+      vector<String> keys;
+      vector<Oxs_MultiType> values;
+      for(int i=3;i<argc;++i) {
+        keys.push_back(String(argv[i]));
+      }
+      try {
+        simstate->QueryScalarValues(keys,values);
+      } catch(Oxs_Exception& err) { // Error
+        Tcl_AppendResult(interp, "Query error in ",argv[0],"---",
+                         err.MessageType(),"---",
+                         err.MessageText().c_str(),(char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+      }
+      // Extract result
+      assert(keys.size() == values.size());
+      String tmpval;
+      for(std::size_t i=0;i<keys.size();++i) {
+        result.push_back(keys[i]);
+        values[i].Fill(tmpval);
+        result.push_back(tmpval);
+      }
+    } else {
+        Tcl_AppendResult(interp, "unrecognized subcommand name: \"",
+                         argv[2], "\", should be either keys or values",
+                         (char *) NULL);
+	throw OxsCmdsProcTclException(TCL_ERROR);
+    }
+    
+    return Nb_MergeList(result);
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
  * Oxs_EvalScalarField --
  *      Returns the value of an Oxs_ScalarField at a specified
  *      (import) position.
@@ -2088,18 +2191,28 @@ String Oxs_DriverLoadTestSetup(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 int Oxs_ProbRelease(ClientData cd,Tcl_Interp *interp,
-		   int argc,CONST84 char**)
+		   int argc,CONST84 char** argv)
 {
-  if (argc != 1) {
-    Tcl_AppendResult(interp, "wrong # of args: should be just",
-		     " \"Oxs_ProbRelease\"",
+  if (argc > 2) {
+    Tcl_AppendResult(interp, "wrong # of args: should be",
+                    " \"Oxs_ProbRelease ?errcode?\"",
 		     (char *) NULL);
     return TCL_ERROR;
   }
+  int errcode = 0;
+  if (argc>1 && Tcl_GetInt(interp, argv[1], &errcode) != TCL_OK) {
+    Tcl_AppendResult(interp,
+                     "Specified errcode value is not an integer,"
+                     " in call to \"Oxs_ProbRelease ?errcode?\"",
+		     (char *) NULL);
+    return TCL_ERROR;
+  }
+
   Oxs_Director* director = (Oxs_Director *)cd;
 
   int result = TCL_ERROR;
   try {
+    if(errcode) director->SetErrorStatus(errcode);
     director->Release();
     result = TCL_OK;
   } catch (Oxs_ExtError& err) {
@@ -2157,6 +2270,9 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   Tcl_CreateCommand(interp,OC_CONST84_CHAR(#foocmd),OxsCmdsSwitchboard, \
 	    new OxsCmdsClientData(director,foocmd,String(fooname)),     \
 	    OxsCmdsCleanup)
+  // Note: The second argument to REGCMD is the name used for error
+  // messages.  The first argument is used for both the C++ routine and
+  // Tcl command names.
   REGCMD(Oxs_SetRestartFlag,"Oxs_Director::SetRestartFlag");
   REGCMD(Oxs_SetRestartCrcCheck,"Oxs_Director::SetRestartCrcCheck");
   REGCMD(Oxs_SetRestartFileDir,"Oxs_Director::SetRestartFileDir");
@@ -2183,6 +2299,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_OutputGet,"Oxs_Director::Output");
   REGCMD(Oxs_GetAllScalarOutputs,"Oxs_Director::GetAllScalarOutputs");
   REGCMD(Oxs_OutputNames,"Oxs_Director::OutputNames");
+  REGCMD(Oxs_QueryState,"Oxs_QueryState");
   REGCMD(Oxs_EvalScalarField,"Oxs_EvalScalarField");
   REGCMD(Oxs_EvalVectorField,"Oxs_EvalVectorField");
   REGCMD(Oxs_GetAtlasRegions,"Oxs_GetAtlasRegions");

@@ -97,7 +97,7 @@
 %\pdfcatalog{/PageMode /UseOutlines}
 \pdfcatalog{            % Catalog dictionary of PDF output.
     /PageMode /UseOutlines
-    /URI (http://math.nist.gov/oommf/)
+    /URI (https://math.nist.gov/oommf/)
 }
 % openaction goto page 1 {/Fit}
 
@@ -157,16 +157,16 @@
             VLINK="#4498F0",ALINK="00FFFF"}
 
 %\htmladdtonavigation{\htmladdnormallink
-%    {\myimage{ALT="OOMMF Home",BORDER="2"}{http://math.nist.gov/oommf/images/oommficon.gif}}{http://math.nist.gov/oommf}}
+%    {\myimage{ALT="OOMMF Home",BORDER="2"}{https://math.nist.gov/oommf/images/oommficon.gif}}{https://math.nist.gov/oommf}}
 
 \htmladdtonavigation{\htmladdnormallink
-    {\myimage{ALT="OOMMF Home",BORDER="2"}{oommficon.gif}}{http://math.nist.gov/oommf}}
+    {\myimage{ALT="OOMMF Home",BORDER="2"}{oommficon.gif}}{https://math.nist.gov/oommf}}
 
 \newcommand{\blackhole}[1]{}
 \newcommand{\Unix}{Unix}
 \newcommand{\X}{X}
 \newcommand{\Windows}{Windows}
-\newcommand{\MacOSX}{Mac OS X}
+\newcommand{\MacOSX}{macOS}
 \newcommand{\DOS}{DOS}
 \newcommand{\Tcl}{Tcl}
 \newcommand{\C}{C}
@@ -346,14 +346,34 @@
 %   giffiles/basename.gif under html.
 %     Altstring it a string to be passed to the ALT= tag
 %   in HTML.  It is not used in the LaTeX code.
-% Note: The "0.5" scaling for psfiles provides excellent onscreen
-%   rendering in ghostview if scaling is set to 4.0 "pixel-based".
-%   This images, however, are slightly larger than in the PDF output.
-%   If you want the sizes to match, set the scaling for ps files to
-%   0.462
+% Note: Previously the scaling for psfiles was set to "0.5", with the
+%   note that that setting provided excellent onscreen rendering in
+%   ghostview if scaling were set to 4.0 "pixel-based", although this
+%   made the PostScript images slightly larger than in the PDF output.
+%   To match the sizes the \scalebox setting needed to be 0.462.
+%   However, PostScript for screenshots made in July 2021 used
+%   different processing, based on the ImageMagick 'convert' tool. The
+%   screenshots were collected using the gnome-screenshot command on
+%   Linux,
+%
+%    gnome-screenshot -wbd 5 -e shadow -f mmdisp-ss.png
+%
+%   and then the pixel density was set like so:
+%
+%    convert -quality 97 -density 125 -units pixelsperinch mmdisp-ss.png
+%
+%   The density determines the scaling for the PDF output. The eps
+%   files for the PostScript version of the userguide were created
+%   with
+%
+%    convert mmdisp-ss.png pdf:- | pdftops -eps - mmdisp-ss.ps
+%
+%   With this processing chain the Postscript renders at the same size
+%   as the PDF.
+
 %begin{latexonly}
 \newcommand{\includepic}[2]{%
-\scalebox{0.5}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
+\scalebox{1.0}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
 \renewcommand{\includepic}[2]{%
 \scalebox{1.0}{\includegraphics{pngfiles/#1.png}} } }
 %end{latexonly}

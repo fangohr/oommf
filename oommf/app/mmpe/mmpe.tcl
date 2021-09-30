@@ -19,7 +19,7 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -1519,6 +1519,22 @@ for {set i 0} {$i<$listsize} {incr i} {
     pack $buttoname  -fill x
 }
 pack .menubuttons -side bottom -fill x -expand 1
+
+# Set minimum primary window width
+set menuwidth [Ow_GuessMenuWidth $menubar]
+set bracewidth [Ow_SetWindowTitle . [Oc_Main GetInstanceName]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
+        -highlightthickness 0]
+pack $brace -side top
+Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+  $brace configure -width \
+    [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+}]
+
+
 #
 update idletasks
 proc Die {win} {

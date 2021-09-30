@@ -576,8 +576,8 @@ if {[string match g++ $ccbasename]} {
       set pgcc_version [GuessPgccVersion \
            [lindex [$config GetValue program_compiler_c++] 0]]
    }
-   if {[lindex $pgcc_version 0]<15} {
-      puts stderr "WARNING: This version of OOMMF requires pgc++ 15\
+   if {[lindex $pgcc_version 0]<17} {
+      puts stderr "WARNING: This version of OOMMF requires pgc++ 17\
                    or later (C++11 support)"
    }
    $config SetValue program_compiler_c++_banner_cmd \
@@ -592,10 +592,13 @@ if {[string match g++ $ccbasename]} {
    }
 
    # Optimization options
-   set opts [GetPgccGeneralOptFlags $pgcc_version]
-   lappend opts -tp=x64 ;# -tp=x64 specifies a generic x86_64 platform
-   if {[info exists cpuopts] && [llength $cpuopts]>0} {
-      set opts [concat $opts $cpuopts]
+   set opts [list --c++11]
+   if {[string match host [string tolower $cpu_arch]]} {
+      # Arch specific build.
+      lappend opts -fastsse -Mipa=fast,inline
+   } else {
+      lappend opts -fast -Mipa=fast,inline -tp=x64
+      # -tp=x64 specifies a generic x86_64 platform
    }
    # Note 1: We do not need -Mconcur because OOMMF does its own
    #    threading.  Also, -Mconcur in pgc++ 18.4-0 causes segfaults in
@@ -603,6 +606,14 @@ if {[string match g++ $ccbasename]} {
    # Note 2: Option -mp is for OpenMP, which OOMMF doesn't use.
    # Note 3: If there is no IPA information for the Tcl libraries,
    #    does -Mipa do anything?
+
+   if {[info exists cpuopts] && [llength $cpuopts]>0} {
+      set opts [concat $opts $cpuopts]
+   }
+   
+   # The --exceptions option is an old option not supported
+   # in the 18.4 release of PG C++.
+   #lappend opts "--exceptions" ;# This has to come after -mp
 
    # Use/don't use SSE intrinsics.  The default is yes, at level 2,
    # since x86_64 guarantees at least SSE2.
@@ -614,23 +625,16 @@ if {[string match g++ $ccbasename]} {
 
    # Disable selected warnings
    # Warning 1301: non-template friend of a template class
-   # Warning  177: Variable declared but not referenced
-   # Warning  550: Unused parameter
-   # Warning  111: Unreachable code
-   # The last 2 are needed to quiet warnings from the SSE *intrin.h
-   # header files for pgc++ 16.10-0.
-   set nowarn {}
-   foreach nw {1301 177 550 111} {
-      lappend nowarn "--diag_suppress$nw"
-   }
+   # Warning 111: unreachable code
    lappend opts --display_error_number
+   set nowarn [list --diag_suppress1301 --diag_suppress111]
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
    catch {unset nowarn}
 
    # Aggressive optimization flags, some of which are specific to
-   # particular gcc versions, but are all processor agnostic.
+   # particular Pgcc versions, but are all processor agnostic.
    set valuesafeopts [GetPgccValueSafeOptFlags $pgcc_version $cpu_arch]
    set fastopts [GetPgccFastOptFlags $pgcc_version $cpu_arch]
 
@@ -674,6 +678,19 @@ if {[string match g++ $ccbasename]} {
       # Not set
       $config SetValue program_compiler_c++_typedef_real8m "double"
    }
+
+   # The long double versions of floor() and ceil() are badly broken
+   # on some machines.  If the following option is set to 1, then
+   # then the standard double versions of floor() and ceil() will be
+   # used instead.  The double versions don't provide the same range
+   # as the long double versions, but the accuracy is not affected if
+   # the operand is inside the double range.  This is not an issue
+   # unless you have selected "long double" in one of the preceding
+   # two stanzas.  If you have, though, then you should check this
+   # sample test case: see what floorl(-0.253L) and x-floorl(x) with
+   # x=-0.253L return.  If you get 0 for the first or NAN for the
+   # second, then you should enable this option.
+   $config SetValue program_compiler_c++_property_bad_wide2int 0
 
    # Directories to exclude from explicit include search path, i.e.,
    # the -I list.  Some of the gcc versions don't play well with

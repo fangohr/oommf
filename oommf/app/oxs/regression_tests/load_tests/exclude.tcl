@@ -14,8 +14,10 @@ lappend excludelist {yoyo {} "Ill-posed?"}
 # If unix, is X11 server accessible?
 global no_display
 if {$no_display} {
+   lappend excludelist {imagelayers {} "No display"}
    lappend excludelist {luigi {} "No display"}
    lappend excludelist {luigiproc {} "No display"}
+   lappend excludelist {oommf {} "No display"}
    lappend excludelist {rotatecenterstage {} "No display"}
    lappend excludelist {sample-reflect {} "No display"}
    lappend excludelist {sample-rotate {} "No display"}

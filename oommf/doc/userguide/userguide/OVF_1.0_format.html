@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>The OVF 1.0 format</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html994"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1011"
   HREF="OVF_2.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html990"
+<A NAME="tex2html1007"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html984"
+<A NAME="tex2html1001"
   HREF="OVF_0.0_format.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html996"
+<A NAME="tex2html1013"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html992"
+<A NAME="tex2html1009"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html995"
+<B> Next:</B> <A NAME="tex2html1012"
   HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
-<B> Up:</B> <A NAME="tex2html991"
+<B> Up:</B> <A NAME="tex2html1008"
   HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
-<B> Previous:</B> <A NAME="tex2html985"
+<B> Previous:</B> <A NAME="tex2html1002"
   HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
 <BR>
 <BR>
@@ -56,9 +52,9 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html998"
+<LI><A NAME="tex2html1015"
   HREF="OVF_1.0_format.html#SECTION000202100000000000000">Segment Header block</A>
-<LI><A NAME="tex2html999"
+<LI><A NAME="tex2html1016"
   HREF="OVF_1.0_format.html#SECTION000202200000000000000">Data block</A>
 </UL>
 <!--End of Table of Child-Links-->
@@ -104,7 +100,7 @@ identification line. OOMMF treats all of these as synonyms for
 
 <P>
 The remainder of the file is conceptually broken into Segment
-blocks<A NAME="21199"></A>, and each Segment block is composed of a
+blocks<A NAME="21379"></A>, and each Segment block is composed of a
 (Segment) Header block and a Data block.  Each block begins with a
 ``<code># Begin: &lt;block type&gt;</code>'' line, and ends with a corresponding
 ``<code># End: &lt;block type&gt;</code>'' line.  The number of Segment blocks is
@@ -113,7 +109,7 @@ specified in the
 # Segment count: 1
 </PRE>
 line.  Currently only 1 segment is allowed.  This may be changed in
-the future to allow for multiple vector fields per file.  
+the future to allow for multiple vector fields per file.
 This is followed by
 <PRE>
 # Begin: Segment
@@ -169,7 +165,7 @@ unless ``integer'' is explicitly stated.
    ValueRangeMinMag.  If both ValueRangeMinMag and ValueRangeMaxMag
    are zero, then the values should be ignored.
 </LI>
-<LI><B>meshtype:</B><A NAME="21218"></A> Grid structure; should be either
+<LI><B>meshtype:</B><A NAME="21398"></A> Grid structure; should be either
    ``rectangular'' or
    ``irregular.''  Irregular grid files should specify ``pointcount''
    in the header; rectangular grid files should specify instead
@@ -221,86 +217,20 @@ value.
 <P>
 The structure of the data depends on whether the ``meshtype'' declared
 in the header is ``irregular'' or ``rectangular''.  For irregular
-meshes, each data element is a 6-tuple, consisting of the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- and
-<B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- components of the node position, followed by the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
+meshes, each data element is a 6-tuple, consisting of the <B><I>x</I></B>, <B><I>y</I></B> and
+<B><I>z</I></B> components of the node position, followed by the <B><I>x</I></B>, <B><I>y</I></B> and <B><I>z</I></B>
 components of the field at that position.  Ordering among the nodes is
 not relevant.  The number of nodes is specified in the ``pointcount''
 line in the segment header.
 
 <P>
-For rectangular meshes, data input is field values only, in <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
-,
-<B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- component triples.  These are ordered with the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
- index
-incremented first, then the <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- index, and the <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- index last.  This
+For rectangular meshes, data input is field values only, in <B><I>x</I></B>, <B><I>y</I></B>,
+<B><I>z</I></B> component triples.  These are ordered with the <B><I>x</I></B> index
+incremented first, then the <B><I>y</I></B> index, and the <B><I>z</I></B> index last.  This
 is nominally Fortran order, and is adopted here because commonly <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-will be the longest dimension, and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- the shortest, so this order is
-more memory-access efficient than the normal C array indexing of <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
-,
-<B><I>y</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-.  The size of each dimension is specified in the ``xnodes,
+will be the longest dimension, and <B><I>z</I></B> the shortest, so this order is
+more memory-access efficient than the normal C array indexing of <B><I>z</I></B>,
+<B><I>y</I></B>, <B><I>x</I></B>.  The size of each dimension is specified in the ``xnodes,
 ynodes, znodes'' lines in the segment header.
 
 <P>
@@ -318,7 +248,7 @@ line that ends the segment, and hence the file.
 
 <P>
 Note: An OVF&nbsp;1.0 file with ASCII data and irregular meshtype is
-also a valid OVF&nbsp;0.0 (SVF<A NAME="21233"></A>) file, although as a
+also a valid OVF&nbsp;0.0 (SVF<A NAME="21413"></A>) file, although as a
 OVF&nbsp;0.0 file the value scaling as specified by
 ``<code># valueunit</code>'' and ``<code># valuemultiplier</code>'' header lines is
 inactive.
@@ -343,7 +273,7 @@ inactive.
 # Desc: 'Description' tag, which may be used or ignored by postprocessing
 # Desc: programs. You can put anything you want here, and can have as many
 # Desc: 'Desc' lines as you want.  The ## comment marker is disabled in
-# Desc: description lines. 
+# Desc: description lines.
 #
 ## Fundamental mesh measurement unit.  Treated as a label:
 # meshunit: nm
@@ -407,23 +337,23 @@ file.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html994"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1011"
   HREF="OVF_2.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html990"
+<A NAME="tex2html1007"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html984"
+<A NAME="tex2html1001"
   HREF="OVF_0.0_format.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html997"
+<A NAME="tex2html1014"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html992"
+<A NAME="tex2html1009"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

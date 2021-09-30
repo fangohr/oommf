@@ -87,6 +87,7 @@
 #endif
 
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -128,6 +129,10 @@ using namespace std;
 
 
 // Compiler version-specific optimization bug workarounds
+// NOTE: There are some compiler-specific macros in
+// oommf/pkg/nb/xpfloat.h for controlling optimizations involving
+// floating-point non-associativity that might be useful in this context
+// too.
 #if defined(__GNUC__) && __GNUC__ == 4 \
   && !defined(__PGIC__) && !defined(__INTEL_COMPILER)
 // Builds using gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-4) with
@@ -375,7 +380,7 @@ ScientificFormat(const Xp_DoubleDouble& x,int width,int precision)
   // Triple-double representation of 1/10^BITESIZE.
   Xp_DoubleDouble invten; XP_DDFLOAT_TYPE invten_a2;
   digitchars.InvTen(invten.a0,invten.a1,invten_a2);
-  
+
   // Computation breakpoints.  Values larger than or equal to break1
   // need to use full remainder computations, as explained in NOTES
   // VIII, 20/21-Aug-2018, pp. 5-9; see (9).  Any integer value smaller
@@ -472,7 +477,7 @@ ScientificFormat(const Xp_DoubleDouble& x,int width,int precision)
     // necessary this will be corrected by the mantissa overflow check.
     --powten;
   }
-  
+
   int adjpow = -1*powten+active_precision;
   Xp_DoubleDouble y; XP_DDFLOAT_TYPE y_a2(0.0);
   Xp_DoubleDouble::LdExp10(x.a0,x.a1,0.0,adjpow,y.a0,y.a1,y_a2);
@@ -504,7 +509,7 @@ ScientificFormat(const Xp_DoubleDouble& x,int width,int precision)
   }
   assert(ten_cache.IsLessThan(y.a0,y.a1,y_a2,active_precision+1)
          && !ten_cache.IsLessThan(y.a0,y.a1,y_a2,active_precision));
-  
+
   // Right fill with zeros for digits beyond active_precision
   int ydig=precision+2+(precision>0?1:0);
   for(int i=active_precision;i<precision;++i) {
@@ -559,7 +564,7 @@ ScientificFormat(const Xp_DoubleDouble& x,int width,int precision)
       fprintf(stderr,"y.a0 = %g\n",double(y.a0));
       exit(99);
     }
-  
+
     const unsigned char* digstr
       = digitchars[static_cast<int>(remainder)];
     if(ydig>3+BITESIZE) {
@@ -854,7 +859,7 @@ inline void Xp_DoubleDouble::OrderedTwoSum
 #endif
   // Note: If x and y are finite, but x+y overflows, then u will be
   // infinite, v will be -u, and u + v will be NaN.
-  u = x + y;  
+  u = x + y;
   XP_DDFLOAT_TYPE t1 = u - x;
   v = y - t1;
 }
@@ -980,7 +985,7 @@ void Xp_DoubleDouble::TwoProd
   v += (x1*y0);
   v += (x1*y1);
 #else // XP_USE_FMA
-  v = fma(x,y,-u); // std::fma is part of the C++11 standard
+  v = std::fma(x,y,-u); // std::fma is part of the C++11 standard
 #endif // XP_USE_FMA
 }
 #else // TJ Dekker version
@@ -1813,7 +1818,7 @@ void Xp_DoubleDouble::SloppyRecip
   tmp *= b0;
   tmp += Xp_DoubleDouble(b0);
   b0 = tmp.a0;  b1 = tmp.a1;  b2 = 0.0; // Second estimate
-  
+
   // Second Newton step correction
   XP_DDFLOAT_TYPE t0,t1,t2;
   SloppyProd(a0,a1,a2,b0,b1,b2,t0,t1,t2);
@@ -1832,7 +1837,7 @@ void Xp_DoubleDouble::Floor
   XP_DDFLOAT_TYPE b2 = XP_FLOOR(a2);  XP_DDFLOAT_TYPE b2r = a2 - b2;
   // We need to normalize both pieces.  Salient example:
   // 1.411905e+00 + -6.604641e-17 + -4.687262e-33
-  Normalize(b0,b1,b2,b0,b1,b2); 
+  Normalize(b0,b1,b2,b0,b1,b2);
   Normalize(b0r,b1r,b2r,b0r,b1r,b2r);
   ThreeIncrement(b0,b1,b2,XP_FLOOR(b0r));
   c0=b0; c1=b1; c2=b2;
@@ -1888,7 +1893,7 @@ void Xp_DoubleDouble::LdExp10
   XP_DDFLOAT_TYPE& base0 = base.a0;
   XP_DDFLOAT_TYPE& base1 = base.a1;
   XP_DDFLOAT_TYPE base2;
-  
+
   XP_DDFLOAT_TYPE& xpow0 = xpow.a0;
   XP_DDFLOAT_TYPE& xpow1 = xpow.a1;
   XP_DDFLOAT_TYPE xpow2;
@@ -1914,7 +1919,7 @@ void Xp_DoubleDouble::LdExp10
     }
     n >>= 1u;
   }
-  
+
   while( n > nrangestop) {
     // Use triple-double for maximum precision
     SloppySquare(base0,base1,base2,base0,base1,base2);
@@ -1950,7 +1955,7 @@ void Xp_DoubleDouble::LdExp10
       } while(n-- > 0u);
     }
   }
-  
+
   b0=a0; b1=a1; b2=a2;
   return;
 }

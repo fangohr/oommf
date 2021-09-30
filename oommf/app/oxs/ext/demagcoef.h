@@ -38,6 +38,9 @@
 # define STANDALONE 0
 #endif
 
+#include <cassert>
+#include <vector>
+
 #if !STANDALONE ////////////////////////////////////////////////////////
 # include "nb.h"
 # include "xp.h"
@@ -51,6 +54,8 @@ using namespace std;  // Get automatic type overloading on standard
 typedef long OC_INDEX;
 typedef int  OC_INT4m;
 typedef double OC_REAL8m;
+
+#define OXS_THROW(x,y) fputs(y,stderr)
 
 #ifndef OC_USE_SSE
 # define OC_USE_SSE 0

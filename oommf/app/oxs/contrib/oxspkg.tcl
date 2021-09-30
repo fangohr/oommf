@@ -18,8 +18,12 @@ set READMEGLOB [list README* readme* Readme* ReadMe* READ.ME *README.*]
 # Files to exclude from package list (glob-style match)
 set EXCLUDEFILES [list versdate.txt copying.txt {*}$READMEGLOB]
 
-# Patch program
-set PATCH patch
+# Select patch program. The OOMMF simplepatch.tcl is a portable but not
+# feature complete Tcl implementation of the unix "patch" utility. If
+# you have a real "patch" installed on your system you can use that
+# instead.
+set PATCH [list [info nameofexecutable] simplepatch.tcl]
+#set PATCH patch
 
 # Env overrides of the above
 global env
@@ -280,12 +284,12 @@ proc Uninstall { pkg } {
 }
 
 proc CopyOut { pkg dest } {
-   if {![file exists $dest]} {
-      file mkdir $dest
-   } elseif {![file isdirectory $dest]} {
-      puts stderr "\nERROR: Destination \"$dest\" is not a directory"
+   if {[file exists $dest]} {
+      puts stderr "\nERROR: Destination \"$dest\" already exists;\
+                   cowardly refusing to overwrite"
       exit 2
    }
+   file mkdir $dest
 
    set count 0
    set filelist [FindFiles $pkg]
@@ -297,9 +301,9 @@ proc CopyOut { pkg dest } {
       }
    }
    if {$count == [llength $filelist]} {
-      puts [format "%2d files copied." $count]
+      puts [format "%2d files copied to $dest." $count]
    } else {
-      puts [format "%2d files copied\
+      puts [format "%2d files copied to $dest\
        (package contains [llength $filelist] files)." $count]
    }
 }

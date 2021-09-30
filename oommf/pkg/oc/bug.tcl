@@ -39,12 +39,12 @@ if {[llength [info commands auto_mkindex_old]]} {
     interp alias {} auto_mkindex {} auto_mkindex_old
 }
 
-# On macOS Mojave the 'info hostname' command can take 5 seconds to run
-# the first time it is called in a Tcl interpreter.  This significantly
-# impacts the Oxs regression test suite, which runs over 550 short
-# simulations; 550 * 5 seconds is more than 45 minutes spent just
-# calling 'info hostname'.  So redefine the info command on macOS (aka
-# Darwin).
+# On macOS Mojave, if the machine is not connected to a network the
+# 'info hostname' command can take 5 seconds to run the first time it is
+# called in a Tcl interpreter.  This significantly impacts the Oxs
+# regression test suite, which runs over 550 short simulations; 550 * 5
+# seconds is more than 45 minutes spent just calling 'info hostname'.
+# So redefine the info command on macOS (aka Darwin).
 global tcl_platform
 if {[string compare "Darwin" $tcl_platform(os)] == 0} {
    rename info Tcl_info

@@ -199,7 +199,10 @@ Oc_Class Ow_PrintDlg {
            $winpath configure -bd 4 -relief flat -padx 5 -pady 5
         }
         wm group $winpath .
-        wm title $winpath $dialog_title
+        set dialogwidth [Ow_SetWindowTitle $winpath $dialog_title]
+        set brace [canvas ${winpath}.brace -width $dialogwidth \
+                    -height 0 -borderwidth 0 -highlightthickness 0]
+        pack $brace -side top
         Ow_PositionChild $winpath ;# Position at +.25+/25 over '.'
         focus $winpath
 

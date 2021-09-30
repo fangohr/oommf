@@ -173,9 +173,12 @@ proc Ow_ModalSelectDirectory { parentwin {initdir {}} } {
    # Note: winpath should be a valid name for non-existing top-level widget
    set workdir [pwd]
    toplevel $winpath
-
    wm group $winpath $parentwin
-   wm title $winpath "Select Directory"
+   set dialogwidth [Ow_SetWindowTitle $winpath "Select Directory"]
+   set brace [canvas ${winpath}.brace -width $dialogwidth \
+                 -height 0 -borderwidth 0 -highlightthickness 0]
+   pack $brace -side top
+
    if {![string match {} [info commands Ow_PositionChild]]} {
       Ow_PositionChild $winpath $parentwin ;# Position at +.25+.25 over parent
    }

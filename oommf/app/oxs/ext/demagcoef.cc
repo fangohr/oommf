@@ -389,7 +389,8 @@ Oxs_Newell_g
   // This function is even in z and odd in x and y.  The fabs()'s
   // simplify special case handling.
   OXS_DEMAG_REAL_ANALYTIC result_sign=1.0;
-  if(x<0.0) result_sign *= -1.0;  if(y<0.0) result_sign *= -1.0;
+  if(x<0.0) result_sign *= -1.0;
+  if(y<0.0) result_sign *= -1.0;
   x=fabs(x); OXS_DEMAG_REAL_ANALYTIC xsq=x*x;
   y=fabs(y); OXS_DEMAG_REAL_ANALYTIC ysq=y*y;
   z=fabs(z); OXS_DEMAG_REAL_ANALYTIC zsq=z*z;
@@ -1029,22 +1030,58 @@ Oxs_DemagAsymptotic::FindRefinementCount
  OC_INDEX& enx,OC_INDEX& eny,OC_INDEX& enz)
 {
   assert(dx>0. && dy>0. && dz>0. && h>0.0);
+
+#if STANDALONE
+  const static OC_INDEX OC_INDEX_MAX_CUBEROOT = static_cast<OC_INDEX>
+    (floor(pow(static_cast<double>(std::numeric_limits<OC_INDEX>::max()),
+               1./3.)));
+#endif
+  
+  const OXS_DEMAG_REAL_ASYMP count_limit
+    = static_cast<OXS_DEMAG_REAL_ASYMP>(OC_INDEX_MAX_CUBEROOT);
+  
   OXS_DEMAG_REAL_ASYMP nx = ceil(dx/h);
   OXS_DEMAG_REAL_ASYMP ny = ceil(dy/h);
   OXS_DEMAG_REAL_ASYMP nz = ceil(dz/h);
-  OXS_DEMAG_REAL_ASYMP n = nx*ny*nz;
-  OC_INDEX ni = static_cast<OC_INDEX>(n);
-  if(static_cast<OXS_DEMAG_REAL_ASYMP>(ni) != n || ni <= 0) {
-    char buf[256];
-    Oc_Snprintf(buf,sizeof(buf),
-                "Overflow error in Oxs_DemagAsymptotic::FindRefinementCount"
-                " with imports %g, %g, %g",dx,dy,dz);
-    OXS_THROW(Oxs_BadParameter,buf);
+
+  if(nx>count_limit || ny>count_limit || nz>count_limit) {
+#if STANDALONE
+    static int warncount=1;
+    if(warncount>0) {
+      fprintf(stderr,"*** WARNING: "
+              "Oxs_DemagAsymptotic::FindRefinementCount index overflow;"
+              " refinement reduced but errors may be larger than"
+              " requested. ***\n");
+      --warncount;
+    }
+#else // !STANDALONE
+    static Oxs_WarningMessage badrefinement(2);
+    badrefinement.Send(revision_info,OC_STRINGIFY(__LINE__),
+              "Refinement index overflow; refinement reduced but errors"
+              " may be larger than requested.");
+#endif // STANDALONE
   }
+
+  // There is no point in returning extremely large values, as very
+  // large values won't fit into an OC_INDEX, and couldn't be indexed
+  // anyway.  Moreover, the compute time to evaluate such a refinement
+  // would be prohibitive.  It may also be the case that the knot in
+  // question is outside the range of the simulation, so it won't ever
+  // been used, regardless.
+  if(nx>count_limit) nx = count_limit;
   enx = static_cast<OC_INDEX>(nx);
+  if(ny>count_limit) ny = count_limit;
   eny = static_cast<OC_INDEX>(ny);
+  if(nz>count_limit) nz = count_limit;
   enz = static_cast<OC_INDEX>(nz);
-  return ni;
+
+  // Safety check against rounding errors
+  if(enx>OC_INDEX_MAX_CUBEROOT) enx = OC_INDEX_MAX_CUBEROOT;
+  if(eny>OC_INDEX_MAX_CUBEROOT) eny = OC_INDEX_MAX_CUBEROOT;
+  if(enz>OC_INDEX_MAX_CUBEROOT) enz = OC_INDEX_MAX_CUBEROOT;
+
+  return enx*eny*enz;
+  // NB: Product guaranteeed <= OC_INDEX_MAX
 }
 
 /*
@@ -1268,8 +1305,13 @@ Oxs_DemagAsymptotic::FindKnotSchedule
     maxerror =  asymptotic_machine_eps;
   }
 
+#if STANDALONE
+  const OXS_DEMAG_REAL_ASYMP analytic_machine_eps
+    = std::numeric_limits<XP_DDFLOAT_TYPE>::epsilon();
+#else
   const OXS_DEMAG_REAL_ASYMP analytic_machine_eps = XP_DD_EPS;
-
+#endif
+  
   const OXS_DEMAG_REAL_ASYMP Vol = dx*dy*dz;
   const OXS_DEMAG_REAL_ASYMP hmax
     = (dx>dy ? (dx>dz ? dx : dz) : (dy>dz ? dy : dz));

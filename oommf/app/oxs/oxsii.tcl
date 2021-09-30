@@ -12,7 +12,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -159,8 +159,14 @@ if {[Oc_NumaAvailable]} {
    Oc_CommandLine Option numanodes {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
-      global numanode_request
-      set numanode_request $nodes
+      global numanode_request cmdline_numanodes
+      set cmdline_numanodes [set numanode_request $nodes]
+      # The cmdline_numanodes variable is used to detect the situation
+      # where numanodes are set on the command line by an abbreviated
+      # form of the option string, such as "-numa" instead of
+      # "-numanodes", to prevent the log report from showing two
+      # numanodes entries. (See proc ProbOptions for implementation
+      # details.)
    } [subst {NUMA memory and run nodes (or "auto" or "none")\
                 (default is "$numanode_request")}]
 }
@@ -645,44 +651,37 @@ source [file join [Oc_Main GetOOMMFRootDir] app oxs checkpoint.tcl]
 
 ########################################################################
 
-
-
 trace variable problem w { Ow_BkgdLogger Reset ;# }
 
 set menuwidth [Ow_GuessMenuWidth $menubar]
-set brace [canvas .brace -width $menuwidth -height 0 -borderwidth 0 \
+set bracewidth [Ow_GetWindowTitleSize [wm title .]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
         -highlightthickness 0]
 pack $brace -side top
-
-if {[package vcompare [package provide Tk] 8] >=0 \
-	&& [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0+ menubar cleanly
-    Oc_DisableAutoSize .
-    wm geometry . "${menuwidth}x0"
-    update
-    wm geometry . {}
-    Oc_EnableAutoSize .
-    update
-}
+## Note: OID is assigned prior to this code being run, so we don't
+##       have to handle window title changing from OID assignment.
 
 share problem
 
-set interface_state disabled
-share interface_state
+set control_interface_state disabled
+share control_interface_state
 
 set bf [frame .buttons]
 pack [button $bf.reload -text Reload -command {set problem $problem} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 pack [button $bf.reset -text Reset -command {set status Initializing...} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 pack [button $bf.run -text Run -command {set status Run} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 pack [button $bf.relax -text Relax -command {set status Relax} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 pack [button $bf.step -text Step -command {set status Step} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 pack [button $bf.pause -text Pause -command {set status Pause} \
-	-state $interface_state] -fill x -side left
+	-state $control_interface_state] -fill x -side left
 
 pack $bf -side top -fill x
 
@@ -712,8 +711,7 @@ Ow_EntryScale New stageES $mf.stage \
 	-rangemax [expr {$number_of_stages-1}] \
 	-scalestep 1 \
 	-outer_frame_options "-bd 0 -relief flat" \
-	-foreground Black -disabledforeground #a3a3a3 \
-	-state $interface_state
+	-state $control_interface_state
 pack [$stageES Cget -winpath] -side top -fill x
 
 pack $mf -side top -fill x
@@ -722,17 +720,24 @@ trace variable number_of_stages w [format {
     %s Configure -rangemax [uplevel #0 expr {$number_of_stages-1}]
     ;# } $stageES]
 
-trace variable interface_state w [format {
+trace variable control_interface_state w [format {
     foreach _ [winfo children .buttons] {
 	if {[string match Reload [$_ cget -text]] \
 		&& [info exists problem] \
 		&& ![string match {} $problem]} {
 	    $_ configure -state normal
 	} else {
-	    $_ configure -state [uplevel #0 set interface_state];
+	    $_ configure -state [uplevel #0 set control_interface_state];
 	}
     }
-    %s Configure -state [uplevel #0 set interface_state] ;# } $stageES]
+    %s Configure -state [uplevel #0 set control_interface_state] ;# } $stageES]
+
+# Widget lists; these are tied to output_interface_state
+# for state (normal/disable) toggling.
+set output_tkbox_list {}
+set output_owbox_list {}
+set output_interface_state disabled
+share output_interface_state
 
 set oframe [frame .sopanel]
 
@@ -741,6 +746,7 @@ pack [label $opframe.l -text " Output " -relief groove] -side top -fill x
 Ow_ListBox New oplb $opframe.lb -height 4 -variable oplbsel
 # Note: At this time (Feb-2006), tk list boxes on Mac OS X/Darwin don't
 # scroll properly if the height is smaller than 4.
+lappend output_owbox_list $oplb
 pack [$oplb Cget -winpath] -side top -fill both -expand 1
 share opAssocList
 trace variable opAssocList w { uplevel #0 {
@@ -775,6 +781,7 @@ pack [label $dframe.l -text " Destination " -relief groove] -side top -fill x
 Ow_ListBox New dlb $dframe.lb -height 4 -variable dlbsel
 # Note: At this time (Feb-2006), tk list boxes on Mac OS X/Darwin don't
 # scroll properly if the height is smaller than 4.
+lappend output_owbox_list $oplb
 pack [$dlb Cget -winpath] -side top -fill both -expand 1
 proc SetDestinationList {} {
     global dlb destList
@@ -783,7 +790,7 @@ proc SetDestinationList {} {
 }
 trace variable destList w {SetDestinationList; UpdateSchedule ;#}
 pack $dframe -side left -fill both -expand 1
-	
+
 set sframe [frame $oframe.schedule]
 grid [label $sframe.l -text Schedule -relief groove] - -sticky new
 grid columnconfigure $sframe 0 -pad 15
@@ -791,6 +798,8 @@ grid columnconfigure $sframe 1 -weight 1
 grid [button $sframe.send -command \
 	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0] 1} \
 	-text Send] - -sticky new
+lappend output_tkbox_list $sframe.send
+
 #
 # FOR NOW JUST HACK IN THE EVENTS WE SUPPORT
 #	eventually this may be driver-dependent
@@ -801,6 +810,7 @@ foreach event $events {
                   -variable Schedule---activeA($event)]
    $active configure -command [subst -nocommands \
                  {Schedule Active [$active cget -variable] $event}]
+   lappend output_tkbox_list $active
    if {[string compare Done $event]==0} {
       grid $active -sticky nw
       lappend schedwidgets $active
@@ -809,9 +819,9 @@ foreach event $events {
          -autoundo 0 -valuewidth 4 \
          -variable Schedule---frequencyA($event) \
          -callback [list EntryCallback $event] \
-         -foreground Black -disabledforeground #a3a3a3 \
          -valuetype posint -coloredits 1 -writethrough 0 \
          -outer_frame_options "-bd 0"
+      lappend output_owbox_list $frequency
       grid $active [$frequency Cget -winpath] -sticky nw
       lappend schedwidgets $active $frequency
    }
@@ -831,6 +841,20 @@ proc Schedule {x v e} {
     remote Oxs_Schedule Set [lindex $oplbsel 0] [lindex $dlbsel 0] $x $e $value
 }
 
+proc ToggleOutputState {} {
+   global output_interface_state
+   global output_tkbox_list
+   global output_owbox_list
+   foreach w $output_tkbox_list {
+      $w configure -state $output_interface_state
+   }
+   foreach w $output_owbox_list {
+      $w Configure -state $output_interface_state
+   }
+   UpdateSchedule
+}
+trace variable output_interface_state w "ToggleOutputState ;#"
+
 trace variable oplbsel w "UpdateSchedule ;#"
 trace variable dlbsel w "UpdateSchedule ;#"
 Oc_EventHandler Bindtags UpdateSchedule UpdateSchedule
@@ -848,7 +872,6 @@ proc UpdateSchedule {} {
     }
     foreach _ $schedwidgets {
 	if {[string match *EntryBox* $_]} {
-#Oc_Log Log "$_ Configure -state $state" warning
 	    $_ Configure -state $state
 	} else {
 	    $_ configure -state $state
@@ -910,6 +933,7 @@ proc UpdateSchedule {} {
 UpdateSchedule
 proc ClearSchedule {} {
     global opList opArray
+    if {![info exists opList]} { return }
 
     # Loop over all the outputs and destinations
     foreach o $opList {
@@ -977,9 +1001,6 @@ if {$loglevel>1} {
    Oc_Log SetLogHandler [list Oc_FileLogger Log] status
 }
 
-# Create a new Oxs_Destination for each Net_Thread that becomes Ready
-Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
-
 ##########################################################################
 # Here's the guts of OXSII -- a switchboard between interactive GUI events
 # and the set of Tcl commands provided by OXS
@@ -1019,7 +1040,9 @@ Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
 set status UNINITIALIZED
 trace variable status w [list ChangeStatus $status]
 proc ChangeStatus {old args} {
-    global status interface_state problem
+    global status problem
+    global control_interface_state
+    global output_interface_state
     if {[string match $old $status]} {return}
     if {[string match Done $old]} {
        # Limit stage changes available from Done state
@@ -1037,21 +1060,25 @@ proc ChangeStatus {old args} {
 	    # The initial state -- no problem loaded.
 	    # Also the state after any problem load fails, or
 	    # a problem is released.
-	    set interface_state disabled
+	    set control_interface_state disabled
+	    set output_interface_state disabled
 	}
 	Loading... {
-	    set interface_state disabled
+	    set control_interface_state disabled
+	    set output_interface_state disabled
 	    # Let interface get updated with above changes, then
 	    # call ProblemLoad
 	    after idle LoadProblem problem
 	}
         Initializing... {
-	    set interface_state disabled
+	    set control_interface_state disabled
+	    set output_interface_state disabled
 	    after idle Reset
 	}
 	Pause {
 	    # A problem is loaded, but not running.
-	    set interface_state normal
+	    set control_interface_state normal
+	    set output_interface_state normal
 	}
 	Run {
 	    after idle Loop Run
@@ -1085,30 +1112,22 @@ proc ChangeStatus {old args} {
 # Initialize status to "" -- no problem loaded.
 set status ""
 
-# Routine to flush pending log messages.  Used for cleanup
-proc FlushLog {} {
-    foreach id [after info] {
-	foreach {script type} [after info $id] break
-	if {[string match idle $type] && [string match *Oc_Log* $script]} {
-	    uplevel #0 $script
-	}
-    }
-}
-
 # Be sure any loaded problem gets release on application exit
 Oc_EventHandler New _ Oc_Main Shutdown ReleaseProblem -oneshot 1
-Oc_EventHandler New _ Oc_Main Shutdown FlushLog
-proc ReleaseProblem {} {
+Oc_EventHandler New _ Oc_Main Shutdown Oxs_FlushLog
+Oc_EventHandler New _ Oc_Main Shutdown Oxs_FlushData
+
+proc ReleaseProblem { {errcode 0} } {
     # We're about to release any loaded problem.  Spread the word.
     Oc_EventHandler Generate Oxs Release
     if {[catch {
-	Oxs_ProbRelease
+	Oxs_ProbRelease $errcode
     } msg]} {
 	# This is really bad.  Kill the solver.
 	#
 	# ...but first flush any pending log messages to the
 	# error log file.
-	FlushLog
+	Oxs_FlushLog
 	Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
 	exit
     }
@@ -1151,8 +1170,11 @@ proc ProbOptions {} {
       global threadcount_request
       set opts(threads) $threadcount_request
       if {[Oc_NumaAvailable]} {
-         global numanode_request
-         set opts(numanodes) $numanode_request
+         global numanode_request cmdline_numanodes
+         if {![info exists cmdline_numanodes] ||
+             [string compare $numanode_request $cmdline_numanodes]!=0} {
+            set opts(numanodes) $numanode_request
+         }
       }
    }
    set optlist {}
@@ -1273,7 +1295,7 @@ proc Reset {} {
 	after idle [subst {[list set errorInfo $errorInfo]; \
 		[list set errorCode $errorCode]; [list \
 		Oc_Log Log "Reset error:\n\t$msg" error Reset]}]
-	ReleaseProblem
+	ReleaseProblem 1
     } else {
         foreach {step stage number_of_stages} [Oxs_GetRunStateCounts] break
         set stagerequest $stage
@@ -1308,7 +1330,7 @@ proc GenerateRunEvents { events } {
          default {
             after idle [list Oc_Log Log \
                            "Unrecognized event: $event" error Loop]
-            ReleaseProblem
+            ReleaseProblem 1
          }
       }
    }
@@ -1325,7 +1347,7 @@ proc Loop {type} {
 	after idle [subst {[list set errorInfo $errorInfo]; \
 		[list set errorCode $errorCode]; \
 		[list Oc_Log Log $msg error Loop]}]
-	ReleaseProblem
+	ReleaseProblem 1
     } else {
        # Fire event handlers
        GenerateRunEvents $msg
@@ -1392,14 +1414,12 @@ Oc_EventHandler New _ $server RegisterSuccess \
 # oxsii, have already been assigned OID 0???
 
 ##########################################################################
-# Track the threads known to the account server
-#	code mostly cribbed from mmLaunch
-#	good candidate for library code?
+# Track the servers known to the account server
+#	code mostly cribbed from mmLaunch.
+#	Good candidate for library code?
 ##########################################################################
-# Get Thread info from account server:
+# Get server info from account server:
 proc Initialize {acct} {
-   # Now that connections to servers are established, it's safe
-   # to process options and possibly start computing.
    global problem
    if {[info exists problem]} {
       set problem $problem  ;# Fire trace
@@ -1412,42 +1432,48 @@ proc Initialize {acct} {
 
    AccountReady $acct
 }
+
+# Supported export protocols. (Note: White space is significant.)
+global export_protocols
+set export_protocols {
+   {OOMMF DataTable protocol}
+   {OOMMF vectorField protocol}
+   {OOMMF scalarField protocol}
+}
+
 proc AccountReady {acct} {
-    set qid [$acct Send threads]
-    Oc_EventHandler New _ $acct Reply$qid [list GetThreadsReply $acct] \
+   global export_protocols
+   set qid [$acct Send services $export_protocols]
+   Oc_EventHandler New _ $acct Reply$qid [list GetServicesReply $acct] \
         -groups [list $acct]
     Oc_EventHandler New _ $acct Ready [list AccountReady $acct] -oneshot 1
 }
-proc GetThreadsReply { acct } {
-    # Set up to receive NewThread messages, but only one handler per account
-    Oc_EventHandler DeleteGroup GetThreadsReply-$acct
+proc GetServicesReply { acct } {
+    # Set up to receive NewService messages, but only one handler per account
+    Oc_EventHandler DeleteGroup GetServicesReply-$acct
     Oc_EventHandler New _ $acct Readable [list HandleAccountTell $acct] \
-            -groups [list $acct GetThreadsReply-$acct]
-    set threads [$acct Get]
-    Oc_Log Log "Received thread list: $threads" status
-    # Create a Net_Thread instance for each element of the returned
-    # thread list
-    if {![lindex $threads 0]} {
-        foreach quartet [lrange $threads 1 end] {
-	    NewThread $acct [lindex $quartet 1]
+            -groups [list $acct GetServicesReply-$acct]
+    set services [$acct Get]
+    Oc_Log Log "Received service list: $services" status
+    # Create a Oxs_Destination instance for each element of the returned
+    # service list. The first element of $services is, as usual, a
+    # result code.  Following that is a list of quartets, with each
+    # quartet of the form: advertisedname sid port protocolname.
+    if {![lindex $services 0]} {
+        foreach quartet [lrange $services 1 end] {
+	    NewService $acct $quartet
         }
     }
 }
-# Detect and handle NewThread message from account server
+# Detect and handle newservice messages from account server
 proc HandleAccountTell { acct } {
     set message [$acct Get]
     switch -exact -- [lindex $message 0] {
-        newthread {
-            NewThread $acct [lindex $message 1]
+        newservice {
+           NewService $acct [lrange $message 1 end]
         }
-        deletethread {
-            Net_Thread New t -hostname [$acct Cget -hostname] \
-                    -pid [lindex $message 1]
-            if {[$t Ready]} {
-                $t Send bye
-            } else {
-                Oc_EventHandler New _ $t Ready [list $t Send bye]
-            }
+        deleteservice {
+           Oxs_Destination DeleteService [lindex $message 1]
         }
         notify -
         newoid -
@@ -1459,15 +1485,27 @@ proc HandleAccountTell { acct } {
         }
     }
 }
-# There's a new thread with id $id, create corresponding local instance
-proc NewThread { acct id } {
 
-    # Do not keep any connections to yourself!
-    if {[string match [$acct OID]:* $id]} {return}
+# There's a new service; create corresponding local instance
+proc NewService { acct quartet } {
+   # The quartet import is a four item list of the form
+   #   advertisedname  sid  port  fullprotocol
+   # which matches the reply to the "threads" request from the account
+   # server.
+   lassign $quartet appname sid port fullprotocol
 
-    Net_Thread New _ -hostname [$acct Cget -hostname] \
-            -accountname [$acct Cget -accountname] -pid $id
+   # Safety: Don't connect to yourself
+   if {[string match [$acct OID]:* $sid]} {return}
+
+   # Otherwise, setup an Oxs_Destination with lazy Net_Thread construction.
+   Oxs_Destination New _ \
+      -hostname [$acct Cget -hostname] \
+      -accountname [$acct Cget -accountname] \
+      -name "${appname}<${sid}>" \
+      -fullprotocol $fullprotocol \
+      -serverport $port
 }
+
 # Delay "nice" of this process until any children are spawned.
 Net_Account New a
 if {[$a Ready]} {

@@ -490,7 +490,7 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_compiler_c++_property_use_underscore_getpid 1
 
    # Widest natively support floating point type
-   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
       $config SetValue program_compiler_c++_typedef_realwide "double"
    }
 
@@ -542,14 +542,6 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
    $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
-   if {[catch {$config SetValue TCL_LIB_SPEC \
-                  [$config GetValue TCL_VC_LIB_SPEC]} _]} {
-      puts stderr "WARNING: $_"
-   }
-   if {[catch {$config SetValue TK_LIB_SPEC \
-                  [$config GetValue TK_VC_LIB_SPEC]} _]} {
-      puts stderr "WARNING: $_"
-   }
    # Note 1: advapi32 is needed for GetUserName function in Nb package.
    # Note 2: We could add here support for the Windows 7 API call
    #   SetCurrentProcessExplicitAppUserModelID(), which can be used to
@@ -603,7 +595,7 @@ if {[string match cl $ccbasename]} {
     $config SetValue program_compiler_c++_property_no_erf 1
 
     # Widest natively support floating point type
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "double"
     }
 
@@ -623,8 +615,6 @@ if {[string match cl $ccbasename]} {
     $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}
     $config SetValue program_linker_option_sub {format "\"/SUBSYSTEM:%s\""}
-    $config SetValue TCL_LIB_SPEC [$config GetValue TCL_VC_LIB_SPEC]
-    $config SetValue TK_LIB_SPEC [$config GetValue TK_VC_LIB_SPEC]
     # Note: advapi32 is needed for GetUserName function in Nb package.
     $config SetValue TK_LIBS {user32.lib advapi32.lib}
     $config SetValue TCL_LIBS {user32.lib advapi32.lib}
@@ -840,7 +830,7 @@ if {[string match cl $ccbasename]} {
    # but provides the x86 native floating point format having approx.
    # 19 decimal digits precision as opposed to 16 for double.)
    # Default is "double".
-   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
       $config SetValue program_compiler_c++_typedef_realwide "double"
    }
 
@@ -903,31 +893,6 @@ if {[string match cl $ccbasename]} {
    }
    $config SetValue program_linker_option_sub {fufufubar}
    $config SetValue program_linker_uses_-L-l {1}
-   # First try "Visual C" names for Tcl/Tk libraries.  If that
-   # doesn't work, then try unix naming convention, which should
-   # pick up MinGW builds of Tcl/Tk.
-   set tcllib [$config GetValue TCL_VC_LIB_SPEC]
-   set tklib  [$config GetValue TK_VC_LIB_SPEC]
-   if {![file exists $tcllib]} {
-      set path [file dirname $tcllib]
-      set fname [file tail $tcllib]
-      regsub {\..*$} $fname {} fname
-      set tname [file join $path lib${fname}.a]
-      if {[file exists $tname]} {
-         set tcllib $tname
-      }
-   }
-   if {![file exists $tklib]} {
-      set path [file dirname $tklib]
-      set fname [file tail $tklib]
-      regsub {\..*$} $fname {} fname
-      set tname [file join $path lib${fname}.a]
-      if {[file exists $tname]} {
-         set tklib $tname
-      }
-   }
-   $config SetValue TCL_LIB_SPEC $tcllib
-   $config SetValue TK_LIB_SPEC $tklib
    $config SetValue TK_LIBS {}
    $config SetValue TCL_LIBS {}
 

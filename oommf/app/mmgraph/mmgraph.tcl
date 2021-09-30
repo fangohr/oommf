@@ -28,7 +28,7 @@ package require Nb 2	;# [Nb_InputFilter]
 wm withdraw .
 
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -111,8 +111,7 @@ proc SetDefaultConfiguration {} {
     #    _mmgpsc() display configuration array:
     set default_color_selection curve  ;# Either "curve" or "segment"
     Oc_Option Get Ow_GraphWin default_color_selection default_color_selection
-    set default_canvas_color "white"  ;# Either "white" or "#042"
-    Oc_Option Get Ow_GraphWin default_canvas_color default_canvas_color
+    set default_canvas_color [Ow_GraphWin GetDefaultCanvasColor]
     set default_curve_width 0
     Oc_Option Get Ow_GraphWin default_curve_width default_curve_width
     set default_symbol_freq 0
@@ -712,6 +711,21 @@ $ymenu configure -tearoff 1 -title "Y1-Axis: [Oc_Main GetInstanceName]"
 $y2menu configure -tearoff 1 -title "Y2-Axis: [Oc_Main GetInstanceName]"
 Ow_StdHelpMenu $helpmenu
 
+# Ensure minimal window width
+set menuwidth [Ow_GuessMenuWidth $menubar]
+set bracewidth [Ow_SetWindowTitle . [Oc_Main GetInstanceName]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
+        -highlightthickness 0]
+pack $brace -side top
+# Resize root window when OID is assigned:
+Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+  $brace configure -width \
+    [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+}]
+
 global dialog
 proc SetPlotConfiguration { pscvar }  {
    global _mmgpsc graph data_base_value
@@ -864,6 +878,7 @@ $optionsmenu add command -label "Break Curves" -underline 0 \
 
 $optionsmenu add command -label "Rescale" -underline 0 -command Rescale
 bind . <Key-Home> Rescale
+bind . <Shift-Key-Home> Rescale
 catch {bind . <Key-KP_Home> Rescale}
 
 $optionsmenu add separator
@@ -2238,7 +2253,6 @@ if {!$no_net} {
    }
 }
 
-wm title . [Oc_Main GetInstanceName]
 Ow_SetIcon .
 wm deiconify .
 

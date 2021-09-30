@@ -246,23 +246,21 @@ void Nb_TclCommand::ReleaseBaseCommand()
   base_command_size=0;
 #endif // Tcl version check
 
-  // Empty result stack.  We discard all stacked results, on the
-  // theory that if the destructor is being called with items still
-  // in the stack, then we are probably in an exceptional (read,
-  // error) state, and perhaps the current Tcl result holds some
-  // useful error information.  The alternative is to dump all
-  // the results except the one at the bottom of the stack,
-  // with a command like
+  // Empty result stack.  We discard all stacked results, on the theory
+  // that if the destructor is being called with items still in the
+  // stack, then we are probably in an exceptional (read, error) state,
+  // and perhaps the current Tcl result holds some useful error
+  // information.  The alternative is to dump all the results except the
+  // one at the bottom of the stack, with a command like
   //
   // if(it == result_stack.rend()-1) Tcl_RestoreResult(interp,&(*it));
   //
-  // The boolean "unbalanced" is set true if the result stack is
-  // not empty.  This presumably indicates a programming error.
-  // After freeing resources, we print a warning if unbalanced
-  // is true, provided an exception is not currently being processed,
-  // and also provided an earlier exception did not explicitly
-  // request no warning by setting the member variable
-  // no_too_few_restores_warning true.
+  // The boolean "unbalanced" is set true if the result stack is not
+  // empty.  This presumably indicates a programming error.  After
+  // freeing resources, we print a warning if unbalanced is true,
+  // provided an exception is not currently being processed, and also
+  // provided an earlier exception did not explicitly request no warning
+  // by setting the member variable no_too_few_restores_warning true.
   vector<Tcl_SavedResult>::reverse_iterator it = result_stack.rbegin();
   OC_BOOL unbalanced = (it != result_stack.rend());
   while(it != result_stack.rend()) {
@@ -525,7 +523,8 @@ void Nb_TclCommand::Eval() const
                                 TCL_GLOBAL_ONLY);
     const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
                                 TCL_GLOBAL_ONLY);
-    if(ei==NULL) ei = "";   if(ec==NULL) ec = "";
+    if(ei==NULL) ei = "";
+    if(ec==NULL) ec = "";
 
     // NOTE TO SELF: Change this to 0 to test Don's improved
     // DisplayError proc in oxsii.tcl (mjd, 25-June-2002)
@@ -864,7 +863,7 @@ void Nb_TclCommand::GetResultListItem(int index,OC_REAL8m& result) const
 #endif // (Tcl version < 8.1)
 }
 
-#if !OC_REAL8m_IS_REAL8
+#if !OC_REAL8m_IS_OC_REAL8
 void Nb_TclCommand::GetResultListItem(int index,OC_REAL8& result) const
 {
   OC_REAL8m result8m;

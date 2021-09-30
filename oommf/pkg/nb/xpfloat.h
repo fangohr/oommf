@@ -2,7 +2,7 @@
  *
  * Class for extended floating point precision using
  * compensated summation.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2012/11/20 01:12:44 $
@@ -22,6 +22,92 @@
 
 /* End includes */     /* Optional directive to pimake */
 
+/* The floating point associativity controls can be set in the platform
+ * config files, in which case oommf/pkg/oc/procs.tcl writes the values
+ * into ocport.h. Otherwise set values here depending on C++ compiler
+ */
+#ifdef OC_COMPILER_FILE_ASSOCIATIVITY_CONTROL
+# define NB_XPFLOAT_COMPILER_FILE_ASSOCIATIVITY_CONTROL \
+  OC_COMPILER_FILE_ASSOCIATIVITY_CONTROL
+#else
+# define NB_XPFLOAT_COMPILER_FILE_ASSOCIATIVITY_CONTROL 1
+/// All compilers should have some way to respect the operation
+/// order specified in the code.
+#endif
+
+#ifdef OC_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+# define NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL \
+  OC_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+#else
+# if defined(_MSC_VER) || defined(_INTEL_COMPILER) \
+  || defined(__clang__) || defined(__PGIC__) \
+  || (defined(__GNUC__) && __GNUC__ > 4)
+#  define NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL 1
+# else
+#  define NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL 0
+# endif
+#endif
+
+// The following preprocessor block defines macros for enabling
+// floating-point associativity control at function scope. There
+// are four macros:
+//  NB_XPFLOAT_ASSOC_CONTROL_START_A - placed before function name
+//  NB_XPFLOAT_ASSOC_CONTROL_START_B - placed after function name
+//                                     but before opening brace
+//  NB_XPFLOAT_ASSOC_CONTROL_START_C - placed after opening brace,
+//                                     before first code line.
+//  NB_XPFLOAT_ASSOC_CONTROL_END     - place after function closing brace
+// The _Pragma operator is part of the C99 and C++11 standards
+
+#if NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+# if defined(_MSC_VER) && _MSC_VER<1926
+#  define PRAGMA(X) __pragma(X)  // Microsoft-specific extension
+# else
+#  define PRAGMA(X) _Pragma(#X)  // Part of C99 and C++-11 standards
+#endif
+
+# if defined(_MSC_VER)
+#  define NB_XPFLOAT_ASSOC_CONTROL_START_A PRAGMA(float_control(precise,on,push))
+#  define NB_XPFLOAT_ASSOC_CONTROL_END     PRAGMA(float_control(pop))
+
+# elif defined(_INTEL_COMPILER)
+#  define NB_XPFLOAT_ASSOC_CONTROL_START_C PRAGMA(float_control(precise,on))
+
+# elif defined(__clang__)
+#  define NB_XPFLOAT_ASSOC_CONTROL_START_B __attribute__ ((optnone))
+// Note: The Apple variant of clang doesn't support #pragma clang optimize off
+
+# elif defined(__PGIC__)
+#  define NB_XPFLOAT_ASSOC_CONTROL_START_C PRAGMA(routine noassoc)
+// Portland Group Compiler; Alternatively, PRAGMA(routine opt 1)
+
+# elif defined(__GNUC__)
+// A number of compilers other than gcc #define the __GNUC__ macro,
+// so keep this elif block last.
+#  define NB_XPFLOAT_ASSOC_CONTROL_START_A \
+   PRAGMA(GCC push_options) PRAGMA(GCC optimize ("-fno-associative-math"))
+// If -fno-associative-math fails, try __attribute__((optimize(2,"no-fast-math")));
+#  define NB_XPFLOAT_ASSOC_CONTROL_END PRAGMA(GCC pop_options)
+
+# else
+#  error OC_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL enabled\
+ but compiler support missing
+# endif // Compiler select
+#endif // OC_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+
+#ifndef NB_XPFLOAT_ASSOC_CONTROL_START_A
+# define NB_XPFLOAT_ASSOC_CONTROL_START_A
+#endif
+#ifndef NB_XPFLOAT_ASSOC_CONTROL_START_B
+# define NB_XPFLOAT_ASSOC_CONTROL_START_B
+#endif
+#ifndef NB_XPFLOAT_ASSOC_CONTROL_START_C
+# define NB_XPFLOAT_ASSOC_CONTROL_START_C
+#endif
+#ifndef NB_XPFLOAT_ASSOC_CONTROL_END
+# define NB_XPFLOAT_ASSOC_CONTROL_END
+#endif
+
 /* NOTE: The same considerations regarding passing Oc_Duet objects in
  * parameter lists (see oc/ocsse.h) apply to Nb_Xpfloat objects too,
  * since Nb_Xpfloat's may comprise SSE objects.  So, in particular, DO
@@ -35,7 +121,7 @@
  * below.
  *
  * Considerations are:
- *   
+ *
  *   NB_XPFLOAT_TYPE should be at least as wide as OC_REAL8m.
  *
  *   We need to insure compensated addition steps are not messed up by
@@ -84,7 +170,7 @@ typedef long double NB_XPFLOAT_TYPE; // No choice
 
 #elif OC_USE_SSE
 typedef OC_REAL8 NB_XPFLOAT_TYPE;
-# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_REAL8
+# define NB_XPFLOAT_IS_OC_REAL8m OC_REAL8m_IS_OC_REAL8
 # define NB_XPFLOAT_USE_SSE 1
 # define NB_XPFLOAT_NEEDS_VOLATILE 0
 
@@ -112,12 +198,9 @@ typedef double NB_XPFLOAT_TYPE;
 // floating-point operation non-associativity.  Some compilers are
 // sufficiently circumspect wrt optimization either by default or via
 // support code directives that this is not a problem.  For others,
-// achieve this effect by defining OC_COMPILER_NO_ASSOCIATIVITY_CONTROL
+// achieve this effect by defining NB_XPFLOAT_NEEDS_VOLATILE
 // true which causes some variables to be marked "volatile".
-#ifndef OC_COMPILER_NO_ASSOCIATIVITY_CONTROL
-# define OC_COMPILER_NO_ASSOCIATIVITY_CONTROL 0
-#endif
-#if OC_COMPILER_NO_ASSOCIATIVITY_CONTROL \
+#if !NB_XPFLOAT_COMPILER_FILE_ASSOCIATIVITY_CONTROL \
   && !NB_XPFLOAT_USE_SSE && !NB_XPFLOAT_NEEDS_VOLATILE
 # undef  NB_XPFLOAT_NEEDS_VOLATILE
 # define NB_XPFLOAT_NEEDS_VOLATILE 1
@@ -130,7 +213,7 @@ class Nb_Xpfloat
 #if OC_USE_SSE
   // The following interface is available if OC_USE_SSE is true, even if
   // Nb_Xpfloat is not using SSE.
-  friend void Nb_XpfloatDualAccum(Nb_Xpfloat&,Nb_Xpfloat&,__m128d);
+  friend void Nb_XpfloatDualAccum(Nb_Xpfloat&,Nb_Xpfloat&,const __m128d&);
 #endif
 
   friend void Nb_XpfloatDualAccum(Nb_Xpfloat&,Nb_Xpfloat&,const Oc_Duet&);
@@ -213,14 +296,7 @@ public:
 
 #endif // NB_XPFLOAT_USE_SSE
 
-#if !NB_XPFLOAT_USE_SSE && defined(__GNUC__) \
-  && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)) \
-  && !defined(__INTEL_COMPILER) \
-  && !defined(__PGI) && !defined(__PGI__)
-  void Accum(NB_XPFLOAT_TYPE y) __attribute__((optimize(2,"no-fast-math")));
-#else
   void Accum(NB_XPFLOAT_TYPE y);
-#endif
 
   Nb_Xpfloat& operator+=(NB_XPFLOAT_TYPE y) { Accum(y); return *this; }
   Nb_Xpfloat& operator-=(NB_XPFLOAT_TYPE y) { Accum(-y); return *this; }
@@ -260,22 +336,22 @@ inline
 Nb_Xpfloat operator*(NB_XPFLOAT_TYPE y,const Nb_Xpfloat& x) { return x*y; }
 Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y);
 
-// Defining Accum(NB_XPFLOAT_TYPE) here, as opposed to in the
-// xpfloat.cc file, allows significant speedups with the g++ compiler.
-// It makes small difference with the Intel C++ compiler (icpc),
-// presumably because of icpc's interprocedural optimization ability?
-// NB: Compiler-specific #if's restrict optimizer to respect
-// non-associativity of floating point addition.
-#if !NB_XPFLOAT_USE_SSE
-# if defined(_MSC_VER)
-// Use Visual C++ pragma to require precise (non-associative) math
-#  pragma float_control(precise,on,push)
-# endif
+// Defining Accum(NB_XPFLOAT_TYPE) here, as opposed to in the xpfloat.cc
+// file, allows significant speedups with the g++ compiler.  It makes
+// small difference with the Intel C++ compiler (icpc), presumably because
+// of icpc's interprocedural optimization ability?  However, it is
+// important to restrict the optimizer to respect the non-associativity of
+// floating point addition. If there is no function-scope compiler
+// directives for insuring this, then the code is built inside xpfloat.cc
+// with file-scope optimization restrictions.  This case is handled with
+// the NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL macro.
+#if NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+#if  !NB_XPFLOAT_USE_SSE
+NB_XPFLOAT_ASSOC_CONTROL_START_A
 inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
+NB_XPFLOAT_ASSOC_CONTROL_START_B
 {
-# if defined(__INTEL_COMPILER)
-#  pragma float_control(precise,on)
-# endif
+NB_XPFLOAT_ASSOC_CONTROL_START_C
   // Calculate sum, using compensated (Kahan) summation.
   //
   // We try to select NB_XPFLOAT_TYPE so that there is no hidden
@@ -299,7 +375,7 @@ inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
   // "#pragma float_control(precise,on)" inside this function.  The
   // pragma option operates on a function by function basis, so it is
   // less global.
-# if NB_XPFLOAT_NEEDS_VOLATILE 
+# if NB_XPFLOAT_NEEDS_VOLATILE
   volatile NB_XPFLOAT_TYPE sum1; // Mark as volatile to protect against
   volatile NB_XPFLOAT_TYPE sum2; // problems arising from extra precision.
   volatile NB_XPFLOAT_TYPE corrtemp;
@@ -319,18 +395,20 @@ inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
   // and b) we want to be sure to drop any extra precision.
   corrtemp = x - sum2;
   corrtemp += sum1;
-    
+
   // Store results
   corr = corrtemp;
   x=sum2;
 }
-# if defined(_MSC_VER)
-#  pragma float_control(pop)
-# endif
+NB_XPFLOAT_ASSOC_CONTROL_END
 
 #else // NB_XPFLOAT_USE_SSE
 
-inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y) {
+NB_XPFLOAT_ASSOC_CONTROL_START_A
+inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
+NB_XPFLOAT_ASSOC_CONTROL_START_B
+{
+NB_XPFLOAT_ASSOC_CONTROL_START_C
   // SSE double precision doesn't carry any extra precision, so we
   // don't need to use "volatile"
   __m128d corr = _mm_unpackhi_pd(xpdata,_mm_setzero_pd());
@@ -339,17 +417,28 @@ inline void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y) {
   __m128d corrtemp = _mm_add_sd(sum1,_mm_sub_sd(xpdata,sum2));
   xpdata = _mm_unpacklo_pd(sum2,corrtemp);
 }
+NB_XPFLOAT_ASSOC_CONTROL_END
 
-#endif // NB_XPFLOAT_USE_SSE
+# endif // !NB_XPFLOAT_USE_SSE
+#endif // NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
 
 
 #if OC_USE_SSE
+# if NB_XPFLOAT_USE_SSE
+
+#  if NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+// It is only safe to inline the following function if we can
+// disable fp associative math. Otherwise, it gets defined in
+// the xpfloat.cc file, which is compiled value-safe.
+NB_XPFLOAT_ASSOC_CONTROL_START_A
 inline void
-Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,__m128d y)
-{ // Import y holds two packed double precision values.  The
+Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,const __m128d& y)
+NB_XPFLOAT_ASSOC_CONTROL_START_B
+{
+NB_XPFLOAT_ASSOC_CONTROL_START_C
+  // Import y holds two packed double precision values.  The
   // lower half of y holds the value to be accumulated into xpA,
   // and the upper half holds the value to be accumulated into xpB.
-
   // This interface is available if OC_USE_SSE is true, even if
   // Nb_Xpfloat is not using SSE.
 
@@ -359,21 +448,32 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,__m128d y)
 
   // For implementation notes, see the Nb_Xpfloat::Accum routine above.
   assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
-#if NB_XPFLOAT_USE_SSE
-  __m128d sum1 = _mm_add_pd(y,_mm_unpackhi_pd(xpA.xpdata,xpB.xpdata));
-  __m128d wx   = _mm_unpacklo_pd(xpA.xpdata,xpB.xpdata);
-  __m128d sum2 = _mm_add_pd(wx,sum1);
-  __m128d corrtemp = _mm_add_pd(_mm_sub_pd(wx,sum2),sum1);
+  __m128d wx_lo = _mm_unpacklo_pd(xpA.xpdata,xpB.xpdata);
+  __m128d wx_hi = _mm_unpackhi_pd(xpA.xpdata,xpB.xpdata);
+  __m128d sum1  = _mm_add_pd(y,wx_hi);
+  __m128d sum2  = _mm_add_pd(wx_lo,sum1);
+  __m128d diff  = _mm_sub_pd(wx_lo,sum2);
+  __m128d corrtemp = _mm_add_pd(diff,sum1);
   xpA.xpdata = _mm_unpacklo_pd(sum2,corrtemp);
   xpB.xpdata = _mm_unpackhi_pd(sum2,corrtemp);
-#else // !NB_XPFLOAT_USE_SSE
+}
+NB_XPFLOAT_ASSOC_CONTROL_END
+#  endif // NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+
+# else // !NB_XPFLOAT_USE_SSE
+
+inline void
+Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,const __m128d& y)
+{ // For implementation notes, see the Nb_Xpfloat::Accum routine above.
+  assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
   // Non-SSE version that retains precision in xpA and xpB
   // in case where NB_XPFLOAT_TYPE is wider than REAL8.
   double dummy[2];
   _mm_storeu_pd(dummy,y);
   Nb_XpfloatDualAccum(xpA,dummy[0],xpB,dummy[1]);
-#endif // NB_XPFLOAT_USE_SSE
 }
+
+# endif // NB_XPFLOAT_USE_SSE
 #endif // OC_USE_SSE
 
 inline void
@@ -388,8 +488,6 @@ Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,NB_XPFLOAT_TYPE yA,
   // the accums will be lost!!!!!!!
 
   // For implementation notes, see the Nb_Xpfloat::Accum routine above.
-
-
   assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
 
 #if !NB_XPFLOAT_USE_SSE

@@ -9,8 +9,35 @@
 # on which host.tcl contacts its parent to signal that its server is
 # ready.  This also suppresses error messages.
 #
-# Last modified on: $Date: 2015/09/30 07:41:36 $
-# Last modified by: $Author: donahue $
+# Debugging notes:
+# 1) You can launch a standalone host server via
+#   app/omfsh/<platform>/omfsh pkg/net/threads/host.tcl -tk 0 15136
+#
+# 2) If you connect to the host server with telnet, use "query"
+#    messages (e.g., "query 1 messages") to interact with the
+#    host server. When finished, use
+#      query N bye
+#    to begin the connection shutdown. You should receive back
+#      tell netconn serverclose
+#    to which you should reply
+#      tell netconn ackserverclose
+#    and the connection should close. If not, type Ctrl-] to enter
+#    telnet command mode an enter "close".
+# 3) You can also try
+#      close stderr
+#      set chanstderr [open host-[pid].log a]
+#      fconfigure $chanstderr -buffering none
+#      close stdout
+#      set chanstdout [open host-[pid].log a]
+#      fconfigure $chanstdout -buffering none
+#      Oc_ForceStderrDefaultMessage
+#      Oc_Log SetLogHandler Oc_DefaultLogMessage status
+#      Oc_Log SetLogHandler Oc_DefaultLogMessage debug
+#    When a channel is opened, if any compatible standard channel is not
+#    open then it will be attached to the new channel. So the close/open
+#    calls connect stderr and stdout to the host*log file.  The
+#    following commands direct comprehensive logging output to the
+#    host*log file.
 
 if {([llength $argv] > 2) || ([llength $argv] == 0)} {
     error "usage: host.tcl <service_port> ?<creator_port>?"
@@ -145,7 +172,8 @@ if {[llength $argv] == 2} {
 # Once a connection becomes ready, set up handler to catch
 # connection destructions.  On last one, exit.
 Oc_EventHandler New _ Net_Connection Ready \
-    [list Oc_EventHandler New _ Net_Connection Delete [list CheckConnect]] \
+   [list Oc_EventHandler New _ Net_Connection Delete \
+       [list CheckConnect] -groups checkconnect] \
     -oneshot 1
 proc CheckConnect {} {
     # A Net_Connection is being destroyed.  If it's the last one,
@@ -159,6 +187,10 @@ proc CheckConnect {} {
        }
        # Shut down
        after idle Die
+       Oc_EventHandler DeleteGroup checkconnect
+       ## In principle if in this branch then no more Net_Connection
+       ## Delete events can occur, so this DeleteGroup probably isn't
+       ## necessary. But it also doesn't hurt.
     }
 }
 

@@ -23,7 +23,7 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -168,16 +168,25 @@ bind . <Control-c> CopySelected
 Ow_StdHelpMenu $hmenu
 
 set menuwidth [Ow_GuessMenuWidth $menubar]
-set brace [canvas .brace -width $menuwidth -height 0 -borderwidth 0 \
+set bracewidth [Ow_SetWindowTitle . [Oc_Main GetInstanceName]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
         -highlightthickness 0]
 pack $brace -side top
+# Resize root window when OID is assigned:
+Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+  $brace configure -width \
+    [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+}]
 
 set panel [frame .panel -relief groove]
 if {[Ow_IsAqua]} {
    $panel configure -bd 4 -relief ridge
 }
 pack $panel -side top -fill x -expand 1 -anchor nw
-grid columnconfigure $panel 0 -weight 0
+grid columnconfigure $panel 0 -weight 4
 grid columnconfigure $panel 1 -weight 0
 grid columnconfigure $panel 2 -weight 1
 if {[Ow_IsAqua]} {
@@ -187,21 +196,9 @@ if {[Ow_IsAqua]} {
    grid columnconfigure $panel 3 -minsize 10
 }
 
-wm title . [Oc_Main GetInstanceName]
 wm iconname . [wm title .]
 Ow_SetIcon .
 wm deiconify .
-
-if {[package vcompare [package provide Tk] 8] < 0 \
-	&& [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0+ menubar cleanly
-    Oc_DisableAutoSize .
-    wm geometry . "${menuwidth}x0"
-    update
-    wm geometry . {}
-    Oc_EnableAutoSize .
-    update
-}
 
 proc GetSelectList {} {
     global select displaylist
@@ -376,7 +373,8 @@ proc DisplayListAppend { label } {
 	if {![winfo exists $panel.value$foo]} {
 	    set fmtvalue($label) \
 		    [FormatValue $fmt($label) $value($label) fmterror($label)]
-	    label $panel.value$foo -textvariable fmtvalue($label)
+            label $panel.value$foo -font TkFixedFont \
+               -textvariable fmtvalue($label)
 	    if {![info exists justify($label)]} {
 		set justify($label) $justify(default)
 	    }

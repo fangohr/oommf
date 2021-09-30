@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>Basic Installation</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html183"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html187"
   HREF="Advanced_Installation.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html179"
+<A NAME="tex2html183"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html173"
+<A NAME="tex2html177"
   HREF="Requirements.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html185"
+<A NAME="tex2html189"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html181"
+<A NAME="tex2html185"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html184"
+<B> Next:</B> <A NAME="tex2html188"
   HREF="Advanced_Installation.html">Advanced Installation</A>
-<B> Up:</B> <A NAME="tex2html180"
+<B> Up:</B> <A NAME="tex2html184"
   HREF="Installation.html">Installation</A>
-<B> Previous:</B> <A NAME="tex2html174"
+<B> Previous:</B> <A NAME="tex2html178"
   HREF="Requirements.html">Requirements</A>
 <BR>
 <BR>
@@ -56,24 +52,24 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html187"
+<LI><A NAME="tex2html191"
   HREF="Basic_Installation.html#SECTION00032100000000000000">Download</A>
-<LI><A NAME="tex2html188"
+<LI><A NAME="tex2html192"
   HREF="Basic_Installation.html#SECTION00032200000000000000">Effects of the Installed Tcl/Tk</A>
-<LI><A NAME="tex2html189"
+<LI><A NAME="tex2html193"
   HREF="Basic_Installation.html#SECTION00032300000000000000">Check Your Platform Configuration</A>
 <UL>
-<LI><A NAME="tex2html190"
+<LI><A NAME="tex2html194"
   HREF="Basic_Installation.html#SECTION00032310000000000000">Additional Configuration Issues on Windows</A>
 </UL>
 <BR>
-<LI><A NAME="tex2html191"
+<LI><A NAME="tex2html195"
   HREF="Basic_Installation.html#SECTION00032400000000000000">Compiling and Linking</A>
-<LI><A NAME="tex2html192"
+<LI><A NAME="tex2html196"
   HREF="Basic_Installation.html#SECTION00032500000000000000">Installing</A>
-<LI><A NAME="tex2html193"
+<LI><A NAME="tex2html197"
   HREF="Basic_Installation.html#SECTION00032600000000000000">Using OOMMF Software</A>
-<LI><A NAME="tex2html194"
+<LI><A NAME="tex2html198"
   HREF="Basic_Installation.html#SECTION00032700000000000000">Reporting Problems</A>
 </UL>
 <!--End of Table of Child-Links-->
@@ -98,7 +94,7 @@ Download
 <P>
 The latest release of the OOMMF software may be retrieved from the
 <A NAME="tex2html11"
-  HREF="http://math.nist.gov/oommf/software.html">OOMMF download
+  HREF="https://math.nist.gov/oommf/software.html">OOMMF download
 page</A>.  Each release is
 available in two formats.  The first format is a gzipped tar file
 containing an archive of all the OOMMF source code.  The second format
@@ -162,7 +158,7 @@ a 64-bit OOMMF, and likewise a 32-bit Tcl/Tk needs a 32-bit OOMMF.
 Another restriction is that while OOMMF can be built to run in
 parallel across multiple cpu cores on a shared memory machine using
 threads, to do this requires that the installed Tcl/Tk be
-thread-enabled.  Typical Tcl/Tk installs on Windows and Mac OS X are
+thread-enabled.  Typical Tcl/Tk installs on Windows and macOS are
 thread-enabled.  Tcl/Tk installs on recent releases of Unix also
 tend to be thread-enabled, but some older versions have non-threaded
 Tcl/Tk installs.  If your system Tcl/Tk install is non-threaded,
@@ -228,33 +224,34 @@ it will print a summary of your
 platform configuration when it is evaluated by <TT><B>tclsh</B></TT>.
 This summary describes your platform type, your C++ compiler,
 and your Tcl/Tk installation.  As an example, 
-here is the typical output on a Mac OS X 10.9 system:
+here is the typical output on a macOS 10.9 system:
 <PRE>
 $ tclsh oommf.tcl +platform
 &lt;5426&gt; oommf.tcl 1.2.0.6  info:
 OOMMF release 1.2.0.6, snapshot 2015.03.25
-Platform Name:		darwin
-Tcl name for OS:	Darwin 13.4.0
-C++ compiler:   	/usr/bin/g++ 
- Version string:	 Apple LLVM version 6.0 (clang-600.0.57) (based on LLVM 3.5svn) / Target: x86_64-apple-darwin13.4.0 / Thread model: posix
+Platform Name:    darwin
+Tcl name for OS:  Darwin 13.4.0
+C++ compiler:     /usr/bin/g++ 
+ Version string:  Apple LLVM version 6.0 (clang-600.0.57) (based on
+     LLVM 3.5svn) / Target: x86_64-apple-darwin13.4.0 / Thread model: posix
 Shell details ---
- tclsh (running): 	/usr/bin/tclsh
-                  	(links to /usr/bin/tclsh8.5)
-                  	(links to /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclsh8.5)
-                  	 --&gt; Version 8.5.9, 64 bit, threaded
- tclsh (OOMMF): 	/usr/bin/tclsh8.5
-                  	 --&gt; Version 8.5.9, 64 bit, threaded
- filtersh:           	/Users/dgp/oommf/app/omfsh/darwin/filtersh
-                  	 --&gt; Version 8.5.9, 64 bit, threaded
- tclConfig.sh:        	/System/Library/Frameworks/Tcl.framework/Versions/8.5/tclConfig.sh
-                      	 --&gt; Version 8.5.9
- wish (OOMMF):        	/usr/bin/wish8.5
-                  	 --&gt; Version 8.5.9, Tk 8.5.9, 64 bit, threaded
- tkConfig.sh:         	/System/Library/Frameworks/Tk.framework/Versions/8.5/tkConfig.sh
-                      	 --&gt; Tk Version 8.5.9
-OOMMF threads:         	Yes: Default thread count = 2
-OOMMF API index:       	20150129
-Temp file directory: 	/var/folders/dy/srfj33512f51kc5knp_lph_r0000gp/T/
+ tclsh (running): /usr/bin/tclsh
+     (links to /usr/bin/tclsh8.5)
+     (links to /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclsh8.5)
+                      --&gt; Version 8.5.9, 64 bit, threaded
+ tclsh (OOMMF):   /usr/bin/tclsh8.5
+                   --&gt; Version 8.5.9, 64 bit, threaded
+ filtersh:        /Users/xerxes/oommf/app/omfsh/darwin/filtersh
+                   --&gt; Version 8.5.9, 64 bit, threaded
+ tclConfig.sh:    /System/Library/Frameworks/Tcl.framework/Versions/8.5/tclConfig.sh
+                   --&gt; Version 8.5.9
+ wish (OOMMF):    /usr/bin/wish8.5
+                   --&gt; Version 8.5.9, Tk 8.5.9, 64 bit, threaded
+ tkConfig.sh:     /System/Library/Frameworks/Tk.framework/Versions/8.5/tkConfig.sh
+                   --&gt; Tk Version 8.5.9
+OOMMF threads:    Yes: Default thread count = 2
+OOMMF API index:  20150129
+Temp file directory: /var/folders/dy/srfj33512f51kc5knp_lph_r0000gp/T/
 </PRE>
 
 <P>
@@ -423,7 +420,7 @@ as if you are missing important header files.
 
 <P>
 If <TT>oommf.tcl +platform</TT> indicates problems with your Tcl/Tk installation,
-it may be easiest to re-install Tcl/Tk taking care to perform a
+it may be easiest to re-install Tcl/Tk&nbsp; taking care to perform a
 conventional installation.  OOMMF deals best with conventional
 Tcl/Tk installations.  If you do not have the power to re-install
 an existing broken Tcl/Tk installation (perhaps you are not
@@ -436,7 +433,7 @@ find and use your private
 shared libraries instead of those from the system Tcl/Tk installation.
 This might involve setting an environment variable (such as 
 LD_LIBRARY_PATH<A NAME="926"></A> on
-Unix or PATH<A NAME="927"></A> on
+Unix&nbsp; or PATH<A NAME="927"></A> on
 Windows).
 If you use a private Tcl/Tk installation, you also want to be sure
 that there are no environment variables like 
@@ -625,23 +622,23 @@ for additional instructions.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html183"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html187"
   HREF="Advanced_Installation.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html179"
+<A NAME="tex2html183"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html173"
+<A NAME="tex2html177"
   HREF="Requirements.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html186"
+<A NAME="tex2html190"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html181"
+<A NAME="tex2html185"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

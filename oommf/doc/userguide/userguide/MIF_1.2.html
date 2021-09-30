@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>MIF 1.2</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html892"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html895"
   HREF="MIF_2.1.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html888"
+<A NAME="tex2html891"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html882"
+<A NAME="tex2html885"
   HREF="MIF_1.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html894"
+<A NAME="tex2html897"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html890"
+<A NAME="tex2html893"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html893"
+<B> Next:</B> <A NAME="tex2html896"
   HREF="MIF_2.1.html">MIF 2.1</A>
-<B> Up:</B> <A NAME="tex2html889"
+<B> Up:</B> <A NAME="tex2html892"
   HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
-<B> Previous:</B> <A NAME="tex2html883"
+<B> Previous:</B> <A NAME="tex2html886"
   HREF="MIF_1.1.html">MIF 1.1</A>
 <BR>
 <BR>
@@ -80,19 +76,7 @@ the MIF&nbsp;1.2 format:
 <LI>The first line reads: <code># MIF 1.2</code>
 </LI>
 <LI>The <TT>CellSize</TT> record takes three parameters:
-      <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
--dimension, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
--dimension, and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
--dimension (in meters).
+      <B><I>x</I></B>-dimension, <B><I>y</I></B>-dimension, and <B><I>z</I></B>-dimension (in meters).
 </LI>
 <LI>The <TT>3dSlab</TT>, <TT>2dSlab</TT>, <TT>3dCharge</TT>, and
       <TT>FastPipe</TT> parameters of the <TT>DemagType</TT> record
@@ -109,38 +93,14 @@ the MIF&nbsp;1.2 format:
 </OL>
 If the <TT>CellSize</TT> record has only one parameter, then it is
 interpreted in the same manner as in the MIF&nbsp;1.1 format, i.e., the
-parameter is taken as the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-- and <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
--dimension of the computation
-cell, and the <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
--dimension is set to the part thickness.
+parameter is taken as the <B><I>x</I></B>- and <B><I>y</I></B>-dimension of the computation
+cell, and the <B><I>z</I></B>-dimension is set to the part thickness.
 
 <P>
 The mmSolve 2D solvers will accept files in the MIF&nbsp;1.2 format provided
 the <TT>CellSize</TT> record meets the restrictions of those solvers,
-namely, the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-- and <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
--dimensions must be the same, and the
-<B><I>z</I></B>
-<!-- MATHEND
- 
- -->
--dimension must equal the part thickness.  The <TT>SolverType</TT>
+namely, the <B><I>x</I></B>- and <B><I>y</I></B>-dimensions must be the same, and the
+<B><I>z</I></B>-dimension must equal the part thickness.  The <TT>SolverType</TT>
 record, if any, is ignored.
 
 <P>
@@ -153,23 +113,23 @@ the appropriate solver+driver pair.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html892"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html895"
   HREF="MIF_2.1.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html888"
+<A NAME="tex2html891"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html882"
+<A NAME="tex2html885"
   HREF="MIF_1.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html895"
+<A NAME="tex2html898"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html890"
+<A NAME="tex2html893"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

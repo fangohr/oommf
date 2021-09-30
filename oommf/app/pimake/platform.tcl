@@ -183,18 +183,24 @@ Oc_Class Platform {
             if {[string match tcl $stem]} {
                 set ret [concat $ret [$configuration GetValue TCL_LIB_SPEC]]
                 set ret [concat $ret [$configuration GetValue TCL_LIBS]]
-		if {[catch {$configuration GetValue TCL_PACKAGE_PATH} pp]} {
+
+		if {[catch {tcl::pkgconfig get libdir,runtime} libdir]} {
+		  if {[catch {$configuration GetValue TCL_PACKAGE_PATH} pp]} {
 		    continue
-		}
-		set libdir [lindex $pp 0]
-		if {[string match */Resources/Scripts $libdir]} {
+		  }
+		  set libdir [Oc_DirectPathname [lindex $pp 0]]
+		  if {[string match */Resources/Scripts $libdir]} {
 		    set libdir [file dirname [file dirname $libdir]]
+		  }
 		}
                 if {[catch {
                    $configuration GetValue program_linker_rpath
                 } rpath_script]} {
                    continue
                 }
+		if {![file isdirectory $libdir]} {
+		    continue
+		}
                 if {![catch {
                    $configuration GetValue cross_compile_target_tcl_rpath
                 } target_rpath] && ![catch {

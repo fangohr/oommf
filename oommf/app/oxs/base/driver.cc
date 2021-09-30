@@ -185,7 +185,9 @@ Oxs_Driver::BackgroundCheckpoint::WrapUp
   const int timeout = 100; // Max seconds to wait for backup thread
   const OxsDriverCheckpointModeTypes cmt
     = (flush_queue ? OXSDRIVER_CMT_FLUSHED : OXSDRIVER_CMT_DISABLED);
-  if(WaitForBackupThread(timeout,cmt) && director->GetErrorStatus()==0
+  if(WaitForBackupThread(timeout,cmt)
+     && director->GetErrorStatus()==0
+     && Oxs_ThreadError::IsError()==0
      && checkpoint_writes>0 && !TestKeepCheckpoint(probstat)) {
     // Check that checkpoint_writes is not 0 to insure that a
     // checkpoint has been written during this run.  This is not to
@@ -264,7 +266,7 @@ Oxs_Driver::BackgroundCheckpoint::UpdateBackup
   if(statekey.GetPtr()==NULL) {
     throw("Invalid checkpoint update request.");
   }
-  int request_backup = 0;
+  int request_backup_flag = 0;
   if(checkpoint_interval >= 0.0) {
     Oc_Ticks now;
     now.ReadWallClock();
@@ -272,10 +274,10 @@ Oxs_Driver::BackgroundCheckpoint::UpdateBackup
     if(now.Seconds()>=checkpoint_interval) {
       checkpoint_time.ReadWallClock();
       RequestBackup(statekey);
-      request_backup = 1;
+      request_backup_flag = 1;
     }
   }
-  return request_backup;
+  return request_backup_flag;
 }
 
 void
@@ -511,7 +513,7 @@ Oxs_Driver::Oxs_Driver
     }
     DeleteInitValue("checkpoint_cleanup");
   } else {
-    tmp_checkpoint_disposal 
+    tmp_checkpoint_disposal
       = GetStringInitValue("checkpoint_disposal","standard");
   }
   bgcheckpt.Init(tmp_checkpoint_file,tmp_checkpoint_interval,
@@ -955,10 +957,10 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
   }
 }
 
-// Oxs_Driver version of Init().  All children of Oxs_Driver *must*
-// call this function in their Init() routines.  The main purpose
-// of this function is to setup base driver outputs and to initialize
-// the current state.
+// Oxs_Driver version of Init().  All children of Oxs_Driver *must* call
+// this function in their Init() routines.  The main purpose of this
+// function is to set up base driver outputs and to initialize the
+// current state.
 OC_BOOL Oxs_Driver::Init()
 {
   if(!Oxs_Ext::Init()) return 0;
@@ -980,12 +982,12 @@ OC_BOOL Oxs_Driver::Init()
   // Finish output initializations.
   if(!mesh_obj->HasUniformCellVolumes()) {
     // Magnetization averaging should be weighted by cell volume.  At
-    // present, however, the only available mesh is
-    // Oxs_RectangularMesh, which has uniform cell volumes.  The
+    // present, however, the only available meshes derive from
+    // Oxs_CommonRectangularMesh, and so have uniform cell volumes.  The
     // computation in this case can be faster, so for now we code only
     // for that case.  Check and throw an error, though, so we will be
-    // reminded to change this if new mesh types become available in
-    // the future.
+    // reminded to change this if new mesh types become available in the
+    // future.
     throw Oxs_ExtError(this,"NEW CODE REQUIRED: Current Oxs_Driver"
                          " aveM and projection outputs require meshes "
                          " with uniform cell sizes, such as "
@@ -1100,11 +1102,20 @@ OC_BOOL Oxs_Driver::Init()
     // derived data.  Otherwise, use the default STAGE_START
     // status.
     OC_REAL8m value;
-    if(cstate.GetAuxData("Oxs_Driver Problem Status",value)) {
+    if(cstate.GetAuxData(DataName("Problem Status"),value)) {
       problem_status = FloatToProblemStatus(value);
     } else {
       problem_status = OXSDRIVER_PS_STAGE_START;
     }
+
+    // Mark initial state as a "good" step.  This is needed by the
+    // Oxs_Director::FindBaseStepState routines.
+    cstate.step_done = Oxs_SimState::SimStateStatus::DONE;
+
+    // Allow evolver initialization.  Send invalid previous_state to
+    // indicate that this is the initial state.
+    Oxs_ConstKey<Oxs_SimState> dummy_state;
+    InitNewStage(current_state,dummy_state);
   }
 
   // Initialize checkpoint time and state id
@@ -1128,14 +1139,14 @@ void Oxs_Driver::StageRequestCount(unsigned int& min,
 
 OC_BOOL Oxs_Driver::IsStageDone(const Oxs_SimState& state) const
 {
-  if(state.stage_done == Oxs_SimState::DONE) return 1;
-  if(state.stage_done == Oxs_SimState::NOT_DONE) return 0;
-  /// Otherwise, state.stage_done == Oxs_SimState::UNKNOWN
+  if(state.stage_done == Oxs_SimState::SimStateStatus::DONE) return 1;
+  if(state.stage_done == Oxs_SimState::SimStateStatus::NOT_DONE) return 0;
+  /// Otherwise, state.stage_done == Oxs_SimState::SimStateStatus::UNKNOWN
 
   // Check state against parent Oxs_Driver class stage limiters.
   if(total_iteration_limit > 0
      && state.iteration_count + 1 >= total_iteration_limit ) {
-    state.stage_done = Oxs_SimState::DONE;
+    state.stage_done = Oxs_SimState::SimStateStatus::DONE;
     return 1;
   }
 
@@ -1151,30 +1162,30 @@ OC_BOOL Oxs_Driver::IsStageDone(const Oxs_SimState& state) const
      && state.stage_iteration_count + 1 >= stop_iteration) {
     // Note: stage_iteration_count is 0 based, so the number
     // of iterations is stage_iteration_count + 1.
-    state.stage_done = Oxs_SimState::DONE;
+    state.stage_done = Oxs_SimState::SimStateStatus::DONE;
     return 1;
   }
 
   // Otherwise, leave it up to the child
   if(ChildIsStageDone(state)) {
-    state.stage_done = Oxs_SimState::DONE;
+    state.stage_done = Oxs_SimState::SimStateStatus::DONE;
     return 1;
   }
 
-  state.stage_done = Oxs_SimState::NOT_DONE;
+  state.stage_done = Oxs_SimState::SimStateStatus::NOT_DONE;
   return 0;
 }
 
 OC_BOOL Oxs_Driver::IsRunDone(const Oxs_SimState& state) const
 {
-  if(state.run_done == Oxs_SimState::DONE) return 1;
-  if(state.run_done == Oxs_SimState::NOT_DONE) return 0;
-  /// Otherwise, state.run_done == Oxs_SimState::unknown
+  if(state.run_done == Oxs_SimState::SimStateStatus::DONE) return 1;
+  if(state.run_done == Oxs_SimState::SimStateStatus::NOT_DONE) return 0;
+  /// Otherwise, state.run_done == Oxs_SimState::SimStateStatus::unknown
 
   // Check state against parent Oxs_Driver class run limiters.
   if(total_iteration_limit > 0
      && state.iteration_count + 1 >= total_iteration_limit) {
-    state.run_done = Oxs_SimState::DONE;
+    state.run_done = Oxs_SimState::SimStateStatus::DONE;
     return 1;
   }
 
@@ -1182,18 +1193,18 @@ OC_BOOL Oxs_Driver::IsRunDone(const Oxs_SimState& state) const
     if( state.stage_number >= number_of_stages ||
         (state.stage_number+1 == number_of_stages
         && IsStageDone(state))) {
-      state.run_done = Oxs_SimState::DONE;
+      state.run_done = Oxs_SimState::SimStateStatus::DONE;
       return 1;
     }
-  }      
+  }
 
   // Otherwise, leave it up to the child
   if(ChildIsRunDone(state)) {
-    state.run_done = Oxs_SimState::DONE;
+    state.run_done = Oxs_SimState::SimStateStatus::DONE;
     return 1;
   }
 
-  state.run_done = Oxs_SimState::NOT_DONE;
+  state.run_done = Oxs_SimState::SimStateStatus::NOT_DONE;
   return 0;
 }
 
@@ -1203,8 +1214,9 @@ void Oxs_Driver::FillStateMemberData
 {
   old_state.CloneHeader(new_state);
   new_state.previous_state_id = old_state.Id();
-  new_state.stage_done = Oxs_SimState::UNKNOWN;
-  new_state.run_done = Oxs_SimState::UNKNOWN;
+  new_state.step_done = Oxs_SimState::SimStateStatus::UNKNOWN;
+  new_state.stage_done = Oxs_SimState::SimStateStatus::UNKNOWN;
+  new_state.run_done = Oxs_SimState::SimStateStatus::UNKNOWN;
 
   // State variables iteration_count, stage_iteration_count,
   // stage_elapsed_time, last_timestep and DerivedData should
@@ -1229,7 +1241,7 @@ void Oxs_Driver::FillStateDerivedData
   if(report_max_spin_angle) {
     // Carry across old stage and run maxang data
     OC_REAL8m run_maxang = -1.;
-    if(!old_state.GetDerivedData("Run Max Spin Ang",run_maxang)) {
+    if(!old_state.GetDerivedData(DataName("Run Max Spin Ang"),run_maxang)) {
       // Spin angle data not filled.  Insure that maxang is
       // computed every step.  This is a little extra work; if we
       // wanted, we could coordinate this with the solver so that
@@ -1239,15 +1251,18 @@ void Oxs_Driver::FillStateDerivedData
       // adding a maxang_guess value to the state, but it is
       // probably not worth the trouble.
       UpdateSpinAngleData(old_state);
-      old_state.GetDerivedData("Run Max Spin Ang",run_maxang);
+      old_state.GetDerivedData(DataName("Run Max Spin Ang"),run_maxang);
     }
-    new_state.AddDerivedData("PrevState Run Max Spin Ang",run_maxang);
+    new_state.AddDerivedData(DataName("PrevState Run Max Spin Ang"),
+                             run_maxang);
     OC_REAL8m stage_maxang = -1.;
-    if(!old_state.GetDerivedData("Stage Max Spin Ang",stage_maxang)) {
+    if(!old_state.GetDerivedData(DataName("Stage Max Spin Ang"),
+                                 stage_maxang)) {
       UpdateSpinAngleData(old_state);
-      old_state.GetDerivedData("Stage Max Spin Ang",stage_maxang);
+      old_state.GetDerivedData(DataName("Stage Max Spin Ang"),stage_maxang);
     }
-    new_state.AddDerivedData("PrevState Stage Max Spin Ang",stage_maxang);
+    new_state.AddDerivedData(DataName("PrevState Stage Max Spin Ang"),
+                             stage_maxang);
   }
 }
 
@@ -1299,9 +1314,11 @@ void Oxs_Driver::FillNewStageStateMemberData
   new_state.stage_start_time += new_state.stage_elapsed_time;
   new_state.stage_elapsed_time = 0.0;
   new_state.last_timestep = 0.0;
-  new_state.stage_done = Oxs_SimState::UNKNOWN;
-  new_state.run_done = Oxs_SimState::UNKNOWN;
-  new_state.ClearDerivedData(); // Derived data no longer valid
+  new_state.step_done = Oxs_SimState::SimStateStatus::UNKNOWN;
+  new_state.stage_done = Oxs_SimState::SimStateStatus::UNKNOWN;
+  new_state.run_done = Oxs_SimState::SimStateStatus::UNKNOWN;
+  new_state.ClearDerivedData(); // Derived and aux data no longer valid
+  new_state.ClearAuxData();
   // Might want to add energy & old_energy to all states, to simplify
   // Delta_E rendering.  Or maybe every state has a
   // previous_state_energy parallel to previous_state_id, and a Energy
@@ -1313,29 +1330,25 @@ void Oxs_Driver::FillNewStageStateDerivedData
  int /* new_stage_number */,
  const Oxs_SimState& new_state) const
 {
+  // There is no stepping of the stage boundary state, so mark it a
+  // "good" step.  This is needed by the Oxs_Director::FindBaseStepState
+  // routines.
+  new_state.step_done = Oxs_SimState::SimStateStatus::DONE;
+
   if(report_max_spin_angle) {
     // Carry across run maxang data, and
     // initialize prevstate stage maxang to 0.
     OC_REAL8m run_maxang = -1.0;
-    if(!old_state.GetDerivedData("Run Max Spin Ang",run_maxang)) {
+    if(!old_state.GetDerivedData(DataName("Run Max Spin Ang"),run_maxang)) {
       // Spin angle data not filled in current state
       UpdateSpinAngleData(old_state); // Update
-      old_state.GetDerivedData("Run Max Spin Ang",run_maxang);
+      old_state.GetDerivedData(DataName("Run Max Spin Ang"),run_maxang);
     }
-    new_state.AddDerivedData("PrevState Run Max Spin Ang",run_maxang);
-    new_state.AddDerivedData("PrevState Stage Max Spin Ang",0.0);
+    new_state.AddDerivedData(DataName("PrevState Run Max Spin Ang"),
+                             run_maxang);
+    new_state.AddDerivedData(DataName("PrevState Stage Max Spin Ang"),
+                             0.0);
   }
-}
-
-void Oxs_Driver::FillNewStageState
-(const Oxs_SimState& old_state,
- int new_stage_number,
- Oxs_SimState& new_state) const
-{ // This routine is intended for backward compatibility.
-  // New code should use the separate FillNewStageStateMemberData
-  // and FillNewStageStateDerivedData functions.
-  FillNewStageStateMemberData(old_state,new_stage_number,new_state);
-  FillNewStageStateDerivedData(old_state,new_stage_number,new_state);
 }
 
 void Oxs_Driver::SetStage
@@ -1471,6 +1484,7 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
           // and copy key from next_state.
           current_state = next_state; // Free old read lock
           current_state.GetReadReference();
+          current_state.GetPtr()->step_done = Oxs_SimState::SimStateStatus::DONE;
           if(report_max_spin_angle) {
             UpdateSpinAngleData(*(current_state.GetPtr())); // Update
             /// max spin angle data on each accepted step.  Might want
@@ -1480,7 +1494,8 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
           }
           step_taken=1;
           step_info.current_attempt_count=0;
-        } else {
+        } else { // Rejected step
+          next_state.GetPtr()->step_done = Oxs_SimState::SimStateStatus::NOT_DONE;
           ++step_info.current_attempt_count;
         }
         ++step_info.total_attempt_count;
@@ -1492,21 +1507,26 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
         const Oxs_SimState& cstate = current_state.GetReadReference();
         Oxs_Key<Oxs_SimState> temp_state;
         director->GetNewSimulationState(temp_state);
+
         Oxs_SimState& tstate = temp_state.GetWriteReference();
-        FillNewStageState(cstate,cstate.stage_number+stage_increment,
-                          tstate);
+        FillNewStageStateMemberData(cstate,
+           cstate.stage_number+stage_increment,tstate);
         temp_state.GetReadReference(); // Release write lock
         previous_state.Swap(current_state); // For state transistion
         current_state = temp_state;
-        current_state.GetReadReference();
+
+        const Oxs_SimState& newstate = current_state.GetReadReference();
+        const Oxs_SimState& oldstate = previous_state.GetReadReference();
+        InitNewStage(current_state,previous_state); // Send state to
+                                 /// evolver for bookkeeping updates. asdf
+        FillNewStageStateDerivedData(oldstate,
+                        oldstate.stage_number+stage_increment,newstate);
       }
       // NB: STAGE_END flow continues through STAGE_START block.
       // The following "fall through" comment alerts g++ that this is
       // intended (and suppresses warning messages):
       // fall through
       case OXSDRIVER_PS_STAGE_START:
-        InitNewStage(current_state,previous_state); // Send state to
-                                 /// evolver for bookkeeping updates.
         previous_state.Release();
         step_taken=1;
         ++step_info.total_attempt_count;
@@ -1527,17 +1547,18 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
         // Update max spin angle data, as necessary
         OC_REAL8m angle_data;
         if(maxSpinAng_output.cache.state_id != cstate.Id()
-           && cstate.GetDerivedData("Max Spin Ang",angle_data)) {
+           && cstate.GetDerivedData(DataName("Max Spin Ang"),angle_data)) {
           maxSpinAng_output.cache.value = angle_data;
           maxSpinAng_output.cache.state_id = cstate.Id();
         }
         if(stage_maxSpinAng_output.cache.state_id != cstate.Id()
-           && cstate.GetDerivedData("Stage Max Spin Ang",angle_data)) {
+           && cstate.GetDerivedData(DataName("Stage Max Spin Ang"),
+                                    angle_data)) {
           stage_maxSpinAng_output.cache.value = angle_data;
           stage_maxSpinAng_output.cache.state_id = cstate.Id();
         }
         if(run_maxSpinAng_output.cache.state_id != cstate.Id()
-           && cstate.GetDerivedData("Run Max Spin Ang",angle_data)) {
+           && cstate.GetDerivedData(DataName("Run Max Spin Ang"),angle_data)) {
           run_maxSpinAng_output.cache.value = angle_data;
           run_maxSpinAng_output.cache.state_id = cstate.Id();
         }
@@ -1551,13 +1572,13 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
           problem_status = OXSDRIVER_PS_DONE;
         }
       }
-      cstate.AddAuxData("Oxs_Driver Problem Status",
+      cstate.AddAuxData(DataName("Problem Status"),
                         static_cast<OC_REAL8m>(problem_status));
     }
 
     // Checkpoint file save
     checkpoint_event += bgcheckpt.UpdateBackup(current_state);
-    
+
   } // End of 'step_events<max_steps ...' loop
 
   // Currently above block generates at most a single step.  When it
@@ -1690,9 +1711,9 @@ void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
                 " but Oxs_Driver::UpdateSpinAngleData is called.");
   }
   OC_REAL8m maxangle,stage_maxangle,run_maxangle;
-  if(state.GetDerivedData("Max Spin Ang",maxangle)
-     && state.GetDerivedData("Stage Max Spin Ang",stage_maxangle)
-     && state.GetDerivedData("Run Max Spin Ang",run_maxangle)) {
+  if(state.GetDerivedData(DataName("Max Spin Ang"),maxangle)
+     && state.GetDerivedData(DataName("Stage Max Spin Ang"),stage_maxangle)
+     && state.GetDerivedData(DataName("Run Max Spin Ang"),run_maxangle)) {
     return; // Nothing to do
   }
   if(maxSpinAng_output.cache.state_id == state.Id()
@@ -1702,9 +1723,9 @@ void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
     maxangle = maxSpinAng_output.cache.value;
     stage_maxangle = stage_maxSpinAng_output.cache.value;
     run_maxangle = run_maxSpinAng_output.cache.value;
-    state.AddDerivedData("Max Spin Ang",maxangle);
-    state.AddDerivedData("Stage Max Spin Ang",stage_maxangle);
-    state.AddDerivedData("Run Max Spin Ang",run_maxangle);
+    state.AddDerivedData(DataName("Max Spin Ang"),maxangle);
+    state.AddDerivedData(DataName("Stage Max Spin Ang"),stage_maxangle);
+    state.AddDerivedData(DataName("Run Max Spin Ang"),run_maxangle);
     return;
   }
 
@@ -1722,13 +1743,14 @@ void Oxs_Driver::UpdateSpinAngleData(const Oxs_SimState& state) const
     }
   }
   maxangle *= (180./PI);
-  state.GetDerivedData("PrevState Stage Max Spin Ang",stage_maxangle);
-  state.GetDerivedData("PrevState Run Max Spin Ang",run_maxangle);
+  state.GetDerivedData(DataName("PrevState Stage Max Spin Ang"),
+                       stage_maxangle);
+  state.GetDerivedData(DataName("PrevState Run Max Spin Ang"),run_maxangle);
   if(maxangle>stage_maxangle) stage_maxangle = maxangle;
   if(maxangle>run_maxangle)   run_maxangle = maxangle;
-  state.AddDerivedData("Max Spin Ang",maxangle);
-  state.AddDerivedData("Stage Max Spin Ang",stage_maxangle);
-  state.AddDerivedData("Run Max Spin Ang",run_maxangle);
+  state.AddDerivedData(DataName("Max Spin Ang"),maxangle);
+  state.AddDerivedData(DataName("Stage Max Spin Ang"),stage_maxangle);
+  state.AddDerivedData(DataName("Run Max Spin Ang"),run_maxangle);
 }
 
 /// UpdateSpinAngleData
@@ -1782,9 +1804,10 @@ Oxs_Driver::Fill__maxSpinAng_output_fini
   maxangle *= (180./PI);
 
   OC_REAL8m stage_maxangle=0.0,run_maxangle=0.0;
-  state.GetDerivedData("PrevState Stage Max Spin Ang",stage_maxangle);
+  state.GetDerivedData(DataName("PrevState Stage Max Spin Ang"),
+                       stage_maxangle);
   if(maxangle>stage_maxangle) stage_maxangle=maxangle;
-  state.GetDerivedData("PrevState Run Max Spin Ang",run_maxangle);
+  state.GetDerivedData(DataName("PrevState Run Max Spin Ang"),run_maxangle);
   if(maxangle>run_maxangle)   run_maxangle=maxangle;
   maxSpinAng_output.cache.value=maxangle;
   stage_maxSpinAng_output.cache.value=stage_maxangle;
@@ -1793,9 +1816,9 @@ Oxs_Driver::Fill__maxSpinAng_output_fini
   stage_maxSpinAng_output.cache.state_id =
   run_maxSpinAng_output.cache.state_id = state.Id();
 
-  if(!state.AddDerivedData("Max Spin Ang",maxangle)
-     || !state.AddDerivedData("Stage Max Spin Ang",stage_maxangle)
-     || !state.AddDerivedData("Run Max Spin Ang",run_maxangle)) {
+  if(!state.AddDerivedData(DataName("Max Spin Ang"),maxangle)
+     || !state.AddDerivedData(DataName("Stage Max Spin Ang"),stage_maxangle)
+     || !state.AddDerivedData(DataName("Run Max Spin Ang"),run_maxangle)) {
     static Oxs_WarningMessage multangle(3);
     multangle.Send(revision_info,OC_STRINGIFY(__LINE__),
                    "Programming error? Max spin angle computed"

@@ -1,6 +1,6 @@
-/* FILE: uuanisotropy.cc            -*-Mode: c++-*-
+/* FILE: uniaxialanisotropy.cc            -*-Mode: c++-*-
  *
- * Uniform Uniaxial Anisotropy, derived from Oxs_Energy class.
+ * Uniaxial Anisotropy, derived from Oxs_Energy class.
  *
  */
 
@@ -28,7 +28,6 @@ OC_USE_STRING;
 OXS_EXT_REGISTER(Oxs_UniaxialAnisotropy);
 
 /* End includes */
-
 
 // Constructor
 Oxs_UniaxialAnisotropy::Oxs_UniaxialAnisotropy(
@@ -260,26 +259,36 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
       //       because we don't want the energy formula for a cell to
       //       hop back and forth between the two (easy vs. hard)
       //       representations over the lifetime of the simulation.
-      const OC_REAL8m dot = spin[i].x*axisi.x
-        + spin[i].y*axisi.y + spin[i].z*axisi.z;
-      const ThreeVector H = (scaling*field_mult*dot)*axisi;
 
-      const OC_REAL8m tx = spin[i].y*H.z - spin[i].z*H.y; // mxH
-      const OC_REAL8m ty = spin[i].z*H.x - spin[i].x*H.z;
-      const OC_REAL8m tz = spin[i].x*H.y - spin[i].y*H.x;
+      // Split up computation of dot product to improve data flow. If
+      // we don't do this manually then the compiler may do this in a
+      // way that is not consistent between loops, leading to small
+      // rounding differences.
+      OC_REAL8m dot = spin[i].x*axisi.x;
+      OC_REAL8m ty = FMA_Block(spin[i].z,axisi.x,-spin[i].x*axisi.z);
+      dot = FMA_Block(spin[i].z,axisi.z,dot);
+      OC_REAL8m tx = FMA_Block(spin[i].y,axisi.z,-spin[i].z*axisi.y);
+      dot = FMA_Block(spin[i].y,axisi.y,dot);
+      OC_REAL8m tz = FMA_Block(spin[i].x,axisi.y,-spin[i].y*axisi.x);
+      const OC_REAL8m Hscale = scaling*field_mult*dot;
 
+      if(ocedt.mxH)       {
+        (*ocedt.mxH)[i] = ThreeVector(Hscale*tx,Hscale*ty,Hscale*tz);
+      }
+      if(ocedt.mxH_accum) {
+        (*ocedt.mxH_accum)[i].Accum(Hscale,ThreeVector(tx,ty,tz));
+      }
+
+      const ThreeVector H = Hscale*axisi;
       const OC_REAL8m mkdotsq = -k*dot*dot;
       const OC_REAL8m ei = scaling*mkdotsq;
       const OC_REAL8m vol = mesh->Volume(i);
-      energy_sum += ei * vol;
-      pE_pt_sum += dscaling*mkdotsq * vol;
-
+      Nb_XpfloatDualAccum(energy_sum,ei*vol,
+                          pE_pt_sum,dscaling*mkdotsq*vol);
       if(ocedt.energy)       (*ocedt.energy)[i] = ei;
       if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
       if(ocedt.H)       (*ocedt.H)[i] = H;
       if(ocedt.H_accum) (*ocedt.H_accum)[i] += H;
-      if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
-      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i] += ThreeVector(tx,ty,tz);
 
     } else {
       // Easy axis case.  For improved accuracy, we want to report
@@ -305,29 +314,36 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
       // some single-spin test runs and the performance of the two
       // methods was about the same.  Below we use the cross-product
       // formulation. -mjd, 28-Jan-2001
-      const OC_REAL8m dot = spin[i].x*axisi.x
-        + spin[i].y*axisi.y + spin[i].z*axisi.z;
-      const OC_REAL8m Hscale = scaling*field_mult*dot;
 
-      const OC_REAL8m tx = spin[i].y*axisi.z - spin[i].z*axisi.y;
-      const OC_REAL8m ty = spin[i].z*axisi.x - spin[i].x*axisi.z;
-      const OC_REAL8m tz = spin[i].x*axisi.y - spin[i].y*axisi.x;
+      // Split up computation of dot product to improve data flow. If
+      // we don't do this manually then the compiler may do this in a
+      // way that is not consistent between loops, leading to small
+      // rounding differences.
+      OC_REAL8m dot = spin[i].x*axisi.x;
+      const OC_REAL8m ty = FMA_Block(spin[i].z,axisi.x,-spin[i].x*axisi.z);
+      dot = FMA_Block(spin[i].z,axisi.z,dot);
+      const OC_REAL8m tx = FMA_Block(spin[i].y,axisi.z,-spin[i].z*axisi.y);
+      dot = FMA_Block(spin[i].y,axisi.y,dot);
+      const OC_REAL8m tz = FMA_Block(spin[i].x,axisi.y,-spin[i].y*axisi.x);
 
-      const OC_REAL8m ktsq = k*(tx*tx+ty*ty+tz*tz);
+      const OC_REAL8m ktsq = k*(FMA_Block(tx,tx,FMA_Block(ty,ty,tz*tz)));
       const OC_REAL8m ei = scaling*ktsq;
 
-      const OC_REAL8m vol = mesh->Volume(i);
-      energy_sum += ei * vol;
-      pE_pt_sum += dscaling*ktsq * vol;
+      const OC_REAL8m Hscale = scaling*field_mult*dot;
 
+      const OC_REAL8m vol = mesh->Volume(i);
+      Nb_XpfloatDualAccum(energy_sum,ei*vol,
+                          pE_pt_sum,dscaling*ktsq*vol);
       if(ocedt.energy)       (*ocedt.energy)[i] = ei;
       if(ocedt.energy_accum) (*ocedt.energy_accum)[i] += ei;
-      if(ocedt.H)       (*ocedt.H)[i] = Hscale*axisi;
-      if(ocedt.H_accum) (*ocedt.H_accum)[i] += Hscale*axisi;
-      if(ocedt.mxH)       (*ocedt.mxH)[i]
-                            = ThreeVector(Hscale*tx,Hscale*ty,Hscale*tz);
-      if(ocedt.mxH_accum) (*ocedt.mxH_accum)[i]
-                           += ThreeVector(Hscale*tx,Hscale*ty,Hscale*tz);
+      if(ocedt.H)            (*ocedt.H)[i] = Hscale*axisi;
+      if(ocedt.H_accum)      (*ocedt.H_accum)[i].Accum(Hscale,axisi);
+      if(ocedt.mxH) {
+        (*ocedt.mxH)[i] = ThreeVector(Hscale*tx,Hscale*ty,Hscale*tz);
+      }
+      if(ocedt.mxH_accum) {
+        (*ocedt.mxH_accum)[i].Accum(Hscale,ThreeVector(tx,ty,tz));
+      }
     }
   }
   ocedtaux.energy_total_accum += energy_sum;

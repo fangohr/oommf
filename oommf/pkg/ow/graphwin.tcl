@@ -275,7 +275,8 @@ Oc_Class Ow_GraphWin {
             "-bd 0 -relief ridge -background #0000cd"
     const public variable canvas_options = "-bd 0 -relief flat"
     const public variable graphsize = 0.9  ;# % of canvas to draw graph in.
-    const public variable axescolor = black
+    const public variable axescolor = black ;# axescolor is set inside
+    ## method RefreshDisplay to contrast with canvas background.
     const public variable axeswidth = 2
     const public variable keywidth = 2
 
@@ -299,9 +300,23 @@ Oc_Class Ow_GraphWin {
     const private variable graph  ;# Graph canvas
     public method GetCanvas {} { return $graph }
 
-    # Canvas background color
+    # Canvas background color. The mmGraph configuration dialog supports
+    # two colors, white and #004020 (which is a dark green), and the
+    # auto color select mode in the Ow_GraphWin constructor below
+    # chooses one of those two colors. But in principle any valid Tk
+    # color can be requested for default_canvas_color or canvas_color.
+    # The private method DefaultCanvasColor is called to determine
+    # the default color if default_canvas_color is empty or "auto".
+    # Note that axescolor is set inside method RefreshDisplay to
+    #  contrast with canvas_color.
+    const private common light_canvas_color #FFFFFF
+    const private common dark_canvas_color  #004020
     public common default_canvas_color
     public variable canvas_color {
+       if {[string match {} $canvas_color] \
+              || [string match auto $canvas_color]} {
+          set canvas_color [Ow_GraphWin GetDefaultCanvasColor]
+       }
        if {[info exists graph]} {
           $graph configure -background $canvas_color
        }
@@ -333,6 +348,8 @@ Oc_Class Ow_GraphWin {
     private variable firstkey = 1        ;# If true, then a non-empty key
     ## has not been drawn in the lifetime of this widget.
     private variable key_font
+    private variable key_background = white
+    private variable key_boxcolor   = black
 
     private variable lmargin = 0    ;# Margins: left, top, right, bottom,
     private variable tmargin = 0    ;# in pixels.
@@ -402,6 +419,9 @@ Oc_Class Ow_GraphWin {
     # color, which is used to color lines and unfilled symbols.  The
     # secondary color provides good contrast to the lead color and is
     # used for coloring filled symbols.
+    # 
+    # The colors used with light colored background are stored in
+    # colorset_light:
     #  Index  Lead color              Secondary color
     #    0    #FF0000 = red           #00FFFF = cyan
     #    1    #0000FF = blue          #FFFF00 = yellow
@@ -414,7 +434,7 @@ Oc_Class Ow_GraphWin {
     #    8    #A52A2A = brown         #2AA5A5 = jungle green
     #    9    #A9A9A9 = darkgray      #907373 = opium
     #   10    #7D26CD = purple3       #77CD26 = atlantis
-    private variable colorset = \
+    private variable colorset_light = \
        {"#FF0000 #00FFFF"
         "#0000FF #FFFF00"
         "#00FF00 #FF00FF"
@@ -429,6 +449,38 @@ Oc_Class Ow_GraphWin {
     # Note: The combination of curly brackets and # characters plays
     # havoc with emacs Tcl-mode indentation.  The above combination of
     # one set of curly braces with double quotes works OK, however.
+    # 
+    # The colors used with dark colored background are stored in
+    # colorset_dark:
+    #  Index  Lead color              Secondary color
+    #    0    #FF0000 = red           #00FFFF = cyan
+    #    1    #0000FF = blue          #FFFF00 = yellow
+    #    2    #00FF00 = green         #FF00FF = magenta
+    #    3    #FF00FF = magenta       #00FF00 = green
+    #    4    #FFFF00 = yellow        #8B0599 = purple
+    #    5    #FF8C00 = darkorange    #0073FF = azure radiance
+    #    6    #FFFFFF = white         #FF69B4 = hotpink
+    #    7    #00FFFF = cyan          #FF0000 = red
+    #    8    #A52A2A = brown         #2AA5A5 = jungle green
+    #    9    #A9A9A9 = darkgray      #907373 = opium
+    #   10    #7D26CD = purple3       #77CD26 = atlantis
+    # These are mostly the same as colorset_light; tweak as desired.
+    private variable colorset_dark = \
+       {"#FF0000 #00FFFF"
+        "#0000FF #FFFF00"
+        "#00FF00 #FF00FF"
+        "#FF00FF #00FF00"
+        "#FFFF00 #8B0599"
+        "#FF8C00 #0073FF"
+        "#FFFFFF #FF69B4"
+        "#00FFFF #FF0000"
+        "#A52A2A #2AA5A5"
+        "#A9A9A9 #907373"
+        "#7D26CD #77CD26"}
+    #
+    # Variable colorset holds a copy of either colorset_light or
+    # colorset_dark, depending on chosen background.
+    private variable colorset
 
     # Ordered symbols list.  Each name references an instance
     # method with name Symbol${name}
@@ -566,8 +618,14 @@ Oc_Class Ow_GraphWin {
 	}
 
 	if {![info exists canvas_color]} {
-	    set canvas_color $default_canvas_color
-	}
+           if {![string match {} $default_canvas_color] \
+                  && ![string match auto $default_canvas_color] } {
+              # User specified color
+              set canvas_color $default_canvas_color
+           } else {
+              set canvas_color [Ow_GraphWin GetDefaultCanvasColor]
+           }
+        }
 
 	if {$boundary_clip_size<$curve_width} {
 	    set boundary_clip_size $curve_width
@@ -652,6 +710,45 @@ Oc_Class Ow_GraphWin {
         # Re-enable callbacks
         set callback $callback_keep
     }
+
+    proc GetDefaultCanvasColor {} {
+       if {![string match {} $default_canvas_color] \
+              && ![string match auto $default_canvas_color] } {
+          return $default_canvas_color
+       }
+       set background [option get . background *]
+       if {[llength $background]>0} {
+          # --- Auto canvas background color selection ---
+          # If background is set in the Tk option database, use that to
+          # pick canvas_color.
+          # Note: Ow_ChangeColorScheme calls tk_setPalette, and any call
+          #  to tk_setPalette sets the background entry to the Tk option
+          #  database.
+          if {[Ow_GetShade $background]<128} {
+             set canvas_color $dark_canvas_color
+          } else {
+             set canvas_color $light_canvas_color
+          }
+       } else {
+          set canvas_color $light_canvas_color ;# default
+          # If on macOS/aqua and dark mode is specified, use dark canvas
+          if {[string match aqua [tk windowingsystem]]} {
+             update idletasks ;# In auto appearance mode, the command
+             ##   ::tk::unsupported::MacWindowStyle isdark
+             ## needs 'update idletasks' to work properly (Tk 8.6.10).
+             if {![catch {::tk::unsupported::MacWindowStyle isdark .} _] \
+                    && $_} {
+                set canvas_color $dark_canvas_color
+             }
+          }
+       }
+       return $canvas_color
+    }
+
+    method GetCanvasColor {} {
+       return [$graph cget -background]
+    }
+
     callback method ResizeCanvas { width height } { graph } {
         set border [expr {2*[$graph cget -borderwidth] \
                 +2*[$graph cget -highlightthickness]}]
@@ -878,7 +975,7 @@ Oc_Class Ow_GraphWin {
             # Add separating line
             set y [expr {$y+1}]
             set tempid [$graph create line $x $y [expr $x+1] $y \
-                    -tags {key key_text} -width 1]
+                    -tags {key key_text} -width 1 -fill $key_boxcolor]
             set bbox [$graph bbox $tempid]
             set y [lindex $bbox 3]
         }
@@ -929,12 +1026,13 @@ Oc_Class Ow_GraphWin {
         ## provides better behaved canvas resize behavior.
         if {$keycount<1} {
             # Empty keybox
-            $graph create rectangle $x1 $y1 $x2 $y2 -tag {key key_box}\
+            $graph create rectangle $x1 $y1 $x2 $y2 -tag {key key_box} \
                     -outline {}
         } else {
             # Non-empty keybox
-            $graph create rectangle $x1 $y1 $x2 $y2 -tag {key key_box}\
-                    -fill white -outline black -width $keywidth
+            $graph create rectangle $x1 $y1 $x2 $y2 -tag {key key_box} \
+                    -fill $key_background -outline $key_boxcolor \
+                    -width $keywidth
             set firstkey 0
         }
 
@@ -954,7 +1052,7 @@ Oc_Class Ow_GraphWin {
             # Add separating line
            set y [expr {$y+1}]
             set tempid [$graph create line $x1 $y $x2 $y \
-                    -tags {key} -width 1]
+                    -tags {key} -width 1 -fill $key_boxcolor]
             set bbox [$graph bbox $tempid]
             set y [lindex $bbox 3]
         }
@@ -1116,7 +1214,8 @@ Oc_Class Ow_GraphWin {
     }
 
     callback method ShowPosition { cx cy button state convert tags } { \
-	    graph xgraphmin xgraphmax ygraphmin ygraphmax \
+	    graph canvas_color axescolor \
+            xgraphmin xgraphmax ygraphmin ygraphmax \
             y2graphmin y2graphmax xlogscale ylogscale y2logscale \
             lmargin plotwidth bindblock ShiftMask } {
 
@@ -1161,9 +1260,10 @@ Oc_Class Ow_GraphWin {
         # Do display
         set textid [$graph create text \
                 [expr {$cx+$cxoff}] [expr {$cy+$cyoff}] \
-                -text "($fx,$fy)" -anchor $textanchor -tags $tags]
+                -text "($fx,$fy)" -fill $axescolor \
+                -anchor $textanchor -tags $tags]
         set bbox [$graph bbox $textid]
-        eval "$graph create rectangle $bbox -fill white -outline {} \
+        eval "$graph create rectangle $bbox -fill $canvas_color -outline {} \
                 -tags [list $tags]"
         $graph raise $textid
         return [list $fx $fy]
@@ -1642,8 +1742,8 @@ Oc_Class Ow_GraphWin {
         # Determine title height
         if {![string match {} $title]} {
             $graph delete title_test ;# Safety
-            $graph create text 0 0 \
-                    -text $title -font $title_font -tags title_test
+            $graph create text 0 0 -text $title \
+               -font $title_font -fill $axescolor -tags title_test
             set bbox [$graph bbox title_test]
             set title_height [expr {1.5*([lindex $bbox 3]-[lindex $bbox 1])}]
             $graph delete title_test
@@ -1653,9 +1753,11 @@ Oc_Class Ow_GraphWin {
 
         # Calculate lower bound for margin size from axes coordinate text
         $graph delete margin_test   ;# Safety
-        $graph create text 0 0 -text $xgraphmin -font $label_font \
+        $graph create text 0 0 -text $xgraphmin \
+                -font $label_font -fill $axescolor \
                 -anchor sw -tags margin_test
-        $graph create text 0 0 -text $xgraphmax -font $label_font \
+        $graph create text 0 0 -text $xgraphmax \
+                -font $label_font -fill $axescolor \
                 -anchor sw -tags margin_test
         set bbox [$graph bbox margin_test]
         set xtext_height [expr {([lindex $bbox 3]-[lindex $bbox 1])*1.2+1}]
@@ -1664,9 +1766,11 @@ Oc_Class Ow_GraphWin {
         $graph delete margin_test
 
         if {$y1ccnt>0} {
-            $graph create text 0 0 -text $ygraphmin -font $label_font \
+            $graph create text 0 0 -text $ygraphmin    \
+                    -font $label_font -fill $axescolor \
                     -anchor sw -tags margin_test
-            $graph create text 0 0 -text $ygraphmax -font $label_font \
+            $graph create text 0 0 -text $ygraphmax    \
+                    -font $label_font -fill $axescolor \
                     -anchor sw -tags margin_test
             set bbox [$graph bbox margin_test]
             set ytext_halfheight \
@@ -1680,9 +1784,11 @@ Oc_Class Ow_GraphWin {
             set ytext_width 0
         }
         if {$y2ccnt>0} {
-            $graph create text 0 0 -text $y2graphmin -font $label_font \
+            $graph create text 0 0 -text $y2graphmin   \
+                    -font $label_font -fill $axescolor \
                     -anchor sw -tags margin_test
-            $graph create text 0 0 -text $y2graphmax -font $label_font \
+            $graph create text 0 0 -text $y2graphmax   \
+                    -font $label_font -fill $axescolor \
                     -anchor sw -tags margin_test
             set bbox [$graph bbox margin_test]
             set y2text_halfheight \
@@ -1810,39 +1916,40 @@ Oc_Class Ow_GraphWin {
         # certain there aren't any gaps for lines running outside plot
         # area to peak through.
         #  Curves are layered directly below the first of these boxes.
+        set matte_color [$graph cget -background]
         set matteid [$graph create rectangle 0 0 \
                      [expr {2*$canwidth}] [expr {$ydispmin-$axeswidth/2.}] \
-                     -outline {} -fill white -tags axes]
+                     -outline {} -fill $matte_color -tags axes]
         $graph create rectangle 0 0 \
                 [expr {$xdispmin-$axeswidth/2.}] $canheight \
-                -outline {} -fill white -tags axes
+                -outline {} -fill $matte_color -tags axes
         $graph create rectangle [expr {$xdispmax+$axeswidth/2.}] 0 \
                 [expr {2*$canwidth}] $canheight \
-                -outline {} -fill white -tags axes
+                -outline {} -fill $matte_color -tags axes
         $graph create rectangle 0 [expr {$ydispmax+$axeswidth/2.}] \
                 [expr {2*$canwidth}] [expr {2*$canheight}] \
-                -outline {} -fill white -tags axes
+                -outline {} -fill $matte_color -tags axes
 
         $graph create text $xdispmin [expr {$ydispmax+$bmargin*0.1}] \
-                -font $label_font \
+                -font $label_font -fill $axescolor \
                 -text $xgraphmin -anchor n -tags axes
         $graph create text $xdispmax [expr {$ydispmax+$bmargin*0.1}] \
-                -font $label_font \
+                -font $label_font -fill $axescolor \
                 -text $xgraphmax -anchor n -tags axes
         if {$y1ccnt>0} {
             $graph create text [expr {$xdispmin-$lmargin*0.1}] $ydispmax \
-                    -font $label_font \
+                    -font $label_font -fill $axescolor \
                     -text $ygraphmin -anchor se -tags axes
             $graph create text [expr {$xdispmin-$lmargin*0.1}] $ydispmin \
-                    -font $label_font \
+                    -font $label_font -fill $axescolor \
                     -text $ygraphmax -anchor ne -tags axes
         }
         if {$y2ccnt>0} {
             $graph create text [expr {$xdispmax+$rmargin*0.1}] $ydispmax \
-                    -font $label_font \
+                    -font $label_font -fill $axescolor \
                     -text $y2graphmin -anchor sw -tags axes
             $graph create text [expr {$xdispmax+$rmargin*0.1}] $ydispmin \
-                    -font $label_font \
+                    -font $label_font -fill $axescolor \
                     -text $y2graphmax -anchor nw -tags axes
         }
 
@@ -1851,7 +1958,7 @@ Oc_Class Ow_GraphWin {
             $graph create text \
                     [expr {($xdispmin+$xdispmax)/2.}] \
                     [expr {$tmargin/2.}] \
-                    -text $title -font $title_font \
+                    -text $title -font $title_font -fill $axescolor \
                     -justify center -tags axes
             ## Use [expr {$canwidth/2.}] for x to get centering
             ## with respect to page instead of wrt graph.
@@ -1861,20 +1968,20 @@ Oc_Class Ow_GraphWin {
         $graph create text \
                 [expr {($xdispmin+$xdispmax)/2.}] \
                 [expr {$canheight-$bmargin*0.5}]  \
-                -font $label_font -justify center \
+                -font $label_font -fill $axescolor -justify center \
                 -text $xlabel -tags axes
         if {$y1ccnt>0} {
             $graph create text \
                     [expr {$lmargin*0.5}]             \
                     [expr {($ydispmin+$ydispmax)/2.}] \
-                    -font $label_font -justify center \
+                    -font $label_font -fill $axescolor -justify center \
                     -text $ylabel -tags axes
         }
         if {$y2ccnt>0} {
             $graph create text \
                     [expr {$canwidth - $rmargin*0.5}] \
                     [expr {($ydispmin+$ydispmax)/2.}] \
-                    -font $label_font -justify center \
+                    -font $label_font -fill $axescolor -justify center \
                     -text $y2label -tags axes
         }
 
@@ -3302,6 +3409,11 @@ Oc_Class Ow_GraphWin {
           # Autoscale one or more limit values
           foreach {txmin txmax tymin tymax ty2min ty2max} \
              [$this GetDataExtents] { break }
+          foreach elt {txmin txmax tymin tymax ty2min ty2max} {
+             # Round to 15 digits to allow for rounding errors.  It may
+             # be better to scale based on range, e.g., txmax-txmin.
+             set $elt [format %.14e [set $elt]]
+          }
 
           # Make "nice" limits
           foreach {txmin txmax} \
@@ -3357,9 +3469,19 @@ Oc_Class Ow_GraphWin {
        return $displaystate
     }
     method RefreshDisplay {} {
-        $this DrawAxes
-        $this DrawCurves 0
-        $this DrawKey
+       set canvasshade [Ow_GetShade $canvas_color]
+       if {$canvasshade<128} {  ;# Dark background
+          set axescolor white
+          set colorset $colorset_dark
+       } else {                 ;# Light background
+          set axescolor black
+          set colorset $colorset_light
+       }
+       set key_background $canvas_color
+       set key_boxcolor $axescolor
+       $this DrawAxes
+       $this DrawCurves 0
+       $this DrawKey
     }
     method Reset {} {
         # Re-initializes most of the graph properties to initial defaults

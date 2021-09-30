@@ -18,8 +18,81 @@
 #
 # Binding tags and event id's may be any non-empty string.
 #
-# Last modified on: $Date: 2015/09/11 03:09:45 $
-# Last modified by: $Author: donahue $
+# EXAMPLE: Say $this is an instance of Oc_Class Foo, and you create
+# two handlers:
+#
+#  Oc_EventHandler New _ $this Alpha [list $this HandleAlpha]
+#  Oc_EventHandler New _ Foo   Alpha DoAlpha
+#
+# Then
+#
+#  Oc_EventHandler Generate $this Alpha
+#
+# will fire both '$this HandleAlpha' AND 'DoAlpha', because by default
+# $this is bound (via bindtags) to both its name ($this) and its class
+# (Foo). On the other hand
+#
+#  Oc_EventHandler Generate Foo Alpha
+#
+# won't fire *any* handlers, because the class name 'Foo' is not bound
+# to any tags. However, if you do
+#
+#  Oc_EventHandler Bindtags Foo Foo
+#
+# then 'Oc_EventHandler Generate Foo Alpha' will fire the class handler
+# 'DoAlpha' alone. The key point is that handlers operate on tags while
+# Generate operates on names. In particular,
+#
+#   Oc_EventHandler Generate Foo Bar myscript
+#
+# doesn't do anything unless Foo is a registered name in the bindtags
+# array, AND there is a handler for a tag associated with Foo.
+#
+# If you want to use the Oc_EventHandler facility outside of Oc_Classes,
+# then you need to make explicit calls to Oc_EventHandler Bindtags to
+# set name to tag associations. In this setting one typically sets the
+# tag equal to the name, e.g.
+#
+#  Oc_EventHandler Bindtags Oxs Oxs
+#
+# so that Oxs can be used as both a name and a tag, but to be pedantic
+# the structure is:
+#
+#  Oc_EventHandler New _ mytag myevent myscript    ;# handler
+#  Oc_EventHandler Bindtags myname mytag           ;# name -> tag mapping
+#  Oc_EventHandler Generate myname myevent         ;# generate event
+#
+# BTW, the latter "Oxs" argument to Oc_EventHandler Bindtags is
+# properly a list.
+#
+# Incidentally, pkg/oc/main.tcl defines
+#
+#  Oc_EventHandler Bindtags Oc_Main Oc_Main
+#  Oc_EventHandler Bindtags Oc_Log Oc_Log
+#
+# so you can freely bind to Oc_Main and Oc_Log.
+#
+# Percent substitutions: The Generate call can set up substitutions for
+# use in the handler script. For example
+#
+#  Oc_EventHandler Generate Oxs Step \
+#    -stage [lindex $ev 2] -step [lindex $ev 3]
+#
+#  Oc_EventHandler New _ Oxs Step [list set step %step]
+#  Oc_EventHandler New _ Oxs Step [list set stage %stage]
+#
+# Other Oc_EventHandler constructor options:
+#
+#  Oc_EventHandler New _ Oxs Stage [list set status Pause] \
+#    -oneshot 1 -groups [list ChangeStatus]
+#
+# The -oneshot option takes a boolean value, where true means the
+# handler is automatically deleted after it is called once. The -groups
+# option is a list of group names. This supports bulk deletion of
+# handlers assigned to the same group, e.g.,
+#
+#  Oc_EventHandler DeleteGroup ChangeStatus
+#
 
 Oc_Class Oc_EventHandler {
 

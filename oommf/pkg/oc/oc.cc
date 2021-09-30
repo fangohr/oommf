@@ -20,12 +20,15 @@
  */
 
 /* Header files for standard libraries */
-#include <assert.h>
-#include <errno.h>
-#include <string.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cerrno>
+#include <cstring>
+#include <csignal>
+#include <cstdio>
+#include <cstdlib>
+
+#include <exception>
+#include <iostream>
 
 /* Header file for this extension */
 #include "autobuf.h"
@@ -33,8 +36,8 @@
 #include "octhread.h"
 
 /* Implementation-defined limits (ANSI C) */
-#include <limits.h>
-#include <float.h>
+#include <climits>
+#include <cfloat>
 
 #if defined(OC_SET_TASKBAR_ID) && OC_SET_TASKBAR_ID
 # include <Shobjidl.h>  // For SetCurrentProcessExplicitAppUserModelId
@@ -1282,9 +1285,6 @@ Oc_Init(Tcl_Interp *interp)
   }
 
 
-  // Paper over some potential problems in expr.
-  Oc_AddTclExprExtensions(interp);
-
   // Extract Oc options.  We must do this before initializing Tk,
   // because one of the Oc options is whether or not to use Tk.
   // However, we can not initialize Oc before Tk, because some parts
@@ -1387,8 +1387,14 @@ Oc_Init(Tcl_Interp *interp)
 
   Oc_RegisterCommand(interp,"Oc_Srand",(Tcl_CmdProc *)OcSrand);
   Oc_RegisterCommand(interp,"Oc_UnifRand",(Tcl_CmdProc *)OcUnifRand);
-  Oc_RegisterCommand(interp,"Oc_AddTclExprExtensions",
-		     (Tcl_CmdProc *)OcAddTclExprExtensions);
+  Oc_RegisterCommand(interp,"Oc_ReadRNGState",
+                     (Tcl_CmdProc *)OcReadRNGState);
+
+  // Import Oc_Atan2 into Tcl, and replace default expr/mathfunc atan2
+  // with it. NB: Child interpreters appear to revert back to default
+  // behavior; the interp alias command can be used to override.
+  Oc_RegisterCommand(interp,"Oc_Atan2",(Tcl_CmdProc *)OcAtan2);
+  Oc_RegisterCommand(interp,"::tcl::mathfunc::atan2",(Tcl_CmdProc *)OcAtan2);
 
   // Thread support code
   Oc_RegisterCommand(interp,"Oc_HaveThreads",
@@ -1942,7 +1948,27 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
   Tcl_Free((char *)argv_temp);
 
   // Now we can pretend a Unix system gave us argc and argv
-  return Oc_AppMain(argc, argv);
+  int errorcode = 0;
+  try { // Panic on any uncaught exceptions
+    errorcode = Oc_AppMain(argc, argv);
+  } catch(std::exception& errexc) {
+    std::cerr << "\nUNCAUGHT EXCEPTION: " << errexc.what() << "\n";
+    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception: %s\n"),
+              errexc.what());
+  } catch(string& errstr) {
+    std::cerr << "\nUNCAUGHT EXCEPTION: " << errstr << "\n";
+    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (string): %s\n"),
+              errstr.c_str());
+  } catch(char* err_cstr) {
+    std::cerr << "\nUNCAUGHT EXCEPTION: " << err_cstr << "\n";
+    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (char*): %s\n"),
+              err_cstr);
+  } catch(...) {
+    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception\n"));
+    errorcode=99;
+  }
+
+  return errorcode;
 }
 
 #endif // OC_SYSTEM_TYPE == OC_WINDOWS
@@ -1968,7 +1994,27 @@ main(int argc, char **argv)
       NullifyTclStandardChannel(TCL_STDERR);
     }
 
-    return Oc_AppMain(argc, argv);
+    int errorcode = 0;
+    try { // Panic on any uncaught exceptions
+      errorcode = Oc_AppMain(argc, argv);
+    } catch(std::exception& errexc) {
+      std::cerr << "\nUNCAUGHT EXCEPTION: " << errexc.what() << "\n";
+      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception: %s\n"),
+                errexc.what());
+    } catch(string& errstr) {
+      std::cerr << "\nUNCAUGHT EXCEPTION: " << errstr << "\n";
+      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (string): %s\n"),
+                errstr.c_str());
+    } catch(char* err_cstr) {
+      std::cerr << "\nUNCAUGHT EXCEPTION: " << err_cstr << "\n";
+      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (char*): %s\n"),
+                err_cstr);
+    } catch(...) {
+      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception\n"));
+      errorcode=99;
+    }
+    
+    return errorcode;
 }
 
 

@@ -127,7 +127,7 @@ Oc_Class Net_Account {
 
     # Port on host on which account thread listens
     private variable port
-    
+
     # Socket for receiving ping from localhost OOMMF account server
     private variable listensocket
 
@@ -144,10 +144,12 @@ Oc_Class Net_Account {
 
     private variable protocolversion
 
+    private variable ignore_die = 0 ;# Ignore die requests from
+                                    ## account server?
     public variable gui = 0 {
 	package require Tk
 	wm geometry . {} ;# Make sure we have auto-sizing root window
-        if {$gui} {   
+        if {$gui} {
             if {[info exists myWidget]} {
                 return
             }
@@ -163,7 +165,7 @@ Oc_Class Net_Account {
 	    $parentWin configure -width 0 -height 0
         }
         set btnvar $gui
-    }    
+    }
     public variable parentWin = .
     private variable myWidget
     private variable btnvar
@@ -258,6 +260,10 @@ Oc_Class Net_Account {
 
     private method HandlePing {args} {
         if {[llength $args]} {
+            if {[info exists listensocket]} {
+               catch {close $listensocket}
+               unset listensocket
+            }
             Oc_Log Log "$this: Received ping from account server!" \
                 status $class
             close [lindex $args 0]
@@ -485,6 +491,13 @@ Oc_Class Net_Account {
 	return $oid
     }
 
+    method AccountConnection {} {
+       # Used for clean shutdowns
+       if {![info exists connection]} {
+          return {}
+       }
+       return $connection
+    }
 
     # The Names method returns a two item list.  If the first item is 0,
     # then the second item is the list of nicknames for the OID.  Note
@@ -531,7 +544,7 @@ Oc_Class Net_Account {
 
     method Getoid {qid} {
        Oc_EventHandler DeleteGroup $this-$qid
-       set result [$connection Get] 
+       set result [$connection Get]
        if {[lindex $result 0]} {
           $this FatalError "Did not receive OID: [lindex $result 1]"
           return
@@ -542,11 +555,24 @@ Oc_Class Net_Account {
           incr lastoid
        }
        Oc_Main SetOid $oid
-       if {[llength [info commands wm]]} {
-          #wm title . "<$oid> [Oc_Main GetAppName]|$lastoid"
-          #wm title . "<$oid> [Oc_Main GetAppName]"
-          wm title . [Oc_Main GetTitle]
-          wm iconname . [wm title .]
+
+       # Update root window title
+       if {[llength [info commands Ow_SetWindowTitle]]} {
+          set wintitle [Oc_Main GetTitle]
+          set winwidth [Ow_SetWindowTitle . $wintitle]
+          wm iconname . $wintitle
+          Oc_EventHandler Generate $this NewTitle \
+             -title $wintitle -winwidth $winwidth
+          # Code can use the NewTitle event to resize the root window
+          # width to accomodate the new title. Here is some example
+          # client code, assuming variables brace (pointing to a frame
+          # or canvas widget) and menu_width are defined in the
+          # enclosing scope:
+          #
+          #  Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+          #    $brace configure -width \
+          #      [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+          #  }]
        }
 
        # Register nicknames with server
@@ -646,13 +672,22 @@ Oc_Class Net_Account {
        }
     }
 
+    method IgnoreDie {} {
+       # Ignore "die" requests from account server
+       set ignore_die 1
+    }
+    method EnableDie {} {
+       # Enable "die" requests from account server
+       set ignore_die 0
+    }
+
     # Handle 'tell' messages from connection
     method Hear {} {
-        set reply [$connection Get]
-	if {[string compare [lindex $reply 0] private]} {
-	    Oc_EventHandler Generate $this Readable
-	    return
-	}
+       set reply [$connection Get]
+       if {[string compare [lindex $reply 0] private]} {
+          Oc_EventHandler Generate $this Readable
+          return
+       }
        switch -exact [lindex $reply 1] {
           lastoid { set lastoid [lindex $reply 2] }
           nickname {
@@ -675,13 +710,17 @@ Oc_Class Net_Account {
                 lappend nicknames $tempname
              }
           }
-          die { after 0 exit }
+          die {
+             if {!$ignore_die} {
+                after 0 exit
+             }
+          }
        }
     }
 
     method Receive { rid } {
         Oc_EventHandler DeleteGroup $this-$rid
-        set reply [$connection Get] 
+        set reply [$connection Get]
         Oc_EventHandler Generate $this Reply$rid
     }
 
@@ -737,7 +776,7 @@ Oc_Class Net_Account {
        Oc_Log Log "$this: $msg" warning $class
        error $msg
     }
- 
+
     Destructor {
         set ready 0
         if {[info exists timeoutevent]} {
@@ -761,6 +800,7 @@ Oc_Class Net_Account {
 
         Oc_EventHandler Generate $this Delete
         Oc_EventHandler DeleteGroup $this
+
 	if {[info exists oid]} {
            if {[llength [info commands wm]]} {
               wm title . [Oc_Main GetInstanceName]
@@ -768,17 +808,13 @@ Oc_Class Net_Account {
            }
            set oid_copy $oid
            unset oid
-           set qid [$connection Query freeoid $oid_copy]
            if {[info exists connection]} {
-              # $connection Query may generate a recursive call into
-              # this destructor.
-              Oc_EventHandler New _ $connection Reply$qid \
-                  [list $connection Delete] -groups [list $connection]
-              Oc_EventHandler New _ $connection Timeout$qid \
-                  [list $connection Delete] -groups [list $connection]
+              $connection Query freeoid $oid_copy
            }
-        } elseif {[info exists connection]} {
-           $connection Delete
+        }
+        if {[info exists connection]} {
+           $connection Query bye
+           $connection SafeClose
         }
         if {[info exists listensocket]} {
            catch {close $listensocket}
@@ -791,5 +827,4 @@ Oc_Class Net_Account {
             unset index($hostname,$accountname)
         }
     }
-
 }

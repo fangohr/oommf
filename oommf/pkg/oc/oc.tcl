@@ -16,6 +16,12 @@ if {[catch {set tcl_precision 0}]} {
    set tcl_precision 17
 }
 
+# Safety check for broken math libraries
+if {[catch {expr {exp(-1000.) + pow(10., -1000.) + atan2(0., 0.)}}]} {
+   puts stderr "Broken math library detected. Contact OOMMF developers for support."
+   exit 666
+}
+
 # Check that we're not running as root.
 # Returns 1 if running as root (unix/OS X) or administrator (Windows)
 # Returns 0 if not root/admin
@@ -96,7 +102,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 2.0a2
+package provide Oc 2.0a3
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]
@@ -138,6 +144,17 @@ if {[llength [info commands Oc_InitScript]]} {
 
 # Add standard command line options
 Oc_CommandLine ActivateOptionSet standard
+
+
+# Debugging helper proc
+proc DebugMessage { msg } {
+   set secs [clock seconds]
+   set oid [Oc_Main GetOid]
+   if {[string match {} $oid]} {
+      set oid "p[pid]"
+   }
+   puts stderr "<$oid> [clock format $secs -format %T]: $msg"
+}
 
 # Load in any local modifications
 set _ [file join [file dirname [info script]] local oc.tcl]

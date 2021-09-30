@@ -54,7 +54,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2odt
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Option console {} {}
 
@@ -226,26 +226,29 @@ if {[llength $inputPattern]>0} {
    foreach pat $inputPattern {
       set inGlob [concat $inGlob [lsort -dictionary [glob -nocomplain -- $pat]]]
    }
-} else {
-   # -ipat not specified.  On Windows, check infile for wildcards.
-   # (Unix shells automatically expand wildcards, Windows does not.)
-   if {[string match windows $tcl_platform(platform)]} {
-      set nowild {}
-      foreach f $infile {
-         if {([string first "*" $f]>=0 || [string first "?" $f]>=0) \
-                 && ![file exists $f]} {
-            # Convert any '\' to '/' before feeding to glob
-            if {![catch {file join $f} xf]} {set f $xf}
-            set inGlob [concat $inGlob \
-                            [lsort -dictionary [glob -nocomplain -- $f]]]
-         } else {
-            lappend nowild $f
-         }
-      }
-      set infile $nowild
-   }
 }
 
+# On Windows, check infile list for and expand wildcards, to better
+# agree with Unix behavior. Unix shells automatically expand wildcards,
+# Windows does not. One concession to Windows: If a potential "pattern"
+# matches a file directly (verbatim), then that match is used and
+# wildcard matching is not attempted on that pattern. This protects
+# unwary Windows users not familiar with glob matching patterns beyond ?
+# and *.
+if {[string match windows $tcl_platform(platform)]} {
+   set wildfiles {}
+   foreach f $infile {
+      if {![file exists $f]} {
+         # Convert any '\' to '/' before feeding to glob
+         if {![catch {file join $f} xf]} {set f $xf}
+         set wildfiles [concat $wildfiles \
+                        [lsort -dictionary [glob -nocomplain -- $f]]]
+      } else {
+         lappend wildfiles $f
+      }
+   }
+   set infile $wildfiles
+}
 
 # Form complete input file list
 set infilelist [concat $inGlob $infile]

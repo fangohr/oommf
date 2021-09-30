@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>Data Graph Display: mmGraph</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html470"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html472"
   HREF="Vector_Field_Display_mmDisp.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html466"
+<A NAME="tex2html468"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html460"
+<A NAME="tex2html462"
   HREF="Data_Table_Display_mmDataTa.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html472"
+<A NAME="tex2html474"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html468"
+<A NAME="tex2html470"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html471"
+<B> Next:</B> <A NAME="tex2html473"
   HREF="Vector_Field_Display_mmDisp.html">Vector Field Display: mmDisp</A>
-<B> Up:</B> <A NAME="tex2html467"
+<B> Up:</B> <A NAME="tex2html469"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html461"
+<B> Previous:</B> <A NAME="tex2html463"
   HREF="Data_Table_Display_mmDataTa.html">Data Table Display: mmDataTable</A>
 <BR>
 <BR>
@@ -56,7 +52,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H1><A NAME="SECTION000130000000000000000"></A><A NAME="sec:mmgraph"></A>
 <BR>
 Data Graph Display: mmGraph
-</H1><A NAME="13951"></A>
+</H1><A NAME="13903"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -71,7 +67,7 @@ Data Graph Display: mmGraph
 <BR>
 The application <B>mmGraph</B> provides a data display service similar to
 that of <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="13962"><B>mmDataTable</B></A>.  The usual
+ NAME="13914"><B>mmDataTable</B></A>.  The usual
 data source is a running solver, but rather than the textual output
 provided by <B>mmDataTable</B>, <B>mmGraph</B> produces 2D line plots.
 <B>mmGraph</B> also stores the data it receives, so it can produce
@@ -109,26 +105,26 @@ tclsh oommf.tcl mmGraph [standard options] [-net &lt;0|1&gt;] [loadfile ...]
 <BR>
 Input to <B>mmGraph</B> may come from either a file in the 
 <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
- NAME="13985">ODT format</A>, 
+ NAME="13937">ODT format</A>, 
 or when <TT>-net 1</TT> (the default) is active, from a client application
 (typically a running solver).  The
 <FONT COLOR="#800000"><B>File|Open...</B></FONT> dialog box is used to select an input file.
 Receipt of data from client applications is the same as for
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="13992"><B>mmDataTable</B></A>.  In either
+ NAME="13944"><B>mmDataTable</B></A>.  In either
 case, input data are appended to any previously held data.
 
 <P>
 When reading from a file, <B>mmGraph</B> will automatically
-decompress<A NAME="13994"></A>
+decompress<A NAME="13946"></A>
 data using the <A HREF="Advanced_Installation.html#sec:custom"
- NAME="13999">local customization</A>
+ NAME="13951">local customization</A>
 ``Nb_InputFilter decompress'' option to <TT>Oc_Option</TT>.  For details,
 see the discussion on file translation in the Inputs section of the 
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"><B>mmDisp</B> documentation</A>.
 
 <P>
-Curve breaks<A NAME="14005"></A> (i.e., separation of a curve into
+Curve breaks<A NAME="13957"></A> (i.e., separation of a curve into
 disjoint segments) are recorded in the data storage buffer via <EM>curve break records.</EM>  These records are generated whenever a new data
 table is detected by <B>mmGraph</B>, or when requested by the user using
 the <B>mmGraph</B> <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> menu option.
@@ -139,12 +135,12 @@ the <B>mmGraph</B> <FONT COLOR="#800000"><B>Options|Break Curves</B></FONT> menu
 <FONT SIZE="+2"><B>Outputs</B></FONT>
 <BR>
 <P>
-Unlike <B>mmDataTable</B><A NAME="14012"></A>, <B>mmGraph</B>
+Unlike <B>mmDataTable</B><A NAME="13964"></A>, <B>mmGraph</B>
 internally stores the data sent to it.  These data may be written to
 disk via the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box.  If the file
 specified already exists, then <B>mmGraph</B> output is appended to that
 file.  The output is in the tabular <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat"
- NAME="14020">ODT format</A>.  The
+ NAME="13972">ODT format</A>.  The
 data are segmented into separate <TT>Table Start/Table End</TT> blocks
 across each curve break record.
 
@@ -156,7 +152,7 @@ currently selected for display.  In either case, the graph display
 limits do <EM>not</EM> affect the output.
 
 <P>
-The save operation<A NAME="14026"></A> writes records that are held by
+The save operation<A NAME="13978"></A> writes records that are held by
 <B>mmGraph</B> at the time the <FONT COLOR="#800000"><B>File|Save As...</B></FONT> dialog box
 <FONT COLOR="#800000"><B>OK</B></FONT> button is invoked.  Additionally, the <FONT COLOR="#800000"><B>Auto Save</B></FONT> option in
 this dialog box may be used to automatically append to the specified
@@ -169,10 +165,10 @@ continues until either a new output file is specified, the
 terminated.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="14035"></A> dialog is used to
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="13987"></A> dialog is used to
 produce a Postscript file of the current graph.  On Unix systems, the
 output may be sent directly to a 
-printer<A NAME="14036"></A> 
+printer<A NAME="13988"></A> 
 by filling the <FONT COLOR="#800000"><B>Print to:</B></FONT>
 entry with the appropriate pipe command, e.g., <TT>|lpr</TT>.  (The
 exact form is system dependent.)
@@ -236,7 +232,7 @@ The initial curve width is determined by the <TT>Ow_GraphWin
 default_curve_width</TT> setting in the <TT><B>config/options.tcl</B></TT> and
 <TT><B>config/local/options.tcl</B></TT> files, following the usual method of
 <A HREF="Advanced_Installation.html#sec:custom"
- NAME="14063">local customization</A>.  The current curve
+ NAME="14015">local customization</A>.  The current curve
 width can be changed by specifying the desired width in the <FONT COLOR="#800000"><B>Curve
 Width</B></FONT> entry in the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
 The units are pixels.  Long curves will be rendered more quickly,
@@ -245,12 +241,8 @@ especially on Windows, if the curve width is set to 1.
 <P>
 As mentioned earlier, <B>mmGraph</B> stores in memory all data it
 receives.  Over the course of a long run, the amount of data stored can
-grow to many megabytes<A NAME="14067"></A>.  This storage can be limited
-by specifying a positive (<B>&gt; 0</B>
-<!-- MATHEND
- 
- -->
-) value for the <FONT COLOR="#800000"><B>Point buffer size</B></FONT>
+grow to many megabytes<A NAME="14019"></A>.  This storage can be limited
+by specifying a positive (<B>&gt; 0</B>) value for the <FONT COLOR="#800000"><B>Point buffer size</B></FONT>
 entry in the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.  The oldest
 records are removed as necessary to keep the total number of records
 stored under the specified limit.  A zero value for <FONT COLOR="#800000"><B>Point buffer
@@ -341,7 +333,7 @@ y-axis will be rescaled.  The rescaling may be canceled by positioning
 the mouse pointer over the initial point before releasing the mouse
 button.  The zoom box feature is similar to the mouse zoom control in
 the <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="14097"><B>mmDisp</B></A> application, except
+ NAME="14049"><B>mmDisp</B></A> application, except
 that here there is no ``un-zooming'' mouse control.  However, the
 coordinate limits for each zoom are stored in a list, and the <TT><B>Esc</B></TT>
 and <TT><B>Shift+Esc</B></TT> keys may be used to move backwards and forwards,
@@ -393,7 +385,7 @@ it may be a long time after starting a problem in the solver before the
 graph widget can be configured.  Because <B>mmGraph</B> keeps all data up
 to the limit imposed by the <TT>Point buffer size</TT>, data loss is usually
 not a problem.  Of more importance is the fact that automatic data
-saving<A NAME="14121"></A> can not be set up until the first data point is
+saving<A NAME="14073"></A> can not be set up until the first data point is
 received.  As a workaround, the solver initial state may be sent
 interactively as a dummy point to initialize the graph widget axes
 menus.  Select the desired quantities off the axes menus, and use the
@@ -406,23 +398,23 @@ will be written to this file as they arrive.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html470"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html472"
   HREF="Vector_Field_Display_mmDisp.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html466"
+<A NAME="tex2html468"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html460"
+<A NAME="tex2html462"
   HREF="Data_Table_Display_mmDataTa.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html473"
+<A NAME="tex2html475"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html468"
+<A NAME="tex2html470"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

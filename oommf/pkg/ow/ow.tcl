@@ -9,29 +9,26 @@
 # command, this file is sourced.
 
 # Other package requirements
-if {[catch {package require Tcl 8}]} {
-    package require Tcl 7.5
-}
-package require Oc 2			;# [Oc_ResolveLink]
+package require Tcl 8.5-
 if {[catch {package require Tk 8}]} {
     package require Tk 4.1
 }
-package require Nb 2			;# [Nb_RatApprox]
-
+package require Oc 2-            ;# [Oc_ResolveLink]
+if {[catch {package require Nb 2-}]} {
+   # The following Nb routines are C++ implementations.
+   interp alias {} Ow_RatApprox {} Nb_RatApprox
+   interp alias {} Ow_Hash      {} Nb_ComputeCRCBuffer
+} else {
+   # If Nb is not available (e.g., if script is running under
+   # tclsh rather than an OOMMF-built shell such as omfsh),
+   # then use these Tcl script based alternatives from Oc.
+   interp alias {} Ow_RatApprox {} Oc_RatApprox
+   interp alias {} Ow_Hash      {} Oc_FletcherChecksum32
+}
 Oc_CheckTclIndex Ow
 
-# CVS 
-package provide Ow 2.0a2
-
-# Provide Oc_Log dialogs for message reporting 
-Oc_Log SetLogHandler Ow_Message panic Oc_Log
-Oc_Log SetLogHandler Ow_Message error Oc_Log
-Oc_Log SetLogHandler Ow_Message warning Oc_Log
-Oc_Log SetLogHandler Ow_Message info Oc_Log
-Oc_Log SetLogHandler Ow_Message panic
-Oc_Log SetLogHandler Ow_Message error
-Oc_Log SetLogHandler Ow_Message warning
-Oc_Log SetLogHandler Ow_Message info
+# CVS
+package provide Ow 2.0a3
 
 # Running under X11?
 proc Ow_IsX11 {} {
@@ -71,7 +68,6 @@ proc Ow_IsWin32 {} {
    }
    return 0
 }
-
 
 # Cross-platform mouse bindings.  See NOTES VII, 16-Jan-2014, p. 7 for
 # a summary of mouse button events as read by Tk across various
@@ -125,7 +121,7 @@ foreach btn {Left Middle Right} {
       event add "<<Ow_Shift${btn}ButtonMotion>>"  $shift_motion_elt
    }
 }
-
+unset btn
 
 # Menu bind hack to work around mousewheel problems on X11
 if {[Ow_IsX11] \
@@ -143,6 +139,7 @@ if {[Ow_IsX11] \
       bind Menu <ButtonPress> {}
       bind Menu <ButtonRelease> {}
    }
+   unset bp br
 }
 
 
@@ -157,6 +154,7 @@ set local [file join [file dirname [info script]] local ow.tcl]
 if {[file isfile $local] && [file readable $local]} {
     uplevel #0 [list source $local]
 }
+unset local
 
 
 ### MouseWheel support   ###############################################
@@ -217,7 +215,7 @@ proc Ow_MouseWheel { handler wFired D X Y horizontal} {
    # if we are outside the app, try and scroll the focus widget
    if {![winfo exists $w]} { catch {set w [focus]} }
    if {[winfo exists $w]} {
-      $handler $w $D $horizontal 
+      $handler $w $D $horizontal
    }
 }
 
@@ -233,6 +231,7 @@ if {[Oc_Application CompareVersions [info tclversion] 8.1]>=0} {
          bind $class <5> {}
       }
    }
+   unset class
 
    # Handler setup proc
    proc Ow_BindMouseWheelHandler { win {procname {}} } {
@@ -253,4 +252,9 @@ if {[Oc_Application CompareVersions [info tclversion] 8.1]>=0} {
    Ow_BindMouseWheelHandler all
 } else {
    proc Ow_BindMouseWheelHandler { win {procname {}} } {}   ;# NOP
+}
+
+# Process OOMMF color scheme requests
+if {![Oc_Option Get {} ColorScheme scheme]} {
+   Ow_ChangeColorScheme $scheme
 }

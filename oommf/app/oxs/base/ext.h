@@ -442,7 +442,12 @@ public:
 
   const char* InstanceName() const { return instanceId.c_str(); }
   virtual const char* ClassName() const =0;    // Child class name
-
+  String DataName(const char* item) const {
+    // Wrapper for use with calls to Oxs_SimState::Add/GetDerivedData()
+    // and Oxs_SimState::Add/GetAuxData().
+    return instanceId + String(":") + String(item);
+  }
+  
   virtual OC_BOOL Init();  // This can be called at any time to reset
   /// an Ext object to its initial, post constructor state.  The
   /// constructor should set all static object state information, and

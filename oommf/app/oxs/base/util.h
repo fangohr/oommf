@@ -12,6 +12,7 @@
  *   class Oxs_Box;
  *   template<class T> class Oxs_WriteOnceObject;
  *   template<class T> class Oxs_OwnedPointer;
+ *   class Oxs_MultiType
  */
 
 #ifndef _OXS_UTIL
@@ -250,6 +251,7 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 // Owned pointer class.  A smart pointer with mediocre intelligence.
+// New work should use instead one of the C++11 smart pointer types.
 template<class T> class Oxs_OwnedPointer
 {
 private:
@@ -299,6 +301,173 @@ public:
     }
     owner=1;
   }
+
+};
+
+////////////////////////////////////////////////////////////////////////
+// Class wrapper around a union type that can be used for arrays
+// of heterogeneous objects.  Extend types as needed.
+class Oxs_MultiType
+{
+public:
+  enum VarType { TYPE_UNSET, TYPE_INTEGER, TYPE_UNSIGNED, TYPE_REAL };
+  Oxs_MultiType() : var_type(TYPE_UNSET) {}
+  Oxs_MultiType(OC_INT4 ival)
+    : var_type(TYPE_INTEGER), value(static_cast<OC_INT8>(ival)) {}
+  Oxs_MultiType(OC_INT8 ival)
+    : var_type(TYPE_INTEGER), value(ival) {}
+  Oxs_MultiType(OC_UINT4 ival)
+    : var_type(TYPE_UNSIGNED), value(static_cast<OC_UINT8>(ival)) {}
+  Oxs_MultiType(OC_UINT8 ival)
+    : var_type(TYPE_UNSIGNED), value(ival) {}
+  Oxs_MultiType(OC_REAL4 ival)
+    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)) {}
+  Oxs_MultiType(OC_REAL8 ival)
+    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)) {}
+#if !OC_REALWIDE_IS_OC_REAL4 && !OC_REALWIDE_IS_OC_REAL8
+  Oxs_MultiType(OC_REALWIDE ival)
+    : var_type(TYPE_REAL), value(ival) {}
+#endif
+  
+  // Type query
+  VarType GetType() const { return var_type; }
+  
+  // Set value operators
+  const OC_INT8& operator=(const OC_INT4& other) {
+    *this = static_cast<OC_INT8>(other);
+    return value.integer;
+  }
+  const OC_INT8& operator=(const OC_INT8& other) {
+    var_type = TYPE_INTEGER;
+    value.integer = other;
+    return value.integer;
+  }
+  const OC_UINT8& operator=(const OC_UINT4& other) {
+    *this = static_cast<OC_UINT8>(other);
+    return value.unsigned_integer;
+  }
+  const OC_UINT8& operator=(const OC_UINT8& other) {
+    var_type = TYPE_UNSIGNED;
+    value.unsigned_integer = other;
+    return value.unsigned_integer;
+  }
+  const OC_REALWIDE& operator=(const OC_REALWIDE& other) {
+    var_type = TYPE_REAL;
+    value.real = other;
+    return value.real;
+  }
+
+  // Fill operators
+  void Fill(OC_INT4& other) {
+    // NOTE: No overflow check
+    OC_INT8 tmp;
+    Fill(tmp);
+    other = static_cast<OC_INT4>(tmp);
+  }
+  void Fill(OC_INT8& other) {
+    if(var_type != TYPE_INTEGER) {
+      String msg = "Type mismatch in Oxs_MultiType::Fill(OC_INT8);"
+        " Oxs_MultiType value is type ";
+      switch(var_type) {
+      case TYPE_INTEGER:  msg += " TYPE_INTEGER";  break;
+      case TYPE_UNSIGNED: msg += " TYPE_UNSIGNED"; break;
+      case TYPE_REAL:     msg += " TYPE_REAL";     break;
+      default:            msg += " TYPE_UNSET";    break;
+      }
+      OXS_THROW(Oxs_BadParameter,msg);
+    }
+    other = value.integer;
+  }
+
+  void Fill(OC_UINT4& other) {
+    // NOTE: No overflow check
+    OC_UINT8 tmp;
+    Fill(tmp);
+    other = static_cast<OC_UINT4>(tmp);
+  }
+  void Fill(OC_UINT8& other) {
+    if(var_type != TYPE_UNSIGNED) {
+      String msg = "Type mismatch in Oxs_MultiType::Fill(OC_UINT8);"
+        " Oxs_MultiType value is type ";
+      switch(var_type) {
+      case TYPE_INTEGER:  msg += " TYPE_INTEGER";  break;
+      case TYPE_UNSIGNED: msg += " TYPE_UNSIGNED"; break;
+      case TYPE_REAL:     msg += " TYPE_REAL";     break;
+      default:            msg += " TYPE_UNSET";    break;
+      }
+      OXS_THROW(Oxs_BadParameter,msg);
+    }
+    other = value.unsigned_integer;
+  }
+
+  void Fill(OC_REAL4& other) {
+    // NOTE: No overflow check
+    OC_REALWIDE tmp;
+    Fill(tmp);
+    other = static_cast<OC_REAL4>(tmp);
+  }
+#if !OC_REALWIDE_IS_OC_REAL8
+  void Fill(OC_REAL8& other) {
+    // NOTE: No overflow check
+    OC_REALWIDE tmp;
+    Fill(tmp);
+    other = static_cast<OC_REAL8>(tmp);
+  }
+#endif
+  void Fill(OC_REALWIDE& other) {
+    if(var_type != TYPE_REAL) {
+      String msg = "Type mismatch in Oxs_MultiType::Fill(OC_REALWIDE);"
+        " Oxs_MultiType value is type ";
+      switch(var_type) {
+      case TYPE_INTEGER:  msg += " TYPE_INTEGER";  break;
+      case TYPE_UNSIGNED: msg += " TYPE_UNSIGNED"; break;
+      case TYPE_REAL:     msg += " TYPE_REAL";     break;
+      default:            msg += " TYPE_UNSET";    break;
+      }
+      OXS_THROW(Oxs_BadParameter,msg);
+    }
+    other = value.real;
+  }
+
+  // Fill operation that converts value to a string.
+  // NB: The std::to_string(float/double/long double) function converts
+  //     using %f rather than %g.  Unclear who thinks that is a good
+  //     idea.  (Although clearly floating point is a poor stepchild.)
+  //     Regardless and even so, we want to write with full precision,
+  //     so use Nb_FloatToString().
+  void Fill(String& other) {
+    switch(var_type) {
+    case TYPE_INTEGER:   other = std::to_string(value.integer); break;
+    case TYPE_UNSIGNED:  other = std::to_string(value.unsigned_integer); break;
+    case TYPE_REAL:
+#if OC_REALWIDE_WIDTH == 8
+      // Nb_FloatToString will append an "L" suffix to long double
+      // output.  If OC_REALWIDE is a long double, but has the same
+      // width as a double, then that L is unnecessary.  (Double and
+      // long double are treated as distinct types by C++, even if they
+      // are same at the binary level.)  This is the situation with
+      // Visual C++ on Windows, for example.  This #if branch will
+      // drop the L suffix if REAL8 is type double.
+      other = Nb_FloatToString(static_cast<OC_REAL8>(value.real));
+#else
+      other = Nb_FloatToString(value.real);
+#endif
+      break;
+    default:             other=""; break;
+    }
+  }
+
+private:
+  VarType var_type;
+  union VALUE {
+    OC_INT8 integer;
+    OC_UINT8 unsigned_integer;
+    OC_REALWIDE real;
+    VALUE() {}
+    VALUE(OC_INT8 ival)     : integer(ival) {}
+    VALUE(OC_UINT8 ival)    : unsigned_integer(ival) {}
+    VALUE(OC_REALWIDE ival) : real(ival) {}
+  } value;
 
 };
 

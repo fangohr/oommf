@@ -16,7 +16,14 @@ proc FormatDialog { title allow_select default_short default_format \
 
     set w [toplevel .dtFormatDialog]
     wm group $w .
-    wm title $w "$title"
+    set bracewidth [Ow_SetWindowTitle $w $title]
+    set brace [canvas $w.brace -width $bracewidth -height 0 -borderwidth 0 \
+                  -highlightthickness 0]
+    grid $brace - - - -sticky we
+    # Resize root window when OID is assigned:
+    Oc_EventHandler New _ Net_Account NewTitle \
+       [list $brace configure -width %winwidth]
+
     Ow_PositionChild $w $parent
 
     global fmtdlg
@@ -43,15 +50,12 @@ proc FormatDialog { title allow_select default_short default_format \
 	    -variable fmtdlg(sht) -value 1]
 
     set jstlabel [label $w.jstlabel -text "Justify:"]
-    set jstradioframe [frame $w.jstradioframe]
     set jstleft [radiobutton $w.jstleft -text "Left" \
-            -variable fmtdlg(jst) -value "l"]
+                    -variable fmtdlg(jst) -value "l"]
     set jstcenter [radiobutton $w.jstcenter -text "Center" \
-            -variable fmtdlg(jst) -value "c"]
+                      -variable fmtdlg(jst) -value "c"]
     set jstright [radiobutton $w.jstright -text "Right" \
-            -variable fmtdlg(jst) -value "r"]
-    pack $jstleft $jstcenter $jstright \
-            -side left -fill x -expand 1 -in $jstradioframe
+                     -variable fmtdlg(jst) -value "r"]
 
     set fmtlabel [label $w.fmtlabel -text "Format:"]
     set fmtentry [entry $w.fmtentry -textvariable fmtdlg(fmt)]
@@ -67,15 +71,18 @@ proc FormatDialog { title allow_select default_short default_format \
 
     pack $btnOK $btnCancel -side left -expand 1 -padx 5 -in $btnframe
 
-    grid $adjlabel $adjsel $adjall
-    grid $shortlabel $shortNo $shortYes
-    grid $jstlabel $jstradioframe -
-    grid $fmtlabel $fmtentry -
-    grid $btnframe - -
+    grid $adjlabel $adjsel $adjall x
+    grid $shortlabel $shortNo $shortYes x
+    grid $jstlabel $jstleft $jstcenter $jstright
+    grid $fmtlabel $fmtentry - -
+    grid $btnframe - - - -ipady 5
     grid $adjlabel $shortlabel $fmtlabel $jstlabel -sticky e
     grid $adjsel $adjall $shortNo $shortYes  -sticky w
-    grid $fmtentry $jstradioframe $btnframe -sticky we
-
+    grid $jstleft $jstcenter $jstright -sticky w
+    grid $fmtentry $btnframe -sticky we
+    grid columnconfigure $w all -weight 1
+    grid rowconfigure    $w all -weight 1
+    
     # Extra bindings
     bind $btnOK <Key-Return> "$btnOK invoke"
     bind $btnCancel <Key-Return> "$btnCancel invoke"

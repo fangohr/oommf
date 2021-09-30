@@ -283,7 +283,7 @@ int CheckFmaRounding(floatType eps)
   floatType a = static_cast<floatType>(1 + 8*eps);
   floatType b = static_cast<floatType>(1 + (1./64.));
   floatType c = static_cast<floatType>(7.*eps/16.);
-  floatType d = fma(a,b,c);
+  floatType d = std::fma(a,b,c);
   floatType correct = static_cast<floatType>(1. + (1./64.) + 8*eps + eps);
   if(d != correct) return 1;  // More than one rounding
   return 0;  // One rounding
@@ -423,7 +423,7 @@ void DoubleDoubleSpecialValues
 // The functions CheckFmaRounding, MantissaWidth, FloatExtremes, and
 // FloatMinMaxEpsilon require special handling for the MPFR type
 // because that type does not accept the volatile qualifier.  For the
-// MantissaWidth and FloatExtremes functions we to this via function
+// MantissaWidth and FloatExtremes functions we do this via function
 // template specialization.  This is somewhat brittle because function
 // template specializations don't participate in function overload
 // resolution.  For this reason, the general advice for function

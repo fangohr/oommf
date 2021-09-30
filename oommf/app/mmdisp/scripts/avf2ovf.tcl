@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Option console {} {}
 
@@ -157,19 +157,38 @@ Oc_CommandLine Option keepbb {} {
 } {Don't clip bounding box.}
 set cliprange 1
 
+# For backwards compatibility, offer both -format and -dataformat
+# options.  The new (2020-08-31) preference is -dataformat.
 Oc_CommandLine Option format {
-	{format {regexp {text|b4|b8} $format} {is one of {text,"text %fmt",b4,b8}}}
-    } {
-	upvar #0 format globalformat; set globalformat $format
-} {Format of output file: text, 4-, or 8-byte binary}
-set format text
+   {format {regexp {text|b4|b8} $format} \
+       {is one of {text, "text %fmt", b4, b8}}}
+} {
+   global dataformat; set dataformat $format
+} {Data format of output file (deprecated; use -dataformat instead)}
+Oc_CommandLine Option dataformat {
+   {format {regexp {text|b4|b8} $format} \
+       {is one of {text, "text %fmt", b4, b8}}}
+} {
+   global dataformat; set dataformat $format
+} {Data format of output file: text, 4-, or 8-byte binary}
+set dataformat {}
 
-Oc_CommandLine Option ovfversion {
-        {version {regexp {1|2} $version} {is either 1 (default) or 2}}
-    } {
-	upvar #0 ovfversion globalversion; set globalversion $version
-} {OVF version of output file}
-set ovfversion 1
+# For backwards compatibility, offer both -ovf and -fileformat options.
+# The new (2020-08-31) preference is -fileformat.
+Oc_CommandLine Option ovf {
+   {version {regexp {1|2} $version} {is either 1 (default) or 2}}
+} {
+   global filetype fileversion ; set filetype ovf ; set fileversion $version
+} {OVF version of output file (deprecated; use -fileformat instead)}
+
+Oc_CommandLine Option fileformat {
+   {type    { regexp {ovf|npy} $type } {is either ovf (default) or npy}}
+   {version { regexp {1|2} $version } {is 1 (ovf, npy; default) or 2 (ovf)}}
+} {
+   global filetype fileversion ; set filetype $type ; set fileversion $version
+} {File format type and version}
+set filetype ovf
+set fileversion {}
 
 Oc_CommandLine Option grid {
    {type {regexp {^(rect|irreg|reg)} $type} {is one of {rect,irreg}}}
@@ -184,7 +203,7 @@ set info 0
 
 Oc_CommandLine Option mag {} {
    global writemags; set writemags 1
-} {Write mesh magnitudes instead of vectors}
+} {Write mesh magnitudes instead of vectors (OVF 2 output only)}
 set writemags 0
 
 Oc_CommandLine Option q {} {global quiet; set quiet 1} {Quiet}
@@ -246,9 +265,41 @@ Oc_CommandLine Parse $argv
 if {[string compare "-" $inputfile]==0} { set inputfile {} }
 if {[string compare "-" $outputfile]==0} { set outputfile {} }
 
-if {$ovfversion<2 && [regexp {^text.+$} $format]} {
+# Output file format
+if {$writemags} {
+   if {[string match ovf $filetype] && [string match {} $fileversion]} {
+      set fileversion 2
+   }
+   if {![string match ovf $filetype] || $fileversion<2} {
+      puts stderr "ERROR: -mag output only accepted for OVF 2 format"
+      exit 11
+   }
+}
+if {[string match {} $fileversion]} {
+   set fileversion 1  ;# Default for both ovf and npy
+}
+if {[string match npy $filetype] && ($fileversion != 1)} {
+    puts stderr "ERROR: Only NPY version 1 is currently supported."
+    exit 13
+}
+
+# Output data format
+if {[string match {} $dataformat]} {
+   if {[string match npy $filetype]} {
+      set dataformat b8
+   } else {
+      set dataformat text
+   }
+}
+
+if {[regexp {^text.+$} $dataformat] && \
+       (![string match ovf $filetype] || $fileversion<2)} {
     puts stderr "ERROR: Data format string only accepted for OVF 2 format"
     exit 15
+}
+if {[regexp {^text.+$} $dataformat] && $writemags} {
+    puts stderr "ERROR: Data format string not supported for magnitude output"
+    exit 17
 }
 
 array set formatmap {
@@ -420,20 +471,22 @@ if {$tx!=0.0 || $ty!=0.0 || $tz!=0.0} {
 
 # $filename == "" --> write to stdout
 if {!$writemags} {
-   if { $ovfversion == 1 } {
-      WriteMesh $outputfile $formatmap($format) $gridmap($grid) $title $desc
+   if {[string match npy $filetype]} {
+      WriteMeshNPY $outputfile $formatmap($dataformat) $gridmap($grid)
+   } elseif { $fileversion == 1 } { ;# OVF output
+      WriteMesh $outputfile $formatmap($dataformat) $gridmap($grid) $title $desc
    } else {
       # OVF2 supports user-defined data format specification in text mode
-      if {[regexp "^text\[ \t\r\n\]*(.*)$" $format dummy fmtstr]} {
+      if {[regexp "^text\[ \t\r\n\]*(.*)$" $dataformat dummy fmtstr]} {
          set fmtspec "$formatmap(text) $fmtstr"
       } else {
-         set fmtspec $formatmap($format)
+         set fmtspec $formatmap($dataformat)
       }
       WriteMeshOVF2 $outputfile $fmtspec $gridmap($grid) \
          $title $desc
    }
 } else {
-   WriteMeshMagnitudes $outputfile $formatmap($format) $gridmap($grid) \
+   WriteMeshMagnitudes $outputfile $formatmap($dataformat) $gridmap($grid) \
       $title $desc
 }
 

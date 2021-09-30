@@ -970,6 +970,24 @@ public:
   // regular grids).  Also, the sum of the vector_dimension fields
   // must equal the header valuedim value.
 
+  // Routines for writing Python Numpy NPY version 1.0 output (Export support)
+  void WriteNPY(Tcl_Channel outchan,
+                Vf_OvfDataStyle datastyle,
+                const Vf_Ovf20VecArrayConst& data_info,
+                const Vf_Ovf20_MeshNodes* mesh=nullptr, // For irreg grids only
+                const int textwidth=24, // Only for datastyle == vf_oascii
+                const char* textfmt="%24.16e" // Only for datastyle == vf_oascii
+                ) const;
+
+  void WriteNPY(Tcl_Channel outchan,
+                Vf_OvfDataStyle datastyle,
+                const vector<Vf_Ovf20VecArrayConst>& data_array,
+                const Vf_Ovf20_MeshNodes* mesh=nullptr, // For irreg grids only
+                const int textwidth=24, // Only for datastyle == vf_oascii
+                const char* textfmt="%24.16e" // Only for datastyle == vf_oascii
+                ) const;
+
+
   // Header data ///////////////////////////////////////////////////////
 
   // Required for all files

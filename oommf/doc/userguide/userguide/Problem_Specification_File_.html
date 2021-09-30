@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>Problem Specification File Formats (MIF)</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html838"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html840"
   HREF="MIF_1.1.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html834"
+<A NAME="tex2html836"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html828"
+<A NAME="tex2html830"
   HREF="Platform-Independent_Make_p.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html840"
+<A NAME="tex2html842"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html836"
+<A NAME="tex2html838"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html839"
+<B> Next:</B> <A NAME="tex2html841"
   HREF="MIF_1.1.html">MIF 1.1</A>
-<B> Up:</B> <A NAME="tex2html835"
+<B> Up:</B> <A NAME="tex2html837"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html829"
+<B> Previous:</B> <A NAME="tex2html831"
   HREF="Platform-Independent_Make_p.html">Platform-Independent Make: pimake</A>
 <BR>
 <BR>
@@ -58,21 +54,21 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 Problem Specification File Formats (MIF)
 </H1>
 Micromagnetic simulations are specified to the OOMMF solvers using the
-OOMMF <I>Micromagnetic Input Format</I> (MIF)<A NAME="20025"></A>.  There
+OOMMF <I>Micromagnetic Input Format</I> (MIF)<A NAME="20054"></A>.  There
 are four distinct versions of this format.  The oldest format,
 version 1.1, is used by the mmSolve 2D solvers
 (<A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"
- NAME="20030"><B>mmSolve2D</B></A> and
+ NAME="20059"><B>mmSolve2D</B></A> and
 <A HREF="OOMMF_2D_Micromagnetic_Solv.html#sec:batchsolve"
- NAME="20035"><B>batchsolve</B></A>) and the
+ NAME="20064"><B>batchsolve</B></A>) and the
 <A HREF="Micromagnetic_Problem_Edito.html#sec:mmprobed"
- NAME="20040"><B>mmProbEd</B></A> problem editor.
+ NAME="20069"><B>mmProbEd</B></A> problem editor.
 The MIF&nbsp;2.1 and MIF&nbsp;2.2 formats are the powerful, native format used by the
 <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs 3D solvers</A>.  The MIF&nbsp;1.2 format is a minor modification to
 the 1.1 format, which can be used as a simple but restricted interface
 to the Oxs solvers.  In all cases values are specified in SI units.  A
 command line utility <A HREF="mifconvert.html#sec:mifconvert"
- NAME="20049"><B>mifconvert</B></A> is provided to
+ NAME="20078"><B>mifconvert</B></A> is provided to
 aid in converting MIF&nbsp;1.1 files to the MIF&nbsp;2.1 format.  For all
 versions it is recommended that MIF files be given names ending with
 the <TT><B>.mif</B></TT> file extension.
@@ -83,54 +79,58 @@ the <TT><B>.mif</B></TT> file extension.
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html842"
+<LI><A NAME="tex2html844"
   HREF="MIF_1.1.html">MIF 1.1</A>
 <UL>
-<LI><A NAME="tex2html843"
-  HREF="MIF_1.1.html#SECTION000181100000000000000">Material parameters</A>
-<LI><A NAME="tex2html844"
-  HREF="MIF_1.1.html#SECTION000181200000000000000">Demag specification</A>
 <LI><A NAME="tex2html845"
-  HREF="MIF_1.1.html#SECTION000181300000000000000">Part geometry</A>
+  HREF="MIF_1.1.html#SECTION000181100000000000000">Material parameters</A>
 <LI><A NAME="tex2html846"
-  HREF="MIF_1.1.html#SECTION000181400000000000000">Initial magnetization</A>
+  HREF="MIF_1.1.html#SECTION000181200000000000000">Demag specification</A>
 <LI><A NAME="tex2html847"
-  HREF="MIF_1.1.html#SECTION000181500000000000000">Experiment parameters</A>
+  HREF="MIF_1.1.html#SECTION000181300000000000000">Part geometry</A>
 <LI><A NAME="tex2html848"
-  HREF="MIF_1.1.html#SECTION000181600000000000000">Output specification</A>
+  HREF="MIF_1.1.html#SECTION000181400000000000000">Initial magnetization</A>
 <LI><A NAME="tex2html849"
+  HREF="MIF_1.1.html#SECTION000181500000000000000">Experiment parameters</A>
+<LI><A NAME="tex2html850"
+  HREF="MIF_1.1.html#SECTION000181600000000000000">Output specification</A>
+<LI><A NAME="tex2html851"
   HREF="MIF_1.1.html#SECTION000181700000000000000">Miscellaneous</A>
 </UL>
 <BR>
-<LI><A NAME="tex2html850"
+<LI><A NAME="tex2html852"
   HREF="MIF_1.2.html">MIF 1.2</A>
-<LI><A NAME="tex2html851"
+<LI><A NAME="tex2html853"
   HREF="MIF_2.1.html">MIF 2.1</A>
 <UL>
-<LI><A NAME="tex2html852"
-  HREF="MIF_2.1.html#SECTION000183100000000000000">MIF 2.1 File Overview</A>
-<LI><A NAME="tex2html853"
-  HREF="MIF_2.1.html#SECTION000183200000000000000">MIF&nbsp;2.1 Extension Commands</A>
 <LI><A NAME="tex2html854"
-  HREF="MIF_2.1.html#SECTION000183300000000000000">Specify Conventions</A>
+  HREF="MIF_2.1.html#SECTION000183100000000000000">MIF 2.1 File Overview</A>
 <LI><A NAME="tex2html855"
-  HREF="MIF_2.1.html#SECTION000183400000000000000">Variable Substitution</A>
+  HREF="MIF_2.1.html#SECTION000183200000000000000">MIF&nbsp;2.1 Extension Commands</A>
 <LI><A NAME="tex2html856"
+  HREF="MIF_2.1.html#SECTION000183300000000000000">Specify Conventions</A>
+<LI><A NAME="tex2html857"
+  HREF="MIF_2.1.html#SECTION000183400000000000000">Variable Substitution</A>
+<LI><A NAME="tex2html858"
   HREF="MIF_2.1.html#SECTION000183500000000000000">Sample MIF&nbsp;2.1 File</A>
 </UL>
 <BR>
-<LI><A NAME="tex2html857"
+<LI><A NAME="tex2html859"
   HREF="MIF_2.2.html">MIF 2.2</A>
 <UL>
-<LI><A NAME="tex2html858"
-  HREF="MIF_2.2.html#SECTION000184100000000000000">Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats</A>
-<LI><A NAME="tex2html859"
-  HREF="MIF_2.2.html#SECTION000184200000000000000">MIF&nbsp;2.2 New Extension Commands</A>
 <LI><A NAME="tex2html860"
+  HREF="MIF_2.2.html#SECTION000184100000000000000">Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats</A>
+<LI><A NAME="tex2html861"
+  HREF="MIF_2.2.html#SECTION000184200000000000000">MIF&nbsp;2.2 New Extension Commands</A>
+<LI><A NAME="tex2html862"
   HREF="MIF_2.2.html#SECTION000184300000000000000">Sample MIF&nbsp;2.2 File</A>
-</UL></UL>
+</UL>
+<BR>
+<LI><A NAME="tex2html863"
+  HREF="Tips_for_writing_MIF_2.x_fi.html">Tips for writing MIF 2.x files</A>
+</UL>
 <!--End of Table of Child-Links-->
 <BR> <HR>
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

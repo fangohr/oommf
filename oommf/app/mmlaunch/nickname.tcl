@@ -63,7 +63,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName nickname
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}

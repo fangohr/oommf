@@ -49,7 +49,7 @@ void Oxs_Director::ExitProc(ClientData clientData)
 }
 
 // Constructor
-Oxs_Director::Oxs_Director(Tcl_Interp *i) 
+Oxs_Director::Oxs_Director(Tcl_Interp *i)
   : interp(i),
     problem_count(0),problem_id(0),
     restart_flag(0),restart_crc_check_flag(1),mif_crc(0),
@@ -344,7 +344,8 @@ OC_UINT4m Oxs_Director::ComputeMifCrc()
                                 TCL_GLOBAL_ONLY);
     const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
                                 TCL_GLOBAL_ONLY);
-    if(ei==NULL) ei = "";   if(ec==NULL) ec = "";
+    if(ei==NULL) ei = "";
+    if(ec==NULL) ec = "";
     OXS_TCLTHROW(evalresult,String(ei),String(ec));
   }
   orig_result.Restore();
@@ -388,7 +389,8 @@ String Oxs_Director::ReadMifParameters()
                                 TCL_GLOBAL_ONLY);
     const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
                                 TCL_GLOBAL_ONLY);
-    if(ei==NULL) ei = "";   if(ec==NULL) ec = "";
+    if(ei==NULL) ei = "";
+    if(ec==NULL) ec = "";
     OXS_TCLTHROW(params,String(ei),String(ec));
   }
   orig_result.Restore();
@@ -431,7 +433,8 @@ int Oxs_Director::CheckMifParameters(const String& test_params) const
                                 TCL_GLOBAL_ONLY);
     const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
                                 TCL_GLOBAL_ONLY);
-    if(ei==NULL) ei = "";   if(ec==NULL) ec = "";
+    if(ei==NULL) ei = "";
+    if(ec==NULL) ec = "";
     OXS_TCLTHROW(evalresult,String(ei),String(ec));
   }
   orig_result.Restore();
@@ -596,6 +599,7 @@ int Oxs_Director::ProbInit(const char* filename,
   String cmd;
 
   Release();
+  Oxs_ThreadError::ClearError();
   simulation_state_reserve_count=0;  // Safety
 
   problem_name = String(filename);
@@ -1025,7 +1029,7 @@ public:
 
 bool operator<(const OxsDirectorOutputKey& a,
                const OxsDirectorOutputKey& b)
-{ 
+{
   return a.priority<b.priority
     || (a.priority == b.priority && a.index<b.index);
 }
@@ -1114,10 +1118,24 @@ void Oxs_Director::RegisterOutput(Oxs_Output* obj)
   if(it != output_obj.end()) {
     // Object already registered
     String msg = String("Output object <")
-      + obj->OwnerName() + String(",") 
+      + obj->OwnerName() + String(":")
       + obj->OutputName() + String("> already registered.");
     OXS_THROW(Oxs_BadIndex,msg.c_str());
   }
+
+#ifndef NDEBUG
+  // Check for repeat names
+  std::vector<Oxs_Output*>::const_iterator nit;
+  for(nit=output_obj.begin();nit!=output_obj.end();++nit) {
+    if(obj->OwnerName().compare((*nit)->OwnerName())==0
+       && obj->OutputName().compare((*nit)->OutputName())==0) {
+      String msg = String("Multiple registrations for output <")
+        + obj->OwnerName() + String(":") + obj->OutputName()
+        + String(">.");
+      OXS_THROW(Oxs_BadCode,msg.c_str());
+    }
+  }
+#endif // NDEBUG
 
   // Otherwise, append to end of output_obj list
   output_obj.push_back(obj);
@@ -1277,7 +1295,7 @@ Oxs_Output* Oxs_Director::FindOutputObject(const char* regexp) const
     if(obj==NULL) continue; // Deregistered object
     String output_name = obj->LongName();
     Oc_AutoBuf ab = output_name.c_str();
-    int match_result 
+    int match_result
       = Tcl_RegExpExec(mif_interp,rp,
                        OC_CONST84_CHAR(output_name.c_str()),
                        OC_CONST84_CHAR(output_name.c_str()));
@@ -1291,7 +1309,8 @@ Oxs_Output* Oxs_Director::FindOutputObject(const char* regexp) const
                                   TCL_GLOBAL_ONLY);
       const char* ec = Tcl_GetVar(mif_interp,OC_CONST84_CHAR("errorCode"),
                                   TCL_GLOBAL_ONLY);
-      if(ei==NULL) ei = "";   if(ec==NULL) ec = "";
+      if(ei==NULL) ei = "";
+      if(ec==NULL) ec = "";
       OXS_TCLTHROW(msg,String(ei),String(ec));
     }
     // Match found
@@ -1504,7 +1523,7 @@ void Oxs_Director::GetAllScalarOutputs(vector<String>& triples)
       }
     }
   }
-  
+
   if(bsco_as_needed.size()>0) { // At least one chunk evaluator is needed
     const int number_of_threads = Oc_GetMaxThreadCount();
     // Initialize
@@ -1711,7 +1730,7 @@ void Oxs_Director::GetNewSimulationState
 // FindExistingSimulationState scans through the simulation state
 // list and returns a read-only pointer to the one matching the
 // import id.  The import id must by positive.  The return value
-// is NULL if no matching id is found.
+// is nullptr if no matching id is found.
 const Oxs_SimState*
 Oxs_Director::FindExistingSimulationState(OC_UINT4m id) const
 {
@@ -1726,6 +1745,36 @@ Oxs_Director::FindExistingSimulationState(OC_UINT4m id) const
     ++it;
   }
   return 0;
+}
+
+// FindBaseStep takes the id of an existing state and checks the
+// step_done status for that state.  If the status is not DONE, then
+// it traces backwards through the previous_state_id until it either
+// finds a state with step_done == DONE, or else runs out of cached
+// states.  On success returns a pointer to the DONE state, otherwise
+// a null pointer.
+const Oxs_SimState*
+Oxs_Director::FindBaseStepState(OC_UINT4m id) const
+{
+  const Oxs_SimState* base = nullptr;
+  while(id!=0 && (base=FindExistingSimulationState(id))!=nullptr) {
+    if(base->step_done == Oxs_SimState::SimStateStatus::DONE) break;
+    id = base->previous_state_id;
+    base = nullptr;
+  }
+  return base;
+}
+// Variant of FindBaseStep that takes an Oxs_SimState pointer as import.
+const Oxs_SimState*
+Oxs_Director::FindBaseStepState(const Oxs_SimState* stateptr) const
+{
+  while(stateptr!=nullptr) {
+    if(stateptr->step_done == Oxs_SimState::SimStateStatus::DONE) break;
+    OC_UINT4m id = stateptr->previous_state_id;
+    if(id==0) return nullptr;
+    stateptr=FindExistingSimulationState(id);
+  }
+  return stateptr;
 }
 
 
@@ -1755,7 +1804,7 @@ int OxsTestMeshvalue(String& result_str,
   OC_INDEX array_size = strtol(argv[1],NULL,0);
   OC_INDEX loop_count = strtol(argv[2],NULL,0);
   if(array_size<1 || loop_count<1) return 1;
-    
+
   Oxs_MeshValue<double> a;
   Oxs_MeshValue<double> b;
   Oxs_MeshValue<double> c;
@@ -1793,7 +1842,7 @@ int Oxs_Director::DoDevelopTest
 (const String& subroutine,
  String& result_str,
  int argc,const char** argv)
-{ 
+{
   int rtncode = -1;
   if(subroutine.compare("meshvalue")==0) {
     rtncode = OxsTestMeshvalue(result_str,argc,argv);

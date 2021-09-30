@@ -184,7 +184,7 @@ if {[string match g++ $ccbasename]} {
 	-Wno-uninitialized -Wno-unused-function"}
 
     # Widest natively support floating point type
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "double"
     }
 
@@ -218,7 +218,7 @@ if {[string match g++ $ccbasename]} {
 
     # Widest natively support floating point type.  If your
     # compiler supports it, you can try "long double" here.
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "double"
     }
 }

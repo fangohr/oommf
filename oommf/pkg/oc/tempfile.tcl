@@ -169,7 +169,7 @@ Oc_Class Oc_TempFile {
 
        # Set up so that temp files get cleaned up on exit, unless
        # claimed by some caller.
-       Oc_EventHandler New cleanup Oc_Main Exit [list $this Delete]
+       Oc_EventHandler New cleanup Oc_Main LibShutdown [list $this Delete]
     }
 
     Destructor {

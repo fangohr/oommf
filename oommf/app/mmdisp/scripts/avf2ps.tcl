@@ -9,7 +9,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ps
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Option console {} {}
 
@@ -84,24 +84,28 @@ if {[llength $inputPattern]>0} {
    foreach pat $inputPattern {
       set inGlob [concat $inGlob [lsort -dictionary [glob -nocomplain -- $pat]]]
    }
-} else {
-   # -ipat not specified.  On Windows, check infile for wildcards.
-   # (Unix shells automatically expand wildcards, Windows does not.)
-   if {[string match windows $tcl_platform(platform)]} {
-      set nowild {}
-      foreach f $infile {
-         if {([string first "*" $f]>=0 || [string first "?" $f]>=0) \
-                 && ![file exists $f]} {
-            # Convert any '\' to '/' before feeding to glob
-            if {![catch {file join $f} xf]} {set f $xf}
-            set inGlob [concat $inGlob [glob -nocomplain -- $f]]
-         } else {
-            lappend nowild $f
-         }
+}
+
+# On Windows, check infile list for and expand wildcards, to better
+# agree with Unix behavior. Unix shells automatically expand wildcards,
+# Windows does not. One concession to Windows: If a potential "pattern"
+# matches a file directly (verbatim), then that match is used and
+# wildcard matching is not attempted on that pattern. This protects
+# unwary Windows users not familiar with glob matching patterns beyond ?
+# and *.
+if {[string match windows $tcl_platform(platform)]} {
+   set wildfiles {}
+   foreach f $infile {
+      if {![file exists $f]} {
+         # Convert any '\' to '/' before feeding to glob
+         if {![catch {file join $f} xf]} {set f $xf}
+         set wildfiles [concat $wildfiles \
+                        [lsort -dictionary [glob -nocomplain -- $f]]]
+      } else {
+         lappend wildfiles $f
       }
-      set infile $nowild
-      set inGlob [lsort -dictionary -unique $inGlob]
    }
+   set infile $wildfiles
 }
 
 # Set default output filename substitution
@@ -274,14 +278,46 @@ foreach in [concat $inGlob $infile] {
     }
     fconfigure $outChan -buffersize 10000
     if {[info exists filter]} {
-	# Note: $filter might itself be a pipeline, or a command
-	# with arguments.  Either way, we need the open eval to
-	# interpret $filter as multiple command words, i.e., we
-	# don't want to wrap $filter up inside a list.
+        # Note: $filter might itself be a pipeline, or a command
+        # with arguments.  It might also include a path to a filter program
+        # that contains spaces, which will confuse [open] unless it is
+        # structured in proper Tcl list syntax.
         set endChan $outChan
-	set outChan [open "| 2>@stderr $filter >@ $endChan" w]
+        
+	if {[string compare windows $tcl_platform(platform)]!=0} {
+            # On non-windows platforms, we expect the command line to be
+            # quoted so that the value of $filter can be passed to [open]
+            # as is.
+            
+            set cmdLine [concat 2>@stderr $filter [list >@ $endChan]]
+            
+        } else { 
+            # On Windows, the facilities of quoting on the command line
+            # are primitive, the use of backslashes in paths is a mismatch
+            # to Tcl syntax, and spaces in paths are far more common.  We
+            # attempt some probing and processing to try to work around these
+            # limitations. It is unlikely this is 100% foolproof.
+            
+            foreach cmd [split $filter |] {
+                set parts [split [string trim $cmd] { }]
+                set numParts [llength $parts] 
+                for {set pgmEnd 0} {$pgmEnd < $numParts} {incr pgmEnd} {
+                    set program [join [lrange $parts 0 $pgmEnd] { }]
+                    set toExec [auto_execok $program]
+                    if {[llength $toExec]} {
+                        break
+                    }
+                }
+                if {$pgmEnd < $numParts} {
+                    lappend cmds [concat $toExec [lrange $parts 1+$pgmEnd end]]
+                } else {
+		    lappend cmds $cmd
+		}
+            }
+            set cmdLine [concat 2>@stderr [join $cmds { | }] [list >@ $endChan]]
+        }
+        set outChan [open |$cmdLine w]
         fconfigure $outChan -buffersize 10000
-
     }
     if {$verbosity >= 1} {
         puts -nonewline stderr "$in --> "

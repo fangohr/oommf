@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>Oxs regression tests: oxsregression</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,33 +23,33 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html798"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html800"
   HREF="OOMMF_Process_ID_Informatio.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html794"
+<A NAME="tex2html796"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html788"
+<A NAME="tex2html790"
   HREF="Oxs_package_management_oxsp.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html800"
+<A NAME="tex2html802"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html796"
+<A NAME="tex2html798"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html799"
+<B> Next:</B> <A NAME="tex2html801"
   HREF="OOMMF_Process_ID_Informatio.html">OOMMF and Process ID</A>
-<B> Up:</B> <A NAME="tex2html795"
+<B> Up:</B> <A NAME="tex2html797"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html789"
+<B> Previous:</B> <A NAME="tex2html791"
   HREF="Oxs_package_management_oxsp.html">Oxs package management: oxspkg</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION0001718000000000000000"></A><A NAME="sec:oxsregression"></A><A NAME="17850"></A>
+<H2><A NAME="SECTION0001718000000000000000"></A><A NAME="sec:oxsregression"></A><A NAME="17821"></A>
 <BR>
 Oxs regression tests:
             oxsregression
@@ -63,7 +59,7 @@ Oxs regression tests:
 The <B>oxsregression</B> runs a test suite for the Oxs solver.  For
 each test, an instance of
 <A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"
- NAME="17856"><B>boxsi</B></A>
+ NAME="17827"><B>boxsi</B></A>
 is run and the results are compared against reference results stored
 in subdirectories under <TT><B>oommf/app/oxs/regression_tests/</B></TT>.
 
@@ -74,10 +70,10 @@ in subdirectories under <TT><B>oommf/app/oxs/regression_tests/</B></TT>.
 <BR>
 The <B>oxsregression</B> launch command is:
 <PRE>
-tclsh oommf.tcl runtests [-autoadd] [-ignoreextra] [-keepfail] [-listtests]
-       [-loglevel level] [-noexcludes] [-resultsfile stemname] [-showoutput]
-       [-sigfigs digits] [-threads count] [-timeout seconds]
-       [-updaterefdata] [-v] [testa testb ...]
+tclsh oommf.tcl runtests [-autoadd] [-alttestdir] [-cleanup] [-ignoreextra]
+   [-keepfail] [-listtests] [-loglevel level] [-noexcludes] [-parallel n]
+   [-resultsfile stemname] [-showoutput] [-sigfigs digits] [-threads count]
+   [-timeout seconds] [-updaterefdata] [-v] [testa testb ...]
 </PRE>
 where
 <DL>
@@ -85,9 +81,24 @@ where
 <DD>Automatically adds new tests from MIF files found in the examples
  directory <TT><B>oommf/app/oxs/examples/</B></TT>.
 </DD>
+<DT><STRONG><TT><B>-alttestdir</B></TT></STRONG></DT>
+<DD>
+<DIV ALIGN="LEFT">
+Specify an alternative test directory to use in place of the default
+directory list <TT><B>oommf/app/oxs/examples/</B></TT>,
+<TT><B>oommf/app/oxs/regression_tests/bug_tests/</B></TT>, and
+<TT><B>oommf/app/oxs/regression_tests/local_tests/</B></TT>.
+
+</DIV>
+</DD>
+<DT><STRONG><TT><B>-cleanup</B></TT></STRONG></DT>
+<DD>If <B>oxsregression</B> is killed or crashes mid-run, then some temporary
+result files may be left on disk. This command searches for and offers to
+delete these stray files.
+</DD>
 <DT><STRONG><TT><B>-ignoreextra</B></TT></STRONG></DT>
 <DD>Ignore extra columns, if any, in test results as compared to
- reference results.  This is useful in developement work when
+ reference results.  This is useful in development work when
  changes to a MIF file introduce additional data table output.
 </DD>
 <DT><STRONG><TT><B>-keepfail</B></TT></STRONG></DT>
@@ -98,16 +109,21 @@ where
 <DD>List all selected tests and exit without running any tests.
 </DD>
 <DT><STRONG><TT><B>-loglevel level</B></TT></STRONG></DT>
-<DD>Controls amount of log information written to <TT><B>boxsi.errors</B></TT>
-  (default 0).
+<DD>Controls the amount of log information written to
+  <TT><B>oxsregression.log</B></TT> in the regression test directory
+  <TT><B>oommf/app/oxs/regression_tests/</B></TT>.  The default setting is 0.
 </DD>
 <DT><STRONG><TT><B>-noexcludes</B></TT></STRONG></DT>
 <DD>Some tests suffer from various numerical problems.  These are
   excluded from testing, unless this option is specified.
 </DD>
+<DT><STRONG><TT><B>-parallel n</B></TT></STRONG></DT>
+<DD>Run <TT>n</TT> tests concurrently, with default <TT>n=1</TT>. This option is
+  only available when using Tcl 8.6 or later.
+</DD>
 <DT><STRONG><TT><B>-resultsfile stemname</B></TT></STRONG></DT>
 <DD>Test results are written to temporary files; by default these files
-  have the stem <TT>regression-test-output</TT>.  If <B>oxsregression</B>
+  have the stem <TT>oxsregression-test-output</TT>.  If <B>oxsregression</B>
   is run simultaneously, perhaps on different machines on a shared
   file system, then overwriting of files from one process can
   interfere with the processing by another.  The <TT>-resultsfile</TT>
@@ -146,27 +162,32 @@ where
  specified then all subtests are run.
 </DD>
 </DL>
+Take notice  of the interplay between the <TT>-parallel n</TT> and
+<TT>-threads count</TT> options. The former is the number of tests run in
+parallel, and the latter is the number of computation threads active in
+each test run. The total number of threads active at one time can
+therefore be as many as <TT>n&nbsp;<B><TT>x</TT></B>&nbsp;count</TT>.
 
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html798"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html800"
   HREF="OOMMF_Process_ID_Informatio.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html794"
+<A NAME="tex2html796"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html788"
+<A NAME="tex2html790"
   HREF="Oxs_package_management_oxsp.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html801"
+<A NAME="tex2html803"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html796"
+<A NAME="tex2html798"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

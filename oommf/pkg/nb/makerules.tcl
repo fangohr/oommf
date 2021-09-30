@@ -72,7 +72,7 @@ MakeRule Define {
 			} $objects]
 }
 
-foreach o $objects { 
+foreach o $objects {
    if {[lsearch -exact $valuesafe $o] >= 0} {
       # File requires value-safe optimizations only
       MakeRule Define {
@@ -129,19 +129,19 @@ MakeRule Define {
     -dependencies       clean
     -script             {DeleteFiles [Platform Name]}
 }
- 
+
 MakeRule Define {
     -targets            clean
     -dependencies       mostlyclean
 }
- 
+
 MakeRule Define {
     -targets            mostlyclean
     -dependencies       objclean
     -script             {eval DeleteFiles [concat tclIndex \
 			        [Platform StaticLibrary nb]]}
 }
- 
+
 MakeRule Define {
     -targets            objclean
     -dependencies       {}

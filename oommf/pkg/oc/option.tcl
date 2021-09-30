@@ -20,19 +20,28 @@ Oc_Class Oc_Option {
                 [Oc_DirectPathname [info script]]]]] config]
         set fn [file join $configDir options.tcl]
         if {[file readable $fn]} {
-            if {[catch {source $fn} msg]} {
-		set msg [join [split $msg \n] \n\t]
-                Oc_Log Log "Error sourcing options file:\n   \
-			$fn:\n\t$msg\nOption setting may be incomplete." \
-			warning Oc_Option
+           if {[catch {source $fn} msg]} {
+              set msg [join [split $msg \n] \n\t]
+              set classConstructorDone 1 ;# We're as done as we're
+              ## going to get. If we leave classConstructorDone set to
+              ## zero, then Oc_Log is likely to raise an avalanche of
+              ## additional errors. Raising one error should be enough!
+              Oc_Log Log "Error sourcing options file:\n   \
+                 $fn:\n\t$msg\nOption setting may be incomplete." \
+                 warning Oc_Option
             }
         }
 	set classConstructorDone 1
     }
 
+    proc ClassConstructorDone {} {
+       # Useful for handling errors occuring during initialization
+       return $classConstructorDone
+    }
+
     proc Add {app className option value} {
 
-        if {![string match $app [Oc_Main GetAppName]]} {
+        if {![string match -nocase $app [Oc_Main GetAppName]]} {
             return
         }
 
@@ -69,7 +78,7 @@ Oc_Class Oc_Option {
         # be careful to register only one handler per option.  Even better
         # would be to merge all handlers into one.
         #
-        # For now, queries of Oc_Option are hard coded into the 
+        # For now, queries of Oc_Option are hard coded into the
         # implementation of the Oc_Class command.
 
     }
@@ -79,9 +88,9 @@ Oc_Class Oc_Option {
 	    global errorInfo errorCode
 	    set errorCode NONE
 	    set errorInfo "No stack available"
-	    Oc_Log Log "'$class Get $className $args' called\nbefore\
+            return -code error "'$class Get $className $args' called\nbefore\
 		$class ClassConstructor completed.\nCaller:\
-		[lindex [info level -1] 0]" warning $class
+		[lindex [info level -1] 0]"
 	}
         set retList {}
         if {[llength $args] == 0} {

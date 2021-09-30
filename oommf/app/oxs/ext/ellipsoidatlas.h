@@ -7,6 +7,7 @@
 #define _OXS_ELLIPSOIDATLAS
 
 #include <string>
+#include <vector>
 
 #include "threevector.h"
 #include "util.h"
@@ -18,7 +19,10 @@ OC_USE_STRING;
 
 class Oxs_EllipsoidAtlas:public Oxs_Atlas {
 private:
-  String region_name;
+  vector<String> region_name_list;
+  OC_INDEX interior_id;
+  OC_INDEX exterior_id;
+  Oxs_Box ellipsoid;
   Oxs_Box world;
   ThreeVector centerpt;
   ThreeVector invaxes;
@@ -58,10 +62,13 @@ public:
   /// then name is set to "universe", and the return
   /// value is 1.
 
-  OC_INDEX GetRegionCount() const { return 2; }
-  /// Two regions: implicit "universe" pseudo-region, and
-  /// that specified by name and identified with the world
-  /// bbox.
+  OC_INDEX GetRegionCount() const {
+    return static_cast<OC_INDEX>(region_name_list.size());
+    // In principle, there are three regions, the interior of ellipsoid,
+    // the exterior of the ellipsoid, and the "universe". However, if
+    // either (or both) of the regions are associated with "universe"
+    // then the region count is reduced accordingly.
+  }
 };
 
 #endif // _OXS_ELLIPSOIDATLAS

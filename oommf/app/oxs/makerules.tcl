@@ -126,7 +126,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		2.0a2
+                    -version		2.0a3
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -340,7 +340,7 @@ MakeRule Define {
     -targets            objclean
     -dependencies       {}
     -script             [format {
-       eval DeleteFiles [Platform Objects {%s %s %s %s extinit}]
+       eval DeleteFiles [Platform Objects {%s %s %s %s demagtensor extinit}]
        eval DeleteFiles [Platform Intermediate {%s %s %s %s %s extinit}]
     } $objects $extobjs $lclobjs $pobjs \
       $objects $extobjs $lclobjs $pobjs $executables]

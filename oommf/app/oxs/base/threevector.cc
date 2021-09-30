@@ -233,9 +233,19 @@ void Oxs_ThreeVectorPairMakeUnit
   adj = _mm_mul_pd(_mm_add_pd(adj,_mm_set1_pd(0.375)),error);
   adj = _mm_mul_pd(_mm_add_pd(adj,_mm_set1_pd(0.5)),error);
 
+#if OC_FMA_TYPE == 3
+  tx = _mm_fmadd_pd(adj,tx,tx);
+  ty = _mm_fmadd_pd(adj,ty,ty);
+  tz = _mm_fmadd_pd(adj,tz,tz);
+#elif OC_FMA_TYPE == 4
+  tx = _mm_macc_pd(adj,tx,tx);
+  ty = _mm_macc_pd(adj,ty,ty);
+  tz = _mm_macc_pd(adj,tz,tz);
+#else
   tx = _mm_add_pd(tx,_mm_mul_pd(tx,adj));
   ty = _mm_add_pd(ty,_mm_mul_pd(ty,adj));
   tz = _mm_add_pd(tz,_mm_mul_pd(tz,adj));
+#endif
   /// v += adj*v produces smaller | ||v||^2 - 1 | than
   /// v *= (1+adj).
 }

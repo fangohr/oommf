@@ -505,9 +505,17 @@ public:
   virtual void FillNewStageStateDerivedData(const Oxs_SimState& old_state,
                                      int new_stage_number,
                                      const Oxs_SimState& new_state) const;
+#if 0
   virtual void FillNewStageState(const Oxs_SimState& old_state,
 				 int new_stage_number,
-				 Oxs_SimState& new_state) const;
+				 Oxs_SimState& new_state) const
+  { // Deprecated routine.  New code should use the separate
+    // FillNewStageStateMemberData and FillNewStageStateDerivedData
+    // functions.
+    FillNewStageStateMemberData(old_state,new_stage_number,new_state);
+    FillNewStageStateDerivedData(old_state,new_stage_number,new_state);
+  }
+#endif
   /// FillNewStageState is called to copy a state across a stage
   /// boundary.  A default method is provided.  Child classes should
   /// either use this method as is, or else call it from overriding
@@ -519,7 +527,7 @@ public:
 
   virtual OC_BOOL InitNewStage(Oxs_ConstKey<Oxs_SimState> state,
                             Oxs_ConstKey<Oxs_SimState> prevstate) =0;
-  /// InitNewStage sends first state of new stage to evolver for
+  /// InitNewStage sends first state of new stage to the evolver for
   /// any necessary internal bookkeeping.  This call also runs through
   /// the child driver class, so it can update any internal structures
   /// as well.

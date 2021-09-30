@@ -84,6 +84,24 @@ private:
                      OC_REAL8m& mult,
                      OC_REAL8m& dmult) const;
 
+
+  // C++11 provides std::fma() that computes fused-multiply-add with
+  // correct (i.e., single) rounding. This is very useful for building
+  // numerically finicky code like double-double multiplication
+  // (cf. oommf/pkg/xp/doubledouble.cc), but can be painfully slow if
+  // the compiler target doesn't have hardware support for fma. If
+  // precision is not an issue, then you'll likely get faster binaries
+  // by simply expanding out fma(a,b,c) as a*b+c and letting the
+  // compiler decide when and where to insert fma's in the executable.
+  //   The following inline function is a transparent wrapper around an
+  // expanded fma. It is provided and used in the class to make it easy
+  // to compare the speed vs. precission trade-offs of using the
+  // expanded form vs. std::fma; just change the "a*b+c" to
+  // std::fma(a,b,c) to test.
+  inline static OC_REAL8m FMA_Block(OC_REAL8m a,OC_REAL8m b,OC_REAL8m c) {
+    return a*b+c;
+  }
+
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
 			 Oxs_EnergyData& oed) const {

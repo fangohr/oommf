@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/yuyahagi/oommf-mel.git
 == repo-name: oommf-mel
 == snap-shot-of-repo: provenance-oommf-mel-HEAD.zip
-== cloned-on-date: Mon May 24 22:07:49 2021
+== cloned-on-date: Thu Sep 30 22:35:26 2021
 == copied-files-from-path-in-repo: ./
 last commit:
 commit f155dd2470ecdccac076b2312ee110a3cfc00d22
@@ -11,22 +11,22 @@ Date:   Wed Jul 1 15:30:44 2015 -0700
     [add] Test mif files for YY_InterpolateStageMEL.
 
 == src file-list:
-total 160
--rw-r--r-- 1 fangohr exfel  1071 May 24 22:07 LICENSE.txt
--rw-r--r-- 1 fangohr exfel  1969 May 24 22:07 Makefile
--rw-r--r-- 1 fangohr exfel  6834 May 24 22:07 readme.txt
-drwxr-xr-x 2 fangohr exfel  4096 May 24 22:07 testdata
--rw-r--r-- 1 fangohr exfel 16108 May 24 22:07 test_initial_m.omf
--rw-r--r-- 1 fangohr exfel  2257 May 24 22:07 test_transformstagemel.mif
--rw-r--r-- 1 fangohr exfel  3073 May 24 22:07 yy_fixedmel.cc
--rw-r--r-- 1 fangohr exfel  1778 May 24 22:07 yy_fixedmel.h
--rw-r--r-- 1 fangohr exfel 22268 May 24 22:07 yy_interpolatestagemel.cc
--rw-r--r-- 1 fangohr exfel  5259 May 24 22:07 yy_interpolatestagemel.h
--rw-r--r-- 1 fangohr exfel 19368 May 24 22:07 yy_mel_util.cc
--rw-r--r-- 1 fangohr exfel  5401 May 24 22:07 yy_mel_util.h
--rw-r--r-- 1 fangohr exfel 14867 May 24 22:07 yy_stagemel.cc
--rw-r--r-- 1 fangohr exfel  3894 May 24 22:07 yy_stagemel.h
--rw-r--r-- 1 fangohr exfel 20939 May 24 22:07 yy_transformstagemel.cc
--rw-r--r-- 1 fangohr exfel  4777 May 24 22:07 yy_transformstagemel.h
+total 312
+-rw-r--r--   1 fangohr  staff   1071 30 Sep 22:35 LICENSE.txt
+-rw-r--r--   1 fangohr  staff   1969 30 Sep 22:35 Makefile
+-rw-r--r--   1 fangohr  staff   6834 30 Sep 22:35 readme.txt
+-rw-r--r--   1 fangohr  staff  16108 30 Sep 22:35 test_initial_m.omf
+-rw-r--r--   1 fangohr  staff   2257 30 Sep 22:35 test_transformstagemel.mif
+drwxr-xr-x  25 fangohr  staff    800 30 Sep 22:35 testdata
+-rw-r--r--   1 fangohr  staff   3073 30 Sep 22:35 yy_fixedmel.cc
+-rw-r--r--   1 fangohr  staff   1778 30 Sep 22:35 yy_fixedmel.h
+-rw-r--r--   1 fangohr  staff  22268 30 Sep 22:35 yy_interpolatestagemel.cc
+-rw-r--r--   1 fangohr  staff   5259 30 Sep 22:35 yy_interpolatestagemel.h
+-rw-r--r--   1 fangohr  staff  19368 30 Sep 22:35 yy_mel_util.cc
+-rw-r--r--   1 fangohr  staff   5401 30 Sep 22:35 yy_mel_util.h
+-rw-r--r--   1 fangohr  staff  14867 30 Sep 22:35 yy_stagemel.cc
+-rw-r--r--   1 fangohr  staff   3894 30 Sep 22:35 yy_stagemel.h
+-rw-r--r--   1 fangohr  staff  20939 30 Sep 22:35 yy_transformstagemel.cc
+-rw-r--r--   1 fangohr  staff   4777 30 Sep 22:35 yy_transformstagemel.h
 
 == see contents of provenance-oommf-mel-HEAD.zip for additional info, examples, etc.

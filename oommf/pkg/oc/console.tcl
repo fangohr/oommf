@@ -14,19 +14,17 @@
 # its own.
 
 ########################################################################
-# If the Tcl command 'console' is already in the interpreter, our work
-# is done.
+# If the Tcl 'consoleinterp' is already in the interpreter, then this
+# file has already been sourced.
 ########################################################################
-if {![catch {console show}]} {
+if {[llength [info commands consoleinterp]]} {
     return
 }
 
 ########################################################################
 # Check Tcl/Tk support
 ########################################################################
-if {[catch {package require Tcl 8}]} {
-    package require Tcl 7.5
-}
+package require Tcl 8.5-
 
 if {[catch {package require Tk 8}]} {
     if {[catch {package require Tk 4.1}]} {
@@ -42,11 +40,78 @@ if {![file readable $_]} {
 ########################################################################
 # Provide the support which the Tk library script console.tcl assumes
 ########################################################################
-# 1. Create an interpreter for the console window widget and load Tk 
+# 1. Create an interpreter for the console window widget and load Tk.
+#    You can configure the console from inside the interpreter using
+#    the 'console eval' command. For example,
+#       console eval [list .console configure -background green]
+#    NB: The 'eval' subcommand to the 'console' command is not
+#    documented in the help message. Remove if desired.
 set consoleInterp [interp create]
 $consoleInterp eval [list set tk_library $tk_library]
 $consoleInterp alias exit exit
 load "" Tk $consoleInterp
+
+$consoleInterp eval {
+   proc ShowTags { w } {
+      # Intended for development.
+      set tags [$w tag names]
+      foreach t $tags {
+         set nv {}
+         foreach opt [$w tag configure $t] {
+            set n [lindex $opt 0]
+            set val [$w tag cget $t $n]
+            if {![string match {} $val] && ![string match system* $val]} {
+               lappend nv [list $n $val]
+            }
+         }
+         foreach p $nv {
+            puts [format "%15s %15s %15s" $t {*}$p]
+         }
+      }
+   }
+   proc AutoSetTagColors { w } {
+      set shade 0
+      foreach component [winfo rgb $w [$w cget -background]] {
+         set shade [expr {$shade + $component}]
+      }
+      set shade [expr {$shade/double(3*65535)}]
+      if {$shade<0.5} {
+         DarkTags $w
+      } else {
+         LightTags $w
+      }
+   }
+   proc LightBackground { w } {
+      $w configure \
+         -background #FFFFFF -foreground #000000 \
+         -insertbackground #000000 -insertofftime 0
+   }
+   proc LightTags { w } {
+      # Set text tags appropriate for a light colored background.
+      $w tag configure  stderr   -foreground       red
+      $w tag configure   stdin   -foreground      blue
+      $w tag configure  prompt   -foreground   #8F4433
+      $w tag configure    proc   -foreground   #008800
+      $w tag configure     var   -background   #FFC0D0
+      $w tag configure   blink   -background   #FFFF00
+      $w tag configure    find   -background   #FFFF00
+   }
+   proc DarkBackground { w } {
+      $w configure \
+         -background #1E1E1E -foreground #FFFFFF \
+         -insertbackground #FFFFFF -insertofftime 0
+   }
+   proc DarkTags { w } {
+      # Set text tags appropriate for a dark colored background.
+      $w tag configure  stderr   -foreground       red
+      $w tag configure   stdin   -foreground   #44aaff
+      $w tag configure  prompt   -foreground   #8FFF33
+      $w tag configure    proc   -foreground   #FF88FF
+      $w tag configure     var   -background   #440000
+      $w tag configure   blink   -background   #EEEEEE
+      $w tag configure    find   -background   #EEEEEE
+   }
+}
 
 # 2. A command 'console' in the application interpreter
 ;proc console {sub {optarg {}}} [subst -nocommands {
@@ -54,6 +119,19 @@ load "" Tk $consoleInterp
         title {
             $consoleInterp eval wm title . [list \$optarg]
         }
+        lightmode {
+            # Colored text in console can be hard to read in macOS dark
+            # mode (and others?), so provide a fallback with a white
+            # background. The insert entries control cursor color and
+            # blink rate.
+            $consoleInterp eval LightBackground .console
+            $consoleInterp eval LightTags .console
+        }
+        darkmode {
+            $consoleInterp eval DarkBackground .console
+            $consoleInterp eval DarkTags .console
+        }
+
         hide {
             $consoleInterp eval wm withdraw .
         }
@@ -63,8 +141,12 @@ load "" Tk $consoleInterp
         eval {
             $consoleInterp eval \$optarg
         }
+        showtags {
+           $consoleInterp eval ShowTags .console
+        }
         default {
-            error "bad option \\\"\$sub\\\": should be hide, show, or title"
+            error "bad option \\\"\$sub\\\": should be\
+                   hide, show, lightmode, darkmode, or title"
         }
     }
 }]
@@ -194,6 +276,8 @@ $consoleInterp eval {
     bind Console <Destroy> +Oc_RestorePuts
 }
 
+# Setup default text coloring
+$consoleInterp eval AutoSetTagColors .console
 unset consoleInterp
 
 console title "[wm title .] Console"

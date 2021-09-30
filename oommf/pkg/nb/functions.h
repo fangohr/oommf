@@ -13,6 +13,12 @@
 
 #include <stdarg.h>
 
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <ostream>
+#include <sstream>
+
 #include "dstring.h"
 
 /* End includes */     /* Optional directive to build.tcl */
@@ -80,13 +86,31 @@ double Nb_Strtod(const unsigned char *nptr,unsigned char **endptr);
 // is set true if an error occurred, false otherwise.
 double Nb_Atof(const char *nptr,OC_BOOL& error);
 
+// Template to convert floating point types to a decimal string
+// retaining full precision.  Note: std::to_string(floatType) uses a %f
+// format, so drops precision and rounds 5e-7 and smaller values to 0.0.
+template <typename floatType>
+String Nb_FloatToString(floatType val)
+{ // Use C++ i/o to auto handle floating point variable type.
+  // Output uses default float format, which is like %g
+  std::stringbuf strbuf;
+  std::ostream ostrbuf(&strbuf);
+  ostrbuf << std::setprecision(std::numeric_limits<floatType>::max_digits10)
+          << val;
+  return strbuf.str();
+}
+
+// Overload of preceding for case floatType == long double.  This
+// version appends an "L" suffix.
+String Nb_FloatToString(long double val);
+
 // Atan2 inverse, in where import "angle" is specified in degrees
 void degcossin(double angle,double& cosine,double& sine);
 
 // Routines to detect IEEE floating point NAN's and infinities.
 int Nb_IsFinite(OC_REAL4 x);
 int Nb_IsFinite(OC_REAL8 x);
-#if !OC_REALWIDE_IS_REAL8
+#if !OC_REALWIDE_IS_OC_REAL8
 int Nb_IsFinite(OC_REALWIDE x);
 #endif
 

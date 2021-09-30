@@ -61,7 +61,7 @@ Oc_Class Net_AccountGui {
         # and also all subwindows can be destroyed by simply
         # destroying $winpath.  (The instance destructor should
         # not "destroy" $frame, because $frame is owned external
-        # to this class.
+        # to this class.)
         eval frame $winpath $outer_frame_options
         set accountname [$account Cget -accountname]
         set accountlabel [label $winpath.label -text $accountname \

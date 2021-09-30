@@ -364,10 +364,10 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
       }
       if {$cpu_sse>=3} { set cpu_sse 3 }  ;# Safety
   } elseif {($verA==3 && $verB>=4) || ($verA==4 && $verB<=1) \
-		|| [string compare "Darwin" $tcl_platform(os)]==0} {
+      || ($verA<5 && [string compare "Darwin" $tcl_platform(os)]==0)} {
       # On Mac Os X Lion (others?), despite what 'man gcc' reports,
       # gcc doesn't support "-march=native", although it does support
-      # "mtune=native".
+      # "mtune=native". (This is fixed in more recent gcc.)
 
       # Don't bother setting -march in case of i386, i486, or k5
       switch -glob -- $cpu_type {

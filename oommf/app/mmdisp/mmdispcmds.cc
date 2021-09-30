@@ -77,7 +77,8 @@ static CoordinateSystem AngleToCoords(OC_REAL4m angle_in_degrees)
   CoordinateSystem coords=CS_ILLEGAL;
   int quad=int(OC_ROUND(fmod(double(angle_in_degrees),
                              double(360.))/90.));
-  if(quad<0) quad+=4;  if(quad>3) quad-=4;
+  if(quad<0) quad+=4;
+  if(quad>3) quad-=4;
   switch(quad) {
   case 0:  coords=CS_DISPLAY_STANDARD;  break;
   case 1:  coords=CS_DISPLAY_ROT_90;    break;
@@ -2313,6 +2314,139 @@ int WriteMeshOVF2
   return errcode;
 }
 
+// Code for writing Python NumPY NPY version 1.0 files.
+int WriteMeshNPY
+(ClientData,Tcl_Interp *interp,
+ int argc,CONST84 char** argv)
+{
+  Tcl_ResetResult(interp);
+  if(argc<4 || argc>6) {
+    Oc_Snprintf(buf,sizeof(buf),"WriteMeshNPY must be called with"
+            " 3-5 arguments: filename <text|binary4|binary8>"
+            " <rectangular|irregular> [textwidth] [textfmt]"
+            " (%d arguments passed)",argc-1);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+
+  int errcode=TCL_OK;
+
+  Vf_OvfDataStyle ods=vf_oinvalid;
+  if(strcmp("text",argv[2])==0)         ods=vf_oascii;
+  else if(strcmp("binary4",argv[2])==0) ods=vf_obin4;
+  else if(strcmp("binary8",argv[2])==0) ods=vf_obin8;
+  else {
+    Oc_AutoBuf errmsg;
+    errmsg.SetLength(strlen(argv[2])+256);
+    Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
+       "WriteMeshNPY error: Unrecognized output format request: \"%s\"",
+       argv[2]);
+    Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
+    return TCL_ERROR;
+  }
+  
+  Vf_Ovf20_MeshType reqtype = vf_ovf20mesh_rectangular;
+  if(strcmp("irregular",argv[3])==0) {
+    reqtype = vf_ovf20mesh_irregular;
+  }
+
+  int textwidth = 0;
+  if(argc>4) textwidth = atoi(argv[4]);
+
+  const char* textfmt = nullptr;
+  if(argc>5) textfmt = argv[5];;
+  
+  Vf_Mesh* mesh = myMeshArray[activeMeshId];
+  Vf_Ovf20FileHeader header;
+
+  Vf_Mesh_MeshNodes meshnodes(mesh);
+  meshnodes.DumpGeometry(header,reqtype);
+  
+  vector<String> valueunits;   // Value units, such as "J/m^3"
+  vector<String> valuelabels;  // Value label, such as "Exchange energy density"
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valueunits.push_back(String(mesh->GetValueUnit()));
+  valuelabels.push_back(String("")); // Empty placeholder for now.
+  valuelabels.push_back(String(""));
+  valuelabels.push_back(String(""));
+  header.valuedim.Set(3); // Vector field
+  header.valuelabels.Set(valuelabels);
+  header.valueunits.Set(valueunits);
+
+  if(!header.IsValidGeom()) {
+    OC_THROW("Programming error?"
+             " Invalid file header constructed in WriteMeshNPY");
+  }
+
+  // Copy (scaled) vector components into vanilla OC_REAL8m array
+  const OC_INDEX size = meshnodes.GetSize();
+  Nb_ArrayWrapper<OC_REAL8m> vecvals(3*size);
+  for(OC_INDEX i=0; i<size ; ++i) {
+    const Nb_Vec3<OC_REAL8m>& nbvec = meshnodes.GetValue(i);
+    vecvals[3*i]   = nbvec.x;
+    vecvals[3*i+1] = nbvec.y;
+    vecvals[3*i+2] = nbvec.z;
+  }
+
+  // Open file
+  Tcl_Channel channel;
+  Tcl_DString saveTranslation;
+  const char* filename = NULL;
+  if (argv[1][0] == '\0') {
+    int mode;
+    channel = Tcl_GetChannel(interp, OC_CONST84_CHAR("stdout"), &mode);
+    Tcl_DStringInit(&saveTranslation);
+    Tcl_GetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+                         &saveTranslation);
+    filename = "stdout";
+  } else {
+    channel = Tcl_OpenFileChannel(interp, argv[1], OC_CONST84_CHAR("w"), 0666);
+    filename = argv[1];
+  }
+  if (channel == NULL) {
+    return TCL_ERROR;
+  }
+  Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+                       OC_CONST84_CHAR("lf"));
+
+
+  // Write
+  OC_INT4m writecheck = 0;
+  try {
+    Vf_Ovf20VecArrayConst data_info(3,size,vecvals.GetPtr());
+    if(argc==4) {
+      header.WriteNPY(channel,ods,data_info,&meshnodes);
+    } else if(argc==5) {
+      header.WriteNPY(channel,ods,data_info,&meshnodes,textwidth);
+    } else {
+      header.WriteNPY(channel,ods,data_info,&meshnodes,textwidth,textfmt);
+    }
+  } catch(...) {
+    writecheck = 1;
+  }
+  if(writecheck != 0) {
+    Oc_AutoBuf errmsg;
+    errmsg.SetLength(sizeof(filename)+256);
+    Oc_Snprintf(errmsg.GetStr(),errmsg.GetLength(),
+                "WriteMeshNPY error writing to \"%s\"; device full?",
+                filename);
+    Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
+    errcode=TCL_ERROR;
+  }
+
+  if (argv[1][0] != '\0') {
+    Tcl_Close(NULL, channel);
+  } else {
+    Tcl_Flush(channel);
+    Tcl_SetChannelOption(interp, channel, OC_CONST84_CHAR("-translation"),
+        Tcl_DStringValue(&saveTranslation));
+    Tcl_DStringFree(&saveTranslation);
+  }
+
+  return errcode;
+}
+
 int WriteMeshMagnitudes
 (ClientData,Tcl_Interp *interp,
  int argc,CONST84 char** argv)
@@ -3522,11 +3656,11 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
     }
 
     if(headtype == fullhead) {
-      // NB: Tcl_ObjPrintf doesn't handle 64-bit integer format specifier.
-      OC_INDEX len = Oc_Snprintf(buf,sizeof(buf),
+      OC_CHAR headbuf[MY_BUF_SIZE];
+      Oc_Snprintf(headbuf,sizeof(headbuf),
         "## Active volume: (%.15g,%.15g,%.15g) x (%.15g,%.15g,%.15g)\n"
         "## Cell size: %.15g x %.15g x %.15g\n"
-        "## Cells in active volume: %" OC_INDEX_MOD "d\n",
+        "## Cells in active volume: %lld\n",
         static_cast<double>(xmin),
         static_cast<double>(ymin),
         static_cast<double>(zmin),
@@ -3536,14 +3670,21 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         static_cast<double>(fabs(step.x)),
         static_cast<double>(fabs(step.y)),
         static_cast<double>(fabs(step.z)),
-        volume_point_count);
+        static_cast<long long int>(volume_point_count));
+      // At least as late as Tcl 8.6, Tcl_ObjPrintf doesn't provide
+      // support for 64-bit integers on platforms where 'long int' width
+      // is 32 bits (e.g., Windows), so use snprintf with %lld instead.
+      // Note that long long int, with format code %lld, is supported
+      // by both C99 and C++11. Using %lld may be more robust than
+      // "%" OC_INDEX_MOD "d" on Windows, where the Window-ish "I64"
+      // format modifier may confuse some g++ installs.
 #if WMA_USE_OBJ
-      tmpobj = Tcl_NewStringObj(buf,static_cast<int>(len));
+      tmpobj = Tcl_NewStringObj(headbuf, -1);
       Tcl_IncrRefCount(tmpobj);
       Tcl_WriteObj(channel,tmpobj);
       Tcl_DecrRefCount(tmpobj);
 #else
-      Tcl_Write(channel, buf, int(strlen(buf)));
+      Tcl_Write(channel, headbuf, int(strlen(headbuf)));
 #endif
     }
 #if WMA_USE_OBJ
@@ -3680,13 +3821,16 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
         if(normalize) magsum += v.Mag();
         if(extravals) {
           OC_REAL8m ax = abs(v.x);
-          if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+          if(ax>maxval) maxval=ax;
+	  if(ax<minval) minval=ax;
           L1 += ax;   L2 += ax*ax;
           OC_REAL8m ay = abs(v.y);
-          if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+          if(ay>maxval) maxval=ay;
+	  if(ay<minval) minval=ay;
           L1 += ay;   L2 += ay*ay;
           OC_REAL8m az = abs(v.z);
-          if(az>maxval) maxval=az;  if(az<minval) minval=az;
+          if(az>maxval) maxval=az;
+	  if(az<minval) minval=az;
           L1 += az;   L2 += az*az;
         }
       }
@@ -3960,13 +4104,16 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             if(normalize) magsum += v.Mag();
             if(extravals) {
               OC_REAL8m ax = abs(v.x);
-              if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+              if(ax>maxval) maxval=ax;  
+	      if(ax<minval) minval=ax;
               L1 += ax;   L2 += ax*ax;
               OC_REAL8m ay = abs(v.y);
-              if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+              if(ay>maxval) maxval=ay; 
+	      if(ay<minval) minval=ay;
               L1 += ay;   L2 += ay*ay;
               OC_REAL8m az = abs(v.z);
-              if(az>maxval) maxval=az;  if(az<minval) minval=az;
+              if(az>maxval) maxval=az;  
+	      if(az<minval) minval=az;
               L1 += az;   L2 += az*az;
             }
           } while((stepcontrol=(triple_index.*tripstep)())<2);
@@ -4246,13 +4393,16 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             if(normalize) magsum += v.Mag();
             if(extravals) {
               OC_REAL8m ax = abs(v.x);
-              if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+              if(ax>maxval) maxval=ax;
+	      if(ax<minval) minval=ax;
               L1 += ax;   L2 += ax*ax;
               OC_REAL8m ay = abs(v.y);
-              if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+              if(ay>maxval) maxval=ay;
+	      if(ay<minval) minval=ay;
               L1 += ay;   L2 += ay*ay;
               OC_REAL8m az = abs(v.z);
-              if(az>maxval) maxval=az;  if(az<minval) minval=az;
+              if(az>maxval) maxval=az;
+	      if(az<minval) minval=az;
               L1 += az;   L2 += az*az;
             }
           } while((stepcontrol=(triple_index.*tripstep)())==0);
@@ -4727,13 +4877,16 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
                     if(normalize) magsum += v.Mag();
                     if(extravals) {
                       OC_REAL8m ax = abs(v.x);
-                      if(ax>maxval) maxval=ax;  if(ax<minval) minval=ax;
+                      if(ax>maxval) maxval=ax;
+		      if(ax<minval) minval=ax;
                       L1 += ax;   L2 += ax*ax;
                       OC_REAL8m ay = abs(v.y);
-                      if(ay>maxval) maxval=ay;  if(ay<minval) minval=ay;
+                      if(ay>maxval) maxval=ay;
+		      if(ay<minval) minval=ay;
                       L1 += ay;   L2 += ay*ay;
                       OC_REAL8m az = abs(v.z);
-                      if(az>maxval) maxval=az;  if(az<minval) minval=az;
+                      if(az>maxval) maxval=az;
+		      if(az<minval) minval=az;
                       L1 += az;   L2 += az*az;
                     }
                   }
@@ -6015,6 +6168,7 @@ int Mmdispcmds_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"WriteMeshUsingDeprecatedVIOFormat",
                      WriteMeshUsingDeprecatedVIOFormat);
   Oc_RegisterCommand(interp,"WriteMeshOVF2",WriteMeshOVF2);
+  Oc_RegisterCommand(interp,"WriteMeshNPY",WriteMeshNPY);
   Oc_RegisterCommand(interp,"WriteMeshMagnitudes",WriteMeshMagnitudes);
   Oc_RegisterCommand(interp,"WriteMeshAverages",WriteMeshAverages);
 

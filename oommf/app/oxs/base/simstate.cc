@@ -22,7 +22,7 @@ Oxs_SimState::Oxs_SimState()
     stage_start_time(0.),stage_elapsed_time(0.),
     last_timestep(0.),
     mesh(NULL),Ms(NULL),Ms_inverse(NULL),max_absMs(-1),
-    stage_done(UNKNOWN), run_done(UNKNOWN)
+    step_done(UNKNOWN), stage_done(UNKNOWN), run_done(UNKNOWN)
 {}
 
 //Destructor
@@ -40,8 +40,9 @@ void Oxs_SimState::Reset()
 // reasons of efficiency.  However, for debugging checks one might want
 // to wipe "spin" too.
 {
-  if(!derived_data.empty()) derived_data.clear();
-
+  ClearDerivedData();
+  ClearAuxData();
+  
   previous_state_id=0;
   iteration_count=0;
   stage_number=0;
@@ -55,6 +56,7 @@ void Oxs_SimState::Reset()
   Ms_inverse=NULL;
   max_absMs=-1;
 
+  step_done=UNKNOWN;
   stage_done=UNKNOWN;
   run_done=UNKNOWN;
 
@@ -97,14 +99,18 @@ OC_BOOL Oxs_SimState::GetDerivedData
   return 1;
 }
 
+void Oxs_SimState::AppendListDerivedData(vector<String>& names) const
+{ // Class internal routine
+  for(map<DerivedDataKey,OC_REAL8m>::const_iterator
+        cit = derived_data.begin(); cit!=derived_data.end(); ++cit) {
+    names.push_back(cit->first);
+  }
+}
+
 void Oxs_SimState::ListDerivedData(vector<String>& names) const
 {
   names.clear();
-  map<DerivedDataKey,OC_REAL8m>::const_iterator it = derived_data.begin();
-  while(it!=derived_data.end()) {
-    names.push_back(it->first);
-    ++it;
-  }
+  AppendListDerivedData(names);
 }
 
 void Oxs_SimState::ClearDerivedData()
@@ -133,19 +139,116 @@ OC_BOOL Oxs_SimState::GetAuxData
   return 1;
 }
 
+void Oxs_SimState::AppendListAuxData(vector<String>& names) const
+{ // Class internal routine
+  for(map<AuxDataKey,OC_REAL8m>::const_iterator
+        cit = auxiliary_data.begin(); cit!=auxiliary_data.end(); ++cit) {
+    names.push_back(cit->first);
+  }
+}
+
 void Oxs_SimState::ListAuxData(vector<String>& names) const
 {
   names.clear();
-  map<AuxDataKey,OC_REAL8m>::const_iterator it = derived_data.begin();
-  while(it!=auxiliary_data.end()) {
-    names.push_back(it->first);
-    ++it;
-  }
+  AppendListAuxData(names);
 }
 
 void Oxs_SimState::ClearAuxData()
 {
   auxiliary_data.clear();
+}
+
+void Oxs_SimState::QueryScalarNames(vector<String>& keys) const
+{
+  // Start with built-ins.  NB: This code section must be kept
+  // consistent with the corresponding section in QueryScalarValues().
+  keys.clear();
+  keys.push_back("state_id");
+  keys.push_back("previous_state_id");
+  keys.push_back("iteration_count");
+  keys.push_back("stage_number");
+  keys.push_back("stage_iteration_count");
+  keys.push_back("stage_start_time");
+  keys.push_back("stage_elapsed_time");
+  keys.push_back("total_elapsed_time");
+  keys.push_back("last_timestep");
+  keys.push_back("max_absMs");
+  keys.push_back("step_done");  // Good step==1, Rejected step==0, Unknown==-1
+  keys.push_back("stage_done"); // Done==1, Not done==0, Unknown==-1
+  keys.push_back("run_done");   // Done==1, Not done==0, Unknown==-1
+
+  // Append keys from derived and aux data
+  AppendListDerivedData(keys);
+  AppendListAuxData(keys);
+}
+
+void Oxs_SimState::QueryScalarValues
+(const vector<String>& keys, vector<Oxs_MultiType>& values) const
+{
+  OC_REAL8m real_data;
+  values.clear();
+  for(vector<String>::const_iterator cit = keys.begin();
+      cit != keys.end(); ++cit) {
+    const String& key = *cit;
+    // Check built-ins first.  NB: This code section must be kept
+    // consistent with the corresponding section in QueryScalarNames().
+    Oxs_MultiType dummy;
+    if(key.compare("state_id")==0) {
+      values.push_back(Id());
+      continue;
+    } else if(key.compare("previous_state_id")==0) {
+      values.push_back(previous_state_id);
+      continue;
+    } else if(key.compare("iteration_count")==0) {
+      values.push_back(iteration_count);
+      continue;
+    } else if(key.compare("stage_number")==0) {
+      values.push_back(stage_number);
+      continue;
+    } else if(key.compare("stage_iteration_count")==0) {
+      values.push_back(stage_iteration_count);
+      continue;
+    } else if(key.compare("stage_start_time")==0) {
+      values.push_back(stage_start_time);
+      continue;
+    } else if(key.compare("stage_elapsed_time")==0) {
+      values.push_back(stage_elapsed_time);
+      continue;
+    } else if(key.compare("total_elapsed_time")==0) {
+      values.push_back(stage_start_time + stage_elapsed_time);
+      continue;
+    } else if(key.compare("last_timestep")==0) {
+      values.push_back(last_timestep);
+      continue;
+    } else if(key.compare("max_absMs")==0) {
+      values.push_back(max_absMs);
+      continue;
+    } else if(key.compare("step_done")==0) {
+      values.push_back(static_cast<int>(step_done));
+      /// Good (accepted) step==1, Rejected step==0, Unknown==-1
+      continue;
+    } else if(key.compare("stage_done")==0) {
+      values.push_back(static_cast<int>(stage_done));
+      /// Done==1, Not done==0, Unknown==-1
+      continue;
+    } else if(key.compare("run_done")==0) {
+      values.push_back(static_cast<int>(run_done));
+      /// Done==1, Not done==0, Unknown==-1
+      continue;
+    }
+
+    // Next try derived and then aux data maps
+    if(GetDerivedData(key,real_data) || GetAuxData(key,real_data)) {
+      values.push_back(static_cast<Oxs_MultiType>(real_data));
+      continue;
+    }
+
+    // Otherwise, error
+    String msg=String("Error detected in Oxs_SimState::QueryScalarValues; ");
+    msg += String("Unknown key request: ");
+    msg += key;
+    OXS_THROW(Oxs_BadParameter,msg);
+  }
 }
 
 void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
@@ -220,6 +323,9 @@ void Oxs_SimState::SaveState(const char* filename,
   desc += String(buf);
   Oc_Snprintf(buf,sizeof(buf),"\nlast_timestep %.17g",
 	      static_cast<double>(last_timestep));
+  desc += String(buf);
+  Oc_Snprintf(buf,sizeof(buf),"\nstep_done %d",
+	      step_done);
   desc += String(buf);
   Oc_Snprintf(buf,sizeof(buf),"\nstage_done %d",
 	      stage_done);
@@ -350,7 +456,7 @@ void Oxs_SimState::RestoreState
   // conflicts with the DerivedData names.
   Nb_SplitList desc;
   desc.Split(file_mesh->GetDescription());
-  if(desc.Count()<22) {
+  if(desc.Count()<24) {
       String msg=String("Error detected during Oxs_SimState::RestoreState; ");
       msg += String("Description array has too few elements"
 		    " in input file ");
@@ -378,13 +484,15 @@ void Oxs_SimState::RestoreState
   else  stage_elapsed_time = Nb_Atof(desc[15]);
   if(strcmp("last_timestep",desc[16])!=0) ++errcount;
   else  last_timestep = Nb_Atof(desc[17]);
-  if(strcmp("stage_done",desc[18])!=0) ++errcount;
-  else  stage_done
+  if(strcmp("step_done",desc[18])!=0) ++errcount;
+  else  step_done
 	  = static_cast<Oxs_SimState::SimStateStatus>(atoi(desc[19]));
-  if(strcmp("run_done",desc[20])!=0) ++errcount;
-  else  run_done
+  if(strcmp("stage_done",desc[20])!=0) ++errcount;
+  else  stage_done
 	  = static_cast<Oxs_SimState::SimStateStatus>(atoi(desc[21]));
-
+  if(strcmp("run_done",desc[22])!=0) ++errcount;
+  else  run_done
+	  = static_cast<Oxs_SimState::SimStateStatus>(atoi(desc[23]));
   if(errcount>0) {
       String msg=String("Error detected during Oxs_SimState::RestoreState;");
       msg += String(" Bad header in restart file ");
@@ -394,7 +502,7 @@ void Oxs_SimState::RestoreState
 
   ClearDerivedData();
   ClearAuxData();
-  for(int pair_index=22;pair_index<desc.Count();pair_index+=2) {
+  for(int pair_index=24;pair_index<desc.Count();pair_index+=2) {
     OC_BOOL error;
     enum DataType { DT_DERIVED, DT_AUXILIARY } dt;
     if(strcmp("DRV",desc[pair_index])) {

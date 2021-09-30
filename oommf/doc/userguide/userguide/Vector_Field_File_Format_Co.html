@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>Vector Field File Format Conversion: avf2ovf</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html588"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html590"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html584"
+<A NAME="tex2html586"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html578"
+<A NAME="tex2html580"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html590"
+<A NAME="tex2html592"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html586"
+<A NAME="tex2html588"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html589"
+<B> Next:</B> <A NAME="tex2html591"
   HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
-<B> Up:</B> <A NAME="tex2html585"
+<B> Up:</B> <A NAME="tex2html587"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html579"
+<B> Previous:</B> <A NAME="tex2html581"
   HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from</A>
 <BR>
 <BR>
@@ -57,10 +53,10 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BR>
 Vector Field File Format Conversion:
           avf2ovf
-</H2><A NAME="16929"></A><A NAME="16930"></A><A NAME="16931"></A><A NAME="16932"></A>
+</H2><A NAME="16887"></A><A NAME="16888"></A><A NAME="16889"></A><A NAME="16890"></A>
 The <B>avf2ovf</B> program converts vector field files from any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A>
-(OVF, VIO) into the OVF format.
+(OVF, VIO) into the OOMMF OVF or the Python NumPy NPY format.
 
 <P>
 
@@ -70,9 +66,9 @@ The <B>avf2ovf</B> program converts vector field files from any of the
 The <B>avf2ovf</B> launch command is:
 <PRE>
 tclsh oommf.tcl avf2ovf [standard options] \
-   [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format &lt;text|b4|b8&gt;] [-grid &lt;rect|irreg&gt;] [-info] [-keepbb] \
-   [-mag] [-ovfversion version] [-pertran xoff yoff zoff] [-q] \
+   [-clip xmin ymin zmin xmax ymax zmax] [-dataformat &lt;text|b4|b8&gt;] \
+   [-fileformat &lt;ovf|npy&gt; version] [-flip flipstr] [-grid &lt;rect|irreg&gt;] \
+   [-info] [-keepbb] [-mag] [-pertran xoff yoff zoff] [-q] \
    [-resample xstep ystep zstep order] [-rpertran rxoff ryoff rzoff] \
    [-subsample period] [infile [outfile]]
 </PRE>
@@ -84,76 +80,32 @@ where
   of the arguments may be set to ``-'' to use the corresponding value
   from the input file, i.e., to not clip along that box face.
 </DD>
+<DT><STRONG><TT><B>-dataformat <TT><B>&lt;</B></TT>text|b4|b8<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
+<DD>Specify output data format, either ASCII text (<TT>text</TT>), 4-byte
+  binary (<TT>b4</TT>), or 8-byte binary (<TT>b8</TT>). For OOMMF OVF output
+  files, the default is text (note that the OVF format has an ASCII
+  text header in all cases). For Python NumPy NPY output files the
+  default is 8-byte binary. For OOMMF OVF version 2 output, the text
+  option can additionally include a C-style printf format string, e.g.,
+  <code>-dataformat "text %16.12e"</code> (note the quotes to keep this a single
+  argument to <TT>-dataformat</TT>).
+</DD>
+<DT><STRONG><TT><B>-fileformat <TT><B>&lt;</B></TT>ovf|npy<TT><B>&gt;</B></TT> version</B></TT></STRONG></DT>
+<DD>Specify the output file format and version, either
+  OOMMF OVF version 1 (default) or 2, or the Python NumPy array
+  file format version 1.
+</DD>
 <DT><STRONG><TT><B>-flip flipstr</B></TT></STRONG></DT>
 <DD>Provides an axis coordinate transformation.  Flipstr has the form
-  A:B:C, where A, B, C is a permutation of <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
-, with an
+  A:B:C, where A, B, C is a permutation of <B><I>x</I></B>, <B><I>y</I></B>, <B><I>z</I></B>, with an
   optional minus sign on each entry.  The first component A denotes the
-  axis to which <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
- is mapped, B where <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- is mapped, and <B><I>C</I></B>
-<!-- MATHEND
- 
- -->
- where <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
+  axis to which <B><I>x</I></B> is mapped, B where <B><I>y</I></B> is mapped, and <B><I>C</I></B> where <B><I>z</I></B>
   is mapped.  The default is the identity map, <TT>x:y:z</TT>.  To rotate
-  <B>90<SUP><TT>o</TT></SUP></B>
-<!-- MATHEND
- 
- -->
- about the <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
--axis, use ``-flip y:-x:z'', which sends <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-  to the <B>+ <I>y</I></B>
-<!-- MATHEND
- 
- -->
- axis, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- to the -<B><I>x</I></B>
-<!-- MATHEND
- 
- -->
- axis, and leaves <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- unchanged.
-</DD>
-<DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>text|b4|b8<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>Specify output data format.  The default is ASCII <TT>text</TT>; <TT>b4</TT> selects
-  4-byte binary, <TT>b8</TT> selects 8-byte binary.  (The OVF format has an
-  ASCII text header in all cases.)
+  <B>90<SUP><TT>o</TT></SUP></B> about the <B><I>z</I></B>-axis, use ``-flip y:-x:z'', which sends <B><I>x</I></B>
+  to the <B>+ <I>y</I></B> axis, <B><I>y</I></B> to the -<B><I>x</I></B> axis, and leaves <B><I>z</I></B> unchanged.
 </DD>
 <DT><STRONG><TT><B>-grid <TT><B>&lt;</B></TT>rect|irreg<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>Specify output grid<A NAME="16950"></A> structure.  The default is <TT>rect</TT>,
+<DD>Specify output grid<A NAME="16910"></A> structure.  The default is <TT>rect</TT>,
   which will output a regular rectangular grid if the input is recognized
   as a regular rectangular grid.  The option ``-grid irreg'' forces
   irregular mesh style output.
@@ -172,113 +124,55 @@ where
 </DD>
 <DT><STRONG><TT><B>-mag</B></TT></STRONG></DT>
 <DD>Write out a scalar valued field instead of a vector value field, where
-  the scalar values are the magnitude <B>| <I>v</I>(<I>r</I>)|</B>
-<!-- MATHEND
- 
- -->
- of the vector values at
-  each point <B><I>r</I></B>
-<!-- MATHEND
- 
- -->
-.
-</DD>
-<DT><STRONG><TT><B>-ovfversion version</B></TT></STRONG></DT>
-<DD>Specify the output OVF version, either 1 (default) or 2.
+  the scalar values are the magnitude <B>| <I>v</I>(<I>r</I>)|</B> of the vector values at
+  each point <B><I>r</I></B>. This option is only supported for OOMMF OVF version
+  2 output.
 </DD>
 <DT><STRONG><TT><B>-pertran xoff yoff zoff</B></TT></STRONG></DT>
 <DD>Translates field with respect to location coordiates, by amount
   <!-- MATH
  $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$
  -->
-<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B>
-<!-- MATHEND
- 
- -->
-, in a periodic
+<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B>, in a periodic
   fashion.  For example, if
   <!-- MATH
  $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$
  -->
-<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B>
-<!-- MATHEND
- 
- -->
- is <!-- MATH
+<B>(<I>xoff</I>, <I>yoff</I>, <I>zoff</I>)</B> is <!-- MATH
  $(\mbox{50e-9},0,0)$
  -->
-<B>(50e-9, 0, 0)</B>
-<!-- MATHEND
- 
- -->
-,
-  then a vector <B><I>v</I></B>
-<!-- MATHEND
- 
- -->
- at position
+<B>(50e-9, 0, 0)</B>,
+  then a vector <B><I>v</I></B> at position
   <!-- MATH
  $(\mathit{rx},\mathit{ry},\mathit{rz})$
  -->
 <B>(<I>rx</I>, <I>ry</I>, <I>rz</I>)</B>
-<!-- MATHEND
- 
- -->
   in the original file is positioned instead at
   <!-- MATH
  $(\mathit{rx} + \mbox{50e-9},\mathit{ry},\mathit{rz})$
  -->
 <B>(<I>rx</I> + 50e-9, <I>ry</I>, <I>rz</I>)</B>
-<!-- MATHEND
- 
- -->
   in the output file.  If the spatial extent of the
-  <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
- coordinate in the input file runs from <!-- MATH
+  <B><I>x</I></B> coordinate in the input file runs from <!-- MATH
  $\mathit{xmin}$
  -->
-<B><I>xmin</I></B>
-<!-- MATHEND
- 
- -->
- to
+<B><I>xmin</I></B> to
   <!-- MATH
  $\mathit{xmax}$
  -->
-<B><I>xmax</I></B>
-<!-- MATHEND
- 
- -->
-, and if
+<B><I>xmax</I></B>, and if
   <!-- MATH
  $\mathit{rx} +\mbox{50e-9}$
  -->
-<B><I>rx</I> + 50e-9</B>
-<!-- MATHEND
- 
- -->
- is larger than <!-- MATH
+<B><I>rx</I> + 50e-9</B> is larger than <!-- MATH
  $\mathit{xmax}$
  -->
-<B><I>xmax</I></B>
-<!-- MATHEND
- 
- -->
-, then <B><I>v</I></B>
-<!-- MATHEND
- 
- -->
+<B><I>xmax</I></B>, then <B><I>v</I></B>
   will be placed at
   <!-- MATH
  $\mathit{rx} + \mbox{50e-9} - \mathit{xmax} + \mathit{xmin}$
  -->
 <B><I>rx</I> + 50e-9 - <I>xmax</I> + <I>xmin</I></B>
-<!-- MATHEND
- 
- -->
   instead.  Translations are rounded to the
   nearest full step; aside from any clipping, the output file has the
   exact same spatial extent and sample locations as the original file.
@@ -303,69 +197,25 @@ where
   <!-- MATH
  $(\mathit{rxoff},\mathit{ryoff},\mathit{rzoff})$
  -->
-<B>(<I>rxoff</I>, <I>ryoff</I>, <I>rzoff</I>)</B>
-<!-- MATHEND
- 
- -->
- are
-  interpreted as offsets in the range <B>[0, 1]</B>
-<!-- MATHEND
- 
- -->
- taken relative to the
-  spatial extents of the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
-, and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- coordinates.  For example, if
+<B>(<I>rxoff</I>, <I>ryoff</I>, <I>rzoff</I>)</B> are
+  interpreted as offsets in the range <B>[0, 1]</B> taken relative to the
+  spatial extents of the <B><I>x</I></B>, <B><I>y</I></B>, and <B><I>z</I></B> coordinates.  For example, if
   <!-- MATH
  $\mathit{xmax} - \mathit{xmin} = \mbox{500e-9}$
  -->
-<B><I>xmax</I> - <I>xmin</I> = 500e-9</B>
-<!-- MATHEND
- 
- -->
-, then an
+<B><I>xmax</I> - <I>xmin</I> = 500e-9</B>, then an
   <!-- MATH
  $\mathit{rxoff}$
  -->
-<B><I>rxoff</I></B>
-<!-- MATHEND
- 
- -->
- value of 0.1 is equivalent
+<B><I>rxoff</I></B> value of 0.1 is equivalent
   to an <!-- MATH
  $\mathit{xoff}$
  -->
-<B><I>xoff</I></B>
-<!-- MATHEND
- 
- -->
- value of 50e-9.
+<B><I>xoff</I></B> value of 50e-9.
 </DD>
 <DT><STRONG><TT><B>-subsample period</B></TT></STRONG></DT>
 <DD>Reduce point density in output by subsampling input with specified
-  period along <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
-, and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- axes.  For example, if period is 2,
+  period along <B><I>x</I></B>, <B><I>y</I></B>, and <B><I>z</I></B> axes.  For example, if period is 2,
   then the output will have only 1/8th as many points as the input.
   This control is only available for input files having a rectangular
   grid structure.  Default value is 1, i.e., no subsampling.
@@ -381,6 +231,11 @@ where
 </DL>
 
 <P>
+There are also two recognized but deprecated options,
+<TT><B>-format</B></TT> and <TT><B>-ovf</B></TT>. The former is replaced by
+<TT><B>-dataformat</B></TT> and the latter superceded by <TT><B>-fileformat</B></TT>.
+
+<P>
 The <TT>-clip</TT> option is useful when one needs to do analysis on a
 small piece of a large simulation.  The <TT>-info</TT> option is helpful
 here to discover the extents of the original mesh.  The <TT>-clip</TT>
@@ -390,24 +245,20 @@ option can also be used with <TT>-resample</TT> to enlarge the mesh.
 The <TT>-flip</TT> option can be used to align different simulations
 to the same orientation.  It can also be used to change a file into its
 mirror image; for example, ``-flip&nbsp;-x:y:z'' reflects the mesh through
-the <B><I>yz</I></B>
-<!-- MATHEND
- 
- -->
--plane.
+the <B><I>yz</I></B>-plane.
 
 <P>
 If multiple operations are specified, then the operation order is
 clip, resample, subsample, flip, and translate.
 
 <P>
-The <TT>-format text</TT> and <TT>-grid irreg</TT> options are handy for
+The <TT>-dataformat text</TT> and <TT>-grid irreg</TT> options are handy for
 preparing files for import into non-OOMMF applications, since all
 non-data lines are readily identified by a leading ``<code>#</code>,'' and
 each data line is a 6-tuple consisting of the node location and vector
 value.  Pay attention, however, to the scaling of the vector value as
 specified by ``<code># valueunit</code>'' and ``<code># valuemultiplier</code>''
-header lines.
+header lines (OVF version 1 only).
 
 <P>
 For output format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
@@ -431,23 +282,23 @@ boundary edges that don't run parallel to a coordinate axis.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html588"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html590"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html584"
+<A NAME="tex2html586"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html578"
+<A NAME="tex2html580"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html591"
+<A NAME="tex2html593"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html586"
+<A NAME="tex2html588"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

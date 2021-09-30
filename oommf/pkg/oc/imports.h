@@ -91,6 +91,16 @@ extern "C" {
 #define TCL_RELEASE_LEVEL CONFIG_TCL_RELEASE_LEVEL
 #endif
 
+/* For OOMMF 2, set new baseline requirement of Tcl 8.5 */
+#if ((TCL_MAJOR_VERSION < 8) \
+        || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION < 5)))
+#  error "OOMMF 2 requires Tcl 8.5+"
+#endif
+
+#if !defined(_ANSI_ARGS_)
+#    define _ANSI_ARGS_(x) x
+#endif
+
 /*
  * Tcl 7.5p0 had no prototype for Tcl_Free()
  */
@@ -202,10 +212,12 @@ EXTERN void Tcl_SaveResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
 #endif
 
 #ifndef CONST84
-#    define CONST84
-#    define OC_USING_CONST84 0
-#else
-#    define OC_USING_CONST84 1
+#    define CONST84 const
+#endif
+#define OC_USING_CONST84 1
+
+#ifndef CONST
+#    define CONST const
 #endif
 
 #ifndef TCL_INTEGER_SPACE
@@ -339,6 +351,20 @@ private:
 
   void Init(OC_UINT4m seed);
   OC_UINT4m Step();
+
+  // For debugging. Returns 1 on success, 0 if string length n is too
+  // short. The minimal length for n to store the full state is
+  // (SIZE+SEP)*9 (e.g., (32+3)*9 = 315).
+  int ReadRNGState(char* str,size_t n) {
+    const size_t statelen = sizeof(arr)/sizeof(arr[0]);
+    if(n<9*statelen) return 0; // str too short
+    for(size_t i=0;i<statelen;++i) {
+      sprintf(str+9*i,"%08X ", arr[i] & 0xFFFFFFFF);
+    }
+    str[9*statelen-1] = '\0';
+    return 1;
+  }
+
 };
 
 class Oc_Random {
@@ -395,6 +421,19 @@ public:
     return static_cast<OC_INT4m>(step_result>>1);
   }
 
+  // For debugging. Returns 1 on success, 0 if string length n is too
+  // short. The minimal length for n to store the full state is
+  // (SIZE+SEP)*9 (e.g., (32+3)*9 = 315).
+  static int ReadRNGState(char* str,size_t n) {
+#if OOMMF_THREADS
+    std::lock_guard<std::mutex> lck(random_state_mutex);
+#endif // OOMMF_THREADS
+    return state.ReadRNGState(str,n);
+  }
+  int ReadRNGState(Oc_RandomState& mystate,char* str,size_t n) {
+    return mystate.ReadRNGState(str,n);
+  }
+  
 private:
 #if OOMMF_THREADS
   static std::mutex random_state_mutex;  // Thread-safe hack.
@@ -447,9 +486,29 @@ using std::sqrt;
 using std::signbit;  // Return 1 if import is negative, 0 if positive
 using std::copysign;
 
-// Standard version of atan2 throws a domain error if y=x=0.  Oc_Atan2
-// is modeled on the x87 FPATAN (floating-point partial arctangent)
-// instruction that is defined at y=x=0 depending on the sign of x and y:
+// How should atan2(y,x) respond to y=x=0 input? The pedantic answer is
+// to produce a domain error, since there is no sensible way to extend
+// atan2 to (0,0). However, atan2 was originally introduced to ease
+// conversion from Cartesian to polar coordinates (IBM FORTRAN-IV,
+// 1961), and in that setting any finite return from atan2(0,0) is OK,
+// because the corresponding radius value is zero. Many math libraries
+// (e.g., GNU and Microsoft) take this stance. The IEEE 1003.1-2001
+// reference, which claims ISO compatibility, goes further and defines
+// the behavior wrt signed zeros. The Linux man page (release 3.53) for
+// atan2, which claims C99 and POSIX.1-2001 compliance, matches the IEEE
+// spec, as does the Intel x87 FPATAN (floating-point partial
+// arctangent) instruction.
+//   However, some C++ references state that std::atan2(0.,0.) should
+// result in a domain error. Code build with the Intel C++ compiler
+// returns 0 for atan2(0,0), but sets errno to 33 (domain error).  This
+// behavior is unhelpful in the common use case of coordinate conversion
+// noted above. The Tcl atan2 man page (from Tcl 8.3 through at least
+// Tcl 8.6) state that imports "x and y cannot both be 0", but doesn't
+// specify behavior if they are.
+//   Implementation dependent behavior hinders portability and code
+// validation. The following Oc_Atan2 function, modeled on the x87
+// FPATAN instruction, is supplied as a workaround. It responds to y=x=0
+// as follows:
 //      y     x     Oc_Atan2(y,x)
 //    +0.0  +0.0      y = +0.0
 //    -0.0  +0.0      y = -0.0
@@ -500,15 +559,6 @@ T Oc_Hypot(T x,T y,T z) {
   return sqrt(x*x+y*y+z*z);
 }
 
-/*
- * Extra goodies for Tcl's expr command.  The Tcl_CmdProc version
- * is intended for use at the script level when setting up slave
- * interpreters.  The main interpreter has this done for it during
- * Oc_Init().  Slave interpreters get these by redefinition of
- * "interp" in custom.tcl.
- */
-void Oc_AddTclExprExtensions(Tcl_Interp* interp);
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -516,14 +566,11 @@ extern "C" {
 /* Wrappers for the above. */
 Tcl_CmdProc OcSrand;
 Tcl_CmdProc OcUnifRand;
+Tcl_CmdProc OcReadRNGState;
+Tcl_CmdProc OcAtan2;
 #if OC_TCL_TYPE==OC_WINDOWS && defined(__CYGWIN__)
 Tcl_CmdProc OcCygwinChDir;
 #endif //  OC_WINDOWS && __CYGWIN__
-Tcl_MathProc Oc_TclWrappedAtan2;
-Tcl_MathProc Oc_Exp; // Versions of exp and pow that don't
-Tcl_MathProc Oc_Pow; // raise an exception on underflow.
-
-Tcl_CmdProc OcAddTclExprExtensions;
 
 #ifdef __cplusplus
 }	/* end of extern "C" */

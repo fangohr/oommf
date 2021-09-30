@@ -25,7 +25,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName develop_test.tcl
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup mjd]

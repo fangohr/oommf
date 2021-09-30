@@ -24,7 +24,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -141,8 +141,14 @@ if {[Oc_NumaAvailable]} {
    Oc_CommandLine Option numanodes {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
-      global numanodes
-      set numanodes $nodes
+      global numanodes cmdline_numanodes
+      set cmdline_numanodes [set numanodes $nodes]
+      # The cmdline_numanodes variable is used to detect the situation
+      # where numanodes are set on the command line by an abbreviated
+      # form of the option string, such as "-numa" instead of
+      # "-numanodes", to prevent the log report from showing two
+      # numanodes entries. (See proc ProbOptions for implementation
+      # details.)
    } [subst {NUMA memory and run nodes (or "auto" or "none")\
                 (default is "$numanodes")}]
 }
@@ -244,6 +250,18 @@ if {[Oc_NumaAvailable]} {
 Oc_Main SetExtraInfo $aboutinfo
 set update_extra_info $aboutinfo
 unset aboutinfo
+
+# Regression test setup.
+if {$regression_test>0} {
+   # This is not a standard run, but part of a regression test.  Make
+   # some standard modifications to the effective contents of the import
+   # MIF file to make it more amenable to such testing.  See the
+   # SetRegressionTestLevel proc and RegressionTestSetup method in
+   # base/mif.tcl for details. NB: In LoadProblem below there is a call
+   # to Oxs_DriverLoadTestSetup for adjusting stage and iteration
+   # limits.
+   Oxs_Mif SetRegressionTestLevel $regression_test $regression_testname
+}
 
 ##########################################################################
 # Checkpoint control
@@ -419,20 +437,15 @@ source [file join [Oc_Main GetOOMMFRootDir] app oxs checkpoint.tcl]
 Ow_StdHelpMenu $hmenu
 
 set menuwidth [Ow_GuessMenuWidth $menubar]
-set brace [canvas .brace -width $menuwidth -height 0 -borderwidth 0 \
+set bracewidth [Ow_GetWindowTitleSize [wm title .]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
         -highlightthickness 0]
 pack $brace -side top
-
-if {[package vcompare [package provide Tk] 8] >=0 \
-	&& [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0+ menubar cleanly
-    Oc_DisableAutoSize .
-    wm geometry . "${menuwidth}x0"
-    update
-    wm geometry . {}
-    Oc_EnableAutoSize .
-    update
-}
+## Note: OID is assigned prior to this code being run, so we don't
+##       have to handle window title changing from OID assignment.
 
 share problem
 
@@ -585,7 +598,6 @@ foreach event $events {
 	    -autoundo 0 -valuewidth 4 \
 	    -variable Schedule---frequencyA($event) \
 	    -callback [list EntryCallback $event] \
-	    -foreground Black -disabledforeground #a3a3a3 \
 	    -valuetype posint -coloredits 1 -writethrough 0 \
 	    -outer_frame_options "-bd 0"
     lappend output_owbox_list $frequency
@@ -768,10 +780,6 @@ if {$loglevel>1} {
    Oc_Log SetLogHandler [list Oc_FileLogger Log] status
 }
 
-
-# Create a new Oxs_Destination for each Net_Thread that becomes Ready
-Oc_EventHandler New _ Net_Thread Ready [list Oxs_Destination New _ %object]
-
 ##########################################################################
 # Here's the guts of OXS -- a switchboard between interactive GUI events
 # and the set of Tcl commands provided by OXS
@@ -915,7 +923,7 @@ proc KillAppsReply {} {
 }
 
 
-proc ReleaseProblem {} {
+proc ReleaseProblem { {errcode 0} } {
    if {![Oxs_IsProblemLoaded]} { return }
    # Get list of OIDs to be killed as per command line -kill option.
    # Note that Oxs_ProbRelease destroys the MIF object, so we have
@@ -941,13 +949,13 @@ proc ReleaseProblem {} {
    }
 
    if {[catch {
-      Oxs_ProbRelease
+      Oxs_ProbRelease $errcode
    } msg]} {
       # This is really bad.  Kill the solver.
       #
       # ...but first flush any pending log messages to the
       # error log file.
-      FlushLog
+      Oxs_FlushLog
       Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
       exit
    }
@@ -1023,8 +1031,11 @@ proc ProbOptions {} {
       global threadcount
       set opts(threads) $threadcount
       if {[Oc_NumaAvailable]} {
-         global numanodes
-         set opts(numanodes) $numanodes
+         global numanodes cmdline_numanodes
+         if {![info exists cmdline_numanodes] ||
+             [string compare $numanodes $cmdline_numanodes]!=0} {
+            set opts(numanodes) $numanodes
+         }
       }
    }
    set optlist {}
@@ -1075,30 +1086,14 @@ proc LoadProblem {fname} {
       flush stderr
       puts "Start: \"$f\"\nOptions: $opts\n$pi" ; flush stdout
    } msg] || [catch {
-      global regression_test regression_testname
-      if {$regression_test} {
-         # This is not a standard run, but part of a regression test.
-         # Make some standard modifications to the effective contents of
-         # the import MIF file to make it more amenable to such testing.
-         # See the RegressionTestSetup method in base/mif.tcl for
-         # details.
-         #   Note: Do this setup before creating Oxs_Output objects,
-         # or else output objects get the basename as specified in the
-         # MIF file, not the special basename use for regression
-         # tests.
-         [Oxs_GetMif] RegressionTestSetup \
-            $regression_test $regression_testname
-
-         # If regression_test == 1, then this is a "load" test run on
-         # a mif file out of the oxs/examples directory.  In that
-         # case, set stage and total iteration limits to small values
-         # so the test runs quickly.  See the LoadTestSetup method in
+      global regression_test
+      if {$regression_test == 1} {
+         # regression_test == 1 indicates that this is a "load" test run
+         # on a mif file out of the oxs/examples directory.  In that
+         # case, set stage and total iteration limits to small values so
+         # the test runs quickly.  See the LoadTestSetup method in
          # base/driver.h for details.
-         if {$regression_test==1} {
-            # Load test; set stage and total iteration limits to small
-            # values so test runs quickly.
-            Oxs_DriverLoadTestSetup
-         }
+         Oxs_DriverLoadTestSetup
       }
       foreach o [Oxs_ListOutputObjects] {
          Oxs_Output New _ $o
@@ -1164,7 +1159,7 @@ proc Reset {} {
 	after idle [subst {[list set errorInfo $errorInfo]; \
 		[list set errorCode $errorCode]; [list \
 		Oc_Log Log "Reset error:\n\t$msg" error Reset]}]
-	ReleaseProblem
+	ReleaseProblem 1
 	set status Error
     } else {
 	set stage 0
@@ -1203,7 +1198,7 @@ proc GenerateRunEvents { events } {
          default {
             after idle [list Oc_Log Log \
                            "Unrecognized event: $event" error Loop]
-            ReleaseProblem
+            ReleaseProblem 1
             set status Error
          }
       }
@@ -1221,7 +1216,7 @@ proc Loop {type} {
 	after idle [subst {[list set errorInfo $errorInfo]; \
 		[list set errorCode $errorCode]; \
 		[list Oc_Log Log $msg error Loop]}]
-	ReleaseProblem
+	ReleaseProblem 1
 	set status Error
     } else {
        # Fire event handlers
@@ -1258,62 +1253,18 @@ trace add variable stagerequest write ChangeStageRequestTraceCmd
 # that all other Done event handlers have an opportunity to fire first.
 Oc_EventHandler New _ Oxs Done [list after idle set status Done]
 
-# Routine to flush pending log messages.  Used for cleanup.
-proc FlushLog {} {
-   foreach id [after info] {
-      foreach {script type} [after info $id] break
-      if {[string match idle $type] && [string match *Oc_Log* $script]} {
-         uplevel #0 $script
-      }
-   }
-}
-
-set connection_close_count 0
-proc FlushData {} {
-   # Explicitly close each data source.  Note that at the very bottom
-   # a socket close occurs, which is a blocking operation.
-   global connection_close_count
-   foreach elt [Net_Thread Instances] {
-      if {![catch {$elt Protocol} proto]} {
-         # If thread is in an uninitialized (are partially shutdown)
-         # state, then Protocol might not be set.
-         switch -exact $proto {
-            GeneralInterface {}
-            DataTable -
-            vectorField -
-            scalarField {
-               incr connection_close_count
-               Oc_EventHandler New _ $elt DeleteEnd \
-                   [list incr connection_close_count -1] -oneshot 1
-               $elt SafeClose
-            }
-            default {
-               Oc_Log Log "Unrecognized Net_Thread protocol \"$proto\"\
-                         will not be flushed" warning
-            }
-         }
-      }
-   }
-   # If desired, the following stanza can be moved to the
-   # very end of the shutdown process.
-   if {$connection_close_count > 0} {
-      while {$connection_close_count > 0} {
-         vwait connection_close_count
-      }
-   }
-}
 
 # All problem releases should request cleanup first, which includes
-# writing a end record to DataTable output.  Next, FlushData is called
-# to wait for all sent data to be acknowledged by receiver.
+# writing a end record to DataTable output.  Next, Oxs_FlushData is
+# called to wait for all sent data to be acknowledged by receiver.
 # Application termination by KillApps should be held back until after
-# FlushData completes.
+# Oxs_FlushData completes.
 Oc_EventHandler New _ Oxs Release [list Oc_EventHandler Generate Oxs Cleanup]
-Oc_EventHandler New _ Oxs Release FlushData
+Oc_EventHandler New _ Oxs Release Oxs_FlushData
 
 # Be sure any loaded problem gets release on application exit.
 Oc_EventHandler New _ Oc_Main Shutdown ReleaseProblem -oneshot 1
-Oc_EventHandler New _ Oc_Main Shutdown FlushLog
+Oc_EventHandler New _ Oc_Main Shutdown Oxs_FlushLog
 Oc_EventHandler New _ Oc_Main Shutdown [list puts "Boxsi run end."]
 ## The "Boxsi run end." message can be used by scripts to detect the
 ## end of a boxsi run even if the output channel from boxsi doesn't
@@ -1366,42 +1317,47 @@ proc Initialize {acct} {
 
    AccountReady $acct
 }
+# Supported export protocols. (Note: White space is significant.)
+global export_protocols
+set export_protocols {
+   {OOMMF DataTable protocol}
+   {OOMMF vectorField protocol}
+   {OOMMF scalarField protocol}
+}
+
 proc AccountReady {acct} {
-    set qid [$acct Send threads]
-    Oc_EventHandler New _ $acct Reply$qid [list GetThreadsReply $acct] \
+    global export_protocols
+    set qid [$acct Send services $export_protocols]
+    Oc_EventHandler New _ $acct Reply$qid [list GetServicesReply $acct] \
         -groups [list $acct]
     Oc_EventHandler New _ $acct Ready [list AccountReady $acct] -oneshot 1
 }
-proc GetThreadsReply { acct } {
-    # Set up to receive NewThread messages, but only one handler per account
-    Oc_EventHandler DeleteGroup GetThreadsReply-$acct
+proc GetServicesReply { acct } {
+    # Set up to receive NewService messages, but only one handler per account
+    Oc_EventHandler DeleteGroup GetServicesReply-$acct
     Oc_EventHandler New _ $acct Readable [list HandleAccountTell $acct] \
-            -groups [list $acct GetThreadsReply-$acct]
-    set threads [$acct Get]
-    Oc_Log Log "Received thread list: $threads" status
+            -groups [list $acct GetServicesReply-$acct]
+    set services [$acct Get]
+    Oc_Log Log "Received service list: $services" status
     # Create a Net_Thread instance for each element of the returned
-    # thread list
-    if {![lindex $threads 0]} {
-        foreach quartet [lrange $threads 1 end] {
-	    NewThread $acct [lindex $quartet 1]
+    # service list. The first element of $services is, as usual, a
+    # result code. Following that is a list of quartets, with each
+    # quartet of the form: advertisedname sid port protocolname.
+    if {![lindex $services 0]} {
+        foreach quartet [lrange $services 1 end] {
+	    NewService $acct $quartet
         }
     }
 }
-# Detect and handle NewThread message from account server
+# Detect and handle newservice messages from account server
 proc HandleAccountTell { acct } {
     set message [$acct Get]
     switch -exact -- [lindex $message 0] {
-        newthread {
-            NewThread $acct [lindex $message 1]
+        newservice {
+            NewService $acct [lrange $message 1 end]
         }
-        deletethread {
-            Net_Thread New t -hostname [$acct Cget -hostname] \
-                    -pid [lindex $message 1]
-            if {[$t Ready]} {
-                $t Send bye
-            } else {
-                Oc_EventHandler New _ $t Ready [list $t Send bye]
-            }
+        deleteservice {
+           Oxs_Destination DeleteService [lindex $message 1]
         }
         notify -
         newoid -
@@ -1413,14 +1369,26 @@ proc HandleAccountTell { acct } {
         }
     }
 }
-# There's a new thread with id $id, create corresponding local instance
-proc NewThread { acct id } {
-    # Do not keep any connections to yourself!
-    if {[string match [$acct OID]:* $id]} {return}
+# There's a new service; create corresponding local instance
+proc NewService { acct quartet } {
+   # The quartet import is a four item list of the form
+   #   advertisedname  sid  port  fullprotocol
+   # which matches the reply to the "threads" request from the account
+   # server.
+   lassign $quartet appname sid port fullprotocol
 
-    Net_Thread New _ -hostname [$acct Cget -hostname] \
-            -accountname [$acct Cget -accountname] -pid $id
+   # Safety: Don't connect to yourself
+   if {[string match [$acct OID]:* $sid]} {return}
+
+   # Otherwise, setup an Oxs_Destination with lazy Net_Thread construction.
+   Oxs_Destination New _ \
+      -hostname [$acct Cget -hostname] \
+      -accountname [$acct Cget -accountname] \
+      -name "${appname}<${sid}>" \
+      -fullprotocol $fullprotocol \
+      -serverport $port
 }
+
 # Delay "nice" of this process until any children are spawned.
 Net_Account New account_server
 if {[$account_server Ready]} {

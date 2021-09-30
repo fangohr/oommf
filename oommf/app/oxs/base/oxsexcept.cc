@@ -77,3 +77,15 @@ String Oxs_Exception::DisplayCountAsString() const
   Oc_Snprintf(numbuf,sizeof(numbuf),"%d",DisplayCount());
   return static_cast<String>(numbuf);
 }
+
+const char* Oxs_Exception::what() const noexcept
+{
+  String msg;
+  String src = FullSrc();
+  String type = FullType();
+  if(src.size()>0) msg += src + String("\n");
+  if(type.size()>0) msg += type + String("\n");
+  msg += MessageText();
+  workspace = msg;
+  return workspace.c_str();
+}

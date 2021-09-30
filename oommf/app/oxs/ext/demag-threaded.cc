@@ -304,7 +304,7 @@ Oxs_Demag::Oxs_FFTLocker::Oxs_FFTLocker
 #if !defined(NDEBUG)
   for(OC_INDEX izz=0;izz<fftz_Hwork_base_size;++izz) {
     // Fill workspace with NaNs, to detect uninitialized use.
-    reinterpret_cast<unsigned char&>(fftz_Hwork_base[izz]) = 255u;
+    reinterpret_cast<unsigned char&>(fftz_Hwork_base[izz]) = '\xFF';
   }
 #endif
 
@@ -2500,8 +2500,8 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
     OC_INDEX nstart,nstop;
     job_basket.GetJob(threadnumber,nstart,nstop);
     if(nstart >= nstop) break; // No more jobs
-    OC_INDEX istart = nstart / (adimy*adimz);
-    OC_INDEX istop  = nstop  / (adimy*adimz);
+    const OC_INDEX istart = nstart / (adimy*adimz);
+    const OC_INDEX istop  = nstop  / (adimy*adimz);
 
     for(OC_INDEX i1=istart;i1<istop;i1+=embed_block_size) {
       const OC_INDEX i2 = (i1+embed_block_size<istop

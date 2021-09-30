@@ -501,7 +501,7 @@ if {[string match g++ $ccbasename]} {
     #   Generally, we expect the speed advantage of using "double" to
     # outweigh the precision advantage of "long double", but YMMV.
     # $config SetValue program_compiler_c++_typedef_realwide "long double"
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "double"
     }
 
@@ -569,7 +569,7 @@ if {[string match g++ $ccbasename]} {
     $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
     # Wide floating point type.
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "double"
     }
 

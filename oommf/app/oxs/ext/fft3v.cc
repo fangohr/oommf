@@ -171,13 +171,19 @@ OC_INDEX Oxs_FFT1DThreeVector::RecommendSize(OC_INDEX size)
 
 void Oxs_FFT1DThreeVector::FreeMemory()
 {
-  if(UReals)         delete[] UReals;          UReals=0;
-  if(UForwardRadix4) delete[] UForwardRadix4;  UForwardRadix4=0;
-  if(ptsRadix4)      delete[] ptsRadix4;       ptsRadix4=0;
-  if(bitreverse)     delete[] bitreverse;      bitreverse=0;
-  if(scratch)        delete[] scratch;         scratch=0;
+  if(UReals)         delete[] UReals;
+  UReals=0;
+  if(UForwardRadix4) delete[] UForwardRadix4;
+  UForwardRadix4=0;
+  if(ptsRadix4)      delete[] ptsRadix4;
+  ptsRadix4=0;
+  if(bitreverse)     delete[] bitreverse;
+  bitreverse=0;
+  if(scratch)        delete[] scratch;
+  scratch=0;
 #if 0
-  if(workbuffer)     delete[] workbuffer;      workbuffer=0;
+  if(workbuffer)     delete[] workbuffer;
+  workbuffer=0;
 #else
   if(workbuffer) {
     Oc_FreeThreadLocal(workbuffer,
@@ -196,8 +202,10 @@ void Oxs_FFT1DThreeVector::FillRootsOfUnity()
 
   OC_INDEX i,j,k;
 
-  if(UReals)         delete[] UReals;          UReals=0;
-  if(UForwardRadix4) delete[] UForwardRadix4;  UForwardRadix4=0;
+  if(UReals)         delete[] UReals;
+  UReals=0;
+  if(UForwardRadix4) delete[] UForwardRadix4;
+  UForwardRadix4=0;
 
   if(fftsize<16) return; // Size 8 and smaller transforms
   // use hard-coded roots.
@@ -473,7 +481,8 @@ void Oxs_FFT1DThreeVector::Dup(const Oxs_FFT1DThreeVector& other)
 
 void Oxs_FFT1DThreeVector::AssignTransformPointers()
 {
-  if(scratch) delete[] scratch;  scratch=0;  scratch_size = 0;
+  if(scratch) delete[] scratch;
+  scratch=0;  scratch_size = 0;
   if(workbuffer) {
 #if 0
     delete[] workbuffer;
@@ -8683,10 +8692,14 @@ OC_INDEX Oxs_FFTStrided::RecommendSize(OC_INDEX size)
 
 void Oxs_FFTStrided::FreeMemory()
 {
-  if(UForwardRadix4) delete[] UForwardRadix4;  UForwardRadix4=0;
-  if(ptsRadix4)      delete[] ptsRadix4;       ptsRadix4=0;
-  if(bitreverse)     delete[] bitreverse;      bitreverse=0;
-  if(scratch)        delete[] scratch;         scratch=0;
+  if(UForwardRadix4) delete[] UForwardRadix4;
+  UForwardRadix4=0;
+  if(ptsRadix4)      delete[] ptsRadix4;
+  ptsRadix4=0;
+  if(bitreverse)     delete[] bitreverse;
+  bitreverse=0;
+  if(scratch)        delete[] scratch;
+  scratch=0;
   scratch_size = 0;
 }
 
@@ -8697,7 +8710,8 @@ void Oxs_FFTStrided::FillRootsOfUnity()
 
   OC_INDEX i,j,k;
 
-  if(UForwardRadix4) delete[] UForwardRadix4;  UForwardRadix4=0;
+  if(UForwardRadix4) delete[] UForwardRadix4;
+  UForwardRadix4=0;
 
   if(fftsize<32) return; // Size 16 and smaller transforms
   // use hard-coded roots.
@@ -8889,7 +8903,8 @@ void Oxs_FFTStrided::FillBitReversalArray()
 void
 Oxs_FFTStrided::AllocScratchSpace(OC_INDEX size)
 { // Allocate scratch space, and initialize to zero.
-  if(scratch) delete[] scratch;  scratch=0;  scratch_size = 0;
+  if(scratch) delete[] scratch;
+  scratch=0;  scratch_size = 0;
   if(size>0) {
     scratch_size = size;
     scratch = new OXS_FFT_REAL_TYPE[size];
@@ -8959,7 +8974,8 @@ void Oxs_FFTStrided::Dup(const Oxs_FFTStrided& other)
 
 void Oxs_FFTStrided::AssignTransformPointers()
 {
-  if(scratch) delete[] scratch;  scratch=0;  scratch_size = 0;
+  if(scratch) delete[] scratch;
+  scratch=0;  scratch_size = 0;
 
   // Assign Forward/Inverse routine pointers
   switch(log2fftsize) {

@@ -27,81 +27,44 @@ tclsh oommf.tcl mmLaunch [standard options]
 \end{verbatim}
 
 \ssechead{Controls}
-Upon startup, \app{mmLaunch} displays a panel of checkbuttons, one for
-each host service directory\index{host~service~directory}
-to which it is connected.  In the current
-release of \OOMMF\ there is only one checkbutton, named for the host on
-which \app{mmLaunch} is running.
-%Future releases of \app{mmLaunch} will be able to connect to remote
-%hosts as well.  
-If there is no host service directory running on the
-localhost when \app{mmLaunch} is launched,
-\app{mmLaunch} will start one.  In that circumstance, there may be 
-some delay before the host checkbutton appears.
-
-Toggling the host checkbutton toggles the display of an
-interface to the host service directory.  The host service directory
-interface consists of a row of checkbuttons, one for each account
-service directory\index{account~service~directory}
-registered with the host service directory.  Each
-checkbutton is labeled with the user ID\index{user~ID}
-of the corresponding account
-service directory.  For most users, there will be only one
-checkbutton, labeled with the user's own account
-ID.
-%ID, except on
-%\Windows~9X, where the dummy account ID 
-%``oommf''\index{platform!Windows!dummy~user~ID} may be displayed
-%instead.
-If there is no account service directory running for the
-account under which {\bf mmLaunch} was launched, \app{mmLaunch} will
-start one.  In that circumstance, there may be some delay before the
-account checkbutton appears.
-
 \index{launch!with~mmLaunch|(}
-Toggling an account checkbutton toggles the display of an interface
-to the corresponding account service directory.  The account
-service directory interface consists of two columns.  The 
+The \app{mmLaunch} interface consists of two columns. The
 \btn{Programs} column contains buttons labeled with the names of
 \OOMMF\ applications that may be launched under the account managed by
 this account service directory.  Clicking on one of these buttons
 launches the corresponding application.  Only one click is needed,
 though there will be some delay before the launched application
 displays a window to the user.  Multiple clicks will launch multiple
-copies of the application.  Note: The launching is actually handled by
-the \hyperrefhtml{account service directory application}{account
-service directory application (Sec.~}{)}{sec:arch}, which sets the
-initial working directory\index{working~directory} to the
-\OOMMF\ root directory.
-\index{launch!with~mmLaunch|)}
+copies of the application.
 
-The \btn{Threads}\index{threads}
-column is a list of all the \OOMMF\ applications
-currently running under the account that are registered with the
-account service directory.  The list includes both the application
-name and an ID number by which multiple copies of the same application
-may be distinguished.  This ID number is also displayed in the title
-bar of the corresponding application's user interface window.  When an
-application exits, its entry is automatically removed from the Threads
-list.
+The second column, labeled \btn{Running Applications}, contains a list
+of \OOMMF\ applications that are registered with the account
+server. If the account server is not already running, then
+\app{mmLaunch} will start it, in which case there may be a slight
+delay. Each entry in the \btn{Running Applications} list includes both
+the application name and an ID number by which multiple copies of the
+same application may be distinguished.  This ID number is also
+displayed in the title bar of the corresponding application's user
+interface window.  When an application exits, its entry is
+automatically removed from the \btn{Running Applications} list.
 
 \index{mmLaunch~user~interface|(}
 Any of the running applications that do not provide their own
-interface window will be displayed in the \btn{Threads} list with a
+interface window will be displayed in \app{mmLaunch} with a
 checkbutton.  The checkbutton toggles the display of an interface
 which \app{mmLaunch} provides on behalf of that application.  The only
-\OOMMF\ applications currently using this service are
-the 3D solvers \hyperrefhtml{\app{Oxsii} and \app{Boxsi}}{\app{Oxsii}
-and \app{Boxsi} (Sec.~}{)}{sec:oxs},
-the 2D solvers \hyperrefhtml{\app{mmSolve2D and
-\app{batchsolve}}}{\app{mmSolve2D} and \app{batchsolve} (Sec.~}{)}{sec:mmsolve}, and the archive application
-\hyperrefhtml{\app{mmArchive}}{\app{mmArchive} (Sec.~}{)}{sec:mmarchive}.
-These interfaces are described in the documentation for the
-corresponding applications.
+\OOMMF\ applications currently using this service are the 3D solvers
+\hyperrefhtml{\app{Oxsii} and \app{Boxsi}}{\app{Oxsii} and \app{Boxsi}
+(Sec.~}{)}{sec:oxs}, the 2D solvers \hyperrefhtml{\app{mmSolve2D and
+\app{batchsolve}}}{\app{mmSolve2D} and \app{batchsolve}
+(Sec.~}{)}{sec:mmsolve}, and the archive application
+\hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
+(Sec.~}{)}{sec:mmarchive}.  These interfaces are described in the
+documentation for the corresponding applications.
 \index{mmLaunch~user~interface|)}
 
 The menu selection \btn{File\pipe Exit} terminates the \app{mmLaunch}
-application, and the \btn{File\pipe Exit All OOMMF} selection terminates
-all applications in the Threads list, and then exits \app{mmLaunch}.
-The menu \btn{Help} provides the usual help facilities.
-
+application, and the \btn{File\pipe Exit All OOMMF} selection
+terminates all applications in the \btn{Running Applications} list,
+and then exits \app{mmLaunch}.  The menu \btn{Help} provides the usual
+help facilities.

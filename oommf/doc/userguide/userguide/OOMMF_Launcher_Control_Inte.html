@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>OOMMF Launcher/Control Interface: mmLaunch</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,33 +23,33 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html293"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html295"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html289"
+<A NAME="tex2html291"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html283"
+<A NAME="tex2html285"
   HREF="Command_Line_Launching.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html295"
+<A NAME="tex2html297"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html291"
+<A NAME="tex2html293"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html294"
+<B> Next:</B> <A NAME="tex2html296"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
-<B> Up:</B> <A NAME="tex2html290"
+<B> Up:</B> <A NAME="tex2html292"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html284"
+<B> Previous:</B> <A NAME="tex2html286"
   HREF="Command_Line_Launching.html">Command Line Launching</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00070000000000000000"></A><A NAME="sec:mmlaunch"></A><A NAME="3721"></A>
+<H1><A NAME="SECTION00070000000000000000"></A><A NAME="sec:mmlaunch"></A><A NAME="3524"></A>
 <BR>
 OOMMF Launcher/Control Interface: mmLaunch
 </H1>
@@ -73,7 +69,7 @@ The application <B>mmLaunch</B> launches, monitors, and controls other
 OOMMF applications.  It is the OOMMF application which is
 most closely connected to the account service directory and host
 service directory applications that run behind the scenes.  It also
-provides user interfaces<A NAME="3728"></A>
+provides user interfaces<A NAME="3531"></A>
 to any applications, notably
 <A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> and
 <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"><B>mmSolve2D</B></A>, that do not have their own user interface
@@ -94,100 +90,66 @@ tclsh oommf.tcl mmLaunch [standard options]
 
 <P>
 <FONT SIZE="+2"><B>Controls</B></FONT>
-<BR>
-Upon startup, <B>mmLaunch</B> displays a panel of checkbuttons, one for
-each host service directory<A NAME="3747"></A>
-to which it is connected.  In the current
-release of OOMMF there is only one checkbutton, named for the host on
-which <B>mmLaunch</B> is running.
-If there is no host service directory running on the
-localhost when <B>mmLaunch</B> is launched,
-<B>mmLaunch</B> will start one.  In that circumstance, there may be 
-some delay before the host checkbutton appears.
-
-<P>
-Toggling the host checkbutton toggles the display of an
-interface to the host service directory.  The host service directory
-interface consists of a row of checkbuttons, one for each account
-service directory<A NAME="3751"></A>
-registered with the host service directory.  Each
-checkbutton is labeled with the user ID<A NAME="3752"></A>
-of the corresponding account
-service directory.  For most users, there will be only one
-checkbutton, labeled with the user's own account
-ID.
-If there is no account service directory running for the
-account under which <B>mmLaunch</B> was launched, <B>mmLaunch</B> will
-start one.  In that circumstance, there may be some delay before the
-account checkbutton appears.
-
-<P>
-<A NAME="3755"></A>
-Toggling an account checkbutton toggles the display of an interface
-to the corresponding account service directory.  The account
-service directory interface consists of two columns.  The 
+<BR><A NAME="3549"></A>
+The <B>mmLaunch</B> interface consists of two columns. The
 <FONT COLOR="#800000"><B>Programs</B></FONT> column contains buttons labeled with the names of
 OOMMF applications that may be launched under the account managed by
 this account service directory.  Clicking on one of these buttons
 launches the corresponding application.  Only one click is needed,
 though there will be some delay before the launched application
 displays a window to the user.  Multiple clicks will launch multiple
-copies of the application.  Note: The launching is actually handled by
-the <A HREF="OOMMF_Architecture_Overview.html#sec:arch">account service directory application</A>, which sets the
-initial working directory<A NAME="3761"></A> to the
-OOMMF root directory.
-<A NAME="3762"></A>
+copies of the application.
 
 <P>
-The <FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="3764"></A>
-column is a list of all the OOMMF applications
-currently running under the account that are registered with the
-account service directory.  The list includes both the application
-name and an ID number by which multiple copies of the same application
-may be distinguished.  This ID number is also displayed in the title
-bar of the corresponding application's user interface window.  When an
-application exits, its entry is automatically removed from the Threads
-list.
+The second column, labeled <FONT COLOR="#800000"><B>Running Applications</B></FONT>, contains a list
+of OOMMF applications that are registered with the account
+server. If the account server is not already running, then
+<B>mmLaunch</B> will start it, in which case there may be a slight
+delay. Each entry in the <FONT COLOR="#800000"><B>Running Applications</B></FONT> list includes both
+the application name and an ID number by which multiple copies of the
+same application may be distinguished.  This ID number is also
+displayed in the title bar of the corresponding application's user
+interface window.  When an application exits, its entry is
+automatically removed from the <FONT COLOR="#800000"><B>Running Applications</B></FONT> list.
 
 <P>
-<A NAME="3765"></A>
+<A NAME="3556"></A>
 Any of the running applications that do not provide their own
-interface window will be displayed in the <FONT COLOR="#800000"><B>Threads</B></FONT> list with a
+interface window will be displayed in <B>mmLaunch</B> with a
 checkbutton.  The checkbutton toggles the display of an interface
 which <B>mmLaunch</B> provides on behalf of that application.  The only
-OOMMF applications currently using this service are
-the 3D solvers <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><B>Oxsii</B> and <B>Boxsi</B></A>,
-the 2D solvers <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"><B>mmSolve2D and
+OOMMF applications currently using this service are the 3D solvers
+<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><B>Oxsii</B> and <B>Boxsi</B></A>, the 2D solvers <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"><B>mmSolve2D and
 <B>batchsolve</B></B></A>, and the archive application
-<A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive</B></A>.
-These interfaces are described in the documentation for the
-corresponding applications.
-<A NAME="3783"></A>
+<A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive</B></A>.  These interfaces are described in the
+documentation for the corresponding applications.
+<A NAME="3574"></A>
 
 <P>
 The menu selection <FONT COLOR="#800000"><B>File|Exit</B></FONT> terminates the <B>mmLaunch</B>
-application, and the <FONT COLOR="#800000"><B>File|Exit All OOMMF</B></FONT> selection terminates
-all applications in the Threads list, and then exits <B>mmLaunch</B>.
-The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides the usual help facilities.
+application, and the <FONT COLOR="#800000"><B>File|Exit All OOMMF</B></FONT> selection
+terminates all applications in the <FONT COLOR="#800000"><B>Running Applications</B></FONT> list,
+and then exits <B>mmLaunch</B>.  The menu <FONT COLOR="#800000"><B>Help</B></FONT> provides the usual
+help facilities.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html293"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html295"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html289"
+<A NAME="tex2html291"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html283"
+<A NAME="tex2html285"
   HREF="Command_Line_Launching.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html296"
+<A NAME="tex2html298"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html291"
+<A NAME="tex2html293"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

@@ -715,7 +715,7 @@ String Oxs_VectorFieldOutput<T>::GetOutputMeshtype() const
 }
 
 template<class T>
-int Oxs_VectorFieldOutput<T>::UpdateCache
+OC_BOOL Oxs_VectorFieldOutput<T>::UpdateCache
 (const Oxs_SimState* state)
 { // Returns 1 on success, 0 if caching not supported or not enabled.
   // Throws an exception if an error occurs.
@@ -990,7 +990,7 @@ String Oxs_ScalarFieldOutput<T>::GetOutputMeshtype() const
 }
 
 template<class T>
-int Oxs_ScalarFieldOutput<T>::UpdateCache
+OC_BOOL Oxs_ScalarFieldOutput<T>::UpdateCache
 (const Oxs_SimState* state)
 { // Returns 1 on success, 0 if caching not supported or not enabled.
   // Throws an exception if an error occurs.

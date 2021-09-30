@@ -139,9 +139,11 @@ void Oc_Srand()
   else {
     Tcl_SavedResult saved;
     Tcl_SaveResult(interp, &saved);
-    // Use Tcl 'clock clicks' command to get a seed
-    Tcl_Eval(interp,OC_CONST84_CHAR("clock clicks"));
-    seed=(unsigned int)atol(Tcl_GetStringResult(interp));
+    // Use Tcl 'clock clicks' command to get a seed. Mask to protect
+    // against overflow (and undefined behavior) when down converting to
+    // an unsigned int. (The mask assumes sizeof(unsigned int)==4.)
+    Tcl_Eval(interp,OC_CONST84_CHAR("expr {[clock clicks]&0xFFFFFFFF}"));
+    seed=(unsigned int)strtoul(Tcl_GetStringResult(interp),0,0);
     Tcl_RestoreResult(interp, &saved);
   }
   Oc_Srand(seed);
@@ -207,79 +209,64 @@ int OcUnifRand(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
   return TCL_OK;
 }
 
-#if (TCL_MAJOR_VERSION == 7)
-// Tcl 7.x doesn't have rand() and srand() in expr.  Provide
-// doppelgangers to Tcl 8.x versions (q.v.).
-//
-// NOTE 1: This implementation differs from the Tcl 8.x version in
-//         that one seed is shared throughout the program, whereas
-//         in Tcl each interp has its own seed.
-// 
-// NOTE 2: This code is not thread safe, but Tcl 7.x doesn't do
-//         threads so thread-safety is a non-issue.
-//
-static int oc_tcl_randseed = 0;
-double OcTclRand()
+int OcReadRNGState
+(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 {
-  const int RAND_IA =      16807;
-  const int RAND_IM = 2147483647;  // largest positive 32-bit value
-  const int RAND_IQ =     127773;
-  const int RAND_IR =       2836;
+  char buf[1024];
+  Tcl_ResetResult(interp);
+  if(argc!=1) {
+    Oc_Snprintf(buf,sizeof(buf),
+		"wrong # args: should be \"%.100s\"",argv[0]);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  if(!Oc_Random::ReadRNGState(buf,sizeof(buf))) {
+    Tcl_AppendResult(interp,"Internal buffer too short",(char *)NULL);
+    return TCL_ERROR;
+  }
+  Tcl_AppendResult(interp,buf,(char *)NULL);
+  return TCL_OK;
+}
 
-  if(oc_tcl_randseed==0) {
-    // randseed not set.  Get value from clock.
-    Tcl_Interp* interp=Oc_GlobalInterpreter();
-    if(interp==NULL) oc_tcl_randseed=42;  // No interpreter available
-    else {
-      Tcl_SavedResult saved;
-      Tcl_SaveResult(interp, &saved);
-      // Use Tcl 'clock clicks' command to get a seed
-      int click_safety = 0;
-      while(oc_tcl_randseed==0) {
-        Tcl_Eval(interp,OC_CONST84_CHAR("clock clicks"));
-        oc_tcl_randseed=atoi(Tcl_GetStringResult(interp));
-        if(++click_safety>100) break;
-      }
-      if(oc_tcl_randseed==0) oc_tcl_randseed=42; // Punt
-      Tcl_RestoreResult(interp, &saved);
+// Tcl wrapper for Oc_Atan2
+int OcAtan2(ClientData, Tcl_Interp *interp,
+            int argc,CONST84 char** argv)
+{
+  static char buf[256];
+  Tcl_ResetResult(interp);
+  if(argc!=3) {
+    Oc_Snprintf(buf,sizeof(buf),
+		"wrong # args: should be \"%.100s y x\"",argv[0]);
+    Tcl_AppendResult(interp,buf,(char *)NULL);
+    return TCL_ERROR;
+  }
+  errno = 0;
+  double y = atof(argv[1]);
+  double x = atof(argv[2]);
+  double result = Oc_Atan2(y,x);
+  if (errno != 0) {
+    Tcl_ResetResult(interp);
+    Tcl_AppendResult(interp,"errno set to ",NULL);
+    switch (errno) {
+    case ERANGE:
+      Tcl_AppendResult(interp,"ERANGE",NULL);
+      break;
+    case EDOM:
+      Tcl_AppendResult(interp,"EDOM",NULL);
+      break;
+    default:
+      Tcl_AppendResult(interp,"unexpected value",NULL);
+      break;
     }
+    Tcl_AppendResult(interp," by atan2()",NULL);
+    return TCL_ERROR;
   }
 
-  int tmp = oc_tcl_randseed/RAND_IQ;
-  oc_tcl_randseed = RAND_IA*(oc_tcl_randseed - tmp*RAND_IQ) - RAND_IR*tmp;
-  if (oc_tcl_randseed < 0) {
-    oc_tcl_randseed += RAND_IM;
-  }
+  Oc_Snprintf(buf,sizeof(buf),"%.17g",result);
+  Tcl_AppendResult(interp,buf,(char *)NULL);
 
-  // Mask for 64-bit archs.
-  oc_tcl_randseed &= ((((unsigned long) 0xfffffff) << 4) | 0xf);
-  return oc_tcl_randseed * (1.0/RAND_IM);
-}
-
-int OcSrandTclMathProc(ClientData,Tcl_Interp*,
-		       Tcl_Value* args,Tcl_Value* resultPtr)
-{
-  const int RAND_OFFSET = 123459876;
-  if(args[0].type != TCL_INT) return TCL_ERROR; // Safety
-  oc_tcl_randseed = args[0].intValue;
-  if(oc_tcl_randseed==0) {
-    // 0 seed breaks generator.  So just change it.
-    oc_tcl_randseed = RAND_OFFSET;
-  }
-  resultPtr->type = TCL_DOUBLE;
-  resultPtr->doubleValue = OcTclRand();
   return TCL_OK;
 }
-
-int OcUnifRandTclMathProc(ClientData,Tcl_Interp*,
-			  Tcl_Value*,Tcl_Value* resultPtr)
-{
-  resultPtr->type = TCL_DOUBLE;
-  resultPtr->doubleValue = OcTclRand();
-  return TCL_OK;
-}
-
-#endif // TCL_MAJOR_VERSION == 7
 
 //////////////////////////////////////////////////////////////////////////
 // Utility filesystem command
@@ -356,35 +343,6 @@ double Oc_Erf(double x)
     }
 }
 
-/* Tcl wrapper for Oc_Atan2 */
-int
-Oc_TclWrappedAtan2(ClientData, Tcl_Interp *interp,
-		   Tcl_Value *args, Tcl_Value *resultPtr)
-{
-    errno = 0;
-    double result = Oc_Atan2(args[0].doubleValue,args[1].doubleValue);
-    if (errno != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"errno set to ",NULL);
-	switch (errno) {
-	    case ERANGE:
-		Tcl_AppendResult(interp,"ERANGE",NULL);
-                break;
-	    case EDOM:
-		Tcl_AppendResult(interp,"EDOM",NULL);
-                break;
-	    default:
-		Tcl_AppendResult(interp,"unexpected value",NULL);
-                break;
-	}
-	Tcl_AppendResult(interp," by atan2()",NULL);
-	return TCL_ERROR;
-    }
-    resultPtr->doubleValue = result;
-    resultPtr->type = TCL_DOUBLE;
-    return TCL_OK;
-}
-
 //////////////////////////////////////////////////////////////////
 // Version of chdir for use when using the cygwin libraries.  The
 // problem arises when a Windows version of Tcl/Tk is used in the
@@ -431,138 +389,6 @@ int OcCygwinChDir(ClientData,Tcl_Interp *interp,
   return TCL_OK;
 }
 #endif // OC_WINDOWS && __CYGWIN__
-
-
-//////////////////////////////////////////////////////////////////////////
-// Versions of exp() and pow() functions that will not raise exceptions
-// on underflow.
-int
-Oc_Exp(ClientData, Tcl_Interp *interp, Tcl_Value *args, Tcl_Value *resultPtr)
-{
-    errno = 0;
-    double result = exp(args[0].doubleValue);
-    if ((errno == ERANGE) && (result == 0.0)) {
-	// Special case.  Underflow.  Raise no exception.
-    } else if (errno != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"errno set to ",NULL);
-	switch (errno) {
-	    case ERANGE:
-		Tcl_AppendResult(interp,"ERANGE",NULL);
-                break;
-	    case EDOM:
-		Tcl_AppendResult(interp,"EDOM",NULL);
-                break;
-	    default:
-		Tcl_AppendResult(interp,"unexpected value",NULL);
-                break;
-	}
-	Tcl_AppendResult(interp," by exp()",NULL);
-	return TCL_ERROR;
-    }
-    resultPtr->doubleValue = result;
-    resultPtr->type = TCL_DOUBLE;
-    return TCL_OK;
-}
-
-int
-Oc_Pow(ClientData, Tcl_Interp *interp, Tcl_Value *args, Tcl_Value *resultPtr)
-{
-    errno = 0;
-    double result = pow(args[0].doubleValue,args[1].doubleValue);
-    if ((errno == ERANGE) && (result == 0.0)) {
-	// Special case.  Underflow.  Raise no exception.
-    } else if (errno != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"errno set to ",NULL);
-	switch (errno) {
-	    case ERANGE:
-		Tcl_AppendResult(interp,"ERANGE",NULL);
-                break;
-	    case EDOM:
-		Tcl_AppendResult(interp,"EDOM",NULL);
-                break;
-	    default:
-		Tcl_AppendResult(interp,"unexpected value",NULL);
-                break;
-	}
-	Tcl_AppendResult(interp," by pow()",NULL);
-	return TCL_ERROR;
-    }
-    resultPtr->doubleValue = result;
-    resultPtr->type = TCL_DOUBLE;
-    return TCL_OK;
-}
-
-// Wrapper to bring variants of math functions into expr on an
-// as needed basis.
-void Oc_AddTclExprExtensions(Tcl_Interp* interp) {
-  // If Tcl 7.x, add rand() and srand() functions to expr.
-  // Note: Tcl_CreateMathFunc copies the contents of the argTypes
-  //  array into an internal structure, so argTypes may be freed
-  //  afterwards.  This is not actually documented, but is expected,
-  //  and moreover is the way it is done in the Tcl 7.5 and 7.6
-  //  code base, which is all we care about.
-#if (TCL_MAJOR_VERSION == 7)
-  Tcl_ValueType OcSrandTclMathProcArgTypes[1] = { TCL_INT };
-  Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("srand"),1,
-		     OcSrandTclMathProcArgTypes,
-		     (Tcl_MathProc *)OcSrandTclMathProc,
-		     (ClientData)NULL);
-  Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("rand"),0,NULL,
-		     (Tcl_MathProc *)OcUnifRandTclMathProc,
-		     (ClientData)NULL);
-#endif // TCL_MAJOR_VERSION == 7
-
-  // Replace the exp() and pow() functions of Tcl's [expr] with versions
-  // that will not raise exceptions on underflow.
-  Tcl_ValueType argTypes[2] = {TCL_DOUBLE, TCL_DOUBLE};
-
-  if (TCL_ERROR == Tcl_Eval(interp,OC_CONST84_CHAR("expr exp(-1000.)"))) {
-    // exp() sets errno on underflow.  Wrap it.
-    Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("exp"),1,argTypes,Oc_Exp,NULL);
-  }
-  if (TCL_ERROR == Tcl_Eval(interp,OC_CONST84_CHAR("expr pow(10., -1000.)"))) {
-    // pow() sets errno on underflow.  Wrap it.
-    Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("pow"),2,argTypes,Oc_Pow,NULL);
-  }
-  if (TCL_ERROR == Tcl_Eval(interp,OC_CONST84_CHAR("expr atan2(0.,0.)"))) {
-    // atan2(0,0) throws domain error.  Arguably correct, but
-    // inconvenient.  Wrap it.
-    Tcl_CreateMathFunc(interp,OC_CONST84_CHAR("atan2"),2,argTypes,
-                       Oc_TclWrappedAtan2,NULL);
-  }
-}
-
-int OcAddTclExprExtensions(ClientData,Tcl_Interp *interp,
-			   int argc,CONST84 char** argv)
-{
-  static char buf[4096];
-  Tcl_ResetResult(interp);
-  if(argc>2) {
-    Oc_Snprintf(buf,sizeof(buf),
-		"wrong # args: should be \"%.100s\" ?interp?",argv[0]);
-    Tcl_AppendResult(interp,buf,(char *)NULL);
-    return TCL_ERROR;
-  }
-  if(argc==1) {
-    // Add extensions to current interpreter
-    Oc_AddTclExprExtensions(interp);
-  } else {
-    // Add extensions to child interpreter
-    Tcl_Interp* slave = Tcl_GetSlave(interp,argv[1]);
-    if(slave==NULL) {
-      Oc_Snprintf(buf,sizeof(buf),"No slave interpreter named \"%.256s\"",
-		  argv[1]);
-      Tcl_AppendResult(interp,buf,(char *)NULL);
-      return TCL_ERROR;
-    }
-    Oc_AddTclExprExtensions(slave);
-  }
-  return TCL_OK;
-}
-
-
 
 #if (TCL_MAJOR_VERSION < 8)
 int

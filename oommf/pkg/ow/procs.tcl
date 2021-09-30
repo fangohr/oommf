@@ -18,6 +18,309 @@ proc Ow_GetRGB { color {win .}} {
 }
 
 ########################################################################
+# Routine that imports a color in any valid Tcl color format, and
+# returns a value between 0 and 255 indicating the gray-level shade of
+# that color, with 0 being black and 255 white. (This is computed as a
+# simple equally weighted average of the red, green, and blue
+# components.
+########################################################################
+proc Ow_GetShade { color {win .}} {
+   foreach {r g b} [winfo rgb $win $color] {}
+   return [expr {($r+$g+$b)/(3*256)}]
+}
+
+########################################################################
+# Change OOMMF color scheme
+########################################################################
+proc Ow_ChangeColorScheme { scheme } {
+   # At present only support color schemes are Tk default and light
+   if {[string match default $scheme]} { return }
+   switch -exact -- $scheme {
+      light { _Ow_ChangeColorScheme_light }
+      dark  { _Ow_ChangeColorScheme_dark }
+      default {
+         return -code error "unsupported scheme request: \"$scheme\".\
+                             Should be one of \"default\" or \"light\"."
+      }
+   }
+}
+;proc _Ow_ChangeColorScheme_light {} {
+   # Approximate macOS "aqua" (light) mode
+   # NOTE: Selected radiobuttons and checkboxes should show white on
+   # blue background, but the standard (non-ttk) Tk widgets on macOS
+   # don't allow control of the background color on these widgets, which
+   # in macOS dark mode are fixed to gray. This could be fixed by moving
+   # to the ttk widgets with "default" theme (which is not the default
+   # on macOS).
+   tk_setPalette \
+      activeBackground    #ECECEC \
+      activeForeground    #FFFFFF \
+      background          #ECECEC \
+      disabledForeground  #A3A3A3 \
+      foreground          #000000 \
+      highlightBackground #ECECEC \
+      highlightColor      #828282 \
+      insertBackground    #000000 \
+      selectcolor         #B03060 \
+      selectBackground    #B3D7FF \
+      selectForeground    #000000 \
+      troughColor         #C3C3C3 \
+      disabledBackground  #ECECEC \
+      readonlyBackground  #ECECEC
+   # tk_setPalette changes colors in all existing widgets, and also sets
+   # up values in the option database that control colors in new
+   # (future) widgets. You can also manually add settings to the option
+   # database to set colors in all or some new widgets. For example, to control
+   # the text foreground color in new menu widgets, you can do
+   #    option add *Menu.foreground cyan
+   # if .mb.file is any menu widget then
+   #    option get .mb.file foreground *
+   # will return "cyan", regardless of what the foreground color for
+   # that widget actually is, i.e., ".mb.file cget -foreground" may be
+   # different. The above list was obtained from Tk 8.6.10 on macosx
+   # 10.14.6 (Mojave). Note that the last two items, disabledBackground
+   # and readonlyBackground, are optionally used by the Tk entry widget,
+   # but are not listed on the Tk palette man page. BTW, tk_setPalette
+   # allows you to set "unknown" keys, for example, "tk_setPalette
+   # background black foo white", so it is safe to set keys not known on
+   # all platforms.
+
+   # BTW, IMO the above, when run under dark mode in macosx, leaves the
+   # select marker in checkbutton widgets a little too light, but I
+   # haven't been able to find any way to change that. The
+   # ttk::checkbutton widget appears more flexible, so we might want to
+   # switch over to the ttk widget set.
+
+   # The tk_setPalette code is a Tcl proc defined, at least for Tcl/Tk
+   # 8.6.10, in the Tk source file tk/library/palette.tcl. The values
+   # are stored in the global array ::tk::Palette, so, if tk_setPalette
+   # has been called, then the palette can be viewed via
+   #   parray ::tk::Palette
+   #
+   # The only database names explicitly set in tk_setPalette are
+   #    activeBackground
+   #    activeForeground
+   #    background
+   #    disabledForeground
+   #    foreground
+   #    highlightBackground
+   #    highlightColor
+   #    insertBackground
+   #    selectForeground
+   #    selectBackground
+   #    troughColor
+   # which omits selectColor mentioned on the Tk palette man page, as
+   # well as disabledBackground and readonlyBackground keys used by the
+   # Tk entry widget. BTW, the 11 keys listed above are exactly the set
+   # set by the tk_bisque proc.
+   #
+   # For light mode on macosx ::tk::Palette is:
+   #       activeBackground    #FFFFFF
+   #       activeForeground    #000000
+   #       background          #ECECEC  (systemWindowBackgroundColor)
+   #       disabledForeground  #B1B1B1
+   #       foreground          #000000
+   #       highlightBackground #ECECEC  (systemWindowBackgroundColor)
+   #       highlightColor      #000000
+   #       insertBackground    #000000
+   #       selectBackground    #D5D5D5
+   #       selectForeground    #000000
+   #       troughColor         #D5D5D5
+   #
+   # For dark mode on macosx ::tk::Palette is:
+   #       activeBackground     #767676
+   #       activeForeground     #FFFFFF
+   #       background           #323232
+   #       disabledForeground   #656565
+   #       foreground           #FFFFFF
+   #       highlightBackground  #323232
+   #       highlightColor       #FFFFFF
+   #       insertBackground     #FFFFFF
+   #       selectBackground     #2D2D2D
+   #       selectForeground     #FFFFFF
+   #       troughColor          #2D2D2D
+   #
+   # The widget set recognized by tk_setPalette is:
+   #
+   #  button canvas checkbutton entry frame label labelframe
+   #  listbox menubutton menu message radiobutton scale scrollbar
+   #  spinbox text
+   #
+   # Here is a table of all color-related widget configure options and
+   # the widgets which support each:
+   #
+   #         -activebackground : button checkbutton label menubutton menu \
+   #                              radiobutton scale scrollbar spinbox
+   #         -activeforeground : button checkbutton label menubutton menu \
+   #                              radiobutton
+   #               -background : button canvas checkbutton entry frame label \
+   #                              labelframe listbox menubutton menu message \
+   #                              radiobutton scale scrollbar spinbox text
+   #       -disabledforeground : button checkbutton entry label listbox \
+   #                              menubutton menu radiobutton spinbox
+   #               -foreground : button checkbutton entry label labelframe \
+   #                              listbox menubutton menu message radiobutton \
+   #                              scale spinbox text
+   #      -highlightbackground : button canvas checkbutton entry frame label \
+   #                              labelframe listbox menubutton message \
+   #                              radiobutton scale scrollbar spinbox text
+   #           -highlightcolor : button canvas checkbutton entry frame label \
+   #                              labelframe listbox menubutton message \
+   #                              radiobutton scale scrollbar spinbox text
+   #         -insertbackground : canvas entry spinbox text
+   #              -selectcolor : checkbutton menu radiobutton
+   #         -selectforeground : canvas entry listbox spinbox text
+   #         -selectbackground : canvas entry listbox spinbox text
+   #              -troughcolor : scale scrollbar
+   #
+   # -inactiveselectbackground : text
+   #       -readonlybackground : entry spinbox
+   #       -disabledbackground : entry spinbox
+   #         -buttonbackground : spinbox
+   #                 -colormap : frame labelframe
+   #
+   # There are 17 entries here, which include the 12 from the tk_setPalette
+   # man page, plus the bottom 5.
+   #
+   #
+   # On my Tk 8.6.10/macosx Mojave build,
+   #    winfo rgb . systemWindowBackgroundColor
+   # returns
+   #   60652 60652 60652
+   # (=hex color ECECEC) regardless of whether light or dark mode are
+   # selected. This appears to be correct for light mode, but in dark I
+   # think this should be
+   #    12850 12850 12850
+   # (=hex color 323232).
+
+   # Adjust colors in ttk "themed" widgets. Note that "ttk::style theme
+   # use" resets the colors, so "ttk::style configure" should come
+   # afterwards. Note: The "default" theme is not the default on macOS,
+   # but does allow setting of the background.
+   catch {ttk::style theme use default}
+   ttk::style configure TButton -foreground #000000
+   ttk::style configure TButton -background #FFFFFF
+
+   # On macOS, menu background is not changed by tk_setPalette, so
+   # override changes to menus. This only affects new menus, not
+   # existing ones, which should be OK provided this routine is called
+   # before any menus are created.
+   if {![catch {tk windowingsystem} _] && [string match aqua $_]} {
+      set menu_colors {
+              activebackground systemMenuActive
+              activeforeground systemMenuActiveText
+                    background systemMenu
+            disabledforeground systemMenuDisabled
+                    foreground systemMenuText
+                   selectcolor systemMenuActive
+       }
+      foreach {name value} $menu_colors {
+         option add *Menu.$name $value
+      }
+   }
+   # Another way to affect menu colors is to add a code block like the
+   # following into proc Ow_MakeMenubar in oommf/pkg/ow/procs.tcl:
+   #    if {[llength [option get . foreground *]]} {
+   #       # Assume tk_setPalette was used to change default foreground and
+   #       # possibly other colors. Revert to defaults for menubar items.
+   #       foreach w $submenu_list {
+   #          foreach optset [$w configure] {
+   #             if {[llength $opt]==2} {
+   #                continue  ;# Alias, e.g., -fg for -foreground
+   #             }
+   #             set opt [lindex $optset 0]
+   #             if {[string match -nocase -*foreground $opt] \
+   #                    || [string match -nocase -*background $opt] \
+   #                    || [string match -nocase -*color $opt]} {
+   #                $w configure $opt [lindex $optset 3]
+   #             }
+   #          }
+   #       }
+   #    }
+
+   # The standard Tk widget tk_chooseColor can be used as a tool to get
+   # RGB values for displayed colors. (Annoyingly, this tool is
+   # implemented as a modal dialog box, so you can't capture color
+   # changes that require window focus.)
+}
+;proc _Ow_ChangeColorScheme_dark {} {
+   # Approximate macOS "darkaqua" (dark) mode
+
+   # Note 1: In Tk 8.6.10, most widgets use default -background of
+   # systemWindowBackgroundColor, but some, notably listbox, use instead
+   # systemTextBackgroundColor. In macOS dark mode, the former is
+   # #323232, and the latter is #1E1E1E. Take your pick, or use the
+   # average value of #282828.
+
+   # Note 2: In Tk 8.6.10 on macOS, when the system appearance is
+   # "dark", the standard (non-ttk) buttons have background colored by
+   # their -highlightbackground, with -background ignored. If the macOS
+   # appearance setting is "light", then the button background is
+   # -highlightbackground if the window is not the active window (where
+   # active means the window holding the focus), but is forced white
+   # when the windows has focus (go figure), with -background again
+   # ignored. The ttk:button class doesn't have this focus/non-focus
+   # behavior, and it is arguably a bug in the Tk button, but regardless
+   # this is a problem for implementing the OOMMF dark mode on top of
+   # macOS light appearance. One fix would be to replace all the
+   # standard button widgets in OOMMF with ttk:buttons (there is a
+   # similar issue with radiobuttons and checkbuttons in light mode, see
+   # above), but the easier fix is to push the app into macOS dark
+   # mode. The latter relies on a tk::unsupported command, which is
+   # moreover broken on some anaconda builds of Tk 8.6.10, but this
+   # OOMMF dark mode is not critical functionality for OOMMF, so we'll
+   # go that route for now. (Don't be surprised if this breaks in the
+   # future.)
+   if {![catch {tk windowingsystem} _] && [string match aqua $_]} {
+      update idletasks ;# Needed for tk::unsupported::MacWindowStyle call
+      catch {::tk::unsupported::MacWindowStyle appearance . darkaqua}
+      # Ignore on failure
+   }
+
+   set bgcolor #282828
+   tk_setPalette \
+      activeBackground     #767676 \
+      activeForeground     #FFFFFF \
+      background           $bgcolor \
+      disabledForeground   #656565 \
+      foreground           #FFFFFF \
+      highlightBackground  $bgcolor \
+      highlightColor       #FFFFFF \
+      insertBackground     #FFFFFF \
+      selectBackground     #3F638B \
+      selectForeground     #FFFFFF \
+      troughColor          #C3C3C3 \
+      selectcolor          #3F638B \
+      disabledBackground   $bgcolor \
+      readonlyBackground   $bgcolor
+
+   # Adjust colors in ttk "themed" widgets. Note that "ttk::style theme
+   # use" resets the colors, so "ttk::style configure" should come
+   # afterwards.
+   catch {ttk::style theme use default}
+   ttk::style configure TButton -foreground #FFFFFF
+   ttk::style configure TButton -background #707070
+
+   # On macOS, menu background is not changed by tk_setPalette, so
+   # override changes to menus. This only affects new menus, not
+   # existing ones, which should be OK provided this routine is called
+   # before any menus are created.
+   if {![catch {tk windowingsystem} _] && [string match aqua $_]} {
+      set menu_colors {
+              activebackground systemMenuActive
+              activeforeground systemMenuActiveText
+                    background systemMenu
+            disabledforeground systemMenuDisabled
+                    foreground systemMenuText
+                   selectcolor systemMenuActive
+       }
+      foreach {name value} $menu_colors {
+         option add *Menu.$name $value
+      }
+   }
+}
+
+########################################################################
 # Routines to use with entry widgets to verify input.  All these
 # routines return 0 if the value is valid, 1 if the value is incomplete,
 # but otherwise valid (e.g., a value "-" is not a legal number, but
@@ -250,23 +553,68 @@ proc Ow_MakeMenubar { rootwin menuwin args } {
 
 #####################################################################
 ### Crude effort to guess the working menu width, under Tk 8.0+.  ###
-### Under older versions of Tk, this routine returns 0.           ###
+### Under older versions of Tk, this routine returns 0. This      ###
+### routine is typically used to set a brace frame to maintain    ###
+### a minimum primary window size to insure menu visibility.      ###
 #####################################################################
 proc Ow_GuessMenuWidth { menu } {
-    if {[package vsatisfies [package provide Tk] 4]} { return 0 }
-
-    set menufont [$menu cget -font]
-    set childcount [llength [winfo children $menu]]
-    set menuwidth 0
-    for { set index 1 } { $index <= $childcount } { incr index } {
-        incr menuwidth 20  ;# Just a guess at padding
-        if {![catch {$menu entrycget $index -label} indexlabel]} {
-            incr menuwidth [font measure $menufont $indexlabel]
-        }
-    }
-    return $menuwidth
+   if {[package vsatisfies [package provide Tk] 4]} { return 0 }
+   set menufont [$menu cget -font]
+   set childcount [llength [winfo children $menu]]
+   set menuwidth 0
+   for { set index 1 } { $index <= $childcount } { incr index } {
+      incr menuwidth 20  ;# Just a guess at padding
+      if {![catch {$menu entrycget $index -label} indexlabel]} {
+         incr menuwidth [font measure $menufont $indexlabel]
+      }
+   }
+   return $menuwidth
 }
 
+#####################################################################
+### Set title for toplevel window win, and return the recommended ###
+### minimum window width.  The client can use the return value to ###
+### size a supporting brace that protects title visibility. (If   ###
+### the window is too narrow the title can be obscured by window  ###
+### decorations.)                                                 ###
+#####################################################################
+proc Ow_GetWindowTitleSize { title } {
+   if {![Oc_Option ClassConstructorDone]} {
+      set maxwidth 25  ;# Default values in case Oc_Option
+      set tscale 1.0   ;# is not initialized.
+      set decwidth 100
+   } else {
+      set maxwidth 0 ;# Default values if Oc_Option
+      set tscale 1.0 ;# is initialized
+      set decwidth 0
+      # 'Oc_Option Get' uses 'catch' to handle the case where the
+      # requested option does not exist. However, this muddies the
+      # errorInfo stack trace. So, as a courtesy for error handlers,
+      # save and restore errorInfo about the 'Oc_Option Get' calls.
+      set save_errorInfo $::errorInfo
+      Oc_Option Get {} owMaxTitleWidth maxwidth
+      Oc_Option Get {} owTitleScaling tscale
+      Oc_Option Get {} owDecorationWidth decwidth
+      set ::errorInfo $save_errorInfo ;# Clear false error stack
+   }
+   if {[lsearch -exact [font names] owTitleFont]<0} {
+      set titlefont TkCaptionFont  ;# Safety
+   } else {
+      set titlefont owTitleFont
+   }
+   set width [font measure $titlefont $title]
+   set maxwidth [font measure $titlefont [string repeat M $maxwidth]]
+   if {$width>$maxwidth} {
+      set width $maxwidth
+   }
+   set width [expr {int(ceil($width*$tscale))}]
+   set width [expr {$width + $decwidth}]
+   return $width
+}
+proc Ow_SetWindowTitle { win title } {
+   wm title $win $title
+   return [Ow_GetWindowTitleSize $title]
+}
 
 #####################################################################
 ### Proc to fill in the menu items on a standard help menu for an ###
@@ -434,6 +782,10 @@ proc Ow_PositionChild { child {parent .} {xrat .25} {yrat .25} } {
 #
 proc Ow_SetIcon { win {iconfile {}} {iconmask {}} } {
    global ow
+   if {![Oc_Option ClassConstructorDone]} {
+      # NOP if Oc_Option class constructor hasn't run to completion.
+      return
+   }
 
    # Icon type
    if {[Oc_Option Get {} owWindowIconType icontype]} {
@@ -520,79 +872,9 @@ proc Ow_SetIcon { win {iconfile {}} {iconmask {}} } {
          wm iconmask $win @$iconmask
       }
    }
-   
+
 }
 
-
-set ow(icon) [file join $ow(library) omficon.xbm]
-set ow(iconmask) [file join $ow(library) omfmask.xbm]
-proc Ow_SetIconX { win {iconname {}} {iconmaskname {}} } {
-   if {[Oc_Option Get {} owDisableWindowIcons disableicons]} {
-      set disableicons 0 ;# Default is to enable
-   }
-   if {$disableicons || ![winfo exists $win]} {
-      return
-   }
-
-   global ow
-   set win [winfo toplevel $win]
-   if { "$win" == "." } {
-      set iconwin ".root:iconwindow"
-   } else {
-      set iconwin "$win:iconwindow"
-   }
-
-   if {[string match {} $iconname]} {
-      set iconname $ow(icon)
-   }
-   if {[string match {} $iconmaskname]} {
-      set iconmaskname $ow(iconmask)
-   }
-
-   if {[string match {} $iconname] || [string match {} $iconmaskname]} {
-      return         ;# Give up
-   }
-
-   # Setup plain icon
-   wm iconbitmap $win @$iconname
-   wm iconmask $win @$iconmaskname
-
-   # Setup fancier icon (not all wm's support this)
-   if {[winfo exists $iconwin]} {
-      destroy $iconwin
-      update idletasks
-   }
-   if {![winfo exists $iconwin]} {
-      toplevel $iconwin
-      label $iconwin.label
-      pack $iconwin.label
-      $iconwin.label configure -bitmap @$iconname -bg yellow -fg black
-      if {[catch {wm iconwindow $win $iconwin}] || \
-             [string compare $iconwin [wm iconwindow $win]]!=0 || \
-             [update idletasks ; \
-                 expr {[winfo viewable $win] && [winfo viewable $iconwin]}] || \
-             [string compare "icon" [wm state $iconwin]]!=0 } {
-         # wm iconwindow didn't take
-         catch {wm iconwindow $win {}}
-         destroy $iconwin
-      } else {
-         # wm iconwindow *did* take.  Setup auto-destruct, taking care
-         # to ignore child window <Destroy> events
-         bind $win <Destroy> "+
-            if \[string compare $win %W\] continue
-            # Added catch below to stop errors under RedHat Linux fvwm
-            catch {destroy $iconwin}
-            "
-      }
-   }
-   # Here's an alternate way, by loading the image from a file:
-   #    set imagetoken [image create photo -file oommficon.gif]
-   #    toplevel $iconwin
-   #    label $iconwin.label -image $imagetoken
-   #    pack $iconwin.label
-   #    wm iconwindow $win $iconwin
-   #    unset imagetoken
-}
 
 ######################################################
 # Routines for  raising a toplevel window and transfering
@@ -811,11 +1093,19 @@ if {$disablewatch} {
 #  before beginning the file open procedure.  I don't know what
 #  causes this.  -mjd
 #
-set ow(dialog,width) 12c
+# Note 1-Sep-2021: The tkwait commands in this routine allow event
+#    loop servicing while waiting, in particular during the command
+#       tkwait variable ow(dialog,btncode$instance)
+#    which may hang out for a good stretch waiting for human response.
+#    If this routine is being used for error processing (e.g., inside
+#    Oc_Log), then additional errors can cause additional Ow_Dialog
+#    widgets to be displayed. Code which detects and reports errors
+#    should therefore be hardened against possible reentrancy.
+set ow(dialog,width) [winfo pixels . 12c]
 set ow(dialog,instance) 0
 proc Ow_Dialog { modal title bitmap message {width ""} \
-        {defaultbtn ""} args } {
-    global ow tcl_platform
+                 {defaultbtn ""} args } {
+   global ow tcl_platform
     set parent [focus]    ;# Position dialog over toplevel with focus.
     if {[string match {} $parent]} {
         set parent "."
@@ -827,9 +1117,11 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
     if {"$width"==""} {set width $ow(dialog,width)}
     set window [toplevel .owDialog$instance]
     wm group $window $parent
-    wm title $window "$title"
     Ow_PositionChild $window $parent
- 
+    set dialogwidth [Ow_SetWindowTitle $window $title]
+    set brace [canvas ${window}.brace -width $dialogwidth -height 0 \
+                 -borderwidth 0 -highlightthickness 0]
+    pack $brace -side top
     frame $window.top    -bd 5
     frame $window.bottom -bd 5
     if {![string match {} $bitmap]} {
@@ -841,24 +1133,43 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
     # widget so we can determine the size of the message without
     # actually bringing it up on the display (via update idletasks).
     # The downside is that the canvas doesn't supply default bindings
-    # to enable selections.
+    # to enable selections. Match the canvas text color to that used
+    # in the (themed) buttons.
     set width [winfo pixels . $width]
     set height [expr {int(ceil(0.5*$width))}]
+    set textcolor [ttk::style lookup TButton -foreground]
     set msg [canvas $window.top.msg -confine 1 \
-            -borderwidth 2 -relief flat \
-            -highlightthickness 0 -selectborderwidth 0]
-    $msg create text 2 2 -anchor nw -font [Oc_Font Get bold] \
-            -text $message -width $width -tags text
+             -borderwidth 2 -relief flat \
+             -highlightthickness 0 -selectborderwidth 0]
+    if {[lsearch -exact [font names] _ow_dialog_boldfont]<0} {
+       # Call Tk 'font' directly, rather than Oc_Font, in case Oc_Font
+       # is not yet initialized.
+       font create _ow_dialog_boldfont {*}[font configure TkDefaultFont]
+       font configure _ow_dialog_boldfont -weight bold
+    }
+    $msg create text 2 2 -anchor nw -font _ow_dialog_boldfont \
+       -text $message -width $width -fill $textcolor -tags text
+
+    update idletasks
     foreach {xmin ymin xmax ymax} [$msg bbox all] {}
     if {$ymax<$height} {
         # No scrollbar
         $msg configure -width $xmax -height $ymax
-        pack $msg -side left -fill none -expand 1
+        $window.top configure -width $xmax -height $height
+        pack $msg -side left -fill both -expand 1
         pack $window.top -side top -fill both -expand 1
-    } else {
+        global ${msg}_text
+        set ${msg}_text $message
+        bind $msg <Configure> "+
+           $msg delete text
+           $msg create text 4 4 -anchor nw -font _ow_dialog_boldfont \
+                   -text \$\{${msg}_text\} -width \[expr %w-10\] \
+                   -fill $textcolor -tags text"
+        bind $msg <Destroy> "+ unset ${msg}_text"
+     } else {
         # Crop height and add vertical scrollbar
         if {![regexp -- "\n$" $message]} {
-            append message "\n"    ;# Add trailing newline; this insures
+            append message "\n"    ;# Add trailing newline; this ensures
             ## that last line of the message is completely visible.
             ## Note that we can count on at least one <Configure>
             ## event after this setup, and $message will be reloaded
@@ -880,8 +1191,9 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
         set ${msg}_text $message
         bind $msg <Configure> "+
            $msg delete text
-           $msg create text 4 4 -anchor nw -font \{[Oc_Font Get bold]\} \
-                   -text \$\{${msg}_text\} -width \[expr %w-10\] -tags text
+           $msg create text 4 4 -anchor nw -font _ow_dialog_boldfont \
+                   -text \$\{${msg}_text\} -width \[expr %w-10\] \
+                   -fill $textcolor -tags text
            $msg configure -scrollregion \[$msg bbox all\]"
         # Add "power" scrolling.  This will be enabled after the first
         # <Configure> event, which will occur at display time.
@@ -896,6 +1208,7 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
         }
         bind $msg <Destroy> "+ unset ${msg}_text"
     }
+
     # Add selection bindings to text in msg canvas.  These use the
     # mouse to set the PRIMARY selection
     $msg bind text <Button-1> {
@@ -964,7 +1277,7 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
        }
     }
     pack $window.bottom -side bottom -fill x -expand 0 -before $window.top
- 
+
     if {"$defaultbtn"!="" && $defaultbtn>=0 && $defaultbtn<$btncount} {
         # Code to make a "default" frame around default button.
         set fout [frame $window.bottom.defaultouter -bd 2 -relief sunken]
@@ -983,7 +1296,7 @@ proc Ow_Dialog { modal title bitmap message {width ""} \
     Ow_SetIcon $window
 
     if {$modal} {
-        update idletasks
+       update idletasks
         focus $window
         catch {tkwait visibility $window; grab $window }
         # Note: It appears dangerous to put a "grab" on a window
@@ -1036,7 +1349,11 @@ proc Ow_NonFatalError { msg {title {}} {exitcode 1} \
             "Continue" "Stack" "Die"]
     if {$usercode==2} { exit $exitcode }
     if {$usercode==1} {
-        set msg "[Oc_Main GetInstanceName] Stack:\n"
+        if {[catch {Oc_Main GetInstanceName} instancename]} {
+           # Protect against initialization errors
+           set instancename INIT
+        }
+        set msg "$instancename Stack:\n"
         append msg "$ei\n-----------\nAdditional info: $ec"
         if {$default_die} {
             set default_action 1
@@ -1072,9 +1389,11 @@ proc Ow_PromptDialog { title message {defaultvalue {}} \
     if {[string match {} $width]} {set width $ow(dialog,width)}
     set window [toplevel .owPromptDialog]
     wm group $window .
-    wm title $window "$title"
     Ow_PositionChild $window $parent
-
+    set dialogwidth [Ow_SetWindowTitle $window $title]
+    set brace [canvas ${window}.brace -width $dialogwidth -height 0 \
+                 -borderwidth 0 -highlightthickness 0]
+    pack $brace -side top
     frame $window.top    -bd 10
     frame $window.bottom -bd 10
     set msg [message $window.top.msg -text $message -width $width]
@@ -1101,10 +1420,10 @@ proc Ow_PromptDialog { title message {defaultvalue {}} \
             "$value delete 0 end ; $value insert 0 \{$defaultvalue\}"
     bind $btnOK <Key-Return> "$btnOK invoke"
     bind $btnCancel <Key-Return> "$btnCancel invoke"
- 
+
     $value selection range 0 end
     focus $value
- 
+
     update idletasks
     focus $window
     catch {tkwait visibility $window; grab $window }
@@ -1114,7 +1433,7 @@ proc Ow_PromptDialog { title message {defaultvalue {}} \
     #  'update idletasks ; focus $window ; catch ...'
     # seems to protect against binding reentrancy from the
     # user clicking too many times, or hitting keys too fast.
- 
+
     Ow_SetIcon $window
     catch {tkwait variable ow(prompt_dialog,btn) }
     if {$ow(prompt_dialog,btn)==0} {
@@ -1123,9 +1442,9 @@ proc Ow_PromptDialog { title message {defaultvalue {}} \
     } else {
         # Cancel invoked
         set result [list $defaultvalue 1]
-    }    
+    }
     unset ow(prompt_dialog,btn)
- 
+
     grab release $window
     after 10 "destroy $window" ;# "after" is a workaround for Tk 8.5.x bug
     return $result
@@ -1136,31 +1455,37 @@ proc Ow_Message {msg type src} {
     foreach {ei ec} [list $errorInfo $errorCode] {break}
     if {[catch {winfo exists .} result] || !$result} {
         foreach {errorInfo errorCode} [list $ei $ec] {break}
-        Oc_DefaultMessage $msg $type $src
+        Oc_DefaultLogMessage $msg $type $src
         return
     }
-    set tock [format {[%s]} [clock format [clock seconds] -format "%T"]]
-
+    if {[catch {clock format [clock seconds]  -format "%T"} tock]} {
+       set tock "Unknown time"
+    }
+    set tock [format {[%s]} $tock]
+    if {[catch {Oc_Main GetInstanceName} instancename]} {
+       # Protect against initialization errors
+       set instancename INIT
+    }
     switch $type {
         panic {
-            Ow_NonFatalError "[Oc_Main GetInstanceName] $src panic:\n$msg" \
-                    "[Oc_Main GetInstanceName] $src Panic  $tock" 1 error 1
+            Ow_NonFatalError "$instancename $src panic:\n$msg" \
+                    "$instancename $src Panic  $tock" 1 error 1
         }
         error {
-            Ow_NonFatalError "[Oc_Main GetInstanceName] $src error:\n$msg" \
-                    "[Oc_Main GetInstanceName] $src Error  $tock" 1 error
+            Ow_NonFatalError "$instancename $src error:\n$msg" \
+                    "$instancename $src Error  $tock" 1 error
         }
         warning {
-            Ow_NonFatalError "[Oc_Main GetInstanceName] $src warning:\n$msg" \
-                    "[Oc_Main GetInstanceName] $src Warning  $tock" 1 warning
+            Ow_NonFatalError "$instancename $src warning:\n$msg" \
+                    "$instancename $src Warning  $tock" 1 warning
         }
         info {
-            Ow_Dialog 1 "[Oc_Main GetInstanceName] $src Info  $tock" info \
-                    "[Oc_Main GetInstanceName] $src info:\n$msg" {} 0
+            Ow_Dialog 1 "$instancename $src Info  $tock" info \
+                    "$instancename $src info:\n$msg" {} 0
         }
         default {
-            Ow_Dialog 0 "[Oc_Main GetInstanceName] $src Info  $tock" info \
-                    "[Oc_Main GetInstanceName] $src info:\n$msg" {} 0
+            Ow_Dialog 0 "$instancename $src Info  $tock" info \
+                    "$instancename $src info:\n$msg" {} 0
         }
     }
 }

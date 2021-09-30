@@ -1252,7 +1252,8 @@ void Grid2D::DumpDemagEnergyPpm(const char* filename)
       value = -0.5 * m[i][k].GetThickness() * (m[i][k]*hdemag[i][k]);
       const double contrast(1.);
       int pix=(int)OC_ROUND(value*scale*contrast);
-      if(pix>255)  pix=255; if(pix<-255) pix=-255;  // Safety
+      if(pix>255)  pix=255;
+      if(pix<-255) pix=-255;  // Safety
       if(value>=0.) fprintf(fptr,"%d %d 255\n",255-pix,255-pix);
       else          fprintf(fptr,"255 %d %d\n",255+pix,255+pix);
     }

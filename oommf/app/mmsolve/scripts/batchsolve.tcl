@@ -10,7 +10,7 @@ package require Mms 2
 Oc_ForceStderrDefaultMessage	;# use stderr, not dialog for messages
 
 Oc_Main SetAppName batchsolve
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 Oc_Main SetDataRole producer
 
 Oc_CommandLine ActivateOptionSet Net
@@ -196,7 +196,9 @@ proc InteractiveServerInit {} {
 	}
     }
 
-    Net_Protocol New protocol -name "OOMMF batchsolver protocol 0.1"
+   Oc_EventHandler Bindtags IoServer IoServer
+
+    Net_Protocol New protocol -name "OOMMF batchsolver protocol 0.2"
     $protocol Init {
 	Oc_EventHandler New _ mms_solver ChangeState \
 	    [list $connection Tell Status %state] \
@@ -234,24 +236,20 @@ proc InteractiveServerInit {} {
     $protocol AddMessage start InteractiveOutput {args} {
 	return [list start [list 0 [eval InteractiveOutput $args]]]
     }
+    $protocol AddMessage start GetSolverState {} {
+       global solver
+       if {[info exists solver]} {
+          return [list start [list 0 [$solver GetSolverState]]]
+       }
+       return [list start [list 1 {}]]
+    }
     $protocol AddMessage start SetBatchSolverState {args} {
 	return [list start [list 0 [eval SetBatchSolverState $args]]]
     }
+   $protocol AddMessage start TrackIoServers {} {
+      return [list start [list 0 [eval TrackIoServers $connection]]]
+   }
     Net_Server New server -protocol $protocol -alias batchsolve
-
-    set starterror [catch {$server Start 0} errmsg]
-
-    # Delay "nice" of this process until any children are spawned.
-    Net_Account New a
-    if {[$a Ready]} {
-        Oc_MakeNice
-    } else {
-        Oc_EventHandler New _ $a Ready Oc_MakeNice -oneshot 1
-    }
-
-    if {$starterror} {
-        error $errmsg
-    }
 
     proc SetHandler {event data host acct pid cnt} {
 	global events
@@ -337,6 +335,131 @@ proc InteractiveServerInit {} {
         }
     }
     
+   ##########################################################################
+   # Track the servers known to the account server,
+   #	code mostly cribbed from mmsolve2d.tcl
+   ##########################################################################
+   # Get server info from account server:
+   proc Initialize {acct} {
+      Oc_MakeNice
+      AccountReady $acct
+   }
+
+   # Supported export protocols. (Note: White space is significant.)
+   global io_protocols
+   set io_protocols {
+      {OOMMF ProbEd protocol}
+      {OOMMF DataTable protocol}
+      {OOMMF vectorField protocol}
+   }
+
+   proc AccountReady {acct} {
+      global io_protocols
+      set qid [$acct Send services $io_protocols]
+      Oc_EventHandler New _ $acct Reply$qid [list GetServicesReply $acct] \
+         -groups [list $acct]
+      Oc_EventHandler New _ $acct Ready [list AccountReady $acct] -oneshot 1
+   }
+   proc GetServicesReply { acct } {
+      # Set up to receive NewService messages, but only one handler per account
+      Oc_EventHandler DeleteGroup GetServicesReply-$acct
+      Oc_EventHandler New _ $acct Readable [list HandleAccountTell $acct] \
+         -groups [list $acct GetServicesReply-$acct]
+      global io_servers
+      array set io_servers {}
+      set services [$acct Get]
+      Oc_Log Log "Received service list: $services" status
+      if {![lindex $services 0]} {
+         foreach quartet [lrange $services 1 end] {
+	    NewIoServer $acct $quartet
+         }
+      }
+   }
+   # Detect and handle newservice messages from account server
+   proc HandleAccountTell { acct } {
+      set message [$acct Get]
+      switch -exact -- [lindex $message 0] {
+         newservice {
+            NewIoServer $acct [lrange $message 1 end]
+         }
+         deleteservice {
+            DeleteIoServer $acct [lindex $message 1]
+         }
+         notify -
+         newoid -
+         deleteoid {
+            # Ignore notifications and OID info
+         }
+         default {
+            Oc_Log Log "Bad message from account $acct:\n\t$message" status
+         }
+      }
+   }
+
+   # Track I/O servers in global array io_servers, where the index is the sid
+   # (service id, of the form oid:servernumber, e.g., 5:0), and the value
+   # is the list { advertisedname  port  fullprotocol }
+   proc NewIoServer { acct quartet } {
+      # The quartet import is a four item list of the form
+      #   advertisedname  sid  port  fullprotocol
+      # which matches the reply to the "threads" request from the account
+      # server.
+      lassign $quartet appname sid port fullprotocol
+      set hostname [$acct Cget -hostname]
+      set accountname [$acct Cget -accountname]
+
+      # Safety: Don't connect to yourself
+      if {[string match [$acct OID]:* $sid]} {return}
+
+      global io_servers
+      if {![info exists io_servers($sid)]} {
+         set details [list $appname $port $fullprotocol $hostname $accountname]
+         set io_servers($sid) $details
+         Oc_EventHandler Generate IoServer NewIoServer \
+            -sid $sid -details $details
+      }
+   }
+
+   proc DeleteIoServer { acct sid } {
+      global io_servers
+      if {[info exists io_servers($sid)]} {
+         unset io_servers($sid)
+         Oc_EventHandler Generate IoServer DeleteIoServer -sid $sid
+      }
+   }
+   proc TrackIoServers { connection } {
+      Oc_EventHandler New _ IoServer NewIoServer \
+         [list $connection Tell NewIoServer [list %sid %details]]\
+         -groups [list $connection]
+      Oc_EventHandler New _ IoServer DeleteIoServer \
+         [list $connection Tell DeleteIoServer [list %sid]] \
+         -groups [list $connection]
+      global io_servers
+      return [array get io_servers]
+   }
+
+   # Delay "nice" of this process until any children are spawned.
+   Net_Account New a
+   if {[$a Ready]} {
+      Initialize $a
+   } else {
+      Oc_EventHandler New _ $a Ready [list Initialize $a] -oneshot 1
+   }
+
+   # Delay "nice" of this process until any children are spawned.
+   set starterror [catch {$server Start 0} errmsg]
+   Net_Account New a
+   if {[$a Ready]} {
+      Initialize $a
+   } else {
+      Oc_EventHandler New _ $a Ready [list Initialize $a] -oneshot 1
+   }
+   if {$starterror} {
+      error $errmsg
+   }
+
+   ########################################################################
+
 } ;# end InteractiveServerInit
     
 proc MakeDataTable {} {

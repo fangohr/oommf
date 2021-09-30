@@ -179,8 +179,31 @@ int Message(const OC_CHAR *fmt,...)
 OC_INT4m TkMessage(Nb_MessageType mt,const OC_CHAR *msg,OC_INT4m exitcode,
                 const OC_CHAR *errCode)
 {
-  static char buf[BigBufSize+32];
+  Tcl_Interp* interp=Oc_GlobalInterpreter();
+  if(interp==NULL) {
+    // Tcl interp not setup, so just write message to stderr
+    const char* msgtype = "unset";
+    switch(mt) {
+    case NB_MSG_DEBUG:   msgtype = "DEBUG";        break;
+    case NB_MSG_INFO:    msgtype = "INFO";         break;
+    case NB_MSG_WARNING: msgtype = "WARNING";      break;
+    case NB_MSG_ERROR:   msgtype = "ERROR";        break;
+    default:             msgtype = "UNKNOWN TYPE"; break;
+    }
+    fprintf(stderr,
+            "--- %s MESSAGE ---\n%s\n-----------------------\n",
+            msgtype,msg);
+    fflush(stderr);
+    if(mt==NB_MSG_ERROR) {
+      fputs("\n+++ FATAL ERROR +++\n",stderr);
+      fflush(stderr);
+      Tcl_Exit(exitcode);
+    }
+    return -1;
+  }
 
+  // Otherwise, use Tcl interpreter to form and report message.
+  static char buf[BigBufSize+32];
   switch(mt) {
   case NB_MSG_DEBUG:
     Oc_Snprintf(buf,sizeof(buf),"Oc_Log Log {%s} debug",msg);
@@ -199,23 +222,6 @@ OC_INT4m TkMessage(Nb_MessageType mt,const OC_CHAR *msg,OC_INT4m exitcode,
 	    " in TkMessage(); Associated message: %s} panic",
 	    int(mt),msg);
     break;
-  }
-
-  Tcl_Interp* interp=Oc_GlobalInterpreter();
-  if(interp==NULL) {
-    // Tcl interp not setup. 
-    // Write to MessageBuffer
-    strcat(buf,"\n");
-    MessageLocker::Append(buf);
-    if(mt==NB_MSG_ERROR) {
-      // If fatal error, dump MessageLocker to stderr and exit
-      Nb_DString amsg;
-      MessageLocker::GetMessage(amsg);
-      fprintf(stderr,"%s\nFATAL ERROR\n",amsg.GetStr());
-      fflush(stderr);
-      Tcl_Exit(exitcode);
-    }
-    return -1;
   }
 
   Tcl_SavedResult saved;

@@ -52,28 +52,26 @@ tclsh oommf.tcl
   \end{itemize}
   \item \quickstartitemlabel{Gain access to other useful windows.}
   \begin{itemize}
-    \item In the \app{mmLaunch} window, check the box for your host
-	  (very likely the only choice available),
-          causing a menu of user account boxes to appear.  Check
-          the box corresponding to the account you want to compute on
-	  (also very likely only one choice available).
-          This gives a menu of options:
+  \item The \app{mmLaunch} window is divided into two columns. The
+    right column provides a list of running applications. This will
+    normally be empty when you first start \app{mmLaunch}. The
+      left column, labeled ``Programs,'' provides a collection of
+      buttons that launch applications when clicked:
     \begin{itemize}
        \item {\htmlonlyref{\bf{mmArchive:}}{sec:mmarchive}}\index{application!mmArchive}
-                   to auto-save scalar and vector field data
+                   auto-saves tabular and field data files
        \item {\htmlonlyref{\bf{mmDataTable:}}{sec:mmdatatable}}\index{application!mmDataTable}
-                   to display current values of scalar outputs
+                   displays current values of tabular (scalar) outputs
        \item {\htmlonlyref{\bf{mmDisp:}}{sec:mmdisp}}\index{application!mmDisp}
-                   to display vector fields
+                   displays scalar and vector fields
        \item {\htmlonlyref{\bf{mmGraph:}}{sec:mmgraph}}\index{application!mmGraph}
-                   to form x-y plots
+                   makes x-y plots
        \item {\htmlonlyref{\bf{mmProbEd:}}{sec:mmprobed}}\index{application!mmProbEd}
-                   to view or modify a problem for \app{mmSolve2D}
-                   or \app{Oxsii}
+                   problem editor for \app{mmSolve2D} or \app{Oxsii}
        \item {\htmlonlyref{\bf{mmSolve2D:}}{sec:mmsolve2d}}\index{application!mmSolve2D}
-                   to control the 2D solver
+                   2D solver interactive interface
        \item {\htmlonlyref{\bf{Oxsii:}}{sec:oxsii}}\index{application!Oxsii}
-                   to control the 3D solver
+                   3D solver interactive interface
     \end{itemize}
     \item Click on \btn{mmDisp}, \btn{mmGraph}, and/or
           \btn{mmDataTable}, depending on what form of output you
@@ -104,7 +102,9 @@ tclsh oommf.tcl
             Parameters}), and fill out the pop-up forms.  A
             completely new problem may be defined this way.
       \item If desired, the defined problem may be stored to disk via
-            the \btn{File\pipe Save as\ldots} menu selection.
+            the \btn{File\pipe Save as\ldots} menu selection. The 2D
+            solver \app{mmSolve2D} reads problem definitions directly
+            from \app{mmProbEd}, but \app{Oxsii} requires file input.
     \end{itemize}
     \item[Initialize solver:]\blankspace
     \begin{itemize}
@@ -113,10 +113,11 @@ tclsh oommf.tcl
             \hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
               (Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}.
       \item Wait for the new solver instance to appear in the 
-          \btn{Threads} column in the \app{mmLaunch} window.
+          \btn{Running Applications} column in the \app{mmLaunch} window.
       \item Check the box next to the \app{mmSolve2D} entry in the
-          \btn{Threads}\index{threads} column.  A window containing an
-          \app{mmSolve2D} interface will appear.
+          \btn{Running Applications}\index{running~applications}
+          column.  A window containing an \app{mmSolve2D} interface
+          will appear.
       \item In the \app{mmSolve2D} window:
       \begin{itemize}
         \item Check \btn{Problem Description} under \btn{Inputs}.
@@ -234,10 +235,11 @@ tclsh oommf.tcl
             \hyperrefhtml{\app{Oxsii}}{\app{Oxsii}
              (Sec.~}{)}{sec:oxsii}\index{application!oxsii}.
       \item Wait for the new solver instance to appear in the 
-          \btn{Threads} column in the \app{mmLaunch} window.
+          \btn{Running Applications} column in the \app{mmLaunch} window.
       \item Check the box next to the \app{Oxsii} entry in the
-          \btn{Threads}\index{threads} column.  A window containing an
-          \app{Oxsii} interface will appear.
+          \btn{Running Applications}\index{running~applications}
+          column.  A window containing an \app{Oxsii} interface will
+          appear.
     \end{itemize}
     \item[Load problem:]\blankspace
     \begin{itemize}
@@ -246,14 +248,14 @@ tclsh oommf.tcl
         dialog box will appear.  On this window:
         \begin{itemize}
           \item Double click in the \btn{Path} subwindow to change
-                directories.  Several sample problems can be found in
+                directories. Numerous sample problems can be found in
                 the directory \fn{oommf/app/oxs/examples}.
           \item To load a problem, double click on a \fn{*.mif} file
                 (e.g., stdprob1.mif) from the list above the \btn{Filter:}
                 subwindow.
         \end{itemize}
         The native input format for the 3D solver is the
-        \hyperrefhtml{\MIF~2.1}{\MIF~2.1 (Sec.~}{)}{sec:mif2format}
+        \hyperrefhtml{\MIF~2}{\MIF~2 (Sec.~}{)}{sec:mif2format}
         format, which must be composed by hand using a plain text
         editor.  (See the \hyperrefhtml{Oxs\_Ext Child Class}{Oxs\_Ext
         Child Class (Sec.~}{)}{sec:oxsext} documentation for additional
@@ -285,7 +287,10 @@ tclsh oommf.tcl
          \begin{itemize}
             \item {\bf Step:} fill in number and check the box.
             \item {\bf Stage:} fill in number and check the box.
+            \item {\bf Done:} produces output when problem completes.
          \end{itemize}
+         You can also transmit data interactively by clicking on the
+         \btn{Send}.
       \end{enumerate}
       The items in the Output list will vary depending on the
       problem that was loaded.  The items in the Destination list
@@ -357,7 +362,7 @@ tclsh oommf.tcl
        \begin{itemize}
          \item {\bf Reload:} Reload the same file from disk.
          \item {\bf Reset:}  Return to problem start.
-         \item {\bf Run:}    Step through all stages until all complete.
+         \item {\bf Run:}    Step through all stages until complete.
          \item {\bf Relax:}  Run until the current stage termination
                              criteria are met.
          \item {\bf Step:}   Do one solver iteration and then pause.
@@ -376,11 +381,11 @@ tclsh oommf.tcl
        \item When the stage termination (stopping) criteria of the
              final stage are met, \app{Oxsii} will pause to allow the
              user to interactively output final results via the
-             \btn{Send} button.  The batch interface 
-            \hyperrefhtml{\app{Boxsi}}{\app{Boxsi}
-              (Sec.~}{)}{sec:boxsi}\index{application!Boxsi}
-             terminates automatically when the termination criteria for
-             the final stage are met.
+             \btn{Send} button. (This differs from the
+             \hyperrefhtml{\app{Boxsi}}{\app{Boxsi}
+             (Sec.~}{)}{sec:boxsi}\index{application!Boxsi}
+             batch interface which terminates automatically when the
+             final stage is complete.)
     \end{itemize}
   \end{description}
   \item \quickstartitemlabel{Exit \OOMMF.}

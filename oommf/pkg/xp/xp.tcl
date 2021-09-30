@@ -9,7 +9,7 @@
 # has been initialized
 #
 # NOTE: version number below must match that in ./xp.h
-package require -exact Xp 1.2.0.6
+package require -exact Xp 2.0a3
 
 Oc_CheckTclIndex Xp
 
