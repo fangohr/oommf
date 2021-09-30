@@ -2,10 +2,6 @@
  *
  * Macros and classes for nonfatal message handling.
  *
- * NOTE: Oxs_WarningMessage is NOT thread-safe; in particular
- *       the Send() method calls TkMessage, which should only
- *       happen from the main thread.  (Also, there is no
- *       mutex lock around the message count data.)
  */
 
 #ifndef _OXS_WARN

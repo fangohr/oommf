@@ -20,7 +20,6 @@
 #include <string.h>
 
 #define USE_OLD_IMAGE
-#define USE_COMPOSITELESS_PHOTO_PUT_BLOCK
 #include "oc.h"
 #include "if.h"
 
@@ -582,8 +581,8 @@ If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
 			 (char *)NULL);
 	return TCL_ERROR;
       }
-    Tk_PhotoPutBlock(imageHandle,&pib,destX,destY+stoprow-i-1,
-                     reqwidth,1);
+    Tk_PhotoPutBlock( interp, imageHandle, &pib, destX, destY+stoprow-i-1,
+                     reqwidth, 1, TK_PHOTO_COMPOSITE_OVERLAY);
   }
   delete[] pix;
   delete[] read_buf;
@@ -972,7 +971,8 @@ int If_PPM::FillPhoto
 	= static_cast<unsigned char>((blue*255  + maxvalue/2)/maxvalue);
     }
     // Write row
-    Tk_PhotoPutBlock(imageHandle,&pib,destX,destY+i,width,1);
+    Tk_PhotoPutBlock( interp, imageHandle, &pib, destX, destY + i, width, 1,
+	    TK_PHOTO_COMPOSITE_OVERLAY);
     // Skip through to next row
     for(j=width;j<imagewidth;j++) {
       int errcode = ReadNumber(chan,red);
@@ -1093,7 +1093,8 @@ int If_PPM::FillPhoto
 	= static_cast<unsigned char>((blue*255  + maxvalue/2)/maxvalue);
     }
     // Write row
-    Tk_PhotoPutBlock(imageHandle,&pib,destX,destY+i,width,1);
+    Tk_PhotoPutBlock( interp, imageHandle, &pib, destX, destY + i, width, 1,
+	    TK_PHOTO_COMPOSITE_OVERLAY);
     // Skip through to next row
     for(j=width;j<imagewidth;j++) {
       if((cptr = ReadNumber(cptr,red))==NULL

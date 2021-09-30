@@ -2,7 +2,7 @@
  *
  * Class for extended floating point precision using
  * compensated summation.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2015/07/17 22:47:46 $
@@ -14,9 +14,9 @@
 #include "xpfloat.h"
 
 /* Use double-double library from oommf/pkg/xp/ for multiplication. */
-#include "xp.h"    
+#include "xp.h"
 
-/* End includes */     
+/* End includes */
 
 
 int Nb_Xpfloat::Test() {
@@ -71,7 +71,105 @@ Nb_Xpfloat& Nb_Xpfloat::operator-=(const Nb_Xpfloat &y)
   return *this;
 }
 
+# if !NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+// If NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL is true then
+// the following function is defined instead in the xpfloat.h header.
+void
+Nb_XpfloatDualAccum(Nb_Xpfloat& xpA,Nb_Xpfloat& xpB,const __m128d& y)
+{ // Import y holds two packed double precision values.  The
+  // lower half of y holds the value to be accumulated into xpA,
+  // and the upper half holds the value to be accumulated into xpB.
+  // This interface is available if OC_USE_SSE is true, even if
+  // Nb_Xpfloat is not using SSE.
+
+  // IMPORTANT NOTE : This code assumes that xpA and xpB are
+  // ***DIFFERENT*** objects.  If they are the same object, then one of
+  // the accums will be lost!!!!!!!
+
+  // For implementation notes, see the Nb_Xpfloat::Accum routine above.
+  assert(&xpA != &xpB);  // See IMPORTANT NOTE above.
+  __m128d wx_hi = _mm_unpackhi_pd(xpA.xpdata,xpB.xpdata);
+  __m128d sum1  = _mm_add_pd(y,wx_hi);
+  __m128d wx_lo = _mm_unpacklo_pd(xpA.xpdata,xpB.xpdata);
+  __m128d sum2  = _mm_add_pd(wx_lo,sum1);
+  __m128d diff  = _mm_sub_pd(wx_lo,sum2);
+  __m128d corrtemp = _mm_add_pd(diff,sum1);
+  xpA.xpdata = _mm_unpacklo_pd(sum2,corrtemp);
+  xpB.xpdata = _mm_unpackhi_pd(sum2,corrtemp);
+}
+# endif // !NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+
 #endif // NB_XPFLOAT_USE_SSE
+
+// Assume NB_XPFLOAT_COMPILER_FILE_ASSOCIATIVITY_CONTROL is true,
+// because otherwise what can we do?
+#if !NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
+#if  !NB_XPFLOAT_USE_SSE
+void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y)
+{
+  // Calculate sum, using compensated (Kahan) summation.
+  //
+  // We try to select NB_XPFLOAT_TYPE so that there is no hidden
+  // precision in intermediate computations.  If this can't be
+  // assured, the fallback is to accumulate all operations into
+  // variables marked "volatile" to insure that no hidden precision is
+  // carried between operations.  This is slow (one test with g++ on
+  // an AMD Athlon 64 x2 showed a factor of 8), and moreover for all
+  // the machines+compilers I know about the "long double" type
+  // carries full precision.
+  //
+  // A second problem is compilers that ignore associativity
+  // restrictions.  At the time of this writing (2012), GCC respects
+  // associativity unless the -ffast-math optimization flag is given
+  // at compile time.  We protect against this by using the
+  // "-no-fast-math" function attribute in the case GCC is detected.
+  // Also at this time, the Intel compile *by default* compiles with
+  // what it calls the "fast=1" floating point model, which ignores
+  // associativity.  This can be changed by adding the switch
+  // "-fp-model precise" to the compile line, or else by adding
+  // "#pragma float_control(precise,on)" inside this function.  The
+  // pragma option operates on a function by function basis, so it is
+  // less global.
+# if NB_XPFLOAT_NEEDS_VOLATILE
+  volatile NB_XPFLOAT_TYPE sum1; // Mark as volatile to protect against
+  volatile NB_XPFLOAT_TYPE sum2; // problems arising from extra precision.
+  volatile NB_XPFLOAT_TYPE corrtemp;
+# else
+  NB_XPFLOAT_TYPE sum1;
+  NB_XPFLOAT_TYPE sum2;
+  NB_XPFLOAT_TYPE corrtemp;
+# endif
+
+  // Calculate sum
+  sum1=y+corr;
+  sum2=x+sum1;
+
+  // Determine new correction term.  Do in two steps, as opposed to
+  // "corrtemp = (x-sum2) + sum1", because a) some compilers ignore
+  // parentheses (with regards to ordering) at high optimization levels,
+  // and b) we want to be sure to drop any extra precision.
+  corrtemp = x - sum2;
+  corrtemp += sum1;
+
+  // Store results
+  corr = corrtemp;
+  x=sum2;
+}
+
+# else // NB_XPFLOAT_USE_SSE
+
+void Nb_Xpfloat::Accum(NB_XPFLOAT_TYPE y) {
+  // SSE double precision doesn't carry any extra precision, so we
+  // don't need to use "volatile"
+  __m128d corr = _mm_unpackhi_pd(xpdata,_mm_setzero_pd());
+  __m128d sum1 = _mm_add_sd(_mm_set_sd(y),corr);
+  __m128d sum2 = _mm_add_sd(sum1,xpdata);
+  __m128d corrtemp = _mm_add_sd(sum1,_mm_sub_sd(xpdata,sum2));
+  xpdata = _mm_unpacklo_pd(sum2,corrtemp);
+}
+
+# endif // NB_XPFLOAT_USE_SSE
+#endif // !NB_XPFLOAT_COMPILER_FUNCTION_ASSOCIATIVITY_CONTROL
 
 Nb_Xpfloat operator+(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
 {
@@ -143,3 +241,4 @@ Nb_Xpfloat operator*(const Nb_Xpfloat& x,const Nb_Xpfloat& y)
   z *= y;
   return z;
 }
+

@@ -8,6 +8,10 @@ package require Net
 ########################################################################
 # Support procs
 
+# NB: For the purposes of this code, the host and account servers are
+#     assigned the dummy OIDs -2 and -1, respectively. The PidReport
+#     proc replaces the dummy OIDs with hyphens on output.
+
 # Default initializer of the accountname.  Tries to determine account name
 # under which current thread is running.  This code is uses the
 # DefaultAccountName proc in the Net_Account class.
@@ -73,8 +77,9 @@ proc PidReport { pidreply portsreply nicknames } {
         foreach {oid pid appname} $elt { break }
         if {$pid != $mypid} {
             set pidarr($oid) [list $pid $appname]
-            if {[string length $oid]>$oidlength} {
-                set oidlength [string length $oid]
+            set prtoid [expr {$oid<0 ? "-" : $oid}]
+            if {[string length $prtoid]>$oidlength} {
+                set oidlength [string length $prtoid]
             }
             if {[string length $pid]>$pidlength} {
                 set pidlength [string length $pid]
@@ -88,76 +93,79 @@ proc PidReport { pidreply portsreply nicknames } {
    set donicknames [llength $nicknames]
    if {!$doports && !$donicknames} {
         if {$header} {
-            puts [format "%*s %*s %s" $oidlength OID \
+            Oc_RobustPuts [format "%*s %*s %s" $oidlength OID \
                       $pidlength PID Application]
         }
         foreach oid [lsort -integer [array names pidarr]] {
             foreach {pid appname} $pidarr($oid) { break }
-            puts [format "%*s %*s %s" $oidlength $oid $pidlength $pid $appname]
+            set prtoid [expr {$oid<0 ? "-" : $oid}]
+            Oc_RobustPuts [format "%*s %*s %s" $oidlength $prtoid \
+                     $pidlength $pid $appname]
         }
-    } else {
-       set portlength 0
-       set maxportcount 0
-       foreach elt $portsreply {
-          if {[regexp {^([0-9]+):[0-9]+$} [lindex $elt 1] dummy oid]} {
-             set port [lindex $elt 2]
-             lappend portarr($oid) $port
-             if {[string length $port]>$portlength} {
-                set portlength [string length $port]
-             }
-             if {[llength $portarr($oid)]>$maxportcount} {
-                set maxportcount [llength $portarr($oid)]
-             }
-          }
-       }
-       if {$header} {
-          puts -nonewline [format "%*s %*s %*s " $oidlength OID \
-                   $pidlength PID $namelength Application]
-          if {$doports} {
-             puts -nonewline [format "%s" Ports]
-             if {$donicknames} {
-                set spaces [expr {$maxportcount*($portlength+1)}]
-                if { $spaces < 6 } { set spaces 6 }
-                # Note: Actual space count should be as above
-                #  minus [string length "Ports"]
-                #  plus  [string length "Names"]
-                # but "Ports" and "Names" are both 5 chars long
-                puts -nonewline [format "%*s" $spaces Names]
-                
-             }
-             puts {}
-          } else {
-             # Do nicknames, but not ports
-             puts [format "%s" Names]
-          }
-       }
-       array set namearr $nicknames
-       foreach oid [lsort -integer [array names pidarr]] {
-          foreach {pid appname} $pidarr($oid) { break }
-          puts -nonewline [format "%*s %*s %*s" $oidlength $oid \
-                              $pidlength $pid $namelength $appname]
-          set portcount 0
-          if {[info exists portarr($oid)]} {
-             foreach port $portarr($oid) {
-                puts -nonewline [format " %*s" $portlength $port]
-             }
-             set portcount [llength $portarr($oid)]
-          }
-          if {[info exists namearr($oid)]} {
-             set ns $namearr($oid)
-             # Remove default name from list.
-             set defaultname [string tolower "${appname}:$oid"]
-             if {[set index [lsearch -exact [string tolower $ns] \
-                                $defaultname]]>=0} {
-                set ns [lreplace $ns $index $index]
-             }
-             # Include spacing for ports info (if any)
-             set portspace [expr {($maxportcount-$portcount)*($portlength+1)}]
-             puts -nonewline [format "%*s %s" $portspace {} $ns]
-          }
-          puts {}
-       }
-    }
+   } else {
+      set portlength 0
+      set maxportcount 0
+      foreach elt $portsreply {
+         if {[regexp {^(-?[0-9]+):[0-9]+$} [lindex $elt 1] dummy oid]} {
+            set port [lindex $elt 2]
+            lappend portarr($oid) $port
+            if {[string length $port]>$portlength} {
+               set portlength [string length $port]
+            }
+            if {[llength $portarr($oid)]>$maxportcount} {
+               set maxportcount [llength $portarr($oid)]
+            }
+         }
+      }
+      if {$header} {
+         Oc_RobustPuts -nonewline [format "%*s %*s %*s " \
+                  $oidlength OID $pidlength PID $namelength Application]
+         if {$doports} {
+            Oc_RobustPuts -nonewline [format "%s" Ports]
+            if {$donicknames} {
+               set spaces [expr {$maxportcount*($portlength+1)}]
+               if { $spaces < 6 } { set spaces 6 }
+               # Note: Actual space count should be as above
+               #  minus [string length "Ports"]
+               #  plus  [string length "Names"]
+               # but "Ports" and "Names" are both 5 chars long
+               Oc_RobustPuts -nonewline [format "%*s" $spaces Names]
+
+            }
+            Oc_RobustPuts {}
+         } else {
+            # Do nicknames, but not ports
+            Oc_RobustPuts [format "%s" Names]
+         }
+      }
+      array set namearr $nicknames
+      foreach oid [lsort -integer [array names pidarr]] {
+         foreach {pid appname} $pidarr($oid) { break }
+         set prtoid [expr {$oid<0 ? "-" : $oid}]
+         Oc_RobustPuts -nonewline [format "%*s %*s %*s" \
+                $oidlength $prtoid $pidlength $pid $namelength $appname]
+         set portcount 0
+         if {[info exists portarr($oid)]} {
+            foreach port [lsort -integer $portarr($oid)] {
+               Oc_RobustPuts -nonewline [format " %*s" $portlength $port]
+            }
+            set portcount [llength $portarr($oid)]
+         }
+         if {[info exists namearr($oid)]} {
+            set ns $namearr($oid)
+            # Remove default name from list.
+            set defaultname [string tolower "${appname}:$oid"]
+            if {[set index [lsearch -exact [string tolower $ns] \
+                               $defaultname]]>=0} {
+               set ns [lreplace $ns $index $index]
+            }
+            # Include spacing for ports info (if any)
+            set portspace [expr {($maxportcount-$portcount)*($portlength+1)}]
+            Oc_RobustPuts -nonewline [format "%*s %s" $portspace {} $ns]
+         }
+         Oc_RobustPuts {}
+      }
+   }
 }
 ########################################################################
 
@@ -165,7 +173,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName pidinfo
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}
@@ -181,21 +189,21 @@ Oc_CommandLine Option use {} {}
 
 set acctname [DefaultAccountName]
 Oc_CommandLine Option account {
-    {name {}}
+   {name {}}
 } {
-    global acctname;  set acctname $name
+   global acctname;  set acctname $name
 } [subst {Account (default is $acctname)}]
 
 Oc_Option Get Net_Host port hostport  ;# Default setting
 Oc_CommandLine Option hostport {
-    {port {regexp {^[0-9]+$} $port}}
+   {port {regexp {^[0-9]+$} $port}}
 } {
-    global hostport;  set hostport $port
+   global hostport;  set hostport $port
 } [subst {Host server port (default is $hostport)}]
 
 Oc_CommandLine Option ports {
 } {
-    global showports; set showports 1
+   global showports; set showports 1
 } {Display application server ports}
 set showports 0
 
@@ -207,41 +215,41 @@ set shownames 0
 
 Oc_CommandLine Option noheader {
 } {
-    global header; set header 0
+   global header; set header 0
 } {Don't print column header}
 set header 1
 
 Oc_CommandLine Option pid {
 } {
-    global pidselect; set pidselect 1
+   global pidselect; set pidselect 1
 } {Select by pid rather than oid}
 set pidselect 0
 
 Oc_CommandLine Option v {
 } {
-    global verbose; set verbose 1
+   global verbose; set verbose 1
 } {Print extra info}
 set verbose 0
 
 Oc_CommandLine Option timeout {
-  {secs {regexp {^[0-9]+$} $secs} {is timeout in seconds (default is 5)}}
+   {secs {regexp {^[0-9]+$} $secs} {is timeout in seconds (default is 5)}}
 } {
-  global timeout;  set timeout [expr {$secs*1000}]
+   global timeout;  set timeout [expr {$secs*1000}]
 } {Maximum time to wait for response from servers}
 set timeout 5000
 
 Oc_CommandLine Option wait {
-  {secs {regexp {^[0-9]+$} $secs} {is maximum wait time in seconds (default is 0)}}
+   {secs {regexp {^[0-9]+$} $secs} {is maximum wait time in seconds (default is 0)}}
 } {
-  global waittime;  set waittime $secs
+   global waittime;  set waittime $secs
 } {If no match found, keep retrying for this long}
 set waittime 0
 set retrytime 250 ;# Retry period, in milliseconds
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
-	{{oid list} {} {is "all" (default) or one or more oids}}
-    } {
-	global oidlist; if {[llength $oid]} {set oidlist $oid}
+   {{oid list} {} {is "all" (default) or one or more oids}}
+} {
+   global oidlist; if {[llength $oid]} {set oidlist $oid}
 } {End of options; next argument is oid}
 set oidlist "all"
 
@@ -254,23 +262,30 @@ set stoptime [expr {[clock seconds]+$waittime}]
 
 while {[catch {socket $host $hostport} hostchan]} {
    if {[clock seconds]>=$stoptime} {
-      puts "No OOMMF applications detected."
-      puts "(No host server responding on host $host, port $hostport.)"
+      Oc_RobustPuts "No OOMMF applications detected."
+      Oc_RobustPuts \
+         "(No host server responding on host $host, port $hostport.)"
       exit
    }
    after $retrytime
 }
 
-if {$verbose} {
+
+if {$verbose || $pidselect} {
    if {[catch {AskServer $hostchan serverpid} hostpid]} {
+      set hostpid {} ;# Error
+   }
+}
+if {$verbose} {
+   if {[string match {} $hostpid]} {
       puts stderr "Host server PID lookup failure: $hostpid"
       catch {close $hostchan}
       exit 1
    }
-   puts "-----------------------"
-   puts "        Host: $host"
-   puts "    Host PID: $hostpid"
-   if {$showports} { puts "   Host port: $hostport" }
+   Oc_RobustPuts "-----------------------"
+   Oc_RobustPuts "        Host: $host"
+   Oc_RobustPuts "    Host PID: $hostpid"
+   if {$showports} { Oc_RobustPuts "   Host port: $hostport" }
 }
 
 while {[catch {AskServer $hostchan lookup $acctname} acctport]} {
@@ -284,7 +299,7 @@ while {[catch {AskServer $hostchan lookup $acctname} acctport]} {
 close $hostchan
 
 if {$verbose} {
-    puts "     Account: $acctname"
+   Oc_RobustPuts "     Account: $acctname"
 }
 
 # Should we perform user id checks on connections?
@@ -305,24 +320,29 @@ if {[info exists tcl_platform(user)] &&
 }
 
 if {[catch {socket $host $acctport} acctchan]} {
-    puts stderr "ERROR: Unable to connect to account server\
+   puts stderr "ERROR: Unable to connect to account server\
                  on host $host, port $acctport"
-    exit 1
+   exit 1
 }
 
 if {$do_id_check && [Net_CheckSocketAccess $acctchan]==0} {
    puts stderr "WARNING: Account server owner is not \"$acctname\""
 }
 
+if {$verbose || $pidselect} {
+   if {[catch {AskServer $acctchan serverpid} acctpid]} {
+      set acctpid {} ;# Error
+   }
+}
 if {$verbose} {
-    if {[catch {AskServer $acctchan serverpid} acctpid]} {
-       puts stderr "Account server PID lookup failure: $acctpid"
-       catch {close $acctchan}
-       exit 1
-    }
-    puts " Account PID: $acctpid"
-    if {$showports} { puts "Account port: $acctport" }
-    puts "-----------------------"
+   if {[string match {} $acctpid]} {
+      puts stderr "Account server PID lookup failure: $acctpid"
+      catch {close $acctchan}
+      exit 1
+   }
+   Oc_RobustPuts " Account PID: $acctpid"
+   if {$showports} { Oc_RobustPuts "Account port: $acctport" }
+   Oc_RobustPuts "-----------------------"
 }
 
 if {$pidselect || [string match "all" $oidlist]} {
@@ -340,6 +360,13 @@ while {1} {
       }
       set pidreply {}
    } else {
+      if {$pidselect} {
+         # Include host and account server on pid list with fictitious
+         # (negative) OIDs. The PidReport proc replaces any negative OID
+         # with a hyphen.
+         lappend pidreply [list -2 $hostpid Host] \
+                          [list -1 $acctpid Account]
+      }
       if {$pidselect && ![string match "all" $oidlist]} {
          catch {unset pidarr}
          foreach pat $oidlist {
@@ -378,6 +405,16 @@ if {$showports} {
         close $acctchan
         exit 1
     }
+    # Include host and account servers on portsreply list with dummy
+    # OIDs of -2 and -1 respectively.
+    lappend portsreply \
+       [list Host    -2:0 $hostport "OOMMF host protocol x.y"] \
+       [list Account -1:0 $acctport "OOMMF account protocol x.y"]
+    # Note: Upon making a connection, Net_Protocol servers report their
+    # protocol name and version via a 'tell' message. The current
+    # connection handling code in this program drops that message, so we
+    # don't have the version number to insert here. But we aren't using
+    # the version number, so just insert a placeholder instead.
 }
 set nicknames {}
 if {$shownames} {

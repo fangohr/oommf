@@ -324,7 +324,7 @@ output schedules, exactly as if the user clicked through the interactive
 schedule interface one output and destination at a time and disabled
 each schedule-enabling checkbutton.  This control can be used after
 loading a problem to override the effect of any \cd{Schedule} commands
-in the MIF file.  The restart flag controls problem load behavior.  In
+in the \MIF\ file.  The restart flag controls problem load behavior.  In
 normal usage, the restart flag is not set and the selected problem loads
 and runs from the beginning.  Conversely, if the restart flag is set,
 then when a problem is loaded a check is made for a restart (checkpoint)
@@ -767,7 +767,7 @@ pairs.\index{NUMA|)}\index{parallelization|)}
 NQS) can experience sporadic failures caused by interactions between
 separate \OOMMF\ jobs running simultaneously on the same compute
 node.  These problems can be prevented by using the \OOMMF\ command
-line utility
+line utility\index{application!launchhost}
 \hyperrefhtml{\app{launchhost}}{\app{launchhost} (Sec.~}{)}{sec:launchhost}
 to isolate each job.
 
@@ -819,16 +819,16 @@ following \cd{Oxs\_Ext} classes are currently available:
   %begin{latexonly}
    {\tt\begin{tabbing}
    \hspace*{\tabcolwidth}\=\kill
-      Oxs\_BoxAtlas    \>  Oxs\_ImageAtlas \\
-      Oxs\_MultiAtlas  \>  Oxs\_ScriptAtlas \\
-      Oxs\_EllipsoidAtlas
+      Oxs\_BoxAtlas       \> Oxs\_EllipseAtlas \\
+      Oxs\_EllipsoidAtlas \> Oxs\_ImageAtlas \\
+      Oxs\_MultiAtlas     \> Oxs\_ScriptAtlas \\
    \end{tabbing}}
   %end{latexonly}
   \begin{rawhtml}
 <PRE>
-   <A HREF="#BA">Oxs_BoxAtlas</A>                    <A HREF="#IA">Oxs_ImageAtlas</A>
+   <A HREF="#BA">Oxs_BoxAtlas</A>                    <A HREF="#EA">Oxs_EllipseAtlas</A>
+   <A HREF="#EA">Oxs_EllipsoidAtlas</A>              <A HREF="#IA">Oxs_ImageAtlas</A>
    <A HREF="#MA">Oxs_MultiAtlas</A>                  <A HREF="#SA">Oxs_ScriptAtlas</A>
-   <A HREF="#EA">Oxs_EllipsoidAtlas</A>
 </PRE>
   \end{rawhtml}
 \item Meshes
@@ -998,6 +998,112 @@ region name is taken from the object instance name, i.e.,
 
 \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}.
 
+\begin{rawhtml}<A NAME="EA"></A>\end{rawhtml}%
+\index{Oxs\_Ext~child~classes!Oxs\_EllipseAtlas}%
+\item[Oxs\_EllipseAtlas:]
+Defines a volume in the shape of a right elliptical cylinder with axes
+parallel to the coordinate axes. This functionality can be obtained
+using appropriate \Tcl\ scripts with the \cd{Oxs\_ScriptAtlas} class,
+but this class is somewhat easier to use and runs faster.  The Specify
+block has the form
+\begin{latexonly}
+\begin{quote}\tt
+Specify Oxs\_EllipseAtlas:\oxsval{atlasname} \ocb\\
+\bi xrange \ocb\oxsval{ xmin xmax }\ccb\\
+\bi yrange \ocb\oxsval{ ymin ymax }\ccb\\
+\bi zrange \ocb\oxsval{ zmin zmax }\ccb\\
+\bi margin \ocb\oxsval{ margins }\ccb\\
+\bi axis \oxsval{axisdir}\\
+\bi name \ocb\oxsval{ regions }\ccb\\
+\ccb
+\end{quote}
+\end{latexonly}
+\begin{rawhtml}<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_EllipseAtlas:</TT><I>atlasname</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>margin {</TT> <I>margins</I> <TT>}</TT>
+<DD><TT>axis </TT> <I>axisdir</I>
+<DD><TT>name {</TT> <I>regions</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+\end{rawhtml}
+Here \oxsval{xmin, xmax, \ldots} are coordinates in meters, specifying
+the bounding box for the atlas, similar to the layout of the Specify
+block for the \cd{Oxs\_BoxAtlas} class. The \oxslabel{margin} setting
+combines with the bounding box to determine the extent of the elliptical
+cylinder. The \oxsval{margins} value is a list consisting of one, three,
+or six values, in units of meters. If the full six values \ocb $m_0$,
+$m_1$, \ldots, $m_5$\ccb\ are specified they determine the bounding box
+for the elliptical cylinder as
+$[xmin+m_0,xmax-m_1]\times[ymin+m_2,ymax-m_3]\times[zmin+m_4,zmax-m_5]$.
+If three values are given then they are interpreted as margins for the
+x-coordinates, y-coordinates, and z-coordinates, respectively. If a
+single margin value is listed then that value is applied along all six
+faces. If the two margin values for a given coordinate are not equal,
+then the center of the cylinder will be shifted from the center of the
+atlas. If a margin value is negative then part of the cylinder will be
+clipped at the atlas boundary. If \oxslabel{margin} is not given then
+the default is 0.
+
+The \oxsval{axisdir} should be one of x, y, or z, specifying the axis of
+symmetry for the cylinder. If not given the default is z.
+
+The \oxslabel{name} setting is a list of one or two elements. A single
+value specifies the region name for the interior of the elliptical
+cylinder.  In this case the exterior is automatically assigned to the
+global ``universe'' region. In the case of a two element list, the first
+element is the name assigned to the interior of the cylinder, the second
+element is the name assigned to the exterior of the cylinder. If
+desired, either one may be specified as ``universe'' to assign the
+corresponding volume to the global universe region. If \oxslabel{name}
+is not specified then it is treated by default as a one element list
+using the atlas object instance name, i.e., \oxsval{atlasname}, as the
+interior region name.
+
+\begin{sloppypar}
+\raggedright
+\textbf{Examples:} \fn{ellipse.mif},  \fn{ellipsea.mif}.
+\end{sloppypar}
+
+\begin{rawhtml}<A NAME="EA"></A>\end{rawhtml}%
+\index{Oxs\_Ext~child~classes!Oxs\_EllipsoidAtlas}%
+\item[Oxs\_EllipsoidAtlas:]
+Conceptually analogous to \cd{Oxs\_EllipseAtlas}, this class defines an
+ellipsoidal region with axes parallel to the coordinate axes. With
+appropriate \Tcl\ scripts, the \cd{Oxs\_ScriptAtlas} class can provide
+the same functionality, but this class is somewhat easier to use
+and runs faster.  The Specify block has the form
+\begin{latexonly}
+\begin{quote}\tt
+Specify Oxs\_EllipsoidAtlas:\oxsval{atlasname} \ocb\\
+\bi xrange \ocb\oxsval{ xmin xmax }\ccb\\
+\bi yrange \ocb\oxsval{ ymin ymax }\ccb\\
+\bi zrange \ocb\oxsval{ zmin zmax }\ccb\\
+\bi margin \ocb\oxsval{ margins }\ccb\\
+\bi name \ocb\oxsval{ regions }\ccb\\
+\ccb
+\end{quote}
+\end{latexonly}
+\begin{rawhtml}<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_EllipsoidAtlas:</TT><I>atlasname</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>margin {</TT> <I>margins</I> <TT>}</TT>
+<DD><TT>name {</TT> <I>regions</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+\end{rawhtml}
+All entries are interpreted in the same manner as for the
+\cd{Oxs\_EllipseAtlas} class.
+
+\begin{sloppypar}
+\raggedright
+\textbf{Examples:} \fn{ellipsoid.mif} and \fn{ellipsoid.mif}.  See
+\fn{ellipsoid-atlasproc.mif} and \fn{ellipsoid-fieldproc.mif} for
+examples equivalent to \fn{ellipsoid.mif} using \Tcl\ scripts.
+\end{sloppypar}
+
 \begin{rawhtml}<A NAME="IA"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_ImageAtlas}%
 \item[Oxs\_ImageAtlas:\label{html:oxsImageAtlas}]%
@@ -1060,20 +1166,26 @@ specify the extent of the atlas, in meters.  The \oxslabel{viewplane}
 \cd{zx} or \cd{yz}, which specify the mapping of the horizontal and
 vertical axes of the image respectively to axes in the simulation.  The
 image is scaled as necessary along each dimension to match the atlas
-extents along the corresponding axes.  The image is overlaid through the
+extents along the corresponding axes. The image is overlaid through the
 entire depth of the perpendicular dimension, i.e., along the axis absent
-from the \cd{viewplane} specification.  The
-\cd{Oxs\_ImageAtlas} class can be used inside a
-\cd{Oxs\_MultiAtlas} object to specify regions in a multilayer
-structure.
+from the \cd{viewplane} specification.  The \cd{Oxs\_ImageAtlas} class
+can be used inside a \cd{Oxs\_MultiAtlas} object to specify regions in a
+multilayer structure, as in example file \fn{imagelayers.mif}.  Note
+that if the image aspect ratio doesn't match the ratio of the viewplane
+ranges, then the scaling will stretch or contract the image along one
+axis. One workaround for this is to set the extents in the
+\cd{Oxs\_ImageAtlas} to match the image aspect ratio, and use a separate
+atlas (perhaps an \cd{Oxs\_BoxAtlas}) to define the mesh and simulation
+extents. This approach can also be used to translate the image relative
+to the simulation extents. For an example see \fn{imageatlas2.mif}.
 
 The \oxslabel{image} entry specifies the name of the image file to use.
 If the file path is relative, then it will be taken with respect to the
 directory containing the \MIF\ file.  The image format may be any of
 those recognized by \hyperrefhtml{\cd{any2ppm}}{\cd{any2ppm}
-(Sec.~}{)}{sec:any2ppm}.  The file will be read directly by Oxs if it is
-in the P3 or P6 PPM formats, otherwise \cd{any2ppm} will be
-automatically launched to perform the conversion.
+  (Sec.~}{)}{sec:any2ppm}.  The file will be read directly by Oxs if it
+is in one of the PPM or Microsoft BMP (uncompressed) formats, otherwise
+\cd{any2ppm} will be automatically launched to perform the conversion.
 
 The \oxslabel{colormap} value is an even length list of color + region
 name pairs.  The colors may be specified in any of several ways.  The
@@ -1189,7 +1301,7 @@ The user should not rely on any particular selection, that is to say,
 the explicit matching procedure in this case is not defined.
 \index{file!mask|)}\index{file!bitmap|)}
 
-\textbf{Examples:} \fn{imageatlas.mif}, \fn{grill.mif}.
+\textbf{Examples:} \fn{imageatlas.mif}, \fn{imageatlas2.mif}, \fn{imagelayers.mif}, \fn{grill.mif}.
 
 \begin{rawhtml}<A NAME="MA"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_MultiAtlas}%
@@ -1346,52 +1458,10 @@ starts with 1 for the $-x,-y,-z$ space, 2 for the $+x,-y,-z$ space, 3
 for the $-x,+y,-z$ space, etc.  The conversion between the two systems
 is accomplished by the ordering of the \texttt{regions} list.
 
+\begin{sloppypar}\raggedright
 \textbf{Examples:} \fn{manyregions-scriptatlas.mif}, \fn{octant.mif},
-\fn{tclshapes.mif}, \fn{diskarray.mif}, \fn{ellipsoid-atlasproc.mif}.
-
-\begin{rawhtml}<A NAME="EA"></A>\end{rawhtml}%
-\index{Oxs\_Ext~child~classes!Oxs\_EllipsoidAtlas}%
-\item[Oxs\_EllipsoidAtlas:]
-Defines an ellipsoidal region with axes parallel to the coordinate
-axes.  This functionality can be obtained using the
-\cd{Oxs\_ScriptAtlas} class with an appropriate \Tcl\ script, but this
-class is somewhat easier to use and faster.  The Specify
-block has the form
-\begin{latexonly}
-\begin{quote}\tt
-Specify Oxs\_EllipsoidAtlas:\oxsval{atlasname} \ocb\\
-\bi xrange \ocb\oxsval{ xmin xmax }\ccb\\
-\bi yrange \ocb\oxsval{ ymin ymax }\ccb\\
-\bi zrange \ocb\oxsval{ zmin zmax }\ccb\\
-\bi name \oxsval{regionname}\\
-\ccb
-\end{quote}
-\end{latexonly}
-\begin{rawhtml}<BLOCKQUOTE><DL><DT>
-<TT>Specify Oxs_EllipsoidAtlas:</TT><I>atlasname</I> <TT>{</TT>
-<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
-<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
-<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
-<DD><TT>name </TT> <I>regionname</I>
-<DT><TT>}</TT></DL></BLOCKQUOTE><P>
-\end{rawhtml}
-Here \oxsval{xmin, xmax, \ldots} are coordinates in meters, specifying
-the bounding box for the ellipsoid.  The layout of the Specify
-block is exactly the same as for the \cd{Oxs\_BoxAtlas} class, except
-that in this case the named region is not the whole bounding box but
-rather that subvolume that is the interior of the ellipsoid inscribed
-inside the bounding box.  Points exterior to that ellipsoid are
-assigned to the ``universe'' region.
-
-As in the \cd{Oxs\_BoxAtlas} case, the \oxsval{regionname} entry is
-optional; if missing, the region name is taken from the object instance
-name, i.e., \oxsval{atlasname}.
-
-\begin{sloppypar}
-\raggedright
-\textbf{Example:} \fn{ellipsoid.mif}.  See also
-\fn{ellipsoid-atlasproc.mif} and \fn{ellipsoid-fieldproc.mif} for
-equivalent examples using \Tcl\ scripts.
+\fn{pattern.mif}, \fn{tclshapes.mif}, \fn{diskarray.mif},
+\fn{ellipsoid-atlasproc.mif}.
 \end{sloppypar}
 \end{description}
 
@@ -1758,7 +1828,9 @@ calc count'' value provided by the evolver.
    \cd{Oxs\_UniformExchange} provides the three scalar outputs
    \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
    \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
-
+   These values are also accessible through the \MIF\
+   \htmlonlyref{\cd{GetStateData}}{html:GetStateData} command.
+   
    \textbf{Examples:} \fn{sample.mif}, \fn{cgtest.mif}, \fn{stdprob3.mif}.
 
 \begin{rawhtml}<A NAME="EP"></A>\end{rawhtml}%
@@ -1839,14 +1911,14 @@ calc count'' value provided by the evolver.
         \bi \bi region \oxsval{region\_label}\\
         \bi \bi scalarfield \oxsval{scalarfield\_spec}\\
         \bi \bi scalarvalue \oxsval{fieldvalue}\\
-        \bi \bi scalarside  \oxsval{sign}\\
+        \bi \bi scalarside  \oxsval{side}\\
         \bi \ccb\\
         \bi surface2 \ocb\\
         \bi \bi atlas  \oxsval{atlas\_spec}\\
         \bi \bi region \oxsval{region\_label}\\
         \bi \bi scalarfield \oxsval{scalarfield\_spec}\\
         \bi \bi scalarvalue \oxsval{fieldvalue}\\
-        \bi \bi scalarside  \oxsval{sign}\\
+        \bi \bi scalarside  \oxsval{side}\\
         \bi \ccb\\
       \ccb
       \end{quote}
@@ -1860,21 +1932,20 @@ calc count'' value provided by the evolver.
        <DD> <TT>region </TT><I>region_label</I>
        <DD> <TT>scalarfield </TT><I>scalarfield_spec</I>
        <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
-       <DD> <TT>scalarside </TT><I>sign</I>
+       <DD> <TT>scalarside </TT><I>side</I>
    </DL><TT>}</TT>
    <DD><TT>surface2 {</TT><DL>
        <DD> <TT>atlas </TT><I>atlas_spec</I>
        <DD> <TT>region </TT><I>region_label</I>
        <DD> <TT>scalarfield </TT><I>scalarfield_spec</I>
        <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
-       <DD> <TT>scalarside </TT><I>sign</I>
+       <DD> <TT>scalarside </TT><I>side</I>
    </DL><TT>}</TT>
    <DT><TT>}</TT></DL></BLOCKQUOTE><P>
    \end{rawhtml}
    Here \textbf{sigma} and \textbf{sigma2} are the bilinear and
    biquadratic surface (interfacial) exchange energies, in
-   \latexhtml{J/m${}^2$}{J/m^2}.  Either is optional, with default value
-   0.
+   J/m${}^2$.  Either is optional, with default value 0.
 
    The \oxslabel{surface1} and \oxslabel{surface2} sub-blocks describe
    the two interacting surfaces.  Each description consists of 5
@@ -1886,19 +1957,17 @@ calc count'' value provided by the evolver.
    \oxslabel{scalarside} entries define a discretized surface inside the
    bounding region.  Here \oxsval{scalarfield\_spec} references a scalar
    field object, \oxsval{fieldvalue} should be a floating point value,
-   and \oxsval{sign} should be a single character, either `$-$' or
-   `$+$'.  If \oxsval{sign} is `$-$', then any point for which the
-   scalar field object takes a value less than or equal to the
-   \cd{scalarvalue} value is considered to be ``inside'' the surface.
-   Conversely, if \oxsval{sign} is `$+$', then any point for which the
-   scalar field object has value greater than or equal to the
-   \cd{scalarvalue} value is considered to be ``inside'' the surface.
-   The discretized surface determined is the set of all points on the
-   problem mesh that are in the bounding region, are either on the
-   surface or lie on the ``inside'' side of the surface, and have a
-   (nearest-) neighbor that is on the ``outside'' side of the surface.
-   A ``neighbor'' is determined by the mesh; in a typical rectangular
-   mesh each cell has six neighbors.
+   and \oxsval{side} should be one of \cd{<}, \cd{<=}, \cd{>=}, or
+   \cd{>}.  Any point for which the scalar field object takes a value
+   less than, less than or equal, greater than or equal, or greater
+   than, respectively, the \cd{scalarvalue} value is considered to be
+   ``inside'' the surface. (Values \cd{-} and \cd{+} for \oxsval{side}
+   are deprecated synonyms for \cd{<=} and \cd{>=}.)  The discretized
+   surface determined is the set of all points on the problem mesh that
+   are in the bounding region, are ``inside'' the surface, and have a
+   (nearest-) neighbor that is ``outside'' (i.e., not inside) the
+   surface.  A neighbor is determined by the mesh; in a typical
+   rectangular mesh each cell has six neighbors.
 
    In this way, 2 discrete lists of cells representing the two
    surfaces are obtained.  Each cell from the first list (representing
@@ -1976,14 +2045,14 @@ Specify Oxs_TwoSurfaceExchange:AF {
               region  bottom
          scalarfield  :zheight
          scalarvalue  3e-9
-          scalarside  -
+          scalarside  <=
     }
     surface2 {
                atlas  :atlas
               region  top
          scalarfield  :zheight
          scalarvalue  6e-9
-          scalarside  +
+          scalarside  >=
     }
 }
 \end{verbatim}
@@ -2226,9 +2295,13 @@ Specify Oxs_TwoSurfaceExchange:AF {
    Defined Support Procedures section (Sec.~}{)}{par:supportProcs}
    \html{section} of the \MIF~2 file format documentation.  The value
    \oxsval{args\_request} should be a subset of \cd{\ocb stage
-   stage\_time total\_time\ccb}.  If \cd{script\_args} is not specified,
-   the default argument list is the complete list in the aforementioned
-   order.  The units for the time arguments are seconds.
+   stage\_time total\_time base\_state\_id current\_state\_id\ccb}.
+   The units for the time options are seconds.  The two
+   \cd{state\_id} options are intended for use with the
+   \MIF\ \htmlonlyref{\cd{GetStateData}}{html:GetStateData} command;
+   refer to the documentation on that command in the \MIF~2.1 section
+   for details.  If \cd{script\_args} is not specified, the default
+   argument list is \cd{\ocb stage stage\_time total\_time\ccb}.
 
    The return value from the script should be a 6-tuple of numbers,
    \ocb\cd{Hx}, \cd{Hy}, \cd{Hz}, \cd{dHx}, \cd{dHy}, \cd{dHz}\ccb,
@@ -2540,7 +2613,7 @@ Oxs_ScriptVectorField {
 %end<latexonly>
 \begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
    The \verb+:atlas+ reference is to an \cd{Oxs\_Atlas} object defined
-   elsewhere in the MIF file.
+   elsewhere in the \MIF\ file.
 
    The \oxslabel{stage\_count} parameter lets the
    \hyperrefhtml{\cd{Oxs\_Driver}}{\cd{Oxs\_Driver}
@@ -3082,10 +3155,41 @@ that allowed by \oxsval{eprecision}.  The default value for
 may be disabled by setting \oxsval{eprecision} to -1.
 
 The \cd{Oxs\_RungeKuttaEvolve} module provides the same scalar, scalar
-field, and vector field outputs as \cd{Oxs\_EulerEvolve}.
+field, and vector field outputs as \cd{Oxs\_EulerEvolve}.  It also
+provides the following state data accessible through the \MIF\ 
+\htmlonlyref{\cd{GetStateData}}{html:GetStateData} command:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\cd{\begin{tabular}{l@{\hskip 3em}l@{\hskip 3em}l}
+    Mx & My & Mz \\
+    dMx/dt & dMy/dt & dMz/dt \\
+    Total E & dE/dt & pE/pt \\
+    \multicolumn{3}{l}{Timestep lower bound}
+\end{tabular}}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The full name for each of these items is
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\cd{Oxs\_RungeKuttaEvolve:{\oab}instance\_name{\cab}:{\oab}item\_name{\cab}},
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+where \cd{{\oab}instance\_name{\cab}} is the instance name of the object
+(typically an empty string or something like ``evolver'').  For stage
+start states only the \cd{Mx}, \cd{My}, and \cd{Mz} items are available.
+These terms, and the corresponding \cd{dMx/dt}, \cd{dMy/dt}, and
+\cd{dMz/dt}, are component values averaged across the full simulation.
 
-\textbf{Examples:} \fn{sample.mif}, \fn{acsample.mif},
-                   \fn{varalpha.mif}, \fn{yoyo.mif}.
+\textbf{Examples:} \fn{sample.mif}, \fn{acsample.mif}, \fn{spinmag.mif},
+\fn{spinmag2.mif}, \fn{varalpha.mif}, \fn{yoyo.mif}.
 
 \begin{rawhtml}<A NAME="SX"></A>\end{rawhtml}%
 \index{Oxs\_Ext~child~classes!Oxs\_SpinXferEvolve}%
@@ -3521,11 +3625,11 @@ simulation as a whole, by grouping steps into tasks, stages and runs.
 
 Tasks are small groups of steps that can be completed without adversely
 affecting user interface responsiveness.  Stages are larger units
-specified by the MIF problem description; in particular, problem
+specified by the \MIF\ problem description; in particular, problem
 parameters are not expected to change in a discontinuous manner inside a
 stage.  The run is the complete sequence of stages, from problem start to
 finish.  The driver detects when stages and runs are finished, using
-criteria specified in the MIF problem description, and can enforce
+criteria specified in the \MIF\ problem description, and can enforce
 constraints, such as making sure stage boundaries respect time stopping
 criteria.
 
@@ -3943,7 +4047,7 @@ As discussed in
 \html{the section on \htmlonlyref{Oxs\_Ext
 referencing}{par:oxsExtReferencing} in the \htmlonlyref{MIF
 2}{sec:mif2format} documentation,}
-\latex{the MIF 2 documentation (Sec.~\ref{par:oxsExtReferencing},
+\latex{the \MIF\ 2 documentation (Sec.~\ref{par:oxsExtReferencing},
 page~\pageref{par:oxsExtReferencing}),}
 when embedding \cd{Oxs\_UniformScalarField}
 or \htmlonlyref{\cd{Oxs\_UniformVectorField}}{item:UniformVectorField}
@@ -4690,7 +4794,7 @@ As discussed in
 \html{the section on \htmlonlyref{Oxs\_Ext
 referencing}{par:oxsExtReferencing} in the \htmlonlyref{MIF
 2}{sec:mif2format} documentation,}
-\latex{the MIF 2 documentation (Sec.~\ref{par:oxsExtReferencing},
+\latex{the \MIF\ 2 documentation (Sec.~\ref{par:oxsExtReferencing},
 page~\pageref{par:oxsExtReferencing}),}
 when embedding \cd{Oxs\_UniformVectorField}
 or \htmlonlyref{\cd{Oxs\_UniformScalarField}}{item:UniformScalarField}

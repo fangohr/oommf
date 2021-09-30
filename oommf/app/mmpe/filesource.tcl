@@ -7,7 +7,7 @@ package require Net 2
 wm withdraw .
 
 Oc_Main SetAppName FileSource
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:44 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author
@@ -58,7 +58,6 @@ wm protocol . WM_DELETE_WINDOW { exit }
 Oc_EventHandler New _ Oc_Main Exit {proc Die win {}}
 
 wm deiconify .
-wm title . [Oc_Main GetInstanceName]
 wm iconname . [wm title .]
 
 #**************************************************************************#
@@ -70,6 +69,20 @@ $menuname add command -label "Open..." -command\
 $menuname add separator
 $menuname add command -label Exit -command { exit } -underline 1
 Ow_StdHelpMenu $helpmenu
+
+# Set minimum primary window width
+set menuwidth [Ow_GuessMenuWidth $menubar]
+set bracewidth [Ow_SetWindowTitle . [Oc_Main GetInstanceName]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
+}
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
+        -highlightthickness 0]
+pack $brace -side top
+Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+  $brace configure -width \
+    [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+}]
 
 #**************************************************************************#
 # File select

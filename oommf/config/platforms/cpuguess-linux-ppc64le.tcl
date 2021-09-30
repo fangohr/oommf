@@ -104,3 +104,69 @@ proc GetGccCpuOptFlags { gcc_version cpu_type } {
    return $cpuopts
 }
 
+proc GetGccLinkOptFlags { gcc_version } {
+   set opts "-lpthread"
+   return $opts
+}
+
+
+########################################################################
+########################################################################
+
+# Routines to obtain version from Portland Group pgc++ compiler.
+proc GuessPgccVersion { pgcc } {
+   set guess {}
+   catch {
+      set fptr [open "|$pgcc --version" r]
+      set verstr [string trim [read $fptr]]
+      close $fptr
+      set verstr [lindex [split $verstr "\n"] 0]
+      set digstr {[0-9]+\.[0-9.-]+}
+      set ws "\[ \t\n\r\]"
+      regexp -- "(^|$ws)($digstr)($ws|$)" $verstr dummy dum0 guess dum1
+   }
+   return [split $guess ".-"]
+}
+
+proc GetPgccBannerVersion { pgcc } {
+   set banner {}
+   catch {
+      set fptr [open "|$pgcc --version" r]
+      set verstr [string trim [read $fptr]]
+      close $fptr
+      set banner [lindex [split $verstr "\n"] 0]
+   }
+   return $banner
+}
+
+proc GetPgccGeneralOptFlags { pgcc_version } {
+   # Note: If flags -mp and --exceptions are both used, the latter must
+   # come later in the option sequence.
+   set opts [list -std=c++11]
+   if {[lindex $pgcc_version 0]<=16} {
+       lappend opts --exceptions
+   }
+   return $opts
+}
+proc GetPgccValueSafeOptFlags { pgcc_version cpu_arch} {
+   set opts  [list -O2 -Kieee -Mnofprelaxed -Mnofpapprox -Mvect=noassoc]
+   return $opts
+}
+proc GetPgccFastOptFlags { pgcc_version cpu_arch } {
+   # CPU model architecture specific options.
+   set opts [list -fast -Knoieee]
+   return $opts
+}
+
+proc GetPgccLinkOptFlags { pgcc_version } {
+   # Linker flags
+   set opts {-Mnoeh_frame}
+   ## Without -Mnoen_frame, threads in Oxs abort during
+   ## Tcl_ExitThread() processing with the error "terminate called
+   ## without an active exception" if the thread code contains a
+   ## try/catch block.  (At least for pgc++ version 16.10-0.)
+   if {[lindex $pgcc_version 0]<=16} {
+       lappend opts -latomic
+   }
+   return $opts
+}

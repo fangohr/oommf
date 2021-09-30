@@ -19,6 +19,13 @@
 # safety" config option).
 #
 Oc_Class Oxs_Mif {
+    # regression_test_level defaults to 0, which means not a regression
+    # test. Level 1 indicates a load test, level 2 or higher is a debug
+    # test. See proc SetRegressionTestLevel for details on setting up a
+    # regression test run.
+    private common regression_test_level 0
+    private common regression_test_basename {}
+
     private variable speckeys           ;# Ordered list of keys
     private array variable spec
     private variable destkeys = {}      ;# Ordered list of keys
@@ -92,6 +99,7 @@ Oc_Class Oxs_Mif {
         interp eval $mif_interp [list proc Ignore args {}]
         interp alias $mif_interp RandomSeed {} $this RandomSeed
         interp alias $mif_interp Random {} Oc_UnifRand
+        interp alias $mif_interp ReadRNGState {} Oc_ReadRNGState
         interp alias $mif_interp OOMMFRootDir {} Oc_Main GetOOMMFRootDir
         interp alias $mif_interp Parameter {} $this SetParameter
         interp alias $mif_interp Destination {} $this Destination
@@ -102,6 +110,8 @@ Oc_Class Oxs_Mif {
         interp alias $mif_interp SetOptions {} $this SetOptions
         interp alias $mif_interp EvalScalarField {} Oxs_EvalScalarField
         interp alias $mif_interp EvalVectorField {} Oxs_EvalVectorField
+        interp alias $mif_interp QueryState {} Oxs_QueryState
+        interp alias $mif_interp GetStateData {} Oxs_Mif GetStateData
         interp alias $mif_interp GetAtlasRegions {} Oxs_GetAtlasRegions
         interp alias $mif_interp GetAtlasRegionByPosition \
            {} Oxs_GetAtlasRegionByPosition
@@ -120,6 +130,9 @@ Oc_Class Oxs_Mif {
             interp alias $mif_interp ReadFile {} $this Missing ReadFile
             interp alias $mif_interp RGlob {} $this Missing RGlob
         }
+        # Make sure child interp uses same atan2 function as parent. (In
+        # particular, as concerns behavior of atan2(0.,0.).)
+        interp alias $mif_interp ::tcl::mathfunc::atan2 {} ::tcl::mathfunc::atan2
 
         # Initialize "guaranteed to exist" options
         set options(basename) oxs
@@ -142,9 +155,12 @@ Oc_Class Oxs_Mif {
         ##    accordingly.
 
         ## Let child know if regression test is running.
-        global regression_test
-        if {[info exists regression_test] && $regression_test} {
-           interp eval $mif_interp set regression_test 1
+        if {$regression_test_level>0} {
+           interp eval $mif_interp set regression_test $regression_test_level
+           $this RandomSeed 72 ;# Default initialization
+        } else {
+           $this RandomSeed ;# Initialize random number generators from
+                            ## system clock
         }
     }
 
@@ -234,8 +250,8 @@ Oc_Class Oxs_Mif {
         if {[string compare Done $e] == 0 && [string match {} $f]} {
            set f 1  ;# Done event doesn't require a frequency count
         }
-        if {[catch {incr f 0}] || ($f < 1)} {
-            return -code error "Frequency must be a positive integer,\
+        if {[catch {incr f 0}] || ($f < 0)} {
+            return -code error "Frequency must be a non-negative integer,\
                     not \"$f\""
         }
         if {[string compare Done $e] == 0 && ($f > 1)} {
@@ -253,7 +269,9 @@ Oc_Class Oxs_Mif {
     method CreateSchedule {} {
         set script ""
         foreach key [array names schedule] {
-            # Get the arguments of the [Schedule] command
+            # Get the arguments of the [Schedule] command.
+            # Here o is the output object, tag is the destination tag,
+            # e is the event and f is frequency.
             foreach {o tag e f} $schedule($key) {break}
 
             # Verify that $o names an output
@@ -264,7 +282,7 @@ Oc_Class Oxs_Mif {
             }
 
             # Transform the destination tag into an Oxs_Destination name
-            # The destination tag directly determines an OID
+            # The destination tag directly determines an OID.
             set oid $assign($tag)
 
             # The OID identifies a running process.  The service protocol
@@ -273,8 +291,8 @@ Oc_Class Oxs_Mif {
 
             # NB: At this point we know that the application we seek is
             # known to the account server; we do not know if the service
-            # has been registered there, let alone whether a Net_Thread
-            # exists here to represent it!
+            # has been registered there, let alone whether an
+            # Oxs_Destination instance exists here to represent it!
             #
             # Ack!  DataTable is special!
             if {[catch {
@@ -285,10 +303,9 @@ Oc_Class Oxs_Mif {
                }
                [Oxs_Destination Lookup $d] Store $extra($tag)
             }]} {
-               # A destination could not be found; wait until another thread
-               # becomes ready and try again.
-               #    puts stderr "NOT FOUND: $tag -> $oid"
-               Oc_EventHandler New _ Net_Thread Ready \
+               # A destination could not be found; wait until another
+               # destination is created and try again.
+               Oc_EventHandler New _ Oxs_Destination NewDestination \
                   [list $this CreateSchedule] -oneshot 1 -groups [list $this]
                return
             }
@@ -550,15 +567,23 @@ Oc_Class Oxs_Mif {
 
     method RandomSeed { args } {
        # Stores random seed.  Uses InitRandom to feed seed to both Tcl
-       # interpreters and C-level random number generators.
+       # interpreters and C-level random number generators. If called
+       # with no args or with an empty string then a seed is generated
+       # from the system clock.
        if {[llength $args] > 1} {
           return -code error \
              "wrong # args: should be \"$this RandomSeed ?arg?\""
        }
-       if {[llength $args]==0} {
-          Oc_Srand   ;# Use clock-based seed
-          set random_seed [expr {round([Oc_UnifRand]*((1<<31)-1))}]
-          ;## random_seed is an integer determined by clock-based seed
+       if {[llength $args]==0 || [string match {} [lindex $args 0]]} {
+          if {$regression_test_level!=1} {
+             Oc_Srand   ;# Use clock-based seed
+             set random_seed [expr {round([Oc_UnifRand]*((1<<31)-1))}]
+             ;## random_seed is an integer determined by clock-based seed
+          }
+          ## If regression_test_level == 1 ("load" test drawn from
+          ## oxs/examples/) then clock-based seeding is disabled, and
+          ## the default seed set in the Oxs_Mif constructor is
+          ## retained.
        } else {
           set random_seed [lindex $args 0]
        }
@@ -574,11 +599,11 @@ Oc_Class Oxs_Mif {
 
     method InitRandom {} {
        # Initializes random number generators in both Tcl interpreters
-       # and at C-level.  If RandomSeed has not been previously called,
-       # then this routine will call it with no parameters, thereby
-       # generating a seed via the system clock.
-       if {[string match {} $random_seed]} {
-          $this RandomSeed ;# Create clock-based seed
+       # and at C-level.
+       if {![string is integer -strict $random_seed]} {
+          return -code error \
+             "Oc_Class Oxs_Mif method InitRandom:\
+              Invalid random_seed; \"$random_seed\" is not a 32-bit integer"
        }
        Oc_Srand $random_seed ;# Set C-level random number generator
 
@@ -855,6 +880,85 @@ Oc_Class Oxs_Mif {
        return $mif_file_contents
     }
 
+    proc GetStateData { args } {
+       # Interface to Oxs_QueryState with wildcard support
+       # Usage:
+       #    GetStateData [-glob -exact -regexp] [-pairs] -- \
+       #        state_id [pattern ...]
+       # If no patterns are specified then the list of keys is
+       # returned.
+
+       # Scan args for option flags
+       set match_type -glob
+       set return_pairs 0
+       for {set i 0} {$i<[llength $args]} {} {
+          set elt [lindex $args $i]
+          switch -exact $elt {
+             -- {
+                set args [lreplace $args $i $i]
+                break ;# End option processing
+             }
+             -exact -
+             -glob -
+             -regexp {
+                set match_type $elt
+                set args [lreplace $args $i $i]
+             }
+             -pairs {
+                set return_pairs 1
+                set args [lreplace $args $i $i]
+             }
+             default {
+                incr i
+             }
+          }
+       }
+
+       if {[llength $args]<1} {
+          error "wrong # args: should be \"GetStateData\
+           ?-glob -exact -regexp -pairs --? state_id ?pattern ...?\""
+       }
+       set patterns [lassign $args state_id]
+
+       if {[llength $patterns]==0} {
+          # Keys request
+          return [Oxs_QueryState $state_id keys]
+       }
+
+       # If match request is -exact, then pass keys straight through
+       # to Oxs_QueryState
+       if {[string compare -exact $match_type]==0} {
+          # If match request is -exact then no key matching needed
+          return [Oxs_QueryState $state_id values {*}$patterns]
+       }
+
+       # Get state keys
+       set keys [Oxs_QueryState $state_id keys]
+
+       set match_keys {}
+       set nomatch {}
+       foreach elt $patterns {
+          set matched [lsearch -all -inline $match_type $keys $elt]
+          if {[llength $matched]==0} {
+             lappend nomatch $elt
+          } else {
+             lappend match_keys {*}$matched
+          }
+       }
+       if {[llength $nomatch]>0} {
+          error "No match for key request(s): $nomatch"
+       }
+       set pairs [Oxs_QueryState $state_id values {*}$match_keys]
+       if {$return_pairs} {
+          return $pairs
+       }
+       set vals {}
+       foreach {k v} $pairs {
+          lappend vals $v
+       }
+       return $vals
+    }
+
     method NotHere { cmdname args } {
        return -code error "MIF command \"$cmdname\" not available in\
                   MIF ${mif_major_version}.${mif_minor_version} format"
@@ -1005,6 +1109,10 @@ Oc_Class Oxs_Mif {
             Oxs_ExtCreateAndRegister $key $init_str
          }
       }
+
+      if {$regression_test_level>0} {
+         $this RegressionTestSetup
+      }
     }
 
     method SetOptions { args } {
@@ -1056,8 +1164,19 @@ Oc_Class Oxs_Mif {
         return $specstr
     }
 
+    # To set up a regression test run, call the SetRegressionTestLevel
+    # proc to initialize the testing level and base output names before
+    # creating the Oxs_Mif object. This will adjust random number
+    # generation and run parameters in accordance with the specified
+    # level. After the Oxs_Ext objects are created the
+    # Oxs_DriverLoadTestSetup command can be called by the controlling
+    # script (e.g., boxsi.tcl) to modify driver behavior.
+    proc SetRegressionTestLevel { level testname } {
+       set regression_test_level $level
+       set regression_test_basename $testname
+    }
 
-    method RegressionTestSetup { level regressiontest_basename } {
+    private method RegressionTestSetup {} {
        # This is not a standard run, but rather part of a regression
        # test.  If level == 1, then make the following changes to the
        # problem specification:
@@ -1080,20 +1199,21 @@ Oc_Class Oxs_Mif {
        # IMPORTANT NOTE: This routine only affects variables local to
        # Oxs_Mif, and so must be called *BEFORE* SetupInitialSchedule.
        #
-       if {$level < 1} { return }  ;# Not a regression test
-       if {$level < 2} {
+       if {$regression_test_level < 1 } { return }  ;# Not a regression test
+       if {$regression_test_level < 2} {
           catch {unset schedule}
           set destkeys {}
           catch {unset dest}
           catch {unset extra}
           $this Destination archive mmArchive
           $this Schedule DataTable archive Step 1
-          $this RandomSeed 73
        }
-       $this SetOptions [list basename $regressiontest_basename]
+       $this SetOptions [list basename $regression_test_basename]
     }
 
     Destructor {
+       Oc_EventHandler Generate $this Delete
+       Oc_EventHandler DeleteGroup $this
        if {!$mif_interp_nodelete} {
           catch {interp delete $mif_interp}
        }

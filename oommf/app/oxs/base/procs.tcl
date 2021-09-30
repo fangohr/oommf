@@ -92,3 +92,66 @@ proc Oxs_CheckpointTimestamp {} {
    }
    return [clock format $chktime]
 }
+
+# Routine to flush pending log messages. Used for cleanup on problem exit.
+proc Oxs_FlushLog {} {
+   foreach id [after info] {
+      foreach {script type} [after info $id] break
+      if {[string match idle $type] && [string match *Oc_Log* $script]} {
+         uplevel #0 $script
+      }
+   }
+}
+
+# Routine to flush pending data messages. Used for cleanup on problem exit.
+proc Oxs_FlushData {} {
+   global OxsFlushData_open_connections
+   set OxsFlushData_open_connections [dict create]
+   # Explicitly close each data destination.  Note that at the very
+   # bottom a socket close occurs, which is a blocking operation.
+   foreach elt [Net_Thread Instances] {
+      if {![catch {$elt Protocol} proto]} {
+         # If thread is in an uninitialized (partially shutdown)
+         # state, then Protocol might not be set.
+         # Note: AFAIK there isn't any reason for Oxs to hold a
+         #       Net_Thread on the client side to a GeneralInterface
+         #       server, but it shouldn't hurt to handle that case
+         #       either.
+         switch -exact $proto {
+            GeneralInterface -
+            DataTable -
+            vectorField -
+            scalarField {
+               dict set OxsFlushData_open_connections \
+                  $elt [list $proto [$elt Id]]
+               Oc_EventHandler New _ $elt DeleteEnd \
+                   "dict unset OxsFlushData_open_connections $elt" -oneshot 1
+               $elt Send bye
+            }
+            default {
+               Oc_Log Log "Unrecognized Net_Thread protocol \"$proto\"\
+                         will not be flushed" warning
+            }
+         }
+      }
+   }
+   # If desired, the following stanza can be moved to the
+   # very end of the shutdown process.
+   dict set OxsFlushData_open_connections TIMEOUT 0
+   while {[dict size $OxsFlushData_open_connections] > 1} {
+      set failsafe [after 120000 \
+         dict set OxsFlushData_open_connections TIMEOUT 1]
+      vwait OxsFlushData_open_connections
+      after cancel $failsafe
+      if {[dict get $OxsFlushData_open_connections TIMEOUT]} {
+         dict unset OxsFlushData_open_connections TIMEOUT
+         set msg "WARNING: Timeout waiting to flush data\
+                  to the following channel(s):\n"
+         foreach key [dict keys $OxsFlushData_open_connections] {
+            lassign [dict get $OxsFlushData_open_connections $key] proto id
+            append msg " --> $id, protocol=$proto\n"
+         }
+         Oc_Log Log $msg warning
+      }
+   }
+}

@@ -238,7 +238,14 @@ MakeRule Define {
 proc Xp_RunTest { testpgm args } {
    puts "---------------------------------------"
    puts "---  Testing Xp_DoubleDouble build  ---\n$testpgm $args"
-   if {[catch {eval exec $testpgm $args 2>@ stderr} outdump]} {
+   # Exec first with the --version option to check that the target can
+   # be loaded and run. In particular, this will detect problems with
+   # shared libraries.
+   if {[catch {eval exec $testpgm --version 2>@1} outdump]} {
+      set msg "Unable to execute $testpgm:\n$outdump"
+      error $msg $msg
+   }
+   if {[catch {eval exec $testpgm $args 2>@1} outdump]} {
       # error running program
       set msg "Error running $testpgm $args:\n$outdump"
       append msg "\n\

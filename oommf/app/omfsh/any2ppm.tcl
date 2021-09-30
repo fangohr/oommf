@@ -10,10 +10,11 @@
 package require Oc 2	;# [Oc_TempFile]
 package require Tk
 package require If 2
+
 Oc_ForceStderrDefaultMessage
 
 Oc_Main SetAppName any2ppm
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Option console {} {}
 

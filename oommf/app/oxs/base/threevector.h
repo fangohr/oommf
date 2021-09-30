@@ -25,6 +25,28 @@ class Oxs_ThreeVector;  // Forward declaration for typedef
 typedef Oxs_ThreeVector ThreeVector;
 
 class Oxs_ThreeVector {
+private:
+  // C++11 provides std::fma() that computes fused-multiply-add with
+  // correct (i.e., single) rounding. This is very useful for building
+  // numerically finicky code like double-double multiplication
+  // (cf. oommf/pkg/xp/doubledouble.cc), but can be painfully slow if
+  // the compiler target doesn't have hardware support for fma. If
+  // precision is not an issue, then you'll likely get faster binaries
+  // by simply expanding out fma(a,b,c) as a*b+c and letting the
+  // compiler decide when and where to insert fma's in the executable.
+  //   The following inline function is a transparent wrapper around an
+  // expanded fma. It is provided and used below to make it easy to
+  // compare the speed vs. precission trade-offs of using the expanded
+  // form vs. std::fma; just change the "a*b+c" to std::fma(a,b,c) to
+  // test.
+  inline static OC_REAL8m FMA_Block(OC_REAL8m a,OC_REAL8m b,OC_REAL8m c) {
+    return a*b+c;
+  }
+  // Friend access for FMA_Block
+  friend const Oxs_ThreeVector operator^(const Oxs_ThreeVector& v,
+                                         const Oxs_ThreeVector& w);
+  friend OC_REAL8m operator*(const Oxs_ThreeVector& lhs,
+                             const Oxs_ThreeVector& rhs);
 public:
   OC_REAL8m x,y,z;
 
@@ -57,14 +79,11 @@ public:
     OC_REAL8m ty = z * w.x  -  x * w.z;
     OC_REAL8m tz = x * w.y  -  y * w.x;
     x = tx; y = ty; z = tz;
-#else // In principle, the ordering below reduces register pressure
-    OC_REAL8m p12 = x*w.y;
-    OC_REAL8m p13 = x*w.z;
-    OC_REAL8m p23 = y*w.z;
-    p12 -= y*w.x;
-    y = z*w.x - p13;
-    x = p23 - z*w.y;
-    z = p12;
+#else
+    OC_REAL8m tx = FMA_Block(y,w.z,-z*w.y);
+    OC_REAL8m ty = FMA_Block(z,w.x,-x*w.z);
+    OC_REAL8m tz = FMA_Block(x,w.y,-y*w.x);
+    x = tx; y = ty; z = tz;
 #endif
     return *this;
   }
@@ -88,26 +107,28 @@ public:
 
 
   Oxs_ThreeVector& Accum(OC_REAL8m a,const Oxs_ThreeVector& v) {
-    x+=a*v.x;  y+=a*v.y;  z+=a*v.z;  return *this;
+    x = FMA_Block(a,v.x,x);
+    y = FMA_Block(a,v.y,y);
+    z = FMA_Block(a,v.z,z);
+    return *this;
   }
 
   Oxs_ThreeVector& wxvxw(const Oxs_ThreeVector& w) {
     // Performs w x *this x w
-
-    OC_REAL8m tx = y * w.z  -  z * w.y;
-    OC_REAL8m ty = z * w.x  -  x * w.z;
-    z = ty * w.x  - tx * w.y ;
-
-    OC_REAL8m tz = x * w.y  -  y * w.x;
-    x = tz * w.y  - ty * w.z ;
-    y = tx * w.z  - tz * w.x ;
-
+    OC_REAL8m tx = FMA_Block(y,w.z,-z*w.y);
+    OC_REAL8m ty = FMA_Block(z,w.x,-x*w.z);
+    z = FMA_Block(ty,w.x,-tx*w.y);
+    OC_REAL8m tz = FMA_Block(x,w.y,-y*w.x);
+    x = FMA_Block(tz, w.y,-ty*w.z);
+    y = FMA_Block(tx, w.z,-tz*w.x);
     return *this;
   }
 
   // Misc
   OC_REAL8m Mag() const { return Oc_Hypot(x,y,z); }
-  OC_REAL8m MagSq() const { return x*x+y*y+z*z; }
+  OC_REAL8m MagSq() const {
+    return FMA_Block(x,x,FMA_Block(y,y,z*z));
+  }
   OC_REAL8m TaxicabNorm() const { return fabs(x)+fabs(y)+fabs(z); }  // aka L1-norm
   void SetMag(OC_REAL8m mag);  // Adjusts size to "mag"
   void Random(OC_REAL8m mag);  // Makes a random vector of size "mag"
@@ -154,13 +175,10 @@ operator^(const Oxs_ThreeVector& v,
   OC_REAL8m tx = v.y * w.z  -  w.y * v.z;
   OC_REAL8m ty = w.x * v.z  -  v.x * w.z;
   OC_REAL8m tz = v.x * w.y  -  w.x * v.y;
-#else // In principle, the ordering below reduces register pressure
-  OC_REAL8m tz = v.x*w.y;
-  OC_REAL8m ty = v.x*w.z;
-  OC_REAL8m tx = v.y*w.z;
-  tz -= v.y*w.x;
-  ty  = v.z*w.x - ty;
-  tx -= v.z*w.y;
+#else
+  OC_REAL8m tx = Oxs_ThreeVector::FMA_Block(v.y,w.z,-w.y*v.z);
+  OC_REAL8m ty = Oxs_ThreeVector::FMA_Block(w.x,v.z,-v.x*w.z);
+  OC_REAL8m tz = Oxs_ThreeVector::FMA_Block(v.x,w.y,-w.x*v.y);
 #endif
   return Oxs_ThreeVector(tx,ty,tz);
 }
@@ -181,7 +199,12 @@ operator*(const Oxs_ThreeVector& vec,
 // Dot product
 inline OC_REAL8m
 operator*(const Oxs_ThreeVector& lhs,const Oxs_ThreeVector& rhs)
+#if 0
 { return lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z; }
+#else
+{ return Oxs_ThreeVector::FMA_Block(lhs.x,rhs.x,
+         Oxs_ThreeVector::FMA_Block(lhs.y,rhs.y,lhs.z*rhs.z)); }
+#endif
 
 ////////////////////////////////////////////////////////////////////////
 // "Pair" routines, that process two vectors at a time.  If SSE is
@@ -191,10 +214,16 @@ operator*(const Oxs_ThreeVector& lhs,const Oxs_ThreeVector& rhs)
 inline __m128d Oxs_ThreeVectorPairMagSq
 (const __m128d vx,const __m128d vy,const __m128d vz)
 { // Returns |vec0|^2 in in lower half, |vec1|^2 in upper half.
+  __m128d tzsq = _mm_mul_pd(vz,vz);
+#if OC_FMA_TYPE == 3
+  return _mm_fmadd_pd(vx,vx,_mm_fmadd_pd(vy,vy,tzsq));
+#elif OC_FMA_TYPE == 4
+  return _mm_macc_pd(vx,vx,_mm_macc_pd(vy,vy,tzsq));
+#else
   __m128d txsq = _mm_mul_pd(vx,vx);
   __m128d tysq = _mm_mul_pd(vy,vy);
-  __m128d tzsq = _mm_mul_pd(vz,vz);
   return _mm_add_pd(_mm_add_pd(txsq,tysq),tzsq);
+#endif
 }
 
 inline __m128d Oxs_ThreeVectorPairMagSq

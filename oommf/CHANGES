@@ -1,3 +1,20 @@
+========== OOMMF 2.0a3 released 2021/09/30 ==========
+Significant changes since 2.0a2:
+
+  More robust and efficient inter-process communications and shutdown.
+
+  Regression tests restructured and parallelized
+
+  * New application:
+	- mmLaunch 3: Streamlined appearance; more efficient
+
+  * New contributed Oxs extension:
+	- DM energy for C2v, from Dmitry Tatarskiy, RAS
+
+  * New features:
+	- Improved light/dark mode accommodation
+	- <Key-Home> restores window default size
+
 ========== OOMMF 2.0a2 released 2019/09/30 ==========
 Significant changes since 2.0a1:
 

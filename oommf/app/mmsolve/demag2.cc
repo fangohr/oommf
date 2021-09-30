@@ -371,7 +371,8 @@ g(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
   // handle if t=y/x (for example) as x -> 0.
 
   OC_REALWIDE result_sign=1.0;
-  if(x<0.0) result_sign *= -1.0;  if(y<0.0) result_sign *= -1.0;
+  if(x<0.0) result_sign *= -1.0;
+  if(y<0.0) result_sign *= -1.0;
   x=fabs(x); y=fabs(y); z=fabs(z);  // This function is even in z and
   /// odd in x and y.  The fabs()'s simplify special case handling.
 

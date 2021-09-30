@@ -83,22 +83,23 @@ Oc_Class Oxs_Schedule {
        if {[string compare Done $e]!=0} {
           # Done event does not have a count
           upvar #0 [string tolower $e] count
-          if {$count % $frequency($e)} {
+          set f $frequency($e)
+          if {$f != $count  &&  $f > 0  &&  $count % $f} {
              return
           }
        }
-        if {[catch {Oxs_Output Send $output $destination} msg]} {
-           # If error is due to missing output or destination,
-           # then delete the current schedule and swallow the
-           # error.  Otherwise, pass the error upwards.
-           global errorCode
-           if {[string compare $errorCode OxsUnknownOutput] == 0 || \
-                  [string compare $errorCode OxsUnknownDestination] == 0} {
-              $this Delete
-           } else {
-              return -code error -errorcode $errorCode $msg
-           }
-        }
+       if {[catch {Oxs_Output Send $output $destination} msg]} {
+          # If error is due to missing output or destination,
+          # then delete the current schedule and swallow the
+          # error.  Otherwise, pass the error upwards.
+          global errorCode
+          if {[string compare $errorCode OxsUnknownOutput] == 0 || \
+                 [string compare $errorCode OxsUnknownDestination] == 0} {
+             $this Delete
+          } else {
+             return -code error -errorcode $errorCode $msg
+          }
+       }
     }
     method SetActive {event value} {
         set active($event) $value

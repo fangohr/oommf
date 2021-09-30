@@ -5,7 +5,7 @@ Oc_Class FileLogger {
     proc Log {msg type src} {
 	catch {
 	    # Use default message reporter as well
-	    Oc_DefaultMessage $msg $type $src
+	    Oc_DefaultLogMessage $msg $type $src
 	}
 	if {[string match "" $filename]} {return}
 	if {[catch {open $filename a} chanid]} {

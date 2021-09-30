@@ -45,17 +45,6 @@ class Oxs_Output;
 class Oxs_BaseScalarOutput;
 class Oxs_BaseChunkScalarOutput;
 
-// KLUDGE KLUDGE KLUDGE
-// Oxs_ProbRelease should be declared using the Tcl_CmdProc
-// typedef, but when done that way the Compaq C++ compiler
-// (V6.3-005 for linux) complains about linkage mismatch.
-// This kludge works around the problem.  See also the
-// declaration as "friend" in the Oxs_Director class.
-extern "C" {
-  int Oxs_ProbRelease(ClientData,Tcl_Interp*,int,CONST84 char**);
-}
-// KLUDGE KLUDGE KLUDGE
-
 // Supplemental types
 enum OxsRunEventTypes { OXS_INVALID_EVENT,
                         OXS_STEP_EVENT,
@@ -134,15 +123,7 @@ private:
   // Problem release/director reset routines.
   void ForceRelease();
   void Release();
-  // KLUDGE KLUDGE KLUDGE
-  friend int Oxs_ProbRelease(ClientData,Tcl_Interp*,int,CONST84 char**);
-  // friend Tcl_CmdProc Oxs_ProbRelease;
-  // Oxs_ProbRelease should be declared using the Tcl_CmdProc
-  // typedef, but when done that way the Compaq C++ compiler
-  // (V6.3-005 for linux) complains about linkage mismatch.
-  // This kludge works around the problem.  See also the forward
-  // declaration of Oxs_ProbRelease earlier in this file.
-  // KLUDGE KLUDGE KLUDGE
+  friend Tcl_CmdProc Oxs_ProbRelease;
 
   OC_UINT4m error_status; // Can be set from outside Oxs_Director
   /// to indicate an error has occurred.  This can be checked
@@ -459,8 +440,18 @@ public:
   // FindExistingSimulationState scans through the simulation state
   // list and returns a read-only pointer to the one matching the
   // import id.  The import id must by positive.  The return value
-  // is NULL if no matching id is found.
+  // is nullptr if no matching id is found.
   const Oxs_SimState* FindExistingSimulationState(OC_UINT4m id) const;
+
+// FindBaseStep takes the id of an existing state and checks the
+  // step_done status for that state.  If the status is not DONE, then
+  // it traces backwards through the previous_state_id until it either
+  // finds a state with step_done == DONE, or else runs out of cached
+  // states.  On success returns a pointer to the DONE state, otherwise
+  // a null pointer.  The second routine is a variant that takes a
+  // pointer to a state rather than the state id as input.
+  const Oxs_SimState* FindBaseStepState(OC_UINT4m id) const;
+  const Oxs_SimState* FindBaseStepState(const Oxs_SimState* stateptr) const;
 
   // Hook for develop tests
   int DoDevelopTest(const String& subroutine, String& result_str,

@@ -318,11 +318,12 @@ Oxs_CommonRectangularMesh::BoundaryList
   // (in the 6 nearest ngbr sense) such that the first element lies on
   // one side (the "inside") of the surface specified by the
   // Oxs_ScalarField bdry_surface + bdry_value, and the neighbor lies on
-  // the other (the "outside").  If the bdry_side argument is "-", then
-  // the "inside" of the surface is the set of those points x for which
-  // bdry_surface.Value(x)<bdry_value.  If bdry_side is "+", then the
-  // "inside" of the surface is the set of those points x for which
-  // bdry_surface.Value(x)>bdry_value.
+  // the other (the "outside").  If the bdry_side argument is "<" or
+  // "<=", then the "inside" of the surface is the set of those points x
+  // for which bdry_surface.Value(x) < or <= (resp.) bdry_value. The
+  // bdry_side arguments ">" and ">=" are treated analogously. For
+  // backwards compatibility, "-" and "+" are accepted as synonyms for
+  // <= and >=, respectively.
   // Return value is the number of entries in the export list.
   // NB: The tested neighbors may lie outside the mesh proper, allowing
   // elements on the edge of the mesh to be specified.
@@ -359,18 +360,25 @@ Oxs_CommonRectangularMesh::BoundaryList
   OC_INDEX izstop = OC_INDEX(floor((work_box.GetMaxZ()-base.z)/cellsize.z))+1;
 
   // Check sign
-  int check_sign = 0;
-  if(bdry_side.compare("+")==0)       check_sign =  1;
-  else if(bdry_side.compare("-")==0)  check_sign = -1;
+  enum BdrySide { INVALID, LT, LE, GE, GT };
+  BdrySide side_check = INVALID;
+  if(bdry_side.compare("<")==0)       side_check = LT;
+  else if(bdry_side.compare("<=")==0) side_check = LE;
+  else if(bdry_side.compare(">=")==0) side_check = GE;
+  else if(bdry_side.compare(">")==0)  side_check = GT;
+  else if(bdry_side.compare("+")==0)  side_check = GE;
+  else if(bdry_side.compare("-")==0)  side_check = LE;
   else {
     String msg=String("Invalid boundary side representation: ")
       + bdry_side
-      + String("  Should be either - or +.")
+      + String("  Should be one of <, <=, >=, or >.")
       + String(" (Oxs_CommonRectangularMesh::BoundaryList() in object")
       + String(InstanceName())
       + String(")");
     throw Oxs_ExtError(msg.c_str());
   }
+  const int check_sign = (side_check == LT || side_check == LE ? -1 : 1);
+  const int equal_check = (side_check == LE || side_check == GE ?  1 : 0);
 
   OC_INDEX ixsize = ixstop-ixstart;
   for(OC_INDEX iz=izstart;iz<izstop;iz++) {
@@ -379,7 +387,8 @@ Oxs_CommonRectangularMesh::BoundaryList
       ThreeVector pt;
       Center(row_index,pt);
       for(OC_INDEX i=0; i<ixsize; ++i,pt.x+=cellsize.x) {
-        if(check_sign*(bdry_surface.Value(pt)-bdry_value)<0) {
+        if(check_sign*(bdry_surface.Value(pt)-bdry_value)<0 ||
+           (!equal_check && bdry_surface.Value(pt) == bdry_value)) {
           continue; // basept on wrong side of boundary
         }
         if(atlas.GetRegionId(pt) != region_id) {
@@ -388,7 +397,8 @@ Oxs_CommonRectangularMesh::BoundaryList
         OC_INDEX ngbr_index=0;
         ThreeVector ngbr_pt;
         while(GetNeighborPoint(pt,ngbr_index++,ngbr_pt)) {
-          if(check_sign*(bdry_surface.Value(ngbr_pt)-bdry_value)<0) {
+          if(check_sign*(bdry_surface.Value(ngbr_pt)-bdry_value)<0 ||
+             (!equal_check && bdry_surface.Value(ngbr_pt) == bdry_value)) {
             // Neighbor on "other" side of boundary
             BoundaryIndexList.push_back(row_index+i);
             break;  // Don't include pt more than once

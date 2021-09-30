@@ -203,7 +203,7 @@ public:
   /// should be close.
 
 
-#if !OC_REAL8m_IS_REAL8
+#if !OC_REAL8m_IS_OC_REAL8
   void GetPreciseRange(Nb_BoundingBox<OC_REAL8m> &range) const {
     Nb_BoundingBox<OC_REAL8> range8;
     GetPreciseRange(range8);
@@ -297,7 +297,8 @@ public:
 			       OC_REAL4m &zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &range,
 			       const char * colorquantity,
-			       OC_REAL8m phase,OC_BOOL invert,
+                               OC_REAL8m phase,
+                               OC_BOOL invert, OC_BOOL trimtiny,
 			       Nb_List<Vf_DisplayVector> &display_list) =0;
   ///   Use ?step_request=0 to remove constraint on that axis, e.g., if
   /// xstep_request=ystep_request=zstep_request=0, then this routine places
@@ -460,7 +461,7 @@ public:
   OC_INDEX GetDisplayList(OC_REAL4m &,OC_REAL4m &,OC_REAL4m &,
 		       const Nb_BoundingBox<OC_REAL4>&,
 		       const char *,
-		       OC_REAL8m,OC_BOOL,
+                       OC_REAL8m,OC_BOOL,OC_BOOL,
 		       Nb_List<Vf_DisplayVector> &display_list) {
     display_list.Clear();
     return 0;
@@ -661,7 +662,8 @@ public:
 			       OC_REAL4m &zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &dsprange,
 			       const char *colorquantity,
-			       OC_REAL8m phase,OC_BOOL invert,
+			       OC_REAL8m phase,
+                               OC_BOOL invert, OC_BOOL trimtiny,
 			       Nb_List<Vf_DisplayVector> &display_list);
 
   virtual void GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
@@ -791,7 +793,8 @@ public:
 			       OC_REAL4m & zstep_request,
 			       const Nb_BoundingBox<OC_REAL4> &range_request,
 			       const char *colorquantity,
-			       OC_REAL8m phase,OC_BOOL invert,
+			       OC_REAL8m phase,
+                               OC_BOOL invert, OC_BOOL trimtiny,
 			       Nb_List<Vf_DisplayVector> &display_list);
 
   virtual void GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,

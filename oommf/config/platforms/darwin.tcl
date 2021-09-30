@@ -528,7 +528,7 @@ if {[string match g++ $compiler]} {
    #   Use of realwide is restricted in the code so that the speed
    # advantage of using "double" over "long double" should be pretty
    # minimal on this platform, but YMMV.
-   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
       $config SetValue program_compiler_c++_typedef_realwide "long double"
    }
 
@@ -657,7 +657,7 @@ if {[string match g++ $compiler]} {
    #   Use of realwide is restricted in the code so that the speed
    # advantage of using "double" over "long double" should be pretty
    # minimal on this platform, but YMMV.
-    if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+    if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
        $config SetValue program_compiler_c++_typedef_realwide "long double"
     }
 
@@ -693,6 +693,7 @@ if {[string match g++ $compiler]} {
    $config SetValue program_linker_option_obj {format \"%s\"}
    $config SetValue program_linker_option_out {format "-o \"%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
+   $config SetValue program_linker_rpath {format "-Wl,-rpath %s"}
    $config SetValue program_linker_uses_-L-l {1}
 } elseif {[string match clang++ $compiler]} {
    # ...for Clang clang++ as linker
@@ -715,6 +716,7 @@ if {[string match g++ $compiler]} {
    $config SetValue program_linker_option_obj {format \"%s\"}
    $config SetValue program_linker_option_out {format "-o \"%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
+   $config SetValue program_linker_rpath {format "-Wl,-rpath %s"}
    $config SetValue program_linker_uses_-L-l {1}
 }
 

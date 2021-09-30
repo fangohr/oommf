@@ -48,7 +48,6 @@
 # DisplayLog in Ow_BkgdLogger ignore this field in preference to
 # allowing the user to specify when to disable particular messages.
 #
-
 Oc_Class Ow_BkgdLogger {
 
    # The message_queue contains an ordered list of messages waiting to
@@ -132,7 +131,7 @@ Oc_Class Ow_BkgdLogger {
       } else {
          # Form id by computing CRC of errorCode + message
          set text "$errorCode : $msg"
-         set crc [Nb_ComputeCRCBuffer text]
+         set crc [Ow_Hash text]
          set id "crc:$crc"
       }
       return $id
@@ -244,7 +243,10 @@ Oc_Class Ow_BkgdLogger {
          append title "Error Messages"
          set display_window_title $title
       }
-      wm title $window $display_window_title
+      set dialogwidth [Ow_SetWindowTitle $window $display_window_title]
+      set brace [canvas ${window}.brace -width $dialogwidth -height 0 \
+                    -borderwidth 0 -highlightthickness 0]
+      pack $brace -side top
       Ow_PositionChild $window $parent
 
       pack propagate $window 0 ;# keep initial size as specified above
@@ -382,8 +384,12 @@ Oc_Class Ow_BkgdLogger {
       append text "$stack"
 
       set msgwin $display_window.top.msg
-      set textwidth [expr {[winfo width $msgwin] - 8}]
       $msgwin delete text
+      set textwidth [expr {[winfo width $msgwin] - 8}]
+      if {$textwidth<1} {
+         update idletasks
+         set textwidth [expr {[winfo width $msgwin] - 8}]
+      }
       $msgwin create text 4 4 -anchor nw -font [Oc_Font Get bold] \
          -text $text -width $textwidth -tags text
       foreach {xmin ymin xmax ymax} [$msgwin bbox all] break

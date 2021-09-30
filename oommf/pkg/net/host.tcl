@@ -226,6 +226,10 @@ Oc_Class Net_Host {
         return $protocolversion
     }
 
+    method HostPort {} {
+       return $port
+    }
+
     # Launch an OOMMF host server on localhost
     private method StartLocalHost {} {
         set hostthread [file join $dir threads host.tcl]
@@ -329,7 +333,8 @@ Oc_Class Net_Host {
         if {[info exists connection]} {
             Oc_Log Log "Net_Host delete destroying connection $connection" \
 		    status $class
-            $connection Delete
+           $connection Query bye
+           $connection SafeClose
         }
         if {[info exists timeoutevent]} {
             after cancel $timeoutevent

@@ -1,0 +1,241 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Tips for writing MIF 2.x files</TITLE>
+<META NAME="description" CONTENT="Tips for writing MIF 2.x files">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="MIF_2.2.html">
+<LINK REL="up" HREF="Problem_Specification_File_.html">
+<LINK REL="next" HREF="Data_Table_File_Format_ODT.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html950"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html946"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html942"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html952"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
+<A NAME="tex2html948"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html951"
+  HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
+<B> Up:</B> <A NAME="tex2html947"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
+<B> Previous:</B> <A NAME="tex2html943"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION000185000000000000000"></A><A NAME="sec:mif2tips"></A>
+<BR>
+Tips for writing MIF 2.x files
+</H2>
+
+<A NAME="pt:mif2tips"></A>
+MIF 2.x files are Tcl scripts, and so composing a MIF file is a
+programming exercise, with all the pitfalls that entails. In this
+section we detail some tips for authoring MIF files.
+
+<P>
+Generally a good place to start is to take an existing MIF file,
+either one you've written earlier or one from the
+<TT>oommf/app/oxs/examples/</TT> directory, that has some similarity to the
+one you want to write. Make a copy of that and start to edit. If you
+need any complex functionality then an elementary understanding of Tcl is essential. In particular, you should be familiar with Tcl lists,
+arrays, and some of the basic Tcl commands such as <TT>set</TT>,
+<TT>expr</TT>, <TT>for</TT>, <TT>foreach</TT>, <TT>if/else</TT>, <TT>lrange</TT>, and
+<TT>subst</TT>. You can find a list of Tcl tutorials on the Tcler's Wiki
+<A NAME="tex2html21"
+  HREF="https://wiki.tcl-lang.org/page/Online+Tcl+and+Tk+Tutorials">Online Tcl and Tk
+  Tutorials</A>
+page. The <I>Tcl Tutorial</I> by Chris verBurg and <I>Learn Tcl
+  in Y Minutes</I> linked on that page are good places to start. The
+<A NAME="tex2html22"
+  HREF="https://wiki.tcl-lang.org/page/Dodekalogue">Tcl
+  Dodekalogue</A>
+is also a
+handy reference for figuring out confusing error messages.  Many more
+resources, including online manuals, can be found at the
+<A NAME="tex2html23"
+  HREF="https://www.tcl-lang.org/">Tcl Developer
+  Xchange</A>.
+
+<P>
+Although MIF files are Tcl scripts, they also rely on a number of
+<A HREF="MIF_2.1.html#sec:mif2ExtensionCommands">MIF extension commands</A>. The most prominent of these is
+the <A HREF="MIF_2.1.html#html:specifyCmd"><TT>Specify</TT></A> command, used to
+initialize <TT>Oxs_Ext</TT> (Oxs extension) objects, such as region
+definitions (atlases), mesh discretization, energy terms (exchange,
+anisotropy, dipole-dipole, applied fields), and solution method (energy
+minimization or LLG integration). The contents of each <TT>Specify</TT>
+block, which depend upon the particular <TT>Oxs_Ext</TT> being initialized,
+are documented
+in the <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">Standard Oxs_Ext Child
+Classes section</A>.
+
+<P>
+Other commonly used MIF extension commands are <TT>Parameter</TT>,
+<TT>Destination</TT>, and <TT>Schedule</TT>.
+<A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A> operates similar to
+the Tcl <TT>set</TT> command, but allows the user to change the default
+value at runtime, through either the <TT>Params</TT> box in the <TT>Oxsii
+  Load Problem</TT> dialog, or via the <TT>-parameters</TT> command line option
+to <TT>Boxsi</TT>. The
+<A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A> and
+<A HREF="MIF_2.1.html#html:scheduleCmd"><TT>Schedule</TT></A> commands
+are used primarily for non-interactive set up of simulation output
+for <TT>Boxsi</TT>.
+
+<P>
+As in any programming activity, bugs happen. Here are a few tips to aid
+in debugging your MIF code:
+
+<OL>
+<LI>Check to see if your favorite programming editor (FPE) has support
+    for Tcl syntax highlighting and indenting. This can help spot a lot
+    of errors, particularly brace nesting issues, before you hand the
+    file over to the Tcl interpreter inside OOMMF.
+
+<P>
+</LI>
+<LI>For development purposes, set the problem dimensions and cell
+    sizes so the total number of cells is relatively small. This will
+    allow problems to load and run faster, making it easier to detect
+    and correct errors. Use the <TT>Oxsii|Help|About</TT> menu to
+    see the number of cells in the simulation. For larger simulations
+    you may want to temporarily disable the <TT>Oxs_Demag</TT> module,
+    because that module can take some time to initialize and is usually
+    the slowest module to run. If the cellsize magnetization is set
+    correctly, then <TT>Oxs_Demag</TT> will usually be okay; you might want
+    to take a little extra care when working with periodic boundary
+    conditions, however, because demagnetization effects across PBC's
+    can be nonintuitive.
+
+<P>
+</LI>
+<LI>When the MIF file is ready, launch <TT>Oxsii</TT> and bring up the
+    <TT>File|Load</TT> dialog box. Select the <TT>Browse</TT> check box, as
+    otherwise the <TT>Load</TT> dialog box is automatically closed when you
+    select <TT>OK</TT> to load the file. The <TT>Browse</TT> option allows you
+    to correct syntax errors in your MIF file without having to
+    repeatedly open the <TT>File|Load</TT> dialog box and reselect your
+    MIF file and parameters.
+
+<P>
+</LI>
+<LI>If the load fails, open the MIF file in your FPE and use the
+    error message to help locate the point of failure in the
+    file. Correct, save to disk, and try loading again.
+
+<P>
+</LI>
+<LI>If you can't figure out an error message, or to just
+    double-check that your file is being interpreted as you intend, use
+    the MIF <TT>Report</TT> command to print the contents of variables or
+    other state information to the <TT>Oxsii</TT> console. (The <TT>Oxsii</TT>
+    console is launched via the <TT>File|Show Console</TT> menu item on the
+    main <TT>Oxsii</TT> window. If you are running <TT>Boxsi</TT>, <TT>Report</TT>
+    output goes to the <TT>Boxsi</TT> log file, <TT><B>oommf/boxsi.errors</B></TT>.)
+
+<P>
+</LI>
+<LI>Once the file loads without errors, send <TT>Magnetization</TT>
+    output from <TT>Oxsii</TT> to <TT>mmDisp</TT> for a visual check of the
+    simulation structure. Use <TT>Ctrl-</TT> or <TT>Shift-Ctrl-<TT>&lt;</TT>left
+    mouse click<TT>&gt;</TT></TT> in <TT>mmDisp</TT> to view magnetization component
+    values at various locations. Bring up the <TT>mmDisp
+    Options|Configure</TT> dialog box to adjust the coloring, pixel and
+    arrow selection, etc. The <TT># of Colors</TT> and <TT>Data Scale</TT>
+    settings in particular can make it easier to see small differences
+    in the selected <TT>Color Quantity</TT>. The <TT>Arrow span</TT> setting can
+    be used to control the number of levels of arrows that get displayed
+    in the slice view. For example, if the cell dimension in the
+    out-of-view-plane direction is 4&nbsp;nm, then setting <TT>Arrow span</TT> to
+    <TT>4e-9</TT> will cause a single slice of the magnetization to be
+    displayed as you adjust the slice control slider in the main
+    <TT>mmDisp</TT> window. If you set <TT>Arrow span</TT> to <TT>8e-9</TT> you'll
+    see two layers of overlapping arrows, which can be helpful for
+    checking interface conditions.
+
+<P>
+</LI>
+<LI>By default <TT>mmDisp</TT> opens with a top-down view along the
+    <B><I>z</I></B>-axis. For multilayer structures it is helpful to see
+    cross-sectional views along other axes too; these are available from
+    the <TT>View|Viewpoint</TT> submenu in the main <TT>mmDisp</TT> window.
+    Also, the <TT>mmDisp</TT> rendering of high aspect ratio cells can be
+    rather poor. In this situation you may want to enable pixel display
+    in the <TT>mmDisp</TT> configuration dialog with pixel size set smaller
+    than 1, and adjust the background color to make the individual cells
+    visible.
+
+<P>
+</LI>
+<LI>The <TT>Magnetization</TT> output viewed in <TT>mmDisp</TT> allows you
+    to check that you have set <TT>Ms</TT> and <TT>m0</TT> properly in the
+    driver <TT>Specify</TT> block. You can send other fields, such as
+    anisotropy and exchange, to <TT>mmDisp</TT> to check parameter settings
+    for those energy terms as well. In this context it can be helpful to
+    adjust <TT>m0</TT> to align in specific directions for testing. You may
+    want to open two instances of <TT>mmDisp</TT>, with <TT>Magnetization</TT>
+    displayed in one and an energy field in the other, to help
+    correspond energy field values with magnetization structure.
+
+<P>
+</LI>
+<LI>If you are having problems implementing some functionality, do a
+    search through the MIF files in <TT><B>oommf/app/oxs/examples</B></TT> for
+    something similar. For example, a text search for ``pulse'' will
+    turn up matches in <TT><B>pillar.mif</B></TT>, <TT><B>pingpillar.mif</B></TT>, and
+    <TT><B>pulse.mif</B></TT>, each illustrating how to implement an applied field
+    pulse of various shapes.
+
+<P>
+</LI>
+</OL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html950"
+  HREF="Data_Table_File_Format_ODT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html946"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html942"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
+<A NAME="tex2html953"
+  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
+<A NAME="tex2html948"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+</BODY>
+</HTML>

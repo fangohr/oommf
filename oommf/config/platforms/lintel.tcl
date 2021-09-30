@@ -476,7 +476,7 @@ if {[string match *g++* $ccbasename]} {
    # but provides the x86 native floating point format having approx.
    # 19 decimal digits precision as opposed to 16 for double.)
    # Default is "double".
-   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
       $config SetValue program_compiler_c++_typedef_realwide "double"
    }
 

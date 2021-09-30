@@ -178,19 +178,13 @@ private:
   Oxs_ScalarOutput<Oxs_UniformExchange> run_maxspinangle_output;
   void UpdateDerivedOutputs(const Oxs_SimState& state);
   String MaxSpinAngleStateName() const {
-    String dummy_name = InstanceName();
-    dummy_name += ":Max Spin Angle";
-    return dummy_name;
+    return DataName("Max Spin Angle");
   }
   String StageMaxSpinAngleStateName() const {
-    String dummy_name = InstanceName();
-    dummy_name += ":Stage Max Spin Angle";
-    return dummy_name;
+    return DataName("Stage Max Spin Angle");
   }
   String RunMaxSpinAngleStateName() const {
-    String dummy_name = InstanceName();
-    dummy_name += ":Run Max Spin Angle";
-    return dummy_name;
+    return DataName("Run Max Spin Angle");
   }
 
 protected:

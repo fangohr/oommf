@@ -67,12 +67,10 @@ exec wish "$0" ${1+"$@"}
 #
 set code [catch {
 
-if {[catch {package require Tcl 8}]} {
-    if {[catch {package require Tcl 7.5}]} {
-	return -code error "OOMMF software requires Tcl 7.5 or\
+if {[catch {package require Tcl 8.5-}]} {
+	return -code error "OOMMF software requires Tcl 8.5 or\
 		higher.\n\tYour version: Tcl [info patchlevel]\nPlease\
 		upgrade."
-    }
 }
 
 # When this script is evaluated by a shell which doesn't include the
@@ -175,7 +173,7 @@ set omfhb_debug 0
 source [file join [file dirname [info script]] counter.tcl]
 
 Oc_Main SetAppName mmHelp
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/03/25 16:43:31 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: dgp $} _ author

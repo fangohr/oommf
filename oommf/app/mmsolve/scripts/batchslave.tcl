@@ -14,7 +14,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 Oc_ForceStderrDefaultMessage	;# Error messages to stderr, not dialog
 
 Oc_Main SetAppName batchslave
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{host {} {Hostname to connect to master}}

@@ -62,3 +62,14 @@ date: Mon 24 May 2021 02:06:57 PM CEST
      source-url: http://math.nist.gov/oommf/dist/oommf20a2_20200608-hotfix.tar.gz
    github-url: https://github.com/fangohr/oommf
    github version: d4a031331bced1ee82a67d479e80f5f8e7011e4b
+=======================================================
+date: Thu 30 Sep 2021 22:34:00 CEST 
+   unpacked oommf20a3_20210930.tar.gz
+   OOMMF:
+     version: 20a3
+     date: 20210930
+     build: a3
+     modified: 
+     source-url: http://math.nist.gov/oommf/dist/oommf20a3_20210930.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: fe2d38f8f95277268896e1219d05d4d8f572d2e5

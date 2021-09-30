@@ -217,19 +217,27 @@ void Oc_FpuControlData::SetNoFlushToZero()
 #endif
 }
 
-
+#if OC_USE_X87 ||  OC_USE_SSE
 void Oc_FpuControlData::GetDataString(Oc_AutoBuf& buf)
 {
-#if OC_USE_X87
+# if OC_USE_X87
   Oc_AutoBuf bufx87(16);
   Oc_Snprintf(bufx87,bufx87.GetLength()+1,
               " x87=%04X",(unsigned int)x87_data);
   buf += bufx87;
-#endif
-#if OC_USE_SSE
+# endif
+# if OC_USE_SSE
   Oc_AutoBuf bufsse(16);
   Oc_Snprintf(bufsse,bufsse.GetLength()+1,
               " sse=%04X",(unsigned int)sse_data);
   buf += bufsse;
-#endif
+# endif
 }
+#else //  OC_USE_X87 ||  OC_USE_SSE
+void Oc_FpuControlData::GetDataString(Oc_AutoBuf&)
+{}
+#endif // OC_USE_X87 ||  OC_USE_SSE
+
+
+
+

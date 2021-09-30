@@ -734,8 +734,8 @@ network name, and the \cd{\$TaskInfo} methods \cd{AppendSlave} and
 Furthermore, \OOMMF\ does not currently supply any methods for launching
 jobs on remote machines, so a task script which requests the launching
 of jobs on remote machines requires a working
-\verb+rsh+\index{application!rsh} command or
-equivalent\index{requirement!rsh}.
+\verb+ssh+\index{application!ssh} command or
+equivalent\index{requirement!ssh}.
 \hyperrefhtml{(Details.)}{See Sec.~}{ for
 details.}{sec:batchschedtask}
 
@@ -990,14 +990,14 @@ and the last is interpreted as a single percent.
 \cd{<spawn command>} so that the slave applications
 are launched in the background.
 
-To launch \app{batchslave} on a remote host, use \fn{rsh}\index{application!rsh}
+To launch \app{batchslave} on a remote host, use \fn{ssh}\index{application!ssh}
 in the spawn command, e.g.,
 \begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
-$TaskInfo AppendSlave 1 {exec rsh foo tclsh oommf/oommf.tcl \
+$TaskInfo AppendSlave 1 {exec ssh foo tclsh oommf/oommf.tcl \
       batchslave -tk 0 %connect_info batchsolve.tcl}
 \end{verbatim}
 %begin<latexonly>
@@ -1184,10 +1184,7 @@ local machine, and one to run a single slave on the remote machine
 (\fn{foo}).  The latter changes to a specified
 working directory\index{working~directory}  before
 launching the \fn{batchslave} application on the remote machine.  (For
-this to work you must have \cd{rsh} configured properly.  In the future
-it may be possible to launch remote commands using the \OOMMF\ account
-server application, thereby lessening the reliance on system commands
-like \cd{rsh}\index{application!rsh}.)
+this to work you must have \cd{ssh} configured properly\index{application!ssh}.)
 
 Below this the slave initialization script is defined.  The \Tcl\
 \cd{regsub} command is used to place the task script defined value of
@@ -1253,7 +1250,7 @@ set A_list { 10e-13 10e-14 10e-15 10e-16 10e-17 10e-18 }
 $TaskInfo ModifyHostList +$RMT_MACHINE
 $TaskInfo AppendSlave 2 "exec %tclsh %oommf batchslave -tk 0 \
         %connect_info batchsolve.tcl"
-$TaskInfo AppendSlave 1 "exec rsh $RMT_MACHINE \
+$TaskInfo AppendSlave 1 "exec ssh $RMT_MACHINE \
         cd $RMT_WORK_DIR \\\;\
         $RMT_TCLSH $RMT_OOMMF batchslave -tk 0 %connect_info batchsolve.tcl"
 

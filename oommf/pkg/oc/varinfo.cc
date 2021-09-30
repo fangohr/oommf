@@ -907,7 +907,14 @@ char **argv;
 #endif /* USEQUADFLOAT */
 
   if(!skip_atan2) {
+    errno = 0;
     printf("\nReturn value from atan2(0,0): %g\n",atan2(zero(),zero()));
+    if(errno==0) {
+      printf("Errno not set on atan2(0,0)\n");
+    } else {
+      printf("Errno set on atan2(0,0) to %d: %s\n",
+             errno,strerror(errno));
+    }
   }
 
   if(!skip_underflow) {
@@ -1033,5 +1040,6 @@ char **argv;
  */
 double zero()
 {
-  return 0.0;
+  volatile double z = 0.0;
+  return z;
 }

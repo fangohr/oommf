@@ -51,7 +51,10 @@ Oxs_TwoSurfaceExchange::Oxs_TwoSurfaceExchange(
   //         region       region name
   //         scalarfield  scalar field reference
   //         scalarvalue  scalar field level surface reference value
-  //         scalarside   either "+" or "-", denoting inner surface side
+  //         scalarside   one of <, <=, >=, or > denoting inner surface
+  //                      side; the values - and + (equivalent to <= and
+  //                      >= respectively) are accepted for backwards
+  //                      compatibility.
   CheckInitValueParamCount("surface1",10);
   vector<String> surface1;
   FindRequiredInitValue("surface1",surface1);
@@ -93,10 +96,12 @@ Oxs_TwoSurfaceExchange::Oxs_TwoSurfaceExchange(
       badinput1 = 1;
       error1 = String("Unrecognized region \"")
         + region1 + String("\"");
-    } else if(bdry1_side.compare("+")!=0 && bdry1_side.compare("-")!=0) {
+    } else if(bdry1_side.compare("<")!=0 && bdry1_side.compare("<=")!=0
+           && bdry1_side.compare(">")!=0 && bdry1_side.compare(">=")!=0
+           && bdry1_side.compare("+")!=0 && bdry1_side.compare("-")!=0) {
       badinput1 = 1;
       error1 = String("Bad scalarside string \"")
-        + bdry1_side + String("\"; should be \"+\" or \"-\"");
+        + bdry1_side + String("\"; should be one of <, <=, >=, >");
     }
   }
   DeleteInitValue("surface1");
@@ -144,10 +149,12 @@ Oxs_TwoSurfaceExchange::Oxs_TwoSurfaceExchange(
       badinput2 = 1;
       error2 = String("Unrecognized region \"")
         + region2 + String("\"");
-    } else if(bdry2_side.compare("+")!=0 && bdry2_side.compare("-")!=0) {
+    } else if(bdry2_side.compare("<")!=0 && bdry2_side.compare("<=")!=0
+           && bdry2_side.compare(">")!=0 && bdry2_side.compare(">=")!=0
+           && bdry2_side.compare("+")!=0 && bdry2_side.compare("-")!=0) {
       badinput2 = 1;
       error2 = String("Bad scalarside string \"")
-        + bdry2_side + String("\"; should be \"+\" or \"-\"");
+        + bdry2_side + String("\"; should be one of <, <=, >=, >");
     }
   }
   DeleteInitValue("surface2");

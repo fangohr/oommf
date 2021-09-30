@@ -43,7 +43,7 @@ A sample \MIF~1.1 file is \hyperrefhtml{included below}{presented in
 Fig.~}{}{fig:mif1sample}.  The first line of a \MIF\ file must be of the
 form ``\verb+#+ MIF x.y'', where x.y represents the format revision
 number.  (The predecessor \MIF~1.0 format was not included in any
-released version of \OOMMF.)  
+released version of \OOMMF.)
 
 After the format identifier line, any line ending in a backslash,
 `\bs', is joined to the succeeding line before any other processing
@@ -74,7 +74,7 @@ these record types are not supported by \app{mmProbEd}, however you
 may modify a \MIF~1.1 file using any plain text editor and supply it to
 \hyperrefhtml{\app{mmSolve2D}}{\app{mmSolve2D}
 (Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}
-using 
+using
 \hyperrefhtml{\app{FileSource}}{\app{FileSource}
 (Sec.~}{)}{sec:filesource}\index{application!FileSource}.
 
@@ -183,7 +183,7 @@ where
 \begin{itemize}
    \item {\bf Demag Type:} Specify algorithm and demagnetization kernel
       used to calculate self-magnetostatic
-      (demagnetization\index{demagnetization}) field.  Must be one of 
+      (demagnetization\index{demagnetization}) field.  Must be one of
       \begin{itemize}
          \item {\bf ConstMag:} Calculates the {\em average} field in
             each cell under the assumption that the magnetization is
@@ -237,7 +237,7 @@ where
    \begin{itemize}
       \item {\bf Rectangle}\\
          The sample fills the area specified by Part Width and Part
-         Height. (Default.) 
+         Height. (Default.)
       \item {\bf Ellipse}\\
          The sample (or the magnetically active
          portion thereof) is an ellipse inscribed into the rectangular
@@ -771,6 +771,7 @@ available in \MIF~2.1 files:
 \htmlonlyref{\cd{Specify}}{html:specifyCmd},
 \htmlonlyref{\cd{ClearSpec}}{html:mif2ClearSpec},
 \htmlonlyref{\cd{Destination}}{html:destinationCmd},
+\htmlonlyref{\cd{GetStateData}}{html:GetStateData},
 \htmlonlyref{\cd{Ignore}}{html:mif2Ignore},
 \htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
 \htmlonlyref{\cd{Parameter}}{html:mif2parameter},
@@ -833,9 +834,9 @@ the curly braces, is a string that is interpreted by the new
 \cd{Oxs\_Ext} (child) object in its constructor.  The format of this
 string is up to the designer of the child class, but there are a number
 of conventions that designers are encouraged to follow.  These
-conventions are described in \html{the}
+conventions are described in\html{ the}
 \hyperrefhtml{Specify Conventions}{Specify Conventions,
-Sec.~}{,}{sec:specConventions} \html{section} below.
+Sec.~}{,}{sec:specConventions}\html{ section} below.
 
 \item[ClearSpec\label{html:mif2ClearSpec}]
 This command is used to disable one or all preceding \cd{Specify}
@@ -920,6 +921,143 @@ application is always launched for association with the given tag.  The
 reference, but caution must be taken when using this option with
 specific instance references, because an error is raised if the
 requested nickname is already in use.
+
+\item[GetStateData\label{html:GetStateData}]
+The \cd{GetStateData} command retrieves data attached to a specific
+magnetization state:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+GetStateData [-glob|-exact|-regexp] [-pairs] [--] <state_id> \
+             [pattern ...]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+The data associated with a state are stored as key-value pairs.
+If no patterns are specified then \cd{GetStateData} returns the list of
+keys available for the given state.  If one or more patterns are
+specified, then all values with keys matching some pattern are
+collected.  If the \cd{-pairs} option is specified then the return is an
+even length list of keys and values interleaved.  If \cd{-pairs} is not
+specified then the return is a list of just the values.  The values are
+returned in key-match order.  Key matching style is controlled by the
+first slate of options, with default being glob.  Two hyphens may be
+used to denote the end of options.
+
+The \cd{state\_id} is a positive integer identifying the state.  This is
+generally obtained via a \cd{script\_args} option in the
+\cd{Specify} block of a conforming \cd{Oxs\_Ext} object.  For example,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+proc SpinMag { stage_time state_id } {
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+Specify Oxs_ScriptUZeeman {
+  script SpinMag
+  script_args {stage_time base_state_id}
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Typically two states may be accessed this way: the step base state
+and a candidate (test) state.  The former, accessed
+as \cd{base\_state\_id}, corresponds to the last valid, accepted
+magnetization state.  The latter, accessed as \cd{current\_state\_id},
+is the latest working state from the evolver object.  In some cases
+these two states may coincide.
+
+The keys associated with a state vary with the details of the
+simulation.  The following keys are always available:
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\cd{\begin{tabular}{l@{\hskip 2em}l@{\hskip 2em}l}
+state\_id            & previous\_state\_id     & iteration\_count\\
+stage\_number        & stage\_iteration\_count & stage\_start\_time\\
+stage\_elapsed\_time & total\_elapsed\_time    & last\_timestep\\
+step\_done           & stage\_done            & run\_done\\
+max\_absMs
+\end{tabular}}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+Times are in seconds, the \cd{step}/\cd{stage}/\cd{run\_done} values are
+one of 1 (done), 0 (not done) or -1 (not yet determined),
+and \cd{max\_absMs} is in A/m.
+
+Additional key-value pairs may be attached to a state by \cd{Oxs\_Ext}
+objects.  For example,
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve}
+adds the average magnetization $x$-component under the key name
+\cd{Oxs\_RungeKuttaEvolve:{\oab}instance\_name{\cab}:Mx}.
+(Here \cd{{\oab}instance\_name{\cab}} is the instance name of the
+object; this is typically an empty string or something like
+``evolver''.)  See the documentation for the various \cd{Oxs\_Ext}
+objects for details.
+
+Moreover, the keys available for a state may depend on the simulation
+status or processing step.  In particular, the current state indexed
+by \cd{current\_state\_id} typically only has the default keys from the
+table above available.  For this reason, and additionally because
+the \cd{current\_state\_id} is only a test state that may be rejected,
+user scripts should generally avoid using data tied to the current state
+in favor of data collected from the base state.  Likewise, the available
+keys may be different for a state (even a base state) marking the start
+of a new stage as compared to states arising inside a stage.  In case of
+problems, a \cd{Report} command inside a script proc can be used to
+dump state information to the Oxsii console, for example,
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+proc SpinMag { stage_time state_id } {
+   Report "State $state_id, Keys: [GetStateData $base_state_id]"
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+or
+\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+proc SpinMag { stage_time state_id } {
+   set report {}
+   foreach {key value} [GetStateData $state_id *] {
+      append report [format "%42s : $value\n" $key]
+   }
+   Report "--- State data ---\n$report"
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+
+For example use of \cd{GetStateData}, see the sample files
+\fn{spinmag.mif} and \fn{spinmag2.mif} in the
+directory \fn{oommf/app/oxs/examples/}.
+
 
 \item[Ignore\label{html:mif2Ignore}]
 The \cd{Ignore} command takes an arbitrary number of arguments, which
@@ -1094,7 +1232,7 @@ directory holding the \MIF\ file.  The syntax is
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-RGlob [-types typelist] [--] pattern [...]
+RGlob [-types typelist] [--] <pattern> [...]
 \end{verbatim}
 %begin{latexonly}
 \end{quote}
@@ -1185,15 +1323,19 @@ at the time the \cd{Destination} command is processed.
 
 The \textit{event} parameter should be one of the keywords \cd{Step},
 \cd{Stage}, or \cd{Done}.  For \cd{Step} and \cd{Stage} events the
-\textit{frequency} parameter should be a positive integer, representing
+\textit{frequency} parameter should be a non-negative integer, representing
 with what frequency of the specified event should output be dispatched.
 For example, if \cd{Step 5} is given, then on every fifth step of the
-solver output of the indicated type will be sent to the selected
-destination.  Set \textit{frequency} to 1 to send output each time the
-event occurs.  The \cd{Done} event occurs at the successful completion
-of a simulation; as such, there is at most one ``Done'' event per
-simulation.  Accordingly, the \textit{frequency} parameter for \cd{Done}
-events is optional; if present it should be the value 1.
+solver (iterations 0, 5, 10, \ldots) output of the indicated type will
+be sent to the selected destination.  Set \textit{frequency} to 1 to
+send output each time the event occurs. A value of 0
+for \textit{frequency} results in output on only the very first event of
+that type; in particular, \cd{Step 0} will output the simulation initial
+state, but will not fire on any subsequent \cd{Step} events.
+The \cd{Done} event occurs at the successful completion of a simulation;
+as such, there is at most one ``Done'' event per simulation.
+Accordingly, the \textit{frequency} parameter for \cd{Done} events is
+optional; if present it should be the value 1.
 
 There are examples of scheduling with the \cd{Destination} and
 \cd{Schedule} commands in the \hyperrefhtml{sample \MIF~2.1
@@ -2276,7 +2418,6 @@ SetOptions {
 \begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
 
 
-
 \item[EvalScalarField\label{html:mif2EvalScalarField}]\index{EvalScalarField~command~(MIF)}
 This command allows access in a \MIF\ file to values from a scalar field
 defined in a preceding \cd{Specify} block.  For example,
@@ -2522,12 +2663,12 @@ Specify Oxs_Exchange6Ngbr [subst {
 
 #################################	
 # Zeeman (applied) field
-set field 10000		;# Maximum field (in Oe) 
+set field 10000		;# Maximum field (in Oe)
 Specify Oxs_UZeeman [subst {
    multiplier [expr (1./($mu0*1e4))*$field]
    Hrange  {
       { 0 0 0   0 0 1   10}
-   }       	   
+   }       	
 }]
 
 
@@ -2549,6 +2690,151 @@ Specify Oxs_MinDriver [subst {
 }]
 \end{verbatim}
 \end{codelisting}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Tips for writing \MIF\ 2.x files}\label{sec:mif2tips}
+\begin{rawhtml}
+<A NAME="pt:mif2tips"></A>
+\end{rawhtml}
+\MIF\ 2.x files are \Tcl\ scripts, and so composing a \MIF\ file is a
+programming exercise, with all the pitfalls that entails. In this
+section we detail some tips for authoring \MIF\ files.
+
+Generally a good place to start is to take an existing \MIF\ file,
+either one you've written earlier or one from the
+\cd{oommf/app/oxs/examples/} directory, that has some similarity to the
+one you want to write. Make a copy of that and start to edit. If you
+need any complex functionality then an elementary understanding of \Tcl\
+is essential. In particular, you should be familiar with \Tcl\ lists,
+arrays, and some of the basic \Tcl\ commands such as \cd{set},
+\cd{expr}, \cd{for}, \cd{foreach}, \cd{if/else}, \cd{lrange}, and
+\cd{subst}. You can find a list of \Tcl\ tutorials on the Tcler's Wiki
+\htmladdnormallinkfoot{Online Tcl and Tk
+  Tutorials}{https://wiki.tcl-lang.org/page/Online+Tcl+and+Tk+Tutorials}
+page. The \textit{Tcl Tutorial} by Chris verBurg and \textit{Learn Tcl
+  in Y Minutes} linked on that page are good places to start. The
+\htmladdnormallinkfoot{Tcl
+  Dodekalogue}{https://wiki.tcl-lang.org/page/Dodekalogue} is also a
+handy reference for figuring out confusing error messages.  Many more
+resources, including online manuals, can be found at the
+\htmladdnormallinkfoot{Tcl Developer
+  Xchange}{https://www.tcl-lang.org/}.
+
+Although \MIF\ files are \Tcl\ scripts, they also rely on a number of
+\hyperrefhtml{\MIF\ extension commands}{\MIF\ extension commands
+  (Sec.~}{)}{sec:mif2ExtensionCommands}. The most prominent of these is
+the \htmlonlyref{\cd{Specify}}{html:specifyCmd} command, used to
+initialize \cd{Oxs\_Ext} (Oxs extension) objects, such as region
+definitions (atlases), mesh discretization, energy terms (exchange,
+anisotropy, dipole-dipole, applied fields), and solution method (energy
+minimization or LLG integration). The contents of each \cd{Specify}
+block, which depend upon the particular \cd{Oxs\_Ext} being initialized,
+are documented
+\html{in the }\hyperrefhtml{Standard Oxs\_Ext Child
+Classes section}{under Standard Oxs\_Ext Child Classes
+(Sec.~}{)}{sec:oxsext}.
+
+Other commonly used \MIF\ extension commands are \cd{Parameter},
+\cd{Destination}, and \cd{Schedule}.
+\htmlonlyref{\cd{Parameter}}{html:mif2parameter} operates similar to
+the \Tcl\ \cd{set} command, but allows the user to change the default
+value at runtime, through either the \cd{Params} box in the \cd{Oxsii
+  Load Problem} dialog, or via the \cd{-parameters} command line option
+to \cd{Boxsi}. The
+\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
+\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands
+are used primarily for non-interactive set up of simulation output
+for \cd{Boxsi}.
+
+As in any programming activity, bugs happen. Here are a few tips to aid
+in debugging your MIF code:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item Check to see if your favorite programming editor (FPE) has support
+    for \Tcl\ syntax highlighting and indenting. This can help spot a lot
+    of errors, particularly brace nesting issues, before you hand the
+    file over to the \Tcl\ interpreter inside \OOMMF.
+
+  \item For development purposes, set the problem dimensions and cell
+    sizes so the total number of cells is relatively small. This will
+    allow problems to load and run faster, making it easier to detect
+    and correct errors. Use the \cd{Oxsii\pipe Help\pipe About} menu to
+    see the number of cells in the simulation. For larger simulations
+    you may want to temporarily disable the \cd{Oxs\_Demag} module,
+    because that module can take some time to initialize and is usually
+    the slowest module to run. If the cellsize magnetization is set
+    correctly, then \cd{Oxs\_Demag} will usually be okay; you might want
+    to take a little extra care when working with periodic boundary
+    conditions, however, because demagnetization effects across PBC's
+    can be nonintuitive.
+
+  \item When the \MIF\ file is ready, launch \cd{Oxsii} and bring up the
+    \cd{File\pipe Load} dialog box. Select the \cd{Browse} check box, as
+    otherwise the \cd{Load} dialog box is automatically closed when you
+    select \cd{OK} to load the file. The \cd{Browse} option allows you
+    to correct syntax errors in your \MIF\ file without having to
+    repeatedly open the \cd{File\pipe Load} dialog box and reselect your
+    \MIF\ file and parameters.
+
+  \item If the load fails, open the \MIF\ file in your FPE and use the
+    error message to help locate the point of failure in the
+    file. Correct, save to disk, and try loading again.
+
+  \item If you can't figure out an error message, or to just
+    double-check that your file is being interpreted as you intend, use
+    the \MIF\ \cd{Report} command to print the contents of variables or
+    other state information to the \cd{Oxsii} console. (The \cd{Oxsii}
+    console is launched via the \cd{File\pipe Show Console} menu item on the
+    main \cd{Oxsii} window. If you are running \cd{Boxsi}, \cd{Report}
+    output goes to the \cd{Boxsi} log file, \fn{oommf/boxsi.errors}.)
+
+  \item Once the file loads without errors, send \cd{Magnetization}
+    output from \cd{Oxsii} to \cd{mmDisp} for a visual check of the
+    simulation structure. Use \cd{Ctrl-} or \cd{Shift-Ctrl-\oab left
+    mouse click\cab} in \cd{mmDisp} to view magnetization component
+    values at various locations. Bring up the \cd{mmDisp
+    Options\pipe Configure} dialog box to adjust the coloring, pixel and
+    arrow selection, etc. The \cd{\# of Colors} and \cd{Data Scale}
+    settings in particular can make it easier to see small differences
+    in the selected \cd{Color Quantity}. The \cd{Arrow span} setting can
+    be used to control the number of levels of arrows that get displayed
+    in the slice view. For example, if the cell dimension in the
+    out-of-view-plane direction is 4~nm, then setting \cd{Arrow span} to
+    \cd{4e-9} will cause a single slice of the magnetization to be
+    displayed as you adjust the slice control slider in the main
+    \cd{mmDisp} window. If you set \cd{Arrow span} to \cd{8e-9} you'll
+    see two layers of overlapping arrows, which can be helpful for
+    checking interface conditions.
+
+  \item By default \cd{mmDisp} opens with a top-down view along the
+    $z$-axis. For multilayer structures it is helpful to see
+    cross-sectional views along other axes too; these are available from
+    the \cd{View\pipe Viewpoint} submenu in the main \cd{mmDisp} window.
+    Also, the \cd{mmDisp} rendering of high aspect ratio cells can be
+    rather poor. In this situation you may want to enable pixel display
+    in the \cd{mmDisp} configuration dialog with pixel size set smaller
+    than 1, and adjust the background color to make the individual cells
+    visible.
+
+  \item The \cd{Magnetization} output viewed in \cd{mmDisp} allows you
+    to check that you have set \cd{Ms} and \cd{m0} properly in the
+    driver \cd{Specify} block. You can send other fields, such as
+    anisotropy and exchange, to \cd{mmDisp} to check parameter settings
+    for those energy terms as well. In this context it can be helpful to
+    adjust \cd{m0} to align in specific directions for testing. You may
+    want to open two instances of \cd{mmDisp}, with \cd{Magnetization}
+    displayed in one and an energy field in the other, to help
+    correspond energy field values with magnetization structure.
+
+  \item If you are having problems implementing some functionality, do a
+    search through the \MIF\ files in \fn{oommf/app/oxs/examples} for
+    something similar. For example, a text search for ``pulse'' will
+    turn up matches in \fn{pillar.mif}, \fn{pingpillar.mif}, and
+    \fn{pulse.mif}, each illustrating how to implement an applied field
+    pulse of various shapes.
+
+\end{enumerate}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2604,7 +2890,7 @@ a missing value.
 Embedded newlines and carriage returns are not allowed in the title,
 columns, or units records.
 
-The command line utility, 
+The command line utility,
 \hyperrefhtml{\app{odtcols}}{\app{odtcols} (Sec.~}{)}{sec:odtcols},
 can be a useful tool for examining and partitioning \ODT\ files.
 
@@ -2663,9 +2949,9 @@ format, but another common case is $N=1$, which represents scalar
 fields, such as energy density (in say, J/m${}^3$).
 
 The recommended file extensions for \OVF\ files are \fn{.omf} for
-magnetization files, \fn{.ohf} for magnetic field (\vH) files, \fn{.obf} 
+magnetization files, \fn{.ohf} for magnetic field (\vH) files, \fn{.obf}
 for magnetic flux density (\vB) files,  \fn{.oef} for energy density
-files, or \fn{.ovf} for generic files.  
+files, or \fn{.ovf} for generic files.
 
 \subsection{The \OVF\ 0.0 format}\label{sec:svfformat}
 
@@ -2674,9 +2960,9 @@ format supporting irregularly sampled data.  It is intended as an aid
 for importing data from non-\OOMMF\ programs, and is backwards
 compatible with the format used for problem submissions for the
 \ifnotpdf{\htmladdnormallinkfoot{first \mumag\ standard
-problem}{http://www.ctcms.nist.gov/\~{}rdm/stdprob\_1.html}.}
+problem}{https://www.ctcms.nist.gov/\~{}rdm/stdprob\_1.html}.}
 \pdfonly{\htmladdnormallinkfoot{first \mumag\ standard
-problem}{http://www.ctcms.nist.gov/\%7Erdm/stdprob\_1.html}.}
+problem}{https://www.ctcms.nist.gov/\%7Erdm/stdprob\_1.html}.}
 
 Users of early releases of \OOMMF\ may recognize the \OVF\ 0.0 format
 by its previous name, the Simple Vector Field (\SVF)\index{file!svf}
@@ -2796,7 +3082,7 @@ specified in the
 # Segment count: 1
 \end{verbatim}
 line.  Currently only 1 segment is allowed.  This may be changed in
-the future to allow for multiple vector fields per file.  
+the future to allow for multiple vector fields per file.
 This is followed by
 \begin{verbatim}
 # Begin: Segment
@@ -2930,7 +3216,7 @@ file.}{sec:ovfformat}
 # Desc: 'Description' tag, which may be used or ignored by postprocessing
 # Desc: programs. You can put anything you want here, and can have as many
 # Desc: 'Desc' lines as you want.  The ## comment marker is disabled in
-# Desc: description lines. 
+# Desc: description lines.
 #
 ## Fundamental mesh measurement unit.  Treated as a label:
 # meshunit: nm

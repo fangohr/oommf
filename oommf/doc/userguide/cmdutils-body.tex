@@ -13,11 +13,13 @@ with a micromagnetic simulation.
 \index{application!any2ppm}\index{file!conversion}
 The \app{any2ppm} program converts bitmap files from the Portable Pixmap
 (PPM), Windows BMP, and GIF formats into the Portable Pixmap P3
-(text) format or the uncompressed 24 bits-per-pixel BMP binary format.
-Additional formats may be available if the \Tcl/\Tk\
-\htmladdnormallinkfoot{\textit{Img}}{http://tkimg.sourceforge.net/}
+(text) or P6 (binary) formats, or the uncompressed 24 bits-per-pixel BMP
+binary format.  With \Tcl/\Tk\ 8.6 or later
+the \textit{Portable Network Graphics} (PNG) format is also
+supported.  Additional formats may be available if the \Tcl/\Tk\
+\htmladdnormallinkfoot{\textit{Img}}{https://wiki.tcl-lang.org/page/Img}
 package is installed on your system.  (Note: \OOMMF\ support for BMP
-requires Tk 8.0\index{requirement!Tk~8.0+} or later.)
+requires \Tk\ 8.0\index{requirement!Tk~8.0+} or later.)
 
 \sssechead{Launching}
 The \app{any2ppm} launch command is:
@@ -39,13 +41,16 @@ where
   is coming from stdin, i.e., there is no input filename, then the
   default output is to stdout.
 \item[\optkey{-format fmt}]
-  Output file format.  The default is \cd{PPM}, which is the Portable
-  Pixmap P3 (text) format.  Setting \texttt{fmt} to \cd{BMP} will
-  produce files in the uncompressed Windows BMP\index{file!bmp} 24
-  bits-per-pixel format.  If the \Tcl/\Tk\ Img package is installed,
-  then additional formats, such as PNG, JPEG and TIFF, will be
-  available.  The default output file extension depends on the format
-  selected, e.g., \fn{.ppm} for PPM files and \fn{.bmp} for BMP files.
+  Output file format.  The default is \cd{PPM} or \cd{P3} which is the
+  Portable Pixmap P3 (text) format; use \cd{P6} to get the binary PPM P6
+  output.  Setting \texttt{fmt} to \cd{BMP} will produce files in the
+  uncompressed Windows BMP\index{file!bmp} 24 bits-per-pixel format.
+  Under \Tcl/\Tk\ 8.6 and later the \textit{Portable Network Graphics}
+  format can be selected by setting \texttt{fmt} to \cd{PNG}.  If the
+  \Tcl/\Tk\ Img package is installed, then additional formats, such as
+  PNG (for pre-\Tcl/\Tk\ 8.6), JPEG and TIFF, will be available.  The
+  default output file extension depends on the format selected, e.g.,
+  \fn{.ppm} for PPM files and \fn{.bmp} for BMP files.
 \item[\optkey{-noinfo}]
   Suppress writing of progress information to stderr.
 \item[\optkey{-o outfile}]
@@ -71,7 +76,7 @@ must be available.  This is not a problem on \Windows, where a desktop
 is always present, but on \Unix\ this means that an \X\ server must be
 running.  The
 \htmladdnormallinkfoot{\textit{Xvfb}}{%
-http://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}\index{application!Xvfb}
+https://www.x.org/archive/X11R7.6/doc/man/man1/Xvfb.1.xhtml}\index{application!Xvfb}
 virtual framebuffer can be used if desired.  (Xvfb is an X server
 distributed with X11R6 that requires no display hardware or physical
 input devices.)
@@ -331,15 +336,15 @@ replaces this with the extension \fn{.odt}.
 The \app{avf2ovf} program converts vector field files from any of the
 \latexhtml{recognized formats (\OVF, \VIO; see
 Sec.~\ref{sec:vfformats})}{\htmlref{recognized formats}{sec:vfformats}
-(\OVF, \VIO)} into the \OVF\ format.
+(\OVF, \VIO)} into the \OOMMF\ \OVF\ or the Python NumPy NPY format.
 
 \sssechead{Launching}
 The \app{avf2ovf} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ovf [standard options] \
-   [-clip xmin ymin zmin xmax ymax zmax] [-flip flipstr] \
-   [-format <text|b4|b8>] [-grid <rect|irreg>] [-info] [-keepbb] \
-   [-mag] [-ovfversion version] [-pertran xoff yoff zoff] [-q] \
+   [-clip xmin ymin zmin xmax ymax zmax] [-dataformat <text|b4|b8>] \
+   [-fileformat <ovf|npy> version] [-flip flipstr] [-grid <rect|irreg>] \
+   [-info] [-keepbb] [-mag] [-pertran xoff yoff zoff] [-q] \
    [-resample xstep ystep zstep order] [-rpertran rxoff ryoff rzoff] \
    [-subsample period] [infile [outfile]]
 \end{verbatim}
@@ -350,6 +355,19 @@ where
   points inside the clip box are brought over into the output file.  Any
   of the arguments may be set to ``-'' to use the corresponding value
   from the input file, i.e., to not clip along that box face.
+\item[\optkey{-dataformat \boa text\pipe b4\pipe b8\bca}]
+  Specify output data format, either ASCII text (\cd{text}), 4-byte
+  binary (\cd{b4}), or 8-byte binary (\cd{b8}). For \OOMMF\ \OVF\ output
+  files, the default is text (note that the \OVF\ format has an ASCII
+  text header in all cases). For Python NumPy NPY output files the
+  default is 8-byte binary. For \OOMMF\ \OVF\ version 2 output, the text
+  option can additionally include a C-style printf format string, e.g.,
+  \verb|-dataformat "text %16.12e"| (note the quotes to keep this a single
+  argument to \cd{-dataformat}).
+\item[\optkey{-fileformat \boa ovf\pipe npy\bca\ version}]
+  Specify the output file format and version, either
+  \OOMMF\ \OVF\ version 1 (default) or 2, or the Python NumPy array
+  file format version 1.
 \item[\optkey{-flip flipstr}]
   Provides an axis coordinate transformation.  Flipstr has the form
   A:B:C, where A, B, C is a permutation of $x$, $y$, $z$, with an
@@ -358,10 +376,6 @@ where
   is mapped.  The default is the identity map, {\tt x:y:z}.  To rotate
   $90^\circ$ about the $z$-axis, use ``-flip y:-x:z'', which sends $x$
   to the $+y$ axis, $y$ to the -$x$ axis, and leaves $z$ unchanged.
-\item[\optkey{-format \boa text\pipe b4\pipe b8\bca}]
-  Specify output data format.  The default is ASCII \cd{text}; \cd{b4} selects
-  4-byte binary, \cd{b8} selects 8-byte binary.  (The OVF format has an
-  ASCII text header in all cases.)
 \item[\optkey{-grid \boa rect\pipe irreg\bca}]
   Specify output grid\index{grid} structure.  The default is \cd{rect},
   which will output a regular rectangular grid if the input is recognized
@@ -380,9 +394,8 @@ where
 \item[\optkey{-mag}]
   Write out a scalar valued field instead of a vector value field, where
   the scalar values are the magnitude $|v(r)|$ of the vector values at
-  each point $r$.
-\item[\optkey{-ovfversion version}]
-  Specify the output \OVF\ version, either 1 (default) or 2.
+  each point $r$. This option is only supported for \OOMMF\ \OVF\ version
+  2 output.
 \item[\optkey{-pertran xoff yoff zoff}]
   Translates field with respect to location coordiates, by amount
   $(\mathit{xoff},\mathit{yoff},\mathit{zoff})$, in a periodic
@@ -436,6 +449,10 @@ where
   Name of output file.  If no file is specified, writes to stdout.
 \end{description}
 
+There are also two recognized but deprecated options,
+\optkey{-format} and \optkey{-ovf}. The former is replaced by
+\optkey{-dataformat} and the latter superceded by \optkey{-fileformat}.
+
 The \cd{-clip} option is useful when one needs to do analysis on a
 small piece of a large simulation.  The \cd{-info} option is helpful
 here to discover the extents of the original mesh.  The \cd{-clip}
@@ -449,13 +466,13 @@ the $yz$-plane.
 If multiple operations are specified, then the operation order is
 clip, resample, subsample, flip, and translate.
 
-The \cd{-format text} and \cd{-grid irreg} options are handy for
+The \cd{-dataformat text} and \cd{-grid irreg} options are handy for
 preparing files for import into non-\OOMMF\ applications, since all
 non-data lines are readily identified by a leading ``\verb+#+,'' and
 each data line is a 6-tuple consisting of the node location and vector
 value.  Pay attention, however, to the scaling of the vector value as
 specified by ``\verb+# valueunit+'' and ``\verb+# valuemultiplier+''
-header lines.
+header lines (OVF version 1 only).
 
 For output format details, see the \hyperrefhtml{OVF file
 description}{OVF file description (Sec.~}{,
@@ -494,7 +511,7 @@ box, specify display parameters.
 The \app{avf2ppm} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ppm [standard options] [-config file] [-f] \
-   [-filter program] [-format <P3|P6|B24>] [-ipat pattern] \
+   [-filter program] [-format <P3|P6|B24|PNG>] [-ipat pattern] \
    [-opatexp regexp] [-opatsub sub] [-v level] [infile ...]
 \end{verbatim}
 where
@@ -512,11 +529,15 @@ where
 \item[\optkey{-filter program}]
   Post-processing application to run on each \app{avf2ppm} output
   file.  May be a pipeline of several programs.
-\item[\optkey{-format \boa P3\pipe P6\pipe B24\bca}]
+\item[\optkey{-format \boa P3\pipe P6\pipe B24\pipe PNG\bca}]
   Specify the output image file format.  Currently supported formats are
-  the true color {\em Portable Pixmap} (PPM)\index{file!ppm} formats P3
-  (ASCII text) and P6 (binary), and the uncompressed Windows
-  BMP\index{file!bmp} 24 bits-per-pixel format.  The default is P6.
+  the true color \textit{Portable Pixmap} (PPM)\index{file!ppm} formats P3
+  (ASCII text) and P6 (binary), the uncompressed Windows
+  BMP\index{file!bmp} 24 bits-per-pixel format, and the compressed
+  \textit{Portable Network Graphics} (PNG) format.  Conversion to the
+  PNG format requires either \Tk\ 8.6+, or earlier \Tk\ plus the
+  \htmladdnormallinkfoot{\textit{Img}}{https://wiki.tcl-lang.org/page/Img}
+  package.  The default format is P6.
 \item[\optkey{-ipat pattern}]
   Specify input files using a pattern with ``glob-style'' wildcards.
   Mostly useful in \DOS.
@@ -527,8 +548,8 @@ where
 \item[\optkey{-opatsub sub}]
   The string with which to replace the portion of input filenames
   matched by the {\tt -opatexp regexp} during output filename
-  generation.  The default is {\verb!.ppm!} for type P3 and P6 file
-  output, {\verb!.bmp!} for B24 file output.
+  generation.  The default is {\verb!.ppm!} for type P3 and P6,
+  {\verb!.bmp!} for B24, and {\verb!.png!} for PNG file output.
 \item[\optkey{-v level}]
   Verbosity (informational message) level, with 0 generating only
   error messages, and larger numbers generating additional information.
@@ -1590,7 +1611,9 @@ where
 \begin{description}
 \item[\optkey{-f format}]
   C printf-style format string for each output item.  Optional.  The
-  default format string is \verb+"%-${colwidth}s"+.
+  default format string is \verb+"%$15s"+. Multiple \cd{-f}
+  options may be interspersed with column selections, in which case each
+  format applies to subsequently selected columns.
 \item[\optkey{-m missing}]
   String used on output to designate a missing value.  Default
   is the two character open-close curly brace pair, \ocb\ccb, as
@@ -1632,7 +1655,12 @@ where
   tables, so the effective default deselect string is the empty set.
 \item[\optkey{-w colwidth}]
   Minimum horizontal spacing to provide for each column on output.
-  Optional.  Default value is 15.
+  Optional.  Default value is 15. Negative \cd{colwidth} values will
+  fill from the left, positive from the right. (This positions the
+  post-formatted data string, retaining any space in the field width
+  portion of the \cd{-f format} specification.) Multiple \cd{-w}
+  options may be interspersed with column selections, in which case each
+  width applies to subsequently selected columns.
 \item[\optkey{col \ldots}]
   Output column selections.  These may either be integers representing
   the position of the column in the input data (with the first column
@@ -1761,19 +1789,30 @@ in subdirectories under \fn{oommf/app/oxs/regression\_tests/}.
 \sssechead{Launching}
 The \app{oxsregression} launch command is:
 \begin{verbatim}
-tclsh oommf.tcl runtests [-autoadd] [-ignoreextra] [-keepfail] [-listtests]
-       [-loglevel level] [-noexcludes] [-resultsfile stemname] [-showoutput]
-       [-sigfigs digits] [-threads count] [-timeout seconds]
-       [-updaterefdata] [-v] [testa testb ...]
+tclsh oommf.tcl runtests [-autoadd] [-alttestdir] [-cleanup] [-ignoreextra]
+   [-keepfail] [-listtests] [-loglevel level] [-noexcludes] [-parallel n]
+   [-resultsfile stemname] [-showoutput] [-sigfigs digits] [-threads count]
+   [-timeout seconds] [-updaterefdata] [-v] [testa testb ...]
 \end{verbatim}
 where
 \begin{description}
 \item[\optkey{-autoadd}]
  Automatically adds new tests from \MIF\ files found in the examples
  directory \fn{oommf/app/oxs/examples/}.
+\item[\optkey{-alttestdir}]
+\begin{flushleft}
+Specify an alternative test directory to use in place of the default
+directory list \fn{oommf/app/oxs/examples/},
+\fn{oommf/app/oxs/regression\_tests/bug\_tests/}, and
+\fn{oommf/app/oxs/regression\_tests/local\_tests/}.
+\end{flushleft}
+\item[\optkey{-cleanup}]
+If \app{oxsregression} is killed or crashes mid-run, then some temporary
+result files may be left on disk. This command searches for and offers to
+delete these stray files.
 \item[\optkey{-ignoreextra}]
  Ignore extra columns, if any, in test results as compared to
- reference results.  This is useful in developement work when
+ reference results.  This is useful in development work when
  changes to a \MIF\ file introduce additional data table output.
 \item[\optkey{-keepfail}]
   Keep results from failed tests.  Normally test results are
@@ -1781,14 +1820,20 @@ where
 \item[\optkey{-listtests}]
   List all selected tests and exit without running any tests.
 \item[\optkey{-loglevel level}]
-  Controls amount of log information written to \fn{boxsi.errors}
-  (default 0).
+%\begin{flushleft}
+  Controls the amount of log information written to
+  \fn{oxsregression.log} in the regression test directory
+  \fn{oommf/app/oxs/regression\_tests/}.  The default setting is 0.
+%\end{flushleft}
 \item[\optkey{-noexcludes}]
   Some tests suffer from various numerical problems.  These are
   excluded from testing, unless this option is specified.
+\item[\optkey{-parallel n}]
+  Run \cd{n} tests concurrently, with default \cd{n=1}. This option is
+  only available when using \Tcl\ 8.6 or later.
 \item[\optkey{-resultsfile stemname}]
   Test results are written to temporary files; by default these files
-  have the stem \cd{regression-test-output}.  If \app{oxsregression}
+  have the stem \cd{oxsregression-test-output}.  If \app{oxsregression}
   is run simultaneously, perhaps on different machines on a shared
   file system, then overwriting of files from one process can
   interfere with the processing by another.  The \cd{-resultsfile}
@@ -1819,6 +1864,11 @@ where
  argument, e.g., \verb+"exch6ngbr 1,7,9"+.  If no subtests are
  specified then all subtests are run.
 \end{description}
+Take notice  of the interplay between the \cd{-parallel n} and
+\cd{-threads count} options. The former is the number of tests run in
+parallel, and the latter is the number of computation threads active in
+each test run. The total number of threads active at one time can
+therefore be as many as \cd{n\,$\times$\,count}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

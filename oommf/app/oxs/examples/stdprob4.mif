@@ -13,13 +13,28 @@ Parameter subproblem  2  ;# Should be either 1 or 2
 Parameter initproblem 0  ;# Use 1 to generate initial state,
             ## or 0 to run using previously generated state.
 
-Parameter xcellsize 2.5e-9
-Parameter ycellsize 2.5e-9
-Parameter zcellsize   3e-9
+# Cell size in nanometers
+Parameter xcellsize 2.5
+Parameter ycellsize 2.5
+Parameter zcellsize   3
+
+# Round cellsize to fit part dimensions.
+set yrange 125e-9
+set xrange [expr {4*$yrange}]
+set zrange 3e-9
+set xcellsize [expr {$xrange/round($xrange/($xcellsize*1e-9))}]
+set ycellsize [expr {$yrange/round($yrange/($ycellsize*1e-9))}]
+set zcellsize [expr {$zrange/round($zrange/($zcellsize*1e-9))}]
+set cslabel [format "-cs%4.2fx%4.2fx%4.2f" \
+                [expr {$xcellsize*1e9}] \
+                [expr {$ycellsize*1e9}] \
+                [expr {$zcellsize*1e9}]]
 
 Parameter til {} ;# Total iteration limit
 
-if {1 == $subproblem} {
+if {$initproblem} {
+   set basename stdprob4
+} elseif {1 == $subproblem} {
     set basename stdprob4a
     set Hx  -24.6  ;# Applied field in mT
     set Hy    4.3
@@ -31,40 +46,50 @@ if {1 == $subproblem} {
     error "Unrecognized subproblem request: $subproblem\
             (should be 1 or 2)"
 }
+append basename $cslabel
+set startfile "stdprob4${cslabel}-start.omf"
 set Hz 0.0
 
-Specify Oxs_BoxAtlas:atlas {
-  xrange {0 500e-9}
-  yrange {0 125e-9}
-  zrange {0   3e-9}
-}
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $xrange}
+  yrange {0 $yrange}
+  zrange {0 $zrange}
+}]
 
 Specify Oxs_RectangularMesh:mesh [subst {
   cellsize {$xcellsize $ycellsize $zcellsize}
   atlas Oxs_BoxAtlas:atlas
 }]
 
-Specify Oxs_UniformExchange {
+Parameter Akernel 6ngbr
+## One of 6ngbr, 6ngbrfree, 6ngbralt, 12ngbr, 12ngbrfree,
+## 12ngbrmirror, or 26ngbr
+
+Specify Oxs_UniformExchange [subst {
   A  13E-12
-}
+  kernel $Akernel
+}]
 
 Specify Oxs_Demag {}
 
 if {$initproblem} {
     Specify Oxs_CGEvolve {}
     Specify Oxs_MinDriver [subst {
-	basename stdprob4
+	basename $basename
 	evolver Oxs_CGEvolve
 	mesh :mesh
 	stopping_mxHxm 1e-6
 	Ms 8e5
 	m0 { 1 0.25 0.1 }
     }]
+   Destination archive mmArchive
+   Schedule Oxs_MinDriver::Spin archive Done
 } else {
     Specify Oxs_FixedZeeman [subst {
         multiplier [expr {0.001/$mu0}]
         field {$Hx $Hy $Hz}
     }]
+    Parameter max_timestep 5e-13
     if {[string match euler $solver]} {
        Specify Oxs_EulerEvolve:evolver [subst {
           gamma_G             2.211e5
@@ -73,6 +98,7 @@ if {$initproblem} {
           error_rate          1.0
           absolute_step_error 0.2
           relative_step_error 0.01
+          max_timestep        $max_timestep
        }]
     } else {
        Specify Oxs_RungeKuttaEvolve:evolver [subst {
@@ -83,6 +109,7 @@ if {$initproblem} {
           absolute_step_error 0.2
           relative_step_error 0.01
           energy_precision    -1
+          max_timestep        $max_timestep
           method $solver
        }]
     }
@@ -98,8 +125,11 @@ if {$initproblem} {
 	m0 { Oxs_FileVectorField  {
 	    atlas :atlas
 	    norm  1.0
-	    file  stdprob4-start.omf
+           file  $startfile
 	}}
         $til
     }]
+   Destination archive mmArchive
+   Schedule DataTable archive Done
+   Schedule Oxs_TimeDriver::Spin archive Done
 }

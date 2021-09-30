@@ -96,8 +96,9 @@ struct SampleInfo {
   Nb_DString colorquantity;
   OC_REAL8m phase;
   OC_BOOL invert;
+  OC_BOOL trimtiny;
   Nb_List<Vf_DisplayVector> dvlist;
-  SampleInfo() : subsample(0.), phase(0.), invert(0) {}
+  SampleInfo() : subsample(0.), phase(0.), invert(0), trimtiny(0) {}
 };
 
 class DisplayFrame

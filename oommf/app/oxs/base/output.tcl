@@ -28,6 +28,20 @@ Oc_Class Oxs_Output {
     private common basename oxs
     private common driver
 
+    # Dictionary of unclaimed temporary files.
+    # The field output types (vector field and scalar field) write a
+    # temporary file to disk and send the name of that file to the
+    # server (e.g., mmDisp or mmArchive). Once the server acknowledges
+    # receipt of the message, it becomes the responsibility of the
+    # server to dispose of the temporary file. The tmpfiles dictionary
+    # keeps track of files written to disk that have not (yet) been
+    # claimed by the server.  In the case of a controlled shutdown,
+    # the output class automatically deletes any unclaimed files.
+    # To make housekeeping easy, each key in tmpfiles is a Net_Thread
+    # id, and the value associated with each key is a nested dictionary
+    # indexed by the Net_Link id associated with the send request.
+    private common tmpfiles
+
     # Formats for embedding into filenames
     public variable iter_fmt = "%07d"
     public variable stage_fmt = "%02d"
@@ -36,6 +50,7 @@ Oc_Class Oxs_Output {
     const public variable name
     const private variable type
     const public variable units
+
     ClassConstructor {
         trace variable index wu [subst { uplevel #0 {
             set opAssocList \[[list array get [$class GlobalName index]]]
@@ -48,9 +63,38 @@ Oc_Class Oxs_Output {
                         -destination [$d Cget -name]
             }
         }
+
+        # Initialize temp file tracking. Note that ThreadExitCleanup
+        # is tied to Net_Thread Delete, not Net_Thread SafeClose.
+        # (See ThreadExitCleanup notes for details.)
+        set tmpfiles [dict create]
+        Oc_EventHandler New _ Net_Thread Delete \
+           [list $class ThreadExitCleanup %object] \
+           -groups $class
+
         # When the problem is released, output handles become invalid,
         # so Oxs_Output instances must be destroyed.
         Oc_EventHandler New _ Oxs Release [list $class DeleteAll]
+    }
+    proc ThreadExitCleanup { thread } {
+       # This should be triggered on thread Delete, not thread
+       # SafeClose.  The Oxs_FlushData proc generates a thread
+       # SafeClose event on each thread, and then vwaits on thread
+       # DeleteEnd. The thread calls its connection SafeClose, which
+       # waits for replies from all outstanding messages before
+       # calling its destructor which triggers thread Delete.
+       if {[dict exists $tmpfiles $thread]} {
+          # tmpfiles is a dictionary indexed by Net_Thread ids.  Each
+          # tmpfile value is itself a dictionary. The subdictionary is
+          # a list of temporary files indexed by the Net_Link message
+          # id used to send the temporary filename to the
+          # archive/display field server.
+          set filedict [dict get $tmpfiles $thread]
+          if {[dict size $filedict]>0} {
+             file delete {*}[dict values $filedict]
+          }
+          dict unset tmpfiles $thread
+       }
     }
     proc DeleteAll {} {
         # remove trace on index so we don't send message for every
@@ -130,7 +174,7 @@ Oc_Class Oxs_Output {
         } else {
             set scalars [lreplace $scalars $idx $idx]
         }
-        catch {unset directory($name)}
+       catch {unset directory($name)}
     }
     proc Lookup {n} {
         return $directory($n)
@@ -174,7 +218,7 @@ Oc_Class Oxs_Output {
        }
        if {[catch {Oxs_Destination Thread $dest} thread]} {
           return -code error -errorcode OxsUnknownDestination \
-              "Unknown destination: $dest"
+              "Unknown destination \"$dest\": $thread"
        }
 
        # DataTable output gets special handling
@@ -227,7 +271,12 @@ Oc_Class Oxs_Output {
                 # Piece together a temporary file name
 		set temp [Oc_TempName [file tail $basename] $ext]
                 Oxs_OutputGet $handle $temp
-                return [$thread Send datafile [list $temp $filename]]
+                set msgid [$thread Send datafile [list $temp $filename]]
+                dict set tmpfiles $thread $msgid $temp
+                Oc_EventHandler New _ $thread Reply${msgid} \
+                      [list dict unset [$class GlobalName tmpfiles] $thread $msgid] \
+                      -groups [list $thread]
+                return $msgid
             }
             scalarField {
                 # Piece together a permanent file name
@@ -250,7 +299,12 @@ Oc_Class Oxs_Output {
                 # Piece together a temporary file name
 		set temp [Oc_TempName [file tail $basename] $ext]
                 Oxs_OutputGet $handle $temp
-                return [$thread Send datafile [list $temp $filename]]
+                set msgid [$thread Send datafile [list $temp $filename]]
+                dict set tmpfiles $thread $msgid $temp
+                Oc_EventHandler New _ $thread Reply${msgid} \
+                      [list dict unset [$class GlobalName tmpfiles] $thread $msgid] \
+                      -groups [list $this]
+                return $msgid
             }
             default {
                 return -code error "Don't know how to send output\

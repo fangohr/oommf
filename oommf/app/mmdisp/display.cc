@@ -487,7 +487,8 @@ DisplayFrame::GetDisplayList(const Nb_BoundingBox<OC_REAL4>& select_box,
   OC_REAL4m ystep=mesh_celldim.y*si.subsample;
   OC_REAL4m zstep=0.;
   mesh->GetDisplayList(xstep,ystep,zstep,mesh_box,
-                       si.colorquantity,si.phase,si.invert,
+                       si.colorquantity,si.phase,
+                       si.invert,si.trimtiny,
                        si.dvlist);
   xstep/=mesh_celldim.x;
   ystep/=mesh_celldim.y;
@@ -1082,6 +1083,7 @@ OC_INT4m DisplayFrame::Render(const char *canvas_name,OC_BOOL hide)
       pixel_sample.colorquantity=pixel_config.colorquantity;
       pixel_sample.phase=pixel_config.phase;
       pixel_sample.invert=pixel_config.invert;
+      pixel_sample.trimtiny=0;
       GetDisplayList(pixel_sample);
       pixel_valid=1;
     }
@@ -1123,6 +1125,7 @@ OC_INT4m DisplayFrame::Render(const char *canvas_name,OC_BOOL hide)
       arrow_sample.colorquantity=arrow_config.colorquantity;
       arrow_sample.phase=arrow_config.phase;
       arrow_sample.invert=arrow_config.invert;
+      arrow_sample.trimtiny=1;  // Exclude small arrows from DisplayList
       GetDisplayList(arrow_sample);
       arrow_valid=1;
     }
@@ -1207,6 +1210,7 @@ DisplayFrame::FillBitmap(const Nb_BoundingBox<OC_REAL4>& arrow_box,
     pixel_sample.colorquantity=pixel_config.colorquantity;
     pixel_sample.phase=pixel_config.phase;
     pixel_sample.invert=pixel_config.invert;
+    pixel_sample.trimtiny=0;
     if(pixel_box.IsEmpty()) {
       GetDisplayList(pixel_sample);
     } else {
@@ -1235,6 +1239,7 @@ DisplayFrame::FillBitmap(const Nb_BoundingBox<OC_REAL4>& arrow_box,
     arrow_sample.colorquantity=arrow_config.colorquantity;
     arrow_sample.phase=arrow_config.phase;
     arrow_sample.invert=arrow_config.invert;
+    arrow_sample.trimtiny=1;  // Exclude small arrows from DisplayList
     if(arrow_box.IsEmpty()) {
       GetDisplayList(arrow_sample);
     } else {
@@ -1311,8 +1316,6 @@ DisplayFrame::FillBitmap(const Nb_BoundingBox<OC_REAL4>& arrow_box,
       for(dspvec=pixlist.GetFirst();
           dspvec!=(Vf_DisplayVector *)NULL;
           dspvec=pixlist.GetNext()) {
-        if(dspvec->value.MagSq()<OC_REAL4_EPSILON) continue;
-        // This is a zero vector; skip.
         OC_REAL4m x1,x2,y1,y2;
         x1=(dspvec->location.x)-pixel_dimens.x/2;  x2=x1+pixel_dimens.x-1;
         y1=(dspvec->location.y)-pixel_dimens.y/2;  y2=y1+pixel_dimens.y-1;
@@ -1464,6 +1467,7 @@ DisplayFrame::PSDump
     pixel_sample.colorquantity=pixel_config.colorquantity;
     pixel_sample.phase=pixel_config.phase;
     pixel_sample.invert=pixel_config.invert;
+    pixel_sample.trimtiny=0;
     if(pixel_box.IsEmpty()) {
       GetDisplayList(pixel_sample);
     } else {
@@ -1492,6 +1496,7 @@ DisplayFrame::PSDump
     arrow_sample.colorquantity=arrow_config.colorquantity;
     arrow_sample.phase=arrow_config.phase;
     arrow_sample.invert=arrow_config.invert;
+    arrow_sample.trimtiny=1;  // Exclude small arrows from DisplayList
     if(arrow_box.IsEmpty()) {
       GetDisplayList(arrow_sample);
     } else {
@@ -1567,8 +1572,6 @@ DisplayFrame::PSDump
       for(dspvec=pixlist.GetFirst();
           dspvec!=(Vf_DisplayVector *)NULL;
           dspvec=pixlist.GetNext()) {
-        // if(dspvec->value.MagSq()<OC_REAL4_EPSILON) continue;
-        // This is a zero vector; skip.  (WHY??? mjd, 22-Mar-2012)
         OC_REAL4m x1,x2,y1,y2;
         x1=(dspvec->location.x)-pixel_dimens.x/2;  x2=x1+pixel_dimens.x;
         y1=(dspvec->location.y)-pixel_dimens.y/2;  y2=y1+pixel_dimens.y;

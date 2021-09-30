@@ -1,0 +1,109 @@
+# MIF 2.1 ---------------------------------------------------------------------
+
+# Generate an isolated antiskyrmion with interfacial (C_2v) DMI
+#
+# Authors: D.A. Tatarskiy (2019)
+
+set PI [expr {4 * atan(1.)}]
+set MU0 [expr {4 * $PI * 1e-7}]
+
+# -----------------------------------------------------------------------------
+# PdFe on Ir(111) [PRL, 114(17):1-5, 2015]
+set Ms [expr {1.1e6}]
+set A  [expr {2e-12}]
+set Dx  [expr {-3.9e-3}] ;# Fully antisymmetric interfacial DMI to get antiskyrmion
+set Dy  [expr {3.9e-3}]  ;#
+set KU [expr {2.5e6}]
+set BZ [expr {1.0}]
+
+set XL [expr {15e-9}]
+set YL [expr {$XL}]
+set ZL [expr {2e-9}]
+
+set xcell [expr {$XL / 20}]
+set ycell [expr {$YL / 20}]
+set zcell [expr {2e-9}]
+
+# -----------------------------------------------------------------------------
+
+# BoxAtlas
+Specify Oxs_BoxAtlas:atlas [subst {
+  xrange {0 $XL}
+  yrange {0 $YL}
+  zrange {0 $ZL}
+  name atlas
+}]
+
+# RectangularMesh
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xcell $ycell $zcell}
+  atlas Oxs_BoxAtlas:atlas
+}]
+
+# UniformExchange
+Specify Oxs_UniformExchange [subst {
+  A $A
+}]
+
+# Uniaxial Anisotropy
+Specify Oxs_UniaxialAnisotropy:Anisotropy [subst {
+	axis { 0 0 1 }
+	K1 $KU
+}]
+
+# C_2v DMI
+Specify Oxs_DMI_C2v [subst {
+  default_Dx $Dx
+  default_Dy $Dy  
+  atlas :atlas
+  Dx {
+    atlas atlas $Dx
+  }
+  Dy {
+    atlas atlas $Dy
+  }
+  
+}]
+
+Specify Oxs_FixedZeeman:Bfield [subst {
+  comment {Field values in Tesla; scale to A/m}
+  multiplier [expr {1 / $MU0}]
+  field {0.0 0.0 $BZ}
+}]
+
+# CGEvolver
+Specify Oxs_CGEvolve {}
+
+# MinDriver
+Specify Oxs_MinDriver [subst {
+  evolver Oxs_CGEvolve
+  stopping_mxHxm 0.01
+  mesh :mesh
+  Ms $Ms
+  m0 { Oxs_ScriptVectorField {
+     atlas :atlas
+     script { dot }
+     norm 1.0
+     script_args { relpt }
+  }}
+ 
+  basename isolated_sk_Cnv
+  scalar_field_output_format {text %\#.15g}
+  vector_field_output_format {text %\#.15g}
+}]
+
+Destination table mmArchive
+Destination mags mmArchive
+
+Schedule DataTable table Stage 1
+Schedule Oxs_MinDriver::Magnetization mags Stage 1
+
+# =============================================================================
+
+proc dot { x y z } {
+	set xnorm  [expr {(2 * $x - 1)}]
+	set ynorm  [expr {(2 * $y - 1)}]
+    set radius [expr {sqrt($xnorm * $xnorm + $ynorm * $ynorm)}]
+    if {$radius < 0.2} { return [list 0 0 -1] }
+    return [list 0 0 1]
+}

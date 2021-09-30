@@ -125,15 +125,34 @@ void Nb_RatApprox(double x,int steps,int &num,int &denom)
     remainder=fabs(remainder)-fabs(double(coef[i]));
   }
   // Collect
-  int a=1,b=coef[--i];
-  while( --i >= 0 ) {
-    int sign=1;
-    int c=coef[i];
-    if(c<0) { sign=-1; c*=-1; }
-    int temp=b;
-    b=b*c+a;
-    a=sign*temp;
-  }
+  int itop = i;
+  int a,b;
+  do {
+    i = --itop;
+    if(i<0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,NULL,
+                          "Nb_RatApprox",NB_FUNCTIONS_ERRBUFSIZE,
+                          "Algorithm failure"));
+    }
+    a=1,b=coef[i];
+    while( --i >= 0 ) {
+      int sign=1;
+      int c=coef[i];
+      if(c<0) { sign=-1; c*=-1; }
+      int temp=b;
+      double check = double(b)*double(c)+double(a);
+      b = int(check);
+      if(double(b) != check) {
+        // Integer overflow; retry with fewer coefs.  This may be slow
+        // if the client requested an unreasonable number of steps---an
+        // alternative is to throw an error.
+        break;
+      }
+      // b=b*c+a;
+      a=sign*temp;
+    }
+  } while(i>0);
+
   if(a<0) { a*=-1; b*=-1; }
   int div=1;
   if(a!=0 && b!=0) {
@@ -315,6 +334,17 @@ double Nb_Atof(const char *nptr,OC_BOOL& error)
   return result;
 }
 
+// Overload of Nb_FloatToString template for long double case.  This
+// version appends an "L" to the value.
+String Nb_FloatToString(long double val)
+{ // Output uses default float format, which is like %g
+  std::stringbuf strbuf;
+  std::ostream ostrbuf(&strbuf);
+  ostrbuf << std::setprecision(std::numeric_limits<long double>::max_digits10)
+          << val << "L";
+  return strbuf.str();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Atan2 inverse, in degrees.  If angle is an integer, then we can do
 // range reduction on it without loss of precision.  This routine could
@@ -394,12 +424,25 @@ int Nb_IsFinite(OC_REAL8 x)
   return (code!=mask);
 }
 
-#if !OC_REALWIDE_IS_REAL8
+#if !OC_REALWIDE_IS_OC_REAL8
 int Nb_IsFinite(OC_REALWIDE x)
 {
 # if OC_REALWIDE_INTRINSIC_WIDTH == 8
 
   // Same tests as for OC_REAL8 case
+  unsigned char *cptr = (unsigned char *)(&x);
+#  if (OC_BYTEORDER == 4321)  // Little endian
+  unsigned int code = (((unsigned int)cptr[7])<<8) + ((unsigned int)cptr[6]);
+#  else // Otherwise assume big endian
+  unsigned int code = (((unsigned int)cptr[0])<<8) + ((unsigned int)cptr[1]);
+#  endif
+  unsigned mask = 0x7FF0;
+  code &= mask;
+  return (code!=mask);
+
+# elif  OC_REALWIDE_INTRINSIC_WIDTH == 16 && 105<LDBL_MANT_DIG && LDBL_MANT_DIG<108
+
+  // Assume OC_REALWIDE is implemented as a double-double, and use REAL8 tests
   unsigned char *cptr = (unsigned char *)(&x);
 #  if (OC_BYTEORDER == 4321)  // Little endian
   unsigned int code = (((unsigned int)cptr[7])<<8) + ((unsigned int)cptr[6]);
@@ -430,7 +473,7 @@ int Nb_IsFinite(OC_REALWIDE x)
 #  error Unsupported OC_REALWIDE floating point type
 # endif // OC_REALWIDE_INTRINSIC_WIDTH
 }
-#endif // !OC_REALWIDE_IS_REAL8
+#endif // !OC_REALWIDE_IS_OC_REAL8
 
 //////////////////////////////////////////////////////////////////////////
 // Routine to detect string containing nothing but whitespace.

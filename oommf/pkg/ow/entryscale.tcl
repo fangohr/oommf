@@ -628,7 +628,7 @@ Oc_Class Ow_EntryScale {
         set x [expr $a/$b]
         for {set level 1} {$level<10} {incr level} {
             # Seems there should be a better way to do this...
-            foreach { c d } [Nb_RatApprox $x $level] { break }
+            foreach { c d } [Ow_RatApprox $x $level] { break }
             if { $c>0 && $d>0 } {
                 set temp [expr ($a/double($c)+$b/double($d))/2.0]
                 if {$temp>=$step} {

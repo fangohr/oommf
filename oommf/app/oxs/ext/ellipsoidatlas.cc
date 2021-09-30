@@ -34,11 +34,86 @@ Oxs_EllipsoidAtlas::Oxs_EllipsoidAtlas
 			 " is improperly ordered.");
   }
 
-  String instance_tail = ExtractInstanceTail(InstanceName());
-  region_name = GetStringInitValue("name",instance_tail);
+  // Margins. Value order in fully expanded 6-element list is
+  // xmin xmax ymin ymax zmin zmax
+  vector<OC_REAL8m> margin;
+  if(HasInitValue("margin")) {
+    GetGroupedRealListInitValue("margin",margin);
+    switch(margin.size()) {
+    case 0:
+      margin.assign(6,0.0);
+      break;
+    case 1:
+      margin.assign(6,margin[0]);
+      break;
+    case 3:
+      margin.resize(6);
+      margin[5]=margin[4]=margin[2];
+      margin[3]=margin[2]=margin[1];
+      margin[1]=margin[0];
+      break;
+    case 6:
+      break;
+    default:
+      throw Oxs_ExtError(this,"Entry \"margin\" in Specify block"
+                       " should have 1, 3, or 6 entries.");
+    }
+  } else {
+    margin.assign(6,0.0);
+  }
+
+  // Region names
+  region_name_list.push_back("universe"); // Universe is always id 0
+  vector<String> tmp_list;
+  if(HasInitValue("name")) {
+    GetGroupedStringListInitValue("name",tmp_list);
+  } else {
+    // Default
+    tmp_list.push_back(ExtractInstanceTail(InstanceName()));
+  }
+  if(tmp_list.size()==1) {
+    // Original Oxs_EllipsoidAtlas behavior
+    if(tmp_list[0].compare("universe")==0) {
+      interior_id = exterior_id = 0;  // Degenerate case: No regions!
+    } else {
+      region_name_list.push_back(tmp_list[0]);
+      interior_id = 1; // Named region
+      exterior_id = 0; // "universe"
+    }
+  } else if(tmp_list.size()==2) {
+    // Extended Oxs_EllipsoidAtlas behavior
+    if(tmp_list[0].compare("universe")==0) {
+      interior_id = 0;
+    } else {
+      interior_id = region_name_list.size(); // Named region
+      region_name_list.push_back(tmp_list[0]);
+    }
+    if(tmp_list[1].compare("universe")==0) {
+      exterior_id = 0;
+    } else {
+      exterior_id = region_name_list.size(); // Named region
+      region_name_list.push_back(tmp_list[1]);
+    }
+  } else {
+    throw Oxs_ExtError(this,"Entry \"name\" in Specify block"
+                       " should be a 1 or 2 element list.");
+  }
 
   VerifyAllInitArgsUsed();
 
+  // Include margins into ellipsoid extent
+  xrange[0] += margin[0];  xrange[1] -= margin[1];
+  yrange[0] += margin[2];  yrange[1] -= margin[3];
+  zrange[0] += margin[4];  zrange[1] -= margin[5];
+
+  if(!ellipsoid.CheckOrderSet(xrange[0],xrange[1],
+                              yrange[0],yrange[1],
+                              zrange[0],zrange[1])) {
+    throw Oxs_ExtError(this,"Margins in Specify block"
+			 " too big; ellipsoid region is empty.");
+  }
+
+  // Compute working variables
   centerpt.x = 0.5*(xrange[0]+xrange[1]);
   centerpt.y = 0.5*(yrange[0]+yrange[1]);
   centerpt.z = 0.5*(zrange[0]+zrange[1]);
@@ -54,17 +129,22 @@ Oxs_EllipsoidAtlas::Oxs_EllipsoidAtlas
   else                                     invaxes.z = 0.0;
 
   if(invaxes.x==0.0 || invaxes.y==0.0 || invaxes.z==0.0) {
-    throw Oxs_ExtError(this,"One of [xyz]range in Specify block"
+    throw Oxs_ExtError(this,"One or more ellipsoid dimensions"
 			 " has zero extent.");
   }
 
 }
 
 OC_BOOL Oxs_EllipsoidAtlas::GetRegionExtents(OC_INDEX id,Oxs_Box &mybox) const
-{ // If id is 0 or 1, sets mybox to world and returns 1.
-  // If id > 1, leaves mybox untouched and returns 0.
+{ // Copies the extent of the specified region into mybox and returns 1.
+  // If import id is not a valid id then leaves mybox untouched and
+  // returns 0.
   if(id>=GetRegionCount()) return 0;
-  mybox = world;
+  if(id == exterior_id) {
+    mybox = world;
+  } else {
+    mybox = ellipsoid;
+  }
   return 1;
 }
 
@@ -76,32 +156,29 @@ OC_INDEX Oxs_EllipsoidAtlas::GetRegionId(const ThreeVector& point) const
   OC_REAL8m xd = (point.x - centerpt.x)*invaxes.x;  xd *= xd;
   OC_REAL8m yd = (point.y - centerpt.y)*invaxes.y;  yd *= yd;
   OC_REAL8m zd = (point.z - centerpt.z)*invaxes.z;  zd *= zd;
-  if(xd+yd+zd>1.0) return 0; // Outside ellipsoid
-  return 1; // Inside or on boundary of ellipsoid
+  if(xd+yd+zd>1.0) return exterior_id; // Outside ellipsoid
+  return interior_id; // Inside or on boundary of ellipsoid
 }
 
 OC_INDEX Oxs_EllipsoidAtlas::GetRegionId(const String& name) const
-{ // Given a region id string (name), returns
-  // the corresponding region id index.  If
-  // "name" is not included in the atlas, then
-  // -1 is returned.  Note: If name == "universe",
-  // then the return value will be 0.
-  if(name.compare(region_name)==0) return 1;
-  if(name.compare("universe")==0) return 0;
+{ // Given a region id string (name), returns the corresponding region
+  // id index.  If "name" is not included in the atlas, then -1 is
+  // returned.  Note: If name == "universe", then the return value will
+  // be 0.
+  for(size_t i=0;i<region_name_list.size();++i) {
+    if(region_name_list[i].compare(name)==0) {
+      return static_cast<OC_INDEX>(i);
+    }
+  }
   return -1;
 }
 
 OC_BOOL Oxs_EllipsoidAtlas::GetRegionName(OC_INDEX id,String& name) const
-{ // Given an id number, fills in "name" with
-  // the corresponding region id string.  Returns
-  // 1 on success, 0 if id is invalid.  If id is 0,
-  // then name is set to "universe", and the return
-  // value is 1.
+{ // Given an id number, fills in "name" with the corresponding region
+  // id string.  Returns 1 on success, 0 if id is invalid.  If id is 0,
+  // then name is set to "universe", and the return value is 1.
   name.erase();
-  if(id>=GetRegionCount()) return 0;
-  if(id==0) name = "universe";
-  else      name = region_name;
+  if(id > static_cast<OC_INDEX>(region_name_list.size()-1)) return 0;
+  name = region_name_list[id];
   return 1;
 }
-
-

@@ -6,11 +6,11 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <ctype.h>
-#include <limits.h>
-#include <stdio.h>
-#include <string.h>
+#include <cassert>
+#include <cctype>
+#include <climits>
+#include <cstdio>
+#include <cstring>
 
 #include "oc.h"
 #include "nb.h"
@@ -500,18 +500,19 @@ OC_BOOL Vf_OvfSegmentHeader::ValidSet(void) const
   //   irregular grids.
 
   // The following fields are required for all ovf files
-  OC_BOOL set_code=title_bool*meshunit_bool
-    *xmin_bool*ymin_bool*zmin_bool*xmax_bool*ymax_bool*zmax_bool
-    *fileversion_bool;
+  OC_BOOL set_code = title_bool && meshunit_bool
+    && xmin_bool && ymin_bool && zmin_bool
+    && xmax_bool && ymax_bool && zmax_bool
+    && fileversion_bool;
   if(!set_code) return set_code;
 
   // Check fields by file version
   if(fileversion==vf_ovf_20) {
     // OVF version 2.0
-    set_code *= valuedim*valueunits_list_bool*valuelabels_list_bool
-      *meshtype_bool
-      *(!valueunit_bool)*(!valuemultiplier_bool)
-      *(!valuerangemaxmag_bool)*(!valuerangeminmag_bool);
+    set_code = set_code && (valuedim>0)
+      && valueunits_list_bool && valuelabels_list_bool
+      && meshtype_bool && (!valueunit_bool) && (!valuemultiplier_bool)
+      && (!valuerangemaxmag_bool) && (!valuerangeminmag_bool);
   } else if(fileversion==vf_ovf_10) {
     // OVF version 1.0
     if(!meshtype_bool) {
@@ -521,9 +522,10 @@ OC_BOOL Vf_OvfSegmentHeader::ValidSet(void) const
         set_code=0;
       }
     }
-    set_code *= valueunit_bool*valuemultiplier_bool
-      *valuerangemaxmag_bool*valuerangeminmag_bool
-      *(!valuedim_bool)*(!valueunits_list_bool)*(!valuelabels_list_bool);
+    set_code = set_code && valueunit_bool && valuemultiplier_bool
+      && valuerangemaxmag_bool && valuerangeminmag_bool
+      && (!valuedim_bool) && (!valueunits_list_bool)
+      && (!valuelabels_list_bool);
   } else {
     ClassMessage(STDDOC,"Unknown file version: %d\n",(int)fileversion);
     set_code=0;
@@ -532,15 +534,15 @@ OC_BOOL Vf_OvfSegmentHeader::ValidSet(void) const
 
   // Check fields by mesh type
   if(meshtype==vf_oshmt_rectangular) {
-    set_code*=xbase_bool*ybase_bool*zbase_bool
-      *xstepsize_bool*ystepsize_bool*zstepsize_bool
-      *xnodes_bool*ynodes_bool*znodes_bool;
-    set_code *= (!pointcount_bool);
+    set_code = set_code && xbase_bool && ybase_bool && zbase_bool
+       && xstepsize_bool && ystepsize_bool && zstepsize_bool
+       && xnodes_bool && ynodes_bool && znodes_bool;
+    set_code = set_code && (!pointcount_bool);
   }
   else if(meshtype==vf_oshmt_irregular) {
-    set_code*=pointcount_bool;
-    set_code*=(!xbase_bool)*(!ybase_bool)*(!zbase_bool)
-      *(!xnodes_bool)*(!ynodes_bool)*(!znodes_bool);
+    set_code = set_code && pointcount_bool;
+    set_code = set_code && (!xbase_bool) && (!ybase_bool) && (!zbase_bool)
+       && (!xnodes_bool) && (!ynodes_bool) && (!znodes_bool);
   }
   else {
     ClassMessage(STDDOC,"Unknown mesh type: %d\n",(int)meshtype);
@@ -2407,22 +2409,22 @@ OC_BOOL Vf_Ovf20FileHeader::IsValid() const
   if(ovfversion == vf_ovf_invalid) return 0;
 
   // Check that all fields required for all files are set
-  result *= title.IsSet() * meshtype.IsSet() * meshunit.IsSet()
-    * xmin.IsSet() * ymin.IsSet() * zmin.IsSet()
-    * xmax.IsSet() * ymax.IsSet() * zmax.IsSet()
-    * valuedim.IsSet() * valuelabels.IsSet() * valueunits.IsSet();
+  result = result && title.IsSet() && meshtype.IsSet() && meshunit.IsSet()
+     && xmin.IsSet() && ymin.IsSet() && zmin.IsSet()
+     && xmax.IsSet() && ymax.IsSet() && zmax.IsSet()
+     && valuedim.IsSet() && valuelabels.IsSet() && valueunits.IsSet();
   if(!result) return 0;
 
   // Check mesh type specific fields
   if(meshtype.Value() == vf_ovf20mesh_rectangular) {
-    result *= xbase.IsSet() * ybase.IsSet() * zbase.IsSet()
-      * xnodes.IsSet() * ynodes.IsSet() * znodes.IsSet()
-      * xstepsize.IsSet() * ystepsize.IsSet() * zstepsize.IsSet()
-      * !pointcount.IsSet();
+    result = result && xbase.IsSet() && ybase.IsSet() && zbase.IsSet()
+      && xnodes.IsSet() && ynodes.IsSet() && znodes.IsSet()
+      && xstepsize.IsSet() && ystepsize.IsSet() && zstepsize.IsSet()
+      && !pointcount.IsSet();
   } else if(meshtype.Value() == vf_ovf20mesh_irregular) {
-    result *= pointcount.IsSet()
-      * !xbase.IsSet() * !ybase.IsSet() * !zbase.IsSet()
-      * !xnodes.IsSet() * !ynodes.IsSet() * !znodes.IsSet();
+    result = result && pointcount.IsSet()
+      && !xbase.IsSet() && !ybase.IsSet() && !zbase.IsSet()
+      && !xnodes.IsSet() && !ynodes.IsSet() && !znodes.IsSet();
   } else {
     result = 0;
   }
@@ -2539,21 +2541,21 @@ OC_BOOL Vf_Ovf20FileHeader::IsValidGeom() const
   OC_BOOL result = 1;
 
   // Check that all fields required for all files are set
-  result *= meshtype.IsSet() * meshunit.IsSet()
-    * xmin.IsSet() * ymin.IsSet() * zmin.IsSet()
-    * xmax.IsSet() * ymax.IsSet() * zmax.IsSet();
+  result = result && meshtype.IsSet() && meshunit.IsSet()
+    && xmin.IsSet() && ymin.IsSet() && zmin.IsSet()
+    && xmax.IsSet() && ymax.IsSet() && zmax.IsSet();
   if(!result) return 0;
 
   // Check mesh type specific fields
   if(meshtype.Value() == vf_ovf20mesh_rectangular) {
-    result *= xbase.IsSet() * ybase.IsSet() * zbase.IsSet()
-      * xnodes.IsSet() * ynodes.IsSet() * znodes.IsSet()
-      * xstepsize.IsSet() * ystepsize.IsSet() * zstepsize.IsSet()
-      * !pointcount.IsSet();
+    result = result && xbase.IsSet() && ybase.IsSet() && zbase.IsSet()
+      && xnodes.IsSet() && ynodes.IsSet() && znodes.IsSet()
+      && xstepsize.IsSet() && ystepsize.IsSet() && zstepsize.IsSet()
+      && !pointcount.IsSet();
   } else if(meshtype.Value() == vf_ovf20mesh_irregular) {
-    result *= pointcount.IsSet()
-      * !xbase.IsSet() * !ybase.IsSet() * !zbase.IsSet()
-      * !xnodes.IsSet() * !ynodes.IsSet() * !znodes.IsSet();
+    result = result && pointcount.IsSet()
+      && !xbase.IsSet() && !ybase.IsSet() && !zbase.IsSet()
+      && !xnodes.IsSet() && !ynodes.IsSet() && !znodes.IsSet();
   } else {
     result = 0;
   }
@@ -3956,6 +3958,373 @@ Vf_Ovf20FileHeader::WriteData
     Nb_FprintfChannel(outchan, NULL, 1024, "# End: Segment\n");
   }
 
+}
+
+void
+Vf_Ovf20FileHeader::WriteNPY
+(Tcl_Channel outchan,
+ Vf_OvfDataStyle datastyle,
+ const Vf_Ovf20VecArrayConst& data_info,
+ const Vf_Ovf20_MeshNodes* mesh, // Only needed for irregular grids.
+ const int textwidth, // Only active if datastyle == vf_oascii
+ const char* textfmt  // Only active if datastyle == vf_oascii
+) const
+{ // Simple wrapper around version that takes a vector of
+  // Vf_Ovf20VecArrayConst objects.
+  vector<Vf_Ovf20VecArrayConst> data_array;
+  data_array.push_back(data_info);
+  WriteNPY(outchan,datastyle,data_array,mesh,textwidth,textfmt);
+}
+
+void
+Vf_Ovf20FileHeader::WriteNPY
+(Tcl_Channel outchan,
+ Vf_OvfDataStyle datastyle,
+ const vector<Vf_Ovf20VecArrayConst>& data_array,
+ const Vf_Ovf20_MeshNodes* mesh, // Only needed for irregular grids.
+ const int textwidth, // Only active if datastyle == vf_oascii
+ const char* textfmt  // Only active if datastyle == vf_oascii
+) const
+{
+  // Check that data_array structure is consistent with file header
+  const OC_INDEX data_array_count
+    = static_cast<OC_INDEX>(data_array.size());
+  const OC_INDEX data_array_length
+    = static_cast<OC_INDEX>(data_array[0].array_length);
+  if(data_array_count<1 || data_array_length<1) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                          "Vf_Ovf20FileHeader","WriteNPY",
+                          "No data."));
+  }
+  OC_INDEX data_array_dimension = 0;
+  for(OC_INDEX i=0;i<data_array_count;++i) {
+    data_array_dimension += data_array[i].vector_dimension;
+    if(data_array_length != data_array[i].array_length) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                            "Vf_Ovf20FileHeader","WriteNPY",
+                            "Inconsistent data array lengths"));
+    }
+  }
+
+  const OC_INDEX veclen = valuedim.Value();
+  if(veclen != data_array_dimension) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+       "Vf_Ovf20FileHeader","WriteNPY",
+       "Data dimension doesn't match dimension specified in header"));
+  }
+
+
+  OC_INDEX nodecount = 0;
+  const Vf_Ovf20_MeshType output_meshtype = meshtype.Value();
+  if(output_meshtype == vf_ovf20mesh_rectangular) {
+    nodecount = xnodes.Value() * ynodes.Value() * znodes.Value();
+  } else if(output_meshtype == vf_ovf20mesh_irregular) {
+    nodecount = pointcount.Value();
+  } else {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                          "Vf_Ovf20FileHeader","WriteNPY",
+                          "Unrecognized mesh type."));
+  }
+  if(nodecount != data_array_length) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+       "Vf_Ovf20FileHeader","WriteNPY",
+       "Data length doesn't match node count specified in header"));
+  }
+
+  // Write NPY header.
+  //
+  // For NPY version 1.0:
+  // The first 6 bytes are the magic string "\x93NUMPY".
+  // Bytes 7 and 8 (index 6 and 7) are the major and minor version
+  //    numbers, e.g., "\x01\x00" for version 1.0.
+  // Bytes at index 8 and 9 are a little-endian two-byte short reporting
+  //    the length of the remaining header (aka HEADER_LEN). HEADER_LEN
+  //    is padded upward as necessary so that the total header length is
+  //    divisible by 64.
+  // The remainder is a string consisting of an ASCII string that is a
+  //    literal expression of a Python dictionary with the keys:
+  //             descr  : dtype.descr
+  //      fortran_order : bool
+  //              shape : tuple of int
+  // The dict string is terminated by a newline (not \x00) and spaces
+  //    are appended as necessary to match the length recorded by
+  //    HEADER_LEN. (In practice numpy.save() appears to put the spaces
+  //    first and the newline at the end.)
+  // The dtype.descr field is a string that can be used to construct an
+  //    NumPy dtype. The simplest form is three concatenated fields
+  //    consisting of and endian code, type character, and byte
+  //    count. The endian code is one of '<', '>', or '=' denoting
+  //    little-endian, big-endian, or hardware-native (default). There
+  //    is a long list of type characters, but notable here are 'f' for
+  //    floating-point, 'i' and 'u' for signed and unsigned integer,
+  //    respectively, 'S' or 'a' for zero-terminated bytes, and 'U' for
+  //    a Unicode string. My reference says 'S' and 'a' are "not
+  //    recommended"; Python 3 uses unicode bytes. However, in NPY
+  //    version 1.0 and 2.0 the dictionary string in the header is
+  //    restricted to ASCII, so we should probably use 'S' unless we are
+  //    writing a NPY 3.0 file. The byte count is base-ten ASCII,
+  //    although note that only certain floating point lengths are
+  //    supported by NumPy: 2, 4, and 8. The 'f16' type is supported if
+  //    the build compiler long double type is wider than 8 bytes.
+  //    Notably, f16 provides the x86 80-bit float.
+  //       
+  // The NPY version 2.0 format allows the total size of the header to
+  //    be up to 4 GiB, and so the HEADER_LEN field grows from 2 to 4
+  //    little endian bytes.
+  //
+  // The NPY version 3.0 format replaces the ASCII string (which in
+  //    practice was really latin1) with a utf-8 encoded string.
+  String header;
+  header.push_back('\x93');
+  header += "NUMPY";
+  header.push_back('\x01');  header.push_back('\x00');
+  /// Currently support only NPY 1.0. NB: Don't try to use
+  /// constructs like
+  ///   header += "\x01\x00";
+  /// because the RHS is treated as a null-terminated string.
+  header.push_back('\x00');  header.push_back('\x00');
+  /// Placeholder for HEADER_LEN
+  if(datastyle == vf_oascii) {
+    if(textwidth<1) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                            "Vf_Ovf20FileHeader","WriteNPY",
+                            "Invalid text width request"));
+    }
+    header += "{'descr': 'S" + std::to_string(textwidth) + "',";
+  } else if(datastyle == vf_obin4) {
+    header += "{'descr': '<f4',";
+  } else if(datastyle == vf_obin8) {
+    header += "{'descr': '<f8',";
+  } else {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                          "Vf_Ovf20FileHeader","WriteNPY",
+                          "Unrecognized output format"));
+  }
+  // Note: Use C (not Fortran) order to avoid confusion
+  header += " 'fortran_order': False, 'shape': ";
+
+  if(output_meshtype == vf_ovf20mesh_rectangular) {
+    header += "(" + std::to_string(znodes.Value())
+      + "," + std::to_string(ynodes.Value())
+      + "," + std::to_string(xnodes.Value())
+      + "," + std::to_string(veclen)
+      + ") }";
+  } else if(output_meshtype == vf_ovf20mesh_irregular) {
+    header += "(" + std::to_string(nodecount)
+      + "," + std::to_string(veclen + 3)
+      + ") }";
+  } else {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                          "Vf_Ovf20FileHeader","WriteNPY",
+                          "Unrecognized mesh type."));
+  }
+
+  // Pad with spaces to 64 byte boundary
+  size_t header_size = header.size();
+  size_t full_header_size = 64 * ((header_size + 1 + 63)/64);
+  /// "+ 1" includes space for newline
+  for(size_t i=header_size;i<full_header_size-1;++i) {
+    header += " "; // space pad
+  }
+  header += "\n";
+  
+  // Back fill HEADER_LEN and write header
+  size_t HEADER_LEN = full_header_size - 10; // Here '10' is the prologue
+  assert(HEADER_LEN<65536);
+  header[8] = static_cast<unsigned char>(HEADER_LEN % 0xFF);
+  header[9] = static_cast<unsigned char>((HEADER_LEN>>8) % 0xFF);
+  if(Nb_WriteChannel(outchan,header.data(),full_header_size) 
+     != OC_INDEX(full_header_size)) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                          "Vf_Ovf20FileHeader","WriteNPY",
+                          "Write error (device full?)"));
+  }
+
+  // Dump data
+  if(datastyle == vf_oascii) {
+    // Text-style output /////////////////////////////////////////////
+    const OC_INDEX reclen = veclen
+      + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
+    const OC_INDEX recbytes = reclen * textwidth;
+    vector<char> workbuf(recbytes+1);
+    vector<char> tmpbuf(textwidth+1);
+    if(output_meshtype == vf_ovf20mesh_irregular) {
+      OC_REAL8m x,y,z;
+      for(OC_INDEX node=0;node<nodecount;++node) { 
+        char* wptr = workbuf.data();
+        mesh->GetCellCenter(node,x,y,z);
+        snprintf(tmpbuf.data(),textwidth+1,textfmt,x);
+        snprintf(wptr,textwidth+1,"%-*s",textwidth,
+                 tmpbuf.data()); // Right pad with spaces
+        wptr += textwidth;
+        snprintf(tmpbuf.data(),textwidth+1,textfmt,y);
+        snprintf(wptr,textwidth+1,"%-*s",textwidth,
+                 tmpbuf.data()); // Right pad with spaces
+        wptr += textwidth;
+        snprintf(tmpbuf.data(),textwidth+1,textfmt,z);
+        snprintf(wptr,textwidth+1,"%-*s",textwidth,
+                 tmpbuf.data()); // Right pad with spaces
+        wptr += textwidth;
+        for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+          const OC_INDEX ddim = data_array[ida].vector_dimension;
+          const OC_REAL8m* din = data_array[ida].data + node*ddim;
+          for(OC_INDEX elt=0;elt<ddim;++elt) {
+            snprintf(tmpbuf.data(),textwidth+1,textfmt,din[elt]);
+            snprintf(wptr,textwidth+1,"%-*s",textwidth,
+                     tmpbuf.data()); // Right pad with spaces
+            wptr += textwidth;
+          }
+        }
+        if(Nb_WriteChannel(outchan,workbuf.data(),recbytes)!= recbytes) {
+          OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                "Vf_Ovf20FileHeader","WriteNPY",
+                                "Write error (device full?)"));
+        }
+      }
+    } else { // Rectangular mesh output
+      const OC_INDEX xc = xnodes.Value();
+      const OC_INDEX yc = ynodes.Value();
+      for(OC_INDEX k=0;k<znodes.Value();++k) { // Use C-order
+        for(OC_INDEX j=0;j<ynodes.Value();++j) {
+          for(OC_INDEX i=0;i<xnodes.Value();++i) {
+            OC_INDEX node = k*yc*xc + j*xc + i;
+            char* wptr = workbuf.data();
+            for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+              const OC_INDEX ddim = data_array[ida].vector_dimension;
+              const OC_REAL8m* din = data_array[ida].data + node*ddim;
+              for(OC_INDEX elt=0;elt<ddim;++elt) {
+                snprintf(tmpbuf.data(),textwidth+1,textfmt,din[elt]);
+                snprintf(wptr,textwidth+1,"%-*s",textwidth,
+                         tmpbuf.data()); // Right pad with spaces
+                wptr += textwidth;
+              }
+            }
+            if(Nb_WriteChannel(outchan,workbuf.data(),recbytes)!= recbytes) {
+              OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                    "Vf_Ovf20FileHeader","WriteNPY",
+                                    "Write error (device full?)"));
+            }
+          } // for-i
+        } // for-j
+      } // for-k
+    } // if(output_meshtype == ...)
+  } else if(datastyle == vf_obin4) {
+    // 4-byte binary output (little endian order) ////////////////////
+    const OC_INDEX reclen = veclen
+      + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
+    const OC_INDEX recbytes = reclen * sizeof(OC_REAL4);
+    vector<OC_REAL4> workbuf(reclen);
+    if(output_meshtype == vf_ovf20mesh_irregular) {
+      OC_REAL8m x,y,z;
+      for(OC_INDEX node=0;node<nodecount;++node) {
+        mesh->GetCellCenter(node,x,y,z);
+        workbuf[0]=static_cast<OC_REAL4>(x);
+        workbuf[1]=static_cast<OC_REAL4>(y);
+        workbuf[2]=static_cast<OC_REAL4>(z);
+        OC_REAL4* wptr = workbuf.data()+2;
+        for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+          const OC_INDEX ddim = data_array[ida].vector_dimension;
+          const OC_REAL8m* din = data_array[ida].data + node*ddim;
+          for(OC_INDEX elt=0;elt<ddim;++elt) {
+            *(++wptr) = static_cast<OC_REAL4>(din[elt]);
+          }
+        }
+#if (OC_BYTEORDER != 4321)  // Input is MSB
+        Oc_SwapWords4(workbuf.data(),workbuf.size());
+#endif
+        if(Nb_WriteChannel(outchan,reinterpret_cast<char*>(workbuf.data()),
+                           recbytes)!= recbytes) {
+          OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                "Vf_Ovf20FileHeader","WriteNPY",
+                                "Write error (device full?)"));
+        }
+      }
+    } else { // Rectangular mesh output
+      const OC_INDEX xc = xnodes.Value();
+      const OC_INDEX yc = ynodes.Value();
+      for(OC_INDEX k=0;k<znodes.Value();++k) { // Use C-order
+        for(OC_INDEX j=0;j<ynodes.Value();++j) {
+          for(OC_INDEX i=0;i<xnodes.Value();++i) {
+            OC_INDEX node = k*yc*xc + j*xc + i;
+            OC_REAL4* wptr = workbuf.data();
+            for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+              const OC_INDEX ddim = data_array[ida].vector_dimension;
+              const OC_REAL8m* din = data_array[ida].data + node*ddim;
+              for(OC_INDEX elt=0;elt<ddim;++elt) {
+                *(wptr++) = static_cast<OC_REAL4>(din[elt]);
+              }
+            }
+#if (OC_BYTEORDER != 4321)  // Input is MSB
+            Oc_SwapWords4(workbuf.data(),workbuf.size());
+#endif
+            if(Nb_WriteChannel(outchan,reinterpret_cast<char*>(workbuf.data()),
+                               recbytes)!= recbytes) {
+              OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                    "Vf_Ovf20FileHeader","WriteNPY",
+                                    "Write error (device full?)"));
+            }
+          } // for-i
+        } // for-j
+      } // for-k
+    } // if(output_meshtype == ...)
+  } else if(datastyle == vf_obin8) {
+    // 8-byte binary output (little endian order) ////////////////////
+    const OC_INDEX reclen = veclen
+      + (output_meshtype == vf_ovf20mesh_irregular ? 3 : 0);
+    const OC_INDEX recbytes = reclen * sizeof(OC_REAL8);
+    vector<OC_REAL8> workbuf(reclen);
+    if(output_meshtype == vf_ovf20mesh_irregular) {
+      OC_REAL8m x,y,z;
+      for(OC_INDEX node=0;node<nodecount;++node) {
+        mesh->GetCellCenter(node,x,y,z);
+        workbuf[0]=x; workbuf[1]=y; workbuf[2]=z;
+        OC_REAL8* wptr = workbuf.data()+2;
+        for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+          const OC_INDEX ddim = data_array[ida].vector_dimension;
+          const OC_REAL8m* din = data_array[ida].data + node*ddim;
+          for(OC_INDEX elt=0;elt<ddim;++elt) {
+            *(++wptr) = static_cast<OC_REAL8>(din[elt]);
+          }
+        }
+#if (OC_BYTEORDER != 4321)  // Input is MSB
+        Oc_SwapWords8(workbuf.data(),workbuf.size());
+#endif
+        if(Nb_WriteChannel(outchan,reinterpret_cast<char*>(workbuf.data()),
+                           recbytes)!= recbytes) {
+          OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                "Vf_Ovf20FileHeader","WriteNPY",
+                                "Write error (device full?)"));
+        }
+      }
+    } else { // Rectangular mesh output
+      const OC_INDEX xc = xnodes.Value();
+      const OC_INDEX yc = ynodes.Value();
+      for(OC_INDEX k=0;k<znodes.Value();++k) { // Use C-order
+        for(OC_INDEX j=0;j<ynodes.Value();++j) {
+          for(OC_INDEX i=0;i<xnodes.Value();++i) {
+            OC_INDEX node = k*yc*xc + j*xc + i;
+            OC_REAL8* wptr = workbuf.data();
+            for(OC_INDEX ida=0;ida<data_array_count;++ida) {
+              const OC_INDEX ddim = data_array[ida].vector_dimension;
+              const OC_REAL8m* din = data_array[ida].data + node*ddim;
+              for(OC_INDEX elt=0;elt<ddim;++elt) {
+                *(wptr++) = static_cast<OC_REAL8>(din[elt]);
+              }
+            }
+#if (OC_BYTEORDER != 4321)  // Input is MSB
+            Oc_SwapWords8(workbuf.data(),workbuf.size());
+#endif
+            if(Nb_WriteChannel(outchan,reinterpret_cast<char*>(workbuf.data()),
+                               recbytes)!= recbytes) {
+              OC_THROW(Oc_Exception(__FILE__,__LINE__,
+                                    "Vf_Ovf20FileHeader","WriteNPY",
+                                    "Write error (device full?)"));
+            }
+          } // for-i
+        } // for-j
+      } // for-k
+    } // if(output_meshtype == ...)
+  } // if(datastyle == ...)
 }
 
 ////////////////////////////////////////////////////////////////////////

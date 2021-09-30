@@ -16,6 +16,7 @@
 #include "lock.h"
 #include "meshvalue.h"
 #include "threevector.h"
+#include "util.h"
 
 OC_USE_STRING;
 
@@ -50,6 +51,11 @@ private:
 #endif
   mutable map<DerivedDataKey,OC_REAL8m> derived_data;
   mutable map<AuxDataKey,OC_REAL8m> auxiliary_data;
+
+  void AppendListDerivedData(vector<String>& names) const;
+  void AppendListAuxData(vector<String>& names) const;
+  /// Internal implementation of ListDerivedData and ListAuxData
+
 public:
   Oxs_SimState();
   ~Oxs_SimState();
@@ -106,7 +112,9 @@ public:
   // should set these fields appropriately.  Caching done status can
   // help protect against cache thrashing for derived data stored outside
   // of the state.  Perhaps this should be moved into the DerivedData area?
-  enum SimStateStatus { UNKNOWN, DONE, NOT_DONE };
+  enum SimStateStatus { UNKNOWN=-1, NOT_DONE=0, DONE=1 };
+  mutable SimStateStatus step_done;  // step_done==1 means state was
+  /// accepted as good step.  step_done==0 means step was rejected.
   mutable SimStateStatus stage_done;
   mutable SimStateStatus run_done;
 
@@ -117,10 +125,15 @@ public:
   OC_BOOL AddDerivedData(const String& name,OC_REAL8m value) const {
     return AddDerivedData(name.c_str(),value);
   }
+
   OC_BOOL GetDerivedData(const char* name,OC_REAL8m& value) const;
   OC_BOOL GetDerivedData(const String& name,OC_REAL8m& value) const {
     return GetDerivedData(name.c_str(),value);
   }
+
+  // NB: Oxs_Ext objects accessing any of the Add/GetDerivedData
+  // or Add/GetAuxData routines should use the Oxs_Ext::DataName()
+  // wrapper to get an instance-specific item name.
 
   void ListDerivedData(vector<String>& names) const;
   void ClearDerivedData(); // This function only changes mutable
@@ -152,6 +165,19 @@ public:
   void ListAuxData(vector<String>& names) const;
   void ClearAuxData();
 
+  // Query interface
+  //
+  // The *Names interface returns a list of strings representing
+  // available key names for the *Values lookup function.  The
+  // *Values function is called with a list of keys, which fills
+  // the values export list with the matching values.  If any
+  // key request is invalid, then an error is thrown and the
+  // values export state is undefined.  In particular, this means
+  // that the length of the values export will match the length
+  // of the keys import unless an error is thrown.
+  void QueryScalarNames(vector<String>& keys) const;
+  void QueryScalarValues(const vector<String>& keys,
+                         vector<Oxs_MultiType>& values) const;
 
   // Routines to write and read state, intended for restart
   // operations.  The Ms, Ms_inverse, and mesh data are not

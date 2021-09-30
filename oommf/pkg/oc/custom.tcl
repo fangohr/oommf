@@ -8,9 +8,9 @@
 # This file provides some customization/extensions to Tcl/Tk that
 # are common across the OOMMF project.
 if {[llength [info commands bind]] && [llength [info commands wm]] \
-    && [llength [info commands toplevel]]} {
-################################
-# Bind auto-default resize behavior to all toplevel windows.
+       && [llength [info commands toplevel]]} {
+    ################################
+    # Bind auto-default resize behavior to all toplevel windows.
     proc Oc_AutoSizeCheck { win w h } {
        set wmin 5
        set hmin 5
@@ -32,14 +32,52 @@ if {[llength [info commands bind]] && [llength [info commands wm]] \
     # Set up root window to use AutoSize binding.
     bindtags . [concat AutoSize [bindtags .]]
 
+
+    # Bind Ctrl-Home keypress to resize window to natural size. We do
+    # this on the root window, but Enter and Scale widgets have
+    # <Key-Home> bindings that will trigger on <Control-Key-Home>
+    # unless we provide an explicit <Control-Key-Home> binding.
+    foreach tag {. Entry Scale} {
+       bind $tag <Control-Key-Home> { wm geometry . {} }
+    }
+
+    # We also want <Key-Home> to resize window to natural size
+    # generally, except in Entry and Scale widgets where that would
+    # trigger confusion with the widget default behavior. One
+    # complication is that in Tk 8.5 and earlier there are bindings on
+    # <Key-Home> directly, but in Tk 8.6 those are replaced with
+    # bindings on the virtual event <<LineStart>> instead. Either way,
+    # append a break to short-circuit the root window binding. Entry
+    # widgets also have a default binding on <Shift-Key-Home> or
+    # <<SelectLineStart>>, so handle those too.
+    bind . <Key-Home> { wm geometry . {} }
+    catch {bind . <Key-KP_Home>   { wm geometry . {} }}
+    foreach tag {Entry Scale} {
+       if {![string match {} [bind $tag <<LineStart>>]]} {
+          bind $tag <<LineStart>> {+break}
+          if {![string match {} [bind $tag <<SelectLineStart>>]]} {
+             bind $tag <<SelectLineStart>> {+break}
+          }
+       } else {
+          bind $tag <Key-Home> {+break}
+          if {![string match {} [bind $tag <Shift-Key-Home>]]} {
+             bind $tag <Shift-Key-Home> {+break}
+          }
+       }
+    }
+
     # Redefine 'toplevel' so all toplevel windows automatically use the
     # AutoSize binding, and get assigned to the "."  group.
     rename toplevel Tcl_toplevel
     proc toplevel { pathName args } {
-	set win [eval Tcl_toplevel $pathName $args]
-	bindtags $win [concat AutoSize [bindtags $win]]
-	wm group $win . ;# By default, bind to root window group
-	return $win
+       set win [eval Tcl_toplevel $pathName $args]
+       bindtags $win [concat AutoSize [bindtags $win]]
+       wm group $win . ;# By default, bind to root window group
+
+       bind $win <Key-Home>         [subst { wm geometry $win {} }]
+       bind $win <Control-Key-Home> [subst { wm geometry $win {} }]
+
+       return $win
     }
 
     # Utility procs to add/remove AutoSize binding from a single
@@ -61,6 +99,13 @@ if {[llength [info commands bind]] && [llength [info commands wm]] \
 	Oc_DisableAutoSize $win
 	bindtags $win [concat AutoSize [bindtags $win]]
     }
+
+    # Bind Home keypress to resize outer window to natural size (i.e.,
+    # the size requested by the subwidgets). These bindings may be
+    # overridden by applications such as mmDisp having more specific
+    # behavior.
+    bind . <Key-Home>        { wm geometry . {} }
+    bind . <Shift-Key-Home>  { wm geometry . {} }
 }
 
 
@@ -169,8 +214,6 @@ if {[llength [info commands interp]]} {
 		$result eval [list lappend auto_path $oc(library)]
 		$result eval [list set argv0 $argv0]
 	    }
-            # Tcl expr fixes and extras
-            catch {Oc_AddTclExprExtensions $result}
 	}
 	return -code $code $result
     }

@@ -47,12 +47,10 @@ set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1
 #
 set script {
 
-if {[catch {package require Tcl 8}]} {
-    if {[catch {package require Tcl 7.5}]} {
-	return -code error "OOMMF software requires Tcl 7.5 or\
+if {[catch {package require Tcl 8.5-}]} {
+	return -code error "OOMMF software requires Tcl 8.5 or\
 		higher.\n\tYour version: Tcl [info patchlevel]\nPlease\
 		upgrade."
-    }
 }
 
 # When this script is evaluated by a shell which doesn't include the
@@ -145,7 +143,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}

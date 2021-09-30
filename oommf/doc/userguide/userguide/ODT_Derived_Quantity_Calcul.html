@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>ODT Derived Quantity Calculator: odtcalc</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html742"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html744"
   HREF="ODT_Table_Concatenation_odt.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html738"
+<A NAME="tex2html740"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html732"
+<A NAME="tex2html734"
   HREF="Process_Nicknames_nickname.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html744"
+<A NAME="tex2html746"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html740"
+<A NAME="tex2html742"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html743"
+<B> Next:</B> <A NAME="tex2html745"
   HREF="ODT_Table_Concatenation_odt.html">ODT Table Concatenation: odtcat</A>
-<B> Up:</B> <A NAME="tex2html739"
+<B> Up:</B> <A NAME="tex2html741"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html733"
+<B> Previous:</B> <A NAME="tex2html735"
   HREF="Process_Nicknames_nickname.html">Process Nicknames: nickname</A>
 <BR>
 <BR>
@@ -56,10 +52,10 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <H2><A NAME="SECTION0001714000000000000000"></A><A NAME="sec:odtcalc"></A>
 <BR>
 ODT Derived Quantity Calculator: odtcalc
-</H2><A NAME="17649"></A>
+</H2><A NAME="17616"></A>
 
 <P>
-The <B>odtcalc</B><A NAME="17651"></A> utility reads an
+The <B>odtcalc</B><A NAME="17618"></A> utility reads an
 <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT</A> file on stdin
 that contains one or more tables, and prints to stdout an ODT file
 consisting of the same tables augmented by additional columns as
@@ -124,37 +120,9 @@ the new columns that are added to the right side of the data table.
 <FONT SIZE="+1"><B>Example</B></FONT>
 <BR>
 Suppose <TT><B>ring.odt</B></TT> contains hysteresis loop data from an <B>Oxsii</B>
-simulation where the field was applied in the <B><I>xy</I></B>
-<!-- MATHEND
- 
- -->
--plane at an angle of
-<B>30<SUP><TT>o</TT></SUP></B>
-<!-- MATHEND
- 
- -->
- from the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
--axis.  The data file holds field and average
-magnetization axis component values <B><I>B</I><SUB>x</SUB></B>
-<!-- MATHEND
- 
- -->
-, <B><I>B</I><SUB>y</SUB></B>
-<!-- MATHEND
- 
- -->
-, <B><I>m</I><SUB>x</SUB></B>
-<!-- MATHEND
- 
- -->
-, and <B><I>m</I><SUB>y</SUB></B>
-<!-- MATHEND
- 
- -->
-.  We
+simulation where the field was applied in the <B><I>xy</I></B>-plane at an angle of
+<B>30<SUP><TT>o</TT></SUP></B> from the <B><I>x</I></B>-axis.  The data file holds field and average
+magnetization axis component values <B><I>B</I><SUB>x</SUB></B>, <B><I>B</I><SUB>y</SUB></B>, <B><I>m</I><SUB>x</SUB></B>, and <B><I>m</I><SUB>y</SUB></B>.  We
 want field and magnetization data projected onto the applied field
 axis.  We can create those values using <B>odtcalc</B> like so:
 <PRE>
@@ -165,18 +133,10 @@ tclsh oommf.tcl odtcalc B '$Bx*0.86602540378443865+$By*0.5' mT \
 Here <!-- MATH
  $\cos(30^\circ)=0.8660254037844365$
  -->
-<B>cos(30<SUP><TT>o</TT></SUP>) = 0.8660254037844365</B>
-<!-- MATHEND
- 
- -->
- and <!-- MATH
+<B>cos(30<SUP><TT>o</TT></SUP>) = 0.8660254037844365</B> and <!-- MATH
  $\sin(30^\circ)=0.5$
  -->
-<B>sin(30<SUP><TT>o</TT></SUP>) = 0.5</B>
-<!-- MATHEND
- 
- -->
-.  The
+<B>sin(30<SUP><TT>o</TT></SUP>) = 0.5</B>.  The
 <TT><B>ring-augmented.odt</B></TT> file will have all the data in the original
 <TT><B>ring.odt</B></TT> file, plus two additional columns, labeled B with
 units of mT and m with empty units.  (Note: On Windows replace the
@@ -195,23 +155,23 @@ tclsh oommf.tcl odtcols -t csv B m &lt; ring-augmented.odt &gt; ring-export.dat
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html742"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html744"
   HREF="ODT_Table_Concatenation_odt.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html738"
+<A NAME="tex2html740"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html732"
+<A NAME="tex2html734"
   HREF="Process_Nicknames_nickname.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html745"
+<A NAME="tex2html747"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html740"
+<A NAME="tex2html742"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

@@ -29,8 +29,21 @@ if {[llength $argv]%3} {
 }
 
 # Tweak stdio streams (copied from odtcols)
-fconfigure stdin -buffering full -buffersize 30000
-fconfigure stdout -buffering full  -buffersize 30000 -encoding ascii
+fconfigure stdin  -buffering full -buffersize 30000
+fconfigure stdout -buffering full -buffersize 30000
+
+# Version of puts that exits quietly on "broken pipe" errors
+rename puts orig_puts
+proc puts { args } {
+   if {[catch {eval orig_puts $args} errmsg]} {
+      if {[regexp {^error writing [^:]+: broken pipe} $errmsg]} {
+         # Ignore broken pipe and exit
+         exit
+      } else {
+         error $errmsg
+      }
+   }
+}
 
 proc Fatal {msg} {
     puts stderr "Invalid ODT file @ line $::number: $msg"

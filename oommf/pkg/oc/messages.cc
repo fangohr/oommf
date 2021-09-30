@@ -122,6 +122,8 @@ Oc_SetPanicHeaderCmd(ClientData, Tcl_Interp *interp, int argc,
 // short.  If platform is missing a system vsnprintf routine, then
 // define the program_compiler_c++_property_no_vsnprintf property
 // to 1 in the corresponding oommf/config/platform/ file.
+//
+// Update: snprintf and vsnprintf are part of the C++11 standard.
 OC_INDEX
 Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
 {
@@ -146,7 +148,7 @@ Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
   return static_cast<OC_INDEX>(result);
 }
 #else  // OC_HAVE_VSNPRINTF
-// Apparently missing C99  vsnprintf
+// Apparently missing C99 vsnprintf
 /*
  * The routines snprintf() and vsnprintf() supplied by some C libraries
  * are very helpful to prevent buffer overflows.  Here we provide a

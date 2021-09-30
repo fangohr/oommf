@@ -1,5 +1,5 @@
 #!/bin/sh
-# FILE: runtests.tcl
+# FILE: oxsregression.tcl
 #
 # Top-level regression tests control script.
 #
@@ -7,166 +7,11 @@
 exec tclsh "$0" ${1+"$@"}
 ########################################################################
 
+set epoch_start [clock milliseconds]
 set tcl_precision 17
 
-####
-# Some patches for pre-8.4 versions of Tcl.  These are taken from the
-# oommf/pkg/oc/bug files.
-
-# Before Tcl 8.4, [expr rand()] can return an out of range result
-# the first time it is called on a 64-bit platform.  Workaround that
-# problem by always calling it and discarding the possibly bad result
-# here before good results are expected.  Use [catch] to cover Tcl 7
-# where rand() did not yet exist.
-catch {expr {rand()}}
-
-# Some new options were added to [lsearch] in 8.4 that are handy to
-# make use of.
-set vers [split [info patchlevel] "."]
-if {[lindex $vers 0]<8 || ([lindex $vers 0]==8 && [lindex $vers 1]<4)} {
-   rename lsearch Tcl8.3_lsearch
-   ;proc lsearch {args} {
-      if {[llength $args] < 2} {
-         return [uplevel 1 Tcl8.3_lsearch $args]
-      }
-      set argcount [llength $args]
-      set pattern [lindex $args [expr {$argcount-1}]]
-      set list [lindex $args [expr {$argcount-2}]]
-      set options [lrange $args 0 [expr {$argcount-3}]]
-
-      set useAll 0
-      set legalOptions {}
-      foreach o $options {
-         switch -exact -- $o {
-	    -ascii	-
-	    -decreasing	-
-	    -dictionary	-
-	    -increasing	-
-	    -inline	-
-	    -integer	-
-	    -not	-
-	    -real	-
-	    -sorted 	-
-	    -start	{
-               return -code error "\[lsearch] option \"$o\" not supported;\
-			Upgrade to Tcl 8.4 or higher."
-	    }
-	    -all {
-               set useAll 1
-	    }
-	    default {
-               lappend legalOptions $o
-	    }
-         }
-      }
-      if {!$useAll} {
-         return [uplevel 1 Tcl8.3_lsearch $options [list $list $pattern]]
-      }
-      set result {}
-      set idx [uplevel 1 Tcl8.3_lsearch $legalOptions [list $list $pattern]]
-      set offset 0
-      while {$idx >= 0} {
-         incr offset $idx
-         lappend result $offset
-         incr offset
-         set list [lrange $list [incr idx] end]
-         set idx [uplevel 1 Tcl8.3_lsearch $legalOptions [list $list $pattern]]
-      }
-      return $result
-   }
-}
-
-# Backport 'string replace'
-if {[lindex $vers 0]<8 || ([lindex $vers 0]==8 && [lindex $vers 1]<1)} {
-   rename string Tcl8.0_string
-   ;proc string {args} {
-      set argcount [llength $args]
-      if {$argcount < 4 || $argcount > 5 || \
-             [string compare replace [lindex $args 0]]!=0 } {
-         return [uplevel 1 Tcl8.0_string $args]
-      }
-      set basestr [lindex $args 1]
-      set basesize [string length $basestr]
-      set index1 [lindex $args 2]
-      if {[string compare end $index1]==0} {
-         set index1 [expr {$basesize-1}]
-      }
-      set index2 [lindex $args 3]
-      if {[string compare end $index2]==0} {
-         set index2 [expr {$basesize-1}]
-      }
-      if {$index1>=$basesize || $index2<0 || $index1>$index2} {
-         return $basestr
-      }
-      set newstr [string range $basestr 0 [expr {$index1 - 1}]]
-      if {$argcount == 5} {
-         append newstr [lindex $args 4]
-      }
-      append newstr [string range $basestr [expr {$index2 + 1}] end]
-      return $newstr
-   }
-}
-
-# The subcommands copy, delete, rename, and mkdir were added to
-# the Tcl command 'file' in Tcl version 7.6.  The following command
-# approximates them on Unix platforms.  It may not agree with
-# the Tcl 7.6+ command 'file' in all of its functionality (notably
-# the way it reports errors).
-if {[lindex $vers 0]<8 && [lindex $vers 1]<6 && \
-       [string match unix $tcl_platform(platform)]} {
-   rename file Tcl7.5_file
-   proc file {option args} {
-      switch -glob -- $option {
-         c* {
-            if {[string first $option copy] != 0} {
-               return [uplevel [list Tcl7.5_file $option] $args]
-            }
-            # Translate -force into -f
-            if {[string match -force [lindex $args 0]]} {
-               set args [lreplace $args 0 0 -f]
-            }
-            uplevel exec cp $args
-         }
-         de* {
-            if {[string first $option delete] != 0} {
-               return [uplevel [list Tcl7.5_file $option] $args]
-            }
-            if {[string match -force [lindex $args 0]]} {
-               set args [lreplace $args 0 0 -f]
-            }
-            catch {uplevel exec rm $args}
-         }
-         mk* {
-            if {[string first $option mkdir] != 0} {
-               return [uplevel [list Tcl7.5_file $option] $args]
-            }
-            uplevel exec mkdir $args
-         }
-         ren* {
-            if {[string first $option rename] != 0} {
-               return [uplevel [list Tcl7.5_file $option] $args]
-            }
-            if {[string match -force [lindex $args 0]]} {
-               set args [lreplace $args 0 0 -f]
-            }
-            uplevel exec mv $args
-         }
-         default {
-            uplevel [list Tcl7.5_file $option] $args
-         }
-      }
-   }
-}
-
-##########
-# In Tcl 8.5 and later, stderr from exec can be redirected to
-# the result with the notation "2>@1".  The portability of this
-# is better than "2>@stdout", so use the former when allowed.
-set ERR_REDIRECT "2>@stdout"
-foreach {TCL_MAJOR TCL_MINOR} [split [info tclversion] .] { break }
-if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
-   set ERR_REDIRECT "2>@1"
-}
+set no_thread_pkg [catch {package require Thread}]
+## -parallel option requires Tcl Thread package
 
 ########################################################################
 # TEST FILES AND LOCATIONS:
@@ -209,7 +54,7 @@ if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
 ########################################################################
 # ADDING NEW TESTS
 #
-#   For new tests in the examples directory, drop the MIF file
+#   For new tests in the "examples" directory, drop the MIF file
 # in the examples directory, and run this script with the
 # -autoadd flag.  An associated empty .subtests file will be
 # made in the load directory.  If desired, you can add lines
@@ -217,10 +62,10 @@ if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
 # parameter values.  Each run will generate a .odt file; if
 # a .odt file does not exist before the run, the generated .odt
 # file will automatically become the new check results file.
-#   For new tests in the local directory, manually place empty
+#   For new tests in the "local" directory, manually place empty
 # .subtest and an appropriate .odt file.  At this time there
 # is no support for automated population of this directory.
-#   For new tests in the bug directory, just add the MIF file
+#   For new tests in the "bug" directory, just add the MIF file
 # to the bug directory.  It will be automatically picked up
 # and an empty .subtests file will be made.  Again, you can
 # edit this as desired.  Note that unlike with the load tests,
@@ -254,7 +99,7 @@ if {$TCL_MAJOR>8 || ($TCL_MAJOR==8 && $TCL_MINOR>=5)} {
 #
 #   Another way to fill odt files in the bug directory is to create
 # an empty .odt file with the correct name (e.g., unifexch_29.odt),
-# and then run runtest.tcl with the --updaterefdata switch.
+# and then run oxsregression with the --updaterefdata switch.
 #
 #   NOTE: Test "names" are based on the MIF filenames.  Be
 # sure that the MIF filenames in the examples directory are
@@ -297,29 +142,6 @@ if {[string match "windows" $tcl_platform(platform)]} {
    set nuldevice "/dev/null"
 }
 
-# The exec command in Tcl versions 8.5 and later supports an
-# -ignorestderr option; without this output to stderr is interpreted as
-# being an error.  The -ignorestderr option is a useful for debugging
-# when you don't want debug output on stderr to register as an error.
-# Introduce a proc that uses this option, if available, or else swallows
-# all stderr output.
-if {[regexp {^([0-9]+)\.([0-9]+)\.} [info patchlevel] dummy vmaj vmin] \
-       && ($vmaj>8 || ($vmaj==8 && $vmin>=5))} {
-   proc exec_ignore_stderr { args } {
-      eval exec -ignorestderr $args
-   }
-} else {
-   proc exec_ignore_stderr { args } {
-      global ERR_REDIRECT
-      if {[string compare & [lindex $args end]]==0} {
-         set args [linsert $args [expr {[llength $args]-1}] $ERR_REDIRECT]
-      } else {
-         lappend args $ERR_REDIRECT
-      }
-      eval exec $args
-   }
-}
-
 set PID_INFO_TIMEOUT 60   ;# Max time to wait for mmArchive to start,
                           ## in seconds.
 
@@ -341,7 +163,7 @@ set OOMMF [file join $HOME .. .. .. oommf.tcl]
 
 set SIGFIGS 8   ;# Default
 set loglevel 0  ;# Default
-set logfile [file join $HOME runtests.log]
+set logfile [file join $HOME oxsregression.log]
 
 set load_dir [file join $HOME load_tests]
 set examples_dir [file join $HOME .. examples]
@@ -351,32 +173,38 @@ set local_examples_dir [file join $HOME .. local]
 
 set bug_dir [file join $HOME bug_tests]
 
-set results_basename_template "regression-test-output-%d"
+set results_basename_template "oxsregression-test-output-%d"
 set results_basename [format $results_basename_template [pid]]
-
+set clean_basename "oxsregression-test-output-*"
 
 ########################################################################
 # CHECK DISPLAY:
 #    See if any2ppm can be run.  If not, then tests which rely on this
 # will fail; set the global variable no_display appropriately so
-# tests that rely on Tk can be skipped.
+# tests that rely on Tk can be skipped, and adjust the "if {$no_display}"
+# section of the exclude.tcl files appropriately.
 set no_display 0
-set any2ppm_command [exec_ignore_stderr $TCLSH $OOMMF +command any2ppm -h]
-set any2ppm_command [linsert $any2ppm_command 0 exec]
-if {[catch {eval $any2ppm_command 2>$nuldevice} _]} {
+set any2ppm_command [exec $TCLSH $OOMMF +command any2ppm -h]
+if {[catch {exec {*}$any2ppm_command 2>$nuldevice} _]} {
    set no_display 1
 }
-
-proc Usage {} {
+proc Usage { {chan stderr} } {
    global loglevel results_basename_template SIGFIGS EXEC_TEST_TIMEOUT
-   puts stderr "Usage: tclsh runtests.tcl\
+   global no_thread_pkg
+   if {$no_thread_pkg} {
+      set parallel_opt {}
+   } else {
+      set parallel_opt " \[-parallel \<\#\>\]"
+   }
+   puts $chan "Usage: tclsh oxsregression.tcl\
                   \[-autoadd\]\
                   \[-alttestdir \<dirname\>\]\
+                  \[-cleanup\]\n      \
                   \[-ignoreextra\]\
-                  \[-keepfail\]\
-                  \[-listtests\]\n      \
-                  \[-loglevel \<\#\>\]\
-                  \[-noexcludes\]\
+                  \[-keepfail\] \[-leak\]\
+                  \[-listtests\]\
+                  \[-loglevel \<\#\>\]\n      \
+                  \[-noexcludes\]${parallel_opt}\
                   \[-resultsfile \<filename\>\]\
                   \[-showoutput\]\n      \
                   \[-sigfigs \<\#\>\]\
@@ -385,36 +213,56 @@ proc Usage {} {
                   \[-updaterefdata\]\
                   \[-v\]\n      \
                   \[testa testb ...\]"
-   puts stderr " Where:"
-   puts stderr "  -autoadd automatically adds new tests from\
+   puts $chan " Where:"
+   puts $chan "  -autoadd automatically adds new tests from\
                    examples directory"
-   puts stderr "  -alttestdir specifies alternative test directory"
-   puts stderr "  -ignoreextra ignore extra columns in new data"
-   puts stderr "  -keepfail saves results from failed tests"
-   puts stderr "  -listtests shows selected tests and exits"
-   puts stderr "  -loglevel controls output to boxsi.errors\
+   puts $chan "  -alttestdir specifies alternative test directory"
+   puts $chan "  -cleanup removes stray temp files from earlier runs and exits"
+   puts $chan "  -ignoreextra ignore extra columns in new data"
+   puts $chan "  -keepfail saves results from failed tests"
+   puts $chan "  -leak checks for memory leaks (requires valgrind)"
+   puts $chan "  -listtests shows selected tests and exits"
+   puts $chan "  -loglevel controls output to boxsi.errors\
                    (default $loglevel)"
-   puts stderr "  -noexcludes ignore exclude files"
-   puts stderr "  -resultsfile sets temp results filename (default\
+   puts $chan "  -noexcludes ignore exclude files"
+   if {!$no_thread_pkg} {
+      puts $chan "  -parallel is number of tests to run concurrently (default 1)"
+   }
+   puts $chan "  -resultsfile sets temp results filename (default\
                    \"$results_basename_template\", with <pid> filling %d)"
-   puts stderr "  -showoutput dumps test stdout and stderr output"
-   puts stderr "  -sigfigs is number of significant figures (default $SIGFIGS)"
-   puts stderr "  -threads is number of threads to run (threaded builds only)"
-   puts stderr "  -timeout is max seconds to wait for one test\
+   puts $chan "  -showoutput dumps test stdout and stderr output"
+   puts $chan "  -sigfigs is number of significant figures (default $SIGFIGS)"
+   puts $chan "  -threads is number of threads to run (threaded builds only)"
+   puts $chan "  -timeout is max seconds to wait for one test\
                    (default $EXEC_TEST_TIMEOUT; 0 == no timeout)"
-   puts stderr "  -updaterefdata to overwrite reference data\
+   puts $chan "  -updaterefdata to overwrite reference data\
                    with new results"
-   puts stderr "  -v enable verbose output"
-   puts stderr "If no tests are specified, then all tests are run."
-   exit 1
+   puts $chan "  -v enable verbose output"
+   puts $chan "If no tests are specified, then all tests are run."
+   if {$no_thread_pkg} {
+      puts $chan "Note: -parallel option disabled because\
+                  Tcl Thread package not installed."
+   }
+   exit [string match stderr $chan]
+}
+
+proc FormatTime { btime atime } {
+   # Input times in milliseconds. Return is formatted string
+   # in min:seconds format
+   set testtime [expr {($btime-$atime)/1000.}]
+   set mins [expr {int(floor($testtime/60.))}]
+   set secs [expr {$testtime - 60*$mins}]
+   set isecs [expr {int(floor($secs))}]
+   set fsecs [expr {int(round(($secs-$isecs)*100))}]
+   return [format "%3d:%02d.%02d" $mins $isecs $fsecs]
 }
 
 proc GetOid { app_name app_pid } {
    # OID is "OOMMF ID"
    global TCLSH OOMMF PID_INFO_TIMEOUT
 
-   if {[catch {exec_ignore_stderr $TCLSH $OOMMF pidinfo -noheader \
-                  -wait $PID_INFO_TIMEOUT -pid $app_pid} pidinfo]} {
+   if {[catch {exec $TCLSH $OOMMF pidinfo -noheader \
+                 -wait $PID_INFO_TIMEOUT -pid $app_pid 2>@1} pidinfo]} {
       puts stderr "---\n$pidinfo\n---"
       puts stderr "ERROR: Unable to determine OID for application\
                       $app_name with pid $app_pid"
@@ -444,14 +292,14 @@ proc SystemKill { runpid } {
    }
    if {![string match {} $KILL_PGREP]} {
       # Note: pgrep returns an error if there are no child processes.
-      if {![catch {eval exec $KILL_PGREP $runpid} children]} {
+      if {![catch {exec {*}$KILL_PGREP $runpid} children]} {
          set runpid [concat $runpid $children]
       }
    }
    set msgkilla [set msgkillb "This space unintentionally blank"]
-   if {[set errcode [catch {eval exec $KILL_COMMAND $runpid} msgkilla]]} {
+   if {[set errcode [catch {exec {*}$KILL_COMMAND $runpid} msgkilla]]} {
       if {![string match {} $KILL_COMMAND_B]} {
-         set errcode [catch {eval exec $KILL_COMMAND_B $runpid} msgkillb]
+         set errcode [catch {exec {*}$KILL_COMMAND_B $runpid} msgkillb]
       } else {
          set msgkillb "No secondary kill command registered"
       }
@@ -462,7 +310,7 @@ proc SystemKill { runpid } {
    return [list $errcode $msgkilla $msgkillb]
 }
 
-proc Cleanup {} {
+proc Wrapup {} {
    # Send die request to mmArchive
    global TCLSH OOMMF mmArchive_pid mmArchive_oid nuldevice
    set errcode 0
@@ -477,7 +325,7 @@ proc Cleanup {} {
       SystemKill $mmArchive_pid
    }
    # By unsetting mmArchive_oid and mmArchive_pid, we insure
-   # that multiple calls to Cleanup during shutdown don't cause
+   # that multiple calls to Wrapup during shutdown don't cause
    # any problems.
    catch {unset mmArchive_oid}
    catch {unset mmArchive_pid}
@@ -524,61 +372,10 @@ if {[string compare "windows" $tcl_platform(platform)]==0} {
    }
 }
 
-# Exec command with timeout (timeout in seconds)
-proc TimeoutExecReadHandler { chan } {
-   global TE_runcode TE_results
-   if {![eof $chan]} {
-      append TE_results [set data [read $chan]]
-      if {[string match {*Boxsi run end.*} $data]} {
-         # Handle case where exit blocked by still-running
-         # child process.
-         set TE_runcode 0
-      }
-   } else {
-      set TE_runcode 0
-   }
-}
-proc TimeoutExec { cmd timeout } {
-   # Return codes:
-   #  0 => Success
-   #  1 => Error
-   # -1 => Timeout
-   set timeout [expr {$timeout*1000}]  ;# Convert to ms
-   global TE_runcode TE_results
-   set TE_results {}
-   set TE_runcode 0
-   set cmd [linsert $cmd 0 {|}]
-   set chan [open $cmd r]
-   fconfigure $chan -blocking 0 -buffering none
-   fileevent $chan readable [list TimeoutExecReadHandler $chan]
-   if {$timeout>0} {
-      set timeoutid [after $timeout [list set TE_runcode -1]]
-   }
-   vwait TE_runcode
-   if {$timeout>0} { after cancel $timeoutid }
-   if {$TE_runcode >= 0} {
-      # cmd ran to completion; reset chan to blocking mode
-      # so close can return error info.  Don't do this if
-      # cmd timed out, because in that case close may block
-      # indefinitely.
-      fconfigure $chan -blocking 1
-   } else {
-      # Kill process
-      SystemKill [pid $chan]
-   }
-   if {[catch {close $chan} errmsg]} {
-      append TE_results "\nERROR: $errmsg"
-      if {$TE_runcode == 0} {
-         set TE_runcode 1
-      }
-   }
-   return [list $TE_runcode $TE_results]
-}
-
 # Set up exit handler to try our best to kill mmArchive
 rename exit orig_exit
 proc exit { args } {
-   catch { Cleanup }
+   catch { Wrapup }
    eval orig_exit $args
 }
 
@@ -604,11 +401,11 @@ proc FindLocalMifs {} {
             lappend miflist [file join $sd $f]
         }
     }
-    
+
     return [lsort -dictionary $miflist]
 }
 
-if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage }
+if {[lsearch -regexp $argv {^-+(h|help)$}]>=0} { Usage stdout }
 
 set autoadd 0
 set autoadd_index [lsearch -regexp $argv {^-+autoadd$}]
@@ -625,6 +422,12 @@ if {$alttestdir_index >= 0 && $alttestdir_index+1 < [llength $argv]} {
    set argv [lreplace $argv $alttestdir_index $ul]
 }
 
+set cleanup 0
+set cleanup_index [lsearch -regexp $argv {^-+cleanup$}]
+if {$cleanup_index >= 0} {
+   set cleanup 1
+   set argv [lreplace $argv $cleanup_index $cleanup_index]
+}
 
 set ignoreextra 0
 set ignoreextra_index [lsearch -regexp $argv {^-+ignoreextra$}]
@@ -675,6 +478,20 @@ set noexcludes_index [lsearch -regexp $argv {^-+noexcludes$}]
 if {$noexcludes_index >= 0} {
    set noexcludes 1
    set argv [lreplace $argv $noexcludes_index $noexcludes_index]
+}
+
+set parallel_count 1
+if {!$no_thread_pkg} {
+   set parallel_index [lsearch -regexp $argv {^-+parallel$}]
+   if {$parallel_index >= 0 && $parallel_index+1 < [llength $argv]} {
+      set val [lindex $argv $parallel_index+1]
+      set argv [lreplace $argv $parallel_index $parallel_index+1]
+      if {![regexp {^[1-9][0-9]*$} $val]} {
+         puts stderr "ERROR: Option parallel must be a positive integer"
+         exit 2
+      }
+      set parallel_count $val
+   }
 }
 
 set resultsfile_index [lsearch -regexp $argv {^-+resultsfile$}]
@@ -744,6 +561,63 @@ if {$verbose_index >= 0} {
    set argv [lreplace $argv $verbose_index $verbose_index]
 }
 
+# Clean up?
+if {$cleanup} {
+   if {![string match {} $alt_test_dir]} {
+      set dirlist [list $alt_test_dir]  ;# User specified directory
+   } else {
+      # Default directories
+      set dirlist [list $load_dir $local_load_dir $bug_dir]
+      # Vector field files are written initially to tmpdir. Include
+      # that directory, if we can determine where it is.
+      catch {
+         set platform_info \
+            [split [exec $TCLSH $OOMMF +platform 2>@1] "\n"]
+         if {[set index [lsearch -regexp $platform_info \
+                            {^ *Temp file directory:}]]>=0} {
+            if {[regexp {Temp file directory:(.*)$} \
+                    [lindex $platform_info $index] _ tmpdir]} {
+               set tmpdir [string trim $tmpdir]
+               if {![string match {} $tmpdir]} {
+                  lappend dirlist $tmpdir
+               }
+            }
+         }
+      }
+   }
+   set tmpfiles {}
+   foreach dir $dirlist {
+      lappend tmpfiles {*}[glob -nocomplain -types f \
+                           [file join $dir ${clean_basename}{.odt,-*.o?f}]]
+   }
+   if {[llength $tmpfiles]==0} {
+      puts "No stray temporary files found."
+   } else {
+      set tmpfiles [lsort $tmpfiles]
+      puts [format "Delete these %d files?" [llength $tmpfiles]]
+      foreach f $tmpfiles { puts $f }
+      puts -nonewline "\[N/y\] ---> "
+      flush stdout
+      gets stdin answer
+      set answer [string tolower $answer]
+      if {[string match "y" $answer] || [string match "yes" $answer]} {
+         set cnt 0
+         foreach f $tmpfiles {
+            if {[catch {file delete -- $f} errmsg]} {
+               puts "NOT DELETED $f: $errmsg"
+            } else {
+               puts "Deleted $f"
+               incr cnt
+            }
+         }
+         puts [format "$cnt file%s deleted." [expr {$cnt==1?"":"s"}]]
+      } else {
+         puts "No files deleted."
+      }
+   }
+   exit
+}
+
 # Note: If alt_test_dir is non-empty, then default load, local, and bug
 # tests are disabled.
 if {![string match {} $alt_test_dir]} {
@@ -763,7 +637,17 @@ if {![string match {} $alt_test_dir]} {
          set root [file rootname [file tail $test]]
          set check [file join $load_dir ${root}.subtests]
          if {[lsearch -exact $load_list $check]<0} {
-            lappend new_tests $root
+            if {[llength $argv]==0} {
+               lappend new_tests $root
+            } else {
+               foreach test $argv {
+                  set basetest [lindex $test 0]
+                  if {[string match $basetest $root]} {
+                     lappend new_tests $root
+                     break
+                  }
+               }
+            }
          }
       }
    }
@@ -867,6 +751,10 @@ if {[llength $argv]==0} {
       if {[llength $loadmatchlist] == 0 \
           && [llength $localmatchlist] == 0 \
           && [llength $bugmatchlist] == 0} {
+         if {[string match {-*} $test]} {
+            puts stderr "ERROR: Unrecognized command line argument: \"$test\""
+            Usage
+         }
          puts stderr "Skipping unrecognized command line test \"$test\""
       }
       set test [lreplace $test 0 0]
@@ -896,28 +784,6 @@ if {[llength $dotests]==0} {
     exit 1
 }
 
-# Hack for Tcl 7.x support.  (The -index option to lsort
-# appears in Tcl 8.0.)
-proc SortCompareIndex { index elta eltb } {
-   set checka [expr {int([lindex $elta $index])}]
-   set checkb [expr {int([lindex $eltb $index])}]
-   if {$checka < $checkb} { return -1 }
-   if {$checka > $checkb} { return  1 }
-   return 0
-}
-proc SortUpIndex { index list } {
-   if {[lindex [split [info tclversion] "."] 0]>7} {
-      return [lsort -integer -index $index $list]
-   }
-   return [lsort -command "SortCompareIndex $index" $list]
-}
-proc SortDownIndex { index list } {
-   if {[lindex [split [info tclversion] "."] 0]>7} {
-      return [lsort -integer -decreasing -index $index $list]
-   }
-   return [lsort -decreasing -command "SortCompareIndex $index" $list]
-}
-
 # Utility code to compare .odt table output
 proc SwapColumns { swapcols row } {
    # Import swapcols is a list of column pairs, e.g.,
@@ -936,7 +802,7 @@ proc SwapColumns { swapcols row } {
    }
 
    # Delete swapping entries
-   foreach elt [SortDownIndex 0 $swapcols] {
+   foreach elt [lsort -integer -decreasing -index 0 $swapcols] {
       set i [lindex $elt 0]
       set row [lreplace $row $i $i]
    }
@@ -948,6 +814,52 @@ proc SwapColumns { swapcols row } {
    }
 
    return $row
+}
+
+proc TestCount { testlist } {
+   # Here "testlist" should be a list having the structure
+   # specified for global "dotests" list.
+   set count 0
+   foreach test $testlist {
+      # Open subtests file and count lines.
+      set basetest   [lindex $test 0]
+      set resultsdir [lindex $test 3]
+      set subfile [file join $resultsdir ${basetest}.subtests]
+      if {[catch {ReadSubtestFile $subfile} lines]} {
+         # Assume that file dne, but will be constructed
+         # later as an empty file
+         set lines {}
+      }
+      set subcount [llength $lines]
+      if {0 == $subcount} { set subcount 1 }
+
+      set reqlist [lrange $test 4 end]
+      ## reqlist are explicit subtest requests
+
+      if {[llength $reqlist] == 0} {
+         # Include all subtests
+         incr count $subcount
+      } else {
+         # Include only explicitly requested subtests
+         foreach i $reqlist {
+            # Replace commas with spaces:
+            if {[regexp {^([0-9]*)-([0-9]*)$} $i dummy elta eltb]} {
+               # Range request
+               if {[string match {} $elta]} { set elta 0 }
+               if {[string match {} $eltb] || $eltb>=$subcount} {
+                  set eltb [expr {$subcount - 1}]
+               }
+               if {$eltb >= $elta} {
+                  incr count [expr {$eltb - $elta + 1}]
+               }
+            } elseif {0<=$i && $i<$subcount} {
+               # Individual test request
+               incr count
+            }
+         }
+      }
+   }
+   return $count
 }
 
 proc ParseSubtestLine { line } {
@@ -992,11 +904,12 @@ proc ParseSubtestLine { line } {
    return [list $parlist $errlist]
 }
 
-
 proc TestCompareODT { oldfile newfile suberrors } {
+   # Return is a two element list: resultcode resultstr
    global verbose
+   set resultstr {}
    if {$verbose} {
-      puts "Comparing \"$newfile\" to \"$oldfile\""
+      append resultstr "Comparing \"$newfile\" to \"$oldfile\"\n"
    }
 
    global oldskiplabels newskiplabels swaplabels ignoreextra
@@ -1020,16 +933,19 @@ proc TestCompareODT { oldfile newfile suberrors } {
          }
       }
       # Either can't open file or file trailer is missing, presumably
-      # because mmArchive isn't finished writing it.  Wait and retry.
+      # because mmArchive isn't finished writing it. This shouldn't
+      # happen if boxsi flushed output properly, but add a wait and
+      # retry a few times.
+      puts stderr "WARNING: Results file $newfile missing or incomplete."
       after 1000
    }
    if {$trycount >= $MAXTRYCOUNT} {
       if {!$file_opened} {
-         puts "ERROR: Unable to open test ODT file \"$newfile\""
+         append resultstr "ERROR: Unable to open test ODT file \"$newfile\"\n"
       } else {
-         puts "ERROR: Test ODT file \"$newfile\" incomplete."
+         append resultstr "ERROR: Test ODT file \"$newfile\" incomplete.\n"
       }
-      return 1
+      return [list 1 $resultstr]
    }
 
 
@@ -1041,7 +957,7 @@ proc TestCompareODT { oldfile newfile suberrors } {
       "\n# Title: (removed)\n" newtable
 
    if {[string compare $oldtable $newtable]==0} {
-      return 0
+      return [list 0 $resultstr]
    }
 
    # We have non-matches at the string comparison level.  Try comparing
@@ -1055,10 +971,10 @@ proc TestCompareODT { oldfile newfile suberrors } {
    regsub -all " *\\\\\n# *" $newtable { } newtable
    set newtable [split $newtable "\n"]
    if {[llength $oldtable] != [llength $newtable]} {
-         puts "ERROR: New and reference output\
+      append resultstr "ERROR: New and reference output\
                have different number of lines\
-               ([llength $newtable] != [llength $oldtable])"
-         return 1
+               ([llength $newtable] != [llength $oldtable])\n"
+      return [list 1 $resultstr]
    }
 
    # Collect column by column error tolerances
@@ -1164,8 +1080,9 @@ proc TestCompareODT { oldfile newfile suberrors } {
    if {$ignoreextra || [llength $newskiplabels] || [llength $swaplabels]} {
       set colrow [lsearch -regexp $newtable "^\# Columns: "]
       if {$colrow<0} {
-         puts "ERROR: New (test) ODT file is missing column header line"
-         return 1
+         append resultstr \
+            "ERROR: New (test) ODT file is missing column header line\n"
+         return [list 1 $resultstr]
       }
       set line [lindex $newtable $colrow]
       if {[regexp "^\# Columns: (.*)$" $line dummy cols]} {
@@ -1174,7 +1091,7 @@ proc TestCompareODT { oldfile newfile suberrors } {
             if {$ignoreextra && [lsearch -exact $columns $elt]<0} {
                   # $elt doesn't match any column in reference data
                   lappend newskipcols $i
-                  puts "Ignoring new data column \"$elt\""
+                  append resultstr "Ignoring new data column \"$elt\"\n"
                   continue  ;# next i
             }
             foreach pat $newskiplabels {
@@ -1199,7 +1116,7 @@ proc TestCompareODT { oldfile newfile suberrors } {
                lappend swapcols [list $j $i]
             }
          }
-         set swapcols [SortUpIndex 1 $swapcols]
+         set swapcols [lsort -integer -index 1 $swapcols]
          # swapcols now contains columns pairs, {src_col dest_col}
          # for each swap pair in the post-skip column list, sorted
          # to be increasing on the dest_col.
@@ -1267,22 +1184,22 @@ proc TestCompareODT { oldfile newfile suberrors } {
          set oldfoo [eval list $oldfoo]  ;# Remove extraneous spaces
          set newfoo [eval list $newfoo]
          if {[string compare $oldfoo $newfoo]==0} { continue }
-         puts "ERROR: New and reference output have\
-                      column header line mismatch"
+         append resultstr "ERROR: New and reference output have\
+                      column header line mismatch\n"
          if {$verbose} {
-            puts "Ref line---\n$oldline"
-            puts "New line---\n$newline"
+            append resultstr  "Ref line---\n$oldline\n"
+            append resultstr  "New line---\n$newline\n"
             set mismatch_count 0
             foreach oelt $oldline nelt $newline {
                if {[string compare $oelt $nelt]!=0} {
-                  puts "Column difference: ->$oelt<-"
-                  puts " ------------------->$nelt<-"
+                  append resultstr "Column difference: ->$oelt<-\n"
+                  append resultstr " ------------------->$nelt<-\n"
                   incr mismatch_count
                }
             }
-            puts "Number of mismatched columns: $mismatch_count"
+            append resultstr "Number of mismatched columns: $mismatch_count\n"
          }
-         return 1
+         return [list 1 $resultstr]
       }
 
       if {[regexp "^\# Units: (.*)$" $oldline dummy oldfoo] && \
@@ -1290,36 +1207,36 @@ proc TestCompareODT { oldfile newfile suberrors } {
          set oldfoo [eval list $oldfoo]  ;# Remove extraneous spaces
          set newfoo [eval list $newfoo]
          if {[string compare $oldfoo $newfoo]==0} { continue }
-         puts "ERROR: New and reference output have\
-                      units header line mismatch"
+         append resultstr "ERROR: New and reference output have\
+                      units header line mismatch\n"
          if {$verbose} {
-            puts "Ref line---\n$oldline"
-            puts "New line---\n$newline"
+            append resultstr "Ref line---\n$oldline\n"
+            append resultstr "New line---\n$newline\n"
          }
-         return 1
+         return [list 1 $resultstr]
       }
 
       if {[string match "\#*" $oldline] || \
              [string match "\#*" $newline]} {
-         puts "ERROR: New and reference output have\
-                      header or comment line mismatch"
+         append resultstr "ERROR: New and reference output have\
+                      header or comment line mismatch\n"
          if {$verbose} {
-            puts "Ref line---\n$oldline"
-            puts "New line---\n$newline"
+            append resultstr "Ref line---\n$oldline\n"
+            append resultstr "New line---\n$newline\n"
          }
-         return 1
+         return [list 1 $resultstr]
       }
 
       if {[llength $oldline] != [llength $newline]} {
-         puts "ERROR: New and reference output have\
-                different number of columns"
-         return 1
+         append resultstr "ERROR: New and reference output have\
+                different number of columns\n"
+         return [list 1 $resultstr]
       }
 
       if {[llength $oldline] != [llength $colerr]} {
-         puts "ERROR: Reference output format error;\
-               column header/data mismatch"
-         return 1
+         append resultstr "ERROR: Reference output format error;\
+               column header/data mismatch\n"
+         return [list 1 $resultstr]
       }
 
       set eltcount 0
@@ -1327,13 +1244,13 @@ proc TestCompareODT { oldfile newfile suberrors } {
          set errcode [catch {expr {abs(double($oldelt-$newelt))}} observed_err]
          if {$errcode || $observed_err>$allowed_err*$maxrat} {
             if {$errcode} {
-               puts "ERROR ref data: $oldelt"
-               puts "      bad data: $newelt"
+               append resultstr "ERROR ref data: $oldelt\n"
+               append resultstr "      bad data: $newelt\n"
                set maxrat 1e100
             } elseif {[catch {expr {$observed_err/$allowed_err}} maxrat]} {
-               puts "ERROR bad errors: observed_err = $observed_err"
-               puts "                   allowed_err = $allowed_err"
-               puts $maxrat
+               append resultstr "ERROR bad errors: observed_err = $observed_err\n"
+               append resultstr "                   allowed_err = $allowed_err\n"
+               append resultstr "$maxrat\n"
                set maxrat 1e100
             }
             set itval {}
@@ -1348,11 +1265,11 @@ proc TestCompareODT { oldfile newfile suberrors } {
             if {$errcode} {
                append badreport [format " REF VALUE: $sigfmt\n" $oldelt]
                append badreport [format " NEW VALUE: %s\n" $newelt]
-               append badreport [format " INVALID DATA"]
+               append badreport [format " INVALID DATA\n"]
             } else {
                append badreport [format " REF VALUE: $sigfmt\n" $oldelt]
                append badreport [format " NEW VALUE: $sigfmt\n" $newelt]
-               append badreport [format " ERROR observed/allowed: %.2e/%.2e" \
+               append badreport [format " ERROR observed/allowed: %.2e/%.2e\n" \
                                      $observed_err $allowed_err]
             }
          }
@@ -1361,22 +1278,21 @@ proc TestCompareODT { oldfile newfile suberrors } {
    }
 
    if {[string match {} $badreport]} {
-      return 0
+      return [list 0 $resultstr]
    }
-
-   puts $badreport
-   return 1
+   return [list 1 "${resultstr}${badreport}"]
 }
 
 proc TestCompareOVF { oldfile newfile ovferrors } {
+   # Return is a two element list: resultcode resultstr
    global TCLSH OOMMF verbose
    global avfdiff_basecmd nuldevice
+   set resultstr {}
    if {$verbose} {
-      puts "Comparing \"$newfile\" to \"$oldfile\""
+      append resultstr "Comparing \"$newfile\" to \"$oldfile\"\n"
    }
    if {![info exists avfdiff_basecmd]} {
-      set avfdiff_basecmd [exec_ignore_stderr \
-                              $TCLSH $OOMMF avfdiff +command]
+      set avfdiff_basecmd [exec $TCLSH $OOMMF avfdiff +command 2>@1]
       global tcl_platform
       if {[string compare "Darwin" $tcl_platform(os)] != 0} {
          # On (at least some) Mac OS X, this redirect can cause
@@ -1387,54 +1303,56 @@ proc TestCompareOVF { oldfile newfile ovferrors } {
    }
 
    # Test that newfile is ready to be opened and read
-   for {set trycount 0} {$trycount<5} {incr trycount} {
+   set MAXTRYCOUNT 5
+   for {set trycount 0} {$trycount<$MAXTRYCOUNT} {incr trycount} {
       if {![catch {open $newfile r} chan]} { break }
-      if {$trycount+1 >= 5} {
-         puts "ERROR: Unable to open test ODT file \"$newfile\""
-         return 1
+      if {$trycount+1 >= $MAXTRYCOUNT} {
+         append resultstr "ERROR: Unable to open test ODT file \"$newfile\"\n"
+         return [list 1 $resultstr]
       }
-      after 1000  ;# Can't open file; wait a little and try again
+      # Can't open results file. This shouldn't happen if boxsi
+      # flushed output properly, but add a wait and retry a few times.
+      puts stderr "WARNING: Results file $newfile missing."
+      after 1000
    }
    close $chan
    set cmd [concat $avfdiff_basecmd -info \
                 [list $oldfile] [list $newfile]]
-   if {[catch {
-         set results [eval exec_ignore_stderr $cmd]
-      } errmsg]} {
-      puts "Run compare error \"$oldfile\" \"$newfile\" -->"
-      puts "$errmsg\n<-- Run compare error"
-      return 1
+   if {[catch {set results [exec {*}$cmd 2>@1]} errmsg]} {
+      append resultstr "Run compare error \"$oldfile\" \"$newfile\" -->\n"
+      append resultstr "$errmsg\n<-- Run compare error\n"
+      return [list 1 $resultstr]
    }
    set listresults [split $results "\n"]
    if {[llength $listresults]!=3} {
-      puts "Run compare error (a) \"$oldfile\" \"$newfile\";\
-            Bad avfdiff -info output -->"
-      puts "$results\n<-- Run compare error"
-      return 1
+      append resultstr "Run compare error (a) \"$oldfile\" \"$newfile\";\
+            Bad avfdiff -info output -->\n"
+      append resultstr "$results\n<-- Run compare error\n"
+      return [list 1 $resultstr]
    }
    set line0 [string trim [lindex $listresults 0]]
    set line1 [string trim [lindex $listresults 1]]
    set line2 [string trim [lindex $listresults 2]]
    if {![string match "${oldfile} (in *" $line0] || \
          ![string match "${newfile} (in *" $line2]} {
-      puts "Run compare error (b) \"$oldfile\" \"$newfile\";\
-            Bad avfdiff -info output -->"
-      puts "$results\n<-- Run compare error"
-      return 1
+      append resultstr "Run compare error (b) \"$oldfile\" \"$newfile\";\
+            Bad avfdiff -info output -->\n"
+      append resultstr "$results\n<-- Run compare error\n"
+      return [list 1 $resultstr]
    }
    if {![regexp {^.*Max *mag = *([0-9.e+-]+),} \
             $line1 dummy maxmag]} {
-      puts "Run compare error (c) \"$oldfile\" \"$newfile\";\
-            Bad avfdiff -info output -->"
-      puts "$results\n<-- Run compare error"
-      return 1
+      append resultstr "Run compare error (c) \"$oldfile\" \"$newfile\";\
+            Bad avfdiff -info output -->\n"
+      append resultstr "$results\n<-- Run compare error\n"
+      return [list 1 $resultstr]
    }
    if {![regexp {^.*Max *diff = *([0-9.e+-]+),} \
             $line2 dummy maxdiff]} {
-      puts "Run compare error (d) \"$oldfile\" \"$newfile\";\
-            Bad avfdiff -info output -->"
-      puts "$results\n<-- Run compare error"
-      return 1
+      append resultstr "Run compare error (d) \"$oldfile\" \"$newfile\";\
+            Bad avfdiff -info output -->\n"
+      append resultstr "$results\n<-- Run compare error\n"
+      return [list 1 $resultstr]
    }
 
    if {[string match {} $ovferrors]} {
@@ -1448,16 +1366,17 @@ proc TestCompareOVF { oldfile newfile ovferrors } {
    }
    if {$maxdiff > $allowed_err} {
       # Error too big
-      puts "OVF compare error on \"$oldfile\":"
-      puts [format " ERROR observed/allowed: %.2e/%.2e" \
-                     $maxdiff $allowed_err]
-      return 1
+      append resultstr "OVF compare error on \"$oldfile\":\n"
+      append resultstr [format " ERROR observed/allowed: %.2e/%.2e\n" \
+                           $maxdiff $allowed_err]
+      return [list 1 $resultstr]
    }
 
-   return 0
+   return [list 0 $resultstr]
 }
 
 proc TestCompare { oldfile newfile suberrors ovferrors} {
+   # Return is a two element list: resultcode resultstr
    set file_ext [string tolower [file extension $oldfile]]
    if {[string compare ".odt" $file_ext]==0} {
       return [TestCompareODT $oldfile $newfile $suberrors]
@@ -1465,8 +1384,8 @@ proc TestCompare { oldfile newfile suberrors ovferrors} {
    if {[string match ".o?f" $file_ext]} {
       return [TestCompareOVF $oldfile $newfile $ovferrors]
    }
-   puts "UNKNOWN FILE TYPE; NO COMPARISON: \"$oldfile\" \"$newfile\""
-   return 0
+   return [list 0 \
+        "UNKNOWN FILE TYPE; NO COMPARISON: \"$oldfile\" \"$newfile\"\n"]
 }
 
 proc ExcludeTests { testlist } {
@@ -1581,7 +1500,7 @@ proc ExcludeTests { testlist } {
                }
             }
             set newsub $tmp
-            
+
             # Update testlist
             if {[llength $newsub] ==0 } {
                set test {}
@@ -1622,50 +1541,306 @@ proc ReadSubtestFile { subfile } {
    return $linesb
 }
 
-proc TestCount { testlist } {
-   # Here "testlist" should be a list having the structure
-   # specified for global "dotests" list.
-   set count 0
-   foreach test $testlist {
-      # Open subtests file and count lines.
-      set basetest   [lindex $test 0]
-      set resultsdir [lindex $test 3]
-      set subfile [file join $resultsdir ${basetest}.subtests]
-      if {[catch {ReadSubtestFile $subfile} lines]} {
-         # Assume that file dne, but will be constructed
-         # later as an empty file
-         set lines {}
+# Exec command with timeout (timeout in seconds)
+proc TimeoutExecReadHandler { chan } {
+   if {![eof $chan]} {
+      append ::TE_results [set data [read $chan]]
+      if {[string match {*Boxsi run end.*} $data]} {
+         # Handle case where exit blocked by still-running
+         # child process.
+         set ::TE_runcode 0
       }
-      set subcount [llength $lines]
-      if {0 == $subcount} { set subcount 1 }
+   } else {
+      set ::TE_runcode 0
+   }
+}
+proc TimeoutExec { cmd timeout } {
+   # Return codes:
+   #  0 => Success
+   #  1 => Error
+   # -1 => Timeout
+   set ::TE_results {}
+   set ::TE_runcode 0
+   set timeout [expr {$timeout*1000}]  ;# Convert to ms
+   set cmd [linsert $cmd 0 {|}]
+   set chan [open $cmd r]
+   fconfigure $chan -blocking 0 -buffering none
+   fileevent $chan readable [list TimeoutExecReadHandler $chan]
+   if {$timeout>0} {
+      set timeoutid [after $timeout [list set ::TE_runcode -1]]
+   }
+   vwait ::TE_runcode
+   if {$timeout>0} { after cancel $timeoutid }
+   if {$::TE_runcode >= 0} {
+      # cmd ran to completion; reset chan to blocking mode
+      # so close can return error info.  Don't do this if
+      # cmd timed out, because in that case close may block
+      # indefinitely.
+      fconfigure $chan -blocking 1
+   } else {
+      # Kill process
+      SystemKill [pid $chan]
+   }
+   if {[catch {close $chan} errmsg]} {
+      append ::TE_results "\nERROR: $errmsg"
+      if {$::TE_runcode == 0} {
+         set ::TE_runcode 1
+      }
+   }
+   return [list $::TE_runcode $::TE_results]
+}
 
-      set reqlist [lrange $test 4 end]
-      ## reqlist are explicit subtest requests
+proc RunTest { testcount subdesc runtestparams } {
+   # Return is a three item list: subtestname result_code result_string
+   # The result code should be one of the following strings: RUNERROR,
+   # TIMEOUT, COMPERROR, NEWTEST, or SUCCESS
+   dict with runtestparams {}  ;# Make local copies of parameters
 
-      if {[llength $reqlist] == 0} {
-         # Include all subtests
-         incr count $subcount
-      } else {
-         # Include only explicitly requested subtests
-         foreach i $reqlist {
-            # Replace commas with spaces:
-            if {[regexp {^([0-9]*)-([0-9]*)$} $i dummy elta eltb]} {
-               # Range request
-               if {[string match {} $elta]} { set elta 0 }
-               if {[string match {} $eltb] || $eltb>=$subcount} {
-                  set eltb [expr {$subcount - 1}]
-               }
-               if {$eltb >= $elta} {
-                  incr count [expr {$eltb - $elta + 1}]
-               }
-            } elseif {0<=$i && $i<$subcount} {
-               # Individual test request
-               incr count
-            }
+   # Augment results_basename with test number to prevent conflicts when
+   # running parallel jobs.
+   append results_basename "-$testcount"
+   set subtest [lindex $subdesc 0]
+   if {[llength $lines]>1} {
+      set subtestname "$subtest [lindex $subdesc 1]"
+      set subcomp_base "${subtest}_[lindex $subdesc 1]"
+   } else {
+      set subtestname $subtest
+      set subcomp_base ${subtest}
+   }
+   # Save size of test basename prefix, minus one to
+   # make it easy to strip using string replace.
+   set basestrip [expr {[string length [file tail $subcomp_base]]-1}]
+
+   set resultstr \
+      [format "TEST $tstfmt/$tstfmt: $subtestname ---------------\n" \
+          $testcount $number_of_tests ]
+
+   if {$reglevel == 1} {
+      set subcomp [list [file join $resultsdir ${subcomp_base}.odt]]
+   } else {
+      set subcomp [glob -nocomplain \
+                      [file join $resultsdir ${subcomp_base}.odt]]
+      set globpat [file join $resultsdir ${subcomp_base}-*.o?f]
+      set rexpat  [file join $resultsdir ${subcomp_base}-.*-\[0-9\]+\.o.f]
+      foreach f [glob -nocomplain $globpat] {
+         if {[regexp $rexpat $f]} {
+            lappend subcomp $f
          }
       }
    }
-   return $count
+   if {[catch {ParseSubtestLine [lindex $subdesc 2]} lineparts]} {
+      append resultstr "ERROR: $lineparts\n"
+      return [list $subtestname RUNERROR $resultstr]
+   }
+   set subparams [lindex $lineparts 0]
+   set suberrors [lindex $lineparts 1]
+   set ovferrors {}
+   if {[set index [lsearch $suberrors OVFERRS]]>=0} {
+      set ovferrors [lindex $suberrors $index+1]
+      set suberrors [lreplace $suberrors $index $index+1]
+   }
+   set results_file_odt [file join $mifdir [file dir ${subcomp_base}] \
+                            ${results_basename}.odt]
+   if {[file exists $results_file_odt]} {
+      # Make sure we start on a clean slate
+      file delete $results_file_odt
+   }
+
+   # Build boxsi command line
+   set boxsi_command [linsert $boxsi_base_command end \
+                         -loglevel $loglevel \
+                         -logfile  $logfile \
+                         -regression_testname $results_basename \
+                         -regression_test $reglevel]
+   if {[llength $subparams]>0} {
+      lappend boxsi_command -parameters $subparams
+   }
+   lappend boxsi_command $miffile 2>@1
+
+   if {$verbose} {
+      append resultstr "CMD: $boxsi_command\n"
+   }
+   set start_time [clock seconds]
+   append resultstr "start time: [clock format $start_time]\n"
+
+   # Publish test header
+   if {$::use_tcl_threads} {
+      thread::send -async $::main_thread \
+         [list dict set ::results ${testcount},header $resultstr]
+   } else {
+      dict set ::results ${testcount},header $resultstr
+   }
+   set resultstr {}
+
+   # Run boxsi
+   lassign [TimeoutExec $boxsi_command $EXEC_TEST_TIMEOUT] code errmsg
+   set stop_time [clock seconds]
+   set elapsed_time [expr {$stop_time-$start_time}]
+   append resultstr [format "stop  time: %s (%2d second%s)\n" \
+                        [clock format $stop_time] $elapsed_time \
+                        [expr {$elapsed_time == 1 ? "" : "s"}]]
+   if {$code > 0} {
+      set resultcode RUNERROR
+      append resultstr "RUN ERROR-->\n[string trim $errmsg]\n<--RUN ERROR\n"
+   } elseif {$code < 0} {
+      set resultcode TIMEOUT
+      append resultstr "TIMEOUT-->\n[string trim $errmsg]\n<--TIMEOUT\n"
+   } else {
+      if {$leak} {
+         regexp {definitely lost: (\d+) bytes} $errmsg -> count
+         if {$count} {
+            append resultstr "LEAKED $count bytes"
+         }
+      }
+      if {$showoutput} {
+         append resultstr "TEST OUTPUT >>>>\n"
+         append resultstr [string trim $errmsg]
+         append resultstr "\n<<<< TEST OUTPUT\n"
+      }
+      if {$reglevel==1 && ![file exists [lindex $subcomp 0]]} {
+         # New test
+         set resultcode NEWTEST
+         append resultstr "New test; no comparison checks\n"
+         file rename $results_file_odt [lindex $subcomp 0]
+      } elseif {$updaterefdata} {
+         set resultcode SUCCESS
+         foreach check_file $subcomp {
+            set tmp [string replace [file tail $check_file] \
+                        0 $basestrip $results_basename]
+            set results_file \
+               [file join $mifdir [file dir $subcomp_base] $tmp]
+            if {![file exists $results_file]} {
+               set resultcode COMPERROR
+               append resultstr "ERROR: Missing output file $results_file\n"
+            } else {
+               append resultstr "Overwriting \"$check_file\"\n"
+               file rename -force $results_file $check_file
+            }
+         }
+         if {[string compare SUCCESS $resultcode]!=0} {
+            append resultstr "Test failed\n"
+         }
+      } else {
+         # Otherwise, do comparison
+         if {$verbose && [llength $subcomp]==0} {
+            append resultstr "No check file comparisons\n"
+         }
+         foreach check_file $subcomp {
+            set tmp [string replace [file tail $check_file] \
+                        0 $basestrip $results_basename]
+            set results_file \
+               [file join $mifdir [file dir $subcomp_base] $tmp]
+            if {![file exists $results_file]} {
+               # This shouldn't happen if boxsi flushed output properly
+               set code 1
+               append resultstr "ERROR: Missing output file $results_file\n"
+            } else {
+               set testresults [TestCompare $check_file \
+                                   $results_file $suberrors $ovferrors]
+               append resultstr [lindex $testresults 1]
+               if {[lindex $testresults 0]!= 0} {
+                  set code 1
+                  if {$keepfail} {
+                     file rename -force $results_file "${check_file}_failed"
+                  }
+               }
+            }
+         }
+         if {$code} {
+            set resultcode COMPERROR
+            append resultstr "Test failed\n"
+         } else {
+            set resultcode SUCCESS
+            append resultstr "Test passed\n"
+         }
+      }
+   }
+   # Delete any "non-saved" results files
+   foreach results_file [glob -nocomplain \
+                            [file join $mifdir [file dir $subcomp_base] \
+                                ${results_basename}{.odt,-*.o?f}]] {
+      set time0 [clock seconds]
+      for {set idelete 0} {$idelete<200} {incr idelete} {
+         if {![catch {file delete $results_file}]} {
+            break
+         }
+         after 500
+      }
+      set deletetime [expr {[clock seconds]-$time0}]
+      if {[file exists $results_file]} {
+         error "Unable to delete results file \"$results_file\""
+      }
+      if {$deletetime>10} {
+         global max_deletetime
+         if {![info exists max_deletetime]} {
+            set max_deletetime $deletetime
+         }
+         if {$deletetime>=$max_deletetime} {
+            append resultstr "HEY! It took $deletetime seconds to\
+                            delete $results_file\n"
+            global max_deletetime_file
+            set max_deletetime $deletetime
+            set max_deletetime_file $results_file
+         }
+      }
+   }
+   return [list $subtestname $resultcode $resultstr]
+}
+
+proc LaunchTest { testcount subdesc runtestparams } {
+   if {[catch {RunTest $testcount $subdesc $runtestparams} result]} {
+      puts stderr "ERROR (test $testcount): $result"
+   }
+   # Publish test result
+   if {$::use_tcl_threads} {
+      thread::send $::main_thread [list dict set ::results $testcount $result]
+      thread::id  ;# Sets run_done in main_thread to this thread id
+   } else {
+      dict set ::results $testcount $result
+   }
+}
+
+proc PublishTests { n } {
+   # Print to stdout all consecutive completed results starting with
+   # test n.
+   flush stderr
+   if {[dict exists $::results ${n},header]} {
+      puts -nonewline [dict get $::results ${n},header]
+      dict unset ::results ${n},header
+   }
+   while {[dict exists $::results $n]} {
+      lassign [dict get $::results $n] subtestname resultcode resultstr
+      set testtime [expr {[clock seconds] - $::teststart_time}]
+      set testtime_minutes [expr {int(floor($testtime/60.))}]
+      set testtime_remainder [expr {$testtime - 60*$testtime_minutes}]
+      switch -exact -- $resultcode {
+         SUCCESS   { incr ::passedcount }
+         COMPERROR { incr ::comperrcount ; lappend ::comperrors $subtestname }
+         RUNERROR  { incr ::runerrcount  ; lappend ::runerrors  $subtestname }
+         TIMEOUT   {
+            incr ::timeouterrcount
+            lappend ::timeouterrors $subtestname
+         }
+         NEWTEST   { incr ::newcount }
+         default { error "Unrecognized run result code: $resultcode" }
+      }
+      puts -nonewline $resultstr
+      puts [format "Running total: $::tstfmt passed, $::tstfmt failed,\
+                    elapsed time: %d:%02d" \
+               $::passedcount \
+               [expr {$::runerrcount + $::timeouterrcount + $::comperrcount}] \
+               $testtime_minutes $testtime_remainder]
+      puts "---"
+      flush stdout
+      dict unset ::results $n
+      incr n
+      if {[dict exists $::results ${n},header]} {
+         puts -nonewline [dict get $::results ${n},header]
+         dict unset ::results ${n},header
+      }
+   }
+   flush stdout
+   return $n
 }
 
 set dotests [ExcludeTests $dotests]
@@ -1703,9 +1878,8 @@ foreach root $new_tests {
 # instances of mmArchive running, then the tests may end up using one or
 # more of those instead, but the distinguishing feature of the one
 # launched here is that we send it a terminate request when we're done.
-set mmArchive_command [exec_ignore_stderr $TCLSH $OOMMF +command mmArchive +bg]
-set mmArchive_command [linsert $mmArchive_command 0 exec_ignore_stderr]
-set mmArchive_pid [eval $mmArchive_command]
+set mmArchive_command [exec $TCLSH $OOMMF +command mmArchive +bg 2>@1]
+set mmArchive_pid [exec {*}$mmArchive_command]
 after 1000
 
 # Make sure the instance of mmArchive launched above is
@@ -1714,16 +1888,23 @@ after 1000
 set mmArchive_oid [GetOid mmArchive $mmArchive_pid]
 
 # Run tests
-set runerrors {}
-set timeouterrors {}
-set comperrors {}
+set ::runerrors {}
+set ::timeouterrors {}
+set ::comperrors {}
+set ::passedcount 0
+set ::runerrcount 0
+set ::timeouterrcount 0
+set ::comperrcount 0
+set ::newcount 0
+
+# Job control variables
 set testcount 0
-set passedcount 0
-set runerrcount 0
-set timeouterrcount 0
-set comperrcount 0
-set newcount 0
-set boxsi_base_command [exec_ignore_stderr $TCLSH $OOMMF +command boxsi]
+set reportcount 1   ;# Test numbering is 1-based
+set ::runningjobs 0
+set ::results [dict create] ;# Area to hold results from RunTest
+## until they can be published.
+
+set boxsi_base_command [exec $TCLSH $OOMMF +command boxsi]
 if {[info exists thread_count] && $thread_count>0} {
    lappend boxsi_base_command -threads $thread_count
 }
@@ -1736,13 +1917,61 @@ if {[string compare "Darwin" $tcl_platform(os)] != 0} {
    # against console problems on Windows.
    lappend boxsi_base_command "<" $nuldevice
 }
-set teststart_time [clock seconds]
+
 set number_of_tests [TestCount $dotests]
 if {$number_of_tests<1} {
    puts stderr "*** NO TESTS ***"
    exit 1
 }
+if {$parallel_count > $number_of_tests} {
+   set parallel_count $number_of_tests
+}
 set tstfmt [format "%%%dd" [expr {int(floor(log10($number_of_tests)))+1}]]
+
+# Create dictionary holding parameters for proc RunTest, and fill
+# with fixed values.
+set runtestparams [dict create]
+foreach kv {
+   EXEC_TEST_TIMEOUT boxsi_base_command keepfail
+   leak logfile loglevel number_of_tests results_basename
+   showoutput tstfmt updaterefdata verbose
+} {
+   dict set runtestparams $kv [set $kv]
+}
+
+# Prep Tcl threads, if used
+set use_tcl_threads 0
+set thdlist {}
+if {$parallel_count>1} {
+   set use_tcl_threads 1
+   for {set i 0} {$i<$parallel_count} {incr i} {
+      lappend thdlist [thread::create -preserved]
+   }
+   set initscript {}
+   set main_thread [thread::id]  ;# Used by children to report results
+   foreach var {
+      verbose oldskiplabels newskiplabels swaplabels ignoreextra SIGFIGS
+      TCLSH OOMMF verbose avfdiff_basecmd nuldevice main_thread
+      use_tcl_threads
+   } {
+      if {[info exists $var]} {
+         append initscript "[list set $var [set $var]]\n"
+      }
+   }
+   foreach prc { ParseSubtestLine TestCompareODT TestCompareOVF TestCompare
+                 TimeoutExecReadHandler TimeoutExec RunTest LaunchTest
+                 SystemKill } {
+      append initscript "[list proc $prc [info args $prc] [info body $prc]]\n"
+   }
+   thread::broadcast $initscript
+}
+
+
+# Start testing
+set epoch_init [clock milliseconds]
+set teststart_time [clock seconds]
+set job_count 0
+set run_done {}
 foreach test $dotests {
    set basetest   [lindex $test 0]
    set reglevel   [lindex $test 1]
@@ -1758,6 +1987,11 @@ foreach test $dotests {
    }
    set subfile [file join $resultsdir ${basetest}.subtests]
    set lines [ReadSubtestFile $subfile]
+
+   # Set remaining RunTest parameters
+   foreach kv { lines mifdir miffile reglevel resultsdir} {
+      dict set runtestparams $kv [set $kv]
+   }
 
    set testlist {}
    if {[llength $test]>4} {
@@ -1790,200 +2024,48 @@ foreach test $dotests {
    }
 
    foreach subdesc $testlist {
+      set reportcount [PublishTests $reportcount]
       incr testcount
-
-      set subtest [lindex $subdesc 0]
-
-      if {[llength $lines]>1} {
-         set subtestname "$subtest [lindex $subdesc 1]"
-         set subcomp_base "${subtest}_[lindex $subdesc 1]"
+      if {!$use_tcl_threads} {
+         LaunchTest $testcount $subdesc $runtestparams
+      } elseif {$testcount-1 < [llength $thdlist]} {
+         # NOTE: All threads are given first assignments
+         #       straightaway w/o servicing the event loop. This
+         #       simplifies using the single variable run_done to
+         #       keep track of the available threads.
+         if {![string match {} $run_done]} {
+            error "Job control error: run_done set too early"
+         }
+         thread::send -async [lindex $thdlist $testcount-1] \
+            [list LaunchTest $testcount $subdesc $runtestparams] \
+            run_done
       } else {
-         set subtestname $subtest
-         set subcomp_base ${subtest}
-      }
-      # Save size of test basename prefix, minus one to
-      # make it easy to strip using string replace.
-      set basestrip [expr {[string length [file tail $subcomp_base]]-1}]
-      
-      puts [format "TEST $tstfmt/$tstfmt: $subtestname ---------------" \
-               $testcount $number_of_tests ]
-      flush stdout
-
-      if {$reglevel == 1} {
-         set subcomp [list [file join $resultsdir ${subcomp_base}.odt]]
-      } else {
-         set subcomp [glob -nocomplain \
-                         [file join $resultsdir ${subcomp_base}.odt]]
-         set subcomp [concat $subcomp \
-                      [lsort [glob -nocomplain \
-                       [file join $resultsdir ${subcomp_base}-*.o?f]]]]
-      }
-      if {[catch {ParseSubtestLine [lindex $subdesc 2]} lineparts]} {
-         puts "ERROR: $lineparts"
-         lappend runerrors $subtestname
-         incr runerrcount
-         continue
-      } 
-      set subparams [lindex $lineparts 0]
-      set suberrors [lindex $lineparts 1]
-      set ovferrors {}
-      if {[set index [lsearch $suberrors OVFERRS]]>=0} {
-         set ovferrors [lindex $suberrors [expr {$index+1}]]
-         set suberrors [lreplace $suberrors $index [expr {$index+1}]]
-      }
-      set results_file_odt [file join $mifdir [file dir ${subcomp_base}] \
-                               ${results_basename}.odt]
-      if {[file exists $results_file_odt]} {
-         # Make sure we start on a clean slate
-         file delete $results_file_odt
-      }
-
-      # Build boxsi command line
-      set boxsi_command [linsert $boxsi_base_command end \
-                            -loglevel $loglevel \
-                            -logfile  $logfile \
-                            -regression_testname $results_basename \
-                            -regression_test $reglevel]
-      if {[llength $subparams]>0} {
-         lappend boxsi_command -parameters $subparams
-      }
-      lappend boxsi_command $miffile $ERR_REDIRECT
-
-      # Run boxsi
-      if {$verbose} {
-         puts "CMD: $boxsi_command"
-      }
-      set start_time [clock seconds]
-      puts "start time: [clock format $start_time]"
-      flush stdout
-      #set code [catch {eval $boxsi_command} errmsg]
-      foreach {code errmsg} \
-         [TimeoutExec $boxsi_command $EXEC_TEST_TIMEOUT] break
-      set stop_time [clock seconds]
-      set elapsed_time [expr {$stop_time-$start_time}]
-      puts [format "stop  time: %s (%2d second%s)" \
-               [clock format $stop_time] $elapsed_time \
-               [expr {$elapsed_time == 1 ? "" : "s"}]]
-      flush stdout
-
-      if {$code > 0} {
-         lappend runerrors $subtestname
-         puts "RUN ERROR-->\n[string trim $errmsg]\n<--RUN ERROR"
-         incr runerrcount
-      } elseif {$code < 0} {
-         lappend timeouterrors $subtestname
-         puts "TIMEOUT-->\n[string trim $errmsg]\n<--TIMEOUT"
-         incr timeouterrcount
-      } else {
-         if {$leak} {
-            regexp {definitely lost: (\d+) bytes} $errmsg -> count
-            if {$count} {
-               puts "LEAKED $count bytes"
-            }
+         vwait run_done
+         if {[string match {} $run_done]} {
+            error "Job control error: run_done not set"
          }
-         if {$showoutput} {
-            flush stderr
-            puts "TEST OUTPUT >>>>"
-            puts [string trim $errmsg]
-            puts "<<<< TEST OUTPUT"
-            flush stdout
-         }
-         if {$reglevel==1 && ![file exists [lindex $subcomp 0]]} {
-            # New test
-            puts "New test; no comparison checks"
-            incr newcount
-            file rename $results_file_odt [lindex $subcomp 0]
-         } elseif {$updaterefdata} {
-            foreach check_file $subcomp {
-               set results_file \
-                  [file join $mifdir [file dir $subcomp_base] \
-                      "${results_basename}[file ext $check_file]"]
-               if {![file exists $results_file]} {
-                  set code 1
-                  puts "ERROR: Missing output file $results_file"
-               } else {
-                  puts "Overwriting \"$check_file\""
-                  file rename -force $results_file $check_file
-               }
-            }
-         } else {
-            # Otherwise, do comparison
-            if {$verbose && [llength $subcomp]==0} {
-               puts "No check file comparisons"
-            }
-            foreach check_file $subcomp {
-               set tmp [string replace [file tail $check_file] \
-                           0 $basestrip $results_basename]
-               set results_file \
-                  [file join $mifdir [file dir $subcomp_base] $tmp]
-               if {![file exists $results_file]} {
-                  set code 1
-                  puts "ERROR: Missing output file $results_file"
-               } else {
-                  set testresults \
-                     [TestCompare $check_file $results_file $suberrors $ovferrors]
-                  if {$testresults != 0} {
-                     set code 1
-                     if {$keepfail} {
-                        file rename -force $results_file \
-                           "${check_file}_failed"
-                     }
-                  }
-               }
-            }
-            if {$code} {
-               lappend comperrors $subtestname
-               incr comperrcount
-               puts "Test failed"
-            } else {
-               incr passedcount
-               puts "Test passed"
-            }
-         }
+         thread::send -async $run_done \
+            [list LaunchTest $testcount $subdesc $runtestparams] \
+            run_done
+         set run_done {}
       }
-      # Delete any "non-saved" results files
-      foreach results_file [glob -nocomplain \
-                            [file join $mifdir [file dir $subcomp_base] \
-                            ${results_basename}*.o??]] {
-         set time0 [clock seconds]
-         for {set idelete 0} {$idelete<200} {incr idelete} {
-            if {![catch {file delete $results_file}]} {
-               break
-            }
-            after 500
-         }
-         set deletetime [expr {[clock seconds]-$time0}]
-         if {[file exists $results_file]} {
-            error "Unable to delete results file \"$results_file\""
-         }
-         if {$deletetime>10} {
-            global max_deletetime
-            if {![info exists max_deletetime]} {
-               set max_deletetime $deletetime
-            }
-            if {$deletetime>=$max_deletetime} {
-               puts stderr "HEY! It took $deletetime seconds to\
-                            delete $results_file"
-               global max_deletetime_file
-               set max_deletetime $deletetime
-               set max_deletetime_file $results_file
-            }
-         }
-      }
-      set testtime [expr {[clock seconds] - $teststart_time}]
-      set testtime_minutes [expr {int(floor($testtime/60.))}]
-      set testtime_remainder [expr {$testtime - 60*$testtime_minutes}]
-      puts [format "Running total: $tstfmt passed, $tstfmt failed,\
-                    elapsed time: %d:%02d" \
-               $passedcount \
-               [expr {$runerrcount + $timeouterrcount + $comperrcount}] \
-               $testtime_minutes $testtime_remainder]
-      puts "---"
-      flush stdout
    }
 }
-set teststop_time [clock seconds]
 
+# All jobs submitted. Wait for active threads to finish.
+set reportcount [PublishTests $reportcount]
+if {$use_tcl_threads} {
+   set active $parallel_count
+   while {$active>0} {
+      vwait run_done
+      thread::release $run_done
+      set reportcount [PublishTests $reportcount]
+      incr active -1
+   }
+}
+
+# Finish up
+set epoch_test [clock milliseconds]
 puts "\n--- SUMMARY ---"
 puts "Total  tests: $testcount"
 puts "Tests passed: $passedcount"
@@ -2028,11 +2110,6 @@ if {[info exists skipped_tests] && [llength $skipped_tests]>0} {
                [lindex $elt 0] [lindex $elt 1] [lindex $elt 2]]
    }
 }
-set testtime [expr {$teststop_time - $teststart_time}]
-set testtime_minutes [expr {int(floor($testtime/60.))}]
-set testtime_remainder [expr {$testtime - 60*$testtime_minutes}]
-puts [format "Total test time: %3d:%02d" \
-         $testtime_minutes $testtime_remainder]
 
 global max_deletetime max_deletetime_file
 if {[info exists max_deletetime]} {
@@ -2041,7 +2118,12 @@ if {[info exists max_deletetime]} {
 }
 
 # Send die request to mmArchive
-Cleanup
+Wrapup
+
+set epoch_stop [clock milliseconds]
+puts "Init  time: [FormatTime $epoch_init $epoch_start]"
+puts "Test  time: [FormatTime $epoch_test $epoch_init]"
+puts "Total time: [FormatTime $epoch_stop $epoch_start]"
 
 # Report errors, if any
 if {$runerrcount + $timeouterrcount + $comperrcount > 0} {

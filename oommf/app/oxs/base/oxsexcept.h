@@ -8,6 +8,7 @@
 #define _OXS_EXCEPT
 
 #include <string>
+#include <exception>
 
 #include "oc.h"
 
@@ -35,7 +36,7 @@ OC_USE_STRING;
 
 
 // Oxs exceptions
-class Oxs_Exception {
+class Oxs_Exception : public std::exception {
 private:
   String msg;
 
@@ -47,6 +48,10 @@ private:
   int suggested_display_count; // Maximum recommended number of times
   /// to show this message; may be used by non-interactive loggers.
   /// Use -1 to indicate no limit.
+
+  mutable String workspace; // Buffer for building compound error string;
+  /// Exists for lifetime of object.  This is not mutex locked, so any
+  /// instance should only be used in one thread.
 public:
   Oxs_Exception(const String& msgtext);
 
@@ -79,6 +84,8 @@ public:
 
   int DisplayCount() const { return suggested_display_count; }
   String DisplayCountAsString() const;
+
+  const char* what() const noexcept; // Virtual member from std::exception
 };
 
 // Bad pointer

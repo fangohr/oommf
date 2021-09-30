@@ -12,16 +12,14 @@
 # command, this file is sourced.
 
 # Other package requirements
-if {[catch {package require Tcl 8}]} {
-    package require Tcl 7.5
-}
+package require Tcl 8.5-
 package require Oc 2
 package require Nb 2  ;# Needed by socket connection access checks
 
 Oc_CheckTclIndex Net
 
 # CVS 
-package provide Net 2.0a2
+package provide Net 2.0a3
 
 # Set up for autoloading of Net extension commands
 set _net(library) [file dirname [info script]]
@@ -35,4 +33,4 @@ if {[file isfile $local] && [file readable $local]} {
     uplevel #0 [list source $local]
 }
 
-Oc_EventHandler New _ Oc_Main Shutdown Net_StartCleanShutdown
+Oc_EventHandler New _ Oc_Main LibShutdown Net_StartCleanShutdown

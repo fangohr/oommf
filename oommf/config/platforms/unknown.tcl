@@ -336,7 +336,7 @@ if {[string match g++ [file tail [lindex \
    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
    # Widest natively support floating point type
-   if {![catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
+   if {[catch {$config GetValue program_compiler_c++_typedef_realwide}]} {
       $config SetValue program_compiler_c++_typedef_realwide "double"
    }
 

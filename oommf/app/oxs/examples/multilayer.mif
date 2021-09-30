@@ -1,0 +1,510 @@
+# MIF 2.1
+# MIF Example File: multilayer.mif
+# Description: OOMMF MIF file illustrating a repeated multilayer stack.
+#
+# This simulation models a repeating stack of Fe/Co/Fe/Cu layers. The
+# layer thicknesses are 12 nm / 8 nm / 10 nm / 4 nm, respectively, the
+# number of repetitions is 3, and the overall in-plane dimensions are
+# 400 nm x 200 nm. Each of these values is specified in this file using
+# a Parameter command, which means the they can be adjusted from the
+# Boxsi command line or the Oxsii Load Problem dialog box when you start
+# the simulation. For example, to run this simulation with Boxsi, but
+# with say 5 repetitions of the stack and the Co layer increased to 12
+# nm, use this command:
+#
+#  tclsh oommf.tcl boxsi multilayer.mif -parameters "repcount 5 Co_z 12e-9"
+#
+# Adjust paths to oommf.tcl and multilayer.mif as necessary. See the
+# various Parameter commands below for other runtime options, and the
+# Destination and Schedule commands at the bottom of the file for batch
+# mode output options.
+#
+# More substantive changes, such as changing the structure of the base
+# stack, will require some editing of this file. There are copious notes
+# below to aid in such changes, but nonetheless this example file is
+# relatively complex. Since MIF files are Tcl scripts with a handful of
+# extra commands, a basic understanding of Tcl can be helpful in getting
+# the most out of this example. In particular, Tcl lists, arrays, and
+# the commands set, expr, for, foreach, if/else, lrange, and subst are
+# used in this file. You can find a list of online Tcl tutorials at
+#
+#  https://wiki.tcl-lang.org/page/Online+Tcl+and+Tk+Tutorials
+#
+# The Tcl Tutorial by Chris verBurg and Learn Tcl in Y Minutes linked
+# on that page are good places to start. The Tcl Dodekalogue,
+#
+#  https://wiki.tcl-lang.org/page/Dodekalogue
+#
+# is also a handy reference for figuring out confusing error messages.
+# Many more resources, including online manuals, can be found at the Tcl
+# Developer Xchange,
+#
+#  https://www.tcl-lang.org/
+#
+# The MIF extension commands are documented in the OOMMF User's Guide
+# (OUG),
+#
+#  https://math.nist.gov/oommf/doc/
+#
+# in the MIF 2.1 section, under MIF 2.1 Extension Commands. The primary
+# MIF commands used in this file are Parameter and Specify. Parameter is
+# used to create runtime adjustable values. Specify specifies code
+# modules (Oxs_Ext objects) active in the simulation, such as region
+# definitions (atlases), mesh discretization (Oxs_RectangularMesh),
+# energy terms (exchange, anisotropy, dipole-dipole, applied fields),
+# and solution method (energy minimization or LLG integration). The
+# Oxs_Ext objects are documented in the Standard Oxs_Ext Child Classes
+# section of the OOMMF eXtensible Solver chapter in the OUG.
+#
+# The MIF extension commands Destination and Schedule, which can be
+# found at the bottom of this file, are used for non-interactive set up
+# of simulation output. These are primarily used when running a series
+# of simulations in batch mode with Boxsi.
+#
+# File modification hints:
+#
+# MIF files are Tcl scripts, and as in any programming activity, all the
+# bugs are there, just waiting to be made. Here are a few tricks to aid
+# in debugging your MIF code:
+#
+# 0) Check to see if your favorite programming editor (FPE) has support
+#    for Tcl syntax highlighting and indenting. This can help spot a lot
+#    of errors, particularly brace nesting issues, before you hand the
+#    file over to the Tcl interpreter inside OOMMF.
+#
+# 1) For development purposes, set the problem dimensions and cell sizes
+#    so the total number of cells is relatively small. This will allow
+#    problems to load and run faster, making it easier to detect and
+#    correct errors. Use Oxsii|Help|About to see the number of cells in
+#    the simulation. For larger simulations you may want to temporarily
+#    disable the Oxs_Demag module, because that module can take some
+#    time to initialize and is usually the slowest module to run. If the
+#    cellsize magnetization is set correctly, then Oxs_Demag will
+#    generally be okay. (Although because periodic boundary conditions
+#    are a little more complex, if you are using PBC's you should do
+#    some testing with Oxs_Demag enabled.)
+#
+# 2) When the MIF file is ready, launch Oxsii and bring up the File|Load
+#    dialog box. Select the Browse checkbox, as otherwise the Load
+#    dialog box is automatically closed when you select OK to load the
+#    file. The Browse option allows you to correct syntax errors in your
+#    MIF file without having to repeatedly open the File|Load dialog box
+#    and reselect your MIF file and parameters.
+#
+# 3) If the load fails, open the MIF file in your FPE and use the error
+#    message to help locate the point of failure in the file. Correct,
+#    save to disk, and try loading again.
+#
+# 4) If you can't figure out an error message, or to just double-check
+#    that your file is being interpreted as you intend, use the MIF
+#    Report command to print the contents of variables or other state
+#    information to the Oxsii console. (The Oxsii console is launched
+#    via the File|Show Console menu item on the main Oxsii window. If
+#    you are running Boxsi, Report output goes to the Boxsi log file,
+#    oommf/boxsi.errors.) See the Report example in this file which
+#    outputs exchange coefficient data.
+#
+# 5) Once the file loads without errors, send Magnetization output from
+#    Oxsii to mmDisp for a visual check of the simulation structure. Use
+#    Ctrl- or Shift-Ctrl-<left mouse click> in mmDisp to view
+#    magnetization component values at various locations. Bring up the
+#    mmDisp Options|Configure dialog box to adjust the coloring, pixel
+#    and arrow selection, etc. The # of Colors and Data Scale settings
+#    in particular can make it easier to see small differences in the
+#    selected Color Quantity. The Arrow span setting can be used to
+#    control the number of levels of arrows that get displayed in the
+#    slice view. For example, in this example file the z cellsize is 2
+#    nm, so if you set Arrow span to 2e-9, then as you adjust the
+#    Z-slice control slider in the main mmDisp window you'll see one slice
+#    of magnetization at a time. If you set Arrow span to 4e-9 you'll
+#    see two layers of overlapping arrows, which can be helpful for
+#    checking interface conditions.
+#
+# 6) By default mmDisp opens with a top-down view along the z axis. For
+#    multilayer structures it is helpful to see cross-sectional views
+#    along other axes too; these are available from the View|Viewpoint
+#    submenu in the main mmDisp window.
+#
+# 7) The Magnetization output viewed in mmDisp allows you to check that
+#    you have set Ms and m0 properly in the Driver Specify block. You
+#    can send other fields, such as anisotropy and exchange, to mmDisp
+#    to check parameter settings for those energy terms as well. In this
+#    context it can be helpful to adjust m0 to align in specific
+#    directions for testing. You may want to open two instances of
+#    mmDisp, with Magnetization displayed in one and an energy field in
+#    the other, to help correspond energy field values with
+#    magnetization structure.
+#
+
+set pi [expr {4*atan(1.0)}]
+set mu0 [expr {4*$pi*1e-7}]
+
+RandomSeed 1  ;# If not specified then the random seed is drawn from the
+              ## system clock.
+
+########################################################################
+# Part size and discretization
+#
+# Note on cell dimensions: The part dimensions must be multiples of the
+# corresponding cell dimension. The zcellsize should in addition be
+# chosen such that each individual layer is a multiple of zcellsize. As
+# in any other micromagnetic simulation, you need to select the cell
+# size small enough to capture the magnetization variation, which in
+# general means smaller than the smallest material exchange
+# length. Unfortunately, commensurability issues among the various layer
+# thicknesses can push zcellsize to be significantly smaller. Small cell
+# sizes increase the exchange coupling between computational cells,
+# which make the simulation stiffer --- i.e., the magnetization
+# adjustments between iterations need to be smaller, thereby increasing
+# the number of iterations to reach convergence. Reduced cell size also
+# means more cells in the simulation as a whole, increasing the compute
+# time per iteration.
+#  On a related note, be aware that mmDisp may do a poor job rendering
+# cells with high aspect ratio. Considerable adjustment from the default
+# settings may be needed to produce a comprehensible display. One try is
+# to enable the pixel display, set the pixel size smaller than 1, and
+# then adjust the background color to make the individual cells
+# visible.
+Parameter xycellsize 4e-9 ;# Cell dimensions in meters
+Parameter  zcellsize 2e-9
+
+# In-plane part dimensions, in meters. These dimensions should be a
+# multiples of the xycellsize. The total thickness is automatically
+# computed from the individual layer thicknesses and the number of layer
+# groups (repcount).
+Parameter xsize 400e-9
+Parameter ysize 200e-9
+########################################################################
+
+########################################################################
+# Part layer specification
+#
+# The structure defined below consists of three repetitions of a
+# Fe/Co/Fe/Cu multistack laid on top of a Fe/Cu foundation and capped by
+# Cu/Fe. The topmost Cu layer of the multistack is omitted. Here is a
+# visual depiction:
+#
+#   Fe     2 nm    --| Attic
+#   Cu     2 nm    --+
+#    Fe      10 nm -----+
+#    Co       8 nm      |  Repeated stack 3 omitting top layer
+#    Fe      12 nm -----+
+#   Cu     4 nm  -----+
+#   Fe    10 nm       |  Repeated stack 2
+#   Co     8 nm       |
+#   Fe    12 nm  -----+
+#    Cu      4 nm  -----+
+#    Fe     10 nm       | Repeated stack 1
+#    Co      8 nm       |
+#    Fe     12 nm  -----+
+#   Cu     2 nm    --+
+#   Fe     2 nm    --| Foundation
+#
+# (Horizontal offsets for presentation only.)
+#
+# The material names Fe, Co, Cu are used as region names in the
+# constructed atlases. The regions are used to set the material
+# properties (anisotropy K, exchange constant A, saturation
+# magnetization Ms).
+
+# First define the non-repeated structure lying beneath the repeat
+# stack.  Comment out if not needed.
+set FoundationStackHeight 4e-9
+set FoundationStack [subst {
+   atlas { Oxs_BoxAtlas {
+      xrange {0 $xsize} yrange {0 $ysize}
+      zrange {0 2e-9}
+      name Fe
+   }}
+   atlas { Oxs_BoxAtlas {
+      xrange {0 $xsize} yrange {0 $ysize}
+      zrange {2e-9 4e-9}
+      name Cu
+   }}
+}]
+lappend region_list Fe Cu ;# Include all FoundationStack region names
+
+# Next define the repeat stack. The layer thicknesses are Fe_z1, Co_z,
+# Fe_z2, and Cu_z. These are defined as "Parameters", so the given
+# default values may be overridden from the command line or Oxsii Load
+# dialog.
+Parameter Cu_z    4e-9  ;# Thickness of Cu layer (in meters)
+Parameter Fe_z2  10e-9  ;# Thickness of upper Fe layer
+Parameter Co_z    8e-9  ;# Thickness of Co layer
+Parameter Fe_z1  12e-9  ;# Thickness of lower Fe layer
+Parameter repcount 3   ;# Number of times this group is repeated
+
+# Number of outer layers to leave off at the top and bottom of the
+# repetition set. The defaults here leave one layer off at the top
+# (the Cu layer) and no layers at the bottom. If you want the bottom
+# group to start with, say, the Co layer, then set bottom_skip to 1.
+Parameter top_skip 1
+Parameter bottom_skip 0
+
+# Construct a list of (space separated) pairs, {layer_name
+# layer_thickness}, describing the repetition stack, starting from the
+# bottom up. This list is used below to construct the replicated group
+# subatlas string RepGroup.
+set group_list [subst {{Fe $Fe_z1} {Co $Co_z} {Fe $Fe_z2} {Cu $Cu_z}}]
+
+foreach pair $group_list { ;# Append all layer names to region list
+   lappend region_list [lindex $pair 0]
+}
+
+# Check that each layer thickness is divisible by zcellsize
+set roundeps 1e-12  ;# Allowed rounding error
+foreach pair $group_list {
+   set thick [lindex $pair 1]
+   if {($thick - $zcellsize*round($thick/$zcellsize))
+       > $roundeps*$zcellsize} {
+      error "Group sublayer \"$pair\" not a multiple of zcellsize $zcellsize"
+   }
+}
+
+# Tcl script to construct replicated group subatlases
+if {[info exists FoundationStack]} {
+   set za $FoundationStackHeight
+} else {
+   set za 0.0
+}
+# za is the working sublayer z bottom offset
+for {set i 0} {$i<$repcount} {incr i} {
+   set work_list $group_list
+   if {$i == 0} { ;# Sublayers skipped at bottom
+      set work_list [lrange $work_list $bottom_skip end]
+   }
+   if {$i+1 == $repcount} { ;# Sublayers skipped at top
+      set work_list [lrange $work_list 0 end-$top_skip]
+   }
+   foreach pair $work_list {
+      set label [lindex $pair 0]   ;# Sublayer name
+      set thick [lindex $pair 1]   ;# Sublayer thickness
+      set zb [expr {$za + $thick}] ;# z offset at top of sublayer
+      set atlas_string [subst {Oxs_BoxAtlas {
+         xrange {0 $xsize} yrange {0 $ysize}
+         zrange {$za $zb}
+         name $label
+      }}]
+      lappend RepGroup "atlas" $atlas_string
+      set za $zb  ;# Update working z offset
+   }
+}
+set ztop $zb ;# z height at top repeated stack
+
+# Non-repeated layer structure lying above the repeated stack.
+# Comment out if not needed.
+set AtticStack [subst {
+   atlas { Oxs_BoxAtlas {
+      xrange {0 $xsize} yrange {0 $ysize}
+      zrange {$ztop [expr {$ztop + 2e-9}]}
+      name Cu
+   }}
+   atlas { Oxs_BoxAtlas {
+      xrange {0 $xsize} yrange {0 $ysize}
+      zrange {[expr {$ztop + 2e-9}] [expr {$ztop + 4e-9}]}
+      name Fe
+   }}
+}]
+lappend region_list Fe Cu   ;# Include all AtticStack region names
+
+set region_list [lsort -unique $region_list] ;# Remove duplicates
+Report "List of regions: $region_list"
+
+########################################################################
+
+########################################################################
+# Construct master atlas and discretization mesh.
+if {![info exists FoundationStack]} { set FoundationStack {} }
+if {![info exists AtticStack]}      { set AtticStack {} }
+Specify Oxs_MultiAtlas:atlas [subst {
+   $FoundationStack
+   $RepGroup
+   $AtticStack
+}]
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xycellsize $xycellsize $zcellsize}
+  atlas :atlas
+}]
+########################################################################
+
+########################################################################
+# Material parameters. Adjust as desired
+# Fe
+set Ms(Fe)    1.7e6  ;# Saturation magnetization, A/m
+set A(Fe)    21e-12  ;# Exchange constant, J/m
+set K1(Fe)   48e3    ;# Anisotropy, J/m^3
+set Kaxes(Fe) [list {1 0 0} {0 0 1}] ;# Anisotropy axes. For cubic
+## anisotropy specify two three-vectors; the third axis is computed
+## orthogonal to those.
+
+# Co
+set Ms(Co)    1.4e6  ;# A/m
+set A(Co)    30e-12  ;# J/m
+set K1(Co)   520e3    ;# J/M^3
+set Kaxes(Co) [list {0 0 1}] ;# Uniaxial anisotropy
+
+# Cu
+set Ms(Cu)    0.0
+set A(Cu)     0.0
+set K1(Cu)    0.0
+set Kaxes(Cu) {}
+
+# Interfacial exchange coupling, referenced as two regions separated by
+# a comma (no spaces). The value here is set via the "Parameter"
+# command, which means it can be adjusted at run time from either the
+# Boxsi command line "-parameters" option, or from the Params box in the
+# Oxsii "Load Problem" dialog.
+Parameter A(Fe,Co) 10e-12  ;# J/m
+########################################################################
+
+# NOTE: The Oxs_Ext object Specify blocks below are constructed on the
+# fly by interrogating the material parameter arrays. The code could be
+# simplified and hard coded if the number and type of materials (i.e.,
+# regions) were known in advance and fixed.
+
+########################################################################
+# Anisotropy
+foreach region $region_list {
+   # Collate by anisotropy type
+   if {$K1($region) != 0.0} {
+      if {[llength $Kaxes($region)]==1} {
+         # Uniaxial anisotropy
+         lappend Ku    $region $K1($region)
+         lappend Kuax  $region [lindex $Kaxes($region) 0]
+      } elseif {[llength $Kaxes($region)]==2} {
+         # Cubic anisotropy
+         lappend Kc    $region $K1($region)
+         lappend Kcax1 $region [lindex $Kaxes($region) 0]
+         lappend Kcax2 $region [lindex $Kaxes($region) 1]
+      }
+      # Skip if K1 == 0
+   }
+}
+# Build anisotropy blocks, as needed.
+# Note: The axis default values are irrelevant, because the default K1
+#       value is 0. However, the code expects the axes everywhere to be
+#       non-zero vectors, and mutually orthogonal in the cubic
+#       anisotropy case.
+if {[info exists Ku] && [llength $Ku]>0} {
+   Specify Oxs_UniaxialAnisotropy [subst {
+      K1 {Oxs_AtlasScalarField {
+         atlas :atlas
+         default_value 0.0
+         values [list $Ku]
+      }}
+      axis {Oxs_AtlasVectorField {
+         atlas :atlas
+         default_value {0 0 1}
+         values [list $Kuax]
+      }}
+   }]
+}
+if {[info exists Kc] && [llength $Kc]>0} {
+   Specify Oxs_CubicAnisotropy [subst {
+      K1 {Oxs_AtlasScalarField {
+         atlas :atlas
+         default_value 0.0
+         values [list $Kc]
+      }}
+      axis1 {Oxs_AtlasVectorField {
+         atlas :atlas
+         default_value {0 0 1}
+         values [list $Kcax1]
+      }}
+      axis2 {Oxs_AtlasVectorField {
+         atlas :atlas
+         default_value {0 1 0}
+         values [list $Kcax2]
+      }}
+   }]
+}
+########################################################################
+
+########################################################################
+# Exchange
+# The exchange block is constructed in a manner similar to anisotropy
+# above. Long range exchange coupling, for example across the Cu layer,
+# could be obtained using Oxs_TwoSurfaceExchange. (Left as an exercise
+# for the reader.)
+foreach id [lsort [array names A]] {
+   set id_list [split $id ","]
+   if {$A($id) != 0.0} {
+      set region0 [lindex $id_list 0]
+      if {[llength $id_list]==1} {
+         set region1 $region0
+      } else {
+         set region1 [lindex $id_list 1]
+      }
+      lappend Apairs $region0 $region1 $A($id)
+   }
+   # Skip if A == 0
+}
+if {[info exists Apairs] && [llength $Apairs]>0} {
+   Specify Oxs_Exchange6Ngbr [subst {
+      atlas :atlas
+      default_A 0.0
+      A [list $Apairs]
+   }]
+   # You can use the "Report" command to help debug the MIF.
+   # With Oxsii these messages are written to the Oxsii console
+   # (Oxsii|File|Show Console), and also the oommf/oxsii.errors
+   # (Oxsii) or oommf/boxsi.errors (Boxsi) log files.
+   Report "Apairs: $Apairs"
+}
+########################################################################
+
+########################################################################
+# Applied field. Adjust as desired.
+# Note: Field values below are in mT; the multiplier scaling converts
+#       from mT to A/m.
+Specify Oxs_UZeeman [subst {
+  multiplier [expr {0.001/$mu0}]
+  Hrange {
+     {  200  0.01  0.001  -200 -0.01 -0.001  40 }
+     { -200 -0.01 -0.001   200  0.01  0.001  40 }
+  }
+}]
+########################################################################
+
+########################################################################
+# Demag field
+Specify Oxs_Demag {}
+########################################################################
+
+########################################################################
+# Evolver
+Specify Oxs_CGEvolve:evolve {}
+########################################################################
+
+########################################################################
+# Driver
+# The m0 setting given below initializes the magnetization in
+# pseudo-random directions determined by the random seed.
+foreach region $region_list {
+   if {$Ms($region) != 0.0} {
+      lappend Msat $region $Ms($region)
+   }
+}
+Specify Oxs_MinDriver [subst {
+ evolver :evolve
+ stopping_mxHxm 0.1
+ mesh :mesh
+ Ms { Oxs_AtlasScalarField {
+    atlas :atlas
+    default_value 0.0
+    values [list $Msat]
+ }}
+   m0 { Oxs_RandomVectorField {
+      min_norm 1.0
+      max_norm 1.0
+   }}
+}]
+########################################################################
+
+########################################################################
+# Optional default outputs. Primarily for use when running a series of
+# batch jobs with boxsi. Uncomment to enable.
+#Destination archive mmArchive
+#Schedule DataTable archive Stage 1
+#Schedule Oxs_MinDriver::Magnetization archive stage 1
+########################################################################

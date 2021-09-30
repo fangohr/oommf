@@ -1,0 +1,72 @@
+# MIF 2.1
+# Example program using OOMMF logo as an image template.
+
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+RandomSeed 1
+
+Specify Oxs_ImageAtlas:atlas {
+  xrange {0 1440E-9}
+  yrange {0 580E-9}
+  zrange {0 100e-9}
+  image oommf.gif
+  viewplane xy
+  colormap {
+     white nonmagnetic
+     black magnetic
+     yellow magnetic
+  }
+}
+
+Parameter cellsize 4e-9
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cellsize $cellsize $cellsize}
+  atlas :atlas
+}]
+
+Specify Oxs_CubicAnisotropy {
+  K1  -4.5E3
+  axis1 { Oxs_UniformVectorField {
+    norm 1
+    vector {1 0 0}
+  }  }
+  axis2 { Oxs_UniformVectorField {
+    norm 1
+    vector {0 1 0}
+  }  }
+}
+
+Specify Oxs_UniformExchange {
+  A  8E-12
+}
+
+Specify Oxs_Demag {}
+
+Specify Oxs_UZeeman:extfield0 [subst {
+  comment {Field values in Tesla; scale to A/m}
+  multiplier [expr {1/$MU0}]
+  Hrange {
+    {0. 0.0 0 0.05 0.001 0 25}
+    {0.05 0.001 0 -0.05 -0.001 0 50}
+    {-0.05 -0.001 0.0 0.05 0.001 0 50}
+  }
+}]
+
+Specify Oxs_CGEvolve:evolver {}
+
+Specify Oxs_MinDriver {
+  vector_field_output_format {binary 4}
+  evolver :evolver
+  mesh :mesh
+  stopping_mxHxm 0.01
+  stage_count 126
+  Ms {Oxs_AtlasScalarField {
+    atlas :atlas
+    values {
+      nonmagnetic  0
+      magnetic     485E3
+  } } }
+  m0 { Oxs_RandomVectorField { min_norm 1  max_norm 1 } }
+}

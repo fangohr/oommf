@@ -90,21 +90,20 @@ public:
   // export-only value.  In the former, the caller initializes
   // next_state with a fresh state by calling
   // director->GetNewSimulationState(), which leaves new_state with a
-  // write lock.  The latter interface is more recent; with it the
-  // Step code should make its own calls to
-  // director->GetNewSimulationState() to get working states as
-  // needed, and pass the "next" state back to the caller through the
-  // next_state reference.  This is more flexible, and should be
-  // preferred by new code.  In particular, it allows the
-  // evolver::Step() routine to return a reference to a pre-existing
-  // state held in an Oxs_ConstKey<Oxs_SimState>, without having to
-  // invoke a const_cast<> operation.  Be aware, however, that this
-  // newer interface involves a transfer of "ownership" of the state.
-  // In the original Oxs_Key interface the caller created next_state,
-  // passed it to Step(), received it back, and ultimately dispose of
-  // it.  In the newer Oxs_ConstKey interface, the Step() routine
-  // creates next_state and passes back to the caller.  But this is
-  // what the Oxs_Key class is designed for, so it should work fine.
+  // write lock.  The latter interface is more recent; with it the Step
+  // code should make its own calls to director->GetNewSimulationState()
+  // to get working states as needed, and pass the "next" state back to
+  // the caller through the next_state reference.  This is more
+  // flexible, and should be preferred by new code.  In particular, it
+  // allows the evolver::TryStep() routine to return a reference to a
+  // pre-existing state held in an Oxs_ConstKey<Oxs_SimState>, without
+  // having to invoke a const_cast<> operation.  Be aware, however, that
+  // this newer interface involves a transfer of "ownership" of the
+  // state.  In the original Oxs_Key interface the caller created
+  // next_state, passed it to Step(), received it back, and ultimately
+  // disposed of it.  In the newer Oxs_ConstKey interface, the Step()
+  // routine creates next_state and passes back to the caller.  But this
+  // is what the Oxs_Key class is designed for, so it should work fine.
   //
   // In both cases, the return value is true if step was successful,
   // false if unable to step as requested.  Also, the evolver object

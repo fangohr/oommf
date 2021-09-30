@@ -61,8 +61,8 @@ if {$cmdindex>=0} {
 set table_select_ranges {}
 while {[set table_index [lsearch -regexp $argv {^-+ta.*}]]>=0} {
    if {$table_index+1>=[llength $argv]} { Usage }
-   set select_str [lindex $argv [expr $table_index+1]]
-   set argv [lreplace $argv $table_index [expr $table_index+1]]
+   set select_str [lindex $argv [expr {$table_index+1}]]
+   set argv [lreplace $argv $table_index [expr {$table_index+1}]]
    foreach item [split $select_str ","] {
       set pair [split $item ":"]
       if {[llength $pair]==1} { lappend pair [lindex $pair 0] }
@@ -80,8 +80,8 @@ while {[set table_index [lsearch -regexp $argv {^-+ta.*}]]>=0} {
 set no_table_select_ranges {}
 while {[set no_table_index [lsearch -regexp $argv {^-+no-ta.*}]]>=0} {
    if {$no_table_index+1>=[llength $argv]} { Usage }
-   set deselect_str [lindex $argv [expr $no_table_index+1]]
-   set argv [lreplace $argv $no_table_index [expr $no_table_index+1]]
+   set deselect_str [lindex $argv [expr {$no_table_index+1}]]
+   set argv [lreplace $argv $no_table_index [expr {$no_table_index+1}]]
    foreach item [split $deselect_str ","] {
       set pair [split $item ":"]
       if {[llength $pair]==1} { lappend pair [lindex $pair 0] }
@@ -100,8 +100,8 @@ while {[set no_table_index [lsearch -regexp $argv {^-+no-ta.*}]]>=0} {
 set output_type odt
 while {[set cmd_index [lsearch -regexp $argv {^-+t.*}]]>=0} {
    if {$cmd_index+1>=[llength $argv]} { Usage }
-   set output_type [lindex $argv [expr $cmd_index+1]]
-   set argv [lreplace $argv $cmd_index [expr $cmd_index+1]]
+   set output_type [lindex $argv [expr {$cmd_index+1}]]
+   set argv [lreplace $argv $cmd_index [expr {$cmd_index+1}]]
 }
 set output_type [string tolower $output_type]
 set type_odt  0
@@ -123,8 +123,8 @@ switch -exact $output_type {
 set missing_data_string "{}"
 while {[set missing_index [lsearch -regexp $argv {^-+m.*}]]>=0} {
    if {$missing_index+1>=[llength $argv]} { Usage }
-   set missing_data_string [lindex $argv [expr $missing_index+1]]
-   set argv [lreplace $argv $missing_index [expr $missing_index+1]]
+   set missing_data_string [lindex $argv [expr {$missing_index+1}]]
+   set argv [lreplace $argv $missing_index [expr {$missing_index+1}]]
 }
 
 # Tweak stdio streams
@@ -135,125 +135,132 @@ if {$type_csv} {
    fconfigure stdout -translation {auto crlf}
 }
 
-# Pull column width requests out from $argv
-set colwidth 15
-while {[set width_index [lsearch -regexp $argv {^-+w.*}]]>=0} {
-   if {$width_index+1>=[llength $argv]} { Usage }
-   set colwidth [lindex $argv [expr $width_index+1]]
-   set argv [lreplace $argv $width_index [expr $width_index+1]]
+# Process intermixed column widths, data formats, and column requests.
+# Resulting colspecs holds a list of triples: globpat colwidth data_fmt
+set colwidth 15                   ;# Default
+set data_format "%${colwidth}s"   ;# Default
+set colspecs {}
+set index 0
+while {$index < [llength $argv]} {
+   set elt [lindex $argv $index]
+   # Check for column width and data format settings
+   if {$index+2 < [llength $argv]} {
+      if {[regexp {^-+w.*} $elt]} {
+         set colwidth [lindex $argv [expr {$index+1}]]
+         set argv [lreplace $argv $index [expr {$index+1}]]
+         continue
+      }
+      if {[regexp {^-+f.*} $elt]} {
+         set data_format [lindex $argv [expr {$index+1}]]
+         set argv [lreplace $argv $index [expr {$index+1}]]
+         continue
+      }
+   }
+   # Otherwise assume column selection request
+   lappend colspecs [list $elt $colwidth $data_format]
+   incr index
 }
-
-# Pull data format requests out from $argv
-set data_format "%-${colwidth}s"
-while {[set fmt_index [lsearch -regexp $argv {^-+f.*}]]>=0} {
-   if {$fmt_index+1>=[llength $argv]} { Usage }
-   set data_format [lindex $argv [expr $fmt_index+1]]
-   set argv [lreplace $argv $fmt_index [expr $fmt_index+1]]
+if {[llength $colspecs]==0} {
+   # Default is colspec is full list
+   lappend colspecs [list * $colwidth $data_format]
 }
+unset colwidth data_format index
 
-# String to use to indicate missing data (output)
-set missing_data_string "{}"
-while {[set missing_index [lsearch -regexp $argv {^-+m.*}]]>=0} {
-   if {$missing_index+1>=[llength $argv]} { Usage }
-   set missing_data_string [lindex $argv [expr $missing_index+1]]
-   set argv [lreplace $argv $missing_index [expr $missing_index+1]]
-}
-
-# Get column request from $argv
-set colspecs $argv
-if {[llength $colspecs]==0} {set colspecs {*}} ;# Default is full list
 
 
 # Proc to substitute column glob-style selection expressions
 # to numerical indices.
 proc GenerateColumnIndexList { subset full } {
-    # Do case insensitive matching.  It might be preferable to
-    # match uppercase in subset only against uppercase in full,
-    # but to match lowercase in subset against either uppercase
-    # or lowercase in full.
-    set subset [string tolower $subset]
-    set full [string tolower $full]
-    set indices {}
-    foreach id $subset {
-        if {[regexp -- {^[0-9]+$} $id] && $id<[expr {[llength $full]}]} {
-            # id is a number; assume this is a direct index request
-            lappend indices $id
-        } else {
-            # Otherwise, try a glob-style match
-            for {set i 0} {$i<[llength $full]} {incr i} {
-                if {[string match $id [lindex $full $i]]} {
-                    lappend indices $i
-                }
+   # Do case insensitive matching.  It might be preferable to
+   # match uppercase in subset only against uppercase in full,
+   # but to match lowercase in subset against either uppercase
+   # or lowercase in full.
+   set full [string tolower $full]
+   set indices {}
+   foreach item $subset {
+      lassign $item id colwidth data_format
+      set id [string tolower $id]
+      if {[regexp -- {^[0-9]+$} $id] && $id<[expr {[llength $full]}]} {
+         # id is a number; assume this is a direct index request
+         lappend indices [list $id $colwidth $data_format]
+      } else {
+         # Otherwise, try a glob-style match
+         for {set i 0} {$i<[llength $full]} {incr i} {
+            if {[string match $id [lindex $full $i]]} {
+               lappend indices [list $i $colwidth $data_format]
             }
-        }
-    }
-    return $indices
+         }
+      }
+   }
+   return $indices
 }
 
 # Header list request
 if {$show_summary} {
     proc DumpHeaders {column_subset column_list units_list \
             table_number table_title row_count} {
-        global colwidth show_summary
-        # If $show_summary==1, the summary table includes only
-        # those columns in $column_subset.  If $show_summary==2,
-        # then $column_subset is ignored, and all columns are
-        # reported.
+       global show_summary
+       # If $show_summary==1, the summary table includes only
+       # those columns in $column_subset.  If $show_summary==2,
+       # then $column_subset is ignored, and all columns are
+       # reported.
 
-        # Compute column display width
-        set cdw $colwidth
-        if {$show_summary==2 || [llength $column_subset]==0} {
-            # All columns
-            foreach c $column_list {
-                set width [string length [list $c]]
-                if {$width>$cdw} {
-                    set cdw $width
-                }
-            }
-        } else {
-            # Column subset
-            foreach index $column_subset {
+       # Compute column display width
+       set cdw 0
+       if {$show_summary==2 || [llength $column_subset]==0} {
+          # All columns
+          foreach c $column_list {
+             set width [string length [list $c]]
+             if {$width>$cdw} {
+                set cdw $width
+             }
+          }
+       } else {
+          # Column subset
+          foreach _ $column_subset {
+             lassign $_ index colwidth_request data_format
+             set c [list [lindex $column_list $index]]
+             set width [string length $c]
+             if {$width>$cdw} {
+                set cdw $width
+             }
+          }
+       }
+
+       if {$table_number>0} { puts "" } ;# Table separator
+       if {[string match {} $table_title]} {
+          puts [format "*** Table %2d ***" $table_number]
+       } else {
+          puts [format "*** Table %2d: $table_title ***" $table_number]
+       }
+       if {[llength column_list]<1} {
+          if {$row_count>0} {
+             puts "WARNING: No column header line detected."
+          }
+       } else {
+          set index 0
+          puts [format "Column %-${cdw}s  %s" Label Units]
+          if {$show_summary==2 || [llength $column_subset]==0} {
+             # List all columns
+             foreach c $column_list u $units_list {
+                set c [list $c]
+                set u [list $u]
+                puts [format "%4d:  %-${cdw}s  %s" $index $c $u]
+                incr index
+             }
+          } else {
+             # Dump column subset
+             foreach _ $column_subset {
+                lassign $_ index colwidth_request data_format
                 set c [list [lindex $column_list $index]]
-                set width [string length $c]
-                if {$width>$cdw} {
-                    set cdw $width
-                }
-            }
-        }
-
-        if {$table_number>0} { puts "" } ;# Table separator
-        if {[string match {} $table_title]} {
-            puts [format "*** Table %2d ***" $table_number]
-        } else {
-            puts [format "*** Table %2d: $table_title ***" $table_number]
-        }
-        if {[llength column_list]<1} {
-            if {$row_count>0} {
-                puts "WARNING: No column header line detected."
-            }
-        } else {
-            set index 0
-            puts [format "Column %-${cdw}s  %s" Label Units]
-            if {$show_summary==2 || [llength $column_subset]==0} {
-                # List all columns
-                foreach c $column_list u $units_list {
-                    set c [list $c]
-                    set u [list $u]
-                    puts [format "%4d:  %-${cdw}s  %s" $index $c $u]
-                    incr index
-                }
-            } else {
-                # Dump column subset
-                foreach index $column_subset {
-                    set c [list [lindex $column_list $index]]
-                    set u [list [lindex $units_list $index]]
-                    puts [format "%4d:  %-${cdw}s  %s" $index $c $u]
-                    incr index
-                }
-                puts  "Columns:   [llength $column_list]"
-            }
-            puts      "Data rows: $row_count"             
-        }
+                set u [list [lindex $units_list $index]]
+                puts [format "%4d:  %-${cdw}s  %s" $index $c $u]
+                incr index
+             }
+             puts  "Columns:   [llength $column_list]"
+          }
+          puts      "Data rows: $row_count"             
+       }
     }
 
     set inside_table 0
@@ -349,80 +356,90 @@ if {$show_summary} {
 }
 
 # Collimated output routines
-proc ColumnDump { list {leader " "}} {
-    global colwidth
-    global type_csv
-    quiet_puts -nonewline $leader
-    if {$type_csv} {
-        set columns_remaining [llength $list]
-        foreach elt $list {
-            incr columns_remaining -1
-            # Does field need to be quoted?
-            if {[regexp -- "\[,\r\n\",]" $elt]} {
-                regsub -all -- \" $elt {""} elt
-                set elt "\"$elt\""
-            }
-            if {$columns_remaining>0} {append elt ","}
-            quiet_puts -nonewline [format " %-${colwidth}s" $elt]
-        }
-    } else { 
-        foreach elt $list {
-            quiet_puts -nonewline [format " %-${colwidth}s" [list $elt]]
-        }
-    }
-    quiet_puts {}
+proc ColumnDump { cols {leader " "}} {
+   global type_csv
+   set outline $leader
+   if {$type_csv} {
+      set columns_remaining [llength $cols]
+      foreach _ $cols {
+         lassign $_ elt colwidth data_format
+         incr columns_remaining -1
+         # Does field need to be quoted?
+         if {[regexp -- "\[,\r\n\",]" $elt]} {
+            regsub -all -- \" $elt {""} elt
+            set elt "\"$elt\""
+         }
+         if {$columns_remaining>0} {append elt ","}
+         append outline [format " %${colwidth}s" $elt]
+      }
+   } else {
+      foreach _ $cols {
+         lassign $_ elt colwidth data_format
+         set elt [list $elt]  ;# Protect spaces, if any
+         if {[string compare # $leader]==0} {
+            # Center
+            set colwidth [expr {abs($colwidth)}]
+            set head [expr {($colwidth - [string length $elt])/2}]
+            if {$head<0} { set head 0 }
+            set tail [expr {$colwidth-$head}]
+            append outline [format " %*s%-*s" $head {} $tail $elt]
+         } else {
+            append outline [format " %${colwidth}s" $elt]
+         }
+      }
+   }
+   quiet_puts [string trimright $outline]
 }
 
 proc ColumnDumpCSV { column_select column_list unit_list} {
-    global colwidth
-    quiet_puts -nonewline " "
-    set columns_remaining [llength $column_select]
-    foreach i $column_select {
-        incr columns_remaining -1
-        set celt [lindex $column_list $i]
-        set uelt [lindex $unit_list $i]
-        if {[string match {} $uelt]} {
-           set field $celt  ;# Units not specified
-        } else {
-            set field "$celt ($uelt)"
-        }
-        # Does field need to be quoted?
-        if {[regexp -- "\[,\r\n\",]" $field]} {
-            regsub -all -- \" $field {""} field
-            set field "\"$field\""
-        }
-        if {$columns_remaining>0} {append field ","}
-        quiet_puts -nonewline [format " %-${colwidth}s" $field]
-    }
-    quiet_puts {}
+   quiet_puts -nonewline " "
+   set columns_remaining [llength $column_select]
+   foreach _ $column_select {
+      lassign $_ i colwidth data_format 
+      incr columns_remaining -1
+      set celt [lindex $column_list $i]
+      set uelt [lindex $unit_list $i]
+      if {[string match {} $uelt]} {
+         set field $celt  ;# Units not specified
+      } else {
+         set field "$celt ($uelt)"
+      }
+      # Does field need to be quoted?
+      if {[regexp -- "\[,\r\n\",]" $field]} {
+         regsub -all -- \" $field {""} field
+         set field "\"$field\""
+      }
+      if {$columns_remaining>0} {append field ","}
+      quiet_puts -nonewline [format " %${colwidth}s" $field]
+   }
+   quiet_puts {}
 }
 
-
-proc ColumnDataDump { list {leader " "}} {
-    global colwidth data_format missing_data_string
-    global type_csv
-    quiet_puts -nonewline $leader
-    set columns_remaining [llength $list]
-    foreach elt $list {
-        incr columns_remaining -1
-        if {[string match {} $elt]} {
-            # Preserve missing items
-            set entry $missing_data_string
-        } else {
-            if {[catch {set entry [format $data_format $elt]}]} {
-                # Bad data.  Fill field with stars
-                quiet_puts stderr "ERROR Data doesn't match format: \"$elt\""
-                set entry {}
-                for {set i 0} {$i<$colwidth} {incr i} {append entry "*"}
-            }
-        }
-        if {$type_csv && $columns_remaining>0} {
-            # Add separating commas for CSV format
-            regsub -- {( |)( *)$} $entry {,\2} entry
-        }
-        quiet_puts -nonewline [format " %-${colwidth}s" $entry]
-    }
-    quiet_puts {}
+proc ColumnDataDump { cols {leader " "}} {
+   global missing_data_string
+   global type_csv
+   quiet_puts -nonewline $leader
+   set columns_remaining [llength $cols]
+   foreach _ $cols {
+      lassign $_ elt colwidth data_format 
+      incr columns_remaining -1
+      if {[string match {} $elt]} {
+         # Preserve missing items
+         set entry $missing_data_string
+      } else {
+         if {[catch {set entry [format $data_format $elt]}]} {
+            # Bad data.  Fill field with stars
+            quiet_puts stderr "ERROR Data doesn't match format: \"$elt\""
+            set entry [string repeat "*" [expr {$colwidth == 0 ? 1 : abs($colwidth)}]]
+         }
+      }
+      if {$type_csv && $columns_remaining>0} {
+         # Add separating commas for CSV format
+         regsub -- {( |)( *)$} $entry {,\2} entry
+      }
+      quiet_puts -nonewline [format " %${colwidth}s" $entry]
+   }
+   quiet_puts {}
 }
 
 proc TableSelected { tableno } {
@@ -464,7 +481,8 @@ proc ProcessInput {} {
     global colspecs
     global type_odt type_csv type_bare
     set line {}
-    set columns {}
+    set columns {} ;# Note: columns is populated by GenerateColumnIndexList,
+    ## and holds a list of triples: column_index colwidth data_format
     set dataline 0
     set table_number 0
     set print_table 1
@@ -506,19 +524,21 @@ proc ProcessInput {} {
                 }
                 set columns [GenerateColumnIndexList $colspecs $entries]
                 if {$type_odt} {
-                    if {$type_odt && [info exists unit_entries]} {
+                    if {[info exists unit_entries]} {
                         # Units line previously read; process and dump
                         set outlist {}
-                        foreach i $columns {
-                            lappend outlist [lindex $unit_entries $i]
+                        foreach _ $columns {
+                           lassign $_ i colwidth data_format
+                           lappend outlist [list [lindex $unit_entries $i] $colwidth $data_format]
                         }
                         quiet_puts "# Units: \\"
                         ColumnDump $outlist "#"
                         unset unit_entries
                     }
                     set outlist {}
-                    foreach i $columns {
-                        lappend outlist [lindex $entries $i]
+                    foreach _ $columns {
+                       lassign $_ i colwidth data_format
+                       lappend outlist [list [lindex $entries $i] $colwidth $data_format]
                     }
                     if {$type_odt} {
                         quiet_puts "# Columns: \\"
@@ -542,12 +562,13 @@ proc ProcessInput {} {
                         # columns line is read.
                         set unit_entries $entries
                     } else {
-                        set outlist {}
-                        foreach i $columns {
-                            lappend outlist [lindex $entries $i]
-                        }
-                        quiet_puts "# Units: \\"
-                        ColumnDump $outlist "#"
+                       set outlist {}
+                       foreach _ $columns {
+                          lassign $_ i colwidth data_format
+                          lappend outlist [list [lindex $entries $i] $colwidth $data_format]
+                       }
+                       quiet_puts "# Units: \\"
+                       ColumnDump $outlist "#"
                     }
                 } elseif {$type_csv} {
                     set unit_entries $entries
@@ -599,8 +620,9 @@ proc ProcessInput {} {
                 }
             }
             set outlist {}
-            foreach i $columns {
-               lappend outlist [lindex $line $i]
+            foreach _ $columns {
+               lassign $_ i colwidth data_format
+               lappend outlist [list [lindex $line $i] $colwidth $data_format]
             }
             ColumnDataDump $outlist " "
             incr dataline

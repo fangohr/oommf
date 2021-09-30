@@ -14,7 +14,7 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 2.0a2
+Oc_Main SetVersion 2.0a3
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -59,7 +59,7 @@ Oc_CommandLine Parse $argv
 wm title . [Oc_Main GetInstanceName]  ;# Window title to display while
                                       ## program is initializing.
 
-# Global arrays: mmdisp, _mmdisp
+# Global arrays: mmdisp, _mmdisp, _mmdispcmds
 
 # If the -server option appeared on the command line, start a server.
 if {$enableServer} {
@@ -70,7 +70,13 @@ if {$enableServer} {
         # re-enters the event loop, so when an instance of Net_Connection
         # calls this proc via a call to [$net_protocol Reply], it can
         # be re-entered, and do such nasty things such as destroy itself.
-        AsyncTempFileDisplayRequest $fnlist
+        global _mmdispcmds
+        lappend _mmdispcmds(atfdr_filelist) $fnlist ;# Add file to
+        ## filelist immediately, without going through the event
+        ## loop. Otherwise, a zwischenzug shutdown can trigger
+        ## mmDispShutdownCleanup with an incomplete atfdr_filelist and
+        ## result in file droppings.
+        after idle AsyncTempFileDisplayRequest
         return [list start [list 0]]
     }
     Net_Server New mmd_server -protocol $mmd_protocol \
@@ -84,7 +90,13 @@ if {$enableServer} {
         # re-enters the event loop, so when an instance of Net_Connection
         # calls this proc via a call to [$net_protocol Reply], it can
         # be re-entered, and do such nasty things as destroy itself.
-        AsyncTempFileDisplayRequest $fnlist
+        global _mmdispcmds
+        lappend _mmdispcmds(atfdr_filelist) $fnlist ;# Add file to
+        ## filelist immediately, without going through the event
+        ## loop. Otherwise, a zwischenzug shutdown can trigger
+        ## mmDispShutdownCleanup with an incomplete atfdr_filelist and
+        ## result in file droppings.
+        after idle AsyncTempFileDisplayRequest
         return [list start [list 0]]
     }
     Net_Server New mmd_sf_server -protocol $mmd_sf_protocol \
@@ -95,13 +107,10 @@ if {$enableServer} {
 
 set _mmdispcmds(atfdr_filelist) {}   ;# File display request stack
 set _mmdispcmds(atfdr_procsem) 0     ;# Processing semaphore
-proc AsyncTempFileDisplayRequest { fnlist } {
+proc AsyncTempFileDisplayRequest {} {
     global _mmdispcmds
 
-    # Append fnlist to request stack
-    lappend _mmdispcmds(atfdr_filelist) $fnlist
-
-    # If semaphore already taken, just return
+     # If semaphore already taken, just return
     if {$_mmdispcmds(atfdr_procsem)} return
 
     # Otherwise, schedule delete of all files on list except last,
@@ -163,7 +172,6 @@ proc mmDispShutdownCleanup {} {
 }
 Oc_EventHandler New _ Oc_Main Shutdown \
     [list mmDispShutdownCleanup] -oneshot 1
-
 
 ########################### GLOBAL VARIABLES ########################
 # It would probably be better to have many of these sitting inside the
@@ -2132,7 +2140,7 @@ proc MakeCanvas {} {
 	destroy $canvas_frame.yscrollbox
 	destroy $canvas
     }
-    canvas $canvas -background white -confine 0 \
+    canvas $canvas -confine 0 \
 	    -borderwidth 0 -selectborderwidth 0 \
 	    -highlightthickness 0 \
 	    -xscrollcommand "$canvas_frame.xscroll set" \
@@ -2152,9 +2160,9 @@ proc MakeCanvas {} {
 
     frame $canvas_frame.yscrollbox -borderwidth 0 ;# This needs to be created
     # *before* yscroll so it gets mapped under yscroll.
-    scrollbar $canvas_frame.xscroll -troughcolor [TroughColor] \
+    scrollbar $canvas_frame.xscroll \
 	    -command "CanvasConfine xview"  -orient horizontal
-    scrollbar $canvas_frame.yscroll -troughcolor [TroughColor] \
+    scrollbar $canvas_frame.yscroll \
 	    -command "CanvasConfine yview"  -orient vertical
     pack $canvas -side left -fill both -expand 1
     set plot_config(misc,scrollcrossdim) [expr \
@@ -2285,7 +2293,6 @@ Ow_EntryScale New arrowsswidget $boxne.subsample \
         -label "Arrow Subsample:" \
         -variable plot_config(arrow,subsample) -valuewidth 5 \
         -scalewidth 50 -rangemin 0. -rangemax 20. -scalestep 0.5 \
-        -troughcolor [TroughColor] \
         -outer_frame_options "-bd 2 -relief ridge" \
         -command SetArrowSubsampling \
         -hardmin [expr {-1 * $valmax}] -hardmax $valmax
@@ -2385,7 +2392,7 @@ Ow_EntryScale New datascalewidget $boxne.datascale \
         -scalewidth 50 -rangemin $minval -rangemax $maxval \
         -scalestep 0.01 -displayfmt "%.3g" \
         -outer_frame_options "-bd 2 -relief ridge" \
-        -troughcolor [TroughColor] -logscale 1 -autorange 1 \
+        -logscale 1 -autorange 1 \
         -marklist $plot_config(misc,default_datascale) -markwidth 2 \
         -command SetDataScaling \
         -hardmax [expr \
@@ -2825,7 +2832,6 @@ Ow_EntryScale New slicewidget $ctrlbar.slice \
         -scalewidth 50 -rangemin 0. -rangemax 1. -scalestep 0.01 \
         -valuetype float -command SetSliceCenter \
         -logscale 0 -autorange 0 -markwidth 2 \
-        -troughcolor [TroughColor] \
         -outer_frame_options "-bd 2 -relief ridge" \
         -hardmin [expr {-1 * $valmax}] -hardmax $valmax \
         -scaleautocommit 100
@@ -2874,7 +2880,7 @@ proc LaunchCommandConsole { menuname itemlabel } {
             raise .
          }}
       }]
-         
+
       interp alias $command_console MenuDeleteCleanup {} MenuDeleteCleanup
 
       set child_command_console [$command_console eval interp slaves]
@@ -2960,7 +2966,7 @@ proc LaunchCommandConsole { menuname itemlabel } {
 
    set title "[Oc_Main GetTitle] Console"
    $command_console eval [list console title $title]
-                             
+
 
    $command_console eval console show
 }
@@ -3058,10 +3064,19 @@ $optionmenu add checkbutton -label "Lock size" -underline 0 \
 
 Ow_StdHelpMenu $helpmenu
 
-if {$tk_version>=8.0 && [string match windows $tcl_platform(platform)]} {
-    # Windows doesn't size Tcl 8.0 menubar cleanly
-    wm geometry . "[expr {[Ow_GuessMenuWidth $menubar]+25}]x0"
+set menuwidth [Ow_GuessMenuWidth $menubar]
+set bracewidth [Ow_SetWindowTitle . [Oc_Main GetInstanceName]]
+if {$bracewidth<$menuwidth} {
+   set bracewidth $menuwidth
 }
+set brace [canvas .brace -width $bracewidth -height 0 -borderwidth 0 \
+        -highlightthickness 0]
+pack $brace -side top
+# Resize root window when OID is assigned:
+Oc_EventHandler New _ Net_Account NewTitle [subst -nocommands {
+  $brace configure -width \
+    [expr {%winwidth<$menuwidth ? $menuwidth : %winwidth}]
+}]
 
 
 ####################### ADDITIONAL KEY BINDINGS #####################
@@ -3211,8 +3226,38 @@ catch {bind . <Shift-Key-KP_3>  { Zoom [expr {1./$LargeZoom}] }}
 
 bind . <Control-Key-f> { FillDisplay ; CenterPlotView }
 bind . <Control-Key-w> { WrapDisplay }
-bind . <Key-Home>      { HomeDisplay }
+
+# Bind <Control-Key-Home> to HomeDisplay. We do this on the
+# root window, but Enter and Scale widgets have <Key-Home> bindings
+# that will trigger on <Control-Key-Home> unless we provide an
+# explicit <Control-Key-Home> binding.
+foreach tag {. Entry Scale} {
+   bind $tag <Control-Key-Home> HomeDisplay
+}
+# We also want <Key-Home> to trigger HomeDisplay generally, except in
+# Entry and Scale widgets where that would trigger confusion with the
+# widget default behavior. One complication is that in Tk 8.5 and
+# earlier there are bindings on <Key-Home> directly, but in Tk 8.6 those
+# are replaced with bindings on the virtual event <<LineStart>>
+# instead. Either way, append a break to short-circuit the root window
+# binding. Entry widgets also have a default binding on <Shift-Key-Home>
+# or <<SelectLineStart>>, so handle those too.
+bind . <Key-Home>             { HomeDisplay }
 catch {bind . <Key-KP_Home>   { HomeDisplay }}
+foreach tag {Entry Scale} {
+   if {![string match {} [bind $tag <<LineStart>>]]} {
+      bind $tag <<LineStart>> {+break}
+      if {![string match {} [bind $tag <<SelectLineStart>>]]} {
+         bind $tag <<SelectLineStart>> {+break}
+      }
+   } else {
+      bind $tag <Key-Home> {+break}
+      if {![string match {} [bind $tag <Shift-Key-Home>]]} {
+         bind $tag <Shift-Key-Home> {+break}
+      }
+   }
+}
+
 bind . <Control-Key-d> { RedrawDisplay }
 
 bind . <Control-Key-r> { ;# Ctrl-r
@@ -3223,37 +3268,6 @@ bind . <Control-Key-R> { ;# Shift-Ctrl-R
 }
 
 bind . <Control-Key-space> { CenterPlotView }
-
-# Override default Key-Home bindings on entry widgets in control
-# bar so that event is passed up to root window only if event has
-# no effect in entry widget.  So, for example, if the cursor is
-# in the middle of an entry widget, pressing Home once will move
-# the cursor to the extreme left of the display, but then pressing
-# Home again (or anytime the cursor is at the extreme left) will
-# run the HomeDisplay proc to resize the display.
-foreach we $ctrlbar_entry_widgets {
-   bind $we <Key-Home>  [subst {
-      if {\[%W index insert\]!=0 || \[%W selection present\]} {
-         # Perform usual Key-Home binding, and then break,
-         # so that keypress is not passed up to outer widgets.
-         [bind Entry <Key-Home>]
-         break
-      } else {
-         [bind Entry <Key-Home>]  ;# Safety
-      }
-   }]
-   bind $we <Shift-Key-Home>  [subst {
-      if {\[%W index insert\]!=0} {
-         # Perform usual Shift-Key-Home binding, and then break,
-         # so that keypress is not passed up to outer widgets.
-         [bind Entry <Shift-Key-Home>]
-         break
-      } else {
-         [bind Entry <Shift-Key-Home>]  ;# Safety
-      }
-   }]
-}
-
 
 ###################### ADDITIONAL MOUSE BINDINGS ####################
 ### Canvas rectangle zoom-in
@@ -3650,15 +3664,16 @@ proc OMF_ShowPosition { wx wy {verbose 0}} {
         set tdy [expr {$dy+$dotrad}]
         set anchor n
     }
+    set bgclr yellow; set txtclr black; set bdryclr black ;# Colors
     set textid [$canvas create text $dx $tdy -text $displaystr \
-            -justify center -anchor $anchor -tags position]
+            -fill $txtclr -justify center -anchor $anchor -tags position]
     foreach {bx1 by1 bx2 by2} [$canvas bbox $textid] { break }
     set bx1 [expr {$bx1-$boxmargin}]
     set bx2 [expr {$bx2+$boxmargin}]
     set by1 [expr {$by1-$boxmargin}]
     set by2 [expr {$by2+$boxmargin}]
     set boxid [$canvas create rectangle $bx1 $by1 $bx2 $by2 \
-                       -fill yellow -outline black -width 2 \
+                       -fill $bgclr -outline $bdryclr -width 2 \
                        -tags position]
     $canvas raise $textid
 

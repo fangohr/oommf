@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>OOMMF eXtensible Solver Interactive Interface:
@@ -15,7 +11,7 @@ Oxsii">
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -29,27 +25,27 @@ Oxsii">
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html331"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html333"
   HREF="OOMMF_eXtensible_Solver_Bat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html327"
+<A NAME="tex2html329"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html321"
+<A NAME="tex2html323"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html333"
+<A NAME="tex2html335"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html329"
+<A NAME="tex2html331"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html332"
+<B> Next:</B> <A NAME="tex2html334"
   HREF="OOMMF_eXtensible_Solver_Bat.html">OOMMF eXtensible Solver Batch</A>
-<B> Up:</B> <A NAME="tex2html328"
+<B> Up:</B> <A NAME="tex2html330"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
-<B> Previous:</B> <A NAME="tex2html322"
+<B> Previous:</B> <A NAME="tex2html324"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
 <BR>
 <BR>
@@ -59,7 +55,7 @@ Oxsii">
 <BR>
 OOMMF eXtensible Solver Interactive Interface:
 Oxsii
-</H2><A NAME="3989"></A><A NAME="3990"></A>
+</H2><A NAME="3782"></A><A NAME="3783"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -79,7 +75,7 @@ application. <B>Oxsii</B> is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Oxsii</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="4008"><B>mmLaunch</B></A>.  It is through
+ NAME="3801"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Oxsii</B>.
 
@@ -144,8 +140,8 @@ where
   this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4046"></A>
-  <A NAME="4047"></A>
+<DD><A NAME="3839"></A>
+  <A NAME="3840"></A>
   This option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
   Oxs.  The <I>nodes</I> parameter must be either a comma separated
@@ -191,14 +187,14 @@ The default behavior is modified (in increasing order of priority) by the
   <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
   file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
   or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4076"></A>.  The
-  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4078"></A>
+  <TT>OOMMF_NUMANODES</TT><A NAME="3869"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="3871"></A>
 </DD>
 <DT><STRONG><TT><B>-outdir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where output files are written by
   <B>mmArchive</B>.  This option is useful when the default output
   directory is inaccessible or slow. The environment variable
-  <TT>OOMMF_OUTDIR</TT><A NAME="4082"></A> sets the
+  <TT>OOMMF_OUTDIR</TT><A NAME="3875"></A> sets the
   default output directory.  If <TT>OOMMF_OUTDIR</TT> is set to the empty
   string, or not set at all, then the default is the directory holding
   the MIF file.  If this option is specified on the command line, or
@@ -230,7 +226,7 @@ The default behavior is modified (in increasing order of priority) by the
   is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
   no effect if miffile is not specified.
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6790"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="6648"></A></B></TT></STRONG></DT>
 <DD>Controls the initial setting of the restart flag, and thereby 
   the load restart behavior of any <TT>miffile</TT> specified on the command
   line.  The restart flag is described in the
@@ -240,9 +236,9 @@ The default behavior is modified (in increasing order of priority) by the
 <DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where restart files are written.
   The default is determined by the environment variable
-  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4111"></A>,
+  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="3904"></A>,
   or if this is not set then by
-  <TT>OOMMF_OUTDIR</TT><A NAME="4113"></A>.  If
+  <TT>OOMMF_OUTDIR</TT><A NAME="3906"></A>.  If
   neither environment variable is set then the default is the
   directory holding the MIF file.  Write access is required to the
   restart file directory.  Also, you may want to consider whether the
@@ -250,14 +246,14 @@ The default behavior is modified (in increasing order of priority) by the
   network mount.
 </DD>
 <DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4115"></A>
+<DD><A NAME="3908"></A>
   The option is available on
   <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
   The <I>count</I> parameter is the number of threads to run.  The
   default count value is set by the <TT>oommf_thread_count</TT> value in
   the <TT><B>config/platforms/</B></TT> file for your platform, but may be
   overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="4124"></A>
+  <TT>OOMMF_THREADS</TT><A NAME="3917"></A>
   environment variable or this command line option.  In most cases the
   default count value will equal the number of processing cores on the
   system; this can be checked via the command
@@ -272,11 +268,11 @@ The default behavior is modified (in increasing order of priority) by the
 All the above switches are optional.
 
 <P>
-Since <B>Oxsii</B><A NAME="4132"></A> does not present
+Since <B>Oxsii</B><A NAME="3925"></A> does not present
 any user interface window of its own, it depends on
-<B>mmLaunch</B><A NAME="4134"></A> to provide an interface on
+<B>mmLaunch</B><A NAME="3927"></A> to provide an interface on
 its behalf.  The entry for an instance of <B>Oxsii</B> in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4137"></A> column of any running copy of
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="3930"></A> column of any running copy of
 <B>mmLaunch</B> has a checkbutton next to it.  This button toggles the
 presence of a user interface window through which the user may control
 that instance of <B>Oxsii</B>.
@@ -328,11 +324,11 @@ When the <TT>DataTable</TT> entry is selected, the Destination box will
 list all OOMMF applications accepting datatable-style input, i.e., all
 currently running
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="4184"><B>mmDataTable</B></A>,
+ NAME="3977"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="4189"><B>mmGraph</B></A>, and
+ NAME="3982"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4194"><B>mmArchive</B></A> processes.
+ NAME="3987"><B>mmArchive</B></A> processes.
 
 <P>
 The vector field outputs include pointwise magnetization, various total
@@ -341,9 +337,9 @@ outputs, the vector field outputs are listed individually in the Output
 scroll box.  Allowed destinations for vector field output are running
 instances of
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="4199"><B>mmDisp</B></A> and
+ NAME="3992"><B>mmDisp</B></A> and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4204"><B>mmArchive</B></A>.  Caution is
+ NAME="3997"><B>mmArchive</B></A>.  Caution is
 advised when scheduling vector field output, especially with large
 problems, because the output may run many megabytes.
 
@@ -418,15 +414,7 @@ Below the run-state <TT>Status</TT> line is the stage display and control
 bar.  The simulation stage may be changed at any time by dragging the
 scroll bar or by typing the desired stage number into the text display
 box to the left of the scroll bar.  Valid stage numbers are integers
-from 0 to <B><I>N</I> - 1</B>
-<!-- MATHEND
- 
- -->
-, where <B><I>N</I></B>
-<!-- MATHEND
- 
- -->
- is the number of stages specified by the
+from 0 to <B><I>N</I> - 1</B>, where <B><I>N</I></B> is the number of stages specified by the
 MIF input file.
 
 <P>
@@ -444,23 +432,23 @@ computational details.
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html331"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html333"
   HREF="OOMMF_eXtensible_Solver_Bat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html327"
+<A NAME="tex2html329"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html321"
+<A NAME="tex2html323"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html334"
+<A NAME="tex2html336"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html329"
+<A NAME="tex2html331"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

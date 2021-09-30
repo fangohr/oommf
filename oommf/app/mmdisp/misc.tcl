@@ -17,41 +17,6 @@ if {![string match [package provide Tk] {}]} {
 # which doesn't load Tk, the bind commands are moved behind a check
 # for Tk. (-mjd, 4-Feb-2002)
 
-proc TroughColor {} {
-  # Trough color for 'scale' widgets and 'scrollbar' widgets.
-  # By default, Windows sets these to same as default frame background.
-  global _mmdispcmds
-  if {[info exists _mmdispcmds(TroughColor)]} {
-    return $_mmdispcmds(TroughColor)
-  }
-  scale .troughColor
-  set temp [winfo rgb . [.troughColor cget -background]]
-  destroy .troughColor
-  set tempr [expr {round([lindex $temp 0]*0.85)}]
-  set tempg [expr {round([lindex $temp 1]*0.85)}]
-  set tempb [expr {round([lindex $temp 2]*0.85)}]
-  set _mmdispcmds(TroughColor) [format "#%04X%04X%04X" $tempr $tempg $tempb]
-}
-
-# Removed - Can't find evidence that anything has used these in a long time.
-# proc OMF_GetDescendentList args {}
-# proc OMF_GetTopLevelList args {}
-# proc OMF_AppendBindTag args {}
-
-# Push/Pop stack operators
-# Removed - Can't find evidence that anything has used these in a long time.
-# proc OMF_Push args {}
-# proc OMF_Pop args {}
-
-# Removed - the Ow_* widgets do their own validity checks
-# proc OMF_MakeValidPosNumber args {}
-# proc OMF_KeepValidPosNumber args {}
-# proc OMF_MakeValidNumber args {}
-# proc OMF_KeepValidNumber args {}
-
-# Removed - Can't find evidence that anything has used this in a long time.
-# proc OMF_StdFormatCompare args {}
-
 # Converts width, height, xcenter & ycenter across rotations
 proc OMF_RotateDimensions { angle widthname heightname \
         xcentername ycentername } {

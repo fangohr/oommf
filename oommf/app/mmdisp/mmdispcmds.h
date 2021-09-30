@@ -20,7 +20,7 @@
 #define MMDISPCMDS_MAJOR_VERSION        2
 #define MMDISPCMDS_MINOR_VERSION        0
 #define MMDISPCMDS_RELEASE_LEVEL        "a"
-#define MMDISPCMDS_RELEASE_SERIAL       2
+#define MMDISPCMDS_RELEASE_SERIAL       3
 
 #define MMDISPCMDS_VERSION OC_MAKE_VERSION(MMDISPCMDS)
 
@@ -74,6 +74,8 @@ Tcl_CmdProc SetMeshTitle;
 Tcl_CmdProc UpdatePlotConfiguration;
 Tcl_CmdProc WriteMesh;
 Tcl_CmdProc WriteMeshUsingDeprecatedVIOFormat;
+Tcl_CmdProc WriteMeshOVF2;
+Tcl_CmdProc WriteMeshNPY;
 Tcl_CmdProc WriteMeshMagnitudes;
 Tcl_CmdProc WriteMeshAverages;
 

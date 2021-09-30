@@ -724,6 +724,8 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
 #endif
 
     OC_INDEX j;
+    const OC_REAL8m local_dvec_scale = dvec_scale;
+    const Oc_Duet local_dvec_scale_duet(local_dvec_scale);
     for(j=0;j<jbreak;++j) {
 #if 0
       const ThreeVector& dvec = scratch_direction[j];
@@ -745,9 +747,12 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
       Oc_Duet bsx(scratch_best_spin[j].x);
       Oc_Duet bsy(scratch_best_spin[j].y);
       Oc_Duet bsz(scratch_best_spin[j].z);
-      Oc_Duet spx = mult*bsx + Oc_Duet(dvec_scale)*dvx;
-      Oc_Duet spy = mult*bsy + Oc_Duet(dvec_scale)*dvy;
-      Oc_Duet spz = mult*bsz + Oc_Duet(dvec_scale)*dvz;
+      Oc_Duet sdvx(local_dvec_scale_duet*dvx);
+      Oc_Duet sdvy(local_dvec_scale_duet*dvy);
+      Oc_Duet sdvz(local_dvec_scale_duet*dvz);
+      Oc_Duet spx = Oc_FMA(mult,bsx,sdvx);
+      Oc_Duet spy = Oc_FMA(mult,bsy,sdvy);
+      Oc_Duet spz = Oc_FMA(mult,bsz,sdvz);
       Oxs_ThreeVectorPairMakeUnit(spx,spy,spz); // Has different
       /// rounding than ThreeVector::MakeUnit().
       scratch_spin[j].x = spx.GetA();
@@ -777,13 +782,14 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
 
       Oc_Duet bsx,bsy,bsz;
       Oxs_ThreeVectorPairLoadAligned(&(scratch_best_spin[j]),bsx,bsy,bsz);
-
-      Oc_Duet spx = mult*bsx + Oc_Duet(dvec_scale)*dvx;
-      Oc_Duet spy = mult*bsy + Oc_Duet(dvec_scale)*dvy;
-      Oc_Duet spz = mult*bsz + Oc_Duet(dvec_scale)*dvz;
-
-      Oxs_ThreeVectorPairMakeUnit(spx,spy,spz);
-
+      Oc_Duet sdvx(local_dvec_scale_duet*dvx);
+      Oc_Duet sdvy(local_dvec_scale_duet*dvy);
+      Oc_Duet sdvz(local_dvec_scale_duet*dvz);
+      Oc_Duet spx = Oc_FMA(mult,bsx,sdvx);
+      Oc_Duet spy = Oc_FMA(mult,bsy,sdvy);
+      Oc_Duet spz = Oc_FMA(mult,bsz,sdvz);
+      Oxs_ThreeVectorPairMakeUnit(spx,spy,spz); // Has different
+      /// rounding than ThreeVector::MakeUnit().
       Oxs_ThreeVectorPairStreamAligned(spx,spy,spz,scratch_spin+j);
     }
 
@@ -808,9 +814,12 @@ void _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadA::Cmd(int threadnumber,
       Oc_Duet bsx(scratch_best_spin[j].x);
       Oc_Duet bsy(scratch_best_spin[j].y);
       Oc_Duet bsz(scratch_best_spin[j].z);
-      Oc_Duet spx = mult*bsx + Oc_Duet(dvec_scale)*dvx;
-      Oc_Duet spy = mult*bsy + Oc_Duet(dvec_scale)*dvy;
-      Oc_Duet spz = mult*bsz + Oc_Duet(dvec_scale)*dvz;
+      Oc_Duet sdvx(local_dvec_scale_duet*dvx);
+      Oc_Duet sdvy(local_dvec_scale_duet*dvy);
+      Oc_Duet sdvz(local_dvec_scale_duet*dvz);
+      Oc_Duet spx = Oc_FMA(mult,bsx,sdvx);
+      Oc_Duet spy = Oc_FMA(mult,bsy,sdvy);
+      Oc_Duet spz = Oc_FMA(mult,bsz,sdvz);
       Oxs_ThreeVectorPairMakeUnit(spx,spy,spz); // Has different
       /// rounding than ThreeVector::MakeUnit().
       scratch_spin[j].x = spx.GetA();

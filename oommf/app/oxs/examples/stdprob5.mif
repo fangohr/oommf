@@ -1,8 +1,8 @@
 # MIF 2.2
 # MIF Example File: stdprob5.mif
 # Description:
-#	Used to calculate the initial magnetization state for muMAG standard
-#	problem number 5 on spin momentum transfer.
+#	Example MIF specification for muMAG standard problem number 5 on
+#	spin momentum transfer.
 
 set pi [expr {4*atan(1.0)}]
 

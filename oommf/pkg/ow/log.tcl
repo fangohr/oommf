@@ -30,20 +30,37 @@ Oc_Class Ow_Log {
 
        set winpath ${basewinpath}w$this
        frame $winpath -bd 4 -relief ridge
-       set tw [text $winpath.text -background white -height 5 \
+
+       set tw [text $winpath.text -height 5 \
                   -exportselection 1 -highlightthickness 0 \
                   -insertwidth 0 -insertofftime 0 -wrap none]
-
        set xscroll [scrollbar $winpath.xscroll -orient horizontal \
                        -command [list $tw xview]]
        set yscroll [scrollbar $winpath.yscroll -orient vertical \
                        -command [list $tw yview]]
        $tw configure -yscrollcommand [list $yscroll set] \
           -xscrollcommand [list $xscroll set]
-       $tw tag configure ERROR -foreground yellow -background black
-       $tw tag configure WARNING -foreground red -background white
-       $tw tag configure STATUS -foreground black -background white
-       $tw configure -foreground green ;# Unrecognized message type
+
+       # --- Auto text color selection ---
+       set oommf_background [option get . background *]
+       if {[llength $oommf_background]>0 \
+              && [Ow_GetShade $oommf_background]<128} {
+          # User has requested dark colors
+          $tw configure -background black
+          $tw tag configure ERROR -foreground red -background white
+          $tw tag configure WARNING -foreground yellow -background black
+          $tw tag configure STATUS -foreground white -background black
+          $tw configure -foreground cyan -background black ;# Unrecognized \
+                                                            ## message type
+       } else {
+          # Use default color set
+          $tw configure -background white
+          $tw tag configure ERROR -foreground yellow -background black
+          $tw tag configure WARNING -foreground red -background white
+          $tw tag configure STATUS -foreground black -background white
+          $tw configure -foreground green -background white ;# Unrecognized \
+                                                            ## message type
+       }
        $tw tag raise sel ;# Insure selection coloring is visible
 
        # On Windows, the text widget settings hide the selected text
@@ -129,7 +146,9 @@ Oc_Class Ow_Log {
    }
 
    method EntryPrefix { seconds type } {} {
-      set timestamp [clock format $seconds -format "%Y/%m/%d %T"]
+      if {[catch {clock format $seconds -format "%Y/%m/%d %T"} timestamp]} {
+         set timestamp "Unknown time"
+      }
       set prefix [format "\[$timestamp\] %-7s " $type]
       return $prefix
    }
@@ -142,7 +161,6 @@ Oc_Class Ow_Log {
       }
       if {$state} {
          set wrap 1
-         # set strut [$this EntryPrefix [clock seconds] STATUS]
          set strut {0000}
          if {[catch {font measure [$tw cget -font] \
                          -displayof $tw $strut} ipix]} {
@@ -155,7 +173,7 @@ Oc_Class Ow_Log {
       } else {
          set wrap 0
          $tw configure -wrap none
-         pack $xscroll -side bottom -fill x -after $yscroll         
+         pack $xscroll -side bottom -fill x -after $yscroll
          if {$follow} { $tw see {end - 2 chars linestart} }
       }
    }

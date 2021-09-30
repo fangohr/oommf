@@ -32,12 +32,10 @@ exec tclsh "$0" ${1+"$@"}
 #
 set script {
 
-if {[catch {package require Tcl 8}]} {
-    if {[catch {package require Tcl 7.5}]} {
-	return -code error "OOMMF software requires Tcl 7.5 or\
+if {[catch {package require Tcl 8.5-}]} {
+	return -code error "OOMMF software requires Tcl 8.5 or\
 		higher.\n\tYour version: Tcl [info patchlevel]\nPlease\
 		upgrade."
-    }
 }
 
 # When this script is evaluated by a shell which doesn't include the
@@ -125,8 +123,8 @@ unset varName
 if {[Oc_Main HasTk]} {
     wm withdraw .
 }
-Oc_Main SetAppName oommf.tcl
-Oc_Main SetVersion 2.0a2
+Oc_Main SetAppName OOMMF
+Oc_Main SetVersion 2.0a3
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for
@@ -176,9 +174,9 @@ Oc_CommandLine Option platform {} {
    if {![string match {} $snapshot]} {
       set snapshot ", snapshot $snapshot"
    }
-   Oc_Log Log "OOMMF release\
-            [package provide Oc]$snapshot\n[$runplatform \
-	    Summary]" info
+   puts "OOMMF release\
+         [package provide Oc]$snapshot\n[$runplatform \
+	 Summary]"
    exit
 } "Print platform summary and exit"
 
@@ -244,7 +242,7 @@ if {$bg} {
     }
 } else {
     if {[catch {eval Oc_Exec Foreground $cmd} msg]} {
-	if {[string compare "child process exited abnormally: " $msg] == 0} {
+	if {[string match "child process exited abnormally*" $msg]} {
 	    # Expected error message - don't bother displaying
             if {[string match CHILDSTATUS [lindex $errorCode 0]] \
                    && [lindex $errorCode 2]>0 } {

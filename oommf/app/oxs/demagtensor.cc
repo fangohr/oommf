@@ -61,8 +61,16 @@
 // Default settings
 const int default_display_digits=17; // == precision
 const int default_group_digits=0;    // groups size, 0 == disable grouping
+#if STANDALONE
+// In standalone setting double-double is not available to compute the
+// tensor in the analytic (near field) range.  Bump default error
+// upwards so code doesn't try to do entire range with asymptotics
+// (which would require massively refinements in the near field).
+const OXS_DEMAG_REAL_ASYMP default_maxerror = 1e-12;
+#else
 const OXS_DEMAG_REAL_ASYMP default_maxerror 
    = 8*std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::epsilon();
+#endif
 const int default_maxorder = 11;
 
 #ifdef _MSC_VER
@@ -306,7 +314,7 @@ void WriteTensorFile
 
   std::cout << "# Begin: data text\n";
 
-  std::cout << scientific << setprecision(display_digits);
+  std::cout << scientific << setprecision(display_digits-1);
 
   const int colwidth = display_digits + 8;
 
@@ -343,11 +351,11 @@ void PrintTensor
   OXS_DEMAG_REAL_ASYMP gamma
     = pow(tp.hx*tp.hy*tp.hz,OXS_DEMAG_REAL_ASYMP(1)/OXS_DEMAG_REAL_ASYMP(3));
   OXS_DEMAG_REAL_ASYMP pdist = sqrt(x*x+y*y+z*z)/gamma;
-  std::cout << "gamma=" << gamma << ", pdist=" << pdist << "\n";
+  // std::cout << "gamma=" << gamma << ", pdist=" << pdist << "\n";
 
   std::string sNxx,sNxy,sNxz,sNyy,sNyz,sNzz;
   std::stringstream ss;
-  ss << scientific << setprecision(display_digits);
+  ss << scientific << setprecision(display_digits-1);
 
   if(tp.direction != TensorParams::PbcDirection::none) {
     OXS_DEMAG_REAL_ASYMP Nxx,Nxy,Nxz,Nyy,Nyz,Nzz;
@@ -384,8 +392,8 @@ void PrintTensor
          fabs(j*tp.hy-y)>1024*DBL_EPSILON*y ||
          fabs(k*tp.hz-z)>1024*DBL_EPSILON*z) {
         std::cerr <<
-          "ERROR: PBC code requires (x,y,z) to be"
-          " an integral multiple of (hx,hy,hz)\n";
+          "\nERROR: PBC code requires (x,y,z) to be"
+          " an integral multiple of (hx,hy,hz)\n\n";
         Usage();
       }
       std::cerr << std::setprecision(17);
@@ -460,7 +468,7 @@ void PrintTensor
   }
 
   const int colwidth = display_digits + 8
-    + (group_digits<1 ? 0 : (display_digits-1)/group_digits);
+    + (group_digits<1 ? 0 : (display_digits-2)/group_digits);
   std::cout << "--- Demag tensor; point offset=" << pdist
             << ", error request=" << tp.maxerror
             << ", order request=" << tp.maxorder << "\n";

@@ -45,20 +45,20 @@ void Vf_Mesh::SetMeshUnit(const char* _MeshUnit) {
 void Vf_Mesh::SetValueUnit(const char* _ValueUnit) {
   ValueUnit.Dup(_ValueUnit);
 }
-const char* Vf_Mesh::GetName() const { 
-  return Filename.GetStr(); 
+const char* Vf_Mesh::GetName() const {
+  return Filename.GetStr();
 }
 const char* Vf_Mesh::GetTitle() const {
-  return Title.GetStr(); 
+  return Title.GetStr();
 }
 const char* Vf_Mesh::GetDescription() const {
-  return Description.GetStr(); 
+  return Description.GetStr();
 }
 const char* Vf_Mesh::GetMeshUnit() const {
-  return MeshUnit.GetStr(); 
+  return MeshUnit.GetStr();
 }
 const char* Vf_Mesh::GetValueUnit() const {
-  return ValueUnit.GetStr(); 
+  return ValueUnit.GetStr();
 }
 
 void Vf_Mesh::GetRange(Nb_BoundingBox<OC_REAL4> &range) const
@@ -933,7 +933,7 @@ void Vf_GridVec3f::GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
 
     return;
   }
-  
+
 
   if(coords_step.z<0) {
     islicelow =
@@ -956,7 +956,8 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
                                    OC_REAL4m &zstep_request,
                                    const Nb_BoundingBox<OC_REAL4> &dsprange,
                                    const char *colorquantity,
-                                   OC_REAL8m phase, OC_BOOL invert,
+                                   OC_REAL8m phase,
+                                   OC_BOOL invert, OC_BOOL trimtiny,
                                    Nb_List<Vf_DisplayVector> &display_list)
 { // Fills display_list with points from mesh inside "dsprange", with
   // step size close to ?step_request, which is reset to value actually
@@ -1027,9 +1028,12 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
                   ifirst,jfirst,kfirst,ilast,jlast,klast,
                   isize,jsize,ksize);
 #endif
-    if(ifirst<0) ifirst=0; if(ilast>isize) ilast=isize;
-    if(jfirst<0) jfirst=0; if(jlast>jsize) jlast=jsize;
-    if(kfirst<0) kfirst=0; if(klast>ksize) klast=ksize;
+    if(ifirst<0) ifirst=0;
+    if(ilast>isize) ilast=isize;
+    if(jfirst<0) jfirst=0;
+    if(jlast>jsize) jlast=jsize;
+    if(kfirst<0) kfirst=0;
+    if(klast>ksize) klast=ksize;
   }
 
   // Calculate step sizes
@@ -1047,7 +1051,9 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
   OC_INDEX jstep=OC_INDEX(nystep);
   OC_INDEX kstep=OC_INDEX(nzstep);
 
-  if(istep<1) istep=1;  if(jstep<1) jstep=1;  if(kstep<1) kstep=1;
+  if(istep<1) istep=1;
+  if(jstep<1) jstep=1;
+  if(kstep<1) kstep=1;
 
   // Determine offsets
   OC_INDEX ioff=((ilast-ifirst-1)%istep)/2;
@@ -1081,7 +1087,9 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
                   static_cast<double>(MaxMagHint));
     return display_list.GetSize(); // Empty grid
   }
-  if(MaxMagHint>0.0) {
+  if(!trimtiny) {
+    minmagsq = 0.0;
+  } else if(MaxMagHint>0.0) {
     // minmagsq is intended for display optimization, not display
     // selection.  Guarantee here some more-or-less arbitrary minimum
     // range between minmag cutoff and MaxMagHint.
@@ -1186,8 +1194,14 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
       for(i=istart,position.x=xstart;i<ilast;i+=istep,position.x+=xstep) {
         wv=GridVec(i,j,k);
         magsq=wv.MagSq();
-        if(magsq<minmagsq) continue; // Skip tiny vectors
-        /// Note that minmagsq is at raw data scale.
+        if(magsq<=minmagsq) continue; // Skip tiny vectors
+        /// Note that minmagsq is at raw data scale, unless trimtiny is
+        /// false, in which case minmagsq=0.0. Note: There are cases,
+        /// particularly for scalar fields, where one would like
+        /// magsq==0 pixels displayed. But it is not obvious how to
+        /// discriminate between those situations and the far more
+        /// common case where magsq==0 indicates an Ms==0 empty space
+        /// that is more usefully left unpainted.
 
         if(fabs(wvscale)<1.0 && magsq>(FLT_MAX*wvscale)*wvscale) {
           // Vector will overflow floating point range; resize
@@ -1201,28 +1215,19 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
         shade=0.5;
         switch(cq) {
         case GV3_X:
-          if(1.0>fabs(wv.x)) shade=(1.+wv.x)/2.;
-          else if(wv.x>0)    shade=1.0;
-          else               shade=0.0;
+          shade=(1.+wv.x)/2.;
           break;
         case GV3_Y:
-          if(1.0>fabs(wv.y)) shade=(1.+wv.y)/2.;
-          else if(wv.y>0)    shade=1.0;
-          else               shade=0.0;
+          shade=(1.+wv.y)/2.;
           break;
         case GV3_Z:
-          if(1.0>fabs(wv.z)) shade=(1.+wv.z)/2.;
-          else if(wv.z>0)    shade=1.0;
-          else               shade=0.0;
+          shade=(1.+wv.z)/2.;
           break;
         case GV3_ZSLICE:
           shade = (position.z-zrangemid)*zrangemult + 0.5;
-          if(shade<0.0)      shade=0.0;
-          else if(shade>1.0) shade=1.0;
           break;
         case GV3_MAG:
-          if(magsq>=1.0) shade=1.0;
-          else           shade=sqrt(magsq);
+          shade=sqrt(magsq);
           break;
         case GV3_XYANGLE:
           if(wv.x==0. && wv.y==0.) {
@@ -1262,9 +1267,7 @@ OC_INDEX Vf_GridVec3f::GetDisplayList(OC_REAL4m &xstep_request,
           tempshade = xdivscale*xtempshade
             + ydivscale*ytempshade
             + zdivscale*ztempshade;
-          if(1.0>fabs(tempshade)) shade=(1.+tempshade)/2.;
-          else if(tempshade>0)    shade=1.0;
-          else                    shade=0.0;
+          shade=(1.+tempshade)/2.;
           break;
         default:
           break;
@@ -2462,7 +2465,7 @@ void Vf_GeneralMesh3f::GetZslice(OC_REAL8m zlow,OC_REAL8m zhigh,
     zhigh=tempmax.z+zrangespan;
     if(zlow>zhigh) zlow=zhigh;
   }
-  
+
   islicelow =
     static_cast<OC_INDEX>(floor(zslice_count*(zlow-tempmin.z)
                              /zrangespan));
@@ -2481,7 +2484,8 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
                                  OC_REAL4m & /* zstep_request */,
                                  const Nb_BoundingBox<OC_REAL4> & range_request,
                                  const char *colorquantity,
-                                 OC_REAL8m phase, OC_BOOL invert,
+                                 OC_REAL8m phase,
+                                 OC_BOOL invert, OC_BOOL trimtiny,
                                  Nb_List<Vf_DisplayVector> &display_list)
 {
 #define MEMBERNAME "GetDisplayList"
@@ -2539,7 +2543,9 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
     return display_list.GetSize(); // Empty grid
   }
 
-  if(MaxMagHint>0.0) {
+  if(!trimtiny) {
+    minmagsq = 0.0;
+  } else if(MaxMagHint>0.0) {
     // minmagsq is intended for display optimization, not display
     // selection.  Guarantee here some more-or-less arbitrary minimum
     // range between minmag cutoff and MaxMagHint.
@@ -2620,8 +2626,14 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
 
         shade=0.5;
         magsq=wlv.value.MagSq();
-        if(magsq<minmagsq) continue; // Skip tiny vectors
-        /// Note that minmagsq is at raw data scale.
+        if(magsq<=minmagsq) continue; // Skip tiny vectors
+        /// Note that minmagsq is at raw data scale, unless trimtiny is
+        /// false, in which case minmagsq=0.0. Note: There are cases,
+        /// particularly for scalar fields, where one would like
+        /// magsq==0 pixels displayed. But it is not obvious how to
+        /// discriminate between those situations and the far more
+        /// common case where magsq==0 indicates an Ms==0 empty space
+        /// that is more usefully left unpainted.
 
         if(fabs(wvscale)<1.0 && magsq>(FLT_MAX*wvscale)*wvscale) {
           // Vector will overflow floating point range; resize
@@ -2637,30 +2649,21 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
         switch(cq) {
         case GM3_X:
           val=wlv.value.x;
-          if(1.0>fabs(val)) shade=(1.+val)/2.;
-          else if(val>0)    shade=1.0;
-          else              shade=0.0;
+          shade=(1.+val)/2.;
           break;
         case GM3_Y:
           val=wlv.value.y;
-          if(1.0>fabs(val)) shade=(1.+val)/2.;
-          else if(val>0)    shade=1.0;
-          else              shade=0.0;
+          shade=(1.+val)/2.;
           break;
         case GM3_Z:
           val=wlv.value.z;
-          if(1.0>fabs(val)) shade=(1.+val)/2.;
-          else if(val>0)    shade=1.0;
-          else              shade=0.0;
+          shade=(1.+val)/2.;
           break;
         case GM3_ZSLICE:
           shade = (wlv.location.z-zrangemid)*zrangemult + 0.5;
-          if(shade<0.0)      shade=0.0;
-          else if(shade>1.0) shade=1.0;
           break;
         case GM3_MAG:
-          if(magsq>=1.0) shade=1.0;
-          else           shade=sqrt(magsq);
+          shade=sqrt(magsq);
           break;
         case GM3_XYANGLE:
           if(wlv.value.y==0. && wlv.value.x==0.) {
@@ -2766,9 +2769,14 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
           wlv = (*wlvp);
           magsq=wlv.value.MagSq();
 
-          // Skip tiny vectors
-          if(magsq<minmagsq) continue;
-          /// Note that minmagsq is at raw data scale.
+          if(magsq<=minmagsq) continue; // Skip tiny vectors
+          /// Note that minmagsq is at raw data scale, unless trimtiny
+          /// is false, in which case minmagsq=0.0. Note: There are
+          /// cases, particularly for scalar fields, where one would
+          /// like magsq==0 pixels displayed. But it is not obvious how
+          /// to discriminate between those situations and the far more
+          /// common case where magsq==0 indicates an Ms==0 empty space
+          /// that is more usefully left unpainted.
 
           if(fabs(wvscale)<1.0 && magsq>(FLT_MAX*wvscale)*wvscale) {
             // Vector will overflow floating point range; resize
@@ -2784,30 +2792,21 @@ Vf_GeneralMesh3f::GetDisplayList(OC_REAL4m &xstep_request,
           switch(cq) {
           case GM3_X:
             val=wlv.value.x;
-            if(1.0>fabs(val)) shade=(1.+val)/2.;
-            else if(val>0)    shade=1.0;
-            else              shade=0.0;
+            shade=(1.+val)/2.;
             break;
           case GM3_Y:
             val=wlv.value.y;
-            if(1.0>fabs(val)) shade=(1.+val)/2.;
-            else if(val>0)    shade=1.0;
-            else              shade=0.0;
+            shade=(1.+val)/2.;
             break;
           case GM3_Z:
             val=wlv.value.z;
-            if(1.0>fabs(val)) shade=(1.+val)/2.;
-            else if(val>0)    shade=1.0;
-            else              shade=0.0;
+            shade=(1.+val)/2.;
             break;
           case GM3_ZSLICE:
             shade = (wlv.location.z-zrangemid)*zrangemult + 0.5;
-            if(shade<0.0)      shade=0.0;
-            else if(shade>1.0) shade=1.0;
             break;
           case GM3_MAG:
-            if(magsq>=1.0) shade=1.0;
-            else           shade=sqrt(magsq);
+            shade=sqrt(magsq);
             break;
           case GM3_XYANGLE:
             if(wlv.value.y==0. && wlv.value.x==0.) {
@@ -2994,7 +2993,7 @@ void Vf_GeneralMesh3f::SetBoundaryList(const Nb_List< Nb_Vec3<OC_REAL8> >
 
 void Vf_GeneralMesh3f::SetBoundaryList() {
   boundary_from_data=1;   // When boundary is generated from data,
-  boundary.Clear();       // both boundary and boundary_range are 
+  boundary.Clear();       // both boundary and boundary_range are
   boundary_range.Reset(); // generated as needed so that they will
   /// be up to date with data_range.
   UpdateRange();
@@ -3336,3 +3335,4 @@ Vf_GeneralMesh3f::Vf_GeneralMesh3f
 
 #undef MEMBERNAME
 }
+

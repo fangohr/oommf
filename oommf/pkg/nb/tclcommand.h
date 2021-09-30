@@ -142,7 +142,7 @@ public:
   void GetResultListItem(int index,OC_INT4m& result) const;
   void GetResultListItem(int index,OC_UINT4m& result) const;
   void GetResultListItem(int index,OC_REAL8m& result) const;
-#if !OC_REAL8m_IS_REAL8
+#if !OC_REAL8m_IS_OC_REAL8
   void GetResultListItem(int index,OC_REAL8& result) const;
 #elif !OC_REAL8m_IS_DOUBLE
   void GetResultListItem(int index,double& result) const;
@@ -198,9 +198,9 @@ public:
 OC_BOOL operator<(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
 OC_BOOL operator>(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
 OC_BOOL operator==(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
-OC_BOOL operator<(const Tcl_SavedResult&, const Tcl_SavedResult&);
-OC_BOOL operator>(const Tcl_SavedResult&, const Tcl_SavedResult&);
-OC_BOOL operator==(const Tcl_SavedResult&, const Tcl_SavedResult&);
+//OC_BOOL operator<(const Tcl_SavedResult&, const Tcl_SavedResult&);
+//OC_BOOL operator>(const Tcl_SavedResult&, const Tcl_SavedResult&);
+//OC_BOOL operator==(const Tcl_SavedResult&, const Tcl_SavedResult&);
 
 int Nb_ParseTclCommandLineRequest
 (const char* exception_prefix,

@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 
-<!--Converted with LaTeX2HTML 2012 (1.2)
-original version by:  Nikos Drakos, CBLU, University of Leeds
-* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
-* with significant contributions from:
-  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
 <HTML>
 <HEAD>
 <TITLE>The OVF 0.0 format</TITLE>
@@ -13,7 +9,7 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <META NAME="resource-type" CONTENT="document">
 <META NAME="distribution" CONTENT="global">
 
-<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
 <META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
@@ -27,27 +23,27 @@ original version by:  Nikos Drakos, CBLU, University of Leeds
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html980"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html997"
   HREF="OVF_1.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html976"
+<A NAME="tex2html993"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html970"
+<A NAME="tex2html987"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html982"
+<A NAME="tex2html999"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html978"
+<A NAME="tex2html995"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html981"
+<B> Next:</B> <A NAME="tex2html998"
   HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
-<B> Up:</B> <A NAME="tex2html977"
+<B> Up:</B> <A NAME="tex2html994"
   HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
-<B> Previous:</B> <A NAME="tex2html971"
+<B> Previous:</B> <A NAME="tex2html988"
   HREF="Vector_Field_File_Format_OV.html">Vector Field File Format</A>
 <BR>
 <BR>
@@ -59,21 +55,21 @@ The OVF 0.0 format
 </H2>
 
 <P>
-The OVF 0.0 format<A NAME="21157"></A> is a simple ASCII text
+The OVF 0.0 format<A NAME="21337"></A> is a simple ASCII text
 format supporting irregularly sampled data.  It is intended as an aid
 for importing data from non-OOMMF programs, and is backwards
 compatible with the format used for problem submissions for the
-<A NAME="tex2html21"
-  HREF="http://www.ctcms.nist.gov/~rdm/stdprob_1.html">first muMAG standard
+<A NAME="tex2html24"
+  HREF="https://www.ctcms.nist.gov/~rdm/stdprob_1.html">first muMAG standard
 problem</A>.
 
 <P>
 Users of early releases of OOMMF may recognize the OVF 0.0 format
-by its previous name, the Simple Vector Field (SVF)<A NAME="21162"></A>
+by its previous name, the Simple Vector Field (SVF)<A NAME="21342"></A>
 format.  It came to the attention of the OOMMF developers that the
 file extension <TT><B>.svf</B></TT> was already registered in several MIME systems
 to indicate the
-<A NAME="tex2html22"
+<A NAME="tex2html25"
   HREF="http://www.softsource.com/svf/">Simple Vector Format</A>,
 a vector graphics format.  To avoid conflict, we have stopped using
 the name Simple Vector Field format, although OOMMF software still
@@ -83,32 +79,8 @@ files and other references to the SVF format.
 <P>
 A sample OVF 0.0 file is shown <A HREF="#fig:svfsample">below</A>.  Any line beginning with a `<TT>#</TT>' character is
 a comment, all others are data lines.  Each data line is a whitespace
-separated list of 6 elements: the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- components of a
-node position, followed by the <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- components of the
+separated list of 6 elements: the <B><I>x</I></B>, <B><I>y</I></B> and <B><I>z</I></B> components of a
+node position, followed by the <B><I>x</I></B>, <B><I>y</I></B> and <B><I>z</I></B> components of the
 field at that position.  Input continues until the end of the file is
 reached.
 
@@ -127,26 +99,10 @@ This will aid automatic file type detection.  Also, three special
 All these lines are optional.  The ``File'' provides a preferred
 (possibly extended) filename to use for display identification.  The
 ``Boundary-XY'' line specifies the ordered vertices of a bounding
-polygon in the <B><I>xy</I></B>
-<!-- MATHEND
- 
- -->
--plane.  If given, <B>mmDisp</B> will draw a frame
+polygon in the <B><I>xy</I></B>-plane.  If given, <B>mmDisp</B> will draw a frame
 using those points to ostensibly indicate the edges of the simulation
 body.  Lastly, the ``Grid step'' line provides three values
-representing the average <B><I>x</I></B>
-<!-- MATHEND
- 
- -->
-, <B><I>y</I></B>
-<!-- MATHEND
- 
- -->
- and <B><I>z</I></B>
-<!-- MATHEND
- 
- -->
- dimensions of the volume
+representing the average <B><I>x</I></B>, <B><I>y</I></B> and <B><I>z</I></B> dimensions of the volume
 corresponding to an individual node (field sample).  It is used by
 <B>mmDisp</B> to help scale the display.
 
@@ -193,23 +149,23 @@ Figure 11:
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
-  HREF="http://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html980"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html997"
   HREF="OVF_1.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html976"
+<A NAME="tex2html993"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html970"
+<A NAME="tex2html987"
   HREF="Vector_Field_File_Format_OV.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html983"
+<A NAME="tex2html1000"
   HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html978"
+<A NAME="tex2html995"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2019</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
 </BODY>
 </HTML>

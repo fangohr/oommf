@@ -24,7 +24,7 @@ Before making a report to the \OOMMF\ developers, please check the
 following list of fixes for known problems.  Additional problems
 discovered after release will be posted to version specific ``patch''
 pages at the
-\htmladdnormallink{\OOMMF\ web site.}{http://math.nist.gov/oommf/}
+\htmladdnormallink{\OOMMF\ web site.}{https://math.nist.gov/oommf/}
 \begin{enumerate}
 \item When
 \hyperrefhtml{compiling}{compiling
@@ -237,6 +237,22 @@ Are you using \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
 long-running simulation?  All data sent to \app{mmGraph} is kept in
 memory by default.  See the \app{mmGraph} documentation for information
 on how to manage this problem.
+
+\item When running many \OOMMF\ applications, some of them become
+  non-responsive.
+
+Operating systems place an upper limit on the number of files a process
+may have open at one time. The number varies, but the default count is
+usually a few hundred to perhaps a few thousand. \OOMMF\ applications
+communicate with one another across localhost sockets. Each socket
+connection counts as an open file, so if you are running hundreds of
+\OOMMF\ applications under one account you may hit this limit. You can
+explore increasing the open file limit (e.g., on Linux and macOS see the
+\cd{-n} option to \cd{ulimit}), but a more robust solution is to
+divide your collection of \OOMMF\ jobs into several smaller independent
+groups and run each group under separate host + account servers with
+the \hyperrefhtml{\app{launchhost}}{\app{launchhost}
+  (Sec.~}{)}{sec:launchhost} utility.
 
 \end{enumerate}
 

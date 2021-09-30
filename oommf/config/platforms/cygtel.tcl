@@ -534,55 +534,7 @@ if {[catch {$config GetValue TCL_RANLIB} ranlib]
 }
 unset ranlib
 
-# If we are building with a Windows build of Tcl/Tk, then tclConfig.sh
-# and tkConfig.sh probably won't be available.  First try "Visual C"
-# names for Tcl/Tk libraries.  If that doesn't work, then try unix
-# naming convention, which should pick up MinGW builds of Tcl/Tk.
-if {[regexp -nocase -- windows $tcl_platform(platform)]} {
-   set tcllib {}
-   if {![catch {$config GetValue TCL_VC_LIB_SPEC} tcllib]} {
-      if {![file exists $tcllib]} {
-         set path [file dirname $tcllib]
-         set fname [file tail $tcllib]
-         regsub {\..*$} $fname {} fname
-         set tcllib [file join $path lib${fname}.a]
-         if {![file exists $tcllib]} {
-            set tcllib {}
-         }
-      }
-   }
-   if {[string match {} $tcllib]} {
-      set tcllib [list -L[file join [$config GetValue TCL_EXEC_PREFIX] lib] \
-                     -ltcl[$config GetValue TCL_MAJOR_VERSION][$config \
-                     GetValue TCL_MINOR_VERSION]]
-   }
-   if {[file exists $tcllib]} {
-      $config SetValue TCL_LIB_SPEC $tcllib
-   }
-   unset tcllib
-
-   set tklib {}
-   if {![catch {$config GetValue TK_VC_LIB_SPEC} tklib]} {
-      if {![file exists $tklib]} {
-         set path [file dirname $tklib]
-         set fname [file tail $tklib]
-         regsub {\..*$} $fname {} fname
-         set tklib [file join $path lib${fname}.a]
-         if {![file exists $tklib]} {
-            set tklib {}
-         }
-      }
-   }
-   if {[string match {} $tklib]} {
-      set tklib [list -L[file join [$config GetValue TK_EXEC_PREFIX] lib] \
-                     -ltcl[$config GetValue TK_MAJOR_VERSION][$config \
-                     GetValue TK_MINOR_VERSION]]
-   }
-   if {[file exists $tklib]} {
-      $config SetValue TK_LIB_SPEC $tklib
-   }
-   unset tklib
-} else {
+if {![regexp -nocase -- windows $tcl_platform(platform)]} {
    # Extra libraries needed on link line.  Why are these missing?
    if {[catch {$config GetValue TK_LIB_SPEC} tklib]} {
       set tklib {}

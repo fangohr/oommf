@@ -77,7 +77,6 @@ Specify Oxs_UZeeman [subst {
 Specify Oxs_CGEvolve:evolve {}
 
 Specify Oxs_MinDriver {
- basename stdprob1
  evolver :evolve
  stopping_mxHxm 0.01
  mesh :mesh1

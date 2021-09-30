@@ -79,7 +79,7 @@ public:
   Xp_DoubleDouble(OC_UINT4 ix) : a(ix) {}
   Xp_DoubleDouble(OC_INT8 ix)  : a(ix) {}
   Xp_DoubleDouble(OC_UINT8 ix) : a(ix) {}
-#if !defined(OC_LONG_IS_INT4) && !defined(OC_LONG_IS_INT8)
+#if !defined(OC_INT4_IS_LONG) && !defined(OC_INT8_IS_LONG)
   // On some platforms OC_INT4 will be int and OC_INT8 will be long long
   // or int64, in which case the above don't define a constructor for long.
   Xp_DoubleDouble(long ix) : a(ix) {}

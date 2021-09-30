@@ -281,10 +281,8 @@ rename GetGccCpuOptFlags GetGccCpuOptFlagsX86
 proc GetGccCpuOptFlags { gcc_version cpu_arch } {
    if {![string match "ppc" [string tolower [lindex $cpu_arch 0]]]} {
       set opts [GetGccCpuOptFlagsX86 $gcc_version $cpu_arch]
-      if {[lsearch -exact $opts "-fast"]<0} {
-         set opts [linsert $opts 0 -fast]
-         ## -fast is an Apple specific option
-      }
+      # Some old Apple versions of gcc had a -fast option,
+      # but that has been superseded by gcc-standard -Ofast.
    } else {
       # Otherwise, PowerPC CPU
       set cputype [lindex $cpu_arch 1]
@@ -294,7 +292,7 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
          # Processor specific optimization
          if {[string match 7?? $cputype]} {
             # G3; use default opts string
-         } elseif {[string match 9?? $cputype]} { 
+         } elseif {[string match 9?? $cputype]} {
             # G5
             if {[string match {} $opts]} {
                set opts -fast

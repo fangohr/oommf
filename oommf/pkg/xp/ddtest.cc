@@ -1480,7 +1480,10 @@ int wrapped_main(int argc,char** argv)
   // Pull options out of command line
   for(int i=1;i<argc;++i) {
     int eat_count=0;
-    if(strcmp("-q",argv[i])==0 || strcmp("-quiet",argv[i])==0) {
+    if(strcmp("--version",argv[i])==0) {
+      cout << "ddtest version 1.0\n";
+      return 0;
+    } else if(strcmp("-q",argv[i])==0 || strcmp("-quiet",argv[i])==0) {
       // Quiet request (used for timing)
       quiet=1;
       eat_count=1;
@@ -2006,7 +2009,7 @@ int wrapped_main(int argc,char** argv)
 // routine calls inherit the FPU control word.
 int Oc_AppMain(int argc,char** argv)
 {
-  // Disable flush to zero 
+  // Disable flush to zero
   Oc_FpuControlData fpctrl;  fpctrl.ReadData();
   Oc_FpuControlData::SetNoFlushToZero();
 

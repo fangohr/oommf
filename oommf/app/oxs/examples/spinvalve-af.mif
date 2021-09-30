@@ -69,14 +69,14 @@ Specify Oxs_TwoSurfaceExchange:AF {
         region  bottom
    scalarfield  :zheight
    scalarvalue  3e-9
-    scalarside  -
+    scalarside  <=
  }
  surface2 {
          atlas  :atlas
         region  top
    scalarfield  :zheight
    scalarvalue  6e-9
-    scalarside  +
+    scalarside  >=
  }
 }
 

@@ -37,6 +37,8 @@ Oxs_ScriptUZeeman::Oxs_ScriptUZeeman(
   command_options.push_back(Nb_TclCommandLineOption("stage",1));
   command_options.push_back(Nb_TclCommandLineOption("stage_time",1));
   command_options.push_back(Nb_TclCommandLineOption("total_time",1));
+  command_options.push_back(Nb_TclCommandLineOption("base_state_id",1));
+  command_options.push_back(Nb_TclCommandLineOption("current_state_id",1));
   String runscript = GetStringInitValue("script");
 
   hscale = GetRealInitValue("multiplier",1.0);
@@ -110,6 +112,13 @@ Oxs_ScriptUZeeman::GetAppliedField
   if((index = command_options[2].position)>=0) { // total_time
     cmd.SetCommandArg(index,
 		      state.stage_start_time+state.stage_elapsed_time);
+  }
+  if((index = command_options[3].position)>=0) { // base_state_id
+    const Oxs_SimState* base_state = director->FindBaseStepState(&state);
+    cmd.SetCommandArg(index,base_state->Id());
+  }
+  if((index = command_options[4].position)>=0) { // current_state_id
+    cmd.SetCommandArg(index,state.Id());
   }
 
   cmd.Eval();

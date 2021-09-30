@@ -380,10 +380,17 @@ Oc_Class PlotConfigure {
 
         # Canvas color
         label $cf.cclab -text "Canvas color:"
+        if {[Ow_GetShade $psc(canvas_color)]<128} {
+           # Dialog only supports two colors, white and dark green.
+           # Normalize input color to one or the other.
+           set psc(canvas_color) #004020  ;# dark green
+        } else {
+           set psc(canvas_color) #FFFFFF  ;# white
+        }
         radiobutton $cf.ccb1 -text "white" \
-           -value "white" -variable ${gpsc}(canvas_color)
+           -value "#FFFFFF" -variable ${gpsc}(canvas_color)
         radiobutton $cf.ccb2 -text "dark green" \
-           -value "#042" -variable ${gpsc}(canvas_color)
+           -value "#004020" -variable ${gpsc}(canvas_color)
         grid configure $cf.cclab -row 0 -sticky e
         grid configure x $cf.ccb1 $cf.ccb2 -row 0 -sticky w
 
@@ -451,11 +458,11 @@ Oc_Class PlotConfigure {
         # Control buttons
 	set ctrlframe [frame $winpath.ctrlframe]
 
-        set close [button $ctrlframe.close -text "Close" \
+        set close [ttk::button $ctrlframe.close -text "Close" \
                 -command "$this Action close" ]
-        set apply [button $ctrlframe.apply -text "Apply" \
+        set apply [ttk::button $ctrlframe.apply -text "Apply" \
                 -command "$this Action apply" ]
-        set ok [button $ctrlframe.ok -text "OK" \
+        set ok [ttk::button $ctrlframe.ok -text "OK" \
                 -command "$this Action ok" ]
         pack $close $apply $ok -side left -expand 1 -padx 20
 
