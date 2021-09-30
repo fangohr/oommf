@@ -328,7 +328,7 @@ A recommendation is to:
 - iterate through steps 1 and 2 until everything works automatically. You can
   use ``make -f Makefile-update-oommf clean`` to remove all downloaded and
   extracted files before starting over.
-- then run `make build` to build the new OOMMF and `make test-all` to run
+- then run ``make build`` to build the new OOMMF and ``make test-all`` to run
   standard problem 3 and 4 as a smoke test. Iterate 1 and 2 until the tests pass.
 
 3. At that point, the modifications to ``Makefile-update-oommf`` should be
