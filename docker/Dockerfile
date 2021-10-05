@@ -6,8 +6,9 @@ FROM ubuntu:21.04
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get -y update
-RUN apt-get install -y git tk-dev tcl-dev
+RUN apt-get -y update && \
+    apt-get install -y git tk-dev tcl-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # OOMMF cannot be built as root user.
 RUN adduser oommfuser
