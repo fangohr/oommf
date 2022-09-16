@@ -1,6 +1,6 @@
 # Container to host compilation of OOMMF in
 
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive
