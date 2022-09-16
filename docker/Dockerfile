@@ -1,7 +1,7 @@
 # Container to host OOMMF
 #
 # Takes the most recent version on https://github.com/fangohr/oommf.git
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 
 # Avoid asking for geographic data when installing tzdata.
 ENV DEBIAN_FRONTEND noninteractive
