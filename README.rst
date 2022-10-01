@@ -346,11 +346,15 @@ Once this is done, one can
 5. commit all of the retrieved (and newly created ``zip`` and ``log``) files to
    this repository
 
-4. make a new release for this repository (for example using Github GUI)
+6. make a new release for this repository (for example using Github GUI)
  
-5. if desired, push a new docker image to docker hub (see `docker/Makefile <docker/Makefile>`__)
+7. if desired, push a new docker image to docker hub (see `docker/Makefile
+   <docker/Makefile>`__). Note that the current `docker/Dockerfile
+   <docker/Dockerfile>`__ uses the OOMMF version on the master branch of this
+   repository: if a new OOMMF version is added through a pull request, this
+   needs to be merged before the Dockerhub image is built.
 
-6. if desired, update other packaging systems providing OOMMF (for example
+8. if desired, update other packaging systems providing OOMMF (for example
    `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__,
    `spack <http://github.com/fangohr/oommf-in-spack>`__)
 
