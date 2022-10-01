@@ -62,13 +62,13 @@ MakeRule Define {
     -script		{Platform Link -obj varinfo -sub CONSOLE \
 			-[[Oc_Config RunPlatform] GetValue platform_name] \
 			{-lm} -out varinfo
-			} 
+			}
 }
 } else {
 MakeRule Define {
     -targets		[Platform Executables varinfo]
     -dependencies	[Platform Objects varinfo]
-    -script		{Platform Link -obj varinfo -sub CONSOLE -out varinfo} 
+    -script		{Platform Link -obj varinfo -sub CONSOLE -out varinfo}
 }
 }
 unset acceptslm
@@ -79,7 +79,7 @@ MakeRule Define {
 			        [[CSourceFile New _ varinfo.cc] Dependencies]]
    -script		[subst -nocommands {Platform Compile C++ -opt 1 \
 			        -inc [[CSourceFile New _ varinfo.cc] DepPath] \
-			        -out varinfo -src varinfo.cc 
+			        -out varinfo -src varinfo.cc
                          }]
 }
 
@@ -104,7 +104,7 @@ MakeRule Define {
     -script		[format {
 			    eval file delete [Platform StaticLibrary oc]
 			    Platform MakeLibrary -out oc -obj {%s}
-			    Platform IndexLibrary oc 
+			    Platform IndexLibrary oc
 			} $ocObjects]
 }
 
@@ -124,7 +124,7 @@ MakeRule Define {
 # to see if there is a MakeRule for it.  To do that it must source
 # this file.  That causes the MakeRule immediately above to be
 # evaluated, and dependencies of autobuf.cc are sought.  They include
-# oc.h, which is what leads us to ocport.h in the first place.  
+# oc.h, which is what leads us to ocport.h in the first place.
 # The Dependencies check regards this as a circular dependency and fails.
 # The workaround is to avoid the CSourceFile Dependencies call where a
 # circular dependency occurs, and to instead directly insert all the
@@ -258,12 +258,12 @@ MakeRule Define {
 			 DeleteFiles [Platform Executables varinfo]
 			 DeleteFiles [Platform Name]}
 }
- 
+
 MakeRule Define {
     -targets            clean
     -dependencies       mostlyclean
 }
- 
+
 MakeRule Define {
     -targets            mostlyclean
     -dependencies       objclean
@@ -271,7 +271,7 @@ MakeRule Define {
 			 DeleteFiles tclIndex
 			}
 }
- 
+
 MakeRule Define {
     -targets            objclean
     -dependencies       {}

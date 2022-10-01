@@ -12,7 +12,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -160,7 +160,7 @@ if {[Oc_NumaAvailable]} {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
       global numanode_request cmdline_numanodes
-      set cmdline_numanodes [set numanode_request $nodes]
+      set cmdline_numanodes [set numanode_request [string trim $nodes]]
       # The cmdline_numanodes variable is used to detect the situation
       # where numanodes are set on the command line by an abbreviated
       # form of the option string, such as "-numa" instead of
@@ -211,6 +211,7 @@ proc SetupThreads {} {
 
    if {[Oc_HaveThreads] && [Oc_NumaAvailable]} {
       global numanode_request
+      set numanode_request [string trim $numanode_request]
       if {[string match auto $numanode_request]} {
          set nodes {}
       } elseif {[string match none $numanode_request]} {
@@ -622,7 +623,7 @@ proc LoadCallback { widget actionid args } {
              [Oc_EnforceThreadLimit [expr $loadopt_threadcount]]
        }
        if {[info exists loadopt_numanodes]} {
-          set numanode_request $loadopt_numanodes
+          set numanode_request [string trim $loadopt_numanodes]
        }
        set MIF_params [$loadopt_params_widget ReadEntryString]
        set problem [$widget GetFilename] ;# NOTE: Variable "problem"
@@ -999,6 +1000,11 @@ if {$loglevel>0} {
 if {$loglevel>1} {
    # Dump status messages too
    Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+}
+
+if {[catch {Oc_AddCLogFile $logfile} errmsg]} { ;# For C++-level logging
+   Oc_Log Log $errmsg panic
+   exit
 }
 
 ##########################################################################

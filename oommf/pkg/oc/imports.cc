@@ -8,9 +8,9 @@
  */
 
 /* Standard libraries */
-#include <string.h>
-#include <errno.h>
-#include <float.h>
+#include <cstring>
+#include <cerrno>
+#include <cfloat>
 #include <limits>  // For std::numeric_limits<T>::max()/min()
 
 /* Other classes and functions in this extension.  In particular,

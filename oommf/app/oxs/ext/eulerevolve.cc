@@ -4,7 +4,7 @@
  *
  */
 
-#include <float.h>
+#include <cfloat>
 
 #include "nb.h"
 #include "director.h"

@@ -220,7 +220,8 @@ Oc_Class Net_Link {
     # is ready
     method ConfigureSocket {} {
         Oc_EventHandler DeleteGroup $this-ConfigureSocket
-        fconfigure $socket -blocking 0 -buffering line -translation {auto crlf}
+        fconfigure $socket -blocking 0 -buffering line \
+                           -translation {auto crlf} -encoding utf-8
         fileevent $socket readable [list $this Receive]
         Oc_Log Log "$this: Connected to $hostname:$port" status $class
         Oc_EventHandler Generate $this Ready
@@ -305,9 +306,12 @@ Oc_Class Net_Link {
     method Put { msg } {write_disabled socket} {
         if {$write_disabled} { return }
 
-        # Escape the newlines in the string -- a mini version of
-        # 'Oc_Url Escape'
+        # The socket message read routine is line buffered, and expects
+        # each line to be a complete message. Newlines and carriage
+        # returns in the string interfere with this, so escape them.
+        # This is a a mini version of 'Oc_Url Escape'.
         regsub -all % $msg %25 msg
+        regsub -all "\r" $msg %0d msg
         regsub -all "\n" $msg %0a msg
 
         Oc_EventHandler Generate $this Write -line $msg

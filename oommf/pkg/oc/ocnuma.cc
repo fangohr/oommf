@@ -12,8 +12,8 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <errno.h>
+#include <cassert>
+#include <cerrno>
 
 #include "ocexcept.h"
 #include "ocnuma.h"

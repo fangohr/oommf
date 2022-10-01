@@ -24,35 +24,33 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html347"
+<A NAME="tex2html523"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html343"
+<A NAME="tex2html519"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html337"
+<A NAME="tex2html513"
   HREF="OOMMF_eXtensible_Solver_Int.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html349"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html345"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html521"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html348"
+<B> Next:</B> <A NAME="tex2html524"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
-<B> Up:</B> <A NAME="tex2html344"
+<B> Up:</B> <A NAME="tex2html520"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
-<B> Previous:</B> <A NAME="tex2html338"
+<B> Previous:</B> <A NAME="tex2html514"
   HREF="OOMMF_eXtensible_Solver_Int.html">OOMMF eXtensible Solver Interactive</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION00082000000000000000"></A><A NAME="sec:boxsi"></A>
+<H1><A NAME="SECTION00820000000000000000"></A><A NAME="sec:boxsi"></A>
 <BR>
 OOMMF eXtensible Solver Batch Interface: boxsi
-</H2><A NAME="4039"></A><A NAME="4040"></A>
+</H1><A NAME="4338"></A><A NAME="4339"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -63,7 +61,7 @@ OOMMF eXtensible Solver Batch Interface: boxsi
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Overview</B></FONT>
+<FONT SIZE="+1"><B>Overview</B></FONT>
 <BR>
 The application <B>Boxsi</B> provides a batch mode interface to the Oxs
 micromagnetic computation engine.  A restricted graphical interface is
@@ -77,7 +75,7 @@ application. It is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Boxsi</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="4058"><B>mmLaunch</B></A>.  It is through
+ NAME="4357"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Boxsi</B>.
 
@@ -91,7 +89,7 @@ converted to the MIF&nbsp;2 format by an automatic call to
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Launching</B></FONT>
+<FONT SIZE="+1"><B>Launching</B></FONT>
 <BR><B>Boxsi</B> must be started from the command line.  The syntax is
 <PRE>
 tclsh oommf.tcl boxsi [standard options] [-exitondone &lt;0|1&gt;] [-kill tags] \
@@ -111,7 +109,7 @@ where
 <DD>On termination, sends requests to other applications to
   shutdown too.  The <I>tags</I> argument should be either
   a list of destination tags (which are declared by
-  <A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT> commands</A>) from the input MIF   file, or else the keyword <TT>all</TT>, which is interpreted to mean all
+  <A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT> commands</A>) from the input MIF   file, or else the keyword <TT>all</TT>, which is interpreted to mean all
   the destination tags.
 </DD>
 <DT><STRONG><TT><B>-logfile logname</B></TT></STRONG></DT>
@@ -136,32 +134,30 @@ where
   this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4093"></A>
-  <A NAME="4094"></A>
-  This option is available on
-  <A HREF="Advanced_Installation.html#sec:parallel">NUMA-aware</A> builds of
-  Oxs.  The <I>nodes</I> parameter must be either a comma separated
-  list of 0-based node numbers, the keyword ``auto'', or the keyword
-  ``none''.  In the first case, the numbers refer to memory nodes.
-  These must be passed on the command line as a single parameter, so
-  either insure there are no spaces in the list, or else protect the
-  spaces with outlying quotes.  For example, <TT>-numanodes 2,4,6</TT> or
-  <TT>-numanodes "2, 4, 6"</TT>.  Threads are assigned to the nodes in
-  order, in round-robin fashion.  The user can either assign all the
-  system nodes to the <B>Boxsi</B> process, or may restrict <B>Boxsi</B>
-  to run on a subset of the nodes.  In this way the user may reserve
-  specific processing cores for other processes (or other instances of
-  <B>Boxsi</B>).  Although it varies by system, typically there are
-  multiple processing cores associated with each memory node.  If the
-  keyword ``auto'' is selected, then the threads are assigned to a
-  fixed node sequence that spans the entire list of memory nodes.  If
-  the keyword ``none'' is selected, then threads are not tied to nodes
-  by <B>Boxsi</B>, but are instead assigned by the operating system.
-  In this last case, over time the operating system is free to move
-  the threads among processors.  In the other two cases, each thread
-  is tied to a particular node for the lifetime of the <B>Boxsi</B>
-  instance.  See also the discussion on <A HREF="#html:threadconsider">threading
-  considerations</A> below.
+<DD><A NAME="4392"></A>
+  <A NAME="4393"></A>
+  This option is available on <A HREF="Parallelization.html#sec:install.parallel">NUMA-aware</A> builds of Oxs.  The <I>nodes</I>
+  parameter must be either a comma separated list of 0-based node
+  numbers, the keyword ``auto'', or the keyword ``none''.  In the first
+  case, the numbers refer to memory nodes.  These must be passed on the
+  command line as a single parameter, so either insure there are no
+  spaces in the list, or else protect the spaces with outlying quotes.
+  For example, <TT>-numanodes 2,4,6</TT> or <TT>-numanodes "2, 4, 6"</TT>.
+  Threads are assigned to the nodes in order, in round-robin fashion.
+  The user can either assign all the system nodes to the <B>Boxsi</B>
+  process, or may restrict <B>Boxsi</B> to run on a subset of the nodes.
+  In this way the user may reserve specific processing cores for other
+  processes (or other instances of <B>Boxsi</B>).  Although it varies by
+  system, typically there are multiple processing cores associated with
+  each memory node.  If the keyword ``auto'' is selected, then the
+  threads are assigned to a fixed node sequence that spans the entire
+  list of memory nodes.  If the keyword ``none'' is selected, then
+  threads are not tied to nodes by <B>Boxsi</B>, but are instead assigned
+  by the operating system.  In this last case, over time the operating
+  system is free to move the threads among processors.  In the other two
+  cases, each thread is tied to a particular node for the lifetime of
+  the <B>Boxsi</B> instance.  See also the discussion
+  on <A HREF="#html:threadconsider">threading considerations</A> below.
 
 <P>
 The default value for <I>nodes</I> is ``none'', which allows the
@@ -183,14 +179,14 @@ The default behavior is modified (in increasing order of priority) by the
   <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
   file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
   or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4123"></A>.  The
-  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4125"></A>
+  <TT>OOMMF_NUMANODES</TT><A NAME="4422"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4424"></A>
 </DD>
 <DT><STRONG><TT><B>-outdir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where output files are written by
   <B>mmArchive</B>.  This option is useful when the default output
   directory is inaccessible or slow. The environment variable
-  <TT>OOMMF_OUTDIR</TT><A NAME="4129"></A> sets the
+  <TT>OOMMF_OUTDIR</TT><A NAME="4428"></A> sets the
   default output directory.  If <TT>OOMMF_OUTDIR</TT> is set to the empty
   string, or not set at all, then the default is the directory holding
   the MIF file.
@@ -200,7 +196,7 @@ The default behavior is modified (in increasing order of priority) by the
   parameters.  The <I>params</I> argument should be a list with an
   even number of arguments, corresponding to name + value pairs.  Each
   ``name'' must appear in a
-  <A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A>
+  <A HREF="MIF_2.1_Extension_Commands.html#html:mif2parameter"><TT>Parameter</TT></A>
   statement in the input
   MIF file.  The entire name + value list must be quoted so it is
   presented to <B>Boxsi</B> as a single item on the command line.  For
@@ -219,18 +215,18 @@ The default behavior is modified (in increasing order of priority) by the
   automatically move into ``Run'' mode once the problem is loaded.
 </DD>
 <DT><STRONG><TT><B>-regression_test flag</B></TT></STRONG></DT>
-<DD>This option is used internally by the 
+<DD>This option is used internally by the
   <A HREF="Oxs_regression_tests_oxsreg.html#sec:oxsregression"><B>oxsregression</B></A>
   command line utility to run regression tests.  Default value is 0 (no
   test).
 </DD>
 <DT><STRONG><TT><B>-regression_testname basename</B></TT></STRONG></DT>
-<DD>This option is used internally by the 
+<DD>This option is used internally by the
   <A HREF="Oxs_regression_tests_oxsreg.html#sec:oxsregression"><B>oxsregression</B></A>
   command line utility to control temporary file names during regression
   testing.
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="7009"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1|2<TT><B>&gt;</B></TT><A NAME="7750"></A></B></TT></STRONG></DT>
 <DD>If the restart option is 0 (the default), then the problem loads and
   runs from the beginning.  If set to 1, then when loading the problem a
   check is made for a pre-existing restart (checkpoint) file.  If one is
@@ -238,17 +234,16 @@ The default behavior is modified (in increasing order of priority) by the
   no checkpoint file is found, then an error is raised.  If the restart
   option is set to 2, then a checkpoint file is used if one can be
   found, but if not then the problem loads and runs from the beginning
-  without raising an error.
-  
-  See the Oxs_Driver documentation for information on
-  <A HREF="Standard_Oxs_Ext_Child_Clas.html#html:oxsdrivercheckpoint">checkpoint files.</A>
+  without raising an error.  See the Oxs_Driver
+  documentation for information on
+  <A HREF="Drivers.html#PToxsdrivercheckpoint">checkpoint files</A>.
 </DD>
 <DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where restart files are written.
   The default is determined by the environment variable
-  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4165"></A>,
+  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4465"></A>,
   or if this is not set then by
-  <TT>OOMMF_OUTDIR</TT><A NAME="4167"></A>.  If
+  <TT>OOMMF_OUTDIR</TT><A NAME="4467"></A>.  If
   neither environment variable is set then the default is the
   directory holding the MIF file.  Write access is required to the
   restart file directory.  Also, you may want to consider whether the
@@ -256,40 +251,39 @@ The default behavior is modified (in increasing order of priority) by the
   network mount.
 </DD>
 <DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4169"></A>
-  The option is available on
-  <A HREF="Advanced_Installation.html#sec:parallel">threaded</A> builds of Oxs.
-  The <I>count</I> parameter is the number of threads to run.  The
-  default count value is set by the <TT>oommf_thread_count</TT> value in
+<DD><A NAME="4469"></A>
+  The option is available on <A HREF="Parallelization.html#sec:install.parallel">threaded</A> builds of Oxs.  The <I>count</I>
+  parameter is the number of threads to run.  The default count value is
+  set by the <TT>oommf_thread_count</TT> value in
   the <TT><B>config/platforms/</B></TT> file for your platform, but may be
-  overridden by the
-  <TT>OOMMF_THREADS</TT><A NAME="4178"></A>
-  environment variable or this
-  command line option.  In most cases the default count value will
-  equal the number of processing cores on the system; this can be
-  checked via the command <TT>tclsh oommf.tcl +platform</TT>.
+  overridden by
+  the <TT>OOMMF_THREADS</TT><A NAME="4478"></A>
+  environment variable or this command line option.  In most cases the
+  default count value will equal the number of processing cores on the
+  system; this can be checked via the command <TT>tclsh oommf.tcl
+  +platform</TT>.
 </DD>
 <DT><STRONG><TT><B>miffile</B></TT></STRONG></DT>
 <DD>Load and solve the problem found in <EM>miffile</EM>, which must be
-  either in the MIF&nbsp;2 format, or convertible to that format by 
+  either in the MIF&nbsp;2 format, or convertible to that format by
   <A HREF="mifconvert.html#sec:mifconvert"><B>mifconvert</B></A>.  Required.
 </DD>
 </DL>
 
 <P>
-Although <B>Boxsi</B><A NAME="4186"></A> cannot be
-launched by <B>mmLaunch</B><A NAME="4188"></A>, nonetheless
+Although <B>Boxsi</B><A NAME="4486"></A> cannot be
+launched by <B>mmLaunch</B><A NAME="4488"></A>, nonetheless
 a limited graphical interactive interface for <B>Boxsi</B> is provided
 through <B>mmLaunch</B>, in the same manner as is done for <B>Oxsii</B>.
 Each running instance of <B>Boxsi</B> is included in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4194"></A> list of <B>mmLaunch</B>, along with a
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4494"></A> list of <B>mmLaunch</B>, along with a
 checkbutton.  This button toggles the presence of a user interface
 window.
 
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Inputs</B></FONT>
+<FONT SIZE="+1"><B>Inputs</B></FONT>
 <BR><B>Boxsi</B> loads problem specifications directly from disk as
 requested on the command line.  The format for these files is
 the <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2</A> format,
@@ -306,7 +300,7 @@ the directory <TT>oommf/app/oxs/examples</TT>.
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Outputs</B></FONT>
+<FONT SIZE="+1"><B>Outputs</B></FONT>
 <BR>
 The lower panel of the <B>Boxsi</B> interactive interface presents
 Output, Destination, and Schedule sub-windows that display the current
@@ -317,8 +311,8 @@ user interface; refer to the
 The only difference between <B>Boxsi</B> and <B>Oxsii</B> with
 respect to outputs is that in practice <B>Boxsi</B> tends to rely
 primarily on
-<A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A> and
-<A HREF="MIF_2.1.html#html:scheduleCmd"><TT>Schedule</TT></A> commands in the input
+<A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT></A> and
+<A HREF="MIF_2.1_Extension_Commands.html#html:scheduleCmd"><TT>Schedule</TT></A> commands in the input
 MIF file
 to setup the output configuration.  The interactive output interface is
 used for incidental runtime monitoring of the job.
@@ -326,7 +320,7 @@ used for incidental runtime monitoring of the job.
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Controls</B></FONT>
+<FONT SIZE="+1"><B>Controls</B></FONT>
 <BR>
 The runtime controls provided by the <B>Boxsi</B> interactive interface
 are a restricted subset of those available in the <B>Oxsii</B> interface.
@@ -385,7 +379,7 @@ current stage number/maximum stage number.  Both stage numbers are
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Details</B></FONT>
+<FONT SIZE="+1"><B>Details</B></FONT>
 <BR>
 As with <B>Oxsii</B>, the simulation model construction is governed by
 the Specify blocks in the input MIF file, and all aspects of the
@@ -397,8 +391,8 @@ computational details.
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Threading considerations<A NAME="html:threadconsider"></A></B></FONT>
-<BR><A NAME="4262"></A><A NAME="4263"></A>
+<FONT SIZE="+1"><B>Threading considerations<A NAME="html:threadconsider"></A></B></FONT>
+<BR><A NAME="4562"></A><A NAME="4563"></A>
 As an example, suppose you are running on a four dual-core processor
 box, where each of the four processors is connected to a separate memory
 node.  In other words, there are eight cores in total, and each pair of
@@ -457,18 +451,18 @@ selecting nodes for the <TT>boxsi -numanodes</TT> option, but in
 practice the distance information reported by <TT>numactl</TT> is often not
 reliable.  For best results one should experiment with different
 settings, or run memory bandwidth tests with different node
-pairs.<A NAME="4286"></A><A NAME="4287"></A>
+pairs.<A NAME="4586"></A><A NAME="4587"></A>
 
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Batch Scheduling Systems</B></FONT>
+<FONT SIZE="+1"><B>Batch Scheduling Systems</B></FONT>
 <BR>
 OOMMF jobs submitted to a batch queuing system (e.g., Condor, PBS,
 NQS) can experience sporadic failures caused by interactions between
 separate OOMMF jobs running simultaneously on the same compute
 node.  These problems can be prevented by using the OOMMF command
-line utility<A NAME="4289"></A>
+line utility<A NAME="4589"></A>
 <A HREF="Launching_OOMMF_host_server.html#sec:launchhost"><B>launchhost</B></A>
 to isolate each job.
 
@@ -476,22 +470,20 @@ to isolate each job.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html347"
+<A NAME="tex2html523"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html343"
+<A NAME="tex2html519"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html337"
+<A NAME="tex2html513"
   HREF="OOMMF_eXtensible_Solver_Int.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html350"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html345"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html521"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

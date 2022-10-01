@@ -7,8 +7,8 @@
 #ifndef VECIO_H
 #define VECIO_H
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 /* End includes */
 

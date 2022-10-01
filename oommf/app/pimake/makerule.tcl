@@ -169,10 +169,22 @@ Oc_Class MakeRule {
         if {[info exists ruleWhichMakes($target)]} {
             return $ruleWhichMakes($target)
         } 
-        # There could be a rule for this target in another makerules file.
-        # We search for the file 'makerules.tcl' starting in the directory 
-        # of the target upward until we find such a rule or reach the root.
+        # There could be a rule for this target in another makerules
+        # file.  We search for the file 'makerules.tcl' starting in the
+        # directory of the target upward until
+        #  (1) We find a rule for the target
+        #  (2) We find a directory w/o a makerules.tcl file
+        #  (3) Sourcing makerules.tcl returns "continue"
+        #  (4) We reach the root of the file system
+        # The second option is meant to detect climbing past the start
+        # of the oommf install tree, but would also fail if target lies
+        # in the platform-specific directory that (usually) doesn't
+        # contain a makerules.tcl file. To allow for this we start up
+        # one level if the target directory doesn't have makerules.tcl.
         set dir [file dirname $target]
+        if {![file exists [file join $dir makerules.tcl]]} {
+            set dir [file dirname $dir]
+        }
         while {![info exists ruleWhichMakes($target)]
                  && [string compare $dir [file dirname $dir]]} {
             set rulesFile [file join $dir makerules.tcl]
@@ -185,9 +197,11 @@ Oc_Class MakeRule {
                 error $msg "$ei\n    (while finding rule for target\
                         '$target')" $errorCode
             }
-	    if {$msg == 0} {
-		break
-	    }
+            if {$msg == 0} {
+                # Either no makerules.tcl file in this directory,
+                # or else it returned "continue" when sourced.
+                break
+            }
             set dir [file dirname $dir]
         }
         # Check again to see if we now know a rule for the target.
@@ -223,7 +237,7 @@ Oc_Class MakeRule {
             global errorInfo errorCode
             foreach {ei ec} [list $errorInfo $errorCode] {}
             cd $savedir
-            if {$code == 1} {
+            if {$code == 1} { ;# error
                 incr numErrors
             } elseif {$code == 4} {	;# continue
                 set filesRead($rulesFile) 0

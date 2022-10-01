@@ -5,7 +5,7 @@
  *
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 
 #include "oc.h"

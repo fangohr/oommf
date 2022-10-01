@@ -1,11 +1,11 @@
-\section{OOMMF Launcher/Control Interface: mmLaunch}\label{sec:mmlaunch}
+\chapter{OOMMF Launcher/Control Interface: mmLaunch}\label{sec:mmlaunch}
 \index{application!mmLaunch}
 
 \begin{center}
 \includepic{mmlaunch-ss}{mmLaunch Screen Shot}
 \end{center}
 
-\ssechead{Overview}
+\starsechead{Overview}
 The application \app{mmLaunch} launches, monitors, and controls other 
 \OOMMF\ applications.  It is the \OOMMF\ application which is
 most closely connected to the account service directory and host
@@ -18,15 +18,15 @@ to any applications, notably
 (Sec.~}{)}{sec:mmsolve2d}, that do not have their own user interface
 window.
 
-\ssechead{Launching}
+\starsechead{Launching}
 \app{mmLaunch} should be launched using the \hyperrefhtml{bootstrap
-application}{bootstrap application (Sec.~}{)}{sec:cll}.  The command
+application}{bootstrap application (Ch.~}{)}{sec:cll}.  The command
 line is
 \begin{verbatim}
 tclsh oommf.tcl mmLaunch [standard options]
 \end{verbatim}
 
-\ssechead{Controls}
+\starsechead{Controls}
 \index{launch!with~mmLaunch|(}
 The \app{mmLaunch} interface consists of two columns. The
 \btn{Programs} column contains buttons labeled with the names of
@@ -55,11 +55,11 @@ checkbutton.  The checkbutton toggles the display of an interface
 which \app{mmLaunch} provides on behalf of that application.  The only
 \OOMMF\ applications currently using this service are the 3D solvers
 \hyperrefhtml{\app{Oxsii} and \app{Boxsi}}{\app{Oxsii} and \app{Boxsi}
-(Sec.~}{)}{sec:oxs}, the 2D solvers \hyperrefhtml{\app{mmSolve2D and
+(Ch.~}{)}{sec:oxs}, the 2D solvers \hyperrefhtml{\app{mmSolve2D and
 \app{batchsolve}}}{\app{mmSolve2D} and \app{batchsolve}
-(Sec.~}{)}{sec:mmsolve}, and the archive application
+(Ch.~}{)}{sec:mmsolve}, and the archive application
 \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
-(Sec.~}{)}{sec:mmarchive}.  These interfaces are described in the
+(Ch.~}{)}{sec:mmarchive}.  These interfaces are described in the
 documentation for the corresponding applications.
 \index{mmLaunch~user~interface|)}
 

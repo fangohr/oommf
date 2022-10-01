@@ -4,8 +4,8 @@
  *  initialization routines.
  */
 
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 
 #include "grid.h"  // Only needed for PERTURBATION_SIZE
 #include "magelt.h"

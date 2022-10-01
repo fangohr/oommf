@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Demag specification</TITLE>
+<META NAME="description" CONTENT="Demag specification">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Part_geometry.html">
+<LINK REL="previous" HREF="Material_parameters.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Part_geometry.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1117"
+  HREF="Part_geometry.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1113"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1107"
+  HREF="Material_parameters.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1115"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1118"
+  HREF="Part_geometry.html">Part geometry</A>
+<B> Up:</B> <A NAME="tex2html1114"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1108"
+  HREF="Material_parameters.html">Material parameters</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001812000000000000000"></A><A NAME="sec:mifdemagspec"></A>
+<BR>
+Demag specification
+</H2>
+
+<UL>
+<LI><B>Demag Type:</B> Specify algorithm and demagnetization kernel
+      used to calculate self-magnetostatic
+      (demagnetization<A NAME="21402"></A>) field.  Must be one of
+      
+<UL>
+<LI><B>ConstMag:</B> Calculates the <EM>average</EM> field in
+            each cell under the assumption that the magnetization is
+            constant in each cell, using formulae from [<A
+ HREF="bibliography.html#newell1993">23</A>].
+            (The other demag options calculate the field at the center
+            of each cell.)
+</LI>
+<LI><B>3dSlab:</B>  Calculate the in-plane field components
+            using offset blocks of constant (volume) charge.  Details
+            are given in [<A
+ HREF="bibliography.html#berkov1993">3</A>]. Field components parallel to
+            the <B><I>z</I></B>-axis are calculated using squares of constant
+            (surface) charge on the upper and lower surfaces of the
+            sample.
+</LI>
+<LI><B>3dCharge:</B> Calculate the in-plane field component
+            using rectangles of constant (surface) charge on each cell.
+            This is equivalent to assuming constant magnetization in
+            each cell.  The <B><I>z</I></B>-components of the field are calculated
+            in the same manner as for the 3dSlab approach.
+</LI>
+<LI><B>FastPipe:</B> Algorithm suitable for simulations that
+            have infinite extent in the <B><I>z</I></B>-direction.  This is a 2D
+            version of the 3dSlab algorithm.
+</LI>
+<LI><B>None:</B> No demagnetization.  Fastest but least
+            accurate method.  <code>:-}</code>    </LI>
+</UL>
+
+<P>
+All of these algorithms except FastPipe and None require that the
+    Part Thickness (cf. the <A HREF="Part_geometry.html#sec:partgeometry">Part Geometry</A>
+    section) be set.  Fast Fourier Transform (FFT)<A NAME="21415"></A> techniques
+    are used to accelerate the calculations.
+
+<P>
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1117"
+  HREF="Part_geometry.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1113"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1107"
+  HREF="Material_parameters.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1115"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

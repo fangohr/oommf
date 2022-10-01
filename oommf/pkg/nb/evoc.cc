@@ -14,14 +14,14 @@
 // in a round-about fashion by evoc.h
 #include "evoc.h"
 
-#include <string.h>
+#include <cstring>
 
 #if (OC_SYSTEM_TYPE == OC_UNIX)
 #include <sys/time.h>  // Some of these may be OS dependent...
 #include <sys/times.h>
 #endif // OC_SYSTEM_TYPE
 
-#include <time.h>
+#include <ctime>
 
 #include "errhandlers.h"
 

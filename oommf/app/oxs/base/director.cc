@@ -6,7 +6,7 @@
 
 #undef REPORT_CONSTRUCT_TIMES  // #define this to get timing report on stderr
 
-#include <stdio.h> // For some versions of g++ on Windows, if stdio.h is
+#include <cstdio> // For some versions of g++ on Windows, if stdio.h is
 /// #include'd after a C++-style header, then printf format modifiers
 /// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
 
@@ -679,7 +679,7 @@ int Oxs_Director::ProbInit(const char* filename,
 // The following file-local not_null function is used with find_if
 // on output_obj to determine if there are any registered output
 // objects.
-static bool not_null(const Oxs_Output* obj) { return obj!=NULL; }
+static bool not_null(const Oxs_Output* obj) { return obj!=nullptr; }
 
 void Oxs_Director::ForceRelease()
 { // Force problem release, without worrying about
@@ -1127,6 +1127,7 @@ void Oxs_Director::RegisterOutput(Oxs_Output* obj)
   // Check for repeat names
   std::vector<Oxs_Output*>::const_iterator nit;
   for(nit=output_obj.begin();nit!=output_obj.end();++nit) {
+    if( *nit == nullptr) continue;  // Deregistered object
     if(obj->OwnerName().compare((*nit)->OwnerName())==0
        && obj->OutputName().compare((*nit)->OutputName())==0) {
       String msg = String("Multiple registrations for output <")
@@ -1236,7 +1237,7 @@ Oxs_Director::InterpretOutputToken(const char* token) const
              " Oxs_Director::InterpretOutputToken");
   }
   Oxs_Output* obj = output_obj[index];
-  if(obj==NULL) {
+  if(obj==nullptr) {
     OXS_THROW(Oxs_BadParameter,
              "Token refers to deregistered output object in"
              " Oxs_Director::InterpretOutputToken");
@@ -1251,7 +1252,7 @@ void Oxs_Director::ListOutputObjects(vector<String> &outputs) const
   vector<OxsDirectorOutputKey> keylist;
   for(size_t i=0;i<output_obj.size();++i) {
     const Oxs_Output* obj = output_obj[i];
-    if(obj!=NULL) {
+    if(obj!=nullptr) {
       keylist.push_back(OxsDirectorOutputKey(i,obj->Priority()));
     }
   }
@@ -1292,7 +1293,7 @@ Oxs_Output* Oxs_Director::FindOutputObject(const char* regexp) const
   size_t size = output_obj.size();
   for(size_t i=0;i<size;i++) {
     Oxs_Output* obj = output_obj[i];
-    if(obj==NULL) continue; // Deregistered object
+    if(obj==nullptr) continue; // Deregistered object
     String output_name = obj->LongName();
     Oc_AutoBuf ab = output_name.c_str();
     int match_result
@@ -1332,7 +1333,7 @@ Oxs_Output* Oxs_Director::FindOutputObjectExact(const char* outname) const
   size_t size = output_obj.size();
   for(size_t i=0;i<size;i++) {
     Oxs_Output* obj = output_obj[i];
-    if(obj==NULL) continue; // Deregistered object
+    if(obj==nullptr) continue; // Deregistered object
     String regname = obj->LongName();
     if(regname.compare(outname)==0) {
       matched_obj = obj;

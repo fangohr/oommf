@@ -5,7 +5,7 @@
  * in the file chunkenergy.cc.
  */
 
-#include <assert.h>
+#include <cassert>
 #include <string>
 
 #include "energy.h"

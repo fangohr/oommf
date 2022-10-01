@@ -288,8 +288,18 @@ Oc_Class Oc_CommandLine {
                 }
              } [file join [file dirname [info script]] console.tcl] ] \
                 "Display console window (requires Tk)"
-             Oc_CommandLine Option cwd {{directory {file isdirectory $directory} {}}} {
-                cd $directory
+             Oc_CommandLine Option cwd {directory} {
+                # Note: Don't use validationScript to check for error;
+                # working directory may change between parsing of
+                # command line and option implementation scripts. (In
+                # particular, see the "-root" option to pimake.) Instead
+                # catch any errors in implementation script and mimic
+                # validationScript response.
+                if {[set errcode [catch {cd $directory} errmsg]]} {
+                   puts stderr "Error in -cwd option: $errmsg"
+                   puts stderr [Oc_CommandLine Usage]
+                   exit $errcode
+                }
              } "Change working directory"
           }
           net {

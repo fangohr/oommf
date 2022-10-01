@@ -12,9 +12,9 @@
  * 30-Jun-96: Added Array2D<MagElt> support.
  */
 
-#include <assert.h>
-#include <ctype.h>
-#include <string.h>
+#include <cassert>
+#include <cctype>
+#include <cstring>
 
 #include "oc.h"
 #include "nb.h"

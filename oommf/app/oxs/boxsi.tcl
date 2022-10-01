@@ -24,7 +24,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Boxsi
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/31 02:14:37 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -142,7 +142,7 @@ if {[Oc_NumaAvailable]} {
       {nodes {regexp {^([0-9 ,]*|auto|none)$} $nodes}}
    } {
       global numanodes cmdline_numanodes
-      set cmdline_numanodes [set numanodes $nodes]
+      set cmdline_numanodes [set numanodes [string trim $nodes]]
       # The cmdline_numanodes variable is used to detect the situation
       # where numanodes are set on the command line by an abbreviated
       # form of the option string, such as "-numa" instead of
@@ -235,6 +235,7 @@ if {[Oc_HaveThreads]} {
 }
 
 if {[Oc_NumaAvailable]} {
+   set numanodes [string trim $numanodes]
    if {[string match auto $numanodes]} {
       set nodes {}
    } elseif {[string match none $numanodes]} {
@@ -770,7 +771,6 @@ Oc_Log SetLogHandler [list Oc_FileLogger Log] error
 Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
 Oc_Log SetLogHandler [list Oc_FileLogger Log] info
 
-
 Oc_Log AddType infolog ;# Record in log file only
 if {$loglevel>0} {
    Oc_Log SetLogHandler [list Oc_FileLogger Log] infolog
@@ -778,6 +778,11 @@ if {$loglevel>0} {
 if {$loglevel>1} {
    # Dump status messages too
    Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+}
+
+if {[catch {Oc_AddCLogFile $logfile} errmsg]} { ;# For C++-level logging
+   Oc_Log Log $errmsg panic
+   exit
 }
 
 ##########################################################################

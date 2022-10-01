@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Configuration Files</TITLE>
+<META NAME="description" CONTENT="Configuration Files">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Understanding_pimake.html">
+<LINK REL="previous" HREF="Debugging_OOMMF.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="Understanding_pimake.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html200"
+  HREF="Understanding_pimake.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html196"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html190"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html198"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html201"
+  HREF="Understanding_pimake.html">Understanding pimake</A>
+<B> Up:</B> <A NAME="tex2html197"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html191"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00610000000000000000"></A><A NAME="sec:debug:configfiles"></A>
+<BR>
+Configuration Files
+</H1>
+There are several OOMMF configuration settings that impact debug
+operations. The controlling files are <TT><B>config/options.tcl</B></TT> and
+<TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT>, where the <TT>&lt;platform&gt;</TT> is
+<TT>windows-x86_64</TT>, <TT>linux-x86_64</TT>, or <TT>darwin</TT> for
+Windows, Linux, or macOS operating systems respectively. In practice,
+rather than modifying the default distribution files directly, you should
+place your modifications in local files
+<TT><B>config/local/options.tcl</B></TT> and
+<TT><B>config/platforms/local/&lt;platform&gt;.tcl</B></TT>.
+The <TT><B>local/</B></TT> directories and files are not part of the
+OOMMF distribution; you will need to create them manually. The files
+can be empty initially, and then populated as desired.
+The <TT><B>options.tcl</B></TT> file contains platform-agnostic settings that are
+stored in the <TT>Oc_Option</TT> database. Some of these settings affect
+the build process, while others control post-build runtime behavior.
+All are set using the <TT>Oc_Option</TT> command, which takes
+name&nbsp;+&nbsp;value pairs.  The <TT>cflags</TT> and <TT>optlevel</TT> settings
+control compiler options. The default setting for <TT>cflags</TT> is
+<PRE>
+Oc_Option Add * Platform cflags {-def NDEBUG}
+</PRE>
+which causes the C macro ``<TT>NDEBUG</TT>'' to be defined. If this is
+not set then various run-time checks such as <TT>assert</TT> statements and
+some array index checks are activated. These checks slow execution but
+may be helpful in diagnosing errors. Other <TT>cflag</TT> options include
+<TT>-warn</TT>, which enables compiler warning messages, and <TT>-debug</TT>,
+which tells the compiler to generate debugging symbols. A good
+<TT>cflags</TT> setting for debugging is
+<PRE>
+Oc_Option Add * Platform cflags {-warn 1 -debug 1}
+</PRE>
+There is also an <TT>lflags</TT> option, similar to <TT>cflags</TT>, that
+controls options to the linker. The default is an empty string (no
+options), and you generally don't need to change this.
+The <TT>optlevel</TT> option sets the compiler optimization level, with an
+integer value between 0 and 3. The default value is 2, which selects for
+a high but reliable level of optimizations. Some optimizations may
+reorder and combine source code statements, making it harder to debug
+code, so you may want to use
+<PRE>
+Oc_Option Add * Platform optlevel 0
+</PRE>
+to disable all optimizations.
+The <TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT> files set default platform and
+compiler specific options. For example,
+<TT><B>config/platforms/windows-x86_64.tcl</B></TT> is the base platform file for
+64-bit Windows. There are separate sections inside this file for the
+various supported compilers. You can make local changes to the default
+settings by creating a subdirectory of <TT><B>config/platforms/</B></TT> named
+<TT>local/</TT>, and creating there an initially empty file with the
+same name as the base platform file. Inside the base platform file is a
+code block labeled <TT>LOCAL CONFIGURATION</TT>, which lists all the
+available local modifications. You can copy some or all of this
+Tcl code block to your new <TT>config/platforms/local/</TT> file, and then
+uncomment and modify options as desired. For example, if you are using
+the Visual C++ compiler on Windows, you may want to include the
+<TT>/RTCus</TT> compiler flag to enable some run-time error checks. You can
+do that with these lines in your
+<TT><B>local/windows-x86_64.tcl</B></TT> file:
+<PRE>
+$config SetValue program_compiler_c++_remove_flags {/O2}
+$config SetValue program_compiler_c++_remove_valuesafeflags {/O2}
+$config SetValue program_compiler_c++_add_flags {/RTCus}
+$config SetValue program_compiler_c++_add_valuesafeflags {/RTCus}
+</PRE>
+The <TT>*_valuesafeflags</TT> options are for code with sensitive
+floating-point operations that must be evaluated exactly as
+specified. This pertains primarily to the double-double routines in
+<TT><B>pkg/xp/</B></TT>. The <TT>*_flags</TT> options are for everything else. The
+<TT>*_remove_*</TT> controls remove options from the default compile
+command. This can be a (Tcl) list, with each element matching as a
+regular expression. (Refer to the
+<A NAME="tex2html17"
+  HREF="https://www.tcl-lang.org/man/">Tcl documentation</A>
+on the <TT>regexp</TT> command for details.) The <TT>*_add_*</TT> controls
+append options. OOMMF sets <TT>/O2</TT> optimization by default, but
+<TT>/O2</TT> is incompatible with <TT>/RTCus</TT>, so in this example <TT>/O2</TT>
+is removed to allow <TT>/RTCus</TT> to be added. (Setting <TT>optlevel 0</TT> in
+the <TT><B>config/local/options.tcl</B></TT> file, as explained above, replaces
+<TT>/O2</TT> with <TT>/Od</TT>. So strictly speaking it is not necessary to
+remove <TT>/O2</TT> in that case, but it doesn't hurt either.)
+You can run the command ``<TT>oommf.tcl +platform +v</TT>'' to see the
+effects of your current <TT><B>options.tcl</B></TT> and <TT><B>&lt;platform&gt;.tcl</B></TT>
+settings. For example,
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">tclsh oommf.tcl +platform +v</FONT>
+<BR>[...]
+<BR>-- Local config options --
+<BR>[...]
+<BR>&nbsp;&nbsp;&nbsp;Oc_Option Add * Platform cflags -debug 1 -warn 1
+<BR>&nbsp;&nbsp;&nbsp;Oc_Option Add * Platform optlevel 0
+<BR>[...]
+<BR>-- Local platform options --
+<BR>&nbsp;&nbsp;&nbsp;$config SetValue program_compiler_c++_remove_flags /O2
+<BR>&nbsp;&nbsp;&nbsp;$config SetValue program_compiler_c++_remove_valuesafeflags /O2
+<BR>&nbsp;&nbsp;&nbsp;$config SetValue program_compiler_c++_add_flags /RTCus
+<BR>&nbsp;&nbsp;&nbsp;$config SetValue program_compiler_c++_add_valuesafeflags /RTCus
+<BR>
+<BR>-- Compiler options --
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Standard options: /Od /D_CRT_SECURE_NO_DEPRECATE /RTCus
+<BR>&nbsp;&nbsp;&nbsp;Value-safe options: /Od /fp:precise /D_CRT_SECURE_NO_DEPRECATE /RTCus
+<BR></TT>
+</DIV>
+To see the exact, full platform-specific compile and link commands, you
+can delete and rebuild individual executables in the
+OOMMF package. Two examples, one using the standard build options
+(<TT><B>pkg/oc/&lt;platform&gt;/varinfo</B></TT>) and one using the value-safe options
+(<TT><B>pkg/xp/&lt;platform&gt;/build_port</B></TT>) are presented below. (The response
+lines have been edited for clarity.)
+
+<DIV ALIGN="LEFT">
+<TT>
+ % <FONT COLOR="#00bbee">cd pkg/oc</FONT>
+<BR>% <FONT COLOR="#00bbee">tclsh ../../oommf.tcl pimake clean</FONT>
+<BR>% <FONT COLOR="#00bbee">tclsh ../../oommf.tcl pimake darwin/varinfo</FONT>
+<BR>
+clang++ -c -DNDEBUG -m64 -std=c++11 -Ofast -o darwin/varinfo.o varinfo.cc
+<BR>
+clang++ -m64 darwin/varinfo.o -o darwin/varinfo
+<BR>
+<BR>% <FONT COLOR="#00bbee">cd ../..</FONT>
+<BR>% <FONT COLOR="#00bbee">cd pkg/xp</FONT>
+<BR>% <FONT COLOR="#00bbee">tclsh ../../oommf.tcl pimake clean</FONT>
+<BR>% <FONT COLOR="#00bbee">tclsh ../../oommf.tcl pimake darwin/build_port</FONT>
+<BR>
+clang++ -c -DNDEBUG -m64 -std=c++11 -O3 -DXP_USE_MPFR=0
+<BR>&nbsp;&nbsp;&nbsp;-o darwin/build_port.o build_port.cc
+<BR>
+clang++ -m64 darwin/build_port.o -o darwin/build_port
+<BR></TT>
+</DIV>
+<BR>
+The above is for macOS. Adjust the <TT>&lt;platform&gt;</TT> field as appropriate,
+and on Windows append <TT><B>.exe</B></TT> to the executable targets (<TT><B>varinfo</B></TT>
+and <TT><B>build_port</B></TT>).
+You can also use this method to manually compile and/or link individual
+files: (1) Change to the relevant build directory (always one level below
+either <TT>pkg</TT> or <TT>app</TT>), (2) delete the file you want to rebuild from
+the <TT>&lt;platform&gt;</TT> directory, (3) run <TT>pimake</TT> as above to build the
+file, (4) copy and paste the compile/link command to the shell prompt,
+edit as desired, and rerun.
+The <TT><B>varinfo</B></TT> and <TT><B>build_port</B></TT> executables are
+used to construct the platform-specific header files
+<TT><B>pkg/oc/&lt;platform&gt;/ocport.h</B></TT> and
+<TT><B>pkg/xp/&lt;platform&gt;/xpport.h</B></TT>. These files contain
+C++ macro definitions, typedefs, and function wrappers,
+and are an important adjunct when reading the OOMMF source code.
+<A NAME="PTtclintrospection"></A>For in-depth investigations Tcl can be used to directly query and debug
+OOMMF initialization scripts. Start a Tcl shell, and from inside the
+shell append the OOMMF <TT><B>pkg/oc</B></TT> directory to the Tcl global
+<TT>auto_path</TT> variable. Next run <TT>package require Oc</TT> to load the
+Tcl-only portion of the OOMMF <TT>Oc</TT> library into the shell. Then
+you can check any and all <TT>Oc_Option</TT> values from
+<TT><B>config/options.tcl</B></TT>, platform configuration settings from
+<TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT>, and perform various other types of
+introspection from the Tcl shell. See
+Fig.&nbsp;<A HREF="#fig:oommftclintrospection">5.1</A> for a sample session.
+<A NAME="fig:oommftclintrospection"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">pwd</FONT>
+<BR>/Users/barney/oommf
+<BR>$ <FONT COLOR="#00bbee">tclsh</FONT>
+<BR>% <FONT COLOR="#ff3311">set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1</FONT>
+<BR>% <FONT COLOR="#ff3311">lappend auto_path [file join [pwd] pkg oc]</FONT>
+<BR>% <FONT COLOR="#ff3311">package require Oc</FONT>
+<BR>
+<BR>% # Miscellaneous utilities from Oc_Main (oommf/pkg/oc/main.tcl)
+<BR>% <FONT COLOR="#ff3311">Oc_Main GetOOMMFRootDir</FONT> &nbsp;&nbsp;&nbsp;;# OOMMF root directory
+<BR>/Users/barney/oommf
+<BR>% <FONT COLOR="#ff3311">Oc_Main GetPid</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# Process id
+<BR>
+17423
+<BR>
+<BR>% # Oc_Option database (oommf/config/options.tcl)
+<BR>% # Code details in oommf/pkg/oc/option.tcl
+<BR>% <FONT COLOR="#ff3311">Oc_Option Get *</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# Registered Option classes (glob-match)
+<BR>
+Net_Link Oc_Url Platform Menu Nb_InputFilter Net_Server Oc_Class Color
+<BR>
+Net_Host MIFinterp OxsLogs 
+<BR>% <FONT COLOR="#ff3311">Oc_Option Get Platform *</FONT> &nbsp;&nbsp;;# All options for class Platform (glob-match)
+<BR>
+cflags lflags optlevel
+<BR>% <FONT COLOR="#ff3311">Oc_Option GetValue Platform cflags</FONT> &nbsp;;# Platform,cflags value
+<BR>-def NDEBUG
+<BR>
+<BR>% # Configuration values (oommf/config/platforms/&lt;platform&gt;.tcl)
+<BR>% # Code details in oommf/pkg/oc/config.tcl
+<BR>% <FONT COLOR="#ff3311">set config [Oc_Config RunPlatform]</FONT>
+<BR>% <FONT COLOR="#ff3311">$config GetValue platform_name</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# Platform name
+<BR>
+darwin
+<BR>% <FONT COLOR="#ff3311">$config GetValue program_compiler_c++_name</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# C++ compiler
+<BR>
+clang++
+<BR>% <FONT COLOR="#ff3311">$config GetValue program_compiler_c++_typedef_realwide</FONT> &nbsp;;# realwide typedef
+<BR>
+long double
+<BR>% <FONT COLOR="#ff3311">$config Features program_linker*</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# GetValue names (glob-match)
+<BR>
+program_linker_option_lib program_linker program_linker_rpath
+<BR>
+program_linker_uses_-L-l program_linker_option_out program_linker_option_obj
+<BR>
+<BR>% <FONT COLOR="#ff3311">exit</FONT> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;# Exit Tcl shell
+<BR></TT>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.1:
+    Sample Tcl-level
+    OOMMF introspection session. Shell commands are colored
+    <FONT COLOR="#00bbee">cyan</FONT> (with <TT>$</TT> prompt) and
+    Tcl commands are colored <FONT COLOR="#ff3311">red</FONT> (with
+    <TT>%</TT> prompt).
+    <A HREF="#PTtclintrospection">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR><HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html200"
+  HREF="Understanding_pimake.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html196"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html190"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html198"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Microsoft Windows Options</TITLE>
+<META NAME="description" CONTENT="Microsoft Windows Options">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="macOS_Configuration.html">
+<LINK REL="up" HREF="Platform_Specific_Installat.html">
+<LINK REL="next" HREF="quickstart.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html424"
+  HREF="quickstart.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html420"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html416"
+  HREF="macOS_Configuration.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html422"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html425"
+  HREF="quickstart.html">Quick Start: Example OOMMF</A>
+<B> Up:</B> <A NAME="tex2html421"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+<B> Previous:</B> <A NAME="tex2html417"
+  HREF="macOS_Configuration.html">macOS Configuration</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html426"
+  HREF="Microsoft_Windows_Options.html#SECTION00343100000000000000">Using Microsoft Visual C++</A>
+<LI><A NAME="tex2html427"
+  HREF="Microsoft_Windows_Options.html#SECTION00343200000000000000">Using MinGW g++</A>
+<LI><A NAME="tex2html428"
+  HREF="Microsoft_Windows_Options.html#SECTION00343300000000000000">Using the Cygwin toolkit</A>
+<LI><A NAME="tex2html429"
+  HREF="Microsoft_Windows_Options.html#SECTION00343400000000000000">Setting the TCL_LIBRARY environment variable</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H2><A NAME="SECTION00343000000000000000"></A><A NAME="sec:install.windows"></A>
+<BR>
+Microsoft Windows Options
+</H2>
+
+<P>
+This section lists installation options for Microsoft Windows.
+
+<P>
+
+<H3><A NAME="SECTION00343100000000000000"></A>
+<A NAME="1577"></A>
+<BR>
+Using Microsoft Visual C++
+</H3>
+If you are building OOMMF software from source using the Microsoft
+Visual C++ command line compiler, <TT><B>cl.exe</B></TT>, it is necessary to set up
+the path and some environment variables before running the compiler.
+There is a batch file distributed with Visual C++ that you can run to do
+this.  The name of the file varies between Visual C++ releases, but for
+example may be <TT><B>vcvarsall.bat</B></TT> or <TT><B>setenv.cmd</B></TT>.  For 64-bit builds
+you may need to include the ``amd64'' option on the batch file command
+line.  You may want to set up your system so this batch file gets run
+automatically when you open a command window.  See your compiler and
+system documentation for details.
+
+<P>
+
+<H3><A NAME="SECTION00343200000000000000"></A>
+<A NAME="1582"></A>
+<BR>
+Using MinGW g++
+</H3>
+
+<P>
+Both 32-bit and 64-bit builds are supported using the MinGW ports of
+g++.  (The 32-bit and 64-bit versions of g++ are separate downloads.)
+Use a standard Windows Tcl/Tk, such as the
+<A NAME="tex2html21"
+  HREF="https://www.activestate.com/products/tcl/">ActiveTcl</A>
+release from ActiveState.  You will also need to edit the appropriate
+platform file to select g++ as the compiler.  If you are using a 32-bit
+Tcl/Tk and g++, then the platform file is
+<TT><B>oommf<TT>&#92;</TT>config<TT>&#92;</TT>platforms<TT>&#92;</TT>wintel.tcl</B></TT>.  For 64-bit
+Tcl/Tk and g++ the platform file is
+<TT><B>oommf<TT>&#92;</TT>config<TT>&#92;</TT>platforms<TT>&#92;</TT>windows-x86_64.tcl</B></TT>.
+
+<P>
+
+<H3><A NAME="SECTION00343300000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1589"></A>
+<BR>
+Using the Cygwin toolkit
+</H3>
+The <A NAME="tex2html22"
+  HREF="http://www.cygwin.com/">Cygwin Project</A>
+is
+a free port of the GNU development environment to Windows, which
+includes the GNU C++ compiler g++ and X11.  To build OOMMF within the
+Cygwin environment, start up a Cygwin or Cygwin64 shell and follow the
+usual Unix build procedure.  The platform name will be <TT><B>cygtel</B></TT>
+or <TT><B>cygwin-x86_64</B></TT>, according to whether you are running a 32- or
+64-bit Cygwin <TT><B>tclsh</B></TT>, respectively.  The resulting OOMMF build
+requires the Cygwin environment to run, so it will need to be launched
+from a Cygwin shell.  Moreover, OOMMF on Cygwin uses X11 as the
+windowing interface, so you will need to have the Cygwin port of X11
+installed; typically OOMMF will be started from an X11 xterm or
+equivalent.  Of course, you will also need the Tcl and Tk packages
+installed (called <TT><B>tcl</B></TT> and <TT><B>tcl-tk</B></TT>, respectively, by the
+Cygwin package manager).  To build OOMMF from source you will
+need the <TT><B>gcc-g++</B></TT>, <TT><B>tcl-devel</B></TT>, and <TT><B>tcl-tk-devel</B></TT>
+packages and dependencies.
+
+<P>
+If you get errors saying a child process couldn't be forked (typically
+with either ``resource temporarily unavailable'' or ``Loaded to
+different address'' error messages), then follow this procedure:
+
+<OL>
+<LI>Exit all Cygwin processes
+</LI>
+<LI>Use Windows Explorer or a Windows command shell to launch
+  <TT><B>c:<TT>&#92;</TT>cygwin<TT>&#92;</TT>bin<TT>&#92;</TT>ash.exe</B></TT>
+</LI>
+<LI>Run <TT><B>/bin/rebaseall</B></TT> inside the ash shell.
+</LI>
+</OL>
+Additional information on this problem can be found in the Cygwin
+documentation.
+
+<P>
+The Cygwin versions of Tcl/Tk prior to 8.6 were not threaded, so
+OOMMF built with Tcl/Tk 8.5 and older will likewise not be
+threaded.  This limitation is removed with the Cygwin Tcl/Tk 8.6
+release.
+
+<P>
+
+<H3><A NAME="SECTION00343400000000000000"></A>
+<A NAME="1605"></A>
+<BR>
+Setting the TCL_LIBRARY environment variable
+</H3>
+
+<P>
+If you encounter difficulties during OOMMF start up, you may need to set
+the environment variable
+TCL_LIBRARY<A NAME="1606"></A>.  (NOTE: This
+is almost never necessary!)
+
+<P>
+Bring up the Control Panel (e.g., by selecting
+<FONT COLOR="#800000"><B>Settings|Control Panel</B></FONT> off the Start menu), and select
+<FONT COLOR="#800000"><B>System</B></FONT>.  Go to the <FONT COLOR="#800000"><B>Environment</B></FONT> tab, and enter
+TCL_LIBRARY as the Variable, and the name of the directory containing
+<TT><B>init.tcl</B></TT> for the Value, e.g.,
+<PRE>
+%SystemDrive%\Program Files\Tcl\lib\tcl8.0
+</PRE>
+Click <FONT COLOR="#800000"><B>Set</B></FONT> and <FONT COLOR="#800000"><B>OK</B></FONT> to finish.
+
+<P>
+ 
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html424"
+  HREF="quickstart.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html420"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html416"
+  HREF="macOS_Configuration.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html422"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

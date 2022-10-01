@@ -1,0 +1,248 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Anatomy of makerules.tcl files</TITLE>
+<META NAME="description" CONTENT="Anatomy of makerules.tcl files">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="MakeRule_command.html">
+<LINK REL="previous" HREF="Platform_Independent_Make_O.html">
+<LINK REL="up" HREF="Platform_Independent_Make_O.html">
+<LINK REL="next" HREF="MakeRule_command.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html96"
+  HREF="MakeRule_command.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html92"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html86"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html94"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html97"
+  HREF="MakeRule_command.html">The MakeRule command</A>
+<B> Up:</B> <A NAME="tex2html93"
+  HREF="Platform_Independent_Make_O.html">Platform-Independent Make Operational Details</A>
+<B> Previous:</B> <A NAME="tex2html87"
+  HREF="Platform_Independent_Make_O.html">Platform-Independent Make Operational Details</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00310000000000000000"></A><A NAME="sec:anatomymakerules"></A>
+<BR>
+Anatomy of <TT><B>makerules.tcl</B></TT> files
+</H1>
+As may be deduced from the file extension, <TT><B>makerules.tcl</B></TT> files are
+Tcl scripts and so can make use of the usual Tcl commands. However,
+<TT><B>makerules.tcl</B></TT> files are run inside a Tcl interpreter that has
+been augmented by <B>pimake</B> with a number of additional commands. We
+discuss both types of commands here, beginning with some of the standard
+Tcl commands commonly found in <TT><B>makerules.tcl</B></TT> files:
+<DL>
+<DT><STRONG>list, llength, lappend, lsort, lindex, lsearch, concat</STRONG></DT>
+<DD>Tcl list formation and access commands.
+</DD>
+<DT><STRONG>file</STRONG></DT>
+<DD>Provides platform independent access to the file system, including
+  subcommands to split and join file names by path component.
+</DD>
+<DT><STRONG>glob</STRONG></DT>
+<DD>Returns a list of filenames matching a wildcard pattern.
+</DD>
+<DT><STRONG>format, subst</STRONG></DT>
+<DD>Construct strings with variable substitutions.
+</DD>
+</DL>
+Refer to the
+<A NAME="tex2html13"
+  HREF="https://www.tcl-lang.org/man">Tcl documentation</A>
+for full details.
+
+<P>
+Notice that all the Tcl command names are lowercase.  In contrast,
+commands added by <B>pimake</B> have mixed-case names. The most common
+OOMMF commands you'll find in <TT><B>makerules.tcl</B></TT> files are
+<DL>
+<DT><STRONG>MakeRule</STRONG></DT>
+<DD>Defines dependency rules, which is the principle goal
+  of <TT><B>makerules.tcl</B></TT> files. This command is documented in detail
+  <A HREF="MakeRule_command.html#sec:makerule">below</A>.
+</DD>
+<DT><STRONG>Platform</STRONG></DT>
+<DD>Platform independent methods for common operations, with
+  these subcommands:
+<DL>
+<DT><STRONG>Name</STRONG></DT>
+<DD>Identifier for current platform, e.g.,
+  <TT>windows-x86_64</TT>, <TT>linux-x86_64</TT>, <TT>darwin</TT>.
+</DD>
+<DT><STRONG>Executables</STRONG></DT>
+<DD>Given a file stem returns the name for the
+  corresponding executable on the current platform by prepending the
+  platform directory and appending an execution suffix, if any. For
+  example, <TT>Platform Executables varinfo</TT> would return
+  <TT><B>windows-x86_64/varinfo.exe</B></TT> on Windows, and
+  <TT><B>linux-x86_64/varinfo</B></TT> on Linux.
+</DD>
+<DT><STRONG>Objects</STRONG></DT>
+<DD>Similar to Platform Executables, but returns object file
+  names; the object file suffix is <TT>.obj</TT> on Windows and <TT>.o</TT> on
+  Linux and macOS.
+</DD>
+<DT><STRONG>Compile</STRONG></DT>
+<DD>Uses the compiler specified in the
+ <TT><B>config/platform/&lt;platform&gt;.tcl</B></TT> to compile the specified
+ source code file (<TT>-src</TT> option) into the named object file (<TT>-out</TT>
+ option).
+</DD>
+<DT><STRONG>Link</STRONG></DT>
+<DD>Uses the linker specified in
+ <TT><B>config/platform/&lt;platform&gt;.tcl</B></TT> to link together the specified
+ object files (<TT>-obj</TT> option) into the named executable (<TT>-out</TT>
+ option).
+</DD>
+</DL>
+</DD>
+<DT><STRONG>CSourceFile New</STRONG></DT>
+<DD>Creates an instance of the <TT>CSourceFile</TT>
+  class. The <TT>-inc</TT> option to <TT>New</TT> specifies directories to add
+  to the search path for header files. <TT>CSourceFile</TT> instances
+  support these subcommands:
+  <DL>
+<DT><STRONG>Dependencies</STRONG></DT>
+<DD>Dependency list for specified C++ source
+    file consisting of the source file itself, header files included by
+    <TT>#include</TT> statements in the source code files, and also any
+    header files found by a recursive tracing of <TT>#include</TT>
+    statements.  The header file search excludes system header files
+    requested using angle-brackets, e.g., <TT>#include &lt;stdio.h&gt;</TT>. A
+    source code file can speed the tracing process by placing a <TT>/*
+      End includes */</TT> comment following the last <TT>#include</TT>
+    statement, as in this example from
+    <TT><B>oommf/app/mmdisp/mmdispsh.cc</B></TT>:
+<PRE>
+  /* FILE: mmdispsh.cc                 -*-Mode: c++-*-
+   *
+   * A shell program which includes Tcl commands needed to support a
+   * vector display application.
+   *
+   */
+
+  #include "oc.h"
+  #include "vf.h"
+  #include "mmdispcmds.h"
+
+  /* End includes */
+  ...
+</PRE>
+   The <TT>/* End includes */</TT> statement terminates the search for
+   further <TT>#include</TT> statements in that file.
+  
+</DD>
+<DT><STRONG>DepPath</STRONG></DT>
+<DD>List of directories containing files on which
+    the specified C++ source file depends.
+  
+</DD>
+</DL>
+</DD>
+<DT><STRONG>Recursive</STRONG></DT>
+<DD>Given a target, loads the <TT><B>makerules.tcl</B></TT> file in
+  each child directory of the current directory and executes the rule
+  found there for the target. Primarily used with the default targets
+  <TT>all</TT>, <TT>configure</TT>, <TT>clean</TT>, <TT>mostlyclean</TT>, <TT>objclean</TT>,
+  <TT>maintainer-clean</TT>, <TT>distclean</TT>, and <TT>upgrade</TT>. The default
+  targets have an implicit rule to do nothing except recurse the action
+  into the new child directories. If a <TT><B>makerules.tcl</B></TT> file found in
+  this manner has an explicit rule defined for the given target, then
+  that rule is invoked instead of the implicit rule, and, unless the
+  explicit rule makes a <TT>Recursive</TT> call itself, the recursion on
+  that directory branch will stop. As an example, the <TT><B>makerules.tcl</B></TT>
+  file in the OOMMF root directory has the rule
+<PRE>
+  MakeRule Define {
+    -targets   all
+    -script    {Recursive all}
+  }
+</PRE>
+  All of <TT><B>makerules.tcl</B></TT> files one level below <TT><B>oommf/pkg</B></TT> and
+  <TT><B>oommf/app</B></TT> have ``<TT>all</TT>'' targets that compile and link their
+  corresponding libraries or executables. So
+<PRE>
+  tclsh oommf.tcl pimake all
+</PRE>
+  run in the root OOMMF directory will build all of those libraries
+  and applications. In contrast, <TT><B>makerules.tcl</B></TT> files under
+  <TT><B>oommf/doc</B></TT> do <B>not</B> have explicit <TT>all</TT> targets, so the
+  <TT>tclsh oommf.tcl pimake all</TT> call has no effect in the <TT><B>oommf/doc/</B></TT>
+  subtree.
+
+<P>
+On the other hand, the <TT><B>makerules.tcl</B></TT> in directories under
+  <TT><B>oommf/pkg/</B></TT>, <TT><B>oommf/app/</B></TT>, and <TT><B>oommf/doc/</B></TT> <B>do</B> have
+  explicit rules for the various <TT>clean</TT> targets, so
+<PRE>
+  tclsh oommf.tcl pimake maintainer-clean
+</PRE>
+  run from the OOMMF root directory will be active throughout all
+  three subtrees. The <TT>maintainer-clean</TT> rules delete all files that
+  can be regenerated from source, meaning object files, libraries,
+  executables, and notably all the documentation files under
+  <TT><B>oommf/doc/</B></TT>. Building the OOMMF documentation requires a working
+  installation of
+  <A NAME="tex2html14"
+  HREF="https://www.latex-project.org">L<SUP><SMALL>A</SMALL></SUP>T<SMALL>E</SMALL>X</A>
+and
+  either <A NAME="tex2html15"
+  HREF="https://www.latex2html.org">L<SUP><SMALL>A</SMALL></SUP>T<SMALL>E</SMALL>X2HTML</A>
+or , so
+
+don't run the <TT>maintainer-clean</TT> target unless you are prepared to
+  rebuild the OOMMF documentation!
+</DD>
+</DL>
+The Tcl source defining the <TT>MakeRule</TT>, <TT>Platform</TT>,
+<TT>CSourceFile</TT>, and <TT>Recursive</TT> commands can be found in the
+<TT>oommf/app/pimake/</TT> directory. Example use of these commands can be
+found in the <A HREF="MakeRule_command.html#sec:makerule">following section</A>.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html96"
+  HREF="MakeRule_command.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html92"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html86"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html94"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

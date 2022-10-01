@@ -20,11 +20,11 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <ctype.h>
-#include <limits.h>
-#include <math.h>        /* For floor() on Solaris with Forte compiler */
-#include <string.h>
+#include <cassert>
+#include <cctype>
+#include <climits>
+#include <cmath>        /* For floor() on Solaris with Forte compiler */
+#include <cstring>
 
 #include "oc.h"
 #include "imgobj.h"

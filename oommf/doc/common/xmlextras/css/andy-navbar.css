@@ -1,0 +1,22 @@
+.ltx_page_navbar {
+    display:block!important; position:fixed; left:0; width:0;top:0;
+    margin:0; overflow-x: hidden;overflow-y: auto !important;
+    max-height: 100% !important; z-index:1;
+    border:0px; padding: 0 0 0 0;
+    font-size: 24px;border-radius: 0 0 10px 0;
+    background-color: lightgray; }
+.ltx_page_navbar ul { margin-left: -24px; }
+.ltx_page_navbar a { text-decoration: none; color: blue; display: block; }
+button {
+    position:fixed; left:0; width:0; top:0; z-index:1;
+    border:0px;border-radius: 0 0 10px 0;
+    padding: 10px 56px 10px 32px;
+  cursor: pointer;
+  background-color: yellow; color: black
+  color: white; }
+button:hover               { background-color: lightgray; }
+.ltx_page_navbar a:hover  {  color:black;background-color: white; }
+.ltx_page_main {
+    <<position:absolute; left:0; top:0; right:0;
+    margin:0px; padding:0 20px 0 20px;
+    width:100%; }

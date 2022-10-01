@@ -1,10 +1,346 @@
-\section{Platform-Independent Make}\label{sec:pimake}
+\chapter{Platform-Independent Make Operational Details}\label{sec:pimake}
 
-\centerline{\textbf{UNDER CONSTRUCTION}}
+The \OOMMF\ \app{pimake}\index{application!pimake} application compares
+file timestamps to determine which libraries and executables are
+out-of-date with respect to their source code, and then compiles and
+links those files as necessary to make everything up to date. The design
+and behavior of \app{pimake} is based on the
+\Unix\ \app{make}\index{application!make} program, but \app{pimake} is
+written in \Tcl\ and so can run on any platform where \Tcl\ is
+installed. Analogous to the \fn{Makefile} or \fn{makefile} of
+\app{make}, \app{pimake} uses \fn{makerules.tcl} files that specify
+\textit{rules} (actions) for creating or updating \textit{targets} when
+the targets are older than their corresponding \textit{dependencies}.
+The \fn{makerules.tcl} files are \Tcl\ scripts augmented by a handful of
+commands introduced by the \app{pimake} application.
 
-Details on pimake go here.
+The \fn{makerules.tcl} files in the \app{Oxs} application area include
+rules to automatically compile and link all \Cplusplus\ code found under
+the \fn{oommf/app/oxs/local/} directory, so programmers who are
+developing \cd{Oxs\_Ext} extension modules generally do not need to be
+concerned with the intricacies of \app{pimake} beyond the instructions
+on running \app{pimake} presented in the
+\htmladdnormallinkfoot{\textit{\OOMMF\ User's
+    Guide}}{https://math.nist.gov/oommf/doc/}.
 
-Somewhere we should have documentation on feeding and breeding
-makerules.tcl files.  Should that be here, or in a separate section?  If
-the former, then should this section be renamed?
+This chapter is intended instead for programmers who are debugging,
+extending, or creating new \OOMMF\ modules outside of
+\fn{oommf/app/oxs/local/}. The following sections provide an overview of
+the structure of \fn{makerules.tcl} files and how they control the
+behavior of \app{pimake}. Further details may be gleaned from the
+\app{pimake} sources in \fn{oommf/app/pimake/}.
 
+\section{Anatomy of \fn{makerules.tcl} files}\label{sec:anatomymakerules}
+As may be deduced from the file extension, \fn{makerules.tcl} files are
+\Tcl\ scripts and so can make use of the usual \Tcl\ commands. However,
+\fn{makerules.tcl} files are run inside a \Tcl\ interpreter that has
+been augmented by \app{pimake} with a number of additional commands. We
+discuss both types of commands here, beginning with some of the standard
+\Tcl\ commands commonly found in \fn{makerules.tcl} files:
+\begin{description}
+\item[list, llength, lappend, lsort, lindex, lsearch, concat]
+  \Tcl\ list formation and access commands.
+\item[file]
+  Provides platform independent access to the file system, including
+  subcommands to split and join file names by path component.
+\item[glob] Returns a list of filenames matching a wildcard pattern.
+\item[format, subst] Construct strings with variable substitutions.
+\end{description}
+Refer to the
+\htmladdnormallinkfoot{\Tcl\ documentation}{https://www.tcl-lang.org/man}
+for full details.
+
+Notice that all the \Tcl\ command names are lowercase.  In contrast,
+commands added by \app{pimake} have mixed-case names. The most common
+\OOMMF\ commands you'll find in \fn{makerules.tcl} files are
+\begin{description}
+\item[MakeRule] Defines dependency rules, which is the principle goal
+  of \fn{makerules.tcl} files. This command is documented in detail
+  \hyperrefhtml{below}{below (Sec.~}{)}{sec:makerule}.
+\item[Platform] Platform independent methods for common operations, with
+  these subcommands:
+\begin{description}
+\item[Name] Identifier for current platform, e.g.,
+  \cd{windows-x86\_64}, \cd{linux-x86\_64}, \cd{darwin}.
+\item[Executables] Given a file stem returns the name for the
+  corresponding executable on the current platform by prepending the
+  platform directory and appending an execution suffix, if any. For
+  example, \cd{Platform Executables varinfo} would return
+  \fn{windows-x86\_64/varinfo.exe} on \Windows, and
+  \fn{linux-x86\_64/varinfo} on \Linux.
+\item[Objects] Similar to Platform Executables, but returns object file
+  names; the object file suffix is \cd{.obj} on \Windows\ and \cd{.o} on
+  \Linux\ and \MacOSX.
+\item[Compile] Uses the compiler specified in the
+ \fn{config/platform/<platform>.tcl} to compile the specified
+ source code file (\cd{-src} option) into the named object file (\cd{-out}
+ option).
+\item[Link] Uses the linker specified in
+ \fn{config/platform/<platform>.tcl} to link together the specified
+ object files (\cd{-obj} option) into the named executable (\cd{-out}
+ option).
+\end{description}
+\item[CSourceFile New] Creates an instance of the \cd{CSourceFile}
+  class. The \cd{-inc} option to \cd{New} specifies directories to add
+  to the search path for header files. \cd{CSourceFile} instances
+  support these subcommands:
+  \begin{description}
+  \item[Dependencies] Dependency list for specified \Cplusplus\ source
+    file consisting of the source file itself, header files included by
+    \cd{\#include} statements in the source code files, and also any
+    header files found by a recursive tracing of \cd{\#include}
+    statements.  The header file search excludes system header files
+    requested using angle-brackets, e.g., \cd{\#include <stdio.h>}. A
+    source code file can speed the tracing process by placing a \cd{/*
+      End includes */} comment following the last \cd{\#include}
+    statement, as in this example from
+    \fn{oommf/app/mmdisp/mmdispsh.cc}:
+\begin{verbatim}
+  /* FILE: mmdispsh.cc                 -*-Mode: c++-*-
+   *
+   * A shell program which includes Tcl commands needed to support a
+   * vector display application.
+   *
+   */
+
+  #include "oc.h"
+  #include "vf.h"
+  #include "mmdispcmds.h"
+
+  /* End includes */
+  ...
+\end{verbatim}
+   The \cd{/* End includes */} statement terminates the search for
+   further \cd{\#include} statements in that file.
+  \item[DepPath] List of directories containing files on which
+    the specified \Cplusplus\ source file depends.
+  \end{description}
+\item[Recursive] Given a target, loads the \fn{makerules.tcl} file in
+  each child directory of the current directory and executes the rule
+  found there for the target. Primarily used with the default targets
+  \cd{all}, \cd{configure}, \cd{clean}, \cd{mostlyclean}, \cd{objclean},
+  \cd{maintainer-clean}, \cd{distclean}, and \cd{upgrade}. The default
+  targets have an implicit rule to do nothing except recurse the action
+  into the new child directories. If a \fn{makerules.tcl} file found in
+  this manner has an explicit rule defined for the given target, then
+  that rule is invoked instead of the implicit rule, and, unless the
+  explicit rule makes a \cd{Recursive} call itself, the recursion on
+  that directory branch will stop. As an example, the \fn{makerules.tcl}
+  file in the \OOMMF\ root directory has the rule
+\begin{verbatim}
+  MakeRule Define {
+    -targets   all
+    -script    {Recursive all}
+  }
+\end{verbatim}
+  All of \fn{makerules.tcl} files one level below \fn{oommf/pkg} and
+  \fn{oommf/app} have ``\cd{all}'' targets that compile and link their
+  corresponding libraries or executables. So
+\begin{verbatim}
+  tclsh oommf.tcl pimake all
+\end{verbatim}
+  run in the root \OOMMF\ directory will build all of those libraries
+  and applications. In contrast, \fn{makerules.tcl} files under
+  \fn{oommf/doc} do \textbf{not} have explicit \cd{all} targets, so the
+  \cd{tclsh oommf.tcl pimake all} call has no effect in the \fn{oommf/doc/}
+  subtree.
+
+  On the other hand, the \fn{makerules.tcl} in directories under
+  \fn{oommf/pkg/}, \fn{oommf/app/}, and \fn{oommf/doc/} \textbf{do} have
+  explicit rules for the various \cd{clean} targets, so
+\begin{verbatim}
+  tclsh oommf.tcl pimake maintainer-clean
+\end{verbatim}
+  run from the \OOMMF\ root directory will be active throughout all
+  three subtrees. The \cd{maintainer-clean} rules delete all files that
+  can be regenerated from source, meaning object files, libraries,
+  executables, and notably all the documentation files under
+  \fn{oommf/doc/}. Building the \OOMMF\ documentation requires a working
+  installation of
+  \htmladdnormallinkfoot{\LaTeX}{https://www.latex-project.org} and
+  either \htmladdnormallinkfoot{\LaTeX2HTML}{https://www.latex2html.org}
+  or \htmladdnormallinkfoot{\LaTeXML}{http://dlmf.nist.gov/LaTeXML/}, so
+  don't run the \cd{maintainer-clean} target unless you are prepared to
+  rebuild the \OOMMF\ documentation!
+\end{description}
+The \Tcl\ source defining the \cd{MakeRule}, \cd{Platform},
+\cd{CSourceFile}, and \cd{Recursive} commands can be found in the
+\cd{oommf/app/pimake/} directory. Example use of these commands can be
+found in the \htmlonlyref{following section}{sec:makerule}.
+
+\section{The MakeRule command}\label{sec:makerule}
+The \fn{makerules.tcl} files consist primarily of a collection of
+\cd{MakeRule} commands surrounded by a sprinkling of \Tcl\ support
+code. The order of the \cd{MakeRule} commands doesn't matter, except
+that the first target in the file, usually \cd{all}, becomes the default
+target. (The ``default'' target is the effective target if \app{pimake}
+is run without specifying a target.)
+
+The \cd{MakeRule} command supports a number of subcommands, but the
+principle subcommand appearing in \fn{makerules.tcl} files is
+\cd{Define}. This takes a single argument, which is a list of
+option+value pairs, with valid options being \cd{-targets},
+\cd{-dependencies}, and \cd{-script}. The value string for the
+\cd{-targets} option is a list of one or more build targets. The targets
+are usually files, in which case they must lie in the same directory or
+a directory below the \fn{makerules.tcl} file. The \cd{-dependencies}
+option is a list of one or more files or targets that the target depends
+upon. The value to the \cd{-script} option is a \Tcl\ script that is run
+if a target does not exist or if any of the file dependencies have a
+newer timestamp than any of the targets. The dependency checking is done
+recursively, that is, each dependency is checked to see if it up to date
+with its own dependencies, and so on.  A target is out of date if it is
+older than any of its dependencies, or the dependencies of the
+dependencies, etc. If any of the dependencies is out of date with
+respect to its own dependencies, then its script will be run during the
+dependency resolution. The script associated with the original target is
+only run after its dependency resolution is fully completed.
+
+The following examples from \fn{oommf/app/omfsh/makerules.tcl}
+should help flesh out the above description:
+\begin{verbatim}
+  MakeRule Define {
+    -targets        [Platform Name]
+    -dependencies   {}
+    -script         {MakeDirectory [Platform Name]}
+  }
+\end{verbatim}
+Here the target is the platform name, e.g., \fn{windows-x86\_64}, which
+is a directory under the current working directory
+\fn{oommf/app/omfsh/}. There are no dependencies to check, so the rule
+script is run if and only if the directory \fn{windows-x86\_64} does not
+exist. In that case the \OOMMF\ \cd{MakeDirectory} routine is called to
+create it. This is an important rule because the compilation and linking
+commands place their output into this directory, so it must exist before
+those commands are run.
+
+Next we look at a more complex rule that is really the bread and
+butter of \fn{makerules.tcl}, a rule for compiling a \Cplusplus\ file:
+\begin{verbatim}
+  MakeRule Define {
+    -targets        [Platform Objects omfsh]
+    -dependencies   [concat [list [Platform Name]] \
+                            [[CSourceFile New _ omfsh.cc] Dependencies]]
+    -script         {Platform Compile C++ -opt 1 \
+                             -inc [[CSourceFile New _ omfsh.cc] DepPath] \
+                             -out omfsh -src omfsh.cc
+                    }
+  }
+\end{verbatim}
+In this example the target is the object file associated with the
+stem \cd{omfsh}. On \Windows\ this would be
+\fn{windows-x86\_64/omfsh.obj}. The dependencies are the platform
+directory (e.g., \fn{windows-x86\_64/}), the file \fn{omfsh.cc}, and any
+(non-system) files included by \fn{omfsh.cc}. Directory timestamps do
+not affect the out-of-date computation, but directories will be
+constructed by their \cd{MakeRule} if they don't exist.
+
+Note that part of the \cd{-dependencies} list is
+\begin{verbatim}
+  [CSourceFile New _ omfsh.cc] Dependencies]
+\end{verbatim}
+As discussed \hyperrefhtml{earlier}{in Sec.~}{}{sec:anatomymakerules},
+this command resolves to a list of all non-system \cd{\#include} header
+files from \fn{omfsh.cc}, or header files found recursively from those
+header files. The first part of \fn{omfsh.cc} is
+\begin{verbatim}
+  /* FILE: omfsh.cc                 -*-Mode: c++-*-
+   *
+   *      A Tcl shell extended by the OOMMF core (Oc) extension
+   ...
+   */
+
+  /* Header files for system libraries */
+  #include <cstring>
+
+  /* Header files for the OOMMF extensions */
+  #include "oc.h"
+  #include "nb.h"
+  #include "if.h"
+
+  /* End includes */
+  ...
+\end{verbatim}
+The header file \fn{cstring} is ignored by the dependency search because
+it is specified inside angle brackets rather than double quotes. But the
+\fn{oc.h}, \fn{nb.h}, and \fn{if.h} files are all considered. These
+files are part of the \cd{Oc}, \cd{Nb}, and \cd{If} package libraries,
+respectively, living in subdirectories under \fn{oommf/pkg/}. The file
+\fn{oommf/pkg/oc/oc.h}, for example, will be checked for included files
+in the same way, and so on. The full dependency tree can be quite
+extensive. The \app{pimake} application supports a \cd{-d} option to
+print out the dependency tree, e.g.,
+\begin{verbatim}
+  tclsh oommf.tcl pimake -cwd app/omfsh -d windows-x86_64/omfsh.obj
+\end{verbatim}
+This output can be helpful is diagnosing dependency issues.
+
+The \verb+/* End includes */+ line terminates the \cd{\#include} file search
+inside this file. It is optional but recommended as it will speed-up
+dependency resolution.
+
+If \fn{omfsh.obj} is older than any of its dependent files, then the
+\Tcl\ script specified by the \cd{-script} option will be triggered. In
+this case the script runs \cd{Platform Compile C++}, which is the
+\Cplusplus\ compiler as specified by the
+\fn{oommf/config/platforms/<platform>.tcl} file. In this command
+\cd{-opt} enables compiler optimizations, \cd{-inc} supplements the
+include search path for the compiler, \cd{-out omfsh} is the output
+object file with name adjusted appropriately for the platform, and
+\cd{-src omfsh.cc} specifies the \Cplusplus\ file to be compiled.
+
+The rules for building executables and libraries from collections of
+object modules are of a similar nature. See the various
+\fn{makerules.tcl} files across the \OOMMF\ directory tree for examples.
+
+In a normal rule, the target is a file and if the script is run it will
+create or update the file. Thus, if \app{pimake} is run twice in
+succession on the same target, the second run will not trigger the
+script because the target will be up to date. In contrast, a
+pseudo-target\index{pimake!pseudo-target} does not exist as a file on
+the file system, and the associated script does not create the
+pseudo-target. Since the pseudo-target never exists as a file, repeated
+runs of \app{pimake} on the target will result in repeated runs of the
+pseudo-target script.
+
+Common pseudo-targets include \cd{all},
+\cd{configure}, \cd{help}, and several \cd{clean} variants.  This last
+example illustrates the chaining of \cd{clean} pseudo-targets to remove
+constructed files.
+\begin{verbatim}
+  MakeRule Define {
+    -targets         clean
+    -dependencies    mostlyclean
+  }
+
+  MakeRule Define {
+    -targets         mostlyclean
+    -dependencies    objclean
+    -script          {eval DeleteFiles [Platform Executables omfsh] \
+                         [Platform Executables filtersh] \
+                         [Platform Specific appindex.tcl]}
+  }
+
+  MakeRule Define {
+    -targets         objclean
+    -dependencies    {}
+    -script          {
+                      DeleteFiles [Platform Objects omfsh]
+                      eval DeleteFiles \
+                             [Platform Intermediate {omfsh filtersh}]
+                     }
+  }
+\end{verbatim}
+All three of these rules have targets that are non-existent files, so
+all three are pseudo-targets. The first rule, for target \cd{clean}, has
+no script so the script execution is a no-op. However, the dependencies
+are still evaluated, which in this case means the rule for the target
+\cd{mostlyclean} is checked. This rule has both a dependency and a
+script. The dependencies are evaluated first, so the \cd{objclean}
+script is called to delete the \cd{omfsh} object file and also any
+intermediate files created as side effects of building the \app{omfsh}
+and \app{filtersh} executables. Next the \cd{mostlyclean} script is run,
+which deletes the \app{omfsh} and \app{filtersh} executables and also
+the platform-specific \fn{appindex.tcl} file. Note that none of the
+scripts create their target, so the targets will all remain
+pseudo-targets.

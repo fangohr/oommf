@@ -9,7 +9,7 @@
 
 #include "nb.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 /* End includes */
 

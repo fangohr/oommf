@@ -7,7 +7,7 @@
  *   fields from user (xyz) to grid (xzy) coordinates.
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "constants.h"
 

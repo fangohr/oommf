@@ -81,6 +81,28 @@ proc Oxs_RGlob { args } {
     return $matchlist
 }
 
+# Sort list of files by increasing date, for use by slightly unsafe
+# interpreters.  All files must exist.
+proc Oxs_DateSort { files } {
+   if {[llength $files]<2} { return $files }
+   set augfiles [list]
+   foreach f $files {
+      if {[catch {file mtime $f} modtime]} {
+         return -code error "bad filename \"$f\": $modtime"
+      }
+      lappend augfiles [list $modtime $f]
+   }
+   set result [list]
+   foreach pair [lsort -dictionary $augfiles] {
+      # With dictionary sort, if two files have the same timestamp
+      # then a secondary sort by name occurs, except that files with
+      # embedded spaces will sort using space protection characters
+      # (probably curly braces).
+      lappend result [lindex $pair 1]
+   }
+   return $result
+}
+
 # Checkpoint timestamp
 proc Oxs_CheckpointTimestamp {} {
    if {![catch {clock milliseconds} now]} {

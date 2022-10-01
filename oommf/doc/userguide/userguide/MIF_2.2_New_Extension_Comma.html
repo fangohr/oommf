@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>MIF&nbsp;2.2 New Extension Commands</TITLE>
+<META NAME="description" CONTENT="MIF&nbsp;2.2 New Extension Commands">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Sample_MIF_2.2_File.html">
+<LINK REL="previous" HREF="Differences_between_MIF_2.2.html">
+<LINK REL="up" HREF="MIF_2.2.html">
+<LINK REL="next" HREF="Sample_MIF_2.2_File.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1301"
+  HREF="Sample_MIF_2.2_File.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1297"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1291"
+  HREF="Differences_between_MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1299"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1302"
+  HREF="Sample_MIF_2.2_File.html">Sample MIF&nbsp;2.2 File</A>
+<B> Up:</B> <A NAME="tex2html1298"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Previous:</B> <A NAME="tex2html1292"
+  HREF="Differences_between_MIF_2.2.html">Differences between MIF&nbsp;2.2 and</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001842000000000000000"></A><A NAME="sec:mif22ExtensionCommands"></A><A NAME="22317"></A>
+<BR>
+MIF&nbsp;2.2 New Extension Commands
+</H2>
+In addition to the commands available in
+<A HREF="MIF_2.1_Extension_Commands.html#sec:mif2ExtensionCommands">MIF&nbsp;2.1 files</A>,
+MIF&nbsp;2.2 introduces the following new commands:
+<A HREF="#html:mif2GetMifFilename"><TT>GetMifFilename</TT></A>,
+<A HREF="#html:mif2GetMifParameters"><TT>GetMifParameters</TT></A>,
+<A HREF="#html:mif2GetOptions"><TT>GetOptions</TT></A>,
+<A HREF="#html:mif2SetOptions"><TT>SetOptions</TT></A>,
+<A HREF="#html:mif2EvalScalarField"><TT>EvalScalarField</TT></A>,
+<A HREF="#html:mif2EvalVectorField"><TT>EvalVectorField</TT></A>,
+<A HREF="#html:mif2GetAtlasRegions"><TT>GetAtlasRegions</TT></A>,
+and <A HREF="#html:mif2GetAtlasRegionByPosition"><TT>GetAtlasRegionByPosition</TT></A>.
+
+<P>
+<DL>
+<DT><STRONG>GetMifFilename<A NAME="html:mif2GetMifFilename"></A></STRONG></DT>
+<DD><A NAME="22340"></A>
+The <TT>GetMifFilename</TT> command returns the full (absolute) name of the
+MIF file being read.  This command takes no parameters.
+
+<P>
+</DD>
+<DT><STRONG>GetMifParameters<A NAME="html:mif2GetMifParameters"></A></STRONG></DT>
+<DD><A NAME="22343"></A>
+This command takes no parameters, and returns an even numbered list of
+``Parameter'' label + value pairs as set on the command line or in the
+Load Problem dialog box.  If no parameters were specified, then the return
+will be an empty list.
+
+<P>
+</DD>
+<DT><STRONG>GetOptions<A NAME="html:mif2GetOptions"></A></STRONG></DT>
+<DD>The <TT>GetOptions</TT> command takes no parameters.  It returns the
+accumulated contents of all preceding <TT>SetOptions</TT> blocks, as an even
+numbered list of label + value pairs.
+
+<P>
+</DD>
+<DT><STRONG>SetOptions<A NAME="html:mif2SetOptions"></A></STRONG></DT>
+<DD><A NAME="22348"></A>
+In MIF&nbsp;2.1 files, the output basename and output file formats are
+specified inside the driver's Specify block.  In MIF&nbsp;2.2 these
+specifications are moved to a separate <TT>SetOptions</TT> block.  This
+block can be placed anywhere in the MIF file, but is typically placed
+near the start of the file so that it affects all output
+initializations.  The <TT>SetOptions</TT> command takes a single argument,
+which is a list of label + value pairs.  The default labels are:
+
+<UL>
+<LI><TT>basename</TT>
+</LI>
+<LI><TT>scalar_output_format</TT>
+</LI>
+<LI><TT>scalar_field_output_format</TT>
+</LI>
+<LI><TT>scalar_field_output_meshtype</TT>
+</LI>
+<LI><TT>vector_field_output_format</TT>
+</LI>
+<LI><TT>vector_field_output_meshtype</TT>
+</LI>
+</UL>
+The <TT>basename</TT> value is used as a prefix for output filename
+construction by the data output routines.  If <TT>basename</TT> is not
+specified, then the default value is taken from the filename of the
+input MIF file.  The <TT>scalar_output_format</TT> value is a C-style
+printf string specifying
+the output format for DataTable output.  This is
+optional, with default value ``<TT>%.17g</TT>''.  The values associated with
+<TT>scalar_field_output_format</TT> and
+<TT>vector_field_output_format</TT> should be two element lists
+that specify the style and precision for scalar and vector field
+output sent to <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
+ NAME="22369"><B>mmDisp</B></A> and
+<A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
+ NAME="22374"><B>mmArchive</B></A>.  The first
+element in the list should be one of <TT>binary</TT> or <TT>text</TT>, specifying
+the output style.  If binary output is selected, then the second element
+specifying precision should be either 4 or 8, denoting component binary
+output length in bytes.  For text output, the
+second element should be a C-style printf string like that used by
+<TT>scalar_output_format</TT>.  The default value for both
+<TT>scalar_field_output_format</TT> and
+<TT>vector_field_output_format</TT> is ``<TT>binary 8</TT>''.
+For <TT>scalar_field_output_meshtype</TT> and
+<TT>vector_field_output_meshtype</TT> the values should be either
+``rectangular'' (default) or ``irregular'', specifying the grid type for
+the corresponding field output files.
+
+<P>
+Multiple <TT>SetOptions</TT> blocks are allowed.  Label values specified
+in one <TT>SetOption</TT> block may be overwritten by a later
+<TT>SetOption</TT> block.  Output formats for a given output are
+set during the processing of the <TT>Specify</TT> block for the enclosing
+<TT>Oxs_Ext</TT> object.  Therefore, one can specify different formats
+for outputs in different <TT>Oxs_Ext</TT> objects by strategic placement
+of <TT>SetOptions</TT> blocks.
+
+<P>
+Additional label names may be added in the future, and may be
+<TT>Oxs_Ext</TT> class dependent.  At present there is no checking for
+unknown label names, but that policy is subject to change.
+
+<P>
+An example <TT>SetOptions</TT> block:
+
+<BLOCKQUOTE>
+<PRE>
+SetOptions {
+ basename fubar
+ scalar_output_format %.12g
+ scalar_field_output_format {text %.4g}
+ scalar_field_output_meshtype irregular
+ vector_field_output_format {binary 4}
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+</DD>
+<DT><STRONG>EvalScalarField<A NAME="html:mif2EvalScalarField"></A></STRONG></DT>
+<DD><A NAME="22395"></A>
+This command allows access in a MIF file to values from a scalar field
+defined in a preceding <TT>Specify</TT> block.  For example,
+
+<BLOCKQUOTE>
+<PRE>
+   Oxs_AtlasScalarField:Ms {
+      atlas :atlas
+      default_value 0
+      values {
+         Adisks 520e3
+         Bdisks 520e3
+      }
+   }}
+
+   set Ms_a [EvalScalarField :Ms 50e-9 20e-9 2e-9]
+</PRE>
+
+</BLOCKQUOTE>
+The four arguments to <TT>EvalScalarField</TT> are a reference to the scalar
+field (here <TT>:Ms</TT>), and the three coordinates of the point where you
+want the field evaluated.  The coordinates are in the problem coordinate
+space, i.e., in meters.
+
+<P>
+</DD>
+<DT><STRONG>EvalVectorField<A NAME="html:mif2EvalVectorField"></A></STRONG></DT>
+<DD><A NAME="22402"></A>
+This command is the same as the <TT>EvalScalarField</TT> command, except
+that the field reference is to a vector field, and the return value is a
+three item list representing the three components of the vector field at
+the specified point.
+
+<P>
+</DD>
+<DT><STRONG>GetAtlasRegions<A NAME="html:mif2GetAtlasRegions"></A></STRONG></DT>
+<DD>This command takes one argument, which is a reference to an atlas, and
+returns an ordered list of all the regions in that atlas.  The first
+item on the returned list will always be ``universe'', which includes
+all points not in any of the other regions, including in particular any
+points outside the nominal bounds of the atlas.  Sample usage:
+
+<BLOCKQUOTE>
+<PRE>
+   set regions_list [GetAtlasRegions :atlas]
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+</DD>
+<DT><STRONG>GetAtlasRegionByPosition<A NAME="html:mif2GetAtlasRegionByPosition"></A></STRONG></DT>
+<DD>This command takes four arguments: a reference to atlas, followed by the
+x, y, and z coordinates of a point using problem coordinates (i.e.,
+meters).  The return value is the name of the region containing the
+specified point.  This name will match exactly one of the names on the
+list returned by the <TT>GetAtlasRegions</TT> command for the given atlas.
+Note that the return value might be the ``universe'' region.  Sample
+usage:
+
+<BLOCKQUOTE>
+<PRE>
+   set rogue_region [GetAtlasRegionByPosition :atlas 350e-9 120e-9 7.5e-9]
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1301"
+  HREF="Sample_MIF_2.2_File.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1297"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1291"
+  HREF="Differences_between_MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1299"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

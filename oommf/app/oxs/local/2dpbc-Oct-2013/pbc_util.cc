@@ -1,5 +1,5 @@
-#include <math.h>
-#include <stdlib.h>   
+#include <cmath>
+#include <cstdlib>   
 #include "nb.h"
 #include "pbc_util.h"
 #include "demagcoef.h"

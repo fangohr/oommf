@@ -130,7 +130,7 @@ proc Oc_ResolveLink { pathname } {
 # path type (absolute, relative, etc.) as startdir.
 proc Oc_FindSubdirectories { startdir {maxdepth 16}} {
    if {![file isdirectory $startdir]} { return {} }
-   set dirlist $startdir
+   set dirlist [list $startdir]
    set chklist [file normalize $startdir]
    set unsearched $dirlist
    while {[llength $unsearched]>0 && [incr maxdepth -1]>=0} {
@@ -446,6 +446,18 @@ proc Oc_MakePortHeader {varinfo outfile} {
     }
 
     if {[catch {
+	$config GetValue program_compiler_c++_property_have_quickexit
+    }]} {
+	# Config value program_compiler_c++_property_have_quickexit
+	# has not been set, so make use of varinfo test.
+       if {[regexp -- "\n\\s*quick_exit is supported\.\n" $varlist]} {
+          $config SetValue program_compiler_c++_property_have_quickexit 1
+       } else {
+          $config SetValue program_compiler_c++_property_have_quickexit 0
+       }
+    }
+
+    if {[catch {
        $config GetValue program_compiler_c++_property_pagesize
     }]} {
        # Config value program_compiler_c++_property_pagesize
@@ -470,14 +482,22 @@ proc Oc_MakePortHeader {varinfo outfile} {
           $cache_linesize
     }
 
-    # Dump header info.
-    # Note: Some versions of g++ on Windows don't process the printf
-    # format variable type modifiers (e.g., OC_INT8_MOD) properly if
-    # stdio.h is #include'd after a C++-style include file, or, for that
-    # matter, if stdio.h is #include'd as <cstdio>.  This is either a
-    # bug in g++, its headers, or else it is improper to use the "I64"
-    # modifier in C++.  (The macro TCL_LL_MODIFIER in tcl.h has "I64" as
-    # one possible setting, but then tcl.h is unabashedly C, not C++.)
+   # Dump header info.
+
+   # There is a note in the 2014-02-19 version of this file that
+   # reads:
+   #
+   #  Note: Some versions of g++ on Windows don't process the printf
+   #  format variable type modifiers (e.g., OC_INT8_MOD) properly if
+   #  stdio.h is #include'd after a C++-style include file, or, for that
+   #  matter, if stdio.h is #include'd as <cstdio>.  This is either a
+   #  bug in g++, its headers, or else it is improper to use the "I64"
+   #  modifier in C++.  (The macro TCL_LL_MODIFIER in tcl.h has "I64" as
+   #  one possible setting, but then tcl.h is unabashedly C, not C++.)
+   #
+   # However, I'm not able to replicate this problem on 2022-01-22 with
+   # mingw builds of g++ 10.2.0 (32- or 64-bit). So switching code to
+   # use C++ headers on this date.
     set porth [subst \
 {/* FILE: ocport.h             -*-Mode: c++-*-
  *
@@ -492,9 +512,9 @@ proc Oc_MakePortHeader {varinfo outfile} {
 
 #define OOMMF_API_INDEX [$config OommfApiIndex]
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>}]
+#include <cstdio>
+#include <cstdlib>
+#include <climits>}]
 
     # Some compilers have broken cmath header files.
     if {![catch {
@@ -544,6 +564,16 @@ proc Oc_MakePortHeader {varinfo outfile} {
 #endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <aclapi.h>
+/* aclapi.h (for SID declarations) pulls in shared/rpcndr.h */
+/* which defines "small" and "hyper" macros. Seriously???   */
+#ifdef small
+# undef small
+#endif
+#ifdef hyper
+# undef hyper
+#endif
+#include <sddl.h>
 #undef WIN32_LEAN_AND_MEAN
 #undef NOMINMAX
 
@@ -1367,6 +1397,9 @@ typedef  unsigned char      OC_UCHAR;
    if {[catch {$config GetValue sse_level} sse_level]} {
       set sse_level 0   ;# Default
    }
+   if {[catch {$config GetValue sse_no_aligned_access} sse_noaligned]} {
+      set sse_noaligned 0   ;# Default
+   }
    if {$sse_level>0} {
       append porth [subst {
 /* Use SSE intrinsics, level $sse_level and lower */
@@ -1375,6 +1408,7 @@ typedef  unsigned char      OC_UCHAR;
  * (and therefore agrees with the SSE double precision type.)
  */
 #define OC_SSE_LEVEL $sse_level
+#define OC_SSE_NO_ALIGNED $sse_noaligned
 }]
    if {$sse_level>1 && $real8m_is_real8 \
     && [lsearch -exact $int_type_widths 8] >= 0} {
@@ -1733,6 +1767,54 @@ typedef void(*omf_sighandler)(int);             /* ANSI version */
 #define PATHSPLITSTR ";"
 }
    }
+
+   # quick_exit() support status. It's in the C11 and C++11
+   # specification, but support lags.
+   if {[catch {$config GetValue \
+                  program_compiler_c++_property_have_quickexit} _]} {
+      error "Oc_Config value program_compiler_c++_property_have_quickexit\
+             should be set, but it isn't???"
+   }
+   set have_quickexit $_
+   append porth "
+/* Does compiler provide quick_exit()? */
+#define OC_HAVE_QUICKEXIT $have_quickexit
+"
+
+   # Asynchronous exception handling, such as for segfaults caused by
+   # invalid memory references. Aside from the trivial NONE setting, the
+   # handling is implemented using quick_exit(), so if quick_exit() is
+   # not available then force NONE.
+   append porth {
+/* Asynchronous exception handling              */
+/* Note: Non-trivial handling uses quick_exit() */
+#define OC_ASYNC_EXCEPT_NOT_SET  0
+#define OC_ASYNC_EXCEPT_NONE     1
+#define OC_ASYNC_EXCEPT_POSIX    2
+#define OC_ASYNC_EXCEPT_SEH      3}
+   if {!$have_quickexit || [catch {$config GetValue \
+                  program_compiler_c++_async_exception_handling} _]} {
+         append porth {
+#define OC_ASYNC_EXCEPTION_HANDLING OC_ASYNC_EXCEPT_NONE
+}
+   } elseif {[string compare -nocase seh $_]==0} {
+         append porth {
+#ifdef _MSC_VER // Visual C++ compiler being used
+# define OC_ASYNC_EXCEPTION_HANDLING OC_ASYNC_EXCEPT_SEH
+#else           // Otherwise fall back to POSIX signal handling
+# define OC_ASYNC_EXCEPTION_HANDLING OC_ASYNC_EXCEPT_POSIX
+#endif
+}
+   } elseif {[string compare -nocase posix $_]==0} {
+         append porth {
+#define OC_ASYNC_EXCEPTION_HANDLING OC_ASYNC_EXCEPT_POSIX
+}
+   } else {
+      append porth {
+#define OC_ASYNC_EXCEPTION_HANDLING OC_ASYNC_EXCEPT_NONE
+}
+   }
+   unset have_quickexit
 
    # Time API
    if {[string compare $systemtype windows] != 0 \

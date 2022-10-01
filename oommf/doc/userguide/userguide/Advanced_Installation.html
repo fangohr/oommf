@@ -17,422 +17,71 @@
 <LINK REL="next" HREF="Platform_Specific_Installat.html">
 <LINK REL="previous" HREF="Basic_Installation.html">
 <LINK REL="up" HREF="Installation.html">
-<LINK REL="next" HREF="Platform_Specific_Installat.html">
+<LINK REL="next" HREF="Reducing_Disk_Space_Usage.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html209"
-  HREF="Platform_Specific_Installat.html">
+<A NAME="tex2html298"
+  HREF="Reducing_Disk_Space_Usage.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html205"
+<A NAME="tex2html294"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html199"
-  HREF="Basic_Installation.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html211"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html207"
+<A NAME="tex2html288"
+  HREF="Reporting_Problems.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html296"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html210"
-  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
-<B> Up:</B> <A NAME="tex2html206"
+<B> Next:</B> <A NAME="tex2html299"
+  HREF="Reducing_Disk_Space_Usage.html">Reducing Disk Space Usage</A>
+<B> Up:</B> <A NAME="tex2html295"
   HREF="Installation.html">Installation</A>
-<B> Previous:</B> <A NAME="tex2html200"
-  HREF="Basic_Installation.html">Basic Installation</A>
+<B> Previous:</B> <A NAME="tex2html289"
+  HREF="Reporting_Problems.html">Reporting Problems</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
-<!--Table of Child-Links-->
-<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
-<UL>
-<LI><A NAME="tex2html213"
-  HREF="Advanced_Installation.html#SECTION00033100000000000000">Reducing Disk Space Usage</A>
-<LI><A NAME="tex2html214"
-  HREF="Advanced_Installation.html#SECTION00033200000000000000">Local Customizations</A>
-<LI><A NAME="tex2html215"
-  HREF="Advanced_Installation.html#SECTION00033300000000000000">Optimization</A>
-<LI><A NAME="tex2html216"
-  HREF="Advanced_Installation.html#SECTION00033400000000000000">Parallelization</A>
-<LI><A NAME="tex2html217"
-  HREF="Advanced_Installation.html#SECTION00033500000000000000">Managing OOMMF Platform Names</A>
-<UL>
-<LI><A NAME="tex2html218"
-  HREF="Advanced_Installation.html#SECTION00033510000000000000">Changing the name OOMMF assigns to your platform</A>
-<LI><A NAME="tex2html219"
-  HREF="Advanced_Installation.html#SECTION00033520000000000000">Adding a new platform type</A>
-<LI><A NAME="tex2html220"
-  HREF="Advanced_Installation.html#SECTION00033530000000000000">Resolving platform name conflicts</A>
-</UL></UL>
-<!--End of Table of Child-Links-->
-<HR>
-
-<H2><A NAME="SECTION00033000000000000000"></A><A NAME="sec:install.advanced"></A>
+<H1><A NAME="SECTION00330000000000000000"></A><A NAME="sec:install.advanced"></A>
 <BR>
 Advanced Installation
-</H2>
+</H1>
 
 <P>
 The following sections provide instructions for some additional
 installation options.
 
 <P>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
-<H3><A NAME="SECTION00033100000000000000"></A><A NAME="sec:install.reducedisk"></A>
-<BR>
-Reducing Disk Space Usage
-</H3>
-
-<P>
-<A NAME="1032"></A>
-To delete the intermediate files created when building the OOMMF software from source code, use 
-<A HREF="Platform-Independent_Make_p.html#sec:pimake">pimake</A>
-to build the target
-<TT>objclean</TT> in the root directory of the OOMMF distribution.
-<PRE>
-tclsh oommf.tcl pimake objclean
-</PRE>
-Running your platform <TT><B>strip</B></TT> utility on the OOMMF executable files
-should also reduce their size somewhat.
-<A NAME="1041"></A>
-
-<P>
-
-<H3><A NAME="SECTION00033200000000000000"></A><A NAME="sec:custom"></A><A NAME="1044"></A>
-<BR>
-Local Customizations
-</H3>
-
-<P>
-OOMMF software supports local customization of some of its
-features.  All OOMMF programs load the file
-<TT><B>config/options.tcl</B></TT><A NAME="1046"></A><A NAME="1047"></A>, which
-contains customization commands as well as editing instructions.  As it
-is distributed, <TT><B>config/options.tcl</B></TT> directs programs to also load
-the file <TT><B>config/local/options.tcl</B></TT>, if it exists.  Because future
-OOMMF releases may overwrite the file
-<TT><B>config/options.tcl</B></TT>, permanent customizations should be made by
-copying <TT><B>config/options.tcl</B></TT> to <TT><B>config/local/options.tcl</B></TT> and
-editing the copy.  It is recommended that you leave in the file
-<TT><B>config/local/options.tcl</B></TT> only the customization commands necessary
-to change those options you wish to modify.  Remove all other options so
-that overwrites by subsequent OOMMF releases are allowed to change the
-default behavior.
-
-<P>
-Notable available customizations include the choice of which network
-port the <A HREF="OOMMF_Architecture_Overview.html#sec:arch">host service directory application</A> uses, and the choice of what
-program is used for the display of help documentation.  By default, 
-OOMMF software uses the application
-<A HREF="Documentation_Viewer_mmHelp.html#sec:mmhelp"><B>mmHelp</B></A>, which
-is included in the OOMMF release, but the help documentation files
-are standard HTML, so any web browser 
-may be used instead.  Complete
-instructions are in the file <TT><B>config/options.tcl</B></TT>.
-
-<P>
-
-<H3><A NAME="SECTION00033300000000000000"></A><A NAME="sec:optimize"></A><A NAME="1065"></A>
-<BR>
-Optimization
-</H3>
-
-<P>
-In the interest of successful compilation of a usable software package
-``out of the box,'' the default configuration for OOMMF does not
-attempt to achieve much in terms of optimization.  However, in each
-platform's configuration file (for example,
-<TT><B>config/platforms/wintel.tcl</B></TT>), there are alternative values for the
-configuration's optimization flags, available as comments.  If you are
-familiar with your compiler's command line options, you may experiment
-with other choices as well.  You can edit the platform configuration
-file to replace the default selection with another choice that
-provides better computing performance.  For example, in
-<TT><B>config/platforms/wintel.tcl</B></TT>, alternative optimization flags for the
-MSVC++ compiler may be invoked by editing how the configuration
-variable <TT>opts</TT> is defined, following instructions in the comments.
-
-<P>
-The extensible solver, Oxs, can be compiled with debugging support
-for extensive run-time code checks.  This will significantly reduce
-computation performance.  In the standard OOMMF distributions, these
-checks should be disabled.  You may verify this by checking that
-the following line appears in the file <TT><B>config/options.tcl</B></TT>:
-<PRE>
-Oc_Option Add * Platform cflags {-def NDEBUG}
-</PRE>
-To enable these checks, either comment/remove this line, or else add 
-to the <TT><B>config/local/options.tcl</B></TT> file a ``cflags'' option line
-without ``-def NDEBUG'', such as
-<PRE>
-Oc_Option Add * Platform cflags {-warn 1}
-</PRE>
-The <TT><B>config/local/options.tcl</B></TT> file may be created if it does not
-already exist.
-
-<P>
-
-<H3><A NAME="SECTION00033400000000000000"></A><A NAME="sec:parallel"></A><A NAME="1078"></A>
-<BR>
-Parallelization
-</H3>
-The OOMMF Oxs 3D solvers (<TT>oxsii</TT> and <TT>boxsi</TT>) can be built
-thread-enabled to allow parallel processing on
-multi-processor/multi-core machines.  In order to build and run a
-parallel version of OOMMF, you must have a thread-enabled version of
-Tcl.  Most standard binary releases of Tcl today are thread-enabled,
-so OOMMF releases that include pre-built executables are built
-thread-enabled.  If you build OOMMF from source, then by default
-OOMMF will be built thread-enabled if your Tcl is thread-enabled.
-As explained earlier, you can check thread build status with the
-<TT>tclsh oommf.tcl +platform</TT> command.  If you want to force a
-non-threaded build of OOMMF, then edit the <TT><B>config/platforms/</B></TT> file
-for your platform.  In the section labeled <TT>LOCAL CONFIGURATION</TT>, you
-will find a line that looks like
-<PRE>
-# $config SetValue oommf_threads 0
-</PRE>
-Uncomment this line (i.e., remove the leading `<code>#</code>' character) to
-force a non-threaded build.  Then run
-<PRE>
-tclsh oommf.tcl pimake distclean
-tclsh oommf.tcl pimake
-</PRE>
-from the OOMMF root directory to create a fresh build.
-
-<P>
-You can use the <TT>tclsh oommf.tcl +platform</TT> command to see the
-default number of compute threads that will be run by the Oxs 3D
-solver programs <TT>oxsii</TT> and <TT>boxsi</TT>.  You can modify the default
-as explained in the <A HREF="Basic_Installation.html#sec:platform.configuration">Check Your Platform
-Configuration</A> section, or you can override 
-the default at run time via the command line option <TT>-threads</TT> to
-<TT>oxsii</TT> and <TT>boxsi</TT>.
-
-<P>
-<A NAME="1098"></A>Some multi-processor machines have a non-uniform memory
-architecture (NUMA), which means that although each processor can access
-all of system memory, some parts of memory can be accessed faster than
-others.  Typically this is accomplished by dividing the system memory
-and processors into ``nodes.''  Memory accesses within a node are faster
-than accesses between nodes, and depending on the architecture access
-latency and bandwidth may be different between different node pairs.
-Examples of machines with NUMA include some multi-processor AMD Opteron
-and Intel Xeon boxes.
-
-<P>
-Computer programs such as OOMMF can run on NUMA machines without
-making any special allowances for the memory architecture.  However, a
-program that is written to take advantage of the faster local
-(intra-node) memory accesses can sometimes run significantly faster.
-OOMMF contains NUMA-aware code, but this code is highly operating
-system specific.  At present, OOMMF can be built with NUMA support
-only on Linux (32- and 64-bit) systems.  To do this, you must install
-the operating system NUMA support packages ``numactl'' and
-``numactl-devel''.  The names may vary somewhat between Linux
-distributions, but the first typically includes the executable
-<TT><B>numactl</B></TT> and the second includes the header file <TT><B>numa.h</B></TT>.  Once
-the numactl package is installed, you can run the command
-<PRE>
-numactl --hardware
-</PRE>
-to get an overview of the memory architecture on your machine.  If this
-shows you have only one node, then there is no advantage to making a
-NUMA-aware build of OOMMF.
-
-<P>
-The next step is to edit the <TT><B>config/platforms</B></TT> for your platform.
-For example, on a 64-bit Linux box this file is
-<TT><B>config/platforms/linux-x86_64.tcl</B></TT>. 
-In the section labeled <TT>LOCAL CONFIGURATION</TT>, find the line
-<PRE>
-# $config SetValue use_numa 1
-</PRE>
-Edit this to remove the leading `<code>#</code>' character.  Alternatively
-(and, actually, preferably), create a <TT><B>local</B></TT> subdirectory and make a
-local configuration file with the same platform name; e.g.,
-<TT><B>config/platforms/local/linux-x86_64.tcl</B></TT> on a 64-bit Linux machine.  Add
-the line
-<PRE>
-$config SetValue use_numa 1
-</PRE>
-to this file.  (The advantage of using a <TT><B>config/platforms/local</B></TT>
-file is that you can make changes without modifying the original OOMMF source code, which makes it easier to port your local changes to future
-releases of OOMMF.)  If this is done correctly, then the command
-`<TT>tclsh oommf.tcl +platform</TT>' will show that NUMA support is enabled.
-Then simply run `<TT>tclsh oommf.tcl pimake distclean</TT>' and
-`<TT>tclsh oommf.tcl pimake</TT>' from the OOMMF root directory to build a
-NUMA-aware version of OOMMF.
-
-<P>
-To activate the NUMA-aware code, you must specify the <TT>-numanodes</TT>
-option on the <TT>oxsii</TT>/<TT>boxsi</TT> command line, or set the the
-environment variable
-<TT>OOMMF_NUMANODES</TT><A NAME="1120"></A>.
-Check the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs documention</A> for details.
-<A NAME="1125"></A><A NAME="1126"></A>
-
-<P>
-
-<H3><A NAME="SECTION00033500000000000000"></A><A NAME="sec:platformNames"></A><A NAME="1129"></A>
-<BR>
-Managing OOMMF Platform Names
-</H3>
-
-<P>
-OOMMF software classifies computing platforms into different types
-using the scripts in the directory <TT><B>config/names</B></TT> relative to the
-root directory of the OOMMF distribution.  
-Each type of computing platform is assigned a unique name.  
-These names are used as directory names
-and in index and configuration files so that a single 
-OOMMF installation may contain platform-dependent sections for many
-different types of computing platforms.
-
-<P>
-To learn what name OOMMF software uses to refer to your computing
-platform, run 
-<PRE>
-tclsh oommf.tcl +platform
-</PRE>
-in the OOMMF root directory.
-
-<P>
-
-<H4><A NAME="SECTION00033510000000000000">
-Changing the name OOMMF assigns to your platform</A>
-</H4>
-
-<P>
-First, use 
-<A HREF="Platform-Independent_Make_p.html#sec:pimake">pimake</A>
-to build the target <TT>distclean</TT> to
-clear away any compiled executables built using the old platform
-name.
-<PRE>
-tclsh oommf.tcl pimake distclean
-</PRE>
-Then, to change the name OOMMF software uses to describe your platform from 
-<TT>foo</TT> to <TT>bar</TT>, simply rename the file
-<BLOCKQUOTE>
-<TT><B>config/names/foo.tcl</B></TT>
-  to  
-<TT><B>config/names/bar.tcl</B></TT>
-
-</BLOCKQUOTE>
-and
-<BLOCKQUOTE>
-<TT><B>config/platforms/foo.tcl</B></TT>
-  to  
-<TT><B>config/platforms/bar.tcl</B></TT>.
-
-</BLOCKQUOTE>
-After renaming your platform type, you should recompile your executables
-using the new platform name.
-
-<P>
-
-<H4><A NAME="SECTION00033520000000000000">
-Adding a new platform type</A>
-</H4>
-
-<P>
-If <TT>oommf.tcl +platform</TT> reports the platform name
-<TT>unknown</TT>, then none of the scripts in <TT><B>config/names/</B></TT>
-recognizes your platform type.  As an example, to add the platform
-name <TT>foo</TT> to OOMMF's vocabulary of platform names, create the
-file <TT><B>config/names/foo.tcl</B></TT>.  The simplest way to proceed is to
-copy an existing file in the directory <TT><B>config/names</B></TT> and edit it
-to recognize your platform.
-
-<P>
-The files in <TT><B>config/names</B></TT> include Tcl code like this:
-
-<P>
-<PRE>
-  Oc_Config New _ \
-    [string tolower [file rootname [file tail [info script]]]] {
-      # In this block place the body of a Tcl proc which returns 1
-      # if the machine on which the proc is executed is of the
-      # platform type identified by this file, and which returns 0
-      # otherwise.
-      #
-      # The usual Tcl language mechanism for discovering details 
-      # about the machine on which the proc is running is to 
-      # consult the global Tcl variable 'tcl_platform'.  See the
-      # existing files for examples, or contact the OOMMF
-      # developers for further assistance.
-  }
-</PRE>
-
-<P>
-After creating the new platform name file <TT><B>config/names/foo.tcl</B></TT>, you
-also need to create a new platform file <TT><B>config/platforms/foo.tcl</B></TT>.
-A reasonable starting point is to copy the file
-<TT><B>config/platforms/unknown.tcl</B></TT> for editing.  Contact the OOMMF developers for assistance.
-
-<P>
-Please consider contributing your new platform recognition and 
-configuration files to the OOMMF developers for inclusion in 
-future releases of OOMMF software.
-
-<P>
-
-<H4><A NAME="SECTION00033530000000000000">
-Resolving platform name conflicts</A>
-</H4>
-
-<P>
-If the script <TT>oommf.tcl +platform</TT> reports ``Multiple platform names are
-compatible with your computer'', then there are multiple files in the
-directory <TT><B>config/names/</B></TT> that return 1 when run on your computer.
-For each compatible platform name reported, edit the corresponding
-file in <TT><B>config/names/</B></TT> so that only one of them returns 1.
-Experimenting using <TT><B>tclsh</B></TT> to probe the Tcl variable
-<TT>tcl_platform</TT> should assist you in this task.  If that fails, you
-can explicitly assign a platform type corresponding to your computing
-platform by matching its hostname.  For example, if your machine's
-host name is <TT>foo.bar.net</TT>:
-<PRE>
-  Oc_Config New _ \
-    [string tolower [file rootname [file tail [info script]]]] {
-      if {[string match foo.bar.net [info hostname]]} {
-          return 1
-      }
-      # Continue with other tests...
-  }
-</PRE>
-
-<P>
-Contact the OOMMF developers if you need further assistance.
-<A NAME="1177"></A>
-
-<P>
-<HR>
-<!--Navigation Panel--><A NAME="tex2html1"
-  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html209"
-  HREF="Platform_Specific_Installat.html">
-<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html205"
-  HREF="Installation.html">
-<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html199"
-  HREF="Basic_Installation.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html212"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html207"
-  HREF="docindex.html">
-<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
-<BR>
-<!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<UL>
+<LI><A NAME="tex2html300"
+  HREF="Reducing_Disk_Space_Usage.html">Reducing Disk Space Usage</A>
+<LI><A NAME="tex2html301"
+  HREF="Local_Customizations.html">Local Customizations</A>
+<LI><A NAME="tex2html302"
+  HREF="Optimization.html">Optimization</A>
+<LI><A NAME="tex2html303"
+  HREF="Parallelization.html">Parallelization</A>
+<LI><A NAME="tex2html304"
+  HREF="Managing_OOMMF_Platform_Nam.html">Managing OOMMF Platform Names</A>
+<UL>
+<LI><A NAME="tex2html305"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335100000000000000">Changing the name OOMMF assigns to your platform</A>
+<LI><A NAME="tex2html306"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335200000000000000">Adding a new platform type</A>
+<LI><A NAME="tex2html307"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335300000000000000">Resolving platform name conflicts</A>
+</UL></UL>
+<!--End of Table of Child-Links-->
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

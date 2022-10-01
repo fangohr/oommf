@@ -10,7 +10,7 @@
  *
  */
 
-#include <assert.h>
+#include <cassert>
 
 #include <string>
 #include <vector>
@@ -33,7 +33,7 @@ OC_USE_STRING;
 OC_USE_EXCEPTION;
 OC_USE_BAD_ALLOC;
 
-/* End includes */     
+/* End includes */
 
 /*
  *----------------------------------------------------------------------
@@ -337,7 +337,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
                                 TCL_GLOBAL_ONLY);
     if(ec!=NULL) {
       error_code = String(ec);
-    } else { 
+    } else {
       error_code.erase();
     }
     // In the case of this exception, the error message has been
@@ -348,7 +348,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     // NOTE: Tcl_ResetResult also marks errorInfo and errorCode as
     //       not set.
     error_message = Tcl_GetStringResult(interp);
-    Tcl_ResetResult(interp); 
+    Tcl_ResetResult(interp);
     result_code = err.error_code;
     fatal_error = 0; // Assume that this is either not fatal or will
     /// be handled at Tcl code level.
@@ -409,6 +409,23 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     result_code = TCL_ERROR; // Safety
     fatal_error = 0; // Assume that this is either not fatal or will
     /// be handled at Tcl code level.
+  } catch (const String& err) {
+    error_message
+      = String("Error thrown from inside"
+               " unspecified OOMMF library module --- ") + err;
+    error_info.erase();
+    error_code.erase();
+    result_code = TCL_ERROR; // Safety
+    // Assume fatal
+  } catch (const Oc_AutoBuf& err) {
+    error_message =
+      String("Error thrown from inside"
+             " unspecified OOMMF library module --- ")
+      + String(err.GetStr());
+    error_info.erase();
+    error_code.erase();
+    result_code = TCL_ERROR; // Safety
+    // Assume fatal
   } catch (const char* err) {
     // Some routines in the pkg area throw bare char*'s, Strings, or
     // Oc_AutoBufs.  These should be changed to Oc_Exceptions.
@@ -419,22 +436,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     error_info.erase();
     error_code.erase();
     result_code = TCL_ERROR; // Safety
-  } catch (const Oc_AutoBuf& err) {
-    error_message =
-      String("Error thrown from inside"
-             " unspecified OOMMF library module --- ")
-      + String(err.GetStr());
-    error_info.erase();
-    error_code.erase();
-    result_code = TCL_ERROR; // Safety
-  } catch (const String& err) {
-    error_message =
-      String("Error thrown from inside"
-             " unspecified OOMMF library module --- ")
-      + err;
-    error_info.erase();
-    error_code.erase();
-    result_code = TCL_ERROR; // Safety
+    // Assume fatal
   } catch (BAD_ALLOC&) {
     error_message =
       String("Library error thrown from inside \"")
@@ -444,6 +446,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     error_info.erase();
     error_code.erase();
     result_code = TCL_ERROR; // Safety
+    // Assume fatal
   } catch (EXCEPTION& err) {
     error_message =
       String("Library error thrown from inside \"")
@@ -453,6 +456,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     error_info.erase();
     error_code.erase();
     result_code = TCL_ERROR; // Safety
+    // Assume fatal
   } catch (...) {
     error_message =
       String("Unrecognized error thrown from inside \"")
@@ -460,6 +464,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     error_info.erase();
     error_code.erase();
     result_code = TCL_ERROR; // Safety
+    // Assume fatal
   }
 
   if(!fatal_error) {
@@ -510,7 +515,6 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
       Tcl_AppendResult(interp,spacer,tmp_error_message.c_str(),NULL);
     }
   }
-
   return result_code;
 }
 
@@ -1482,7 +1486,7 @@ String Oxs_QueryState(Oxs_Director* director,Tcl_Interp *interp,
                          (char *) NULL);
 	throw OxsCmdsProcTclException(TCL_ERROR);
     }
-    
+
     return Nb_MergeList(result);
 }
 
@@ -1835,7 +1839,7 @@ String Oxs_ExtCreateAndRegister
   }
 
   String bad_specs;
-  int result 
+  int result
     = director->ExtCreateAndRegister(argv[1],argv[2],bad_specs);
 
   if(result != 0) {

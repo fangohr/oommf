@@ -13,7 +13,7 @@
 # the "model name" string.
 #    GuessGccVersion
 # which runs gcc to guess the version of GCC being used.
-#    GetGccGeneralOptlags
+#    GetGccGeneralOptFlags
 # which returns a list of aggressive, non-processor-specific
 # optimization flags that can be passed to gcc.
 #    GetGccCpuOptFlags

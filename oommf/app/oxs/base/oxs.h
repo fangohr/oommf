@@ -19,8 +19,8 @@
  
 #define OXS_MAJOR_VERSION    2
 #define OXS_MINOR_VERSION    0
-#define OXS_RELEASE_LEVEL    "a"
-#define OXS_RELEASE_SERIAL   3
+#define OXS_RELEASE_LEVEL    "b"
+#define OXS_RELEASE_SERIAL   0
 
 /* Set this value when making a snapshot release, example value 20061206 */
 /* Also adjust the SnapshotDate method in oommf/pkg/oc/config.tcl        */

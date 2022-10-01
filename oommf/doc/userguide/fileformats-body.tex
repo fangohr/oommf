@@ -4,7 +4,7 @@
 \setcounter{secnumdepth}{4}
 %end{latexonly}
 
-\section{Problem Specification File Formats (\MIF)}\label{sec:mifformat}
+\chapter{Problem Specification File Formats (\MIF)}\label{sec:mifformat}
 Micromagnetic simulations are specified to the \OOMMF\ solvers using the
 \OOMMF\ \textit{Micromagnetic Input Format} (\MIF)\index{file!MIF}.  There
 are four distinct versions of this format.  The oldest format,
@@ -14,10 +14,10 @@ Sec.~}{}{sec:mmsolve2d}\index{application!mmSolve2D} and
 \hyperrefhtml{\app{batchsolve}}{\app{batchsolve},
 Sec.~}{}{sec:batchsolve}\index{application!batchsolve}) and the
 \hyperrefhtml{\app{mmProbEd}}{\app{mmProbEd}
-(Sec.~}{)}{sec:mmprobed}\index{application!mmProbEd} problem editor.
+(Ch.~}{)}{sec:mmprobed}\index{application!mmProbEd} problem editor.
 The \MIF~2.1 and \MIF~2.2 formats are the powerful, native format used by the
 \hyperrefhtml{Oxs 3D solvers}{Oxs 3D solvers
-(Sec.~}{)}{sec:oxs}.  The \MIF~1.2 format is a minor modification to
+(Ch.~}{)}{sec:oxs}.  The \MIF~1.2 format is a minor modification to
 the 1.1 format, which can be used as a simple but restricted interface
 to the Oxs solvers.  In all cases values are specified in \SI\ units.  A
 command line utility \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
@@ -27,10 +27,7 @@ versions it is recommended that \MIF\ files be given names ending with
 the \fn{.mif} file extension.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\MIF\ 1.1}\label{sec:mif1format}
-\begin{rawhtml}
-<A NAME="pt:mif1format"></A>
-\end{rawhtml}
+\section{\MIF\ 1.1}\label{sec:mif1format}
 The \MIF~1.1 format is an older micromagnetic problem specification
 format used by the mmSolve 2D solvers.  It is not compatible with the
 \MIF~2.1 format used by the Oxs 3D solvers.  However, the command line tool
@@ -76,13 +73,13 @@ may modify a \MIF~1.1 file using any plain text editor and supply it to
 (Sec.~}{)}{sec:mmsolve2d}\index{application!mmSolve2D}
 using
 \hyperrefhtml{\app{FileSource}}{\app{FileSource}
-(Sec.~}{)}{sec:filesource}\index{application!FileSource}.
+(Ch.~}{)}{sec:filesource}\index{application!FileSource}.
 
 For convenience, the Record Identifier tags are organized into several
 groups; these groups correspond to the top-level buttons presented by
 \app{mmProbEd}.  We follow this convention below.
 
-\subsubsection{Material parameters}\index{materials}
+\subsection{Material parameters}\label{sec:mif1materials}\index{materials}
 \begin{itemize}
 \item {\bf\lb\ Material Name:} This is a convenience entry for
    \app{mmProbEd}; inside the \MIF~1.1 file it is a comment line.  It
@@ -142,7 +139,7 @@ groups; these groups correspond to the top-level buttons presented by
    under the Damp~Coef record identifier description.
 \item {\bf Damp Coef:}
    The ODE solver in \OOMMF\ integrates the Landau-Lifshitz
-   equation\index{ODE!Landau-Lifshitz}~\cite{gilbert55,landau35},
+   equation\index{ODE!Landau-Lifshitz}~\cite{gilbert1955,landau1935},
    written as
 \begin{displaymath}
 \htmlimage{antialias}
@@ -167,7 +164,7 @@ where
 \end{quotation}
 } % close html
   \latex{(Compare to (\ref{eq:oxsllode}), page~\pageref{eq:oxsllode}.)}%
-  \html{(See also the discussion of the \htmlref{Landau-Lifshitz-Gilbert
+  \html{(See also the discussion of the \htmlonlyref{Landau-Lifshitz-Gilbert
   equations}{eq:oxsllode} in the Oxs documentation.)}  Here $\alpha$ is
   specified by the ``Damp Coef'' entry in the \MIF~1.1 file.  If not
   specified, a default value of 0.5 is used, which allows the solver to
@@ -175,11 +172,11 @@ where
   will typically have a damping coefficient in the range 0.004 to
   0.15.  The 2D solver engine
   \hyperrefhtml{\app{mmSolve}}{\app{mmSolve}
-  (Sec.~}{)}{sec:mmsolve}\index{application!mmSolve} requires a
+  (Ch.~}{)}{sec:mmsolve}\index{application!mmSolve} requires a
   non-zero damping coefficient.
 \end{itemize}
 
-\subsubsection{Demag specification}\label{sec:mifdemagspec}
+\subsection{Demag specification}\label{sec:mifdemagspec}
 \begin{itemize}
    \item {\bf Demag Type:} Specify algorithm and demagnetization kernel
       used to calculate self-magnetostatic
@@ -187,12 +184,12 @@ where
       \begin{itemize}
          \item {\bf ConstMag:} Calculates the {\em average} field in
             each cell under the assumption that the magnetization is
-            constant in each cell, using formulae from \cite{newell93}.
+            constant in each cell, using formulae from \cite{newell1993}.
             (The other demag options calculate the field at the center
             of each cell.)
          \item {\bf 3dSlab:}  Calculate the in-plane field components
             using offset blocks of constant (volume) charge.  Details
-            are given in \cite{berkov93}. Field components parallel to
+            are given in \cite{berkov1993}. Field components parallel to
             the $z$-axis are calculated using squares of constant
             (surface) charge on the upper and lower surfaces of the
             sample.
@@ -209,13 +206,13 @@ where
     \end{itemize}
 
     All of these algorithms except FastPipe and None require that the
-    Part Thickness (cf.\ the \htmlref{Part Geometry}{sec:partgeometry}
+    Part Thickness (cf.\ the \htmlonlyref{Part Geometry}{sec:partgeometry}
     section) be set.  Fast Fourier Transform (FFT)\index{FFT} techniques
     are used to accelerate the calculations.
 
 \end{itemize}
 
-\subsubsection{Part geometry}\label{sec:partgeometry}\index{part~geometry}
+\subsection{Part geometry}\label{sec:partgeometry}\index{part~geometry}
 \begin{itemize}
    \item {\bf Part Width:} Nominal part width ($x$-dimension) in
       meters.  Should be an integral multiple of Cell~Size.
@@ -289,11 +286,12 @@ where
          and white has R=G=B=M, so the relative thickness is 0.
    \end{itemize}
    The code does not perform a complete 3D evaluation of thickness
-   effects.  Instead, the approximation discussed in \cite{porter01} is
+   effects.  Instead, the approximation discussed in \cite{porter2001} is
    implemented.
 \end{itemize}
 
-\subsubsection{Initial magnetization}\index{magnetization~initial}
+\subsection{Initial magnetization}\label{sec:mif1initmag}%
+\index{magnetization~initial}
 \begin{itemize}
    \item {\bf Init Mag:} Name of routine to use to initialize the
    simulation magnetization directions (as a function of position), and
@@ -325,7 +323,7 @@ where
    \end{itemize}
 \end{itemize}
 
-\subsubsection{Experiment parameters}\label{sec:expparams}
+\subsection{Experiment parameters}\label{sec:expparams}
 The following records specify the applied field schedule:
 \begin{itemize}
    \item {\bf Field Range:}\index{field~range} Specifies a range of
@@ -451,7 +449,7 @@ The following records specify the applied field schedule:
      (Part~Width, Part~Height, Part~Thickness).
 \end{itemize}
 
-\subsubsection{Output specification}\label{sec:mif1outspec}
+\subsection{Output specification}\label{sec:mif1outspec}
 \begin{itemize}
    \item {\bf Base Output Filename:} Default base name used to
       construct output filenames.
@@ -469,16 +467,16 @@ The following records specify the applied field schedule:
       Format to use when producing data table style scalar output, such
       as that sent to
       \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
-      (Sec.~}{)}{sec:mmdatatable},
+      (Ch.~}{)}{sec:mmdatatable},
       \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-      (Sec.~}{)}{sec:mmgraph}, and
+      (Ch.~}{)}{sec:mmgraph}, and
       \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
-      (Sec.~}{)}{sec:mmarchive}.
+      (Ch.~}{)}{sec:mmarchive}.
       Should specify a C \cd{printf}-style format code, such as the
       default ``\cd{\%.16g}''.  Optional.
 \end{itemize}
 
-\subsubsection{Miscellaneous}\label{sec:mifmisc}
+\subsection{Miscellaneous}\label{sec:mifmisc}
 \begin{itemize}
    \item {\bf\boldmath Converge $|$mxh$|$ Value:}\index{simulation~2D!mxh}
       Nominal value to use as a stopping criterion: When
@@ -501,7 +499,8 @@ The following records specify the applied field schedule:
       for problem identification.  Optional.
 \end{itemize}
 
-\begin{codelisting}{p}{fig:mif1sample}{Example \MIF~1.1 file.}{pt:mif1format}
+\begin{codelisting}{p}{fig:mif1sample}{Example \MIF~1.1
+      file.}{sec:mif1format}{ref}
 \begin{verbatim}
 # MIF 1.1
 #
@@ -565,10 +564,7 @@ User Comment: Example MIF 1.1 file, with lots of comments.
 \end{codelisting}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{\MIF\ 1.2}\label{sec:mif12format}
-\begin{rawhtml}
-<A NAME="pt:mif12format"></A>
-\end{rawhtml}
+\section{\MIF\ 1.2}\label{sec:mif12format}
 The \MIF~1.2 format is a minor modification to the \MIF~1.1 format,
 which supports limited 3D problem specification.  It can be read by the
 Oxs 3D solvers, and, with certain restrictions, by the mmSolve 2D
@@ -617,20 +613,17 @@ All other \texttt{DemagType} records are silently converted
 to \texttt{ConstMag}.  The \texttt{SolverType} record is converted into
 the appropriate solver+driver pair.
 
-\subsection{\MIF\ 2.1}\label{sec:mif2format}
-\begin{rawhtml}
-<A NAME="pt:mif2format"></A>
-\end{rawhtml}
+\section{\MIF\ 2.1}\label{sec:mif2format}
 The \MIF~2.x format was introduced with the
 \hyperrefhtml{Oxs 3D solver}{Oxs 3D solver
-(Sec.~}{)}{sec:oxs}\index{application!Oxsii}\index{application!Boxsi}.
+(Ch.~}{)}{sec:oxs}\index{application!Oxsii}\index{application!Boxsi}.
 It is \textit{not} backwards compatible with the \MIF~1.x formats,
 however a conversion utility,
 \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
 (Sec.~}{)}{sec:mifconvert}\index{application!mifconvert}, is available
 to aid in converting \MIF~1.x files to the \MIF~2.1 format.
 
-\subsubsection{\MIF\ 2.1 File Overview}%
+\subsection{\MIF\ 2.1 File Overview}%
 \label{sec:mif2overview}\index{MIF~2.1~Overview}
 
 The first line of a \MIF\ file must be of the form ``\verb+#+ MIF x.y'',
@@ -642,9 +635,12 @@ may be a ``safe'' interpreter, i.e., one in which disk and other system
 access is disabled.  (Refer to the documentation of the \Tcl\
 \cd{interp} command for details on safe interpreters.)  The security
 level is controlled by the \cd{MIFinterp} option in the \fn{options.tcl}
-\hyperrefhtml{customization file}{customization file (Sec.~}{)}{sec:custom}.
+\hyperrefhtml{customization file}{customization file
+(Sec.~}{)}{sec:install.custom}.
 The default setting is
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -654,7 +650,9 @@ Oc_Option Add Oxs* MIFinterp safety custom
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 which enables all the \Tcl\ interpreter extensions described in
 \html{the}
 \hyperrefhtml{\MIF~2.1 Extension Commands}{\MIF~2.1 Extension Commands
@@ -663,11 +661,12 @@ which enables all the \Tcl\ interpreter extensions described in
 below, but otherwise provides a standard \Tcl\ safe interpreter.  The
 keyword \cd{custom} above may be replaced with either \cd{safe} or
 \cd{unsafe}.  The \cd{safe} selection is similar to \cd{custom}, except
-that the \cd{ReadFile} and \cd{RGlob} extensions are not provided,
-thereby eliminating all disk access at the \MIF\ script level.  At the
-other extreme, choosing \cd{unsafe} provides an unrestricted \Tcl\
-interpreter.  This option should be used with caution, especially if you
-are reading \MIF\ files from an unknown or untrusted source.
+that the \cd{DateSort}, \cd{ReadFile} and \cd{RGlob} extensions are
+not provided, thereby eliminating all disk access at the \MIF\ script
+level.  At the other extreme, choosing \cd{unsafe} provides an
+unrestricted \Tcl\ interpreter.  This option should be used with
+caution, especially if you are working with \MIF\ files from an
+unknown or untrusted source.
 
 After the first line, there is considerable flexibility in the layout of
 the file.  Generally near the top of the file one places any
@@ -763,19 +762,20 @@ Child Classes portion (Sec.~}{, page~\pageref{sec:oxsext})}{sec:oxsext}
 of the Oxs documentation.
 
 
-\subsubsection{\MIF~2.1 Extension Commands}%
+\subsection{\MIF~2.1 Extension Commands}%
 \label{sec:mif2ExtensionCommands}\index{MIF~2.1~Commands}
 In addition to the standard \Tcl\ commands (modulo the safe \Tcl\
 restrictions outlined above), a number of additional commands are
 available in \MIF~2.1 files:
 \htmlonlyref{\cd{Specify}}{html:specifyCmd},
 \htmlonlyref{\cd{ClearSpec}}{html:mif2ClearSpec},
+\htmlonlyref{\cd{DateSort}}{html:mif2datesort},
 \htmlonlyref{\cd{Destination}}{html:destinationCmd},
 \htmlonlyref{\cd{GetStateData}}{html:GetStateData},
 \htmlonlyref{\cd{Ignore}}{html:mif2Ignore},
 \htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
 \htmlonlyref{\cd{Parameter}}{html:mif2parameter},
-\htmlonlyref{\cd{Random}}{html:mif2Random},
+\htmlonlyref{\cd{Random}}{html:mif2Random},\NONHTMLoutput{\linebreak}
 \htmlonlyref{\cd{RandomSeed}}{html:mif2randomseed},
 \htmlonlyref{\cd{Report}}{html:MifReport},
 \htmlonlyref{\cd{ReadFile}}{html:ReadFile},
@@ -797,7 +797,9 @@ object refers to another in its initialization string, then the referred
 to object must precede the referrer in the \MIF\ file.
 
 Here is a simple Specify block:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -810,7 +812,9 @@ Specify Oxs_EulerEvolve:foo {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The name of the new \cd{Oxs\_Ext} object is ``Oxs\_EulerEvolve:foo.''
 The first part of this name, up to the colon, is the the \Cplusplus\
 class name of the object.  This must be a child of the \cd{Oxs\_Ext}
@@ -843,7 +847,9 @@ This command is used to disable one or all preceding \cd{Specify}
 commands.  In particular, one could use \cd{ClearSpec} to nullify a
 Specify block from a base \MIF\ file that was imported using the
 \cd{ReadFile} command.  Sample usage is
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -853,15 +859,40 @@ ClearSpec Oxs_EulerEvolve:foo
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 where the parameter is the full name (here \cd{Oxs\_EulerEvolve:foo}) of
 the Specify block to remove.  If no parameter is given, then all
 preceding Specify blocks are removed.
 
+\item[DateSort\label{html:mif2datesort}]
+Given a list of filenames, returns the list sorted by modification
+time, with oldest first. The files must all exist. Sample usage is
+\begin{rawhtml}
+  <BLOCKQUOTE>
+\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+set last_omf [lindex [DateSort [RGlob *omf]] end]
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}
+  </BLOCKQUOTE>
+\end{rawhtml}
+Here \cd{last\_omf} will be set to the \fn{*.omf} file in the current
+directory with the most recent modification time.
+
 \item[Destination\label{html:destinationCmd}]
 \index{Destination~command~(MIF)}\index{nicknames}
 The format for the \cd{Destination} command is
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -871,7 +902,9 @@ Destination <desttag> <appname> [new]
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 This command associates a symbolic \textit{desttag} with an
 application.  The tags are used by the
 \htmlonlyref{\cd{Schedule}}{html:scheduleCmd} command\latex{ (see below)}
@@ -925,7 +958,9 @@ requested nickname is already in use.
 \item[GetStateData\label{html:GetStateData}]
 The \cd{GetStateData} command retrieves data attached to a specific
 magnetization state:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -936,7 +971,9 @@ GetStateData [-glob|-exact|-regexp] [-pairs] [--] <state_id> \
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The data associated with a state are stored as key-value pairs.
 If no patterns are specified then \cd{GetStateData} returns the list of
 keys available for the given state.  If one or more patterns are
@@ -951,7 +988,9 @@ used to denote the end of options.
 The \cd{state\_id} is a positive integer identifying the state.  This is
 generally obtained via a \cd{script\_args} option in the
 \cd{Specify} block of a conforming \cd{Oxs\_Ext} object.  For example,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -968,7 +1007,9 @@ Specify Oxs_ScriptUZeeman {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Typically two states may be accessed this way: the step base state
 and a candidate (test) state.  The former, accessed
 as \cd{base\_state\_id}, corresponds to the last valid, accepted
@@ -978,21 +1019,25 @@ these two states may coincide.
 
 The keys associated with a state vary with the details of the
 simulation.  The following keys are always available:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
-\cd{\begin{tabular}{l@{\hskip 2em}l@{\hskip 2em}l}
-state\_id            & previous\_state\_id     & iteration\_count\\
-stage\_number        & stage\_iteration\_count & stage\_start\_time\\
-stage\_elapsed\_time & total\_elapsed\_time    & last\_timestep\\
-step\_done           & stage\_done            & run\_done\\
-max\_absMs
-\end{tabular}}
+\begin{tabular}{l@{\hskip 2em}l@{\hskip 2em}l}
+\cd{state\_id}            & \cd{previous\_state\_id}     & \cd{iteration\_count}\\
+\cd{stage\_number}        & \cd{stage\_iteration\_count} & \cd{stage\_start\_time}\\
+\cd{stage\_elapsed\_time} & \cd{total\_elapsed\_time}    & \cd{last\_timestep}\\
+\cd{step\_done}           & \cd{stage\_done}            & \cd{run\_done}\\
+\cd{max\_absMs}
+\end{tabular}
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Times are in seconds, the \cd{step}/\cd{stage}/\cd{run\_done} values are
 one of 1 (done), 0 (not done) or -1 (not yet determined),
 and \cd{max\_absMs} is in A/m.
@@ -1018,7 +1063,9 @@ keys may be different for a state (even a base state) marking the start
 of a new stage as compared to states arising inside a stage.  In case of
 problems, a \cd{Report} command inside a script proc can be used to
 dump state information to the Oxsii console, for example,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1032,9 +1079,13 @@ proc SpinMag { stage_time state_id } {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 or
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1052,7 +1103,9 @@ proc SpinMag { stage_time state_id } {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 For example use of \cd{GetStateData}, see the sample files
 \fn{spinmag.mif} and \fn{spinmag2.mif} in the
@@ -1072,7 +1125,9 @@ the \OOMMF\ root directory.  This is useful in conjunction with the
 and can also be used to place output files.  File paths must be created
 directly since the \Tcl\ \cd{file} command is not accessible inside safe
 interpreters.  For example
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1082,7 +1137,9 @@ set outfile [OOMMFRootDir]/data/myoutput
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 In this context one should always use \Tcl\ path conventions.  In
 particular, use forward slashes, ``\fs'', to separate directories.
 
@@ -1161,7 +1218,9 @@ values in the range $[0,1]$.
 In all cases, the return value from the \cd{ReadFile} command is a
 string corresponding to the contents of the (possibly translated) file.
 For example,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1171,13 +1230,17 @@ eval [ReadFile extra_mif_commands.tcl]
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 can be used to embed a separate \Tcl\ file into a \MIF~2.1 file.
 
 \index{file!bitmap|(}%
 Here's a more complicated example that uses a color image file to
 create a vector field:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1212,7 +1275,10 @@ Specify Oxs_ScriptVectorField:sample {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}\index{file!bitmap|)}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
+\index{file!bitmap|)}
 If the input image is large, then it is best to work with the image list
 (i.e., the variable \cd{colorimage} in the preceding example) directly,
 as illustrated above.  The image list as returned by \cd{ReadFile} is in
@@ -1221,13 +1287,16 @@ memory footprint of the list can grow substantially.
 
 The \cd{ReadFile} command is not available if the \cd{MIFinterp safety}
 option is set to \cd{safe} in the \fn{options.tcl}
-\hyperrefhtml{customization file}{customization file (Sec.~}{)}{sec:custom}.
+\hyperrefhtml{customization file}{customization file
+(Sec.~}{)}{sec:install.custom}.
 
 \item[RGlob\label{html:mif2rglob}]
 This command is modeled on the \Tcl\ \cd{glob} command (q.v.), but
 is restricted to the current working directory, that is, the
 directory holding the \MIF\ file.  The syntax is
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1237,7 +1306,9 @@ RGlob [-types typelist] [--] <pattern> [...]
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The optional \texttt{typelist} restricts the match to files meeting the
 typelist criteria.  The optional \verb+--+ switch marks the end of
 options.  The one or more \texttt{pattern}'s should be glob-style
@@ -1253,7 +1324,9 @@ Output files are tagged by stage number (here ``2'' since stages are
 counted from 0) and iteration.  The iteration is generally not known a
 priori, but assuming the output files are in the same directory as the
 current MIF file, we could use a command like
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1263,7 +1336,9 @@ set file [RGlob sample-Oxs_MinDriver-Magnetization-02-???????.omf]
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 to determine the name of the magnetization file.  If more than one
 magnetization state was saved for that stage, then the variable
 \cd{file} will hold a list of filenames.  In this case the \Tcl\ \cd{lsort}
@@ -1276,7 +1351,7 @@ to set the initial magnetization configuration.
 The \cd{RGlob} command is not available if the \cd{MIFinterp safety}
 option is set to \cd{safe} in the \fn{options.tcl}
 \hyperrefhtml{customization file}{customization file
-(Sec.~}{)}{sec:custom}.  If \cd{MIFinterp safety} is set to
+(Sec.~}{)}{sec:install.custom}.  If \cd{MIFinterp safety} is set to
 \cd{unsafe}, then the standard (and more capable) \Tcl\
 \cd{glob} command will be available.
 
@@ -1286,7 +1361,9 @@ This functionality is critical for solvers running in batch mode, but is
 also useful for setting up default connections in interactive mode.
 
 The syntax for the \cd{Schedule} command is
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1296,12 +1373,14 @@ Schedule <outname> <desttag> <event> <frequency>
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The \cd{Schedule} command mirrors the interactive output scheduling
 provided by the
 \htmlonlyref{\app{Oxsii}}{sec:oxsii} and
 \htmlonlyref{\app{Boxsi}}{sec:boxsi}
-graphical interfaces\latex{ (Sec.~\ref{sec:oxs})}.  The first parameter
+graphical interfaces\latex{ (Ch.~\ref{sec:oxs})}.  The first parameter
 to the \cd{Schedule} command is the name of the output being scheduled.
 These names are the same as those appearing in the ``Outputs'' list in
 the Oxs graphical interfaces, for example ``DataTable'' or
@@ -1362,7 +1441,7 @@ every third stage.  Note that double quotes enclose the
 ``3''.
 \end{description}
 
-\subsubsection{Specify Conventions}%
+\subsection{Specify Conventions}%
 \label{sec:specConventions}\index{Specify~conventions~(MIF)}
 The Specify blocks in the input \MIF\ file determine the collection
 of \cd{Oxs\_Ext} objects defining the Oxs simulation.  As explained
@@ -1376,13 +1455,15 @@ classes that don't follow these conventions should make that fact
 explicitly clear in their documentation.
 Details on the standard \cd{Oxs\_Ext} classes included with \OOMMF\ can
 be found in the
-\hyperrefhtml{Oxs section}{Oxs documentation (Sec.~}{)}{sec:oxs}\html{
+\hyperrefhtml{Oxs section}{Oxs documentation (Ch.~}{)}{sec:oxs}\html{
 of this document}.
 
-\paragraph{Initialization string format}%
+\starsssechead{Initialization string format}%
 \label{par:specInitString}\index{Specify~initialization~string~(MIF)}
 Consider again the simple Specify block presented above:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1395,7 +1476,9 @@ Specify Oxs_EulerEvolve:foo {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The first convention is that the initialization string be structured as
 a \Tcl\ list\index{Tcl~list} with an even number of elements, with
 consecutive elements consisting of a label + value pairs.  In the above
@@ -1404,7 +1487,7 @@ example, the initialization string consists of two label + value pairs,
 damping parameter $\alpha$ in the Landau-Lifshitz ODE is 0.5.  The
 second specifies the initial step size for the integration routine.
 Interested parties should refer to a \Tcl\ programming reference (e.g.,
-\cite{welch00}) for details on forming a proper \Tcl\ list, but in short
+\cite{welch2000}) for details on forming a proper \Tcl\ list, but in short
 the items are separated by whitespace, and grouped by double quotes or
 curly braces (``\verb+{+'' and ``\verb+}+'').  Opening braces and quotes
 must be whitespace separated from the preceding text.  Grouping
@@ -1445,8 +1528,7 @@ and ``\ldots'' mark the location of the \cd{Oxs\_BoxAtlas}
 initialization string, which is omitted because it is not pertinent to
 the present discussion.)
 
-
-\paragraph{\cd{Oxs\_Ext} referencing}%
+\starsssechead{\cd{Oxs\_Ext} referencing}%
 \label{par:oxsExtReferencing}\index{Oxs\_Ext~referencing~(MIF)}
 The ``atlas'' value in the mesh Specify block of the preceding example
 refers to an earlier \cd{Oxs\_Ext} object, ``Oxs\_BoxAtlas:myatlas''.
@@ -1493,7 +1575,9 @@ separate Specify block.
 More commonly, embedded \cd{Oxs\_Ext} objects are used to initialize
 spatially varying quantities.  For
 example,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1509,7 +1593,9 @@ Specify Oxs_UniaxialAnisotropy {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 \sloppy
 The magneto-crystalline anisotropy class \cd{Oxs\_UniaxialAnisotropy}
 supports cellwise varying K1 and anisotropy axis directions.  In this
@@ -1538,7 +1624,9 @@ throughout the simulation region, so the trivial
 \latex{$530\times 10^{3}$~J/m${}^3$}\html{530e3 J/m^3}).  In the case of
 uniform fields, scalar or vector, a shorthand notation is available that
 implicitly supplies a uniform \cd{Oxs\_Ext} field class:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1551,9 +1639,13 @@ Specify Oxs_UniaxialAnisotropy {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 which is equivalent to
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1568,7 +1660,9 @@ Specify Oxs_UniaxialAnisotropy {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 While embedding \cd{Oxs\_Ext} objects inside Specify blocks can be
 convenient, it is important to remember that such objects are not
@@ -1581,7 +1675,7 @@ declared via top-level Specify blocks.  For this reason
 \cd{Oxs\_Energy} terms are invariably created via top-level Specify
 blocks, and not as embedded objects.
 
-\paragraph{Grouped lists}%
+\starsssechead{Grouped lists}%
 \label{par:groupedLists}\index{grouped~lists~(MIF)}
 As noted earlier, sometimes the value portion of a label + value pair
 will be a list.  Some Oxs objects support \textit{grouped lists}, which
@@ -1653,7 +1747,7 @@ values are also considered grouped lists, albeit trivial ones.  Any Oxs
 object that accepts grouped lists in its Specify block should explicitly
 state so in its documentation.
 
-\paragraph{Comments}%
+\starsssechead{Comments}%
 \label{par:specifyComments}\index{Specify~comments~(MIF)}
 The standard \Tcl\ commenting mechanism treats all text running from an
 initial \lb\ symbol through to the end of a line as a comment.  You may
@@ -1663,7 +1757,9 @@ initialization string.  Because of this and additional reasons, \Tcl\
 comments cannot be used inside Specify blocks.  Instead, by
 convention any label + value pair where label is ``comment'' is treated
 as a comment and thrown away.  For example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1678,7 +1774,9 @@ Specify Oxs_UniaxialAnisotropy {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Pay attention to the difference between ``comment'' used here as the
 label portion of a label + value pair, and the \MIF\ extension command
 ``Ignore'' used outside Specify blocks.  In particular, \cd{Ignore}
@@ -1686,12 +1784,14 @@ takes an arbitrary number of arguments, but the value element associated
 with a comment label must be grouped as a single element, just as any
 other value element.
 
-\paragraph{Attributes}%
+\starsssechead{Attributes}%
 \label{par:specifyAttributes}\index{Specify~attributes~(MIF)}
 Sometimes it is convenient to define label + value pairs outside a
 particular Specify block, and then import them using the
 ``attributes'' label.  For example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1708,7 +1808,9 @@ Specify Oxs_EulerEvolve {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The \cd{Oxs\_LabelValue} object is an \cd{Oxs\_Ext} class that does
 nothing except hold label + value pairs.  The ``attributes'' label acts as an
 include statement, causing the label + value pairs contained in the
@@ -1719,7 +1821,7 @@ multiple Specify blocks, either inside the same \MIF\ file, or
 across several \MIF\ files into which the \cd{Oxs\_LabelValue} block is
 imported using the \cd{ReadFile} \MIF\ extension command.
 
-\paragraph{User defined support procedures}%
+\starsssechead{User defined support procedures}%
 \label{par:supportProcs}\index{Specify~support~procs~(MIF)}
 A number of \cd{Oxs\_Ext} classes utilize user-defined \Tcl\
 procedures (procs) to provide extended runtime functionality.  The
@@ -1733,7 +1835,9 @@ anisotropy properties, or an external applied field.
 Here is an example proc that may be used to set the initial
 magnetization configuration into an approximate vortex state, with a
 central core in the positive $z$ direction:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1749,7 +1853,9 @@ proc Vortex { x_rel y_rel z_rel } {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The return value in this case is a 3D vector representing the spin
 direction at the point \texttt{(x\_rel,y\_rel,z\_rel)}.  Procs
 that are used to set scalar properties, such as saturation
@@ -1771,7 +1877,9 @@ coordinate representations.  The representation used is selected in the
 \cd{Oxs\_Ext} object Specify block by the optional \cd{script\_args}
 entry.  The \Tcl\ proc itself is specified by the \cd{script} entry,
 as seen in this example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1790,7 +1898,9 @@ Specify ScriptScalarField:Ms {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The value associated with the label \cd{script\_args} should in this
 case be a subset of \cd{\ocb relpt rawpt minpt maxpt span scalars
 vectors\ccb}, as explained in the
@@ -1818,7 +1928,9 @@ appending to the \cd{script} value the arguments as specified by the
 they will appear in the argument list in front of the
 \cd{script\_args} values.  The following is equivalent to the
 preceding example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1836,7 +1948,9 @@ Specify ScriptScalarField:Ms {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Notice in this case that the \cd{script} value is wrapped in curly
 braces so that the string \cd{SatMag 20e-9 8e5 5e5} will be treated as
 the single value associated with the label \cd{script}.
@@ -1855,7 +1969,9 @@ multiple substitution where such bracing cannot be applied.  See the
 \index{file!mask|(}%
 Sometimes externally defined data can be put to good use inside a
 \Tcl\ support proc, as in this example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -1884,7 +2000,9 @@ proc MyShape { xrel yrel znotused } {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The variable \cd{mask} holds a \Tcl\ list of 0's and 1's defining a part
 shape.  The mask is brought into the scope of the \cd{MyShape} proc via
 the \Tcl\ \cd{global} command.  The relative $x$ and $y$ coordinates are
@@ -1898,7 +2016,7 @@ except that there the data structure values are built from a separate
 image file rather than from data embedded inside the \MIF\ file.
 \index{file!mask|)}
 
-\paragraph{User defined scalar outputs}%
+\starsssechead{User defined scalar outputs}%
 \label{par:userScalarOutputs}\index{Specify~user~scalar~outputs~(MIF)}
 \OOMMF\ \cd{Oxs\_Ext} objects support a general method to allow users to
 define scalar (DataTable) outputs derived from vector field outputs.
@@ -1991,7 +2109,9 @@ The following is a simple example showing two user outputs based
 off the demagnetization field:
 % The extra BLOCKQUOTE's here are a workaround for an apparent
 % latex2html bug
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2032,13 +2152,15 @@ Specify Oxs_Demag {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The first user output, ``\cd{Hdemag\_x},'' returns the
 $x$-component of the demagnetization field, averaged across the entire
 simulation volume.  This output will appear in DataTable output with the
 label ``\cd{Oxs\_Demag::Hdemag\_x}.''  The \cd{source\_field} parameter
 ``Field'' refers to the ``Field'' output of the surrounding
-\cd{Oxs\_Ext} object, which in this case means \cd{Oxs\_Demag::Field}.
+\cd{Oxs\_Ext} object, which here means \cd{Oxs\_Demag::Field}.
 The select field is $(1,0,0)$, uniform across the simulation volume.
 The second output, ``\cd{octant Hdemag\_y},'' is similar, but the
 average is of the $y$ component of the demagnetization field, and is
@@ -2050,10 +2172,10 @@ octant and $(0,0,0)$ everywhere else.
 The source code for user defined scalar outputs can be found in the
 files \fn{ext.h} and \fn{ext.cc} in the directory
 \fn{oommf/app/oxs/base/}.  Example \MIF\ files include \fn{cube.mif},
-\fn{pbcbrick.mif}, and \fn{stdprob2.mif} in the directory
+\fn{pbcbrick.mif}, \fn{spinvalve.mif}, and \fn{stdprob2.mif} in
 \fn{oommf/app/oxs/examples/}.
 
-\subsubsection{Variable Substitution}%
+\subsection{Variable Substitution}%
 \label{sec:varSubst}\index{variable~substitution~(MIF)}
 One powerful consequence of the evaluation of \MIF~2.1 input files by
 \Tcl\ is the ability to define and use variables.  For example,
@@ -2069,7 +2191,9 @@ by prefixing the variable name with the symbol ``\$''.  For example, if
 
 Unfortunately, there are complications in using variables inside
 Specify blocks.  Consider this simple example:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2084,13 +2208,17 @@ Specify Oxs_RectangularMesh:BadExample {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 This \textbf{doesn't work}, because the curly braces used to set off the
 \cd{Specify} initialization string also inhibit variable substitution.
 There are several ways to work around this, but the easiest is usually
 to embed the initialization string inside a \cd{subst} (substitution)
 command:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2105,7 +2233,9 @@ Specify Oxs_RectangularMesh:GoodExample [subst {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Here the square brackets, ``\texttt{[}'' and ``\texttt{]}'',
 cause \Tcl\ to perform \textit{command substitution}, i.e.,
 execute the string inside the square brackets as a \Tcl\
@@ -2116,7 +2246,9 @@ backslash substitutions on the argument string.
 
 One more example, this time involving both variable and command
 substitution:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2135,12 +2267,15 @@ Specify Oxs_UZeeman [subst {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Note that the \cd{subst} command is evaluated at global scope, so that
 the global variable \cd{mu0} is directly accessible.
 
-\subsubsection{Sample \MIF~2.1 File}\label{sec:mif2sample}
-\begin{codelisting}{p}{fig:mif2sample}{Example \MIF~2.1 file.}{pt:mif2format}
+\subsection{Sample \MIF~2.1 File}\label{sec:mif2sample}
+\begin{codelisting}{p}{fig:mif2sample}{Example \MIF~2.1
+   file.}{sec:mif2format}{ref}
 \begin{verbatim}
 # MIF 2.1
 #
@@ -2270,15 +2405,12 @@ Schedule "Oxs_RungeKuttaEvolve::Total field" archive Stage 3
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\MIF\ 2.2}\label{sec:mif22format}
-\begin{rawhtml}
-<A NAME="pt:mif22format"></A>
-\end{rawhtml}
+\section{\MIF\ 2.2}\label{sec:mif22format}
 The \MIF~2.2 format, introduced with \OOMMF~1.2a4, is a minor
 modification to the \MIF~2.1 format.  \MIF~2.2 provides a few additional
 commands, and is mostly backwards compatible with \MIF~2.1, except as
 detailed below.
-\subsubsection{Differences between \MIF~2.2 and \MIF~2.1 Formats}\label{sec:mif22diffs}
+\subsection{Differences between \MIF~2.2 and \MIF~2.1 Formats}\label{sec:mif22diffs}
 \begin{enumerate}
 \item The first line of a \MIF~2.2 file must be ``\verb+#+ MIF 2.2''.
 \item The \cd{basename}, \cd{scalar\_output\_format} and
@@ -2312,7 +2444,7 @@ detailed below.
 % are described in detail below.
 \end{enumerate}
 
-\subsubsection{\MIF~2.2 New Extension Commands}%
+\subsection{\MIF~2.2 New Extension Commands}%
 \label{sec:mif22ExtensionCommands}\index{MIF~2.2~Commands}
 In addition to the commands available in
 \hyperrefhtml{\MIF~2.1 files}{\MIF~2.1 files (Sec.~}{)}{sec:mif2ExtensionCommands},
@@ -2370,9 +2502,9 @@ optional, with default value ``\cd{\%.17g}''.  The values associated with
 \cd{vector\_field\_output\_format} should be two element lists
 that specify the style and precision for scalar and vector field
 output sent to \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
-(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} and
+(Ch.~}{)}{sec:mmdisp}\index{application!mmDisp} and
 \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
-(Sec.~}{)}{sec:mmarchive}\index{application!mmArchive}.  The first
+(Ch.~}{)}{sec:mmarchive}\index{application!mmArchive}.  The first
 element in the list should be one of \cd{binary} or \cd{text}, specifying
 the output style.  If binary output is selected, then the second element
 specifying precision should be either 4 or 8, denoting component binary
@@ -2381,10 +2513,10 @@ second element should be a C-style printf string like that used by
 \cd{scalar\_output\_format}.  The default value for both
 \cd{scalar\_field\_output\_format} and
 \cd{vector\_field\_output\_format} is ``\cd{binary 8}''.
-The values for \cd{scalar\_field\_output\_meshtype} and
-\cd{vector\_field\_output\_meshtype} should be either ``rectangular''
-(default) or ``irregular'', specifying the grid type for the
-corresponding field output files.
+For \cd{scalar\_field\_output\_meshtype} and
+\cd{vector\_field\_output\_meshtype} the values should be either
+``rectangular'' (default) or ``irregular'', specifying the grid type for
+the corresponding field output files.
 
 Multiple \cd{SetOptions} blocks are allowed.  Label values specified
 in one \cd{SetOption} block may be overwritten by a later
@@ -2399,7 +2531,9 @@ Additional label names may be added in the future, and may be
 unknown label names, but that policy is subject to change.
 
 An example \cd{SetOptions} block:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2415,13 +2549,17 @@ SetOptions {
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 
 \item[EvalScalarField\label{html:mif2EvalScalarField}]\index{EvalScalarField~command~(MIF)}
 This command allows access in a \MIF\ file to values from a scalar field
 defined in a preceding \cd{Specify} block.  For example,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2440,7 +2578,9 @@ defined in a preceding \cd{Specify} block.  For example,
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 The four arguments to \cd{EvalScalarField} are a reference to the scalar
 field (here \cd{:Ms}), and the three coordinates of the point where you
 want the field evaluated.  The coordinates are in the problem coordinate
@@ -2458,7 +2598,9 @@ returns an ordered list of all the regions in that atlas.  The first
 item on the returned list will always be ``universe'', which includes
 all points not in any of the other regions, including in particular any
 points outside the nominal bounds of the atlas.  Sample usage:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2468,7 +2610,9 @@ points outside the nominal bounds of the atlas.  Sample usage:
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 
 \item[GetAtlasRegionByPosition\label{html:mif2GetAtlasRegionByPosition}]
@@ -2479,7 +2623,9 @@ specified point.  This name will match exactly one of the names on the
 list returned by the \cd{GetAtlasRegions} command for the given atlas.
 Note that the return value might be the ``universe'' region.  Sample
 usage:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin{latexonly}
 \begin{quote}
 %end{latexonly}
@@ -2489,13 +2635,16 @@ usage:
 %begin{latexonly}
 \end{quote}
 %end{latexonly}
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 
 \end{description}
 
-\subsubsection{Sample \MIF~2.2 File}\label{sec:mif22sample}
-\begin{codelisting}{p}{fig:mif22sample}{Example \MIF~2.2 file.}{pt:mif22format}
+\subsection{Sample \MIF~2.2 File}\label{sec:mif22sample}
+\begin{codelisting}{p}{fig:mif22sample}{Example \MIF~2.2
+  file.}{sec:mif22format}{ref}
 \begin{verbatim}
 # MIF 2.2
 
@@ -2588,7 +2737,7 @@ Specify Oxs_RectangularMesh:mesh [subst {
 }]
 
 
-#################################	
+#################################
 # Uniaxial Anisotropy
 
 # Generate TEXTURED random unit vector
@@ -2647,7 +2796,7 @@ Specify Oxs_UniaxialAnisotropy [subst {
 }]
 
 
-#################################	
+#################################
 # Exchange
 set A_list {}
 for {set i 0} {$i<$grain_count} {incr i} {
@@ -2661,18 +2810,18 @@ Specify Oxs_Exchange6Ngbr [subst {
 }]
 
 
-#################################	
+#################################
 # Zeeman (applied) field
-set field 10000		;# Maximum field (in Oe)
+set field 10000         ;# Maximum field (in Oe)
 Specify Oxs_UZeeman [subst {
    multiplier [expr (1./($mu0*1e4))*$field]
    Hrange  {
       { 0 0 0   0 0 1   10}
-   }       	
+   }
 }]
 
 
-#################################	
+#################################
 # Driver and Evolver
 
 Specify Oxs_CGEvolve:evolve {}
@@ -2693,10 +2842,7 @@ Specify Oxs_MinDriver [subst {
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Tips for writing \MIF\ 2.x files}\label{sec:mif2tips}
-\begin{rawhtml}
-<A NAME="pt:mif2tips"></A>
-\end{rawhtml}
+\section{Tips for writing \MIF\ 2.x files}\label{sec:mif2tips}
 \MIF\ 2.x files are \Tcl\ scripts, and so composing a \MIF\ file is a
 programming exercise, with all the pitfalls that entails. In this
 section we detail some tips for authoring \MIF\ files.
@@ -2838,7 +2984,10 @@ in debugging your MIF code:
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Data Table File Format (\ODT)}\label{sec:odtformat}
+\chapter{Data Table File Format (\ODT)}\label{sec:odtformat}
+\pttarget{PTsecodtformat} % This anchor is needed for LaTeXML if files
+                          % are split at the chapter level.
+
 Textual output from solver applications that is not of the vector field
 variety is output in the {\em \OOMMF\ Data Table} (\ODT)
 format\index{file!data~table}.  This is an \ASCII\ text file format,
@@ -2894,7 +3043,16 @@ The command line utility,
 \hyperrefhtml{\app{odtcols}}{\app{odtcols} (Sec.~}{)}{sec:odtcols},
 can be a useful tool for examining and partitioning \ODT\ files.
 
-\begin{codelisting}{f}{fig:odtsample}{Sample \ODT\ file.}{sec:odtformat}
+% The following code listing points back to sec:odtformat, which
+% is a chapter heading that LaTeXML 0.8.6 drops. So for LaTeXML
+% use instead an anchor tied to the line following the chapter
+% start. For the other processors use the section link.
+\latexmlonly{%
+\begin{codelisting}{f}{fig:odtsample}{Sample \ODT\
+  file.}{PTsecodtformat}{hyperlink}}%
+\notlatexmlonly{%
+\begin{codelisting}{f}{fig:odtsample}{Sample \ODT\
+  file.}{sec:odtformat}{ref}}
 \begin{verbatim}
 # ODT 1.0
 # Table Start
@@ -2914,15 +3072,15 @@ can be a useful tool for examining and partitioning \ODT\ files.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Vector Field File Format (\OVF)}\label{sec:vfformats}
+\chapter{Vector Field File Format (\OVF)}\label{sec:vfformats}
 Vector field files\index{file!vector~field} specify vector quantities
 (e.g., magnetization or magnetic flux density) as a function of spatial
 position.  The \textit{\OOMMF\ Vector Field} (\OVF) format is the output
 vector field file format used by both the
-\hyperrefhtml{2D}{2D (Sec.~}{)}{sec:mmsolve} and
-\hyperrefhtml{3D}{3D (Sec.~}{)}{sec:oxs}
+\hyperrefhtml{2D}{2D (Ch.~}{)}{sec:mmsolve} and
+\hyperrefhtml{3D}{3D (Ch.~}{)}{sec:oxs}
 micromagnetic solvers.  It is also the input data type read by
-\hyperrefhtml{\app{mmDisp}}{\app{mmDisp} (Sec.~}{)}{sec:mmdisp}.  There
+\hyperrefhtml{\app{mmDisp}}{\app{mmDisp} (Ch.~}{)}{sec:mmdisp}.  There
 are three versions of the \OVF\ format supported by \OOMMF.  The
 \OVF~1.0 and 2.0 formats are preferred formats and the only ones
 written by \OOMMF\ software.  They support both rectangular and
@@ -2953,8 +3111,7 @@ magnetization files, \fn{.ohf} for magnetic field (\vH) files, \fn{.obf}
 for magnetic flux density (\vB) files,  \fn{.oef} for energy density
 files, or \fn{.ovf} for generic files.
 
-\subsection{The \OVF\ 0.0 format}\label{sec:svfformat}
-
+\section{The \OVF\ 0.0 format}\label{sec:svfformat}
 The \OVF\ 0.0 format\index{file!vector~field} is a simple \ASCII\ text
 format supporting irregularly sampled data.  It is intended as an aid
 for importing data from non-\OOMMF\ programs, and is backwards
@@ -3018,7 +3175,8 @@ even though \OOMMF\ software now writes only the \OVF\ 1.0 format
 for vector field data, simple interchange of vector field data
 with other programs is still supported.
 
-\begin{codelisting}{f}{fig:svfsample}{Example \OVF\ 0.0 file.}{sec:svfformat}
+\begin{codelisting}{f}{fig:svfsample}{Example \OVF\ 0.0
+  file.}{sec:svfformat}{ref}
 \begin{verbatim}
 # OOMMF: irregular mesh v0.0
 ## File: sample.ovf
@@ -3039,7 +3197,7 @@ with other programs is still supported.
 \setcounter{secnumdepth}{\value{ffoldsecnumdepth}}
 %end{latexonly}
 
-\subsection{The \OVF\ 1.0 format}\label{sec:ovfformat}
+\section{The \OVF\ 1.0 format}\label{sec:ovfformat}
 A commented sample \OVF\ 1.0 file is provided
 \hyperrefhtml{below}{in Fig.~}{}{fig:ovfsample}.
 An \OVF\ file has an \ASCII\ header and trailer, and a data block that
@@ -3089,7 +3247,7 @@ This is followed by
 \end{verbatim}
 to start the first segment.
 
-\subsubsection{Segment Header block}\label{sec:ovfsegmentheader}
+\subsection{Segment Header block}\label{sec:ovfsegmentheader}
 The Segment Header block start is marked by the line
 ``\lb~Begin: Header'' and the end by ``\lb~End: Header''.  Everything
 between these lines should be either comments or one of the following
@@ -3144,7 +3302,7 @@ unless ``integer'' is explicitly stated.
    rectangular grids only.
 \end{itemize}
 
-\subsubsection{Data block}
+\subsection{Data block}\label{sec:ovfdatablock}
 The data block start is marked by a line of the form
 \begin{verbatim}
 # Begin: data <representation>
@@ -3199,7 +3357,7 @@ also a valid \OVF~0.0 (\SVF\index{file!svf}) file, although as a
 inactive.
 
 \begin{codelisting}{p}{fig:ovfsample}{Commented \OVF\ sample
-file.}{sec:ovfformat}
+  file.}{sec:ovfformat}{ref}
 \begin{verbatim}
 # OOMMF: rectangular mesh v1.0
 #
@@ -3270,10 +3428,7 @@ file.}{sec:ovfformat}
 \end{verbatim}
 \end{codelisting}
 
-\subsection{The \OVF\ 2.0 format}\label{sec:ovf20format}
-\begin{rawhtml}
-<A NAME="pt:ovf20format"></A>
-\end{rawhtml}
+\section{The \OVF\ 2.0 format}\label{sec:ovf20format}
 The \OVF~2.0 format is a modification to the \OVF~1.0 format that also
 supports fields across three spatial dimensions but having values of
 arbitrary (but fixed) dimension.  In the \OVF~2.0 format:
@@ -3323,7 +3478,7 @@ example \OVF~2.0 file for an irregular mesh with $N=2$
 \hyperrefhtml{follows}{follows (Fig.~}{)}{fig:ovf20sample}.
 
 \begin{codelisting}{p}{fig:ovf20sample}{Commented \OVF~2.0 sample
-file.}{sec:ovf20format}
+  file.}{sec:ovf20format}{ref}
 \begin{verbatim}
 # OOMMF OVF 2.0
 #

@@ -11,7 +11,7 @@
 #ifndef _NB_DLIST
 #define _NB_DLIST
 
-#include <assert.h>
+#include <cassert>
 
 #include "oc.h"   /* Includes tcl.h, needed for Tcl_SplitList */
 #include "errhandlers.h"

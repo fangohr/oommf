@@ -24,46 +24,44 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html618"
+<A NAME="tex2html864"
   HREF="Vector_Field_File_Differenc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html614"
+<A NAME="tex2html860"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html608"
+<A NAME="tex2html854"
   HREF="Making_Bitmaps_from_Vector_.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html620"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html616"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html862"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html619"
+<B> Next:</B> <A NAME="tex2html865"
   HREF="Vector_Field_File_Differenc.html">Vector Field File Difference:</A>
-<B> Up:</B> <A NAME="tex2html615"
+<B> Up:</B> <A NAME="tex2html861"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html609"
+<B> Previous:</B> <A NAME="tex2html855"
   HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION000175000000000000000"></A><A NAME="sec:avf2ps"></A>
+<H1><A NAME="SECTION001750000000000000000"></A><A NAME="sec:avf2ps"></A>
 <BR>
 Making PostScript from Vector Fields:
             avf2ps
-</H2><A NAME="17131"></A><A NAME="17132"></A><A NAME="17133"></A>
+</H1><A NAME="18277"></A><A NAME="18278"></A><A NAME="18279"></A>
 
 <P>
-The <B>avf2ps</B><A NAME="17135"></A> utility creates a
+The <B>avf2ps</B><A NAME="18281"></A> utility creates a
 collection of color Encapsulated PostScript files from a collection of
 vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>), which can be embedded
 into larger PostScript documents or printed directly on a PostScript printer.  Operation of the <B>avf2ps</B> command is modeled after the
 <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="17143"><B>avf2ppm</B> command</A> and the print
+ NAME="18289"><B>avf2ppm</B> command</A> and the print
 dialog box in <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="17148"><B>mmDisp</B></A>.
+ NAME="18294"><B>mmDisp</B></A>.
 
 <P>
 
@@ -125,11 +123,11 @@ The file specification options, <TT>-ipat</TT>, <TT>-opatexp</TT>, and
 
 <P>
 If you have command line PostScript processing ``filter'' programs,
-e.g., <B>ghostscript</B><A NAME="17183"></A>, then you can
+e.g., <B>ghostscript</B><A NAME="18329"></A>, then you can
 use the <TT>-filter</TT> option to pipe the output of <B>avf2ps</B> through
 that filter before it is written to the output file specified by the
 <TT>-opat*</TT> expressions.  If the processing changes the format of the
-file, (e.g., from PostScript to PDF<A NAME="17187"></A>), then you will
+file, (e.g., from PostScript to PDF<A NAME="18333"></A>), then you will
 likely want to specify a <TT>-opatsub</TT> different from the default.
 
 <P>
@@ -146,16 +144,12 @@ the input file specification string from expansion by the shell, as in
 
 <P>
 
-<A NAME="pt:avf2ps.config"></A>
-
 <P>
-<FONT SIZE="+1"><B>Configuration
-files<A NAME="sec:avf2psconfig"></A></B></FONT>
-<BR><A NAME="17197"></A>
+<FONT SIZE="+1"><B>Configuration files<A NAME="sec:avf2psconfig"></A></B></FONT>
+<BR><A NAME="18343"></A>
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration
-files</A>.
+<A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration file</A>.
 
 <P>
 The arrays <TT>plot_config</TT> and <TT>print_config</TT> hold the
@@ -231,34 +225,37 @@ the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
 <P>
-<A NAME="fig:avf2ps.config"></A>  
-  
+<A NAME="fig:avf2ps.config"></A>
+
   <BR CLEAR="ALL">
 <HR><PRE>
 array set plot_config {
-  arrow,status       1                  misc,background     #FFFFFF
-  arrow,colormap     Black-Gray-White   misc,drawboundary   1
-  arrow,colorcount   0                  misc,boundarywidth  1
-  arrow,quantity     z                  misc,boundarycolor  #000000
-  arrow,colorphase   0.                 misc,boundarypos    front
-  arrow,colorinvert  0                  misc,matwidth       0
-  arrow,autosample   1                  misc,matcolor       #FFFFFF
-  arrow,subsample    10                 misc,margin         10
-  arrow,size         1                  misc,width          640
-  arrow,antialias    1                  misc,height         480
-                                        misc,crop           1
-  pixel,status       1                  misc,zoom           0
-  pixel,colormap     Teal-White-Red     misc,rotation       0
-  pixel,colorcount   225                misc,datascale      0
-  pixel,opaque       1                  misc,relcenterpt {0.5 0.5 0.5}
-  pixel,quantity     x
-  pixel,colorphase   0.                 viewaxis            +z
-  pixel,colorinvert  0                  viewaxis,xarrowspan {}
-  pixel,autosample   1                  viewaxis,xpixelspan {}
-  pixel,subsample    0                  viewaxis,yarrowspan {}
-  pixel,size         1                  viewaxis,ypixelspan {}
-                                        viewaxis,zarrowspan {}
-                                        viewaxis,zpixelspan {}
+  arrow,status       1                  misc,background    #FFFFFF
+  arrow,antialias    1                  misc,drawboundary  1
+  arrow,colormap     Red-Black-Blue     misc,boundarywidth 1
+  arrow,colorcount   100                misc,boundarycolor #000000
+  arrow,quantity     z                  misc,boundarypos   front
+  arrow,colorphase   0                  misc,matwidth      0
+  arrow,colorreverse 0                  misc,matcolor      blue
+  arrow,autosample   1                  misc,margin        10
+  arrow,subsample    10                 misc,width         640
+  arrow,size         1                  misc,height        480
+  arrow,viewscale    1                  misc,crop          1
+  arrow,boundarywidth 0.0               misc,zoom          0
+  arrow,boundarycolor #000000           misc,rotation      0
+  arrow,outlinewidth 0.0                misc,datascale     0
+  arrow,outlinecolor #000000            misc,relcenterpt   {0.5 0.5 0.5}
+
+  pixel,status       1                  viewaxis            +z
+  pixel,colormap     Teal-White-Red     viewaxis,xarrowspan {}
+  pixel,colorcount   100                viewaxis,xpixelspan {}
+  pixel,opaque       1                  viewaxis,yarrowspan {}
+  pixel,quantity     x                  viewaxis,ypixelspan {}
+  pixel,colorphase   0                  viewaxis,zarrowspan {}
+  pixel,colorreverse 0                  viewaxis,zpixelspan {}
+  pixel,autosample   1
+  pixel,subsample    0
+  pixel,size         1
 }
 array set print_config {
   orient   landscape                    tmargin   1.0
@@ -269,10 +266,10 @@ array set print_config {
 }
 </PRE>
   <DIV ALIGN="CENTER">
-Figure 6:
+Figure 16.2:
     Contents of default configuration
-file <TT><B>avf2ps.config</B></TT>.
-    <A HREF="#pt:avf2ps.config">(Description.)</A>
+  file <TT><B>avf2ps.config</B></TT>.
+    <A HREF="#sec:avf2psconfig">(description)</A>
   
 </DIV>
   <BR CLEAR="ALL">
@@ -281,22 +278,20 @@ file <TT><B>avf2ps.config</B></TT>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html618"
+<A NAME="tex2html864"
   HREF="Vector_Field_File_Differenc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html614"
+<A NAME="tex2html860"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html608"
+<A NAME="tex2html854"
   HREF="Making_Bitmaps_from_Vector_.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html621"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html616"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html862"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

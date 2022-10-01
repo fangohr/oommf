@@ -1,20 +1,20 @@
-\section{Data Table Display: mmDataTable}\label{sec:mmdatatable}%
+\chapter{Data Table Display: mmDataTable}\label{sec:mmdatatable}%
 \index{application!mmDataTable}
 
 \begin{center}
 \includepic{mmdatatable-ss}{mmDataTable Screen Shot}
 \end{center}
 
-\ssechead{Overview}
+\starsechead{Overview}
 The application \app{mmDataTable} provides a data display service to its
 client applications.  It accepts data from clients which are displayed in
 a tabular format in a top-level window.  Its typical use is to display
 the evolving values of quantities computed by micromagnetic solver
 programs.
 
-\ssechead{Launching}
+\starsechead{Launching}
 {\bf mmDataTable} may be started either by selecting the
-\btn{mmDataTable} button on \htmlref{{\bf mmLaunch}}{sec:mmlaunch}, 
+\btn{mmDataTable} button on \htmlonlyref{{\bf mmLaunch}}{sec:mmlaunch},
 or from the command line via
 \begin{verbatim}
 tclsh oommf.tcl mmDataTable [standard options] [-net <0|1>]
@@ -28,7 +28,7 @@ tclsh oommf.tcl mmDataTable [standard options] [-net <0|1>]
   \app{mmProbEd} is only useful if it is embedded in another application.
 \end{description}
 
-\ssechead{Inputs}
+\starsechead{Inputs}
 The client application(s) that send data to {\bf mmDataTable} for 
 display control the flow of data.  The user, interacting with
 the {\bf mmDataTable} window, controls how the data is displayed.
@@ -42,16 +42,16 @@ For example, one element in the list might be
 stores the latest value it receives for each name.  Earlier
 values are discarded when new data arrives from a client.
 
-\ssechead{Outputs}
+\starsechead{Outputs}
 \app{mmDataTable} does not support any data output or storage
 facilities.  To save tabular data, use the
 \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-(Sec.~}{)}{sec:mmgraph}\index{application!mmGraph}
+(Ch.~}{)}{sec:mmgraph}\index{application!mmGraph}
 or
 \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
-(Sec.~}{)}{sec:mmarchive}\index{application!mmArchive} applications.
+(Ch.~}{)}{sec:mmarchive}\index{application!mmArchive} applications.
 
-\ssechead{Controls}
+\starsechead{Controls}
 The \btn{Data} menu holds a list of all the data names for which
 \app{mmDataTable} has received data.  Initially, \app{mmDataTable} has
 received no data from any clients, so this menu is empty.  As data

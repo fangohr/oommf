@@ -17,65 +17,40 @@
 <LINK REL="next" HREF="MIF_1.2.html">
 <LINK REL="previous" HREF="Problem_Specification_File_.html">
 <LINK REL="up" HREF="Problem_Specification_File_.html">
-<LINK REL="next" HREF="MIF_1.2.html">
+<LINK REL="next" HREF="Material_parameters.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html874"
-  HREF="MIF_1.2.html">
+<A NAME="tex2html1086"
+  HREF="Material_parameters.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html870"
+<A NAME="tex2html1082"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html864"
+<A NAME="tex2html1076"
   HREF="Problem_Specification_File_.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html876"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html872"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1084"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html875"
-  HREF="MIF_1.2.html">MIF 1.2</A>
-<B> Up:</B> <A NAME="tex2html871"
+<B> Next:</B> <A NAME="tex2html1087"
+  HREF="Material_parameters.html">Material parameters</A>
+<B> Up:</B> <A NAME="tex2html1083"
   HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
-<B> Previous:</B> <A NAME="tex2html865"
+<B> Previous:</B> <A NAME="tex2html1077"
   HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
-<!--Table of Child-Links-->
-<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
-<UL>
-<LI><A NAME="tex2html878"
-  HREF="MIF_1.1.html#SECTION000181100000000000000">Material parameters</A>
-<LI><A NAME="tex2html879"
-  HREF="MIF_1.1.html#SECTION000181200000000000000">Demag specification</A>
-<LI><A NAME="tex2html880"
-  HREF="MIF_1.1.html#SECTION000181300000000000000">Part geometry</A>
-<LI><A NAME="tex2html881"
-  HREF="MIF_1.1.html#SECTION000181400000000000000">Initial magnetization</A>
-<LI><A NAME="tex2html882"
-  HREF="MIF_1.1.html#SECTION000181500000000000000">Experiment parameters</A>
-<LI><A NAME="tex2html883"
-  HREF="MIF_1.1.html#SECTION000181600000000000000">Output specification</A>
-<LI><A NAME="tex2html884"
-  HREF="MIF_1.1.html#SECTION000181700000000000000">Miscellaneous</A>
-</UL>
-<!--End of Table of Child-Links-->
-<HR>
-
-<H2><A NAME="SECTION000181000000000000000"></A><A NAME="sec:mif1format"></A>
+<H1><A NAME="SECTION001810000000000000000"></A><A NAME="sec:mif1format"></A>
 <BR>
 MIF 1.1
-</H2>
-
-<A NAME="pt:mif1format"></A>
+</H1>
 The MIF&nbsp;1.1 format is an older micromagnetic problem specification
 format used by the mmSolve 2D solvers.  It is not compatible with the
 MIF&nbsp;2.1 format used by the Oxs 3D solvers.  However, the command line tool
@@ -84,7 +59,7 @@ MIF&nbsp;2.1 format used by the Oxs 3D solvers.  However, the command line tool
 MIF&nbsp;1.x file is input to them.
 
 <P>
-A sample MIF&nbsp;1.1 file is <A HREF="#fig:mif1sample">included below</A>.  The first line of a MIF file must be of the
+A sample MIF&nbsp;1.1 file is <A HREF="Miscellaneous.html#fig:mif1sample">included below</A>.  The first line of a MIF file must be of the
 form ``<code>#</code> MIF x.y'', where x.y represents the format revision
 number.  (The predecessor MIF&nbsp;1.0 format was not included in any
 released version of OOMMF.)
@@ -102,7 +77,7 @@ parameter list by one or more `:' and/or `=' characters.  Whitespace
 and case is ignored in the Record Identifier field.
 
 <P>
-The parameter list must be a proper Tcl list<A NAME="20092"></A>.  The
+The parameter list must be a proper Tcl list<A NAME="21316"></A>.  The
 parameters are parsed (broken into separate elements) following normal
 Tcl rules; in short, items are separated by whitespace, except as
 grouped by double quotes and curly braces.  Opening braces and quotes
@@ -115,16 +90,16 @@ are interpreted as a comment.
 <P>
 Order of the records in a MIF&nbsp;1.1 file is unimportant, except as
 explicitly stated below.  If two or more lines contain the same Record
-Identifier<A NAME="20093"></A>, then the last one takes precedence,
+Identifier<A NAME="21317"></A>, then the last one takes precedence,
 with the exception of Field Range records, of which there may be several
 active.  All records are required unless listed as optional.  Some of
 these record types are not supported by <B>mmProbEd</B>, however you
 may modify a MIF&nbsp;1.1 file using any plain text editor and supply it to
 <A HREF="2D_Micromagnetic_Interactiv.html#sec:mmsolve2d"
- NAME="20099"><B>mmSolve2D</B></A>
+ NAME="21323"><B>mmSolve2D</B></A>
 using
 <A HREF="Micromagnetic_Problem_File_.html#sec:filesource"
- NAME="20104"><B>FileSource</B></A>.
+ NAME="21328"><B>FileSource</B></A>.
 
 <P>
 For convenience, the Record Identifier tags are organized into several
@@ -132,671 +107,44 @@ groups; these groups correspond to the top-level buttons presented by
 <B>mmProbEd</B>.  We follow this convention below.
 
 <P>
-
-<H3><A NAME="SECTION000181100000000000000"></A><A NAME="20107"></A>
-<BR>
-Material parameters
-</H3>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><B><TT>#</TT> Material Name:</B> This is a convenience entry for
-   <B>mmProbEd</B>; inside the MIF&nbsp;1.1 file it is a comment line.  It
-   relates a symbolic name (e.g., Iron) to specific values to the next
-   4 items.  Ignored by solvers.
-</LI>
-<LI><B>Ms:</B> Saturation magnetization<A NAME="20112"></A>
-   in A/m.
-</LI>
-<LI><B>A:</B> Exchange stiffness<A NAME="20114"></A> in J/m.
-</LI>
-<LI><B>K1:</B> Crystalline
- anisotropy<A NAME="20116"></A><A NAME="20117"></A>
-   constant in J/m<B><SUP>3</SUP></B>.  If <B><I>K</I>1 &gt; 0</B>, then the anisotropy axis (or axes)
-   is an easy axis; if <B><I>K</I>1 &lt; 0</B> then the anisotropy axis is a hard axis.
-</LI>
-<LI><B>Anisotropy Type:</B> Crystalline anisotropy type; One of
-<TT>&lt;uniaxial|cubic&gt;</TT>.
-</LI>
-<LI><B>Anisotropy Dir1:</B> Directional cosines of first crystalline
-   anisotropy axis, taken with respect to the coordinate axes (3
-   numbers).  Optional; Default is 1 0 0 (x-axis).
-</LI>
-<LI><B>Anisotropy Dir2:</B> Directional cosines of second crystalline
-   anisotropy axis, taken with respect to the coordinate axes (3
-   numbers).  Optional; Default is 0 1 0 (y-axis).
-   
-<BR>
-For uniaxial materials it suffices to specify only Anisotropy
-   Dir1.  For cubic materials one must also specify Anisotropy
-   Dir2; the third axis direction will be calculated as the cross
-   product of the first two.  The anisotropy directions will be
-   automatically normalized if necessary, so for example 1 1 1 is
-   valid input (it will be modified to .5774 .5774 .5774).  For cubic
-   materials, Dir2 will be adjusted to be perpendicular to Dir1 (by
-   subtracting out the component parallel to Dir1).
-</LI>
-<LI><B>Anisotropy Init:</B>
-   Method to use to set up directions of anisotropy axes, as a function
-   of spatial location; This is a generalization of the Anisotropy
-   Dir1/2 records.  The value for this record should be one of
-   <TT>&lt;Constant|UniformXY|UniformS2&gt;</TT>.  <TT>Constant</TT> uses the
-   values specified for Anisotropy Dir1 and Dir2, with no dispersion.
-   <TT>UniformXY</TT> ignores the values given for Anisotropy Dir1 and
-   Dir2, and randomly varies the anisotropy directions uniformly in the
-   xy-plane.  <TT>UniformS2</TT> is similar, but randomly varies the
-   anisotropy directions uniformly on the unit sphere (<B><I>S</I><SUP>2</SUP></B>).  This
-   record is optional; the default value is <TT>Constant</TT>.
-</LI>
-<LI><B>Edge K1:</B>  Anisotropy
-   constant<A NAME="20132"></A><A NAME="20133"></A>
-   similar to crystalline anisotropy constant K1 described above, but
-   applied only along the edge surface of the part.  This is a uniaxial
-   anisotropy, directed along the normal to the boundary surface.  Units
-   are J/m<B><SUP>3</SUP></B>, with positive values making the surface normal an easy
-   axis, and negative values making the surface an easy plane.  The
-   default value for Edge K1 is 0, which disables the term.
-</LI>
-<LI><B>Do Precess:</B>
-   If 1, then enable the precession<A NAME="20136"></A> term in the
-   Landau-Lifshitz ODE<A NAME="20137"></A>.  If 0, then do pure
-   damping only.  (Optional; default value is 1.)
-</LI>
-<LI><B>Gyratio:</B>
-   The Landau-Lifshitz gyromagnetic ratio<A NAME="20139"></A>, in
-   m/(A.s).  This is optional, with default value of 2.21e5.  See the discussion of the Landau-Lifshitz ODE
-   under the Damp&nbsp;Coef record identifier description.
-</LI>
-<LI><B>Damp Coef:</B>
-   The ODE solver in OOMMF integrates the Landau-Lifshitz
-   equation<A NAME="20143"></A>&nbsp;[<A
- HREF="bibliography.html#gilbert55">10</A>,<A
- HREF="bibliography.html#landau35">12</A>],
-   written as
-<!-- MATH
- \begin{displaymath}
-\htmlimage{antialias}
-  \frac{d\textbf{M}}{dt} = -|\bar{\gamma}|\,\textbf{M}\times\textbf{H}_{\rm eff}
-   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
-     \textbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
-\end{displaymath}
- -->
-<P ALIGN="CENTER"><IMG
- WIDTH="397" HEIGHT="53" BORDER="0"
- SRC="img20.gif"
- ALT="\begin{displaymath}
-\frac{d\textbf{M}}{dt} = -\vert\bar{\gamma}\vert\,\textbf{M...
-...tbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
-\end{displaymath}"></P>
-where
- 
-<P>
-<BLOCKQUOTE>
-<!-- MATH
- $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
- -->
-<IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
- SRC="img22.gif"
- ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> is the Landau-Lifshitz gyromagnetic ratio
-                        (m/(A.s)),
-<BR>  <B><IMG
- WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
- SRC="img23.gif"
- ALT="$\alpha$"></B> is the damping coefficient (dimensionless).
-
-</BLOCKQUOTE>
- (See also the discussion of the <A HREF="Standard_Oxs_Ext_Child_Clas.html#eq:oxsllode">Landau-Lifshitz-Gilbert
-  equations</A> in the Oxs documentation.)  Here <B><IMG
- WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
- SRC="img23.gif"
- ALT="$\alpha$"></B> is
-  specified by the ``Damp Coef'' entry in the MIF&nbsp;1.1 file.  If not
-  specified, a default value of 0.5 is used, which allows the solver to
-  converge in a reasonable number of iterations.  Physical materials
-  will typically have a damping coefficient in the range 0.004 to
-  0.15.  The 2D solver engine
-  <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"
- NAME="20171"><B>mmSolve</B></A> requires a
-  non-zero damping coefficient.
-</LI>
+<LI><A NAME="tex2html1088"
+  HREF="Material_parameters.html">Material parameters</A>
+<LI><A NAME="tex2html1089"
+  HREF="Demag_specification.html">Demag specification</A>
+<LI><A NAME="tex2html1090"
+  HREF="Part_geometry.html">Part geometry</A>
+<LI><A NAME="tex2html1091"
+  HREF="Initial_magnetization.html">Initial magnetization</A>
+<LI><A NAME="tex2html1092"
+  HREF="Experiment_parameters.html">Experiment parameters</A>
+<LI><A NAME="tex2html1093"
+  HREF="Output_specification.html">Output specification</A>
+<LI><A NAME="tex2html1094"
+  HREF="Miscellaneous.html">Miscellaneous</A>
 </UL>
-
-<P>
-
-<H3><A NAME="SECTION000181200000000000000"></A><A NAME="sec:mifdemagspec"></A>
-<BR>
-Demag specification
-</H3>
-
-<UL>
-<LI><B>Demag Type:</B> Specify algorithm and demagnetization kernel
-      used to calculate self-magnetostatic
-      (demagnetization<A NAME="20177"></A>) field.  Must be one of
-      
-<UL>
-<LI><B>ConstMag:</B> Calculates the <EM>average</EM> field in
-            each cell under the assumption that the magnetization is
-            constant in each cell, using formulae from [<A
- HREF="bibliography.html#newell93">15</A>].
-            (The other demag options calculate the field at the center
-            of each cell.)
-</LI>
-<LI><B>3dSlab:</B>  Calculate the in-plane field components
-            using offset blocks of constant (volume) charge.  Details
-            are given in [<A
- HREF="bibliography.html#berkov93">3</A>]. Field components parallel to
-            the <B><I>z</I></B>-axis are calculated using squares of constant
-            (surface) charge on the upper and lower surfaces of the
-            sample.
-</LI>
-<LI><B>3dCharge:</B> Calculate the in-plane field component
-            using rectangles of constant (surface) charge on each cell.
-            This is equivalent to assuming constant magnetization in
-            each cell.  The <B><I>z</I></B>-components of the field are calculated
-            in the same manner as for the 3dSlab approach.
-</LI>
-<LI><B>FastPipe:</B> Algorithm suitable for simulations that
-            have infinite extent in the <B><I>z</I></B>-direction.  This is a 2D
-            version of the 3dSlab algorithm.
-</LI>
-<LI><B>None:</B> No demagnetization.  Fastest but least
-            accurate method.  <code>:-}</code>    </LI>
-</UL>
-
-<P>
-All of these algorithms except FastPipe and None require that the
-    Part Thickness (cf. the <A HREF="#sec:partgeometry">Part Geometry</A>
-    section) be set.  Fast Fourier Transform (FFT)<A NAME="20190"></A> techniques
-    are used to accelerate the calculations.
-
-<P>
-</LI>
-</UL>
-
-<P>
-
-<H3><A NAME="SECTION000181300000000000000"></A><A NAME="sec:partgeometry"></A><A NAME="20194"></A>
-<BR>
-Part geometry
-</H3>
-
-<UL>
-<LI><B>Part Width:</B> Nominal part width (<B><I>x</I></B>-dimension) in
-      meters.  Should be an integral multiple of Cell&nbsp;Size.
-</LI>
-<LI><B>Part Height:</B> Nominal part height (<B><I>y</I></B>-dimension) in
-      meters.  Should be an integral multiple of Cell&nbsp;Size.
-</LI>
-<LI><B>Part&nbsp;Thickness:</B> Part thickness (<B><I>z</I></B>-dimension) in meters.
-      Required for all demag types except FastPipe and None.
-</LI>
-<LI><B>Cell Size:</B><A NAME="20200"></A> In-plane (<B><I>xy</I></B>-plane) edge
-      dimension of base calculation cell.  This cell is a rectangular
-      brick, with square in-plane cross-section and thickness given by
-      Part&nbsp;Thickness.  N.B.: Part&nbsp;Width and Part&nbsp;Height should be
-      integral multiples of Cell&nbsp;Size.  Part&nbsp;Width and Part&nbsp;Height will
-      be automatically adjusted slightly (up to 0.01%) to meet this
-      condition (affecting a small change to the problem), but if the
-      required adjustment is too large then the problem specification is
-      considered to be invalid, and the solver will signal an error.
-</LI>
-<LI><B>Part Shape:</B> Optional.  Part shape in the <B><I>xy</I></B>-plane;
-      must be one of the following:
-   
-<UL>
-<LI><B>Rectangle</B>
-<BR>
-The sample fills the area specified by Part Width and Part
-         Height. (Default.)
-</LI>
-<LI><B>Ellipse</B>
-<BR>
-The sample (or the magnetically active
-         portion thereof) is an ellipse inscribed into the rectangular
-         area specified by Part Width and Part Height.
-</LI>
-<LI><B>Ellipsoid</B>
-<BR>
-Similar to the Ellipse shape, but the part thickness is
-         varied to simulate an ellipsoid, with axis lengths of
-         Part Width, Part Height and Part Thickness.
-</LI>
-<LI><B>Oval r</B>
-<BR>
-Shape is a rounded rectangle, where each
-         corner is replaced by a quarter circle with radius <B><I>r</I></B>, where
-         <!-- MATH
- $0 <= r <= 1$
- -->
-<B>0 &lt; = <I>r</I> &lt; = 1</B>
-         is relative to the half-width of the rectangle.
-</LI>
-<LI><B>Pyramid overhang</B>
-<BR>
-Shape is a truncated pyramid, with ramp transition base
-         width (overhang) specified in meters.
-</LI>
-<LI><B>Mask filename</B><A NAME="20211"></A><A NAME="20212"></A><A NAME="html:mifvariablethickness"></A>
-<BR>
-Shape and thickness are determined by a bitmap file, the name
-         of which is specified as the second parameter.  The overall
-         size of the simulation is still determined by Part Width and
-         Part Height (above); the bitmap is spatially scaled to fit
-         those dimensions.  Note that this scaling will not be square if
-         the aspect ratio of the part is different from the aspect ratio
-         of the bitmap.
-
-<P>
-The given filename must be accessible to the solver
-         application.  At present the bitmap file must be in either the
-         PPM<A NAME="20214"></A> (portable pixmap), GIF<A NAME="20215"></A>, or
-         BMP<A NAME="20216"></A> formats.  (Formats other than the PPM P3
-         (text) format may be handled by spawning an
-         <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><B>any2ppm</B></A>
-         subprocess<A NAME="20221"></A>.)
-
-<P>
-White areas of the bitmap are interpreted as being non-magnetic
-         (or having 0 thickness); all other areas are assumed to be
-         composed of the material specified in the ``Material
-         Parameters'' section.  Thickness is determined by the relative
-         darkness of the pixels in the bitmap.  Black pixels are given
-         full nominal thickness (specified by the ``Part Thickness''
-         parameter above), and gray pixels are linearly mapped to a
-         thickness between the nominal thickness and 0.  In general,
-         bitmap pixel values are converted to a thickness relative to
-         the nominal thickness by the formula 1-(R+G+B)/(3M), where R, G
-         and B are the magnitudes of the red, green and blue components,
-         respectively, and M is the maximum allowed component magnitude.
-         For example, black has R=G=B=0, so the relative thickness is 1,
-         and white has R=G=B=M, so the relative thickness is 0.
-   
-</LI>
-</UL>
-   The code does not perform a complete 3D evaluation of thickness
-   effects.  Instead, the approximation discussed in [<A
- HREF="bibliography.html#porter01">16</A>] is
-   implemented.
-</LI>
-</UL>
-
-<P>
-
-<H3><A NAME="SECTION000181400000000000000"></A><A NAME="20226"></A>
-<BR>
-Initial magnetization
-</H3>
-
-<UL>
-<LI><B>Init Mag:</B> Name of routine to use to initialize the
-   simulation magnetization directions (as a function of position), and
-   routine parameters, if any.  Optional, with default Random.  The list
-   of routines is long, and it is easy to add new ones.  See the file
-   <TT><B>oommf/app/mmsolve/maginit.cc</B></TT> for details.  A few of the more
-   useful routines are:
-   
-<UL>
-<LI><B>Random</B>
-<BR>
-Random directions on the unit sphere.  This
-         is somewhat like a quenched thermal demagnetized state.
-</LI>
-<LI><B>Uniform theta phi</B>
-<BR>
-Uniform magnetization in the direction
-         indicated by the two additional parameters, theta and phi, where the first is the angle
-         from the <B><I>z</I></B>-axis (in degrees), and the second is the angle
-         from the <B><I>x</I></B>-axis (in degrees) of the projection onto the
-         <B><I>xy</I></B>-plane.
-</LI>
-<LI><B>Vortex</B>
-<BR>
-Fits an idealized vortex<A NAME="20237"></A> about the center of the
-         sample.
-</LI>
-<LI><B>avfFile filename</B>
-<BR>
-The second parameter specifies an OVF/VIO (i.e., ``any''
-         vector field) file<A NAME="20239"></A><A NAME="20240"></A> to use to
-         initialize the magnetization. The grid in the input file will
-         be scaled as necessary to fit the grid in the current
-         simulation.  The file must be accessible to the intended solver
-         application.
-   
-</LI>
-</UL>
-</LI>
-</UL>
-
-<P>
-
-<H3><A NAME="SECTION000181500000000000000"></A><A NAME="sec:expparams"></A>
-<BR>
-Experiment parameters
-</H3>
-The following records specify the applied field schedule:
-
-<UL>
-<LI><B>Field Range:</B><A NAME="20247"></A> Specifies a range of
-      applied fields that are stepped though in a linear manner.  The
-      parameter list should be 7 numbers, followed by optional control
-      point (stopping criteria) specifications.  The 7 required fields
-      are the begin field Bx By Bz in Tesla, the end field Bx By Bz in
-      Tesla, and an integer number of steps (intervals) to take between
-      the begin and end fields (inclusive).  Use as many Field Range
-      records as necessary--they will be stepped through in order of
-      appearance.  If the step count is 0, then the end field is ignored
-      and only the begin field is applied.  If the step count is larger
-      than 0, and the begin field is the same as the last field from the
-      previous range, then the begin field is not repeated.
-
-<P>
-The optional control point<A NAME="20248"></A> specs
-      determine the conditions that cause the applied field to be
-      stepped, or more precisely, end the simulation of the
-      magnetization evolution for the current applied field.  The
-      control point specs are specified as <EM>-type value</EM> pairs.
-      There are 3 recognized control point types:
-      <B>-torque</B><A NAME="20251"></A>,
-      <B>-time</B><A NAME="20253"></A>, and
-      <B>-iteration</B><A NAME="20255"></A>.  If a -torque pair
-      is given, then the simulation at the current applied field is
-      ended when <!-- MATH
- $|\textbf{m}\times\textbf{h}|$
- -->
-<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B> (i.e.,
-      <!-- MATH
- $|\textbf{M}\times\textbf{H}|/M_s^2$
- -->
-<B>|<B>M</B> <TT>x</TT> <B>H</B>|/<I>M</I><SUB>s</SUB><SUP>2</SUP></B>)  at all spins in the simulation is
-      smaller than the specified -torque value (dimensionless).  If a
-      -time pair is given, then the simulation at the current field is
-      ended when the elapsed simulation time <EM>for the current field
-      step</EM> reaches the specified -time value (in seconds).  Similarly,
-      an -iteration pair steps the applied field when the iteration
-      count for the current field step reaches the -iteration value.
-      If multiple control point specs are given, then the applied field
-      is advanced when any one of the specs is met.  If no control point
-      specs are given on a range line, then the <B>Default Control
-      Point Spec</B> is used.
-
-<P>
-For example, consider the following Field Range line:
-<PRE>
-   Field Range: 0 0 0 .05 0 0  5  -torque 1e-5 -time 1e-9
-</PRE>
-      This specifies 6 applied field values, (0,0,0), (0.01,0,0),
-      (0.02,0,0), ..., (0.05,0,0) (in Tesla), with the advancement
-      from one to the next occurring whenever
-      <!-- MATH
- $|\textbf{m}\times\textbf{h}|$
- -->
-<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B>
-      is smaller than 1e-5 for all spins,
-      or when 1 nanosecond (simulation time) has elapsed at the current
-      field. (If -torque was not specified, then the applied field
-      would be stepped at 1, 2, 3 4 and 5&nbsp;ns in simulation time.)
-
-<P>
-The Field Range record is optional, with a default value of 0 0 0
-      0 0 0 0.
-
-<P>
-</LI>
-<LI><B>Default Control Point Spec:</B> List of control
-      point<A NAME="20265"></A> <EM>-type value</EM> pairs to
-      use as stepping criteria for any field range with no control point
-      specs.  This is a generalization of and replacement for the <EM>      Converge <B>|</B>mxh<B>|</B> Value</EM> record.  Optional, with default
-      ``<TT>-torque&nbsp;1e-5</TT>.''
-
-<P>
-</LI>
-<LI><B>Field Type:</B> Applied (external) field<A NAME="20270"></A>
-     routine and parameters, if any. This is optional, with default
-     Uniform.  At most one record of this type is allowed, but the Multi
-     type may be used to apply a collection of fields.  The nominal
-     applied field (NAF) is stepped through the Field Ranges described
-     above, and is made available to the applied field routines which
-     use or ignore it as appropriate.  
-<BR>
-The
-     following Field Type routines are available:
-     
-<UL>
-<LI><B>Uniform</B>
-<BR>
-Applied field is uniform with value specified by the NAF.
-</LI>
-<LI><B>Ribbon relcharge x0 y0 x1 y1 height</B>
-<BR>
-Charge ``Ribbon,'' lying perpendicular to the <B><I>xy</I></B>-plane.
-          Here relcharge is the charge strength relative to Ms, and
-          (x0,y0), (x1,y1) are the endpoints of the ribbon (in
-          meters).  The ribbon extends height/2 above and below the
-          calculation plane.  This routine ignores the NAF.
-</LI>
-<LI><B>Tie rfx rfy rfz x0 y0 x1 y1 ribwidth</B>
-<BR>
-The points (x0,y0) and (x1,y1) define (in meters) the
-          endpoints of the center spine of a rectangular ribbon of
-          width ribwidth lying in the <B><I>xy</I></B>-plane.  The cells with
-          sample point inside this rectangle see an applied field of
-          (rfx,rfy,rfz), in units relative to Ms.  (If the field is
-          large, then the magnetizations in the rectangle will be
-          ``tied'' to the direction of that field.)  This routine
-          ignores the NAF.
-</LI>
-<LI><B>OneFile filename multiplier</B>
-<BR>
-Read B field (in Tesla) in from a file.  Each value in the
-          file is multiplied by the ``multiplier'' value on input.  This
-          makes it simple to reverse field direction (use -1 for the
-          multiplier), or to convert H fields to B fields (use
-          1.256637e-6).  The input file may be any of the vector field
-          file types recognized by <B>mmDisp</B>.  The input dimensions
-          will be scaled as necessary to fit the simulation grid, with
-          zeroth order interpolation as necessary.  This routine ignores
-          the NAF.
-</LI>
-<LI><B>FileSeq filename procname multiplier</B>
-<BR>
-This is a generalization of the OneFile routine that reads in
-          fields from a sequence of files.  Here ``filename'' is the
-          name of a file containing Tcl code to be sourced during
-          problem initialization, and ``procname'' is the name of a Tcl
-          procedure defined in filename, which takes the nominal B field
-          components (in Tesla) and field step count values as imports
-          (4 values total), and returns the name of the vector field
-          file that should be used as the applied B field for that field
-          step.  The B field units in the vector field file should be
-          Tesla.
-</LI>
-<LI><B>Multi routinecount <TT>&#92;</TT>
-<BR>
-param1count name1 param1 param2 ...<TT>&#92;</TT>
-<BR>
-param2count name2 param1 param2 ...<TT>&#92;</TT>
-<BR>                   ...</B>
-<BR>
-Allows a conglomeration of several field type routines.  All
-          entries must be on the same logical line, i.e., end physical
-          lines with '<TT>&#92;</TT>' continuation characters as necessary.
-          Here routinecount is the number of routines, and param1count
-          is the number parameters (including name1) needed by the
-          first routine, etc.
-     
-</LI>
-</UL>
-     Note that all lengths are in meters.  The coordinates in the
-     simulation lie in the first octant, running from (0,0,0) to
-     (Part&nbsp;Width, Part&nbsp;Height, Part&nbsp;Thickness).
-</LI>
-</UL>
-
-<P>
-
-<H3><A NAME="SECTION000181600000000000000"></A><A NAME="sec:mif1outspec"></A>
-<BR>
-Output specification
-</H3>
-
-<UL>
-<LI><B>Base Output Filename:</B> Default base name used to
-      construct output filenames.
-</LI>
-<LI><B>Magnetization Output Format:</B><A NAME="20288"></A>
-      Format to use in the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF</A> data block for exported magnetization
-      files.  Should be one of ``binary&nbsp;4'' (default), ``binary 8'', or
-      ``text <EM>format-spec</EM>'', where <EM>format-spec</EM> is a C
-      <TT>printf</TT>-style format code, such as ``<TT>%<TT>#</TT>&nbsp;.17g</TT>''.
-       Optional.
-</LI>
-<LI><B>Total Field Output Format:</B><A NAME="20298"></A>
-      Analogous to the Magnetization Output Format, but for total field
-      output files.  Optional, with default ``binary&nbsp;4''.
-</LI>
-<LI><B>Data Table Output Format:</B><A NAME="20300"></A>
-      Format to use when producing data table style scalar output, such
-      as that sent to
-      <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"><B>mmDataTable</B></A>,
-      <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"><B>mmGraph</B></A>, and
-      <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"><B>mmArchive</B></A>.
-      Should specify a C <TT>printf</TT>-style format code, such as the
-      default ``<TT>%.16g</TT>''.  Optional.
-</LI>
-</UL>
-
-<P>
-
-<H3><A NAME="SECTION000181700000000000000"></A><A NAME="sec:mifmisc"></A>
-<BR>
-Miscellaneous
-</H3>
-
-<UL>
-<LI><B>Converge <B>|</B>mxh<B>|</B> Value:</B><A NAME="20320"></A>
-      Nominal value to use as a stopping criterion: When
-      <!-- MATH
- $|\textbf{m}\times\textbf{h}|$
- -->
-<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B> (i.e., <!-- MATH
- $|\textbf{M}\times\textbf{H}|/M_s^2$
- -->
-<B>|<B>M</B> <TT>x</TT> <B>H</B>|/<I>M</I><SUB>s</SUB><SUP>2</SUP></B>)
-      
-      at all spins in the simulation is smaller than this value, it is
-      assumed that a relaxed (equilibrium) state has been reached for
-      the current applied field.  This is a dimensionless value.
-<BR>      <B>NOTE:</B> This Record Identifier is deprecated.  Use <EM>      Default Control Point Spec</EM> instead.
-</LI>
-<LI><B>Randomizer Seed:</B> Value with which to seed random
-      number<A NAME="20326"></A> generator.  Optional.  Default value
-      is 0, which uses the system clock to generate a semi-random seed.
-</LI>
-<LI><B>Max Time Step:</B> Limit the maximum ODE step
-      size<A NAME="20328"></A> to no larger than this amount, in
-      seconds.  Optional.
-</LI>
-<LI><B>Min Time Step:</B> Limit the minimum ODE step size to no
-      less than this amount, in seconds.  Optional.
-</LI>
-<LI><B>User Comment:</B> Free-form comment string that may be used
-      for problem identification.  Optional.
-</LI>
-</UL>
-
-<P>
-<A NAME="fig:mif1sample"></A>  
-  
-  <BR CLEAR="ALL">
-<HR><PRE>
-# MIF 1.1
-#
-# Example from the OOMMF User's Guide.
-#
-# All units are SI.
-#
-################# MATERIAL PARAMETERS ######################
-Ms:  800e3                # Saturation magnetization in A/m.
-A:   13e-12               # Exchange stiffness in J/m.
-K1:  0.5e3                # Anisotropy constant in J/m^3.
-Anisotropy Type: uniaxial # One of &lt;uniaxial|cubic&gt;.
-Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
-                          # coordinate axes
-
-################# DEMAG SPECIFICATION ######################
-Demag Type: ConstMag # One of &lt;ConstMag|3dSlab|2dSlab
-                     #         |3dCharge|FastPipe|None&gt;.
-
-#################### PART GEOMETRY #########################
-Part Width:     0.25e-6    # Nominal part width in m
-Part Height:    1.0e-6     # Nominal part height in m
-Part Thickness: 1e-9       # Part thickness in m.
-Cell Size:      7.8125e-9  # Cell size in m.
-#Part Shape:    # One of &lt;Rectangle|Ellipse|Oval|Mask&gt;.
-                # Optional.
-
-################ INITIAL MAGNETIZATION #####################
-Init Mag: Uniform 90 45 # Initial magnetization routine
-                        # and parameters
-
-################ EXPERIMENT PARAMETERS #####################
-# Field Range:  Start_field  Stop_field  Steps
-Field Range: -.05 -.01 0.  .05  .01 0. 100
-Field Range:  .05  .01 0. -.05 -.01 0. 100
-Field Type: Multi 4 \
- 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
- 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
- 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
- 1 Uniform
-# The above positions ribbons of positive charge along the
-# upper and lower edges with strength Ms, applies a large
-# (100 Ms) field to the center cells, and also applies a
-# uniform field across the sample stepped from
-# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
-# approximately 0.001 T steps.
-
-Default Control Point Spec: -torque 1e-6
-# Assume equilibrium has been reached, and step the applied
-# field, when the reduced torque |mxh| drops below 1e-6.
-
-################ OUTPUT SPECIFICATIONS #####################
-Base Output Filename: samplerun
-Magnetization Output Format: binary 8 # Save magnetization
-# states in binary format with full (8-byte) precision.
-
-#################### MISCELLANEOUS #########################
-Randomizer Seed: 1   # Random number generator seed.
-User Comment: Example MIF 1.1 file, with lots of comments.
-</PRE>
-  <DIV ALIGN="CENTER">
-Figure 7:
-    Example MIF&nbsp;1.1 file.
-    <A HREF="#pt:mif1format">(Description.)</A>
-  
-</DIV>
-  <BR CLEAR="ALL">
-<HR>
-<P>
+<!--End of Table of Child-Links-->
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html874"
-  HREF="MIF_1.2.html">
+<A NAME="tex2html1086"
+  HREF="Material_parameters.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html870"
+<A NAME="tex2html1082"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html864"
+<A NAME="tex2html1076"
   HREF="Problem_Specification_File_.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html877"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html872"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1084"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

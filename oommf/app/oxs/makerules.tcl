@@ -73,13 +73,20 @@ foreach src $lclsrcs {
 }
 # Note: The lclsrcs compilation command further down assumes that the
 # number and order of lclsrcs and lclobjs match.
-set lcllibs {}
-foreach src $lclsrcs {
-   # Check src.rules files for external library info. If it exists, the
-   # src.rules file is a Tcl script that sets the variable
+
+# Library dependencies extension modules
+set RULESGLOB [list *.rules]
+set rules [list]
+foreach subdir [Oc_FindSubdirectories local] {
+   lappend rules {*}[glob -nocomplain -directory $subdir -types f {*}$RULESGLOB]
+}
+set lcllibs [list]
+foreach fn $rules {
+   # Each rules file is a Tcl script that potentially sets the variable
    # Oxs_external_libs to a list of external libraries (stems only)
-   # needed by the extension associated with src.cc.
-   set fn "[file rootname $src].rules"
+   # needed by an extension. (Maintenance note: This code is also used
+   # by the oxspkg "requires" command. Changes here should be reflected
+   # there.)
    if {[file readable $fn]} {
       set chan [open $fn r]
       set contents [read $chan]
@@ -87,11 +94,12 @@ foreach src $lclsrcs {
       set slave [interp create -safe]
       $slave eval $contents
       if {![catch {$slave eval set Oxs_external_libs} libs]} {
-	 set lcllibs [concat $lcllibs $libs]
+	 lappend lcllibs {*}$libs
       }
       interp delete $slave
    }
 }
+set lcllibs [lsort -unique $lcllibs]
 
 set psrcs [lsort [glob -nocomplain -- [file join preisach *.cc]]]
 set pobjs {}
@@ -126,7 +134,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		2.0a3
+                    -version		2.0b0
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]

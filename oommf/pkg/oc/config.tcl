@@ -622,16 +622,16 @@ Oc_Class Oc_Config {
              } else {
                 append ret "?"
              }
-             if {[regexp {tcl_platform\(pointerSize\) *= *([0-9.]*)} \
+             if {[regexp {tcl_platform\(pointerSize\) *= *([0-9]+)} \
                      $target_tcl_info dummy pointerSize]} {
                 append ret ", [expr {$pointerSize*8}] bit"
                 unset pointerSize
-             } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9.]*)} \
+             } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9]+)} \
                      $target_tcl_info dummy wordSize]} {
                 append ret ", [expr {$wordSize*8}] bit"
                 unset wordSize
              }
-             if {[regexp {tcl_platform\(threaded\) *= *([0-9]*)} \
+             if {[regexp {tcl_platform\(threaded\) *= *([0-9]+)} \
                      $target_tcl_info dummy threaded] && $threaded} {
                 append ret ", threaded"
              } else {
@@ -663,16 +663,16 @@ Oc_Class Oc_Config {
              } else {
                 append ret "?"
              }
-             if {[regexp {tcl_platform\(pointerSize\) *= *([0-9.]*)} \
+             if {[regexp {tcl_platform\(pointerSize\) *= *([0-9]+)} \
                      $target_tcl_info dummy pointerSize]} {
                 append ret ", [expr {$pointerSize*8}] bit"
                 unset pointerSize
-             } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9.]*)} \
+             } elseif {[regexp {tcl_platform\(wordSize\) *= *([0-9]+)} \
                            $target_tcl_info dummy wordSize]} {
                 append ret ", [expr {$wordSize*8}] bit"
                 unset wordSize
              }
-             if {[regexp {tcl_platform\(threaded\) *= *([0-9]*)} \
+             if {[regexp {tcl_platform\(threaded\) *= *([0-9]+)} \
                      $target_tcl_info dummy threaded] && $threaded} {
                 append ret ", threaded"
              } else {
@@ -687,15 +687,15 @@ Oc_Class Oc_Config {
                      $work_info dummy target_tcl_version]} {
                 set msg \
                    "                  \t --> Version $target_tcl_version"
-                if {[regexp {tcl_platform\(pointerSize\) *= *([0-9.]*)} \
+                if {[regexp {tcl_platform\(pointerSize\) *= *([0-9]+)} \
                         $work_info dummy pointerSize]} {
                    append msg ", [expr {$pointerSize*8}] bit"
                    unset pointerSize
-                   if {[regexp {tcl_platform\(wordSize\) *= *([0-9.]*)} \
+                   if {[regexp {tcl_platform\(wordSize\) *= *([0-9]+)} \
                            $work_info dummy wordSize]} {
                       append msg ", [expr {$wordSize*8}] bit"
                       unset wordSize
-                      if {[regexp {tcl_platform\(threaded\) *= *([0-9]*)} \
+                      if {[regexp {tcl_platform\(threaded\) *= *([0-9]+)} \
                               $work_info dummy threaded] && $threaded} {
                          append msg ", threaded"
                       } else {
@@ -896,8 +896,6 @@ Oc_Class Oc_Config {
 	}
 	catch {close $s}
    
-
-
 	if {[string match *WARNING* $ret]} {
 	    append ret "\n\nPlease see the Installation section of the\
 		    OOMMF User's Guide\nfor more information."

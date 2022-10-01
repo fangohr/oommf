@@ -11,7 +11,7 @@
 #ifndef _FFT_H
 #define _FFT_H
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "oc.h"
 

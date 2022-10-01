@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Understanding pimake</TITLE>
+<META NAME="description" CONTENT="Understanding pimake">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<LINK REL="previous" HREF="Configuration_Files.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html212"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html208"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html202"
+  HREF="Configuration_Files.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html210"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html213"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">Bypassing the oommf.tcl bootstrap</A>
+<B> Up:</B> <A NAME="tex2html209"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html203"
+  HREF="Configuration_Files.html">Configuration Files</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00620000000000000000"></A><A NAME="sec:debug:pimake"></A>
+<BR>
+Understanding <B>pimake</B>
+</H1>
+The OOMMF <B>pimake</B> application controls the compiling and linking
+of OOMMF's C++ components. Based broadly on the Unix make
+utility, <B>pimake</B> is a platform independent tool written in
+Tcl. Each of the source code directories in the OOMMF distribution
+tree has a <TT><B>makerules.tcl</B></TT> file that specifies build targets and
+dependencies. A dependency tree is build from this information augmented
+with recursive tracking of <TT>#include</TT> statements inside the
+referenced source code files.  Each time <B>pimake</B> is run it compares
+file timestamps against the dependency tree, and compiles and links any
+object and executable files that are older than any of their
+dependencies.
+
+<P>
+After editing <TT><B>*.h</B></TT> or <TT><B>*.cc</B></TT> files in OOMMF, you should run
+<B>pimake</B> to propagate your changes to the associated
+OOMMF executable(s).  If you run <TT>tclsh oommf.tcl pimake</TT> in a
+directory below the OOMMF root directory, then only changes at that
+directory and lower are affected. You can use the <TT>-cwd</TT> option to
+<B>pimake</B> to change the effective starting directory. Changes to the
+OOMMF <A HREF="Configuration_Files.html#sec:debug:configfiles">configuration files</A> do <B>not</B> trigger dependency
+updates, so if you make changes affecting the build process in these
+files you should manually run
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">tclsh oommf.tcl pimake distclean</FONT>
+<BR>$ <FONT COLOR="#00bbee">tclsh oommf.tcl pimake</FONT>
+<BR></TT>
+</DIV>
+<BR>
+from the OOMMF root directory to delete and then rebuild the full
+OOMMF project.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html212"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html208"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html202"
+  HREF="Configuration_Files.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html210"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

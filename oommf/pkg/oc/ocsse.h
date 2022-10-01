@@ -17,6 +17,9 @@
 #if OC_USE_SSE
 
 #include <emmintrin.h>
+#ifndef OC_SSE_NO_ALIGNED
+# error OOMMF header error: OC_SSE_NO_ALIGNED not defined
+#endif
 
 #if OC_FMA_TYPE
 # ifdef _MSC_VER
@@ -157,7 +160,11 @@ public:
 
   Oc_Duet& LoadAligned(const OC_REAL8& pair) {
     // Address of "pair" must be 16-byte aligned.
+#if !OC_SSE_NO_ALIGNED
     value = _mm_load_pd(&pair);
+#else
+    value = _mm_loadu_pd(&pair);
+#endif
     return *this;
   }
 
@@ -221,8 +228,13 @@ public:
   // significantly slower than StoreAligned if the &pair is currently
   // cached.
   void StoreUnaligned(OC_REAL8& pair) const { _mm_storeu_pd(&pair,value); }
+#if !OC_SSE_NO_ALIGNED
   void StoreAligned(OC_REAL8& pair) const { _mm_store_pd(&pair,value); }
   void StoreStream(OC_REAL8& pair) const { _mm_stream_pd(&pair,value); }
+#else
+  void StoreAligned(OC_REAL8& pair) const { _mm_storeu_pd(&pair,value); }
+  void StoreStream(OC_REAL8& pair) const { _mm_storeu_pd(&pair,value); }
+#endif
 
   void KeepMin(const Oc_Duet& tst) { value = _mm_min_pd(value,tst.value); }
   void KeepMax(const Oc_Duet& tst) { value = _mm_max_pd(value,tst.value); }

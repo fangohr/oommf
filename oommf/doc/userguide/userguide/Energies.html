@@ -1,0 +1,1422 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Energies</TITLE>
+<META NAME="description" CONTENT="Energies">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Evolvers.html">
+<LINK REL="previous" HREF="Meshes.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Evolvers.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html578"
+  HREF="Evolvers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html574"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html568"
+  HREF="Meshes.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html576"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html579"
+  HREF="Evolvers.html">Evolvers</A>
+<B> Up:</B> <A NAME="tex2html575"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html569"
+  HREF="Meshes.html">Meshes</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00833000000000000000"></A><A NAME="sec:oxsEnergies"></A>
+<BR>
+Energies
+</H2>
+The following subsections describe the available energy terms.  In
+order to be included in the simulation energy and field calculations,
+each energy term must be declared in its own, top-level Specify block,
+i.e., energy terms should not be declared inline inside other
+<TT>Oxs_Ext</TT> objects.  There is no limitation on the number of energy
+terms that may be specified in the input MIF file.  Many of these
+terms have spatially varying parameters that are initialized via
+<A HREF="Field_Objects.html#sec:oxsFieldObjects"><I>field_object_spec</I></A> entries in their
+<A HREF="Specify_Conventions.html#par:oxsExtReferencing">Specify initialization block</A>.
+
+<P>
+<B>Outputs:</B> For each magnetization configuration, three standard
+outputs are provided by all energy terms: the scalar output
+``Energy,'' which is the total energy in joules contributed by this
+energy term, the scalar field output ``Energy density,'' which is a
+cell-by-cell map of the energy density in
+J/m<SUP>3</SUP>,
+and the three-component vector field output ``Field,'' which is the
+pointwise field in A/m.  If the code was compiled with the macro
+<TT>NDEBUG</TT> not defined, then there will be an additional scalar
+output, ``Calc count,'' which counts the number of times the term has
+been calculated in the current simulation.  This is intended for
+debugging purposes only; this number should agree with the ``Energy
+calc count'' value provided by the evolver.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Anisotropy Energy</B></FONT>
+<BR><DL>
+<DD><A NAME="PTUA"></A><A NAME="5044"></A></DD>
+<DT><STRONG>Oxs_UniaxialAnisotropy:</STRONG></DT>
+<DD>Uniaxial magneto-crystalline
+  anisotropy.  The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_UniaxialAnisotropy:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>K1 </TT><I>K</I>
+       <DD> <TT>Ha </TT><I>H</I>
+       <DD> <TT>axis </TT><I>u</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Exactly one of either <B>K1</B> or <B>Ha</B> should be
+  specified, where <B>K1</B> is the crystalline anisotropy constant
+  (in
+  J/m<sup>3</sup>),
+  and <B>Ha</B> is the anistropy field (in A/m).  In either case,
+  <B>axis</B> is the anisotropy direction.  <B>K1</B>,
+  <B>Ha</B>, and <B>axis</B> may each be varied cellwise across
+  the mesh: <B>K1</B> and <B>Ha</B> are initialized with scalar
+  field objects, while <B>axis</B> takes a vector field object.  (A
+  constant value will be interpreted as a uniform field object having
+  the stated value, as usual.)  The axis direction must be non-zero at
+  each point, and will be normalized to unit magnitude before being
+  used.
+
+<P>
+The axis direction is an easy axis if <B>K1</B> (or <B>Ha</B>)
+  is <B>&gt;</B>0, in which case the cellwise anisotropy energy density (in
+  J/m<B><SUP>3</SUP></B>) is given by
+   <P><!-- MATH
+ \begin{displaymath}
+E_i = K_i(1 - \textbf{m}_i\cdot\textbf{u}_i)^2 \qquad \mbox{or} \qquad
+               \frac{1}{2}\, \mu_0 M_s H_i (1 - \textbf{m}_i\cdot\textbf{u}_i)^2,
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>i</SUB> = <I>K</I><SUB>i</SUB>(1 - <B>m</B><SUB>i</SUB><SUP> . </SUP><B>u</B><SUB>i</SUB>)<SUP>2</SUP>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<IMG
+ WIDTH="18" HEIGHT="61" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.gif"
+ ALT="$\displaystyle {\frac{{1}}{{2}}}$">&nbsp;<IMG
+ WIDTH="24" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.gif"
+ ALT="$\displaystyle \mu_{0}^{}$"><I>M</I><SUB>s</SUB><I>H</I><SUB>i</SUB>(1 - <B>m</B><SUB>i</SUB><SUP> . </SUP><B>u</B><SUB>i</SUB>)<SUP>2</SUP>,</B></BIG>
+</DIV><P></P>
+respectively.  (Here <B><I>m</I><SUB>i</SUB></B> is the unit magnetization and <B><I>M</I><SUB>s</SUB></B> the
+  saturation magnetization in cell <B><I>i</I></B>.)  Otherwise, if <B>K1</B>
+  (or <B>Ha</B>) is <B>&lt; 0</B>, the axis direction is the normal to the
+  easy plane and the cellwise anisotropy energy density is given by
+   <P><!-- MATH
+ \begin{displaymath}
+E_i = -K_i(\textbf{m}_i\cdot\textbf{u}_i)^2 \qquad \mbox{or} \qquad
+               -\frac{1}{2}\, \mu_0 M_s H_i (\textbf{m}_i\cdot\textbf{u}_i)^2.
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>i</SUB> = - <I>K</I><SUB>i</SUB>(<B>m</B><SUB>i</SUB><SUP> . </SUP><B>u</B><SUB>i</SUB>)<SUP>2</SUP>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - <IMG
+ WIDTH="18" HEIGHT="61" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.gif"
+ ALT="$\displaystyle {\frac{{1}}{{2}}}$">&nbsp;<IMG
+ WIDTH="24" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.gif"
+ ALT="$\displaystyle \mu_{0}^{}$"><I>M</I><SUB>s</SUB><I>H</I><SUB>i</SUB>(<B>m</B><SUB>i</SUB><SUP> . </SUP><B>u</B><SUB>i</SUB>)<SUP>2</SUP>.</B></BIG>
+</DIV><P></P>
+The formulae in the two cases (easy axis vs. easy plane) differ by a
+  constant offset, and in each case the energy is non-negative.
+
+<P>
+
+<B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>grill.mif</B></TT>.
+<P>
+<A NAME="PTCA"></A><A NAME="5079"></A></DD>
+<DT><STRONG>Oxs_CubicAnisotropy:</STRONG></DT>
+<DD>Cubic magneto-crystalline anisotropy.
+  The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_CubicAnisotropy:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>K1 </TT><I>K</I>
+       <DD> <TT>Ha </TT><I>H</I>
+       <DD> <TT>axis1 </TT><I>u<sub>1</sub></I>
+       <DD> <TT>axis2 </TT><I>u<sub>2</sub></I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Exactly one of either <B>K1</B> or <B>Ha</B> should be
+  specified, where <B>K1</B> is the crystalline anisotropy constant
+  (in
+  J/m<sup>3</sup>),
+  and <B>Ha</B> is the anistropy field (in A/m).  In either case,
+  <B>axis1</B> and <B>axis2</B> are two anisotropy directions;
+  the third anisotropy axis <B><I>u</I><SUB>3</SUB></B> is computed as the vector product,
+  <!-- MATH
+ $u_1\times u_2$
+ -->
+<B><I>u</I><SUB>1</SUB> <TT>x</TT> <I>u</I><SUB>2</SUB></B>.  For each cell, the axis directions are easy axes if
+  <B>K1</B> (or <B>Ha</B>) is <B>&gt;</B>0, or hard axes if
+  <B>K1</B> (or <B>Ha</B>) is <B>&lt;</B>0.  All may be varied cellwise
+  across the mesh.  <B>K1</B> or <B>Ha</B> is initialized with a
+  scalar field object, and the axis directions are initialized with
+  vector field objects.  (Constant values will be interpreted as uniform
+  fields with the indicated value, as usual.)  The <B>axis1</B> and
+  <B>axis2</B> directions must be mutually orthogonal and non-zero
+  at each point (<B><I>u</I><SUB>1</SUB></B> and <B><I>u</I><SUB>2</SUB></B> are automatically scaled to unit
+  magnitude before use).
+
+<P>
+The anisotropy energy density (in J/m<B><SUP>3</SUP></B>) for cell <B><I>i</I></B> is given by
+   <P><!-- MATH
+ \begin{displaymath}
+E_i = K_i\left(a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2\right),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>i</SUB> = <I>K</I><SUB>i</SUB><IMG
+ WIDTH="16" HEIGHT="49" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.gif"
+ ALT="$\displaystyle \left(\vphantom{a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2}\right.$"><I>a</I><SUB>1</SUB><SUP>2</SUP><I>a</I><SUB>2</SUB><SUP>2</SUP> + <I>a</I><SUB>2</SUB><SUP>2</SUP><I>a</I><SUB>3</SUB><SUP>2</SUP> + <I>a</I><SUB>3</SUB><SUP>2</SUP><I>a</I><SUB>1</SUB><SUP>2</SUP><IMG
+ WIDTH="16" HEIGHT="49" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.gif"
+ ALT="$\displaystyle \left.\vphantom{a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2}\right)$">,</B></BIG>
+</DIV><P></P>
+or
+   <P><!-- MATH
+ \begin{displaymath}
+E_i = \frac{1}{2}\, \mu_0 M_s H_i
+         \left(a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2\right),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>i</SUB> = <IMG
+ WIDTH="18" HEIGHT="61" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.gif"
+ ALT="$\displaystyle {\frac{{1}}{{2}}}$">&nbsp;<IMG
+ WIDTH="24" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.gif"
+ ALT="$\displaystyle \mu_{0}^{}$"><I>M</I><SUB>s</SUB><I>H</I><SUB>i</SUB><IMG
+ WIDTH="16" HEIGHT="49" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.gif"
+ ALT="$\displaystyle \left(\vphantom{a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2}\right.$"><I>a</I><SUB>1</SUB><SUP>2</SUP><I>a</I><SUB>2</SUB><SUP>2</SUP> + <I>a</I><SUB>2</SUB><SUP>2</SUP><I>a</I><SUB>3</SUB><SUP>2</SUP> + <I>a</I><SUB>3</SUB><SUP>2</SUP><I>a</I><SUB>1</SUB><SUP>2</SUP><IMG
+ WIDTH="16" HEIGHT="49" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.gif"
+ ALT="$\displaystyle \left.\vphantom{a_1^2a_2^2 + a_2^2a_3^2 + a_3^2a_1^2}\right)$">,</B></BIG>
+</DIV><P></P>
+where <!-- MATH
+ $a_1 = \textbf{m}\cdot\textbf{u}_1$
+ -->
+<B><I>a</I><SUB>1</SUB> = <B>m</B><SUP> . </SUP><B>u</B><SUB>1</SUB></B>, <!-- MATH
+ $a_2 = \textbf{m}\cdot\textbf{u}_2$
+ -->
+<B><I>a</I><SUB>2</SUB> = <B>m</B><SUP> . </SUP><B>u</B><SUB>2</SUB></B>, <!-- MATH
+ $a_3 =
+  \textbf{m}\cdot\textbf{u}_3$
+ -->
+<B><I>a</I><SUB>3</SUB> = <B>m</B><SUP> . </SUP><B>u</B><SUB>3</SUB></B>, for reduced (normalized) magnetization <B><I>m</I></B> and
+  orthonormal anisotropy axes <!-- MATH
+ $\textbf{u}_1$
+ -->
+<B><B>u</B><SUB>1</SUB></B>, <!-- MATH
+ $\textbf{u}_2$
+ -->
+<B><B>u</B><SUB>2</SUB></B>, and <!-- MATH
+ $\textbf{u}_3$
+ -->
+<B><B>u</B><SUB>3</SUB></B> at cell <B><I>i</I></B>.
+  In the second form, <B><I>M</I><SUB>s</SUB></B> is the saturation magnetization in cell <B><I>i</I></B>.
+  For each cell, if <B>K1</B> (resp. <B>Ha</B>) is <B>&gt;</B>0 then
+  the computed energy will be non-negative, otherwise for <B>K1</B>
+  (resp. <B>Ha</B>) <B>&lt;</B>0 the computed energy will be non-positive.
+
+<P>
+
+<B>Examples:</B> <TT><B>cgtest.mif</B></TT>, <TT><B>sample2.mif</B></TT>, <TT><B>grill.mif</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Exchange Energy</B></FONT>
+<BR><DL>
+<DD><A NAME="PTE6"></A><A NAME="5116"></A></DD>
+<DT><STRONG>Oxs_Exchange6Ngbr:</STRONG></DT>
+<DD>Standard 6-neighbor exchange energy.  The
+   exchange energy density contribution from cell <B><I>i</I></B> is given by
+   
+<P></P>
+<DIV ALIGN="CENTER">
+<A NAME="eq:ExchangeEnergy"></A><!-- MATH
+ \begin{equation}
+E_i =  \sum_{j\in N_i} A_{ij}
+         \frac{\textbf{m}_i\cdot\left(\textbf{m}_i - \textbf{m}_j\right)}{\Delta_{ij}^2}
+\end{equation}
+ -->
+<TABLE WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG>
+<B><I>E</I><SUB>i</SUB> = <IMG
+ WIDTH="37" HEIGHT="58" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.gif"
+ ALT="$\displaystyle \sum_{{j\in N_i}}^{}$"><I>A</I><SUB>ij</SUB><IMG
+ WIDTH="138" HEIGHT="66" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.gif"
+ ALT="$\displaystyle {\frac{{\textbf{m}_i\cdot\left(\textbf{m}_i - \textbf{m}_j\right)}}{{\Delta_{ij}^2}}}$"></B>
+</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(7.1)</TD></TR>
+</TABLE>
+</DIV>
+where <B><I>N</I><SUB>i</SUB></B> is the set consisting of the 6 cells nearest to cell <B><I>i</I></B>,
+   <B><I>A</I><SUB>ij</SUB></B> is the exchange coefficient between cells <B><I>i</I></B> and <B><I>j</I></B> in J/m,
+   and <!-- MATH
+ $\Delta_{ij}$
+ -->
+<B><IMG
+ WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.gif"
+ ALT="$\Delta_{{ij}}^{}$"></B> is the discretization step size between cell <B><I>i</I></B> and
+   cell <B><I>j</I></B> (in meters).
+
+<P>
+The Specify block for this term has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_Exchange6Ngbr:</TT><I>name</I> <TT>{</TT>
+   <DD><TT>default_A </TT><I>value</I>
+   <DD><TT>atlas </TT><I>atlas_spec</I>
+   <DD><TT>A {</TT><DL>
+       <DD>
+        <I>region-1</I><TT>&nbsp;</TT>
+          <I>region-1</I><TT>&nbsp;</TT><I>A<SUB>11</SUB></I>
+       <DD>
+        <I>region-1</I><TT>&nbsp;</TT>
+          <I>region-2</I><TT>&nbsp;</TT><I>A<SUB>12</SUB></I>
+       <DD> ...
+       <DD>
+        <I>region-m</I><TT>&nbsp;</TT>
+          <I>region-n</I><TT>&nbsp;</TT><I>A<SUB>mn</SUB></I>
+   </DL><TT>}</TT>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+or
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_Exchange6Ngbr:</TT><I>name</I> <TT>{</TT>
+   <DD><TT>default_lex </TT><I>value</I>
+   <DD><TT>atlas </TT><I>atlas_spec</I>
+   <DD><TT>lex {</TT><DL>
+       <DD>
+        <I>region-1</I><TT>&nbsp;</TT>
+          <I>region-1</I><TT>&nbsp;</TT><I>lex<SUB>11</SUB></I>
+       <DD>
+        <I>region-1</I><TT>&nbsp;</TT>
+          <I>region-2</I><TT>&nbsp;</TT><I>lex<SUB>12</SUB></I>
+       <DD> ...
+       <DD>
+        <I>region-m</I><TT>&nbsp;</TT>
+          <I>region-n</I><TT>&nbsp;</TT><I>lex<SUB>mn</SUB></I>
+   </DL><TT>}</TT>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+where <B>lex</B> specifies the magnetostatic-exchange length, in
+   meters, defined by <!-- MATH
+ ${\rm lex} = \sqrt{2A/(\mu_0 M_s^2)}$
+ -->
+<B><I>lex</I> = <IMG
+ WIDTH="100" HEIGHT="42" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.gif"
+ ALT="$\sqrt{{2A/(\mu_0 M_s^2)}}$"></B>.
+
+<P>
+In the first case, the <B>A</B> block specifies <B><I>A</I><SUB>ij</SUB></B> values
+   on a region by region basis, where the regions are labels declared by
+   <I>atlas_spec</I>.  This allows for specification of <B><I>A</I></B> both
+   inside a given region (e.g., <B><I>A</I><SUB>ii</SUB></B>) and along interfaces between
+   regions (e.g., <B><I>A</I><SUB>ij</SUB></B>).  By symmetry, if <B><I>A</I><SUB>ij</SUB></B> is specified,
+   then the same value is automatically assigned to <B><I>A</I><SUB>ji</SUB></B> as well.
+   The <B>default_A</B> value is applied to any otherwise
+   unassigned <B><I>A</I><SUB>ij</SUB></B>.
+
+<P>
+In the second case, one specifies the magnetostatic-exchange length
+   instead of <B><I>A</I></B>, but the interpretation is otherwise analogous.
+
+<P>
+Although one may specify <B><I>A</I><SUB>ij</SUB></B> (resp. <!-- MATH
+ ${\rm lex}_{ij}$
+ -->
+<B><I>lex</I><SUB>ij</SUB></B>) for any
+   pair of regions <B><I>i</I></B> and <B><I>j</I></B>, it is only required and only active if
+   the region pair are in contact.  If long-range exchange interaction
+   is required, use <TT>Oxs_TwoSurfaceExchange</TT>.
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_Exchange6Ngbr</TT> provides three scalar outputs involving the
+   angle between spins at neighboring cells:
+
+<UL>
+<LI><B>Max Spin Ang:</B> maximum angle, in degrees, between
+  neigboring spins for the current magnetization state.
+</LI>
+<LI><B>Stage Max Spin Ang:</B> Maximum value of <TT>Max Spin Ang</TT>
+  for the current stage.
+</LI>
+<LI><B>Run Max Spin Ang:</B> Maximum value obtained by
+  <TT>Max Spin Ang</TT> during the simulation.
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
+   
+<P>
+<A NAME="PTUE"></A><A NAME="5156"></A></DD>
+<DT><STRONG>Oxs_UniformExchange:</STRONG></DT>
+<DD>Similar to <TT>Oxs_Exchange6Ngbr</TT>, except the exchange constant <B><I>A</I></B>
+   (or exchange length <B><I>lex</I></B>) is uniform across all space.  The
+   Specify block is very simple, consisting of either the label
+   <B>A</B> with the desired exchange coefficient value in J/m, or
+   the label <B>lex</B> with the desired magnetostatic-exchange
+   length in meters.  Since <TT>A</TT> (resp. <TT>lex</TT>) is not spatially
+   varying, it is initialized with a simple constant (as opposed to a
+   scalar field object).
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_UniformExchange</TT> provides the three scalar outputs
+   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
+   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+   These values are also accessible through the MIF    <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>.
+   
+<P>
+<A NAME="PTEP"></A><A NAME="5176"></A></DD>
+<DT><STRONG>Oxs_ExchangePtwise:</STRONG></DT>
+<DD>The exchange coefficient <B><I>A</I><SUB>i</SUB></B> is specified on
+   a point-by-point (or cell-by-cell) basis, as opposed to the pairwise
+   specification model used by <TT>Oxs_Exchange6Ngbr</TT>.  The exchange
+   energy density at a cell <B><I>i</I></B> is computed across its nearest 6 neighbors,
+   <B><I>N</I><SUB>i</SUB></B>, using the formula
+   <P><!-- MATH
+ \begin{displaymath}
+E_i =  \sum_{j\in N_i} A_{ij,{\rm eff}}
+         \frac{\textbf{m}_i\cdot\left(\textbf{m}_i - \textbf{m}_j\right)}{\Delta_{ij}^2}
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>i</SUB> = <IMG
+ WIDTH="37" HEIGHT="58" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.gif"
+ ALT="$\displaystyle \sum_{{j\in N_i}}^{}$"><I>A</I><SUB>ij, eff</SUB><IMG
+ WIDTH="138" HEIGHT="66" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.gif"
+ ALT="$\displaystyle {\frac{{\textbf{m}_i\cdot\left(\textbf{m}_i - \textbf{m}_j\right)}}{{\Delta_{ij}^2}}}$"></B></BIG>
+</DIV><P></P>
+where <!-- MATH
+ $\Delta_{ij}$
+ -->
+<B><IMG
+ WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.gif"
+ ALT="$\Delta_{{ij}}^{}$"></B> is the discretization step size from cell <B><I>i</I></B> to
+   cell <B><I>j</I></B> in meters, and
+   <P><!-- MATH
+ \begin{displaymath}
+A_{ij,{\rm eff}} = \frac{2A_iA_j}{A_i+A_j},
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>A</I><SUB>ij, eff</SUB> = <IMG
+ WIDTH="75" HEIGHT="63" ALIGN="MIDDLE" BORDER="0"
+ SRC="img12.gif"
+ ALT="$\displaystyle {\frac{{2A_iA_j}}{{A_i+A_j}}}$">,</B></BIG>
+</DIV><P></P>
+with <!-- MATH
+ $A_{ij,{\rm eff}} = 0$
+ -->
+<B><I>A</I><SUB>ij, eff</SUB> = 0</B> if <B><I>A</I><SUB>i</SUB></B> and <B><I>A</I><SUB>j</SUB></B> are 0.
+
+<P>
+Note that <!-- MATH
+ $A_{ij,{\rm eff}}$
+ -->
+<B><I>A</I><SUB>ij, eff</SUB></B> satisfies
+   the following properties:
+   <BR>
+<DIV ALIGN="CENTER">
+<!-- MATH
+ \begin{eqnarray*}
+A_{ij,{\rm eff}} & = & A_{ji,{\rm eff}} \\
+        A_{ij,{\rm eff}} & = & A_i \qquad \mbox{if $A_i=A_j$} \\
+        \lim_{A_i\downarrow 0} A_{ij,{\rm eff}} & = & 0.
+\end{eqnarray*}
+ -->
+<TABLE CELLPADDING="0" ALIGN="CENTER" WIDTH="100%">
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><I>A</I><SUB>ij, eff</SUB></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG><I>A</I><SUB>ji, eff</SUB></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><I>A</I><SUB>ij, eff</SUB></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG><I>A</I><SUB>i</SUB>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<IMG
+ WIDTH="91" HEIGHT="36" ALIGN="MIDDLE" BORDER="0"
+ SRC="img13.gif"
+ ALT="$\displaystyle \mbox{if $A_i=A_j$}$"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
+ WIDTH="34" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.gif"
+ ALT="$\displaystyle \lim_{{A_i\downarrow 0}}^{}$"><I>A</I><SUB>ij, eff</SUB></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>0.</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL">
+
+   Additionally, if <B><I>A</I><SUB>i</SUB></B> and <B><I>A</I><SUB>j</SUB></B> are non-negative,
+   <P><!-- MATH
+ \begin{displaymath}
+\min(A_i,A_j) \leq  A_{ij,{\rm eff}}  \leq \max(A_i,A_j).
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B>min(<I>A</I><SUB>i</SUB>, <I>A</I><SUB>j</SUB>) <IMG
+ WIDTH="20" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img15.gif"
+ ALT="$\displaystyle \leq$"> <I>A</I><SUB>ij, eff</SUB> <IMG
+ WIDTH="20" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img15.gif"
+ ALT="$\displaystyle \leq$"> max(<I>A</I><SUB>i</SUB>, <I>A</I><SUB>j</SUB>).</B></BIG>
+</DIV><P></P>
+Evaluating the exchange energy with this formulation of <!-- MATH
+ $A_{ij,{\rm
+   eff}}$
+ -->
+<B><I>A</I><SUB>ij, eff</SUB></B> is equivalent to finding the minimum possible exchange energy
+   between cells <B><I>i</I></B> and <B><I>j</I></B> under the assumption that <B><I>A</I><SUB>i</SUB></B> and <B><I>A</I><SUB>j</SUB></B>
+   are constant in each of the two cells.  Similar considerations are
+   made in computing the exchange energy for a <A HREF="Part_geometry.html#html:mifvariablethickness">2D variable
+   thickness model</A> [<A
+ HREF="bibliography.html#porter2001">24</A>].
+
+<P>
+The Specify block for <TT>Oxs_ExchangePtwise</TT> has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_ExchangePtwise:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>A </TT><I>scalarfield_spec</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+where <I>scalarfield_spec</I> is an arbitrary
+   <A HREF="Field_Objects.html#sec:oxsFieldObjects">scalar field object</A> returning the desired exchange
+   coefficient in J/m.
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_ExchangePtwise</TT> provides the three scalar outputs
+   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
+   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+
+<P>
+
+<B>Example:</B> 
+     <TT><B>antidots-filled.mif</B></TT>.
+   
+<P>
+<A NAME="PTTS"></A><A NAME="5222"></A></DD>
+<DT><STRONG>Oxs_TwoSurfaceExchange:</STRONG></DT>
+<DD>Provides long-range bilinear and biquadratic exchange.  Typically
+   used to simulate RKKY-style coupling across non-magnetic spacers in
+   spinvalves.  The specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_TwoSurfaceExchange:</TT><I>name</I> <TT>{</TT>
+   <DD><TT>sigma  </TT><I>value</I>
+   <DD><TT>sigma2 </TT><I>value</I>
+   <DD><TT>surface1 {</TT><DL>
+       <DD> <TT>atlas </TT><I>atlas_spec</I>
+       <DD> <TT>region </TT><I>region_label</I>
+       <DD> <TT>scalarfield </TT><I>scalarfield_spec</I>
+       <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
+       <DD> <TT>scalarside </TT><I>side</I>
+   </DL><TT>}</TT>
+   <DD><TT>surface2 {</TT><DL>
+       <DD> <TT>atlas </TT><I>atlas_spec</I>
+       <DD> <TT>region </TT><I>region_label</I>
+       <DD> <TT>scalarfield </TT><I>scalarfield_spec</I>
+       <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
+       <DD> <TT>scalarside </TT><I>side</I>
+   </DL><TT>}</TT>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Here <B>sigma</B> and <B>sigma2</B> are the bilinear and
+   biquadratic surface (interfacial) exchange energies, in
+   J/m<B><SUP>2</SUP></B>.  Either is optional, with default value 0.
+
+<P>
+The <B>surface1</B> and <B>surface2</B> sub-blocks describe
+   the two interacting surfaces.  Each description consists of 5
+   name-values pairs, which must be listed in the order shown.  In each
+   sub-block, <I>atlas_spec</I> specifies an atlas, and
+   <I>region_label</I> specifies a region in that atlas.  These bound
+   the extent of the desired surface.  The following
+   <B>scalarfield</B>, <B>scalarvalue</B> and
+   <B>scalarside</B> entries define a discretized surface inside the
+   bounding region.  Here <I>scalarfield_spec</I> references a scalar
+   field object, <I>fieldvalue</I> should be a floating point value,
+   and <I>side</I> should be one of <TT>&lt;</TT>, <TT>&lt;=</TT>, <TT>&gt;=</TT>, or
+   <TT>&gt;</TT>.  Any point for which the scalar field object takes a value
+   less than, less than or equal, greater than or equal, or greater
+   than, respectively, the <TT>scalarvalue</TT> value is considered to be
+   ``inside'' the surface. (Values <TT>-</TT> and <TT>+</TT> for <I>side</I>
+   are deprecated synonyms for <TT>&lt;=</TT> and <TT>&gt;=</TT>.)  The discretized
+   surface determined is the set of all points on the problem mesh that
+   are in the bounding region, are ``inside'' the surface, and have a
+   (nearest-) neighbor that is ``outside'' (i.e., not inside) the
+   surface.  A neighbor is determined by the mesh; in a typical
+   rectangular mesh each cell has six neighbors.
+
+<P>
+In this way, 2 discrete lists of cells representing the two
+   surfaces are obtained.  Each cell from the first list (representing
+   <TT>surface1</TT>) is then matched with the closest cell from the
+   second list (i.e., from <TT>surface2</TT>).  Note the asymmetry in
+   this matching process: each cell from the first list is included in
+   exactly one match, but there may be cells in the second list that
+   are included in many match pairs, or in none.  If the two surfaces
+   are of different sizes, then in practice typically the smaller will
+   be made the first surface, because this will usually lead to fewer
+   multiply-matched cells, but this designation is not required.
+
+<P>
+The resulting exchange energy density at cell <B><I>i</I></B> on one surface
+   from matching cell <B><I>j</I></B> on the other is given by
+   <P><!-- MATH
+ \begin{displaymath}
+E_{ij} =  \frac{\sigma\left[1-\textbf{m}_i\cdot\textbf{m}_j\right]
+         +\sigma_2\left[1-\left(\textbf{m}_i\cdot\textbf{m}_j\right)^2\right]
+        }{\Delta_{ij}}
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><I>E</I><SUB>ij</SUB> = <IMG
+ WIDTH="319" HEIGHT="83" ALIGN="MIDDLE" BORDER="0"
+ SRC="img16.gif"
+ ALT="$\displaystyle {\frac{{\sigma\left[1-\textbf{m}_i\cdot\textbf{m}_j\right]
++\sig...
+...\left[1-\left(\textbf{m}_i\cdot\textbf{m}_j\right)^2\right]
+}}{{\Delta_{ij}}}}$"></B></BIG>
+</DIV><P></P>
+where <B><IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img17.gif"
+ ALT="$\sigma$"></B> and <B><IMG
+ WIDTH="20" HEIGHT="28" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.gif"
+ ALT="$\sigma_{2}^{}$"></B>, respectively, are the bilinear and
+   biquadratic surface exchange coefficients between the two surfaces,
+   in J/m<B><SUP>2</SUP></B>, <!-- MATH
+ $\textbf{m}_i$
+ -->
+<B><B>m</B><SUB>i</SUB></B> and <!-- MATH
+ $\textbf{m}_j$
+ -->
+<B><B>m</B><SUB>j</SUB></B> are the normalized, unit spins
+   (i.e., magnetization directions) at cells <B><I>i</I></B> and <B><I>j</I></B>, and
+   <!-- MATH
+ $\Delta_{ij}$
+ -->
+<B><IMG
+ WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.gif"
+ ALT="$\Delta_{{ij}}^{}$"></B> is the discretization cell size in the direction from
+   cell <B><I>i</I></B> towards cell <B><I>j</I></B>, in meters.  Note that if <B><IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img17.gif"
+ ALT="$\sigma$"></B> is
+   negative, then the surfaces will be anti-ferromagnetically coupled.
+   Likewise, if <B><IMG
+ WIDTH="20" HEIGHT="28" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.gif"
+ ALT="$\sigma_{2}^{}$"></B> is negative, then the biquadratic term will
+   favor orthogonal alignment.
+
+<P>
+The following example produces an antiferromagnetic exchange coupling
+   between the lower surface of the ``top'' layer and the upper surface
+   of the ``bottom'' layer, across a middle ``spacer'' layer.  The
+   simple <TT>Oxs_LinearScalarField</TT> object is used here to provide
+   level surfaces that are planes orthogonal to the <B><I>z</I></B>-axis.  In
+   practice this example might represent a spinvalve, where the top and
+   bottom layers would be composed of ferromagnetic material and the
+   middle layer could be a copper spacer.
+
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_MultiAtlas:atlas {
+    atlas { Oxs_BoxAtlas {
+        name top
+        xrange {0 500e-9}
+        yrange {0 250e-9}
+        zrange {6e-9 9e-9}
+    } }
+    atlas { Oxs_BoxAtlas {
+        name spacer
+        xrange {0 500e-9}
+        yrange {0 250e-9}
+        zrange {3e-9 6e-9}
+    } }
+    atlas { Oxs_BoxAtlas {
+        name bottom
+        xrange {0 500e-9}
+        yrange {0 250e-9}
+        zrange {0 3e-9}
+    } }
+}
+
+Specify Oxs_LinearScalarField:zheight {
+    vector {0 0 1}
+    norm   1.0
+}
+
+Specify Oxs_TwoSurfaceExchange:AF {
+    sigma -1e-4
+    surface1 {
+               atlas  :atlas
+              region  bottom
+         scalarfield  :zheight
+         scalarvalue  3e-9
+          scalarside  &lt;=
+    }
+    surface2 {
+               atlas  :atlas
+              region  top
+         scalarfield  :zheight
+         scalarvalue  6e-9
+          scalarside  &gt;=
+    }
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_TwoSurfaceExchange</TT> provides the three scalar outputs
+   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
+   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>spinvalve-af.mif</B></TT>.
+<P>
+<A NAME="PTSE"></A><A NAME="5267"></A></DD>
+<DT><STRONG>Oxs_RandomSiteExchange:</STRONG></DT>
+<DD>A randomized exchange energy.  The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_RandomSiteExchange:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>linkprob </TT><I>probability</I>
+       <DD> <TT>Amin </TT><I>A_lower_bound</I>
+       <DD> <TT>Amax </TT><I>A_upper_bound</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Each adjacent pair of cells <B><I>i</I></B>, <B><I>j</I></B>, is given <B>linkprob</B>
+   probability of having a non-zero exchange coefficient <B><I>A</I><SUB>ij</SUB></B>.  Here
+   two cells are adjacent if they lie in each other's 6-neighborhood.
+   If a pair is found to have a non-zero exchange coefficient, then
+   <B><I>A</I><SUB>ij</SUB></B> is drawn uniformly from the range <!-- MATH
+ $[\texttt{Amin},\texttt{Amax}]$
+ -->
+<B>[<texttt>Amin</texttt>,<texttt>Amax</texttt>]</B>.
+   The exchange energy is computed using (<A HREF="#eq:ExchangeEnergy">7.1</A>), the
+   formula used by the <TT>Oxs_Exchange6Ngbr</TT> energy object.  The
+   value <B><I>A</I><SUB>ij</SUB></B> for each pair of cells is determined during problem
+   initialization, and is held fixed thereafter.  The limits
+   <I>A_lower_bound</I> and <I>A_upper_bound</I> may be any real
+   numbers; negative values may be used to weaken the exchange
+   interaction arising from other exchange energy terms.  The only
+   restriction is that <I>A_lower_bound</I> must not be greater than
+   <I>A_upper_bound</I>.  The <TT>linkprob</TT> value <I>probability</I>
+   must lie in the range <B>[0, 1]</B>.
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_RandomSiteExchange</TT> provides the three scalar outputs
+   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
+   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+
+<P>
+
+<B>Example:</B> 
+     <TT><B>randexch.mif</B></TT>.
+   
+<P>
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Self-Magnetostatic Energy</B></FONT>
+<BR><DL>
+<DD><A NAME="PTDE"></A><A NAME="5294"></A></DD>
+<DT><STRONG>Oxs_Demag:</STRONG></DT>
+<DD>Standard demagnetization energy term, built upon
+   the assumption that the magnetization is constant in each cell.
+   It computes the average demagnetization field in each cell using
+   formulae from [<A
+ HREF="bibliography.html#aharoni1998">2</A>,<A
+ HREF="bibliography.html#newell1993">23</A>] and convolution
+   via the Fast Fourier Transform.  This class supports non-periodic
+   simulations if the mesh object in the MIF file is of the
+   <A HREF="Meshes.html#html:oxsrectangularmesh"><TT>Oxs_RectangularMesh</TT></A>
+   type; for simulations periodic along one axis direction use the
+   <A HREF="Meshes.html#html:oxsperiodicrectangularmesh"><TT>Oxs_PeriodicRectangularMesh</TT></A>
+   class.  Periodicity in more than one direction is not supported at
+   this time.  The specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_Demag:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>asymptotic_order </TT><I>error_order</I>
+       <DD> <TT>demag_tensor_error </TT><I>relerror</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The demag kernel is computed using a combination of analytic formulae
+   for near field terms, high-order asymptotic formulae for far field
+   terms, and summed subdivided cell asymptotic formulae for midrange
+   terms, where the offset <B><I>R</I></B> between cell pairs determines the field
+   range (based on extensions of earlier work[<A
+ HREF="bibliography.html#lebecki2008">18</A>]).
+   The transition <B><I>R</I></B> values are selected to give the best computation
+   speed while meeting the error requested by <I>relerror</I>. The
+   demag kernel computation is a one-time operation performed during
+   problem initialization, so the kernel computation time is generally
+   of relatively minor concern, and accordingly the default value for
+   <I>relerror</I> is 1e-15, i.e., nearly full double-precision
+   accuracy.
+
+<P>
+Asymptotic formulae are used to compute the demag kernel for larger
+   cell offset pair distances <B><I>R</I></B>. By default an expansion with error
+   <!-- MATH
+ $\mathcal{O}\left(1/R^{11}\right)$
+ -->
+<B><IMG
+ WIDTH="18" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img19.gif"
+ ALT="$\mathcal {O}$"><IMG
+ WIDTH="12" HEIGHT="33" ALIGN="MIDDLE" BORDER="0"
+ SRC="img20.gif"
+ ALT="$\left(\vphantom{1/R^{11}}\right.$">1/<I>R</I><SUP>11</SUP><IMG
+ WIDTH="12" HEIGHT="33" ALIGN="MIDDLE" BORDER="0"
+ SRC="img21.gif"
+ ALT="$\left.\vphantom{1/R^{11}}\right)$"></B> is used, but lower orders can be
+   requested through the <I>error_order</I> option. Valid values for
+   <I>error_order</I> are 5, 7, 9, and 11, where
+   <I>error_order</I>=5 is the dipole approximation.
+
+<P>
+There is also backward support for the now deprecated option
+   <B>asymptotic_radius</B>, which set the cutoff between the
+   analytic and asymptotic computation forms in units of cells. If
+   <B>asymptotic_radius</B> is specified then it is converted to a
+   more-or-less equivalent value for <I>relerror</I>, with
+   the special values of 0 and -1 mapping to <I>relerror</I>=1 and
+   1e-16, respectively.
+
+<P>
+The example file <TT><B>demagtensor.mif</B></TT> can be used to extract the
+   computed demagnetization tensor coefficients for a specified cell
+   geometry; see the description at the top of that file for usage
+   details.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>pbcbrick.mif</B></TT>, <TT><B>demagtensor.mif</B></TT>.
+   
+<P>
+<A NAME="PTSD"></A><A NAME="5320"></A></DD>
+<DT><STRONG>Oxs_SimpleDemag:</STRONG></DT>
+<DD>This is the same as the <TT>Oxs_Demag</TT> object, except that
+   periodicity is not supported and asymptotic formulae are not used.
+   The implementation does not use any of the symmetries
+   inherent in the demagnetization kernel, or special properties of the
+   Fourier Transform when applied to a real (non-complex) function.
+   As a result, the source code is
+   considerably simpler than for <TT>Oxs_Demag</TT>, but the run time
+   performance and memory usage are poorer.  <TT>Oxs_SimpleDemag</TT> is
+   included for validation checks, and as a base for user-defined
+   demagnetization implementations.  The Specify initialization string
+   for <TT>Oxs_SimpleDemag</TT> is an empty string, i.e., {}.
+
+<P>
+
+<B>Example:</B> 
+     <TT><B>squarecubic.mif</B></TT>.
+   
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Zeeman Energy</B></FONT>
+<BR><DL>
+<DD><A NAME="PTUZ"></A><A NAME="5332"></A></DD>
+<DT><STRONG>Oxs_UZeeman:<A NAME="html:UZeeman"></A></STRONG></DT>
+<DD>Uniform (homogeneous) applied field energy.  This class is frequently
+   used for simulating hysteresis loops.  The specify block takes an
+   optional <B>multiplier</B> entry, and a required field range list
+   <B>Hrange</B>.  The field range list should be a compound list,
+   with each sublist consisting of 7 elements: the first 3 denote the
+   <B><I>x</I></B>, <B><I>y</I></B>, and <B><I>z</I></B> components of the start field for the range, the
+   next 3 denote the <B><I>x</I></B>, <B><I>y</I></B>, and <B><I>z</I></B> components of the end field for
+   the  range, and the last element specifies the number of (linear) steps
+   through the range.  If the step count is 0, then the range consists
+   of the start field only.  If the step count is bigger than 0, then
+   the start field is skipped over if and only if it is the same field
+   that ended the previous range (if any).
+
+<P>
+The fields specified in the range entry are nominally in A/m, but
+   these values are multiplied by <TT>multiplier</TT>, which may be used to
+   effectively change the units.  For example,
+   
+   <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_UZeeman {</TT>
+         <DD><TT> multiplier 795.77472</TT>
+         <DD><TT> Hrange {</TT><DL>
+              <DD><TT> { 0 0 0 10 0 0 2 }</TT>
+              <DD><TT> { 10 0 0 0 0 0 1 }</TT>
+         </DL><TT>}</TT>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The applied field steps between 0&nbsp;mT, 5&nbsp;mT, 10&nbsp;mT and back to 0&nbsp;mT,
+   for four stages in total.  If the first field in the second range
+   sublist was different from the second field in the first range
+   sublist, then a step would have been added between those field
+   values, so five stages would have resulted.  In this example, note
+   that 795.77472=0.001/&micro;<SUB>0</SUB>.
+
+<P>
+In addition to the standard energy and field outputs, the
+   <TT>Oxs_UZeeman</TT> class provides these four scalar outputs:
+   
+<UL>
+<LI><B>B:</B> Magnitude of the applied field, in
+   mT.  This is a non-negative quantity.
+</LI>
+<LI><B>Bx:</B> Signed amplitude of the <B><I>x</I></B>-component
+   of the applied field, in mT.
+</LI>
+<LI><B>By:</B> Signed amplitude of the <B><I>y</I></B>-component
+   of the applied field, in mT.
+</LI>
+<LI><B>Bz:</B> Signed amplitude of the <B><I>z</I></B>-component
+   of the applied field, in mT.
+   
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>marble.mif</B></TT>.
+   
+<P>
+<A NAME="PTFZ"></A><A NAME="5350"></A></DD>
+<DT><STRONG>Oxs_FixedZeeman:</STRONG></DT>
+<DD>Non-uniform, non-time varying applied field.
+   This can be used to simulate a biasing field.  The specify block
+   takes one required parameter, which defines the field, and one
+   optional parameter, which specifies a multiplication factor.
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_FixedZeeman:</TT><I>name</I> <TT>{</TT>
+      <DD><TT> field </TT> <I>vector_field_spec</I>
+      <DD><TT> multiplier </TT> <I>multiplier</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The default value for <I>multiplier</I> is 1.  The field units,
+   after scaling by <I>multiplier</I>, should be A/m.
+
+<P>
+
+<B>Examples:</B> <TT><B>spinvalve.mif</B></TT>, <TT><B>spinvalve-af.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+   
+<P>
+<A NAME="PTSU"></A><A NAME="5359"></A></DD>
+<DT><STRONG>Oxs_ScriptUZeeman:</STRONG></DT>
+<DD>Spatially uniform applied field,
+   potentially varying as a function of time and stage, determined by a
+   Tcl script.  The Specify block has the form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_ScriptUZeeman:</TT><I>name</I> <TT>{</TT>
+      <DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+      <DD><TT>script </TT> <I>Tcl_script</I>
+      <DD><TT>multiplier </TT> <I>multiplier</I>
+      <DD><TT>stage_count </TT> <I>number_of_stages</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Here <B>script</B> indicates the Tcl script to use.  The script
+   is called once each iteration.  Appended to the script are the
+   arguments requested by <B>script_args</B>, in the manner
+   explained in the <A HREF="Specify_Conventions.html#par:supportProcs">User Defined Support Procedures</A>
+   section of the MIF&nbsp;2 file format documentation.  The value
+   <I>args_request</I> should be a subset of <TT>{stage
+   stage_time total_time base_state_id current_state_id}</TT>.
+   The units for the time options are seconds.  The two
+   <TT>state_id</TT> options are intended for use with the
+   MIF <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command;
+   refer to the documentation on that command in the MIF&nbsp;2.1 section
+   for details.  If <TT>script_args</TT> is not specified, the default
+   argument list is <TT>{stage stage_time total_time}</TT>.
+
+<P>
+The return value from the script should be a 6-tuple of numbers,
+   {<TT>Hx</TT>, <TT>Hy</TT>, <TT>Hz</TT>, <TT>dHx</TT>, <TT>dHy</TT>, <TT>dHz</TT>},
+   representing the applied field and the time derivative of the applied
+   field.  The field as a function of time must be differentiable for
+   the duration of each stage.  Discontinuities are permitted between
+   stages.  If a time evolver is being used, then it is very important
+   that the time derivative values are correct; otherwise the evolver
+   will not function properly.  This usual symptom of this problem is a
+   collapse in the time evolution step size.
+
+<P>
+The field and its time derivative are multiplied by the
+   <B>multiplier</B> value before use.  The final field value should
+   be in A/m; if the Tcl script returns the field in T, then a
+   <TT>multiplier</TT> value of 1/&micro;<SUB>0</SUB> (approx. 795774.72) should be
+   applied to convert the Tcl result into A/m.  The default value for
+   <TT>multiplier</TT> is 1.
+
+<P>
+The <B>stage_count</B> parameter informs the
+   <A HREF="Drivers.html#sec:oxsDrivers"><TT>Oxs_Driver</TT></A> as to how many stages the
+   <TT>Oxs_ScriptUZeeman</TT> object wants.  A value of 0 (the default)
+   indicates that the object is prepared for any range of stages.  The
+   <TT>stage_count</TT> value given here must be compatible with the
+   <A HREF="Drivers.html#PToxsdriverstagecount"><TT>stage_count</TT> setting in the driver Specify
+   block</A>.
+
+<P>
+The following example produces a sinusoidally varying field of
+   frequency 1 GHz and amplitude 800 A/m, directed along the <B><I>x</I></B>-axis.
+
+<BLOCKQUOTE><PRE>
+proc SineField { total_time } {
+    set PI [expr {4*atan(1.)}]
+    set Amp 800.0
+    set Freq [expr {1e9*(2*$PI)}]
+    set Hx [expr {$Amp*sin($Freq*$total_time)}]
+    set dHx [expr {$Amp*$Freq*cos($Freq*$total_time)}]
+    return [list $Hx 0 0 $dHx 0 0]
+}
+
+Specify Oxs_ScriptUZeeman {
+   script_args total_time
+   script SineField
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+In addition to the standard energy and field outputs, the
+   <TT>Oxs_ScriptUZeeman</TT> class provides these four scalar outputs:
+   
+<UL>
+<LI><B>B:</B> Magnitude of the applied field, in
+   mT.  This is a non-negative quantity.
+</LI>
+<LI><B>Bx:</B> Signed amplitude of the <B><I>x</I></B>-component
+   of the applied field, in mT.
+</LI>
+<LI><B>By:</B> Signed amplitude of the <B><I>y</I></B>-component
+   of the applied field, in mT.
+</LI>
+<LI><B>Bz:</B> Signed amplitude of the <B><I>z</I></B>-component
+   of the applied field, in mT.
+   
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>acsample.mif</B></TT>, <TT><B>pulse.mif</B></TT>, <TT><B>rotate.mif</B></TT>,
+     <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+   
+<P>
+<A NAME="PTTZ"></A><A NAME="5413"></A></DD>
+<DT><STRONG>Oxs_TransformZeeman:</STRONG></DT>
+<DD>Essentially a combination of the <TT>Oxs_FixedZeeman</TT> and
+   <TT>Oxs_ScriptUZeeman</TT> classes, where an applied field is produced
+   by applying a spatially uniform, but time and stage varying linear
+   transform to a spatially varying but temporally static field.  The
+   transform is specified by a Tcl script.
+
+<P>
+The Specify block has the form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_TransformZeeman:</TT><I>name</I> <TT>{</TT>
+      <DD><TT>field </TT> <I>vector_field_spec</I>
+      <DD><TT>type </TT> <I>transform_type</I>
+      <DD><TT>script </TT> <I>Tcl_script</I>
+      <DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+      <DD><TT>multiplier </TT> <I>multiplier</I>
+      <DD><TT>stage_count </TT> <I>number_of_stages</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>field</B> specified by <I>vector_field_spec</I> is
+   evaluated during problem initialization and held throughout the life
+   of the problem.  On each iteration, the specified Tcl    <B>script</B> is called once.  Appended to the script are the
+   arguments requested by <B>script_args</B>, as explained in the
+   <A HREF="Specify_Conventions.html#par:supportProcs">User Defined Support Procedures</A> section of the
+   MIF&nbsp;2 file format documentation.  The value for <TT>script_args</TT>
+   should be a subset of <TT>{stage stage_time total_time}</TT>.
+   The default value for <TT>script_args</TT> is the complete list in the
+   aforementioned order.  The time arguments are specified in seconds.
+
+<P>
+The script return value should define a 3x3 linear transform and its
+   time derivative.  The transform must be differentiable with respect
+   to time throughout each stage, but is allowed to be discontinuous
+   between stages.  As noted in the <TT>Oxs_ScriptUZeeman</TT>
+   documentation, it is important that the derivative information be
+   correct.  The transform is applied pointwise to the fixed
+   field obtained from <I>vector_field_spec</I>, which is
+   additionally scaled by <I>multiplier</I>.  The
+   <B>multiplier</B> entry is optional, with default value 1.0.
+
+<P>
+The <B>type</B> <I>transform_type</I> value declares the
+   format of the result returned from the Tcl script.  Recognized
+   formats are <TT>identity</TT>, <TT>diagonal</TT>, <TT>symmetric</TT> and
+   <TT>general</TT>.  The most flexible is <TT>general</TT>, which indicates
+   that the return from the Tcl script is a list of 18 numbers,
+   defining a general 3x3 matrix and its 3x3 matrix of time derivatives.
+   The matrices are specified in row-major order, i.e., <B><I>M</I><SUB>1, 1</SUB></B>,
+   <B><I>M</I><SUB>1, 2</SUB></B>, <B><I>M</I><SUB>1, 3</SUB></B>, <B><I>M</I><SUB>2, 1</SUB></B>, <B><I>M</I><SUB>2, 2</SUB></B>, ....  Of course, this
+   is a long list to construct; if the desired transform is symmetric or
+   diagonal, then the <TT>type</TT> may be set accordingly to reduce the
+   size of the Tcl result string.  Scripts of the <TT>symmetric</TT> type
+   return 12 numbers, the 6 upper diagonal entries in row-major order,
+   i.e., <B><I>M</I><SUB>1, 1</SUB></B>, <B><I>M</I><SUB>1, 2</SUB></B>, <B><I>M</I><SUB>1, 3</SUB></B>, <B><I>M</I><SUB>2, 2</SUB></B>, <B><I>M</I><SUB>2, 3</SUB></B>,
+   <B><I>M</I><SUB>3, 3</SUB></B>, for both the transformation matrix and its time
+   derivative.  Use the <TT>diagonal</TT> type for diagonal matrices, in
+   which case the Tcl script result should be a list of 6 numbers.
+
+<P>
+The simplest <I>transform_type</I> is <TT>identity</TT>, which is the
+   default.  This identifies the transform as the identity matrix, which
+   means that effectively no transform is applied, aside from the
+   <TT>multiplier</TT> option which is still active.  For the <TT>identity</TT>
+   transform type, <TT>script</TT> and <TT>script_args</TT> should not be
+   specified, and <TT>Oxs_TransformZeeman</TT> becomes a clone of the
+   <TT>Oxs_FixedZeeman</TT> class.
+
+<P>
+The following example produces a 1000 A/m field that rotates in the
+   <B><I>xy</I></B>-plane at a frequency of 1 GHz:
+
+<BLOCKQUOTE><PRE>
+proc Rotate { freq stage stagetime totaltime } {
+   global PI
+   set w [expr {$freq*2*$PI}]
+   set ct [expr {cos($w*$totaltime)}]
+   set mct [expr {-1*$ct}]      ;# "mct" is "minus cosine (w)t"
+   set st [expr {sin($w*$totaltime)}]
+   set mst [expr {-1*$st}]      ;# "mst" is "minus sine (w)t"
+   return [list  $ct $mst  0 \
+                 $st $ct   0 \
+                   0   0   1 \
+                 [expr {$w*$mst}] [expr {$w*$mct}] 0 \
+                 [expr {$w*$ct}]  [expr {$w*$mst}] 0 \
+                        0                0         0]
+}
+
+Specify Oxs_TransformZeeman {
+  type general
+  script {Rotate 1e9}
+  field {0 1000. 0}
+}
+</PRE>
+
+</BLOCKQUOTE>
+This particular effect could be obtained using the
+<TT>Oxs_ScriptUZeeman</TT> class, because the <TT>field</TT> is uniform.
+But the field was taken uniform only to simplify the example.  The
+<I>vector_field_spec</I> may be any <A HREF="Field_Objects.html#sec:oxsFieldObjects">Oxs vector field
+object</A>.  For
+example, the base field could be large in the center of the sample, and
+decay towards the edges.  In that case, the above example would generate
+an applied rotating field that is concentrated in the center of the
+sample.
+
+<P>
+The <B>stage_count</B> parameter informs the
+<A HREF="Drivers.html#sec:oxsDrivers"><TT>Oxs_Driver</TT></A> as to how many stages the
+<TT>Oxs_TransformZeeman</TT> object wants.  A value of 0 (the default)
+indicates that the object is prepared for any range of stages.  The
+<TT>stage_count</TT> value given here must be compatible with the
+<A HREF="Drivers.html#PToxsdriverstagecount"><TT>stage_count</TT> setting in the driver Specify
+block</A>.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample2.mif</B></TT>, <TT><B>tickle.mif</B></TT>, <TT><B>rotatecenter.mif</B></TT>.
+<P>
+<A NAME="PTSZ"></A><A NAME="5489"></A></DD>
+<DT><STRONG>Oxs_StageZeeman:</STRONG></DT>
+<DD>The <TT>Oxs_StageZeeman</TT> class provides spatially varying applied
+   fields that are updated once per stage.  In its general form, the
+   field at each stage is provided by an <A HREF="Field_Objects.html#sec:oxsFieldObjects">Oxs vector field
+   object</A>
+   determined by a user supplied Tcl script.  There is also a
+   simplified interface that accepts a list of <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">vector
+   field files</A>, one per
+   stage, that are used to specify the applied field.
+
+<P>
+The Specify block takes the form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_StageZeeman:</TT><I>name</I> <TT>{</TT>
+      <DD><TT>script </TT> <I>Tcl_script</I>
+      <DD><TT>files </TT> <TT>{</TT> <I>list_of_files</I> <TT>}</TT>
+      <DD><TT>stage_count </TT> <I>number_of_stages</I>
+      <DD><TT>multiplier </TT> <I>multiplier</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The initialization string should specify either <TT>script</TT> or
+   <TT>files</TT>, but not both.  If a <B>script</B> is specified,
+   then each time a new stage is started in the simulation, a Tcl    command is formed by appending to <I>Tcl_script</I> the 0-based
+   integer stage number.  This command should return a reference to an
+   <TT>Oxs_VectorField</TT> object, as either the instance name of an
+   object defined via a top-level Specify block elsewhere in the
+   MIF file, or as a two item list consisting of the name of an
+   <TT>Oxs_VectorField</TT> class and an appropriate initialization string.
+   In the latter case the <TT>Oxs_VectorField</TT> object will be created
+   as a temporary object via an inlined Specify call.
+
+<P>
+The following example should help clarify the use of the <TT>script</TT>
+   parameter.
+
+<BLOCKQUOTE><PRE>
+proc SlidingField { xcutoff xrel yrel zrel } {
+   if {$xrel&gt;$xcutoff} { return [list 0. 0. 0.] }
+   return [list 2e4 0. 0.]
+}
+
+proc SlidingFieldSpec { stage } {
+  set xcutoff [expr {double($stage)/10.}]
+  set spec Oxs_ScriptVectorField
+  lappend spec [subst {
+      atlas :atlas
+      script {SlidingField $xcutoff}
+   }]
+   return $spec
+}
+
+Specify Oxs_StageZeeman {
+  script SlidingFieldSpec
+  stage_count 11
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+The <TT>SlidingFieldSpec</TT> proc is used to generate the initialization
+   string for an <TT>Oxs_ScriptVectorField</TT> vector field object, which
+   in turn uses the <TT>SlidingField</TT> proc to specify the applied field
+   on a position-by-position basis.  The resulting field will be
+   2e4 A/m in the positive x-direction at
+   all points with relative x-coordinate larger than <TT>$stage/10.</TT>,
+   and 0 otherwise.  <TT>$stage</TT> is the stage index, which here is
+   one of 0, 1, ..., 10.  For example, if <TT>$stage</TT> is 5, then the
+   left half of the sample will see a 2e4
+   A/m field directed to the right, and the right half of the sample
+   will see none.  The return value from <TT>SlidingFieldSpec</TT> in this
+   case will be
+
+<BLOCKQUOTE><PRE>
+Oxs_ScriptVectorField {
+   atlas :atlas
+   script {SlidingField 0.5}
+}
+</PRE>
+
+</BLOCKQUOTE>
+   The <code>:atlas</code> reference is to an <TT>Oxs_Atlas</TT> object defined
+   elsewhere in the MIF file.
+
+<P>
+The <B>stage_count</B> parameter lets the
+   <A HREF="Drivers.html#sec:oxsDrivers"><TT>Oxs_Driver</TT></A> know how many stages the
+   <TT>Oxs_StageZeeman</TT> object wants.  A value of 0 indicates that the
+   object is prepared for any range of stages.  Zero is the default
+   value for <TT>stage_count</TT> when using the <I>Tcl_script</I>
+   interface.  The <TT>stage_count</TT> value given here must be compatible
+   with the <A HREF="Drivers.html#PToxsdriverstagecount"><TT>stage_count</TT> setting in the driver
+   Specify block</A>.
+
+<P>
+The example above made use of two scripts, one to specify the
+   <TT>Oxs_VectorField</TT> object, and one used internally by the
+   <TT>Oxs_ScriptVectorField</TT> object.  But any <TT>Oxs_VectorField</TT>
+   class may be used, as in the next example.
+
+<BLOCKQUOTE><PRE>
+proc FileField { stage } {
+  set filelist { field-a.ohf field-b.ohf field-c.ohf }
+  set spec Oxs_FileVectorField
+  lappend spec [subst {
+      atlas :atlas
+      file [lindex $filelist $stage]
+   }]
+   return $spec
+}
+
+Specify Oxs_StageZeeman {
+  script FileField
+  stage_count 3
+}
+</PRE>
+
+</BLOCKQUOTE>
+   The <TT>FileField</TT> proc yields a specification for an
+   <TT>Oxs_FileVectorField</TT> object that loads one of three files,
+   <TT>field-a.ohf</TT>, <TT>field-b.ohf</TT>, or <TT>field-c.ohf</TT>, depending on
+   the stage number.
+
+<P>
+Specifying applied fields from a sequence of files is common enough
+   to warrant a simplified interface.  This is the purpose of the
+   <B>files</B> parameter:
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_StageZeeman {
+  files { field-a.ohf field-b.ohf field-c.ohf }
+}
+</PRE>
+
+</BLOCKQUOTE>
+   This is essentially equivalent to the preceding example, with two
+   differences.  First, <TT>stage_count</TT> is not needed because
+   <TT>Oxs_StageZeeman</TT> knows the length of the list of files.  You may
+   specify <TT>stage_count</TT>, but the default value is the length of the
+   <TT>files</TT> list.  This is in contrast to the default value
+   of 0 when using the <TT>script</TT> interface.  If <TT>stage_count</TT> is
+   set larger than the file list, then the last file is repeated as
+   necessary to reach the specified size.
+
+<P>
+The second difference is that no <TT>Oxs_Atlas</TT> is specified when
+   using the <TT>files</TT> interface.  The <TT>Oxs_FileVectorField</TT> object
+   spatially scales the field read from the file to match a specified
+   volume.  Typically a volume is specified by explicit reference to an
+   atlas, but with the <TT>files</TT> interface to <TT>Oxs_StageZeeman</TT> the
+   file fields are implicitly scaled to match the whole of the meshed
+   simulation volume.  This is the most common case; to obtain a
+   different spatial scaling use the <TT>script</TT> interface as
+   illustrated above with a different atlas or an explicit x/y/z-range
+   specification.
+
+<P>
+The <I>list_of_files</I> value is interpreted as a
+   <A HREF="Specify_Conventions.html#par:groupedLists"><I>grouped list</I></A>.  
+
+<P>
+The remaining <TT>Oxs_StageZeeman</TT> parameter is
+   <B>multiplier</B>.  The value of this parameter is applied as a
+   scale factor to the field magnitude on a point-by-point basis.  For
+   example, if the field returned by the <TT>Oxs_VectorField</TT> object
+   were in Oe, instead of the required A/m, then <TT>multiplier</TT> could
+   be set to 79.5775 to perform the conversion.  The direction of the
+   applied field can be reversed by supplying a negative <TT>multiplier</TT>
+   value.
+
+<P>
+In addition to the standard energy and field outputs, the
+   <TT>Oxs_StageZeeman</TT> class provides these four scalar outputs:
+   
+<UL>
+<LI><B>B max:</B> Pointwise maximum magnitude of the applied
+     field, in mT.  This is a non-negative quantity;
+     
+B&nbsp;max&nbsp;=&nbsp;[(Bx&nbsp;max)<SUP>2</SUP>+(By&nbsp;max)<SUP>2</SUP>+(Bz&nbsp;max)<SUP>2</SUP>]<SUP>1/2</SUP>.
+</LI>
+<LI><B>Bx max:</B> Signed value of the <B><I>x</I></B>-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+</LI>
+<LI><B>By max:</B> Signed value of the <B><I>y</I></B>-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+</LI>
+<LI><B>Bz max:</B> Signed value of the <B><I>z</I></B>-component of the applied
+     field at the point of maximum applied field magnitude, in mT.
+   
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>sliding.mif</B></TT>, <TT><B>slidingproc.mif</B></TT>, <TT><B>rotatestage.mif</B></TT>,
+     <TT><B>rotatecenterstage.mif</B></TT>.
+   
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html578"
+  HREF="Evolvers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html574"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html568"
+  HREF="Meshes.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html576"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

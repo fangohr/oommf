@@ -11,9 +11,12 @@
 
 #if OC_USE_SSE
 # include <emmintrin.h>
+# ifndef OC_SSE_NO_ALIGNED
+#  error OOMMF header error: OC_SSE_NO_ALIGNED not defined
+# endif
 #endif
 
-#include <assert.h>
+#include <cassert>
 
 #include "oc.h"
 
@@ -371,10 +374,16 @@ inline void Oxs_ThreeVectorPairLoadAligned
   // Loads pair of vectors vec[0], vec[1] into doublets vx, vy, vz.
   // Code assumes vec[0] is 16-bit aligned.
   const double *dptr = &(vec[0].x);
+#if !OC_SSE_NO_ALIGNED
   assert(size_t(dptr) % 16 == 0);
   __m128d tA = _mm_load_pd(dptr);   // vec[0].x, vec[0].y
   __m128d tB = _mm_load_pd(dptr+2); // vec[0].z, vec[1].x
   __m128d tC = _mm_load_pd(dptr+4); // vec[1].y, vec[1].z
+#else
+  __m128d tA = _mm_loadu_pd(dptr);   // vec[0].x, vec[0].y
+  __m128d tB = _mm_loadu_pd(dptr+2); // vec[0].z, vec[1].x
+  __m128d tC = _mm_loadu_pd(dptr+4); // vec[1].y, vec[1].z
+#endif
   vx = _mm_shuffle_pd(tA,tB,2);
   vy = _mm_shuffle_pd(tA,tC,1);
   vz = _mm_shuffle_pd(tB,tC,2);
@@ -389,9 +398,16 @@ inline void Oxs_ThreeVectorPairStreamAligned
   // be needed in cache.
   // NB: This code assumes vec[0] is 16-bit aligned.
   double* dptr = (double*)vec;
+  assert(size_t(dptr) % 16 == 0);
+#if !OC_SSE_NO_ALIGNED
   _mm_stream_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
   _mm_stream_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
   _mm_stream_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+#else
+  _mm_storeu_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
+  _mm_storeu_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
+  _mm_storeu_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+#endif
 }
 inline void Oxs_ThreeVectorPairStoreAligned
 (const Oc_Duet& vx,const Oc_Duet& vy,const Oc_Duet& vz,
@@ -402,9 +418,16 @@ inline void Oxs_ThreeVectorPairStoreAligned
   // in the cache or will soon be so.
   // NB: This code assumes vec[0] is 16-bit aligned.
   double* dptr = (double*)vec;
+  assert(size_t(dptr) % 16 == 0);
+#if !OC_SSE_NO_ALIGNED
   _mm_store_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
   _mm_store_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
   _mm_store_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+#else
+  _mm_storeu_pd(dptr,   _mm_unpacklo_pd(vx.GetSSERef(),vy.GetSSERef()));
+  _mm_storeu_pd(dptr+2, _mm_shuffle_pd( vz.GetSSERef(),vx.GetSSERef(),2));
+  _mm_storeu_pd(dptr+4, _mm_unpackhi_pd(vy.GetSSERef(),vz.GetSSERef()));
+#endif
 }
 
 inline void Oxs_ThreeVectorPairUnpack

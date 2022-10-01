@@ -17,7 +17,7 @@
 ////////////////// MULTI-THREADED IMPLEMENTATION  ///////////////
 #if OOMMF_THREADS
 
-#include <assert.h>
+#include <cassert>
 #include <string>
 #include <vector>
 #include <mutex>
@@ -304,7 +304,8 @@ Oxs_Demag::Oxs_FFTLocker::Oxs_FFTLocker
 #if !defined(NDEBUG)
   for(OC_INDEX izz=0;izz<fftz_Hwork_base_size;++izz) {
     // Fill workspace with NaNs, to detect uninitialized use.
-    reinterpret_cast<unsigned char&>(fftz_Hwork_base[izz]) = '\xFF';
+    reinterpret_cast<unsigned char&>(fftz_Hwork_base[izz])
+      = static_cast<unsigned char>('\xFF');
   }
 #endif
 
@@ -325,11 +326,18 @@ Oxs_Demag::Oxs_FFTLocker::Oxs_FFTLocker
 
 #if USE_MADVISE
   // Note: madvise requires address to be page-aligned.
-  OC_INDEX workpage = reinterpret_cast<OC_UINDEX>(ffty_Hwork)%OC_PAGESIZE;
-  if(workpage>0) workpage = OC_PAGESIZE - workpage;
+# if defined(_SC_PAGESIZE)
+  long sys_pagesize = sysconf(_SC_PAGESIZE);
+# elif defined(_SC_PAGE_SIZE)
+  long sys_pagesize = sysconf(_SC_PAGE_SIZE);
+# else
+  long sys_pagesize = 4096; // Good guess?!
+# endif
+  OC_INDEX workpage = reinterpret_cast<OC_UINDEX>(ffty_Hwork)%sys_pagesize;
+  if(workpage>0) workpage = sys_pagesize - workpage;
   madvise(ffty_Hwork+workpage,ffty_Hwork_size-workpage,MADV_RANDOM);
-  OC_INDEX workpagez = reinterpret_cast<OC_UINDEX>(fftz_Hwork)%OC_PAGESIZE;
-  if(workpagez>0) workpagez = OC_PAGESIZE - workpagez;
+  OC_INDEX workpagez = reinterpret_cast<OC_UINDEX>(fftz_Hwork)%sys_pagesize;
+  if(workpagez>0) workpagez = sys_pagesize - workpagez;
   madvise(fftz_Hwork+workpagez,fftz_Hwork_size-workpagez,MADV_RANDOM);
 #endif // USE_MADVISE
 }
@@ -1435,7 +1443,8 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   // a cache line, and make each dimension odd to protect against cache
   // thrash.
   {
-    OC_INDEX cacheline_mod = OC_CACHE_LINESIZE/sizeof(OXS_FFT_REAL_TYPE);
+    OC_INDEX cacheline_mod = (OC_CACHE_LINESIZE>sizeof(OXS_FFT_REAL_TYPE)
+                       ? OC_CACHE_LINESIZE/sizeof(OXS_FFT_REAL_TYPE) : 1);
     /// Number of reals in a single cache line; used for aligning rows to
     /// cache line boundaries.
     Hxfrm_jstride = ODTV_COMPLEXSIZE*ODTV_VECSIZE*cdimx;
@@ -2472,7 +2481,7 @@ void _Oxs_DemagFFTyzConvolveThread::Cmd(int threadnumber, void* /* data */)
   const OC_INDEX Hz_kstride = (cdimz>1 ? locker->fftz_Hwork_zstride
                                : Hy_kstride);
 
-#if OC_USE_SSE
+#if OC_USE_SSE && !OC_SSE_NO_ALIGNED
   // Check alignment restrictions are met
   assert(reinterpret_cast<OC_UINDEX>(carr)%16==0);
   assert(reinterpret_cast<OC_UINDEX>(Hywork)%16==0);

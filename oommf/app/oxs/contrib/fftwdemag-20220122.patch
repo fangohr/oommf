@@ -1,0 +1,253 @@
+diff -ru fftwdemag/fftwdemag.cc fftwdemag-new/fftwdemag.cc
+--- fftwdemag/fftwdemag.cc	2022-01-22 02:39:23.916148919 -0500
++++ fftwdemag-new/fftwdemag.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -11,7 +11,7 @@
+  *
+  */
+ 
+-#include <limits.h>
++#include <climits>
+ #include <string>
+ 
+ #include "exterror.h"
+@@ -229,14 +229,15 @@
+ 
+   // The FFTW routines don't include the DFT transform scaling,
+   // so throw the scaling into the demag coefs.
+-  OC_REALWIDE scale *= -1.0/static_cast<OC_REALWIDE>(lxdim*lydim*lzdim);
++  OC_REALWIDE scale = -1.0/static_cast<OC_REALWIDE>(lxdim*lydim*lzdim);
+ 
+   for(index=0;index<3*rvtotalsize;index++) rV1[index] = 0.0;
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNxx(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef=scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNxx(x,y,z,dx,dy,dz).Hi());
+     rV1[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV1[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
+     if(j>0) rV1[i+(lydim-j)*rvystride+k*rvzstride] = coef;
+@@ -254,7 +255,8 @@
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNyy(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNyy(x,y,z,dx,dy,dz).Hi());
+     rV2[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV2[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
+     if(j>0) rV2[i+(lydim-j)*rvystride+k*rvzstride] = coef;
+@@ -272,7 +274,8 @@
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNzz(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNzz(x,y,z,dx,dy,dz).Hi());
+     rV3[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV3[(lxdim-i)+j*rvystride+k*rvzstride] = coef;
+     if(j>0) rV3[i+(lydim-j)*rvystride+k*rvzstride] = coef;
+@@ -303,7 +306,8 @@
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNxy(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNxy(x,y,z,dx,dy,dz).Hi());
+     rV1[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV1[(lxdim-i)+j*rvystride+k*rvzstride] = -coef;
+     if(j>0) rV1[i+(lydim-j)*rvystride+k*rvzstride] = -coef;
+@@ -321,7 +325,8 @@
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNxz(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNxz(x,y,z,dx,dy,dz).Hi());
+     rV2[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV2[(lxdim-i)+j*rvystride+k*rvzstride] = -coef;
+     if(j>0) rV2[i+(lydim-j)*rvystride+k*rvzstride] =  coef;
+@@ -339,7 +344,8 @@
+     OC_REALWIDE x = dx*i;
+     OC_REALWIDE y = dy*j;
+     OC_REALWIDE z = dz*k;
+-    OC_REALWIDE coef=scale*Oxs_CalculateNyz(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale
++      * static_cast<OC_REALWIDE>(Oxs_CalculateNyz(x,y,z,dx,dy,dz).Hi());
+     rV3[i+j*rvystride+k*rvzstride] = coef;
+     if(i>0) rV3[(lxdim-i)+j*rvystride+k*rvzstride] =  coef;
+     if(j>0) rV3[i+(lydim-j)*rvystride+k*rvzstride] = -coef;
+@@ -559,9 +565,9 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV1[index] = scale*Oxs_Newell_f(x,y,z);
+-	rV2[index] = scale*Oxs_Newell_f(y,x,z);
+-	rV3[index] = scale*Oxs_Newell_f(z,y,x);
++	rV1[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(x,y,z).Hi());
++	rV2[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(y,x,z).Hi());
++	rV3[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(z,y,x).Hi());
+       }
+     }
+   }
+@@ -579,11 +585,11 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV1[index] -= scale*Oxs_Newell_f(x,y,0);
++	rV1[index] -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(x,y,0).Hi());
+ 	rV1[index] *= 2;
+-	rV2[index] -= scale*Oxs_Newell_f(y,x,0);
++	rV2[index] -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(y,x,0).Hi());
+ 	rV2[index] *= 2;
+-	rV3[index] -= scale*Oxs_Newell_f(0,y,x);
++	rV3[index] -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(0,y,x).Hi());
+ 	rV3[index] *= 2;
+ 	/// f is even in z, so for example
+ 	/// f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
+@@ -630,17 +636,20 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV1[index] -= scale * 
+-	  ((Oxs_Newell_f(x,0,z-dz)+Oxs_Newell_f(x,0,z+dz))
+-           -2*Oxs_Newell_f(x,0,z));
++	rV1[index] -= scale
++          * static_cast<OC_REALWIDE>((Oxs_Newell_f(x,0,z-dz)
++                                      +Oxs_Newell_f(x,0,z+dz)
++                                      -2*Oxs_Newell_f(x,0,z)).Hi());
+ 	rV1[index] *= 2;
+-	rV2[index] -= scale * 
+-	  ((Oxs_Newell_f(0,x,z-dz)+Oxs_Newell_f(0,x,z+dz))
+-           -2*Oxs_Newell_f(0,x,z));
++	rV2[index] -= scale
++          * static_cast<OC_REALWIDE>((Oxs_Newell_f(0,x,z-dz)
++                                      +Oxs_Newell_f(0,x,z+dz)
++                                      -2*Oxs_Newell_f(0,x,z)).Hi());
+ 	rV2[index] *= 2;
+-	rV3[index] -= scale * 
+-	  ((Oxs_Newell_f(z-dz,0,x)+Oxs_Newell_f(z+dz,0,x))
+-           -2*Oxs_Newell_f(z,0,x));
++	rV3[index] -= scale
++          * static_cast<OC_REALWIDE>((Oxs_Newell_f(z-dz,0,x)
++                                      +Oxs_Newell_f(z+dz,0,x)
++                                      -2*Oxs_Newell_f(z,0,x)).Hi());
+ 	rV3[index] *= 2;
+ 	/// f is even in y
+       }
+@@ -683,26 +692,26 @@
+       for(j=0;j<ydim;j++) {
+ 	index = kindex + j*rvystride;
+ 	OC_REALWIDE y = dy*j;
+-	rV1[index] -= scale * 
+-	  ((4*Oxs_Newell_f(0,y,z)
+-	    +Oxs_Newell_f(0,y+dy,z+dz)+Oxs_Newell_f(0,y-dy,z+dz)
+-	    +Oxs_Newell_f(0,y+dy,z-dz)+Oxs_Newell_f(0,y-dy,z-dz))
+-	   -2*(Oxs_Newell_f(0,y+dy,z)+Oxs_Newell_f(0,y-dy,z)
+-	       +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz)));
++	rV1[index] -= scale * static_cast<OC_REALWIDE>
++          ((4*Oxs_Newell_f(0,y,z)
++            +Oxs_Newell_f(0,y+dy,z+dz)+Oxs_Newell_f(0,y-dy,z+dz)
++            +Oxs_Newell_f(0,y+dy,z-dz)+Oxs_Newell_f(0,y-dy,z-dz)
++            -2*(Oxs_Newell_f(0,y+dy,z)+Oxs_Newell_f(0,y-dy,z)
++                +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz))).Hi());
+ 	rV1[index] *= 2;
+-	rV2[index] -= scale * 
+-	  ((4*Oxs_Newell_f(y,0,z)
++	rV2[index] -= scale * static_cast<OC_REALWIDE>
++          ((4*Oxs_Newell_f(y,0,z)
+ 	    +Oxs_Newell_f(y+dy,0,z+dz)+Oxs_Newell_f(y-dy,0,z+dz)
+-	    +Oxs_Newell_f(y+dy,0,z-dz)+Oxs_Newell_f(y-dy,0,z-dz))
+-	   -2*(Oxs_Newell_f(y+dy,0,z)+Oxs_Newell_f(y-dy,0,z)
+-	       +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz)));
++	    +Oxs_Newell_f(y+dy,0,z-dz)+Oxs_Newell_f(y-dy,0,z-dz)
++            -2*(Oxs_Newell_f(y+dy,0,z)+Oxs_Newell_f(y-dy,0,z)
++                +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz))).Hi());
+ 	rV2[index] *= 2;
+-	rV3[index] -= scale * 
+-	  ((4*Oxs_Newell_f(z,y,0)
+-	    +Oxs_Newell_f(z+dz,y+dy,0)+Oxs_Newell_f(z+dz,y-dy,0)
+-	    +Oxs_Newell_f(z-dz,y+dy,0)+Oxs_Newell_f(z-dz,y-dy,0))
+-	   -2*(Oxs_Newell_f(z,y+dy,0)+Oxs_Newell_f(z,y-dy,0)
+-	       +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0)));
++	rV3[index] -= scale * static_cast<OC_REALWIDE>
++          ((4*Oxs_Newell_f(z,y,0)
++            +Oxs_Newell_f(z+dz,y+dy,0)+Oxs_Newell_f(z+dz,y-dy,0)
++            +Oxs_Newell_f(z-dz,y+dy,0)+Oxs_Newell_f(z-dz,y-dy,0)
++            -2*(Oxs_Newell_f(z,y+dy,0)+Oxs_Newell_f(z,y-dy,0)
++                +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0))).Hi());
+ 	rV3[index] *= 2;
+ 	/// f is even in x.
+       }
+@@ -794,9 +803,12 @@
+   }
+ 
+   // Special "SelfDemag" code may be more accurate at index 0,0,0
+- rV1[0] = -Oxs_SelfDemagNx(dx,dy,dz)/static_cast<double>(lxdim*lydim*lzdim);
+- rV2[0] = -Oxs_SelfDemagNy(dx,dy,dz)/static_cast<double>(lxdim*lydim*lzdim);
+- rV3[0] = -Oxs_SelfDemagNz(dx,dy,dz)/static_cast<double>(lxdim*lydim*lzdim);
++  rV1[0] = -static_cast<double>(Oxs_SelfDemagNx(dx,dy,dz).Hi())
++    / static_cast<double>(lxdim*lydim*lzdim);
++  rV2[0] = -static_cast<double>(Oxs_SelfDemagNy(dx,dy,dz).Hi())
++    / static_cast<double>(lxdim*lydim*lzdim);
++  rV3[0] = -static_cast<double>(Oxs_SelfDemagNz(dx,dy,dz).Hi())
++    / static_cast<double>(lxdim*lydim*lzdim);
+ 
+   // Step 4: Transform into frequency domain.
+   fftw_execute(forward_plan);
+@@ -830,9 +842,9 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV1[index] = scale*Oxs_Newell_g(x,y,z);
+-	rV2[index] = scale*Oxs_Newell_g(x,z,y);
+-	rV3[index] = scale*Oxs_Newell_g(y,z,x);
++	rV1[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,y,z).Hi());
++	rV2[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,z,y).Hi());
++	rV3[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(y,z,x).Hi());
+       }
+     }
+   }
+@@ -850,7 +862,7 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV1[index] -= scale*Oxs_Newell_g(x,y,0);
++	rV1[index] -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,y,0).Hi());
+ 	rV1[index] *= 2;
+ 	// NOTE: g is even in z.
+ 	// If zdim==1, then Nxz and Nyz are identically zero.
+@@ -896,9 +908,9 @@
+ 	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rV2[index] -= scale * 
+-	  ((Oxs_Newell_g(x,z-dz,0)+Oxs_Newell_g(x,z+dz,0))
+-           -2*Oxs_Newell_g(x,z,0));
++	rV2[index] -= scale * static_cast<OC_REALWIDE>
++          ((Oxs_Newell_g(x,z-dz,0)+Oxs_Newell_g(x,z+dz,0)
++            -2*Oxs_Newell_g(x,z,0)).Hi());
+ 	rV2[index] *= 2;
+ 	// Note: g is even in its third argument.
+ 	// If ydim==1, then Nxy and Nyz are identically zero.
+@@ -942,12 +954,12 @@
+       for(j=0;j<ydim;j++) {
+ 	index = kindex + j*rvystride;
+ 	OC_REALWIDE y = dy*j;
+-	rV3[index] -= scale * 
+-	  ((4*Oxs_Newell_g(y,z,0)
+-	    +Oxs_Newell_g(y+dy,z+dz,0)+Oxs_Newell_g(y-dy,z+dz,0)
+-	    +Oxs_Newell_g(y+dy,z-dz,0)+Oxs_Newell_g(y-dy,z-dz,0))
+-	   -2*(Oxs_Newell_g(y+dy,z,0)+Oxs_Newell_g(y-dy,z,0)
+-	       +Oxs_Newell_g(y,z+dz,0)+Oxs_Newell_g(y,z-dz,0)));
++	rV3[index] -= scale * static_cast<OC_REALWIDE>
++          ((4*Oxs_Newell_g(y,z,0)
++            +Oxs_Newell_g(y+dy,z+dz,0)+Oxs_Newell_g(y-dy,z+dz,0)
++            +Oxs_Newell_g(y+dy,z-dz,0)+Oxs_Newell_g(y-dy,z-dz,0)
++            -2*(Oxs_Newell_g(y+dy,z,0).Hi()+Oxs_Newell_g(y-dy,z,0)
++                +Oxs_Newell_g(y,z+dz,0).Hi()+Oxs_Newell_g(y,z-dz,0))).Hi());
+ 	rV3[index] *= 2;
+ 	// Note: g is even in its third argument.
+ 	// If xdim==1, then Nxy and Nxz are identically zero.
+Only in fftwdemag: README

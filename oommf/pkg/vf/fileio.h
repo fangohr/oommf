@@ -9,7 +9,7 @@
 #ifndef _VF_FILEIO
 #define _VF_FILEIO
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "nb.h"
 

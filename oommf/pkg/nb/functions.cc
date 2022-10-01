@@ -8,11 +8,11 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <ctype.h>
-#include <limits.h>
-#include <string.h>
-#include <stdarg.h>
+#include <cassert>
+#include <cctype>
+#include <climits>
+#include <cstring>
+#include <cstdarg>
 
 #include "oc.h"
 #include "functions.h"
@@ -50,9 +50,21 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 /// This insures standard math functions like floor, ceil, sqrt
 /// are available.
 
-/* End includes */     
+/* End includes */
 
-// #define OCT2007_CHINESE_DEBUG
+// Define file access mode constants if they aren't already defined.
+#ifndef F_OK
+#    define F_OK 00
+#endif
+#ifndef X_OK
+#    define X_OK 01
+#endif
+#ifndef W_OK
+#    define W_OK 02
+#endif
+#ifndef R_OK
+#    define R_OK 04
+#endif
 
 #define NB_FUNCTIONS_ERRBUFSIZE 1024
 
@@ -396,7 +408,7 @@ void degcossin(double angle,double& cosine,double& sine)
 //       Of course, the code below ONLY WORKS FOR IEEE FLOATING POINT!
 int Nb_IsFinite(OC_REAL4 x)
 {
-  // Inf's and nan's are indicated by all exponent bits (8) being set. 
+  // Inf's and nan's are indicated by all exponent bits (8) being set.
   // The top bit is the sign bit.
   unsigned char *cptr = (unsigned char *)(&x);
 #if (OC_BYTEORDER == 4321)  // Little endian
@@ -694,89 +706,15 @@ int NbGetColor(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
   return TCL_OK;
 }
 
-//////////////////////////////////////////////////////////////////////////
-// C++ interface to the Tcl 'file nativename' command.
-#ifndef OCT2007_CHINESE_DEBUG
-void Nb_TclNativeFilename(Nb_DString &filename)
-{
-  // Similar to the Tcl command 'file nativename', this routine provides
-  // an interface to the Tcl C function Tcl_TranslateFileName(), using
-  // NB_DString's instead of Tcl_DString's.  It converts "filename" from
-  // Tcl standard format (with /'s) to a platform specific form.  If the
-  // call is successful, then filename is overwritten with the returned
-  // result. Otherwise filename is left unchanged.
-  Tcl_DString buf;
-  if (NULL!=Tcl_TranslateFileName(NULL,
-				  OC_CONST84_CHAR(filename.GetStr()),
-				  &buf)) {
-    // Convert the translated filename to the system encoding, so that
-    // operating system calls will be happy with it.
-    Tcl_DString encoded;
-    filename=Tcl_UtfToExternalDString(/* system encoding */ NULL, 
-        Tcl_DStringValue(&buf), Tcl_DStringLength(&buf), &encoded);
-    Tcl_DStringFree(&encoded);
-    Tcl_DStringFree(&buf);
-  }
-}
-#else // OCT2007_CHINESE_DEBUG
-void Nb_TclNativeFilename(Nb_DString &filename)
-{
-  // Similar to the Tcl command 'file nativename', this routine provides
-  // an interface to the Tcl C function Tcl_TranslateFileName(), using
-  // NB_DString's instead of Tcl_DString's.  It converts "filename" from
-  // Tcl standard format (with /'s) to a platform specific form.  If the
-  // call is successful, then filename is overwritten with the returned
-  // result. Otherwise filename is left unchanged.
-
-  Oc_AutoBuf foo;
-
-  Oc_BytesToAscii((unsigned char *)filename.GetStr(),filename.Length(),foo);
-  Oc_ErrorWrite("Nb_TclNativeF    import (%3d): %s\n",
-                foo.GetLength(),foo.GetStr());
-
-  Tcl_DString buf;
-  if (NULL!=Tcl_TranslateFileName(NULL,
-				  OC_CONST84_CHAR(filename.GetStr()),
-				  &buf)) {
-    // Convert the translated filename to the system encoding, so that
-    // operating system calls will be happy with it.
-
-    Oc_BytesToAscii((unsigned char *)Tcl_DStringValue(&buf),
-                    Tcl_DStringLength(&buf),foo);
-    Oc_ErrorWrite("Nb_TclNativeF translate (%3d): %s\n",
-                  foo.GetLength(),foo.GetStr());
-
-
-    Tcl_DString encoded;
-    filename=Tcl_UtfToExternalDString(/* system encoding */ NULL, 
-        Tcl_DStringValue(&buf), Tcl_DStringLength(&buf), &encoded);
-
-    Oc_BytesToAscii((unsigned char *)Tcl_DStringValue(&encoded),
-                    Tcl_DStringLength(&encoded),foo);
-    Oc_ErrorWrite("Nb_TclNativeF   encoded (%3d): %s\n",
-                  foo.GetLength(),foo.GetStr());
-
-    Tcl_DStringFree(&encoded);
-    Tcl_DStringFree(&buf);
-  }
-
-  Oc_BytesToAscii((unsigned char *)filename.GetStr(),filename.Length(),foo);
-  Oc_ErrorWrite("Nb_TclNativeF    export (%3d): %s\n",
-                foo.GetLength(),foo.GetStr());
-}
-#endif // OCT2007_CHINESE_DEBUG
-
 // C++ alternative to Tcl 'file exists'
 OC_BOOL Nb_FileExists(const char *path)
-{
+{ // This code mimics the Tcl script command 'file exists'
   OC_BOOL success = 0;
-  Nb_DString filename(path);
-  Nb_TclNativeFilename(filename);
-#if (OC_SYSTEM_TYPE == OC_WINDOWS)
-  if(_access(filename.GetStr(),0)==0) success = 1;
-#else // Add more tests if an extant unix variant turns up w/o access()
-  if(access(filename.GetStr(),F_OK)==0) success = 1;
-#endif
+  Oc_TclObj pathobj(path);
+  if (Tcl_FSConvertToPathType(nullptr, pathobj.GetObj()) == TCL_OK) {
+    success = (Tcl_FSAccess(pathobj.GetObj(), F_OK) == 0);
+    // Tcl_FSAccess returns 0 on success, -1 otherwise
+  }
   return success;
 }
 
@@ -919,95 +857,38 @@ const char* Nb_GetOOMMFRootDir(Oc_AutoBuf& ab)
 
 
 // Slightly portable versions of fopen, remove, and rename
-#ifndef OCT2007_CHINESE_DEBUG
 FILE *Nb_FOpen(const char *path,const char *mode)
 {
-  Nb_DString filename(path);
-  Nb_TclNativeFilename(filename);
-  return fopen(filename.GetStr(),mode);
+  Oc_TclObj objpath(path);
+  const void* nativepath = Tcl_FSGetNativePath(objpath.GetObj());
+#if (OC_SYSTEM_TYPE != OC_WINDOWS)
+  return fopen(static_cast<const char*>(nativepath),mode);
+#else // Windows version. Uses WCHAR for intl char support.
+  Oc_AutoWideBuf wmode(mode);
+  return _wfopen(static_cast<const wchar_t*>(nativepath),wmode);
+#endif
 }
-#else // OCT2007_CHINESE_DEBUG
-FILE *Nb_FOpen(const char *path,const char *mode)
-{
-  Oc_ErrorWrite("Nb_FOpen  import -->%s<--\n",path);
-
-  Oc_AutoBuf foo;
-
-  Oc_BytesToAscii((unsigned char *)path,strlen(path),foo);
-  Oc_ErrorWrite("Nb_FOpen    import path (%3d): %s\n",
-                foo.GetLength(),foo.GetStr());
-
-  Nb_DString filename(path);
-
-  Oc_BytesToAscii((unsigned char *)filename.GetStr(),filename.Length(),foo);
-  Oc_ErrorWrite("Nb_FOpen orig  filename (%3d): %s\n",
-                foo.GetLength(),foo.GetStr());
-
-  Nb_TclNativeFilename(filename);
-
-  Oc_BytesToAscii((unsigned char *)filename.GetStr(),filename.Length(),foo);
-  Oc_ErrorWrite("Nb_FOpen final filename (%3d): %s\n",
-                foo.GetLength(),foo.GetStr());
-
-  Oc_ErrorWrite("Sys fopen import -->%s<--\n",filename.GetStr());
-  return fopen(filename.GetStr(),mode);
-}
-#endif // OCT2007_CHINESE_DEBUG
 
 int
 Nb_Remove(const char *path)
 {
-  Nb_DString filename(path);
-  Nb_TclNativeFilename(filename);
-  return remove(filename.GetStr());
+  Oc_TclObj objpath(path);
+  const void* nativepath = Tcl_FSGetNativePath(objpath.GetObj());
+#if (OC_SYSTEM_TYPE != OC_WINDOWS)
+  return remove(static_cast<const char*>(nativepath));
+#else // Windows version. Uses WCHAR for intl char support.
+  return _wremove(static_cast<const wchar_t*>(nativepath));
+#endif
 }
 
-void
-Nb_Rename(const char *oldpath,const char* newpath)
-{ // Note 1: ANSI C requires a 'rename' function, but
-  //   doesn't specify the behavior in the case where
-  //   newpath exists.  Unices generally unlink any
-  //   existing file by the new name, and rename the
-  //   old file as part of an atomic operation.  The
-  //   Windows rename function fails if newpath already
-  //   exists.  To work around this, we call the Tcl
-  //   script command 'file rename -force'.
-  // Note 2: Unlike the ANSI C rename function, this
-  //   routine throws an exception on error.
-  Nb_DString argv[6];
-  argv[0] = "file";
-  argv[1] = "rename";
-  argv[2] = "-force";
-  argv[3] = "--";
-  argv[4] = oldpath;
-  argv[5] = newpath;
-  Nb_DString cmd;
-  cmd.MergeArgs(sizeof(argv)/sizeof(argv[0]),argv);
-  Tcl_Interp* interp=Oc_GlobalInterpreter();
-  if(interp==NULL) {
-    OC_THROW(Oc_Exception(__FILE__,__LINE__,NULL,
-                          "Nb_Rename",NB_FUNCTIONS_ERRBUFSIZE,
-                          "No Tcl interpreter available"));
-  }
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.GetStr())) != TCL_OK) {
-    Oc_Exception foo(__FILE__,__LINE__,NULL,
-                     "Nb_Rename",2001,
-                     "%.2000s",Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
-    OC_THROW(foo);
-  }
-  Tcl_RestoreResult(interp, &saved);
-}
-
-void
-Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
-{ // The Nb_Rename function above runs through the global Tcl interp,
-  // and so can only be called from the main thread.  This version uses
-  // system calls and so can be called from any thread.  The sync
-  // parameter determines whether or not this all blocks until the data
-  // is flushed to disk (sync == 1 == blocks, sync == 0 == don't block).
+void Nb_RenameNoInterp
+(const char* oldpath,
+ const char* newpath,
+ int sync)
+{ // This routine uses no Tcl interp access and so can be called from
+  // any thread.  The sync parameter determines whether or not this all
+  // blocks until the data is flushed to disk (sync == 1 == blocks, sync
+  // == 0 == don't block).
   //
   // This routine throws an exception if an error occurs.
   //
@@ -1015,7 +896,8 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
   //
   // On Windows, the MoveFileEx function is used instead of the ANSI C
   // rename to allow overwrite of an existing file.  This also allows
-  // moving between volumes.
+  // moving between volumes, and provides international character
+  // support.
   //
   // Beginning with Tcl 8.4, the Tcl C library has a number of Tcl_FS*
   // calls that provide cross-platform filesystem access, such as
@@ -1029,9 +911,31 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
   // Checks for case where oldpath and newpath point to the same file:
   // 1) Catch simplest case where strings are identical
   if(strcmp(oldpath,newpath)==0) return; // Nothing to do
-  Nb_DString oldname(oldpath);  Nb_TclNativeFilename(oldname);
-  Nb_DString newname(newpath);  Nb_TclNativeFilename(newname);
-  if(strcmp(oldname.GetStr(),newname.GetStr())==0) return;
+
+  // Get normalized versions of paths
+  Oc_TclObj oldobj(oldpath);  Oc_TclObj newobj(newpath);
+  Tcl_Obj* oldnorm = Tcl_FSGetNormalizedPath(nullptr,oldobj.GetObj());
+  Tcl_Obj* newnorm = Tcl_FSGetNormalizedPath(nullptr,newobj.GetObj());
+  if(oldnorm == nullptr) {
+    Oc_Exception foo(__FILE__,__LINE__,NULL,
+                     "Nb_RenameNoInterp",1200,
+                     "Error: Invalid oldpath spec: %.1000s",
+                     oldpath);
+    OC_THROW(foo);
+  }
+  if(newnorm == nullptr) {
+    Oc_Exception foo(__FILE__,__LINE__,NULL,
+                     "Nb_RenameNoInterp",1200,
+                     "Error: Invalid newpath spec: %.1000s",
+                     newpath);
+    OC_THROW(foo);
+  }
+  if(strcmp(Tcl_GetString(oldnorm),Tcl_GetString(newnorm))==0) return; // Same file
+
+  // Get native versions of paths for use by system calls. On Windows
+  // the return is WCHAR*; otherwise it's char*.
+  const void* oldnative = Tcl_FSGetNativePath(oldnorm);
+  const void* newnative = Tcl_FSGetNativePath(newnorm);
 
   // On Windows, one can use the GetFileInformationByHandle call and
   // check the VolumeSerialNumber and FileIndex in the
@@ -1051,16 +955,18 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
 
 #if (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
   /// Add more tests if an extant unix variant turns up w/o stat
+  const char* oldfile = static_cast<const char*>(oldnative);
+  const char* newfile = static_cast<const char*>(newnative);
   struct stat old_statbuf;
-  if(stat(oldname.GetStr(),&old_statbuf)!=0) {
+  if(stat(oldfile,&old_statbuf)!=0) {
       Oc_Exception foo(__FILE__,__LINE__,NULL,
                        "Nb_RenameNoInterp",1200,
                        "Error; can't stat source file %.1000s",
-                       oldname.GetStr());
+                       oldfile);
       OC_THROW(foo);
   }
   struct stat new_statbuf;
-  if(stat(newname.GetStr(),&new_statbuf)==0) {
+  if(stat(newfile,&new_statbuf)==0) {
     // If stat fails on newpath, assume newpath does not exist.
     if(old_statbuf.st_ino == new_statbuf.st_ino
        && old_statbuf.st_dev == new_statbuf.st_dev) {
@@ -1075,25 +981,34 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
   // dwVolumeSerialNumber, nFileIndexLow, and nFileIndexHigh.  But
   // hopefully MoveFileEx can figure this out and do the right thing.
   // Instead, just check that the source file exists.
-  if(!Nb_FileExists(oldname.GetStr())) {
-      Oc_Exception foo(__FILE__,__LINE__,NULL,
-                       "Nb_RenameNoInterp",1200,
-                       "Source file %.1000s does not exist",
-                       oldname.GetStr());
-      OC_THROW(foo);
+  if(!Nb_FileExists(oldpath)) {
+    Oc_Exception foo(__FILE__,__LINE__,NULL,
+                     "Nb_RenameNoInterp",1200,
+                     "Source file %.1000s does not exist",
+                     oldpath);
+    OC_THROW(foo);
   }
 #endif
 
-  int errorcode = 0;
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
-  BOOL result = MoveFileEx(oldname.GetStr(),newname.GetStr(),
-                           MOVEFILE_COPY_ALLOWED
-                           | MOVEFILE_REPLACE_EXISTING
-                           | (sync ? MOVEFILE_WRITE_THROUGH : 0));
-  if(result == 0) errorcode = 1; // Failure
-#else 
-  errorcode = rename(oldname.GetStr(),newname.GetStr());
-#endif
+  const WCHAR* oldfile = static_cast<const WCHAR*>(oldnative);
+  const WCHAR* newfile = static_cast<const WCHAR*>(newnative);
+  BOOL result = MoveFileExW(oldfile,newfile,
+                            MOVEFILE_COPY_ALLOWED
+                            | MOVEFILE_REPLACE_EXISTING
+                            | (sync ? MOVEFILE_WRITE_THROUGH : 0));
+  if(result == 0) { // Error
+    String winerr = Oc_WinStrError(GetLastError());
+    String errmsg = String("Error moving file ")
+      + String(oldpath) + String(" to " )
+      + String(newpath) + String(": " )
+      + winerr;
+    Oc_Exception foo(__FILE__,__LINE__,NULL,
+                     "Nb_RenameNoInterp",errmsg.c_str());
+    OC_THROW(foo);
+  }
+#else
+  int errorcode = rename(oldfile,newfile);
   if(errorcode != 0) {
     // Some some failure occurred.  In particular, the ANSI C rename
     // call can fail if the paths are on different volumes.  Fall back
@@ -1101,8 +1016,8 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
     // target for writing if source doesn't exist; that case is an
     // error in which case we don't want the target truncated.)
     errorcode = 1;
-    FILE* fin = fopen(oldname.GetStr(),"rb");
-    FILE* fout = (fin!=0 ? fopen(newname.GetStr(),"wb") : 0);
+    FILE* fin = fopen(oldfile,"rb");
+    FILE* fout = (fin!=0 ? fopen(newfile,"wb") : 0);
     if(fin!=0 && fout!=0) {
       const unsigned int BSIZE = 32768;
       char buf[BSIZE];
@@ -1120,53 +1035,55 @@ Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync)
     if(fout) fclose(fout);
     if(errorcode == 0) {
       // Copy was successful.  Remove original file
-      errorcode = remove(oldname.GetStr());
+      errorcode = remove(oldfile);
     }
     if(errorcode) {
       Oc_Exception foo(__FILE__,__LINE__,NULL,
                        "Nb_RenameNoInterp",2200,
                        "Error moving file %.1000s to %.1000s",
-                       oldpath,newpath);
+                       oldfile,newfile);
       OC_THROW(foo);
     }
   }
+#endif
 
   if(sync) {
-    errorcode = 0;
+    // Force write to disk by opening newfile and flushing buffers.
+    int sync_error = 0;
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
     // Note: CreateFile() supports longer file names than OpenFile().
-    HANDLE hFile = CreateFile(newname.GetStr(),GENERIC_WRITE,0,0,
-                              OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
+    HANDLE hFile = CreateFileW(newfile,GENERIC_WRITE,0,0,
+                               OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
     if(hFile == INVALID_HANDLE_VALUE) {
-      ++errorcode;
+      ++sync_error;
     } else {
       if(!FlushFileBuffers(hFile)) {
-        ++errorcode;
+        ++sync_error;
       }
       if(!CloseHandle(hFile)) {
-        ++errorcode;
+        ++sync_error;
       }
     }
 #elif (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
     /// Add more tests if an extant unix variant turns up w/o fsync
-    int fd = open(newname.GetStr(),O_RDWR);
+    int fd = open(newfile,O_RDWR);
     /// Note: O_APPEND not directly supported on NFS.
     if(fd == -1) {
-      ++errorcode;
+      ++sync_error;
     } else {
       if(fsync(fd)!=0) {
-        ++errorcode;
+        ++sync_error;
       }
       if(close(fd)!=0) {
-        ++errorcode;
+        ++sync_error;
       }
     }
 #endif
-    if(errorcode) {
+    if(sync_error) {
       Oc_Exception foo(__FILE__,__LINE__,NULL,
                        "Nb_RenameNoInterp",1200,
                        "Error syncing file %.1000s",
-                       newname.GetStr());
+                       newpath);
       OC_THROW(foo);
     }
   }

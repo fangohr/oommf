@@ -4,7 +4,7 @@
  *
  */
 
-#include <assert.h>
+#include <cassert>
 
 #include "director.h"
 #include "evolver.h"

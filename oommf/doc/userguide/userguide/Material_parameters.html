@@ -1,0 +1,198 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Material parameters</TITLE>
+<META NAME="description" CONTENT="Material parameters">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Demag_specification.html">
+<LINK REL="previous" HREF="MIF_1.1.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Demag_specification.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1105"
+  HREF="Demag_specification.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1101"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1095"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1103"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1106"
+  HREF="Demag_specification.html">Demag specification</A>
+<B> Up:</B> <A NAME="tex2html1102"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1096"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001811000000000000000"></A><A NAME="sec:mif1materials"></A><A NAME="21332"></A>
+<BR>
+Material parameters
+</H2>
+
+<UL>
+<LI><B><TT>#</TT> Material Name:</B> This is a convenience entry for
+   <B>mmProbEd</B>; inside the MIF&nbsp;1.1 file it is a comment line.  It
+   relates a symbolic name (e.g., Iron) to specific values to the next
+   4 items.  Ignored by solvers.
+</LI>
+<LI><B>Ms:</B> Saturation magnetization<A NAME="21337"></A>
+   in A/m.
+</LI>
+<LI><B>A:</B> Exchange stiffness<A NAME="21339"></A> in J/m.
+</LI>
+<LI><B>K1:</B> Crystalline
+ anisotropy<A NAME="21341"></A><A NAME="21342"></A>
+   constant in J/m<B><SUP>3</SUP></B>.  If <B><I>K</I>1 &gt; 0</B>, then the anisotropy axis (or axes)
+   is an easy axis; if <B><I>K</I>1 &lt; 0</B> then the anisotropy axis is a hard axis.
+</LI>
+<LI><B>Anisotropy Type:</B> Crystalline anisotropy type; One of
+<TT>&lt;uniaxial|cubic&gt;</TT>.
+</LI>
+<LI><B>Anisotropy Dir1:</B> Directional cosines of first crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 1 0 0 (x-axis).
+</LI>
+<LI><B>Anisotropy Dir2:</B> Directional cosines of second crystalline
+   anisotropy axis, taken with respect to the coordinate axes (3
+   numbers).  Optional; Default is 0 1 0 (y-axis).
+   
+<BR>
+For uniaxial materials it suffices to specify only Anisotropy
+   Dir1.  For cubic materials one must also specify Anisotropy
+   Dir2; the third axis direction will be calculated as the cross
+   product of the first two.  The anisotropy directions will be
+   automatically normalized if necessary, so for example 1 1 1 is
+   valid input (it will be modified to .5774 .5774 .5774).  For cubic
+   materials, Dir2 will be adjusted to be perpendicular to Dir1 (by
+   subtracting out the component parallel to Dir1).
+</LI>
+<LI><B>Anisotropy Init:</B>
+   Method to use to set up directions of anisotropy axes, as a function
+   of spatial location; This is a generalization of the Anisotropy
+   Dir1/2 records.  The value for this record should be one of
+   <TT>&lt;Constant|UniformXY|UniformS2&gt;</TT>.  <TT>Constant</TT> uses the
+   values specified for Anisotropy Dir1 and Dir2, with no dispersion.
+   <TT>UniformXY</TT> ignores the values given for Anisotropy Dir1 and
+   Dir2, and randomly varies the anisotropy directions uniformly in the
+   xy-plane.  <TT>UniformS2</TT> is similar, but randomly varies the
+   anisotropy directions uniformly on the unit sphere (<B><I>S</I><SUP>2</SUP></B>).  This
+   record is optional; the default value is <TT>Constant</TT>.
+</LI>
+<LI><B>Edge K1:</B>  Anisotropy
+   constant<A NAME="21357"></A><A NAME="21358"></A>
+   similar to crystalline anisotropy constant K1 described above, but
+   applied only along the edge surface of the part.  This is a uniaxial
+   anisotropy, directed along the normal to the boundary surface.  Units
+   are J/m<B><SUP>3</SUP></B>, with positive values making the surface normal an easy
+   axis, and negative values making the surface an easy plane.  The
+   default value for Edge K1 is 0, which disables the term.
+</LI>
+<LI><B>Do Precess:</B>
+   If 1, then enable the precession<A NAME="21361"></A> term in the
+   Landau-Lifshitz ODE<A NAME="21362"></A>.  If 0, then do pure
+   damping only.  (Optional; default value is 1.)
+</LI>
+<LI><B>Gyratio:</B>
+   The Landau-Lifshitz gyromagnetic ratio<A NAME="21364"></A>, in
+   m/(A.s).  This is optional, with default value of 2.21e5.  See the discussion of the Landau-Lifshitz ODE
+   under the Damp&nbsp;Coef record identifier description.
+</LI>
+<LI><B>Damp Coef:</B>
+   The ODE solver in OOMMF integrates the Landau-Lifshitz
+   equation<A NAME="21368"></A>&nbsp;[<A
+ HREF="bibliography.html#gilbert1955">12</A>,<A
+ HREF="bibliography.html#landau1935">17</A>],
+   written as
+<!-- MATH
+ \begin{displaymath}
+\htmlimage{antialias}
+  \frac{d\textbf{M}}{dt} = -|\bar{\gamma}|\,\textbf{M}\times\textbf{H}_{\rm eff}
+   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
+     \textbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
+\end{displaymath}
+ -->
+<P ALIGN="CENTER"><IMG
+ WIDTH="413" HEIGHT="53" BORDER="0"
+ SRC="img22.gif"
+ ALT="\begin{displaymath}
+\frac{d\textbf{M}}{dt} = -\vert\bar{\gamma}\vert\,\textbf{M...
+...tbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
+\end{displaymath}"></P>
+where
+ 
+<P>
+<BLOCKQUOTE>
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> is the Landau-Lifshitz gyromagnetic ratio
+                        (m/(A.s)),
+<BR>  <B><IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img25.gif"
+ ALT="$\alpha$"></B> is the damping coefficient (dimensionless).
+
+</BLOCKQUOTE>
+ (See also the discussion of the <A HREF="Evolvers.html#eq:oxsllode">Landau-Lifshitz-Gilbert
+  equations</A> in the Oxs documentation.)  Here <B><IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img25.gif"
+ ALT="$\alpha$"></B> is
+  specified by the ``Damp Coef'' entry in the MIF&nbsp;1.1 file.  If not
+  specified, a default value of 0.5 is used, which allows the solver to
+  converge in a reasonable number of iterations.  Physical materials
+  will typically have a damping coefficient in the range 0.004 to
+  0.15.  The 2D solver engine
+  <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"
+ NAME="21396"><B>mmSolve</B></A> requires a
+  non-zero damping coefficient.
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1105"
+  HREF="Demag_specification.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1101"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1095"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1103"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

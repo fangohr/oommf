@@ -9,7 +9,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ps
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 Oc_CommandLine Option console {} {}
 
@@ -144,6 +144,7 @@ if {$verbosity >= 2} {
  Autosample: $plot_config(arrow,autosample)
  Subsample: $plot_config(arrow,subsample)
  Size: $plot_config(arrow,size)
+ View axis size adj: $plot_config(arrow,viewscale)
  Antialias: $plot_config(arrow,antialias)"
     puts stderr "Pixel Configuration---
  Display: $plot_config(pixel,status)
@@ -259,6 +260,7 @@ proc ReadFile { filename } {
     # Mesh loads in with +z forward, so transform
     # mesh to show desired axis
     CopyMesh 0 0 0 $view_transform(+z,$viewaxis)
+    SetZoom $zoom
     SelectActiveMesh 0
 }
 

@@ -1,0 +1,171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Parallelization</TITLE>
+<META NAME="description" CONTENT="Parallelization">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Managing_OOMMF_Platform_Nam.html">
+<LINK REL="previous" HREF="Optimization.html">
+<LINK REL="up" HREF="Advanced_Installation.html">
+<LINK REL="next" HREF="Managing_OOMMF_Platform_Nam.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html354"
+  HREF="Managing_OOMMF_Platform_Nam.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html350"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html344"
+  HREF="Optimization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html352"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html355"
+  HREF="Managing_OOMMF_Platform_Nam.html">Managing OOMMF Platform Names</A>
+<B> Up:</B> <A NAME="tex2html351"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Previous:</B> <A NAME="tex2html345"
+  HREF="Optimization.html">Optimization</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00334000000000000000"></A><A NAME="sec:install.parallel"></A><A NAME="1416"></A>
+<BR>
+Parallelization
+</H2>
+The OOMMF Oxs 3D solvers (<TT>oxsii</TT> and <TT>boxsi</TT>) can be built
+thread-enabled to allow parallel processing on
+multi-processor/multi-core machines.  In order to build and run a
+parallel version of OOMMF, you must have a thread-enabled version of
+Tcl.  Most standard binary releases of Tcl today are thread-enabled,
+so OOMMF releases that include pre-built executables are built
+thread-enabled.  If you build OOMMF from source, then by default
+OOMMF will be built thread-enabled if your Tcl is thread-enabled.
+As explained earlier, you can check thread build status with the
+<TT>tclsh oommf.tcl +platform</TT> command.  If you want to force a
+non-threaded build of OOMMF, then edit the <TT><B>config/platforms/</B></TT> file
+for your platform.  In the section labeled <TT>LOCAL CONFIGURATION</TT>, you
+will find a line that looks like
+<PRE>
+# $config SetValue oommf_threads 0
+</PRE>
+Uncomment this line (i.e., remove the leading `<code>#</code>' character) to
+force a non-threaded build.  Then run
+<PRE>
+tclsh oommf.tcl pimake distclean
+tclsh oommf.tcl pimake
+</PRE>
+from the OOMMF root directory to create a fresh build.
+
+<P>
+You can use the <TT>tclsh oommf.tcl +platform</TT> command to see the
+default number of compute threads that will be run by the Oxs 3D solver
+programs <TT>oxsii</TT> and <TT>boxsi</TT>.  You can modify the default as
+explained in the <A HREF="Check_Your_Platform_Configu.html#sec:install.platformconfig">Check Your Platform
+  Configuration</A> and <A HREF="Local_Customizations.html#sec:install.custom">Local
+  Customizations</A>
+sections, or you can override the default at run time via the command
+line option <TT>-threads</TT> to <TT>oxsii</TT> and <TT>boxsi</TT>.
+
+<P>
+<A NAME="1440"></A>Some multi-processor machines have a non-uniform memory
+architecture (NUMA), which means that although each processor can access
+all of system memory, some parts of memory can be accessed faster than
+others.  Typically this is accomplished by dividing the system memory
+and processors into ``nodes.''  Memory accesses within a node are faster
+than accesses between nodes, and depending on the architecture access
+latency and bandwidth may be different between different node pairs.
+Examples of machines with NUMA include some multi-processor AMD Opteron
+and Intel Xeon boxes.
+
+<P>
+Computer programs such as OOMMF can run on NUMA machines without
+making any special allowances for the memory architecture.  However, a
+program that is written to take advantage of the faster local
+(intra-node) memory accesses can sometimes run significantly faster.
+OOMMF contains NUMA-aware code, but this code is highly operating
+system specific.  At present, OOMMF can be built with NUMA support
+only on Linux (32- and 64-bit) systems.  To do this, you must install
+the operating system NUMA support packages ``numactl'' and
+``numactl-devel''.  The names may vary somewhat between Linux
+distributions, but the first typically includes the executable
+<TT><B>numactl</B></TT> and the second includes the header file <TT><B>numa.h</B></TT>.  Once
+the numactl package is installed, you can run the command
+<PRE>
+numactl --hardware
+</PRE>
+to get an overview of the memory architecture on your machine.  If this
+shows you have only one node, then there is no advantage to making a
+NUMA-aware build of OOMMF.
+
+<P>
+The next step is to edit the <TT><B>config/platforms</B></TT> for your platform.
+For example, on a 64-bit Linux box this file is
+<TT><B>config/platforms/linux-x86_64.tcl</B></TT>.
+In the section labeled <TT>LOCAL CONFIGURATION</TT>, find the line
+<PRE>
+# $config SetValue use_numa 1
+</PRE>
+Edit this to remove the leading `<code>#</code>' character.  Alternatively
+(and, actually, preferably), create a <TT><B>local</B></TT> subdirectory and make a
+local configuration file with the same platform name; e.g.,
+<TT><B>config/platforms/local/linux-x86_64.tcl</B></TT> on a 64-bit Linux machine.  Add
+the line
+<PRE>
+$config SetValue use_numa 1
+</PRE>
+to this file.  (The advantage of using a <TT><B>config/platforms/local</B></TT>
+file is that you can make changes without modifying the original OOMMF source code, which makes it easier to port your local changes to future
+releases of OOMMF.)  If this is done correctly, then the command
+`<TT>tclsh oommf.tcl +platform</TT>' will show that NUMA support is enabled.
+Then simply run `<TT>tclsh oommf.tcl pimake distclean</TT>' and
+`<TT>tclsh oommf.tcl pimake</TT>' from the OOMMF root directory to build a
+NUMA-aware version of OOMMF.
+
+<P>
+To activate the NUMA-aware code, you must specify the <TT>-numanodes</TT>
+option on the <TT>oxsii</TT>/<TT>boxsi</TT> command line, or set the the
+environment variable
+<TT>OOMMF_NUMANODES</TT><A NAME="1462"></A>.
+Check the <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs documention</A> for details.
+<A NAME="1467"></A><A NAME="1468"></A>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html354"
+  HREF="Managing_OOMMF_Platform_Nam.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html350"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html344"
+  HREF="Optimization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html352"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

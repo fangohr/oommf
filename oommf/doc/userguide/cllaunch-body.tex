@@ -1,11 +1,11 @@
 
-\section{Command Line Launching}\label{sec:cll}
+\chapter{Command Line Launching}\label{sec:cll}
 \index{launch!from~command~line}\index{launch!with~bootstrap~application}
 
 Some of the \OOMMF\ applications are platform-independent Tcl
 scripts.  Some of them are Tcl scripts that require special
 platform-dependent interpreters.  Others are platform-dependent,
-compiled C++ applications.  It is possible that some of them will 
+compiled C++ applications.  It is possible that some of them will
 change status in later releases of \OOMMF.  Each of these types
 of application requires a different command line for launching.
 Rather than require all \OOMMF\ users to manage this complexity,
@@ -19,7 +19,7 @@ program, we refer to this program as the ``bootstrap application.''
 The bootstrap application is the Tcl script \fn{oommf.tcl}.
 In its simplest usage, it takes a single argument on the command line,
 the name of the application to launch.  For example, to launch
-\hyperrefhtml{\app{mmGraph}}{\app{mmGraph} (Sec.~}{)}{sec:mmgraph},
+\hyperrefhtml{\app{mmGraph}}{\app{mmGraph} (Ch.~}{)}{sec:mmgraph},
 the command line is:
 \begin{verbatim}
 tclsh oommf.tcl mmGraph
@@ -34,7 +34,7 @@ rendered here as \verb+tclsh+, may vary between systems.
 
 If no command line arguments are passed to the bootstrap application,
 by default it will launch the application
-\hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}.
+\hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Ch.~}{)}{sec:mmlaunch}.
 
 \index{launch!command~line~arguments|(}
 Any command line arguments to the bootstrap
@@ -49,7 +49,7 @@ tclsh oommf.tcl +help
 \index{launch!foreground|(}
 The command line arguments \cd{+bg} and \cd{+fg} control how the
 bootstrap behaves after launching the requested application.  It
-can exit immediately after launching the requested application 
+can exit immediately after launching the requested application
 in background mode (\cd{+bg}), or it can block until the
 launched application exits (\cd{+fg}).  Each application
 registers within the \OOMMF\ system whether it prefers to be launched
@@ -61,7 +61,7 @@ in its preferred mode.
 \index{launch!version~requirement|(}
 The first command line argument that does not begin with the
 character \cd{+} is interpreted as a specification of which
-application should be launched.  As described above, this is 
+application should be launched.  As described above, this is
 usually the simple name of an application.
 When a particular
 version of an application is required, though, the bootstrap
@@ -134,10 +134,10 @@ account server.)
 \item[\optkey{-tk \boa 0\pipe 1\bca}]
 Disable or enable Tk.  Tk must be enabled for an application to display
 graphical widgets.  However, when Tk is enabled on Unix platforms
-the application is dependent on an X Windows server.  If the 
+the application is dependent on an X Windows server.  If the
 X Windows server dies, it will kill the application.  Long-running
 applications that do not inherently use display widgets support
-disabling of Tk with \verb+-tk 0+.  
+disabling of Tk with \verb+-tk 0+.
 Other applications that must use display widgets are unable to run
 with the option \verb+-tk 0+.  To run applications that require
 \verb+-tk 1+ on a Unix system with no display, one might use
@@ -156,7 +156,7 @@ options, such as \verb+-display+.  See the Tk documentation for details.
 
 The bootstrap application should be infrequently used by most users.
 The application \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
-(Sec.~}{)}{sec:mmlaunch} provides a more convenient graphical
+(Ch.~}{)}{sec:mmlaunch} provides a more convenient graphical
 interface for launching applications.  The main uses for the bootstrap
 application are launching \app{mmLaunch}, launching \app{pimake},
 launching programs which make up the \hyperrefhtml{OOMMF Batch
@@ -167,7 +167,7 @@ to an \OOMMF\ application or the environment in which an \OOMMF\ application
 runs.
 \index{application!bootstrap|)}
 
-\ssechead{Platform Issues}
+\starsechead{Platform Issues}
 
 \index{platform!Unix!executable~Tcl~scripts|(}
 On most Unix platforms, if \fn{oommf.tcl} is marked executable,
@@ -201,14 +201,13 @@ extension \fn{.tcl}, it is normally associated by Windows with the
 \fn{wish} interpreter.  The \fn{oommf.tcl} script has been
 specially written so that either \fn{tclsh} or \fn{wish} is a suitable
 interpreter.  This means that simply double-clicking on an icon
-associated with the file \fn{oommf.tcl} 
+associated with the file \fn{oommf.tcl}
 (say, in Windows Explorer\index{application!Windows~Explorer})
 will launch the bootstrap application with no arguments.  This will
 result in the default behavior of launching the application
 \app{mmLaunch}, which is suitable for launching other \OOMMF\
 applications.  (If this doesn't work, refer back to the
-\html{\htmlref{Windows Options}{sec:install.windows} section in the
-installation instructions.)}  \latex{Windows Options section in the
-installation instructions, Sec.~\ref{sec:install.windows}.)}
-\index{platform!Windows!file~extension~associations|)}
-
+\hyperrefhtml{Windows Options}{Windows Options section in the
+installation instructions, Sec.~}{}{sec:install.windows}\HTMLoutput{
+section in the installation
+instructions}.)\index{platform!Windows!file~extension~associations|)}

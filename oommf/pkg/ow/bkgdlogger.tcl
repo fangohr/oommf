@@ -197,7 +197,7 @@ Oc_Class Ow_BkgdLogger {
    proc Log { msg type src } {
       global errorInfo errorCode
       set timestamp [clock seconds]
-      Ow_BkgdLogger AddMessage $msg type src $errorInfo $errorCode $timestamp
+      Ow_BkgdLogger AddMessage $msg $type $src $errorInfo $errorCode $timestamp
    }
 
    private proc DisableMessage { msg_id } {

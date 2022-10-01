@@ -394,12 +394,14 @@ protected:
   /// generate a new Oxs_Ext object, and obj points to that with
   /// ownership set true.  In this case it is the responsibility of the
   /// calling routine to see to the new object's eventual destruction.
-  /// If param.size()==1, but no pre-existing object is found, and
+  ///    If param.size()==1, but no pre-existing object is found, and
   /// if subtype == "Oxs_ScalarField", then an Oxs_UniformScalarField
-  /// is created with param[0] as the initialization string.  If
-  /// param.size()==3 and subtype == "Oxs_VectorField", then an
+  /// is created with param[0] as the initialization string.
+  ///    If param.size()==2 then a new object is created of type
+  /// param[0] with init string param[1].
+  ///    If param.size()==3 and subtype == "Oxs_VectorField", then an
   /// Oxs_UniformVectorField is created with param's as the
-  //  initialization string.
+  /// initialization string.
   ///    On failure, this routine will throw an exception.  In no case
   /// is the return obj value a NULL pointer.
 

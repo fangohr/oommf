@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Effects of the Installed Tcl/Tk</TITLE>
+<META NAME="description" CONTENT="Effects of the Installed Tcl/Tk">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Check_Your_Platform_Configu.html">
+<LINK REL="previous" HREF="Download.html">
+<LINK REL="up" HREF="Basic_Installation.html">
+<LINK REL="next" HREF="Check_Your_Platform_Configu.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html227"
+  HREF="Check_Your_Platform_Configu.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html223"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html217"
+  HREF="Download.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html225"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html228"
+  HREF="Check_Your_Platform_Configu.html">Check Your Platform Configuration</A>
+<B> Up:</B> <A NAME="tex2html224"
+  HREF="Basic_Installation.html">Basic Installation</A>
+<B> Previous:</B> <A NAME="tex2html218"
+  HREF="Download.html">Download</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00322000000000000000"></A><A NAME="sec:install.tcltk"></A>
+<BR>
+Effects of the Installed Tcl/Tk
+</H2>
+OOMMF interacts with your Tcl/Tk installation in several ways.  One
+important restriction is that the major+minor release number of
+Tcl/Tk must match the major+minor release number of the Tcl/Tk that OOMMF was built against.  For example, if OOMMF was built using
+Tcl/Tk 8.5.18, then the resulting executables can run with any past or
+future releases of Tcl/Tk from the 8.5.* series, but they won't run
+(for example) with Tcl/Tk 8.4.20 or 8.6.4.
+
+<P>
+Another restriction is that the width of memory addresses in Tcl/Tk and OOMMF must match.  Most general-purpose operating systems today
+use primarily 64-bit memory addresses, but for backwards compatibility
+can also run programs using 32-bit memory addresses.  However, a 64-bit
+executable cannot link against a 32-bit library, or vice versa.
+Therefore, if you have a 64-bit Tcl/Tk installed, then you will need
+a 64-bit OOMMF, and likewise a 32-bit Tcl/Tk needs a 32-bit OOMMF.
+
+<P>
+Another restriction is that while OOMMF can be built to run in
+parallel across multiple cpu cores on a shared memory machine using
+threads, to do this requires that the installed Tcl/Tk be
+thread-enabled.  Typical Tcl/Tk installs on Windows and macOS are
+thread-enabled.  Tcl/Tk installs on recent releases of Unix also
+tend to be thread-enabled, but some older versions have non-threaded
+Tcl/Tk installs.  If your system Tcl/Tk install is non-threaded,
+then you can either build a non-threaded version of OOMMF, or else you
+can make an additional, threaded Tcl/Tk install, for example under
+your home directory or <TT><B>/usr/local</B></TT>.  Be aware that if you have
+multiple Tcl/Tk installations on your system then you need to be
+careful to use the proper <TT><B>tclsh</B></TT> whenever you build or launch
+OOMMF.
+
+<P>
+If you download OOMMF with pre-built binaries, then it is imperative
+that you select the download that matches the major+minor release
+number and memory address width of the Tcl/Tk you want to run
+OOMMF with.  On the other hand, if you build OOMMF from source,
+then the <TT><B>tclsh</B></TT> you use to run the build process is inspected to
+determine relevant information about the local Tcl/Tk environment.
+Some adjustment of the platform
+configuration file, as described in the next section, may be
+necessary.  Also, in many cases the compilers used to build 32-bit and
+64-bit executables are different--if you encounter build problems,
+double-check that the proper compiler is being used.
+
+<P>
+All of the OOMMF downloads containing pre-built binaries are built for
+use with thread-enabled Tcl/Tk.  You will need to build from source if
+you want a non-threaded OOMMF.  The build scripts will detect if the
+<TT><B>tclsh</B></TT> running the build procedure is non-threaded and will build
+OOMMF appropriately.
+
+<P>
+In all cases, use the platform configuration check described in the next
+section to verify the compatibility of your Tcl/Tk and OOMMF installs.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html227"
+  HREF="Check_Your_Platform_Configu.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html223"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html217"
+  HREF="Download.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html225"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

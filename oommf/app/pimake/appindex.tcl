@@ -2,7 +2,7 @@
 # to launch the build (aka "user_tclsh").
 Oc_Application Define {
     -name		pimake
-    -version		2.0a3
+    -version		2.0b0
     -machine		user_tclsh
     -file		pimake.tcl
     -mode		fg

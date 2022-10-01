@@ -1,4 +1,4 @@
-\section{Command Line Utilities}\label{sec:cmdutils}
+\chapter{Command Line Utilities}\label{sec:cmdutils}
 
 This section documents a few utilities distributed with \OOMMF\ that are
 run from the command line (\Unix\ shell or \Windows\ \DOS\ prompt).
@@ -7,7 +7,7 @@ with a micromagnetic simulation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Bitmap File Format Conversion:
+\section{Bitmap File Format Conversion:
           any2ppm}\label{sec:any2ppm}%
 \index{file!bitmap}\index{file!ppm}\index{file!bmp}\index{file!gif}%
 \index{application!any2ppm}\index{file!conversion}
@@ -21,7 +21,7 @@ supported.  Additional formats may be available if the \Tcl/\Tk\
 package is installed on your system.  (Note: \OOMMF\ support for BMP
 requires \Tk\ 8.0\index{requirement!Tk~8.0+} or later.)
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{any2ppm} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl any2ppm [standard options] [-f] [-format fmt] \
@@ -83,20 +83,21 @@ input devices.)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Making Data Tables from Vector Fields:
+\section{Making Data Tables from Vector Fields:
           avf2odt}\label{sec:avf2odt}%
 \index{file!vector~field}\index{file!data~table}\index{file!vio}%
 \index{application!avf2odt}\index{file!conversion}
 The \app{avf2odt} program converts \textit{rectangularly} meshed vector field
-files in any of the \latexhtml{recognized formats (\OVF, \VIO; see
-Sec.~\ref{sec:vfformats})}{\htmlref{recognized formats}{sec:vfformats}
-(\OVF, \VIO)} into the \hyperrefhtml{\ODT~1.0}{\ODT~1.0
-(Sec.~}{)}{sec:odtformat} data table format.  (Irregular meshes are
+files in any of the
+\hyperrefhtml{recognized formats}{recognized formats (\OVF, \VIO; see
+  Ch.~}{)}{sec:vfformats}\HTMLoutput{ (\OVF, \VIO)}
+into the \hyperrefhtml{\ODT~1.0}{\ODT~1.0
+(Ch.~}{)}{sec:odtformat} data table format.  (Irregular meshes are
 not supported by this command.  Note that any \OVF\ file using the
 ``irregular'' meshtype is considered to be using an irregular mesh, even
 if the mesh nodes do in fact lie on a rectangular grid.)
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{avf2odt} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2odt [standard options] \
@@ -194,7 +195,7 @@ where
   Determines the style of headers written to the output \ODT\ file(s).
   The full style (default) provides the standard headers, as described
   in the \hyperrefhtml{\ODT\ documentation}{\ODT\ documentation
-  (Sec.~}{)}{sec:odtformat}.  Specifying ``none'' produces raw data
+  (Ch.~}{)}{sec:odtformat}.  Specifying ``none'' produces raw data
   lines without any headers.  The collapse style is used with multiple
   input files and the \cd{-onefile} output option to concatenate
   output with no \ODT\ header information between the segments.
@@ -329,16 +330,16 @@ replaces this with the extension \fn{.odt}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Vector Field File Format Conversion:
+\section{Vector Field File Format Conversion:
           avf2ovf}\label{sec:avf2ovf}%
 \index{file!vector~field}\index{file!vio}%
 \index{application!avf2ovf}\index{file!conversion}
 The \app{avf2ovf} program converts vector field files from any of the
-\latexhtml{recognized formats (\OVF, \VIO; see
-Sec.~\ref{sec:vfformats})}{\htmlref{recognized formats}{sec:vfformats}
-(\OVF, \VIO)} into the \OOMMF\ \OVF\ or the Python NumPy NPY format.
+\hyperrefhtml{recognized formats}{recognized formats (\OVF, \VIO; see
+  Ch.~}{)}{sec:vfformats}\HTMLoutput{ (\OVF, \VIO)}
+into the \OOMMF\ \OVF\ or the Python NumPy NPY format.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{avf2ovf} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ovf [standard options] \
@@ -479,9 +480,9 @@ description}{OVF file description (Sec.~}{,
 page~\pageref{sec:ovfformat})}{sec:ovfformat}.
 
 
-\sssechead{Known Bugs}
+\starssechead{Known Bugs}
 If the input file contains an explicit boundary polygon (cf.\ the
-\cd{boundary} entry in the \htmlref{Segment Header
+\cd{boundary} entry in the \htmlonlyref{Segment Header
 block}{sec:ovfsegmentheader} subsection of the {\hyperrefhtml{OVF file
 description}{OVF file description, Sec.~}{}{sec:ovfformat}}) then the
 output file will also contain an explicit boundary polygon.  If clipping
@@ -493,7 +494,7 @@ boundary edges that don't run parallel to a coordinate axis.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Making Bitmaps from Vector Fields:
+\section{Making Bitmaps from Vector Fields:
             avf2ppm}\label{sec:avf2ppm}%
 \index{file!bitmap}\index{file!vector~field}\index{file!conversion}%
 \index{animations}
@@ -504,10 +505,10 @@ bitmaps suitable for inclusion into documents or collating into movies.
 The command line arguments control filename and format selection, while
 plain-text configuration files, modeled after the
 {\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
-(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}} configuration dialog
+(Ch.~}{)}{sec:mmdisp}\index{application!mmDisp}} configuration dialog
 box, specify display parameters.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{avf2ppm} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ppm [standard options] [-config file] [-f] \
@@ -518,7 +519,7 @@ where
 \begin{description}
 \item[\optkey{-config file}]
   User configuration file that specifies image display parameters.  This
-  file is discussed in \htmlref{detail below}{sec:avf2ppmconfig}.
+  file is discussed in \htmlonlyref{detail below}{sec:avf2ppmconfig}.
 \item[\optkey{-f}]
   Force overwriting of existing (output) files.  By default, if
   \app{avf2ppm} tries to create a file, say \fn{foo.ppm}, that already
@@ -601,16 +602,12 @@ the input file specification string from expansion by the shell, as in
 \cd{-ipat '*.omf'}.)  You may also pipe together multiple filters, e.g.,
 \cd{-filter "ppmquant 256 | ppmtogif"}\index{application!ppmquant}.
 
-\begin{rawhtml}
-<A NAME="pt:avf2ppm.config"></A>
-\end{rawhtml}
-\sssechead{Configuration
-files\label{sec:avf2ppmconfig}}\index{file!configuration}
+\starssechead{Configuration files\label{sec:avf2ppmconfig}}\index{file!configuration}
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-\html{\htmlref{\app{mmDisp} configuration
-files}{sec:mmdispconfig}.}\latex{\app{mmDisp} configuration file
-(Sec.~\ref{sec:mmdispconfig}, page~\pageref{sec:mmdispconfig}).}
+\hyperrefhtml{\app{mmDisp} configuration file}{\app{mmDisp}
+  configuration file (Sec.~}{,}{sec:mmdispconfig}\NONHTMLoutput{
+  page~\pageref{sec:mmdispconfig})}.
 
 Each of the configurable parameters is an element in an array named
 \cd{plot\_config}.  The default values for this array are read first
@@ -624,8 +621,8 @@ followed by the local customization file
 \end{quote}
 if it exists.  Lastly, any files passed as \cd{-config} options on the
 command line are input.  Each of these parameters is interpreted as
-explained in the \htmlref{\app{mmDisp}}{sec:mmdispconfig}
-documentation\latex{ (q.v.)}, except that \app{avf2ppm} ignores the
+explained in the \htmlonlyref{\app{mmDisp}}{sec:mmdispconfig}
+documentation, except that \app{avf2ppm} ignores the
 \cd{misc,defaultwindowwidth} and \cd{misc,defaultwindowheight}
 parameters, and the following additional parameters are available:
 \begin{description}
@@ -672,11 +669,11 @@ parameters, and the following additional parameters are available:
 \end{description}
 
 The \hyperrefhtml{default configuration file}{default configuration file
-shown in Fig.~}{}{fig:avf2ppm.config}\latex{
+shown in Fig.~}{}{fig:avf2ppm.config}\NONHTMLoutput{
 (page~\pageref{fig:avf2ppm.config})} can be used as a starting point for
 user configuration files.  You may also use configuration files produced
 by the \btn{File\pipe Write config\ldots} command in
-\htmlref{\app{mmDisp}}{sec:mmdisp}, although any of the above
+\htmlonlyref{\app{mmDisp}}{sec:mmdisp}, although any of the above
 \app{avf2ppm}-specific parameters that you wish to use will have to be
 added manually, using a plain text editor.  You may omit any entries
 that you do not want to change from the default.  You may ``layer''
@@ -685,7 +682,7 @@ the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
 \begin{codelisting}{f}{fig:avf2ppm.config}{Contents of default configuration
-file \fn{avf2ppm.config}.}{pt:avf2ppm.config}
+file \fn{avf2ppm.config}.}{sec:avf2ppmconfig}{ref}
 \begin{verbatim}
 array set plot_config {
     arrow,status       1                misc,background    #FFFFFF
@@ -700,24 +697,25 @@ array set plot_config {
     arrow,autosample   1                misc,height        480
     arrow,subsample    10               misc,crop          1
     arrow,size         1                misc,zoom          0
-                                        misc,rotation      0
-    pixel,status       1                misc,datascale     0
-    pixel,colormap     Teal-White-Red   misc,relcenterpt   {0.5 0.5 0.5}
-    pixel,colorcount   100
-    pixel,opaque       1                viewaxis            +z
-    pixel,quantity     x                viewaxis,xarrowspan {}
-    pixel,colorphase   0                viewaxis,xpixelspan {}
-    pixel,colorreverse 0                viewaxis,yarrowspan {}
-    pixel,autosample   1                viewaxis,ypixelspan {}
-    pixel,subsample    0                viewaxis,zarrowspan {}
-    pixel,size         1                viewaxis,zpixelspan {}
+    arrow,viewscale    1                misc,rotation      0
+                                        misc,datascale     0
+    pixel,status       1                misc,relcenterpt   {0.5 0.5 0.5}
+    pixel,colormap     Teal-White-Red
+    pixel,colorcount   100              viewaxis            +z
+    pixel,opaque       1                viewaxis,xarrowspan {}
+    pixel,quantity     x                viewaxis,xpixelspan {}
+    pixel,colorphase   0                viewaxis,yarrowspan {}
+    pixel,colorreverse 0                viewaxis,ypixelspan {}
+    pixel,autosample   1                viewaxis,zarrowspan {}
+    pixel,subsample    0                viewaxis,zpixelspan {}
+    pixel,size         1
 }
 \end{verbatim}
 \end{codelisting}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Making \postscript\ from Vector Fields:
+\section{Making \postscript\ from Vector Fields:
             avf2ps}\label{sec:avf2ps}%
 \index{file!PostScript}\index{file!vector~field}\index{file!conversion}
 
@@ -729,9 +727,9 @@ printer.  Operation of the \app{avf2ps} command is modeled after the
 {\hyperrefhtml{\app{avf2ppm} command}{\app{avf2ppm} command
 (Sec.~}{)}{sec:avf2ppm}\index{application!avf2ppm}} and the print
 dialog box in {\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
-(Sec.~}{)}{sec:mmdisp}\index{application!mmDisp}}.
+(Ch.~}{)}{sec:mmdisp}\index{application!mmDisp}}.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{avf2ps} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avf2ps [standard options] [-config file] [-f] \
@@ -742,7 +740,7 @@ where
 \begin{description}
 \item[\optkey{-config file}]
   User configuration file that specifies image display parameters.  This
-  file is discussed in \htmlref{detail below}{sec:avf2psconfig}.
+  file is discussed in \htmlonlyref{detail below}{sec:avf2psconfig}.
 \item[\optkey{-f}]
   Force overwriting of existing (output) files.  By default, if
   \app{avf2ps} tries to create a file, say \fn{foo.ps}, that already
@@ -774,7 +772,7 @@ where
 
 The file specification options, \cd{-ipat}, \cd{-opatexp}, and
 \cd{-opatsub}, are interpreted in the same manner as for the
-\htmlref{\app{avf2ppm} application}{sec:avf2ppm}.
+\htmlonlyref{\app{avf2ppm} application}{sec:avf2ppm}.
 
 If you have command line \postscript\ processing ``filter'' programs,
 e.g., \app{ghostscript}\index{application!ghostscript}, then you can
@@ -795,16 +793,11 @@ On \Unix, either drop the \cd{-ipat} flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
 \cd{-ipat '*.ovf'}.
 
-\begin{rawhtml}
-<A NAME="pt:avf2ps.config"></A>
-\end{rawhtml}
-\sssechead{Configuration
-files\label{sec:avf2psconfig}}\index{file!configuration}
+\starssechead{Configuration files\label{sec:avf2psconfig}}\index{file!configuration}
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
-\html{\htmlref{\app{mmDisp} configuration
-files}{sec:mmdispconfig}.}\latex{\app{mmDisp} configuration file
-(Sec.~\ref{sec:mmdispconfig}, page~\pageref{sec:mmdispconfig}).}
+\hyperrefhtml{\app{mmDisp} configuration file}{\app{mmDisp} configuration file
+(Sec.~}{,}{sec:mmdispconfig}\NONHTMLoutput{ page~\pageref{sec:mmdispconfig})}.
 
 The arrays \cd{plot\_config} and \cd{print\_config} hold the
 configurable parameters.  The default values for these arrays are read
@@ -818,8 +811,8 @@ followed by the local customization file
 \end{quote}
 if it exists.  Lastly, any files passed as \cd{-config} options on the
 command line are input.  Each of these parameters is interpreted as
-explained in the \htmlref{\app{mmDisp}}{sec:mmdispconfig}
-documentation\latex{ (q.v.)}, except that \app{avf2ps} ignores the
+explained in the \htmlonlyref{\app{mmDisp}}{sec:mmdispconfig}
+documentation, except that \app{avf2ps} ignores the
 \cd{misc,defaultwindowwidth} and \cd{misc,defaultwindowheight}
 parameters, and the following additional parameters are available:
 \begin{description}
@@ -858,11 +851,11 @@ parameters, and the following additional parameters are available:
 \end{description}
 
 The \hyperrefhtml{default configuration file}{default configuration file
-shown in Fig.~}{}{fig:avf2ps.config}\latex{
+shown in Fig.~}{}{fig:avf2ps.config}\NONHTMLoutput{
 (page~\pageref{fig:avf2ps.config})} can be used as a starting point for
 user configuration files.  You may also use configuration files produced
 by the \btn{File\pipe Write config\ldots} command in
-\htmlref{\app{mmDisp}}{sec:mmdisp}, although any of the above
+\htmlonlyref{\app{mmDisp}}{sec:mmdisp}, although any of the above
 \app{avf2ps}-specific parameters that you wish to use will have to be
 added manually, using a plain text editor.  You may omit any entries
 that you do not want to change from the default.  You may ``layer''
@@ -871,32 +864,35 @@ the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
 \begin{codelisting}{f}{fig:avf2ps.config}{Contents of default configuration
-file \fn{avf2ps.config}.}{pt:avf2ps.config}
+  file \fn{avf2ps.config}.}{sec:avf2psconfig}{ref}
 \begin{verbatim}
 array set plot_config {
-  arrow,status       1                  misc,background     #FFFFFF
-  arrow,colormap     Black-Gray-White   misc,drawboundary   1
-  arrow,colorcount   0                  misc,boundarywidth  1
-  arrow,quantity     z                  misc,boundarycolor  #000000
-  arrow,colorphase   0.                 misc,boundarypos    front
-  arrow,colorinvert  0                  misc,matwidth       0
-  arrow,autosample   1                  misc,matcolor       #FFFFFF
-  arrow,subsample    10                 misc,margin         10
-  arrow,size         1                  misc,width          640
-  arrow,antialias    1                  misc,height         480
-                                        misc,crop           1
-  pixel,status       1                  misc,zoom           0
-  pixel,colormap     Teal-White-Red     misc,rotation       0
-  pixel,colorcount   225                misc,datascale      0
-  pixel,opaque       1                  misc,relcenterpt {0.5 0.5 0.5}
-  pixel,quantity     x
-  pixel,colorphase   0.                 viewaxis            +z
-  pixel,colorinvert  0                  viewaxis,xarrowspan {}
-  pixel,autosample   1                  viewaxis,xpixelspan {}
-  pixel,subsample    0                  viewaxis,yarrowspan {}
-  pixel,size         1                  viewaxis,ypixelspan {}
-                                        viewaxis,zarrowspan {}
-                                        viewaxis,zpixelspan {}
+  arrow,status       1                  misc,background    #FFFFFF
+  arrow,antialias    1                  misc,drawboundary  1
+  arrow,colormap     Red-Black-Blue     misc,boundarywidth 1
+  arrow,colorcount   100                misc,boundarycolor #000000
+  arrow,quantity     z                  misc,boundarypos   front
+  arrow,colorphase   0                  misc,matwidth      0
+  arrow,colorreverse 0                  misc,matcolor      blue
+  arrow,autosample   1                  misc,margin        10
+  arrow,subsample    10                 misc,width         640
+  arrow,size         1                  misc,height        480
+  arrow,viewscale    1                  misc,crop          1
+  arrow,boundarywidth 0.0               misc,zoom          0
+  arrow,boundarycolor #000000           misc,rotation      0
+  arrow,outlinewidth 0.0                misc,datascale     0
+  arrow,outlinecolor #000000            misc,relcenterpt   {0.5 0.5 0.5}
+
+  pixel,status       1                  viewaxis            +z
+  pixel,colormap     Teal-White-Red     viewaxis,xarrowspan {}
+  pixel,colorcount   100                viewaxis,xpixelspan {}
+  pixel,opaque       1                  viewaxis,yarrowspan {}
+  pixel,quantity     x                  viewaxis,ypixelspan {}
+  pixel,colorphase   0                  viewaxis,zarrowspan {}
+  pixel,colorreverse 0                  viewaxis,zpixelspan {}
+  pixel,autosample   1
+  pixel,subsample    0
+  pixel,size         1
 }
 array set print_config {
   orient   landscape                    tmargin   1.0
@@ -910,17 +906,17 @@ array set print_config {
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Vector Field File Difference:
+\section{Vector Field File Difference:
           avfdiff}\label{sec:avfdiff}%
 \index{file!vector~field}\index{file!vector~field}\index{file!vio}%
 \index{application!avfdiff}\index{file!difference}
 The \app{avfdiff} program computes differences between vector field files
-in any of the \latexhtml{recognized formats (\OVF, \VIO; see
-Sec.~\ref{sec:vfformats})}{\htmlref{recognized formats}{sec:vfformats}
-(\OVF, \VIO)}.  The input data must lie on rectangular meshes with
-identical dimensions.
+in any of the
+\hyperrefhtml{recognized formats}{recognized formats (\OVF, \VIO; see
+  Ch.~}{)}{sec:vfformats}\HTMLoutput{ (\OVF, \VIO)}.  The input data
+must lie on rectangular meshes with identical dimensions.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{avfdiff} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl avfdiff [standard options] [-cross] [-filesort method] \
@@ -953,7 +949,7 @@ where
 \item[\optkey{-odt label units valexpr}]
   Computes the file differences, but instead of writing difference files
   to disk this option writes \OOMMF\ Data Table
-  \hyperrefhtml{(\ODT)}{(\ODT\ format, Sec.~}{)}{sec:odtformat} output to
+  \hyperrefhtml{(\ODT)}{(\ODT\ format, Ch.~}{)}{sec:odtformat} output to
   stdout.  The \ODT\ output consists of eight columns.  The first column
   is an index column identifying the target file (\cd{file-1} through
   \cd{file-n}).  The \cd{label} parameter is a string specifying the
@@ -967,7 +963,7 @@ where
   target filename, \cd{\$f2} is the second number appearing in the target
   filename, \cd{\$d1} is the first number appearing in the ``Desc''
   fields in the header of the target file, etc.  This control is
-  analogous to the \cd{-index} option to 
+  analogous to the \cd{-index} option to
   \hyperrefhtml{\cd{avf2odt}}{\cd{avf2odt} (Sec.~}{)}{sec:avf2odt}.
   The next three columns are the sum of each of the vector components in
   the difference.  The last four columns are the averaged $L^1$ norm,
@@ -1007,13 +1003,13 @@ For output file format details, see the \hyperrefhtml{OVF file
 description}{OVF file description (Sec.~}{)}{sec:ovfformat}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Cyclic Redundancy Check: crc32\label{sec:crc32}}%
+\section{Cyclic Redundancy Check: crc32\label{sec:crc32}}%
 \index{application!crc32}\index{CRC-32}
 
 The \app{crc32} application computes 32-bit cyclic redundancy checksums
 (CRC-32) on files.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{crc32} command line is:
 \begin{verbatim}
 tclsh oommf.tcl crc32 [standard options] [-binary|-text] \
@@ -1047,12 +1043,12 @@ If the verbosity level is 1 or greater, then the length of the byte
 stream as processed by the CRC-32 computation is also reported.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Killing \OOMMF\ Processes: killoommf\label{sec:killoommf}}%
+\section{Killing \OOMMF\ Processes: killoommf\label{sec:killoommf}}%
 \index{application!killoommf}\index{processes!killing}
 
 The \app{killoommf} application terminates running \OOMMF\ processes.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{killoommf} command line is:
 \begin{verbatim}
 tclsh oommf.tcl killoommf [standard options] [-account name] \
@@ -1063,7 +1059,7 @@ where
 \begin{description}
 \item[\optkey{-account name}]
  Specify the account name.  The default is the same used by
- \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
+ \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Ch.~}{)}{sec:mmlaunch}:
  the current user login name, except on \Windows~9X, where the dummy
  account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
  instead.
@@ -1098,7 +1094,7 @@ where
 The \app{killoommf} command affects processes that listen to \OOMMF\
 message traffic.  These are the same applications that are listed in
 the ``Threads'' list of \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
-(Sec.~}{)}{sec:mmlaunch}.  The command
+(Ch.~}{)}{sec:mmlaunch}.  The command
 \begin{verbatim}
 tclsh oommf.tcl killoommf all
 \end{verbatim}
@@ -1116,31 +1112,27 @@ system, and then using the system facilities for terminating processes
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Last Oxsii/Boxsi run:
+\section{Last Oxsii/Boxsi run:
             lastjob\label{sec:lastjob}}%
 \index{application!lastjob}
 
-The \app{lastjob} command reads through
-\hyperrefhtml{Oxs}{Oxs (Sec.~}{)}{sec:oxs}\index{application!Oxs}
-log files and identifies
+The \app{lastjob} command reads through \hyperrefhtml{Oxs}{Oxs
+(Ch.~}{)}{sec:oxs}\index{application!Oxs} log files and identifies
 the last simulation run.  From information in the log file,
-\app{lastjob} constructs a command equivalent to that used to launch
-the last simulation and prints that command to stdout.  If that
-simulation is not recorded as complete in the log file, and a restart is
-requested, then the simulation will be restarted with the
-\cd{-restart 1} comand line option.  If a restart
-(checkpoint) file exists for the simulation, then the command will
-restart the simulation at the checkpoint state.  If a restart file
-cannot be found, then the job restart will fail.
-(By default, \app{oxsii} and \app{boxsi} write
-\latex{checkpoint files (Sec.~\ref{sec:oxsDrivers},
-page~\pageref{html:oxsdrivercheckpoint})}%
-\html{\htmlref{checkpoint files}{html:oxsdrivercheckpoint}}
-to disk every fifteen minutes.  If a simulation is aborted, for example
-by a system crash, then the checkpoint file can be used to restart the
-simulation.)
+\app{lastjob} constructs a command equivalent to that used to launch the
+last simulation and prints that command to stdout.  If that simulation
+is not recorded as complete in the log file, and a restart is requested,
+then the simulation will be restarted with the \cd{-restart 1} comand
+line option.  If a restart (checkpoint) file exists for the simulation,
+then the command will restart the simulation at the checkpoint state.
+If a restart file cannot be found, then the job restart will fail.  (By
+default, \app{oxsii} and \app{boxsi} write \arbtargetlink{checkpoint
+files}{checkpoint files (Sec.~\ref{sec:oxsDrivers},
+page~}{)}{PToxsdrivercheckpoint} to disk every fifteen minutes.  If a
+simulation is aborted, for example by a system crash, then the
+checkpoint file can be used to restart the simulation.)
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{lastjob} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl lastjob [-logfile logname] [-unfinished] [-v] <show|restart> \
@@ -1182,7 +1174,7 @@ protect them from expansion by the shell.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Launching the \OOMMF\ host server:
+\section{Launching the \OOMMF\ host server:
    launchhost\label{sec:launchhost}}%
 \index{application!launchhost}\index{processes!host~server}\index{ports}
 
@@ -1192,7 +1184,7 @@ needed by client applications.  However, it can be useful, primarily in
 batch compute environments, to launch the host server explicitly in
 order to control the host server port address.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{launchhost} command line is:
 \begin{verbatim}
 tclsh oommf.tcl launchhost [standard options] port
@@ -1208,7 +1200,7 @@ actually used to stdout.
 \end{description}
 As described in the \hyperrefhtml{\OOMMF\ architecture
 documentation}{\OOMMF\ architecture documentation
-(Sec.~}{)}{sec:arch}, the host server (host service directory) plays a
+(Ch.~}{)}{sec:arch}, the host server (host service directory) plays a
 vital role in allowing various \OOMMF\ applications to communicate
 with one another.  To work, the host server port number must be known
 to all \OOMMF\ applications.  Typically this port number is determined
@@ -1225,14 +1217,14 @@ A difficulty here is the bookkeeping necessary to insure that each
 session really gets a distinct value.  Using \app{launchhost} with
 \cd{port} set to zero provides a straightforward solution to this
 problem.  For example, consider the Bourne shell script:
-\begin{verbatim}
+\begin{alltt}
    #!/bin/sh
-   OOMMF_HOSTPORT=`tclsh oommf.tcl launchhost 0`
+   OOMMF_HOSTPORT=\backtick{}tclsh oommf.tcl launchhost 0\backtick
    export OOMMF_HOSTPORT
    tclsh oommf.tcl mmArchive
    tclsh oommf.tcl boxsi sample.mif
    tclsh oommf.tcl killoommf all
-\end{verbatim}
+\end{alltt}\html{\\}
 The second line (\cd{OOMMF\_HOSTPORT=\ldots}) launches the host server
 on a random port; the port selected is printed to stdout by
 \app{launchhost} and sets the environment variable
@@ -1245,16 +1237,16 @@ When \app{boxsi} returns, the \app{killoommf} command is used to
 terminate all \OOMMF\ processes in this session.  (Alternatively, the
 \app{boxsi} command option \cd{-kill} may be used to the same effect
 as \app{killoommf}.)  For \app{csh} and derivatives, use
-\begin{verbatim}
-   setenv OOMMF_HOSTPORT `tclsh oommf.tcl launchhost 0`
-\end{verbatim}
+\begin{alltt}
+   setenv OOMMF_HOSTPORT \backtick{}tclsh oommf.tcl launchhost 0\backtick
+\end{alltt}\html{\\}
 in place of the two \cd{OOMMF\_HOSTPORT} commands in the above
 example.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Calculating \vH\ Fields from Magnetization:
+\section{Calculating \vH\ Fields from Magnetization:
             mag2hfield}\label{sec:mag2hfield}%
 \index{file!magnetization}\index{file!vector~field}\index{file!conversion}
 
@@ -1262,7 +1254,7 @@ The \app{mag2hfield}\index{application!mag2hfield} utility takes a
 \MIF~1.1 micromagnetic problem specification file
 (\hyperrefhtml{\fn{.mif}}{\fn{.mif}, see Sec.~}{}{sec:mif1format}) and a
 magnetization file (\hyperrefhtml{\fn{.omf}}{\fn{.omf}, see
-Sec.~}{}{sec:vfformats}) and uses the \hyperrefhtml{mmSolve2D}{mmSolve2D
+Ch.~}{}{sec:vfformats}) and uses the \hyperrefhtml{mmSolve2D}{mmSolve2D
 (Sec.~}{)}{sec:mmsolve2d} computation engine to calculate the resulting
 component (self-magnetostatic, exchange, crystalline anisotropy, Zeeman)
 and total energy and/or \vH\ fields.  The main use of this utility to study
@@ -1270,7 +1262,7 @@ the fields in a simulation using magnetization files generated by an
 earlier
 \app{mmSolve2D} run.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{mag2hfield} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl mag2hfield [standard options]
@@ -1308,7 +1300,7 @@ where
 
 The \vH\ field output file format is determined by the
 \latexhtml{\cd{Total Field Output Format} record of the input \MIF~1.1 file
-(Sec.~\ref{sec:mif1format}).}{\htmlref{Total Field Output
+(Sec.~\ref{sec:mif1format}).}{\htmlonlyref{Total Field Output
 Format}{sec:mif1outspec} record of the input \MIF~1.1 file.}  The output
 file names are constructed using the form \fn{{\em
 basename}-hanisotropy.ohf}, \fn{{\em basename}-hzeeman.ohf}, etc., where
@@ -1318,25 +1310,25 @@ of any trailing \fn{.omf} or
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\MIF\ Format Conversion: mifconvert}\label{sec:mifconvert}%
+\section{\MIF\ Format Conversion: mifconvert}\label{sec:mifconvert}%
 \index{file!MIF}\index{file!conversion}
 
 The \app{mifconvert}\index{application!mifconvert} utility converts any
 of the
-\hyperrefhtml{\MIF}{\MIF\ (Sec.~}{,
+\hyperrefhtml{\MIF}{\MIF\ (Ch.~}{,
 page~\pageref{sec:mifformat})}{sec:mifformat} formats into the
 \MIF~2.1 format used by the
-\hyperrefhtml{Oxs 3D solvers}{Oxs 3D solvers (Sec.~}{)}{sec:oxs}.
+\hyperrefhtml{Oxs 3D solvers}{Oxs 3D solvers (Ch.~}{)}{sec:oxs}.
 It can also convert between
 the  \MIF~1.1 and \MIF~1.2
 formats generated by micromagnetic problem editor,
-\hyperrefhtml{mmProbEd}{mmProbEd (Sec.~}{)}{sec:mmprobed}.
+\hyperrefhtml{mmProbEd}{mmProbEd (Ch.~}{)}{sec:mmprobed}.
 
 As a migration aid, \app{mifconvert} will convert most files from the
 obsolete \MIF~2.0 format used by \OOMMF\ 1.2a2 into the newer
 \MIF~2.1 format.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{mifconvert} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl mifconvert [-f|--force] [--format fmt]
@@ -1378,7 +1370,7 @@ where
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Process Nicknames: nickname\label{sec:nickname}}%
+\section{Process Nicknames: nickname\label{sec:nickname}}%
 \index{application!pidinfo}\index{PID's}\index{OID's}\index{nicknames}
 
 The \app{nickname} command associates nicknames to running instances
@@ -1386,7 +1378,7 @@ of \OOMMF\ applications.  These names are used by the \MIF\ 2.x
 \htmlonlyref{\cd{Destination}}{html:destinationCmd} command\latex{
 (Sec.~\ref{sec:mif2ExtensionCommands})}.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{nickname} command line is:
 \begin{verbatim}
 tclsh oommf.tcl nickname [standard options] [-account name] \
@@ -1396,7 +1388,7 @@ where
 \begin{description}
 \item[\optkey{-account name}]
  Specify the account name.  The default is the same used by
- \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
+ \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Ch.~}{)}{sec:mmlaunch}:
  the current user login name, except on \Windows~9X, where the dummy
  account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
  instead.
@@ -1436,18 +1428,18 @@ applications launched by the \MIF\ \cd{Destination} command.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\ODT\ Derived Quantity Calculator: odtcalc}\label{sec:odtcalc}%
+\section{\ODT\ Derived Quantity Calculator: odtcalc}\label{sec:odtcalc}%
 \index{file!data~table}
 
 The \app{odtcalc}\index{application!odtcalc} utility reads an
-\hyperrefhtml{\ODT}{\ODT\ (Sec.~}{)}{sec:odtformat} file on stdin
+\hyperrefhtml{\ODT}{\ODT\ (Ch.~}{)}{sec:odtformat} file on stdin
 that contains one or more tables, and prints to stdout an \ODT\ file
 consisting of the same tables augmented by additional columns as
 controlled by command line arguments.  This utility enables the calculation
 and recording of new data table columns that can be computed from
 existing columns.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{odtcalc} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl odtcalc [standard options] [var expr unit ...] \
@@ -1490,7 +1482,7 @@ values of earlier new columns may be used to compute the values of later
 new columns.  The order of command line arguments controls the order of
 the new columns that are added to the right side of the data table.
 
-\sssechead{Example}
+\starssechead{Example}
 Suppose \fn{ring.odt} contains hysteresis loop data from an \app{Oxsii}
 simulation where the field was applied in the $xy$-plane at an angle of
 $30^\circ$ from the $x$-axis.  The data file holds field and average
@@ -1520,11 +1512,11 @@ tclsh oommf.tcl odtcols -t csv B m < ring-augmented.odt > ring-export.dat
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\ODT\ Table Concatenation: odtcat}\label{sec:odtcat}%
+\section{\ODT\ Table Concatenation: odtcat}\label{sec:odtcat}%
 \index{file!data~table}
 
 The \app{odtcat}\index{application!odtcat} utility reads an
-\hyperrefhtml{\ODT}{\ODT\ (Sec.~}{)}{sec:odtformat} file on stdin that
+\hyperrefhtml{\ODT}{\ODT\ (Ch.~}{)}{sec:odtformat} file on stdin that
 contains one or more tables, and concatenates them together into a
 single table, creating a new \ODT\ file consisting of a single table.
 When successive tables are joined, the tail of the first is truncated as
@@ -1534,7 +1526,7 @@ seam.
 This tool is useful for fixing up \ODT\ output from a simulation that
 was interrupted and restarted from checkpoint data one or more times.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{odtcat} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl odtcat [standard options] [-b overlap_lines] \
@@ -1592,14 +1584,14 @@ number of tables merged and the number of data lines eliminated.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{\ODT\ Column Extraction: odtcols}\label{sec:odtcols}%
+\section{\ODT\ Column Extraction: odtcols}\label{sec:odtcols}%
 \index{file!data~table}
 
 The \app{odtcols}\index{application!odtcols} utility extracts column
-subsets from \hyperrefhtml{\ODT}{\ODT\ (Sec.~}{)}{sec:odtformat} data
+subsets from \hyperrefhtml{\ODT}{\ODT\ (Ch.~}{)}{sec:odtformat} data
 table files.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{odtcols} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl odtcols [standard options] [-f format] \
@@ -1618,7 +1610,7 @@ where
   String used on output to designate a missing value.  Default
   is the two character open-close curly brace pair, \ocb\ccb, as
   specified by the \hyperrefhtml{\ODT\ file format}{\ODT\ file format
-  (Sec.~}{)}{sec:odtformat}.
+  (Ch.~}{)}{sec:odtformat}.
 \item[\optkey{-q}]
   Silences some meaningless error messages, such as "broken pipe" when
   using the \Unix\ head or tail utilities.
@@ -1634,7 +1626,7 @@ where
   Specify the output format.  Here output\_type should be one of the
   strings \cd{odt}, \cd{csv}, or \cd{bare}.  The default is \cd{odt},
   the \hyperrefhtml{\ODT\ file format}{\ODT\ file format
-  (Sec.~}{)}{sec:odtformat}.  Selecting \cd{csv} will yield a
+  (Ch.~}{)}{sec:odtformat}.  Selecting \cd{csv} will yield a
   ``Comma-Separated Values'' (CSV) file, which can be read by many
   spreadsheet programs.  The \cd{bare} selection produces space separated
   numeric output, with no \ODT\ header, trailer, or comment lines.  The
@@ -1683,7 +1675,7 @@ specified, then the help message is displayed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Oxs package management:
+\section{Oxs package management:
             oxspkg\label{sec:oxspkg}}%
 \index{application!oxspkg}
 
@@ -1697,61 +1689,84 @@ separate invocation of
 \hyperrefhtml{\app{pimake}}{\app{pimake} (Sec.~}{)}{sec:pimake}
 is needed for that.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{oxspkg} launch command is:
-\begin{description}
-\addtolength{\itemsep}{-0.9\baselineskip}
-\item[\latex{\hphantom{\textbf{or}}\hspace{1ex}}]\hspace*{1ex}\latex{\\[-\baselineskip]}
-\verb+tclsh oommf.tcl oxspkg list+
-\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
-\verb+tclsh oommf.tcl oxspkg listfiles pkg [pkg ...]+
-\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
-\verb+tclsh oommf.tcl oxspkg install [-v] [-nopatch] pkg [pkg ...]+
-\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
-\verb+tclsh oommf.tcl oxspkg uninstall pkg [pkg ...]+
-\item[\textbf{or}\hspace{1ex}]\hspace*{1ex}\latex{\\[-0.4\baselineskip]}
-\verb+tclsh oommf.tcl oxspkg copyout pkg [pkg ...] destination+
-\end{description}
+\begin{duplex}
+\item \verb+tclsh oommf.tcl oxspkg list+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg listfiles pkg [pkg ...]+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg readme pkg [pkg ...]+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg requires pkg [pkg ...]+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg install [-v] [-nopatch] pkg [pkg ...]+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg uninstall pkg [pkg ...]+
+\item[\textbf{or}]\html{\\}
+\item \verb+tclsh oommf.tcl oxspkg copyout pkg [pkg ...] destination+
+\end{duplex}
 Glob-style wildcards (*, ?) or the keyword \cd{all} are accepted in
 package specifications.  (If your command shell expands wildcards, as
 is common on \Unix\ systems, then you may need to escape or quote the
 wildcards so that they are passed unadulterated to the \app{oxspkg}
 program.)  The first argument following the \app{oxspkg}
 keyword is one of the sub-commands \cd{list}, \cd{listfiles},
-\cd{install}, \cd{uninstall}, or \cd{copyout}:
+\cd{readme}, \cd{requires}, \cd{install}, \cd{uninstall}, or
+\cd{copyout}:
 \begin{description}
 \item[\optkey{list}]
   Lists all the packges available under
   \fn{oommf/app/oxs/contrib/}, how many (installable) files are in
   each package, and the package install status.
 \item[\optkey{listfiles pkg [pkg \ldots]}]
-  List each of the ``installable'' files for the selected package.
+  Lists each of the ``installable'' files for the selected package.
   (There may be additional files for the package, e.g.\ \fn{README} or
   files with versioning information, included in the
   \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directory.  However, those
   files are ignored by the \app{oxspkg install} command.)
-\item[\optkey{install [-v] [-nopatch] pkg [pkg \ldots]}]
-  Install (copies) the installable files for the selected package
-  from \fn{oommf/app/oxs/contrib/} to \fn{oommf/app/oxs/local/}.
-  This command \textbf{does not} to compile the files or link them
-  into the Oxs executable.  The user is responsible for making a
-  separate call to \htmlonlyref{\app{pimake}}{sec:pimake}
-  to build and link the package.
+\item[\optkey{readme pkg [pkg \ldots]}]
+  Prints to \fn{stdout} the contents of the \fn{README} file (if any)
+  for each package.
+\item[\optkey{requires pkg [pkg \ldots]}]
+  Lists external libraries required for each package, as declared by any
+  \fn{*.rules} files contained in the package. The user should ensure
+  these libraries are installed on the system and included on the
+  compiler and linker search paths before installing the Oxs extension
+  package. In particular, check the
+\begin{verbatim}
+$config SetValue program_compiler_extra_include_dirs ...
+$config SetValue program_linker_extra_lib_dirs ...
+\end{verbatim}
+settings in the \hyperrefhtml{platform configuration file}{platform
+  configuration file (Sec.~}{)}{sec:install.custom}.  There may be
+additional installation information in the package \fn{README} file.
 
-  For third-party packages, the contents of the
-  \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directory will mirror some
-  release of the package from the official maintainer of the package.
-  If those files don't compile cleanly against the current
-  \OOMMF\ distribution, then a patch file will be included in the
-  parent \fn{oommf/app/oxs/contrib/} directory.  Normally that patch
-  file (if any) is automatically applied as part of the installation
-  procedure.  The \cd{-nopatch} option skips the patch step.  Note:
-  The patch step requires that a \app{patch} command exists on the
-  system executable search path.  \app{patch} is a standard system
-  utility on \Unix\ systems.  Versions of \app{patch} for \Windows\ are
-  available, such as the one from the GnuWin project.  If there are no
-  patches for a particular package, then the message \cd{No patches
-    found} will be reported during the install process.
+\item[\optkey{install [-v] [-nopatch] pkg [pkg \ldots]}]
+  Installs (copies) files for the selected package(s) from
+  \fn{oommf/app/oxs/contrib/} to \fn{oommf/app/oxs/local/}.  This
+  command \textbf{does not} compile the files or link them into the Oxs
+  executable.  The user is responsible for making a separate call to
+  \htmlonlyref{\app{pimake}}{sec:pimake} to build and link the
+  package. If the user is running \OOMMF\ distributed with pre-built
+  binaries, then the user should first \cd{cd} to the \OOMMF\ root
+  directory and run
+  \verb+tclsh oommf.tcl pimake distclean+
+  to delete the distributed binaries before running
+  \verb+tclsh oommf.tcl pimake+ to create a new build of \OOMMF. This
+  ensures  new extension binaries are compatible with the rest of
+  the \OOMMF\ install.
+
+  For third-party packages included in \OOMMF\ distributions, the
+  contents of the directory \fn{oommf/app/oxs/contrib/\oab pkg\cab/}
+  will mirror some release of the package from the official source of
+  the package.  If those files don't build properly with the
+  \OOMMF\ distribution, then a patch file will be included in the parent
+  \fn{oommf/app/oxs/contrib/} directory.  Normally that patch file (if
+  any) is automatically applied as part of the installation procedure.
+  The \cd{-nopatch} option skips the patch step. If there are no patches
+  for a particular package, then the message \cd{No patches found} will
+  be reported during the install process.
 
   The \cd{-v} option requests more verbose output.
 \item[\optkey{uninstall pkg [pkg \ldots]}]
@@ -1765,18 +1780,17 @@ keyword is one of the sub-commands \cd{list}, \cd{listfiles},
   \fn{destination} directory.  This is intended as a development aid
   for creating patches for packages.
 \end{description}
-
 Most of the optional packages controlled by \app{oxspkg} are from
-third-party contributors.  However, some may originate with the
-\OOMMF\ core development team, but are made optional because they
-require third-party libraries or are considered too experimental to be
-included among the standard \OOMMF\ packages.  See the \fn{README} file
-in the various \fn{oommf/app/oxs/contrib/\oab pkg\cab/} directories
-for details.
+third-party contributors.  Some may originate with the \OOMMF\ core
+development team, but are made optional because they require third-party
+libraries or are considered too experimental to be included among the
+standard Oxs extension classes.  The various
+\fn{oommf/app/oxs/contrib/\oab pkg\cab/} directories may contain
+\fn{README} files with additional details.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Oxs regression tests:
+\section{Oxs regression tests:
             oxsregression\label{sec:oxsregression}}%
 \index{application!regression}
 
@@ -1786,7 +1800,7 @@ each test, an instance of
 is run and the results are compared against reference results stored
 in subdirectories under \fn{oommf/app/oxs/regression\_tests/}.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{oxsregression} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl runtests [-autoadd] [-alttestdir] [-cleanup] [-ignoreextra]
@@ -1872,13 +1886,13 @@ therefore be as many as \cd{n\,$\times$\,count}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{OOMMF and Process ID Information: pidinfo\label{sec:pidinfo}}%
+\section{OOMMF and Process ID Information: pidinfo\label{sec:pidinfo}}%
 \index{application!pidinfo}\index{PID's}\index{OID's}
 
 The \app{pidinfo} command prints a table mapping OOMMF ID's (OID's)
 to system process ID's (PID's) and application names.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{pidinfo} command line is:
 \begin{verbatim}
 tclsh oommf.tcl pidinfo [standard options] [-account name] \
@@ -1889,7 +1903,7 @@ where
 \begin{description}
 \item[\optkey{-account name}]
  Specify the account name.  The default is the same used by
- \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Sec.~}{)}{sec:mmlaunch}:
+ \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch} (Ch.~}{)}{sec:mmlaunch}:
  the current user login name, except on \Windows~9X, where the dummy
  account ID  ``oommf''\index{platform!Windows!dummy~user~ID} may be used
  instead.
@@ -1934,26 +1948,40 @@ application names to PID's for such purposes.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Platform-Independent Make:
+\section{Platform-Independent Make:
             pimake\label{sec:pimake}}%
 \index{application!pimake}
 
-The application \app{pimake}\index{application!pimake}
-is similar in operation to the
-\Unix\ utility program \fn{make}\index{application!make},
-but it is written entirely in
-\Tcl\ so that it will run anywhere \Tcl\ is installed.
-Like \fn{make}, \fn{pimake} controls the building of one
-file, the {\em target}, from other files.
-Just as \fn{make} is controlled by rules in
-files named \fn{Makefile} or \fn{makefile}, \fn{pimake} is controlled
-by rules in files named \fn{makerules.tcl}.
+The application \app{pimake}\index{application!pimake} is used to
+construct \OOMMF\ end-user executables (and optionally documentation)
+from the distributed source code. It is similar in operation to the
+\Unix\ utility program \app{make}\index{application!make}, but it is
+written entirely in \Tcl\ so that it will run anywhere \Tcl\ is
+installed.  Like \app{make}, \app{pimake} controls the building of a
+{\em target} from other files.  Just as \app{make} is controlled by
+rules in files named \fn{Makefile} or \fn{makefile}, \app{pimake} is
+controlled by rules in files named \fn{makerules.tcl}. \app{pimake}
+generally operates recursively, starting in the current working
+directory and continuing downward through all subdirectories. (The chief
+exception to this is the documentation under \fn{oommf/doc};
+\app{pimake} build requests started in the root directory \fn{oommf}
+ignore the \fn{oommf/doc} subdirectory. Building the
+\OOMMF\ documentation requires a working installation of
+\htmladdnormallinkfoot{\LaTeX}{https://www.latex-project.org} and either
+\htmladdnormallinkfoot{\LaTeX2HTML}{https://www.latex2html.org} or
+\htmladdnormallinkfoot{\LaTeXML}{http://dlmf.nist.gov/LaTeXML/}, so
+\OOMMF\ distributions include pre-built versions of the full
+\OOMMF\ documentation to relieve the end-user the burden of installing
+those tools. On the other hand, clean requests, including in particular
+\cd{maintainer-clean}, will recurse into \fn{oommf/doc}.) The
+\OOMMF\ standard command line option \cd{-cwd} may be used to change the
+starting directory.
 
-\sssechead{Launching}
+\starssechead{Launching}
 The \app{pimake} launch command is:
 \begin{verbatim}
 tclsh oommf.tcl pimake [standard options] \
-   [-d] [-i] [-k] [-out file] [target]
+   [-d] [-i] [-k] [-out file] [-root] [target]
 \end{verbatim}
 where
 \begin{description}
@@ -1969,7 +1997,12 @@ where
   processing dependencies which depend on the error, but continue
   updating other dependencies of target.
 \item[\optkey{-out file}]
-  Write output to named file instead of to the standard output.
+  Write informational output to named file instead of to the standard
+  output.
+\item[\optkey{-root}]
+  Change to the \OOMMF\ root directory. Command line options are
+  processed from left to right, so if used in conjunction with the
+  standard option \cd{-cwd}, \cd{-root} should come first.
 \item[\optkey{target}]
   The file to build.  May also be (and usually is) a symbolic
   target name.  See below for standard symbolic targets.  By default,
@@ -2008,10 +2041,11 @@ Also removes all files and directories generated by
 \fn{configure} target.  Leaves only the files which
 are part of the source code distribution.
 \item[\optkey{maintainer-clean}]
-Remove all files which can possibly be generated from other files.
-The generation might require specialized developer tools.  This
-target is not recommended for end-users, but may be helpful for
-developers.
+Remove all files which can possibly be generated from other files.  If
+run from the \OOMMF\ root directory then all such files,
+\textbf{including \OOMMF\ documentation files}, will be deleted.
+Rebuilding may require specialized developer tools, so use with care.
+This target is intended primarily for developers, not end-users.
 \item[\optkey{help}]
 Print a summary of the standard targets.
 \end{description}

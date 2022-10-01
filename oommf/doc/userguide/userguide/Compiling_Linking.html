@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Compiling and Linking</TITLE>
+<META NAME="description" CONTENT="Compiling and Linking">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Installing.html">
+<LINK REL="previous" HREF="Check_Your_Platform_Configu.html">
+<LINK REL="up" HREF="Basic_Installation.html">
+<LINK REL="next" HREF="Installing.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html252"
+  HREF="Installing.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html248"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html242"
+  HREF="Check_Your_Platform_Configu.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html250"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html253"
+  HREF="Installing.html">Installing</A>
+<B> Up:</B> <A NAME="tex2html249"
+  HREF="Basic_Installation.html">Basic Installation</A>
+<B> Previous:</B> <A NAME="tex2html243"
+  HREF="Check_Your_Platform_Configu.html">Check Your Platform Configuration</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00324000000000000000"></A><A NAME="sec:install.compile"></A>
+<BR>
+Compiling and Linking
+</H2>
+
+<P>
+If you downloaded a distribution with pre-compiled executables, you may
+skip this section.
+
+<P>
+When building OOMMF software from source code, be sure the
+C++ compiler reported by <TT>oommf.tcl +platform</TT> is properly
+configured.  In particular, if you are running on a Windows system,
+please read carefully the notes in the <A HREF="Microsoft_Windows_Options.html#sec:install.windows">Advanced
+  Installation</A>
+section pertaining to your compiler.
+
+<P>
+The compiling and linking of the C++ portions of
+OOMMF software are guided by the application
+<A HREF="Platform_Independent_Make_p.html#sec:pimake"
+ NAME="1248">pimake</A>
+(``Platform Independent Make'') which
+is distributed as part of the OOMMF release.
+To begin building OOMMF software with <TT><B>pimake</B></TT>, first change
+your working directory<A NAME="1250"></A>
+to the root directory of the OOMMF distribution:
+<PRE>
+cd .../path/to/oommf
+</PRE>
+
+<P>
+If you unpacked the new OOMMF release into a directory <TT><B>oommf</B></TT>
+which contained an earlier OOMMF release,
+use <TT><B>pimake</B></TT> to build the target <TT>upgrade</TT>
+to clear away any source code files which were
+in a former distribution but are not part of the latest distribution:
+<PRE>
+tclsh oommf.tcl pimake upgrade
+</PRE>
+
+<P>
+Next, build the target <TT>distclean</TT> to clear away any old executables
+and object files which are left behind from the compilation of the
+previous distribution:
+<PRE>
+tclsh oommf.tcl pimake distclean
+</PRE>
+
+<P>
+Next, to build all the OOMMF software, run <TT><B>pimake</B></TT> without
+specifying a target:
+<PRE>
+tclsh oommf.tcl pimake
+</PRE>
+On some platforms, you cannot successfully compile OOMMF software if
+there are OOMMF programs running.  Check that all OOMMF programs
+have terminated (including those in the background) before trying to
+compile and link OOMMF.
+
+<P>
+When <TT><B>pimake</B></TT> calls on a compiler or other software development
+utility, the command line is printed, so that you may monitor the build
+process.
+Assuming a proper configuration for your platform, <TT><B>pimake</B></TT> should be
+able to compile and link all the OOMMF software without error.  If
+<TT><B>pimake</B></TT> reports errors, please first consult
+<A HREF="Troubleshooting.html#sec:trouble">Troubleshooting</A>
+to see if a fix is already documented.
+If not, please send both the <EM>complete</EM> output
+from <TT><B>pimake</B></TT> and the output from <TT>oommf.tcl +platform</TT>
+to the OOMMF developers when you e-mail to ask for help.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html252"
+  HREF="Installing.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html248"
+  HREF="Basic_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html242"
+  HREF="Check_Your_Platform_Configu.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html250"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

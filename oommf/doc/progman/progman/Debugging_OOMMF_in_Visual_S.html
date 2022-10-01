@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Debugging OOMMF in Visual Studio</TITLE>
+<META NAME="description" CONTENT="Debugging OOMMF in Visual Studio">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="previous" HREF="Introduction_to_LLVM_lldb.html">
+<LINK REL="up" HREF="C++_source_code_debuggers.html">
+<LINK REL="next" HREF="Credits.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html295"
+  HREF="Credits.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html291"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html287"
+  HREF="Introduction_to_LLVM_lldb.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html293"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html296"
+  HREF="Credits.html">Credits</A>
+<B> Up:</B> <A NAME="tex2html292"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<B> Previous:</B> <A NAME="tex2html288"
+  HREF="Introduction_to_LLVM_lldb.html">Introduction to the LLVM</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00663000000000000000"></A><A NAME="sec:debug:visualstudiodebugger"></A>
+<BR>
+Debugging OOMMF in Visual Studio
+</H2>
+The debugger built into Microsoft's Visual Studio provides largely
+similar functionality to <B>gdb</B> and <B>lldb</B>, but with a GUI
+interface. It understands the debugging symbol files produced by the
+Visual C++ <TT>cl</TT> compiler, namely ``Program DataBase'' files
+having the <TT><B>.pdb</B></TT> extension. Other debugger options for this symbol
+file format include the GUI <B>WinDbg</B> mentioned earlier, and the
+related command line tool <B>CDB</B>.
+
+<P>
+Visual Studio is an integrated development environment, and normal usage
+involves building ``projects'' that specify all the source code files
+and rules for building them into an executable program. OOMMF does not
+follow this paradigm, but rather maintains similar information in a
+collection of Tcl <TT><B>makerules.tcl</B></TT> files distributed across the
+development tree. Thus there is no OOMMF project file to load into
+Visual Studio. Instead, to debug an OOMMF application in Visual Studio
+you need to load the application executable directly, along with some
+supplemental run information. The following details the process for
+Visual Studio 2022; specifics may differ somewhat for other releases.
+
+<OL>
+<LI>Launch Visual Studio
+</LI>
+<LI>Select <TT>Open a project or solution</TT> from the <TT>Getting
+  started</TT> pane and then navigate to and select the executable.
+</LI>
+<LI>In the <TT>Solution Explorer</TT> pane, right click on the executable
+  and select <TT>Properties</TT>.
+</LI>
+<LI>Under <TT>Parameters</TT>, fill in the <TT>Arguments</TT> and <TT>Working
+  Directory</TT> fields as appropriate. You may also have to modify the
+  <TT>Environment</TT> setting, in particular if the Tcl and
+  Tk <TT><B>.dll</B></TT>'s are not on the default path used by Visual
+  Studio. In this case click on the ellipsis at the right of the
+  <TT>Environment</TT> row, and then click the <TT>Fetch</TT> button at the
+  bottom of the <TT>Environment</TT> pop-up to load the current
+  environment. Scroll down to variable <TT>path</TT> and edit as necessary.
+  Close when complete.
+</LI>
+<LI>Select <TT>Start</TT> from the toolbar or <TT>Debug|Start Debugging</TT>
+  from the top-level menu bar.
+</LI>
+<LI>Debug! You can use the drop-down menus to perform actions
+  analogous to those described above for the <B>gdb</B> and <B>lldb</B>
+  debuggers. If you get a message that no symbols were loaded, then most
+  likely either the <TT>/Zi</TT> switch was missing from the compile command
+  or else the <TT>/DEBUG</TT> option was missing from the link command. In
+  this case review the OOMMF <A HREF="Configuration_Files.html#sec:debug:configfiles">configuration file
+  settings</A>) and rebuild OOMMF.  The symbols 
+  for the executable should be stored in a <TT><B>*.pdb</B></TT> file next to the
+  executable file.
+</LI>
+<LI>The call stack should automatically appear when you start
+  debugging. If not, you can manually call it up through the menu option
+  <TT>Debug|Windows|Call Stack</TT>. A curious feature of Visual Studio
+  is that the call stack window disappears when execution exits. This
+  happens even when the exit is caused by an abnormal event, for example
+  via an assertion failure. In default OOMMF builds many types
+  of fatal errors are routed through the
+  <TT>Oc_AsyncError::CatchSignal(int)</TT> routine in
+  <TT><B>pkg/oc/ocexcept.cc</B></TT>. If you set a breakpoint in this function then
+  the debugger will stop if it hits this function, but will not exit the
+  debugger, so you can still examine the call stack. Do this before you
+  start the debugging run by pulling up the <TT>Debug|New
+    Breakpoint|Function Breakpoint...</TT> dialog, enter
+  <TT>Oc_AsyncError::CatchSignal(int)</TT> in the ``Function Name'' box,
+  and click ``OK''.
+</LI>
+<LI>Double-clicking on a row in the Call Stack window will bring up
+    the relevant line of source code. Menu option
+    <TT>Debug|Windows|Locals</TT> will open a window showing the variable
+    values accessible at this point in the code. An example is shown in
+    <A HREF="#fig:vsdbgassert">the figure below</A>, where we
+    see that the index variable <TT>i</TT> at line 241 of
+    <TT><B>uniaxialanisotropy.cc</B></TT> has value 40000, but the size of
+    <TT>Ms_inverse</TT> is 40000, meaning the maximum valid index into
+    <TT>Ms_inverse</TT> is only 39999.
+</LI>
+<LI>When you exit the debugger you will be asked if you want to save the
+  <TT><B>.sln</B></TT> (solution) file. If you do, it will be written in the same
+  directory as the executable and <TT><B>.pdb</B></TT> files. In later debugging
+  sessions you can load the solution file in step 2 above and bypass
+  steps 3 and 4.
+</LI>
+</OL>
+<DIV ALIGN="CENTER">
+<A NAME="fig:vsdbgassert"></A> <B>Figure 5.9: <B>Visual
+    Studio Debugger</B> screenshot displaying call stack, source code, and
+  local variables from a debugging session.</B>
+<BR> <IMG ALT="<B>Visual&nbsp;Studio&nbsp;Debugger</B>&nbsp;screenshot" SRC="../giffiles/vsdbg-assert.gif">
+
+</DIV>
+
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html295"
+  HREF="Credits.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html291"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html287"
+  HREF="Introduction_to_LLVM_lldb.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html293"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

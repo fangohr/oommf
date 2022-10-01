@@ -1,0 +1,93 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Optimization</TITLE>
+<META NAME="description" CONTENT="Optimization">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Parallelization.html">
+<LINK REL="previous" HREF="Local_Customizations.html">
+<LINK REL="up" HREF="Advanced_Installation.html">
+<LINK REL="next" HREF="Parallelization.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html342"
+  HREF="Parallelization.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html338"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html332"
+  HREF="Local_Customizations.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html340"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html343"
+  HREF="Parallelization.html">Parallelization</A>
+<B> Up:</B> <A NAME="tex2html339"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Previous:</B> <A NAME="tex2html333"
+  HREF="Local_Customizations.html">Local Customizations</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00333000000000000000"></A><A NAME="sec:install.optimize"></A><A NAME="1400"></A>
+<BR>
+Optimization
+</H2>
+In the interest of successful compilation of a usable software package
+``out of the box,'' the default configuration for OOMMF does not
+stretch to maximize optimization.  However, the configuration files
+<TT><B>config/options.tcl</B></TT> and <TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT> include
+optimization controls.  In the former,
+<PRE>
+Oc_Option Add * Platform optlevel 2
+</PRE>
+selects a relatively high but robust level of optimization, equivalent
+typically to a compiler option of ``-O2'' or similar. You may
+try increasing <TT>optlevel</TT> to 3. If you are familiar with your
+compiler's command line options, then for finer control you can
+experiment with the <TT><B>&lt;platform&gt;.tcl</B></TT> file options
+
+<DL COMPACT>
+<DT> 
+<DD><code>program_compiler_c++_remove_flags</code>
+<DT>and
+<DD>
+<BR><DT> 
+<DD><code>program_compiler_c++_add_flags</code>
+</DD>
+</DL>The remove flags control selects options to be removed from the compiler
+command line. The setting value should be a Tcl list of regular
+expressions.  (Refer to the
+<A NAME="tex2html17"
+  HREF="https://www.tcl-lang.org/man/">Tcl documentation</A>
+on the regexp command for details.) The add flags value is a list of
+values to append to the compile command (applied after the remove flags
+request, if any). An extended discussion of these controls can be found
+in the ``Configuration Files'' section of the
+<A NAME="tex2html18"
+  HREF="https://math.nist.gov/oommf/doc/"><I>OOMMF Programming
+    Manual</I></A>.
+
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

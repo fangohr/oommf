@@ -12,7 +12,7 @@ if {[Oc_Main HasTk]} {
 }
 
 Oc_Main SetAppName mmArchive
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -159,6 +159,15 @@ proc CheckFileMove { f1 f2 errmsg_var } {
    }
    if {![file owned $f1]} {
       set errmsg "File \"$f1\" not owned by current user"
+      set sidfile [Oc_WinGetFileSID $f1]
+      set siduser [Oc_WinGetCurrentProcessSID]
+      set fileowner [Oc_WinGetSIDAccountName $sidfile]
+      set user  [Oc_WinGetSIDAccountName $siduser]
+      if {[string compare $fileowner $user]!=0} {
+         append errmsg " ($fileowner vs. $user)"
+      } elseif {[string compare $sidfile $siduser]!=0} {
+         append errmsg " ($sidfile vs. $siduser)"
+      }
       if {[Oc_AmRoot]>0} {
          global tcl_platform
          if {[string compare windows $tcl_platform(platform)]==0} {

@@ -129,7 +129,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## directory on your computer in which OOMMF software should write 
 ## temporary files.  All OOMMF users must have write access to this 
 ## directory.
-# $config SetValue path_directory_temporary {C:\temp}
+# $config SetValue path_directory_temporary {/tmp}
 #
 ## Specify whether or not to build in thread support.
 ## Thread support is included automatically if the tclsh interpreter used
@@ -157,6 +157,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## Override default C++ compiler.  Note the "_override" suffix
 ## on the value name.
 # $config SetValue program_compiler_c++_override {icpc -c}
+#
+## Max asynchronous exception (A.E.) handling level: one of none, POSIX,
+## or SEH. This setting works in conjuction with the Oc_Option
+## AsyncExceptionHandling selection (see file config/options.tcl)
+## according to the following table:
+##
+##                       \ program_compiler_c++_async_exception_handling
+## AsyncExceptionHandling \      none         POSIX          SEH
+## ------------------------+-------------------------------------------
+##       none              |     abort         abort         abort*
+##      POSIX              |     abort        sig+abort    sig+abort
+##       SEH               |     abort        sig+abort    seh+abort*
+##
+## In the abort cases, the program immediately terminates with no error
+## message. In the sig+abort or seh+abort cases a error message is
+## logged followed by program termination. In the sig+abort setting the
+## error message reports the corresponding POSIX signal raised, while
+## seh+abort prints the corresponding Microsoft Windows Structured
+## Exception error message. In the SEH column all A.E. run through the
+## the Windows SEH handling, so there is some additional overhead, even
+## if Oc_Option AsyncExceptionHandling is none. The error message is
+## generally logged to stderr, and may additionally be written to
+## a program log file.
+##
+## The SEH option is only available on Windows with the Visual C++
+## compiler, and may have a (minor) negative performance impact. The
+## default setting is POSIX.
+# $config SetValue program_compiler_c++_async_exception_handling POSIX
 #
 ## Processor architecture for compiling.  The default is "generic"
 ## which should produce an executable that runs on any cpu model for
@@ -238,6 +266,14 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
 # 
+#
+## Debugging options. These control memory alignment. See the
+## "Debugging OOMMF" section in the OOMMF Programming Manual for
+## details.
+# $config SetValue program_compiler_c++_property_cache_linesize 1
+# $config SetValue program_compiler_c++_property_pagesize 1
+# $config SetValue sse_no_aligned_access 1
+#
 # END LOCAL CONFIGURATION
 ########################################################################
 #
@@ -406,10 +442,26 @@ if {[string match g++* $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Asychronous exceptions
+   if {[catch {$config \
+         GetValue program_compiler_c++_async_exception_handling} _eh]} {
+      set _eh POSIX ;# Default setting
+      $config SetValue program_compiler_c++_async_exception_handling $_eh
+   }
+   if {[string compare -nocase none $_eh]!=0} {
+      lappend opts -fnon-call-exceptions
+   }
+   unset _eh
+
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
-   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
-   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
 
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]

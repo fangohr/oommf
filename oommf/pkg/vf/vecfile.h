@@ -9,8 +9,8 @@
 #ifndef _VF_VECFILE
 #define _VF_VECFILE
 
-#include <ctype.h>
-#include <stdio.h>
+#include <cctype>
+#include <cstdio>
 #include <string>
 #include <vector>
 

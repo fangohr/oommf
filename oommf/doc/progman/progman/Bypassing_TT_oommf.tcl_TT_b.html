@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Bypassing the oommf.tcl bootstrap</TITLE>
+<META NAME="description" CONTENT="Bypassing the oommf.tcl bootstrap">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Segfaults_other_asynchronou.html">
+<LINK REL="previous" HREF="Understanding_pimake.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="Segfaults_other_asynchronou.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html224"
+  HREF="Segfaults_other_asynchronou.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html220"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html214"
+  HREF="Understanding_pimake.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html222"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html225"
+  HREF="Segfaults_other_asynchronou.html">Segfaults and other asynchronous</A>
+<B> Up:</B> <A NAME="tex2html221"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html215"
+  HREF="Understanding_pimake.html">Understanding pimake</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00630000000000000000"></A><A NAME="sec:debug:bootstrap"></A>
+<BR>
+Bypassing the <TT>oommf.tcl</TT> bootstrap
+</H1>
+When an application is launched by clicking a button in <B>mmLaunch</B> or from
+the command shell like
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &gt; <FONT COLOR="#00bbee">tclsh oommf.tcl mmdisp</FONT>
+<BR></TT>
+</DIV>
+<BR>
+the application (here <B>mmDisp</B>) is not executed directly but rather
+through the ``bootstrap'' program <TT>oommf.tcl</TT>. The bootstrap
+constructs a list linking application names to commands
+using the <TT><B>appindex.tcl</B></TT> files in the various application (<TT><B>oommf/app/</B></TT>)
+directories, and then runs the command associated with the given
+name. This is convenient for normal use, but the additional execution
+layer can obfuscate the debugging process. You can obtain the
+direct command from the bootstrap program itself with the <TT>+command</TT>
+option
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &gt; <FONT COLOR="#00bbee">tclsh oommf.tcl mmdisp +command</FONT>
+<BR>
+app/mmdisp/windows-x86_64/mmdispsh.exe app/mmdisp/scripts/mmdisp.tcl &amp;
+<BR></TT>
+</DIV>
+<BR>
+The response is the command as used inside a Tcl shell to launch the
+application. You may need to make minor edits to run the application at
+your shell command prompt. For example, the trailing ampersand runs the
+program in the background, which is not what one usually wants when
+debugging, so you would omit this. On Windows you may want to change
+the forward slash path separators to backslashes. Another
+Windows-specific modification involves the first component of this
+command, <TT><B>app/mmdisp/windows-x86_64/mmdispsh.exe</B></TT>. This is an
+executable containing an embedded Tcl interpreter that processes the
+Tcl script specified as the second command component. If you examine
+the <TT><B>app/mmdisp/windows-x86_64/</B></TT> directory you'll find two
+executables, <TT><B>mmdispsh.exe</B></TT> and <TT><B>condispsh.exe</B></TT>. On Unix and
+macOS these two programs are the same, but on Windows the first is
+linked as a native Windows application and the second as a console
+application. The importance of this is that only the second provides the
+usual C++ standard channels <TT>stdin</TT>, <TT>stdout</TT>, and
+<TT>stderr</TT>. In case of abnormal operation programs will sometimes write
+error messages to <TT>stdout</TT> or <TT>stderr</TT>, which will be lost if the
+program is not running as a console application. The upshot is that for
+debugging purposes you would probably want to run <B>mmDisp</B> (for
+example) from a Windows command console as
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &gt; <FONT COLOR="#00bbee">app<TT>&#92;</TT>mmdisp<TT>&#92;</TT>windows-x86_64<TT>&#92;</TT>condispsh.exe app/mmdisp/scripts/mmdisp.tcl</FONT>
+<BR></TT>
+</DIV>
+
+<P>
+It is worth noting that on the bootstrap command line, arguments
+starting with `<TT>+</TT>' (for example, ``<TT>+command</TT>'') are options to
+<TT>oommf.tcl</TT> itself. Run ``<TT>tclsh oommf.tcl +h</TT>'' to see the
+bootstrap help message. Options to the OOMMF application follow the
+application name and start with `<TT>-</TT>'.  For example, to see the help
+message for a particular application, run
+``<TT>tclsh oommf.tcl &lt;appName&gt; -h</TT>''.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html224"
+  HREF="Segfaults_other_asynchronou.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html220"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html214"
+  HREF="Understanding_pimake.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html222"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

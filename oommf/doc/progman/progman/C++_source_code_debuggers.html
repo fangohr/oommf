@@ -1,0 +1,123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>C++ source code debuggers</TITLE>
+<META NAME="description" CONTENT="C++ source code debuggers">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="previous" HREF="Out_bounds_memory_access.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="Introduction_to_GNU_gdb_deb.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html258"
+  HREF="Introduction_to_GNU_gdb_deb.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html254"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html250"
+  HREF="Out_bounds_memory_access.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html256"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html259"
+  HREF="Introduction_to_GNU_gdb_deb.html">Introduction to the GNU</A>
+<B> Up:</B> <A NAME="tex2html255"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html251"
+  HREF="Out_bounds_memory_access.html">Out-of-bounds memory access</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00660000000000000000"></A><A NAME="sec:debug:debuggers"></A>
+<BR>
+C++ source code debuggers
+</H1>
+If you know roughly where a bug is occurring in the code, you can often
+debug it by temporarily inserting <TT>printf</TT> or <TT>std::cout &lt;&lt;</TT>
+statements in the code. But for more complex problems it can be more
+informative and quicker in the long run to create a debugging build (i.e.,
+one with debugging symbols and perhaps with compiler optimizations
+disabled) and run the program in a debugger. This section provides
+general information on running OOMMF in a debugger, including short
+examples in three common debuggers: <B>gdb</B>, <B>lldb</B>, and <B>Visual
+  Studio Debugger</B>.
+
+<P>
+First edit the configuration files for debugging, as explained in
+<A HREF="Configuration_Files.html#sec:debug:configfiles">the <B>Configuration files</B>
+  section.</A>
+Then run
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">tclsh oommf.tcl pimake distclean</FONT>
+<BR>$ <FONT COLOR="#00bbee">tclsh oommf.tcl pimake</FONT>
+<BR></TT>
+</DIV>
+<BR>
+to create a build of OOMMF with debugging symbols. After this you can
+load an OOMMF executable into a debugger, run the
+program, and examine its execution.  (Remember to <A HREF="Bypassing_TT_oommf.tcl_TT_b.html#sec:debug:bootstrap">bypass
+the <TT>oommf.tcl</TT> bootstrap</A>.)  There are many debuggers
+available, some with multiple front-ends. But one overriding criterion
+in selecting a debugger is to choose one that supports the debugging
+symbol format output by your C++ compiler. To provide a brief
+taste of this subject, we will look at three debuggers: GNU's venerable
+<B>gdb</B> for use with <TT>g++</TT>, the <B>lldb</B> debugger packaged with
+Xcode/<B>clang++</B> on macOS, and the debugger built into Microsoft's
+<B>Visual Studio</B> for use with Visual C++ <TT>cl</TT> binaries.
+
+<P>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html260"
+  HREF="Introduction_to_GNU_gdb_deb.html">Introduction to the GNU <B>gdb</B> debugger</A>
+<LI><A NAME="tex2html261"
+  HREF="Introduction_to_LLVM_lldb.html">Introduction to the LLVM <B>lldb</B></A>
+<LI><A NAME="tex2html262"
+  HREF="Debugging_OOMMF_in_Visual_S.html">Debugging OOMMF in Visual Studio</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html258"
+  HREF="Introduction_to_GNU_gdb_deb.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html254"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html250"
+  HREF="Out_bounds_memory_access.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html256"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

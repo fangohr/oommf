@@ -14,7 +14,7 @@
 #ifndef _NB_ARRAYWRAPPER
 #define _NB_ARRAYWRAPPER
 
-#include <assert.h>
+#include <cassert>
 #include "oc.h"
 
 /* End includes */

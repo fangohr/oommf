@@ -6,7 +6,7 @@
  * 22/06/2007
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 
 #include "nb.h"

@@ -9,7 +9,7 @@
  */
 
 /* Header files for system libraries */
-#include <string.h>
+#include <cstring>
 
 /* Header files for the OOMMF extensions */
 #include "oc.h"

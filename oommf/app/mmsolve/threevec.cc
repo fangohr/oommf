@@ -4,7 +4,7 @@
  *
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "constants.h"
 #include "threevec.h"

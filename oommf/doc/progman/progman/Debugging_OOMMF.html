@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Debugging OOMMF</TITLE>
+<META NAME="description" CONTENT="Debugging OOMMF">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Credits.html">
+<LINK REL="previous" HREF="OOMMF_eXtensible_Solver.html">
+<LINK REL="up" HREF="progman.html">
+<LINK REL="next" HREF="Configuration_Files.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html179"
+  HREF="Configuration_Files.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html175"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html169"
+  HREF="Writing_New_TT_Oxs_Evolver_.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html177"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html180"
+  HREF="Configuration_Files.html">Configuration Files</A>
+<B> Up:</B> <A NAME="tex2html176"
+  HREF="progman.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html170"
+  HREF="Writing_New_TT_Oxs_Evolver_.html">Writing a New Oxs_Evolver</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00600000000000000000"></A><A NAME="sec:debug"></A>
+<BR>
+Debugging OOMMF
+</H1>
+  
+This chapter provides an introduction to debugging OOMMF and
+OOMMF extension source code, providing background to the OOMMF build
+architecture and detailing some tools and techniques for uncovering
+programming errors. It begins with a look at the OOMMF <B>pimake</B>
+application used for compiling and linking OOMMF programs, followed by
+some considerations involving the <B>oommf.tcl</B> bootstrap
+wrapper. Then configuration files governing build and runtime behavior
+are detailed.  After this methods for identifying and locating runtime
+errors are presented, including a brief introduction on using debugger
+applications with OOMMF. Although the primary focus of this chapter is
+on errors in C++ code, the interface and glue code linking the various
+OOMMF applications rely on Tcl script.  An example of working with
+Tcl in OOMMF is provided in Fig.&nbsp;<A HREF="Configuration_Files.html#fig:oommftclintrospection">5.1</A>
+Throughout this chapter, unless otherwise stated, commands are
+implicitly assumed to be run from the OOMMF root directory (i.e. the
+directory containing the file <TT><B>oommf.tcl</B></TT>), and directory paths are
+taken relative to this directory (e.g., <TT><B>app/oxs/</B></TT> refers
+to the directory <TT><B>&lt;oommf_root&gt;/app/oxs/</B></TT>).
+In text blocks containing command statements and program output,
+command statements are indicated with a leading character
+representing the shell command prompt. On Windows this character is
+typically ``<code>&gt;</code>'', whereas the Unix and macOS shells more commonly
+use ``<code>$</code>'' with <TT>bash</TT> shells or ``<code>%</code>'' with
+<TT>zsh</TT>. All three are used below, but ``<code>%</code>'' is limited to
+macOS specific examples to minimize confusion with the Tcl command
+prompt, which is also ``<code>%</code>''. For additional visibility shell
+commands are colored <FONT COLOR="#00bbee">cyan</FONT> and program commands
+(Tcl and debugger) are colored <FONT COLOR="#ff3311">red</FONT>. (Computer
+responses remain in black text.)
+Some details in what follows may vary depending on the particular
+operating system and application version, but hopefully the differences
+are sufficiently small that this description remains a useful guide.
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html181"
+  HREF="Configuration_Files.html">Configuration Files</A>
+<LI><A NAME="tex2html182"
+  HREF="Understanding_pimake.html">Understanding <B>pimake</B></A>
+<LI><A NAME="tex2html183"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">Bypassing the <TT>oommf.tcl</TT> bootstrap</A>
+<LI><A NAME="tex2html184"
+  HREF="Segfaults_other_asynchronou.html">Segfaults and other asynchronous termination</A>
+<LI><A NAME="tex2html185"
+  HREF="Out_bounds_memory_access.html">Out-of-bounds memory access</A>
+<LI><A NAME="tex2html186"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<UL>
+<LI><A NAME="tex2html187"
+  HREF="Introduction_to_GNU_gdb_deb.html">Introduction to the GNU <B>gdb</B> debugger</A>
+<LI><A NAME="tex2html188"
+  HREF="Introduction_to_LLVM_lldb.html">Introduction to the LLVM <B>lldb</B></A>
+<LI><A NAME="tex2html189"
+  HREF="Debugging_OOMMF_in_Visual_S.html">Debugging OOMMF in Visual Studio</A>
+</UL></UL>
+<!--End of Table of Child-Links-->
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html179"
+  HREF="Configuration_Files.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html175"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html169"
+  HREF="Writing_New_TT_Oxs_Evolver_.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html177"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

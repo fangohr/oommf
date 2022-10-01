@@ -23,37 +23,33 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html950"
+<A NAME="tex2html1321"
   HREF="Data_Table_File_Format_ODT.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html946"
+<A NAME="tex2html1317"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html942"
-  HREF="MIF_2.2.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html952"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html948"
+<A NAME="tex2html1313"
+  HREF="Sample_MIF_2.2_File.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1319"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html951"
+<B> Next:</B> <A NAME="tex2html1322"
   HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
-<B> Up:</B> <A NAME="tex2html947"
+<B> Up:</B> <A NAME="tex2html1318"
   HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
-<B> Previous:</B> <A NAME="tex2html943"
-  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Previous:</B> <A NAME="tex2html1314"
+  HREF="Sample_MIF_2.2_File.html">Sample MIF&nbsp;2.2 File</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION000185000000000000000"></A><A NAME="sec:mif2tips"></A>
+<H1><A NAME="SECTION001850000000000000000"></A><A NAME="sec:mif2tips"></A>
 <BR>
 Tips for writing MIF 2.x files
-</H2>
-
-<A NAME="pt:mif2tips"></A>
+</H1>
 MIF 2.x files are Tcl scripts, and so composing a MIF file is a
 programming exercise, with all the pitfalls that entails. In this
 section we detail some tips for authoring MIF files.
@@ -67,25 +63,25 @@ need any complex functionality then an elementary understanding of Tcl is essent
 arrays, and some of the basic Tcl commands such as <TT>set</TT>,
 <TT>expr</TT>, <TT>for</TT>, <TT>foreach</TT>, <TT>if/else</TT>, <TT>lrange</TT>, and
 <TT>subst</TT>. You can find a list of Tcl tutorials on the Tcler's Wiki
-<A NAME="tex2html21"
+<A NAME="tex2html32"
   HREF="https://wiki.tcl-lang.org/page/Online+Tcl+and+Tk+Tutorials">Online Tcl and Tk
   Tutorials</A>
 page. The <I>Tcl Tutorial</I> by Chris verBurg and <I>Learn Tcl
   in Y Minutes</I> linked on that page are good places to start. The
-<A NAME="tex2html22"
+<A NAME="tex2html33"
   HREF="https://wiki.tcl-lang.org/page/Dodekalogue">Tcl
   Dodekalogue</A>
 is also a
 handy reference for figuring out confusing error messages.  Many more
 resources, including online manuals, can be found at the
-<A NAME="tex2html23"
+<A NAME="tex2html34"
   HREF="https://www.tcl-lang.org/">Tcl Developer
   Xchange</A>.
 
 <P>
 Although MIF files are Tcl scripts, they also rely on a number of
-<A HREF="MIF_2.1.html#sec:mif2ExtensionCommands">MIF extension commands</A>. The most prominent of these is
-the <A HREF="MIF_2.1.html#html:specifyCmd"><TT>Specify</TT></A> command, used to
+<A HREF="MIF_2.1_Extension_Commands.html#sec:mif2ExtensionCommands">MIF extension commands</A>. The most prominent of these is
+the <A HREF="MIF_2.1_Extension_Commands.html#html:specifyCmd"><TT>Specify</TT></A> command, used to
 initialize <TT>Oxs_Ext</TT> (Oxs extension) objects, such as region
 definitions (atlases), mesh discretization, energy terms (exchange,
 anisotropy, dipole-dipole, applied fields), and solution method (energy
@@ -98,13 +94,13 @@ Classes section</A>.
 <P>
 Other commonly used MIF extension commands are <TT>Parameter</TT>,
 <TT>Destination</TT>, and <TT>Schedule</TT>.
-<A HREF="MIF_2.1.html#html:mif2parameter"><TT>Parameter</TT></A> operates similar to
+<A HREF="MIF_2.1_Extension_Commands.html#html:mif2parameter"><TT>Parameter</TT></A> operates similar to
 the Tcl <TT>set</TT> command, but allows the user to change the default
 value at runtime, through either the <TT>Params</TT> box in the <TT>Oxsii
   Load Problem</TT> dialog, or via the <TT>-parameters</TT> command line option
 to <TT>Boxsi</TT>. The
-<A HREF="MIF_2.1.html#html:destinationCmd"><TT>Destination</TT></A> and
-<A HREF="MIF_2.1.html#html:scheduleCmd"><TT>Schedule</TT></A> commands
+<A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT></A> and
+<A HREF="MIF_2.1_Extension_Commands.html#html:scheduleCmd"><TT>Schedule</TT></A> commands
 are used primarily for non-interactive set up of simulation output
 for <TT>Boxsi</TT>.
 
@@ -220,22 +216,20 @@ in debugging your MIF code:
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html950"
+<A NAME="tex2html1321"
   HREF="Data_Table_File_Format_ODT.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html946"
+<A NAME="tex2html1317"
   HREF="Problem_Specification_File_.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html942"
-  HREF="MIF_2.2.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html953"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html948"
+<A NAME="tex2html1313"
+  HREF="Sample_MIF_2.2_File.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1319"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

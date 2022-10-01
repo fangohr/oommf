@@ -5,7 +5,7 @@
  * friend function.
  */
 
-#include <assert.h>
+#include <cassert>
 #include <string>
 
 #include "chunkenergy.h"
@@ -32,7 +32,8 @@ public:
     : energy(import_energy), ocedt(import_ocedt),
       thread_ocedtaux(thread_count) {}
 
-  // Note implicit copy constructor
+  Oxs_ComputeEnergies_ChunkStruct(const Oxs_ComputeEnergies_ChunkStruct&)
+     = default;
 
   Oxs_ComputeEnergies_ChunkStruct&
   operator=(const Oxs_ComputeEnergies_ChunkStruct& right)
@@ -77,8 +78,10 @@ public:
     job_basket.Init(thread_count,arrblock);
   }
 
-  // Note: Default copy constructor and assignment operator,
-  // and destructor.
+  Oxs_ComputeEnergiesChunkThread(const Oxs_ComputeEnergiesChunkThread&)
+     = default;
+  Oxs_ComputeEnergiesChunkThread&
+     operator=(const Oxs_ComputeEnergiesChunkThread&) = default;
 };
 
 Oxs_JobControl<OC_REAL8m> Oxs_ComputeEnergiesChunkThread::job_basket;

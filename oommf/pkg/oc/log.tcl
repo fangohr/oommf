@@ -495,6 +495,9 @@ proc tclLog {string} {
 #  Oc_Log SetLogHandler [list Oc_FileLogger Log] warning
 #  Oc_Log SetLogHandler [list Oc_FileLogger Log] info
 #  Oc_Log SetLogHandler [list Oc_FileLogger Log] status
+#
+# NB: The log prefix marker here is duplicated in Oc_Main SetAppName for
+#     use by C++ logging code. Changes here should be replicated there.
 Oc_Class Oc_FileLogger {
    common filename {}
 

@@ -1,0 +1,1348 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Field Objects</TITLE>
+<META NAME="description" CONTENT="Field Objects">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="MIF_Support_Classes.html">
+<LINK REL="previous" HREF="Drivers.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="MIF_Support_Classes.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html614"
+  HREF="MIF_Support_Classes.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html610"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html604"
+  HREF="Drivers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html612"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html615"
+  HREF="MIF_Support_Classes.html">MIF Support Classes</A>
+<B> Up:</B> <A NAME="tex2html611"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html605"
+  HREF="Drivers.html">Drivers</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00836000000000000000"></A><A NAME="sec:oxsFieldObjects"></A>
+<BR>
+Field Objects
+</H2>
+Field objects return values (either scalar or vector) as a function of
+position.  These are frequently used as embedded objects inside Specify
+blocks of other <TT>Oxs_Ext</TT> objects to initialize spatially varying
+quantities, such as material parameters or initial magnetization spin
+configurations.  Units on the returned values will be dependent upon the
+context in which they are used.
+
+<P>
+Scalar field objects are documented first.  Vector field objects are
+considered farther below.
+<DL>
+<DD><A NAME="PTUSF"></A><A NAME="6184"></A></DD>
+<DT><STRONG>Oxs_UniformScalarField:<A NAME="item:UniformScalarField"></A></STRONG></DT>
+<DD>Returns the same constant value regardless of the import position.
+   The Specify block takes one parameter, <B>value</B>, which is the
+   returned constant value.  This class is frequently embedded inline to
+   specify homogeneous material parameters.  For example, inside a driver
+   Specify block we may have
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_TimeDriver {
+    ...
+    Ms { Oxs_UniformScalarField {
+       value 8e5
+    }}
+    ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+As discussed in
+the section on <A HREF="Specify_Conventions.html#par:oxsExtReferencing">Oxs_Ext
+referencing</A> in the <A HREF="MIF_2.1.html#sec:mif2format">MIF
+2</A> documentation,
+
+when embedding <TT>Oxs_UniformScalarField</TT>
+or <A HREF="#item:UniformVectorField"><TT>Oxs_UniformVectorField</TT></A>
+objects, a notational shorthand is allowed that lists only the value.
+The previous example is exactly equivalent to
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_TimeDriver {
+    ...
+    Ms 8e5
+    ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+where an implicit <TT>Oxs_UniformScalarField</TT> object is
+created with <TT>value</TT> set to <TT>8e5</TT>.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
+<P>
+<A NAME="PTASF"></A><A NAME="6212"></A></DD>
+<DT><STRONG>Oxs_AtlasScalarField:<A NAME="item:AtlasScalarField"></A></STRONG></DT>
+<DD>Declares values that are defined across individual regions of an
+   <TT>Oxs_Atlas</TT>.  The Specify block looks like
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_AtlasScalarField {</TT>
+      <DD><TT> atlas </TT><I>atlas_spec</I>
+      <DD><TT> multiplier </TT><I>mult</I>
+      <DD><TT> default_value </TT><I>scalar_field_spec</I>
+      <DD><TT> values {</TT><DL>
+          <DD><I>region1_label</I><TT>&nbsp;</TT><I>scalar_field_spec1</I>
+          <DD><I>region2_label</I><TT>&nbsp;</TT><I>scalar_field_spec2</I>
+          <DD> ...
+      </DL><TT>}</TT>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+
+<P>
+The specified <B>atlas</B> is used to map cell locations to
+   regions; the value at the cell location of the scalar field from the
+   corresponding <B>values</B> sub-block is assigned to that cell.
+   The <B>default_value</B> entry is optional; if specified, and if
+   a cell's region is not included in the <TT>values</TT> sub-block, then
+   the <TT>default_value</TT> scalar field is used.  If <TT>default_value</TT>
+   is not specified, then missing regions will raise an error.
+
+<P>
+The scalar field entries may specify any of the scalar field types
+   described in this (Field Objects) section.  As usual, one may provide
+   a single numeric value in any of the <TT>scalar_field_spec</TT>
+   positions; this will be interpreted as requesting a uniform (spatially
+   homogeneous) field with the indicated value.
+
+<P>
+If the optional <B>multiplier</B> value is provided, then each
+   field value is scaled (multiplied) by the value <I>mult</I>.
+
+<P>
+The vector field analogue to this class is
+   <A HREF="#item:AtlasVectorField"><TT>Oxs_AtlasVectorField</TT></A>,
+   which is described below in the vector fields portion of this
+   section.
+
+<P>
+
+<B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>ellipsoid.mif</B></TT>,
+     <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
+   
+<P>
+<A NAME="PTLSF"></A><A NAME="6234"></A></DD>
+<DT><STRONG>Oxs_LinearScalarField:</STRONG></DT>
+<DD>Returns a value that varies linearly with position.  The Specify
+   block has the form:
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_LinearScalarField {</TT>
+      <DD><TT> norm </TT><I>value</I>
+      <DD><TT> vector {</TT>
+         <I>v<sub>x</sub></I><TT>&nbsp;</TT>
+         <I>v<sub>y</sub></I><TT>&nbsp;</TT>
+         <I>v<sub>z</sub></I> <TT>}</TT>
+      <DD><TT> offset </TT><I>off</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+If optional value <B>norm</B> is specified, then the given
+   <B>vector</B> is first scaled to the requested size.  The
+   <B>offset</B> entry is optional, with default value 0. For any
+   given point <B>(<I>x</I>, <I>y</I>, <I>z</I>)</B>, the scalar value returned by this
+   object will be <!-- MATH
+ $xv_x+yv_y+zv_z + off$
+ -->
+<B><I>xv</I><SUB>x</SUB> + <I>yv</I><SUB>y</SUB> + <I>zv</I><SUB>z</SUB> + <I>off</I></B>.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>spinvalve-af.mif</B></TT>.
+<P>
+<A NAME="PTRSF"></A><A NAME="6242"></A></DD>
+<DT><STRONG>Oxs_RandomScalarField:</STRONG></DT>
+<DD><A NAME="item:RandomScalarField"></A>Defines a scalar field that varies spatially in a random fashion.
+The Specify block has the form:
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_RandomScalarField {</TT>
+      <DD><TT> range_min </TT><I>minvalue</I>
+      <DD><TT> range_max </TT><I>maxvalue</I>
+      <DD><TT> cache_grid </TT><I>mesh_spec</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The value at each position is drawn uniformly from the range declared by
+the two required parameters, <B>range_min</B> and
+<B>range_max</B>.  There is also an optional parameter,
+<B>cache_grid</B>, which takes a mesh specification that describes
+the grid used for spatial discretization.  If
+<B>cache_grid</B> is not specified, then each call to
+<TT>Oxs_RandomScalarField</TT> generates a different field.  If you want to
+use the same random scalar field in two places (as a base for setting,
+say anisotropy coefficients and saturation magnetization), then specify
+<B>cache_grid</B> with the appropriate (usually the base problem)
+mesh.
+
+<P>
+
+<B>Examples:</B> <TT><B>randomshape.mif</B></TT>, <TT><B>stdprob1.mif</B></TT>.
+<P>
+<A NAME="PTSSF"></A><A NAME="6255"></A></DD>
+<DT><STRONG>Oxs_ScriptScalarField:<A NAME="item:ScriptScalarField"></A></STRONG></DT>
+<DD>Analogous to the parallel
+<A HREF="#item:ScriptVectorField"><TT>Oxs_ScriptVectorField</TT></A>
+class, this class produces a scalar field dependent on a Tcl script
+and optionally other scalar and vector fields.  The Specify block has
+the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ScriptScalarField:</TT><I>name</I> <TT>{</TT>
+<DD><TT>script </TT> <I>Tcl_script</I>
+<DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+<DD><TT>scalar_fields {</TT> <I>scalar_field_spec</I><TT> ...}</TT>
+<DD><TT>vector_fields {</TT> <I>vector_field_spec</I><TT> ...}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>xrange {</TT> <I>xmin<TT>&nbsp;</TT>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin<TT>&nbsp;</TT>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin<TT>&nbsp;</TT>zmax</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+For each point of interest, the specified <B>script</B> is
+   called with the arguments requested by <B>script_args</B>
+   appended to the command, as explained in the <A HREF="Specify_Conventions.html#par:supportProcs">User
+   Defined Support Procedures</A> section of the MIF&nbsp;2 file
+   format documentation.  The value for <TT>script_args</TT> should be a
+   subset of <TT>{rawpt relpt minpt maxpt span scalars vectors}</TT>.
+
+<P>
+If <TT>rawpt</TT> is requested, then when the Tcl proc is called, at
+   the corresponding spot in the argument list the <TT>x</TT>, <TT>y</TT>,
+   <TT>z</TT> values of point will be placed, in problem coordinates (in
+   meters).  The points so passed will usually be node points in the
+   simulation discretization (the <A HREF="Meshes.html#sec:Meshes">mesh</A>), but
+   this does not have to be the case in general.  The <TT>relpt</TT>,
+   <TT>minpt</TT>, <TT>maxpt</TT>, and <TT>span</TT> rely on a definition of a
+   <I>bounding box</I>, which is an axes parallel parallelepiped.  The
+   bounding box must be specified by either referencing an
+   <B>atlas</B>, or by explicitly stating the range via the three
+   entries <B>xrange</B>, <B>yrange</B>, <B>zrange</B> (in
+   meters).  The <TT>minpt</TT> and <TT>maxpt</TT> arguments list the minimum
+   and maximum values of the bounding box (coordinate by coordinate),
+   while <TT>span</TT> provides the 3-vector resulting from <!-- MATH
+ $(\texttt{maxpt} -
+   \texttt{minpt})$
+ -->
+<B>(<texttt>maxpt</texttt> - <texttt>minpt</texttt>)</B>.  The <TT>relpt</TT> selection provides <TT>x_rel</TT>,
+   <TT>y_rel</TT>, <TT>z_rel</TT>, where each element lies in the range
+   <B>[0, 1]</B>, indicating a relative position between <TT>minpt</TT> and
+   <TT>maxpt</TT>, coordinate-wise.
+
+<P>
+Each of the <TT>script_args</TT> discussed so far places exactly 3
+   arguments onto the Tcl proc argument list.  The last two,
+   <TT>scalars</TT> and <TT>vectors</TT>, place arguments depending on the size
+   of the <B>scalar_fields</B> and <B>vector_fields</B> lists.
+   The <TT>scalar_fields</TT> value is a list of other scalar field
+   objects.  Each scalar field is evaluated at the point in question,
+   and the resulting scalar value is placed on the Tcl proc argument
+   list, in order.  The <TT>vector_fields</TT> option works similarly,
+   except each vector field generates three points for the Tcl proc
+   argument list, since the output from vector field objects is a three
+   vector.  Although the use of these entries appears complicated, this
+   is a quite powerful facility that allows nearly unlimited control for
+   the modification and combination of other field objects.  Both
+   <TT>scalar_fields</TT> and <TT>vector_fields</TT> entries are optional.
+
+<P>
+If <TT>script_args</TT> is not specified, the default value <TT>relpt</TT>
+   is used.
+
+<P>
+Note that if <TT>script_args</TT> includes <TT>relpt</TT>, <TT>minpt</TT>,
+   <TT>maxpt</TT>, or <TT>span</TT>, then a bounding box must be specified, as
+   discussed above.  The following example uses the explicit range
+   method.  See the <A HREF="#PTSVF"><TT>Oxs_ScriptVectorField</TT></A>
+   documentation
+   for an example using an atlas specification.
+
+<BLOCKQUOTE><PRE>
+proc Ellipsoid { xrel yrel zrel } {
+    set xrad [expr {$xrel - 0.5}]
+    set yrad [expr {$yrel - 0.5}]
+    set zrad [expr {$zrel - 0.5}]
+    set test [expr {$xrad*$xrad+$yrad*$yrad+$zrad*$zrad}]
+    if {$test&gt;0.25} {return 0}
+    return 8.6e5
+}
+
+Specify Oxs_ScriptScalarField {
+    script Ellipsoid
+    xrange { 0   1e-6 }
+    yrange { 0 250e-9 }
+    zrange { 0  50e-9 }
+}
+</PRE>
+
+</BLOCKQUOTE>
+   This <TT>Oxs_ScriptScalarField</TT> object returns 8.6e5 if the import (x,y,z) lies within the ellipsoid
+   inscribed inside the axes parallel parallelepiped defined by (xmin=0,
+   ymin=0, zmin=0) and (xmax=1e-6, ymax=250e-9, zmax=50e-9), and 0
+   otherwise.
+   See also the discussion of the
+   <A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+    for an example using
+   an imported image file for similar purposes.
+
+<P>
+Below is one more example, illustrating the use of the
+   <TT>vector_fields</TT> option.
+
+<BLOCKQUOTE><PRE>
+proc DotProduct { x1 y1 z1 x2 y2 z2 } {
+    return [expr {$x1*$x2+$y1*$y2+$z1*$z2}]
+}
+
+Specify Oxs_FileVectorField:file1 {
+    atlas :atlas
+    file  file1.omf
+}
+
+Specify Oxs_UniformVectorField:dir111 {
+    norm 1
+    vector {1 1 1}
+}
+
+Specify Oxs_ScriptScalarField:project {
+    script DotProduct
+    script_args vectors
+    vector_fields {:file1 :dir111}
+}
+</PRE>
+
+</BLOCKQUOTE>
+The scalar field <TT>:project</TT> yields at each point in space the
+projection of the vector field <TT>:file1</TT> onto the [1,1,1] direction.
+
+<P>
+
+<B>Examples:</B> <TT><B>antidots-filled.mif</B></TT>, <TT><B>ellipsoid-fieldproc.mif</B></TT>,
+  <TT><B>manyregions-scriptfields.mif</B></TT>, <TT><B>manyspheres.mif</B></TT>,
+  <TT><B>varalpha.mif</B></TT>.
+<P>
+<A NAME="PTVMSF"></A><A NAME="6338"></A></DD>
+<DT><STRONG>Oxs_VecMagScalarField:</STRONG></DT>
+<DD>The <TT>Oxs_VecMagScalarField</TT> class produces a scalar field
+from a vector field by taking the norm of the vector field on a
+point-by-point basis, i.e.,
+<P><!-- MATH
+ \begin{displaymath}
+\|\mbox{\boldmath$v$}\| = \sqrt{v_x^2+v_y^2+v_z^2}.
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B>|<IMG
+ WIDTH="16" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img62.gif"
+ ALT="$\displaystyle \mbox{\boldmath$v$}$">| = <IMG
+ WIDTH="124" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="img63.gif"
+ ALT="$\displaystyle \sqrt{{v_x^2+v_y^2+v_z^2}}$">.</B></BIG>
+</DIV><P></P>
+The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_VecMagScalarField {</TT>
+<DD><TT> field </TT><I>vector_field_spec</I>
+<DD><TT> multiplier </TT><I>mult</I>
+<DD><TT> offset </TT><I>off</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>multiplier</B> and <B>offset</B> entries are applied
+after the vector norm, i.e., the resulting scalar field is
+<!-- MATH
+ $\texttt{mult}\ast\|\mbox{\boldmath $v$}\|+\texttt{off}$
+ -->
+<B><texttt>mult</texttt> <TT>*</TT> |<B><I>v</I></B>| + <texttt>off</texttt></B>.  The default values
+for <TT>mult</TT> and <TT>off</TT> are 1 and 0, respectively.
+
+<P>
+The functionality of the <TT>Oxs_VecMagScalarField</TT> class may be achieved
+with the <TT>Oxs_ScriptScalarField</TT> class by using the
+<TT>vector_fields</TT> option and a Tcl script to compute the vector
+norm.  However, this particular functionality is needed frequently
+enough that a specialized class is useful.  For example, this class can
+be used in conjunction with a vector field object to set
+both the saturation magnetization distribution (<B><I>M</I><SUB>s</SUB></B>) and the initial
+magnetization:
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_FileVectorField:file1 {
+    atlas :atlas
+    file  file1.omf
+}
+
+Specify Oxs_TimeDriver {
+    basename test
+    evolver :evolve
+    stopping_dm_dt 0.01
+    mesh :mesh
+    m0 :file1
+    Ms { Oxs_VecMagScalarField {
+       field :file1
+    }}
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-vecrotate.mif</B></TT>.
+<P>
+<A NAME="PTSOSF"></A><A NAME="6362"></A></DD>
+<DT><STRONG>Oxs_ScriptOrientScalarField:<A NAME="item:ScriptOrientScalarField"></A></STRONG></DT>
+<DD>Scalar fields provide scalar values as a function of position across
+three-space.  The <TT>Oxs_ScriptOrientScalarField</TT> class is used to
+compose a transformation on the input position before evaluation by
+a scalar field.  The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ScriptOrientScalarField:</TT><I>name</I> <TT>{</TT>
+<DD><TT>field </TT> <I>scalar_field_spec</I>
+<DD><TT>script </TT> <I>Tcl_script</I>
+<DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>field</B> argument should refer to a scalar field object.
+The <B>script</B> is a Tcl script that should return a position
+vector that will be sent on the <TT>field</TT> object to ultimately
+produce a scalar value.  The arguments to the <TT>Tcl_script</TT> are
+determined by <B>script_args</B>, which should be a subset of
+<TT>{relpt rawpt minpt maxpt span}</TT>.  If any arguments other than
+<TT>rawpt</TT> are requested, then the bounding box must be specified by
+either the <B>atlas</B> option, or else through the three <B>xrange</B>,
+<B>yrange</B>, <B>zrange</B> entries.  The default value for
+<TT>script_args</TT> is <TT>relpt</TT>.
+
+<P>
+The <TT>Oxs_ScriptOrientScalarField</TT> class can be used to change the
+``orientation'' of a scalar field, as in the following simple example,
+which reflects the <TT>:file1mag</TT> scalar field across the yz-plane:
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_FileVectorField:file1 {
+    atlas :atlas
+    file  file1.omf
+}
+
+Specify Oxs_VecMagScalarField:file1mag {
+   field :file1
+}
+
+proc Reflect { x y z xmin ymin zmin xmax ymax zmax} {
+   return [list [expr {($xmax+$xmin-$x)}] $y $z]
+}
+
+Specify Oxs_ScriptOrientScalarField:reflect {
+   field :file1mag
+   script Reflect
+   script_args {rawpt minpt maxpt}
+   atlas :atlas
+}
+</PRE>
+
+</BLOCKQUOTE>
+See also the
+<A HREF="#item:ScriptOrientVectorField"><TT>Oxs_ScriptOrientVectorField</TT></A>
+class for
+analogous operations on vector fields.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-reflect.mif</B></TT>.
+<P>
+<A NAME="PTAOSF"></A><A NAME="6391"></A></DD>
+<DT><STRONG>Oxs_AffineOrientScalarField:<A NAME="item:AffineOrientScalarField"></A></STRONG></DT>
+<DD>The <TT>Oxs_AffineOrientScalarField</TT> class is similar to the
+<TT>Oxs_ScriptOrientScalarField</TT> class, except that the transformation
+on the import position is by an affine transformation defined in terms
+of a 3x3 matrix and an offset instead of a
+Tcl script.  Although this functionality can be obtained by an
+appropriate Tcl script, the <TT>Oxs_AffineOrientScalarField</TT> is
+easier to use and will run faster, as the underlying transformation is
+performed by compiled C++ instead of Tcl script.
+
+<P>
+The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_AffineOrientScalarField {</TT>
+<DD><TT> field </TT><I>scalar_field_spec</I>
+<DD><TT> M
+  {</TT> <I>matrix_entries</I><TT>&nbsp;</TT><I>...</I> <TT>}</TT>
+<DD><TT> offset {</TT>
+   <I>off<sub>x</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>y</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>z</sub></I> <TT>}</TT>
+<DD><TT> inverse </TT><I>invert_flag</I>
+<DD><TT> inverse_slack </TT><I>slack</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+If <!-- MATH
+ $F(\mbox{\boldmath $x$})$
+ -->
+<B><I>F</I>(<B><I>x</I></B>)</B> represents the scalar field specified by the
+<B>field</B> value, then the resulting transformed scalar field is
+<!-- MATH
+ $F(M\mbox{\boldmath $x$}+\textbf{off})$
+ -->
+<B><I>F</I>(<I>M</I><B><I>x</I></B> + <B>off</B>)</B>.  Here <B>M</B> is a
+3x3 matrix, which may be specified by a list
+of 1, 3, 6 or 9 entries.  If the <TT>matrix_entries</TT> list consists of a
+single value, then <B><I>M</I></B> is taken to be that value times the identity
+matrix, i.e., <B><I>M</I></B> is a homogeneous scaling transformation.  If
+<TT>matrix_entries</TT> consists of 3 values, then <B><I>M</I></B> is taken to be the
+diagonal matrix with those three values along the diagonal.
+If <TT>matrix_entries</TT> is 6 elements long, then <B><I>M</I></B> is assumed to be a
+symmetric matrix, where the 6 elements specified correspond to <B><I>M</I><SUB>11</SUB></B>,
+<B><I>M</I><SUB>12</SUB></B>, <B><I>M</I><SUB>13</SUB></B>, <B><I>M</I><SUB>22</SUB></B>, <B><I>M</I><SUB>23</SUB></B>, and <B><I>M</I><SUB>33</SUB></B>.  Finally, if
+<TT>matrix_entries</TT> is 9 elements long, then the elements specify the
+entire matrix, in the order <B><I>M</I><SUB>11</SUB></B>, <B><I>M</I><SUB>12</SUB></B>, <B><I>M</I><SUB>13</SUB></B>, <B><I>M</I><SUB>21</SUB></B>,
+..., <B><I>M</I><SUB>33</SUB></B>.  If <B><I>M</I></B> is not specified, then it is taken to be
+the identity matrix.
+
+<P>
+The <B>offset</B> entry is simply a 3-vector that is added to
+<!-- MATH
+ $M\mbox{\boldmath $x$}$
+ -->
+<B><I>M</I><B><I>x</I></B></B>.  If <TT>offset</TT> is not specified, then
+it is set to the zero vector.
+
+<P>
+It is frequently the case that the transformation that one wants to
+apply is not <!-- MATH
+ $M\mbox{\boldmath $x$}+\textbf{off}$
+ -->
+<B><I>M</I><B><I>x</I></B> + <B>off</B></B>, but rather the
+inverse, i.e., <!-- MATH
+ $M^{-1}(\mbox{\boldmath $x$}-\textbf{off})$
+ -->
+<B><I>M</I><SUP>-1</SUP>(<B><I>x</I></B> - <B>off</B>)</B>.  Provided <B><I>M</I></B>
+is nonsingular, this can be accomplished by setting the
+<B>inverse</B> option to 1.  In this case the matrix <B><I>M</I>.<I>M</I><SUP>-1</SUP></B> is
+compared to the identity matrix, to check the accuracy of the matrix
+inversion.  If any entry in <B><I>M</I>.<I>M</I><SUP>-1</SUP></B> differs from <B><I>I</I></B> by more than the
+8-byte float machine precision (typically
+2e-16) times the value of
+<B>inverse_slack</B>, then an error is raised. The default setting
+for <TT>invert_flag</TT> is 0, meaning don't invert,
+and the default setting for <TT>slack</TT> is 128.
+
+<P>
+Here is an example using <TT>Oxs_AffineOrientScalarField</TT> to rotate a
+field by 90 degrees counterclockwise about the
+<B><I>z</I></B>-axis.  Note that the specified atlas is square in <B><I>x</I></B> and <B><I>y</I></B>, with
+the origin of the atlas coordinates in the center of the atlas volume.
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_BoxAtlas:atlas {
+  xrange {-250e-9 250e-9}
+  yrange {-250e-9 250e-9}
+  zrange { -15e-9  15e-9}
+}
+
+Specify Oxs_FileVectorField:file1 {
+    atlas :atlas
+    file  file1.omf
+}
+
+Specify Oxs_VecMagScalarField:file1mag {
+   field :file1
+}
+
+Specify Oxs_AffineOrientScalarField:reflect {
+   field :file1mag
+   M { 0 1 0
+      -1 0 0
+       0 0 1 }
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+See also the
+<A HREF="#item:AffineOrientVectorField"><TT>Oxs_AffineOrientVectorField</TT></A>
+class for
+analogous operations on vector fields.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-rotate.mif</B></TT>.
+<P>
+<A NAME="PTATSF"></A><A NAME="6450"></A></DD>
+<DT><STRONG>Oxs_AffineTransformScalarField:<A NAME="item:AffineTransformScalarField"></A></STRONG></DT>
+<DD>Like the <TT>Oxs_AffineOrientScalarField</TT> class, this class composes
+an affine transform with a separate scalar field, but in this case the
+affine transform is applied <I>after</I> the field evaluation.
+The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_AffineTransformScalarField {</TT>
+<DD><TT> field </TT><I>scalar_field_spec</I>
+<DD><TT> multiplier </TT><I>mult</I>
+<DD><TT> offset </TT><I>off</I>
+<DD><TT> inverse </TT><I>invert_flag</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+If <!-- MATH
+ $F(\mbox{\boldmath $x$})$
+ -->
+<B><I>F</I>(<B><I>x</I></B>)</B> represents the scalar field specified by the
+<B>field</B> value, then the resulting scalar field is
+<!-- MATH
+ $\textrm{mult}*F(\mbox{\boldmath $x$})+\textrm{off}$
+ -->
+<B>mult*<I>F</I>(<B><I>x</I></B>) + off</B>.  Since the output
+from <B><I>F</I></B> is a scalar, both <B>multiplier</B> and <B>offset</B>
+are scalars.  If <B>inverse</B> is 1, then the transform is changed
+to <!-- MATH
+ $\left(F(\mbox{\boldmath $x$})-\textrm{off}\right)/\textrm{mult}$
+ -->
+<B><IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img64.gif"
+ ALT="$\left(\vphantom{F(\mbox{\boldmath $x$})-\textrm{off}}\right.$"><I>F</I>(<B><I>x</I></B>) - off<IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img65.gif"
+ ALT="$\left.\vphantom{F(\mbox{\boldmath $x$})-\textrm{off}}\right)$">/mult</B>,
+provided <TT>mult</TT> is non-zero.
+
+<P>
+The default values for <I>mult</I>, <I>off</I>, and
+<I>invert_flag</I> are 1, 0, and 0, respectively.  The <TT>field</TT>
+value is the only required entry.
+
+<P>
+The functionality provided by <TT>Oxs_AffineTransformScalarField</TT> can
+also be produced by the
+<A HREF="#item:ScriptScalarField"><TT>Oxs_ScriptScalarField</TT></A>
+class with the
+<TT>scalar_fields</TT> entry, but the <TT>Oxs_AffineTransformScalarField</TT>
+class is faster and has a simpler interface.  See also the
+<A HREF="#item:AffineTransformVectorField"><TT>Oxs_AffineTransformVectorField</TT></A>
+class for analogous
+operations on vector fields.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-rotate.mif</B></TT>.
+<P>
+<A NAME="PTISF"></A><A NAME="6483"></A></DD>
+<DT><STRONG>Oxs_ImageScalarField:<A NAME="item:ImageScalarField"></A></STRONG></DT>
+<DD>This class creates a scalar field using an image.  The Specify block has
+the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ImageScalarField:</TT><I>name</I> <TT>{</TT>
+<DD><TT>image </TT> <I>pic</I>
+<DD><TT>invert </TT> <I>invert_flag</I>
+<DD><TT>multiplier </TT><I>mult</I>
+<DD><TT>offset </TT><I>off</I>
+<DD><TT>viewplane </TT> <I>view</I>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>exterior </TT><I>ext_flag</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>image</B> is interpreted as a monochromatic map, yielding a
+scalar field with black corresponding to zero and white to one if
+<B>invert</B> is 0 (the default), or with black corresponding to 1
+and white to 0 if <TT>invert</TT> is 1.  Color images are converted to
+grayscale by simply summing the red, green, and blue components.  A
+<B>multiplier</B> option is available to change the range of values
+from <B>[0, 1]</B> to <!-- MATH
+ $[0,\mbox{\texttt{mult}}]$
+ -->
+<B>[0,<TT>mult</TT>]</B>, after which the
+<B>offset</B> value, if any, is added.
+
+<P>
+The <B>viewplane</B> is treated in the same manner as the
+<A HREF="Atlases.html#PTIA"><TT>Oxs_ImageAtlas</TT></A> viewplane option, and should
+likewise take one of the three two-letter codes <TT>xy</TT> (default),
+<TT>zx</TT> or <TT>yz</TT>.  The spatial scale is adjusted to fit the volume
+specified by either the <B>atlas</B> or
+<B>xrange/yrange/zrange</B> selections.  If the specified volume
+does not fill the entire simulation volume, then points outside the
+specified volume are handled as determined by the <B>exterior</B>
+setting, which should be either a floating point value, or one of the
+keywords <TT>boundary</TT> or <TT>error</TT>.  In the first case, the floating
+point value is treated as a default value for points outside the image,
+and should have a value in the range <B>[0, 1]</B>.  The multiplier and offset
+adjustments are made to this value in the same way as to points inside
+the image.  If <I>ext_flag</I> is <TT>boundary</TT>, then points outside the
+image are filled with the value of the closest point on the boundary of
+the image.  If <I>ext</I> is <TT>error</TT> (the default), then an error
+is raised if a value is needed for any point outside the image.
+
+<P>
+
+<B>Examples:</B> <TT><B>rotatecenterstage.mif</B></TT>, <TT><B>sample-reflect.mif</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+The available vector field objects are:
+<DL>
+<DD><A NAME="PTUVF"></A><A NAME="6513"></A></DD>
+<DT><STRONG>Oxs_UniformVectorField:<A NAME="item:UniformVectorField"></A></STRONG></DT>
+<DD>Returns the same constant value regardless of the import position.
+   The Specify block takes one required parameter, <B>vector</B>,
+   which is a 3-element list of the vector to return, and one optional
+   parameter, <B>norm</B>, which if specified adjusts the size of
+   export vector to the specified magnitude.  For example,
+   
+   <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_UniformVectorField {</TT>
+      <DD><TT> norm 1</TT>
+      <DD><TT> vector {1 1 1}</TT>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+This object returns the unit vector <B>(<I>a</I>, <I>a</I>, <I>a</I>)</B>, where
+   a=1/sqrt(3), regardless of the import
+   position.
+
+<P>
+This class is frequently embedded inline to specify spatially uniform
+   quantities.  For example, inside a driver Specify block we may have
+
+<P>
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_TimeDriver {
+    ...
+    m0 { Oxs_UniformVectorField {
+       vector {1 0 0}
+    }}
+    ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+As discussed in
+the section on <A HREF="Specify_Conventions.html#par:oxsExtReferencing">Oxs_Ext
+referencing</A> in the <A HREF="MIF_2.1.html#sec:mif2format">MIF
+2</A> documentation,
+
+when embedding <TT>Oxs_UniformVectorField</TT>
+or <A HREF="#item:UniformScalarField"><TT>Oxs_UniformScalarField</TT></A>
+objects, a notational shorthand is allowed that lists only the required
+value.  The previous example is exactly equivalent to
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_TimeDriver {
+    ...
+    m0 {1 0 0}
+    ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+where an implicit <TT>Oxs_UniformVectorField</TT> object is
+created with the value of <TT>vector</TT> set to <TT>{1 0 0}</TT>.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
+<P>
+<A NAME="PTAVF"></A><A NAME="6544"></A></DD>
+<DT><STRONG>Oxs_AtlasVectorField:<A NAME="item:AtlasVectorField"></A></STRONG></DT>
+<DD>Declares vector values that are defined across individual regions of
+   an <TT>Oxs_Atlas</TT>.  The Specify block has the form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_AtlasVectorField {</TT>
+      <DD><TT> atlas </TT><I>atlas_spec</I>
+      <DD><TT> norm </TT><I>magval</I>
+      <DD><TT> multiplier </TT><I>mult</I>
+      <DD><TT> default_value </TT><I>vector_field_spec</I>
+      <DD><TT> values {</TT><DL>
+          <DD><I>region1_label</I><TT>&nbsp;</TT><I>vector_field_spec1</I>
+          <DD><I>region2_label</I><TT>&nbsp;</TT><I>vector_field_spec2</I>
+          <DD> ...
+      </DL><TT>}</TT>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Interpretation is analogous to the
+   <A HREF="#item:AtlasScalarField"><TT>Oxs_AtlasScalarField</TT></A>
+   specify block, except here the output values are 3 dimensional
+   vectors rather than scalars.  Thus the values associated with each
+   region are vector fields rather than scalar fields.  Any of the
+   vector field types described in this (Field Objects) section may be
+   used.  As usual, one may provided a braced list of three numeric
+   values to request a uniform (spatially homogeneous) vector field with
+   the indicated value.
+
+<P>
+The optional <B>norm</B> parameter causes each vector value to be
+   scaled to have magnitude <I>magval</I>.  The optional
+   <B>multiplier</B> value scales the field values.  If both
+   <TT>norm</TT> and <TT>multiplier</TT> are specified, then the field vectors
+   are first normalized before being scaled by the multiplier value.
+
+<P>
+
+<B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>exchspring.mif</B></TT>,
+     <TT><B>imageatlas.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>.
+   
+<P>
+<A NAME="PTSVF"></A><A NAME="6561"></A></DD>
+<DT><STRONG>Oxs_ScriptVectorField:<A NAME="item:ScriptVectorField"></A></STRONG></DT>
+<DD>Conceptually similar to the
+<A HREF="#item:ScriptScalarField"><TT>Oxs_ScriptScalarField</TT></A> scalar
+field object,
+except that the script should return a vector (as a 3 element list)
+rather than a scalar.  In addition to the parameters accepted by
+<TT>Oxs_ScriptScalarField</TT>, <TT>Oxs_ScriptVectorField</TT> also accepts
+an optional parameter <B>norm</B>.  If specified, the return
+values from the script are size adjusted to the specified magnitude.
+If both <TT>norm</TT> and <TT>multiplier</TT> are specified, then
+the field vectors are first normalized before being scaled by the
+multiplier value.
+
+<P>
+The following example produces a vortex-like unit vector field, with
+an interior core region pointing parallel to the <B><I>z</I></B>-axis.  Here the
+scaling region is specified using an <TT>atlas</TT> reference to an
+object named ``:atlas'', which is presumed to be defined earlier in
+the MIF file.  See the <TT>Oxs_ScriptScalarField</TT> sample Specify
+block for an example using the explicit range option.
+
+<BLOCKQUOTE>
+<PRE>
+proc Vortex { xrel yrel zrel } {
+    set xrad [expr {$xrel-0.5}]
+    set yrad [expr {$yrel-0.5}]
+    set normsq [expr {$xrad*$xrad+$yrad*$yrad}]
+    if {$normsq &lt;= 0.025} {return "0 0 1"}
+    return [list [expr {-1*$yrad}] $xrad 0]
+}
+
+Specify Oxs_ScriptVectorField {
+    script Vortex
+    norm  1
+    atlas :atlas
+}
+</PRE>
+
+</BLOCKQUOTE>
+See also the
+<A HREF="#item:MaskVectorField"><TT>Oxs_MaskVectorField</TT></A>
+documentation and the discussion of the
+<A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+
+<P>
+for other example uses of the <TT>Oxs_ScriptVectorField</TT> class.
+
+<P>
+
+<B>Examples:</B> <TT><B>cgtest.mif</B></TT>, <TT><B>ellipsoid.mif</B></TT>,
+  <TT><B>manyregions-scriptfields.mif</B></TT>, <TT><B>sample-vecreflect.mif</B></TT>,
+  <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+<P>
+<A NAME="PTFVF"></A><A NAME="6590"></A></DD>
+<DT><STRONG>Oxs_FileVectorField:<A NAME="item:FileVectorField"></A></STRONG></DT>
+<DD>Provides a file-specified vector field.  The Specify block has the form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_FileVectorField {</TT>
+      <DD><TT>file </TT><I>filename</I>
+
+      <DD><TT>atlas </TT> <I>atlas_spec</I>
+      <DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+      <DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+      <DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+      <DD><TT>spatial_scaling {</TT>
+        <I>xscale</I><TT>&nbsp;</TT><I>yscale</I><TT>&nbsp;</TT><I>zscale</I>
+      <TT>}</TT>
+      <DD><TT>spatial_offset {</TT>
+        <I>xoff</I><TT>&nbsp;</TT><I>yoff</I><TT>&nbsp;</TT><I>zoff</I>
+      <TT>}</TT>
+      <DD><TT>exterior </TT><I>ext_flag</I>
+      <DD><TT>norm </TT><I>magnitude</I>
+      <DD><TT>multiplier </TT><I>mult</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Required values in the Specify block are the name of the input vector
+   field file and the desired scaling parameters.  The filename is
+   specified via the <B>file</B> entry, which names a file
+   containing a vector field in one of the formats recognized by
+   <A HREF="Vector_Field_File_Format_Co.html#sec:avf2ovf"
+ NAME="6597"><B>avf2ovf</B></A>.  If
+   <B>atlas</B> or <B>xrange/yrange/zrange</B> are specified,
+   then the file will be scaled and translated as necessary to fit that
+   scaling region, in the same manner as done, for example, by
+   the <A HREF="#PTSSF"><TT>Oxs_ScriptScalarField</TT></A> and
+   <A HREF="#PTSVF"><TT>Oxs_ScriptVectorField</TT></A> classes.
+   Alternatively, one may specify <B>spatial_scaling</B> and
+   <B>spatial_offset</B> directly.  In this case the vector spatial
+   positions are taken as specified in the file, multiplied
+   component-wise by <TT>(xscale,yscale,zscale)</TT>, and then translated by
+   <TT>(xoff,yoff,zoff)</TT>.  If you want to use the spatial coordinates as
+   directly specified in the file, use <TT>(1,1,1)</TT> for spatial_scaling
+   and <TT>(0,0,0)</TT> for spatial_offset.
+
+<P>
+In all cases, once the input field has been scaled and translated, it
+   is then sub-sampled (zeroth-order fit) as necessary to match the
+   simulation mesh.
+
+<P>
+The <B>exterior</B> flag determines the behavior at ``exterior
+   points'', i.e., locations (if any) in the simulation mesh that lie
+   outside the extent of the scaled and translated vector field.  The
+   <I>ext_flag</I> should be either a three-vector, or one of the
+   keywords <TT>boundary</TT> or <TT>error</TT>.  If a three-vector is given,
+   then that value is supplied at all exterior points.  If
+   <I>ext_flag</I> is set to <TT>boundary</TT>, then the value used is
+   the point on the boundary of the input vector field that is closest
+   to the exterior point.  The default setting for <I>ext_flag</I> is
+   <TT>error</TT>, which raises an error if there are any exterior points.
+
+<P>
+The magnitude of the field can be modified by the optional
+   <B>norm</B> and <B>multiplier</B> attributes.  If the norm
+   parameter is given, then each vector in the field will be
+   renormalized to the specified magnitude.  If the multiplier parameter
+   is given, then each vector in the field will be multiplied by the
+   given scalar value.  If the multiplier value is negative, the field
+   direction will be reversed.  If both <TT>norm</TT> and <TT>multiplier</TT>
+   are given, then the field vectors are renormalized before being
+   scaled by the multiplier value.
+
+<P>
+
+<B>Examples:</B> <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+<P>
+<A NAME="PTRVF"></A><A NAME="6627"></A></DD>
+<DT><STRONG>Oxs_RandomVectorField:</STRONG></DT>
+<DD>Similar to
+<A HREF="#item:RandomScalarField"><TT>Oxs_RandomScalarField</TT></A>, but defines a vector field rather than a scalar field that
+varies spatially in a random fashion.  The Specify block has the form:
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_RandomVectorField {</TT>
+      <DD><TT> min_norm </TT><I>minvalue</I>
+      <DD><TT> max_norm </TT><I>maxvalue</I>
+      <DD><TT> cache_grid </TT><I>mesh_spec</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The Specify block takes two required parameters, <B>min_norm</B>
+and <B>max_norm</B>.  The vectors produced will have magnitude
+between these two specified values.  If <TT>min_norm</TT> = <TT>max_norm</TT>,
+then the samples are uniformly distributed on the sphere of that radius.
+Otherwise, the samples are uniformly distributed in the hollow spherical
+volume with inner radius <TT>min_norm</TT> and outer radius <TT>max_norm</TT>.
+There is also an optional parameter, <B>cache_grid</B>, which takes
+a mesh specification that describes the grid used for cache spatial
+discretization.  If <B>cache_grid</B> is not specified, then each
+call to <TT>Oxs_RandomVectorField</TT> generates a different field.  If you
+want to use the same random vector field in two places (as a base for
+setting, say anisotropy axes and initial magnetization), then specify
+<B>cache_grid</B> with the appropriate (usually the base problem)
+mesh.
+
+<P>
+
+<B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>sample2.mif</B></TT>, <TT><B>randomshape.mif</B></TT>
+  <TT><B>stdprob1.mif</B></TT>.
+<P>
+<A NAME="PTPRVF"></A><A NAME="6648"></A></DD>
+<DT><STRONG>Oxs_PlaneRandomVectorField:</STRONG></DT>
+<DD>Similar to <TT>Oxs_RandomVectorField</TT>, except that samples are
+   drawn from 2D planes rather than 3-space.  The Specify block has the
+   form
+      
+      <BLOCKQUOTE><DL><DT>
+      <TT>Specify Oxs_RandomVectorField {</TT>
+      <DD><TT> plane_normal </TT><I>vector_field_spec</I>
+      <DD><TT> min_norm </TT><I>minvalue</I>
+      <DD><TT> max_norm </TT><I>maxvalue</I>
+      <DD><TT> cache_grid </TT><I>mesh_spec</I>
+      <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>min_norm</B>, <B>max_norm</B>, and
+  <B>cache_grid</B> parameters have the same meaning as for the
+  <TT>Oxs_RandomVectorField</TT> class.  The additional parameter,
+  <B>plane_normal</B>, specifies a vector field that at each point
+  provides a vector that is orthogonal to the plane from which the
+  random vector at that point is to be drawn.  If the vector field is
+  specified explicitly as three real values, then a spatially uniform
+  vector field is produced and all the random vectors will lie in the
+  same plane.  More generally, however, the normal vectors (and
+  associated planes) may vary from point to point.  As a special case,
+  if a normal vector at a point is the zero vector, then no planar
+  restriction is made and the resulting random vector is drawn uniformly
+  from a hollow ball in three space satisfying the minimum/maximum norm
+  constraints.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample2.mif</B></TT>.
+<P>
+<A NAME="PTSOVF"></A><A NAME="6659"></A></DD>
+<DT><STRONG>Oxs_ScriptOrientVectorField:<A NAME="item:ScriptOrientVectorField"></A></STRONG></DT>
+<DD>This class is analogous to the
+<A HREF="#item:ScriptOrientScalarField"><TT>Oxs_ScriptOrientScalarField</TT></A>
+class.
+The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ScriptOrientVectorField:</TT><I>name</I> <TT>{</TT>
+<DD><TT>field </TT> <I>vector_field_spec</I>
+<DD><TT>script </TT> <I>Tcl_script</I>
+<DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The interpretation of the specify block and the operation of the Tcl script is exactly the same as for the <TT>Oxs_ScriptOrientScalarField</TT>
+class, except the input <B>field</B> and the resulting field are
+vector fields instead of scalar fields.
+
+<P>
+Note that the ``orientation'' transformation is applied to the import
+spatial coordinates only, not the output vector.  For example, if the
+<TT>field</TT> value represents a shaped vector field, and the <TT>script</TT>
+proc is a rotation transformation, then the resulting vector field shape
+will be rotated as compared to the original vector field, but the output
+vectors themselves will still point in their original directions.  In such
+cases one may wish to compose the <TT>Oxs_ScriptOrientVectorField</TT> with
+a <A HREF="#item:ScriptVectorField"><TT>Oxs_ScriptVectorField</TT></A>
+object to rotate the
+output vectors as well.  This situation occurs also with the
+<TT>Oxs_AffineOrientVectorField</TT> class.  See the
+<A HREF="#item:AffineTransformVectorField"><TT>Oxs_AffineTransformVectorField</TT></A>
+class documentation for an
+example illustrating the composition of an object of that class with a
+<A HREF="#item:AffineOrientVectorField"><TT>Oxs_AffineOrientVectorField</TT></A>
+object.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-vecreflect.mif</B></TT>.
+<P>
+<A NAME="PTAOVF"></A><A NAME="6682"></A></DD>
+<DT><STRONG>Oxs_AffineOrientVectorField:<A NAME="item:AffineOrientVectorField"></A></STRONG></DT>
+<DD>This class is analogous to the
+<A HREF="#item:AffineOrientScalarField"><TT>Oxs_AffineOrientScalarField</TT></A>
+class.
+The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_AffineOrientVectorField {</TT>
+<DD><TT> field </TT><I>vector_field_spec</I>
+<DD><TT> M
+  {</TT> <I>matrix_entries</I><TT>&nbsp;</TT><I>...</I> <TT>}</TT>
+<DD><TT> offset {</TT>
+   <I>off<sub>x</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>y</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>z</sub></I> <TT>}</TT>
+<DD><TT> inverse </TT><I>invert_flag</I>
+<DD><TT> inverse_slack </TT><I>slack</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The interpretation of the specify block and the affine transformation
+is exactly the same as for the <TT>Oxs_AffineOrientScalarField</TT>
+class, except the input <B>field</B> and the resulting field are
+vector fields instead of scalar fields.
+
+<P>
+As explained in the
+<A HREF="#item:ScriptOrientVectorField"><TT>Oxs_ScriptOrientVectorField</TT></A>
+documentation, the ``orientation'' transformation is applied to the
+import spatial coordinates only, not the output vector.  If one wishes
+to rotate the output vectors, then a
+<A HREF="#item:AffineTransformVectorField"><TT>Oxs_AffineTransformVectorField</TT></A>
+object may be applied with the opposite rotation.  See that section for
+an example.
+
+<P>
+
+<B>Examples:</B> <TT><B>yoyo.mif</B></TT>, <TT><B>sample-vecrotate.mif</B></TT>.
+<P>
+<A NAME="PTATVF"></A><A NAME="6698"></A></DD>
+<DT><STRONG>Oxs_AffineTransformVectorField:<A NAME="item:AffineTransformVectorField"></A></STRONG></DT>
+<DD>This class applies an affine transform to the output of a vector field.
+It is similar to the
+<A HREF="#item:AffineTransformScalarField"><TT>Oxs_AffineTransformScalarField</TT></A>
+class, except
+that in this case the affine transform is applied to a vector instead of
+a scalar.  The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_AffineTransformVectorField {</TT>
+<DD><TT> field </TT><I>vector_field_spec</I>
+<DD><TT> M
+  {</TT> <I>matrix_entries</I><TT>&nbsp;</TT><I>...</I> <TT>}</TT>
+<DD><TT> offset {</TT>
+   <I>off<sub>x</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>y</sub></I><TT>&nbsp;</TT>
+   <I>off<sub>z</sub></I> <TT>}</TT>
+<DD><TT> inverse </TT><I>invert_flag</I>
+<DD><TT> inverse_slack </TT><I>slack</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Because the output from <B>field</B> is a 3-vector, the transform
+defined by <B>M</B> and <B>offset</B> requires <TT>M</TT> to be a
+3x3 matrix and <TT>offset</TT> to be a 3-vector.
+Thus, if <!-- MATH
+ $\mbox{\boldmath $v$}(\mbox{\boldmath $x$})$
+ -->
+<B><B><I>v</I></B>(<B><I>x</I></B>)</B> represents the
+vector field specified by the <B>field</B> value, then the resulting
+vector field is
+<!-- MATH
+ $M.\mbox{\boldmath $v$}(\mbox{\boldmath $x$})+\textbf{off}$
+ -->
+<B><I>M</I>.<B><I>v</I></B>(<B><I>x</I></B>) + <B>off</B></B>.
+
+<P>
+<TT>M</TT> is described by a list of from one to nine entries, in exactly
+the same manner as for the
+<A HREF="#item:AffineOrientVectorField"><TT>Oxs_AffineOrientVectorField</TT></A>
+and
+<A HREF="#item:AffineOrientScalarField"><TT>Oxs_AffineOrientScalarField</TT></A>
+classes.  The
+interpretation of <B>offset</B>, <B>inverse</B>, and
+<B>inverse_slack</B> is also the same.  In particular, if
+<I>invert_flag</I> is 1, then the resulting vector field is
+<!-- MATH
+ $M^{-1}.\left(\mbox{\boldmath $v$}(\mbox{\boldmath $x$})-\textbf{off}\right)$
+ -->
+<B><I>M</I><SUP>-1</SUP>.<IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img66.gif"
+ ALT="$\left(\vphantom{\mbox{\boldmath $v$}(\mbox{\boldmath $x$})-\textbf{off}}\right.$"><B><I>v</I></B>(<B><I>x</I></B>) - <B>off</B><IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img67.gif"
+ ALT="$\left.\vphantom{\mbox{\boldmath $v$}(\mbox{\boldmath $x$})-\textbf{off}}\right)$"></B>.
+
+<P>
+The following example illustrates combining a
+<TT>Oxs_AffineTransformVectorField</TT> with a
+<A HREF="#item:AffineOrientVectorField"><TT>Oxs_AffineOrientVectorField</TT></A>
+to completely rotate a vector field.
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_BoxAtlas:atlas {
+  xrange {-80e-9 80e-9}
+  yrange {-80e-9 80e-9}
+  zrange {0  40e-9}
+}
+
+proc Trap { x y z } {
+     if {$y&lt;=$x &amp;&amp; $y&lt;=0.5} {return [list 0 1 0]}
+     return [list 0 0 0]
+}
+
+Specify Oxs_ScriptVectorField:trap {
+   script Trap
+   atlas :atlas
+}
+
+Specify Oxs_AffineOrientVectorField:orient {
+   field :trap
+   M { 0 -1 0
+       1  0 0
+       0  0 1 }
+   offset { -20e-9 0 0 }
+   inverse 1
+}
+
+Specify Oxs_AffineTransformVectorField:rot {
+   field :orient
+   M { 0 -1 0
+       1  0 0
+       0  0 1 }
+}
+
+proc Threshold { vx vy vz } {
+   set magsq [expr {$vx*$vx+$vy*$vy+$vz*$vz}]
+   if {$magsq&gt;0} {return 8e5}
+   return 0.0
+}
+
+Specify Oxs_ScriptScalarField:Ms {
+  vector_fields :rot
+  script Threshold
+  script_args vectors
+}
+
+Specify Oxs_TimeDriver {
+ m0 :rot
+ Ms :Ms
+ stopping_dm_dt 0.01
+ evolver :evolve
+ mesh :mesh
+}
+</PRE>
+
+</BLOCKQUOTE>
+The base field here is given by the <TT>Oxs_ScriptVectorField:trap</TT>
+object, which produces a vector field having a trapezoidal shape with
+the non-zero vectors pointing parallel to the <B><I>y</I></B>-axis.  The
+<TT>:orient</TT> and <TT>:rot</TT> transformations rotate the shape and the
+vectors counterclockwise 90 degrees.
+Additionally, the <TT>offset</TT> option in <TT>:orient</TT> translates the
+shape 20&nbsp;nm towards the left.  The original and transformed fields are
+illustrated below.
+
+<P>
+<IMG ALT="Original field" SRC="../giffiles/trap-orig.gif">
+
+<IMG ALT="Rotate field" SRC="../giffiles/trap-rot.gif">
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>sample-vecrotate.mif</B></TT>.
+<P>
+<A NAME="PTMVF"></A><A NAME="6768"></A></DD>
+<DT><STRONG>Oxs_MaskVectorField:<A NAME="item:MaskVectorField"></A></STRONG></DT>
+<DD>Multiplies a vector field pointwise by a scalar vector field (the mask)
+to produce a new vector field.  The Specify block has the form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_MaskVectorField {</TT>
+<DD><TT> mask </TT><I>scalar_field_spec</I>
+<DD><TT> field </TT><I>vector_field_spec</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+This functionality can be achieved, if in a somewhat more complicated
+fashion, with the
+<A HREF="#item:ScriptVectorField"><TT>Oxs_ScriptVectorField</TT></A>
+class.  For example, given a scalar field <TT>:mask</TT> and a vector field
+<TT>:vfield</TT>, this example using the <TT>Oxs_MaskVectorField</TT> class
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_MaskVectorField {
+   mask :mask
+   field :vfield
+}
+</PRE>
+
+</BLOCKQUOTE>
+is equivalent to this example using the <TT>Oxs_ScriptVectorField</TT>
+class
+
+<BLOCKQUOTE><PRE>
+proc MaskField { m vx vy vz } {
+   return [list [expr {$m*$vx}] [expr {$m*$vy}] [expr {$m*$vz}]]
+}
+
+Specify Oxs_ScriptVectorField {
+  script MaskField
+  script_args {scalars vectors}
+  scalar_fields { :mask }
+  vector_fields { :vfield }
+}
+</PRE>
+
+</BLOCKQUOTE>
+Of course, the <TT>Oxs_ScriptVectorField</TT> approach is easily
+generalized to much more complicated and arbitrary combinations of
+scalar and vector fields.
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>rotatecenterstage.mif</B></TT>.
+<P>
+<A NAME="PTIVF"></A><A NAME="6789"></A></DD>
+<DT><STRONG>Oxs_ImageVectorField:<A NAME="item:ImageVectorField"></A></STRONG></DT>
+<DD>This class creates a vector field using an image.  The Specify block has
+the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ImageVectorField:</TT><I>name</I> <TT>{</TT>
+<DD><TT>image </TT> <I>pic</I>
+<DD><TT>multiplier </TT><I>mult</I>
+<DD><TT>vx_multiplier </TT><I>xmult</I>
+<DD><TT>vy_multiplier </TT><I>ymult</I>
+<DD><TT>vz_multiplier </TT><I>zmult</I>
+<DD><TT>vx_offset </TT><I>xoff</I>
+<DD><TT>vy_offset </TT><I>yoff</I>
+<DD><TT>vz_offset </TT><I>zoff</I>
+<DD><TT>norm </TT> <I>norm_magnitude</I>
+<DD><TT>viewplane </TT> <I>view</I>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>exterior </TT><I>ext_flag</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>image</B> is interpreted as a three-color map, yielding a
+vector field where each (x,y,z) component is determined by the red,
+green, and blue color components, respectively....
+
+<P>
+The <B>viewplane</B>, <B>atlas</B>,
+<B>xrange/yrange/zrange</B>, and <B>exterior</B> are treated
+the same as for the
+<A HREF="#item:ImageScalarField"><TT>Oxs_ImageScalarField</TT> class</A>
+<P>
+
+<B>Examples:</B> <TT><B>NONE</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html614"
+  HREF="MIF_Support_Classes.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html610"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html604"
+  HREF="Drivers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html612"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

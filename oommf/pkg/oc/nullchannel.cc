@@ -9,7 +9,7 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "autobuf.h"
 #include "imports.h"
@@ -17,6 +17,12 @@
 
 extern "C" int
 OcNullClose(ClientData, Tcl_Interp *)
+{
+    return 0;
+}
+
+extern "C" int
+OcNullClose2(ClientData, Tcl_Interp *,int)
 {
     return 0;
 }
@@ -48,7 +54,11 @@ OcNullHandle(ClientData, int, ClientData *)
 static Tcl_ChannelType nullChannelType = {
     (char *)"null",             /* Type name. */
     NULL,                       /* Always non-blocking.*/
+#if (TCL_MAJOR_VERSION > 8)
+    NULL,	                /* Close proc. */
+#else	/* TCL_MAJOR_VERSION == 8 */
     OcNullClose,                /* Close proc. */
+#endif
     OcNullInput,                /* Input proc. */
     OcNullOutput,               /* Output proc. */
     NULL,                       /* Seek proc. */
@@ -56,28 +66,37 @@ static Tcl_ChannelType nullChannelType = {
     NULL,                       /* Get option proc. */
     OcNullWatch,                /* Watch for events.  */
     OcNullHandle,               /* Get a handle from the device. */
-#if !((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0) \
-    && (TCL_RELEASE_SERIAL < 3))
+#if (TCL_MAJOR_VERSION > 8)
+    OcNullClose2,		/* Close2 proc or reserved slot */
+    NULL,			/* Block mode proc (reserved slot) */
+    NULL,			/* Flush proc (reserved slot) */
+    NULL,			/* Handler proc (reserved slot) */
+    NULL,                       /* WideSeekProc (reserved slot) */
+    NULL,                       /* ThreadActionProc (reserved slot) */
+    NULL,                       /* TruncateProc (reserved slot) */
+#else	/* TCL_MAJOR_VERSION == 8 */
+#if !((TCL_MINOR_VERSION == 0) && (TCL_RELEASE_SERIAL < 3))
     NULL,			/* Close2 proc or reserved slot */
-#if (TCL_MAJOR_VERSION == 8) && ((TCL_MINOR_VERSION >= 4) \
+#if ((TCL_MINOR_VERSION >= 4) \
     || ((TCL_MINOR_VERSION == 3) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
     && (TCL_RELEASE_SERIAL >= 2)))
     NULL,			/* Block mode proc (reserved slot) */
     NULL,			/* Flush proc (reserved slot) */
     NULL,			/* Handler proc (reserved slot) */
 #endif
-#if (TCL_MAJOR_VERSION == 8) && ((TCL_MINOR_VERSION >= 5) \
+#if ((TCL_MINOR_VERSION >= 5) \
     || ((TCL_MINOR_VERSION == 4) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
     && (TCL_RELEASE_SERIAL >= 1)))
     NULL,                       /* WideSeekProc (reserved slot) */
 #endif
-#if (TCL_MAJOR_VERSION == 8) && ((TCL_MINOR_VERSION >= 5) \
+#if ((TCL_MINOR_VERSION >= 5) \
     || ((TCL_MINOR_VERSION == 4) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
     && (TCL_RELEASE_SERIAL >= 10)))
     NULL,                       /* ThreadActionProc (reserved slot) */
 #endif
-#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION >= 5)
+#if (TCL_MINOR_VERSION >= 5)
     NULL,                       /* TruncateProc (reserved slot) */
+#endif
 #endif
 #endif
 };

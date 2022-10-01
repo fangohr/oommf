@@ -1,0 +1,700 @@
+Only in thetaevolve: copying.txt
+Only in thetaevolve: readme.txt
+diff -ru thetaevolve/thetaevolve.cc thetaevolve-new/thetaevolve.cc
+--- thetaevolve/thetaevolve.cc	2022-01-22 02:39:23.919149032 -0500
++++ thetaevolve-new/thetaevolve.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -21,7 +21,7 @@
+  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  *
+ */
+-#include <float.h>
++#include <cfloat>
+ 
+ #include "nb.h"
+ #include "director.h"
+@@ -36,6 +36,47 @@
+ 
+ /* End includes */
+ 
++void UHH_ThetaEvolve::SetTemperature(OC_REAL8m newtemp,OC_REAL8m usealpha,OC_REAL8m usegamma)
++{
++	temperature = fabs(newtemp);   // no temperatures allowed below 0K
++	kB_T = KBoltzmann * temperature;
++
++	// this is the never-changing part of the variance
++	h_fluctVarConst = fabs(usealpha) / (1. + usealpha*usealpha); // ensure that the variance is a positive value
++	h_fluctVarConst *= (2. * kB_T);                     // Variance = alpha/(1+alpha^2) * 2kB_T / (MU0*gamma*Ms)
++	h_fluctVarConst /= (MU0*usegamma);                  // Ms is not a constant, might vary for each cell
++
++	// by means of stochastic calculus (that is different from ordinary calculus) an additional deterministic term arises
++	// when integrating stochastic equations in an Euler-Scheme (This term is called the noise induced drift term)
++	inducedDriftConst = -h_fluctVarConst * usegamma*usegamma * (1. + usealpha*usealpha);
++}
++
++OC_REAL8m UHH_ThetaEvolve::GetStageTemp
++(OC_UINT4m stage) const
++{
++  if(!has_tempscript) return temperature;
++
++  int index;
++  if((index = tempscript_opts[0].position)>=0) { // stage
++    tempscript_cmd.SetCommandArg(index,stage);
++  }
++
++  tempscript_cmd.SaveInterpResult();
++  tempscript_cmd.Eval();
++  if(tempscript_cmd.GetResultListSize()!=1) {
++    String msg
++      = String("Return script value is not a single scalar: ")
++      + tempscript_cmd.GetWholeResult();
++    tempscript_cmd.RestoreInterpResult();
++    throw Oxs_ExtError(this,msg.c_str());
++  }
++  OC_REAL8m result;
++  tempscript_cmd.GetResultListItem(0,result);
++  tempscript_cmd.RestoreInterpResult();
++
++  return result;
++}
++
+ // Constructor
+ UHH_ThetaEvolve::UHH_ThetaEvolve(
+   const char* name,     // Child instance id
+@@ -47,15 +88,11 @@
+     energy_state_id(0),next_timestep(0.),
+ 		KBoltzmann(1.38062e-23),
+ 		iteration_Tcalculated(0),
+-    max_dm_dt_output(-5),
+-    dE_dt_output(-5),
+-    delta_E_output(-5),
+-    dm_dt_output(-5),
+-    mxH_output(-5)
++		has_tempscript(0)
+ {
+   // Process arguments
+- 	fixed_timestep = GetRealInitValue("fixed_timestep",1e-16);
+- 	min_timestep = max_timestep = fixed_timestep;             //artefacts of the older code, to lazy to rewrite it completely till now
++  fixed_timestep = GetRealInitValue("fixed_timestep",1e-16);
++  min_timestep = max_timestep = fixed_timestep;   //artifacts of the older code, too lazy to rewrite it completely till now
+   if(max_timestep<=0.0) {
+     char buf[4096];
+     Oc_Snprintf(buf,sizeof(buf),
+@@ -106,9 +143,27 @@
+   start_dm *= PI/180.; // Convert from deg to rad
+ 
+ 	// here the new parameters are set up
+-	temperature = GetRealInitValue("temperature", 300.);
+-	temperature = fabs(temperature);   // no temperatures allowed below 0K
+-	kB_T = KBoltzmann * temperature;
++  if(HasInitValue("temperature") && HasInitValue("tempscript")) {
++		throw Oxs_ExtError(this,"Cannot specify both temperature and tempscript");
++	}
++	OC_REAL8m starttemp = -1;
++  if(HasInitValue("tempscript")) {
++		has_tempscript=1;
++		String cmdoptreq = "stage";   // No option at present
++		tempscript_opts.push_back(Nb_TclCommandLineOption("stage",1));
++    tempscript_cmd.SetBaseCommand(InstanceName(),
++												director->GetMifInterp(),
++								GetStringInitValue("tempscript"),
++								Nb_ParseTclCommandLineRequest(InstanceName(),
++																							 tempscript_opts,
++																							 cmdoptreq));
++		starttemp = GetStageTemp(0);
++	} else {
++		has_tempscript=0;
++		starttemp = GetRealInitValue("temperature", 300.);
++	}
++	SetTemperature(starttemp,alpha,gamma);
++
+ 	if(temperature == 0.){
+ 	  min_timestep = 0.;      //set temperature to zero to get an estimate for a reasonable stepsize
+ 		max_timestep = 1e-10;   //or use it for comparison (acts like eulerevolve with temperature=0K)
+@@ -131,22 +186,32 @@
+ 
+ 	gaus2_isset = 0;    //no gaussian random numbers calculated yet
+ 
+-  VerifyAllInitArgsUsed();
+-}   // end Constructor
+- 
+-BOOL UHH_ThetaEvolve::Init()
+-{
+   // Setup outputs
+   max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+-     &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
+   dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+-     &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
+   delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+-     &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
++  temperature_output.Setup(this,InstanceName(),"Temperature","K",0,
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
+   dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+-     &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
+   mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+-     &UHH_ThetaEvolve::UpdateDerivedOutputs,director);
++     &UHH_ThetaEvolve::UpdateDerivedOutputs);
++
++  VerifyAllInitArgsUsed();
++}   // end Constructor
++ 
++OC_BOOL UHH_ThetaEvolve::Init()
++{
++  // Register outputs
++  max_dm_dt_output.Register(director,-5);
++  dE_dt_output.Register(director,-5);
++  delta_E_output.Register(director,-5);
++  temperature_output.Register(director,-5);
++  dm_dt_output.Register(director,-5);
++  mxH_output.Register(director,-5);
+ 
+   // dm_dt and mxH output caches are used for intermediate storage,
+   // so enable caching.
+@@ -177,24 +242,24 @@
+ 
+ void UHH_ThetaEvolve::Calculate_dm_dt
+ (const Oxs_Mesh& mesh_,
+- const Oxs_MeshValue<REAL8m>& Ms_,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_,
+  const Oxs_MeshValue<ThreeVector>& mxH_,
+  const Oxs_MeshValue<ThreeVector>& spin_,
+- UINT4m iteration_now,
+- REAL8m pE_pt_,
++ OC_UINT4m iteration_now,
++ OC_REAL8m pE_pt_,
+  Oxs_MeshValue<ThreeVector>& dm_dt_,
+- REAL8m& max_dm_dt_,REAL8m& dE_dt_,REAL8m& min_timestep_)
++ OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& min_timestep_)
+ { // Imports: mesh_, Ms_, mxH_, spin_, pE_pt_
+   // Exports: dm_dt_, max_dm_dt_, dE_dt_
+-  const UINT4m size = mesh_.Size(); // Assume all imports are compatible
+-  REAL8m coef1 = -fabs(gamma);
+-  REAL8m coef2 = -fabs(alpha);
++  const OC_INDEX size = mesh_.Size(); // Assume all imports are compatible
++  OC_REAL8m coef1 = -fabs(gamma);
++  OC_REAL8m coef2 = -fabs(alpha);
+   ThreeVector scratch;
+   ThreeVector dm_fluct;
+ 	ThreeVector inducedDrift;
+-	REAL8m h_fluctSigma;
++	OC_REAL8m h_fluctSigma;
+   dm_dt_.AdjustSize(&mesh_);
+-  UINT4m i;
++  OC_INDEX i;
+ 	iteration_now++;              // if not done, h_fluct for first step may be calculated too often
+   
+ 	if (!m_local.CheckMesh(&mesh_)){
+@@ -256,17 +321,17 @@
+ 
+   // Zero dm_dt at fixed spin sites
+   UpdateFixedSpinList(&mesh_);
+-  const UINT4m fixed_count = GetFixedSpinCount();
+-  for(UINT4m j=0;j<fixed_count;j++) {
++  const OC_INDEX fixed_count = GetFixedSpinCount();
++  for(OC_INDEX j=0;j<fixed_count;j++) {
+     dm_dt_[GetFixedSpin(j)].Set(0.,0.,0.); // What about pE_pt???
+   }
+ 
+   // Collect statistics
+-  REAL8m max_dm_dt_sq=0.0;
+-  REAL8m dE_dt_sum=0.0;
+-  UINT4m max_index=0;
++  OC_REAL8m max_dm_dt_sq=0.0;
++  OC_REAL8m dE_dt_sum=0.0;
++  OC_INDEX max_index=0;
+   for(i=0;i<size;i++) {
+-    REAL8m dm_dt_sq = dm_dt_[i].MagSq();
++    OC_REAL8m dm_dt_sq = dm_dt_[i].MagSq();
+     if(dm_dt_sq>0.0) {
+       dE_dt_sum += mxH_[i].MagSq() * Ms_[i] * mesh_.Volume(i);
+       if(dm_dt_sq>max_dm_dt_sq) {
+@@ -288,7 +353,7 @@
+ 	if(temperature == 0.){
+     // Get bound on smallest stepsize that would actually
+     // change spin new_max_dm_dt_index:
+-    REAL8m min_ratio = DBL_MAX/2.;
++    OC_REAL8m min_ratio = DBL_MAX/2.;
+     if(fabs(dm_dt_[max_index].x)>=1.0 ||
+        min_ratio*fabs(dm_dt_[max_index].x) > fabs(spin_[max_index].x)) {
+      min_ratio = fabs(spin_[max_index].x/dm_dt_[max_index].x);
+@@ -301,7 +366,7 @@
+       min_ratio*fabs(dm_dt_[max_index].z) > fabs(spin_[max_index].z)) {
+       min_ratio = fabs(spin_[max_index].z/dm_dt_[max_index].z);
+     }
+-  min_timestep_ = min_ratio * REAL8_EPSILON;
++  min_timestep_ = min_ratio * OC_REAL8_EPSILON;
+   }
+ 	else {min_timestep_ = fixed_timestep;}
+ 
+@@ -309,18 +374,34 @@
+ }   // end Calculate_dm_dt
+ 
+ 
+-BOOL
++OC_BOOL
++UHH_ThetaEvolve::InitNewStage
++(const Oxs_TimeDriver* /* driver */,
++ Oxs_ConstKey<Oxs_SimState> state,
++ Oxs_ConstKey<Oxs_SimState> /* prevstate */)
++{
++  // Update derived data in state.
++  const Oxs_SimState& cstate = state.GetReadReference();
++  // Note: state is a copy-by-value import, so its read lock
++  //       will be released on exit.
++	SetTemperature(GetStageTemp(cstate.stage_number),alpha,gamma);
++  return 1;
++}
++
++OC_BOOL
+ UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
+ 		      Oxs_ConstKey<Oxs_SimState> current_state,
++		      const Oxs_DriverStepInfo& /* step_info */,
+ 		      Oxs_Key<Oxs_SimState>& next_state)
+ {
+-  const REAL8m max_step_increase = 1.25;
+-  const REAL8m max_step_decrease = 0.5;
++  const OC_REAL8m max_step_increase = 1.25;
++  const OC_REAL8m max_step_decrease = 0.5;
+ 
+-  UINT4m size,i; // Mesh size and indexing variable
++  OC_INDEX size,i; // Mesh size and indexing variable
+ 
+   const Oxs_SimState& cstate = current_state.GetReadReference();
+   Oxs_SimState& workstate = next_state.GetWriteReference();
++  driver->FillState(cstate,workstate);
+ 
+   if(cstate.mesh->Id() != workstate.mesh->Id()) {
+     throw Oxs_Ext::Error(this,
+@@ -343,10 +424,10 @@
+     // cached data out-of-date
+     UpdateDerivedOutputs(cstate);
+   }
+-  BOOL cache_good = 1;
+-  REAL8m max_dm_dt,dE_dt,delta_E,pE_pt;
+-  REAL8m timestep_lower_bound;  // Smallest timestep that can actually
+-  /// change spin with max_dm_dt (due to REAL8_EPSILON restrictions).
++  OC_BOOL cache_good = 1;
++  OC_REAL8m max_dm_dt,dE_dt,delta_E,pE_pt;
++  OC_REAL8m timestep_lower_bound;  // Smallest timestep that can actually
++  /// change spin with max_dm_dt (due to OC_REAL8_EPSILON restrictions).
+   /// The next timestep is based on the error from the last step.  If
+   /// there is no last step (either because this is the first step,
+   /// or because the last state handled by this routine is different
+@@ -370,7 +451,7 @@
+   const Oxs_MeshValue<ThreeVector>& dm_dt = dm_dt_output.cache.value;
+ 
+   // Negotiate with driver over size of next step
+-  REAL8m stepsize = next_timestep;
++  OC_REAL8m stepsize = next_timestep;
+ 
+   if(stepsize<=0.0) {
+     if(start_dm < sqrt(DBL_MAX/4) * max_dm_dt) {
+@@ -379,7 +460,7 @@
+       stepsize = sqrt(DBL_MAX/4);
+     }
+   }
+-	 BOOL forcestep=0;
++	 OC_BOOL forcestep=0;
+   // Insure step is not outside requested step bounds
+   if(stepsize<min_timestep) {
+ 		// the step has to be forced here,to make sure we don't produce an infinite loop
+@@ -427,7 +508,7 @@
+     // to first order m0 + adjusted_step = v/|v| where
+     // v = m0 + step.  (????)
+ 		// maybe adjusted_mo + adjusted_step is meant here??
+-    REAL8m adj = 0.5 * tempspin.MagSq();
++    OC_REAL8m adj = 0.5 * tempspin.MagSq();
+     tempspin -= adj*cstate.spin[i];
+     tempspin *= 1.0/(1.0+adj);
+ 
+@@ -439,43 +520,43 @@
+     = next_state.GetReadReference();  // Release write lock
+ 
+   //  Calculate delta E
+-  REAL8m new_pE_pt;
++  OC_REAL8m new_pE_pt;
+   GetEnergyDensity(nstate,new_energy,
+ 		   &mxH_output.cache.value,
+ 		   NULL,new_pE_pt);
+   mxH_output.cache.state_id=nstate.Id();
+   const Oxs_MeshValue<ThreeVector>& mxH = mxH_output.cache.value;
+ 
+-  REAL8m dE=0.0;
+-  REAL8m var_dE=0.0;
+-  REAL8m total_E=0.0;
++  OC_REAL8m dE=0.0;
++  OC_REAL8m var_dE=0.0;
++  OC_REAL8m total_E=0.0;
+   for(i=0;i<size;++i) {
+-    REAL8m vol = nstate.mesh->Volume(i);
+-    REAL8m e = energy[i];
++    OC_REAL8m vol = nstate.mesh->Volume(i);
++    OC_REAL8m e = energy[i];
+     total_E += e * vol;
+-    REAL8m new_e = new_energy[i];
++    OC_REAL8m new_e = new_energy[i];
+     dE += (new_e - e) * vol;
+     var_dE += (new_e*new_e + e*e)*vol*vol;
+   }
+-  var_dE *= 256*REAL8_EPSILON*REAL8_EPSILON/3.; // Variance, assuming
++  var_dE *= 256*OC_REAL8_EPSILON*OC_REAL8_EPSILON/3.; // Variance, assuming
+   /// error in each energy[i] term is independent, uniformly
+-  /// distributed, 0-mean, with range +/- 16*REAL8_EPSILON*energy[i].
++  /// distributed, 0-mean, with range +/- 16*OC_REAL8_EPSILON*energy[i].
+   /// It would probably be better to get an error estimate directly
+   /// from each energy term.
+ 
+   // Get error estimate.  See step size adjustment discussion in
+   // MJD Notes II, p72 (18-Jan-2001).
+ 
+-  REAL8m new_max_dm_dt,new_dE_dt,new_timestep_lower_bound;
++  OC_REAL8m new_max_dm_dt,new_dE_dt,new_timestep_lower_bound;
+   Calculate_dm_dt(*(nstate.mesh),*(nstate.Ms),
+ 		  mxH,nstate.spin,nstate.iteration_count,new_pE_pt,new_dm_dt,
+ 		  new_max_dm_dt,new_dE_dt,new_timestep_lower_bound);
+ 
+-  REAL8m max_error=0;
++  OC_REAL8m max_error=0;
+   for(i=0;i<size;++i) { 
+     ThreeVector temp = dm_dt[i];
+     temp -= new_dm_dt[i];
+-    REAL8m temp_error = temp.MagSq();
++    OC_REAL8m temp_error = temp.MagSq();
+     if(temp_error>max_error) max_error = temp_error;
+   }
+   max_error = sqrt(max_error)/2.0; // Actual (local) error
+@@ -483,14 +564,14 @@
+ 
+   // Energy check control
+ #ifdef FOO
+-  REAL8m expected_dE = 0.5 * (dE_dt+new_dE_dt) * stepsize;
+-  REAL8m dE_error = dE - expected_dE;
+-  REAL8m max_allowed_dE = expected_dE + 0.25*fabs(expected_dE);
+-  max_allowed_dE += REAL8_EPSILON*fabs(total_E);
++  OC_REAL8m expected_dE = 0.5 * (dE_dt+new_dE_dt) * stepsize;
++  OC_REAL8m dE_error = dE - expected_dE;
++  OC_REAL8m max_allowed_dE = expected_dE + 0.25*fabs(expected_dE);
++  max_allowed_dE += OC_REAL8_EPSILON*fabs(total_E);
+   max_allowed_dE += 2*sqrt(var_dE);
+ #else
+-  REAL8m max_allowed_dE = 0.5 * (pE_pt+new_pE_pt) * stepsize
+-    + OC_MAX(REAL8_EPSILON*fabs(total_E),2*sqrt(var_dE));
++  OC_REAL8m max_allowed_dE = 0.5 * (pE_pt+new_pE_pt) * stepsize
++    + OC_MAX(OC_REAL8_EPSILON*fabs(total_E),2*sqrt(var_dE));
+   /// The above says essentially that the spin adjustment can
+   /// increase the energy by only as much as pE/pt allows; in
+   /// the absence of pE/pt, the energy should decrease.  I
+@@ -517,7 +598,7 @@
+   //  which control is most restrictive, store that constraint in
+   //  working_allowed_error, and then adjust the step size without
+   //  regard to which control is being exercised.
+-  REAL8m working_allowed_error
++  OC_REAL8m working_allowed_error
+     = max_step_increase*max_error/step_headroom;
+   if(allowed_error_rate>=0.
+      && working_allowed_error>allowed_error_rate) {
+@@ -563,6 +644,7 @@
+      !nstate.AddDerivedData("Max dm/dt",new_max_dm_dt) ||
+      !nstate.AddDerivedData("dE/dt",new_dE_dt) ||
+      !nstate.AddDerivedData("Delta E",dE) ||
++     !nstate.AddDerivedData("Temperature",temperature) ||
+      !nstate.AddDerivedData("pE/pt",new_pE_pt)) {
+     throw Oxs_Ext::Error(this,
+        "UHH_ThetaEvolve::Step:"
+@@ -587,12 +669,14 @@
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
++		= temperature_output.cache.state_id
+     = 0;  // Mark change in progress
+ 
+-  REAL8m dummy_value;
++  OC_REAL8m dummy_value;
+   if(!state.GetDerivedData("Max dm/dt",max_dm_dt_output.cache.value) ||
+      !state.GetDerivedData("dE/dt",dE_dt_output.cache.value) ||
+      !state.GetDerivedData("Delta E",delta_E_output.cache.value) ||
++     !state.GetDerivedData("Temperature",temperature_output.cache.value) ||
+      !state.GetDerivedData("pE/pt",dummy_value) ||
+      !state.GetDerivedData("Timestep lower bound",dummy_value) ||
+      (dm_dt_output.GetCacheRequestCount()>0
+@@ -604,7 +688,7 @@
+ 
+     // Calculate H and mxH outputs
+     Oxs_MeshValue<ThreeVector>& mxH = mxH_output.cache.value;
+-    REAL8m pE_pt;
++    OC_REAL8m pE_pt;
+     GetEnergyDensity(state,energy,&mxH,NULL,pE_pt);
+     energy_state_id=state.Id();
+     mxH_output.cache.state_id=state.Id();
+@@ -616,7 +700,7 @@
+     Oxs_MeshValue<ThreeVector>& dm_dt
+       = dm_dt_output.cache.value;
+     dm_dt_output.cache.state_id=0;
+-    REAL8m timestep_lower_bound;
++    OC_REAL8m timestep_lower_bound;
+     Calculate_dm_dt(*(state.mesh),*(state.Ms),mxH,state.spin,state.iteration_count,
+ 		    pE_pt,dm_dt,
+ 		    max_dm_dt_output.cache.value,
+@@ -649,29 +733,35 @@
+     delta_E_output.cache.value=dummy_value;
+   }
+ 
++    if(!state.GetDerivedData("Temperature",dummy_value)) {
++      state.AddDerivedData("Temperature",
++			   temperature);
++    }
++
+   max_dm_dt_output.cache.value*=(180e-9/PI);
+   /// Convert from radians/second to deg/ns
+ 
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
++    = temperature_output.cache.state_id
+     = state.Id();
+ }   // end UpdateDerivedOutputs
+ 
+ 
+-REAL8m UHH_ThetaEvolve::Uniform_Random(INT4m initGenerator = 1){
++OC_REAL8m UHH_ThetaEvolve::Uniform_Random(OC_INT4m initGenerator = 1){
+ 
+-REAL8m ranReal;
+-const INT4m  M  = 714025;  // constants for the random number generator, that might as well be
+-const INT4m  IA = 1366;		// in- or outside the method itself
+-const INT4m  IC = 150889;
+-const REAL8m RM = 1.4005112e-6;
++OC_REAL8m ranReal;
++const OC_INT4m  M  = 714025;  // constants for the random number generator, that might as well be
++const OC_INT4m  IA = 1366;		// in- or outside the method itself
++const OC_INT4m  IC = 150889;
++const OC_REAL8m RM = 1.4005112e-6;
+ 
+ 
+ 
+ 	if (initGenerator < 1) {								// fill array with random numbers
+ 		ranIntStream = (IC - initGenerator) % M;
+-		for (INT4m i = 0; i < 97; i++){
++		for (OC_INT4m i = 0; i < 97; i++){
+ 			ranIntStream = (IA * ranIntStream + IC) % M;
+ 			ranIntArray[i] = ranIntStream;
+ 		} // end for
+@@ -690,11 +780,11 @@
+ 
+ } //end Uniform_Random
+ 
+-REAL8m UHH_ThetaEvolve::Gaussian_Random(const REAL8m muGaus, const REAL8m sigmaGaus){
++OC_REAL8m UHH_ThetaEvolve::Gaussian_Random(const OC_REAL8m muGaus, const OC_REAL8m sigmaGaus){
+ 
+ // Box-Muller algorithm, see W.H. Press' "Numerical recipes" chapter7.2 for details
+ // the above generator is found there also
+-REAL8m R, gaus1, FAC;
++OC_REAL8m R, gaus1, FAC;
+ 
+ 	if (!gaus2_isset) {
+ 		R = 1.;
+diff -ru thetaevolve/thetaevolve.h thetaevolve-new/thetaevolve.h
+--- thetaevolve/thetaevolve.h	2017-06-14 13:50:09.000000000 -0400
++++ thetaevolve-new/thetaevolve.h	2022-01-22 02:31:37.000000000 -0500
+@@ -25,8 +25,11 @@
+ #ifndef _UHH_THETAEVOLVE
+ #define _UHH_THETAEVOLVE
+ 
++#include "nb.h"
++
+ #include "timeevolver.h"
+ #include "key.h"
++#include "tclcommand.h"
+ #include "output.h"
+ 
+ /* End includes */
+@@ -34,31 +37,31 @@
+ class UHH_ThetaEvolve:public Oxs_TimeEvolver {
+ private:
+   // Base step size control parameters
+-  REAL8m min_timestep;           // Seconds
+-  REAL8m max_timestep;           // Seconds
+-	REAL8m fixed_timestep;         // Seconds -> min_timestep = max_timestep
++  OC_REAL8m min_timestep;           // Seconds
++  OC_REAL8m max_timestep;           // Seconds
++	OC_REAL8m fixed_timestep;         // Seconds -> min_timestep = max_timestep
+ 
+   // Error-based step size control parameters.  Each may be disabled
+   // by setting to -1.  There is an additional step size control that
+   // insures that energy is monotonically non-increasing (up to
+   // estimated rounding error).
+-  REAL8m allowed_error_rate;  // Step size is adjusted so
++  OC_REAL8m allowed_error_rate;  // Step size is adjusted so
+   /// that the estimated maximum error (across all spins) divided
+   /// by the step size is smaller than this value.  The units
+   /// internally are radians per second, converted from the value
+   /// specified in the input MIF file, which is in deg/sec.
+ 
+-  REAL8m allowed_absolute_step_error; // Similar to allowed_error_rate,
++  OC_REAL8m allowed_absolute_step_error; // Similar to allowed_error_rate,
+   /// but without the step size adjustment.  Internal units are
+   /// radians; MIF input units are degrees.
+ 
+-  REAL8m allowed_relative_step_error; // Step size is adjusted so that
++  OC_REAL8m allowed_relative_step_error; // Step size is adjusted so that
+   /// the estimated maximum error (across all spins) divided by
+   /// [maximum dm/dt (across all spins) * step size] is smaller than
+   /// this value.  This value is non-dimensional, representing the
+   /// allowed relative (proportional) error, presumably in (0,1).
+ 
+-  REAL8m step_headroom; // The 3 control parameters above can be
++  OC_REAL8m step_headroom; // The 3 control parameters above can be
+   /// used to estimate the step size that would just fit the control
+   /// requirements.  Because this is only an estimate, if the step size
+   /// is actually set to that value there is a good chance that the
+@@ -75,62 +78,71 @@
+   // single sequence of states is being fed to this routine.  If this
+   // is not the case, then the accum count needs to be tied to the state
+   // id.
+-  const UINT4m energy_accum_count_limit ;
+-  UINT4m energy_accum_count;
++  const OC_UINT4m energy_accum_count_limit ;
++  OC_UINT4m energy_accum_count;
+ 
+   // The following evolution constants are uniform for now.  These
+   // should be changed to arrays in the future.
+-  REAL8m gamma;  // Landau-Lifschitz gyromagnetic ratio
+-  REAL8m alpha;  // Landau-Lifschitz damping coef
+-  BOOL do_precess;  // If false, then do pure damping
++  OC_REAL8m gamma;  // Landau-Lifschitz gyromagnetic ratio
++  OC_REAL8m alpha;  // Landau-Lifschitz damping coef
++  OC_BOOL do_precess;  // If false, then do pure damping
+ 
+   // The next timestep is based on the error from the last step.  If
+   // there is no last step (either because this is the first step,
+   // or because the last state handled by this routine is different
+   // from the incoming current_state), then timestep is calculated
+   // so that max_dm_dt * timestep = start_dm.
+-  REAL8m start_dm;
++  OC_REAL8m start_dm;
+ 
+   // Data cached from last state
+-  UINT4m energy_state_id;
+-  Oxs_MeshValue<REAL8m> energy;
+-  REAL8m next_timestep;
++  OC_UINT4m energy_state_id;
++  Oxs_MeshValue<OC_REAL8m> energy;
++  OC_REAL8m next_timestep;
+   
+   
+   /**
+   Variables and constants for the temperature dependant part of this evolver
+   **/
+-  const REAL8m KBoltzmann;            // Boltzmann constant
+-  REAL8m kB_T;                        // thermal energy
+-  REAL8m h_fluctVarConst;             // constant part of the variance of the thermal field
++  const OC_REAL8m KBoltzmann;            // Boltzmann constant
++  OC_REAL8m kB_T;                        // thermal energy
++  OC_REAL8m h_fluctVarConst;             // constant part of the variance of the thermal field
+ 	Oxs_MeshValue<ThreeVector> h_fluct; // current values of the thermal field
+ 	                                    // due to the fact, that dm_dt is sometimes calculated more
+ 																			// than one time per iteration these values are to be stored in an array
+-  Oxs_MeshValue<REAL8m> m_local;      // the magnitude of each cells magnetic moment
+-	REAL8m inducedDriftConst;           // constant part of the additional drift term that arises in stochastic caculus
+-	REAL8m temperature;                 // temperature in Kelvin
+-	UINT4m iteration_Tcalculated;       // keep in mind for which iteration the thermal field is already calculated
+-  BOOL   ito_calculus;                // use alternative interpretation of the stochastic Langevin equation
++  Oxs_MeshValue<OC_REAL8m> m_local;      // the magnitude of each cells magnetic moment
++	OC_REAL8m inducedDriftConst;           // constant part of the additional drift term that arises in stochastic caculus
++	OC_REAL8m temperature;                 // temperature in Kelvin
++	OC_UINT4m iteration_Tcalculated;       // keep in mind for which iteration the thermal field is already calculated
++  OC_BOOL   ito_calculus;                // use alternative interpretation of the stochastic Langevin equation
+ 																			// (in this case the drift term is omitted)
+ 
+ 	/**
++	Support for stage-varying temperature
++	**/
++	void SetTemperature(OC_REAL8m newtemp,OC_REAL8m usealpha,OC_REAL8m usegamma);
++	OC_BOOL has_tempscript;
++  vector<Nb_TclCommandLineOption> tempscript_opts;
++  Nb_TclCommand tempscript_cmd;
++  OC_REAL8m GetStageTemp(OC_UINT4m stage) const;
++
++	/**
+ 	Variables for the Random distributions
+ 	**/
+-	INT4m ranIntIndex, ranIntStream; // persistent variables of the random number generator
+-	INT4m ranIntArray[97];			     // that must be kept for the next call of this function
+-	INT4m uniform_seed;		  				 // seed to initialize the generator with, can be any integer
++	OC_INT4m ranIntIndex, ranIntStream; // persistent variables of the random number generator
++	OC_INT4m ranIntArray[97];			     // that must be kept for the next call of this function
++	OC_INT4m uniform_seed;		  				 // seed to initialize the generator with, can be any integer
+ 																	 // (beware: -|n| is used in this method)
+ 
+-	BOOL gaus2_isset;  // the here used gaussian distribution algorithm computes two values at a time, but only one is returned.
+-	REAL8m gaus2;      // Therefor the second value (plus a flag) must be stored outside the method itself,
++	OC_BOOL gaus2_isset;  // the here used gaussian distribution algorithm computes two values at a time, but only one is returned.
++	OC_REAL8m gaus2;      // Therefor the second value (plus a flag) must be stored outside the method itself,
+ 	                   // to be returned when the method is called for the second time
+ 
+ 	/**
+ 	Random functions (needed for temperature effects)
+ 	**/
+-	REAL8m Uniform_Random (INT4m initGenerator);    //returns a uniformly distributed random number from range [0,1[
++	OC_REAL8m Uniform_Random (OC_INT4m initGenerator);    //returns a uniformly distributed random number from range [0,1[
+ 
+-	REAL8m Gaussian_Random (const REAL8m muGaus, const REAL8m  sigmaGaus); //returns a gaussian distributed random number 
++	OC_REAL8m Gaussian_Random (const OC_REAL8m muGaus, const OC_REAL8m  sigmaGaus); //returns a gaussian distributed random number 
+ 	                                                                       //with average muGaus und standard deviation sigmaGaus
+ 
+   // Outputs
+@@ -138,38 +150,45 @@
+   Oxs_ScalarOutput<UHH_ThetaEvolve> max_dm_dt_output;
+   Oxs_ScalarOutput<UHH_ThetaEvolve> dE_dt_output;
+   Oxs_ScalarOutput<UHH_ThetaEvolve> delta_E_output;
++  Oxs_ScalarOutput<UHH_ThetaEvolve> temperature_output;
+   Oxs_VectorFieldOutput<UHH_ThetaEvolve> dm_dt_output;
+   Oxs_VectorFieldOutput<UHH_ThetaEvolve> mxH_output;
+ 
+   // Scratch space
+-  Oxs_MeshValue<REAL8m> new_energy;
++  Oxs_MeshValue<OC_REAL8m> new_energy;
+   Oxs_MeshValue<ThreeVector> new_dm_dt;
+   Oxs_MeshValue<ThreeVector> new_H;
+ 
+   void Calculate_dm_dt
+   (const Oxs_Mesh& mesh_,
+-   const Oxs_MeshValue<REAL8m>& Ms_,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_,
+    const Oxs_MeshValue<ThreeVector>& mxH_,
+    const Oxs_MeshValue<ThreeVector>& spin_,
+-   UINT4m iteration_now,
+-	 REAL8m pE_pt_,
++   OC_UINT4m iteration_now,
++	 OC_REAL8m pE_pt_,
+    Oxs_MeshValue<ThreeVector>& dm_dt_,
+-   REAL8m& max_dm_dt_,REAL8m& dE_dt_,REAL8m& min_timestep_);
++   OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& min_timestep_);
+   /// Imports: mesh_, Ms_, mxH_, spin_, pE_pt
+   /// Exports: dm_dt_, max_dm_dt_, max_dm_dt_index, dE_dt_
+ 
+ public:
+   virtual const char* ClassName() const; // ClassName() is
+   /// automatically generated by the OXS_EXT_REGISTER macro.
+-  virtual BOOL Init();
++  virtual OC_BOOL Init();
+   UHH_ThetaEvolve(const char* name,     // Child instance id
+ 		 Oxs_Director* newdtr, // App director
+ 		 const char* argstr);  // MIF input block parameters
+   virtual ~UHH_ThetaEvolve();
+ 
+-  virtual  BOOL
++  virtual OC_BOOL
++  InitNewStage(const Oxs_TimeDriver* driver,
++               Oxs_ConstKey<Oxs_SimState> state,
++               Oxs_ConstKey<Oxs_SimState> prevstate);
++
++  virtual  OC_BOOL
+   Step(const Oxs_TimeDriver* driver,
+        Oxs_ConstKey<Oxs_SimState> current_state,
++       const Oxs_DriverStepInfo& step_info,
+        Oxs_Key<Oxs_SimState>& next_state);
+   // Returns true if step was successful, false if
+   // unable to step as requested.

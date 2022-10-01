@@ -96,7 +96,7 @@
 #include <limits>  // For std::numeric_limits<T>::infinity()
 #include <string>
 
-#include <string.h>
+#include <cstring>
 
 #include "doubledouble.h"
 
