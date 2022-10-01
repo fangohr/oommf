@@ -25,6 +25,12 @@ OOMMFROOTNAME=$(OOMMF_ROOT)$(OOMMFVERSION)
 OOMMFSOURCEMODIFIER=""
 OOMMFSOURCEFILE=$(OOMMFROOTNAME)_$(OOMMFDATE)$(OOMMFSOURCEMODIFIER).tar.gz
 OOMMFSOURCEURL=http://math.nist.gov/oommf/dist/$(OOMMFSOURCEFILE)
+# example https://math.nist.gov/oommf/dist/oommf20b0_20220930.tar.gz
+
+OOMMFPRECOMPILEDFILE=$(OOMMFROOTNAME)_$(OOMMFDATE)$(OOMMFSOURCEMODIFIER)_86_x64.zip
+OOMMFPRECOMPILEDURL=https://math.nist.gov/oommf/dist/$(OOMMFPRECOMPILEDFILE)
+# example https://math.nist.gov/oommf/dist/oommf20b0_20220930_86_x64.zip 
+
 GITREPOHASH=$(shell git rev-list HEAD -1)
 
 
@@ -35,6 +41,7 @@ fetch-oommf:
 	make -f Makefile-update-oommf update-logfile
 	make -f Makefile-update-oommf update-oommf-version
 	make -f Makefile-update-oommf apply-patches
+	make -f Makefile-update-oommf get-oommf-precompiled
 
 	@#	@echo "things to do now:"
 	@#	@echo "1. Potentially commit (with the new OOMMF source files [if tests pass]). "
@@ -55,6 +62,9 @@ clean:
 get-oommf:
 	mkdir -p Downloads
 	cd Downloads && wget $(OOMMFSOURCEURL)
+
+get-oommf-precompiled:
+	cd precompiled && wget $(OOMMFPRECOMPILEDURL)
 
 untar-oommf:
 	tar xfvz Downloads/$(OOMMFSOURCEFILE)
