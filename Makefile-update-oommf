@@ -12,14 +12,14 @@
 #
 
 # Compose name of OOMMF tar ball as available on NIST webpages
-# (as of September 2015, still valid 2021)
+# (as of September 2015, still valid 2022)
 OOMMF_ROOT="oommf"
-OOMMFVERSION="20a3"
+OOMMFVERSION="20b0"
 # USE dot in conda version numbers:
-OOMMFVERSIONCONDA="2.0a3"
+OOMMFVERSIONCONDA="2.0b0"
 # The release date shown on webpage
-OOMMFDATE="20210930"
-OOMMFBUILD="a3"
+OOMMFDATE="20220930"
+OOMMFBUILD="b0"
 OOMMFROOTNAME=$(OOMMF_ROOT)$(OOMMFVERSION)
 # Any additional modifier (could be empty, was first needed for "-hotfix" 2.0a2, 20200608)
 OOMMFSOURCEMODIFIER=""
