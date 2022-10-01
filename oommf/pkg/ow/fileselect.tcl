@@ -231,10 +231,8 @@ Oc_Class Ow_FileSelect {
 	    set localfilter [concat $localfilter $localfilterz]
 	}
 	$filelist delete 0 end;
-	foreach i [lsort [eval glob -nocomplain $localfilter]] {
-	    if {![file isfile $i]} { continue }
-	    $filelist insert end $i
-	}
+	$filelist insert end \
+	   {*}[lsort [glob -nocomplain -type f -- {*}$localfilter]]
     }
     Destructor {
 	# Notify client of impending destruction

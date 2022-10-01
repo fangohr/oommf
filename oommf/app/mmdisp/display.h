@@ -16,6 +16,68 @@
 /* End includes */     /* Optional directive to build.tcl */
 
 //////////////////////////////////////////////////////////////////////////
+// Subsampling and scaling explanation
+//
+// mmDisp, avf2ppm, and avf2ps accept integer subsample settings for
+// arrow and pixel display on rectangular meshes, which subsample the
+// object mesh along each coordinate axis (x, y, z) at the indicated
+// frequency. (For general, non-rectangular meshes, non-integral
+// subsample requests are accepted, but the implementation is (a)
+// nonetheless subsampling (i.e., not interpolation), and (b) is
+// probably broken for 3D meshes. YMMV. (mjd, 10-Mar-2022)) The base
+// point for the subsampling is adjusted to center as well as possible
+// the subsampled mesh.
+//
+// Arrow and pixel displays have separate subsample settings, but each
+// setting applies to all three dimensions. This works tolerably well
+// for meshes with cube-like cells (aspect ratios near 1), but may be
+// strongly sub-optimal for some thin film and multilayer structures.
+// In principle support for separate subsample settings for each of x,
+// y, and z could be added, but the additional complexity of the
+// interface, including the configuration dialog box in mmDisp, may
+// outweigh the gain in flexibility. If necessary, one user workaround
+// is to push the field object through avf2ovf with the -resample
+// option.
+//
+// If "Auto (sub)sample" is enabled, then the subsampling is adjusted so
+// that the distance between neighboring cells is wide enough to allow
+// separate features (arrows or "pixels") to be distinguished in each
+// cell with the current mesh_per_pixel (zoom) scaling and viewaxis
+// selection. This means that the subsampling is set so that the smaller
+// of the two in-viewplane cell edge dimensions multiplied by the
+// subsampling rate and mesh_per_pixel is no smaller than the
+// "preferred_{arrow,pixel}_cellsize" setting; At present (10-Mar-2022)
+// the "preferred" value is set to the "default" value at initialization
+// and never changed. The default values are 20 pixels for "arrows" and
+// 4 pixels for "pixel" display.
+//
+// The "size" setting is a feature scaling relative value. A value of 1
+// for pixel size means that the colored pixel box just covers the mesh
+// cell in each (separate) dimension. The arrow scaling is a bit more
+// involved because we want an in-plane arrow to be the same size
+// regardless of its rotation angle. We also want to have the option of
+// having the arrow size retained across different viewing directions.
+// For these reasons a value of 1 for arrow size sets the arrow to be
+// just a little smaller than the smallest view-cell edge dimension,
+// where the view-cell is the discretization cell multiplied by the
+// subsample setting. (The "just a little" is the default_arrow_ratio
+// value, 0.85. There is also a default_pixel_ratio value but it is set
+// to 1.0.)
+//
+// As mentioned above, we want to be able to compare arrows between
+// different viewing directions, but for high-aspect mesh cells at a
+// given viewing direction it may be convenient to have the arrow size
+// automatically optimized to the cell dimensions for that viewing
+// direction.  This is handled by the arrow "view scale" feature. If
+// enabled the effective arrow size is adjusted relative to the smaller
+// of the two in-viewplane cell dimensions, rather than the smallest of
+// all three cell dimensions.
+//
+// If both auto subsampling and view scale options are disabled, then
+// view display is consistent across changes in the view axis selection.
+//
+
+//////////////////////////////////////////////////////////////////////////
 // PlotConfiguration structure
 //
 class PlotConfiguration {
@@ -25,7 +87,7 @@ public:
   PlotConfiguration();
   PlotConfiguration(const PlotConfiguration &);
   PlotConfiguration& operator=(const PlotConfiguration &);
-  
+
   OC_BOOL displaystate; // 1=>display, 0=>don't display
 
   OC_BOOL autosample;   // If 1, then replace specified subsample
@@ -38,6 +100,11 @@ public:
   OC_REAL4m size;   // Item magnification, relative to its
   ///  "standard size".  The drawn size depends upon size,
   /// subsample, and the "standard size".
+  OC_BOOL viewscale;   // If 1, then the cell dimensions in the
+  /// plane orthogonal to the viewaxis direction are used to adjust the
+  /// arrow size to better fit the display. Active for arrows only, as
+  /// pixel items can have independent lengths in each coordinate axis
+  /// direction.
 
   OC_BOOL antialias;  // 1=> Do antialiasing, 0=> don't.  May be ignored
   /// by some drawing routines.
@@ -106,7 +173,7 @@ class DisplayFrame
 private:
   static const ClassDoc class_doc;
   static const OC_REAL4m default_arrow_cellsize;
-  static const OC_REAL4m default_pixel_cellsize; 
+  static const OC_REAL4m default_pixel_cellsize;
   /// Preferred cellsizes, in pixels.
 
   static const OC_REAL4m default_arrow_ratio;
@@ -127,7 +194,8 @@ private:
   void ClearFrame();
 
   void GetBoundingBoxes(Nb_BoundingBox<OC_REAL4> &bdry,
-			Nb_BoundingBox<OC_REAL4> &data,OC_REAL8m &data_pad) const;
+			Nb_BoundingBox<OC_REAL4> &data,
+                        OC_REAL8m &data_pad) const;
   /// NB: Either of the returning boxes, in particular bdry, may
   ///  be an "empty" box, in which case max<min.
 
@@ -243,13 +311,18 @@ public:
   void SetPlotConfiguration(const PlotConfiguration& _arrow_config,
 			    const PlotConfiguration& _pixel_config);
 
-  // GetPixelDimensions() and GetArrowSize() return the size of
-  // a full size pixel and arrow, respectively, in pixels.
   Nb_Vec3<OC_REAL4> GetPixelDimensions() const;
-  OC_REAL8m GetArrowSize() const;
+  // Returns the size of a full size "pixel", in pixels.
 
-  void SetPreferredArrowCellsize(OC_REAL4m pixels);
-  void SetPreferredPixelCellsize(OC_REAL4m pixels);
+  OC_REAL4m GetViewArrowScale() const;
+  // Returns a recommended arrow scaling adjustment based on
+  // the current view axis.
+
+  OC_REAL8m GetArrowSize() const;
+  // Returns, in pixels, the base arrow size, including zoom,
+  // subsampling, and configured arrow size. View axis scaling is
+  // also included if (and only if) arrow_config.viewscale is true.
+
   OC_REAL4m GetPreferredArrowCellsize() const {
     return preferred_arrow_cellsize;
   }

@@ -8,12 +8,15 @@
 set INSTALLDIR [file join .. local]
 
 # Directory names to exclude from package search
-set EXCLUDEPKG [list CVS newcontrib tmp]
+set EXCLUDEPKG [list CVS newcontrib tmp new]
 
 # Glob strings for package readme file search.  This is used in both
 # EXCLUDEFILES and in program package README report.  In the latter,
 # only the first matching file is reported.
 set READMEGLOB [list README* readme* Readme* ReadMe* READ.ME *README.*]
+
+# Glob string for package .rules file search. Used in the FindRequires proc.
+set RULESGLOB [list *.rules]
 
 # Files to exclude from package list (glob-style match)
 set EXCLUDEFILES [list versdate.txt copying.txt {*}$READMEGLOB]
@@ -38,6 +41,7 @@ proc Usage {} {
    puts stderr "Usage: oxspkg list"
    puts stderr "  or   oxspkg listfiles pkg \[pkg ...\]"
    puts stderr "  or   oxspkg readme pkg \[pkg ...\]"
+   puts stderr "  or   oxspkg requires pkg \[pkg ...\]"
    puts stderr "  or   oxspkg install \[-v\] \[-nopatch\] pkg \[pkg ...\]"
    puts stderr "  or   oxspkg uninstall pkg \[pkg ...\]"
    puts stderr "  or   oxspkg copyout   pkg \[pkg ...\] destination"
@@ -112,6 +116,40 @@ proc FindFiles { dir } {
       set files [concat $files [FindFiles $elt]]
    }
    return $files
+}
+
+proc FindRequires { pkg } {
+   global RULESGLOB
+   set rules [glob -nocomplain -directory $pkg -types f {*}$RULESGLOB]
+   if {[llength $rules]==0} {
+      return [list]
+   }
+   # The following code is cribbed from oxs/makerules.tcl: If src.rules
+   # file exists, then it is a Tcl script that should set the variable
+   # Oxs_external_libs to a list of external libraries (stems only)
+   # needed by the extension associated with src.cc.
+   # Maintenance note: This code should be kept in sync with that in
+   # oxs/makerules.tcl.
+   set libraries [list]
+   foreach fn $rules {
+      if {![file readable $fn]} {
+         lappend libraries "<file $fn not readable>"
+         continue
+      }
+      set chan [open $fn r]
+      set contents [read $chan]
+      close $chan
+      set slave [interp create -safe]
+      $slave eval $contents
+      if {![catch {$slave eval set Oxs_external_libs} libs]} {
+         lappend libraries {*}$libs
+      }
+      interp delete $slave
+   }
+   if {[llength $libraries]==0} {
+      return "<no libraries requested>"
+   }
+   return [lsort -unique $libraries]
 }
 
 proc ListFiles { pkg } {
@@ -253,9 +291,15 @@ proc Install { dopatch pkg } {
                puts "---\n$errmsgB\n---"
             }
          } else {
+            if {$verbose} {
+               puts -nonewline "\n$errmsgT\n..."
+            }
             puts " OK"
          }
       } else {
+         if {$verbose} {
+            puts -nonewline "\n$errmsgB\n..."
+         }
          puts " OK"
       }
    }
@@ -308,6 +352,7 @@ proc CopyOut { pkg dest } {
    }
 }
 
+# Mainline
 set cmd [lindex $argv 0]
 
 set scriptdir [file dirname $argv0]
@@ -355,6 +400,22 @@ switch -exact $cmd {
       }
       foreach pkg $pkglist  {
          Readme $pkg
+      }
+   }
+   requires {
+      if {$argc<2} {
+         puts stderr "ERROR: Too few arguments"
+         Usage
+      }
+      set pkglist [MatchPackages $contrib_packages [lrange $argv 1 end]]
+      if {[llength $pkglist]<1} {
+         puts stderr "ERROR: No matching packages"
+         Usage
+      }
+      set maxnamlen [GetMaxStringLength $pkglist]
+      foreach pkg $pkglist  {
+         set requires [FindRequires $pkg]
+         puts [format "%*s: $requires" $maxnamlen $pkg]
       }
    }
    install {

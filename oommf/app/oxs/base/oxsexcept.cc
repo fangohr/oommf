@@ -5,7 +5,7 @@
  */
 
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "oxsexcept.h"
 
@@ -14,13 +14,13 @@
 
 // Note: We put these constructors in a separate file so we
 // have a convenient place to put a debugger breakpoint
-// from which a backtrace may be obtain.
+// from which a backtrace may be obtained.
 Oxs_Exception::Oxs_Exception(const String& text)
   : msg(text), line(-1), suggested_display_count(-1)
 {
 #ifndef NDEBUG
-    cerr << "DEBUG EXCEPTION: " <<  text << '\n';
-    abort();
+  std::cerr << "\nDEBUG EXCEPTION---\n" <<  text << "\n---" << std::endl;
+  abort();
 #endif
 }
 
@@ -36,8 +36,8 @@ Oxs_Exception::Oxs_Exception
     suggested_display_count(sd_count)
 {
 #ifndef NDEBUG
-    cerr << "DEBUG EXCEPTION: " <<  text << '\n';
-    abort();
+  std::cerr << "\nDEBUG EXCEPTION---\n" <<  text << "\n---" << std::endl;
+  abort();
 #endif
 }
 
@@ -80,12 +80,12 @@ String Oxs_Exception::DisplayCountAsString() const
 
 const char* Oxs_Exception::what() const noexcept
 {
-  String msg;
-  String src = FullSrc();
-  String type = FullType();
-  if(src.size()>0) msg += src + String("\n");
-  if(type.size()>0) msg += type + String("\n");
-  msg += MessageText();
-  workspace = msg;
+  String wrkmsg;
+  String wrksrc = FullSrc();
+  String wrktype = FullType();
+  if(wrksrc.size()>0)  wrkmsg += wrksrc  + String("\n");
+  if(wrktype.size()>0) wrkmsg += wrktype + String("\n");
+  wrkmsg += MessageText();
+  workspace = wrkmsg;
   return workspace.c_str();
 }

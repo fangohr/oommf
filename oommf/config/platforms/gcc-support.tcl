@@ -89,8 +89,7 @@ proc GetGccBannerVersion { gcc } {
 # preceding GuessGccVersion proc.  Note that the flags accepted by gcc
 # vary by version.  This proc is called by GetGccValueSafeFlags; changes
 # here may require adjustments there.
-proc GetGccGeneralOptFlags { gcc_version } {
-
+proc GetGccGeneralOptFlags { gcc_version optlevel} {
    if {[llength $gcc_version]<2} {
       # Unable to determine gcc version.  Return an empty string.
       return {}
@@ -104,8 +103,30 @@ proc GetGccGeneralOptFlags { gcc_version } {
          \"$gcc_version\""
    }
 
-   # Version specific options
+   # Include flag for C++ 11 support, as available.  (Official gcc docs
+   # say -std=c++0x introduced in gcc 4.3, and -std=c++11 in gcc 4.7).
    set opts {}
+   if {$verA>4 || ($verA==4 && $verB>=3)} {
+      if {$verA==4 && $verB<7} {
+         lappend opts -std=c++0x
+      } else {
+         lappend opts -std=c++11
+      }
+   }
+
+   # Lower level optimizations
+   if {$optlevel<3} {
+      if {$optlevel==0} {
+         lappend opts -O0
+      } elseif {$optlevel==1} {
+         lappend opts -O1
+      } else {
+         lappend opts -O2
+      }
+      return $opts
+   }
+
+   # Higher level optimizations; some are gcc version specific
    if {$verA>4 || ($verA==4 && $verB>=6)} {
       lappend opts -Ofast   ;# Note: -Ofast is NOT standards conforming
    } else {
@@ -118,16 +139,6 @@ proc GetGccGeneralOptFlags { gcc_version } {
       # which disables fast-math on a function-by-function basis,
       # thereby providing a workaround.
       lappend opts -ffast-math
-   }
-   if {$verA>4 || ($verA==4 && $verB>=3)} {
-      # Include flag for C++ 11 support, as available.
-      # (Official gcc docs say -std=c++0x introduced in gcc 4.3,
-      # and -std=c++11 in gcc 4.7).
-      if {$verA==4 && $verB<7} {
-         lappend opts -std=c++0x
-      } else {
-         lappend opts -std=c++11
-      }
    }
    if {$verA>=3} {
       lappend opts -frename-registers
@@ -145,15 +156,6 @@ proc GetGccGeneralOptFlags { gcc_version } {
       }
    }
 
-   # Frame pointer: Some versions of gcc don't handle exceptions
-   # properly w/o frame-pointers.  This typically manifests as
-   # Oxs dying without an error message while loading a MIF file.
-   # On some x86 systems, including in addition the flag
-   # -momit-leaf-frame-pointer makes the problem go away.
-   # (See proc GetGccCpuOptFlags in x86-support.tcl).
-   # Comment this out if the aforementioned problem occurs.
-   lappend opts -fomit-frame-pointer -momit-leaf-frame-pointer
-
    return $opts
 }
 
@@ -162,8 +164,8 @@ proc GetGccGeneralOptFlags { gcc_version } {
 # preceding GuessGccVersion proc.  Note that the flags accepted by gcc
 # vary by version.
 #
-proc GetGccValueSafeOptFlags { gcc_version } {
-   set opts [GetGccGeneralOptFlags $gcc_version]
+proc GetGccValueSafeOptFlags { gcc_version optlevel } {
+   set opts [GetGccGeneralOptFlags $gcc_version $optlevel]
    foreach check {-ffast-math -funsafe-math-optimizations -ffinite-math-only} {
       while {[set index [lsearch -exact $opts $check]]>=0} {
          set opts [lreplace $opts $index $index]
@@ -310,16 +312,8 @@ proc GetGccx86ExtFlags { gcc_version cpu_flags } {
       }
    }
 
-   # Frame pointer: Some versions of gcc don't handle exceptions
-   # properly w/o frame-pointers.  This typically manifests as
-   # Oxs dying without an error message while loading a MIF file.
-   # Interestingly, including -momit-leaf-frame-pointer appears
-   # to work around this problem, at least on some systems.  YMMV;
-   # Comment this out if the aforementioned problem occurs.
-   lappend cpuopts -momit-leaf-frame-pointer
-
    return $cpuopts
-   }
+}
 
 # Routine that determines processor specific optimization flags for
 # gcc.  The first import is the gcc version, as returned by the

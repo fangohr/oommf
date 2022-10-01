@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Data block</TITLE>
+<META NAME="description" CONTENT="Data block">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Segment_Header_block.html">
+<LINK REL="up" HREF="OVF_1.0_format.html">
+<LINK REL="next" HREF="OVF_2.0_format.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1398"
+  HREF="OVF_2.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1394"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1390"
+  HREF="Segment_Header_block.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1396"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1399"
+  HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
+<B> Up:</B> <A NAME="tex2html1395"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<B> Previous:</B> <A NAME="tex2html1391"
+  HREF="Segment_Header_block.html">Segment Header block</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION002022000000000000000"></A><A NAME="sec:ovfdatablock"></A>
+<BR>
+Data block
+</H2>
+The data block start is marked by a line of the form
+<PRE>
+# Begin: data &lt;representation&gt;
+</PRE>
+where <TT>&lt;representation&gt;</TT> is one of ``text'', ``binary 4'', or
+``binary 8''.  Text mode uses the ASCII specification, with
+individual data items separated by an arbitrary amount of whitespace
+(spaces, tabs and newlines).  Comments are not allowed inside binary
+mode data blocks, but are permitted inside text data blocks.
+
+<P>
+The binary representations are IEEE floating point in network byte
+order (MSB).  To insure that the byte order is correct, and to provide
+a partial check that the file hasn't been sent through a non 8-bit
+clean channel, the first datum is a predefined value: 1234567.0 (Hex:
+49 96 B4 38) for 4-byte mode, and 123456789012345.0 (Hex: 42 DC 12 21
+83 77 DE 40) for 8-byte mode.  The data immediately follow the check
+value.
+
+<P>
+The structure of the data depends on whether the ``meshtype'' declared
+in the header is ``irregular'' or ``rectangular''.  For irregular
+meshes, each data element is a 6-tuple, consisting of the <B><I>x</I></B>, <B><I>y</I></B> and
+<B><I>z</I></B> components of the node position, followed by the <B><I>x</I></B>, <B><I>y</I></B> and <B><I>z</I></B>
+components of the field at that position.  Ordering among the nodes is
+not relevant.  The number of nodes is specified in the ``pointcount''
+line in the segment header.
+
+<P>
+For rectangular meshes, data input is field values only, in <B><I>x</I></B>, <B><I>y</I></B>,
+<B><I>z</I></B> component triples.  These are ordered with the <B><I>x</I></B> index
+incremented first, then the <B><I>y</I></B> index, and the <B><I>z</I></B> index last.  This
+is nominally Fortran order, and is adopted here because commonly <B><I>x</I></B>
+will be the longest dimension, and <B><I>z</I></B> the shortest, so this order is
+more memory-access efficient than the normal C array indexing of <B><I>z</I></B>,
+<B><I>y</I></B>, <B><I>x</I></B>.  The size of each dimension is specified in the ``xnodes,
+ynodes, znodes'' lines in the segment header.
+
+<P>
+In any case, the first character after the last data item should be a
+newline, followed by
+<PRE>
+# End: data &lt;representation&gt;
+</PRE>
+where <TT>&lt;representation&gt;</TT> must match the value in the ``Begin:
+data'' line.  This is followed by a
+<PRE>
+# End: segment
+</PRE>
+line that ends the segment, and hence the file.
+
+<P>
+Note: An OVF&nbsp;1.0 file with ASCII data and irregular meshtype is
+also a valid OVF&nbsp;0.0 (SVF<A NAME="22675"></A>) file, although as a
+OVF&nbsp;0.0 file the value scaling as specified by
+``<code># valueunit</code>'' and ``<code># valuemultiplier</code>'' header lines is
+inactive.
+
+<P>
+<A NAME="fig:ovfsample"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# OOMMF: rectangular mesh v1.0
+#
+## This is a comment.
+## No comments allowed in the first line.
+#
+# Segment count: 1   ## Number of segments.  Should be 1 for now.
+#
+# Begin: Segment
+# Begin: Header
+#
+# Title: Long file name or title goes here
+#
+# Desc: 'Description' tag, which may be used or ignored by postprocessing
+# Desc: programs. You can put anything you want here, and can have as many
+# Desc: 'Desc' lines as you want.  The ## comment marker is disabled in
+# Desc: description lines.
+#
+## Fundamental mesh measurement unit.  Treated as a label:
+# meshunit: nm
+#
+# meshtype: rectangular
+# xbase: 0.      ## (xbase,ybase,zbase) is the position, in
+# ybase: 0.      ## 'meshunit', of the first point in the data
+# zbase: 0.      ## section (below).
+#
+# xstepsize: 20. ## Distance between adjacent grid pts.: on the x-axis,
+# ystepsize: 10. ## 20 nm, etc.  The sign on this value determines the
+# zstepsize: 10. ## grid orientation relative to (xbase,ybase,zbase).
+#
+# xnodes: 200    ## Number of nodes along the x-axis, etc. (integers)
+# ynodes: 400
+# znodes:   1
+#
+# xmin:    0.    ## Corner points defining mesh bounding box in
+# ymin:    0.    ## 'meshunit'.  Floating point values.
+# zmin:  -10.
+# xmax: 4000.
+# ymax: 4000.
+# zmax:   10.
+#
+## Fundamental field value unit, treated as a label:
+# valueunit: kA/m
+# valuemultiplier: 0.79577472  ## Multiply data block values by this
+#                              ## to get true value in 'valueunits'.
+#
+# ValueRangeMaxMag:  1005.3096  ## These are in data block value units,
+# ValueRangeMinMag:  1e-8       ## and are used as hints (or defaults)
+#     ## by postprocessing programs.  The mmDisp program ignores any
+#     ## points with magnitude smaller than ValueRangeMinMag, and uses
+#     ## ValueRangeMaxMag to scale inputs for display.
+#
+# End: Header
+#
+## Anything between '# End: Header' and '# Begin: data text',
+## '# Begin: data binary 4' or '# Begin: data binary 8' is ignored.
+##
+## Data input is in 'x-component y-component z-component' triples,
+## ordered with x incremented first, then y, and finally z.
+#
+# Begin: data text
+1000 0 0 724.1 0. 700.023
+578.5 500.4 -652.36
+&lt;...data omitted for brevity...&gt;
+252.34 -696.42 -671.81
+# End: data text
+# End: segment
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 19.2:
+    Commented OVF sample
+  file.
+    <A HREF="OVF_1.0_format.html#sec:ovfformat">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1398"
+  HREF="OVF_2.0_format.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1394"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1390"
+  HREF="Segment_Header_block.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1396"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

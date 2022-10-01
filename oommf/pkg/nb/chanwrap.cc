@@ -17,7 +17,7 @@
  * Last modified by: $Author: dgp $
  */
 
-#include <assert.h>
+#include <cassert>
 
 #include "oc.h"
 

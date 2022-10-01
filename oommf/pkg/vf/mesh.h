@@ -587,7 +587,8 @@ public:
   }
 
   // Copy constructor with transform.
-  // NOTE: At present, "subsample" not supported.
+  // NOTE: At present, only integer values for "subsample" are
+  // supported.
   Vf_GridVec3f(const Vf_GridVec3f& import_mesh,
 	       OC_REAL8m subsample,const char* flipstr,
 	       Nb_BoundingBox<OC_REAL8>& clipbox,

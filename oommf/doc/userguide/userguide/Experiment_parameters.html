@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Experiment parameters</TITLE>
+<META NAME="description" CONTENT="Experiment parameters">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Output_specification.html">
+<LINK REL="previous" HREF="Initial_magnetization.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Output_specification.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1153"
+  HREF="Output_specification.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1149"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1143"
+  HREF="Initial_magnetization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1151"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1154"
+  HREF="Output_specification.html">Output specification</A>
+<B> Up:</B> <A NAME="tex2html1150"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1144"
+  HREF="Initial_magnetization.html">Initial magnetization</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001815000000000000000"></A><A NAME="sec:expparams"></A>
+<BR>
+Experiment parameters
+</H2>
+The following records specify the applied field schedule:
+
+<UL>
+<LI><B>Field Range:</B><A NAME="21473"></A> Specifies a range of
+      applied fields that are stepped though in a linear manner.  The
+      parameter list should be 7 numbers, followed by optional control
+      point (stopping criteria) specifications.  The 7 required fields
+      are the begin field Bx By Bz in Tesla, the end field Bx By Bz in
+      Tesla, and an integer number of steps (intervals) to take between
+      the begin and end fields (inclusive).  Use as many Field Range
+      records as necessary--they will be stepped through in order of
+      appearance.  If the step count is 0, then the end field is ignored
+      and only the begin field is applied.  If the step count is larger
+      than 0, and the begin field is the same as the last field from the
+      previous range, then the begin field is not repeated.
+
+<P>
+The optional control point<A NAME="21474"></A> specs
+      determine the conditions that cause the applied field to be
+      stepped, or more precisely, end the simulation of the
+      magnetization evolution for the current applied field.  The
+      control point specs are specified as <EM>-type value</EM> pairs.
+      There are 3 recognized control point types:
+      <B>-torque</B><A NAME="21477"></A>,
+      <B>-time</B><A NAME="21479"></A>, and
+      <B>-iteration</B><A NAME="21481"></A>.  If a -torque pair
+      is given, then the simulation at the current applied field is
+      ended when <!-- MATH
+ $|\textbf{m}\times\textbf{h}|$
+ -->
+<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B> (i.e.,
+      <!-- MATH
+ $|\textbf{M}\times\textbf{H}|/M_s^2$
+ -->
+<B>|<B>M</B> <TT>x</TT> <B>H</B>|/<I>M</I><SUB>s</SUB><SUP>2</SUP></B>)  at all spins in the simulation is
+      smaller than the specified -torque value (dimensionless).  If a
+      -time pair is given, then the simulation at the current field is
+      ended when the elapsed simulation time <EM>for the current field
+      step</EM> reaches the specified -time value (in seconds).  Similarly,
+      an -iteration pair steps the applied field when the iteration
+      count for the current field step reaches the -iteration value.
+      If multiple control point specs are given, then the applied field
+      is advanced when any one of the specs is met.  If no control point
+      specs are given on a range line, then the <B>Default Control
+      Point Spec</B> is used.
+
+<P>
+For example, consider the following Field Range line:
+<PRE>
+   Field Range: 0 0 0 .05 0 0  5  -torque 1e-5 -time 1e-9
+</PRE>
+      This specifies 6 applied field values, (0,0,0), (0.01,0,0),
+      (0.02,0,0), ..., (0.05,0,0) (in Tesla), with the advancement
+      from one to the next occurring whenever
+      <!-- MATH
+ $|\textbf{m}\times\textbf{h}|$
+ -->
+<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B>
+      is smaller than 1e-5 for all spins,
+      or when 1 nanosecond (simulation time) has elapsed at the current
+      field. (If -torque was not specified, then the applied field
+      would be stepped at 1, 2, 3 4 and 5&nbsp;ns in simulation time.)
+
+<P>
+The Field Range record is optional, with a default value of 0 0 0
+      0 0 0 0.
+
+<P>
+</LI>
+<LI><B>Default Control Point Spec:</B> List of control
+      point<A NAME="21491"></A> <EM>-type value</EM> pairs to
+      use as stepping criteria for any field range with no control point
+      specs.  This is a generalization of and replacement for the <EM>      Converge <B>|</B>mxh<B>|</B> Value</EM> record.  Optional, with default
+      ``<TT>-torque&nbsp;1e-5</TT>.''
+
+<P>
+</LI>
+<LI><B>Field Type:</B> Applied (external) field<A NAME="21496"></A>
+     routine and parameters, if any. This is optional, with default
+     Uniform.  At most one record of this type is allowed, but the Multi
+     type may be used to apply a collection of fields.  The nominal
+     applied field (NAF) is stepped through the Field Ranges described
+     above, and is made available to the applied field routines which
+     use or ignore it as appropriate.  
+<BR>
+The
+     following Field Type routines are available:
+     
+<UL>
+<LI><B>Uniform</B>
+<BR>
+Applied field is uniform with value specified by the NAF.
+</LI>
+<LI><B>Ribbon relcharge x0 y0 x1 y1 height</B>
+<BR>
+Charge ``Ribbon,'' lying perpendicular to the <B><I>xy</I></B>-plane.
+          Here relcharge is the charge strength relative to Ms, and
+          (x0,y0), (x1,y1) are the endpoints of the ribbon (in
+          meters).  The ribbon extends height/2 above and below the
+          calculation plane.  This routine ignores the NAF.
+</LI>
+<LI><B>Tie rfx rfy rfz x0 y0 x1 y1 ribwidth</B>
+<BR>
+The points (x0,y0) and (x1,y1) define (in meters) the
+          endpoints of the center spine of a rectangular ribbon of
+          width ribwidth lying in the <B><I>xy</I></B>-plane.  The cells with
+          sample point inside this rectangle see an applied field of
+          (rfx,rfy,rfz), in units relative to Ms.  (If the field is
+          large, then the magnetizations in the rectangle will be
+          ``tied'' to the direction of that field.)  This routine
+          ignores the NAF.
+</LI>
+<LI><B>OneFile filename multiplier</B>
+<BR>
+Read B field (in Tesla) in from a file.  Each value in the
+          file is multiplied by the ``multiplier'' value on input.  This
+          makes it simple to reverse field direction (use -1 for the
+          multiplier), or to convert H fields to B fields (use
+          1.256637e-6).  The input file may be any of the vector field
+          file types recognized by <B>mmDisp</B>.  The input dimensions
+          will be scaled as necessary to fit the simulation grid, with
+          zeroth order interpolation as necessary.  This routine ignores
+          the NAF.
+</LI>
+<LI><B>FileSeq filename procname multiplier</B>
+<BR>
+This is a generalization of the OneFile routine that reads in
+          fields from a sequence of files.  Here ``filename'' is the
+          name of a file containing Tcl code to be sourced during
+          problem initialization, and ``procname'' is the name of a Tcl
+          procedure defined in filename, which takes the nominal B field
+          components (in Tesla) and field step count values as imports
+          (4 values total), and returns the name of the vector field
+          file that should be used as the applied B field for that field
+          step.  The B field units in the vector field file should be
+          Tesla.
+</LI>
+<LI><B>Multi routinecount <TT>&#92;</TT>
+<BR>
+param1count name1 param1 param2 ...<TT>&#92;</TT>
+<BR>
+param2count name2 param1 param2 ...<TT>&#92;</TT>
+<BR>                   ...</B>
+<BR>
+Allows a conglomeration of several field type routines.  All
+          entries must be on the same logical line, i.e., end physical
+          lines with '<TT>&#92;</TT>' continuation characters as necessary.
+          Here routinecount is the number of routines, and param1count
+          is the number parameters (including name1) needed by the
+          first routine, etc.
+     
+</LI>
+</UL>
+     Note that all lengths are in meters.  The coordinates in the
+     simulation lie in the first octant, running from (0,0,0) to
+     (Part&nbsp;Width, Part&nbsp;Height, Part&nbsp;Thickness).
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1153"
+  HREF="Output_specification.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1149"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1143"
+  HREF="Initial_magnetization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1151"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

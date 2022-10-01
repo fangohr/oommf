@@ -1,7 +1,7 @@
 /* FILE: except.h                    -*-Mode: c++-*-
  *
  *   Simple exception object for C++ exceptions.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2015/05/13 02:03:00 $
@@ -11,10 +11,21 @@
 #ifndef _OC_EXCEPT
 #define _OC_EXCEPT
 
-#include <stdarg.h>
+#include <cstdarg>
+#include <atomic>
 #include <string>
 
 #include "autobuf.h"
+#include "imports.h"
+
+#if OC_ASYNC_EXCEPTION_HANDLING == OC_ASYNC_EXCEPT_SEH
+// NB: OC_ASYNC_EXCEPT* macros defined in ocport.h, which
+//     is #include'd in imports.h
+# include <eh.h> // For _set_se_translator (structured exception handling)
+# include <winternl.h> // RtlNtStatusToDosError
+#endif
+
+
 /* End includes */     /* Optional directive to pimake */
 
 ////////////////////////////////////////////////////////////////////////
@@ -24,6 +35,10 @@
                "   in file: " __FILE__ "\n"                      \
                "   at line: " OC_STRINGIFY(__LINE__) "\n")       \
            + Oc_AutoBuf(text) )
+
+// Wrapper for throwing a pure string Oc_Exception (no formatting)
+#define OC_THROWEXCEPT(class,func,errmsg) \
+  OC_THROW(Oc_Exception(__FILE__,__LINE__,class,func,errmsg))
 
 ////////////////////////////////////////////////////////////////////////
 // Simple exception object.  Sample usage is:
@@ -118,5 +133,54 @@ public:
     va_end(arg_ptr);
   }
 };
+
+// Asynchronous exception handling
+#if OC_ASYNC_EXCEPTION_HANDLING == OC_ASYNC_EXCEPT_NONE
+class Oc_AsyncError {
+public:
+  static void RegisterHandler();
+  static void RegisterThreadHandler() {}
+};
+#else // OC_ASYNC_EXCEPTION_HANDLING != OC_ASYNC_EXCEPT_NONE
+class Oc_AsyncError {
+public:
+  // RegisterHandler queries the Oc_Option database for the desired
+  // handler type, stores that in the private handler_type variable, and
+  // sets up the handler. The Oc_Option database is part of the global
+  // Tcl interp (Oc_GlobalInterpreter), and as such should only be
+  // accessed from the main thread. Also, don't call this until after
+  // Oc_InitScript has been run so that the Oc_Option database is set
+  // up from oommf/config/{options.tcl,local/options.tcl}.
+  //
+  // On unix systems signal handlers are inherited by child threads, so
+  // no additional registration is necessary. Under Windows, however,
+  // each child thread needs to make a separate registration. Do this by
+  // calling RegisterThreadHandler, which uses the cached handler_type
+  // value instead of accessing the Oc_Option database. It is therefore
+  // necessary that RegisterHandler is called from the main thread
+  // before any children may call RegisterThreadHandler.
+  //
+  // To simplify client coding, RegisterThreadHandler is a nop on
+  // non-Windows (i.e., presumed unix-based) systems.
+  static void RegisterHandler();
+#if OC_SYSTEM_TYPE == OC_WINDOWS
+  static void RegisterThreadHandler();
+#else
+  static void RegisterThreadHandler() {} // NOP on unix-like platforms
+#endif
+
+private:
+  static volatile std::atomic<int> handler_type;
+  // std::signal handling
+  static void CatchSignal(int signalNumber);
+  static void HandleSignal();
+#if OC_ASYNC_EXCEPTION_HANDLING == OC_ASYNC_EXCEPT_SEH
+  static void CatchSEH(unsigned int errcode,EXCEPTION_POINTERS*);
+  static void HandleSEH();
+  static void SignalSEH();
+  static void NoCatchSEH(unsigned int errcode,EXCEPTION_POINTERS*);
+#endif
+};
+#endif // OC_ASYNC_EXCEPTION_HANDLING == OC_ASYNC_EXCEPT_NONE
 
 #endif // _OC_EXCEPT

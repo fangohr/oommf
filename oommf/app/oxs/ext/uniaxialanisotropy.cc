@@ -85,8 +85,8 @@ Oxs_UniaxialAnisotropy::Oxs_UniaxialAnisotropy(
     // as opposed to {0.57735027,0.57735027,0.57735027}, or
     //
     //      Specify Oxs_UniformVectorField {
-    //        norm 1 
-    //        vector { 1 1 1 } 
+    //        norm 1
+    //        vector { 1 1 1 }
     //    }
     // Also setup uniform axis variables
     tmpaxisptr->SetMag(1.0);
@@ -236,7 +236,6 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
   OC_REAL8m dscaling = dmult; // set from main thread once per state.
 
   for(OC_INDEX i=node_start;i<node_stop;++i) {
-
     if(aniscoeftype == K1_TYPE) {
       if(!K1_is_uniform) k = K1[i];
       field_mult = (2.0/MU0)*k*Ms_inverse[i];
@@ -302,10 +301,10 @@ void Oxs_UniaxialAnisotropy::RectIntegEnergy
       // the norm squared takes 3 mult and 2 adds
       //            => 9 mults + 5 adds.
       // Another option is to use
-      //            (axis - spin)^2 = 2*(1-dot) 
+      //            (axis - spin)^2 = 2*(1-dot)
       //     so  1 - dot*dot = t*(2-t)
       //                where t = 0.5*(axis-spin)^2.
-      // The op count here is 
+      // The op count here is
       //            => 5 mults + 6 adds.
       // Another advantage to the second approach is you get 'dot', as
       // opposed to dot*dot, which saves a sqrt if dot is needed.  The
@@ -376,7 +375,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunkInitialize
           OC_REAL8m test = fabs(K1[i]);
           if(test>max_K1) max_K1 = test;
         }
-      } 
+      }
     } else if(aniscoeftype == Ha_TYPE) {
       if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
       max_K1=0.0;
@@ -613,7 +612,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
   }
   // Quadratic fit requires 3 points, so no higher order method
   // available if xdim<3.
-    
+
   // y-axis.  Note special case handling for short lengths.
   if(ydim>=6) {
     for(z=zstart;z<=zstop;++z) {
@@ -764,7 +763,7 @@ void Oxs_UniaxialAnisotropy::ComputeEnergyChunk
   // Quadratic fit requires 3 points, so no higher order method
   // available if ydim<3.
 
-    
+
   // z-axis.  Note special case handling for short lengths.
   if(zdim>=6) {
     // Bottom face, z==0
@@ -955,7 +954,7 @@ Oxs_UniaxialAnisotropy::IncrementPreconditioner(PreconditionerData& pcd)
           OC_REAL8m test = fabs(K1[i]);
           if(test>max_K1) max_K1 = test;
         }
-      } 
+      }
     } else if(aniscoeftype == Ha_TYPE) {
       if(!Ha_is_uniform) Ha_init->FillMeshValue(state.mesh,Ha);
       max_K1=0.0;

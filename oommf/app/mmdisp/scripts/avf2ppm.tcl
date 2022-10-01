@@ -9,7 +9,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ppm
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 Oc_CommandLine Option console {} {}
 
@@ -163,6 +163,7 @@ if {$verbosity >= 3} {
  Autosample: $plot_config(arrow,autosample)
  Subsample: $plot_config(arrow,subsample)
  Size: $plot_config(arrow,size)
+ View axis size adj: $plot_config(arrow,viewscale)
  Antialias: $plot_config(arrow,antialias)
  Outline width: $plot_config(arrow,outlinewidth)
  Outline color: $plot_config(arrow,outlinecolor)"
@@ -276,6 +277,7 @@ proc ReadFile { filename } {
     # Mesh loads in with +z forward, so transform
     # mesh to show desired axis
     CopyMesh 0 0 0 $view_transform(+z,$viewaxis)
+    SetZoom $plot_config(misc,zoom)
     SelectActiveMesh 0
 
     return [list $xmin $ymin $zmin $xmax $ymax $zmax]

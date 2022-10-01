@@ -36,8 +36,8 @@ typedef Xp_DoubleDouble OXS_FFT_XP_TYPE;
 // Lightweight versions of the OOMMF support library:
 #include <cstdio>
 #include <string>
-#include <stdarg.h>  // va_list and friends
-#include <stdlib.h>
+#include <cstdarg>  // va_list and friends
+#include <cstdlib>
 
 using namespace std;
 

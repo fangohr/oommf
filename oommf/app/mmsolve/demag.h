@@ -12,8 +12,8 @@
 #define _DEMAG_H
 
 /* Standard libraries */
-#include <stdio.h>   
-#include <string.h>
+#include <cstdio>   
+#include <cstring>
 
 /* End includes */
 

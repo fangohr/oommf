@@ -9,9 +9,9 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <stdarg.h>  // For va_list declarations
-#include <stdio.h>
-#include <string.h>
+#include <cstdarg>  // For va_list declarations
+#include <cstdio>
+#include <cstring>
 
 #include "oc.h"
 #include "errhandlers.h"

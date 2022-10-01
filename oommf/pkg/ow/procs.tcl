@@ -61,7 +61,7 @@ proc Ow_ChangeColorScheme { scheme } {
       highlightBackground #ECECEC \
       highlightColor      #828282 \
       insertBackground    #000000 \
-      selectcolor         #B03060 \
+      selectColor         #B03060 \
       selectBackground    #B3D7FF \
       selectForeground    #000000 \
       troughColor         #C3C3C3 \
@@ -77,7 +77,12 @@ proc Ow_ChangeColorScheme { scheme } {
    #    option get .mb.file foreground *
    # will return "cyan", regardless of what the foreground color for
    # that widget actually is, i.e., ".mb.file cget -foreground" may be
-   # different. The above list was obtained from Tk 8.6.10 on macosx
+   # different. Likewise, to set the default checkbutton box color, use
+   #    option add *Checkbutton.selectColor pink
+   # This can be read by creating a checkbutton (say .foo.cb) widget
+   # and checking
+   #    option get .foo.cb selectColor *
+   # The above Palette list was obtained from Tk 8.6.10 on macOS
    # 10.14.6 (Mojave). Note that the last two items, disabledBackground
    # and readonlyBackground, are optionally used by the Tk entry widget,
    # but are not listed on the Tk palette man page. BTW, tk_setPalette
@@ -85,11 +90,16 @@ proc Ow_ChangeColorScheme { scheme } {
    # background black foo white", so it is safe to set keys not known on
    # all platforms.
 
-   # BTW, IMO the above, when run under dark mode in macosx, leaves the
+   # BTW, IMO the above, when run under dark mode in macOS, leaves the
    # select marker in checkbutton widgets a little too light, but I
    # haven't been able to find any way to change that. The
    # ttk::checkbutton widget appears more flexible, so we might want to
-   # switch over to the ttk widget set.
+   # switch over to the ttk widget set. (This report is for a Tcl/Tk
+   # 8.6.10 aqua build of Tk (check "tk windowingsystem"). In that
+   # setting the color of the checkbutton box and select indicator are
+   # controlled by the checkbutton -background option. The -selectcolor
+   # and -foreground options, which usually control the checkbutton box
+   # and select indicator colors, are ignored.)
 
    # The tk_setPalette code is a Tcl proc defined, at least for Tcl/Tk
    # 8.6.10, in the Tk source file tk/library/palette.tcl. The values
@@ -114,7 +124,7 @@ proc Ow_ChangeColorScheme { scheme } {
    # Tk entry widget. BTW, the 11 keys listed above are exactly the set
    # set by the tk_bisque proc.
    #
-   # For light mode on macosx ::tk::Palette is:
+   # For light mode on macOS ::tk::Palette is:
    #       activeBackground    #FFFFFF
    #       activeForeground    #000000
    #       background          #ECECEC  (systemWindowBackgroundColor)
@@ -127,7 +137,7 @@ proc Ow_ChangeColorScheme { scheme } {
    #       selectForeground    #000000
    #       troughColor         #D5D5D5
    #
-   # For dark mode on macosx ::tk::Palette is:
+   # For dark mode on macOS ::tk::Palette is:
    #       activeBackground     #767676
    #       activeForeground     #FFFFFF
    #       background           #323232
@@ -183,7 +193,7 @@ proc Ow_ChangeColorScheme { scheme } {
    # man page, plus the bottom 5.
    #
    #
-   # On my Tk 8.6.10/macosx Mojave build,
+   # On my Tk 8.6.10/macOS Mojave build,
    #    winfo rgb . systemWindowBackgroundColor
    # returns
    #   60652 60652 60652
@@ -192,6 +202,139 @@ proc Ow_ChangeColorScheme { scheme } {
    # think this should be
    #    12850 12850 12850
    # (=hex color 323232).
+   #
+   # BIG NOTE: It appears that 'winfo rgb . <system_symbolic_colorname>'
+   # returns the rgb values for that color at process start time, that
+   # is, calling '::tk::unsupported::MacWindowStyle appearance' to
+   # change the light/dark display mode doesn't have any effect on the
+   # 'winfo rgb' return value. So, to get the proper color values you
+   # need to change 'System Preference|General|Appearance' to the
+   # desired mode before launching tclsh/wish and running 'winfo rgb
+   # ...'. Use the boolean return from
+   #
+   #    tk::unsupported::MacWindowStyle isdark <win>
+   #
+   # to determine whether or not <win> is in dark mode.
+   #
+   # I ran this test on BigSur with Tcl/Tk 8.6.12 for all the "semantic
+   # colors" I could find listed in the Tk docs.  The results
+   # follow. Many of the colors were the same for both light and dark
+   # mode, so I broke the results into three lists, first the non-common
+   # colors for light mode, non-common for dark mode, and then the
+   # common color list:
+   #
+   # Light unique ---
+   #                    systemControlTextColor: #000000
+   #            systemDisabledControlTextColor: #000000
+   #                          systemLabelColor: #000000
+   #                           systemLinkColor: #0068DA
+   #                      systemMenuActiveText: #000000
+   #                        systemMenuDisabled: #000000
+   #                            systemMenuText: #000000
+   #                systemPlaceholderTextColor: #000000
+   #                systemSelectedTabTextColor: #000000
+   #         systemSelectedTextBackgroundColor: #B3D7FF
+   #                   systemSelectedTextColor: #000000
+   #                      systemSeparatorColor: #000000
+   #                 systemTextBackgroundColor: #FFFFFF
+   #                           systemTextColor: #000000
+   #               systemWindowBackgroundColor: #ECECEC
+   #
+   # Dark unique ---
+   #                    systemControlTextColor: #FFFFFF
+   #            systemDisabledControlTextColor: #FFFFFF
+   #                          systemLabelColor: #FFFFFF
+   #                           systemLinkColor: #419CFF
+   #                      systemMenuActiveText: #FFFFFF
+   #                        systemMenuDisabled: #FFFFFF
+   #                            systemMenuText: #FFFFFF
+   #                systemPlaceholderTextColor: #FFFFFF
+   #                systemSelectedTabTextColor: #FFFFFF
+   #         systemSelectedTextBackgroundColor: #3F638B
+   #                   systemSelectedTextColor: #FFFFFF
+   #                      systemSeparatorColor: #FFFFFF
+   #                 systemTextBackgroundColor: #1E1E1E
+   #                           systemTextColor: #FFFFFF
+   #               systemWindowBackgroundColor: #323232
+   #
+   # Common colors ---
+   #                      systemActiveAreaFill: #FFFFFF
+   #               systemAlertBackgroundActive: #ECECEC
+   #             systemAlertBackgroundInactive: #ECECEC
+   #      systemAlternatePrimaryHighlightColor: #0850D0
+   #                 systemAppleGuideCoachmark: #FFFFFF
+   #                     systemBevelActiveDark: #A3A3A3
+   #                    systemBevelActiveLight: #A3A3A3
+   #                   systemBevelInactiveDark: #D1D1D1
+   #                  systemBevelInactiveLight: #D1D1D1
+   #                               systemBlack: #000000
+   #           systemButtonActiveDarkHighlight: #E1E1E1
+   #              systemButtonActiveDarkShadow: #DCDCDC
+   #          systemButtonActiveLightHighlight: #FDFDFD
+   #             systemButtonActiveLightShadow: #E1E1E1
+   #                          systemButtonFace: #F0F0F0
+   #                    systemButtonFaceActive: #F0F0F0
+   #                  systemButtonFaceInactive: #FAFAFA
+   #                   systemButtonFacePressed: #ABABAB
+   #                         systemButtonFrame: #828282
+   #                   systemButtonFrameActive: #828282
+   #                 systemButtonFrameInactive: #C2C2C2
+   #         systemButtonInactiveDarkHighlight: #EEEEEE
+   #            systemButtonInactiveDarkShadow: #E6E6E6
+   #        systemButtonInactiveLightHighlight: #FDFDFD
+   #           systemButtonInactiveLightShadow: #EEEEEE
+   #          systemButtonPressedDarkHighlight: #979797
+   #             systemButtonPressedDarkShadow: #8A8A8A
+   #         systemButtonPressedLightHighlight: #BABABA
+   #            systemButtonPressedLightShadow: #979797
+   #                       systemChasingArrows: #000000
+   #                  systemControlAccentColor: #007AFF
+   #              systemDialogBackgroundActive: #ECECEC
+   #            systemDialogBackgroundInactive: #ECECEC
+   #            systemDocumentWindowBackground: #FFFFFF
+   #                          systemDragHilite: #B2D7FF
+   #                    systemDrawerBackground: #E8E8E8
+   #              systemFinderWindowBackground: #FFFFFF
+   #                      systemFocusHighlight: #7EADD9
+   #                           systemHighlight: #B2D7FF
+   #                  systemHighlightAlternate: #0850D0
+   #                  systemHighlightSecondary: #D0D0D0
+   #                 systemIconLabelBackground: #FAFDFD
+   #         systemIconLabelBackgroundSelected: #999999
+   #                  systemListViewBackground: #FFFFFF
+   #               systemListViewColumnDivider: #000000
+   #           systemListViewEvenRowBackground: #F5F5F5
+   #            systemListViewOddRowBackground: #FFFFFF
+   #                   systemListViewSeparator: #FFFFFF
+   #        systemListViewSortColumnBackground: #FFFFFF
+   #                                systemMenu: #FFFFFF
+   #                          systemMenuActive: #3571CD
+   #                      systemMenuBackground: #FFFFFF
+   #              systemMenuBackgroundSelected: #3571CD
+   #      systemModelessDialogBackgroundActive: #ECECEC
+   #    systemModelessDialogBackgroundInactive: #ECECEC
+   #              systemMovableModalBackground: #ECECEC
+   #        systemNotificationWindowBackground: #ECECEC
+   #                    systemPopupArrowActive: #000000
+   #                  systemPopupArrowInactive: #808080
+   #                   systemPopupArrowPressed: #000000
+   #              systemPressedButtonTextColor: #FFFFFF
+   #               systemPrimaryHighlightColor: #B2D7FF
+   #            systemScrollBarDelimiterActive: #FFFFFF
+   #          systemScrollBarDelimiterInactive: #FFFFFF
+   #             systemSecondaryHighlightColor: #D0D0D0
+   #                     systemSheetBackground: #ECECEC
+   #               systemSheetBackgroundOpaque: #ECECEC
+   #          systemSheetBackgroundTransparent: #E8E8E8
+   #                      systemStaticAreaFill: #FFFFFF
+   #                   systemToolbarBackground: #ECECEC
+   #                         systemTransparent: #FFFFFF
+   #       systemUtilityWindowBackgroundActive: #ECECEC
+   #     systemUtilityWindowBackgroundInactive: #ECECEC
+   #                               systemWhite: #FFFFFF
+   #                          systemWindowBody: #FFFFFF
+   #
+   # YMMV.
 
    # Adjust colors in ttk "themed" widgets. Note that "ttk::style theme
    # use" resets the colors, so "ttk::style configure" should come
@@ -212,7 +355,7 @@ proc Ow_ChangeColorScheme { scheme } {
                     background systemMenu
             disabledforeground systemMenuDisabled
                     foreground systemMenuText
-                   selectcolor systemMenuActive
+                   selectColor systemMenuActive
        }
       foreach {name value} $menu_colors {
          option add *Menu.$name $value
@@ -290,7 +433,7 @@ proc Ow_ChangeColorScheme { scheme } {
       selectBackground     #3F638B \
       selectForeground     #FFFFFF \
       troughColor          #C3C3C3 \
-      selectcolor          #3F638B \
+      selectColor          #3F638B \
       disabledBackground   $bgcolor \
       readonlyBackground   $bgcolor
 
@@ -312,7 +455,7 @@ proc Ow_ChangeColorScheme { scheme } {
                     background systemMenu
             disabledforeground systemMenuDisabled
                     foreground systemMenuText
-                   selectcolor systemMenuActive
+                   selectColor systemMenuActive
        }
       foreach {name value} $menu_colors {
          option add *Menu.$name $value
@@ -896,7 +1039,39 @@ proc Ow_RaiseWindow { win } {
     raise $win
 }
 
-######################################################
+########################################################################
+# Tcl/Tk 8.6.10 (at least) does not recognize screen size changes,
+# e.g., when running on an X11 server in a VNC (Virtual Network
+# Computing) desktop. (Recent (2022) vncserver/viewer software allows
+# the user to interactively change the apparent screen size.) The
+# following proc runs a fresh Tcl/Tk shell to interrogate the screen
+# dimensions. The return is a three item list of couples:
+#
+#   { [winfo screenwidth .] [winfo screenheight .] }
+#   { [winfo vrootwidth .]  [winfo vrootheight .] }
+#   { [wm maxsize .] }
+#
+# An error is thrown if the Tcl/Tk shell launch fails.
+proc Ow_CheckScreenDimensions {} {
+   if {[catch {
+      set runplatform [Oc_Config RunPlatform]
+      set usetcl [$runplatform Tclsh]
+      set screenscript {
+         package require Tk
+         set sdim [list [winfo screenwidth .] [winfo screenheight .] ]
+         set vdim [list [winfo vrootwidth .]  [winfo vrootheight .] ]
+         set mdim [wm maxsize .]
+         puts [list $sdim $vdim $mdim]
+         exit
+      }
+      set dimensions [exec $usetcl << $screenscript]
+   } errmsg]} {
+      return -code error $errmsg
+   }
+   return $dimensions
+}
+
+########################################################################
 # Code to force toplevel window resize to size requested by children.
 # Typically this occurs automatically through propagate option of
 # pack.  What follows is primarily a hack to workaround buggy window

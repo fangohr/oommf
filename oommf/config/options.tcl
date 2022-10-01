@@ -302,9 +302,32 @@ Oc_Option Add * MIFinterp safety custom
 Oc_Option Add * Platform cflags {-def NDEBUG}
 #Oc_Option Add * Platform cflags {-warn 1 -debug 1}
 #
+# Compiler optimization level, 0-3, with 0 being no optimizations, 1
+# being basic optimizations, 2 being max "safe" optimizations (default),
+# and 3 being optimizations beyond level 2, and may break standards
+# compliance or be risky in some other way --- use with care.
+Oc_Option Add * Platform optlevel 2
+#
 ########################################################################
 # Platform-generic default flags for linking
 Oc_Option Add * Platform lflags {}
+#
+########################################################################
+#
+# Asynchronous exception handling. Should be one of none, POSIX, or SEH.
+# The config/platform/<platform>.tcl (or local/<platform>.tcl)
+# program_compiler_c++_async_exception_handling setting must be set to
+# the desired level or higher (with the ordering none < POSIX < SEH).
+# SEH handling is only available with Windows executables built using
+# the Visual C++ compiler.
+#   If handling is set to "none", then asynchronous exceptions such as
+# SIGSEGV (segmentation fault) immediately abort. If set to "POSIX",
+# then trapping signals are caught and the error is logged before
+# aborting. If set to "SEH" and the Visual C++ compiler is used, then
+# "structured exceptions" are caught and logged before aborting. SEH
+# handling may have a small negative performance impact.
+# Oc_Option Add * {} AsyncExceptionHandling POSIX
+#
 ########################################################################
 # Whether Oc_Classes should enforce the 'const' keyword
 Oc_Option Add * Oc_Class enforceConst 0

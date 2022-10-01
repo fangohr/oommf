@@ -4,7 +4,7 @@
  *
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "nb.h"
 #include "fft.h"

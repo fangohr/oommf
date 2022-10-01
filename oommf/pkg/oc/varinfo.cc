@@ -23,19 +23,24 @@
 # include <atomic>
 #endif
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <limits.h>
-#include <math.h>
-#include <float.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <climits>
+#include <cmath>
+#include <cfloat>
+
+#include <iostream>
 
 #ifdef __APPLE__
 # define BUILD_MAC_OSX
 # include <sys/types.h>
 # include <sys/sysctl.h>
+#ifndef CHECKQUICKEXIT
+#  define CHECKQUICKEXIT 0
+#endif
 #endif
 
 #if defined(__unix) || defined(_AIX) || defined(BUILD_MAC_OSX)
@@ -114,6 +119,10 @@
 
 #ifndef USEQUADFLOAT
 # define USEQUADFLOAT 0   /* Quad double-type; compiler specific extension. */
+#endif
+
+#ifndef CHECKQUICKEXIT
+# define CHECKQUICKEXIT 1
 #endif
 
 #if EXTRALONGINT
@@ -312,7 +321,6 @@ float FltMachEps()
   return epsok;
 }
 
-
 double DblMachEps()
 {
   volatile double eps,epsok,check;
@@ -418,6 +426,19 @@ int DecimalDigits(int precision)
   return 2 + int(floor(precision*log(2.)/log(10.)));
 }
 
+#if CHECKQUICKEXIT
+// Use SFINAE to determine if quick_exit() is available
+using namespace std;
+template <typename T>
+auto CheckQuickExit(T val,int& chk,int) -> decltype(quick_exit(val)) {
+  chk = 1;
+  std::cout << val; // Quiet compiler "val set but not used" warning
+}
+template <typename T>
+auto CheckQuickExit(T,int& chk,double)  -> void {
+  chk = 0;
+}
+#endif // CHECKQUICKEXIT
 
 void Usage()
 {
@@ -444,15 +465,15 @@ char **argv;
   double d;
 #if EXTRALONGINT
   HUGEINT ll;
-#endif /* EXTRALONGINT */  
+#endif /* EXTRALONGINT */
 #if EXTRALONGDOUBLE
   size_t ihf;
   HUGEFLOAT ld;
-#endif /* EXTRALONGDOUBLE */  
+#endif /* EXTRALONGDOUBLE */
 #if USEQUADFLOAT
   size_t iqf;
   QUADFLOAT qf;
-#endif /* EXTRALONGDOUBLE */  
+#endif /* EXTRALONGDOUBLE */
 #ifdef COMPLEX
   __complex__ int ci;
   __complex__ double cd;
@@ -473,6 +494,7 @@ char **argv;
     }
   }
 
+  /* Wide type info */
 #if EXTRALONGINT
   printf("HUGEINTTYPE: %s\n",HUGEINTTYPE);
 #endif
@@ -486,11 +508,20 @@ char **argv;
   printf("\n");
 #endif
 
+#ifdef UNICODE
+  printf("Macro UNICODE is defined\n\n");
+#else
+  printf("Macro UNICODE is not defined\n\n");
+#endif
+
   /* Work length info */
   printf("Type        char is %2d bytes wide   ",(int)sizeof(char));
   st=sizeof(char);
   if(st!=1) printf("ERROR: char should be 1 byte wide!\n");
   else      printf("Byte order: 1\n");
+#ifdef _WIN32
+  printf("Type       TCHAR is %2d bytes wide\n",(int)sizeof(TCHAR));
+#endif // _WIN32
 
   printf("\n");
   printf("Type       short is %2d bytes wide   ",(int)sizeof(short));
@@ -653,7 +684,7 @@ char **argv;
      */
     bytetest.x=xpattern;
 
-#ifdef DEBUG    
+#ifdef DEBUG
     printf("sizeof(lsbpattern)=%d\n",sizeof(lsbpattern));
     printf("lsb pattern="); DumpBytes(lsbpattern,8);
     printf("msb pattern="); DumpBytes(msbpattern,8);
@@ -870,14 +901,20 @@ char **argv;
   printf("\n");
   int typespace = 6;
 #if EXTRALONGDOUBLE
-  if(typespace<(int)strlen(HUGEFLOATTYPE)) typespace = (int)strlen(HUGEFLOATTYPE);
+  if(typespace<(int)strlen(HUGEFLOATTYPE)) {
+    typespace = (int)strlen(HUGEFLOATTYPE);
+  }
 #endif
 #if USEQUADFLOAT
-  if(typespace<(int)strlen(QUADFLOATTYPE)) typespace = (int)strlen(QUADFLOATTYPE);
+  if(typespace<(int)strlen(QUADFLOATTYPE)) {
+    typespace = (int)strlen(QUADFLOATTYPE);
+  }
 #endif
 
-  printf("Calculated %*s epsilon: %.*e\n",typespace,"float",fltdigs,FltMachEps());
-  printf("Calculated %*s epsilon: %.*e\n",typespace,"double",dbldigs,DblMachEps());
+  printf("Calculated %*s epsilon: %.*e\n",
+         typespace,"float",fltdigs,FltMachEps());
+  printf("Calculated %*s epsilon: %.*e\n",
+         typespace,"double",dbldigs,DblMachEps());
 #if EXTRALONGDOUBLE
 # if NO_L_FORMAT
   printf("Calculated %*s epsilon: %.*e\n",
@@ -924,7 +961,7 @@ char **argv;
     if(d!=0.0) {
       fprintf(stderr,"\nERROR: UNDERFLOW TEST FAILURE: d=%g\n\n",d);
       exit(1);
-    } 
+    }
     if(errno==0) {
       printf("\nErrno not set on underflow\n");
     } else {
@@ -971,13 +1008,22 @@ char **argv;
   }
 #endif /* EXTRALONGDOUBLE */
 
+#if CHECKQUICKEXIT
+  {
+    int chk;
+    CheckQuickExit(0,chk,0);
+    if(chk) puts("\nquick_exit is supported.");
+    else    puts("\nquick_exit is not supported.");
+  }
+#endif // CHECKQUICKEXIT
+
 #if REPORT_PAGESIZE
   {
     long int pagesize=0;
 # if defined(BUILD_UNIX)
 #  if defined(_SC_PAGESIZE)
     pagesize = sysconf(_SC_PAGESIZE);
-#  elif defined(_SC_PAGE_SIZE) 
+#  elif defined(_SC_PAGE_SIZE)
     pagesize = sysconf(_SC_PAGE_SIZE);
 #  elif defined(PAGESIZE)
     pagesize = sysconf(PAGESIZE);

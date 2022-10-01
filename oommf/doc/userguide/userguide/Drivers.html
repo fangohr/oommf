@@ -1,0 +1,479 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Drivers</TITLE>
+<META NAME="description" CONTENT="Drivers">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Field_Objects.html">
+<LINK REL="previous" HREF="Evolvers.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Field_Objects.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html602"
+  HREF="Field_Objects.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html598"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html592"
+  HREF="Evolvers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html600"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html603"
+  HREF="Field_Objects.html">Field Objects</A>
+<B> Up:</B> <A NAME="tex2html599"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html593"
+  HREF="Evolvers.html">Evolvers</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00835000000000000000"></A><A NAME="sec:oxsDrivers"></A>
+<BR>
+Drivers
+</H2>
+While <A HREF="Evolvers.html#sec:oxsEvolvers">evolvers</A> are
+responsible for moving the simulation forward in individual steps,
+<I>drivers</I> coordinate the action of the evolver on the
+simulation as a whole, by grouping steps into tasks, stages and runs.
+
+<P>
+Tasks are small groups of steps that can be completed without adversely
+affecting user interface responsiveness.  Stages are larger units
+specified by the MIF problem description; in particular, problem
+parameters are not expected to change in a discontinuous manner inside a
+stage.  The run is the complete sequence of stages, from problem start to
+finish.  The driver detects when stages and runs are finished, using
+criteria specified in the MIF problem description, and can enforce
+constraints, such as making sure stage boundaries respect time stopping
+criteria.
+
+<P>
+There are two drivers in Oxs,
+<A HREF="#item:TimeDriver"><TT>Oxs_TimeDriver</TT></A>
+for controlling time evolvers such as
+<A HREF="Evolvers.html#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>,
+and
+<A HREF="#html:MinDriver"><TT>Oxs_MinDriver</TT></A>
+for controlling minimization evolvers like
+<A HREF="Evolvers.html#html:CGEvolve"><TT>Oxs_CGEvolve</TT></A>.
+
+<P>
+<DL>
+<DD><A NAME="PTTD"></A><A NAME="6011"></A></DD>
+<DT><STRONG>Oxs_TimeDriver:<A NAME="item:TimeDriver"></A></STRONG></DT>
+<DD>The Oxs time driver is <B>Oxs_TimeDriver</B>.  The specify block has
+the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_TimeDriver:</TT><I>name</I> <TT>{</TT>
+<DD><TT> evolver </TT><I>evolver_spec</I>
+<DD><TT> mesh </TT><I>mesh_spec</I>
+<DD><TT> Ms </TT> <I>scalar_field_spec</I>
+<DD><TT> m0 </TT> <I>vector_field_spec</I>
+<DD><TT> stopping_dm_dt </TT><I>torque_criteria</I>
+<DD><TT> stopping_time </TT><I>time_criteria</I>
+<DD><TT> stage_iteration_limit </TT><I>stage_iteration_count</I>
+<DD><TT> total_iteration_limit </TT><I>total_iteration_count</I>
+<DD><TT> stage_count </TT><I>number_of_stages</I>
+<DD><TT> stage_count_check </TT><I>test</I>
+<DD><TT> checkpoint_file </TT> <I>restart_file_name</I>
+<DD><TT> checkpoint_interval </TT> <I>checkpoint_minutes</I>
+<DD><TT> checkpoint_disposal </TT> <I>cleanup_behavior</I>
+<DD><TT> start_iteration </TT> <I>iteration</I>
+<DD><TT> start_stage </TT> <I>stage</I>
+<DD><TT> start_stage_iteration </TT> <I>stage_iteration</I>
+<DD><TT> start_stage_start_time </TT> <I>stage_time</I>
+<DD><TT> start_stage_elapsed_time </TT> <I>stage_elapsed_time</I>
+<DD><TT> start_last_timestep </TT> <I>timestep</I>
+<DD><TT> normalize_aveM_output </TT> <I>aveMflag</I>
+<DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
+<DD><TT> report_wall_time </TT> <I>report_time</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The first four parameters, <B>evolver</B>, <B>mesh</B>,
+<B>Ms</B> and <B>m0</B> provide references to a time evolver, a
+mesh, a scalar field and a vector field, respectively.  Here <TT>Ms</TT> is
+the pointwise saturation magnetization in A/m, and <TT>m0</TT> is the
+initial configuration for the magnetization unit spins, i.e., <!-- MATH
+ $|\textbf{m}|=1$
+ -->
+<B>|<B>m</B>| = 1</B>
+at each point.  These four parameters are required.
+
+<P>
+The next group of 3 parameters control stage stopping criteria.  The
+<B>stopping_dm_dt</B> value, in degrees per nanosecond, specifies that a
+stage should be considered complete when the maximum <!-- MATH
+ $|d\textbf{m}/dt|$
+ -->
+<B>| <I>d</I><B>m</B>/<I>dt</I>|</B> across
+all spins drops below this value.  Similarly, the
+<B>stopping_time</B> value specifies the maximum ``Simulation
+time,'' i.e., the Landau-Lifshitz-Gilbert ODE (<A HREF="Evolvers.html#eq:oxsllode">7.2</A>),
+(<A HREF="Evolvers.html#eq:oxsllgode">7.3</A>) time, allowed per stage.  For example, if
+<I>time_criteria</I> is
+1e-9, then no stage will evolve for more than
+1&nbsp;ns.  If there were a total of 5 stages in the simulation, then the
+total simulation time would be not more than 5&nbsp;ns.  The third way to
+terminate a stage is with a <B>stage_iteration_limit</B>.  This is
+a limit on the number of successful evolver steps allowed per stage.  A
+stage is considered complete when any one of these three criteria are
+met.  Each of the criteria may be either a single value, which is
+applied to every stage, or else a
+<A HREF="Specify_Conventions.html#par:groupedLists"><I>grouped list</I></A>
+ of values.  If the
+simulation has more stages than a criteria list has entries, then the
+last criteria value is applied to all additional stages.  These stopping
+criteria all provide a default value of 0, meaning no constraint, but
+usually at least one is specified since otherwise there is no automatic
+stage termination control.  For quasi-static simulations, a
+<TT>stopping_dm_dt</TT> value in the range of 1.0 to 0.01 is reasonable;
+the numerical precision of the energy calculations usually makes in not
+possible to obtain <!-- MATH
+ $|d\textbf{m}/dt|$
+ -->
+<B>| <I>d</I><B>m</B>/<I>dt</I>|</B> much below 0.001 degree per nanosecond.
+
+<P>
+<A NAME="PToxsdriverstagecount"></A><B>total_iteration_limit</B>, <B>stage_count</B> and
+<B>stage_count_check</B> parameters involve simulation run
+completion conditions.  The default value for the first is 0,
+interpreted as no limit, but one may limit the total number of steps
+performed in a simulation by specifying a positive integer value here.
+The more usual run completion condition is based on the stage count.  If
+a positive integer value is specified for <TT>stage_count</TT>, then the
+run will be considered complete when the stage count reaches that value.
+If <TT>stage_count</TT> is not specified, or is given the value 0, then the
+effective <I>number_of_stages</I> value is computed by examining the
+length of the stopping criteria lists, and also any other <TT>Oxs_Ext</TT>
+object that has stage length expectations, such as
+<A HREF="Energies.html#html:UZeeman"><TT>Oxs_UZeeman</TT></A>.  The longest of these is
+taken to be the stage limit value.  Typically these lengths, along with
+<TT>stage_count</TT> if specified, will all be the same, and any
+differences indicate an error in the MIF file.  Oxs will automatically
+test this condition, provided <TT>stage_count_check</TT> is set to 1,
+which is the default value.  Stage length requests of 0 or 1 are ignored
+in this test, since those lengths are commonly used to represent
+sequences of arbitrary length.  At times a short sequence is
+intentionally specified that is meant to be implicitly extended to match
+the full simulation stage length.  In this case, the stage count check
+can be disabled by setting <I>test</I> to 0.
+
+<P>
+The <A NAME="PToxsdrivercheckpoint"></A><A NAME="6048"></A><A NAME="6049"></A>
+options are used to control the saving of solver state to disk; these
+saves are used by the <B>oxsii</B> and <B>boxsi</B> restart feature.
+The value of the <B>checkpoint_file</B> option is the name to
+use for the solver state file.  The default is
+<I>base_file_name</I>.restart.
+
+<P>
+Cleanup of the checkpoint file is determined by the setting of
+<B>checkpoint_disposal</B>, which should be one of
+<I>standard</I> (the default), <I>done_only</I>, or <I>never</I>.
+Under the standard setting, the checkpoint file is automatically deleted
+upon normal program termination, either because the solver reached the end
+of the problem, or because the user interactively terminated the problem
+prematurely.  If <I>cleanup_behavior</I> is set to
+<TT>done_only</TT>, then the checkpoint file is only deleted if the
+problem endpoint is reached.  If <I>cleanup_behavior</I> is
+<TT>never</TT>, then OOMMF does not delete checkpoint file; the
+user is responsible for deleting this file as she desires.
+
+<P>
+The <B>checkpoint_interval</B> value is the time in minutes between
+overwrites of the checkpoint file.  No checkpoint file is written until
+<I>checkpoint_minutes</I> have elapsed.  Checkpoint writes occur
+between solver iterations, so the actual interval time may be somewhat
+longer than the specified time.  If <I>checkpoint_minutes</I> is 0,
+then each step is saved.  Setting <I>checkpoint_minutes</I> to -1
+disables checkpointing.  The default checkpoint interval is 15 minutes.
+
+<P>
+The six <B>start_*</B> options control the problem run start point.
+These are intended primarily for automatic use by the restart feature.
+The default value for each is 0.
+
+<P>
+The <B>normalize_aveM_output</B> option is used to control the
+scaling and units on the average magnetization components <B><I>M</I><SUB>x</SUB></B>, <B><I>M</I><SUB>y</SUB></B>
+and <B><I>M</I><SUB>z</SUB></B> sent as DataTable output (this includes output sent to
+<A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
+ NAME="6072"><B>mmDataTable</B></A>,
+<A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
+ NAME="6077"><B>mmGraph</B></A>, and
+<A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
+ NAME="6082"><B>mmArchive</B></A>).  If
+<I>aveMflag</I> is true (1), then the output values are scaled to lie
+in the range <B>[- 1, 1]</B>, where the extreme values are obtained only at
+saturation (i.e., all the spins are aligned).  If <I>aveMflag</I> is
+false (0), then the output is in A/m.  The default setting is 1.
+
+<P>
+In the older MIF&nbsp;2.1 format, the driver Specify block supports three
+additional values: <B>basename</B>,
+<B>scalar_output_format</B>, and
+<B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format
+these output controls have been moved into the <TT>SetOptions</TT> block.
+See the <A HREF="MIF_2.2_New_Extension_Comma.html#html:mif2SetOptions"
+ NAME="6093"><TT>SetOptions</TT></A>
+documentation for details.
+
+<P>
+<TT>Oxs_TimeDriver</TT> provides 12 scalar outputs and 2 vector field
+outputs.  The scalar outputs are
+
+<UL>
+<LI><B>Stage:</B> current stage number, counting from 0.
+</LI>
+<LI><B>Stage iteration:</B> number of successful evolver steps
+in the current stage.
+</LI>
+<LI><B>Iteration:</B> number of successful evolver steps in the
+current simulation.
+</LI>
+<LI><B>Simulation time:</B> Landau-Lifshitz-Gilbert evolution
+time, in seconds.
+</LI>
+<LI><B>Last time step:</B> The size of the preceding time step, in
+seconds.
+</LI>
+<LI><B>Mx/mx:</B> magnetization component in the <B><I>x</I></B> direction,
+averaged across the entire simulation, in A/m (Mx) or normalized units
+(mx), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>My/my:</B> magnetization component in the <B><I>y</I></B> direction,
+averaged across the entire simulation, in A/m (My) or normalized units
+(my), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>Mz/mz:</B> magnetization component in the <B><I>z</I></B> direction,
+averaged across the entire simulation, in A/m (Mz) or normalized units
+(mz), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>Max Spin Ang:</B> maximum angle between neighboring spins
+having non-zero magnetization <B><I>M</I><SUB>s</SUB></B>, measured in degrees.  The definition
+of ``neighbor'' depends on the mesh, but for <TT>Oxs_RectangularMesh</TT>
+the neighborhood of a point consists of 6 points, those nearest
+forward and backward along each of the 3 coordinate axis directions.
+</LI>
+<LI><B>Stage Max Spin Ang:</B> the largest value of ``Max Spin
+Ang'' obtained across the current stage, in degrees.
+</LI>
+<LI><B>Run Max Spin Ang:</B> the largest value of ``Max Spin
+Ang'' obtained across the current run, in degrees.
+</LI>
+<LI><B>Wall time:</B> Wall clock time, in seconds.
+</LI>
+</UL>
+The three ``Max Spin Ang'' outputs are disabled by default.  In general
+one should refer instead to the neighboring spin angle outputs provided
+by the exchange energies.  However, for backward compatibility, or for
+simulations without any exchange energy terms, the driver spin angle
+outputs can be enabled by setting the
+<B>report_max_spin_angle</B> option to to 1.
+
+<P>
+The ``Wall time'' output is also disabled by default.  It can be enabled
+by setting the <B>report_wall_time</B> option to to 1.  It reports
+the wall clock time, in seconds, since a system-dependent zero-time.
+This output may be useful for performance comparisions and
+debugging. (Note: The timestamp for a magnetization state is recorded
+when output is first requested for that state; the timestamp is not
+directly tied to the processing of the state.)
+
+<P>
+The vector field outputs are
+
+<UL>
+<LI><B>Magnetization:</B> magnetization vector <!-- MATH
+ $\textbf{M}$
+ -->
+<B><B>M</B></B>, in A/m.
+</LI>
+<LI><B>Spin:</B> unit magnetization <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B>.  This output ignores the
+<TT>vector_field_output_format</TT> <I>precision</I> setting, instead
+always exporting at full precision.
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>pulse.mif</B></TT>.
+<P>
+<A NAME="PTMD"></A><A NAME="6126"></A></DD>
+<DT><STRONG>Oxs_MinDriver:<A NAME="html:MinDriver"></A></STRONG></DT>
+<DD>The Oxs driver for controlling minimization evolvers is
+<B>Oxs_MinDriver</B>.  The specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_MinDriver:</TT><I>name</I> <TT>{</TT>
+<DD><TT> evolver </TT><I>evolver_spec</I>
+<DD><TT> mesh </TT><I>mesh_spec</I>
+<DD><TT> Ms </TT> <I>scalar_field_spec</I>
+<DD><TT> m0 </TT> <I>vector_field_spec</I>
+<DD><TT> stopping_mxHxm </TT><I>torque_criteria</I>
+<DD><TT> stage_iteration_limit </TT><I>stage_iteration_count</I>
+<DD><TT> total_iteration_limit </TT><I>total_iteration_count</I>
+<DD><TT> stage_count </TT><I>number_of_stages</I>
+<DD><TT> stage_count_check </TT><I>test</I>
+<DD><TT> checkpoint_file </TT> <I>restart_file_name</I>
+<DD><TT> checkpoint_interval </TT> <I>checkpoint_minutes</I>
+<DD><TT> checkpoint_disposal </TT> <I>cleanup_behavior</I>
+<DD><TT> start_iteration </TT> <I>iteration</I>
+<DD><TT> start_stage </TT> <I>stage</I>
+<DD><TT> start_stage_iteration </TT> <I>stage_iteration</I>
+<DD><TT> start_stage_start_time </TT> <I>stage_time</I>
+<DD><TT> start_stage_elapsed_time </TT> <I>stage_elapsed_time</I>
+<DD><TT> start_last_timestep </TT> <I>timestep</I>
+<DD><TT> normalize_aveM_output </TT> <I>aveMflag</I>
+<DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
+<DD><TT> report_wall_time </TT> <I>report_time</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+These parameters are the same as those described for the
+<A HREF="#item:TimeDriver"><TT>Oxs_TimeDriver</TT></A>
+class, except that
+<B>stopping_mxHxm</B> replaces <TT>stopping_dm_dt</TT>, and there is no
+analogue to <TT>stopping_time</TT>.  The value for <TT>stopping_mxHxm</TT> is
+in A/m, and may be a
+<A HREF="Specify_Conventions.html#par:groupedLists"><I>grouped list</I></A>
+.
+Choice depends on the particulars of the simulation, but typical values
+are in the range 10 to 0.1.  Limits in the numerical precision of the
+energy calculations usually makes it not possible to obtain
+<!-- MATH
+ $|\textbf{m}\times\textbf{H}\times\textbf{m}|$
+ -->
+<B>|<B>m</B> <TT>x</TT> <B>H</B> <TT>x</TT> <B>m</B>|</B> below about 0.01 A/m.  This control can be
+disabled by setting it to 0.0.
+
+<P>
+As with <TT>Oxs_TimeDriver</TT>, in the older MIF&nbsp;2.1 format this Specify
+block supports three additional values: <B>basename</B> to control
+output filenames, and output format controls
+<B>scalar_output_format</B> and
+<B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format these
+output controls have been moved into the <TT>SetOptions</TT> block.  See the
+<A HREF="MIF_2.2_New_Extension_Comma.html#html:mif2SetOptions"
+ NAME="6148"><TT>SetOptions</TT></A>
+documentation for details.
+
+<P>
+<TT>Oxs_MinDriver</TT> provides 10 scalar outputs and 2 vector
+field outputs.  The scalar outputs are
+
+<UL>
+<LI><B>Stage:</B> current stage number, counting from 0.
+</LI>
+<LI><B>Stage iteration:</B> number of successful evolver steps
+in the current stage.
+</LI>
+<LI><B>Iteration:</B> number of successful evolver steps in the
+current simulation.
+</LI>
+<LI><B>Mx/mx:</B> magnetization component in the <B><I>x</I></B> direction,
+averaged across the entire simulation, in A/m (Mx) or normalized units
+(mx), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>My/my:</B> magnetization component in the <B><I>y</I></B> direction,
+averaged across the entire simulation, in A/m (My) or normalized units
+(my), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>Mz/mz:</B> magnetization component in the <B><I>z</I></B> direction,
+averaged across the entire simulation, in A/m (Mz) or normalized units
+(mz), depending on the setting of the <TT>normalize_aveM_output</TT>
+option.
+</LI>
+<LI><B>Max Spin Ang:</B> maximum angle between neighboring spins
+having non-zero magnetization <B><I>M</I><SUB>s</SUB></B>, measured in degrees.  The definition
+of ``neighbor'' depends on the mesh, but for <TT>Oxs_RectangularMesh</TT>
+the neighborhood of a point consists of 6 points, those nearest
+forward and backward along each of the 3 coordinate axis directions.
+</LI>
+<LI><B>Stage Max Spin Ang:</B> the largest value of ``Max Spin
+Ang'' obtained across the current stage, in degrees.
+</LI>
+<LI><B>Run Max Spin Ang:</B> the largest value of ``Max Spin
+Ang'' obtained across the current run, in degrees.
+</LI>
+<LI><B>Wall time:</B> Wall clock time, in seconds.
+</LI>
+</UL>
+As is the case for the <TT>Oxs_TimeDriver</TT>, the three ``Max Spin Ang''
+outputs and ``Wall time'' are disabled by default.  They angle outputs
+are enabled by setting the <B>report_max_spin_angle</B> option to
+to 1, and the wall time output is enabled by setting the
+<B>report_wall_time</B> option to to 1.
+
+<P>
+The vector field outputs are
+
+<UL>
+<LI><B>Magnetization:</B> magnetization vector <!-- MATH
+ $\textbf{M}$
+ -->
+<B><B>M</B></B>, in A/m.
+</LI>
+<LI><B>Spin:</B> unit magnetization <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B>.  This output ignores the
+<TT>vector_field_output_format</TT> <I>precision</I> setting, instead
+always exporting at full precision.
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>cgtest.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html602"
+  HREF="Field_Objects.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html598"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html592"
+  HREF="Evolvers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html600"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

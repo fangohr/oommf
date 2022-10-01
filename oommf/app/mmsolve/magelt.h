@@ -49,7 +49,7 @@
 #ifndef _MAGELT_H
 #define _MAGELT_H
 
-#include <stdio.h>
+#include <cstdio>
 #include "constants.h"
 #include "threevec.h"
 

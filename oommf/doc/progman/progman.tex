@@ -1,20 +1,44 @@
+\documentclass[12pt]{report}
 \input{../common/oommfhead}
-\usepackage{l2hbugs}
+%% Last line of oommfheadxml is \makeindex
+
+\usepackage{multirow}
 
 %\HTMLset{toppage}{progman.html}
 %\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{progman.html}}
 
+\title{\OOMMF\\Programming Manual}
+%This manual documents release 2.0b0.\\[1ex]
+%WARNING: In this alpha release, the
+%documentation may not be up to date.\\[1ex]
+%WARNING: This document is under construction.}
+%\author{Michael Donahue and Donald Porter}
+%\date{\today}
+\author{\today\\[1ex]
+This manual documents release 2.0b0.\\[1ex]
+WARNING: This document is under construction.}
+
+
 \begin{document}
 
-\nocite{*}  % Include all entries from .bib file.  Putting this at the
-	    % top retains the .bib file ordering.
-
+%\nocite{*}  % Include all entries from .bib file.
+% Putting this at the top retains the .bib file ordering.  Except, as
+% far as I can tell, LaTeXML ignores \nocite{*}; you have to manually
+% list all references, like so:
+\nocite{brown1963,donahue1999}
 
 \pagenumbering{roman}
+
+%begin{latexonly}
+\iflatexml
+\maketitle
+\else
+%end{latexonly}
 \begin{titlepage}
-\label{page:contents}
+%\label{page:contents}
+\setcounter{page}{0}    % Hack 'destination with the same identifier' warning
 \par
-\vspace*{\fill}
+%\vspace*{\fill}
 \begin{center}
 \Large\bf
 \OOMMF\\
@@ -22,33 +46,52 @@ Programming Manual\\[2ex]
 \large
 {\today}
 {}\\[2ex]
-This manual documents release 2.0a3.\\[1ex]
-WARNING: In this alpha release, the
-documentation may not be up to date.\\[1ex]
+This manual documents release 2.0b0.\\[1ex]
 WARNING: This document is under construction.
-
 \end{center}
-\vspace{10\baselineskip}
-\begin{abstract}
+%\vspace{10\baselineskip}
+%\begin{abstract}
 This manual provides source code level information on \OOMMF\ (Object Oriented Micromagnetic Framework),
 a public domain micromagnetics program developed at the
 \htmladdnormallink{National Institute of Standards and Technology}
 {https://www.nist.gov/}.  Refer to the \OOMMF\ User's Guide for an
 overview of the project and end-user details.
-\end{abstract}
-\vspace*{\fill}
-\par
+%\end{abstract}
+%\vspace*{\fill}
+%\par
 \end{titlepage}
+%begin{latexonly}
+\fi
+%end{latexonly}
 
-\begin{latexonly}
+%begin{latexonly}
+\iflatexml
+% Hack for broken LaTeXML .xslt that typesets table of contents header
+% at <h6>, which is ridiculously small. One fix is to replace the "h6"
+% setting in the
+%
+%   <xsl:template match="ltx:TOC">
+%      ...
+%   </xsl:template>
+%
+% of oommf/doc/common/xmlextras/xslt/oommf-webpage-xhtml.xsl to
+% something larger. But, we don't really need the header in the web
+% version of the page, so we can drop it altogether by redefining
+% \contentsname to an empty string:
+ \renewcommand{\contentsname}{}
+\else
+ \renewcommand{\contentsname}{Table of Contents}
+\fi
 \tableofcontents
-\end{latexonly}
+%end{latexonly}
 
 % Index cross-references; if these are moved to the bottom of this file
 % then two LaTeX passes are required to get them in the .idx file.
 
-\newpage
-\input{../common/disclaimer-body}
+\chapter*{Disclaimer}
+\addcontentsline{toc}{chapter}{Disclaimer}\label{disclaimer}
+% Note: LaTeXML uses \label value to set file names.
+\input{../common/disclaimer-text}
 \newpage
 
 \pagenumbering{arabic}
@@ -57,15 +100,59 @@ overview of the project and end-user details.
 \include{pimake-body}
 \include{general-body}
 \include{oxs-body}
+% There is a strange bug in LaTeX2HTML where using multiple instances of
+% the alltt environment causes LaTeX2HTML to stop interpreting a single
+% blank line as a paragraph break. (Two blank lines seem to work, but
+% maybe not in some cases, and anyway, yuck.) The bug appears to be
+% related in some manner with \include, so one hack-around is to \input
+% the file instead. A web search reports that \include differs from
+% \input in that \include places \clearpage command before and after the
+% included text, and also opens up a separate .aux file. I don't want to
+% pander to LaTeX2HTML more than necessary (LaTeXML seems to work pretty
+% well, so if the annoyance level of LaTeX2HTML gets too great we'll
+% drop it), so we apply this hack only in the LaTeX2HTML processing
+% case. There don't appear to be any obvious problems with this route,
+% but if something turns up then checking .aux file usage might be a
+% good place to start.
+%begin{latexonly}
+\include{debug-body}
+%end{latexonly}
+\html{\clearpage\input{debug-body}\clearpage}
 
+\include{credits-body} % LaTeXML seems to be unhappy if credits comes
+            % after bibliography, at least with report document class.
+
+%%%%%%%%%%%%%%%%%%%%%%%% Bibliography and Index %%%%%%%%%%%%%%%%%%%%%%%%
+% Manually add bibliography and index to the table of contents.  This
+% could be done automatically using the tocbibind package, but the
+% LaTeXML 0.8.6 binding for tocbibind is incomplete. We may revisit this
+% if we decide we want Bibliography to be a numbered section, but
+% otherwise the simplest solution probably creates the fewest
+% complications across all output modalities (latex, pdflatex,
+% latex2html, latexml).
+
+% Use \phantomsection so hyperref index link in TOC point properly (otherwise
+% it points to the previous section).
+\clearpage\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
 %\include{biblio}
-%\bibliographystyle{osa}
+%\bibliographystyle{abbr}
+%begin{latexonly}
+\iflatexml
+\bibliographystyle{plain}
+\else
 \bibliographystyle{../common/oommf}
-\bibliography{pmbiblio}
+\fi
+%end{latexonly}
+\html{\bibliographystyle{../common/oommf}}
+\bibliography{pmbiblio}\label{bibliography}
+% Note: LaTeXML uses \label value to set file names.
 
-\include{credits-body}
-
-
-\printindex
+% Use \phantomsection so hyperref index link in TOC point properly
+% (otherwise it points to the bibliography).
+\clearpage\phantomsection
+\addcontentsline{toc}{chapter}{Index}
+\printindex\label{index}
+% Note: LaTeXML uses \label value to set file names.
 
 \end{document}

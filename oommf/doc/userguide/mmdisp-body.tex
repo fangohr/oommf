@@ -1,11 +1,11 @@
-\section{Vector Field Display: mmDisp}\label{sec:mmdisp}%
+\chapter{Vector Field Display: mmDisp}\label{sec:mmdisp}%
 \index{application!mmDisp}
 
 \begin{center}
 \includepic{mmdisp-ss}{mmDisp Screen Shot}
 \end{center}
 
-\ssechead{Overview}
+\starsechead{Overview}
 The application \app{mmDisp} displays two-dimensional slices of
 three-dimensional spatial distributions of vector fields.  \app{mmDisp}
 currently supports display of 1D (i.e., scalar) and 3D vector data.  It
@@ -15,9 +15,9 @@ offers a rich interface for controlling the display of vector field
 data, and can also save the data to a file or produce \postscript\ print
 output.
 
-\ssechead{Launching}
+\starsechead{Launching}
 \app{mmDisp} may be started either by selecting the \btn{mmDisp} button
-on \htmlref{\app{mmLaunch}}{sec:mmlaunch}, or from the command line via
+on \htmlonlyref{\app{mmLaunch}}{sec:mmlaunch}, or from the command line via
 \begin{verbatim}
 tclsh oommf.tcl mmDisp [standard options] [-config file] \
    [-net <0|1>] [filename]
@@ -27,7 +27,7 @@ tclsh oommf.tcl mmDisp [standard options] [-config file] \
 \item[\optkey{-config file}]
   User configuration file that specifies default display parameters.
   This file is discussed in
-  \htmlref{detail below}{sec:mmdispconfig}.
+  \htmlonlyref{detail below}{sec:mmdispconfig}.
 \item[\optkey{-net \boa 0\pipe 1\bca}]
   Disable or enable a server which allows the data displayed by
   \app{mmDisp} to be updated by another application.
@@ -39,11 +39,11 @@ If a filename is supplied on the command line, \app{mmDisp} takes
 it to be the name of a file containing vector field data for display.
 That file will be opened on startup.
 
-\ssechead{Inputs}
+\starsechead{Inputs}
 Input to \app{mmDisp} may come from either a file or from a client
 application (typically a running solver), in any of the
 \hyperrefhtml{\OOMMF\ vector field formats}{vector field
-formats described in Sec.~}{}{sec:vfformats}\index{file!vector~field}.
+formats described in Ch.~}{}{sec:vfformats}\index{file!vector~field}.
 Other file formats can also be supported if a translation filter program
 is available.
 
@@ -67,7 +67,7 @@ while loading the file.
 \app{mmDisp} permits local customization allowing for automatic
 translation from other file formats into one of the
 \hyperrefhtml{\OOMMF\ vector field formats}{vector field formats
-(Sec.~}{)}{sec:vfformats} that \app{mmDisp} recognizes.  When loading
+(Ch.~}{)}{sec:vfformats} that \app{mmDisp} recognizes.  When loading
 a file, \app{mmDisp} compares the file name to a list of extensions.
 An example extension is \cd{.gz}.  The assumption is that the extension
 identifies files containing data in a particular format.  For each
@@ -86,9 +86,11 @@ program is installed.
 There are two categories of translations supported: decompression and
 format conversion.  Both are modified by the usual method of
 \hyperrefhtml{local customization}{local customization
-(Sec.~}{)}{sec:custom}\index{file!configuration}.  The
+(Sec.~}{)}{sec:install.custom}\index{file!configuration}.  The
 command governing decompression in the customization file is of the form
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  <BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -98,13 +100,17 @@ Oc_Option Add * Nb_InputFilter decompress {{.gz .zip} {gzip -dc}}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  </BLOCKQUOTE>
+\end{rawhtml}
 The final argument in this command is a list with an even number of
 elements.  The first element of each pair is the filename extension.
 The second element in each pair is the command line for launching the
 corresponding translation program.  To add support for bzip2 compressed
 files, change this line to
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  <BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -115,9 +121,11 @@ Oc_Option Add * Nb_InputFilter decompress \
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  </BLOCKQUOTE>
+\end{rawhtml}
 This option also affects other applications such as
-\htmlref{\app{mmGraph}}{sec:mmgraph} that support ``on-the-fly''
+\htmlonlyref{\app{mmGraph}}{sec:mmgraph} that support ``on-the-fly''
 decompression.  In all cases the decompression program must accept
 compressed input on standard input and write the decompressed output to
 standard output.
@@ -128,7 +136,9 @@ if a program \cd{foo} were known to translate a file format identified by the
 extension \fn{.bar} into the
 \OVF\ file format, that program could be made known to \app{mmDisp}
 by setting the customization command:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  <BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -138,14 +148,16 @@ Oc_Option Add * Nb_InputFilter ovf {.bar foo}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+  </BLOCKQUOTE>
+\end{rawhtml}
 This assumes that the program \cd{foo} accepts input of the form
 \fn{.bar} on standard input and writes the translated results to
 standard output.
 \index{customize!file~format~translation|)}
 
 
-\ssechead{Outputs}
+\starsechead{Outputs}
 The vector field displayed by \app{mmDisp} may be saved to disk via the
 {\btn{File\pipe Save As\ldots}}\index{data!save} dialog box.  The output
 is in the \hyperrefhtml{\OVF\ format}{\OVF\ format
@@ -162,7 +174,7 @@ printer\index{platform!Unix!PostScript~to~printer} by filling the
 \btn{Print to:} entry with the appropriate pipe command, e.g.,
 \pipe\texttt{lpr}.  (The exact form is system dependent.)  The other
 print dialog box options are described in the
-\htmlref{configuration files}{sec:mmdispconfig} section below.
+\htmlonlyref{configuration files}{sec:mmdispconfig} section below.
 
 The \btn{File\pipe Write config\ldots}\index{file!configuration} dialog
 allows one to save to disk a configuration file holding the current
@@ -174,9 +186,9 @@ parameters, or used as input to the \hyperrefhtml{avf2ppm}{\app{avf2ppm}
 that convert files from the \OVF\ format into bitmap images and
 \postscript\ printer files, respectively.  (mmDisp does not provide
 direct support for writing bitmap files.)  Details of the configuration
-file are \htmlref{discussed below}{sec:mmdispconfig}.
+file are \htmlonlyref{discussed below}{sec:mmdispconfig}.
 
-\ssechead{Controls}\label{sec:mmdispcontrols}
+\starsechead{Controls}\label{sec:mmdispcontrols}
 
 The menu selection \btn{File\pipe Clear} clears the display window.
 The menu selection \btn{File\pipe Exit} terminates the
@@ -272,6 +284,17 @@ A value of 1 represents the default size.  By
 changing to a larger or smaller \btn{Size} value, the user may
 request arrows or pixels larger or smaller than the default size.
 
+Below the arrow \btn{Size} box is the \btn{View scale} option. If this
+is enabled (the default) then arrow scaling is adjusted so that a size
+setting of 1 results in an in-viewplane vector having length
+approximately equal to the smaller of the two in-plane view-cell
+dimensions. (The view-cell is the discretization cell multiplied by the
+subsample setting.) If \btn{View scale} is disabled then the arrow size
+is scaled relative to the smallest of all three view-cell dimensions,
+and is therefore fixed independent of view axis. Disabling both auto
+subsampling and view scale may make comparisons between different view
+axis directions easier.
+
 Below the Arrow and Pixel Controls are several additional controls.  The
 \btn{Data Scale}\index{data!scale}\label{html:mmdispdatascale} entry
 affects the data value scaling.  As described above, all arrows are
@@ -329,7 +352,7 @@ of a single cell.  Any negative value sets the slice thickness to be
 the full thickness of the mesh.  Values for all of the slice control
 entries are specified in the fundamental mesh spatial unit, for
 example, meters.  (Refer to the vector field
-\hyperrefhtml{file format}{file format (Sec.~}{)}{sec:vfformats}
+\hyperrefhtml{file format}{file format (Ch.~}{)}{sec:vfformats}
 documentation for more on mesh spatial units.)
 
 Below the slice contols are controls to specify whether or not a
@@ -425,7 +448,7 @@ When the active subwindow is the display window, the following
 key combinations are active:
 \begin{itemize}
 \item \key{CTRL-o} -- same as menu selection \btn{File\pipe Open\ldots}
-\item \key{CTRL-s} -- same as menu selection 
+\item \key{CTRL-s} -- same as menu selection
                        {\btn{File\pipe Save as\ldots}\index{data!save}}
 \item \key{CTRL-p} -- same as menu selection
                        {\btn{File\pipe Print\ldots}\index{data!print}}
@@ -481,10 +504,7 @@ When any of the separate dialog windows are displayed (e.g., the
 dialogs), the shortcut \key{CTRL-.} (control-period) will raise and
 transfer keyboard focus back to the root \app{mmDisp} window.
 
-\begin{rawhtml}
-<A NAME="pt:mmdisp.config"></A>
-\end{rawhtml}
-\ssechead{Configuration files\label{sec:mmdispconfig}}
+\starsechead{Configuration files}\label{sec:mmdispconfig}
 The various initial display parameters (e.g., window size, orientation,
 colormap) are set by configuration files.  The default configuration
 file
@@ -558,6 +578,9 @@ the \cd{plot\_config} array:
  requested, then inversion is applied first.
 \item[\optkey{arrow,size}]
  Size of the arrows relative to the default size (represented as 1.0).
+\item[\optkey{arrow,viewscale}]
+ Enables automatic scaling of arrows determined by the in-viewplane cell
+ dimensions.
 \item[\optkey{pixel,\ldots}]
  Most of the pixel configuration elements have analogous arrow
  configuration elements, and are interpreted in the same manner.  The
@@ -601,7 +624,7 @@ the \cd{plot\_config} array:
  the viewport dimensions.
 \item[\optkey{misc,datascale}]
  Scale for arrow size and colormap ranges; equivalent to the
- \htmlref{\cd{Data Scale} control}{html:mmdispdatascale}.  In general,
+ \htmlonlyref{\cd{Data Scale} control}{html:mmdispdatascale}.  In general,
  this should be a positive real value, but a zero or empty value will
  set the scaling to its default setting.
 \item[\optkey{misc,centerpt}]
@@ -666,7 +689,7 @@ If any of the above elements are set in multiple configuration files,
 then the last value read takes precedence.
 
 \begin{codelisting}{f}{fig:mmdisp.config}{Contents of default configuration
-file \fn{mmdisp.config}.}{pt:mmdisp.config}
+  file \fn{mmdisp.config}.}{sec:mmdispconfig}{ref}
 \begin{verbatim}
 array set plot_config {
   arrow,status       1                misc,background           white
@@ -678,18 +701,18 @@ array set plot_config {
   arrow,colorreverse 0                misc,defaultwindowheight  480
   arrow,colorphase   0                misc,width                0
   arrow,size         1                misc,height               0
-                                      misc,rotation             0
-  pixel,status       0                misc,zoom                 0
-  pixel,autosample   1                misc,datascale            0
-  pixel,subsample    0                misc,relcenterpt     {0.5 0.5 0.5}
-  pixel,colormap     Blue-White-Red
-  pixel,colorcount   256              viewaxis                  +z
-  pixel,quantity     x                viewaxis,xarrowspan       {}
-  pixel,colorreverse 0                viewaxis,xpixelspan       {}
-  pixel,colorphase   0                viewaxis,yarrowspan       {}
-  pixel,size         1                viewaxis,ypixelspan       {}
-  pixel,opaque       1                viewaxis,zarrowspan       {}
-                                      viewaxis,zpixelspan       {}
+  arrow,viewscale    1                misc,rotation             0
+                                      misc,zoom                 0
+  pixel,status       0                misc,datascale            0
+  pixel,autosample   1                misc,relcenterpt     {0.5 0.5 0.5}
+  pixel,subsample    0
+  pixel,colormap     Blue-White-Red   viewaxis                  +z
+  pixel,colorcount   256              viewaxis,xarrowspan       {}
+  pixel,quantity     x                viewaxis,xpixelspan       {}
+  pixel,colorreverse 0                viewaxis,yarrowspan       {}
+  pixel,colorphase   0                viewaxis,ypixelspan       {}
+  pixel,size         1                viewaxis,zarrowspan       {}
+  pixel,opaque       1                viewaxis,zpixelspan       {}
 }
 array set print_config {
     orient   landscape                tmargin   1.0
@@ -701,7 +724,7 @@ array set print_config {
 \end{verbatim}
 \end{codelisting}
 
-\ssechead{Details}
+\starsechead{Details}
 
 The selection of vectors for display determined by the
 \btn{Subsample} value differs depending on whether or not the data
@@ -722,10 +745,7 @@ grid cell.  As the subsample rate changes, the set of displayed
 vectors also changes, which can in some circumstances substantially
 change the appearance of the displayed vector field.
 
-%\begin{rawhtml}
-%<A NAME="pt:wwwhelpersetup"></A>
-%\end{rawhtml}
-%\ssechead{Using \app{mmDisp} as a WWW browser helper application}
+%\starsechead{Using \app{mmDisp} as a WWW browser helper application}
 %
 %You may configure your web browser\index{application!web~browser} to
 %automatically launch \app{mmDisp} when downloading an \OVF\ file.  The
@@ -755,7 +775,7 @@ change the appearance of the displayed vector field.
 %field, the values of {\em tclsh}, {\em oommfroot}, and {\em arg} vary
 %with your platform configuration.  The value of {\em tclsh} is the full
 %path to the \app{tclsh} application on your platform (see
-%\hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  On Unix
+%\hyperrefhtml{Command Line Launching}{Ch.~}{}{sec:cll}).  On Unix
 %systems, {\em tclsh} may be omitted, assuming that the
 %\fn{oommf.tcl} script is executable.  If {\em tclsh} is not omitted
 %on Unix systems, Netscape may issue a security warning each time it
@@ -786,7 +806,7 @@ change the appearance of the displayed vector field.
 %\end{description}
 %Hit \btn{OK}, \btn{Close}, \btn{Close} and \btn{OK}.  Replace {\em tclsh}
 %and {\em oommfroot} with the appropriate paths on your system
-%(cf.\ \hyperrefhtml{Command Line Launching}{Section~}{}{sec:cll}).  This will
+%(cf.\ \hyperrefhtml{Command Line Launching}{Ch.~}{}{sec:cll}).  This will
 %set up an association on files with the .ovf extension. Internet
 %Explorer 3.X apparently ignores the HTML Content Type field, so you must
 %repeat this process for each file extension (.ovf, .omf, .ohf, .obf and
@@ -818,7 +838,7 @@ change the appearance of the displayed vector field.
 %\pdfonly{\htmladdnormallink{https://math.nist.gov/\~{}MDonahue/cubevortex.ovf}{https://math.nist.gov/\%7EMDonahue/cubevortex.ovf}}
 %\end{center}
 
-\ssechead{Known Bugs}
+\starsechead{Known Bugs}
 The slice selection feature does not work properly with irregular
 meshes.
 %

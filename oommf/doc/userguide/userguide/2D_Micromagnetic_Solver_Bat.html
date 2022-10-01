@@ -1,0 +1,674 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>2D Micromagnetic Solver Batch Interface: batchsolve</TITLE>
+<META NAME="description" CONTENT="2D Micromagnetic Solver Batch Interface: batchsolve">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<LINK REL="up" HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<LINK REL="next" HREF="Data_Table_Display_mmDataTa.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html712"
+  HREF="Data_Table_Display_mmDataTa.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html708"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html704"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html710"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html713"
+  HREF="Data_Table_Display_mmDataTa.html">Data Table Display: mmDataTable</A>
+<B> Up:</B> <A NAME="tex2html709"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">OOMMF 2D Micromagnetic Solver</A>
+<B> Previous:</B> <A NAME="tex2html705"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">OOMMF 2D Micromagnetic Solver</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001122000000000000000"></A><A NAME="sec:mmsolveBSS"></A>
+<BR>
+2D Micromagnetic Solver Batch Scheduling System
+</H2>
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Overview</B></FONT>
+<BR>
+The OBS supports complex scheduling of multiple batch jobs
+with two applications, <B>batchmaster</B> and <B>batchslave</B>.
+The user launches <B>batchmaster</B> and provides it with
+a task script<A NAME="12917"></A>.  The task script is a
+Tcl script that describes the set of tasks for <B>batchmaster</B>
+to accomplish.  The work is actually done by instances of
+<B>batchslave</B> that are launched by <B>batchmaster</B>.
+The task script may be
+modeled after the included <TT><B>simpletask.tcl</B></TT> or <TT><B>multitask.tcl</B></TT>
+<A HREF="#sec:batchschedex">sample scripts</A>.
+
+<P>
+The OBS has been designed to control multiple sequential and
+concurrent micromagnetic simulations, but
+<B>batchmaster</B> and <B>batchslave</B> are completely general
+and may be used to schedule other types of jobs as well.
+
+<P>
+
+<H3><A NAME="SECTION001122100000000000000">
+Master Scheduling Control: batchmaster</A>
+</H3>
+<P>
+The application <B>batchmaster</B><A NAME="12931"></A> is
+launched by the command line:
+<PRE>
+tclsh oommf.tcl batchmaster [standard options] task_script \
+      [host [port]]
+</PRE>
+<DL>
+<DT><STRONG><TT><B>task_script</B></TT></STRONG></DT>
+<DD>is the user defined task (job) definition Tcl script,
+</DD>
+<DT><STRONG><TT><B>host</B></TT></STRONG></DT>
+<DD>specifies the network address for the master to use (default is <EM>  localhost</EM>),
+</DD>
+<DT><STRONG><TT><B>port</B></TT></STRONG></DT>
+<DD>is the port address for the master (default is <EM>0</EM>, which
+  selects an arbitrary open port).
+</DD>
+</DL>
+
+<P>
+When <B>batchmaster</B><A NAME="12942"></A> is run, it
+sources the task script.  Tcl commands in the task script
+should modify the global object <TT>$TaskInfo</TT>
+to inform the master what tasks to perform and
+optionally how to launch slaves to perform those tasks.
+The easiest way to create a task script is to modify one of the
+<A HREF="#sec:batchschedex">included example scripts</A>.  More detailed instructions are in
+the <A HREF="#sec:batchschedtask">Batch task
+scripts</A> section.
+
+<P>
+After sourcing the task script, <B>batchmaster</B> launches all the
+specified slaves, initializes each with a slave initialization script,
+and then feeds tasks sequentially from the task list to the slaves.
+When a slave completes a task it reports back to the master and is given
+the next unclaimed task.  If there are no more tasks, the slave is shut
+down.  When all the tasks are complete, the master prints a summary of
+the tasks and exits.
+
+<P>
+When the task script requests the launching and controlling of jobs off
+the local machine, with slaves running on remote machines, then the
+command line argument <TT><B>host</B></TT> <B>must</B> be set to the local machine's
+network name, and the <TT>$TaskInfo</TT> methods <TT>AppendSlave</TT> and
+<TT>ModifyHostList</TT> will need to be called from inside the task script.
+Furthermore, OOMMF does not currently supply any methods for launching
+jobs on remote machines, so a task script which requests the launching
+of jobs on remote machines requires a working
+<code>ssh</code><A NAME="12960"></A> command or
+equivalent<A NAME="12961"></A>.
+<A HREF="#sec:batchschedtask">(Details.)</A>
+
+<P>
+
+<H3><A NAME="SECTION001122200000000000000">
+Task Control: batchslave</A>
+</H3>
+<P>
+The application <B>batchslave</B> may be launched by the command line:
+<PRE>
+tclsh oommf.tcl batchslave [standard options] \
+   host port id password [auxscript [arg ...]]
+</PRE>
+<DL>
+<DT><STRONG><TT><B>host, port</B></TT></STRONG></DT>
+<DD>Host and port at which to contact the master to serve.
+</DD>
+<DT><STRONG><TT><B>id, password</B></TT></STRONG></DT>
+<DD>ID and password to send to the master for identification.
+</DD>
+<DT><STRONG><TT><B>auxscript arg ...</B></TT></STRONG></DT>
+<DD>The name of an optional script to source (which actually performs the
+  task the slave is assigned), and any arguments it needs.
+</DD>
+</DL>
+
+<P>
+In normal operation, the user does not launch
+<B>batchslave</B>.  Instead, instances of <B>batchslave</B> are
+launched by <B>batchmaster</B> as instructed by a task script.
+Although <B>batchmaster</B> may launch any slaves requested
+by its task script, by default it launches instances of
+<B>batchslave</B>.
+
+<P>
+The function of <B>batchslave</B> is to make a connection to
+a master program, source the <TT>auxscript</TT> and pass it the
+list of arguments <TT>aux_arg ...</TT>.  Then it receives commands
+from the master, and evaluates them, making use of the
+facilities provided by <TT>auxscript</TT>.  Each command is typically a
+long-running one, such as solving a complete micromagnetic problem.
+When each command is complete, the <B>batchslave</B> reports back to
+its master program, asking for the next command.  When the master
+program has no more commands <B>batchslave</B> terminates.
+
+<P>
+Inside <B>batchmaster</B>, each instance of <B>batchslave</B> is
+launched by evaluating a Tcl command.  This command is called
+the spawn command, and it may be redefined by the task script
+in order to completely control which slave applications are launched
+and how they are launched.  When <B>batchslave</B> is to be launched,
+the spawn command might be:
+
+<BLOCKQUOTE><PRE>
+exec tclsh oommf.tcl batchslave -tk 0 -- $server(host) $server(port) \
+   $slaveid $passwd batchsolve.tcl -restart 1 &amp;
+</PRE>
+
+</BLOCKQUOTE>
+The Tcl command <TT>exec</TT> is used to launch subprocesses.  When
+the last argument to <TT>exec</TT> is <TT>&amp;</TT>, the subprocess runs in
+the background.  The rest of the spawn command should look familiar
+as the command line syntax for launching <B>batchslave</B>.
+
+<P>
+The example spawn command above cannot be completely provided by
+the task script, however, because parts of it are only known
+by <B>batchmaster</B>.  Because of this, the task script should
+define the spawn command using ``percent variables'' which are
+substituted by <B>batchmaster</B>.  Continuing the example, the task
+script provides the spawn command:
+
+<BLOCKQUOTE><PRE>
+exec %tclsh %oommf batchslave -tk 0 %connect_info \
+   batchsolve.tcl -restart 1
+</PRE>
+
+</BLOCKQUOTE>
+<B>batchmaster</B> replaces <TT>%tclsh</TT> with the path to <TT><B>tclsh</B></TT>,
+and <TT>%oommf</TT> with the path to the OOMMF bootstrap application.
+It also replaces <TT>%connect_info</TT> with the five arguments from <code>--</code>
+through <TT>$password</TT> that provide <B>batchslave</B>
+the hostname and port where <B>batchmaster</B> is waiting for
+it to report to, and the ID and password it should pass back.
+In this example, the task script instructs <B>batchslave</B> to source the
+file <TT><B>batchsolve.tcl</B></TT> and pass it the arguments <TT>-restart 1</TT>.
+Finally, <B>batchmaster</B> always appends the argument <TT>&amp;</TT> to
+the spawn command so that all slave applications are launched in the
+background.
+
+<P>
+The communication protocol<A NAME="13016"></A> between
+<B>batchmaster</B> and <B>batchslave</B> is evolving and is not
+described here.  Check the source code for the latest details.
+
+<P>
+
+<H3><A NAME="SECTION001122300000000000000"></A><A NAME="sec:batchschedtask"></A>
+<BR>
+Batch Task Scripts
+</H3>
+<P>
+The application <B>batchmaster</B>
+creates an instance of a <TT>BatchTaskObj</TT> object with
+the name <TT>$TaskInfo</TT>.  The task script<A NAME="13024"></A> uses
+method calls to this object to set up tasks to be performed.  The only
+required call is to the <TT>AppendTask</TT> method, e.g.,
+
+<BLOCKQUOTE><PRE>
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+</PRE>
+
+</BLOCKQUOTE>
+This method expects two arguments, a label for the task (here ``A'') and
+a script to accomplish the task.
+The script will be passed across a
+network socket<A NAME="13030"></A> from
+<B>batchmaster</B> to a slave application, and
+then the script will be interpreted by the slave.  In particular, keep
+in mind that the file system seen by the script will be that of the
+machine on which the slave process is running.
+
+<P>
+This example uses the default <TT><B>batchsolve.tcl</B></TT> procs to run the
+simulation defined by the <TT><B>taskA.mif</B></TT> MIF&nbsp;1.x
+file<A NAME="13034"></A>.  If you want to make changes to the MIF problem specifications on the fly, you will need to modify the default
+procs.  This is done by creating a slave initialization script, via the
+call
+
+<BLOCKQUOTE><PRE>
+$TaskInfo SetSlaveInitScript { &lt;insert script here&gt; }
+</PRE>
+
+</BLOCKQUOTE>
+The slave initialization script does global initializations, and also
+usually redefines the <TT>SolverTaskInit</TT> proc; optionally the
+<TT>BatchTaskIterationCallback</TT>, <TT>BatchTaskRelaxCallback</TT> and
+<TT>SolverTaskCleanup</TT> procs may be redefined as well.  At the start of
+each task <TT>SolverTaskInit</TT> is called by <TT>BatchTaskRun</TT> (in
+<TT><B>batchsolve.tcl</B></TT>), after each iteration
+<TT>BatchTaskIterationCallback</TT> is executed, at each control
+point<A NAME="13047"></A> <TT>BatchTaskRelaxCallback</TT> is
+run, and at the end of each task <TT>SolverTaskCleanup</TT> is called.
+<TT>SolverTaskInit</TT> and <TT>SolverTaskCleanup</TT> are passed the arguments
+that were passed to <TT>BatchTaskRun</TT>.  A simple <TT>SolverTaskInit</TT>
+proc could be
+
+<BLOCKQUOTE><PRE>
+proc SolverTaskInit { args } {
+   global mif basename outtextfile
+   set A [lindex $args 0]
+   set outbasename "$basename-A$A"
+   $mif SetA $A
+   $mif SetOutBaseName $outbasename
+   set outtextfile [open "$outbasename.odt" "a+"]
+   puts $outtextfile [GetTextData header \
+         "Run on $basename.mif, with A=[$mif GetA]"]
+}
+</PRE>
+
+</BLOCKQUOTE>
+This proc receives the exchange constant <TT>A</TT>
+for this task on the argument list, and makes use of the global
+variables <TT>mif</TT> and <TT>basename</TT>.  (Both should be initialized in
+the slave initialization script outside the <TT>SolverTaskInit</TT> proc.)
+It then stores the requested value of <TT>A</TT> in the
+<TT>mif</TT><A NAME="13064"></A> object, sets up the base filename to use for
+output, and opens a text file to which tabular
+data<A NAME="13065"></A> will be appended.  The handle to this text
+file is stored in the global <TT>outtextfile</TT>, which is closed by the
+default <TT>SolverTaskCleanup</TT> proc.  A corresponding task script could
+be
+
+<BLOCKQUOTE><PRE>
+$TaskInfo AppendTask "A=13e-12 J/m" "BatchTaskRun 13e-12"
+</PRE>
+
+</BLOCKQUOTE>
+which runs a simulation with <TT>A</TT> set to
+13e-12 J/m.
+This example is taken from the <TT><B>multitask.tcl</B></TT>
+<A HREF="#sec:batchschedex">sample script</A>.  (For
+commands accepted by <TT>mif</TT> objects, see the file <TT><B>mmsinit.cc</B></TT>.
+Another object than can be gainfully manipulated is <TT>solver</TT>, which
+is defined in <TT><B>solver.tcl</B></TT>.)
+
+<P>
+If you want to run more than one task at a time, then the
+<TT>$TaskInfo</TT> method <TT>AppendSlave</TT> will have to be invoked.  This
+takes the form
+
+<BLOCKQUOTE><PRE>
+$TaskInfo AppendSlave &lt;spawn count&gt; &lt;spawn command&gt;
+</PRE>
+
+</BLOCKQUOTE>
+where <TT>&lt;spawn command&gt;</TT> is the command to launch the slave
+process, and <TT>&lt;spawn count&gt;</TT> is the number of slaves to launch
+with this command.  (Typically <TT>&lt;spawn count&gt;</TT> should not be
+larger than the number of processors on the target system.)  The default
+value for this item (which gets overwritten with the first call to
+<TT>$TaskInfo AppendSlave</TT>) is
+
+<BLOCKQUOTE><PRE>
+ 1 {Oc_Application Exec batchslave -tk 0 %connect_info batchsolve.tcl}
+</PRE>
+
+</BLOCKQUOTE>
+The Tcl command <TT>Oc_Application Exec</TT> is supplied by OOMMF and provides access to the same application-launching capability
+that is used by the OOMMF <A HREF="Command_Line_Launching.html#sec:cll">bootstrap application</A>.  Using a <TT>&lt;spawn command&gt;</TT> of
+<TT>Oc_Application Exec</TT> instead of <TT>exec %tclsh %oommf</TT>
+saves the spawning of an additional process.
+The default <TT>&lt;spawn command&gt;</TT>
+launches the <B>batchslave</B>
+application, with connection information provided by <B>batchmaster</B>, and
+using the <TT>auxscript</TT> <TT><B>batchsolve.tcl</B></TT>.
+
+<P>
+Before evaluating the <TT>&lt;spawn command&gt;</TT>, <B>batchmaster</B>
+applies several percent-style substitutions useful in slave
+launch scripts: %tclsh, %oommf, %connect_info, %oommf_root, and
+%%.  The first is the Tcl shell to use, the second is an absolute
+path to the OOMMF bootstrap program on the master machine, the third
+is connection information needed by the <TT><B>batchslave</B></TT> application, the
+fourth is the path to the OOMMF root directory on the master machine,
+and the last is interpreted as a single percent.
+<B>batchmaster</B> automatically appends the argument
+<TT>&amp;</TT> to the
+<TT>&lt;spawn command&gt;</TT> so that the slave applications
+are launched in the background.
+
+<P>
+To launch <B>batchslave</B> on a remote host, use <TT><B>ssh</B></TT><A NAME="13119"></A>
+in the spawn command, e.g.,
+
+<BLOCKQUOTE><PRE>
+$TaskInfo AppendSlave 1 {exec ssh foo tclsh oommf/oommf.tcl \
+      batchslave -tk 0 %connect_info batchsolve.tcl}
+</PRE>
+
+</BLOCKQUOTE>
+This example assumes <TT><B>tclsh</B></TT> is in the execution path on the remote
+machine <TT><B>foo</B></TT>, and OOMMF is installed off of your home directory.
+In addition, you will have to add the machine <TT><B>foo</B></TT> to the host
+connect list with
+
+<BLOCKQUOTE><PRE>
+$TaskInfo ModifyHostList +foo
+</PRE>
+
+</BLOCKQUOTE>
+and <TT><B>batchmaster</B></TT> must be run with the network interface specified
+as the server host (instead of the default <TT><B>localhost</B></TT>), e.g.,
+
+<BLOCKQUOTE><PRE>
+tclsh oommf.tcl batchmaster multitask.tcl bar
+</PRE>
+
+</BLOCKQUOTE>
+where <TT><B>bar</B></TT> is the name of the local machine.
+
+<P>
+This may seem a bit complicated, but the examples in the
+next section should make things clearer.
+
+<P>
+
+<H3><A NAME="SECTION001122400000000000000"></A><A NAME="sec:batchschedex"></A>
+<BR>
+Sample task scripts
+</H3>
+<P>
+The
+<A NAME="PTbatchschedsimpletask"></A><A HREF="#fig:batchschedsimpletask">first sample task script</A> is a simple example that runs the
+3 micromagnetic simulations described by the MIF&nbsp;1.x files
+<TT><B>taskA.mif</B></TT>, <TT><B>taskB.mif</B></TT> and <TT><B>taskC.mif</B></TT><A NAME="13148"></A>.  It
+is launched with the command
+
+<BLOCKQUOTE><PRE>
+tclsh oommf.tcl batchmaster simpletask.tcl
+</PRE>
+
+</BLOCKQUOTE>
+This example uses the default slave launch script, so a single slave is
+launched on the current machine, and the 3 simulations will be run
+sequentially.  Also, no slave initialization script is given, so the
+default procs in <TT><B>batchsolve.tcl</B></TT> are used.  Output will be magnetization
+states<A NAME="13154"></A> and tabular data<A NAME="13155"></A>
+at each control point<A NAME="13156"></A>, stored in
+files on the local machine with base names as specified in the MIF files.
+
+<P>
+<A NAME="fig:batchschedsimpletask"></A>
+
+  <BR CLEAR="ALL">
+<HR>hyperlink
+<PRE>
+# FILE: simpletask.tcl
+#
+# This is a sample batch task file.  Usage example:
+#
+#   tclsh oommf.tcl batchmaster simpletask.tcl
+#
+# Form task list
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+$TaskInfo AppendTask B "BatchTaskRun taskB.mif"
+$TaskInfo AppendTask C "BatchTaskRun taskC.mif"
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 10.1:
+    Sample task script
+  <TT><B>simpletask.tcl</B></TT>.
+    <A HREF="#PTbatchschedsimpletask">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<A NAME="PTbatchoctrltask"></A><A HREF="#fig:batchoctrltask">second sample task script</A> builds on the previous example by
+defining <TT>BatchTaskIterationCallback</TT> and
+<TT>BatchTaskRelaxCallback</TT> procedures in the slave init script.
+The first set up to write tabular data every 10 iterations, while the
+second writes tabular data on each control point event.  The data is
+written to the output file specified by the <TT>Base Output Filename</TT>
+entry in the input MIF files.  Note that there is no magnetization
+vector field output in this example.  This task script is launched the
+same way as the previous example:
+
+<BLOCKQUOTE><PRE>
+tclsh oommf.tcl batchmaster octrltask.tcl
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+<A NAME="fig:batchoctrltask"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# FILE: octrltask.tcl
+#
+# This is a sample batch task file, with expanded output control.
+# Usage example:
+#
+#        tclsh oommf.tcl batchmaster octrltask.tcl
+#
+# "Every" output selection count
+set SKIP_COUNT 10
+
+# Initialize solver. This is run at global scope
+set init_script {
+    # Text output routine
+    proc MyTextOutput {} {
+        global outtextfile
+        puts $outtextfile [GetTextData data]
+        flush $outtextfile
+    }
+    # Change control point output
+    proc BatchTaskRelaxCallback {} {
+        MyTextOutput
+    }
+    # Add output on iteration events
+    proc BatchTaskIterationCallback {} {
+        global solver
+        set count [$solver GetODEStepCount]
+        if { ($count % __SKIP_COUNT__) == 0 } { MyTextOutput }
+    }
+}
+
+# Substitute $SKIP_COUNT in for __SKIP_COUNT__ in above "init_script"
+regsub -all -- __SKIP_COUNT__ $init_script $SKIP_COUNT init_script
+$TaskInfo SetSlaveInitScript $init_script
+
+# Form task list
+$TaskInfo AppendTask A "BatchTaskRun taskA.mif"
+$TaskInfo AppendTask B "BatchTaskRun taskB.mif"
+$TaskInfo AppendTask C "BatchTaskRun taskC.mif"
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 10.2:
+    Task script with
+  iteration output <TT><B>octrltask.tcl</B></TT>.
+    <A HREF="#PTbatchoctrltask">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+The
+<A NAME="PTbatchschedmultitask"></A> <A HREF="#fig:batchschedmultitask">third task script</A> is a more complicated example
+running concurrent processes<A NAME="13193"></A> on two
+machines.  This script should be run with the command
+
+<BLOCKQUOTE><PRE>
+tclsh oommf.tcl batchmaster multitask.tcl bar
+</PRE>
+
+</BLOCKQUOTE>
+where <TT><B>bar</B></TT> is the name of the local machine.
+
+<P>
+Near the top of the <TT><B>multitask.tcl</B></TT> script several Tcl variables
+(<TT>RMT_MACHINE</TT> through <TT>A_list</TT>) are defined; these are used
+farther down in the script.  The remote machine is specified as
+<TT><B>foo</B></TT>, which is used in the <TT>$TaskInfo AppendSlave</TT> and
+<TT>$TaskInfo ModifyHostList</TT> commands.
+
+<P>
+There are two <TT>AppendSlave</TT> commands, one to run two slaves on the
+local machine, and one to run a single slave on the remote machine
+(<TT><B>foo</B></TT>).  The latter changes to a specified
+working directory<A NAME="13207"></A>  before
+launching the <TT><B>batchslave</B></TT> application on the remote machine.  (For
+this to work you must have <TT>ssh</TT> configured properly<A NAME="13210"></A>.)
+
+<P>
+Below this the slave initialization script is defined.  The Tcl <TT>regsub</TT> command is used to place the task script defined value of
+<TT>BASEMIF</TT> into the init script template.  The init script is run on
+the slave when the slave is first brought up.  It first reads the base
+MIF file into a newly created <TT>mms_mif</TT> instance.  (The MIF file
+needs to be accessible by the slave process, irrespective of which
+machine it is running on.)  Then replacement <TT>SolverTaskInit</TT> and
+<TT>SolverTaskCleanup</TT> procs are defined.  The new <TT>SolverTaskInit</TT>
+interprets its first argument as a value for the exchange constant
+<TT>A</TT>.  Note that this is different from the default
+<TT>SolverTaskInit</TT> proc, which interprets its first argument as the
+name of a MIF&nbsp;1.x file<A NAME="13219"></A> to load.  With this task
+script, a MIF file is read once when the slave is brought up, and then
+each task redefines only the value of <TT>A</TT> for the simulation (and
+corresponding changes to the output filenames and data table header).
+
+<P>
+Finally, the Tcl loop structure
+
+<BLOCKQUOTE><PRE>
+foreach A $A_list {
+    $TaskInfo AppendTask "A=$A" "BatchTaskRun $A"
+}
+</PRE>
+
+</BLOCKQUOTE>
+is used to build up a task list consisting of one task for each value
+of <TT>A</TT> in <TT>A_list</TT> (defined at the top of the task script).  For
+example, the first value of <TT>A</TT> is 10e-13, so the first task
+will have the label <TT>A=10e-13</TT> and the corresponding script is
+<TT>BatchTaskRun 10e-13</TT>.  The value 10e-13 is passed on by
+<TT>BatchTaskRun</TT> to the <TT>SolverTaskInit</TT> proc, which has been
+redefined to process this argument as the value for <TT>A</TT>, as
+described above.
+
+<P>
+There are 6 tasks in all, and 3 slave processes, so the first three
+tasks will run concurrently in the 3 slaves.  As each slave finishes
+it will be given the next task, until all the tasks are complete.
+
+<P>
+<A NAME="fig:batchschedmultitask"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# FILE: multitask.tcl
+#
+# This is a sample batch task file.  Usage example:
+#
+#   tclsh oommf.tcl batchmaster multitask.tcl hostname [port]
+#
+# Task script configuration
+set RMT_MACHINE   foo
+set RMT_TCLSH      tclsh
+set RMT_OOMMF      "/path/to/oommf/oommf.tcl"
+set RMT_WORK_DIR   "/path/to/oommf/app/mmsolve/data"
+set BASEMIF taskA
+set A_list { 10e-13 10e-14 10e-15 10e-16 10e-17 10e-18 }
+
+# Slave launch commands
+$TaskInfo ModifyHostList +$RMT_MACHINE
+$TaskInfo AppendSlave 2 "exec %tclsh %oommf batchslave -tk 0 \
+        %connect_info batchsolve.tcl"
+$TaskInfo AppendSlave 1 "exec ssh $RMT_MACHINE \
+        cd $RMT_WORK_DIR \\\;\
+        $RMT_TCLSH $RMT_OOMMF batchslave -tk 0 %connect_info batchsolve.tcl"
+
+# Slave initialization script (with batchsolve.tcl proc
+# redefinitions)
+set init_script {
+    # Initialize solver. This is run at global scope
+    set basename __BASEMIF__      ;# Base mif filename (global)
+    mms_mif New mif
+    $mif Read [FindFile ${basename}.mif]
+    # Redefine TaskInit and TaskCleanup proc's
+    proc SolverTaskInit { args } {
+        global mif outtextfile basename
+        set A [lindex $args 0]
+        set outbasename "$basename-A$A"
+        $mif SetA $A
+        $mif SetOutBaseName $outbasename
+        set outtextfile [open "$outbasename.odt" "a+"]
+        puts $outtextfile [GetTextData header \
+                "Run on $basename.mif, with A=[$mif GetA]"]
+        flush $outtextfile
+    }
+    proc SolverTaskCleanup { args } {
+        global outtextfile
+        close $outtextfile
+    }
+}
+# Substitute $BASEMIF in for __BASEMIF__ in above script
+regsub -all -- __BASEMIF__ $init_script $BASEMIF init_script
+$TaskInfo SetSlaveInitScript $init_script
+
+# Create task list
+foreach A $A_list {
+    $TaskInfo AppendTask "A=$A" "BatchTaskRun $A"
+}
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 10.3:
+    Advanced sample task
+  script <TT><B>multitask.tcl</B></TT>.
+    <A HREF="#PTbatchschedmultitask">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR><HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html712"
+  HREF="Data_Table_Display_mmDataTa.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html708"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html704"
+  HREF="OOMMF_2D_Micromagnetic_Solv.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html710"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

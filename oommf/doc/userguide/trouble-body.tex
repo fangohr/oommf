@@ -1,11 +1,11 @@
 
-\section{Troubleshooting}\label{sec:trouble}
+\chapter{Troubleshooting}\label{sec:trouble}
 
 The \OOMMF\ developers rely on reports from \OOMMF\ users to alert them
 to problems\index{reporting~bugs} with the software and its
 documentation, and to guide the selection and implementation of new
 features.  See the \hyperrefhtml{Credits}{Credits
-(Sec.~}{)}{sec:credits} for instructions on how to contact the
+(Ch.~}{)}{sec:credits} for instructions on how to contact the
 \OOMMF\ developers.
 
 The more complete your report, the fewer followup messages will be
@@ -45,7 +45,9 @@ carefully any notes in the chapter
 \hyperrefhtml{compiling}{compiling
 (Sec.~}{)}{sec:install.compile},
 there is an error something like:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -56,7 +58,9 @@ Don't know how to make '/usr/include/tcl.h'
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 This means the header file \fn{tcl.h} is missing from your
 \Tcl\ installation.  Other missing header files might be
@@ -74,7 +78,9 @@ platforms are unlikely to have this problem.  In the case of
 incorrect entry for \cd{TK\_XINCLUDES}.  A workaround for this is to
 add the following line to your
 \fn{oommf/config/platforms/}\textit{platform} file:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -84,7 +90,9 @@ $config SetValue TK_XINCLUDES "-I/usr/X11R6/include"
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 Adjust the include directory as appropriate for your system.
 
 \item When
@@ -115,7 +123,9 @@ system include directories being too early in the include search path.
 Try adding the offending directories to the
 \cd{program\_compiler\_c++\_system\_include\_path} property in the
 platform file, e.g.,
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -126,7 +136,9 @@ $config SetValue program_compiler_c++_system_include_path \
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 \item On Solaris, gcc reports many errors like 
 \begin{quote}
@@ -139,18 +151,22 @@ this problem, edit the file \fn{oommf/config/platforms/solaris.tcl} to add the
 option \cd{-fpermissive} to the gcc command line.
 
 \item On Windows, when first starting \cd{oommf.tcl}, there is an error:
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
 \begin{verbatim}
 Error launching mmLaunch version 1.x.x.x:
-	couldn't execute "...\omfsh.exe": invalid argument
+        couldn't execute "...\omfsh.exe": invalid argument
 \end{verbatim}
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 
 This cryptic message most likely means that the pre-compiled
 \OOMMF\ binaries which were downloaded are for a different version
@@ -180,7 +196,9 @@ libtcl\lb.\lb.so) files are installed in a directory not included in the
 ld.so runtime linker/loader search path. One way to fix this is to add
 that directory (say /usr/local/lib) to the \cd{LD\_LIBRARY\_PATH}
 environment variable. For example, include
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -190,9 +208,13 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 in your \cd{\~{}/.bashrc} file (bash shell users) or
-\begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
 %begin<latexonly>
 \begin{quote}
 %end<latexonly>
@@ -202,7 +224,9 @@ setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/lib
 %begin<latexonly>
 \end{quote}
 %end<latexonly>
-\begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
 in your \cd{\~{}/.cshrc} file (csh or tcsh shell users).  Another option
 is to modify the ld.so cache; see the ld.so and ldconfig man pages for
 details.
@@ -233,7 +257,7 @@ current Cygwin releases.
 \item I ran out of memory!
 
 Are you using \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
-(Sec.~}{)}{sec:mmgraph}\index{application!mmGraph} to monitor a
+(Ch.~}{)}{sec:mmgraph}\index{application!mmGraph} to monitor a
 long-running simulation?  All data sent to \app{mmGraph} is kept in
 memory by default.  See the \app{mmGraph} documentation for information
 on how to manage this problem.
@@ -255,6 +279,3 @@ the \hyperrefhtml{\app{launchhost}}{\app{launchhost}
   (Sec.~}{)}{sec:launchhost} utility.
 
 \end{enumerate}
-
-
-

@@ -12,7 +12,7 @@
  * This code is public domain work based on other public domains contributions
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 #include <fstream>
 #include <iostream>

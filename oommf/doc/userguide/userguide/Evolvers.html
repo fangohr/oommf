@@ -1,0 +1,1438 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Evolvers</TITLE>
+<META NAME="description" CONTENT="Evolvers">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Drivers.html">
+<LINK REL="previous" HREF="Energies.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Drivers.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html590"
+  HREF="Drivers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html586"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html580"
+  HREF="Energies.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html588"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html591"
+  HREF="Drivers.html">Drivers</A>
+<B> Up:</B> <A NAME="tex2html587"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html581"
+  HREF="Energies.html">Energies</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00834000000000000000"></A><A NAME="sec:oxsEvolvers"></A>
+<BR>
+Evolvers
+</H2>
+Evolvers are responsible for updating the magnetization configuration
+from one step to the next.  There are two types of evolvers,
+<I>time evolvers</I>, which track Landau-Lifshitz-Gilbert dynamics,
+and <I>minimization evolvers</I>, which locate local minima in the
+energy surface through direct minimization techniques.  Evolvers are
+controlled by <A HREF="Drivers.html#sec:oxsDrivers">drivers</A>, and must be matched with the appropriate
+driver type, i.e., time evolvers must be paired with
+<A HREF="Drivers.html#item:TimeDriver">time drivers</A>, and
+minimization evolvers must be paired with <A HREF="Drivers.html#html:MinDriver">minimization
+drivers</A>.  The drivers hand a magnetization
+configuration to the evolvers with a request to advance the
+configuration by one <I>step</I> (also called an <I>iteration</I>).
+It is the role of the drivers, not the evolvers, to determine when a
+simulation stage or run is complete.  Specify blocks for evolvers
+contain parameters to control all aspects of individual stepwise
+evolution, but stopping criteria are communicated in the Specify block
+of the driver, not the evolver.
+
+<P>
+There are currently three time evolvers and one minimization evolver in the
+standard OOMMF distribution.  The time evolvers are
+<A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A>,
+<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>, and
+<A HREF="#html:SpinXferEvolve"><TT>Oxs_SpinXferEvolve</TT></A>.
+The minimization evolver is
+<A HREF="#html:CGEvolve"><TT>Oxs_CGEvolve</TT></A>.
+<DL>
+<DD><A NAME="PTEE"></A><A NAME="5615"></A></DD>
+<DT><STRONG>Oxs_EulerEvolve:<A NAME="html:EulerEvolve"></A></STRONG></DT>
+<DD>Time evolver implementing a simple first order forward Euler method with
+step size control on the Landau-Lifshitz
+ODE<A NAME="5617"></A>&nbsp;[<A
+ HREF="bibliography.html#gilbert1955">12</A>,<A
+ HREF="bibliography.html#landau1935">17</A>]:
+<BR>
+<P></P>
+<DIV ALIGN="CENTER">
+<A NAME="eq:oxsllode"></A><!-- MATH
+ \begin{equation}
+\htmlimage{antialias}
+  \frac{d\textbf{M}}{dt} = -|\bar{\gamma}|\,\textbf{M}\times\textbf{H}_{\rm eff}
+   - \frac{|\bar{\gamma}|\alpha}{M_s}\,
+     \textbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
+\end{equation}
+ -->
+<TABLE WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG><A NAME="eq:oxsllode"></A><IMG
+ WIDTH="413" HEIGHT="53" BORDER="0"
+ SRC="img22.gif"
+ ALT="\begin{displaymath}
+\frac{d\textbf{M}}{dt} = -\vert\bar{\gamma}\vert\,\textbf{M...
+...tbf{M}\times\left(\textbf{M}\times\textbf{H}_{\rm eff}\right),
+\end{displaymath}"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(7.2)</TD></TR>
+</TABLE>
+</DIV>
+where <!-- MATH
+ $\textbf{M}$
+ -->
+<B><B>M</B></B> is the magnetization, <!-- MATH
+ $\textbf{H}_{\rm eff}$
+ -->
+<B><B>H</B><SUB>eff</SUB></B> is the effective
+field, <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> is the Landau-Lifshitz gyromagnetic ratio, and
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$"> is the damping constant. The Gilbert form
+
+<P></P>
+<DIV ALIGN="CENTER">
+<A NAME="eq:oxsllgode"></A><!-- MATH
+ \begin{equation}
+\htmlimage{antialias}
+  \frac{d\textbf{M}}{dt} = -|\gamma|\,\textbf{M}\times\textbf{H}_{\rm eff}
+   + \frac{\alpha}{M_s}
+     \left(\textbf{M}\times\frac{d\textbf{M}}{dt}\right),
+\end{equation}
+ -->
+<TABLE WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG><A NAME="eq:oxsllgode"></A><IMG
+ WIDTH="371" HEIGHT="57" BORDER="0"
+ SRC="img27.gif"
+ ALT="\begin{displaymath}
+\frac{d\textbf{M}}{dt} = -\vert\gamma\vert\,\textbf{M}\time...
+...ha}{M_s}
+\left(\textbf{M}\times\frac{d\textbf{M}}{dt}\right),
+\end{displaymath}"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(7.3)</TD></TR>
+</TABLE>
+</DIV>
+where <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> is the Gilbert gyromagnetic ratio, is
+mathematically equivalent to the Landau-Lifshitz form under the
+relation <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma = (1+\alpha^2)\,\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="106" HEIGHT="21" ALIGN="BOTTOM" BORDER="0"
+ SRC="img31.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma = (1+\alpha^2)\,\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">.
+
+<P>
+The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_EulerEvolve:</TT><I>name</I> <TT>{</TT>
+   <DD><TT> alpha </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_LL </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_G </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> do_precess </TT> <I>precess</I>
+   <DD><TT> min_timestep </TT> <I>minimum_stepsize</I>
+   <DD><TT> max_timestep </TT> <I>maximum_stepsize</I>
+   <DD><TT> fixed_spins {</TT><DL>
+       <DD><I>atlas_spec</I>
+       <DD><I>region1</I><TT>&nbsp;</TT><I>region2</I><TT> ...</TT>
+       <DT><TT>}</TT></DL>
+   <DD><TT> start_dm </TT>
+   <!-- MATH
+ $\Delta \textbf{m}$
+ -->
+<B><IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><B>m</B></B>
+   
+   <DD><TT> error_rate </TT> <I>rate</I>
+   <DD><TT> absolute_step_error </TT> <I>abs_error</I>
+   <DD><TT> relative_step_error </TT> <I>rel_error</I>
+   <DD><TT> step_headroom </TT> <I>headroom</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+All the entries have default values, but the ones most commonly adjusted
+are listed first.
+
+<P>
+The options <B>alpha</B>, <B>gamma_LL</B> and
+<B>gamma_G</B> are as in the Landau-Lifshitz-Gilbert ODE
+(<A HREF="#eq:oxsllode">7.2</A>), (<A HREF="#eq:oxsllgode">7.3</A>), where the units on
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> are m/A<B><SUP> . </SUP></B>s and
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$"> is dimensionless.  At most one of
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> should be specified.  If
+neither is specified, then the default is
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"><!-- MATH
+ $=2.211\times 10^5$
+ -->
+<B>= 2.211 <TT>x</TT> 10<SUP>5</SUP></B>.
+(Because of the absolute value convention adopted on
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> in
+(<A HREF="#eq:oxsllode">7.2</A>), (<A HREF="#eq:oxsllgode">7.3</A>), the sign given to the value of
+<TT>gamma_LL</TT> or <TT>gamma_G</TT> in the Specify block is
+irrelevant.)  The default value for <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$"> is 0.5, which is
+large compared to experimental values, but allows simulations to
+converge to equilibria in a reasonable time.  However, for accurate
+dynamic studies it is important to assign an appropriate value to
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">.
+
+<P>
+The <B>do_precess</B> value should be either 1 or 0, and determines
+whether or not the precession term in the Landau-Lifshitz ODE (i.e., the
+first term on the righthand side in (<A HREF="#eq:oxsllode">7.2</A>)) is used.  If
+<I>precess</I> is 0, then precession is disabled and the simulation
+evolves towards equilibrium along a steepest descent path.  The default
+value is 1.
+
+<P>
+The <B>min_timestep</B> and <B>max_timestep</B> parameters provide
+soft limits on the size of steps taken by the evolver.  The minimum
+value may be overridden by the driver if a smaller step is needed to
+meet time based stopping criteria.  The maximum value will be ignored if
+a step of that size would produce a magnetization state numerically
+indistinguishable from the preceding state.  The units for
+<TT>min_timestep</TT> and <TT>max_timestep</TT> are seconds.  Default
+values are 0 and <B>10<SUP>-10</SUP></B> respectively.
+
+<P>
+The optional <B>fixed_spins</B> entry allows the magnetization in
+selected regions of the simulation to be frozen in its initial
+configuration.  The value portion of the entry should be a list, with
+the first element of the list being either an inline atlas definition
+(grouped as a single item), or else the name of a previously defined
+atlas.  The remainder of the list are names of regions in that atlas for
+which the magnetization is to be be fixed, i.e., <!-- MATH
+ $\textbf{M}(t)=\textbf{M}(0)$
+ -->
+<B><B>M</B>(<I>t</I>) = <B>M</B>(0)</B> for all
+time <B><I>t</I></B> for all points in the named regions.  Fields and energies are
+computed and reported normally across these regions.  Although any atlas
+may be used, it is frequently convenient to set up an atlas with special
+regions defined expressly for this purpose.
+
+<P>
+The stepsize for the first candidate iteration in the problem run is
+selected so that the maximum change in the normalized (i.e., unit)
+magnetization <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> is the value specified by <B>start_dm</B>.  The
+units are degrees, with default value 0.01.
+
+<P>
+The four remaining entries, <B>error_rate</B>,
+<B>absolute_step_error</B>, <B>relative_step_error</B>, and
+<B>step_headroom</B>, control fine points of stepsize selection,
+and are intended for advance use only.  Given normalized magnetization
+<!-- MATH
+ $\textbf{m}_i(t)$
+ -->
+<B><B>m</B><SUB>i</SUB>(<I>t</I>)</B> at time <B><I>t</I></B> and position <B><I>i</I></B>, and candidate magnetization
+<!-- MATH
+ $\textbf{m}_i(t+\Delta t)$
+ -->
+<B><B>m</B><SUB>i</SUB>(<I>t</I> + <IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><I>t</I>)</B> at time <!-- MATH
+ $t+\Delta t$
+ -->
+<B><I>t</I> + <IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><I>t</I></B>, the error at position <B><I>i</I></B> is
+estimated to be
+<!-- MATH
+ \begin{displaymath}
+\htmlimage{antialias}
+\mbox{Error}_i =
+  \left|\dot{\textbf{m}}_i(t+\Delta t) - \dot{\textbf{m}}_i(t)\right|\Delta t
+      \,/\,2,
+\end{displaymath}
+ -->
+<P ALIGN="CENTER"><IMG
+ WIDTH="320" HEIGHT="35" BORDER="0"
+ SRC="img33.gif"
+ ALT="\begin{displaymath}
+\mbox{Error}_i =
+\left\vert\dot{\textbf{m}}_i(t+\Delta t) - \dot{\textbf{m}}_i(t)\right\vert\Delta t
+\,/\,2,
+\end{displaymath}"></P>
+where the derivative with respect to time, <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B>, is computed
+using the Landau-Lifshitz ODE (<A HREF="#eq:oxsllode">7.2</A>).  First order methods
+essentially assume that <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B> is constant on the interval
+<!-- MATH
+ $[t,t+\Delta t]$
+ -->
+<B>[<I>t</I>, <I>t</I> + <IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><I>t</I>]</B>; the above formula uses the difference in <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B>
+at the endpoints of the interval to estimate (guess) how untrue that
+assumption is.
+
+<P>
+A candidate step is accepted if the maximum error across all positions
+<B><I>i</I></B> is smaller than <TT>absolute_step_error</TT>,
+<TT>error_rate</TT><!-- MATH
+ $\,\times\,\Delta t$
+ -->
+<B>&nbsp; <TT>x</TT> &nbsp;<IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><I>t</I></B>, and
+<TT>relative_step_error</TT><!-- MATH
+ $\,\times\,|\dot{\textbf{m}}_{\rm
+max}|\Delta t$
+ -->
+<B>&nbsp; <TT>x</TT> &nbsp;|<IMG
+ WIDTH="43" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img35.gif"
+ ALT="$\dot{{\textbf{m}}}_{{\rm
+max}}^{}$">|<IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><I>t</I></B>, where <!-- MATH
+ $|\dot{\textbf{m}}_{\rm max}|$
+ -->
+<B>|<IMG
+ WIDTH="43" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img35.gif"
+ ALT="$\dot{{\textbf{m}}}_{{\rm
+max}}^{}$">|</B> is the maximum value of
+<!-- MATH
+ $|\dot{\textbf{m}}_i|$
+ -->
+<B>|<IMG
+ WIDTH="25" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img36.gif"
+ ALT="$\dot{{\textbf{m}}}_{i}^{}$">|</B> across all <B><I>i</I></B> at time <B><I>t</I></B>.  If the step is rejected,
+then a smaller stepsize is computed that appears to pass the above
+tests, and a new candidate step is proposed using that smaller stepsize
+times <TT>step_headroom</TT>.  Alternatively, if the step is accepted,
+then the error information is used to determine the stepsize for the
+next step, modified in the same manner by <TT>step_headroom</TT>.
+
+<P>
+The error calculated above is in terms of unit magnetizations, so the
+natural units are radians or radians/second.  Inside the Specify block,
+however, the <TT>error_rate</TT> and <TT>absolute_step_error</TT> are
+specified in degrees/nanosecond and degrees, respectively; they are
+converted appropriately inside the code before use.  The
+<TT>relative_step_error</TT> is a dimensionless quantity, representing a
+proportion between 0 and 1.  The error check controlled by each of these
+three quantities may be disabled by setting the quantity value to -1.
+They are all optional, with default values of -1 for <TT>error_rate</TT>,
+0.2 for <TT>absolute_step_error</TT>, and 0.2 for
+<TT>relative_step_error</TT>.
+
+<P>
+The <TT>headroom</TT> quantity should lie in the range <B>(0, 1)</B>, and controls
+how conservative the code will be in stepsize selection.  If <TT>headroom</TT>
+is too large, then much computation time will be lost computing
+candidate steps that fail the error control tests.  If <TT>headroom</TT> is
+small, then most candidate steps will pass the error control tests, but
+computation time may be wasted calculating more steps than are
+necessary.  The default value for <TT>headroom</TT> is 0.85.
+
+<P>
+In addition to the above error control tests, a candidate step will also
+be rejected if the total energy, after adjusting for effects due to any
+time varying external field, is found to increase.  In this case the
+next candidate stepsize is set to one half the rejected stepsize.
+
+<P>
+The <TT>Oxs_EulerEvolve</TT> module provides five scalar, one scalar
+field, and three vector field outputs.  The scalar outputs are
+
+<UL>
+<LI><B>Max dm/dt:</B> maximum <!-- MATH
+ $|d\textbf{m}/dt|$
+ -->
+<B>| <I>d</I><B>m</B>/<I>dt</I>|</B>, in degrees per
+   nanosecond; <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> is the unit magnetization direction.
+</LI>
+<LI><B>Total energy:</B> in joules.
+</LI>
+<LI><B>Delta E:</B> change in energy between last step and current
+   step, in joules.
+</LI>
+<LI><B>dE/dt:</B> derivative of energy with respect to time, in
+   joules per second.
+</LI>
+<LI><B>Energy calc count:</B> number of times total energy has been
+   calculated.
+</LI>
+</UL>
+
+<P>
+The scalar field output is
+
+<UL>
+<LI><B>Total energy density:</B> cellwise total energy density, in
+J/m<SUP>3</SUP>.
+</LI>
+</UL>
+
+<P>
+The vector field outputs are
+
+<UL>
+<LI><B>Total field:</B> total effective field <!-- MATH
+ $\textbf{H}$
+ -->
+<B><B>H</B></B> in A/m.
+</LI>
+<LI><B>mxH:</B> torque in A/m; <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> is the unit magnetization
+   direction, <!-- MATH
+ $\textbf{H}$
+ -->
+<B><B>H</B></B> is the total effective field.
+</LI>
+<LI><B>dm/dt:</B> derivative of spin <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> with respect to time, in
+   radians per second.
+</LI>
+</UL>
+
+<P>
+
+<B>Example:</B> 
+  <TT><B>octant.mif</B></TT>.
+<P>
+<A NAME="PTRK"></A><A NAME="5735"></A></DD>
+<DT><STRONG>Oxs_RungeKuttaEvolve:<A NAME="html:RungeKuttaEvolve"></A></STRONG></DT>
+<DD>Time evolver implementing several Runge-Kutta methods for integrating
+the Landau-Lifshitz-Gilbert<A NAME="5737"></A> ODE
+(<A HREF="#eq:oxsllode">7.2</A>), (<A HREF="#eq:oxsllgode">7.3</A>), with step size control.  In
+most cases it will greatly outperform the <TT>Oxs_EulerEvolve</TT> class.
+The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_RungeKuttaEvolve:</TT><I>name</I> <TT>{</TT>
+   <DD><TT> alpha </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_LL </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_G </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> do_precess </TT> <I>precess</I>
+   <DD><TT> allow_signed_gamma </TT> <I>signed_gamma</I>
+   <DD><TT> min_timestep </TT> <I>minimum_stepsize</I>
+   <DD><TT> max_timestep </TT> <I>maximum_stepsize</I>
+   <DD><TT> fixed_spins {</TT><DL>
+       <DD><I>atlas_spec</I>
+       <DD><I>region1</I><TT>&nbsp;</TT><I>region2</I><TT> ...</TT>
+       <DT><TT>}</TT></DL>
+   <DD><TT> start_dm </TT>
+   <!-- MATH
+ $\Delta \textbf{m}$
+ -->
+<B><IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><B>m</B></B>
+   
+   <DD><TT> start_dt </TT> <I>start_timestep</I>
+   <DD><TT> stage_start </TT> <I>scontinuity</I>
+   <DD><TT> error_rate </TT> <I>rate</I>
+   <DD><TT> absolute_step_error </TT> <I>abs_error</I>
+   <DD><TT> relative_step_error </TT> <I>rel_error</I>
+   <DD><TT> energy_precision </TT> <I>eprecision</I>
+   <DD><TT> min_step_headroom </TT> <I>min_headroom</I>
+   <DD><TT> max_step_headroom </TT> <I>max_headroom</I>
+   <DD><TT> reject_goal </TT> <I>reject_proportion</I>
+   <DD><TT> method </TT> <I>subtype</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Most of these options appear also in the
+<A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A> class.
+The repeats have the same meaning as in that class, and the same
+default values except for <TT>relative_step_error</TT> and
+<TT>error_rate</TT>, which for <TT>Oxs_RungeKuttaEvolve</TT> have the
+default values of 0.01 and 1.0, respectively.  Additionally, the
+<B>alpha</B>, <B>gamma_LL</B> and <B>gamma_G</B> options
+may be initialized using scalar field objects, to allow these material
+parameters to vary spatially.
+
+<P>
+The <B>allow_signed_gamma</B> parameter is for simulation testing
+purposes, and is intended for advanced use only.  There is some lack of
+consistency in the literature with respect to the sign of
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">.  For this reason the Landau-Lifshitz-Gilbert
+equations are presented above (<A HREF="#eq:oxsllode">7.2</A>, <A HREF="#eq:oxsllgode">7.3</A>)
+using the absolute value of <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">.  This is the
+interpretation used if <TT>allow_signed_gamma</TT> is 0 (the default).  If
+instead <TT>allow_signed_gamma</TT> is set to 1, then the
+Landau-Lifshitz-Gilbert equations are interpreted without the absolute
+values and with a sign change on the <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> terms, i.e., the
+default value for <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$"> in this case is <!-- MATH
+ $-2.211 \times
+10^5$
+ -->
+<B>-2.211 <TT>x</TT> 10<SUP>5</SUP></B> (units are m/A<B><SUP> . </SUP></B>s).  In this setting, if <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">
+is set positive then the spins will precess backwards about the
+effective field, and the damping term will force the spins <B>away</B>
+from the effective field and increase the total energy.  If you are
+experimenting with <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma>0\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="44" HEIGHT="18" ALIGN="BOTTOM" BORDER="0"
+ SRC="img37.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma&gt;0\\ \rule{1pt}{0pt}\end{array}$}$">, you should either set
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha<=0\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="58" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img38.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha&lt;=0\\ \rule{1pt}{0pt}\end{array}$}$"> to force spins back towards the effective field,
+or disable the energy precision control (discussed
+<A HREF="#html:oxsrkeprecision">below</A>).
+
+<P>
+The two controls <B>min_step_headroom</B> (default value 0.33) and
+<B>max_step_headroom</B> (default value 0.95) replace the single
+<TT>step_headroom</TT> option in <TT>Oxs_EulerEvolve</TT>.  The effective
+<TT>step_headroom</TT> is automatically adjusted by the evolver between the
+<I>min_headroom</I> and <I>max_headroom</I> limits to make the
+observed reject proportion approach the <B>reject_goal</B> (default
+value 0.05).
+
+<P>
+The <B>method</B> entry selects a particular Runge-Kutta
+implementation.  It should be set to one of <I>rk2</I>,
+<I>rk4</I>, <I>rkf54</I>, <I>rkf54m</I>, or <I>rkf54s</I>;
+the default value is <I>rkf54</I>.  The <I>rk2</I> and
+<I>rk4</I> methods implement canonical second and fourth global order
+Runge-Kutta methods[<A
+ HREF="bibliography.html#stoer1993">27</A>], respectively.  For <I>rk2</I>,
+stepsize control is managed by comparing <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B> at the middle and
+final points of the interval, similar to what is done for stepsize
+control for the <TT>Oxs_EulerEvolve</TT> class.  One step of the
+<I>rk2</I> method involves 2 evaluations of <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B>.
+
+<P>
+In the <I>rk4</I> method, two successive steps are taken at half the
+nominal step size, and the difference between that end point and that
+obtained with one full size step are compared.  The error is estimated at
+1/15th the maximum difference between these two states.  One step of the
+<I>rk4</I> method involves 11 evaluations of <!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B>, but the
+end result is that of the 2 half-sized steps.
+
+<P>
+The remaining methods, <I>rkf54</I>,  <I>rkf54m</I>,
+and <I>rkf54s</I>, are closely related Runge-Kutta-Fehlberg methods
+derived by Dormand and Prince[<A
+ HREF="bibliography.html#dormand1980">8</A>,<A
+ HREF="bibliography.html#dormand1986">9</A>].  In the
+nomenclature of these papers,
+<I>rkf54</I> implements RK5(4)7FC,
+<I>rkf54m</I> implements RK5(4)7FM, and
+<I>rkf54s</I> implements RK5(4)7FS.
+All are 5th global order with an embedded 4th order method for stepsize
+control.  Each step of these methods requires 6 evaluations of
+<!-- MATH
+ $\dot{\textbf{m}}$
+ -->
+<B><IMG
+ WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img34.gif"
+ ALT="$\dot{{\textbf{m}}}$"></B> if the step is accepted, 7 if rejected.  The difference
+between the methods involves tradeoffs between stability and error
+minimization.  The RK5(4)7FS method has the best stability, RK5(4)7FM
+the smallest error, and RK5(4)7FC represents a compromise between the
+two.  The default method used by <TT>Oxs_RungeKuttaEvolve</TT> is
+RK5(4)7FC.
+
+<P>
+<A NAME="html:oxsrkeprecision"></A>The remaining undiscussed entry in the <TT>Oxs_RungeKuttaEvolve</TT>
+Specify block is <B>energy_precision</B>.  This should be set to an
+estimate of the expected relative accuracy of the energy calculation.
+After accounting for any change in the total energy arising from
+time-varying applied fields, the energy remainder should decrease from
+one step of the LLG ODE to the next.  <TT>Oxs_RungeKuttaEvolve</TT> will
+reject a step if the energy remainder is found to increase by more than
+that allowed by <I>eprecision</I>.  The default value for
+<I>eprecision</I> is 1e-10.  This control
+may be disabled by setting <I>eprecision</I> to -1.
+
+<P>
+The <TT>Oxs_RungeKuttaEvolve</TT> module provides the same scalar, scalar
+field, and vector field outputs as <TT>Oxs_EulerEvolve</TT>.  It also
+provides the following state data accessible through the MIF <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command:
+
+<BLOCKQUOTE>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><TT>Mx</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>My</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>Mz</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>dMx/dt</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>dMy/dt</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>dMz/dt</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>Total E</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>dE/dt</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>pE/pt</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><TT><code>"</code>Timestep lower bound<code>"</code></TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT">&nbsp;</TD>
+</TR>
+</TABLE>
+
+</BLOCKQUOTE>
+The full name for each of these items is
+
+<BLOCKQUOTE>
+<TT>Oxs_RungeKuttaEvolve:<TT>&lt;</TT>instance_name<TT>&gt;</TT>:<TT>&lt;</TT>item_name<TT>&gt;</TT></TT>,
+
+</BLOCKQUOTE>
+where <TT><TT>&lt;</TT>instance_name<TT>&gt;</TT></TT> is the instance name of the object
+(typically an empty string or something like ``evolver'').  For stage
+start states only the <TT>Mx</TT>, <TT>My</TT>, and <TT>Mz</TT> items are available.
+These terms, and the corresponding <TT>dMx/dt</TT>, <TT>dMy/dt</TT>, and
+<TT>dMz/dt</TT>, are component values averaged across the full simulation.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>acsample.mif</B></TT>, <TT><B>spinmag.mif</B></TT>,
+  <TT><B>spinmag2.mif</B></TT>, <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+<P>
+<A NAME="PTSX"></A><A NAME="5852"></A></DD>
+<DT><STRONG>Oxs_SpinXferEvolve:<A NAME="html:SpinXferEvolve"></A></STRONG></DT>
+<DD>Time evolver that integrates an
+Landau-Lifshitz-Gilbert<A NAME="5854"></A> ODE augmented with a
+spin momentum term [<A
+ HREF="bibliography.html#xiao2004">33</A>],
+
+<P></P>
+<DIV ALIGN="CENTER">
+<A NAME="eq:oxsllgspinxfer"></A><!-- MATH
+ \begin{equation}
+\htmlimage{antialias}
+  \frac{d\textbf{m}}{dt} = -|\gamma|\,\textbf{m}\times\textbf{H}_{\rm eff}
+   + \alpha
+     \left(\textbf{m}\times\frac{d\textbf{m}}{dt}\right)
+   + |\gamma|\beta\epsilon
+     \left(\textbf{m}\times\textbf{m}_p\times\textbf{m}\right)
+   - |\gamma|\beta\epsilon^\prime\,\textbf{m}\times\textbf{m}_p
+\end{equation}
+ -->
+<TABLE WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG><A NAME="eq:oxsllgspinxfer"></A><IMG
+ WIDTH="679" HEIGHT="57" BORDER="0"
+ SRC="img39.gif"
+ ALT="\begin{displaymath}
+\frac{d\textbf{m}}{dt} = -\vert\gamma\vert\,\textbf{m}\time...
+...t\gamma\vert\beta\epsilon^\prime\,\textbf{m}\times\textbf{m}_p
+\end{displaymath}"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(7.4)</TD></TR>
+</TABLE>
+</DIV>
+(compare to (<A HREF="#eq:oxsllgode">7.3</A>)), where
+<BR>
+<DIV ALIGN="CENTER">
+<!-- MATH
+ \begin{eqnarray*}
+\textbf{m}& = & \mbox{reduced magnetization, $\textbf{M}/M_s$} \\
+\gamma & = & \mbox{Gilbert gyromagnetic ratio} \\
+\beta & = & \left|\frac{\hbar}{\mu_0 e}\right|\frac{J}{t M_s} \\
+\textbf{m}_p & = & \mbox{(unit) electron polarization direction} \\
+\epsilon & = &
+\frac{P\Lambda^2}{(\Lambda^2+1)+(\Lambda^2-1)(\textbf{m}\cdot\textbf{m}_p)} \\
+\epsilon^\prime & = & \mbox{secondary spin tranfer term}.
+\end{eqnarray*}
+ -->
+<TABLE CELLPADDING="0" ALIGN="CENTER" WIDTH="100%">
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><B>m</B></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG><IMG
+ WIDTH="267" HEIGHT="38" ALIGN="MIDDLE" BORDER="0"
+ SRC="img40.gif"
+ ALT="$\displaystyle \mbox{reduced magnetization, $\textbf{M}/M_s$}$"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
+ WIDTH="15" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img41.gif"
+ ALT="$\displaystyle \gamma$"></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>Gilbert gyromagnetic ratio</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
+ WIDTH="16" HEIGHT="36" ALIGN="MIDDLE" BORDER="0"
+ SRC="img42.gif"
+ ALT="$\displaystyle \beta$"></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG><IMG
+ WIDTH="12" HEIGHT="69" ALIGN="MIDDLE" BORDER="0"
+ SRC="img43.gif"
+ ALT="$\displaystyle \left\vert\vphantom{\frac{\hbar}{\mu_0 e}}\right.$"><IMG
+ WIDTH="37" HEIGHT="63" ALIGN="MIDDLE" BORDER="0"
+ SRC="img44.gif"
+ ALT="$\displaystyle {\frac{{\hbar}}{{\mu_0 e}}}$"><IMG
+ WIDTH="12" HEIGHT="69" ALIGN="MIDDLE" BORDER="0"
+ SRC="img45.gif"
+ ALT="$\displaystyle \left.\vphantom{\frac{\hbar}{\mu_0 e}}\right\vert$"><IMG
+ WIDTH="42" HEIGHT="63" ALIGN="MIDDLE" BORDER="0"
+ SRC="img46.gif"
+ ALT="$\displaystyle {\frac{{J}}{{t M_s}}}$"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><B>m</B><SUB>p</SUB></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>(unit) electron polarization direction</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
+ WIDTH="12" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img47.gif"
+ ALT="$\displaystyle \epsilon$"></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG><IMG
+ WIDTH="250" HEIGHT="67" ALIGN="MIDDLE" BORDER="0"
+ SRC="img48.gif"
+ ALT="$\displaystyle {\frac{{P\Lambda^2}}{{(\Lambda^2+1)+(\Lambda^2-1)(\textbf{m}\cdot\textbf{m}_p)}}}$"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
+ WIDTH="17" HEIGHT="40" ALIGN="MIDDLE" BORDER="0"
+ SRC="img49.gif"
+ ALT="$\displaystyle \epsilon^{\prime}_{}$"></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>secondary spin tranfer term.</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL">
+
+In the definition of <B><IMG
+ WIDTH="14" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img50.gif"
+ ALT="$\beta$"></B>, <B><I>e</I></B> is the electron charge in C, <B><I>J</I></B> is
+current density in A/m<B><SUP>2</SUP></B>, <B><I>t</I></B> is the free layer thickness in meters,
+and <B><I>M</I><SUB>s</SUB></B> is the saturation magnetization in A/m.
+
+<P>
+The various parameters are defined in the Specify block, which is an
+extension of that for the
+<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class:
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_SpinXferEvolve:</TT><I>name</I> <TT>{</TT>
+   <DD><TT> alpha </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img26.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_LL </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> gamma_G </TT>
+   <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\ \rule{1pt}{0pt}\end{array}$}$">
+   
+   <DD><TT> do_precess </TT> <I>precess</I>
+   <DD><TT> allow_signed_gamma </TT> <I>signed_gamma</I>
+   <DD><TT> min_timestep </TT> <I>minimum_stepsize</I>
+   <DD><TT> max_timestep </TT> <I>maximum_stepsize</I>
+   <DD><TT> fixed_spins {</TT><DL>
+       <DD><I>atlas_spec</I>
+       <DD><I>region1</I><TT>&nbsp;</TT><I>region2</I><TT> ...</TT>
+       <DT><TT>}</TT></DL>
+   <DD><TT> start_dm </TT>
+   <!-- MATH
+ $\Delta \textbf{m}$
+ -->
+<B><IMG
+ WIDTH="18" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.gif"
+ ALT="$\Delta$"><B>m</B></B>
+   
+   <DD><TT> stage_start </TT> <I>scontinuity</I>
+   <DD><TT> error_rate </TT> <I>rate</I>
+   <DD><TT> absolute_step_error </TT> <I>abs_error</I>
+   <DD><TT> relative_step_error </TT> <I>rel_error</I>
+   <DD><TT> energy_precision </TT> <I>eprecision</I>
+   <DD><TT> min_step_headroom </TT> <I>min_headroom</I>
+   <DD><TT> max_step_headroom </TT> <I>max_headroom</I>
+   <DD><TT> reject_goal </TT> <I>reject_proportion</I>
+   <DD><TT> method </TT> <I>subtype</I>
+   <DD><TT> P </TT> <I>polarization</I>
+   <DD><TT> P_fixed </TT> <I>p_fixed_layer</I>
+   <DD><TT> P_free </TT> <I>p_free_layer</I>
+   <DD><TT> Lambda </TT>
+   <B><IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img51.gif"
+ ALT="$\Lambda$"></B>
+   
+   <DD><TT> Lambda_fixed </TT>
+   <B><IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img51.gif"
+ ALT="$\Lambda$"></B>_fixed_layer
+   
+   <DD><TT> Lambda_free </TT>
+   <B><IMG
+ WIDTH="15" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img51.gif"
+ ALT="$\Lambda$"></B>_free_layer
+   
+   <DD><TT> eps_prime </TT> <I>ep</I>
+   <DD><TT> J </TT> <I>current_density</I>
+   <DD><TT> J_profile </TT> <I>Jprofile_script</I>
+   <DD><TT> J_profile_args </TT> <I>Jprofile_script_args</I>
+   <DD><TT> mp </TT> <I>p_direction</I>
+   <DD><TT> energy_slack </TT> <I>eslack</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The options duplicated in the
+<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class
+Specify block have the same meaning and default values here, with the
+exception of <TT>error_rate</TT>, which for
+<TT>Oxs_SpinXferEvolve</TT> has the default value of -1 (i.e., disabled).
+
+<P>
+The default values for <B>P</B> and <B>Lambda</B> are 0.4 and 2,
+respectively.  If preferred, values for the fixed and free layers may be
+instead specified separately, through <B>P_fixed</B>,
+<B>P_free</B>, <B>Lambda_fixed</B>, and
+<B>Lambda_free</B>.  Otherwise P_fixed = P_free = P and
+Lambda_fixed = Lambda_free = Lambda.  Lambda must be larger than or
+equal to 1; set Lambda=1 to remove the dependence of
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="11" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img53.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon\\ \rule{1pt}{0pt}\end{array}$}$"> on <!-- MATH
+ $\textbf{m}\cdot\textbf{m}_p$
+ -->
+<B><B>m</B><SUP> . </SUP><B>m</B><SUB>p</SUB></B>.  If you want non-zero
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon^\prime\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="15" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img55.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\epsilon^\prime\\ \rule{1pt}{0pt}\end{array}$}$">, it is set directly as
+<B>eps_prime</B>.
+
+<P>
+Current density <B>J</B> and unit polarization direction
+<B>mp</B> are required.  The units on J are A/m<B><SUP>2</SUP></B>.  Positive J
+produces torque that tends to align <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="20" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ SRC="img56.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}\\ \rule{1pt}{0pt}\end{array}$}$"> towards
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}_p\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="27" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img57.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\textbf{m}_p\\ \rule{1pt}{0pt}\end{array}$}$">.
+
+<P>
+Parameters J, mp, P, Lambda, and eps_prime may all be varied pointwise,
+but are fixed with respect to time.  However, J can be multiplied by a
+time varying ``profile,'' to model current rise times, pulses, etc.  Use
+the <B>J_profile</B> and <B>J_profile_args</B> options to
+enable this feature.  The <I>Jprofile_script</I> should be a Tcl script that returns a single scalar.  <I>Jprofile_script_args</I>
+should be a subset of <TT>{stage stage_time total_time}</TT>, to
+specify arguments appended to <I>Jprofile_script</I> on each time
+step.  Default is the entire set, in the order as listed.
+
+<P>
+The <TT>Oxs_SpinXferEvolve</TT> module provides the same five scalar
+outputs and three vector outputs as <TT>Oxs_RungeKutta</TT>, plus the
+scalar output ``average J,'' and the vector field outputs ``Spin
+torque'' (which is
+<!-- MATH
+ $|\gamma|\beta\epsilon\left(\textbf{m}\times\textbf{m}_p\times\textbf{m}\right)$
+ -->
+<B>|<IMG
+ WIDTH="14" HEIGHT="28" ALIGN="MIDDLE" BORDER="0"
+ SRC="img28.gif"
+ ALT="$\gamma$">|<IMG
+ WIDTH="14" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img50.gif"
+ ALT="$\beta$"><IMG
+ WIDTH="11" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img52.gif"
+ ALT="$\epsilon$"><IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img58.gif"
+ ALT="$\left(\vphantom{\textbf{m}\times\textbf{m}_p\times\textbf{m}}\right.$"><B>m</B> <TT>x</TT> <B>m</B><SUB>p</SUB> <TT>x</TT> <B>m</B><IMG
+ WIDTH="12" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img59.gif"
+ ALT="$\left.\vphantom{\textbf{m}\times\textbf{m}_p\times\textbf{m}}\right)$"></B>) and
+``J*mp.''  (Development note: In the case <TT>propagate_mp</TT> is
+enabled, <TT>mp</TT> is actually <!-- MATH
+ $\Delta_x\partial\textbf{m}/\partial\textbf{x}$
+ -->
+<B><IMG
+ WIDTH="25" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img60.gif"
+ ALT="$\Delta_{x}^{}$"><IMG
+ WIDTH="14" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img61.gif"
+ ALT="$\partial$"><B>m</B>/<IMG
+ WIDTH="14" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img61.gif"
+ ALT="$\partial$"><B>x</B></B>,
+where <!-- MATH
+ $\textbf{x}$
+ -->
+<B><B>x</B></B> is the flow direction and <B><IMG
+ WIDTH="25" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ SRC="img60.gif"
+ ALT="$\Delta_{x}^{}$"></B> is the cell dimension
+in that direction.)
+
+<P>
+The <TT>Oxs_SpinXferEvolve</TT> class does <B>not</B> include any oersted
+field arising from the current.  Of course, arbitrary fields simulating
+the oersted field may be added separately as Zeeman energy terms.  An
+example of this is contained in the <TT><B>spinxfer.mif</B></TT> sample file.
+
+<P>
+There are no temperature effects in this evolver, i.e., it is a T = 0 K
+code.
+
+<P>
+Note also that <!-- MATH
+ $\textbf{m}_p$
+ -->
+<B><B>m</B><SUB>p</SUB></B> is fixed.
+
+<P>
+For basic usage, the Specify block can be as simple as
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_SpinXferEvolve:evolve {
+  alpha 0.014
+  J 7.5e12
+  mp {1 0 0}
+  P 0.4
+  Lambda 2
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+This class is still in early development; at this time the example files
+are located in <TT><B>oommf/app/oxs/local</B></TT> instead of
+<TT><B>oommf/app/oxs/examples</B></TT>.
+
+<P>
+
+<B>Examples:</B> <TT><B>spinxfer.mif</B></TT>, <TT><B>spinxfer-miltat.mif</B></TT>, <TT><B>spinxfer-onespin.mif</B></TT>.
+<P>
+<A NAME="PTCG"></A><A NAME="5927"></A></DD>
+<DT><STRONG>Oxs_CGEvolve:<A NAME="html:CGEvolve"></A></STRONG></DT>
+<DD>The minimization evolver is <TT>Oxs_CGEvolve</TT>, which is an
+in-development conjugate gradient minimizer with no preconditioning. The
+Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_CGEvolve:</TT><I>name</I> <TT>{</TT>
+   <DD><TT> gradient_reset_angle </TT> <I>reset_angle</I>
+   <DD><TT> gradient_reset_count </TT> <I>count</I>
+   <DD><TT> minimum_bracket_step </TT> <I>minbrack</I>
+   <DD><TT> maximum_bracket_step </TT> <I>maxbrack</I>
+   <DD><TT> line_minimum_angle_precision </TT> <I>min_prec_angle</I>
+   <DD><TT> line_minimum_relwidth </TT> <I>relwidth</I>
+   <DD><TT> energy_precision </TT> <I>eprecision</I>
+   <DD><TT> method </TT> <I>cgmethod</I>
+   <DD><TT> fixed_spins {</TT><DL>
+       <DD><I>atlas_spec</I>
+       <DD><I>region1</I><TT>&nbsp;</TT><I>region2</I><TT> ...</TT>
+       <DT><TT>}</TT></DL>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+All entries have default values.
+
+<P>
+The evolution to an energy minimum precedes by a sequence of line
+minimizations.  Each line represents a one dimensional affine subspace
+in the <B>3<I>N</I></B> dimensional space of possible magnetization configurations,
+where <B><I>N</I></B> is the number of spins in the simulation.  Once a minimum has
+been found along a line, a new direction is chosen that is ideally
+orthogonal to all preceding directions, but related to the gradient of
+the energy taken with respect to the magnetization.  In practice the
+line direction sequence cannot be extended indefinitely; the parameters
+<B>gradient_reset_angle</B> and <B>gradient_reset_count</B>
+control the gradient resetting process.  The first checks the angle
+between the new direction and the gradient.  If that angle is larger
+than <I>reset_angle</I> (expressed in degrees), then the selected
+direction is thrown away, and the conjugate-gradient process is
+re-initialized with the gradient direction as the new first direction.
+In a similar vein, <I>count</I> specifies the maximum number of line
+directions selected before resetting the process.  Because the first
+line in the sequence is selected along the gradient direction, setting
+<I>count</I> to 1 effectively turns the algorithm into a steepest
+descent minimization method.  The default values for
+<I>reset_angle</I> and <I>count</I> are 80 degrees and 50,
+respectively.
+
+<P>
+Once a minimization direction has been selected, the first stage of the
+line minimization is to bracket the minimum energy on that line, i.e.,
+given a start point on the line&mdash;the location of the minimum from the
+previous line minimization&mdash;find another point on the line such that
+the energy minimum lies between those two points.  As one moves along
+the line, the spins in the simulation rotate, with one spin rotating
+faster than (or at least as fast as) all the others.  If the start point
+was not the result of a successful line minimization from the previous
+stage, then the first bracket attempt step is sized so that the fastest
+moving spin rotates through the angle specified by
+<B>minimum_bracket_step</B>.  In the more usual case that the
+start point is a minimum from the previous line minimization stage, the
+initial bracket attempt step size is set to the distance between the
+current start point and the start point of the previous line
+minimization stage.
+
+<P>
+The energy and gradient of the energy are examined at the candidate
+bracket point to test if an energy minimum lies in the interval.  If
+not, the interval is extended, based on the size of the first bracket
+attempt interval and the derivatives of the energy at the interval
+endpoints.  This process is continued until either a minimum is
+bracketed or the fastest moving spin rotates through the angle specified
+by <B>maximum_bracket_step</B>.
+
+<P>
+If the bracketing process is successful, then a one dimensional
+minimization is carried out in the interval, using both energy and
+energy derivative information.  Each step in this process reduces the
+width of the bracketing interval.  This process is continued until
+the angle between the line direction and the computed energy
+gradient is within <B>line_minimum_angle_precision</B> degrees of
+orthogonal, and the width of the interval relative to the distance of the
+interval from the start point (i.e., the stop point from the previous
+line minimization process) is less than
+<B>line_minimum_relwidth</B>.  The stop point,
+i.e., the effective minimum, is taken to be the endpoint of the final
+interval having smaller energy.  The default value for
+<I>min_prec_angle</I> is 1 degree, and the default value for
+<I>relwidth</I> is 1.  This latter setting effectively disables the
+<TT>line_minimum_relwidth</TT> control, which should generally be used
+only as a secondary control.
+
+<P>
+If the bracketing process is unsuccessful, i.e., the check for bracketed
+energy minimum failed at the maximum bracket interval size allowed by
+<TT>maximum_bracket_step</TT>, then the maximum bracket endpoint is
+accepted as the next point in the minimization iteration.
+
+<P>
+Once the line minimum stop point has been selected, the next iteration
+begins with selection of a new line direction, as described above,
+except in the case where the stop point was not obtained as an actual
+minimum, but rather by virtue of satisfying the
+<TT>maximum_bracket_step</TT> constraint.  In that case the orthogonal
+line sequence is reset, in the same manner as when the
+<TT>gradient_reset_angle</TT> or <TT>gradient_reset_count</TT>
+controls are triggered, and the next line direction is taken directly
+from the energy gradient.
+
+<P>
+There are several factors to bear in mind when selecting values for
+the parameters <TT>minimum_bracket_step</TT>,
+<TT>maximum_bracket_step</TT>, and <TT>line_minimum_relwidth</TT>.
+If <TT>minimum_bracket_step</TT> is too small, then it may take a
+great many steps to obtain an interval large enough to bracket the
+minimum.  If <TT>minimum_bracket_step</TT> is too large, then the
+bracket interval will be unnecessarily generous, and many steps may be
+required to locate the minimum inside the bracketing interval.  However,
+this value only comes into play when resetting the line minimization
+direction sequence, so the setting is seldom critical.  It is specified
+in degrees, with default value 0.05.
+
+<P>
+If <TT>maximum_bracket_step</TT> is too small, then the minima will be
+mostly not bracketed, and the minimization will degenerate into a type
+of steepest descent method.  On the other hand, if
+<TT>maximum_bracket_step</TT> is too large, then the line
+minimizations may draw the magnetization far away from a local energy
+minimum (i.e., one on the full <B>3<I>N</I></B> dimensional magnetization space),
+eventually ending up in a different, more distant minimum.  The value
+for <TT>maximum_bracket_step</TT> is specified in degrees, with
+default value 10.
+
+<P>
+The <TT>line_minimum_angle_precision</TT> and
+<TT>line_minimum_relwidth</TT> values determine the precision of the
+individual line minimizations, not the total minimization procedure,
+which is governed by the stopping criteria specified in the driver's
+Specify block.  However, these values are important because the
+precision of the line minimizations affects the the line direction
+sequence orthogonality.  If both are too coarse, then the selected line
+directions will quickly drift away from mutual orthogonality.
+Conversely, setting either too fine will
+produce additional line minimization steps that do nothing to improve
+convergence towards the energy minimum in the full <B>3<I>N</I></B> dimensional
+magnetization space.
+
+<P>
+The <B>energy_precision</B> parameter estimates the relative
+precision of the energy computations.  This is used to introduce a slack
+factor into the energy comparisons during the bracketing and line
+minimization stages, that is, if the computed energy values at two
+points have relative error difference smaller than
+<I>eprecision</I>, they are treated as having the same energy.  The
+default value for <I>eprecision</I> is 1e-10.  The true precision
+will depend primarily on the number of spins in the simulation.  It may
+be necessary for very large simulations to increase the
+<I>eprecision</I> value.
+
+<P>
+The <B>method</B> parameter can be set to either
+<TT>Fletcher-Reeves</TT> or <TT>Polak-Ribiere</TT> to specify the
+conjugate gradient direction selection algorithm.  The default is
+Fletcher-Reeves, which has somewhat smaller memory requirements.
+
+<P>
+The last parameter, <B>fixed_spins</B>, performs the same function
+as for the <A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A> class.
+
+<P>
+The <TT>Oxs_CGEvolve</TT> module provides nine scalar, one scalar
+ field, and two vector field outputs.  The scalar outputs are
+
+<UL>
+<LI><B>Max mxHxm:</B> maximum <!-- MATH
+ $|\textbf{m}\times\textbf{H}\times\textbf{m}|$
+ -->
+<B>|<B>m</B> <TT>x</TT> <B>H</B> <TT>x</TT> <B>m</B>|</B>, in A/m;
+   <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> is the unit magnetization direction.
+</LI>
+<LI><B>Total energy:</B> in joules.
+</LI>
+<LI><B>Delta E:</B> change in energy between last step and current
+   step, in joules.
+</LI>
+<LI><B>Energy calc count:</B> number of times total energy has been
+   calculated.
+</LI>
+<LI><B>Bracket count:</B> total number of attempts required to
+   bracket energy minimum during first phase of line minimization
+   procedures.
+</LI>
+<LI><B>Line min count:</B> total number of minimization steps during
+   second phase of line minimization procedures (i.e., steps after
+   minimum has been bracketed).
+</LI>
+<LI><B>Cycle count:</B> number of line direction selections.
+</LI>
+<LI><B>Cycle sub count:</B> number of line direction selections
+  since the last gradient direction reset.
+</LI>
+<LI><B>Conjugate cycle count:</B> number of times the conjugate gradient
+   process has been reset to the gradient direction.
+</LI>
+</UL>
+
+<P>
+The scalar field output is
+
+<UL>
+<LI><B>Total energy density:</B> cellwise total energy density, in
+J/m<SUP>3</SUP>.
+</LI>
+</UL>
+
+<P>
+The vector field outputs are
+
+<UL>
+<LI><B>H:</B> total effective field in A/m.
+</LI>
+<LI><B>mxHxm:</B> in A/m; <!-- MATH
+ $\textbf{m}$
+ -->
+<B><B>m</B></B> is the unit magnetization
+   direction.
+</LI>
+</UL>
+
+<P>
+
+<B>Examples:</B> <TT><B>cgtest.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html590"
+  HREF="Drivers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html586"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html580"
+  HREF="Energies.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html588"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

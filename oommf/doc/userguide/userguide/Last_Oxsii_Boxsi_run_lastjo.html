@@ -24,56 +24,50 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html674"
+<A NAME="tex2html912"
   HREF="Launching_OOMMF_host_server.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html670"
+<A NAME="tex2html908"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html664"
+<A NAME="tex2html902"
   HREF="Killing_OOMMF_Processes_kil.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html676"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html672"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html910"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html675"
+<B> Next:</B> <A NAME="tex2html913"
   HREF="Launching_OOMMF_host_server.html">Launching the OOMMF host</A>
-<B> Up:</B> <A NAME="tex2html671"
+<B> Up:</B> <A NAME="tex2html909"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html665"
+<B> Previous:</B> <A NAME="tex2html903"
   HREF="Killing_OOMMF_Processes_kil.html">Killing OOMMF Processes: killoommf</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION000179000000000000000"></A><A NAME="sec:lastjob"></A><A NAME="17407"></A>
+<H1><A NAME="SECTION001790000000000000000"></A><A NAME="sec:lastjob"></A><A NAME="18555"></A>
 <BR>
 Last Oxsii/Boxsi run:
             lastjob
-</H2>
+</H1>
 
 <P>
-The <B>lastjob</B> command reads through
-<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
- NAME="17413">Oxs</A>
-log files and identifies
+The <B>lastjob</B> command reads through <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
+ NAME="18561">Oxs</A> log files and identifies
 the last simulation run.  From information in the log file,
-<B>lastjob</B> constructs a command equivalent to that used to launch
-the last simulation and prints that command to stdout.  If that
-simulation is not recorded as complete in the log file, and a restart is
-requested, then the simulation will be restarted with the
-<TT>-restart 1</TT> comand line option.  If a restart
-(checkpoint) file exists for the simulation, then the command will
-restart the simulation at the checkpoint state.  If a restart file
-cannot be found, then the job restart will fail.
-(By default, <B>oxsii</B> and <B>boxsi</B> write
-<A HREF="Standard_Oxs_Ext_Child_Clas.html#html:oxsdrivercheckpoint">checkpoint files</A>
-to disk every fifteen minutes.  If a simulation is aborted, for example
-by a system crash, then the checkpoint file can be used to restart the
-simulation.)
+<B>lastjob</B> constructs a command equivalent to that used to launch the
+last simulation and prints that command to stdout.  If that simulation
+is not recorded as complete in the log file, and a restart is requested,
+then the simulation will be restarted with the <TT>-restart 1</TT> comand
+line option.  If a restart (checkpoint) file exists for the simulation,
+then the command will restart the simulation at the checkpoint state.
+If a restart file cannot be found, then the job restart will fail.  (By
+default, <B>oxsii</B> and <B>boxsi</B> write <A HREF="Drivers.html#PToxsdrivercheckpoint">checkpoint
+files</A> to disk every fifteen minutes.  If a
+simulation is aborted, for example by a system crash, then the
+checkpoint file can be used to restart the simulation.)
 
 <P>
 
@@ -129,22 +123,20 @@ protect them from expansion by the shell.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html674"
+<A NAME="tex2html912"
   HREF="Launching_OOMMF_host_server.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html670"
+<A NAME="tex2html908"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html664"
+<A NAME="tex2html902"
   HREF="Killing_OOMMF_Processes_kil.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html677"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html672"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html910"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

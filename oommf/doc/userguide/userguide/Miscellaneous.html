@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Miscellaneous</TITLE>
+<META NAME="description" CONTENT="Miscellaneous">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Output_specification.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="MIF_1.2.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1175"
+  HREF="MIF_1.2.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1171"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1167"
+  HREF="Output_specification.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1173"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1176"
+  HREF="MIF_1.2.html">MIF 1.2</A>
+<B> Up:</B> <A NAME="tex2html1172"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1168"
+  HREF="Output_specification.html">Output specification</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001817000000000000000"></A><A NAME="sec:mifmisc"></A>
+<BR>
+Miscellaneous
+</H2>
+
+<UL>
+<LI><B>Converge <B>|</B>mxh<B>|</B> Value:</B><A NAME="21546"></A>
+      Nominal value to use as a stopping criterion: When
+      <!-- MATH
+ $|\textbf{m}\times\textbf{h}|$
+ -->
+<B>|<B>m</B> <TT>x</TT> <B>h</B>|</B> (i.e., <!-- MATH
+ $|\textbf{M}\times\textbf{H}|/M_s^2$
+ -->
+<B>|<B>M</B> <TT>x</TT> <B>H</B>|/<I>M</I><SUB>s</SUB><SUP>2</SUP></B>)
+      
+      at all spins in the simulation is smaller than this value, it is
+      assumed that a relaxed (equilibrium) state has been reached for
+      the current applied field.  This is a dimensionless value.
+<BR>      <B>NOTE:</B> This Record Identifier is deprecated.  Use <EM>      Default Control Point Spec</EM> instead.
+</LI>
+<LI><B>Randomizer Seed:</B> Value with which to seed random
+      number<A NAME="21552"></A> generator.  Optional.  Default value
+      is 0, which uses the system clock to generate a semi-random seed.
+</LI>
+<LI><B>Max Time Step:</B> Limit the maximum ODE step
+      size<A NAME="21554"></A> to no larger than this amount, in
+      seconds.  Optional.
+</LI>
+<LI><B>Min Time Step:</B> Limit the minimum ODE step size to no
+      less than this amount, in seconds.  Optional.
+</LI>
+<LI><B>User Comment:</B> Free-form comment string that may be used
+      for problem identification.  Optional.
+</LI>
+</UL>
+
+<P>
+<A NAME="fig:mif1sample"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# MIF 1.1
+#
+# Example from the OOMMF User's Guide.
+#
+# All units are SI.
+#
+################# MATERIAL PARAMETERS ######################
+Ms:  800e3                # Saturation magnetization in A/m.
+A:   13e-12               # Exchange stiffness in J/m.
+K1:  0.5e3                # Anisotropy constant in J/m^3.
+Anisotropy Type: uniaxial # One of &lt;uniaxial|cubic&gt;.
+Anisotropy Dir1: 1 0 0    # Directional cosines wrt to
+                          # coordinate axes
+
+################# DEMAG SPECIFICATION ######################
+Demag Type: ConstMag # One of &lt;ConstMag|3dSlab|2dSlab
+                     #         |3dCharge|FastPipe|None&gt;.
+
+#################### PART GEOMETRY #########################
+Part Width:     0.25e-6    # Nominal part width in m
+Part Height:    1.0e-6     # Nominal part height in m
+Part Thickness: 1e-9       # Part thickness in m.
+Cell Size:      7.8125e-9  # Cell size in m.
+#Part Shape:    # One of &lt;Rectangle|Ellipse|Oval|Mask&gt;.
+                # Optional.
+
+################ INITIAL MAGNETIZATION #####################
+Init Mag: Uniform 90 45 # Initial magnetization routine
+                        # and parameters
+
+################ EXPERIMENT PARAMETERS #####################
+# Field Range:  Start_field  Stop_field  Steps
+Field Range: -.05 -.01 0.  .05  .01 0. 100
+Field Range:  .05  .01 0. -.05 -.01 0. 100
+Field Type: Multi 4 \
+ 7 Ribbon 1 0 1.0e-6 0.25e-6 1.0e-6 1e-9 \
+ 7 Ribbon 1 0 0      0.25e-6 0      1e-9 \
+ 9 Tie 100 0 0 0.12e-6 0.5e-6 0.13e-6 0.5e-6 8e-9 \
+ 1 Uniform
+# The above positions ribbons of positive charge along the
+# upper and lower edges with strength Ms, applies a large
+# (100 Ms) field to the center cells, and also applies a
+# uniform field across the sample stepped from
+# (-.05,-.01,0.) to (.05,.01,0.) (Tesla), and back, in
+# approximately 0.001 T steps.
+
+Default Control Point Spec: -torque 1e-6
+# Assume equilibrium has been reached, and step the applied
+# field, when the reduced torque |mxh| drops below 1e-6.
+
+################ OUTPUT SPECIFICATIONS #####################
+Base Output Filename: samplerun
+Magnetization Output Format: binary 8 # Save magnetization
+# states in binary format with full (8-byte) precision.
+
+#################### MISCELLANEOUS #########################
+Randomizer Seed: 1   # Random number generator seed.
+User Comment: Example MIF 1.1 file, with lots of comments.
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 17.1:
+    Example MIF&nbsp;1.1
+      file.
+    <A HREF="MIF_1.1.html#sec:mif1format">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

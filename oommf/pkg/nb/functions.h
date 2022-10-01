@@ -1,7 +1,7 @@
 /* FILE: functions.h                    -*-Mode: c++-*-
  *
  * Non-class C++ functions defined by the Nb extension.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2015/07/23 20:28:05 $
@@ -11,7 +11,7 @@
 #ifndef _NB_FUNCTIONS
 #define _NB_FUNCTIONS
 
-#include <stdarg.h>
+#include <cstdarg>
 
 #include <iomanip>
 #include <iostream>
@@ -131,9 +131,6 @@ OC_BOOL Nb_GetColor(const char* color,
 		 OC_REAL8m& red,OC_REAL8m& green,OC_REAL8m& blue);
 Tcl_CmdProc NbGetColor;
 
-// C++ interface to the Tcl 'file nativename' functionality.
-void Nb_TclNativeFilename(Nb_DString &filename);
-
 // C++ interface to the Tcl 'file exists' functionality.
 OC_BOOL Nb_FileExists(const char *path);
 
@@ -160,14 +157,13 @@ Nb_DString Nb_TempName(const char* baseprefix = "_",
 const char* Nb_GetOOMMFRootDir(Oc_AutoBuf& ab);
 
 // Versions of fopen, remove, and rename that pass file names through
-// Nb_TclNativeFilename().  The macro NB_RENAMENOINTERP_IS_ATOMIC is 1
-// is the rename operation in Nb_RenameNoInterp is atomic; 0 indicates
+// Tcl_FSGetNativePath().  The macro NB_RENAMENOINTERP_IS_ATOMIC is 1
+// if the rename operation in Nb_RenameNoInterp is atomic; 0 indicates
 // non-atomic or unknown behavior.  This macro can be used by client
-// code to determine how careful it needs with critical file rename
-// operations.
+// code to determine how careful it needs to be with critical file
+// rename operations.
 FILE *Nb_FOpen(const char *path,const char *mode);
 int Nb_Remove(const char *path);
-void Nb_Rename(const char *oldpath,const char* newpath);
 void Nb_RenameNoInterp(const char *oldpath,const char* newpath,int sync);
 #if defined(__linux__) || defined(_WIN32)
 # define NB_RENAMENOINTERP_IS_ATOMIC 1

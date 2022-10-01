@@ -1,0 +1,391 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Introduction to the LLVM lldb</TITLE>
+<META NAME="description" CONTENT="Introduction to the LLVM lldb">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Debugging_OOMMF_in_Visual_S.html">
+<LINK REL="previous" HREF="Introduction_to_GNU_gdb_deb.html">
+<LINK REL="up" HREF="C++_source_code_debuggers.html">
+<LINK REL="next" HREF="Debugging_OOMMF_in_Visual_S.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html285"
+  HREF="Debugging_OOMMF_in_Visual_S.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html281"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html275"
+  HREF="Introduction_to_GNU_gdb_deb.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html283"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html286"
+  HREF="Debugging_OOMMF_in_Visual_S.html">Debugging OOMMF in Visual</A>
+<B> Up:</B> <A NAME="tex2html282"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<B> Previous:</B> <A NAME="tex2html276"
+  HREF="Introduction_to_GNU_gdb_deb.html">Introduction to the GNU</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00662000000000000000"></A><A NAME="sec:debug:lldbintro"></A>
+<BR>
+Introduction to the LLVM <B>lldb</B>
+</H2>
+If you are working on macOS, you may be building OOMMF with
+<B>g++</B> or <B>clang++</B>. The native debugger for <B>clang++</B> is
+<B>lldb</B>, which is included as part of the Xcode package. Both
+<B>g++</B> and <B>clang++</B> use the same debugging symbol format, so in
+principle you should be able to use either debugger with either
+compiler, but if you have problems with one try the other.
+
+<P>
+The <B>lldb</B> debugger is a command-line debugger very similar in
+concept to <B>gdb</B>, and although the command syntax is somewhat
+different, <B>lldb</B> provides a fair number of aliases to ease the
+transition for veteran <B>gdb</B> users.  Fig.&nbsp;<A HREF="#fig:oommflldbcheat">5.6</A>
+lists a few of the more common <B>lldb</B> commands, and
+Figs.&nbsp;<A HREF="#fig:oommflldbsession1">5.7</A> and <A HREF="#fig:oommflldbsession2">5.8</A>
+illustrate an <B>lldb</B> debugging session analogous to the <B>gdb</B>
+session presented in Figs.&nbsp;<A HREF="Introduction_to_GNU_gdb_deb.html#fig:oommfgdbsession1">5.4</A> and
+<A HREF="Introduction_to_GNU_gdb_deb.html#fig:oommfgdbsession2">5.5</A>.
+
+<P>
+
+<P>
+<A NAME="fig:oommflldbcheat"></A>
+
+  <BR CLEAR="ALL">
+<HR>  <DIV ALIGN="CENTER">
+<TABLE CELLPADDING=3 BORDER="1">
+<TR><TD ALIGN="LEFT" COLSPAN=3><B>Shell
+      command:</B><TT> lldb [-c corefile (opt)] darwin/oxs</TT></TD>
+</TR>
+<TR><TD ALIGN="CENTER" COLSPAN=1><B>Command</B></TD>
+<TD ALIGN="CENTER" COLSPAN=1><B>Abbr.</B></TD>
+<TD ALIGN="LEFT" COLSPAN=1><B>Description</B></TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#00b300"><B>Process control</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">process launch <TT>--</TT> [<I>args</I>]</TD>
+<TD ALIGN="LEFT">r [<I>args</I>]</TD>
+<TD ALIGN="LEFT">run executable with <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">process launch</TD>
+<TD ALIGN="LEFT">r</TD>
+<TD ALIGN="LEFT">run executable with last <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">settings show target.run-args</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">display current <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">settings set target.env-vars</TD>
+<TD ALIGN="LEFT" VALIGN="BOTTOM" ROWSPAN=2 WIDTH=1>&nbsp;</TD>
+<TD ALIGN="LEFT" VALIGN="BOTTOM" ROWSPAN=2 WIDTH=1>&nbsp;</TD>
+</TR>
+<TR><TD ALIGN="LEFT">&nbsp;&nbsp;&nbsp;FOO=bar</TD>
+</TR>
+<TR><TD ALIGN="LEFT">
+<P>
+Ctrl-C</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">stop and return to (lldb) prompt</TD>
+</TR>
+<TR><TD ALIGN="LEFT">process kill</TD>
+<TD ALIGN="LEFT">kill</TD>
+<TD ALIGN="LEFT">terminate current run</TD>
+</TR>
+<TR><TD ALIGN="LEFT">quit</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">exit lldb</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#0000ff"><B>Introspection</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread backtrace</TD>
+<TD ALIGN="LEFT">bt</TD>
+<TD ALIGN="LEFT">stack trace of current thread</TD>
+</TR>
+<TR><TD ALIGN="LEFT">frame select 5</TD>
+<TD ALIGN="LEFT">f 5</TD>
+<TD ALIGN="LEFT">change to stack frame 5</TD>
+</TR>
+<TR><TD ALIGN="LEFT">frame variable</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">print args &amp; vars for current frame</TD>
+</TR>
+<TR><TD ALIGN="LEFT">frame variable foo</TD>
+<TD ALIGN="LEFT">p foo</TD>
+<TD ALIGN="LEFT">print value of variable foo</TD>
+</TR>
+<TR><TD ALIGN="LEFT">source list -f foo.cc -l 50</TD>
+<TD ALIGN="LEFT">l foo.cc:50</TD>
+<TD ALIGN="LEFT">list source after line 50 of foo.cc</TD>
+</TR>
+<TR><TD ALIGN="LEFT">source list</TD>
+<TD ALIGN="LEFT">l</TD>
+<TD ALIGN="LEFT">list next ten lines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">source list -r</TD>
+<TD ALIGN="LEFT">l -</TD>
+<TD ALIGN="LEFT">list preceding ten lines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">source list -c 20</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">list 20 lines</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#ff0000"><B>Flow control</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint set</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT" VALIGN="BOTTOM" ROWSPAN=2 WIDTH=1>&nbsp;</TD>
+</TR>
+<TR><TD ALIGN="LEFT">&nbsp;&nbsp;<TT>--</TT>file foo.cc <TT>--</TT>line 99</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint set</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT" VALIGN="BOTTOM" ROWSPAN=2 WIDTH=1>&nbsp;</TD>
+</TR>
+<TR><TD ALIGN="LEFT">&nbsp;&nbsp;<TT>--</TT>name foo::bar</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint list</TD>
+<TD ALIGN="LEFT">br l</TD>
+<TD ALIGN="LEFT">list breakpoints</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint delete 4</TD>
+<TD ALIGN="LEFT">br del 4</TD>
+<TD ALIGN="LEFT">delete breakpoint 4</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint delete</TD>
+<TD ALIGN="LEFT">br del</TD>
+<TD ALIGN="LEFT">delete all breakpoints</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint modify -i 100 3</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">skip breakpoint 3 100 times</TD>
+</TR>
+<TR><TD ALIGN="LEFT">breakpoint modify -c i<code>&gt;</code>7 3</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">break if i<code>&gt;</code>7 at breakpoint 3</TD>
+</TR>
+<TR><TD ALIGN="LEFT">watchpoint set variable foo</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">break when foo changes value</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread continue</TD>
+<TD ALIGN="LEFT">c</TD>
+<TD ALIGN="LEFT">continue running</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread step-in</TD>
+<TD ALIGN="LEFT">s</TD>
+<TD ALIGN="LEFT">take one step, into subroutines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread step-over</TD>
+<TD ALIGN="LEFT">n</TD>
+<TD ALIGN="LEFT">take one step, over subroutines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread step-out</TD>
+<TD ALIGN="LEFT">finish</TD>
+<TD ALIGN="LEFT">run to end of current subroutine</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#9900e6"><B>Threads</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread list</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">list all threads</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread select 2</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">switch context to thread 2</TD>
+</TR>
+</TABLE>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.6:
+    <B>lldb</B> Debugger
+    Cheatsheet
+    <A HREF="#sec:debug:lldbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<A NAME="fig:oommflldbsession1"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ % <FONT COLOR="#00bbee">cd app/oxs</FONT>
+<BR>% <FONT COLOR="#00bbee">lldb darwin/oxs</FONT>
+<BR>(lldb) target create &#34;darwin/oxs&#34;
+<BR>
+Current executable set to 'oommf/app/oxs/darwin/oxs' (x86_64).
+<BR>(lldb) <FONT COLOR="#ff3311">process launch - boxsi.tcl examples/stdprob1.mif -threads 1</FONT>
+<BR>
+Process 36662 launched: 'oommf/app/oxs/darwin/oxs' (x86_64)
+<BR>
+Assertion failed: (0&lt;=index &amp;&amp; index&lt;size) [...] file meshvalue.h, line 319.
+<BR>
+Process 36662 stopped
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = hit program assert
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;frame #4: 0x00000001000065cc oxs [...] at meshvalue.h:319:3
+<BR>&nbsp;&nbsp;&nbsp;316 &nbsp;template&lt;class T&gt;
+<BR>&nbsp;&nbsp;&nbsp;317 &nbsp;const T&amp; Oxs_MeshValue&lt;T&gt;::operator[](OC_INDEX index) const
+<BR>&nbsp;&nbsp;&nbsp;318 &nbsp;{
+<BR>-&gt; 319 &nbsp;&nbsp;&nbsp;assert(0&lt;=index &amp;&amp; index&lt;size);
+<BR>&nbsp;&nbsp;&nbsp;320 &nbsp;&nbsp;&nbsp;return arr[index];
+<BR>&nbsp;&nbsp;&nbsp;321 &nbsp;}
+<BR>&nbsp;&nbsp;&nbsp;322
+<BR>
+Target 0: (oxs) stopped.
+<BR>(lldb) <FONT COLOR="#ff3311">bt</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = hit program assert
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;frame #0: 0x00007fff207ba91e libsystem_kernel.dylib`__pthread_kill + 10
+<BR>[...]
+<BR>&nbsp;&nbsp;* frame #4: 0x00000001000065cc oxs`Oxs_MeshValue&lt;double&gt;::operator[](th...
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;frame #5: 0x0000000100350fa8 oxs`Oxs_UniaxialAnisotropy::RectIntegEne...
+<BR>[...]
+<BR>(lldb) <FONT COLOR="#ff3311">frame select 5</FONT>
+<BR>
+frame #5: 0x0000000100350fa8 oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(...
+<BR>&nbsp;&nbsp;&nbsp;238 &nbsp;&nbsp;&nbsp;for(OC_INDEX i=node_start;i&lt;=node_stop;++i) {
+<BR>&nbsp;&nbsp;&nbsp;239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>-&gt; 241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>&nbsp;&nbsp;&nbsp;242 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} else {
+<BR>&nbsp;&nbsp;&nbsp;243 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!Ha_is_uniform) field_mult = Ha[i];
+<BR>&nbsp;&nbsp;&nbsp;244 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k = 0.5*MU0*field_mult*Ms[i];
+<BR>(lldb) <FONT COLOR="#ff3311">frame variable i</FONT>
+<BR>(OC_INDEX) i = 40000
+<BR>(lldb) <FONT COLOR="#ff3311">frame variable Ms_inverse</FONT>
+<BR>(const Oxs_MeshValue&lt;double&gt; &amp;) Ms_inverse = 0x0000000102b77928: {
+<BR>&nbsp;&nbsp;arr = 0x0000000101da4000
+<BR>&nbsp;&nbsp;size = 40000
+<BR>[...]
+<BR>(lldb) <FONT COLOR="#ff3311">process kill</FONT>
+<BR>
+Process 36662 exited with status = 9 (0x00000009)
+<BR></TT>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.7:
+    Sample <B>lldb</B> session,
+    part 1: Locating the error
+    <A HREF="#sec:debug:lldbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<A NAME="fig:oommflldbsession2"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ (lldb) <FONT COLOR="#ff3311">breakpoint set -file uniaxialanisotropy.cc -line 239</FONT>
+<BR>
+Breakpoint 1: where = oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(Oxs_Sim...
+<BR>(lldb) <FONT COLOR="#ff3311">process launch</FONT>
+<BR>
+Process 36718 launched: 'oommf/app/oxs/darwin/oxs' (x86_64)
+<BR>[...]
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+<BR>&nbsp;&nbsp;&nbsp;238 &nbsp;&nbsp;&nbsp;for(OC_INDEX i=node_start;i&lt;=node_stop;++i) {
+<BR>-&gt; 239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>&nbsp;&nbsp;&nbsp;241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>(lldb) <FONT COLOR="#ff3311">breakpoint list</FONT>
+<BR>
+Current breakpoints:
+<BR>
+1: file = 'uniaxialanisotropy.cc', line = 239, exact_match = 0, locations...
+<BR>&nbsp;&nbsp;1.1: where = oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(Oxs_SimState c...
+<BR>(lldb) <FONT COLOR="#ff3311">breakpoint modify -i 39999 1</FONT>
+<BR>(lldb) <FONT COLOR="#ff3311">thread continue</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+<BR>-&gt; 239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>(lldb) <FONT COLOR="#ff3311">p i</FONT>
+<BR>(OC_INDEX) $0 = 39991
+<BR>(lldb) <FONT COLOR="#ff3311">breakpoint modify -c i&gt;=40000</FONT>
+<BR>(lldb) <FONT COLOR="#ff3311">c</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+<BR>-&gt; 239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>(lldb) <FONT COLOR="#ff3311">thread step-over</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = step over
+<BR>-&gt; 240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>(lldb) <FONT COLOR="#ff3311">n</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = step over
+<BR>-&gt; 241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>(lldb) <FONT COLOR="#ff3311">thread step-in</FONT>
+<BR>* thread #1, queue = 'com.apple.main-thread', stop reason = step in
+<BR>&nbsp;&nbsp;&nbsp;317 &nbsp;const T&amp; Oxs_MeshValue&lt;T&gt;::operator[](OC_INDEX index) const
+<BR>&nbsp;&nbsp;&nbsp;318 &nbsp;{
+<BR>-&gt; 319 &nbsp;&nbsp;&nbsp;assert(0&lt;=index &amp;&amp; index&lt;size);
+<BR>(lldb) <FONT COLOR="#ff3311">print (void) printf(&#34;%d,%d<TT>&#92;</TT>n&#34;, index, size)</FONT>
+<BR>
+40000,40000
+<BR>(lldb) <FONT COLOR="#ff3311">quit</FONT>
+<BR></TT>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.8:
+    Sample <B>lldb</B> session,
+   part 2: Bug details (lldb output edited for
+   space)
+    <A HREF="#sec:debug:lldbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html285"
+  HREF="Debugging_OOMMF_in_Visual_S.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html281"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html275"
+  HREF="Introduction_to_GNU_gdb_deb.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html283"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

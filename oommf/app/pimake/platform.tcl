@@ -268,6 +268,27 @@ Oc_Class Platform {
         return $ret
     }
 
+    proc Index { optlist optindex } {
+       # "lindex" with guard rails, intended as a support routine for
+       # CompileCmd option processing.  This routine can be referenced
+       # from config/platform/<platform>.tcl. For example, suppose you
+       # want
+       #   Oc_Option Add * Platform cflags {-optlevel #}
+       # in the config/options.tcl (or config/local/options.tcl) file to
+       # return "/Od", "/Ox", or "/O2 /GS-" if "#" is <=0, ==1, or >=2,
+       # respectively. Then set
+       #   $config SetValue program_compiler_c++_option_optlevel {
+       #      Platform Index [list /Od /Ox [list /O2 /GS-]]
+       #   }
+       # in <platform.tcl>.
+       if {$optindex<0} {
+          set optindex 0
+       } elseif {$optindex >= [llength $optlist]} {
+          set optindex end
+       }
+       return [lindex $optlist $optindex]
+    }
+
     proc CompileCmd {language args} {
         set pfx program_compiler_[string tolower $language]
         set compcmd [$configuration GetValue $pfx]
@@ -323,6 +344,21 @@ Oc_Class Platform {
     }
 
     proc Link {args} {
+        # Special case handling for linker -debug option: If -debug is
+        # not specified in lflags, but is in cflags, then copy the
+        # cflags setting into lflags. Change in behavior note: this
+        # modification assumes both lflags and cflags are even sized
+        # lists. This is evidently the intention from the extant
+        # handling here and in proc CompileCmd, but previously either
+        # flags list would allow a last, odd indexed option with an
+        # implicit empty string as its value.
+        set linkflags [dict create {*}$lflags]
+        if {![dict exists $linkflags -debug]} {
+           set compileflags [dict create {*}$cflags]
+           if {[dict exists $compileflags -debug]} {
+              lappend lflags -debug [dict get $compileflags -debug]
+           }
+        }
         set linkcmd [$configuration GetValue program_linker]
         set args [concat $lflags $args]
         set verifyargs $args

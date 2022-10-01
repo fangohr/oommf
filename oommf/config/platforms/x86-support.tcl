@@ -438,14 +438,6 @@ proc GetGccCpuOptFlags { gcc_version cpu_arch } {
       }
    }
 
-   # Frame pointer: Some versions of gcc don't handle exceptions
-   # properly w/o frame-pointers.  This typically manifests as
-   # Oxs dying without an error message while loading a MIF file.
-   # Interestingly, including -momit-leaf-frame-pointer appears
-   # to work around this problem, at least on some systems.  YMMV;
-   # Comment this out if the aforementioned problem occurs.
-   lappend cpuopts -momit-leaf-frame-pointer
-
    return $cpuopts
 }
 

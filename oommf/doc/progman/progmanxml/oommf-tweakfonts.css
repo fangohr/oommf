@@ -1,0 +1,5 @@
+
+/* Tweaks for better apparent size match */
+.ltx_font_typewriter { font-family: monospace; font-size:115%; }
+.ltx_font_bold       { font-weight: bold; font-size:105%; }
+.ltx_font_italic     { font-style: italic; font-variant:normal; font-size:105%; }

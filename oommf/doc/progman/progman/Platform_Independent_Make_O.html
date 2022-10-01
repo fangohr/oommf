@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Platform-Independent Make Operational Details</TITLE>
+<META NAME="description" CONTENT="Platform-Independent Make Operational Details">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="OOMMF_Variable_Types_Macros.html">
+<LINK REL="previous" HREF="Programming_Overview_OOMMF.html">
+<LINK REL="up" HREF="progman.html">
+<LINK REL="next" HREF="Anatomy_TT_makerules.tcl_TT.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html82"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html78"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html72"
+  HREF="Programming_Overview_OOMMF.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html80"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html83"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">Anatomy of makerules.tcl files</A>
+<B> Up:</B> <A NAME="tex2html79"
+  HREF="progman.html">OOMMF Documentation</A>
+<B> Previous:</B> <A NAME="tex2html73"
+  HREF="Programming_Overview_OOMMF.html">Programming Overview of OOMMF</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00300000000000000000"></A><A NAME="sec:pimake"></A>
+<BR>
+Platform-Independent Make Operational Details
+</H1>
+
+<P>
+The OOMMF <B>pimake</B><A NAME="924"></A> application compares
+file timestamps to determine which libraries and executables are
+out-of-date with respect to their source code, and then compiles and
+links those files as necessary to make everything up to date. The design
+and behavior of <B>pimake</B> is based on the
+Unix <B>make</B><A NAME="927"></A> program, but <B>pimake</B> is
+written in Tcl and so can run on any platform where Tcl is
+installed. Analogous to the <TT><B>Makefile</B></TT> or <TT><B>makefile</B></TT> of
+<B>make</B>, <B>pimake</B> uses <TT><B>makerules.tcl</B></TT> files that specify
+<I>rules</I> (actions) for creating or updating <I>targets</I> when
+the targets are older than their corresponding <I>dependencies</I>.
+The <TT><B>makerules.tcl</B></TT> files are Tcl scripts augmented by a handful of
+commands introduced by the <B>pimake</B> application.
+
+<P>
+The <TT><B>makerules.tcl</B></TT> files in the <B>Oxs</B> application area include
+rules to automatically compile and link all C++ code found under
+the <TT><B>oommf/app/oxs/local/</B></TT> directory, so programmers who are
+developing <TT>Oxs_Ext</TT> extension modules generally do not need to be
+concerned with the intricacies of <B>pimake</B> beyond the instructions
+on running <B>pimake</B> presented in the
+<A NAME="tex2html12"
+  HREF="https://math.nist.gov/oommf/doc/"><I>OOMMF User's
+    Guide</I></A>.
+
+<P>
+This chapter is intended instead for programmers who are debugging,
+extending, or creating new OOMMF modules outside of
+<TT><B>oommf/app/oxs/local/</B></TT>. The following sections provide an overview of
+the structure of <TT><B>makerules.tcl</B></TT> files and how they control the
+behavior of <B>pimake</B>. Further details may be gleaned from the
+<B>pimake</B> sources in <TT><B>oommf/app/pimake/</B></TT>.
+
+<P>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html84"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">Anatomy of <TT><B>makerules.tcl</B></TT> files</A>
+<LI><A NAME="tex2html85"
+  HREF="MakeRule_command.html">The MakeRule command</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html82"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html78"
+  HREF="progman.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html72"
+  HREF="Programming_Overview_OOMMF.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html80"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

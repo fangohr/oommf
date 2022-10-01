@@ -11,10 +11,10 @@
  *
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 
 #include "nb.h"
 #include "director.h"

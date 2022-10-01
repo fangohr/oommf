@@ -24,36 +24,34 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html978"
+<A NAME="tex2html1345"
   HREF="OVF_0.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html974"
+<A NAME="tex2html1341"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html968"
+<A NAME="tex2html1335"
   HREF="Data_Table_File_Format_ODT.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html980"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html976"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1343"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html979"
+<B> Next:</B> <A NAME="tex2html1346"
   HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
-<B> Up:</B> <A NAME="tex2html975"
+<B> Up:</B> <A NAME="tex2html1342"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html969"
+<B> Previous:</B> <A NAME="tex2html1336"
   HREF="Data_Table_File_Format_ODT.html">Data Table File Format</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION000200000000000000000"></A><A NAME="sec:vfformats"></A>
+<H1><A NAME="SECTION002000000000000000000"></A><A NAME="sec:vfformats"></A>
 <BR>
 Vector Field File Format (OVF)
 </H1>
-Vector field files<A NAME="21311"></A> specify vector quantities
+Vector field files<A NAME="22571"></A> specify vector quantities
 (e.g., magnetization or magnetic flux density) as a function of spatial
 position.  The <I>OOMMF Vector Field</I> (OVF) format is the output
 vector field file format used by both the
@@ -67,12 +65,12 @@ written by OOMMF software.  They support both rectangular and
 irregular meshes, in binary and ASCII text.
 
 <P>
-The OVF&nbsp;0.0 format (formerly SVF<A NAME="21325"></A>)
+The OVF&nbsp;0.0 format (formerly SVF<A NAME="22585"></A>)
 is an older, simpler format that can be useful for importing
 three-dimensional vector
 field data into OOMMF from other programs.  (A fourth format, the
-<I>VecFil<A NAME="21326"></A></I> or <I>Vector Input/Output</I>
-(VIO<A NAME="21328"></A>) format, was used by some precursors to the OOMMF code.  Although OOMMF is able to read the VIO format, its use is
+<I>VecFil<A NAME="22586"></A></I> or <I>Vector Input/Output</I>
+(VIO<A NAME="22588"></A>) format, was used by some precursors to the OOMMF code.  Although OOMMF is able to read the VIO format, its use is
 deprecated.)
 
 <P>
@@ -99,40 +97,38 @@ files, or <TT><B>.ovf</B></TT> for generic files.
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html982"
+<LI><A NAME="tex2html1347"
   HREF="OVF_0.0_format.html">The OVF 0.0 format</A>
-<LI><A NAME="tex2html983"
+<LI><A NAME="tex2html1348"
   HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
 <UL>
-<LI><A NAME="tex2html984"
-  HREF="OVF_1.0_format.html#SECTION000202100000000000000">Segment Header block</A>
-<LI><A NAME="tex2html985"
-  HREF="OVF_1.0_format.html#SECTION000202200000000000000">Data block</A>
+<LI><A NAME="tex2html1349"
+  HREF="Segment_Header_block.html">Segment Header block</A>
+<LI><A NAME="tex2html1350"
+  HREF="Data_block.html">Data block</A>
 </UL>
 <BR>
-<LI><A NAME="tex2html986"
+<LI><A NAME="tex2html1351"
   HREF="OVF_2.0_format.html">The OVF 2.0 format</A>
 </UL>
 <!--End of Table of Child-Links-->
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html978"
+<A NAME="tex2html1345"
   HREF="OVF_0.0_format.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html974"
+<A NAME="tex2html1341"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html968"
+<A NAME="tex2html1335"
   HREF="Data_Table_File_Format_ODT.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html981"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html976"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1343"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

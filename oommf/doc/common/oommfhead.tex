@@ -9,12 +9,38 @@
 % \if statements.)
 %\ifx\oommfheadread\relax\endinput\else\let\oommfheadread=\relax\fi
 
-\documentclass[12pt]{article}
+% \documentclass[12pt]{article}  % Put this in file inputting this one
 
 \usepackage{makeidx}
+\usepackage{multirow}
 
 %begin{latexonly}
-% Use package pdftex, iff we are running pdftex with pdf output
+% On the one hand, latexml 0.8.6 hiccups on color, but xcolor is OK.
+% On the other hand, latex2html 2021 chokes on xcolor. There is no
+% "else" equivalent in %begin{latexonly}, so wait until package html
+% is loaded and do \html{\usepackage{color}}.
+\usepackage{xcolor}
+\usepackage{graphics}
+
+\usepackage{ifthen}   % \ifthenelse construct
+
+% Test if a command is defined, by Ulrich Diez in
+% tex.stackexchange.com, 3-Nov-2020. Use like
+% \checkfor{foo}{\foo is defined}{\foo is undefined}
+%begin{latexonly}
+\makeatletter
+\DeclareRobustCommand\checkfor[1]{%
+  \begingroup
+  \expandafter\ifx\csname#1\endcsname\relax\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+  {%
+    \expandafter\endgroup\expandafter\ifx\csname#1\endcsname\relax\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi
+  }{\endgroup\@firstoftwo}%
+}%
+\makeatother
+%end{latexonly}
+
+%begin{latexonly}
+% Are we running pdftex with pdf output?
 % (This logic is from Heiko Oberdiek's ifpdf package.)
 \ifx\pdfoutput\undefined
   % not running PDFTeX
@@ -34,12 +60,91 @@
     \fi
   \fi
 \fi
-\ifnum\oommfpdf=1
-  \usepackage[pdftex, colorlinks=true, citecolor=blue]{hyperref}
+%end{latexonly}
+
+
+%begin{latexonly}
+\IfFileExists{latexml.sty}{\usepackage{latexml}}{
+  \newif\iflatexml % Assume no latexml.sty => no latexml
+  % (\newif creates a command initialized to \iffalse.)
+}
+%end{latexonly}
+% latex2html builds won't load latexml, so won't define \iflatexml.
+% But all \if* commands should be wrapped in latexonly blocks so that
+% latex2html doesn't see them, since latex2html doesn't process them
+% anyway. You can check the tail bit of the latex2html run to see a
+% list of commands it didn't recognize. If inputs are coded properly
+% then \iflatexml should not be on that list.
+%
+% NOTE: latexml with unmodified html package bindings chunders
+% on \begin/end{rawhtml} and \begin/end{htmlonly} environments if
+% the \end part is indented. The html.sty.ltxml in LaTeXML 0.86 has this
+% binding for the rawhtml environment (htmlonly is completely
+% analogous):
+%
+%   DefConstructorI(T_CS("\\begin{rawhtml}"), undef, '', reversion => '',
+%     afterDigest => [sub {
+%         my ($stomach, $whatsit) = @_;
+%         my $endmark = "\\end{rawhtml}";
+%         my $nlines  = 0;
+%         my ($line);
+%         my $gullet = $stomach->getGullet;
+%         $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
+%         while (defined($line = $gullet->readRawLine) && ($line ne $endmark)) {
+%           $nlines++; }
+%         NoteLog("Skip rawhtml ($nlines lines)"); }]);
+%
+% The problem is the comparison of $line against $endmark requires an
+% exact full-line match. One workaround is to  strip off any leading
+% whitespace before making the comparison, e.g.,
+%
+%     while (defined($line = $gullet->readRawLine)
+%            && $line =~ s/^\s*// && ($line ne $endmark)) {
+%
+% Another more general approach is to use a regexp match, e.g.,
+%
+%   DefConstructorI(T_CS("\\begin\{htmlonly\}"), undef, '', reversion => '',
+%     afterDigest => [sub {
+%         my ($stomach, $whatsit) = @_;
+%         my $endmark = '^\\s*\\\\end\{rawhtml\}\\s*$';
+%         my $nlines  = 0;
+%         my ($line);
+%         my $gullet = $stomach->getGullet;
+%         $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
+%         while (defined($line = $gullet->readRawLine) && ($line !~ m/$endmark/)) {
+%           $nlines++; }
+%         NoteLog("Skip htmlonly ($nlines lines)"); }]);
+%
+% which allows any amount of leading or trailing whitespace on the \end
+% line.
+%
+% NOTE: LaTeXML will still choke on single-line constructs such as
+%   \begin{rawhtml}</BLOCKQUOTE>\end{rawhtml}
+% but this is arguably sleazy LaTeX anyway.
+%
+% To use this, copy the distributed html.sty.ltxml to a local directory,
+% edit the file as shown above, and then use the --path option to
+% latexml to include the local directory on the latexml search path.
+
+% Is the build targeting PostScript output? The first definition
+% of \psonly and \notpsonly holds in place if latex2html is running.
+\newcommand{\psonly}[1]{}
+\newcommand{\notpsonly}[1]{#1}
+%begin{latexonly}
+\newif\ifoommfps
+\ifnum\oommfpdf=0
+  \unless\iflatexml
+    \oommfpstrue
+  \fi
+\fi
+\ifoommfps
+  \renewcommand{\psonly}[1]{#1}
+  \renewcommand{\notpsonly}[1]{}
 \fi
 %end{latexonly}
 
-\ifnum\oommfpdf=0
+%begin{latexonly}
+%\ifnum\oommfpdf=0
 % pdflatex command not in use
 % The html package included below uses \pdfoutput to determine whether
 % or not pdf-TeX is being used.  Unfortunately, the code in html.sty
@@ -59,8 +164,13 @@
 % then one can try redefining \pdfoutput to 0 after \usepackage{html},
 % or otherwise leaving \pdfoutput alone and just redefining \htmlimage
 % etc. as needed.
-\let\pdfoutput\relax
-\fi
+% UPDATE 28-May-2022: This breaks \usepackage{html} on latex, or at
+%  least on the latex install on my Mac, which is
+%   pdfTeX 3.141592653-2.6-1.40.24 (TeX Live 2022/MacPorts 2022.62882_0)
+%  YMMV.
+%\let\pdfoutput\relax
+%\fi
+%end{latexonly}
 
 % \ifnum\oommfpdf=0
 % pdflatex command not in use
@@ -74,19 +184,223 @@
 % \renewcommand{\htmladdnormallink}[2]{#1} % Ditto.
 % \fi
 
+\notpsonly{\usepackage[colorlinks=true]{hyperref}}
+% Note 1: latex2html reads the .aux files created by latex and dvips,
+% but the hyperref package writes material to .aux that latex2html
+% hiccups on, with errors like
+%
+%   *** sub wrap_cmd_HyPL@Entry  failed: Illegal declaration of
+%   subroutine main::wrap_cmd_HyPL at (eval 573) line 1.
+%
+% I don't know if this actually matters or not, but the ps output
+% doesn't do anything with hyperref, so just don't load hyperref in
+% this case.
+%
+% Note 2: The html package loads package hyperref if it isn't already
+% loaded, and loads with default options.  So to change defaults you
+% need to either load hyperref first with desired options, or else use
+% the \hypersetup command afterwards.
+%
+% Note 3: At one time the hyperref package load command we used was
+%   \usepackage[pdftex, colorlinks=true, citecolor=blue]{hyperref}
+% But on 25-Apr-2022 we dropped the pdftex option because the hyperref
+% docs claim the driver (e.g., dvips, pdftex) should be detected
+% automatically.
+%
+% Note 4: The hyperref docs recommend loading hyperref after all other
+% packages, because hyperref redefines a lot of commands from other
+% packages. So keep this in mind and rearrange package ordering as
+% needed.
 
-%\usepackage[pdftex, colorlinks=true, citecolor=blue]{hyperref}
 \usepackage{html}
 
+\html{
+\usepackage{l2hbugs}
+% latex2html 2021 chokes on xcolor (see xcolor note above)
+\usepackage{color}
+}
+
+% LINK REFERENCE:
+%
+% Links to \label
+% \htmlonlyref{text}{label}
+%   The label argument is ignored in nonHTML mode. In HTML output the
+%   text links to the label. In LaTeX2HTML this is a wrapper
+%   around \htmlref{}{} from package html. In LaTeXML it's a wrapper
+%   about \hyperref from package hyperref, with args reversed.
+%
+% \hyperrefhtml{htmltext}{nonhtmlpretext}{nonhtmlposttext}{label}
+%   HTML output uses htmltext and label, nonHTML output uses
+%   pre/posttext + label. For nonHTML this is a wrapper
+%   abouht \hyperrefpage from package hyperref.
+%
+% \pagehyperref{htmltext}{nonhtmlpretext}{nonhtmlposttext}{label}
+%   Same as \hyperrefhtml, except that for nonHTML output the page
+%   number containing the label is given instead of the label value.
+%
+%
+% Links to arbpts
+% \arbtarget{targettext}{label}
+% \arbtargetlink{linktext}{prepage}{postpage}{label}
+%   The first command sets an anchor at the specified point, the second
+%   provides a link in HTML and PDF output, and a page reference in PDF
+%   and PS output.
+%
+% \pttarget[targettext]{label}
+% \ptlink{linktext}{label}
+%   The first command sets an anchor at the specified point, the second
+%   provides a link in HTML and PDF output but no page reference. In PS
+%   the linktext is printed alone.
+%
+% More details on \arb* and \pt* commands are provided further down in
+% this file.
+%
+% Links to URLs
+% \htmladdnormallink{text}{url}
+%   The url argument is ignored in non-html mode. In html output mode
+%   the text links to the url.
+%
+% \htmladdnormallinkfoot{text}{url}
+%   Same as \htmladdnormallink, except that a footnote is added in
+%   non-html mode to the url.
+
+% Crutch for latexml issues. The \iflatexml construct is insufficient
+% because latex2html doesn't process \if statements.
 %begin{latexonly}
-\usepackage{../common/oommf} % Base style redefinitions and/or patches
+\iflatexml
+ \newcommand{\latexmlonly}[1]{#1}
+ \newcommand{\notlatexmlonly}[1]{}
+\else
+ \newcommand{\latexmlonly}[1]{}
+ \newcommand{\notlatexmlonly}[1]{#1}
+\fi
+%end{latexonly}
+\html{
+ \newcommand{\latexmlonly}[1]{}
+ \newcommand{\notlatexmlonly}[1]{#1}
+}
+
+% latexml defines command \iflatexml true if latexml is running,
+% otherwise false. Some one can do
+%
+%  \iflatexml
+%    % latexml version
+%  \else
+%    % plain latex version
+%  \fi
+%
+% The \else clause is optional if you want just the latexml branch.
+% If you want to reorder the branches, or just have the plain latex
+% branch, use \unless:
+%
+% \unless\iflatexml
+%    % plain latex version
+%  \else
+%    % latexml version
+% \fi
+%
+% It would be nice to work latex2html into this processing scheme, but
+% according to my notes latex2html doesn't do \if statements.  For
+% reference, \newif\iffoo defines a new command \iffoo defined initially
+% to be \iffalse, but also commands \footrue and \foofalse which
+% redefine \iffoo to be \iftrue and \iffalse, respectively.
+%
+% The html.sty file provided with latex2html provides five conditional
+% environments:
+%
+%   htmlonly, latexonly, rawhtml, imagesonly, makeimage
+%
+% and related \html{}, \latex{}, \latexhtml{}{} commands, plus a further
+% eight commands:
+%
+%  htmlref                  61
+%  htmladdnormallink        41
+%  htmladdnormallinkfoot    26
+%  hyperref                311
+%  htmlimage                14
+%  htmladdimage              0
+%  htmlcite                  0
+%  htmlrule                  2
+%
+% The numbers to the right is a count of the lines in .tex files under
+% oommf/doc that currently include the command text (excluding this
+% appearance but including mention in other comments).
+%
+% One can also exclude text from processing by latex2html by wrapping it
+% inside
+%
+%  %begin{latexonly}
+%  ...
+%  %end{latexonly}
+%
+% Unlike the \begin/\end forms, these aren't processed by LaTeX and
+% don't put the contents inside a group. Also, these are processed by
+% latex2html directly and only, and so can be used prior to
+% \usepackage{html}.
+%
+% See the LaTeXML document "Bindings" section to see a list of supported
+% classes and packages. I note that "html.sty" is included in the
+% package list...
+%
+% BTW, latexml chunders on this construct
+%    \begin{htmlonly}
+%    ...
+%    \end{htmlonly} % My little note
+%
+% The stock latexml 0.8.6 binding for the htmlonly and rawhtml
+% environments only captures the \end{...} statement if it begins in the
+% first column and has no trailer. I slapped together a straightforward
+% fix that allows whitespace (though not other material) on the \end
+% line---see doc/common/xmlextras/html.sty.ltxml. The doc makerules
+% files are set up such that this html binding file is loaded instead of
+% the stock version, but I'll see if Bruce Miller will change the stock
+% version in the next release.
+
+%begin{latexonly}
+\renewcommand\htmlimage[1]{}  % Otherwise breaks 'latex' (for .ps
+% output) on macOS 25-Apr-2022. No idea why...
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TOCLOFT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% If there are more than nine subsections in a section (for example,
+% in the ``Command Line Utilities'' section, then in the table of
+% contents the subsection numbers run into the subsection titles.  One
+% workaround is:
+%
+%   \usepackage{tocloft}
+%   \setlength{\cftsubsecnumwidth}{2.7em}
+%
+% However this increases the spacing between subsection numbers and
+% titles for all subsections in the toc.  A slightly less ugly
+% alternative is
+%
+%begin{latexonly}
+\iflatexml\else
+\usepackage{tocloft}
+\newlength{\oommftocsslen}
+\setlength{\oommftocsslen}{0.5em} % need some extra space at end of number
+\renewcommand{\cftsecpresnum}{\hfill} % note the double `l'
+\renewcommand{\cftsecaftersnum}{\hspace*{\oommftocsslen}}
+\addtolength{\cftsecnumwidth}{\oommftocsslen}
+\fi
+%end{latexonly}
+% (Note: latex2html and latexml don't have a bindings for tocloft, so
+% exclude this block from latex2html and latexml processing.)
+%
+% This typesets subsection numbers flushright.  With this the
+% subsection numbers after .9 stick out to the left, but otherwise
+% everything lines up.
+%
+% Another approach may be to hack the userguide.toc file directly. Or
+% maybe ``Command Line Utilities'' just has too many sections and needs
+% to be broken up.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TOCLOFT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%begin{latexonly}
 %\ifx\undefined\pdfpagewidth % pdflatex command not in use
 \ifnum\oommfpdf=0
 % pdflatex command not in use
 \newcommand{\pdfonly}[1]{}
 \newcommand{\ifnotpdf}[1]{#1}
-\usepackage{color}
-\usepackage{graphics}
 \else                       % pdflatex command in use
 \newcommand{\pdfonly}[1]{#1}
 \newcommand{\ifnotpdf}[1]{}
@@ -100,44 +414,58 @@
     /URI (https://math.nist.gov/oommf/)
 }
 % openaction goto page 1 {/Fit}
-
-\usepackage[pdftex]{color}
-\usepackage[pdftex]{graphics}
 \fi
+
+\iflatexml
+\newcommand{\htmlonlyref}[2]{\hyperref[#2]{#1}}
+\newcommand{\pagehyperref}[4]{\htmlonlyref{#1}{#4}}
+% Note: In latexml 0.8.6, the "~" in \htmlref{\MIF~1.2}{sec:mif12format}
+% gets transferred to HTML as a literal "~" instead of a nbsp. But
+% \htmlonlyref{\MIF~1.2}{sec:mif12format} defined as above works OK.
+\else
 \newcommand{\htmlonlyref}[2]{#1}
+\newcommand{\pagehyperref}[4]{\hyperrefpage{#1}{#2}{#3}{#4}}
+\fi
 %end{latexonly}
 
 \html{
 \newcommand{\pdfonly}[1]{}
 \newcommand{\ifnotpdf}[1]{#1}
-\usepackage{color}
-\usepackage{graphics}
 %\let\hyperrefhtml=\hyperref
-\newcommand{\hyperrefhtml}[3]{\hyperref{#1}{#2}{#3}}
+\newcommand{\hyperrefhtml}[4]{\htmlref{#1}{#4}}
 \newcommand{\htmlonlyref}[2]{\htmlref{#1}{#2}}
 % Use \htmlonlyref for links to be available in HTML, but not
 % in PDF.  In particular, this applies to \label{} commands not
 % placed near counter updates, since latex2html drops an anchor
 % tag at the right location, but pdflatex just drops the ball
 % (well at least pdflatex Version 3.14159-13d (Web2C 7.3.1) does).
+\newcommand{\pagehyperref}[4]{\htmlonlyref{#1}{#4}}
 }
 
-% A solution to the ``set marker at arbitrary point on a page'' problem:
-\newcounter{arblinkcounter}
-\newcommand{\arblink}[1]{\refstepcounter{arblinkcounter}\label{#1}}
-% Access this from html as \htmlref{whatever link text you want}{label}
-% or from latex as ``... page~\pageref{label}''.
-%
-% In principle it seems like it should suffice to drop an index link,
-% which is generally reasonable since if the point is important enough
-% to be linked to from elsewhere in the document, then it probably
-% belongs in the index too.  If you try, for example,
-% fubar\index{foo!bar}\label{geronimo} then \htmlref works okay, and
-% \pageref prints the right page number, but pdflatex
-% (3.1415926-2.5-1.40.14 (TeX Live 2013)) links back to some earlier
-% counter on a potentially differet page.  So the best workaround seems
-% to be to use \arblink and \index.
-
+% Selection by HTML vs non-HTML output
+%begin{latexonly}
+\iflatexml
+  \newcommand{\HTMLoutput}[1]{#1}
+  \newcommand{\NONHTMLoutput}[1]{}
+\else
+  \newcommand{\HTMLoutput}[1]{}
+  \newcommand{\NONHTMLoutput}[1]{#1}
+\fi
+%end{latexonly}
+\html{
+% NOTE: Do NOT use \newcommand inside \NONHTMLoutput; the \NONHTMLoutput
+% wrapper will be ignored and latex2html will define the command as
+% given, even if the command is already defined (i.e., should require
+% a \renewcommand). If you absolutely positively have to do this, follow
+% the \NONHTMLoutput command definition with a \HTMLoutput
+% definition. Actually, it is probably more robust to define the command
+% as desired for non-HTML output w/o \NONHTMLoutput, and then
+% use \HTMLoutput{\renewcommand...}.
+%   A working alternative is to use \HTMLoutput and \NONHTMLoutput
+% inside \newcommand, rather than the other way around.
+  \newcommand{\HTMLoutput}[1]{#1}
+  \newcommand{\NONHTMLoutput}[1]{}
+}
 
 \setlength{\textwidth}{6.5in}
 \setlength{\oddsidemargin}{0in}
@@ -147,8 +475,6 @@
 \HTMLset{myTODAY}{\today}
 \usepackage{localmods}
 \end{htmlonly}
-
-\usepackage{upquote} % Use upright quotes in verbatim environments
 
 \newcommand{\myimage}[2]{\HTMLcode[#1 #2]{IMG}}
 
@@ -162,13 +488,249 @@
 \htmladdtonavigation{\htmladdnormallink
     {\myimage{ALT="OOMMF Home",BORDER="2"}{oommficon.gif}}{https://math.nist.gov/oommf}}
 
+\usepackage{alltt}  % Verbatim package supporting control sequences.
+% Both LaTeXML and LaTeX2HTML have bindings for the alltt environment,
+% but the LaTeX2HTML exhibits wonky behavior with alltt. When I first
+% starting using alltt, I found that LaTeX2HTML support for the
+% inline \textcolor{<color>}{<text>} command was broken inside alltt
+% environments. However, it seemed that using \color from the color
+% package (see notes above about color vs.  xcolor package conflicts in
+% latex2html and latexml), instead of \textcolor worked OK, aside from
+% ungrouped \color commands changing hyperref link color in latexml.  So
+% I defined \colorit to be a synonym for \textcolor except in
+% latex2html, where a grouped \color command was used instead.
+%   But then later when I tried to build the documentation on a Rocky 8
+% Linux box (9-Aug-2022), LaTeX2HTML threw an error on \color:
+%
+%  11/23:chapter:..."Debugging OOMMF" for Debugging_OOMMF.html
+%  ;........Unescaped left brace in regex is illegal here in regex;
+%    marked by <-- HERE in m/^color{ <-- HERE shellcmdcolor}/
+%    at /usr/bin/latex2html line 4531.
+%
+% But \textcolor seems okay. We can probably do away with \colorit,
+% but I'm leaving the infrastructure in place for reference.
+% begin{latexonly}
+\newcommand{\colorit}[2]{\textcolor{#1}{#2}}
+%end{latexonly}
+\html{
+%\newcommand{\colorit}[2]{{\color{#1}{#2}}}
+\newcommand{\colorit}[2]{\textcolor{#1}{#2}}
+}
+% Macros for coloring shell and program commands in alltt environments.
+% The colors can be changed using \renewcommand. Constructs like
+% "Program commands are colored \pgmcmd{\pgmcmdcolorname}\ for
+% visibility" help text-to-color identification for colorblind
+% individuals or grayscale printing. The colors are tweaked a little
+% to make them either easier to read against a white background (cyan)
+% or easier to distinguish from black in grayscale (red).
+\definecolor{shellcmdcolor}{RGB}{0,187,238}
+\newcommand{\shellcmdcolorname}{cyan}
+\newcommand{\shellcmd}[1]{\colorit{shellcmdcolor}{#1}}
+\definecolor{pgmcmdcolor}{RGB}{255,51,17}
+\newcommand{\pgmcmdcolorname}{red}
+\newcommand{\pgmcmd}[1]{\colorit{pgmcmdcolor}{#1}}
+
+%begin{latexonly}
+\iflatexml\else
+\usepackage{upquote} % Use upright quotes in verbatim environments
+\fi
+%end{latexonly}
+% Note: latexml docs say upquote package is supported, but if used I get
+%    Warning:missing_file:upquote Can't find binding for package upquote
+% latex2html also doesn't have a binding for upquote.
+
+% I want upright quotes in verbatim environments, but upquote package
+% seems to be not well supported. Might try \textquotesingle and
+% \textquotedbl in alltt environment.
+\usepackage[T1]{fontenc} % for \textquotedbl
+\usepackage{textcomp}    % for \textquotesingle (not needed for post-2019 TeX)
+\latex{\newcommand{\ssquote}{\textquotesingle}}  % Straight quotes
+\latex{\newcommand{\sdquote}{\textquotedbl}}
+\html{\newcommand{\ssquote}{\verb+'+}}
+\html{\newcommand{\sdquote}{\verb+"+}}
+
+% WARNING: --- Single quote madness ---
+% Unicode defines the following single quote characters:
+%
+% Unicode    UTF-8    Description
+% U+0027         27   Apostrophe, neutral (straight) quote
+% U+0060         60   Grave accent (backtick)
+% U+00B4      C2 B4   Accute accent (mirror image of backtick)
+% U+2018   E2 80 98   Left single quotation mark (curved quote)
+% U+2019   E2 80 99   Right single quotation mark (curved quote)
+%
+% If the upquote package is not used, then in verbatim (and alltt)
+% environemnts LaTeX renders the keyboard backtick character as U+2018
+% and and the keyboard apostrophe U+2019, i.e., as curved quotes. These
+% don't look especially similar to their keyboard glyphs, which is
+% problematic if you are using backticks to illustrate execution of an
+% embedded command in a command shell (in Bourne shell derivatives
+% '$(...)'  can be used, but csh only has backticks), or a code sequence
+% using paired single quotes.
+%    The upquote package handles this fairly well, rendering backticks
+% as U+0060 and single quotes as U+0027 inside verbatim (and alltt)
+% environments. LaTeX2HTML doesn't have a binding for upquote, but also
+% follows this behavior.
+%    LaTeXML, OTOH, follows the LaTeX convention and doesn't have a
+% binding for upquote (at least as of LaTeXML 0.8.6). Even worse, the
+% monospace font used on at least macOS 11.6.7 (Big Sur) has nearly
+% indistinguishable glyphs for U+2018 and U+2019.
+%    A workaround for the backtick that seems to work in alltt for
+% LaTeX, LaTeX2HTML, and LaTeXML, both with and without the upquote
+% package, is to request a grave accent on an empty string, as in the
+% "\backtick" command defined below. This renders U+0060 in all three
+% cases. The "\fronttick" command is defined for completeness, but it
+% renders U+00B4, which doesn't have an obvious application to verbatim
+% keyboard rendering. To get U+0027, use either the upquote
+% package, \textquotesingle, or the "\uptick" command (which assumes tt
+% font) defined below.
+%
+\newcommand{\backtick}{\`{}}
+\newcommand{\fronttick}{\'{}}
+%begin{latexonly}
+\newcommand{\uptick}{\char'15}
+%end{latexonly}
+\html{\newcommand{\uptick}{{'}}}
+
+% A solution to the ``set marker at arbitrary point on a page'' problem:
+%
+% Usage: \arbtarget{targettext}{label}
+%        \arbtargetlink{linktext}{prepage}{postpage}{label}
+%
+%        \pttarget[targettext]{label}
+%        \ptlink{linktext}{label}
+%
+% The first pair provide a link in html and pdf output, and a page
+% reference in pdf and ps output. The second pair provide a link in html
+% and pdf output, but no page reference; \ptlink is transparent in ps
+% output, printing only the linktext.
+%
+% NB: Text like
+%   \begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
+% will break LaTeXML parsing and can prevent proper operation of these
+% commands. Instead, move the \end{rawhtml} to a separate line. LaTeXML
+% also doesn't like text following \end{rawhtml}, e.g.,
+%   \end{rawhtml}\index{foobar}
+% so break that into two lines too.
+%
+% NB: If you want to align a pttarget with the top of a document
+% section, do not place \pttarget before sectioning command, i.e.,
+%
+%   \pttarget{label}\section{My Favorite Toys}     %% BAD
+%
+% because if \section causes a page break then the target anchor will be
+% on the preceding page. Putting \pttarget after the sectioning command,
+%
+%   \section{My Favorite Toys}\pttarget{label}     %% LESS BAD
+%
+% is a bit better, but the link will tend to point to the line after the
+% section header, and if the viewer scrolls to put the anchor at the top
+% of the page then you won't see the section title.
+%
+% A better solution is to use the standard section labels and reference
+% with \hyperref, e.g.,
+%
+%   \section{My Favorite Toys}\label{sec:mft}     %% BEST
+%   ...
+%   \hyperref[sec:mft]{(Description.)}  % hyperref pkg w/o html pkg
+% or
+%   \htmlref{(Description.)}{sec:mft}   % w/ html pkg
+%
+% The html package redefines \hyperref, so if html is loaded you need to
+% use the second version if you want active links in the PDF output.
+% Also note the change in argument ordering between \hyperref and
+% \htmlref, and also the square brackets on the former.
+%
+% Unfortunately, the \section links are broken in some cases in LaTeXML
+% (version 0.8.6). If document splitting is such that sec:mft is the top
+% level section in it's .html file, any links to sec:mft from within
+% that file aren't placed into the .html file. Since file splitting
+% isn't decided until latexmlpost, AFAICT the .xml if fine, it is just a
+% bug in the conversion from xml to html.
+%
+% On a related note, if you use \ptlink in a moving argument like
+% \caption, you'll need to \protect it, e.g.,
+%
+%  \caption{Sheep in a snow storm\protect.\notpsonly{
+%    \protect\ptlink{(Description.)}}}
+%
+% The text to a \section command is also a moving argument, but AFAICT
+% \pttarget as used above does not require \protect.
+%
+%
+% Background: In standard LaTeX and PDFLaTeX, the \label command drops a
+% pin at the point of the most recent \refstepcounter, so we can define
+% links to arbitrary points in the document by creating a special-use
+% counter and stepping that at the point of interest. If the hypertex
+% package is loaded then in the pdf version the link even points to the
+% right position on the page, so this all works nicely.
+%
+% LaTeXML handles label references differently than (PDF)LaTeX. Rather
+% than tying a target to the stepping of a counter, it expects a
+% reference point to lie inside some enclosing environment, and links to
+% (the start of?) that environment. So we can't use the counter-based
+% target method with LaTeXML. Instead, we use the \hyper{target,link}
+% commands from the \hyperref package.
+%
+% LaTeX2HTML Version 2021 does not have a binding for
+% \hyper{target,link}, but it does handle \label the same way as
+% (PDF)LaTeX, so we use the counter-based method for LaTeX2HTML.
+%
+% NB: If the label name has the form "html:foobar", then LaTeXML will
+% complain about \arbtargetlink calls with the error:
+%
+%    Error:malformed:document Document fails RelaxNG validation (LaTeXML)
+%
+% IDK if source of the error is LaTeXML or the hyperref package; the
+% docs for the latter indicate special handling for constructs like
+%   \href{https://foo.org}{foo home}
+%   \href{mailto:bar@foo.org}{bar@foo.org}
+%   \href{run:/path/to/my/file.ext}{text displayed}
+%
+% Regardless, the safest course is to avoid colons in \arbtarget
+% labels. By convention, maybe use the label format "PTfoo"?
+%
+%begin{latexonly}
+\iflatexml % LaTeXML version
+\newcommand{\arbtarget}[2]{\hypertarget{#2}{#1}}
+\newcommand{\arbtargetlink}[4]{\hyperlink{#4}{#1}}
+\newcommand{\pttarget}[2][]{\hypertarget{#2}{#1}}
+\newcommand{\ptlink}[2]{\hyperlink{#2}{#1}}
+
+\newcommand{\arbtargetlinkonly}[2]{\hyperlink{#2}{#1}}
+\else % LaTeX and PDFLaTeX version
+  \newcounter{arbtargetcounter}
+  \newcommand{\arbtarget}[2]{#1\refstepcounter{arbtargetcounter}\label{#2}}
+  \newcommand{\arbtargetlink}[4]{#2\pageref{#4}#3}
+  \ifnum\oommfpdf=1 % PDF output (with links)
+    \newcommand{\pttarget}[2][]{\hypertarget{#2}{#1}}
+    \newcommand{\ptlink}[2]{\hyperlink{#2}{#1}}
+  \else % PS output (no links)
+    \newcommand{\pttarget}[2][]{#1}
+    \newcommand{\ptlink}[2]{#1}
+  \fi
+\fi
+%end{latexonly}
+\html{ % LaTeX2HTML version
+  \newcounter{arbtargetcounter}
+  \newcommand{\arbtarget}[2]{\refstepcounter{arbtargetcounter}\label{#2}}
+  \newcommand{\arbtargetlink}[4]{\htmlref{#1}{#4}}
+  \newcommand{\pttarget}[2][]{#1\refstepcounter{arbtargetcounter}\label{#2}}
+  \newcommand{\ptlink}[2]{\htmlref{#1}{#2}}
+}
+
+\newcommand{\MailLink}[2]{%
+\HTMLoutput{\htmladdnormallink{#1}{mailto:#2}}%
+\NONHTMLoutput{#1 (#2)}}
+
 \newcommand{\blackhole}[1]{}
 \newcommand{\Unix}{Unix}
 \newcommand{\X}{X}
+\newcommand{\Linux}{Linux}
 \newcommand{\Windows}{Windows}
 \newcommand{\MacOSX}{macOS}
 \newcommand{\DOS}{DOS}
-\newcommand{\Tcl}{Tcl}
+\newcommand{\Tcl}{Tcl}  % Tcl Developer Xchange = https://www.tcl-lang.org/
 \newcommand{\C}{C}
 \newcommand{\Cplusplus}{C++}
 \newcommand{\Tk}{Tk}
@@ -181,20 +743,87 @@
 \newcommand{\OBS}{OBS}
 \newcommand{\eps}{Encapsulated PostScript}
 \newcommand{\postscript}{PostScript}
-\newcommand{\mumag}{\latex{$\mu$}\html{mu}MAG}
+\latex{\newcommand{\mumag}{$\mu$MAG}}
+\html{\newcommand{\mumag}{muMAG}}
 \newcommand{\micrometer}{\latex{$\mu$m}\html{\begin{rawhtml}&micro;m\end{rawhtml}}}
 \newcommand{\munaught}{\latex{$\mu_0$}\html{\begin{rawhtml}&micro;<SUB>0</SUB>\end{rawhtml}}}
 \newcommand{\SI}{SI}     % as in SI units
 \newcommand{\ASCII}{ASCII}
 \newcommand{\emdash}{\latex{---}\html{\begin{rawhtml}&mdash;\end{rawhtml}}}
 
-\newcommand{\oxslabel}[1]{\textbf{#1}}
-% Use \oxslabel to refer to Oxs Specify block labels the first time
-% in the running text.
+% --- Font control reference --
+% The first set below are cumulative. They come in both command
+% (e.g., \textbf{...}) and declarative (e.g., {\bfseries ...}) flavors:
+%
+% \textrm{...}      {\rmfamily ...}    Roman (default)
+% \textsf{...}      {\sffamily ...}    Sans serif
+% \texttt{...}      {\ttfamily ...}    Typewriter (monospaced)
+%
+% \textup{...}      {\upshape ...}     Upright (default)
+% \textit{...}      {\itshape ...}     Italics
+% \textsl{...}      {\slshape ...}     Slanted
+% \textsc{...}      {\scshape ...}     Small caps
+%
+% \textmd{...}      {\mdseries ...}    Medium weight (default)
+% \textbf{...}      {\bfseries ...}    Boldface.
+%
+% \textnormal{...}  {\normalfont ...}  Main document font
+%
+% There is also \emph{...} for text to be emphasized. The effect depends
+% on the currently active font; typically \emph will switch to italic,
+% but will switch e.g. to roman if the active font is italic.
+%
+%
+% The following, older font control method below are "unconditional,"
+% meaning non-cumulative. These are all declarative:
+%
+% {\rm ...}  Roman
+% {\sf ...}  Sans serif
+% {\tt ...}  Typewriter (monospace, fixed-width)
+%
+% {\it ...}  Italics
+% {\sl ...}  Slanted (oblique)
+% {\sc ...}  Small caps
+%
+% {\bf ...}  Switch to bold face
+%
+% {\cal ...} Switch to calligraphic letters for math
+%
+% The \em command is the unconditional form of \emph.
+%
+% The following, non-cumulative commands are for math mode:
+%
+% \mathrm{...} Roman
+% \mathsf{...} Sans serif
+% \mathtt{...} Typewriter
+%
+% \mathit{...} Italics, aka \mit{...}
+%
+% \mathbf{...} Boldface
+%
+% \mathnormal{...} Normal, used inside another type style declaration
+%
+% \mathcal{...} Calligraphic letters
+%
+% There are additionally the commands \mathversion{bold}
+% and \mathversion{normal} for switching between bold and normal fonts.
+%
+%
+% NB: Latex2html 2021 doesn't handle nested face requests, e.g.,
+% \texttt{\textrm{...}} properly --- it drops a <DIV> block that
+% effects a newline. So separate \html{...} declarations may be
+% needed to get the best achievable results.
 
-\newcommand{\oxsval}[1]{\textit{\textrm{#1}}}
-% Use \oxsval for the value portion of label+value keys in both
-% the TeX version of the Specify block, and in the running text.
+\latex{\newcommand{\oxslabel}[1]{\textbf{\textrm{#1}}}}
+\latex{\newcommand{\oxsval}[1]{\textit{\textrm{#1}}}}
+\html{\newcommand{\oxslabel}[1]{\textbf{#1}}}
+\html{\newcommand{\oxsval}[1]{\textit{#1}}}
+% Use \oxslabel to refer to Oxs Specify block labels the first time in
+% the running text. Use \oxsval for the value portion of label+value
+% keys in both the TeX version of the Specify block, and in the running
+% text. (BTW, latex2html gives a "cannot wrap" warning on \renewcommand,
+% so just use separate \latex and \html versions.)
+
 
 % Filenames and program code identifiers
 \blackhole{
@@ -216,7 +845,8 @@
 \newcommand{\cd}[1]{\texttt{#1}}     % Code
 \newcommand{\btn}[1]{\bftt{#1}}      % Buttons
 \newcommand{\wndw}[1]{\textbf{#1}}   % Windows
-%end{latexonly} % Close \latex
+%end{latexonly}
+
 \begin{htmlonly}
 \newcommand{\bftt}[1]{\texttt{\textbf{#1}}}
 %% NOTE: There is no boldface cmtt (TeX), but HTML browsers
@@ -228,8 +858,7 @@
 \definecolor{btn}{rgb}{0.5,0,0}          % Buttons
 \newcommand{\btn}[1]{{\textcolor{btn}{\textbf{#1}}}}
 \newcommand{\wndw}[1]{{\bf #1}} % Windows
-\end{htmlonly} % close \html
-
+\end{htmlonly}
 
 % Latex2html inserts unwanted whitespace after \rm, in structures like
 %      \newcommand{\vB}{{\rm\bf B}}
@@ -250,9 +879,12 @@
 % MIF 2.x Specify block definitions.
 \newcommand{\bi}{\hspace*{2em}}
 % \bi is bullet indent.
-\newcommand{\ocb}{\textrm{\{}}
-\newcommand{\ccb}{\textrm{\}}}
+\latex{\newcommand{\ocb}{\textrm{\{}}}
+\latex{\newcommand{\ccb}{\textrm{\}}}}
 % \ocb is open curly brace, \ccb is close curly brace.
+% Latex2html 2021 sometimes mishandles typeface requests, so try
+\html{\newcommand{\ocb}{\{}}
+\html{\newcommand{\ccb}{\}}}
 
 % O open and close angle brackets (aka less-than and greater-than
 % symbols)
@@ -268,43 +900,129 @@
 \newcommand{\optkey}[1]{\latex{\textbf{#1}}\html{\texttt{\textbf{#1}}}}
 
 % Codelisting environment
+% \newenvironment{codelisting}[4]{%
+%  \def\codelistingtype{#1}     % f for float, p for ``in page''
+%  \def\codelistinglabel{#2}    % \label tag
+%  \def\codelistingcaption{#3}  % caption
+%  \def\codelistingdescription{#4} % Link back to text
+%  \def\codelistingdesctype{#5} % Link anchor type: ref or hyperlink
+% Parameters #4 and #5 are ignored in postscript output, but for PDF and
+% both HTML outputs these provide a link back to a point in the text
+% describing the contents. That link can either be a counter-based ref
+% accessed via \hyperref or else a \hypertarget type accessed via
+% \hyperlink, as indicated by parameter #5.  (In the latex and latexml
+% cases the conditional is handled using the ifthenelse command from the
+% latex \ifthen package. For latex2html the condition is implemented by
+% variable name interpolation.)
+%
 %begin{latexonly}
-\newenvironment{codelisting}[4]{%
+\iflatexml %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{codelisting}[5]{%
+ \def\codelistingtype{#1} % f for float, p for in page (ignored for html)
+ \def\codelistinglabel{#2}       % \label tag
+ \def\codelistingcaption{#3}     % caption
+ \def\codelistingdescription{#4} % Link back to text
+ \def\codelistingdesctype{#5}    % Link anchor type: ref or hyperlink
+ \ifthenelse{\equal{\codelistingdesctype}{ref}}{
+   \newcommand{\cldxyz}{\htmlonlyref{(description)}{\codelistingdescription}}
+ }{
+   \newcommand{\cldxyz}{\ptlink{(description)}{\codelistingdescription}}
+    % Note space between caption and (description)!
+ }
+ \begin{figure}[h!]
+   \centerline{\rule[1ex]{\textwidth}{0.5ex}}
+   \caption{\codelistingcaption\label{\codelistinglabel}
+     \protect\cldxyz} % Note space between caption and (description)!
+}{
+  \centerline{\rule[1ex]{\textwidth}{0.5ex}}
+  \end{figure}
+}
+\else % !iflatexml %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{codelisting}[5]{%
  \def\codelistingtype{#1}     % f for float, p for ``in page''
  \def\codelistinglabel{#2}    % \label tag
  \def\codelistingcaption{#3}  % caption
- % Parameter #4 is used in the \html version, and is a \ref-style
- % tag to the location in the main text describing the codelisting.
+ \def\codelistingdescription{#4} % Link back to text
+ \def\codelistingdesctype{#5}    % Link anchor type: ref or hyperlink
+ \ifthenelse{\equal{\codelistingdesctype}{ref}}{
+   \newcommand{\cldxyz}{\htmlref{(description)}{\codelistingdescription}}
+ }{
+   \newcommand{\cldxyz}{\ptlink{(description)}{\codelistingdescription}}
+ }
  \if\codelistingtype f \begin{figure}
  \fi
 }{
- \if\codelistingtype f  
-   \caption{\codelistingcaption\label{\codelistinglabel}}\end{figure}
+ \if\codelistingtype f
+   \caption{\codelistingcaption\label{\codelistinglabel}\notpsonly{
+       \protect\cldxyz}}\end{figure}
+   % Note space between caption and (description)!
  \else
     \nopagebreak\parbox{\textwidth}{
     \begin{center}
     \refstepcounter{figure}
-    Figure \thefigure: {\codelistingcaption\label{\codelistinglabel}}
+    Figure \thefigure: {\codelistingcaption\label{\codelistinglabel}\notpsonly{
+    \cldxyz}}  % Note space between caption and (description)!
     \end{center}
    }\pagebreak[2]
  \fi
 }
+
+\fi % iflatexml %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %end{latexonly}
 
 \html{
-\newenvironment{codelisting}[4]{%
+\newenvironment{codelisting}[5]{%
   \addtocounter{figure}{1}\label{#2}
   \HTMLsetenv{codelistingcaption}{#3}
   \HTMLsetenv{textlink}{#4}
+  \HTMLsetenv{desctype}{#5}   % Link anchor type: ref or hyperlink
+  % A cunning plan for conditional processing:
+  \HTMLsetenv{Xclref}{\htmlonlyref{(description)}{#4}}
+  \HTMLsetenv{Xclhyperlink}{\ptlink{(description)}{#4}}
+  \HTMLsetenv{backlink}{\HTMLget{Xcl#5}}
   \htmlrule
 }{
   \begin{center}
   Figure \thefigure:
     \HTMLget{codelistingcaption}
-    \htmlref{(Description.)}{\HTMLget{textlink}}
+    \HTMLget{backlink}
   \end{center}
   \htmlrule
 }}
+
+% List structure compatible with latex, pdflatex, latex2html, and
+% latexml that can be used to create aligned text like
+%
+%           tclsh oommf.tcl oxspkg list
+%    or
+%           tclsh oommf.tcl oxspkg listfiles pkg
+%    or
+%           tclsh oommf.tcl oxspkg readme pkg
+%
+% with latex code
+%
+%    \begin{duplex}
+%    \item \verb+tclsh oommf.tcl oxspkg list+
+%    \item[\textbf{or}]\html{\\}
+%    \item \verb+tclsh oommf.tcl oxspkg listfiles pkg [pkg ...]+
+%    \item[\textbf{or}]\html{\\}
+%    \item \verb+tclsh oommf.tcl oxspkg readme pkg [pkg ...]+
+%    \end{duplex}
+%
+% Note the interspersed \item commands with labels and no text and text
+% with no labels. If you don't include the \html{\\} in the no text
+% case then latex2html puts the successive item on the same line.
+%
+\newenvironment{duplex}%
+{\begin{list}%
+     {\hspace{\notlatexmlonly{2em}\latexmlonly{4em}}} % labeling
+     { \setlength{\leftmargin}{0.5em}
+       \setlength{\listparindent}{0pt}
+       \setlength{\parindent}{0pt}
+       \setlength{\itemsep}{-0.5\baselineskip}
+       \setlength{\labelwidth}{0pt}
+     } % set spacing
+}{\end{list}}
 
 
 % Ersatz figure environment.  This is a standard figure environment in
@@ -314,10 +1032,22 @@
 % want this, for example if the figure data is already in bitmap format.
 % Also, we may want to throw in an ALT tag.
 % SAMPLE USAGE:
-%   \ofig{\includeimage{6in}{!}{oxsclass}{OXS top-level class
-%         diagram}}{OXS top-level class diagram.}{fig:oxsclass}
+%   \ofig{\includeimage{6in}{!}{oxsclass}{Oxs class diagram}}{OXS
+%        top-level class diagram.}{fig:oxsclass}
+% Note: The fourth argument to \includeimage is an ALT tag. Beware
+%   that newlines in the ALT tag field cause breakage in LaTeX2HTML
+%   handling that results in the ALT tag being dropped altogether.
 %
-\latex{
+%begin{latexonly}
+\iflatexml
+% \newcommand{\ofig}[3]%
+% {\begin{center}
+%  \addtocounter{figure}{1}\label{#3}
+%  \textbf{Figure \thefigure: #2}\\
+%  #1
+% \end{center}}
+%
+%
 \newcommand{\ofig}[3]{%
 \begin{figure}
  \begin{center}
@@ -325,7 +1055,16 @@
    \caption{#2\label{#3}}
  \end{center}
 \end{figure}}
-}
+\else
+\newcommand{\ofig}[3]{%
+\begin{figure}
+ \begin{center}
+   #1\\
+   \caption{#2\label{#3}}
+ \end{center}
+\end{figure}}
+\fi
+%end{latexonly}
 \html{
 \newcommand{\ofig}[3]%
 {\begin{center}
@@ -372,12 +1111,24 @@
 %   as the PDF.
 
 %begin{latexonly}
+\iflatexml
+% includepic for latexml
 \newcommand{\includepic}[2]{%
-\scalebox{1.0}{\includegraphics{psfiles/#1.ps}} } \pdfonly{
-\renewcommand{\includepic}[2]{%
-\scalebox{1.0}{\includegraphics{pngfiles/#1.png}} } }
+\scalebox{1.0}{\includegraphics{pngfiles/#1.png}} }
+\else
+ \ifnum\oommfpdf=0
+   % includepic for latex
+   \newcommand{\includepic}[2]{%
+   \scalebox{1.0}{\includegraphics{psfiles/#1.ps}} }
+ \else
+   % includepic for pdflatex
+   \newcommand{\includepic}[2]{%
+   \scalebox{1.0}{\includegraphics{pngfiles/#1.png}} }
+ \fi
+\fi
 %end{latexonly}
 \begin{htmlonly}
+% includepic for latex2html
 \newcommand{\includepic}[2]{%
 \HTMLcode[../giffiles/#1.gif,ALT="#2"]{IMG}
 }
@@ -390,21 +1141,40 @@
 %   the corresponding dimension will be scaled as necessary
 %   to keep the original aspect ratio.  Presently these two
 %   parameters are used only in the LaTeX code; under HTML
-%   graphic is brought directly in without any scaling.
+%   (both LaTeX2HTML and LaTeXML) the graphic is brought
+%   directly in without any scaling.
 %     Basename is the name of the graphic to include,
 %   expanded as psfiles/basename.ps under latex, and
-%   giffiles/basename.gif under html.
+%   giffiles/basename.gif or pngfiles/basename.png under html.
 %     Altstring it a string to be passed to the ALT= tag
-%   in HTML.  It is not used in the LaTeX code.
+%   in HTML. It works with latex2html, but is ignored by
+%   latex and pdflatex. It is also currently ignored by
+%   latexml, although there has been some discussion on this
+%   on the latexml github issues page, Feb-Dec 2021. Check
+%   back later?
+%
+%   NB: The ALT tag is mostly read verbatim, and newlines cause breakage
+%       resulting in the ALT tag being dropped altogether.  Whitespace
+%       is retained, but LaTeX non-breaking spaces characters "~" are
+%       converted to HTML "&nbsp;". This can be used to protect text
+%       against automatic line splitting from text editors.
+%
 %begin{latexonly}
-\newcommand{\includeimage}[4]{%
-\resizebox{#1}{#2}{\includegraphics{psfiles/#3.ps}}
-}
-\pdfonly{%
+\iflatexml % latexml
 \renewcommand{\includeimage}[4]{%
-\resizebox{#1}{#2}{\includegraphics{pngfiles/#3.png}}
+\includegraphics{pngfiles/#3.png}%
 }
+\else
+\ifnum\oommfpdf=0 % latex
+\newcommand{\includeimage}[4]{%
+\resizebox{#1}{#2}{\includegraphics{psfiles/#3.ps}}%
 }
+\else % pdflatex
+\newcommand{\includeimage}[4]{%
+\resizebox{#1}{#2}{\includegraphics{pngfiles/#3.png}}%
+}
+\fi % end \oommfpdf=0
+\fi % end \iflatexml
 %end{latexonly}
 \begin{htmlonly}
 \newcommand{\includeimage}[4]{%
@@ -412,15 +1182,26 @@
 }
 \end{htmlonly}
 
-% Work around for some apparently broken LaTeX2HTML Table of Contents
+% Workaround for some apparently broken LaTeX2HTML Table of Contents
 % controls.
+% Also, a hackish way to stop LaTeXML file splitting at said sections.
+% I think it may be possible to accomplish this via an appropriate XPATH
+% option to --splitpath=, but I haven't been able to figure one out.
 \latex{
-\def\ssechead{\subsection*}
-\def\sssechead{\subsubsection*}
+\iflatexml
+ \newcommand{\starsechead}[1]{\par\noindent{\Large\textbf{#1}}\\}
+ \newcommand{\starssechead}[1]{\par\noindent{\large\textbf{#1}}\\}
+ \newcommand{\starsssechead}[1]{\par\noindent{\large\textbf{#1}}\\}
+\else
+ \def\starsechead{\section*}
+ \def\starssechead{\subsection*}
+ \def\starsssechead{\subsubsection*}
+\fi
 }
 \html{
-\newcommand{\ssechead}[1]{\par\noindent{\Large\bf{#1}}\\}
-\newcommand{\sssechead}[1]{\par\noindent{\large\bf{#1}}\\}
+\newcommand{\starsechead}[1]{\par\noindent{\Large\bf{#1}}\\}
+\newcommand{\starssechead}[1]{\par\noindent{\large\bf{#1}}\\}
+\newcommand{\starsssechead}[1]{\par\noindent{\large\bf{#1}}\\}
 }
 
 

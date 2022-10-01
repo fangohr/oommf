@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Initial magnetization</TITLE>
+<META NAME="description" CONTENT="Initial magnetization">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Experiment_parameters.html">
+<LINK REL="previous" HREF="Part_geometry.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Experiment_parameters.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1141"
+  HREF="Experiment_parameters.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1137"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1131"
+  HREF="Part_geometry.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1139"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1142"
+  HREF="Experiment_parameters.html">Experiment parameters</A>
+<B> Up:</B> <A NAME="tex2html1138"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1132"
+  HREF="Part_geometry.html">Part geometry</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001814000000000000000"></A><A NAME="sec:mif1initmag"></A>
+<BR>
+Initial magnetization
+</H2><A NAME="21452"></A>
+
+<UL>
+<LI><B>Init Mag:</B> Name of routine to use to initialize the
+   simulation magnetization directions (as a function of position), and
+   routine parameters, if any.  Optional, with default Random.  The list
+   of routines is long, and it is easy to add new ones.  See the file
+   <TT><B>oommf/app/mmsolve/maginit.cc</B></TT> for details.  A few of the more
+   useful routines are:
+   
+<UL>
+<LI><B>Random</B>
+<BR>
+Random directions on the unit sphere.  This
+         is somewhat like a quenched thermal demagnetized state.
+</LI>
+<LI><B>Uniform theta phi</B>
+<BR>
+Uniform magnetization in the direction
+         indicated by the two additional parameters, theta and phi, where the first is the angle
+         from the <B><I>z</I></B>-axis (in degrees), and the second is the angle
+         from the <B><I>x</I></B>-axis (in degrees) of the projection onto the
+         <B><I>xy</I></B>-plane.
+</LI>
+<LI><B>Vortex</B>
+<BR>
+Fits an idealized vortex<A NAME="21463"></A> about the center of the
+         sample.
+</LI>
+<LI><B>avfFile filename</B>
+<BR>
+The second parameter specifies an OVF/VIO (i.e., ``any''
+         vector field) file<A NAME="21465"></A><A NAME="21466"></A> to use to
+         initialize the magnetization. The grid in the input file will
+         be scaled as necessary to fit the grid in the current
+         simulation.  The file must be accessible to the intended solver
+         application.
+   
+</LI>
+</UL>
+</LI>
+</UL>
+
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

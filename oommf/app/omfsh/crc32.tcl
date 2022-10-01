@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName crc32
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 Oc_CommandLine Option console {} {} ;# Remove -console option
 Oc_CommandLine Option tk {} {} ;# Remove -tk option

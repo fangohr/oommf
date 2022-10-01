@@ -540,8 +540,8 @@ if {$timeout_index >= 0 && $timeout_index+1 < [llength $argv]} {
    set ul [expr {$timeout_index + 1}]
    set val [lindex $argv $ul]
    set argv [lreplace $argv $timeout_index $ul]
-   if {![regexp {^[0-9]*$} $val]} {
-      puts stderr "ERROR: Option timeout must be a non-negative integer"
+   if {![string is double $val] || $val<0} {
+      puts stderr "ERROR: Option timeout must be a non-negative number"
       exit 2
    }
    set EXEC_TEST_TIMEOUT $val
@@ -1561,7 +1561,7 @@ proc TimeoutExec { cmd timeout } {
    # -1 => Timeout
    set ::TE_results {}
    set ::TE_runcode 0
-   set timeout [expr {$timeout*1000}]  ;# Convert to ms
+   set timeout [expr {int(ceil($timeout*1000))}]  ;# Convert to ms
    set cmd [linsert $cmd 0 {|}]
    set chan [open $cmd r]
    fconfigure $chan -blocking 0 -buffering none
@@ -1789,7 +1789,11 @@ proc RunTest { testcount subdesc runtestparams } {
 
 proc LaunchTest { testcount subdesc runtestparams } {
    if {[catch {RunTest $testcount $subdesc $runtestparams} result]} {
-      puts stderr "ERROR (test $testcount): $result"
+      set subtestname [lindex $subdesc 0]
+      if {[llength [dict get $runtestparams lines]]>1} {
+         append subtestname " [lindex $subdesc 1]"
+      }
+      set result [list $subtestname RUNERROR "ERROR (test $testcount): $result\n"]
    }
    # Publish test result
    if {$::use_tcl_threads} {
@@ -1952,7 +1956,7 @@ if {$parallel_count>1} {
    foreach var {
       verbose oldskiplabels newskiplabels swaplabels ignoreextra SIGFIGS
       TCLSH OOMMF verbose avfdiff_basecmd nuldevice main_thread
-      use_tcl_threads
+      use_tcl_threads KILL_COMMAND KILL_COMMAND_B KILL_PGREP
    } {
       if {[info exists $var]} {
          append initscript "[list set $var [set $var]]\n"

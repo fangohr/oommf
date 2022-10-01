@@ -9,29 +9,32 @@ sub custom_title_hook {
     # return ""; to get the default, which is of the form nodeN.html
 
     $cth_count++;
-    if ($title eq "OOMMF Documentation") { 
-	$title = "userguide";		 
+    if ($title eq "OOMMF Documentation") {
+        $title = "userguide";
     } elsif ($title eq "Quick Start: Example OOMMF Session") {
-	$title = "quickstart";
+        $title = "quickstart";
     } elsif ($title eq "File Formats") {
-	$title = "fileformats";
+        $title = "fileformats";
     } elsif ($title =~ /.*mifconvert.*/) {
-	$title = "mifconvert";
+        $title = "mifconvert";
     } elsif ($title =~ /Vector field format.*/) {
-	$title = "vectorfieldformat";
+        $title = "vectorfieldformat";
     } elsif ($title =~ /Bibliography.*/) {
-	$title = "bibliography";
+        $title = "bibliography";
+    } elsif ($title =~ /References.*/) {
+        $title = "references";
     } elsif ($title =~ /Index/) {
-	$title = "docindex";
+        $title = "docindex";
     } else {
-	my $small_words = "a|an|and|of|on|the|";
-	my $to_underscore = '\s+|~|:|/|\(|\)|<|>';
-	$title =~ s/<b>|<\/b>//gio;
-	$title =~ s/\b($small_words)\b//gio;
-	$title =~ s/$to_underscore/_/go;
-	$title =~ s/_+/_/go;
-	$title =~ s/(^_|_$)//go;
-#	$title = "N${cth_count}_$title";
+        my $small_words = "a|an|and|of|on|the|";
+        my $to_underscore = '\s+|~|:|/|\(|\)|<|>';
+        $title =~ s/<b>|<\/b>//gio;
+        $title =~ s/-/ /gio;
+        $title =~ s/\b($small_words)\b//gio;
+        $title =~ s/$to_underscore/_/go;
+        $title =~ s/_+/_/go;
+        $title =~ s/(^_|_$)//go;
+#       $title = "N${cth_count}_$title";
     }
 
     return "$title";

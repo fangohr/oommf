@@ -1,0 +1,119 @@
+diff -ru southampton_cubicanisotropy8/cubicanisotropy8.cc southampton_cubicanisotropy8-new/cubicanisotropy8.cc
+--- southampton_cubicanisotropy8/cubicanisotropy8.cc	2017-06-14 13:50:09.000000000 -0400
++++ southampton_cubicanisotropy8-new/cubicanisotropy8.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -65,16 +65,16 @@
+  Oxs_EnergyData& oed
+  ) const
+ {
+-  const Oxs_MeshValue<REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+   oed.field = oed.field_buffer;
+-  Oxs_MeshValue<REAL8m>& energy = *oed.energy_buffer;
++  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
+   Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+ 
+-  UINT4m size = state.mesh->Size();
++  OC_INDEX size = state.mesh->Size();
+   if(mesh_id != state.mesh->Id()) {
+     // This is either the first pass through, or else mesh
+     // has changed.
+@@ -84,10 +84,10 @@
+     K3_init->FillMeshValue(state.mesh,K3);
+     axis1_init->FillMeshValue(state.mesh,axis1);
+     axis2_init->FillMeshValueOrthogonal(state.mesh,axis1,axis2);
+-    for(UINT4m i=0;i<size;i++) {
++    for(OC_INDEX i=0;i<size;i++) {
+       // Much of the code below requires axis1 and axis2 to be
+       // orthogonal unit vectors.  Guarantee this is the case:
+-      const REAL8m eps = 1e-14;
++      const OC_REAL8m eps = 1e-14;
+       if(fabs(axis1[i].MagSq()-1)>eps) {
+ 	string msg="Invalid initialization detected for object "
+ 	  + string(InstanceName())
+@@ -111,7 +111,7 @@
+   }
+ 
+ 
+-  for(UINT4m i=0;i<size;++i) {
++  for(OC_INDEX i=0;i<size;++i) {
+     const ThreeVector& u1 = axis1[i];
+     const ThreeVector& u2 = axis2[i];
+     const ThreeVector&  m = spin[i];
+@@ -160,12 +160,12 @@
+     // to be more accurate.  At a minimum, in the above expressions
+     // one should at least insure that a3^2 is non-negative.
+ 
+-    REAL8m k1 = K1[i];
+-    REAL8m k2 = K2[i];
+-    REAL8m k3 = K3[i];
+-    REAL8m field_mult1 = (-2/MU0)*k1*Ms_inverse[i];
+-    REAL8m field_mult2 = (-2/MU0)*k2*Ms_inverse[i];
+-    REAL8m field_mult3 = (-4/MU0)*k3*Ms_inverse[i];
++    OC_REAL8m k1 = K1[i];
++    OC_REAL8m k2 = K2[i];
++    OC_REAL8m k3 = K3[i];
++    OC_REAL8m field_mult1 = (-2/MU0)*k1*Ms_inverse[i];
++    OC_REAL8m field_mult2 = (-2/MU0)*k2*Ms_inverse[i];
++    OC_REAL8m field_mult3 = (-4/MU0)*k3*Ms_inverse[i];
+     if(field_mult1==0.0 && field_mult2==0.0 && field_mult3==0.0) {
+       energy[i]=0.0;
+       field[i].Set(0.,0.,0.);
+@@ -173,9 +173,9 @@
+     }
+ 
+     ThreeVector u3 = u1;    u3 ^= u2;
+-    REAL8m a1 = u1*m;  REAL8m a1sq = a1*a1; REAL8m a14t = a1sq*a1sq;
+-    REAL8m a2 = u2*m;  REAL8m a2sq = a2*a2; REAL8m a24t = a2sq*a2sq;
+-    REAL8m a3 = u3*m;  REAL8m a3sq = a3*a3; REAL8m a34t = a3sq*a3sq;
++    OC_REAL8m a1 = u1*m;  OC_REAL8m a1sq = a1*a1; OC_REAL8m a14t = a1sq*a1sq;
++    OC_REAL8m a2 = u2*m;  OC_REAL8m a2sq = a2*a2; OC_REAL8m a24t = a2sq*a2sq;
++    OC_REAL8m a3 = u3*m;  OC_REAL8m a3sq = a3*a3; OC_REAL8m a34t = a3sq*a3sq;
+ 
+     energy[i]  = k1 * (a1sq*a2sq+a1sq*a3sq+a2sq*a3sq);
+     energy[i] += k2 * ( a1sq*a2sq*a3sq ); 
+diff -ru southampton_cubicanisotropy8/cubicanisotropy8.h southampton_cubicanisotropy8-new/cubicanisotropy8.h
+--- southampton_cubicanisotropy8/cubicanisotropy8.h	2017-06-14 13:50:09.000000000 -0400
++++ southampton_cubicanisotropy8-new/cubicanisotropy8.h	2022-01-22 02:31:37.000000000 -0500
+@@ -47,10 +47,10 @@
+   Oxs_OwnedPointer<Oxs_ScalarField> K3_init;
+   Oxs_OwnedPointer<Oxs_VectorField> axis1_init;
+   Oxs_OwnedPointer<Oxs_VectorField> axis2_init;
+-  mutable UINT4m mesh_id;
+-  mutable Oxs_MeshValue<REAL8m> K1;
+-  mutable Oxs_MeshValue<REAL8m> K2;
+-  mutable Oxs_MeshValue<REAL8m> K3;
++  mutable OC_UINT4m mesh_id;
++  mutable Oxs_MeshValue<OC_REAL8m> K1;
++  mutable Oxs_MeshValue<OC_REAL8m> K2;
++  mutable Oxs_MeshValue<OC_REAL8m> K3;
+   mutable Oxs_MeshValue<ThreeVector> axis1;
+   mutable Oxs_MeshValue<ThreeVector> axis2;
+   /// K1, K2, K3, axis1 and axis2 are cached values filled by corresponding
+diff -ru southampton_cubicanisotropy8/cubicEight_200pc.mif southampton_cubicanisotropy8-new/cubicEight_200pc.mif
+--- southampton_cubicanisotropy8/cubicEight_200pc.mif	2017-06-14 13:50:09.000000000 -0400
++++ southampton_cubicanisotropy8-new/cubicEight_200pc.mif	2022-01-22 02:31:37.000000000 -0500
+@@ -29,7 +29,7 @@
+   }
+ }
+ 
+-Specify Oxs_CubicAnisotropy8:cubic {
++Specify Southampton_CubicAnisotropy8:cubic {
+   K1 { Oxs_AtlasScalarField {
+     atlas :ErFe2Atlas
+     values {
+diff -ru southampton_cubicanisotropy8/cubicEight_50pc.mif southampton_cubicanisotropy8-new/cubicEight_50pc.mif
+--- southampton_cubicanisotropy8/cubicEight_50pc.mif	2017-06-14 13:50:09.000000000 -0400
++++ southampton_cubicanisotropy8-new/cubicEight_50pc.mif	2022-01-22 02:31:37.000000000 -0500
+@@ -29,7 +29,7 @@
+   }
+ }
+ 
+-Specify Oxs_CubicAnisotropy8:cubic {
++Specify Southampton_CubicAnisotropy8:cubic {
+   K1 { Oxs_AtlasScalarField {
+     atlas :ErFe2Atlas
+     values {

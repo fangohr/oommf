@@ -5,7 +5,7 @@
  *
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 
 #include "nb.h"
@@ -99,8 +99,11 @@ Oxs_SpinXferEvolve::Oxs_SpinXferEvolve(
     eps_prime_init.SetAsOwner(dynamic_cast<Oxs_ScalarField*>(foo));
   }
 
-  // Direction of current flow.  This is *opposite* the direction
-  // of electron flow.
+  // Direction of current flow.  This is *opposite* the direction of
+  // electron flow. NB: If propagate_mp is false, then J_direction only
+  // affects the size of thickness t, and thereby the magnitude of beta.
+  // Moreover, in that context J_direction "+x" and "-x" (likewise +-y,
+  // +-z) behave exactly the same.
   J_direction = JD_INVALID;
   String J_direction_str = GetStringInitValue("J_direction","-z");
   Oxs_ToLower(J_direction_str);

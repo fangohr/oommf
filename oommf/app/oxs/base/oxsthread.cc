@@ -232,45 +232,14 @@ Oxs_ThreadLocalMap::DeleteItem
 // Note: The return type differs by OS; on unix it is void, on
 //       Windows it is unsigned.
 
-#if (OC_SYSTEM_TYPE==OC_WINDOWS)
-#include <signal.h>
-extern "C" {
-void thread_abort_handler(int)
-{
-  signal(SIGABRT,SIG_DFL); // Reset to default handler, to avoid recursion
-  fprintf(stderr,"*** THREAD ABORT (Oxs_BadThread) ***\n");
-  abort();
-}}
-#endif // OC_WINDOWS
-
 void _Oxs_Thread_threadmain(Oxs_Thread* othread)
 { // NB: Be careful, this routine and any routine called from inside
   //     must be re-entrant!
   // NB: It is assumed that the pointer to object "othread" remains
   //     valid throughout the life of the thread.
 
-#if (OC_SYSTEM_TYPE==OC_WINDOWS)
-  signal(SIGABRT,thread_abort_handler); // "assert" handling
-  /// The above signal usage was put in place to improve assert
-  /// handling with Windows Visual C++
-#endif // OC_WINDOWS
-
-  Oc_NumaRunOnNode(othread->thread_number);
-
-  // Reserve capacity in thread_local locker.  This can protect against
-  // implementation bugs in thread_local associative containers.
-#if defined(__PGI) || defined(__PGI__)
-  {
-    // Workaround for STL thread-local container initialization with
-    // Portland Group C++ compiler 19.4-0
-    Oxs_ThreadMapDataObject dummy;
-    OXS_THREADMAP locktest;
-    locktest["DUMMY"] = &dummy;
-    Oxs_ThreadLocalMap::locker = locktest;
-    Oxs_ThreadLocalMap::locker.erase("DUMMY");
-  }
-#endif // defined(__PGI) || defined(__PGI__)
-  Oxs_ThreadLocalMap::locker.reserve(256);
+#define ERRLOCATION std::string(", caught in file " \
+         __FILE__ " at line " OC_STRINGIFY(__LINE__))
 
   // Break out references to object data.  Copy thread_number on the
   // assumption that it is fixed throughout object lifetime.
@@ -288,6 +257,49 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
   oxs_thread_number = thread_number; // Set thread-local copy
 
   std::vector<Oxs_Thread*> &launch_threads = othread->launch_threads;
+
+  // Error handling
+  std::string threadstr = std::string("\nException thrown in thread ")
+    + std::to_string(thread_number);
+
+  try {
+    // Move more of the thread initialization code into this try block
+    // as needed.
+    Oc_AsyncError::RegisterThreadHandler();
+    Oc_NumaRunOnNode(othread->thread_number);
+  } catch (const Oc_Exception& ocerr) {
+    Oc_AutoBuf msg;
+    ocerr.ConstructMessage(msg);
+    msg += threadstr + ERRLOCATION;
+    Oxs_ThreadError::SetError(msg.GetStr());
+    throw;
+  } catch(const String& smsg) {
+    Oxs_ThreadError::SetError(smsg + threadstr + ERRLOCATION);
+    throw;
+  } catch(const char* cmsg) {
+    Oxs_ThreadError::SetError(String(cmsg) + threadstr + ERRLOCATION);
+  } catch(...) {
+    std::string errmsg
+      = std::string("Unrecognized exception thrown in thread ")
+      + std::to_string(thread_number);
+    Oxs_ThreadError::SetError(errmsg + ERRLOCATION);
+    throw;
+  }
+
+  // Reserve capacity in thread_local locker.  This can protect against
+  // implementation bugs in thread_local associative containers.
+#if defined(__PGI) || defined(__PGI__)
+  {
+    // Workaround for STL thread-local container initialization with
+    // Portland Group C++ compiler 19.4-0
+    Oxs_ThreadMapDataObject dummy;
+    OXS_THREADMAP locktest;
+    locktest["DUMMY"] = &dummy;
+    Oxs_ThreadLocalMap::locker = locktest;
+    Oxs_ThreadLocalMap::locker.erase("DUMMY");
+  }
+#endif // defined(__PGI) || defined(__PGI__)
+  Oxs_ThreadLocalMap::locker.reserve(256);
 
 #if OC_CHILD_COPY_FPU_CONTROL_WORD
   // Copy FPU control data (which includes floating point precision
@@ -324,13 +336,6 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
   start.count = 1; // Ready to wait
   start.cond.notify_all();
 
-  // Error handling
-  char errbuf[256];
-  String threadstr;
-  Oc_Snprintf(errbuf,sizeof(errbuf),"\nException thrown in thread %d",
-              thread_number);
-  threadstr = errbuf;
-
   // Action loop
   while(1) {
     assert(startlck.owns_lock());
@@ -350,22 +355,23 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
         }
       }
       runobj->Cmd(thread_number,data);
-    } catch (Oxs_Exception& oxserr) {
-      Oxs_ThreadError::SetError(oxserr.MessageText() + threadstr);
-    } catch (Oc_Exception& ocerr) {
+    } catch (const Oxs_Exception& oxserr) {
+      Oxs_ThreadError::SetError(oxserr.MessageText()
+                                + threadstr + ERRLOCATION);
+    } catch (const Oc_Exception& ocerr) {
       Oc_AutoBuf msg;
       ocerr.ConstructMessage(msg);
-      msg += threadstr;
+      msg += threadstr + ERRLOCATION;
       Oxs_ThreadError::SetError(msg.GetStr());
-    } catch(String& smsg) {
-      Oxs_ThreadError::SetError(smsg + threadstr);
+    } catch(const String& smsg) {
+      Oxs_ThreadError::SetError(smsg + threadstr + ERRLOCATION);
     } catch(const char* cmsg) {
-      Oxs_ThreadError::SetError(String(cmsg) + threadstr);
+      Oxs_ThreadError::SetError(String(cmsg) + threadstr + ERRLOCATION);
     } catch(...) {
-      Oc_Snprintf(errbuf,sizeof(errbuf),
-                  "Unrecognized exception thrown in thread %d\n",
-                  thread_number);
-      Oxs_ThreadError::SetError(String(errbuf));
+      std::string errmsg
+        = std::string("Unrecognized exception thrown in thread ")
+        + std::to_string(thread_number);
+      Oxs_ThreadError::SetError(errmsg + ERRLOCATION);
     }
     assert(nullptr != stop && startlck.owns_lock());
 
@@ -397,6 +403,7 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
 #if _OXS_THREAD_MAKE_CHILD_INTERPS
   Tcl_DeleteInterp(thread_interp);
 #endif
+#undef ERRLOCATION
 }
 
 ////////////////////////////////////////////////////////////////////////

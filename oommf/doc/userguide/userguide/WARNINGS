@@ -1,9 +1,7 @@
-No implementation found for style `upquote'
-No implementation found for style `tocloft'
+No implementation found for style `multirow'
 An unknown named entity (&micro;) appears in the source text.
 An unknown named entity (&mdash;) appears in the source text.
 An unknown named entity (&nbsp;) appears in the source text.
+couldn't convert character Rdot into available encodings
 
-Substitution of arg to newlabelxx delayed.
-
-? brace missing for \oldcontentsline
+ ...set $ACCENT_IMAGES  to get an image 

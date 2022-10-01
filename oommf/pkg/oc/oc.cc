@@ -3,16 +3,16 @@
  *      The OOMMF Core extension.
  *
  *      This extension provides a set of C++ classes and functions and
- * Tcl commands of general utility to all OOMMF applications.  This 
- * includes portability support for managing the differences among 
- * computing platforms, compilers, and Tcl/Tk library versions.  
+ * Tcl commands of general utility to all OOMMF applications.  This
+ * includes portability support for managing the differences among
+ * computing platforms, compilers, and Tcl/Tk library versions.
  *
  * Because there are platform and compiler differences in which C++ function
  * serves as the main entry point to an application, and what arguments
  * it receives from the operating system, those entry points are provided
  * as part of this extension, so the portability burden is borne here and
  * is not passed to application writers.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2015/10/13 19:43:40 $
@@ -29,6 +29,10 @@
 
 #include <exception>
 #include <iostream>
+#include <list>
+#include <string>
+#include <thread>
+#include <vector>
 
 /* Header file for this extension */
 #include "autobuf.h"
@@ -56,7 +60,7 @@
 
 OC_USE_STD_NAMESPACE;
 OC_USE_EXCEPTION;
-/* End includes */     
+/* End includes */
 
 /*
  * Function to return cache size, in bytes.
@@ -79,7 +83,13 @@ size_t Oc_CacheSize(int level)
 /*
  * The global interpreter of the application.
  */
-static Tcl_Interp *globalInterp = (Tcl_Interp *)NULL;
+namespace { // Unnamed namespace
+  Tcl_Interp *globalInterp = (Tcl_Interp *)nullptr;
+  std::atomic<std::thread::id> globalInterpThread;
+}
+OC_BOOL Oc_IsGlobalInterpThread() {
+  return (globalInterpThread == std::this_thread::get_id());
+}
 
 /*
  * Do we load the Tk extension? (Default = yes)
@@ -87,7 +97,7 @@ static Tcl_Interp *globalInterp = (Tcl_Interp *)NULL;
 static OC_BOOL use_tk = 1;
 
 /*
- * Do we parse the command line? 
+ * Do we parse the command line?
  */
 static OC_BOOL parseCommandLine = 0;
 
@@ -427,7 +437,7 @@ void DisableStdio(int)
   Oc_AutoBuf nulout(Tcl_GetStringResult(globalInterp));
 #else
   char buf[512];
-  sprintf(buf,"/tmp/dummynul-%d",getpid());
+  sprintf(buf,"/tmp/dummynul-%d",Oc_GetPid());
   Oc_AutoBuf nulout(buf);
 #endif // DEBUG_DISABLESTDIO
 
@@ -446,7 +456,7 @@ void DisableStdio(int)
 #ifdef DEBUG_DISABLESTDIO
   setvbuf(stdout,NULL,_IONBF,0);
   setvbuf(stderr,NULL,_IONBF,0);
-  fprintf(stderr,"nul opened by %d\n",getpid());
+  fprintf(stderr,"nul opened by %d\n",Oc_GetPid());
 #endif // DEBUG_DISABLESTDIO
 
   // Reset Tcl channels
@@ -538,7 +548,7 @@ IgnoreSignal(int signo)
 }
 
 static int
-Oc_IgnoreSignal(ClientData, Tcl_Interp *interp, int argc, char **argv) 
+Oc_IgnoreSignal(ClientData, Tcl_Interp *interp, int argc, char **argv)
 {
   Tcl_ResetResult(interp);
   if (argc != 2) {
@@ -807,6 +817,58 @@ void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData cd)
   }
 }
 
+// Access to Oc_Option database in global interp. Returns 1 on success
+// and stores the value in the export "value". If the value is not set
+// in the the database then the return is 0 and the export "value" is
+// unchanged. Throws an Oc_Exception on alloc or Tcl_Eval failure.
+// Note 1: This routine accesses the Oc_Option database in globalInterp,
+//         and so must only be called from the thread that set up
+//         globalInterp (i.e., the main thread.)
+// Note 2: The return value for Oc_GetOcOption is opposite that of
+//         Oc_Option Get, which returns 0 on success and 1 on failure.
+// Note 3: Throws on alloc failures don't release memory from successful
+//         allocs.
+OC_BOOL Oc_GetOcOption
+(const std::string& classname,
+ const std::string& option,
+ std::string& value)
+{
+#define OGOOTHROW(errmsg) OC_THROWEXCEPT("","Oc_GetOcOption",errmsg)
+  if(!Oc_IsGlobalInterpThread()) OGOOTHROW("Call from non-main thread.");
+  Tcl_Interp* interp=Oc_GlobalInterpreter();
+  if(interp == nullptr) OGOOTHROW("Global Tcl interp not set");
+
+  // Create a vector representing the Oc_Option Get command
+  std::vector<Tcl_Obj*> cmdvec;
+  cmdvec.push_back(Tcl_NewStringObj("Oc_Option",-1));
+  cmdvec.push_back(Tcl_NewStringObj("GetValue",-1));
+  cmdvec.push_back(Tcl_NewStringObj(classname.c_str(),int(classname.size())));
+  cmdvec.push_back(Tcl_NewStringObj(option.c_str(),int(option.size())));
+  for(auto it = cmdvec.begin(); it != cmdvec.end(); ++it) {
+    if(*it == nullptr) OGOOTHROW("Tcl_NewStringObj fail");
+  }
+  // Convert cmdvec into a Tcl list
+  Tcl_Obj* cmd = Tcl_NewListObj(int(cmdvec.size()),cmdvec.data());
+  if(cmd == nullptr) OGOOTHROW("Tcl_NewListObj fail");
+  Tcl_IncrRefCount(cmd);
+  // Note: Tcl_NewListObj automatically increments the ref count on each
+  // element. When the list is destroyed it decrements the ref count on
+  // each element it still holds.
+
+  Tcl_SavedResult saved;
+  Tcl_SaveResult(interp, &saved);
+  const int tcl_result
+    = Tcl_EvalObjEx(interp,cmd,TCL_EVAL_GLOBAL | TCL_EVAL_DIRECT);
+  if(tcl_result == TCL_OK) {
+    value = std::string(Tcl_GetStringResult(interp));
+  }
+  Tcl_RestoreResult(interp, &saved);
+  Tcl_DecrRefCount(cmd);
+#undef OGOOTHROW
+  return (tcl_result == TCL_OK);
+}
+
+
 // Multi-platform version of strerror_r.  Thread-safe.
 void Oc_StrError(int errnum,char* buf,size_t buflen)
 {
@@ -845,6 +907,167 @@ void Oc_StrError(int errnum,char* buf,size_t buflen)
  }
  buf[i] = '\0';
 }
+
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+// Windows equivalent of strerror.
+std::string Oc_WinStrError(DWORD errorID) {
+  // errorID is usually obtained via GetLastError().
+  HMODULE hMsgTable = LoadLibrary("NTDLL.DLL");
+  WCHAR* errbuf = nullptr;
+  DWORD msgsize = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER
+                  | FORMAT_MESSAGE_FROM_SYSTEM
+                  | FORMAT_MESSAGE_FROM_HMODULE
+                  | FORMAT_MESSAGE_IGNORE_INSERTS,
+                  hMsgTable, errorID,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPWSTR)(&errbuf), 0, nullptr);
+  // The system allocated errbuf is somehow fragile?! AFAICT any access
+  // beyond immediately copying it causes a crash. So, just copy and
+  // release as fast as possible.
+  Oc_AutoWideBuf errmsg(errbuf);
+  LocalFree(&errbuf);
+  FreeLibrary(hMsgTable);
+  std::string message;
+  if(msgsize) {
+    errmsg.Trim();
+    errmsg.NormalizeEOLs();
+    message = errmsg.GetUtf8Str();
+  } else {
+    message = std::string("Unrecognized error code ")
+      + std::to_string(errorID);
+  }
+  return message;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Windows security IDs (SIDs)
+
+// Obtain SID string for the owner of a file. On failure, empty string
+// is returned.
+std::string Oc_WinGetFileSID(const std::string& filename)
+{
+  std::string result;
+  Oc_TclObj filepath(filename.c_str());
+
+  const void* nativepath = Tcl_FSGetNativePath(filepath.GetObj());
+  PSID ownerSid = nullptr;
+  PSECURITY_DESCRIPTOR secd = nullptr;
+  LPSTR sidstr = nullptr; // Pointer to buffer
+  if (GetNamedSecurityInfoW(static_cast<const WCHAR*>(nativepath),
+                            SE_FILE_OBJECT,OWNER_SECURITY_INFORMATION,
+                            &ownerSid,nullptr, nullptr, nullptr,
+                            &secd) == ERROR_SUCCESS) {
+      // Success; convert to string
+    if(ConvertSidToStringSidA(ownerSid,&sidstr)) {
+      result = sidstr; // ANSI string
+    }
+  }
+  if(sidstr) LocalFree(sidstr);
+  if(secd)  LocalFree(secd); // Note: ownerSid points into secd
+  return result;
+}
+
+int OcWinGetFileSID // Tcl wrapper for preceding
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char **argv)
+{
+  Tcl_ResetResult(interp);
+  if (argc != 2) {
+    Tcl_AppendResult(interp, "Oc_WinGetFileSID must be called with"
+                     " one argument: filename", nullptr);
+    return TCL_ERROR;
+  }
+  std::string sidstr = Oc_WinGetFileSID(std::string(argv[1]));
+  Tcl_AppendResult(interp,sidstr.c_str(),nullptr);
+  return TCL_OK;
+}
+
+// Obtain SID string for current process. On failure, empty string is
+// returned. Based on code from TclWinFileOwned (Tcl 8.6.10).
+std::string Oc_WinGetCurrentProcessSID()
+{
+  std::string result;
+  HANDLE token;
+  if(OpenProcessToken(GetCurrentProcess(),TOKEN_QUERY,&token)) {
+    DWORD bufsz = 0;
+    GetTokenInformation(token,TokenUser,nullptr,0,&bufsz);
+    if(bufsz) {
+      std::vector<unsigned char> buffer(bufsz,'\0');
+      if(GetTokenInformation(token,TokenUser,buffer.data(),bufsz,&bufsz)) {
+        PSID usersid = (reinterpret_cast<PTOKEN_USER>(buffer.data()))->User.Sid;
+        LPSTR sidstr = nullptr; // Pointer to buffer
+        if(ConvertSidToStringSidA(usersid,&sidstr)) {
+          result = sidstr; // ANSI string
+        }
+        if(sidstr) LocalFree(sidstr);
+      }
+    }
+    CloseHandle(token);
+  }
+  return result;
+}
+
+int OcWinGetCurrentProcessSID // Tcl wrapper for preceding
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char ** /* argv */)
+{
+  Tcl_ResetResult(interp);
+  if (argc != 1) {
+    Tcl_AppendResult(interp,
+                     "Oc_WinGetCurrentProcessSID must be called with"
+                     " no arguments", nullptr);
+    return TCL_ERROR;
+  }
+  std::string sidstr = Oc_WinGetCurrentProcessSID();
+  Tcl_AppendResult(interp,sidstr.c_str(),nullptr);
+  return TCL_OK;
+}
+
+// Returns domain/account associated with a SID string.
+// Return is an empty string on error.
+std::string Oc_WinGetSIDAccountName
+(const std::string& sidstr)
+{
+  std::string result;
+  PSID psid = nullptr;
+  DWORD namesz = 0;
+  DWORD domainsz = 0;
+  SID_NAME_USE Use;
+  if(ConvertStringSidToSidA(sidstr.c_str(),&psid)) {
+    // Get buffer sizes
+    LookupAccountSidW(nullptr,psid,nullptr,&namesz,nullptr,&domainsz,&Use);
+    if(namesz>0 && domainsz>0) {
+      std::vector<WCHAR> namebuf(namesz,0);
+      std::vector<WCHAR> domainbuf(domainsz,0);
+      if(LookupAccountSidW(nullptr,psid,namebuf.data(),&namesz,
+                           domainbuf.data(),&domainsz,&Use)) {
+        result = Oc_AutoWideBuf(domainbuf.data()).GetUtf8Str()
+          + std::string("/")
+          + Oc_AutoWideBuf(namebuf.data()).GetUtf8Str();
+      }
+    }
+    if(psid) LocalFree(psid);
+  }
+  return result;
+}
+
+int OcWinGetSIDAccountName // Tcl wrapper for preceding
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char **argv)
+{
+  Tcl_ResetResult(interp);
+  if (argc != 2) {
+    Tcl_AppendResult(interp, "Oc_WinGetSIDAccountName must be called with"
+                     " one argument: SID string", nullptr);
+    return TCL_ERROR;
+  }
+  std::string sidstr = Oc_WinGetSIDAccountName(std::string(argv[1]));
+  Tcl_AppendResult(interp,sidstr.c_str(),nullptr);
+  return TCL_OK;
+}
+
+#endif // OC_WINDOWS
+
 
 static int
 LockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
@@ -893,11 +1116,11 @@ Oc_LockChannel(ClientData, Tcl_Interp *interp, int argc, char **argv)
   //          fd2 = open("myfile","r");
   //          close(fd2);
   //       also unlocks fd1!!!  This is dangerous, and I don't see
-  //       any way around it. :^( 
+  //       any way around it. :^(
   //          See "Advanced Programming in the Unix Environment,"
   //       W.R. Stevens, Addison-Wesley (1993) p373, for more
   //       details. -mjd 29-July-1999
-  // 
+  //
   //  The Windows locking mechanism behaves differently.  Only one write
   //  lock is permitted at any time on any file, and if one tries to
   //  re-lock an already locked file, the lock attempt will fail.  Also,
@@ -1024,7 +1247,7 @@ static void MakeNice()
 }
 
 static int
-Oc_MakeNice(ClientData, Tcl_Interp *interp, int argc, char **argv) 
+Oc_MakeNice(ClientData, Tcl_Interp *interp, int argc, char **argv)
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -1046,6 +1269,7 @@ ClearGlobalInterpreter(ClientData, Tcl_Interp *interp)
 {
   if (interp == globalInterp) {
     globalInterp = (Tcl_Interp *) NULL;
+    globalInterpThread = std::thread::id(); // Reset to null thread
   } else {
     Tcl_Panic(OC_CONST84_CHAR("Global interpreter mismatch!"));
   }
@@ -1157,14 +1381,14 @@ int &consoleRequested)
   return TCL_OK;
 }
 
-/* 
+/*
  * Removes argument "remove_index" from argument list by
  * translating all arguments after it down one spot and
  * decrementing argc.
  */
-static void 
+static void
 removeArg(int &argc, CONST84 char ** argv, int remove_index)
-{ 
+{
   if(remove_index<0 || remove_index>=argc) return;
   for(int j=remove_index+1;j<argc;j++) {
     argv[j-1]=argv[j];
@@ -1175,7 +1399,7 @@ removeArg(int &argc, CONST84 char ** argv, int remove_index)
 /*
  * Extract Oc options from Tcl argv variable.
  */
-static void 
+static void
 extractOcOptions(Tcl_Interp *interp)
 {
   char scratch[256];
@@ -1192,7 +1416,7 @@ extractOcOptions(Tcl_Interp *interp)
       // End flag processing
       break;
     }
-    
+
     // Known options
     if(i+1<argc && strcmp(argv[i],"-tk")==0) {
       // Use/don't use Tk option: -tk OC_BOOL
@@ -1219,71 +1443,70 @@ extractOcOptions(Tcl_Interp *interp)
   Tcl_Free((char *)argvstr);
 }
 
-int 
+int
 Oc_Init(Tcl_Interp *interp)
 {
   char scratch[256];
 
-  if (globalInterp == (Tcl_Interp *)NULL) {
+  if (globalInterp == (Tcl_Interp *)nullptr) {
+    globalInterpThread = std::this_thread::get_id();
     globalInterp = interp;
     Tcl_CallWhenDeleted(interp,
 			(Tcl_InterpDeleteProc *) ClearGlobalInterpreter,
 			(ClientData) NULL);
 
-  // Normally the function Oc_Init(Tcl_Interp *interp) will be called by 
-  // the application initialization function of the application using this 
-  // extension.  The conventional name for that function is 
-  // Tcl_AppInit(Tcl_Interp *interp).  The argument 'interp' passed to 
-  // Tcl_AppInit (and passed on to Oc_Init) was presumably returned
-  // by a call to Tcl_CreateInterp(), usually from within Oc_Main().
-  // Tcl_CreateInterp() contains a call to TclPlatformInit(), an internal
-  // routine inside the Tcl library which takes care of basic 
-  // platform-specific initialization.  This means that although Tcl_Init
-  // hasn't yet been called (and therefore the interpreter is not fully
-  // initialized), the interpreter is usable in a platform-independent
-  // manner, and the Tcl variables tcl_pkgPath, tcl_library, tcl_platform,
-  // tcl_patchLevel, tcl_version, tcl_precision and env(HOME) have already 
-  // been set.  Also the "Tcl" package has already been provided.
-  //
-  // Until the Oc_Log cross-platform facility for displaying messages to 
-  // the user is supported by evaluating the Tcl portion of this extension 
-  // below, we must fall back on calls to Tcl_Panic().
+    // Normally the function Oc_Init(Tcl_Interp *interp) will be called by
+    // the application initialization function of the application using this
+    // extension.  The conventional name for that function is
+    // Tcl_AppInit(Tcl_Interp *interp).  The argument 'interp' passed to
+    // Tcl_AppInit (and passed on to Oc_Init) was presumably returned
+    // by a call to Tcl_CreateInterp(), usually from within Oc_Main().
+    // Tcl_CreateInterp() contains a call to TclPlatformInit(), an internal
+    // routine inside the Tcl library which takes care of basic
+    // platform-specific initialization.  This means that although Tcl_Init
+    // hasn't yet been called (and therefore the interpreter is not fully
+    // initialized), the interpreter is usable in a platform-independent
+    // manner, and the Tcl variables tcl_pkgPath, tcl_library, tcl_platform,
+    // tcl_patchLevel, tcl_version, tcl_precision and env(HOME) have already
+    // been set.  Also the "Tcl" package has already been provided.
+    //
+    // Until the Oc_Log cross-platform facility for displaying messages to
+    // the user is supported by evaluating the Tcl portion of this extension
+    // below, we must fall back on calls to Tcl_Panic().
 
-  // Initialize Tcl.  
+    // Initialize Tcl.
 #ifdef CONFIG_TCL_LIBRARY
-  // Set environment variable TCL_LIBRARY, unless already set.
-  // We set this instead of tcl_library, because the tcl_library
-  // is not inherited into slave interpreters.
-  if(Tcl_GetVar2(interp,OC_CONST84_CHAR("env"),
-		 OC_CONST84_CHAR("TCL_LIBRARY"),
-                 TCL_GLOBAL_ONLY)==NULL) {
-    Tcl_SetVar2(interp,OC_CONST84_CHAR("env"),
-		OC_CONST84_CHAR("TCL_LIBRARY"),
-                OC_CONST84_CHAR(OC_STRINGIFY(CONFIG_TCL_LIBRARY)),
-                TCL_GLOBAL_ONLY);
-  }
-#endif
-  if (Tcl_Init(interp) != TCL_OK) {
-    if(strncmp("Can't find a usable",
-               Tcl_GetStringResult(interp),19)==0) {
-      Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s\n\n"
-               "As a workaround, set the environment variable\n"
-               "TCL_LIBRARY to the name of a directory\n"
-               "containing an error-free init.tcl."),
-            Tcl_GetStringResult(interp));
-    } else {
-      Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s"),
-                Tcl_GetStringResult(interp));
+    // Set environment variable TCL_LIBRARY, unless already set.
+    // We set this instead of tcl_library, because the tcl_library
+    // is not inherited into slave interpreters.
+    if(Tcl_GetVar2(interp,OC_CONST84_CHAR("env"),
+                   OC_CONST84_CHAR("TCL_LIBRARY"),
+                   TCL_GLOBAL_ONLY)==NULL) {
+      Tcl_SetVar2(interp,OC_CONST84_CHAR("env"),
+                  OC_CONST84_CHAR("TCL_LIBRARY"),
+                  OC_CONST84_CHAR(OC_STRINGIFY(CONFIG_TCL_LIBRARY)),
+                  TCL_GLOBAL_ONLY);
     }
-  }
-
+#endif
+    if (Tcl_Init(interp) != TCL_OK) {
+      if(strncmp("Can't find a usable",
+                 Tcl_GetStringResult(interp),19)==0) {
+        Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s\n\n"
+                                  "As a workaround, set the environment variable\n"
+                                  "TCL_LIBRARY to the name of a directory\n"
+                                  "containing an error-free init.tcl."),
+                  Tcl_GetStringResult(interp));
+      } else {
+        Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s"),
+                  Tcl_GetStringResult(interp));
+      }
+    }
   }
 
   if (Nullchannel_Init(interp) != TCL_OK) {
       Tcl_Panic(OC_CONST84_CHAR("Nullchannel initialization error:\n\n%s"),
                 Tcl_GetStringResult(interp));
   }
-
 
   // Extract Oc options.  We must do this before initializing Tk,
   // because one of the Oc options is whether or not to use Tk.
@@ -1354,7 +1577,7 @@ Oc_Init(Tcl_Interp *interp)
     sprintf(scratch,"%d",app_argc);
     Tcl_SetVar(interp,OC_CONST84_CHAR("argc"),scratch,TCL_GLOBAL_ONLY);
     Tcl_Free((char *)tk_argv); Tcl_Free((char *)app_argv);  // Release
- 
+
     // Set up so that [info loaded] result includes Tk
     Tcl_StaticPackage(interp,OC_CONST84_CHAR("Tk"), Tk_Init, Tk_SafeInit);
 
@@ -1372,6 +1595,12 @@ Oc_Init(Tcl_Interp *interp)
 #if OC_SYSTEM_TYPE==OC_WINDOWS
   Oc_RegisterCommand(interp,"Oc_WindowsMessageBox",
                      Oc_WindowsMessageBoxCmd);
+  Oc_RegisterCommand(interp,"Oc_WinGetFileSID",
+                     (Tcl_CmdProc *)OcWinGetFileSID);
+  Oc_RegisterCommand(interp,"Oc_WinGetCurrentProcessSID",
+                     (Tcl_CmdProc *)OcWinGetCurrentProcessSID);
+  Oc_RegisterCommand(interp,"Oc_WinGetSIDAccountName",
+                     (Tcl_CmdProc *)OcWinGetSIDAccountName);
 #endif
 #if OC_TCL_TYPE==OC_WINDOWS && defined(__CYGWIN__)
   Oc_RegisterCommand(interp,"OcCygwinChDir",OcCygwinChDir);
@@ -1389,6 +1618,12 @@ Oc_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"Oc_UnifRand",(Tcl_CmdProc *)OcUnifRand);
   Oc_RegisterCommand(interp,"Oc_ReadRNGState",
                      (Tcl_CmdProc *)OcReadRNGState);
+  Oc_RegisterCommand(interp,"Oc_InitLogPrefix",
+                     (Tcl_CmdProc *)Oc_LogSupportInitPrefixCmd);
+  Oc_RegisterCommand(interp,"Oc_GetLogMark",
+                     (Tcl_CmdProc *)Oc_LogSupportGetLogMarkCmd);
+  Oc_RegisterCommand(interp,"Oc_AddCLogFile",
+                     (Tcl_CmdProc *)Oc_ReportAddCLogFile);
 
   // Import Oc_Atan2 into Tcl, and replace default expr/mathfunc atan2
   // with it. NB: Child interpreters appear to revert back to default
@@ -1444,26 +1679,38 @@ Oc_Init(Tcl_Interp *interp)
   // At this stage Oc_Log is available for displaying error messages
   // to the user.
 
-  /*
-   * Default thread request count.  This may be overridden by
-   * application (for example, using a value from the command line).
-   * Most of the logic is in the Oc_GetDefaultThreadCount proc,
-   * which is in octhread.tcl.
-   */
+
+  // Some routines perform process-wide initialization which is intended
+  // to be run only once during process initialization. Control this by
+  // tying initialization to the global interp. If globalInterp were to
+  // be reset (cf. ClearGlobalInterpreter()) then this code would be
+  // allowed to run again. It is unclear if this is the desired
+  // behavior, but at present it seems that globalInterp is reset only
+  // on program exit, so the question is moot.
+  if (globalInterp == interp) {
+    // Set up asynchronous exception handling. Note
+    // Oc_AsyncError::RegisterHandler calls Oc_GetOcOption, and so needs
+    // to be delayed until after Oc_InitScript has been run in order to
+    // get the Oc_Option database set up.
+    Oc_AsyncError::RegisterHandler();
+
+    // Default thread request count.  This may be overridden by
+    // application (for example, using a value from the command line).
+    // Most of the logic is in the Oc_GetDefaultThreadCount proc,
+    // which is in octhread.tcl.
 #if OOMMF_THREADS
-  int otc = -1;
-  if(Tcl_Eval(interp,OC_CONST84_CHAR("Oc_GetDefaultThreadCount")) == TCL_OK) {
-        otc = atoi(Tcl_GetStringResult(interp));
-  }
-  if(otc<1) otc = 1; // Safety
+    int otc = -1;
+    if(Tcl_Eval(interp,OC_CONST84_CHAR("Oc_GetDefaultThreadCount")) == TCL_OK) {
+      otc = atoi(Tcl_GetStringResult(interp));
+    }
+    if(otc<1) otc = 1; // Safety
 
-  // Set value
-  Oc_SetMaxThreadCount(otc);
+    // Set value
+    Oc_SetMaxThreadCount(otc);
 #endif
+  }
 
-  /*
-   * Constants from tcl.h, limits.h, float.h, and ocport.h
-   */
+  // Constants from tcl.h, limits.h, float.h, and ocport.h
   if(Tcl_Eval(interp,
       OC_CONST84_CHAR("if {[catch {set config [Oc_Config RunPlatform]} msg]} "
 		      " {catch {Oc_Log Log $msg error} "
@@ -1793,12 +2040,12 @@ VerifyWindowsTclStandardChannel(int type) {
    * program via the CreateProcess() system call, the parent
    * process can pass standard channels to the subprocess.  The
    * startInfo structure retrieved from the OS contains
-   * information about what instructions the parent process 
+   * information about what instructions the parent process
    * supplied for this program.  If the STARTF_USESTDHANDLES bit
    * of the flag array startInfo.dwFlags is set, then the parent
    * process provided standard channels to this process.  In that
    * case, it is safe to call the Tcl library function
-   * Tcl_GetStdChannel().  
+   * Tcl_GetStdChannel().
    *
    * This routine returns 1 if channel looks okay, 0 otherwise.
    */
@@ -1845,24 +2092,24 @@ VerifyWindowsTclStandardChannel(int type) {
 # include <crtdbg.h>
 #endif
 
-int APIENTRY 
+int APIENTRY
 WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
         LPSTR lpszCmdLine, int /* nCmdShow */)
 {
 #if defined(_MSC_VER)
-  // Send error messages handled by the CRT debug report mechanism
-  // to stderr.  The default handling produces sundry annoying
-  // pop-ups.  (Note: This interface appears to go back to Win95.)
-  // BTW, the Digital Mars Compiler 8.57 (macro identifier __DMC__)
-  // includes a crtdbg.h header and recognizes the following
-  // _CrtSetReport functions and macros, but default behavior is to
-  // not open a dialog box on error anyway.
-  _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
-  _CrtSetReportFile( _CRT_WARN, _CRTDBG_FILE_STDERR );
-  _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_FILE );
-  _CrtSetReportFile( _CRT_ERROR, _CRTDBG_FILE_STDERR );
-  _CrtSetReportMode( _CRT_ASSERT, _CRTDBG_MODE_FILE );
-  _CrtSetReportFile( _CRT_ASSERT, _CRTDBG_FILE_STDERR );
+    // Send error messages handled by the CRT debug report mechanism
+    // to stderr.  The default handling produces sundry annoying
+    // pop-ups.  (Note: This interface appears to go back to Win95.)
+    // BTW, the Digital Mars Compiler 8.57 (macro identifier __DMC__)
+    // includes a crtdbg.h header and recognizes the following
+    // _CrtSetReport functions and macros, but default behavior is to
+    // not open a dialog box on error anyway.
+    _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
+    _CrtSetReportFile( _CRT_WARN, _CRTDBG_FILE_STDERR );
+    _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_FILE );
+    _CrtSetReportFile( _CRT_ERROR, _CRTDBG_FILE_STDERR );
+    _CrtSetReportMode( _CRT_ASSERT, _CRTDBG_MODE_FILE );
+    _CrtSetReportFile( _CRT_ASSERT, _CRTDBG_FILE_STDERR );
 #endif // _MSC_VER
 
     // Windows doesn't pass the application name as the first word on the
@@ -1870,7 +2117,7 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     // application name (as a full pathname).
     // NOTE: This fixed-length buffer should be long enough even for a full
     // pathname.  Dynamic allocation from the heap is avoided since
-    // Tcl_Main and Tk_Main never return, and we'll have no chance to 
+    // Tcl_Main and Tk_Main never return, and we'll have no chance to
     // free the memory.  It's not clear whether Windows will free memory
     // when the process exits.
     char *p;
@@ -1889,7 +2136,7 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
 
     CommonMain(exename);
 
-    // Control task bar grouping.  Docs say 
+    // Control task bar grouping.  Docs say
     //
     //  Minimum supported client: Windows 7 [desktop apps only]
     //  Minimum supported server: Windows Server 2008 R2 [desktop apps only]
@@ -1977,7 +2224,7 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
  * The main entry point for OOMMF applications on Unix platforms.
  * ... and Windows console apps.
  */
-int 
+int
 main(int argc, char **argv)
 {
     CommonMain(argv[0]);
@@ -2013,7 +2260,7 @@ main(int argc, char **argv)
       Tcl_Panic(OC_CONST84_CHAR("Uncaught exception\n"));
       errorcode=99;
     }
-    
+
     return errorcode;
 }
 

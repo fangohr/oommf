@@ -32,17 +32,17 @@ proc Oc_AmRoot {} {
    set resultcode -1
    switch -exact $tcl_platform(platform) {
       windows {
-         # Windows platform
+         # Windows platform. Use the Windows system whoami command
+         # and check if the built-in admin group is enabled.
          if {![catch {exec whoami /groups /fo csv /nh} data]} {
-	    set data [split $data "\n"]
-	    set index [lsearch -glob $data {*"S-1-5-32-544"*}]
-	    if {$index>=0 && \
+            set data [split $data "\n"]
+            set index [lsearch -glob $data {*"S-1-5-32-544"*}]
+            if {$index>=0 && \
                    [string match {*Enabled group*} [lindex $data $index]]} {
-               # Yes, admin account
-               set resultcode 1
+               set resultcode 1 ;# Yes, admin account
             } else {
                set resultcode 0
-	    }
+            }
          }
       }
       darwin -
@@ -102,7 +102,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 2.0a3
+package provide Oc 2.0b0
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]

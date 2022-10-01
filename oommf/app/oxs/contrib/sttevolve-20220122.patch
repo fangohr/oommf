@@ -1,0 +1,64 @@
+diff -ru sttevolve/CYY_STTEvolve.cc sttevolve-new/CYY_STTEvolve.cc
+--- sttevolve/CYY_STTEvolve.cc	2022-01-22 02:39:23.918148994 -0500
++++ sttevolve-new/CYY_STTEvolve.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -17,7 +17,7 @@
+ */
+ 
+ 
+-#include <float.h>
++#include <cfloat>
+ #include <string>
+ 
+ #include "nb.h"
+@@ -393,14 +393,16 @@
+   // Zero spin torque on fixed spins
+ 	const OC_INDEX size = mesh->Size();
+ 
+-	OC_INDEX i,j;
++	OC_INDEX i;
+ 
+   UpdateFixedSpinList(mesh); // Safety
+ 
++#if 0  // This block does nothing?! -mjd
+   const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+-    OC_INDEX i = GetFixedSpin(j);  // This is a NOP?! -mjd
++    OC_INDEX i = GetFixedSpin(j);
+   }
++#endif
+ 
+   alpha_init->FillMeshValue(mesh,alpha);
+   gamma_init->FillMeshValue(mesh,gamma);
+@@ -2079,7 +2081,6 @@
+   // filled.
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+-    = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
+     = 0;  // Mark change in progress
+ 
+@@ -2157,8 +2158,8 @@
+ 
+   const Oxs_RectangularMesh* mesh
+     = dynamic_cast<const Oxs_RectangularMesh*>(state.mesh);		// CYYOU
+-  const OC_INDEX size = mesh->Size();
+-  OC_INDEX i,j;
++  // const OC_INDEX size = mesh->Size();
++  // OC_INDEX i,j;
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+ 
+@@ -2205,10 +2206,10 @@
+     OC_REAL8m bJ0 = init_bJ0;
+ 	OC_REAL8m bJ1 = init_bJ1;
+ 	OC_REAL8m bJ2 = init_bJ2;
+-	OC_REAL8m aJ_s, aJ_p;
++	OC_REAL8m aJ_s /*, aJ_p */;
+     
+ 	aJ_s = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
+-	aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
++	// aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
+ 
+ //	ThreeVector mdiff = spin[i]-spin[j];
+ //  OC_REAL8m temp = 0.5*mdiff.MagSq();
+Only in sttevolve: versdate.txt

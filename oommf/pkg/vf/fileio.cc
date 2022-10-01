@@ -6,8 +6,8 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 #include "oc.h"
 #include "nb.h"
 

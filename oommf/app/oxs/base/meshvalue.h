@@ -25,7 +25,7 @@
 #ifndef _OXS_MESHVALUE
 #define _OXS_MESHVALUE
 
-#include <string.h>  // For memcpy
+#include <cstring>  // For memcpy
 
 #include <vector>
 
@@ -316,40 +316,14 @@ Oxs_MeshValue<T>::CheckMesh(const Vf_Ovf20_MeshNodes* mesh) const
 template<class T>
 const T& Oxs_MeshValue<T>::operator[](OC_INDEX index) const
 {
-#ifndef NDEBUG
-  if(index>=size) {
-    char buf[512];
-    Oc_Snprintf(buf,sizeof(buf),
-                "const T& Oxs_MeshValue<T>::operator[] const: "
-                "Array out-of-bounds; index=%ld, size=%ld",
-                long(index),long(size));
-#if 0
-    fprintf(stderr,"%s\n",buf); fflush(stderr);
-    abort();
-#endif
-    OXS_THROW(Oxs_BadIndex,buf);
-  }
-#endif
+  assert(0<=index && index<size);
   return arr[index];
 }
 
 template<class T>
 T& Oxs_MeshValue<T>::operator[](OC_INDEX index)
 {
-#ifndef NDEBUG
-  if(index>=size) {
-    char buf[512];
-    Oc_Snprintf(buf,sizeof(buf),
-                "T& Oxs_MeshValue<T>::operator[]: "
-                "Array out-of-bounds; index=%ld, size=%ld",
-                long(index),long(size));
-#if 0
-    fprintf(stderr,"%s\n",buf); fflush(stderr);
-    abort();
-#endif
-    OXS_THROW(Oxs_BadIndex,buf);
-  }
-#endif
+  assert(0<=index && index<size);
   return arr[index];
 }
 
@@ -647,7 +621,7 @@ Oxs_MeshValue<T>::HornerStep
 # define OXS_MESHVALUEOUTPUTFIELD_IN_HEADER 1
 #else
 # define OXS_MESHVALUEOUTPUTFIELD_IN_HEADER 0
-#endif 
+#endif
 
 #if OXS_MESHVALUEOUTPUTFIELD_IN_HEADER
 // The following two overloaded, non-template functions are

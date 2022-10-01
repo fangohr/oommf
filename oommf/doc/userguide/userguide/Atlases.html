@@ -1,0 +1,551 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Atlases</TITLE>
+<META NAME="description" CONTENT="Atlases">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Meshes.html">
+<LINK REL="previous" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Meshes.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html554"
+  HREF="Meshes.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html550"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html544"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html552"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html555"
+  HREF="Meshes.html">Meshes</A>
+<B> Up:</B> <A NAME="tex2html551"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html545"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00831000000000000000"></A><A NAME="sec:oxsAtlases"></A>
+<BR>
+Atlases
+</H2>
+Geometric volumes of spaces are specified in Oxs via <I>atlases</I>,
+which divide their domain into one or more disjoint subsets called
+<I>regions</I>.  Included in each atlas definition is the atlas
+<I>bounding box</I>, which is an axes parallel rectangular
+parallelepiped containing all the regions.  There is also the special
+<I>universe</I> region, which consists of all points outside the
+regions specified in the atlas.  The universe region is not considered
+to be part of any atlas, and the <TT>universe</TT> keyword should not be
+used to label any of the atlas regions.
+
+<P>
+The most commonly used atlas is the simple <TT>Oxs_BoxAtlas</TT>.  For
+combining multiple atlases, use <TT>Oxs_MultiAtlas</TT>.
+
+<P>
+<DL>
+<DD><A NAME="4782"></A><A NAME="PTBA"></A></DD>
+<DT><STRONG>Oxs_BoxAtlas:</STRONG></DT>
+<DD>An axes parallel rectangular parallelepiped,
+containing a single region that is coterminous with the atlas itself.
+The specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_BoxAtlas:</TT><I>atlasname</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>name </TT> <I>regionname</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+where <I>xmin, xmax, ...</I> are coordinates in meters, specifying
+the extents of the volume being defined.  The <I>regionname</I> label
+specifies the name assigned to the region contained in the atlas.  The
+<B>name</B> entry is optional; if not specified then the
+region name is taken from the object instance name, i.e.,
+<I>atlasname</I>.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
+<P>
+<A NAME="PTEA"></A><A NAME="4793"></A></DD>
+<DT><STRONG>Oxs_EllipseAtlas:</STRONG></DT>
+<DD>Defines a volume in the shape of a right elliptical cylinder with axes
+parallel to the coordinate axes. This functionality can be obtained
+using appropriate Tcl scripts with the <TT>Oxs_ScriptAtlas</TT> class,
+but this class is somewhat easier to use and runs faster.  The Specify
+block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_EllipseAtlas:</TT><I>atlasname</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>margin {</TT> <I>margins</I> <TT>}</TT>
+<DD><TT>axis </TT> <I>axisdir</I>
+<DD><TT>name {</TT> <I>regions</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Here <I>xmin, xmax, ...</I> are coordinates in meters, specifying
+the bounding box for the atlas, similar to the layout of the Specify
+block for the <TT>Oxs_BoxAtlas</TT> class. The <B>margin</B> setting
+combines with the bounding box to determine the extent of the elliptical
+cylinder. The <I>margins</I> value is a list consisting of one, three,
+or six values, in units of meters. If the full six values {<B><I>m</I><SUB>0</SUB></B>,
+<B><I>m</I><SUB>1</SUB></B>, ..., <B><I>m</I><SUB>5</SUB></B>} are specified they determine the bounding box
+for the elliptical cylinder as
+<!-- MATH
+ $[xmin+m_0,xmax-m_1]\times[ymin+m_2,ymax-m_3]\times[zmin+m_4,zmax-m_5]$
+ -->
+<B>[<I>xmin</I> + <I>m</I><SUB>0</SUB>, <I>xmax</I> - <I>m</I><SUB>1</SUB>] <TT>x</TT> [<I>ymin</I> + <I>m</I><SUB>2</SUB>, <I>ymax</I> - <I>m</I><SUB>3</SUB>] <TT>x</TT> [<I>zmin</I> + <I>m</I><SUB>4</SUB>, <I>zmax</I> - <I>m</I><SUB>5</SUB>]</B>.
+If three values are given then they are interpreted as margins for the
+x-coordinates, y-coordinates, and z-coordinates, respectively. If a
+single margin value is listed then that value is applied along all six
+faces. If the two margin values for a given coordinate are not equal,
+then the center of the cylinder will be shifted from the center of the
+atlas. If a margin value is negative then part of the cylinder will be
+clipped at the atlas boundary. If <B>margin</B> is not given then
+the default is 0.
+
+<P>
+The <I>axisdir</I> should be one of x, y, or z, specifying the axis of
+symmetry for the cylinder. If not given the default is z.
+
+<P>
+The <B>name</B> setting is a list of one or two elements. A single
+value specifies the region name for the interior of the elliptical
+cylinder.  In this case the exterior is automatically assigned to the
+global ``universe'' region. In the case of a two element list, the first
+element is the name assigned to the interior of the cylinder, the second
+element is the name assigned to the exterior of the cylinder. If
+desired, either one may be specified as ``universe'' to assign the
+corresponding volume to the global universe region. If <B>name</B>
+is not specified then it is treated by default as a one element list
+using the atlas object instance name, i.e., <I>atlasname</I>, as the
+interior region name.
+
+<P>
+
+<B>Examples:</B> <TT><B>ellipse.mif</B></TT>,  <TT><B>ellipsea.mif</B></TT>.
+<P>
+<A NAME="PTESA"></A><A NAME="4809"></A></DD>
+<DT><STRONG>Oxs_EllipsoidAtlas:</STRONG></DT>
+<DD>Conceptually analogous to <TT>Oxs_EllipseAtlas</TT>, this class defines an
+ellipsoidal region with axes parallel to the coordinate axes. With
+appropriate Tcl scripts, the <TT>Oxs_ScriptAtlas</TT> class can provide
+the same functionality, but this class is somewhat easier to use
+and runs faster.  The Specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_EllipsoidAtlas:</TT><I>atlasname</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>margin {</TT> <I>margins</I> <TT>}</TT>
+<DD><TT>name {</TT> <I>regions</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+All entries are interpreted in the same manner as for the
+<TT>Oxs_EllipseAtlas</TT> class.
+
+<P>
+
+<B>Examples:</B> <TT><B>ellipsoid.mif</B></TT> and <TT><B>ellipsoid.mif</B></TT>.  See
+  <TT><B>ellipsoid-atlasproc.mif</B></TT> and <TT><B>ellipsoid-fieldproc.mif</B></TT> for
+  examples equivalent to <TT><B>ellipsoid.mif</B></TT> using Tcl scripts.
+<P>
+<A NAME="PTIA"></A><A NAME="4821"></A></DD>
+<DT><STRONG>Oxs_ImageAtlas:<A NAME="html:oxsImageAtlas"></A></STRONG></DT>
+<DD><A NAME="4823"></A><A NAME="4824"></A>
+This class is designed to allow an image file
+to be used to define regions in terms of colors in the image.  It is
+intended for use in conjunction with the <TT>Oxs_AtlasScalarField</TT> and
+<TT>Oxs_AtlasVectorField</TT> classes in circumstances where a small
+number of distinct species (materials) are being modeled.  This provides
+a generalization of the <A HREF="Part_geometry.html#sec:partgeometry">mask file</A>
+functionality of the 2D solver
+(Sec.&nbsp;<A HREF="Part_geometry.html#sec:partgeometry">17.1.3</A>).
+
+<P>
+For situations requiring continuous variation in material parameters,
+the script field classes should be used in conjunction with the
+<TT>ReadFile</TT> MIF extension command.  See the
+<TT>ColorField</TT> sample proc in the <A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT>
+documentation</A>  for an example of this
+technique.
+
+<P>
+The <TT>Oxs_ImageAtlas</TT> Specify block has the following form:
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ImageAtlas:</TT><I>name</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin</I><TT>&nbsp;</TT><I>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin</I><TT>&nbsp;</TT><I>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin</I><TT>&nbsp;</TT><I>zmax</I> <TT>}</TT>
+<DD><TT>viewplane </TT> <I>view</I>
+<DD><TT>image </TT> <I>pic</I>
+<DD><TT>colormap {</TT><DL>
+   <DD><I>color-1</I><TT>&nbsp;</TT><I>region_name</I>
+   <DD><I>color-2</I><TT>&nbsp;</TT><I>region_name</I>
+   <DD> ...
+   <DD><I>color-n</I><TT>&nbsp;</TT><I>region_name</I>
+</DL><TT>}</TT>
+<DD><TT>matcherror </TT> <I>max_color_distance</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>xrange</B>, <B>yrange</B>, <B>zrange</B> entries
+specify the extent of the atlas, in meters.  The <B>viewplane</B>
+<I>view</I> value should be one of the three two-letter codes <TT>xy</TT>,
+<TT>zx</TT> or <TT>yz</TT>, which specify the mapping of the horizontal and
+vertical axes of the image respectively to axes in the simulation.  The
+image is scaled as necessary along each dimension to match the atlas
+extents along the corresponding axes. The image is overlaid through the
+entire depth of the perpendicular dimension, i.e., along the axis absent
+from the <TT>viewplane</TT> specification.  The <TT>Oxs_ImageAtlas</TT> class
+can be used inside a <TT>Oxs_MultiAtlas</TT> object to specify regions in a
+multilayer structure, as in example file <TT><B>imagelayers.mif</B></TT>.  Note
+that if the image aspect ratio doesn't match the ratio of the viewplane
+ranges, then the scaling will stretch or contract the image along one
+axis. One workaround for this is to set the extents in the
+<TT>Oxs_ImageAtlas</TT> to match the image aspect ratio, and use a separate
+atlas (perhaps an <TT>Oxs_BoxAtlas</TT>) to define the mesh and simulation
+extents. This approach can also be used to translate the image relative
+to the simulation extents. For an example see <TT><B>imageatlas2.mif</B></TT>.
+
+<P>
+The <B>image</B> entry specifies the name of the image file to use.
+If the file path is relative, then it will be taken with respect to the
+directory containing the MIF file.  The image format may be any of
+those recognized by <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><TT>any2ppm</TT></A>.  The file will be read directly by Oxs if it
+is in one of the PPM or Microsoft BMP (uncompressed) formats, otherwise
+<TT>any2ppm</TT> will be automatically launched to perform the conversion.
+
+<P>
+The <B>colormap</B> value is an even length list of color + region
+name pairs.  The colors may be specified in any of several ways.  The
+most explicit is to use one of the Tk numeric formats,
+<TT>#</TT>rgb, <TT>#</TT>rrggbb, <TT>#</TT>rrrgggbbb or <TT>#</TT>rrrrggggbbbb, where
+each r, g, and b is one hex digit (i.e., 0-9 or A-F) representing the
+red, green and blue components of the color, respectively.  For example,
+<TT>#</TT>F00 is bright (full-scale) red, <TT>#</TT>800 would be a darker red, while
+<TT>#</TT>FF0 and <TT>#</TT>FFFF00 would both be bright yellow.  Refer to the
+<TT>Tk_GetColor</TT> documentation for details.  For shades of gray the
+special notation <TT>grayD</TT> or <TT>greyD</TT> is available, where D is a
+decimal value between 0 and 100, e.g., <TT>grey0</TT> is black and
+<TT>grey100</TT> is white.  Alternatively, one may use any of the symbolic
+names defined in the <TT><B>oommf/config/colors.config</B></TT> file, such as
+<TT>red</TT>, <TT>white</TT> and <TT>skyblue</TT>.  When comparing symbolic names,
+spaces and capitalization are ignored.  The list of symbolic names can
+be extended by adding additional files to the <TT>Color filename</TT> option
+in the <TT><B>options.tcl</B></TT> <A HREF="Local_Customizations.html#sec:install.custom">customization file</A>.  Finally, one <I>color</I> in the
+<TT>colormap</TT> list may optionally be the special keyword ``default''.
+All pixels that don't match any of the other specified colors (as
+determined by the <TT>matcherror</TT> option) are assigned to region
+paired with <TT>default</TT>.
+
+<P>
+Each of the specified colors should be distinct, but the region names
+are allowed to be repeated as desired.  The region names may be chosen
+arbitrarily, except the special keyword ``universe'' is reserved for
+points not in any of the regions.  This includes all points outside the
+atlas bounding box defined by the <TT>xrange</TT>, <TT>yrange</TT>, <TT>zrange</TT>
+entries, but may also include points inside that boundary.
+
+<P>
+Pixels in the image are assigned to regions by comparing the color of
+the pixel to the list of colors specified in <TT>colormap</TT>.  If the
+pixel color is closer to a <TT>colormap</TT> color than
+<I>max_color_distance</I>, then the colors are considered matched.
+If a pixel color matches exactly one <TT>colormap</TT> color, then the pixel
+is assigned to the corresponding region.  If a pixel color matches more
+than one <TT>colormap</TT> color, the pixel is assigned to the region
+corresponding to the closest match.  If a pixel color doesn't match any
+of the <TT>colormap</TT> colors, then it is assigned to the <I>default
+region</I>, which is the region paired with the ``default'' keyword.  If
+<TT>default</TT> does not explicitly appear in the <TT>colormap</TT> colors
+list, then <TT>universe</TT> is made the default region.
+
+<P>
+To calculate the distance between two colors, each color is first
+converted to a scaled triplet of floating point red, green, and blue
+values, <B>(<I>r</I>, <I>g</I>, <I>b</I>)</B>, where each component lies in the interval <B>[0, 1]</B>,
+with <B>(0, 0, 0)</B> representing black and <B>(1, 1, 1)</B> representing white.  For
+example, <B>(0, 0, 1)</B> is bright blue.  Given two colors in this
+representation, the distance is computed using the standard Euclidean
+norm with uniform weights, i.e., the distance between <!-- MATH
+ $(r_1,g_1,b_1)$
+ -->
+<B>(<I>r</I><SUB>1</SUB>, <I>g</I><SUB>1</SUB>, <I>b</I><SUB>1</SUB>)</B>
+and <!-- MATH
+ $(r_2,g_2,b_2)$
+ -->
+<B>(<I>r</I><SUB>2</SUB>, <I>g</I><SUB>2</SUB>, <I>b</I><SUB>2</SUB>)</B> and is
+<P><!-- MATH
+ \begin{displaymath}
+\sqrt{(r_1-r_2)^2 + (g_1-g_2)^2 + (b_1-b_2)^2}.
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER">
+<BIG><B><IMG
+ WIDTH="314" HEIGHT="53" ALIGN="MIDDLE" BORDER="0"
+ SRC="img1.gif"
+ ALT="$\displaystyle \sqrt{{(r_1-r_2)^2 + (g_1-g_2)^2 + (b_1-b_2)^2}}$">.</B></BIG>
+</DIV><P></P>
+Since the difference in any one component is at most 1, the distance
+between any two colors is at most <!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\sqrt{3}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="26" HEIGHT="21" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\sqrt{3}\\ \rule{1pt}{0pt}\end{array}$}$">.
+
+<P>
+As explained above, two colors are considered to match if the distance
+between them is less than the specified <B>matcherror</B> value.  If
+<I>max_color_distance</I> is sufficiently small, then it may easily
+happen that a pixel's color does not match any of the specified region
+colors, so the pixel would be assigned to the default region.  On the
+other hand, if <I>max_color_distance</I> is larger than
+<!-- MATH
+ $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\sqrt{3}\\\rule{1pt}{0pt}\end{array}$}$
+ -->
+<IMG
+ WIDTH="26" HEIGHT="21" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.gif"
+ ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\sqrt{3}\\ \rule{1pt}{0pt}\end{array}$}$">, then all colors will match, and no pixels will be
+assigned to the default region.  If <TT>matcherror</TT> is not specified,
+then the default value for <I>max_color_distance</I> is 3, which
+means all colors match.
+
+<P>
+The following example should help clarify these matters.
+
+<BLOCKQUOTE><PRE>
+Specify Oxs_ImageAtlas:atlas {
+    xrange { 0 400e-9 }
+    yrange { 0 200e-9 }
+    zrange { 0  20e-9 }
+    image  mypic.gif
+    viewplane "xy"
+    colormap {
+        blue   cobalt
+        red    permalloy
+        green  universe
+        default cobalt
+    }
+    matcherror .1
+}
+</PRE>
+
+</BLOCKQUOTE>
+Blue pixels get mapped to the ``cobalt'' region and red pixels
+to the ``permalloy'' region.  Green pixels are mapped to the
+``universe'' non-region, which means they are considered to be outside
+the atlas entirely.  This is a fine point, but comes into
+play when atlases with overlapping bounding boxes are brought together
+inside an <TT>Oxs_MultiAtlas</TT>.  To which region would an orange pixel
+be assigned?  The scaled triplet representation for orange is
+<!-- MATH
+ $(1,0.647,0)$
+ -->
+<B>(1, 0.647, 0)</B>, so the distance to blue is <B>1.191</B>, the distance to red
+is <B>0.647</B>, and the distance to green is <B>1.06</B>.  Thus the closest color
+is red, but <B>0.647</B> is outside the <TT>matcherror</TT> setting of <B>0.1</B>, so
+orange doesn't match any of the colors and is hence assigned to the
+default region, which in this case is cobalt.  On the other hand, if
+<TT>matcherror</TT> had been set to say 1, then orange and red would match
+and orange would be assigned to the permalloy region.
+
+<P>
+Pixels with colors that are equidistant to and match more than one color
+in the colormap will be assigned to one of the closest color regions.
+The user should not rely on any particular selection, that is to say,
+the explicit matching procedure in this case is not defined.
+<A NAME="4907"></A><A NAME="4908"></A>
+
+<P>
+
+<B>Examples:</B> <TT><B>imageatlas.mif</B></TT>, <TT><B>imageatlas2.mif</B></TT>, <TT><B>imagelayers.mif</B></TT>, <TT><B>grill.mif</B></TT>.
+<P>
+<A NAME="PTMA"></A><A NAME="4916"></A></DD>
+<DT><STRONG>Oxs_MultiAtlas:</STRONG></DT>
+<DD>This atlas is built up as an ordered list of
+other atlases.  The set of regions defined by the <TT>Oxs_MultiAtlas</TT>
+is the union of the regions of all the atlases contained therein.  The
+sub-atlases need not be disjoint, however each point is assigned to the
+region in the first sub-atlas in the list that contains it, so the
+regions defined by the <TT>Oxs_MultiAtlas</TT> are effectively disjoint.
+
+<P>
+The <TT>Oxs_MultiAtlas</TT> specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_MultiAtlas:</TT><I>name</I> <TT>{</TT>
+<DD> atlas &nbsp;&nbsp; <I>atlas_1_spec</I>
+<DD> atlas &nbsp;&nbsp; <I>atlas_2_spec</I>
+<DD> ...
+<DD><TT>xrange {</TT> <I>xmin<TT>&nbsp;</TT>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin<TT>&nbsp;</TT>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin<TT>&nbsp;</TT>zmax</I> <TT>}</TT>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Each <I>atlas_spec</I> may be either a reference to an atlas defined
+earlier and outside the current Specify block, or else an inline,
+embedded atlas definition.  The bounding box <B>xrange</B>,
+<B>yrange</B> and <B>zrange</B> specifications are each
+optional.  If not specified the corresponding range for the atlas
+bounding box is taken from the minimal bounding box containing all the
+sub-atlases.
+
+<P>
+If the atlases are not disjoint, then the regions as defined by an
+<TT>Oxs_MultiAtlas</TT> can be somewhat different from those of the
+individual component atlases.  For example, suppose <TT>regionA</TT> is a
+rectangular region in <TT>atlasA</TT> with corner points (5,5,0) and
+(10,10,10), and <TT>regionB</TT> is a rectangular region in <TT>atlasB</TT> with
+corner points (0,0,0) and (10,10,10).  When composed in the order
+<TT>atlasA</TT>, <TT>atlasB</TT> inside an <TT>Oxs_MultiAtlas</TT>, <TT>regionA</TT>
+reported by the <TT>Oxs_MultiAtlas</TT> will be the same as <TT>regionA</TT>
+reported by <TT>atlasA</TT>, but <TT>regionB</TT> as reported by the
+<TT>Oxs_MultiAtlas</TT> will be the ``L'' shaped volume of those points in
+<TT>atlasB</TT>'s <TT>regionB</TT> not inside <TT>regionA</TT>.  If the
+<TT>Oxs_MultiAtlas</TT> is constructed with <TT>atlasB</TT> first and
+<TT>atlasA</TT> second, then <TT>regionB</TT> as reported by the
+<TT>Oxs_MultiAtlas</TT> would agree with that reported by <TT>atlasB</TT>, but
+<TT>regionA</TT> would be empty.
+
+<P>
+NOTE: The <A HREF="Specify_Conventions.html#par:specifyAttributes"><TT>attributes</TT></A> key label
+ is not supported by this
+class.
+
+<P>
+
+<B>Examples:</B> <TT><B>manyregions-multiatlas.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>,
+  <TT><B>spinvalve-af.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
+<P>
+<A NAME="PTSA"></A><A NAME="4958"></A></DD>
+<DT><STRONG>Oxs_ScriptAtlas:</STRONG></DT>
+<DD>An atlas where the regions are defined via a Tcl script.  The specify
+block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_ScriptAtlas:</TT><I>name</I> <TT>{</TT>
+<DD><TT>xrange {</TT> <I>xmin<TT>&nbsp;</TT>xmax</I> <TT>}</TT>
+<DD><TT>yrange {</TT> <I>ymin<TT>&nbsp;</TT>ymax</I> <TT>}</TT>
+<DD><TT>zrange {</TT> <I>zmin<TT>&nbsp;</TT>zmax</I> <TT>}</TT>
+<DD><TT>regions {</TT>
+ <I>rname_1<TT>&nbsp;</TT>rname_2<TT>&nbsp;</TT>...<TT>&nbsp;</TT>rname_n</I>
+ <TT>}</TT>
+<DD><TT>script_args {</TT> <I>args_request</I> <TT>}</TT>
+<DD><TT>script </TT> <I>Tcl_script</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Here <I>xmin, xmax, ...</I> are coordinates in meters, specifying
+the extents of the axes-parallel rectangular parallelepiped enclosing
+the total volume being identified.  This volume is subdivided
+into <I>n</I> sub-regions, using the names as given in the
+<B>regions</B> list.  The <B>script</B> is used to assign
+points to the various regions.  Appended to the script are the arguments
+requested by <B>script_args</B>, in the manner explained in the
+<A HREF="Specify_Conventions.html#par:supportProcs">User Defined Support Procedures</A> section of the
+MIF&nbsp;2 file format documentation.  The value <I>args_request</I>
+should be a subset of <TT>{relpt rawpt minpt maxpt span}</TT>.  If
+<TT>script_args</TT> is not specified, the default value <TT>relpt</TT> is
+used.  When executed, the return value from the script should be an
+integer in the range <B>1</B> to <B><I>n</I></B>, indicating the user-defined region in
+which the point lies, or else <B>0</B> if the point is not in any
+of the <B><I>n</I></B> regions.  Region index <B>0</B> is reserved for the implicit
+``universe'' region, which is all-encompassing.  The following example
+may help clarify the discussion:
+
+<BLOCKQUOTE>
+<PRE>
+proc Octs { cellsize x y z xmin ymin zmin xmax ymax zmax } {
+    set xindex [expr {int(floor(($x-$xmin)/$cellsize))}]
+    set yindex [expr {int(floor(($y-$ymin)/$cellsize))}]
+    set zindex [expr {int(floor(($z-$zmin)/$cellsize))}]
+    set octant [expr {1+$xindex+2*$yindex+4*$zindex}]
+    if {$octant&lt;1 || $octant&gt;8} {
+       return 0
+    }
+    return $octant
+}
+
+Specify Oxs_ScriptAtlas:octant {
+    xrange {-20e-9 20e-9}
+    yrange {-20e-9 20e-9}
+    zrange {-20e-9 20e-9}
+    regions { VIII V VII VI IV I III II }
+    script_args { rawpt minpt maxpt }
+    script { Octs 20e-9 }
+}
+</PRE>
+
+</BLOCKQUOTE>
+This atlas divides the rectangular volume between <!-- MATH
+ $(-20,-20,-20)$
+ -->
+<B>(- 20, - 20, - 20)</B> and
+<!-- MATH
+ $(20,20,20)$
+ -->
+<B>(20, 20, 20)</B> (nm) into eight regions, corresponding to the standard
+octants, I through VIII.  The <TT>Octs</TT> Tcl procedure returns a
+value between 1 and 8, with 1 corresponding to octant VIII and 8 to
+octant II.  The canonical octant ordering starts with I as the
+<B>+ <I>x</I>, + <I>y</I>, + <I>z</I></B> space, proceeds counterclockwise in the <B>+ <I>z</I></B> half-space, and
+concludes in the <B>- <I>z</I></B> half-space with V directly beneath I, VI beneath
+II, etc.  The ordering computed algorithmically in <TT>Octs</TT>
+starts with 1 for the <B>- <I>x</I>, - <I>y</I>, - <I>z</I></B> space, 2 for the <B>+ <I>x</I>, - <I>y</I>, - <I>z</I></B> space, 3
+for the <B>- <I>x</I>, + <I>y</I>, - <I>z</I></B> space, etc.  The conversion between the two systems
+is accomplished by the ordering of the <TT>regions</TT> list.
+
+<P>
+
+<B>Examples:</B> <TT><B>manyregions-scriptatlas.mif</B></TT>, <TT><B>octant.mif</B></TT>, <TT><B>pattern.mif</B></TT>,
+  <TT><B>tclshapes.mif</B></TT>, <TT><B>diskarray.mif</B></TT>, <TT><B>ellipsoid-atlasproc.mif</B></TT>.
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html554"
+  HREF="Meshes.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html550"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html544"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html552"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

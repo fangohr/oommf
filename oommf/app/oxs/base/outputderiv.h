@@ -13,7 +13,7 @@
 #ifndef _OXS_OUTPUTDERIV
 #define _OXS_OUTPUTDERIV
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <string>
 

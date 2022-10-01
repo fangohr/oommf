@@ -28,7 +28,7 @@ if {[catch {package require Nb 2-}]} {
 Oc_CheckTclIndex Ow
 
 # CVS
-package provide Ow 2.0a3
+package provide Ow 2.0b0
 
 # Running under X11?
 proc Ow_IsX11 {} {

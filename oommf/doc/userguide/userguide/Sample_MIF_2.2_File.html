@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Sample MIF&nbsp;2.2 File</TITLE>
+<META NAME="description" CONTENT="Sample MIF&nbsp;2.2 File">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="MIF_2.2_New_Extension_Comma.html">
+<LINK REL="up" HREF="MIF_2.2.html">
+<LINK REL="next" HREF="Tips_for_writing_MIF_2.x_fi.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1311"
+  HREF="Tips_for_writing_MIF_2.x_fi.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1307"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1303"
+  HREF="MIF_2.2_New_Extension_Comma.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1309"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1312"
+  HREF="Tips_for_writing_MIF_2.x_fi.html">Tips for writing MIF</A>
+<B> Up:</B> <A NAME="tex2html1308"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Previous:</B> <A NAME="tex2html1304"
+  HREF="MIF_2.2_New_Extension_Comma.html">MIF&nbsp;2.2 New Extension Commands</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001843000000000000000"></A><A NAME="sec:mif22sample"></A>
+<BR>
+Sample MIF&nbsp;2.2 File
+</H2>
+<A NAME="fig:mif22sample"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# MIF 2.2
+
+###############
+# Constants
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+
+###############
+# Command-line controls
+Parameter seed 1
+Parameter thickness 6e-9
+Parameter stop 1e-2
+
+# Texturing angle, phideg, in degrees, from 0 to 90; 0 is all z.
+Parameter phideg 10;
+
+
+###############
+# Output options
+SetOptions [subst {
+   basename "polyuniaxial_phi_$phideg"
+   scalar_output_format %.12g
+   scalar_field_output_format {text %.4g}
+   scalar_field_output_meshtype irregular
+   vector_field_output_format {binary 4}
+}]
+
+
+###############
+# Rogue grain:
+# If RoguePt is an empty string, then no rogue grain is selected.  OTOH,
+# If RoguePt is set to a three item list consisting of x, y, and z coords
+#   in the problem coordinate system (i.e., in meters), then the grain
+#   containing that point is individually set as specified below.
+Parameter RoguePt {263.5e-9 174.5e-9 3e-9}
+
+
+###############
+# Support procs:
+proc Ellipse { Ms x y z} {
+   set x [expr {2*$x-1.}]
+   set y [expr {2*$y-1.}]
+   if {$x*$x+$y*$y&lt;=1.0} {
+      return $Ms
+   }
+   return 0.0
+}
+
+
+###############
+# Material constants
+set Ms 1.40e6
+set Ku 530e3
+set A  8.1e-12
+
+
+###############
+# Atlas and mesh
+set xsize 400e-9
+set ysize 400e-9
+set xycellsize 1.0e-9
+set zcellsize  3.0e-9
+
+set grain_count 260
+set grain_map polycrystal-map-mif.ppm
+
+set colormap {}
+for {set i 0} {$i&lt;$grain_count} {incr i} {
+   lappend colormap [format "#%06x" $i]
+   lappend colormap $i
+}
+
+Specify Oxs_ImageAtlas:world [subst {
+   xrange {0 $xsize}
+   yrange {0 $ysize}
+   zrange {0 $thickness}
+   viewplane xy
+   image $grain_map
+   colormap {
+      $colormap
+   }
+   matcherror 0.0
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+   cellsize {$xycellsize $xycellsize $zcellsize}
+   atlas :world
+}]
+
+
+#################################
+# Uniaxial Anisotropy
+
+# Generate TEXTURED random unit vector
+set phirange [expr {1-cos($phideg*$pi/180.)}]
+proc Texture {} {
+   global pi phirange
+
+   set theta [expr {(2.*rand()-1.)*$pi}]
+   set costheta [expr {cos($theta)}]
+   set sintheta [expr {sin($theta)}]
+
+   set cosphi [expr {1.-$phirange*rand()}]
+   set sinphi [expr {1.0-$cosphi*$cosphi}]
+   if {$sinphi&gt;0.0} { set sinphi [expr {sqrt($sinphi)}] }
+
+   set x [expr {$sinphi*$costheta}]
+   set y [expr {$sinphi*$sintheta}]
+   set z [expr {$cosphi}]
+
+   return [list $x $y $z]
+}
+
+
+# Set a random unit vector for each grain region
+set axes {}
+for {set i 0} {$i&lt;$grain_count} {incr i} {
+   lappend axes $i
+   lappend axes [Texture]
+}
+
+# Sets the rogue grain ($Rogue &lt; $grain_count)
+if {[llength $RoguePt] == 3} {
+   # The :Regions field maps region name (which is a number)
+   # to the corresponding number.
+   set regionmap {}
+   for {set i 0} {$i&lt;$grain_count} {incr i} {lappend regionmap $i $i }
+   Specify Oxs_AtlasScalarField:Regions [subst {
+      atlas :world
+      values [list $regionmap]
+   }]
+   foreach {x y z} $RoguePt { break }
+   set Rogue [EvalScalarField :Regions $x $y $z]
+   set item_number [expr 2*$Rogue+1]
+   set axes [lreplace $axes $item_number $item_number {1 0 0}]
+}
+
+Specify Oxs_AtlasVectorField:axes [subst {
+   atlas :world
+   norm 1.0
+   values [list $axes]
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+   K1 $Ku
+   axis :axes
+}]
+
+
+#################################
+# Exchange
+set A_list {}
+for {set i 0} {$i&lt;$grain_count} {incr i} {
+   lappend A_list $i $i $A
+}
+
+Specify Oxs_Exchange6Ngbr [subst {
+   default_A $A
+   atlas world
+   A   [list $A_list]
+}]
+
+
+#################################
+# Zeeman (applied) field
+set field 10000         ;# Maximum field (in Oe)
+Specify Oxs_UZeeman [subst {
+   multiplier [expr (1./($mu0*1e4))*$field]
+   Hrange  {
+      { 0 0 0   0 0 1   10}
+   }
+}]
+
+
+#################################
+# Driver and Evolver
+
+Specify Oxs_CGEvolve:evolve {}
+
+Specify Oxs_MinDriver [subst {
+   evolver evolve
+   stopping_mxHxm $stop
+   mesh :mesh
+   Ms { Oxs_ScriptScalarField {
+      atlas :world
+      script_args {relpt}
+      script {Ellipse $Ms}
+   } }
+   m0 { 0 0 -1 }
+}]
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 17.3:
+    Example MIF&nbsp;2.2
+  file.
+    <A HREF="MIF_2.2.html#sec:mif22format">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

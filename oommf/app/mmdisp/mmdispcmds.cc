@@ -10,9 +10,9 @@
 #include "nb.h"
 #include "vf.h"
 
-#include <assert.h>
-#include <limits.h>
-#include <string.h>     /* strncpy(), ... */
+#include <cassert>
+#include <climits>
+#include <cstring>     /* strncpy(), ... */
 
 #include "display.h"    /* DisplayFrame, CoordinateSystem */
 #include "bitmap.h"
@@ -31,17 +31,6 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 # endif
 #endif
 
-
-// A couple of forward declarations.  These shouldn't be accessed
-// from outside this file.  The proper way to insure this is to
-// use the "unnamed" namespace.  But for backwards compatibility
-// with old compilers, we aren't using namespaces.  The old way
-// to do this is to declare these functions "static", but that use
-// of "static" is deprecated.  For now, just punt and put them in
-// the global namespace.
-OC_REAL4m SetZoom(OC_REAL4m zoom);
-OC_REAL4m SetZoom(Tcl_Interp *interp,OC_REAL4m width,OC_REAL4m height);
-
 #define MY_MESH_ARRAY_SIZE 3
 static Vf_Mesh* myMeshArray[MY_MESH_ARRAY_SIZE];
 static int activeMeshId = 0;
@@ -53,44 +42,70 @@ static OC_CHAR buf[MY_BUF_SIZE];
 # error "buf size must be greater than 0"
 #endif
 
-static OC_REAL4m CoordsToAngle(CoordinateSystem coords)
-{
-  OC_REAL4m rotang=0.;
-  switch(coords) {
-  case CS_CALCULATION_STANDARD: // Safety
-  case CS_DISPLAY_STANDARD:  rotang=0.;   break;
-  case CS_DISPLAY_ROT_90:    rotang=90.;  break;
-  case CS_DISPLAY_ROT_180:   rotang=180.; break;
-  case CS_DISPLAY_ROT_270:   rotang=270.; break;
-  case CS_ILLEGAL:
-  default:
-    PlainError(1,"Unrecognized or illegal coordinate system (%d)"
-               " detected in CoordsToAngle() (File tkcmds.cc)\n",
-               int(coords));
-    break; // Shouldn't get to here
+namespace { // unnamed namespace, used for file-only access
+  OC_REAL4m CoordsToAngle(CoordinateSystem coords)
+  {
+    OC_REAL4m rotang=0.;
+    switch(coords) {
+    case CS_CALCULATION_STANDARD: // Safety
+    case CS_DISPLAY_STANDARD:  rotang=0.;   break;
+    case CS_DISPLAY_ROT_90:    rotang=90.;  break;
+    case CS_DISPLAY_ROT_180:   rotang=180.; break;
+    case CS_DISPLAY_ROT_270:   rotang=270.; break;
+    case CS_ILLEGAL:
+    default:
+      PlainError(1,"Unrecognized or illegal coordinate system (%d)"
+                 " detected in CoordsToAngle() (File tkcmds.cc)\n",
+                 int(coords));
+      break; // Shouldn't get to here
+    }
+    return rotang;
   }
-  return rotang;
-}
 
-static CoordinateSystem AngleToCoords(OC_REAL4m angle_in_degrees)
-{ // Rounds to nearest supported coordinate system rotation
-  CoordinateSystem coords=CS_ILLEGAL;
-  int quad=int(OC_ROUND(fmod(double(angle_in_degrees),
-                             double(360.))/90.));
-  if(quad<0) quad+=4;
-  if(quad>3) quad-=4;
-  switch(quad) {
-  case 0:  coords=CS_DISPLAY_STANDARD;  break;
-  case 1:  coords=CS_DISPLAY_ROT_90;    break;
-  case 2:  coords=CS_DISPLAY_ROT_180;   break;
-  case 3:  coords=CS_DISPLAY_ROT_270;   break;
-  default:
-    PlainError(1,"Programming error: Illegal coordinate system (quad=%d)"
-               " occurred in AngleToCoords() (File tkcmds.cc)\n",quad);
-    break; // Shouldn't get to here
+  CoordinateSystem AngleToCoords(OC_REAL4m angle_in_degrees)
+  { // Rounds to nearest supported coordinate system rotation
+    CoordinateSystem coords=CS_ILLEGAL;
+    int quad=int(OC_ROUND(fmod(double(angle_in_degrees),
+                               double(360.))/90.));
+    if(quad<0) quad+=4;
+    if(quad>3) quad-=4;
+    switch(quad) {
+    case 0:  coords=CS_DISPLAY_STANDARD;  break;
+    case 1:  coords=CS_DISPLAY_ROT_90;    break;
+    case 2:  coords=CS_DISPLAY_ROT_180;   break;
+    case 3:  coords=CS_DISPLAY_ROT_270;   break;
+    default:
+      PlainError(1,"Programming error: Illegal coordinate system (quad=%d)"
+                 " occurred in AngleToCoords() (File tkcmds.cc)\n",quad);
+      break; // Shouldn't get to here
+    }
+    return coords;
   }
-  return coords;
-}
+
+  OC_REAL4m SetZoom(OC_REAL4m zoom)
+  {
+    return myFrame.SetZoom(zoom);
+  }
+
+  OC_REAL4m SetZoom(Tcl_Interp *interp,OC_REAL4m width,OC_REAL4m height)
+  {
+    // Get margin and scroll information
+    OC_REAL4m margin=0.0,scrollbar_cross_dimension=0.0;
+    const char *cptr;
+    cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
+                     OC_CONST84_CHAR("misc,margin"),TCL_GLOBAL_ONLY);
+    if(!Nb_StrIsSpace(cptr)) {
+      margin=static_cast<OC_REAL4m>(Nb_Atof(cptr));
+    }
+    cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
+                     OC_CONST84_CHAR("misc,scrollcrossdim"),TCL_GLOBAL_ONLY);
+    if(!Nb_StrIsSpace(cptr)) {
+      scrollbar_cross_dimension=static_cast<OC_REAL4m>(Nb_Atof(cptr));
+    }
+    return myFrame.SetZoom(width,height,
+                           margin,scrollbar_cross_dimension);
+  }
+} // unnamed namespace
 
 int ReportActiveMesh(ClientData,Tcl_Interp *interp,
                      int argc,CONST84 char** argv)
@@ -404,7 +419,7 @@ int Resample(ClientData,Tcl_Interp *interp,
                             Nb_Atof(argv[7]),
                             Nb_Atof(argv[8]));
   Nb_BoundingBox<OC_REAL8> newrange;
-  newrange.SortAndSet(corner1,corner2); 
+  newrange.SortAndSet(corner1,corner2);
 
   OC_INDEX icount = static_cast<OC_INDEX>(atol(argv[9]));
   OC_INDEX jcount = static_cast<OC_INDEX>(atol(argv[10]));
@@ -482,7 +497,7 @@ int ResampleAverage(ClientData,Tcl_Interp *interp,
                             Nb_Atof(argv[7]),
                             Nb_Atof(argv[8]));
   Nb_BoundingBox<OC_REAL8> newrange;
-  newrange.SortAndSet(corner1,corner2); 
+  newrange.SortAndSet(corner1,corner2);
 
   OC_INDEX icount = static_cast<OC_INDEX>(atol(argv[9]));
   OC_INDEX jcount = static_cast<OC_INDEX>(atol(argv[10]));
@@ -1661,6 +1676,11 @@ int UpdatePlotConfiguration(ClientData,Tcl_Interp *interp,
     arrow_config.size=static_cast<OC_REAL4m>(Nb_Atof(cptr));
 
   cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
+                   OC_CONST84_CHAR("arrow,viewscale"),
+                   TCL_GLOBAL_ONLY);
+  if(!Nb_StrIsSpace(cptr)) arrow_config.viewscale=atoi(cptr);
+
+  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
                    OC_CONST84_CHAR("arrow,antialias"),
                    TCL_GLOBAL_ONLY);
   if(!Nb_StrIsSpace(cptr)) arrow_config.antialias=atoi(cptr);
@@ -1884,38 +1904,14 @@ int GetZoom(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
   return TCL_OK;
 }
 
-OC_REAL4m SetZoom(OC_REAL4m zoom)
-{
-  return myFrame.SetZoom(zoom);
-}
-
-OC_REAL4m SetZoom(Tcl_Interp *interp,OC_REAL4m width,OC_REAL4m height)
-{
-  // Get margin and scroll information
-  OC_REAL4m margin=0.0,scrollbar_cross_dimension=0.0;
-  const char *cptr;
-  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
-                   OC_CONST84_CHAR("misc,margin"),TCL_GLOBAL_ONLY);
-  if(!Nb_StrIsSpace(cptr)) {
-    margin=static_cast<OC_REAL4m>(Nb_Atof(cptr));
-  }
-  cptr=Tcl_GetVar2(interp,OC_CONST84_CHAR("plot_config"),
-                   OC_CONST84_CHAR("misc,scrollcrossdim"),TCL_GLOBAL_ONLY);
-  if(!Nb_StrIsSpace(cptr)) {
-    scrollbar_cross_dimension=static_cast<OC_REAL4m>(Nb_Atof(cptr));
-  }
-  return myFrame.SetZoom(width,height,
-                         margin,scrollbar_cross_dimension);
-}
-
 int SetZoom(ClientData,Tcl_Interp *interp,
             int argc,CONST84 char** argv)
 {
   Tcl_ResetResult(interp);
   if(argc<2 || argc>3) {
     Oc_Snprintf(buf,sizeof(buf),"SetZoom must be called with"
-            " either 1 or 2 arguments: <new_zoom|new_width new_height>"
-            " (%d arguments passed)",argc-1);
+                " either 1 or 2 arguments: <new_zoom|new_width new_height>"
+                " (%d arguments passed)",argc-1);
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
@@ -2217,7 +2213,7 @@ int WriteMeshOVF2
     size_t skip = strspn(argv[2]+4," \t\r\n"); // Skip whitespace
     text_fmt = argv[2]+4+skip;
   }
-  
+
   Vf_Ovf20_MeshType reqtype = vf_ovf20mesh_rectangular;
   if(strcmp("irregular",argv[3])==0) {
     reqtype = vf_ovf20mesh_irregular;
@@ -2228,7 +2224,7 @@ int WriteMeshOVF2
 
   Vf_Mesh_MeshNodes meshnodes(mesh);
   meshnodes.DumpGeometry(header,reqtype);
-  
+
   // Additional details
   if(argc>4) header.title.Set(String(argv[4]));
   if(argc>5) header.desc.Set(String(argv[5]));
@@ -2344,7 +2340,7 @@ int WriteMeshNPY
     Tcl_AppendResult(interp,errmsg.GetStr(),(char *)NULL);
     return TCL_ERROR;
   }
-  
+
   Vf_Ovf20_MeshType reqtype = vf_ovf20mesh_rectangular;
   if(strcmp("irregular",argv[3])==0) {
     reqtype = vf_ovf20mesh_irregular;
@@ -2355,13 +2351,13 @@ int WriteMeshNPY
 
   const char* textfmt = nullptr;
   if(argc>5) textfmt = argv[5];;
-  
+
   Vf_Mesh* mesh = myMeshArray[activeMeshId];
   Vf_Ovf20FileHeader header;
 
   Vf_Mesh_MeshNodes meshnodes(mesh);
   meshnodes.DumpGeometry(header,reqtype);
-  
+
   vector<String> valueunits;   // Value units, such as "J/m^3"
   vector<String> valuelabels;  // Value label, such as "Exchange energy density"
   valueunits.push_back(String(mesh->GetValueUnit()));
@@ -2477,7 +2473,7 @@ int WriteMeshMagnitudes
 
   Vf_Mesh_MeshNodes meshnodes(mesh);
   meshnodes.DumpGeometry(header,reqtype);
-  
+
   // Additional details
   if(argc>4) header.title.Set(String(argv[4]));
   if(argc>5) header.desc.Set(String(argv[5]));
@@ -4104,15 +4100,15 @@ WriteMeshAverages(ClientData, Tcl_Interp *interp,
             if(normalize) magsum += v.Mag();
             if(extravals) {
               OC_REAL8m ax = abs(v.x);
-              if(ax>maxval) maxval=ax;  
+              if(ax>maxval) maxval=ax;
 	      if(ax<minval) minval=ax;
               L1 += ax;   L2 += ax*ax;
               OC_REAL8m ay = abs(v.y);
-              if(ay>maxval) maxval=ay; 
+              if(ay>maxval) maxval=ay;
 	      if(ay<minval) minval=ay;
               L1 += ay;   L2 += ay*ay;
               OC_REAL8m az = abs(v.z);
-              if(az>maxval) maxval=az;  
+              if(az>maxval) maxval=az;
 	      if(az<minval) minval=az;
               L1 += az;   L2 += az*az;
             }

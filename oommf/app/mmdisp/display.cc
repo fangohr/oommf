@@ -4,7 +4,7 @@
  *
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "display.h"
 #include "psdraw.h"
@@ -14,6 +14,21 @@
                        // that excludes the remainder of the file from
                        // '#include ".*"' dependency building
 
+namespace { // unnamed namespace. Utility routines confined to this file
+  inline OC_REAL4m PickMedian(Nb_Vec3<OC_REAL4>& v)
+  { // Returns the middle (median) component value
+    return (v.x<=v.y ?
+            /* v.x<=v.y */ (v.y<=v.z ? v.y : (v.x<=v.z ? v.z : v.x)) :
+            /* v.x >v.y */ (v.x<=v.z ? v.x : (v.y<=v.z ? v.z : v.y)));
+  }
+  inline OC_REAL4m PickMinimum(Nb_Vec3<OC_REAL4>& v)
+  { // Returns the smallest component value
+    return (v.x<=v.y ?
+            /* v.x<=v.y */ (v.x<=v.z ? v.x : v.z) :
+            /* v.x >v.y */ (v.y<=v.z ? v.y : v.z));
+  }
+}
+
 //////////////////////////////////////////////////////////////////////////
 // PlotConfiguration structure
 //
@@ -21,7 +36,7 @@ const ClassDoc PlotConfiguration::class_doc("PlotConfiguration",
                     "Michael J. Donahue (michael.donahue@nist.gov)",
                     "1.0.1","16-Jul-1998");
 PlotConfiguration::PlotConfiguration()
-  : displaystate(1),autosample(0),subsample(0.),size(1.),
+  : displaystate(1),autosample(0),subsample(0.),size(1.),viewscale(1),
     antialias(0),outlinewidth(0),stipple(""),phase(0.),invert(0)
 {}
 
@@ -31,6 +46,7 @@ PlotConfiguration& PlotConfiguration::operator=(const PlotConfiguration& pc)
   autosample=pc.autosample;
   subsample=pc.subsample;
   size=pc.size;
+  viewscale=pc.viewscale;
   antialias=pc.antialias;
   outlinewidth=pc.outlinewidth;
   outlinecolor=pc.outlinecolor;
@@ -43,8 +59,10 @@ PlotConfiguration& PlotConfiguration::operator=(const PlotConfiguration& pc)
 }
 
 PlotConfiguration::PlotConfiguration(const PlotConfiguration& pc)
-  : displaystate(pc.displaystate),autosample(pc.autosample),
-    subsample(pc.subsample),size(pc.size),antialias(pc.antialias),
+  : displaystate(pc.displaystate),
+    autosample(pc.autosample),subsample(pc.subsample),
+    size(pc.size),viewscale(pc.viewscale),
+    antialias(pc.antialias),
     outlinewidth(pc.outlinewidth),outlinecolor(pc.outlinecolor),
     stipple(pc.stipple),
     colorquantity(pc.colorquantity),phase(pc.phase),invert(pc.invert),
@@ -115,24 +133,6 @@ void DisplayFrame::SetMesh(Vf_Mesh *newmesh) {
     }
 #endif
     mesh->SetMagHints(minmag,maxmag);
-  }
-}
-
-void DisplayFrame::SetPreferredArrowCellsize(OC_REAL4m pixels)
-{
-  if(pixels>0. && preferred_arrow_cellsize!=pixels) {
-    preferred_arrow_cellsize=pixels;
-    if(arrow_config.autosample || arrow_config.subsample<0)
-      arrow_valid=0;
-  }
-}
-
-void DisplayFrame::SetPreferredPixelCellsize(OC_REAL4m pixels)
-{
-  if(pixels>0. && preferred_pixel_cellsize!=pixels) {
-    preferred_pixel_cellsize=pixels;
-    if(pixel_config.autosample || pixel_config.subsample<0)
-      pixel_valid=0;
   }
 }
 
@@ -649,12 +649,35 @@ Nb_Vec3<OC_REAL4> DisplayFrame::GetPixelDimensions() const {
   return dimens;
 }
 
-OC_REAL8m DisplayFrame::GetArrowSize() const {
+OC_REAL4m DisplayFrame::GetViewArrowScale() const
+{ // Returns a recommended arrow scaling adjustment based
+  // on current view axis.
+  Nb_Vec3<OC_REAL4> celldim=mesh->GetApproximateCellDimensions();
+  OC_REAL8m scale = 1.0;
+  OC_REAL8m minxyz = PickMinimum(celldim);
+  if(minxyz>0.0) {
+    scale = (celldim.x<celldim.y ? celldim.x : celldim.y)/minxyz;
+    if(scale>1e8) {
+      scale=1e8; // Safety
+    }
+  }
+  scale = OC_ROUND(scale*100.)/100.; // Make "round" value
+  return static_cast<OC_REAL4m>(scale);
+}
+
+OC_REAL8m DisplayFrame::GetArrowSize() const
+{ // Returns base arrow size, including zoom, subsampling, and
+  // configured arrow size. View axis scaling is also included if (and
+  // only if) arrow_config.viewscale is true.
   Nb_Vec3<OC_REAL4> dimens = mesh->GetApproximateCellDimensions();
-  OC_REAL8m arrowsize = (dimens.x<dimens.y ? dimens.x : dimens.y);
+  OC_REAL4m arrowsize = PickMinimum(dimens);
   arrowsize *= default_arrow_ratio * arrow_config.size / mesh_per_pixel;
-  if(arrow_sample.subsample>1.)
+  if(arrow_sample.subsample>1.) {
     arrowsize*=arrow_sample.subsample;
+  }
+  if(arrow_config.viewscale) {
+    arrowsize *= GetViewArrowScale();
+  }
   return arrowsize;
 }
 
@@ -1679,7 +1702,7 @@ DisplayFrame::PSDump
 OC_REAL4m DisplayFrame::GetZoom(void) const
 {
   Nb_Vec3<OC_REAL4> celldim=mesh->GetApproximateCellDimensions();
-  OC_REAL4m mesh_per_cell = (celldim.x<celldim.y ? celldim.x : celldim.y);
+  OC_REAL4m mesh_per_cell = PickMinimum(celldim);
   if(mesh_per_cell<=0.) mesh_per_cell=1.0;  // Safety
   return mesh_per_cell/mesh_per_pixel;
 }
@@ -1687,15 +1710,13 @@ OC_REAL4m DisplayFrame::GetZoom(void) const
 OC_REAL4m DisplayFrame::SetZoom(OC_REAL4m zoom)
 { // Returns zoom value
   Nb_Vec3<OC_REAL4> celldim=mesh->GetApproximateCellDimensions();
-  OC_REAL4m mesh_per_cell = (celldim.x<celldim.y ? celldim.x : celldim.y);
+  OC_REAL4m mesh_per_cell = PickMinimum(celldim);
   if(mesh_per_cell<=0.) mesh_per_cell=1.0;  // Safety
-
   if(OC_REAL4_EPSILON<zoom && zoom<1/OC_REAL4_EPSILON) {
     mesh_per_pixel=mesh_per_cell/zoom;
     if(mesh_per_pixel<=0.) mesh_per_pixel=1.0; // Safety
     arrow_valid=pixel_valid=boundary_valid=0;
   }
-
   return mesh_per_cell/mesh_per_pixel;
 }
 
@@ -1750,7 +1771,7 @@ OC_REAL4m DisplayFrame::SetZoom
 
 
   Nb_Vec3<OC_REAL4> celldim=mesh->GetApproximateCellDimensions();
-  OC_REAL4m mesh_per_cell = (celldim.x<celldim.y ? celldim.x : celldim.y);
+  OC_REAL4m mesh_per_cell = PickMinimum(celldim);
   if(mesh_per_cell<=0.) mesh_per_cell=1.0;  // Safety
   OC_REAL8m zoom=mesh_per_cell/new_mesh_per_pixel; // User value
 

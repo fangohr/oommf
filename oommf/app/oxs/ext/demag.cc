@@ -26,7 +26,7 @@
 #include "demagcoef.h" // Used by both single-threaded code, and
 /// also common single/multi-threaded code at bottom of this file.
 
-#include <assert.h>
+#include <cassert>
 #include <string>
 
 #include "nb.h"

@@ -14,7 +14,7 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -944,10 +944,25 @@ proc SetScale { scale {redraw 1}} {
     }
 }
 
+proc RefreshMaxDimensions {} {
+   if {![catch Ow_CheckScreenDimensions dimensions]} {
+      # Silently ignore errors in Ow_CheckScreenDimensions
+      set maxchk [lindex $dimensions 2]
+      set maxcur [wm maxsize .]
+      if {[lindex $maxchk 0] != [lindex $maxcur 0] \
+             || [lindex $maxchk 1] != [lindex $maxcur 1]} {
+         # Dimensions changed. Reset maxsize and refresh geometry
+         wm maxsize . {*}$maxchk
+         OMF_SetGeometryRequirements
+      }
+   }
+}
+
 proc RedrawDisplay {} {
     global canvas SliceCompat
     global watchcursor_windows
     Ow_PushWatchCursor $watchcursor_windows
+    RefreshMaxDimensions
     UpdatePlotConfiguration
     DrawFrame $canvas $SliceCompat
     PackViewport

@@ -11,7 +11,6 @@ if {[llength [info commands MakeRule]] == 0} {
 #
 ########################################################################
 
-
 MakeRule Define {
     -targets            doc
     -dependencies       {}
@@ -27,4 +26,3 @@ MakeRule Define {
 			 Recursive upgrade
 			}
 }
-

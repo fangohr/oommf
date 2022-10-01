@@ -17,7 +17,7 @@ If you download previous version, please replace it with this file, and recompil
 */
 
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 
 #include "nb.h"

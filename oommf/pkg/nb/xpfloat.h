@@ -9,7 +9,7 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
+#include <cassert>
 
 #include "oc.h"
 
@@ -228,15 +228,16 @@ private:
 public:
 
 #if !NB_XPFLOAT_USE_SSE
-  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) const {
-    big = x; small = corr;
+  void GetValue(NB_XPFLOAT_TYPE& bigval,NB_XPFLOAT_TYPE& smallval) const {
+    bigval = x; smallval = corr;
   }
 #else // NB_XPFLOAT_USE_SSE
-  void GetValue(NB_XPFLOAT_TYPE& big,NB_XPFLOAT_TYPE& small) const {
-    big = Oc_SseGetLower(xpdata);
-    small = Oc_SseGetUpper(xpdata);
+  void GetValue(NB_XPFLOAT_TYPE& bigval,NB_XPFLOAT_TYPE& smallval) const {
+    bigval = Oc_SseGetLower(xpdata);
+    smallval = Oc_SseGetUpper(xpdata);
   }
 #endif // NB_XPFLOAT_USE_SSE
+  /// Note: Some Windows header #define's a "small" macro. Seriously???
 
   static int Test(); // Test that code works as designed. In particular,
   /// see if compiler has broken compensated summation code in Accum().

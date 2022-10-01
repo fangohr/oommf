@@ -18,7 +18,7 @@
 #ifndef _OXS_UTIL
 #define _OXS_UTIL
 
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include "oc.h"

@@ -93,7 +93,14 @@ proc ApplyPatches { filename patches } {
    set hunk_count 0
    set hunk_good_count 0
    set offset -1  ;# Patch line numbers start with 1
-   set start_lines [lsearch -all -regexp $patches {^@@[[:space:]0-9,+-]+@@$}]
+   set start_lines [lsearch -all -regexp $patches {^@@[\s0-9,+-]+@@}]
+   # Note: In normal diffs the "start lines" start and end with "@@". In
+   #       git diffs the second "@@" pair is followed by the enclosing
+   #       function or proc name.
+   if {[llength $start_lines]==0} {
+      puts stderr "ERROR: No hunks in patch set for file $filename"
+      exit 102
+   }
    lappend start_lines [llength $patches]
    set start [lindex $start_lines 0]
    foreach stop [lrange $start_lines 1 end] {
@@ -106,18 +113,18 @@ proc ApplyPatches { filename patches } {
 
       # Extract hunk size info from hunk header
       if {![regexp \
-       {^@@[[:space:]]+[-]([0-9,]+)[[:space:]]+[+]([0-9,]+)[[:space:]]+@@$} \
+       {^@@\s+[-]([0-9,]+)\s+[+]([0-9,]+)\s+@@} \
                [lindex $patches $start] dummy arange brange]} {
          puts stderr "ERROR: Can't parse hunk start line -->"
          puts stderr [lindex $patches $start]
          puts stderr "<-------------------------------------"
-         exit 101
+         exit 104
       }
       if {![regexp {^([0-9]+)} $arange dummy search_line]} {
          puts stderr "ERROR: Can't parse hunk start line -->"
          puts stderr [lindex $patches $start]
          puts stderr "<-------------------------------------"
-         exit 104
+         exit 106
       }
       if {![regexp {,([0-9]+)$} $arange dummy alength]} {
          # Default text length is 1
@@ -152,7 +159,7 @@ proc ApplyPatches { filename patches } {
          puts stderr "ERROR: Can't processing hunk starting with -->"
          puts stderr [lindex $patches $start]
          puts stderr "<-------------------------------------"
-         exit 107
+         exit 108
       }
       if {$search_line == 0 && [llength $match_text]==0} {
          # Empty original file
@@ -246,7 +253,7 @@ while {[string match \#* [lindex $patch $start_index]] \
           || [string match {Only in *} [lindex $patch $start_index]]} {
    incr start_index
 }
-set patch [lreplace $patch 0 [expr {$start_index-1}]]
+set patch [lreplace $patch 0 $start_index-1]
 
 # Check that input looks like a patch file
 if {![string match {diff *} [lindex $patch 0]]} {
@@ -254,12 +261,31 @@ if {![string match {diff *} [lindex $patch 0]]} {
    puts stderr [lindex $patch 0]
    exit 30
 }
+
+# git diffs slip an "index..." line between each "diff <file1> <file2>"
+# and "--- <file1>" line, e.g.,
+#
+#   diff --git a/fiz/foo.tcl b/fiz/foo.tcl
+#   index cf2fc6f71..51e065448 100644
+#   --- a/fiz/foo.tcl
+#   +++ b/fiz/foo.tcl
+#   @@ -276,6 +275,7 @@ proc ReadFile { filename } {
+#        # Mesh loads in with +z forward, so transform
+#
+# Check and remove the "index" lines
+foreach i [lreverse [lsearch -regexp -all $patch {^diff --git}]] {
+   if {[regexp {^index } [lindex $patch $i+1]]} {
+      set patch [lreplace $patch $i+1 $i+1]
+   }
+}
+
+# Collect patchsets
 set check_patchsets [lsearch -all -regexp $patch {^---}]
 set patchsets {}
 foreach line $check_patchsets {
-   if {[string match {diff *} [lindex $patch [expr {$line-1}]]] && \
-          [string match {+++ *} [lindex $patch [expr {$line+1}]]] && \
-          [string match {@@ *} [lindex $patch [expr {$line+2}]]]} {
+   if {[string match {diff *} [lindex $patch $line-1]] && \
+          [string match {+++ *} [lindex $patch $line+1]] && \
+          [string match {@@ *} [lindex $patch $line+2]]} {
       lappend patchsets [expr {$line-1}]
    }
 }
@@ -276,38 +302,58 @@ set file_patches [dict create]
 set patch_start 0
 set errcount 0
 foreach patch_end [lrange $patchsets 1 end] {
-   set onepatch [lrange $patch $patch_start [expr {$patch_end-1}]]
+   set onepatch [lrange $patch $patch_start $patch_end-1]
+   # The source "---" line in normal (non-git) diffs have the format
+   #    --- <filename> 2022-01-22 02:39:23.919149032 -0500
+   # OTOH, git diffs have just
+   #    --- <filename>
+   # w/o the timestamp. git diffs can be identified by the preceding
+   # "diff" line, that looks like
+   #    diff --git <file1> <file2>
+   # Handle the two casses
    set origline [lindex $onepatch 1]
-   set orig [split $origline]
-   if {[llength $orig]<5 || ![string match {---} [lindex $orig 0]]} {
-      puts stderr "ERROR: Bad patch? (skipping) ---"
-      puts stderr [join $onepatch "\n"]
-      puts stderr "--------------------------------"
-      incr errcount
-   } elseif {![regexp \
-       "^---\[\[:space:\]\]*(.*\[^\[:space:\]\])\[\[:space:\]\]*[lindex $orig end-2]" \
-                  $origline dummy filename]} {
-      puts stderr \
-         "ERROR: Unable to extract filename from patch header. (skipping) ---"
-      puts stderr "\"$origline\""
-      puts stderr "--------------------------------"
-      incr errcount
-   } else {
-      # Remove leading path components as requested
-      set workname [file join {*}[lrange [file split $filename] $path_strip end]]
-
-      # Check that the file is either readable, or else that the patch
-      # is creating a new file.
-      if {[file readable $workname] || \
-         (![file exists $workname] && \
-             [regexp {^@@[[:space:]]+-0,0[[:space:]]+1,[0-9]+[[:space:]]+@@$} \
-                 [lindex $onepatch 0]] && \
-             [lsearch -glob -not {+*} [lrange $onepatch 1 end]] < 0)} {
-         dict lappend file_patches $workname [lrange $onepatch 3 end]
-      } else {
-         puts stderr "ERROR: File \"$workname\" is not readable. (skipping)"
+   if {[regexp {^diff --git } [lindex $onepatch 0]]} {
+      # git diff
+      # Note: git diffs have an "index ..." line following the
+      # "diff --git ..." line, but in this script we've removed
+      # the index line before this point to make the diff and
+      # git-diff processing more similar.
+      if {![regexp {^---\s+(.+)$} $origline _ filename]} {
+         puts stderr "ERROR: Bad git patch? (skipping) ---"
+         puts stderr [join $onepatch "\n"]
+         puts stderr "--------------------------------"
          incr errcount
+         set patch_start $patch_end
+         continue
       }
+   } else {
+      # non-git diff
+      if {![regexp {^---\s+(.*\S)\s+[0-9-]+\s+[0-9:.]+\s+[0-9+-]+$} \
+               $origline _ filename]} {
+         puts stderr "ERROR: Bad patch? (skipping) ---"
+         puts stderr [join $onepatch "\n"]
+         puts stderr "--------------------------------"
+         incr errcount
+         set patch_start $patch_end
+         continue
+      }
+   }
+   set filename [string trim $filename]
+
+   # Remove leading path components as requested
+   set workname [file join {*}[lrange [file split $filename] $path_strip end]]
+
+   # Check that the file is either readable, or else that the patch
+   # is creating a new file.
+   if {[file readable $workname] || \
+          (![file exists $workname] && \
+              [regexp {^@@[[:space:]]+-0,0[[:space:]]+1,[0-9]+[[:space:]]+@@$} \
+                  [lindex $onepatch 0]] && \
+              [lsearch -glob -not {+*} [lrange $onepatch 1 end]] < 0)} {
+      dict lappend file_patches $workname [lrange $onepatch 3 end]
+   } else {
+      puts stderr "ERROR: File \"$workname\" is not readable. (skipping)"
+      incr errcount
    }
    set patch_start $patch_end
 }

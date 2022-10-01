@@ -68,6 +68,51 @@ Specify Oxs_RungeKuttaEvolve:evolve {
   alpha 0.5
 }
 
+# Select fields
+Specify Oxs_AtlasVectorField:TopX {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      top { 1 0 0 }
+   }
+}
+Specify Oxs_AtlasVectorField:TopY {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      top { 0 1 0 }
+   }
+}
+Specify Oxs_AtlasVectorField:TopZ {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      top { 0 0 1 }
+   }
+}
+Specify Oxs_AtlasVectorField:BottomX {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      bottom { 1 0 0 }
+   }
+}
+Specify Oxs_AtlasVectorField:BottomY {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      bottom { 0 1 0 }
+   }
+}
+Specify Oxs_AtlasVectorField:BottomZ {
+   atlas :atlas
+   default_value {0 0 0}
+   values {
+      bottom { 0 0 1 }
+   }
+}
+
+
 Specify Oxs_TimeDriver {
  basename spinvalve
  evolver :evolve
@@ -84,4 +129,64 @@ Specify Oxs_TimeDriver {
      }
  }}
  m0 {10 1 0}
+
+ user_output {
+  name "ax"
+  source_field Spin
+  select_field TopX
+  exclude_0_Ms 1
+ }
+ user_output {
+  name "ay"
+  source_field Spin
+  select_field TopY
+  exclude_0_Ms 1
+ }
+ user_output {
+  name "az"
+  source_field Spin
+  select_field TopZ
+  exclude_0_Ms 1
+ }
+ user_output {
+  name "bx"
+  source_field Spin
+  select_field BottomX
+  exclude_0_Ms 1
+ }
+ user_output {
+  name "by"
+  source_field Spin
+  select_field BottomY
+  exclude_0_Ms 1
+ }
+ user_output {
+  name "bz"
+  source_field Spin
+  select_field BottomZ
+  exclude_0_Ms 1
+ }
 }
+
+# You can use the OOMMF command line utility to postprocess the output
+# spinvalve.odt file to add columns showing the angles of the average
+# magnetization of the top ('a') and bottom ('b') layers. For example,
+# on Linux or macOS you can use the command line
+#
+#  tclsh oommf.tcl odtcalc < spinvalve.odt > spinvalve-augmented.odt \
+#    ang_a  '180/3.14159265 * atan2($ay,$ax)' deg \
+#    ang_b  '180/3.14159265 * atan2($by,$bx)' deg \
+#    ang_ab '180/3.14159265 * acos(($ax*$bx+$ay*$by+$az*$bz)/sqrt(($ax*$ax+$ay*$ay+$az*$az)*($bx*$bx+$by*$by+$bz*$bz)))' deg
+#
+# Here the columns ang_a and ang_b show, in degrees, the in-plane angle
+# for the top and bottom layers, respectively, and ang_ab is the angle
+# between the layers.
+#    On Windows, replace the single quotes with double quotes, and the
+# backslash unix line continuation characters with the Windows caret "^"
+# line continuation character:
+#
+#  tclsh oommf.tcl odtcalc < spinvalve.odt > spinvalve-augmented.odt ^
+#    ang_a  "180/3.14159265 * atan2($ay,$ax)" deg ^
+#    ang_b  "180/3.14159265 * atan2($by,$bx)" deg ^
+#    ang_ab "180/3.14159265 * acos(($ax*$bx+$ay*$by+$az*$bz)/sqrt(($ax*$ax+$ay*$ay+$az*$az)*($bx*$bx+$by*$by+$bz*$bz)))" deg
+#

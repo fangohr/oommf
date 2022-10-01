@@ -170,7 +170,7 @@ proc Net_LastConnectionCheck { key } {
    # If key is empty string, then timeout has occurred
    if {[string match {} $key]} {
       Oc_EventHandler DeleteGroup net_startcleanshutdown_tracker
-      unset net_startcleanshutdown_tracker
+      unset -nocomplain net_startcleanshutdown_tracker
       Oc_Main AllowLibShutdown
       return
    }

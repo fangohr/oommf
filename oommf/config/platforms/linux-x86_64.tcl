@@ -186,6 +186,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## on the value name.
 # $config SetValue program_compiler_c++_override {icpc -c}
 #
+## Max asynchronous exception (A.E.) handling level: one of none, POSIX,
+## or SEH. This setting works in conjuction with the Oc_Option
+## AsyncExceptionHandling selection (see file oommf/appconfig/options.tcl)
+## according to the following table:
+##
+##    Oc_Option          \ program_compiler_c++_async_exception_handling
+## AsyncExceptionHandling \      none         POSIX          SEH
+## ------------------------+-------------------------------------------
+##       none              |     abort         abort         abort*
+##      POSIX              |     abort        sig+abort    sig+abort
+##       SEH               |     abort        sig+abort    seh+abort*
+##
+## In the abort cases, the program immediately terminates with no error
+## message. In the sig+abort or seh+abort cases a error message is
+## logged followed by program termination. In the sig+abort setting the
+## error message reports the corresponding POSIX signal raised, while
+## seh+abort prints the corresponding Microsoft Windows Structured
+## Exception error message. In the SEH column all A.E. run through the
+## the Windows SEH handling, so there is some additional overhead, even
+## if Oc_Option AsyncExceptionHandling is none. The error message is
+## generally logged to stderr, and may additionally be written to
+## a program log file.
+##
+## The SEH option is only available on Windows with the Visual C++
+## compiler, and may have a (minor) negative performance impact. The
+## default setting is POSIX.
+# $config SetValue program_compiler_c++_async_exception_handling POSIX
+#
 ## Processor architecture for compiling.  The default is "generic"
 ## which should produce an executable that runs on any cpu model for
 ## the given platform.  Optionally, one may specify "host", in which
@@ -213,7 +241,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to remove from compiler "opts" string.  These are matched as regexps:
+## Flags to remove from compiler "opts" string (regexp match):
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
@@ -221,7 +249,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
-## Flags to add (resp. remove) from "valuesafeopts" string:
+## Flags to add (resp. remove (regexp)) from "valuesafeopts" string:
 # $config SetValue program_compiler_c++_remove_valuesafeflags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 # $config SetValue program_compiler_c++_add_valuesafeflags \
@@ -278,7 +306,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_linker_extra_args -pthread
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
-# 
+#
 ## Uncomment the following "use_tk 0" line to build OOMMF without Tk.
 ## This is for special-purpose use only, typically for remote batch jobs
 ## on a headless machine with Tcl but without X11 (and hence Tk).  This
@@ -287,6 +315,14 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## headless machine, it is better if possible to run X11 with a virtual
 ## frame buffer (e.g. Xvfb).
 # $config SetValue use_tk 0
+#
+#
+## Debugging options. These control memory alignment. See the
+## "Debugging OOMMF" section in the OOMMF Programming Manual for
+## details.
+# $config SetValue program_compiler_c++_property_cache_linesize 1
+# $config SetValue program_compiler_c++_property_pagesize 1
+# $config SetValue sse_no_aligned_access 1
 #
 # END LOCAL CONFIGURATION
 ########################################################################
@@ -396,7 +432,6 @@ if {[string match g++ $ccbasename]} {
           [lindex [$config GetValue program_compiler_c++] 0]]
 
    # Optimization options
-
    set cpuopts {}
    if {![string match generic [string tolower $cpu_arch]]} {
       # Arch specific build.  If cpu_arch is "host", then try to
@@ -492,10 +527,27 @@ if {[string match g++ $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Asychronous exceptions
+   if {[catch {$config \
+         GetValue program_compiler_c++_async_exception_handling} _eh]} {
+      set _eh POSIX ;# Default setting
+      $config SetValue program_compiler_c++_async_exception_handling $_eh
+   }
+   if {[string compare -nocase none $_eh]!=0} {
+      lappend opts -fnon-call-exceptions
+   }
+   unset _eh
+
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
-   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
-   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   set valuesafeopts [concat $opts \
+                         [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
 
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
@@ -610,7 +662,7 @@ if {[string match g++ $ccbasename]} {
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
    }
-   
+
    # The --exceptions option is an old option not supported
    # in the 18.4 release of PG C++.
    #lappend opts "--exceptions" ;# This has to come after -mp
@@ -633,6 +685,9 @@ if {[string match g++ $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Is there a pgc++ equivalent to the g++ -fnon-call-exceptions
+   # option? If so, refer to g++ code block and put equivalent here.
+
    # Aggressive optimization flags, some of which are specific to
    # particular Pgcc versions, but are all processor agnostic.
    set valuesafeopts [GetPgccValueSafeOptFlags $pgcc_version $cpu_arch]
@@ -640,7 +695,7 @@ if {[string match g++ $ccbasename]} {
 
    set valuesafeopts [concat $opts $valuesafeopts]
    set opts [concat $opts $fastopts]
-   
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
    set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
@@ -812,6 +867,9 @@ if {[string match g++ $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Is there a icpc equivalent to the g++ -fnon-call-exceptions option?
+   # If so, refer to g++ code block and put equivalent here.
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
    set valuesafeopts [concat $opts [GetIcpcValueSafeOptFlags $icpc_version]]
@@ -876,7 +934,7 @@ unset compileonly
 if {[string match g++ $ccbasename]} {
     # ...for GNU g++ as linker
     lappend linkername -pthread  ;# Apparently needed by some gcc installs
-    $config SetValue program_linker $linkername 
+    $config SetValue program_linker $linkername
     $config SetValue program_linker_option_obj {format \"%s\"}
     $config SetValue program_linker_option_out {format "-o \"%s\""}
     $config SetValue program_linker_option_lib {format \"%s\"}

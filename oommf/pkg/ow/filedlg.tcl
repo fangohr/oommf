@@ -240,7 +240,6 @@ Oc_Class Ow_FileDlg {
             $descbox_setup $this $descframe
         }
 
-
         Ow_SelectBox New selectionwidget $winpath \
                 -title $selection_title \
                 -callback "$this SwitchBoard"
@@ -248,7 +247,6 @@ Oc_Class Ow_FileDlg {
                 -callback "$this SwitchBoard"
 
         $this BrowseStateTrace ;# Initialize ok button text
-
 
         # Initialize selection path
         $selectionwidget SetPath [$dirwidget Cget -value]

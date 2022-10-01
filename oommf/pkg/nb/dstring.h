@@ -11,7 +11,7 @@
 #ifndef _NB_DSTRING
 #define _NB_DSTRING
 
-#include <string.h>
+#include <cstring>
 #include "dlist.h"
 #include "evoc.h"
 

@@ -9,7 +9,7 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "xpfloat.h"
 

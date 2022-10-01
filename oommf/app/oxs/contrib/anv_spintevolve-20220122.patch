@@ -1,0 +1,1163 @@
+diff -ru anv_spintevolve/spintevolve.cc anv_spintevolve-new/spintevolve.cc
+--- anv_spintevolve/spintevolve.cc	2022-01-22 02:39:23.916148919 -0500
++++ anv_spintevolve-new/spintevolve.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -6,7 +6,7 @@
+  * 22/06/2007
+  */
+ 
+-#include <float.h>
++#include <cfloat>
+ #include <string>
+ 
+ #include "nb.h"
+@@ -53,13 +53,13 @@
+     has_u_profile = 1;
+     String cmdoptreq = GetStringInitValue("u_profile_args",
+                                           "stage stage_time total_time");
+-    u_profile_opts.push_back(Oxs_TclCommandLineOption("stage",1));
+-    u_profile_opts.push_back(Oxs_TclCommandLineOption("stage_time",1));
+-    u_profile_opts.push_back(Oxs_TclCommandLineOption("total_time",1));
++    u_profile_opts.push_back(Nb_TclCommandLineOption("stage",1));
++    u_profile_opts.push_back(Nb_TclCommandLineOption("stage_time",1));
++    u_profile_opts.push_back(Nb_TclCommandLineOption("total_time",1));
+     u_profile_cmd.SetBaseCommand(InstanceName(),
+                    director->GetMifInterp(),
+                    GetStringInitValue("u_profile"),
+-                   Oxs_ParseTclCommandLineRequest(InstanceName(),
++                   Nb_ParseTclCommandLineRequest(InstanceName(),
+                                                   u_profile_opts,
+                                                   cmdoptreq));
+   }	
+@@ -211,7 +211,7 @@
+   director->ReserveSimulationStateRequest(1);
+ }
+ 
+-BOOL Anv_SpinTEvolve::Init()
++OC_BOOL Anv_SpinTEvolve::Init()
+ {
+   // Setup outputs
+   max_dm_dt_output.Register(director,-5);
+@@ -277,8 +277,8 @@
+ 	u_init->FillMeshValue(mesh,u);
+ 
+   // Zero spin torque on fixed spins
+-	const UINT4m size = mesh->Size();
+-	UINT4m i,j;
++	const OC_INDEX size = mesh->Size();
++	OC_INDEX i,j;
+   ave_u = 0.0;
+   for(i=0;i<size;i++) {
+     ave_u += u[i];
+@@ -286,9 +286,9 @@
+ 	if(size>0) ave_u /= size;
+ 
+   UpdateFixedSpinList(mesh); // Safety
+-  const UINT4m fixed_count = GetFixedSpinCount();
++  const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+-    UINT4m i = GetFixedSpin(j);
++    OC_INDEX i = GetFixedSpin(j);
+ 		u[i]=0;
+   }
+ 
+@@ -297,7 +297,7 @@
+ 
+   if(gamma_style == GS_G) { // Convert to LL form
+     for(i=0;i<size;++i) {
+-      REAL8m cell_alpha = alpha[i];
++      OC_REAL8m cell_alpha = alpha[i];
+       gamma[i] /= (1+cell_alpha*cell_alpha);
+     }
+   }
+@@ -310,10 +310,10 @@
+ 
+ 
+ 
+-REAL8m Anv_SpinTEvolve::EvaluateuProfileScript
+-(UINT4m stage,
+- REAL8m stage_time,
+- REAL8m total_time) const
++OC_REAL8m Anv_SpinTEvolve::EvaluateuProfileScript
++(OC_UINT4m stage,
++ OC_REAL8m stage_time,
++ OC_REAL8m total_time) const
+ {
+   if(!has_u_profile) return 1.0;
+ 
+@@ -341,15 +341,15 @@
+   u_profile_cmd.GetResultListItem(0,result);
+   u_profile_cmd.RestoreInterpResult();
+ 
+-  return static_cast<REAL8m>(result);
++  return static_cast<OC_REAL8m>(result);
+ }
+ 
+ void Anv_SpinTEvolve::Calculate_dm_dt
+ (const Oxs_SimState& state_,
+  const Oxs_MeshValue<ThreeVector>& mxH_,
+- REAL8m pE_pt_,
++ OC_REAL8m pE_pt_,
+  Oxs_MeshValue<ThreeVector>& dm_dt_,
+- REAL8m& max_dm_dt_,REAL8m& dE_dt_,REAL8m& min_timestep_)
++ OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& min_timestep_)
+ { // Imports: state, mxH_, pE_pt_
+   // Exports: dm_dt_, max_dm_dt_, dE_dt_
+   // NOTE: dm_dt_ is allowed, and in fact is encouraged,
+@@ -357,10 +357,10 @@
+   //   overwritten by dm_dt on return.
+   const Oxs_Mesh* mesh = state_.mesh;
+ 
+-  const Oxs_MeshValue<REAL8m>& Ms_ = *(state_.Ms);
+-  //const Oxs_MeshValue<REAL8m>& Ms_inverse_ = *(state_.Ms_inverse);
++  const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state_.Ms);
++  //const Oxs_MeshValue<OC_REAL8m>& Ms_inverse_ = *(state_.Ms_inverse);
+   const Oxs_MeshValue<ThreeVector>& spin_ = state_.spin;
+-  const UINT4m size = mesh->Size(); // Assume import data are compatible
++  const OC_INDEX size = mesh->Size(); // Assume import data are compatible
+ 	
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+@@ -374,9 +374,9 @@
+   dm_dt_ = mxH_;
+ 
+   // Zero torque data on fixed spins
+-  UINT4m i,j;
++  OC_INDEX i,j;
+   UpdateFixedSpinList(mesh);
+-  const UINT4m fixed_count = GetFixedSpinCount();
++  const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+     dm_dt_[GetFixedSpin(j)].Set(0.,0.,0.);
+   }
+@@ -392,10 +392,10 @@
+   // Compute dm_dt and dE_dt.  For details, see mjd's NOTES III,
+   // 27-28 July 2004, pp. 186-193, and 15-Aug-2004, pp. 197-199.
+ 
+-  REAL8m dE_dt_sum=0.0;
+-  REAL8m max_dm_dt_sq = 0.0;
++  OC_REAL8m dE_dt_sum=0.0;
++  OC_REAL8m max_dm_dt_sq = 0.0;
+ 	
+-	const REAL8m umult = EvaluateuProfileScript(state_.stage_number,
++	const OC_REAL8m umult = EvaluateuProfileScript(state_.stage_number,
+                           state_.stage_elapsed_time,
+                           state_.stage_start_time+state_.stage_elapsed_time);
+ 
+@@ -412,10 +412,10 @@
+       dm_dt_[i].Set(0.0,0.0,0.0); 
+     } else {
+ 			
+-			UINT4m x=0;
++			OC_INDEX x=0;
+ 			x=i%n_x;
+-      const REAL8m cell_alpha = alpha[i];
+-      const REAL8m cell_mgamma = -1*gamma[i]; // -1 * Landau-Lifshitz gamma gamma_LL=gamma_G/(1+alpha^2)
++      const OC_REAL8m cell_alpha = alpha[i];
++      const OC_REAL8m cell_mgamma = -1*gamma[i]; // -1 * Landau-Lifshitz gamma gamma_LL=gamma_G/(1+alpha^2)
+ 			ThreeVector mxH = dm_dt_[i];
+ 
+ 			if(do_precess) {
+@@ -480,7 +480,7 @@
+ 			scratch2 *= (beta-cell_alpha)/(1+cell_alpha*cell_alpha);
+ 			dm_dt_[i] += scratch2; // dm_dt= -gamma_LL*m^H-alpha*gamma_LL*m^(m^H) -(1+alpha*beta)/(1+alpha^2)*u*pm_px +(beta-alpha)/(1+alpha^2)*u*m^pm_px
+ 			
+-      REAL8m dm_dt_sq = dm_dt_[i].MagSq();
++      OC_REAL8m dm_dt_sq = dm_dt_[i].MagSq();
+       if(dm_dt_sq>0)	{
+ 				inter_dEdt -= mxH;
+ 				inter_dEdt *=fabs(cell_alpha*cell_mgamma); // inter_dEdt=-alpha*|gamma_LL|*m^H
+@@ -504,8 +504,8 @@
+   // Get bound on smallest stepsize that would actually
+   // change spin new_max_dm_dt_index:
+   min_timestep_ = DBL_MAX/64.;
+-  if(max_dm_dt_>1 || REAL8_EPSILON<min_timestep_*max_dm_dt_) {
+-    min_timestep_ = REAL8_EPSILON/max_dm_dt_;
++  if(max_dm_dt_>1 || OC_REAL8_EPSILON<min_timestep_*max_dm_dt_) {
++    min_timestep_ = OC_REAL8_EPSILON/max_dm_dt_;
+     // A timestep of size min_timestep will be hopelessly lost
+     // in roundoff error.  So increase a bit, based on an empirical
+     // fudge factor.  This fudge factor can be tested by running a
+@@ -538,10 +538,10 @@
+     // cached data out-of-date
+     UpdateDerivedOutputs(cstate);
+   }
+-  BOOL cache_good = 1;
+-  REAL8m max_dm_dt,dE_dt,delta_E,pE_pt;
+-  REAL8m timestep_lower_bound;  // Smallest timestep that can actually
+-  /// change spin with max_dm_dt (due to REAL8_EPSILON restrictions).
++  OC_BOOL cache_good = 1;
++  OC_REAL8m max_dm_dt,dE_dt,delta_E,pE_pt;
++  OC_REAL8m timestep_lower_bound;  // Smallest timestep that can actually
++  /// change spin with max_dm_dt (due to OC_REAL8_EPSILON restrictions).
+   /// The next timestep is based on the error from the last step.  If
+   /// there is no last step (either because this is the first step,
+   /// or because the last state handled by this routine is different
+@@ -566,13 +566,14 @@
+ 
+ void
+ Anv_SpinTEvolve::AdjustState
+-(REAL8m hstep,
+- REAL8m mstep,
++(OC_REAL8m hstep,
++ OC_REAL8m mstep,
+  const Oxs_SimState& old_state,
+  const Oxs_MeshValue<ThreeVector>& dm_dt,
+  Oxs_SimState& new_state,
+- REAL8m& norm_error) const
++ OC_REAL8m& norm_error) const
+ {
++  new_state.ClearDerivedData();
+   const Oxs_MeshValue<ThreeVector>& old_spin = old_state.spin;
+   Oxs_MeshValue<ThreeVector>& new_spin = new_state.spin;
+ 
+@@ -583,12 +584,12 @@
+ 			 " Import spin and dm_dt are different sizes.");
+   }
+   new_spin.AdjustSize(old_state.mesh);
+-  const UINT4m size = old_state.mesh->Size();
++  const OC_INDEX size = old_state.mesh->Size();
+ 
+-  REAL8m min_normsq = DBL_MAX;
+-  REAL8m max_normsq = 0.0;
++  OC_REAL8m min_normsq = DBL_MAX;
++  OC_REAL8m max_normsq = 0.0;
+   ThreeVector tempspin;
+-  UINT4m i;
++  OC_INDEX i;
+   for(i=0;i<size;++i) {
+     tempspin = dm_dt[i];
+     tempspin *= mstep;
+@@ -597,13 +598,13 @@
+     // For improved accuracy, adjust step vector so that
+     // to first order m0 + adjusted_step = v/|v| where
+     // v = m0 + step.
+-    REAL8m adj = 0.5 * tempspin.MagSq();
++    OC_REAL8m adj = 0.5 * tempspin.MagSq();
+     tempspin -= adj*old_spin[i];
+     tempspin *= 1.0/(1.0+adj);
+ #endif // OLDE_CODE
+ 
+     tempspin += old_spin[i];
+-    REAL8m magsq = tempspin.MakeUnit();
++    OC_REAL8m magsq = tempspin.MakeUnit();
+     if(magsq<min_normsq) min_normsq=magsq;
+     if(magsq>max_normsq) max_normsq=magsq;
+ 
+@@ -638,7 +639,7 @@
+ void Anv_SpinTEvolve::UpdateTimeFields
+ (const Oxs_SimState& cstate,
+  Oxs_SimState& nstate,
+- REAL8m stepsize) const
++ OC_REAL8m stepsize) const
+ {
+   nstate.last_timestep=stepsize;
+   if(cstate.stage_number != nstate.stage_number) {
+@@ -657,22 +658,22 @@
+ (const Oxs_TimeDriver* driver,
+  const Oxs_SimState&  cstate,
+  Oxs_SimState& nstate,
+- REAL8m stepsize,
+- BOOL use_start_dm,
+- BOOL& force_step,
+- BOOL& driver_set_step) const
++ OC_REAL8m stepsize,
++ OC_BOOL use_start_dm,
++ OC_BOOL& force_step,
++ OC_BOOL& driver_set_step) const
+ { // This routine negotiates with driver over the proper step size.
+   // As a side-effect, also initializes the nstate data structure,
+   // where nstate is the "next state".
+ 
+   // Pull needed cached values out from cstate.
+-  REAL8m max_dm_dt;
++  OC_REAL8m max_dm_dt;
+   if(!cstate.GetDerivedData("Max dm/dt",max_dm_dt)) {
+     throw Oxs_Ext::Error(this,
+        "Anv_SpinTEvolve::NegotiateTimeStep: max_dm_dt not cached.");
+   }
+-  REAL8m timestep_lower_bound=0.;  // Smallest timestep that can actually
+-  /// change spin with max_dm_dt (due to REAL8_EPSILON restrictions).
++  OC_REAL8m timestep_lower_bound=0.;  // Smallest timestep that can actually
++  /// change spin with max_dm_dt (due to OC_REAL8_EPSILON restrictions).
+   if(!cstate.GetDerivedData("Timestep lower bound",
+ 			    timestep_lower_bound)) {
+     throw Oxs_Ext::Error(this,
+@@ -729,14 +730,14 @@
+ }
+ 
+ 
+-BOOL
++OC_BOOL
+ Anv_SpinTEvolve::CheckError
+-(REAL8m global_error_order,
+- REAL8m error,
+- REAL8m stepsize,
+- REAL8m reference_stepsize,
+- REAL8m max_dm_dt,
+- REAL8m& new_stepsize)
++(OC_REAL8m global_error_order,
++ OC_REAL8m error,
++ OC_REAL8m stepsize,
++ OC_REAL8m reference_stepsize,
++ OC_REAL8m max_dm_dt,
++ OC_REAL8m& new_stepsize)
+ { // Returns 1 if step is good, 0 if error is too large.
+   // Export new_stepsize is set to suggested stepsize
+   // for next step.
+@@ -759,12 +760,12 @@
+   // NOTE: This routine assumes the local error order is
+   //     global_error_order + 1.
+ 
+-  BOOL good_step = 1;
+-  BOOL error_checked=0;
++  OC_BOOL good_step = 1;
++  OC_BOOL error_checked=0;
+ 
+   if(allowed_relative_step_error>=0. || allowed_error_rate>=0.) {
+     // Determine tighter rate bound.
+-    REAL8m rate_error = 0.0;
++    OC_REAL8m rate_error = 0.0;
+     if(allowed_relative_step_error<0.) {
+       rate_error = allowed_error_rate;
+     } else if(allowed_error_rate<0.) {
+@@ -782,9 +783,9 @@
+       good_step = 0;
+       new_stepsize = pow(rate_error/error,1.0/global_error_order);
+     } else {
+-      REAL8m ratio = 0.5*DBL_MAX;
++      OC_REAL8m ratio = 0.5*DBL_MAX;
+       if(error>=1 || rate_error<ratio*error) {
+-	REAL8m test_ratio = rate_error/error;
++	OC_REAL8m test_ratio = rate_error/error;
+ 	if(test_ratio<ratio) ratio = test_ratio;
+       }
+       new_stepsize = pow(ratio,1.0/global_error_order);
+@@ -794,16 +795,16 @@
+ 
+   // Absolute error check
+   if(allowed_absolute_step_error>=0.0) {
+-    REAL8m test_stepsize = 0.0;
+-    REAL8m local_error_order = global_error_order + 1.0;
++    OC_REAL8m test_stepsize = 0.0;
++    OC_REAL8m local_error_order = global_error_order + 1.0;
+     if(error>allowed_absolute_step_error) {
+       good_step = 0;
+       test_stepsize = pow(allowed_absolute_step_error/error,
+ 			  1.0/local_error_order);
+     } else {
+-      REAL8m ratio = 0.5*DBL_MAX;
++      OC_REAL8m ratio = 0.5*DBL_MAX;
+       if(error>=1 || allowed_absolute_step_error<ratio*error) {
+-	REAL8m test_ratio = allowed_absolute_step_error/error;
++	OC_REAL8m test_ratio = allowed_absolute_step_error/error;
+ 	if(test_ratio<ratio) ratio = test_ratio;
+       }
+       test_stepsize = pow(ratio,1.0/local_error_order);
+@@ -820,12 +821,12 @@
+       new_stepsize = max_step_decrease*stepsize;
+     } else {
+       new_stepsize *= stepsize;
+-      REAL8m step_bound = stepsize * max_step_increase;
+-      const REAL8m refrat = 0.85;  // Ad hoc value
++      OC_REAL8m step_bound = stepsize * max_step_increase;
++      const OC_REAL8m refrat = 0.85;  // Ad hoc value
+       if(stepsize<reference_stepsize*refrat) {
+ 	step_bound = OC_MIN(step_bound,reference_stepsize);
+       } else if(stepsize<reference_stepsize) {
+-	REAL8m ref_bound = reference_stepsize + (max_step_increase-1)
++	OC_REAL8m ref_bound = reference_stepsize + (max_step_increase-1)
+ 	  *(stepsize-reference_stepsize*refrat)/(1-refrat);
+ 	/// If stepsize = reference_stepsize*refrat,
+ 	///     then ref_bound = reference_stepsize
+@@ -844,14 +845,14 @@
+ }
+ 
+ void Anv_SpinTEvolve::TakeRungeKuttaStep2
+-(REAL8m stepsize,
++(OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ { // This routine performs a second order Runge-Kutta step, with
+   // error estimation.  The form used is the "modified Euler"
+   // method due to Collatz (1960).
+@@ -884,10 +885,10 @@
+ 
+   const Oxs_SimState* cstate = &(current_state_key.GetReadReference());
+ 
+-  UINT4m i;
+-  const UINT4m size = cstate->mesh->Size();
++  OC_INDEX i;
++  const OC_INDEX size = cstate->mesh->Size();
+ 
+-  REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound,dummy_error;
++  OC_REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound,dummy_error;
+ 
+   // Calculate dm_dt2
+   AdjustState(stepsize/2,stepsize/2,*cstate,current_dm_dt,
+@@ -909,10 +910,10 @@
+ 
+   // Normalize spins in nstate, and collect norm error info
+   // Normalize m2, including norm error check
+-  REAL8m min_normsq = DBL_MAX;
+-  REAL8m max_normsq = 0.0;
++  OC_REAL8m min_normsq = DBL_MAX;
++  OC_REAL8m max_normsq = 0.0;
+   for(i=0;i<size;++i) {
+-    REAL8m magsq = nstate->spin[i].MakeUnit();
++    OC_REAL8m magsq = nstate->spin[i].MakeUnit();
+     if(magsq<min_normsq) min_normsq=magsq;
+     if(magsq>max_normsq) max_normsq=magsq;
+   }
+@@ -939,10 +940,10 @@
+ 			 "Anv_SpinTEvolve::TakeRungeKuttaStep2:"
+ 			 " Programming error; data cache already set.");
+   }
+-  REAL8m max_err_sq = 0.0;
++  OC_REAL8m max_err_sq = 0.0;
+   for(i=0;i<size;++i) {
+     ThreeVector tvec = vtmpB[i] - vtmpA[i];
+-    REAL8m err_sq = tvec.MagSq();
++    OC_REAL8m err_sq = tvec.MagSq();
+     if(err_sq>max_err_sq) max_err_sq = err_sq;
+   }
+   error_estimate = sqrt(max_err_sq)*stepsize/3.;
+@@ -956,14 +957,14 @@
+ }
+ 
+ void Anv_SpinTEvolve::TakeRungeKuttaStep4
+-(REAL8m stepsize,
++(OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ { // This routine performs two successive "classical" Runge-Kutta
+   // steps of size stepsize/2, and stores the resulting magnetization
+   // state into the next_state export.  Additionally, a single
+@@ -1018,11 +1019,11 @@
+   Oxs_SimState* tstate = &(temp_state_key.GetWriteReference());
+   nstate->CloneHeader(*tstate);
+ 
+-  UINT4m i;
+-  const UINT4m size = cstate->mesh->Size();
++  OC_INDEX i;
++  const OC_INDEX size = cstate->mesh->Size();
+ 
+-  REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound;
+-  REAL8m dummy_error;
++  OC_REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound;
++  OC_REAL8m dummy_error;
+ 
+   // Do first half step.  Because dm_dt1 is already calculated,
+   // we fill dm_dt2 directly into vtmpB.
+@@ -1120,10 +1121,10 @@
+ 
+   // Normalize spins in nstate, and collect norm error info
+   // Normalize m2, including norm error check
+-  REAL8m min_normsq = DBL_MAX;
+-  REAL8m max_normsq = 0.0;
++  OC_REAL8m min_normsq = DBL_MAX;
++  OC_REAL8m max_normsq = 0.0;
+   for(i=0;i<size;++i) {
+-    REAL8m magsq = nstate->spin[i].MakeUnit();
++    OC_REAL8m magsq = nstate->spin[i].MakeUnit();
+     if(magsq<min_normsq) min_normsq=magsq;
+     if(magsq>max_normsq) max_normsq=magsq;
+   }
+@@ -1173,10 +1174,10 @@
+     = &(temp_state_key.GetReadReference()); // Lock down
+ 
+   // Error is max|next_state.spin-temp_state.spin|/15 + O(stepsize^6)
+-  REAL8m max_error_sq = 0.0;
++  OC_REAL8m max_error_sq = 0.0;
+   for(i=0;i<size;++i) {
+     ThreeVector tvec = endstate->spin[i] - teststate->spin[i];
+-    REAL8m error_sq = tvec.MagSq();
++    OC_REAL8m error_sq = tvec.MagSq();
+     if(error_sq>max_error_sq) max_error_sq = error_sq;
+     // If we want, we can experiment with adding
+     // tvec/15 to endstate->spin.  In theory, this changes
+@@ -1189,14 +1190,14 @@
+ 
+ void Anv_SpinTEvolve::RungeKuttaFehlbergBase54
+ (RKF_SubType method,
+- REAL8m stepsize,
++ OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ { // Runge-Kutta-Fehlberg routine with combined 4th and 5th
+   // order Runge-Kutta steps.  The difference between the
+   // two results (4th vs. 5th) is used to estimate the error.
+@@ -1322,10 +1323,10 @@
+   //       kN = \sum_{M=1}^{M=N} dm_dtM*bNM
+   //  Db - Da = \sum dm_dtM*dcM
+   //
+-  REAL8m a1,a2,a3,a4; // a5 and a6 are 1.0
+-  REAL8m b11,b21,b22,b31,b32,b33,b41,b42,b43,b44,
++  OC_REAL8m a1,a2,a3,a4; // a5 and a6 are 1.0
++  OC_REAL8m b11,b21,b22,b31,b32,b33,b41,b42,b43,b44,
+     b51,b52,b53,b54,b55,b61,b63,b64,b65,b66; // b62 is 0.0
+-  REAL8m dc1,dc3,dc4,dc5,dc6,dc7;  // c[k] = b6k, and c^[2]=c[2]=0.0,
++  OC_REAL8m dc1,dc3,dc4,dc5,dc6,dc7;  // c[k] = b6k, and c^[2]=c[2]=0.0,
+   /// where c are the coeffs for Da, c^ for Db, and dcM = c^[M]-c[M].
+ 
+   switch(method) {
+@@ -1474,7 +1475,7 @@
+ #ifdef CODE_CHECKS
+   // COEFFICIENT CHECKS ////////////////////////////////////////
+   // Try to catch some simple typing errors
+-#define EPS (6*REAL8_EPSILON)
++#define EPS (6*OC_REAL8_EPSILON)
+   if(fabs(b11-a1)>EPS ||
+      fabs(b21+b22-a2)>EPS ||
+      fabs(b31+b32+b33-a3)>EPS ||
+@@ -1493,8 +1494,8 @@
+ 
+   const Oxs_SimState* cstate = &(current_state_key.GetReadReference());
+ 
+-  REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound;
+-  REAL8m dummy_error;
++  OC_REAL8m pE_pt,max_dm_dt,dE_dt,timestep_lower_bound;
++  OC_REAL8m dummy_error;
+ 
+   // Step 1
+   AdjustState(stepsize*a1,stepsize*b11,*cstate,current_dm_dt,
+@@ -1565,8 +1566,8 @@
+   // Array holdings: A=dm_dt6   B=dm_dt3   C=dm_dt4   D=dm_dt5
+ 
+   // Step 10
+-  UINT4m i;
+-  const UINT4m size = cstate->mesh->Size();
++  OC_INDEX i;
++  const OC_INDEX size = cstate->mesh->Size();
+   for(i=0;i<size;i++) {
+     ThreeVector dm_dt3 = vtmpB[i];
+     ThreeVector dm_dt6 = vtmpA[i];
+@@ -1613,9 +1614,9 @@
+   // Step 11 also set norm_error.
+ 
+   // Error estimate is max|m2a-m2b| = h*max|dD|
+-  REAL8m max_dD_sq=0.0;
++  OC_REAL8m max_dD_sq=0.0;
+   for(i=0;i<size;i++) {
+-    REAL8m magsq = vtmpB[i].MagSq();
++    OC_REAL8m magsq = vtmpB[i].MagSq();
+     if(magsq>max_dD_sq) max_dD_sq = magsq;
+   }
+   error_estimate = stepsize * sqrt(max_dD_sq);
+@@ -1624,14 +1625,14 @@
+ }
+ 
+ void Anv_SpinTEvolve::TakeRungeKuttaFehlbergStep54
+-(REAL8m stepsize,
++(OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ {
+   RungeKuttaFehlbergBase54(RK547FC,stepsize,
+      current_state_key,current_dm_dt,next_state_key,
+@@ -1641,14 +1642,14 @@
+ }
+ 
+ void Anv_SpinTEvolve::TakeRungeKuttaFehlbergStep54M
+-(REAL8m stepsize,
++(OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ {
+   RungeKuttaFehlbergBase54(RK547FM,stepsize,
+      current_state_key,current_dm_dt,next_state_key,
+@@ -1658,14 +1659,14 @@
+ }
+ 
+ void Anv_SpinTEvolve::TakeRungeKuttaFehlbergStep54S
+-(REAL8m stepsize,
++(OC_REAL8m stepsize,
+  Oxs_ConstKey<Oxs_SimState> current_state_key,
+  const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+  Oxs_Key<Oxs_SimState>& next_state_key,
+- REAL8m& error_estimate,REAL8m& global_error_order,
+- REAL8m& norm_error,
+- REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+- BOOL& new_energy_and_dmdt_computed)
++ OC_REAL8m& error_estimate,OC_REAL8m& global_error_order,
++ OC_REAL8m& norm_error,
++ OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++ OC_BOOL& new_energy_and_dmdt_computed)
+ {
+   RungeKuttaFehlbergBase54(RK547FS,stepsize,
+      current_state_key,current_dm_dt,next_state_key,
+@@ -1674,26 +1675,26 @@
+      new_energy_and_dmdt_computed);
+ }
+ 
+-REAL8m Anv_SpinTEvolve::MaxDiff
++OC_REAL8m Anv_SpinTEvolve::MaxDiff
+ (const Oxs_MeshValue<ThreeVector>& vecA,
+  const Oxs_MeshValue<ThreeVector>& vecB)
+ {
+-  UINT4m size = vecA.Size();
++  OC_INDEX size = vecA.Size();
+   if(vecB.Size()!=size) {
+     throw Oxs_Ext::Error(this,
+ 		 "Anv_SpinTEvolve::MaxDiff:"
+ 		 " Import MeshValues incompatible (different lengths).");
+   }
+-  REAL8m max_magsq = 0.0;
+-  for(UINT4m i=0;i<size;i++) {
++  OC_REAL8m max_magsq = 0.0;
++  for(OC_INDEX i=0;i<size;i++) {
+     ThreeVector vtemp = vecB[i] - vecA[i];
+-    REAL8m magsq = vtemp.MagSq();
++    OC_REAL8m magsq = vtemp.MagSq();
+     if(magsq>max_magsq) max_magsq = magsq;
+   }
+   return sqrt(max_magsq);
+ }
+ 
+-void Anv_SpinTEvolve::AdjustStepHeadroom(INT4m step_reject)
++void Anv_SpinTEvolve::AdjustStepHeadroom(OC_INT4m step_reject)
+ { // step_reject should be 0 or 1, reflecting whether the current
+   // step was rejected or not.  This routine updates reject_ratio
+   // and adjusts step_headroom appropriately.
+@@ -1716,23 +1717,23 @@
+   if(step_headroom<min_step_headroom) step_headroom=min_step_headroom;
+ }
+ 
+-BOOL
++OC_BOOL
+ Anv_SpinTEvolve::Step(const Oxs_TimeDriver* driver,
+                       Oxs_ConstKey<Oxs_SimState> current_state_key,
+                       const Oxs_DriverStepInfo& step_info,
+                       Oxs_Key<Oxs_SimState>& next_state_key)
+ {
+-  const REAL8m bad_energy_cut_ratio = 0.75;
+-  const REAL8m bad_energy_step_increase = 1.3;
++  const OC_REAL8m bad_energy_cut_ratio = 0.75;
++  const OC_REAL8m bad_energy_step_increase = 1.3;
+ 
+-  const REAL8m previous_next_timestep = next_timestep;
++  const OC_REAL8m previous_next_timestep = next_timestep;
+ 
+   const Oxs_SimState& cstate = current_state_key.GetReadReference();
+ 
+   CheckCache(cstate);
+ 
+   // Note if start_dm is being used
+-  BOOL start_dm_active=0;
++  OC_BOOL start_dm_active=0;
+   if(next_timestep<=0.0 ||
+      (cstate.stage_iteration_count<1
+       && step_info.current_attempt_count==0)) {
+@@ -1755,18 +1756,18 @@
+   // Negotiate timestep, and also initialize both next_state and
+   // temp_state structures.
+   Oxs_SimState* work_state = &(next_state_key.GetWriteReference());
+-  BOOL force_step=0,driver_set_step=0;
++  OC_BOOL force_step=0,driver_set_step=0;
+   NegotiateTimeStep(driver,cstate,*work_state,next_timestep,
+ 		    start_dm_active,force_step,driver_set_step);
+-  REAL8m stepsize = work_state->last_timestep;
++  OC_REAL8m stepsize = work_state->last_timestep;
+   work_state=NULL; // Safety: disable pointer
+ 
+   // Step
+-  REAL8m error_estimate,norm_error;
+-  REAL8m global_error_order;
+-  REAL8m min_dE_dt,max_dE_dt;
+-  BOOL new_energy_and_dmdt_computed;
+-  BOOL reject_step=0;
++  OC_REAL8m error_estimate,norm_error;
++  OC_REAL8m global_error_order;
++  OC_REAL8m min_dE_dt,max_dE_dt;
++  OC_BOOL new_energy_and_dmdt_computed;
++  OC_BOOL reject_step=0;
+   (this->*rkstep_ptr)(stepsize,current_state_key,
+ 		      dm_dt_output.cache.value,
+ 		      next_state_key,
+@@ -1775,11 +1776,11 @@
+ 		      new_energy_and_dmdt_computed);
+   const Oxs_SimState& nstate = next_state_key.GetReadReference();
+ 
+-  REAL8m max_dm_dt;
++  OC_REAL8m max_dm_dt;
+   cstate.GetDerivedData("Max dm/dt",max_dm_dt);
+-  REAL8m reference_stepsize = stepsize;
++  OC_REAL8m reference_stepsize = stepsize;
+   if(driver_set_step) reference_stepsize = previous_next_timestep;
+-  BOOL good_step = CheckError(global_error_order,error_estimate,
++  OC_BOOL good_step = CheckError(global_error_order,error_estimate,
+ 			      stepsize,reference_stepsize,
+ 			      max_dm_dt,next_timestep);
+   /// Note: Might want to use average or larger of max_dm_dt
+@@ -1801,7 +1802,7 @@
+ 
+   if(start_dm_active && !force_step) {
+     // Check that no spin has moved by more than start_dm
+-    REAL8m diff = MaxDiff(cstate.spin,nstate.spin);
++    OC_REAL8m diff = MaxDiff(cstate.spin,nstate.spin);
+     if(diff>start_dm) {
+       next_timestep = step_headroom * stepsize * (start_dm/diff);
+       if(next_timestep<=stepsize*bad_energy_cut_ratio) {
+@@ -1839,7 +1840,7 @@
+   // reduces the step size, and perhaps the effective order of the method.
+   // To date I have not done any testing of these hypotheses.
+   // -mjd, 21-July-2004
+-  REAL8m current_dE_dt,new_dE_dt;
++  OC_REAL8m current_dE_dt,new_dE_dt;
+   if(!cstate.GetDerivedData("dE/dt",current_dE_dt)) {
+     throw Oxs_Ext::Error(this,"Anv_SpinTEvolve::Step:"
+ 			 " current dE/dt not cached.");
+@@ -1850,7 +1851,7 @@
+ 			   " new dE/dt not cached.");
+     }
+   } else {
+-    REAL8m new_pE_pt;
++    OC_REAL8m new_pE_pt;
+     GetEnergyDensity(nstate,temp_energy,
+ 		     &mxH_output.cache.value,
+ 		     NULL,new_pE_pt);
+@@ -1860,7 +1861,7 @@
+ 	   "Anv_SpinTEvolve::Step:"
+ 	   " Programming error; data cache (pE/pt) already set.");
+     }
+-    REAL8m new_max_dm_dt,new_timestep_lower_bound;
++    OC_REAL8m new_max_dm_dt,new_timestep_lower_bound;
+     Calculate_dm_dt(nstate,
+ 		    mxH_output.cache.value,new_pE_pt,
+ 		    vtmpA,new_max_dm_dt,
+@@ -1880,16 +1881,16 @@
+   if(current_dE_dt<min_dE_dt) min_dE_dt = current_dE_dt;
+   if(current_dE_dt>max_dE_dt) max_dE_dt = current_dE_dt;
+ 
+-  REAL8m dE=0.0;
+-  REAL8m var_dE=0.0;
+-  REAL8m total_E=0.0;
+-  UINT4m i;
+-  const UINT4m size = nstate.mesh->Size();
++  OC_REAL8m dE=0.0;
++  OC_REAL8m var_dE=0.0;
++  OC_REAL8m total_E=0.0;
++  OC_INDEX i;
++  const OC_INDEX size = nstate.mesh->Size();
+   for(i=0;i<size;++i) {
+-    REAL8m vol = nstate.mesh->Volume(i);
+-    REAL8m e = energy[i];
++    OC_REAL8m vol = nstate.mesh->Volume(i);
++    OC_REAL8m e = energy[i];
+     total_E += e * vol;
+-    REAL8m new_e = temp_energy[i];
++    OC_REAL8m new_e = temp_energy[i];
+     dE += (new_e - e) * vol;
+     var_dE += (new_e*new_e + e*e)*vol*vol;
+   }
+@@ -1906,15 +1907,15 @@
+     ///        +/- expected_energy_precision*energy[i].
+     /// It would probably be better to get an error estimate directly
+     /// from each energy term.
+-    REAL8m E_numerror = 2*OC_MAX(fabs(total_E)*expected_energy_precision,
++    OC_REAL8m E_numerror = 2*OC_MAX(fabs(total_E)*expected_energy_precision,
+ 			         2*sqrt(var_dE));
+-    REAL8m max_allowed_dE = max_dE_dt * stepsize + E_numerror;
+-    REAL8m min_allowed_dE = min_dE_dt * stepsize - E_numerror;
+-    REAL8m allowed_dE_span = max_allowed_dE - min_allowed_dE;
++    OC_REAL8m max_allowed_dE = max_dE_dt * stepsize + E_numerror;
++    OC_REAL8m min_allowed_dE = min_dE_dt * stepsize - E_numerror;
++    OC_REAL8m allowed_dE_span = max_allowed_dE - min_allowed_dE;
+     max_allowed_dE += allowed_dE_span*energy_check_slack;
+     min_allowed_dE -= allowed_dE_span*energy_check_slack;
+     if(dE<min_allowed_dE || max_allowed_dE<dE) {
+-      REAL8m teststep = bad_energy_cut_ratio*stepsize;
++      OC_REAL8m teststep = bad_energy_cut_ratio*stepsize;
+       if(teststep<next_timestep) {
+ 	next_timestep=teststep;
+ 	max_step_increase = bad_energy_step_increase;
+@@ -1953,11 +1954,10 @@
+   // filled.
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+-    = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
+     = 0;  // Mark change in progress
+ 
+-  REAL8m dummy_value;
++  OC_REAL8m dummy_value;
+   if(!state.GetDerivedData("Max dm/dt",max_dm_dt_output.cache.value) ||
+      !state.GetDerivedData("dE/dt",dE_dt_output.cache.value) ||
+      !state.GetDerivedData("Delta E",delta_E_output.cache.value) ||
+@@ -1972,7 +1972,7 @@
+ 
+     // Calculate H and mxH outputs
+     Oxs_MeshValue<ThreeVector>& mxH = mxH_output.cache.value;
+-    REAL8m pE_pt;
++    OC_REAL8m pE_pt;
+     GetEnergyDensity(state,energy,&mxH,NULL,pE_pt);
+     energy_state_id=state.Id();
+     mxH_output.cache.state_id=state.Id();
+@@ -1984,7 +1984,7 @@
+     Oxs_MeshValue<ThreeVector>& dm_dt
+       = dm_dt_output.cache.value;
+     dm_dt_output.cache.state_id=0;
+-    REAL8m timestep_lower_bound;
++    OC_REAL8m timestep_lower_bound;
+     Calculate_dm_dt(state,mxH,pE_pt,dm_dt,
+ 		    max_dm_dt_output.cache.value,
+ 		    dE_dt_output.cache.value,timestep_lower_bound);
+@@ -2028,8 +2028,8 @@
+ void Anv_SpinTEvolve::UpdateSpinTorqueOutputs(const Oxs_SimState& state)
+ {
+   const Oxs_Mesh* mesh = state.mesh;
+-  const UINT4m size = mesh->Size();
+-  UINT4m i,j;
++  const OC_INDEX size = mesh->Size();
++  OC_INDEX i,j;
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+ 
+@@ -2039,10 +2039,10 @@
+     UpdateMeshArrays(mesh);
+   }
+ 
+-  const Oxs_MeshValue<REAL8m>& Ms = *(state.Ms);
++  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+   const Oxs_MeshValue<ThreeVector>& spin_ = state.spin;
+ 
+-	const REAL8m umult = EvaluateuProfileScript(state.stage_number,
++	const OC_REAL8m umult = EvaluateuProfileScript(state.stage_number,
+ 														state.stage_elapsed_time,
+ 														state.stage_start_time+state.stage_elapsed_time);
+ 
+@@ -2056,10 +2056,10 @@
+         stt[i].Set(0.0,0.0,0.0);
+       } else {
+       
+-			UINT4m x=0;
++			OC_INDEX x=0;
+ 			x=i%n_x;
+-      //const REAL8m cell_alpha = alpha[i];
+-      //const REAL8m cell_mgamma = -1*gamma[i]; // -1 * Landau-Lifshitz gamma
++      //const OC_REAL8m cell_alpha = alpha[i];
++      //const OC_REAL8m cell_mgamma = -1*gamma[i]; // -1 * Landau-Lifshitz gamma
+ 	
+ 			// current spin torque terms
+ 
+diff -ru anv_spintevolve/spintevolve.h anv_spintevolve-new/spintevolve.h
+--- anv_spintevolve/spintevolve.h	2017-06-14 13:50:09.000000000 -0400
++++ anv_spintevolve-new/spintevolve.h	2022-01-22 02:31:37.000000000 -0500
+@@ -9,6 +9,8 @@
+ #ifndef _ANV_SPINTEVOLVE
+ #define _ANV_SPINTEVOLVE
+ 
++#include "nb.h"
++
+ #include "threevector.h"
+ #include "util.h"
+ #include "mesh.h"
+@@ -25,30 +27,30 @@
+ /* End includes */
+ class Anv_SpinTEvolve:public Oxs_TimeEvolver {
+ private:
+-  mutable UINT4m mesh_id;
++  mutable OC_UINT4m mesh_id;
+ 	Oxs_OwnedPointer<Oxs_ScalarField> u_init;
+ 	
+ 	//spin-torque parameter
+-  mutable Oxs_MeshValue<REAL8m> u;
+-  REAL8m ave_u; // Average value of u, excluding u_profile term.
++  mutable Oxs_MeshValue<OC_REAL8m> u;
++  OC_REAL8m ave_u; // Average value of u, excluding u_profile term.
+ 
+   void UpdateMeshArrays(const Oxs_Mesh*);
+ 
+ 	// Support for time varying current:
+-  BOOL has_u_profile;
+-  vector<Oxs_TclCommandLineOption> u_profile_opts;
+-  Oxs_TclCommand u_profile_cmd;
+-  REAL8m EvaluateuProfileScript(UINT4m stage,REAL8m stage_time,
+-                                REAL8m total_time) const;
++  OC_BOOL has_u_profile;
++  vector<Nb_TclCommandLineOption> u_profile_opts;
++  Nb_TclCommand u_profile_cmd;
++  OC_REAL8m EvaluateuProfileScript(OC_UINT4m stage,OC_REAL8m stage_time,
++                                OC_REAL8m total_time) const;
+ 
+   // Base step size control parameters
+-  REAL8m min_timestep;           // Seconds
+-  REAL8m max_timestep;           // Seconds
++  OC_REAL8m min_timestep;           // Seconds
++  OC_REAL8m max_timestep;           // Seconds
+ 
+-  const REAL8m max_step_decrease;        // Safety size adjusment
+-  const REAL8m max_step_increase_limit;  // bounds.
+-  const REAL8m max_step_increase_adj_ratio;
+-  REAL8m max_step_increase;
++  const OC_REAL8m max_step_decrease;        // Safety size adjusment
++  const OC_REAL8m max_step_increase_limit;  // bounds.
++  const OC_REAL8m max_step_increase_adj_ratio;
++  OC_REAL8m max_step_increase;
+   /// NOTE: These bounds do not include step_headroom, which
+   /// is applied at the end.
+ 
+@@ -56,56 +58,56 @@
+   // by setting to -1.  There is an additional step size control that
+   // insures that energy is monotonically non-increasing (up to
+   // estimated rounding error).
+-  REAL8m allowed_error_rate;  // Step size is adjusted so
++  OC_REAL8m allowed_error_rate;  // Step size is adjusted so
+   /// that the estimated maximum error (across all spins) divided
+   /// by the step size is smaller than this value.  The units
+   /// internally are radians per second, converted from the value
+   /// specified in the input MIF file, which is in deg/sec.
+ 
+-  REAL8m allowed_absolute_step_error; // Similar to allowed_error_rate,
++  OC_REAL8m allowed_absolute_step_error; // Similar to allowed_error_rate,
+   /// but without the step size adjustment.  Internal units are
+   /// radians; MIF input units are degrees.
+ 
+-  REAL8m allowed_relative_step_error; // Step size is adjusted so that
++  OC_REAL8m allowed_relative_step_error; // Step size is adjusted so that
+   /// the estimated maximum error (across all spins) divided by
+   /// [maximum dm/dt (across all spins) * step size] is smaller than
+   /// this value.  This value is non-dimensional, representing the
+   /// allowed relative (proportional) error, presumably in (0,1).
+ 
+-  REAL8m expected_energy_precision; // Expected relative energy
++  OC_REAL8m expected_energy_precision; // Expected relative energy
+   /// precision.  Set <0 to disable energy stepsize control.
+ 
+-  REAL8m energy_check_slack; // Allowed slack in energy stepsize
++  OC_REAL8m energy_check_slack; // Allowed slack in energy stepsize
+   /// control.
+ 	  // The following evolution constants are uniform for now.  These
+   // should be changed to arrays in the future.
+ 
+-	REAL8m beta;  // spin-flip relative strength term
+-	REAL8m Xstep; // x distance between 2 positions
+-	UINT4m n_x; // nb of cells in x direction
+-
+-  REAL8m reject_goal,reject_ratio;
+-  REAL8m min_step_headroom,max_step_headroom;
+-  REAL8m step_headroom; // Safety margin used in step size adjustment
++	OC_REAL8m beta;  // spin-flip relative strength term
++	OC_REAL8m Xstep; // x distance between 2 positions
++	OC_INDEX n_x; // nb of cells in x direction
++
++  OC_REAL8m reject_goal,reject_ratio;
++  OC_REAL8m min_step_headroom,max_step_headroom;
++  OC_REAL8m step_headroom; // Safety margin used in step size adjustment
+ 
+   // Spatially variable Landau-Lifschitz-Gilbert damping coef
+   Oxs_OwnedPointer<Oxs_ScalarField> alpha_init;
+-  mutable Oxs_MeshValue<REAL8m> alpha;
++  mutable Oxs_MeshValue<OC_REAL8m> alpha;
+ 
+   // Spatially variable Landau-Lifschitz-Gilbert gyromagnetic ratio.
+-  BOOL do_precess;  // If false, then do pure damping
+-  BOOL allow_signed_gamma; // If false, then force gamma negative
++  OC_BOOL do_precess;  // If false, then do pure damping
++  OC_BOOL allow_signed_gamma; // If false, then force gamma negative
+   enum GammaStyle { GS_INVALID, GS_LL, GS_G }; // Landau-Lifshitz or Gilbert
+   GammaStyle gamma_style;
+   Oxs_OwnedPointer<Oxs_ScalarField> gamma_init;
+-  mutable Oxs_MeshValue<REAL8m> gamma;
++  mutable Oxs_MeshValue<OC_REAL8m> gamma;
+ 
+   // The next timestep is based on the error from the last step.  If
+   // there is no last step (either because this is the first step,
+   // or because the last state handled by this routine is different
+   // from the incoming current_state), then timestep is calculated
+   // so that max_dm_dt * timestep = start_dm.
+-  REAL8m start_dm;
++  OC_REAL8m start_dm;
+ 
+   // Stepsize control for first step of each stage after the first.
+   // Choices are to use start_dm, use continuation from end of
+@@ -117,9 +119,9 @@
+   StageInitStepControl stage_init_step_control;
+ 
+   // Data cached from last state
+-  UINT4m energy_state_id;
+-  Oxs_MeshValue<REAL8m> energy;
+-  REAL8m next_timestep;
++  OC_UINT4m energy_state_id;
++  Oxs_MeshValue<OC_REAL8m> energy;
++  OC_REAL8m next_timestep;
+ 
+   // Outputs
+   void UpdateDerivedOutputs(const Oxs_SimState&);
+@@ -133,7 +135,7 @@
+   Oxs_VectorFieldOutput<Anv_SpinTEvolve> spin_torque_output;
+ 
+   // Scratch space
+-  Oxs_MeshValue<REAL8m> temp_energy;
++  Oxs_MeshValue<OC_REAL8m> temp_energy;
+   Oxs_MeshValue<ThreeVector> vtmpA;
+   Oxs_MeshValue<ThreeVector> vtmpB;
+   Oxs_MeshValue<ThreeVector> vtmpC;
+@@ -142,40 +144,40 @@
+   // Utility functions
+   void CheckCache(const Oxs_SimState& cstate);
+ 
+-  void AdjustState(REAL8m hstep,
+-		   REAL8m mstep,
++  void AdjustState(OC_REAL8m hstep,
++		   OC_REAL8m mstep,
+ 		   const Oxs_SimState& old_state,
+ 		   const Oxs_MeshValue<ThreeVector>& dm_dt,
+ 		   Oxs_SimState& new_state,
+-		   REAL8m& norm_error) const;
++		   OC_REAL8m& norm_error) const;
+   // Export new state has time index from old_state + h,
+   // and spins from old state + mstep*dm_dt and re-normalized.
+ 
+   void UpdateTimeFields(const Oxs_SimState& cstate,
+ 			Oxs_SimState& nstate,
+-			REAL8m stepsize) const;
++			OC_REAL8m stepsize) const;
+ 
+   void NegotiateTimeStep(const Oxs_TimeDriver* driver,
+ 			 const Oxs_SimState&  cstate,
+ 			 Oxs_SimState& nstate,
+-			 REAL8m stepsize,
+-			 BOOL use_start_dm,
+-			 BOOL& forcestep,
+-			 BOOL& driver_set_step) const;
+-
+-  BOOL CheckError(REAL8m global_error_order,REAL8m error,
+-		  REAL8m stepsize,REAL8m reference_stepsize,
+-		  REAL8m max_dm_dt,REAL8m& new_stepsize);
++			 OC_REAL8m stepsize,
++			 OC_BOOL use_start_dm,
++			 OC_BOOL& forcestep,
++			 OC_BOOL& driver_set_step) const;
++
++  OC_BOOL CheckError(OC_REAL8m global_error_order,OC_REAL8m error,
++		  OC_REAL8m stepsize,OC_REAL8m reference_stepsize,
++		  OC_REAL8m max_dm_dt,OC_REAL8m& new_stepsize);
+   /// Returns 1 if step is good, 0 if error is too large.
+   /// Export new_stepsize is set to suggested stepsize
+   /// for next step.
+ 
+-  REAL8m MaxDiff(const Oxs_MeshValue<ThreeVector>& vecA,
++  OC_REAL8m MaxDiff(const Oxs_MeshValue<ThreeVector>& vecA,
+ 		 const Oxs_MeshValue<ThreeVector>& vecB);
+   /// Returns maximum difference between vectors in corresponding
+   /// positions in two vector fields.
+ 
+-  void AdjustStepHeadroom(INT4m step_reject);
++  void AdjustStepHeadroom(OC_INT4m step_reject);
+   /// step_reject should be 0 or 1, reflecting whether the current
+   /// step was rejected or not.  This routine updates reject_ratio
+   /// and adjusts step_headroom appropriately.
+@@ -202,15 +204,15 @@
+   // So, instead we use a #define, which is ugly but portable.
+ #define RKStepFuncSig(NAME) \
+   void NAME (                                            \
+-     REAL8m stepsize,                                    \
++     OC_REAL8m stepsize,                                    \
+      Oxs_ConstKey<Oxs_SimState> current_state,           \
+      const Oxs_MeshValue<ThreeVector>& current_dm_dt,    \
+      Oxs_Key<Oxs_SimState>& next_state,                  \
+-     REAL8m& error_estimate,                             \
+-     REAL8m& global_error_order,                         \
+-     REAL8m& norm_error,                                 \
+-     REAL8m& min_dE_dt, REAL8m& max_dE_dt,               \
+-     BOOL& new_energy_and_dmdt_computed)
++     OC_REAL8m& error_estimate,                             \
++     OC_REAL8m& global_error_order,                         \
++     OC_REAL8m& norm_error,                                 \
++     OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,               \
++     OC_BOOL& new_energy_and_dmdt_computed)
+ 
+   // Functions that calculate a single RK step
+   RKStepFuncSig(TakeRungeKuttaStep2);
+@@ -226,22 +228,22 @@
+   // Utility code used by the TakeRungeKuttaFehlbergStep54* routines.
+   enum RKF_SubType { RKF_INVALID, RK547FC, RK547FM, RK547FS };
+   void RungeKuttaFehlbergBase54(RKF_SubType method,
+-			   REAL8m stepsize,
++			   OC_REAL8m stepsize,
+ 			   Oxs_ConstKey<Oxs_SimState> current_state,
+ 			   const Oxs_MeshValue<ThreeVector>& current_dm_dt,
+ 			   Oxs_Key<Oxs_SimState>& next_state,
+-			   REAL8m& error_estimate,
+-			   REAL8m& global_error_order,
+-			   REAL8m& norm_error,
+-                           REAL8m& min_dE_dt, REAL8m& max_dE_dt,
+-			   BOOL& new_energy_and_dmdt_computed);
++			   OC_REAL8m& error_estimate,
++			   OC_REAL8m& global_error_order,
++			   OC_REAL8m& norm_error,
++                           OC_REAL8m& min_dE_dt, OC_REAL8m& max_dE_dt,
++			   OC_BOOL& new_energy_and_dmdt_computed);
+ 
+   void Calculate_dm_dt
+   (const Oxs_SimState& state_,
+    const Oxs_MeshValue<ThreeVector>& mxH_,
+-   REAL8m pE_pt_,
++   OC_REAL8m pE_pt_,
+    Oxs_MeshValue<ThreeVector>& dm_dt_,
+-   REAL8m& max_dm_dt_,REAL8m& dE_dt_,REAL8m& min_timestep_);
++   OC_REAL8m& max_dm_dt_,OC_REAL8m& dE_dt_,OC_REAL8m& min_timestep_);
+   /// Imports: mesh_, Ms_, mxH_, spin_, pE_pt
+   /// Exports: dm_dt_, max_dm_dt_, dE_dt_, min_timestep_
+ 
+@@ -252,13 +254,13 @@
+ public:
+   virtual const char* ClassName() const; // ClassName() is
+   /// automatically generated by the OXS_EXT_REGISTER macro.
+-  virtual BOOL Init();
++  virtual OC_BOOL Init();
+   Anv_SpinTEvolve(const char* name,     // Child instance id
+ 		       Oxs_Director* newdtr, // App director
+ 		       const char* argstr);  // MIF input block parameters
+   virtual ~Anv_SpinTEvolve();
+ 
+-  virtual  BOOL
++  virtual  OC_BOOL
+   Step(const Oxs_TimeDriver* driver,
+        Oxs_ConstKey<Oxs_SimState> current_state,
+        const Oxs_DriverStepInfo& step_info,

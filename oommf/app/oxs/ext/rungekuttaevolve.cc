@@ -4,7 +4,7 @@
  *
  */
 
-#include <float.h>
+#include <cfloat>
 #include <string>
 
 #include "nb.h"
@@ -617,7 +617,7 @@ void Oxs_RungeKuttaEvolve::Calculate_dm_dt
      !state_.AddDerivedData(DataName("My"),ave_M.y) ||
      !state_.AddDerivedData(DataName("Mz"),ave_M.z)) {
     // Cache already set.  Check that values agree
-    OC_REAL8m mx,my,mz;
+    OC_REAL8m mx=0.0, my=0.0, mz=0.0; // Dummy inits to pacify compilers
     if(!state_.GetDerivedData(DataName("Mx"),mx) ||
        !state_.GetDerivedData(DataName("My"),my) ||
        !state_.GetDerivedData(DataName("Mz"),mz)) {

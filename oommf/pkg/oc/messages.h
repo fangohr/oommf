@@ -1,7 +1,7 @@
 /* FILE: messages.h                   -*-Mode: c++-*-
  *
  *	Routines which provide message display services
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2011/06/02 08:42:29 $
@@ -11,8 +11,11 @@
 #ifndef _OC_MESSAGES
 #define _OC_MESSAGES
 
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
+#include <iostream>
+#include <string>
+
 #include "ocport.h"
 #include "autobuf.h"
 #include "imports.h"
@@ -34,5 +37,34 @@ OC_INDEX Oc_Snprintf(char *, size_t, const char *, ...);
 OC_INDEX Oc_Vsnprintf(char *, size_t, const char *, va_list);
 void Oc_BytesToAscii(const unsigned char *,OC_INDEX,Oc_AutoBuf&);
 void Oc_ErrorWrite(const char *,...);
+
+class Oc_LogSupport {
+public:
+  void static InitPrefix(const std::string& prefix) { log_prefix = prefix; }
+  static std::string GetTimeStamp();
+  static std::string GetLogMark(); // Prefix + timestamp
+private:
+  static std::string log_prefix;
+};
+
+Tcl_CmdProc Oc_LogSupportInitPrefixCmd;
+Tcl_CmdProc Oc_LogSupportGetLogMarkCmd;
+
+namespace Oc_Report {
+  class TeeBuffer; // Forward declaration
+  class TeeStream : public std::ostream {
+  public:
+    TeeStream(TeeBuffer* buf);
+    TeeStream() = delete;
+    TeeStream(const TeeStream&) = delete;
+    TeeStream& operator=(const TeeStream&) = delete;
+    void AddFile(const std::string& filename);
+  private:
+    TeeBuffer* tbuf;
+  };
+  extern TeeStream Log;
+} // namespace Oc_Report
+
+Tcl_CmdProc Oc_ReportAddCLogFile;
 
 #endif /* _OC_MESSAGES */

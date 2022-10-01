@@ -45,8 +45,8 @@
 #ifndef _OXS_THREAD
 #define _OXS_THREAD
 
-#include <assert.h>
-#include <string.h> // For memset
+#include <cassert>
+#include <cstring> // For memset
 #include <unordered_map> // Used for thread local storage
 #include <vector>
 
@@ -81,6 +81,8 @@
  * the granularity of memory mapping to nodes.  For non-NUMA, align
  * instead to cache lines, to allow more equal division of small
  * arrays among many threads.
+ *   NB: If OC_PAGESIZE is smaller than the actual machine page size
+ * then the memory might not get assigned to the requested node.
 */
 #if OC_USE_NUMA
 # define OXS_STRIPE_BLOCKSIZE OC_PAGESIZE

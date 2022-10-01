@@ -6,8 +6,8 @@
 
 #ifndef _GRID_H
 #define _GRID_H
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 
 #include "nb.h"
 

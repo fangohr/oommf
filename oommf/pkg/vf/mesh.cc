@@ -6,10 +6,10 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "oc.h"
 #include "nb.h"

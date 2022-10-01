@@ -14,7 +14,7 @@ package require If 2
 Oc_ForceStderrDefaultMessage
 
 Oc_Main SetAppName any2ppm
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 Oc_CommandLine Option console {} {}
 

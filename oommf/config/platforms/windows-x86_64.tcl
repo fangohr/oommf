@@ -186,6 +186,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## on the value name.
 # $config SetValue program_compiler_c++_override {g++ -c}
 #
+## Max asynchronous exception (A.E.) handling level: one of none, POSIX,
+## or SEH. This setting works in conjuction with the Oc_Option
+## AsyncExceptionHandling selection (see file oommf/appconfig/options.tcl)
+## according to the following table:
+##
+##    Oc_Option          \ program_compiler_c++_async_exception_handling
+## AsyncExceptionHandling \      none         POSIX          SEH
+## ------------------------+-------------------------------------------
+##       none              |     abort         abort         abort*
+##      POSIX              |     abort        sig+abort    sig+abort
+##       SEH               |     abort        sig+abort    seh+abort*
+##
+## In the abort cases, the program immediately terminates with no error
+## message. In the sig+abort or seh+abort cases a error message is
+## logged followed by program termination. In the sig+abort setting the
+## error message reports the corresponding POSIX signal raised, while
+## seh+abort prints the corresponding Microsoft Windows Structured
+## Exception error message. In the SEH column all A.E. run through the
+## the Windows SEH handling, so there is some additional overhead, even
+## if Oc_Option AsyncExceptionHandling is none. The error message is
+## generally logged to stderr, and may additionally be written to
+## a program log file.
+##
+## The SEH option is only available on Windows with the Visual C++
+## compiler, and may have a (minor) negative performance impact. The
+## default setting is POSIX.
+# $config SetValue program_compiler_c++_async_exception_handling SEH
+#
 ## Processor architecture for compiling.  The default is "generic"
 ## which should produce an executable that runs on any cpu model for
 ## the given platform.  Optionally, one may specify "host", in which
@@ -215,7 +243,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to remove from compiler "opts" string:
+## Flags to remove from compiler "opts" string (regexp match):
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
@@ -223,7 +251,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
-## Flags to add (resp. remove) from "valuesafeopts" string:
+## Flags to add (resp. remove (regexp)) from "valuesafeopts" string:
 # $config SetValue program_compiler_c++_remove_valuesafeflags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 # $config SetValue program_compiler_c++_add_valuesafeflags \
@@ -267,7 +295,15 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## program_linker_extra_lib_scripts should suffice.
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
-# 
+#
+#
+## Debugging options. These control memory alignment. See the
+## "Debugging OOMMF" section in the OOMMF Programming Manual for
+## details.
+# $config SetValue program_compiler_c++_property_cache_linesize 1
+# $config SetValue program_compiler_c++_property_pagesize 1
+# $config SetValue sse_no_aligned_access 1
+#
 # END LOCAL CONFIGURATION
 ########################################################################
 #
@@ -356,15 +392,25 @@ if {[string match cl $ccbasename]} {
    set cl_major_version [lindex $cl_version 0]
 
    if {[lindex $cl_major_version 0]>7} {
-      # The exception handling specification switch "/GX"
-      # is deprecated in version 8.  /EHa enables C++
-      # exceptions with SEH exceptions, /EHs enables C++
-      # exceptions without SEH exceptions, and /EHc sets
-      # extern "C" to default to nothrow.
-      lappend compilestr /EHac
+      # The exception handling specification switch "/GX" is deprecated
+      # in version 8.  /EHa enables C++ exceptions with SEH exceptions,
+      # /EHs enables C++ exceptions without SEH exceptions, and /EHc
+      # sets extern "C" to default to nothrow.
+      if {[catch {$config \
+           GetValue program_compiler_c++_async_exception_handling} _eh]} {
+         set _eh POSIX ;# Default setting
+         $config SetValue program_compiler_c++_async_exception_handling $_eh
+      }
+      if {[string compare -nocase SEH $_eh]==0} {
+         lappend compilestr /EHac
+      } else {
+         lappend compilestr /EHsc
+      }
+      unset _eh
    } else {
       lappend compilestr /GX
    }
+
    $config SetValue program_compiler_c++ $compilestr
    unset compilestr
 
@@ -376,6 +422,7 @@ if {[string match cl $ccbasename]} {
    #                  Disable optimizations: /Od
    #                   Maximum optimization: /Ox
    #                    Enable stack checks: /GZ
+   #                Buffers security checks: /GS[-] (default is enabled)
    #                   Require AVX  support: /arch:AVX
    #                   Require AVX2 support: /arch:AVX2
    # Fast (less predictable) floating point: /fp:fast
@@ -436,10 +483,15 @@ if {[string match cl $ccbasename]} {
       $config SetValue sse_level 2
    }
 
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular cl versions, but are all processor agnostic.
-   set opts [GetClGeneralOptFlags $cl_version x86_64]
-   set valuesafeopts [GetClValueSafeOptFlags $cl_version x86_64]
+   set opts [GetClGeneralOptFlags $cl_version x86_64 $optlevel]
+   set valuesafeopts [GetClValueSafeOptFlags $cl_version x86_64 $optlevel]
 
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
@@ -460,15 +512,17 @@ if {[string match cl $ccbasename]} {
    #  or ../local/options.tcl to include the line
    #    Oc_Option Add * Platform cflags {-def NDEBUG}
    #  so that the NDEBUG symbol is defined during compile.
-   $config SetValue program_compiler_c++_option_opt "format \"$opts\""
+   $config SetValue program_compiler_c++_option_opt \
+      "format \"$opts\""
    $config SetValue program_compiler_c++_option_valuesafeopt \
       "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "\"/Fo%s\""}
    $config SetValue program_compiler_c++_option_src {format "\"/Tp%s\""}
    $config SetValue program_compiler_c++_option_inc {format "\"/I%s\""}
    $config SetValue program_compiler_c++_option_warn {
-      format "/W4 /wd4505 /wd4702 /wd4127"
+      Platform Index [list {} {/W4 /wd4505 /wd4702 /wd4127}]
    }
+
    #   Warning C4505 is about removal of unreferenced local functions.
    # This seems to be a common occurrence when using templates with the
    # so-called "Borland" model.
@@ -479,9 +533,8 @@ if {[string match cl $ccbasename]} {
    # occurs intentionally many places in the code, either for
    # readability or as a consequence of supporting multiple platforms.
    #
-   # $config SetValue program_compiler_c++_option_debug {format "/MLd"}
    $config SetValue program_compiler_c++_option_debug {
-      format "/Zi /Fdwindows-x86_64/"
+      Platform Index [list {} {/Zi /Fdwindows-x86_64/}]
    }
    $config SetValue program_compiler_c++_option_def {format "\"/D%s\""}
 
@@ -541,7 +594,7 @@ if {[string match cl $ccbasename]} {
    # library files to create an executable binary.
    # Microsoft Visual C++'s linker
    $config SetValue program_linker {link}
-   # $config SetValue program_linker {link /DEBUG} ;# For debugging
+   $config SetValue program_linker_option_debug {format "/DEBUG"}
    $config SetValue program_linker_option_obj {format \"%s\"}
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
@@ -550,7 +603,12 @@ if {[string match cl $ccbasename]} {
    # Note 2: shell32.lib is needed for SetCurrentProcessExplicitAppUserModelID
    #   function called inside WinMain in pkg/oc/oc.cc to tie all OOMMF
    #   apps to the same taskbar group in Windows 7.
+   # Note 3: ntdll.lib is used in processing structured exception codes.
    lappend cl_libs user32.lib advapi32.lib
+   if {![catch {$config GetValue program_compiler_c++_async_exception_handling} _]
+       && [string compare -nocase SEH $_]==0} {
+      lappend cl_libs ntdll.lib
+   }
    $config SetValue TK_LIBS $cl_libs
    $config SetValue TCL_LIBS $cl_libs
    $config SetValue program_linker_uses_-L-l {0}
@@ -611,6 +669,9 @@ if {[string match cl $ccbasename]} {
    # or
    #    unset cpuopts
    #
+
+   # C++11 support
+   lappend opts -std=c++11
 
    # The gcc x86 toolchain supports 80-bit long doubles, and the "L"
    # length modifier (e.g., %Le, %Lf, %Lg, %La) to the printf family for
@@ -680,10 +741,26 @@ if {[string match cl $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Asychronous exceptions
+   if {[catch {$config \
+         GetValue program_compiler_c++_async_exception_handling} _eh]} {
+      set _eh POSIX ;# Default setting
+      $config SetValue program_compiler_c++_async_exception_handling $_eh
+   }
+   if {[string compare -nocase none $_eh]!=0} {
+      lappend opts -fnon-call-exceptions
+   }
+   unset _eh
+
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
-   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
-   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
 
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
@@ -725,10 +802,12 @@ if {[string match cl $ccbasename]} {
    #  "L" modifier, so -Wno-format is necessary.  Apparently there
    #  is a workaround using the __MINGW_PRINTF_FORMAT macro, if you
    #  don't mind the GCC + MinGW specific nature of it.
-   $config SetValue program_compiler_c++_option_warn {format "-Wall \
-        -W -Wpointer-arith -Wwrite-strings \
-        -Woverloaded-virtual -Wsynth -Werror -Wno-uninitialized \
-        -Wno-unused-function -Wno-format"}
+   $config SetValue program_compiler_c++_option_warn {
+      Platform Index [list {} { \
+         -Wall -W -Wpointer-arith -Wwrite-strings \
+         -Woverloaded-virtual -Wsynth -Werror -Wno-uninitialized \
+         -Wno-unused-function -Wno-format}]
+   }
 
    # Wide floating point type.
    # NOTE: On the x86_64+gcc platform, "long double" provides better

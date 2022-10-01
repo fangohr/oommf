@@ -4,7 +4,7 @@
  *
  */
 
-#include <time.h>
+#include <ctime>
 
 #include "psdraw.h"
 #include "nb.h"

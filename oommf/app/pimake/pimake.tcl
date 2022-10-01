@@ -143,11 +143,10 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}
-
 Oc_CommandLine Option out {file} {
     global out; set out $file
 } "Redirect output to file"
@@ -161,6 +160,9 @@ Oc_CommandLine Option k {} {
 Oc_CommandLine Option d {} {
     global options; set options(-d) 1
 } "Verbose dependency information"
+Oc_CommandLine Option root {} {
+    cd [Oc_Main GetOOMMFRootDir]
+} "Change directory to oommf root"
 Oc_CommandLine Option [Oc_CommandLine Switch] {
 	{{target optional} {} "Target to build (default=\"all\";\
 		 \"help\" prints choices)"}} {

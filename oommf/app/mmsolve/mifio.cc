@@ -4,8 +4,8 @@
  *
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "oc.h"
 #include "nb.h"
@@ -57,6 +57,7 @@ void ArgLine::Set(int new_argc,const Nb_DString *new_strv)
 {
   int i;
   size_t count;
+  if(new_argc<1 || new_strv==NULL) { Reset(); return; }
   for(count=0,i=0;i<new_argc;i++) count+=new_strv[i].Length()+1;
   Reset();
   argc=new_argc;

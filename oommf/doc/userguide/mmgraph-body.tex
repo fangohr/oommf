@@ -1,23 +1,23 @@
-\section{Data Graph Display: mmGraph}\label{sec:mmgraph}%
+\chapter{Data Graph Display: mmGraph}\label{sec:mmgraph}%
 \index{application!mmGraph}
 
 \begin{center}
 \includepic{mmgraph-ss}{mmGraph Screen Shot}
 \end{center}
 
-\ssechead{Overview}
+\starsechead{Overview}
 The application \app{mmGraph} provides a data display service similar to
 that of \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
-(Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  The usual
+(Ch.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  The usual
 data source is a running solver, but rather than the textual output
 provided by \app{mmDataTable}, \app{mmGraph} produces 2D line plots.
 \app{mmGraph} also stores the data it receives, so it can produce
 multiple views of the data and can save the data to disk.  Postscript
 output is also supported.
 
-\ssechead{Launching}
+\starsechead{Launching}
 \app{mmGraph} may be started either by selecting the {\btn{mmGraph}}
-button on \htmlref{\app{mmLaunch}}{sec:mmlaunch} or from the command
+button on \htmlonlyref{\app{mmLaunch}}{sec:mmlaunch} or from the command
 line via
 \begin{verbatim}
 tclsh oommf.tcl mmGraph [standard options] [-net <0|1>] [loadfile ...]
@@ -33,26 +33,26 @@ tclsh oommf.tcl mmGraph [standard options] [-net <0|1>] [loadfile ...]
   Optional list of data (\ODT) files to preload.
 \end{description}
 
-\ssechead{Inputs}
-Input to \app{mmGraph} may come from either a file in the 
+\starsechead{Inputs}
+Input to \app{mmGraph} may come from either a file in the
 \hyperrefhtml{\ODT\ format}{\ODT\ format
-(Sec.~}{)}{sec:odtformat}\index{file!data~table}, 
+(Ch.~}{)}{sec:odtformat}\index{file!data~table},
 or when \cd{-net 1} (the default) is active, from a client application
 (typically a running solver).  The
 \btn{File\pipe Open\ldots} dialog box is used to select an input file.
 Receipt of data from client applications is the same as for
 \hyperrefhtml{\app{mmDataTable}}{\app{mmDataTable}
-(Sec.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  In either
+(Ch.~}{)}{sec:mmdatatable}\index{application!mmDataTable}.  In either
 case, input data are appended to any previously held data.
 
 When reading from a file, \app{mmGraph} will automatically
 decompress\index{compressed~files}
 data using the \hyperrefhtml{local customization}{local customization
-(Sec.~}{)}{sec:custom}\index{file!configuration}
+(Sec.~}{)}{sec:install.custom}\index{file!configuration}
 ``Nb\_InputFilter decompress'' option to \cd{Oc\_Option}.  For details,
-see the discussion on file translation in the Inputs section of the 
+see the discussion on file translation in the Inputs section of the
 \hyperrefhtml{\app{mmDisp} documentation}{\app{mmDisp}
-documentation (Sec.~}{)}{sec:mmdisp}.
+documentation (Ch.~}{)}{sec:mmdisp}.
 
 Curve breaks\index{curve~break} (i.e., separation of a curve into
 disjoint segments) are recorded in the data storage buffer via {\em
@@ -60,14 +60,14 @@ curve break records.}  These records are generated whenever a new data
 table is detected by \app{mmGraph}, or when requested by the user using
 the \app{mmGraph} \btn{Options\pipe Break Curves} menu option.
 
-\ssechead{Outputs}
+\starsechead{Outputs}
 
 Unlike \app{mmDataTable}\index{application!mmDataTable}, \app{mmGraph}
 internally stores the data sent to it.  These data may be written to
 disk via the \btn{File\pipe Save As...} dialog box.  If the file
 specified already exists, then {\bf mmGraph} output is appended to that
 file.  The output is in the tabular \hyperrefhtml{\ODT\ format}{\ODT\
-format described in Sec.~}{}{sec:odtformat}\index{file!data~table}.  The
+format described in Ch.~}{}{sec:odtformat}\index{file!data~table}.  The
 data are segmented into separate \cd{Table Start/Table End} blocks
 across each curve break record.
 
@@ -91,13 +91,13 @@ terminated.
 
 The \btn{File\pipe Print...}\index{data!print} dialog is used to
 produce a Postscript file of the current graph.  On Unix systems, the
-output may be sent directly to a 
-printer\index{platform!Unix!PostScript~to~printer} 
+output may be sent directly to a
+printer\index{platform!Unix!PostScript~to~printer}
 by filling the \btn{Print to:}
 entry with the appropriate pipe command, e.g., \texttt{|lpr}.  (The
 exact form is system dependent.)
 
-\ssechead{Controls}
+\starsechead{Controls}
 Graphs are constructed by selecting any one item off the
 \btn{X}-axis menu, and any number of items off the \btn{Y1}-axis and
 \btn{Y2}-axis menus.  The y1-axis is marked on the left side of the
@@ -143,13 +143,13 @@ pixels.  Requested values smaller than the computed (default) values are
 ignored.
 
 The initial curve width is determined by the \cd{Ow\_GraphWin
-default\_curve\_width} setting in the \fn{config/options.tcl} and
+  default\_curve\_width} setting in the \fn{config/options.tcl} and
 \fn{config/local/options.tcl} files, following the usual method of
 \hyperrefhtml{local customization}{local customization
-(Sec.~}{)}{sec:custom}\index{file!configuration}.  The current curve
-width can be changed by specifying the desired width in the \btn{Curve
-Width} entry in the {\btn{Options\pipe Configure...}} dialog box.
-The units are pixels.  Long curves will be rendered more quickly,
+  (Sec.~}{)}{sec:install.custom}\index{file!configuration}.  The current
+curve width can be changed by specifying the desired width in the
+\btn{Curve Width} entry in the {\btn{Options\pipe Configure...}} dialog
+box.  The units are pixels.  Long curves will be rendered more quickly,
 especially on \Windows, if the curve width is set to 1.
 
 As mentioned earlier, \app{mmGraph} stores in memory all data it
@@ -238,7 +238,7 @@ y-axis will be rescaled.  The rescaling may be canceled by positioning
 the mouse pointer over the initial point before releasing the mouse
 button.  The zoom box feature is similar to the mouse zoom control in
 the \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
-  (Sec.~}{)}{sec:mmdisp}\index{application!mmDisp} application, except
+  (Ch.~}{)}{sec:mmdisp}\index{application!mmDisp} application, except
 that here there is no ``un-zooming'' mouse control.  However, the
 coordinate limits for each zoom are stored in a list, and the \key{Esc}
 and \key{Shift+Esc} keys may be used to move backwards and forwards,
@@ -275,7 +275,7 @@ clearing the axis menus.  The menu selection \btn{File\pipe Exit}
 terminates the application.  The menu \btn{Help} provides the usual help
 facilities.
 
-\ssechead{Details}
+\starsechead{Details}
 The axes menus are configured based on incoming data.  As a result,
 these menus are initially empty.  If a graph widget is scheduled to
 receive data only upon control point or stage done events in the solver,

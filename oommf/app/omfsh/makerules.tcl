@@ -36,13 +36,13 @@ MakeRule Define {
 			puts $f [format {
 Oc_Application Define {
     -name		omfsh
-    -version		2.0a3
+    -version		2.0b0
     -machine		%s
     -file		"%s"
 }
 Oc_Application Define {
     -name		filtersh
-    -version		2.0a3
+    -version		2.0b0
     -machine		%s
     -file		"%s"
 }
@@ -102,9 +102,9 @@ MakeRule Define {
 MakeRule Define {
     -targets            mostlyclean
     -dependencies       objclean
-    -script             {eval DeleteFiles [Platform Specific appindex.tcl] \
-			        [Platform Executables omfsh] \
-			        [Platform Executables filtersh] }
+    -script             {eval DeleteFiles [Platform Executables omfsh] \
+                            [Platform Executables filtersh] \
+                            [Platform Specific appindex.tcl]}
 }
 
 MakeRule Define {

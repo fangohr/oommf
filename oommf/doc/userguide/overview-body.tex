@@ -1,28 +1,63 @@
-\section{Overview of \OOMMF}\label{sec:overview}
+\chapter{Overview of \OOMMF}\label{sec:overview}
+Micromagnetics is a continuum model of the magnetization behavior of
+ferromagnetic materials. Developed by W. F. Brown Jr.\ in the 1940s and
+'50s \cite{brown1940,brown1963}, it allows for a more detailed description
+of magnetization structure and behavior \cite{neel1955} than the earlier
+domain theory \cite{weiss1906} or Stoner-Wohlfarth models
+\cite{stoner1948}.  Computing resources at that time, however, limited
+implementations to relatively simple systems \cite{labonte1969}. It
+wasn't until the 1990s that fully 2D and later 3D systems of
+technological interest could be successfully modeled
+\cite{aharoni1996,fidler2000}.
+
+The size of features such as domain walls, vortices, and cross-ties
+depends on material parameters (e.g., saturation magnetization $M_s$,
+magneto-crystalline anisotopy $K$, exchange coefficient $A$), applied
+field ($H_{\rm app}$), and part geometry, but the typical length scale is on
+the order of a few nanometers.  Arbitrary shapes and material variations
+may be modeled, though part size will be limited by the available
+computing power. Micromagnetics can be used to study static
+magnetization structures, for example ground states in small particles
+\cite{stdprob3mumag1998} and domain walls in film strips
+\cite{mcmichael1997}, quasi-static behavior to model M vs.\ H hystersis
+loops \cite{stdprob2mumag1998}, and field-driven magnetization dynamics
+using the Landau-Lifshitz-Gilbert equation
+\cite{gilbert1955,landau1935,stdprob4mumag2000}. More recent extensions
+include spin-torque
+\cite{stdprob5mumag2014,slonczewski1996,thiaville2005,xiao2004,zhang2004},
+thermal \cite{garciapalacios1998}, and DMI \cite{thiaville2012} effects.
+
 The goal of the
 \htmladdnormallinkfoot{\OOMMF}{https://math.nist.gov/oommf/} (Object
 Oriented MicroMagnetic Framework) project in the
-\htmladdnormallink{Information Technology
-Laboratory}{https://www.nist.gov/itl/} (ITL) at the
-\htmladdnormallink{National Institute of Standards and
-Technology}{https://www.nist.gov/} (NIST)
-is to develop a portable, extensible public domain micromagnetic
-program and associated tools.  This code forms a completely
-functional micromagnetics package, with the additional capability to
-be extended by other programmers so that people developing
-new code can build on the \OOMMF\ foundation.
-The main
-contributors to \OOMMF\ are
-\ifnotpdf{\htmladdnormallink{Mike Donahue}{https://math.nist.gov/\~{}MDonahue}}
-\pdfonly{\htmladdnormallink{Mike Donahue}{https://math.nist.gov/\%7EMDonahue}}
-and
-\ifnotpdf{\htmladdnormallink{Don Porter}{https://math.nist.gov/\~{}DPorter}.}
-\pdfonly{\htmladdnormallink{Don Porter}{https://math.nist.gov/\%7EDPorter}.}
+\htmladdnormallinkfoot{Information Technology
+  Laboratory}{https://www.nist.gov/itl/} (ITL) at the
+\htmladdnormallinkfoot{National Institute of Standards and
+  Technology}{https://www.nist.gov/} (NIST) is to develop a portable,
+extensible public domain micromagnetic program and associated tools
+\cite{aharoni1996,brown1963,fidler2000}.  The first release of \OOMMF, based
+on a micromagnetic code previously developed by Robert McMichael and
+Michael Donahue, was made in October, 1998. That release included the
+\hyperrefhtml{2D micromagnetic solver}{2D micromagnetic solver
+  (Ch.~}{)}{sec:mmsolve}, \hyperrefhtml{problem editor}{problem editor
+  (Ch.~}{)}{sec:mmprobed}, and several display widgets. Current releases
+implement a completely functional, fully 3D micromagnetics package, with
+the capability of being extended by other programmers so that people
+developing new code can build on the \OOMMF\ foundation.  The primary
+developers of \OOMMF\ are \psonly{\htmladdnormallinkfoot{Michael
+    Donahue}{https://math.nist.gov/\%7EMDonahue}}
+\notpsonly{\htmladdnormallink{Michael
+    Donahue}{https://math.nist.gov/\%7EMDonahue}} and
+\psonly{\htmladdnormallinkfoot{Donald
+    Porter}{https://math.nist.gov/\%7EDPorter}.}
+\notpsonly{\htmladdnormallink{Donald
+    Porter}{https://math.nist.gov/\%7EDPorter}.}
 
 \OOMMF\ is written in C++, a widely-available, object-oriented language
-that can produce programs with good performance as well as extensibility.
-For portable user interfaces, we make use of \Tcl/\Tk\ so that \OOMMF\ 
-operates across a wide range of \Unix, \Windows, and \MacOSX\ platforms.
+that can produce programs with good performance as well as
+extensibility.  The code uses \Tcl/\Tk\ to create a portable user
+interface allowing \OOMMF\ to operate across a wide range of \Unix,
+\Windows, and \MacOSX\ platforms.
 
 The code may be modified at three distinct levels.  At the top level,
 individual programs interact via well-defined protocols across network
@@ -32,9 +67,15 @@ same protocol can be transparently added.  The second level of
 modification is at the \Tcl/\Tk\ script level.  Some modules allow
 \Tcl/\Tk\ scripts to be imported and executed at run time, and the top
 level scripts are relatively easy to modify or replace.  At the lowest
-level, the C++ source is provided and can be modified, although at
-present the documentation for this is incomplete (cf.\ the ``OOMMF
-Programming Manual'').
+level, the C++ source is provided and can be modified (see the
+\htmladdnormallinkfoot{\textit{OOMMF Programming
+    Manual}}{https://math.nist.gov/oommf/doc/}).  The primary extension
+mechanism at this level is through the \hyperrefhtml{\OOMMF\ eXtensible
+  Solver}{OOMMF eXtensible Solver (Ch.~}{)}{sec:oxs}, Oxs. The
+extensible nature of Oxs allows its capabilities to be varied as
+necessary for the problem at hand, and lets \OOMMF\ users
+\htmladdnormallinkfoot{extend Oxs with external
+  modules.}{https://math.nist.gov/oommf/contrib/oxsext/}
 
 %The first portion of OOMMF released was a magnetization file display
 %program called
@@ -59,32 +100,24 @@ Programming Manual'').
 %self-magnetostatic (demag) field\index{field!demag}.  Anisotropy,
 %applied field\index{field!applied}, and initial
 %magnetization\index{magnetization!initial} can be varied pointwise, and
-%arbitrarily shaped elements\index{boundary} can be modeled.  
+%arbitrarily shaped elements\index{boundary} can be modeled.
 
-The current development version, \OOMMF\ 2.0, includes Oxs, the
-\OOMMF\ eXtensible Solver.  Oxs offers users of \OOMMF\ the ability
-to extend Oxs with their own modules.  
 %The details of programming
 %an Oxs extension module are found in the
 %\htmladdnormallinkfoot{OOMMF Programming Manual
-%}{https://math.nist.gov/oommf/doc/}.  
-The extensible nature of the Oxs
-solver means that its capabilities may be varied as necessary for the
-problem to be solved.  Oxs modules distributed as part of \OOMMF\
-support full 3D\index{simulation~3D} simulations suitable for modeling
-layered materials.
+%}{https://math.nist.gov/oommf/doc/}.
 
 {\samepage
 If you want to receive e-mail\index{e-mail}
 notification\index{announcements} of updates to this project, register
 your e-mail address with the ``\mumag'' mailing list:
 \begin{center}
-\ifnotpdf{\htmladdnormallink{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}.}
-\pdfonly{\htmladdnormallink{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}{https://www.ctcms.nist.gov/\%7Erdm/email-list.html}.}
+\htmladdnormallink{https://www.ctcms.nist.gov/~rdm/email-list.html}{https://www.ctcms.nist.gov/\%7Erdm/email-list.html}
 \end{center}
 } % end \samepage
 
 The \OOMMF\ developers are always interested in your comments about
-\OOMMF.  See the \hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
+\OOMMF.  See the
+\hyperrefhtml{Credits}{Credits (Ch.~}{) }{sec:credits}
 for instructions on how to contact them, and for information on
-referencing \OOMMF.
+citing \OOMMF.

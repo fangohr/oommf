@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Out-of-bounds memory access</TITLE>
+<META NAME="description" CONTENT="Out-of-bounds memory access">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="C++_source_code_debuggers.html">
+<LINK REL="previous" HREF="Segfaults_other_asynchronou.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="C++_source_code_debuggers.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html248"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html244"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html238"
+  HREF="Segfaults_other_asynchronou.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html246"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html249"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<B> Up:</B> <A NAME="tex2html245"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html239"
+  HREF="Segfaults_other_asynchronou.html">Segfaults and other asynchronous</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00650000000000000000"></A><A NAME="sec:debug:outofbounds"></A>
+<BR>
+Out-of-bounds memory access
+</H1>
+One of the more common coding errors is allowing array access outside
+the allocated range of an array. This error can be insidious because the
+program may continue to run past the point of invalid access, but plant
+a seed that grows into a seemingly unrelated fatal error later on. There
+are a number of tools designed to uncover this problem, but an
+especially easy one to use that is common on Linux systems is the
+venerable Electric Fence, original written by Bruce Perens in 1987. If
+the <TT><B>libefence.so</B></TT> shared library is installed, then from the
+<TT>bash</TT> prompt in the <TT><B>oommf/app/oxs</B></TT> directory you can run
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">LD_PRELOAD=libefence.so linux-x86_64/oxs boxsi.tcl foo.mif</FONT>
+<BR></TT>
+</DIV>
+<BR>
+(On some installations there may also be an equivalent shell wrapper
+<TT>ef</TT>.)  This will abort with a segfault if an invalid memory
+reference (read or write) is detected. One nice feature is that you
+don't have to rebuild OOMMF to use this debugger--the <TT>efence</TT>
+shared library transparently replaces the standard system memory
+allocator with the instrumented Electric Fence version at runtime. If
+you enable core dumps as explained above, then on Linux systems even
+without debug symbols a stack trace on the core dump will provide the
+function call list. If you build OOMMF with debugging symbols
+(<TT>Oc_Option cflags</TT> option <TT>-debug</TT> in
+<TT><B>config/local/options.tcl</B></TT>), then the core stack trace will give the
+source file and line number where the invalid memory access
+occurred. Also, OOMMF runs at normal speed with Electric Fence
+enabled, so you can use it to check for errors in large simulations.
+
+<P>
+One caveat is that for performance reasons, OOMMF sometimes allocates
+larger memory blocks than needed. Electric Fence detects memory
+accesses outside the requested memory range, so OOMMF accesses of
+memory outside its proper range but inside the requested range will not
+be flagged. You can have OOMMF request tight blocks by putting these
+lines in your <TT><B>local/&lt;platform&gt;.tcl</B></TT> file:
+<PRE>
+$config SetValue program_compiler_c++_property_cache_linesize 1
+$config SetValue program_compiler_c++_property_pagesize 1
+$config SetValue sse_no_aligned_access 1
+</PRE>
+and rebuilding OOMMF (<TT>pimake distclean</TT> plus <TT>pimake</TT>).
+
+<P>
+Normally Electric Fence detects accesses to memory locations above the
+allocated range (index too high), but you can have it check
+instead for memory accesses preceding the allocated range (index too
+low) by setting the environment variable <TT>EF_PROTECT_BELOW</TT> to 1.
+
+<P>
+The Electric Fence documentation warns that core dumps of Electric Fence
+enabled runs can be significantly larger than core dumps without
+Electric Fence, and so recommends running Electric Fence with the
+selected executable (here <TT><B>oxs</B></TT>) from inside a debugger rather than
+creating a core dump. This does not appear to be a problem when used
+with OOMMF however, as the core dumps with Electric Fence tend to be
+only modestly larger than those without.
+
+<P>
+A similar tool on macOS is the gmalloc (Guard Malloc) package, which
+is included with Xcode. Run it from the <TT><B>oommf/app/oxs</B></TT> bash or zsh
+command line with
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ % <FONT COLOR="#00bbee">DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib darwin/oxs boxsi.tcl foo.mif</FONT>
+<BR></TT>
+</DIV>
+<BR>
+See the documentation from Apple for full details.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html248"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html244"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html238"
+  HREF="Segfaults_other_asynchronou.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html246"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

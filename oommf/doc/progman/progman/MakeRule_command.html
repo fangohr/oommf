@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>The MakeRule command</TITLE>
+<META NAME="description" CONTENT="The MakeRule command">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="previous" HREF="Anatomy_TT_makerules.tcl_TT.html">
+<LINK REL="up" HREF="Platform_Independent_Make_O.html">
+<LINK REL="next" HREF="OOMMF_Variable_Types_Macros.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html106"
+  HREF="OOMMF_Variable_Types_Macros.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html102"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html98"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html104"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html107"
+  HREF="OOMMF_Variable_Types_Macros.html">OOMMF Variable Types and</A>
+<B> Up:</B> <A NAME="tex2html103"
+  HREF="Platform_Independent_Make_O.html">Platform-Independent Make Operational Details</A>
+<B> Previous:</B> <A NAME="tex2html99"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">Anatomy of makerules.tcl files</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00320000000000000000"></A><A NAME="sec:makerule"></A>
+<BR>
+The MakeRule command
+</H1>
+The <TT><B>makerules.tcl</B></TT> files consist primarily of a collection of
+<TT>MakeRule</TT> commands surrounded by a sprinkling of Tcl support
+code. The order of the <TT>MakeRule</TT> commands doesn't matter, except
+that the first target in the file, usually <TT>all</TT>, becomes the default
+target. (The ``default'' target is the effective target if <B>pimake</B>
+is run without specifying a target.)
+
+<P>
+The <TT>MakeRule</TT> command supports a number of subcommands, but the
+principle subcommand appearing in <TT><B>makerules.tcl</B></TT> files is
+<TT>Define</TT>. This takes a single argument, which is a list of
+option+value pairs, with valid options being <TT>-targets</TT>,
+<TT>-dependencies</TT>, and <TT>-script</TT>. The value string for the
+<TT>-targets</TT> option is a list of one or more build targets. The targets
+are usually files, in which case they must lie in the same directory or
+a directory below the <TT><B>makerules.tcl</B></TT> file. The <TT>-dependencies</TT>
+option is a list of one or more files or targets that the target depends
+upon. The value to the <TT>-script</TT> option is a Tcl script that is run
+if a target does not exist or if any of the file dependencies have a
+newer timestamp than any of the targets. The dependency checking is done
+recursively, that is, each dependency is checked to see if it up to date
+with its own dependencies, and so on.  A target is out of date if it is
+older than any of its dependencies, or the dependencies of the
+dependencies, etc. If any of the dependencies is out of date with
+respect to its own dependencies, then its script will be run during the
+dependency resolution. The script associated with the original target is
+only run after its dependency resolution is fully completed.
+
+<P>
+The following examples from <TT><B>oommf/app/omfsh/makerules.tcl</B></TT>
+should help flesh out the above description:
+<PRE>
+  MakeRule Define {
+    -targets        [Platform Name]
+    -dependencies   {}
+    -script         {MakeDirectory [Platform Name]}
+  }
+</PRE>
+Here the target is the platform name, e.g., <TT><B>windows-x86_64</B></TT>, which
+is a directory under the current working directory
+<TT><B>oommf/app/omfsh/</B></TT>. There are no dependencies to check, so the rule
+script is run if and only if the directory <TT><B>windows-x86_64</B></TT> does not
+exist. In that case the OOMMF <TT>MakeDirectory</TT> routine is called to
+create it. This is an important rule because the compilation and linking
+commands place their output into this directory, so it must exist before
+those commands are run.
+
+<P>
+Next we look at a more complex rule that is really the bread and
+butter of <TT><B>makerules.tcl</B></TT>, a rule for compiling a C++ file:
+<PRE>
+  MakeRule Define {
+    -targets        [Platform Objects omfsh]
+    -dependencies   [concat [list [Platform Name]] \
+                            [[CSourceFile New _ omfsh.cc] Dependencies]]
+    -script         {Platform Compile C++ -opt 1 \
+                             -inc [[CSourceFile New _ omfsh.cc] DepPath] \
+                             -out omfsh -src omfsh.cc
+                    }
+  }
+</PRE>
+In this example the target is the object file associated with the
+stem <TT>omfsh</TT>. On Windows this would be
+<TT><B>windows-x86_64/omfsh.obj</B></TT>. The dependencies are the platform
+directory (e.g., <TT><B>windows-x86_64/</B></TT>), the file <TT><B>omfsh.cc</B></TT>, and any
+(non-system) files included by <TT><B>omfsh.cc</B></TT>. Directory timestamps do
+not affect the out-of-date computation, but directories will be
+constructed by their <TT>MakeRule</TT> if they don't exist.
+
+<P>
+Note that part of the <TT>-dependencies</TT> list is
+<PRE>
+  [CSourceFile New _ omfsh.cc] Dependencies]
+</PRE>
+As discussed <A HREF="Anatomy_TT_makerules.tcl_TT.html#sec:anatomymakerules">earlier</A>,
+this command resolves to a list of all non-system <TT>#include</TT> header
+files from <TT><B>omfsh.cc</B></TT>, or header files found recursively from those
+header files. The first part of <TT><B>omfsh.cc</B></TT> is
+<PRE>
+  /* FILE: omfsh.cc                 -*-Mode: c++-*-
+   *
+   *      A Tcl shell extended by the OOMMF core (Oc) extension
+   ...
+   */
+
+  /* Header files for system libraries */
+  #include &lt;cstring&gt;
+
+  /* Header files for the OOMMF extensions */
+  #include "oc.h"
+  #include "nb.h"
+  #include "if.h"
+
+  /* End includes */
+  ...
+</PRE>
+The header file <TT><B>cstring</B></TT> is ignored by the dependency search because
+it is specified inside angle brackets rather than double quotes. But the
+<TT><B>oc.h</B></TT>, <TT><B>nb.h</B></TT>, and <TT><B>if.h</B></TT> files are all considered. These
+files are part of the <TT>Oc</TT>, <TT>Nb</TT>, and <TT>If</TT> package libraries,
+respectively, living in subdirectories under <TT><B>oommf/pkg/</B></TT>. The file
+<TT><B>oommf/pkg/oc/oc.h</B></TT>, for example, will be checked for included files
+in the same way, and so on. The full dependency tree can be quite
+extensive. The <B>pimake</B> application supports a <TT>-d</TT> option to
+print out the dependency tree, e.g.,
+<PRE>
+  tclsh oommf.tcl pimake -cwd app/omfsh -d windows-x86_64/omfsh.obj
+</PRE>
+This output can be helpful is diagnosing dependency issues.
+
+<P>
+The <code>/* End includes */</code> line terminates the <TT>#include</TT> file search
+inside this file. It is optional but recommended as it will speed-up
+dependency resolution.
+
+<P>
+If <TT><B>omfsh.obj</B></TT> is older than any of its dependent files, then the
+Tcl script specified by the <TT>-script</TT> option will be triggered. In
+this case the script runs <TT>Platform Compile C++</TT>, which is the
+C++ compiler as specified by the
+<TT><B>oommf/config/platforms/&lt;platform&gt;.tcl</B></TT> file. In this command
+<TT>-opt</TT> enables compiler optimizations, <TT>-inc</TT> supplements the
+include search path for the compiler, <TT>-out omfsh</TT> is the output
+object file with name adjusted appropriately for the platform, and
+<TT>-src omfsh.cc</TT> specifies the C++ file to be compiled.
+
+<P>
+The rules for building executables and libraries from collections of
+object modules are of a similar nature. See the various
+<TT><B>makerules.tcl</B></TT> files across the OOMMF directory tree for examples.
+
+<P>
+In a normal rule, the target is a file and if the script is run it will
+create or update the file. Thus, if <B>pimake</B> is run twice in
+succession on the same target, the second run will not trigger the
+script because the target will be up to date. In contrast, a
+pseudo-target<A NAME="1122"></A> does not exist as a file on
+the file system, and the associated script does not create the
+pseudo-target. Since the pseudo-target never exists as a file, repeated
+runs of <B>pimake</B> on the target will result in repeated runs of the
+pseudo-target script.
+
+<P>
+Common pseudo-targets include <TT>all</TT>,
+<TT>configure</TT>, <TT>help</TT>, and several <TT>clean</TT> variants.  This last
+example illustrates the chaining of <TT>clean</TT> pseudo-targets to remove
+constructed files.
+<PRE>
+  MakeRule Define {
+    -targets         clean
+    -dependencies    mostlyclean
+  }
+
+  MakeRule Define {
+    -targets         mostlyclean
+    -dependencies    objclean
+    -script          {eval DeleteFiles [Platform Executables omfsh] \
+                         [Platform Executables filtersh] \
+                         [Platform Specific appindex.tcl]}
+  }
+
+  MakeRule Define {
+    -targets         objclean
+    -dependencies    {}
+    -script          {
+                      DeleteFiles [Platform Objects omfsh]
+                      eval DeleteFiles \
+                             [Platform Intermediate {omfsh filtersh}]
+                     }
+  }
+</PRE>
+All three of these rules have targets that are non-existent files, so
+all three are pseudo-targets. The first rule, for target <TT>clean</TT>, has
+no script so the script execution is a no-op. However, the dependencies
+are still evaluated, which in this case means the rule for the target
+<TT>mostlyclean</TT> is checked. This rule has both a dependency and a
+script. The dependencies are evaluated first, so the <TT>objclean</TT>
+script is called to delete the <TT>omfsh</TT> object file and also any
+intermediate files created as side effects of building the <B>omfsh</B>
+and <B>filtersh</B> executables. Next the <TT>mostlyclean</TT> script is run,
+which deletes the <B>omfsh</B> and <B>filtersh</B> executables and also
+the platform-specific <TT><B>appindex.tcl</B></TT> file. Note that none of the
+scripts create their target, so the targets will all remain
+pseudo-targets.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html106"
+  HREF="OOMMF_Variable_Types_Macros.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html102"
+  HREF="Platform_Independent_Make_O.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html98"
+  HREF="Anatomy_TT_makerules.tcl_TT.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html104"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

@@ -23,7 +23,7 @@
 //        3) Does not handle closest point searching for points outside
 //            the originally designated region.
 
-#include <string.h>
+#include <cstring>
 #include "ptsearch.h"
 
 static const OC_REAL8 Vf_BoxEps=1e-14;

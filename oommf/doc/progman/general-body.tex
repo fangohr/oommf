@@ -1,5 +1,4 @@
-\section{\OOMMF\ Variable Types and Macros}\label{sec:vartypes}
-{%
+\chapter{\OOMMF\ Variable Types and Macros}\label{sec:vartypes}
 The following typedefs are defined in the
 \fn{oommf/pkg/oc/{\it{platform}}/ocport.h} header file; this file is
 created by the \app{pimake} build process (see
@@ -73,6 +72,7 @@ should use the versions with the ``\texttt{OC\_}'' prefix, and old code
 should be updated where possible.  The complete list of deprecated
 macros is:
 \begin{quote}
+\raggedright
 \texttt{BOOL, UINT2m, INT4m, UINT4m,
     REAL4, REAL4m, REAL8, REAL8m, REALWIDE,
     REAL4\_EPSILON, REAL8\_EPSILON,
@@ -107,8 +107,7 @@ Additional macros and typedefs:
   or ``1234'' for big endian.
 \item{\texttt{OC\_THROW(x)}} \gbs Throws a \Cplusplus\ exception with
   value ``x''.
-\item{\texttt{OOMMF\_THREADS}} \gbs True threaded (multi-processing) builds.
+\item{\texttt{OOMMF\_THREADS}} \gbs True for threaded (multi-processing) builds.
 \item{\texttt{OC\_USE\_NUMA}} \gbs If true, then NUMA (non-uniform memory
   access) libraries are available.
 \end{itemize}
-}

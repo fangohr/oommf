@@ -9,7 +9,7 @@
  *
  */
 
-#include <string.h>
+#include <cstring>
 
 #include <cassert>
 #include <cfloat>
