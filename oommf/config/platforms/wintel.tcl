@@ -184,6 +184,34 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## on the value name.
 # $config SetValue program_compiler_c++_override {icl /nologo /c /GX /GR}
 #
+## Max asynchronous exception (A.E.) handling level: one of none, POSIX,
+## or SEH. This setting works in conjuction with the Oc_Option
+## AsyncExceptionHandling selection (see file oommf/appconfig/options.tcl)
+## according to the following table:
+##
+##    Oc_Option          \ program_compiler_c++_async_exception_handling
+## AsyncExceptionHandling \      none         POSIX          SEH
+## ------------------------+-------------------------------------------
+##       none              |     abort         abort         abort*
+##      POSIX              |     abort        sig+abort    sig+abort
+##       SEH               |     abort        sig+abort    seh+abort*
+##
+## In the abort cases, the program immediately terminates with no error
+## message. In the sig+abort or seh+abort cases a error message is
+## logged followed by program termination. In the sig+abort setting the
+## error message reports the corresponding POSIX signal raised, while
+## seh+abort prints the corresponding Microsoft Windows Structured
+## Exception error message. In the SEH column all A.E. run through the
+## the Windows SEH handling, so there is some additional overhead, even
+## if Oc_Option AsyncExceptionHandling is none. The error message is
+## generally logged to stderr, and may additionally be written to
+## a program log file.
+##
+## The SEH option is only available on Windows with the Visual C++
+## compiler, and may have a (minor) negative performance impact. The
+## default setting is POSIX.
+# $config SetValue program_compiler_c++_async_exception_handling SEH
+#
 ## Processor architecture for compiling.  The default is "generic"
 ## which should produce an executable that runs on any cpu model for
 ## the given platform.  Optionally, one may specify "host", in which
@@ -211,7 +239,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## development testing.
 # $config SetValue program_compiler_c++_oc_index_checks 1
 #
-## Flags to remove from compiler "opts" string:
+## Flags to remove from compiler "opts" string (regexp match):
 # $config SetValue program_compiler_c++_remove_flags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 #
@@ -219,7 +247,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_add_flags \
 #                          {-funroll-loops}
 #
-## Flags to add (resp. remove) from "valuesafeopts" string:
+## Flags to add (resp. remove (regexp)) from "valuesafeopts" string:
 # $config SetValue program_compiler_c++_remove_valuesafeflags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 # $config SetValue program_compiler_c++_add_valuesafeflags \
@@ -263,7 +291,15 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## program_linker_extra_lib_scripts should suffice.
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
-# 
+#
+#
+## Debugging options. These control memory alignment. See the
+## "Debugging OOMMF" section in the OOMMF Programming Manual for
+## details.
+# $config SetValue program_compiler_c++_property_cache_linesize 1
+# $config SetValue program_compiler_c++_property_pagesize 1
+# $config SetValue sse_no_aligned_access 1
+#
 # END LOCAL CONFIGURATION
 ########################################################################
 #
@@ -351,10 +387,25 @@ if {[string match cl $ccbasename]} {
    lappend compilestr /nologo /GR ;# /GR turns on RTTI
    set cl_major_version [lindex $cl_version 0]
 
-   # Exception handling: /EHa enables C++ exceptions with SEH
-   # exceptions, /EHs enables C++ exceptions without SEH exceptions,
-   # and /EHc sets extern "C" to default to nothrow.
-   lappend compilestr /EHac
+   if {[lindex $cl_major_version 0]>7} {
+      # The exception handling specification switch "/GX" is deprecated
+      # in version 8.  /EHa enables C++ exceptions with SEH exceptions,
+      # /EHs enables C++ exceptions without SEH exceptions, and /EHc
+      # sets extern "C" to default to nothrow.
+      if {[catch {$config \
+           GetValue program_compiler_c++_async_exception_handling} _eh]} {
+         set _eh POSIX ;# Default setting
+         $config SetValue program_compiler_c++_async_exception_handling $_eh
+      }
+      if {[string compare -nocase SEH $_eh]==0} {
+         lappend compilestr /EHac
+      } else {
+         lappend compilestr /EHsc
+      }
+      unset _eh
+   } else {
+      lappend compilestr /GX
+   }
 
    $config SetValue program_compiler_c++ $compilestr
    unset compilestr
@@ -441,11 +492,17 @@ if {[string match cl $ccbasename]} {
       lappend opts /D_CRT_SECURE_NO_DEPRECATE
    }
 
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular cl versions, but are all processor agnostic.
    set valuesafeopts [concat $opts \
-                          [GetClValueSafeOptFlags $cl_version x86_64]]
-   set opts [concat $opts [GetClGeneralOptFlags $cl_version x86]]
+      [GetClValueSafeOptFlags $cl_version x86_64 $optlevel]]
+   set opts [concat $opts \
+      [GetClGeneralOptFlags $cl_version x86 $optlevel]]
 
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
@@ -537,7 +594,7 @@ if {[string match cl $ccbasename]} {
    # library files to create an executable binary.
    # Microsoft Visual C++'s linker
    $config SetValue program_linker {link}
-   # $config SetValue program_linker {link /DEBUG} ;# For debugging
+   $config SetValue program_linker_option_debug {format "/DEBUG"}
    $config SetValue program_linker_option_obj {format \"%s\"}
    $config SetValue program_linker_option_out {format "\"/OUT:%s\""}
    $config SetValue program_linker_option_lib {format \"%s\"}
@@ -552,7 +609,12 @@ if {[string match cl $ccbasename]} {
    #   do this here because we expect 32-bit Windows builds to be aimed
    #   primarily at Windows XP and possibly Windows Vista, neither of
    #   which support that API call.
+   # Note 3: ntdll.lib is used in processing structured exception codes.
    lappend cl_libs user32.lib advapi32.lib
+   if {![catch {$config GetValue program_compiler_c++_async_exception_handling} _]
+       && [string compare -nocase SEH $_]==0} {
+      lappend cl_libs ntdll.lib
+   }
    $config SetValue TK_LIBS $cl_libs
    $config SetValue TCL_LIBS $cl_libs
    $config SetValue program_linker_uses_-L-l {0}
@@ -566,7 +628,10 @@ if {[string match cl $ccbasename]} {
 
     set opts [list /QxHost /O3 /Qfp-speculation:fast /Qansi-alias /Qstd=c++11]
     set valuesafeopts [concat $opts /fp:precise]
-    lappend opts /fp:fast=2 
+    lappend opts /fp:fast=2
+
+    # Is there a icl equivalent to the g++ -fnon-call-exceptions option?
+    # If so, refer to g++ code block and put equivalent here.
 
     # Make user requested tweaks to compile line options
     set opts [LocalTweakOptFlags $config $opts]
@@ -768,10 +833,26 @@ if {[string match cl $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # Asychronous exceptions
+   if {[catch {$config \
+      GetValue program_compiler_c++_async_exception_handling} _eh]} {
+      set _eh POSIX ;# Default setting
+      $config SetValue program_compiler_c++_async_exception_handling $_eh
+   }
+   if {[string compare -nocase none $_eh]!=0} {
+      lappend opts -fnon-call-exceptions
+   }
+   unset _eh
+
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
-   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
-   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
 
    if {[info exists cpuopts] && [llength $cpuopts]>0} {
       set opts [concat $opts $cpuopts]
@@ -783,7 +864,7 @@ if {[string match cl $ccbasename]} {
    regsub -all -- {-std=c\+\+11} $opts {-std=gnu++11} opts
    regsub -all -- {-std=c\+\+11} $valuesafeopts {-std=gnu++11} valuesafeopts
 
-   # Make user requested tweaks to compile line options 
+   # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
    set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
@@ -872,7 +953,7 @@ if {[string match cl $ccbasename]} {
    #       later, one can add the -static-libstdc++ option to the link
    #       line, in which case the PATH doesn't need to be set,
    #       although executables will be somewhat larger.
-   #       
+   #
    #       For shared linking of libstdc++ comment out this block:
    if {[lindex $gcc_version 0]>4 ||
           ([lindex $gcc_version 0]==4 && [lindex $gcc_version 1]>=5)} {

@@ -51,8 +51,8 @@ on Linux and OS X.
 Version
 -------
 
-The current version of OOMMF code in this repository is the alpha
-release of OOMMF 2.0 (``20a2 20200608 a2``).
+The current version of OOMMF code in this repository is the beta
+release of OOMMF 2.0 (``20b0 20220930 b0``).
 
 You can check which version you have, by inspecting the content of the
 `oommf-version <oommf-version>`__ file.

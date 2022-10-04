@@ -14,66 +14,65 @@
 
 <LINK REL="STYLESHEET" HREF="progman.css">
 
-<LINK REL="next" HREF="Platform-Independent_Make.html">
+<LINK REL="next" HREF="Platform_Independent_Make_O.html">
 <LINK REL="previous" HREF="Disclaimer.html">
 <LINK REL="up" HREF="progman.html">
-<LINK REL="next" HREF="Platform-Independent_Make.html">
+<LINK REL="next" HREF="Platform_Independent_Make_O.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html54"
-  HREF="Platform-Independent_Make.html">
+<A NAME="tex2html70"
+  HREF="Platform_Independent_Make_O.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html50"
+<A NAME="tex2html66"
   HREF="progman.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html44"
+<A NAME="tex2html60"
   HREF="Disclaimer.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html56"
-  HREF="progman.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html52"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html68"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html55"
-  HREF="Platform-Independent_Make.html">Platform-Independent Make</A>
-<B> Up:</B> <A NAME="tex2html51"
+<B> Next:</B> <A NAME="tex2html71"
+  HREF="Platform_Independent_Make_O.html">Platform-Independent Make Operational Details</A>
+<B> Up:</B> <A NAME="tex2html67"
   HREF="progman.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html45"
+<B> Previous:</B> <A NAME="tex2html61"
   HREF="Disclaimer.html">Disclaimer</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00020000000000000000"></A><A NAME="sec:overview"></A>
+<H1><A NAME="SECTION00200000000000000000"></A><A NAME="sec:overview"></A>
 <BR>
 Programming Overview of OOMMF
 </H1>
 The
-<A NAME="tex2html4"
+<A NAME="tex2html5"
   HREF="https://math.nist.gov/oommf/">OOMMF</A>
 (Object
 Oriented Micromagnetic Framework) project in the
-<A NAME="tex2html5"
-  HREF="https://www.nist.gov/itl/">Information Technology
-Laboratory</A>
-(ITL) at the
 <A NAME="tex2html6"
+  HREF="https://www.nist.gov/itl/">Information Technology Laboratory</A>
+(ITL) at the
+<A NAME="tex2html7"
   HREF="https://www.nist.gov/">National Institute of Standards and
 Technology</A>
 (NIST) is intended to develop a
 portable, extensible public domain micromagnetic program and associated
 tools.  This manual aims to document the programming interfaces to
 OOMMF at the source code level.  The main developers of this code are
-<A NAME="tex2html7"
-  HREF="https://math.nist.gov/~MDonahue">Mike Donahue</A>
-and
+
 <A NAME="tex2html8"
-  HREF="https://math.nist.gov/~DPorter">Don Porter</A>.
+  HREF="https://math.nist.gov/%7EMDonahue">Mike Donahue</A>
+and
+
+<A NAME="tex2html9"
+  HREF="https://math.nist.gov/%7EDPorter">Don Porter</A>.
 
 <P>
 The underlying numerical engine for OOMMF is written in C++,
@@ -81,17 +80,16 @@ which provides a reasonable compromise with respect to efficiency,
 functionality, availability and portability.  The interface and glue
 code is written primarily in Tcl/Tk, which hides most platform
 specific issues. Tcl and Tk are available for free
-<A NAME="tex2html9"
-  HREF="http://purl.org/tcl/home/software/tcltk/choose.html">download
-</A>
-from the
 <A NAME="tex2html10"
+  HREF="http://purl.org/tcl/home/software/tcltk/choose.html">download</A>
+from the
+<A NAME="tex2html11"
   HREF="http://purl.org/tcl/home/">Tcl Developer Xchange</A>.
 
 <P>
 The code may actually be modified at 3 distinct levels.  At the top
 level, individual programs interact via well-defined protocols across
-network sockets<A NAME="641"></A>.  One may connect these modules
+network sockets<A NAME="888"></A>.  One may connect these modules
 together in various ways from the user interface, and new modules
 speaking the same protocol can be transparently added.  The second level
 of modification is at the Tcl/Tk script level.  Some modules allow
@@ -101,12 +99,13 @@ level is the C++ source code.  The OOMMF extensible solver, OXS,
 is designed with modification at this level in mind.
 
 <P>
-If you want to receive e-mail<A NAME="642"></A>
-notification<A NAME="643"></A> of updates to this project, register
+If you want to receive e-mail<A NAME="889"></A>
+notification<A NAME="890"></A> of updates to this project, register
 your e-mail address with the ``muMAG Announcement'' mailing list:
 <DIV ALIGN="CENTER">
-<A NAME="tex2html3"
-  HREF="https://www.ctcms.nist.gov/~rdm/email-list.html">https://www.ctcms.nist.gov/~rdm/email-list.html</A>.
+<A NAME="tex2html4"
+  HREF="https://www.ctcms.nist.gov/%7Erdm/email-list.html"><TT><A NAME="tex2html3"
+  HREF="https://www.ctcms.nist.gov/~rdm/email-list.html">https://www.ctcms.nist.gov/~rdm/email-list.html</A></TT></A>.
 
 </DIV>
 
@@ -117,22 +116,20 @@ for instructions on how to contact them.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html54"
-  HREF="Platform-Independent_Make.html">
+<A NAME="tex2html70"
+  HREF="Platform_Independent_Make_O.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html50"
+<A NAME="tex2html66"
   HREF="progman.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html44"
+<A NAME="tex2html60"
   HREF="Disclaimer.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html57"
-  HREF="progman.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html52"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html68"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

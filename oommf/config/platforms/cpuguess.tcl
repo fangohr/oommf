@@ -45,6 +45,7 @@ set cpu_arch [GuessCpu]
 puts "CPU guess: $cpu_arch"
 
 if {$extras} {
+   set optlevel 2 ;# Default optimization level
    foreach elt [info proc Guess*Version] {
       if {[regexp -- {^Guess(.*)Version$} $elt dum compiler_str]} {
          set compiler [string tolower $compiler_str]
@@ -62,10 +63,13 @@ if {$extras} {
                } else {
                   set clmode x86
                }
-               set genopts [GetClGeneralOptFlags $compiler_version $clmode]
-               set cpuopts [GetClCpuOptFlags $compiler_version $cpu_arch $clmode]
+               set genopts \
+                  [GetClGeneralOptFlags $compiler_version $clmode $optlevel]
+               set cpuopts \
+                  [GetClCpuOptFlags $compiler_version $cpu_arch $clmode]
             } else {
-               set genopts [Get${compiler_str}GeneralOptFlags $compiler_version]
+               set genopts [Get${compiler_str}GeneralOptFlags \
+                               $compiler_version $optlevel]
                set cpuopts [Get${compiler_str}CpuOptFlags \
                                $compiler_version $cpu_arch]
             }

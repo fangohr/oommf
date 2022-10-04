@@ -7,25 +7,38 @@
  */
 
 /* Standard libraries */
-#include <assert.h>
-#include <limits.h>
-#include <string.h>
+#include <cassert>
+#include <climits>
+#include <cstring>
+#include <cwctype>   // For iswspace
+
+#include <string>
+#include <vector>
 
 /* Other classes and functions in this extension */
 #include "autobuf.h"
 #include "imports.h"
 
-/* End includes */     
+/* End includes */
 
 const size_t Oc_AutoBuf::reclaim_bound=1024;   // See Oc_AutoBuf::Dup()
 const size_t Oc_AutoBuf::reclaim_proportion=4;
+
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+// Code page to use for conversions from multibyte to WCHAR.
+// Tcl works with utf-8, so CP_UTF8 is a good guess, but
+// another try is CP_ACP, which is the system default Windows
+// ANSI code page. See the Windows MultiByteToWideChar function
+// documentation for details.
+# define OC_WIDECP CP_UTF8
+#endif
 
 void Oc_AutoBuf::Dup(const char* const_str)
 {
   if(const_str==NULL) const_str = "";
   if(const_str == str) return; // Don't copy self!
   size_t needsize=strlen(const_str)+1;
-  if(needsize>bufsize || 
+  if(needsize>bufsize ||
      (bufsize>reclaim_bound && bufsize/reclaim_proportion>needsize)) {
     if(bufsize>0) delete[] str;
     bufsize=needsize;
@@ -91,7 +104,7 @@ Oc_AutoBuf::Oc_AutoBuf(const Oc_AutoBuf& other)
        "Import buffer too big error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
     bufsize = static_cast<size_t>
-      (WideCharToMultiByte(CP_ACP,0,const_str,int(widesize),NULL,0,NULL,NULL));
+      (WideCharToMultiByte(OC_WIDECP,0,const_str,int(widesize),NULL,0,NULL,NULL));
     if(bufsize==0) {
       Tcl_Panic((char *)
        "Conversion error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
@@ -105,7 +118,7 @@ Oc_AutoBuf::Oc_AutoBuf(const Oc_AutoBuf& other)
     if(str==0) {
       Tcl_Panic((char *)"No memory in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
-    if(WideCharToMultiByte(CP_ACP, 0, const_str,int(widesize),
+    if(WideCharToMultiByte(OC_WIDECP, 0, const_str,int(widesize),
                            str,int(bufsize),NULL,NULL)==0) {
       Tcl_Panic((char *)"Conversion error in Oc_AutoBuf::Oc_AutoBuf(const WCHAR*)");
     }
@@ -125,13 +138,13 @@ Oc_AutoBuf& Oc_AutoBuf::operator=(const Oc_AutoBuf& other)
   return *this;
 }
 
- 
+
 char* Oc_AutoBuf::operator()(const char* const_str)
 {
   Dup(const_str);
   return str;
 }
- 
+
 void Oc_AutoBuf::SetLength(size_t newlength)
 { // bufsize = length + 1
   size_t newsize=newlength+1;
@@ -158,8 +171,8 @@ void Oc_AutoBuf::SetLength(size_t newlength)
   // char otherwise.)
 void Oc_AutoWideBuf::Set(const char* const_str)
 {
-  size_t chkbufsize
-    = static_cast<size_t>(MultiByteToWideChar(CP_ACP,0,const_str,-1,NULL,0));
+  size_t chkbufsize = static_cast<size_t>
+    (MultiByteToWideChar(OC_WIDECP,0,const_str,-1,nullptr,0));
   if(chkbufsize==0) {
     Tcl_Panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
@@ -170,16 +183,87 @@ void Oc_AutoWideBuf::Set(const char* const_str)
   }
   if(wstr==0) Tcl_Panic((char *)"No memory in Oc_AutoWideBuf::Set");
   assert(bufsize<=INT_MAX); // Note: bufsize is unsigned
-  if(MultiByteToWideChar(CP_ACP,0,const_str,-1,wstr,
+  if(MultiByteToWideChar(OC_WIDECP,0,const_str,-1,wstr,
                          static_cast<int>(bufsize))==0) {
     Tcl_Panic((char *)"Conversion error in Oc_AutoWideBuf::Set");
   }
+}
+
+void Oc_AutoWideBuf::Set(const WCHAR* const_str)
+{
+  const size_t inlen = wcslen(const_str);
+  if(inlen+1>bufsize || 8*(inlen+1)<bufsize) {
+    delete[] wstr;
+    bufsize = inlen+1;
+    wstr = new WCHAR[bufsize];
+  }
+  for(size_t i=0;i<inlen;++i) {
+    wstr[i] = const_str[i];
+  }
+  wstr[inlen] = static_cast<WCHAR>('\0');
 }
 
 WCHAR* Oc_AutoWideBuf::operator()(const char* const_str)
 {
   Set(const_str);
   return wstr;
+}
+
+size_t Oc_AutoWideBuf::Trim()
+{ // Removes whitespace from front and back. Returns new length.
+  const WCHAR ZW = static_cast<WCHAR>('\0'); // String terminator (wide zero)
+  size_t i=0,ia=0,ib=0;
+  while(wstr[i] != ZW) {
+    // Find first non-whitespace character
+    if(!iswspace(wstr[i])) { break; }
+    ++i;
+  }
+  ia=ib=i;
+  while(wstr[++i] != ZW) {
+    // Find last non-whitespace character
+    if(!iswspace(wstr[i])) { ib=i; }
+  }
+  ++ib;
+  const size_t inlen = i;
+  if(ia>0) { // Overwrite leading whitespace with left shift
+    for(i=ia;i<inlen;++i) {
+      wstr[i-ia] = wstr[i];
+    }
+    ib -= ia; // Adjust index to end of string.
+  }
+  wstr[ib]=ZW; // Add end marker
+  return ib;
+}
+
+size_t Oc_AutoWideBuf::NormalizeEOLs()
+{ // Changes \r\n to \n. Returns new length.
+  const WCHAR CR = static_cast<WCHAR>('\r');
+  const WCHAR NL = static_cast<WCHAR>('\n');
+  const WCHAR ZW = static_cast<WCHAR>('\0');
+  size_t ia = 1; // Leading index
+  size_t ib = 0; // Trailing index
+  while(wstr[ia] != ZW) {
+    if(wstr[ia] != NL || wstr[ib] != CR) {
+      ++ib;
+    }
+    wstr[ib] = wstr[ia];
+    ++ia;
+  }
+  wstr[++ib] = ZW;
+  return ib;
+}
+
+
+std::string Oc_AutoWideBuf::GetUtf8Str() const
+{ // Returns multibyte utf-8 character version of string
+  int chkbufsize
+    = WideCharToMultiByte(CP_UTF8,0,wstr,-1,nullptr,0,NULL,nullptr);
+  if(chkbufsize==0) {
+    Tcl_Panic((char *)"Conversion error in Oc_AutoWideBuf::GetUtf8Str");
+  }
+  std::vector<char> outbuf(chkbufsize,'\0');
+  WideCharToMultiByte(CP_UTF8,0,wstr,-1,outbuf.data(),chkbufsize,NULL,nullptr);
+  return std::string(outbuf.data());
 }
 
 #endif // WINDOWS

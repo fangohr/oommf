@@ -24,35 +24,33 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html309"
+<A NAME="tex2html488"
   HREF="OOMMF_eXtensible_Solver_Int.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html305"
+<A NAME="tex2html484"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html299"
+<A NAME="tex2html478"
   HREF="OOMMF_Launcher_Control_Inte.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html311"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html307"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html486"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html310"
+<B> Next:</B> <A NAME="tex2html489"
   HREF="OOMMF_eXtensible_Solver_Int.html">OOMMF eXtensible Solver Interactive</A>
-<B> Up:</B> <A NAME="tex2html306"
+<B> Up:</B> <A NAME="tex2html485"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html300"
+<B> Previous:</B> <A NAME="tex2html479"
   HREF="OOMMF_Launcher_Control_Inte.html">OOMMF Launcher/Control Interface: mmLaunch</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00080000000000000000"></A><A NAME="sec:oxs"></A>
+<H1><A NAME="SECTION00800000000000000000"></A><A NAME="sec:oxs"></A>
 <BR>
 OOMMF eXtensible Solver
-</H1><A NAME="3736"></A><A NAME="3737"></A>The Oxs (OOMMF eXtensible Solver) is an extensible micromagnetic
+</H1><A NAME="4031"></A><A NAME="4032"></A>The Oxs (OOMMF eXtensible Solver) is an extensible micromagnetic
 computation engine capable of solving problems defined on
 three-dimensional grids of rectangular cells holding three-dimensional
 spins.  There are two interfaces provided to Oxs: the interactive
@@ -68,22 +66,23 @@ Problem definition for Oxs is accomplished using input files in the
 <A HREF="MIF_2.1.html#sec:mif2format">MIF&nbsp;2 format</A>.
 This is an extensible format; the standard OOMMF modules are
 <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">documented below</A>.
-Files in the <A HREF="MIF_1.1.html#sec:mif1format">MIF&nbsp;1.1</A> and
-<A HREF="MIF_1.2.html#sec:mif12format">MIF&nbsp;1.2</A> formats are also accepted.  They are
+Files in the <A HREF="MIF_1.1.html#sec:mif1format">MIF 1.1</A> and
+<A HREF="MIF_1.2.html#sec:mif12format">MIF&nbsp;1.2</A>
+formats are also accepted.  They are
 passed to <A HREF="mifconvert.html#sec:mifconvert"><B>mifconvert</B></A> for conversion to MIF&nbsp;2 format
 ``on-the-fly.''
 
 <P>
 Note on Tk dependence: Some MIF&nbsp;2 problem descriptions rely on
-external image files<A NAME="3762"></A><A NAME="3763"></A>; examples
+external image files<A NAME="4057"></A><A NAME="4058"></A>; examples
 include those using the
-<A HREF="Standard_Oxs_Ext_Child_Clas.html#html:oxsImageAtlas"><TT>Oxs_ImageAtlas</TT> class</A>, or those using the MIF&nbsp;2
-<A HREF="MIF_2.1.html#html:ReadFile"><TT>ReadFile</TT></A> command with the <TT>image</TT>
+<A HREF="Atlases.html#html:oxsImageAtlas"><TT>Oxs_ImageAtlas</TT> class</A>, or those using the MIF&nbsp;2
+<A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> command with the <TT>image</TT>
 translation specification.
 If the image file is not in the PPM P3 (text) format, then the
-<B>any2ppm</B><A NAME="3772"></A> application may be
+<B>any2ppm</B><A NAME="4067"></A> application may be
 launched to read and convert the file.  Since <B>any2ppm</B>
-requires<A NAME="3774"></A><A NAME="3775"></A> Tk, at the
+requires<A NAME="4069"></A><A NAME="4070"></A> Tk, at the
 time the image file is read a valid display must be available.  See the
 <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><B>any2ppm</B> documentation</A> for details.
 
@@ -93,49 +92,51 @@ time the image file is read a valid display must be available.  See the
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html313"
+<LI><A NAME="tex2html490"
   HREF="OOMMF_eXtensible_Solver_Int.html">OOMMF eXtensible Solver Interactive Interface:
 Oxsii</A>
-<LI><A NAME="tex2html314"
+<LI><A NAME="tex2html491"
   HREF="OOMMF_eXtensible_Solver_Bat.html">OOMMF eXtensible Solver Batch Interface: boxsi</A>
-<LI><A NAME="tex2html315"
+<LI><A NAME="tex2html492"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
 <UL>
-<LI><A NAME="tex2html316"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083100000000000000">Atlases</A>
-<LI><A NAME="tex2html317"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083200000000000000">Meshes</A>
-<LI><A NAME="tex2html318"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083300000000000000">Energies</A>
-<LI><A NAME="tex2html319"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083400000000000000">Evolvers</A>
-<LI><A NAME="tex2html320"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083500000000000000">Drivers</A>
-<LI><A NAME="tex2html321"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083600000000000000">Field Objects</A>
-<LI><A NAME="tex2html322"
-  HREF="Standard_Oxs_Ext_Child_Clas.html#SECTION00083700000000000000">MIF Support Classes</A>
-</UL></UL>
+<LI><A NAME="tex2html493"
+  HREF="Atlases.html">Atlases</A>
+<LI><A NAME="tex2html494"
+  HREF="Meshes.html">Meshes</A>
+<LI><A NAME="tex2html495"
+  HREF="Energies.html">Energies</A>
+<LI><A NAME="tex2html496"
+  HREF="Evolvers.html">Evolvers</A>
+<LI><A NAME="tex2html497"
+  HREF="Drivers.html">Drivers</A>
+<LI><A NAME="tex2html498"
+  HREF="Field_Objects.html">Field Objects</A>
+<LI><A NAME="tex2html499"
+  HREF="MIF_Support_Classes.html">MIF Support Classes</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html500"
+  HREF="Contributed_Oxs_Ext_Child_C.html">Contributed Oxs_Ext Child Classes</A>
+</UL>
 <!--End of Table of Child-Links-->
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html309"
+<A NAME="tex2html488"
   HREF="OOMMF_eXtensible_Solver_Int.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html305"
+<A NAME="tex2html484"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html299"
+<A NAME="tex2html478"
   HREF="OOMMF_Launcher_Control_Inte.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html312"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html307"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html486"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

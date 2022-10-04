@@ -8,8 +8,8 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "crc.h"
 

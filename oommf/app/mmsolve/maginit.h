@@ -7,7 +7,7 @@
 #ifndef _MAGINIT_H
 #define _MAGINIT_H
 
-#include <stdio.h>
+#include <cstdio>
 #include "magelt.h"
 
 /* End includes */

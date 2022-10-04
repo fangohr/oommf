@@ -12,7 +12,7 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <errno.h>
+#include <cerrno>
 
 #include "ocexcept.h"
 #include "octhread.h"
@@ -105,5 +105,3 @@ OcSetMaxThreadCount(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
 
   return TCL_OK;
 }
-
-

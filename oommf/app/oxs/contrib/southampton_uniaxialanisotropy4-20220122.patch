@@ -1,0 +1,217 @@
+diff -ru southampton_uniaxialanisotropy4/uniaxialanisotropy4.cc southampton_uniaxialanisotropy4-new/uniaxialanisotropy4.cc
+--- southampton_uniaxialanisotropy4/uniaxialanisotropy4.cc	2017-06-14 13:50:09.000000000 -0400
++++ southampton_uniaxialanisotropy4-new/uniaxialanisotropy4.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -74,16 +74,16 @@
+  Oxs_EnergyData& oed
+  ) const
+ {
+-  const Oxs_MeshValue<REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+   oed.field = oed.field_buffer;
+-  Oxs_MeshValue<REAL8m>& energy = *oed.energy_buffer;
++  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
+   Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+ 
+-  UINT4m size = state.mesh->Size();
++  OC_INDEX size = state.mesh->Size();
+   if(mesh_id != state.mesh->Id()) {
+     // This is either the first pass through, or else mesh
+     // has changed.
+@@ -91,9 +91,9 @@
+     K1_init->FillMeshValue(state.mesh,K1);
+     K2_init->FillMeshValue(state.mesh,K2);
+     axis_init->FillMeshValue(state.mesh,axis);
+-    for(UINT4m i=0;i<size;i++) {
++    for(OC_INDEX i=0;i<size;i++) {
+       // Check that axis is a unit vector:
+-      const REAL8m eps = 1e-14;
++      const OC_REAL8m eps = 1e-14;
+       if(fabs(axis[i].MagSq()-1)>eps) {
+ 	throw Oxs_Ext::Error(this,"Invalid initialization detected:"
+ 			     " Anisotropy axis isn't norm 1");
+@@ -122,11 +122,11 @@
+   //     + ( 4/mu_0 ) K2 ( 1/M_s ) * |axis*spin|^3 *axis
+ 
+ 
+-  for(UINT4m i=0;i<size;++i) {
+-    REAL8m k1 = K1[i];
+-    REAL8m k2 = K2[i];
+-    REAL8m field_mult1 = (2.0/MU0)*k1*Ms_inverse[i];
+-    REAL8m field_mult2 = (4.0/MU0)*k2*Ms_inverse[i];
++  for(OC_INDEX i=0;i<size;++i) {
++    OC_REAL8m k1 = K1[i];
++    OC_REAL8m k2 = K2[i];
++    OC_REAL8m field_mult1 = (2.0/MU0)*k1*Ms_inverse[i];
++    OC_REAL8m field_mult2 = (4.0/MU0)*k2*Ms_inverse[i];
+     if(field_mult1==0.0 && field_mult2==0.0) {
+       energy[i]=0.0;
+       field[i].Set(0.,0.,0.);
+@@ -134,7 +134,7 @@
+     }
+     if(k1<=0) {
+       // Easy plane (hard axis)
+-      REAL8m dot = axis[i]*spin[i];
++      OC_REAL8m dot = axis[i]*spin[i];
+       //Use fourier series for anisotropy energy up to 4th order
+       field[i] = (field_mult1*dot) * axis[i] + (field_mult2*dot*dot*dot) * axis[i] ;
+       energy[i] = -k1*dot*dot -k2*dot*dot*dot*dot; // Easy plane is zero energy
+@@ -165,7 +165,7 @@
+       // runs and the performance of the two methods was about the
+       // same.) -mjd, 28-Jan-2001
+       ThreeVector temp = axis[i];
+-      REAL8m dot = temp*spin[i];
++      OC_REAL8m dot = temp*spin[i];
+       //Use fourier series for anisotropy energy up to 4th order
+       field[i] = (field_mult1*dot) * temp + (field_mult2*dot*dot*dot) * temp;   //correction JZ 19/04/07
+       //field[i] = ( (field_mult1+field_mult2)*dot) * temp - (field_mult2*dot*dot*dot) * temp;   //correction JZ 07/03/05  //correction JZ 19/04/07
+@@ -176,7 +176,7 @@
+       // for hard axis case, we start with cos directly, so no mixed product    //correction JZ 07/03/05
+       //      field[i] = (field_mult1*dot) * temp + (field_mult2*dot*dot*dot) * temp; //correction JZ 07/03/05
+       temp ^= spin[i];
+-      REAL8m MagSqtemp = temp.MagSq();
++      OC_REAL8m MagSqtemp = temp.MagSq();
+       //energy[i] = k1*MagSqtemp + k2*MagSqtemp*MagSqtemp;   //correction JZ 19/04/07
+       energy[i] = (k1+2*k2)*MagSqtemp - k2*MagSqtemp*MagSqtemp;   //correction JZ 19/04/07
+     }
+@@ -195,16 +195,16 @@
+         " is not an Oxs_RectangularMesh object.  Quad integration"
+ 	" method requires a rectangular mesh.");
+     }
+-    UINT4m xdim = mesh->DimX();
+-    UINT4m ydim = mesh->DimY();
+-    UINT4m zdim = mesh->DimZ();
+-    UINT4m xydim = xdim*ydim;
+-    UINT4m x,y,z;
++    OC_INDEX xdim = mesh->DimX();
++    OC_INDEX ydim = mesh->DimY();
++    OC_INDEX zdim = mesh->DimZ();
++    OC_INDEX xydim = xdim*ydim;
++    OC_INDEX x,y,z;
+ 
+     // x-axis.  Note special case handling for short lengths.
+     if(xdim>=6) {
+       for(z=0;z<zdim;z++) for(y=0;y<ydim;y++) {
+-	UINT4m i = mesh->Index(0,y,z); // Get base linear address
++	OC_INDEX i = mesh->Index(0,y,z); // Get base linear address
+ 	energy[i]   *= 26./24.; // Left face
+ 	energy[i+1] *= 21./24.;
+ 	energy[i+2] *= 25./24.;
+@@ -221,7 +221,7 @@
+ 	field[i+2]  *= 26./24.;
+       }
+     } else if(xdim==5) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) for(y=0;y<ydim;y++) {
+ 	energy[i]   *= 26./24.;
+ 	energy[i+1] *= 21./24.;
+@@ -236,7 +236,7 @@
+ 	i += 5;
+       }
+     } else if(xdim==4) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) for(y=0;y<ydim;y++) {
+ 	energy[i]   *= 26./24.;
+ 	energy[i+1] *= 22./24.;
+@@ -249,7 +249,7 @@
+ 	i += 4;
+       }
+     } else if(xdim==3) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) for(y=0;y<ydim;y++) {
+ 	energy[i]   *= 27./24.;
+ 	energy[i+1] *= 18./24.;
+@@ -267,7 +267,7 @@
+     if(ydim>=6) {
+       for(z=0;z<zdim;z++) {
+ 	// Front face
+-	UINT4m i = mesh->Index(0,0,z); // Get base linear address
++	OC_INDEX i = mesh->Index(0,0,z); // Get base linear address
+ 	for(x=0;x<xdim;x++) { // y==0
+ 	  energy[i] *= 26./24.;
+ 	  field[i]  *= 26./24.;
+@@ -302,7 +302,7 @@
+ 	}
+       }
+     } else if(ydim==5) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) {
+ 	for(x=0;x<xdim;x++) { // y==0
+ 	  energy[i] *= 26./24.;
+@@ -331,7 +331,7 @@
+ 	}
+       }
+     } else if(ydim==4) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) {
+ 	for(x=0;x<xdim;x++) { // y==0
+ 	  energy[i] *= 26./24.;
+@@ -355,7 +355,7 @@
+ 	}
+       }
+     } else if(ydim==3) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       for(z=0;z<zdim;z++) {
+ 	for(x=0;x<xdim;x++) { // y==0
+ 	  energy[i] *= 27./24.;
+@@ -381,7 +381,7 @@
+     // z-axis.  Note special case handling for short lengths.
+     if(zdim>=6) {
+       // Bottom face, z==0
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       while(i<xydim) { // z==0
+ 	energy[i] *= 26./24.;
+ 	field[i]  *= 26./24.;
+@@ -415,7 +415,7 @@
+ 	++i;
+       }
+     } else if(zdim==5) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       while(i<xydim) { // z==0; bottom face
+ 	energy[i] *= 26./24.;
+ 	field[i]  *= 26./24.;
+@@ -442,7 +442,7 @@
+ 	++i;
+       }
+     } else if(zdim==4) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       while(i<xydim) { // z==0; bottom face
+ 	energy[i] *= 26./24.;
+ 	field[i]  *= 26./24.;
+@@ -464,7 +464,7 @@
+ 	++i;
+       }
+     } else if(zdim==3) {
+-      UINT4m i = mesh->Index(0,0,0); // Get base linear address
++      OC_INDEX i = mesh->Index(0,0,0); // Get base linear address
+       while(i<xydim) { // z==0; bottom face
+ 	energy[i] *= 27./24.;
+ 	field[i]  *= 27./24.;
+diff -ru southampton_uniaxialanisotropy4/uniaxialanisotropy4.h southampton_uniaxialanisotropy4-new/uniaxialanisotropy4.h
+--- southampton_uniaxialanisotropy4/uniaxialanisotropy4.h	2017-06-14 13:50:09.000000000 -0400
++++ southampton_uniaxialanisotropy4-new/uniaxialanisotropy4.h	2022-01-22 02:31:37.000000000 -0500
+@@ -42,9 +42,9 @@
+   Oxs_OwnedPointer<Oxs_ScalarField> K1_init;
+   Oxs_OwnedPointer<Oxs_ScalarField> K2_init;
+   Oxs_OwnedPointer<Oxs_VectorField> axis_init;
+-  mutable UINT4m mesh_id;
+-  mutable Oxs_MeshValue<REAL8m> K1;
+-  mutable Oxs_MeshValue<REAL8m> K2;  // K2: correction term: forth order in fourier series
++  mutable OC_UINT4m mesh_id;
++  mutable Oxs_MeshValue<OC_REAL8m> K1;
++  mutable Oxs_MeshValue<OC_REAL8m> K2;  // K2: correction term: forth order in fourier series
+   mutable Oxs_MeshValue<ThreeVector> axis;
+   /// K1, K2, and axis are cached values filled by corresponding
+   /// *_init members when a change in mesh is detected.

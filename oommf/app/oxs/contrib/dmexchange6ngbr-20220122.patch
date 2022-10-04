@@ -1,0 +1,33 @@
+diff -ru dmexchange6ngbr/DMexchange6ngbr.cc dmexchange6ngbr-new/DMexchange6ngbr.cc
+--- dmexchange6ngbr/DMexchange6ngbr.cc	2017-06-14 13:50:09.000000000 -0400
++++ dmexchange6ngbr-new/DMexchange6ngbr.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -78,7 +78,7 @@
+ 		  (unsigned int)params.size());
+       throw Oxs_Ext::Error(this,buf);
+   }
+-  for(i=0;i<params.size();i+=3) {
++  for(i=0;i<static_cast<OC_INDEX>(params.size());i+=3) {
+     OC_INT4m i1 = atlas->GetRegionId(params[i]);
+     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
+     if(i1<0 || i2<0) {
+@@ -187,7 +187,6 @@
+   OC_INDEX xdim = mesh->DimX();
+   OC_INDEX ydim = mesh->DimY();
+   OC_INDEX zdim = mesh->DimZ();
+-  OC_INDEX xydim = xdim*ydim;
+ 
+   OC_REAL8m wgtx = 1.0/(mesh->EdgeLengthX());
+   OC_REAL8m wgty = 1.0/(mesh->EdgeLengthY());
+diff -ru dmexchange6ngbr/DMexchange6ngbr.h dmexchange6ngbr-new/DMexchange6ngbr.h
+--- dmexchange6ngbr/DMexchange6ngbr.h	2017-06-14 13:50:09.000000000 -0400
++++ dmexchange6ngbr-new/DMexchange6ngbr.h	2022-01-22 02:31:37.000000000 -0500
+@@ -29,7 +29,7 @@
+   OC_REAL8m** D;
+   Oxs_Key<Oxs_Atlas> atlaskey;  
+   Oxs_OwnedPointer<Oxs_Atlas> atlas;
+-  mutable OC_INT4m mesh_id;
++  mutable OC_UINT4m mesh_id;
+   mutable Oxs_MeshValue<OC_INT4m> region_id;
+ 
+ protected:
+Only in dmexchange6ngbr: readme.txt

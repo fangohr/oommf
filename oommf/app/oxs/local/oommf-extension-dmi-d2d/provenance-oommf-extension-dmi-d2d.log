@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/joommf/oommf-extension-dmi-d2d.git
 == repo-name: oommf-extension-dmi-d2d
 == snap-shot-of-repo: provenance-oommf-extension-dmi-d2d-HEAD.zip
-== cloned-on-date: Thu Sep 30 22:35:22 2021
+== cloned-on-date: Sat Oct  1 08:03:53 2022
 == copied-files-from-path-in-repo: src/
 last commit:
 commit 9ce00156458a3cf9f5c5e139ba2f5814fe041444
@@ -12,11 +12,11 @@ Date:   Mon May 24 12:09:00 2021 +0100
 
 == src file-list:
 total 96
--rw-r--r--  1 fangohr  staff  8791 30 Sep 22:35 DMI_D2d_x.cc
--rw-r--r--  1 fangohr  staff  1682 30 Sep 22:35 DMI_D2d_x.h
--rw-r--r--  1 fangohr  staff  8782 30 Sep 22:35 DMI_D2d_y.cc
--rw-r--r--  1 fangohr  staff  1682 30 Sep 22:35 DMI_D2d_y.h
--rw-r--r--  1 fangohr  staff  8809 30 Sep 22:35 DMI_D2d_z.cc
--rw-r--r--  1 fangohr  staff  1682 30 Sep 22:35 DMI_D2d_z.h
+-rw-r--r--  1 fangohr  staff  8791 Oct  1 08:03 DMI_D2d_x.cc
+-rw-r--r--  1 fangohr  staff  1682 Oct  1 08:03 DMI_D2d_x.h
+-rw-r--r--  1 fangohr  staff  8782 Oct  1 08:03 DMI_D2d_y.cc
+-rw-r--r--  1 fangohr  staff  1682 Oct  1 08:03 DMI_D2d_y.h
+-rw-r--r--  1 fangohr  staff  8809 Oct  1 08:03 DMI_D2d_z.cc
+-rw-r--r--  1 fangohr  staff  1682 Oct  1 08:03 DMI_D2d_z.h
 
 == see contents of provenance-oommf-extension-dmi-d2d-HEAD.zip for additional info, examples, etc.

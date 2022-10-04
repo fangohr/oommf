@@ -4,7 +4,7 @@
  *
  */
 
-#include <string.h>
+#include <cstring>
 #include <cctype>
 
 #include "oc.h"

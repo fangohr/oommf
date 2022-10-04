@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Unix Configuration</TITLE>
+<META NAME="description" CONTENT="Unix Configuration">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="macOS_Configuration.html">
+<LINK REL="previous" HREF="Platform_Specific_Installat.html">
+<LINK REL="up" HREF="Platform_Specific_Installat.html">
+<LINK REL="next" HREF="macOS_Configuration.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html399"
+  HREF="macOS_Configuration.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html395"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html389"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html397"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html400"
+  HREF="macOS_Configuration.html">macOS Configuration</A>
+<B> Up:</B> <A NAME="tex2html396"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+<B> Previous:</B> <A NAME="tex2html390"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html401"
+  HREF="Unix_Configuration.html#SECTION00341100000000000000">Missing Tcl/Tk files</A>
+<LI><A NAME="tex2html402"
+  HREF="Unix_Configuration.html#SECTION00341200000000000000">Compiler Optimization Options</A>
+<LI><A NAME="tex2html403"
+  HREF="Unix_Configuration.html#SECTION00341300000000000000">Portland Group pgCC compiler on Linux</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H2><A NAME="SECTION00341000000000000000"></A><A NAME="sec:install.unixconfig"></A>
+<BR>
+Unix Configuration
+</H2>
+
+<H3><A NAME="SECTION00341100000000000000">
+Missing Tcl/Tk files</A>
+</H3>
+The basic installation procedure should be sufficient to install OOMMF on most Unix systems.  Sometimes, however, the build will fail due to
+missing Tcl header files (<TT><B>tcl.h</B></TT>, <TT><B>tk.h</B></TT>) or libraries (e.g.,
+<TT><B>libtcl.so</B></TT>, <TT><B>libtk.so</B></TT>).  This problem can usually be solved by
+installing a ``development'' version of Tcl/Tk, which may be found on
+the operating system installation disks, or may be available from the
+system vendor.  There are also binary releases of Tcl/Tk for a number
+of systems available from ActiveState, under the name
+<A NAME="tex2html19"
+  HREF="https://www.activestate.com/products/tcl/">ActiveTcl</A>.
+Alternatively, one may download the sources for Tcl and Tk from the
+<A NAME="tex2html20"
+  HREF="http://purl.org/tcl/home/">Tcl Developer
+Xchange</A>, and build and install Tcl/Tk from source.  The Tcl/Tk build follows the usual Unix <TT><B>configure</B></TT>, <TT><B>make</B></TT>, <TT><B>make install</B></TT> build convention.
+
+<P>
+
+<H3><A NAME="SECTION00341200000000000000">
+Compiler Optimization Options</A>
+</H3>
+On most systems, OOMMF builds by default with relatively unaggressive
+compiler optimization options.  As discussed earlier
+(under <A HREF="Optimization.html#sec:install.optimize">Optimization)</A>, you may edit the appropriate
+<TT><B>oommf/config/platforms/</B></TT> file to change the default compilation options.
+However, on some common systems (e.g., Linux, some BSD variants) OOMMF will try to deduce the hardware architecture (i.e., the CPU subtype,
+such as Pentium 3 vs. Pentium 4) and apply architecture-specific options
+to the compile commands.  This is probably what you want if OOMMF is
+to be run only on the system on which it was built, or if it is run on a
+homogeneous cluster.  If, instead, you intend to run OOMMF on a
+heterogeneous cluster you may need to restrict the compiler options to
+those supported across your target machines.  In that case, open the
+appropriate configuration file in the <TT><B>oommf/config/platforms/</B></TT>
+directory, and look for the lines
+<PRE>
+    # You can override the GuessCPU results by directly setting or
+    # unsetting the cpuopts variable, e.g.,
+    #
+    #    set cpuopts [list -march=skylake]
+    # or
+    #    unset cpuopts
+    #
+</PRE>
+Uncomment either the ``unset cpuopts'' line to make a generic build, or
+else edit the ``set cpuopts'' line to an appropriate common-denominator
+architecture and uncomment that line.
+
+<P>
+In a similar vein, some compilers support a ``-fast'' switch, which
+usually creates an architecture-specific executable.  The same
+considerations apply in this case.
+
+<P>
+An advanced alternative would be to define separate OOMMF ``platforms'' for each CPU subtype in your cluster.  At a minimum, this
+would involve creating separate platform name files in
+<TT><B>oommf/config/names/</B></TT> for each subtype, and then making copies of the
+appropriate <TT><B>oommf/config/platforms</B></TT> file for each new platform.  The
+platform name files would have to be written so as to reliably detect
+the CPU subtype on each machine.  See <A HREF="Managing_OOMMF_Platform_Nam.html#sec:install.platformnames">``Managing OOMMF platform names''</A> for details on creating platform name
+files.  <A NAME="1553"></A>
+
+<P>
+
+<H3><A NAME="SECTION00341300000000000000">
+Portland Group pgCC compiler on Linux</A>
+</H3>
+The platform build scripts for Linux,
+<TT><B>oommf/config/platforms/lintel.tcl</B></TT> (32-bit) and
+<TT><B>oommf/config/platforms/linux-x86_64.tcl</B></TT> (64-bit) contain sections
+supporting the Portland Group pgCC compiler.  Non-threaded builds of
+OOMMF using this compiler run fine, but threaded builds segfault when
+running <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><TT><B>Oxsii</B></TT>/<TT><B>Boxsi</B></TT></A>.  The source of this problem is not known at this
+time.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html399"
+  HREF="macOS_Configuration.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html395"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html389"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html397"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

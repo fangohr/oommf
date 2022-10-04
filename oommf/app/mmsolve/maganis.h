@@ -7,7 +7,7 @@
 #ifndef _MAGANIS_H
 #define _MAGANIS_H
 
-#include <stdio.h>
+#include <cstdio>
 #include "threevec.h"
 #include "magelt.h"
 

@@ -8,7 +8,7 @@ set oommfExtDir [file join [file dirname [file dirname [file dirname \
 proc DeleteFiles {args} {
     if {![llength $args]} {return}
     puts "Deleting $args in [pwd] ..."
-    eval file delete -force -- $args
+    file delete -force -- {*}$args
 }
 
 proc MakeDirectory {dir} {

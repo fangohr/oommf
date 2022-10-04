@@ -8,9 +8,9 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <ctype.h>
-#include <limits.h>
-#include <string.h>
+#include <cctype>
+#include <climits>
+#include <cstring>
 
 #include "dstring.h"
 #include "errhandlers.h"

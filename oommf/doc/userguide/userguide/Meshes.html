@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Meshes</TITLE>
+<META NAME="description" CONTENT="Meshes">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Energies.html">
+<LINK REL="previous" HREF="Atlases.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Energies.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html566"
+  HREF="Energies.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html562"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html556"
+  HREF="Atlases.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html564"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html567"
+  HREF="Energies.html">Energies</A>
+<B> Up:</B> <A NAME="tex2html563"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html557"
+  HREF="Atlases.html">Atlases</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00832000000000000000"></A><A NAME="sec:Meshes"></A>
+<BR>
+Meshes
+</H2>
+Meshes define the discretization impressed on the simulation.  There
+should be exactly one mesh declared in a MIF&nbsp;2 file.  The usual
+(finite) mesh type is <TT>Oxs_RectangularMesh</TT>.  For simulations that
+are periodic along one or more axes, use the
+<TT>Oxs_PeriodicRectangularMesh</TT> type.
+
+<P>
+<DL>
+<DD><A NAME="PTRM"></A><A NAME="html:oxsrectangularmesh"></A><A NAME="4994"></A>
+</DD>
+<DT><STRONG>Oxs_RectangularMesh:</STRONG></DT>
+<DD>This mesh is comprised of a lattice of rectangular prisms.
+The specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_RectangularMesh:</TT><I>name</I> <TT>{</TT>
+<DD><TT>cellsize {</TT>
+  <I>xstep<TT>&nbsp;</TT>ystep<TT>&nbsp;</TT>zstep</I>
+  <TT>}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+This creates an axes parallel rectangular mesh across the entire space
+covered by <B>atlas</B>.  The mesh sample rates along each axis are
+specified by <B>cellsize</B> (in meters).  The mesh is
+cell-based, with the center of the first cell one half step in from the
+minimal extremal point (xmin,ymin,ymax) for <I>atlas_spec</I>.
+The <I>name</I> is commonly set to ``mesh'', in which case the mesh
+object may be referred to by other <TT>Oxs_Ext</TT> objects by the short
+name <TT>:mesh</TT>.
+
+<P>
+
+<B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>stdprob4.mif</B></TT>.
+<P>
+<A NAME="PTPRM"></A><A NAME="html:oxsperiodicrectangularmesh"></A><A NAME="5008"></A>
+</DD>
+<DT><STRONG>Oxs_PeriodicRectangularMesh:</STRONG></DT>
+<DD>Like the <TT>Oxs_RectangularMesh</TT>, this mesh is also comprised of a
+lattice of rectangular prisms.  However, in this case the
+mesh is declared to be periodic along one or more of the axis
+directions.  The specify block has the form
+
+<BLOCKQUOTE><DL><DT>
+<TT>Specify Oxs_PeriodicRectangularMesh:</TT><I>name</I> <TT>{</TT>
+<DD><TT>cellsize {</TT>
+  <I>xstep<TT>&nbsp;</TT>ystep<TT>&nbsp;</TT>zstep</I>
+  <TT>}</TT>
+<DD><TT>atlas </TT> <I>atlas_spec</I>
+<DD><TT>periodic </TT> <I>periodic_axes</I>
+<DT><TT>}</TT></DL></BLOCKQUOTE><P>
+The <B>atlas</B> and <B>cellsize</B> values are the same as
+for the <TT>Oxs_RectangularMesh</TT> class.  The <I>periodic_axis</I>
+value should be a string consisting of one or more of the letters
+``x'', ``y'', or ``z'', denoting the periodic direction(s).
+<TT>Oxs_Ext</TT> objects that are incompatible with
+<TT>Oxs_PeriodicRectangularMesh</TT> will issue an error message at
+runtime.  In particular, the
+<A HREF="Energies.html#PTDE"><TT>Oxs_Demag</TT></A> class supports
+periodicity in none or one direction, but not more.  Also, some
+third-party extensions provide independent periodicity support using
+the older <TT>Oxs_RectangularMesh</TT> class rather than
+<TT>Oxs_PeriodicRectangularMesh</TT>.
+
+<P>
+
+<B>Examples:</B> <TT><B>pbcbrick.mif</B></TT>, <TT><B>pbcstripes.mif</B></TT>.
+<P>
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html566"
+  HREF="Energies.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html562"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html556"
+  HREF="Atlases.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html564"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

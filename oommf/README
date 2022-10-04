@@ -1,6 +1,6 @@
 README: OOMMF
 Object Oriented MicroMagnetic computing Framework
-Release 2.0a3
+Release 2.0b0
 
 OOMMF is a project in the Mathematical and Computational Sciences 
 Division (MCSD) of ITL/NIST aimed at developing portable, extensible 
@@ -17,7 +17,7 @@ The main contributors to OOMMF are Mike Donahue and Don Porter.
 Before you can do anything with OOMMF, you must have Tcl/Tk installed
 on your computer.  The Tcl/Tk Core is available for free download from 
 the Tcl Developer eXchange at <URL:http://www.tcl.tk/>.  We recommend
-the latest Tcl/Tk releases, currently 8.6.11. The oldest versions
+the latest Tcl/Tk releases, currently 8.6.12. The oldest versions
 of Tcl/Tk compatible with OOMMF varies with the computing platform,
 but any installation likely to be found should be acceptable.
 Please note as exceptions that releases 8.6.2, 8.6.3, 8.5.16, and
@@ -31,7 +31,7 @@ Most OOMMF users on MS Windows platforms will download a release
 with pre-compiled executables compatible with Tcl/Tk 8.6.x.  Type
 the following commands at an MS-DOS Prompt to start using OOMMF:
 
-	unzip oommf20a3.zip
+	unzip oommf20b0.zip
 	cd oommf
 	tclsh86 oommf.tcl pimake upgrade
 	tclsh86 oommf.tcl
@@ -39,7 +39,7 @@ the following commands at an MS-DOS Prompt to start using OOMMF:
 For most OOMMF users on Unix and Mac OS X, the following sequence of
 commands should upgrade, build, and run your OOMMF installation:
 
-	gunzip -c oommf20a3.tar.gz | tar xvf -
+	gunzip -c oommf20b0.tar.gz | tar xvf -
 	cd oommf
 	oommf.tcl pimake distclean
 	oommf.tcl pimake upgrade

@@ -20,7 +20,7 @@
 # the "model name" string.
 #    GuessGccVersion
 # which runs gcc to guess the version of GCC being used.
-#    GetGccGeneralOptlags
+#    GetGccGeneralOptFlags
 # which returns a list of aggressive, non-processor-specific
 # optimization flags that can be passed to gcc.
 #    GetGccCpuOptFlags
@@ -131,65 +131,61 @@ proc GetBcc32BannerVersion { bcc32 } {
 
 # Optimization flags in play for the following two procs
 # (GetClGeneralOptFlags and GetClCpuOptFlags):
-# VC++ 6 (1998) and earlier are not supported.
-#
-# Options for VC++ 7.0 (2002), 7.1 (2003):
-#            Disable optimizations: /Od
-#             Maximum optimization: /Ox
-#      Enable runtime debug checks: /GZ
-#   Optimize for Pentium processor: /G5
-#         Optimize for Pentium Pro: /G6
-#
-# Options for VC++ 8.0 (2005), 9.0 (2008):
 #                  Disable optimizations: /Od
-#                   Maximum optimization: /Ox
-#                    Enable stack checks: /GZ
-#                    Require SSE support: /arch:SSE
-#                   Require SSE2 support: /arch:SSE2
+#                        Favor fast code: /Ot
+#      Optimize for speed; subset of /O2: /Ox
+#                         Maximize speed: /O2
+#                    Enable stack checks: /GZ  (Deprecated; same as /RTC1)
+#                Buffers security checks: /GS[-] (default is enabled)
+#                   Require AVX  support: /arch:AVX
+#                   Require AVX2 support: /arch:AVX2
 # Fast (less predictable) floating point: /fp:fast
+#         Value safe floating point opts: /fp:precise
 #     Use portable but insecure lib fcns: /D_CRT_SECURE_NO_DEPRECATE
 #
-# Options for VC++ 10 (2010):
-#                  Disable optimizations: /Od
-#                   Maximum optimization: /Ox
-#                    Enable stack checks: /GZ
-#       Select processor to optimize for: /favor:<blend|AMD64|INTEL64> (64-bit only)
-#                     Enable SSE support: /arch:SSE   (32-bit only)
-#                    Enable SSE2 support: /arch:SSE2  (32-bit only)
-#                     Enable AVX support: /arch:AVX
-# Fast (less predictable) floating point: /fp:fast
-#     Use portable but insecure lib fcns: /D_CRT_SECURE_NO_DEPRECATE
+# VC++ earlier than 12.0 (2013) are not supported
 #
-
 # Routine that returns aggressive, processor agnostic, optimization
 # flags for the Microsoft Visual C++ compiler cl.  The import is the
 # cl version, as returned by the preceding GuessClVersion proc.
 #
-proc GetClGeneralOptFlags { cl_version platform } {
+proc GetClGeneralOptFlags { cl_version platform optlevel } {
    # Import "platform" not presently used, but should
    # be one of "x86" or "x86_64".
+   if {$optlevel<1} {
+      set opts /Od
+   } elseif {$optlevel==1} {
+      set opts /Ot
+   } else {
+      set opts /O2
+      if {$optlevel>2} {
+         lappend opts /GS-
+      }
+   }
    set cl_version [lindex $cl_version 0] ;# Safety
-
-   # Max optimization
-   set opts "/Ox"
-   if {$cl_version>7} {
+   if {$cl_version>7 && $optlevel>=1} {
       lappend opts /fp:fast
    }
-
    return $opts
 }
 
-proc GetClValueSafeOptFlags { cl_version platform } {
+proc GetClValueSafeOptFlags { cl_version platform optlevel } {
    # Import "platform" not presently used, but should
    # be one of "x86" or "x86_64".
+   if {$optlevel<1} {
+      set opts /Od
+   } elseif {$optlevel==1} {
+      set opts /Ot
+   } else {
+      set opts /O2
+      if {$optlevel>2} {
+         lappend opts /GS-
+      }
+   }
    set cl_version [lindex $cl_version 0] ;# Safety
-
-   # Max optimization
-   set opts "/Ox"
    if {$cl_version>7} {
       lappend opts /fp:precise
    }
-
    return $opts
 }
 
@@ -206,7 +202,7 @@ proc GetClCpuOptFlags { cl_version cpu_arch platform } {
 
    set mvcpp_version [lindex $cl_version 0]
    if {![regexp {[1-9][0-9]*} $mvcpp_version] || \
-       $mvcpp_version<7} {
+       $mvcpp_version<12} {
       # Unknown version or unsupported version
       return $opts
    }
@@ -217,56 +213,33 @@ proc GetClCpuOptFlags { cl_version cpu_arch platform } {
    set cpu_sse    0
    foreach {cpu_vendor cpu_type cpu_sse cpu_avx} $cpu_arch { break }
 
-   if {$mvcpp_version<8} {
-      switch -glob -- $cpu_type {
-         pentium     -
-         pentium-mmx { lappend opts "/G5"}
-         pentium*    -
-         prescott    -
-         nocona      -
-         core*       { lappend opts "/G6" }
-         k5          { lappend opts "/G5"}
-         k6*         -
-         athlon*     -
-         opteron     -
-         k8          { lappend opts "/G6" }
-      }
-   } elseif {$mvcpp_version<10} {
-      # Microsoft Visual C++ version 8 (2005) or 9 (2008)
-      if {$cpu_sse==1} {
-         lappend opts /arch:SSE
+   # Microsoft Visual C++ version 12 (2013) or later
+   if {[string compare "x86" $platform]==0} {
+      # 32-bit
+      if {$cpu_avx>0} {
+         # CPU supports AVX, but OOMMF doesn't use AVX at this time,
+         # and the context switch between AVX and SSE can be
+         # expensive, so keep arch at SSE2.
+         lappend opts /arch:SSE2   ;# /arch:AVX
       } elseif {$cpu_sse>=2} {
          lappend opts /arch:SSE2
+      } elseif {$cpu_sse==1} {
+         lappend opts /arch:SSE
+      }
+   } elseif {[string compare "x86_64" $platform]==0} {
+      # On x86_64, SSE2 is assumed and there is no /arch:SSE2 switch.
+      # The /arch:AVX switch is supported, but OOMMF doesn't use AVX
+      # at this time, and the context switch between AVX and SSE can
+      # be expensive.  So for now leave off /arch:AVX
+      # if {$cpu_avx>0} { lappend opts /arch:AVX }
+      if {[string match "intel*" $cpu_vendor]} {
+         lappend opts /favor:INTEL64
+      } elseif {[string match "amd*" $cpu_vendor]} {
+         lappend opts /favor:AMD64
       }
    } else {
-      # Microsoft Visual C++ version 10 (2010) or later
-      if {[string compare "x86" $platform]==0} {
-         # 32-bit
-         if {$cpu_avx>0} {
-            # CPU supports AVX, but OOMMF doesn't use AVX at this time,
-            # and the context switch between AVX and SSE can be
-            # expensive, so keep arch at SSE2.
-            lappend opts /arch:SSE2   ;# /arch:AVX
-         } elseif {$cpu_sse>=2} {
-            lappend opts /arch:SSE2
-         } elseif {$cpu_sse==1} {
-            lappend opts /arch:SSE
-         }
-      } elseif {[string compare "x86_64" $platform]==0} {
-         # On x86_64, SSE2 is assumed and there is no /arch:SSE2 switch.
-         # The /arch:AVX switch is supported, but OOMMF doesn't use AVX
-         # at this time, and the context switch between AVX and SSE can
-         # be expensive.  So for now leave off /arch:AVX
-         # if {$cpu_avx>0} { lappend opts /arch:AVX }
-         if {[string match "intel*" $cpu_vendor]} {
-            lappend opts /favor:INTEL64
-         } elseif {[string match "amd*" $cpu_vendor]} {
-            lappend opts /favor:AMD64
-         }
-      } else {
-         error "Unrecognized platform name \"$platform\";\
+      error "Unrecognized platform name \"$platform\";\
                 should be either \"x86\" or \"x86_64\""
-      }
    }
 
    return $opts

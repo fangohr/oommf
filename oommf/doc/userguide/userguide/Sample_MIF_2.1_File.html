@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Sample MIF&nbsp;2.1 File</TITLE>
+<META NAME="description" CONTENT="Sample MIF&nbsp;2.1 File">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Variable_Substitution.html">
+<LINK REL="up" HREF="MIF_2.1.html">
+<LINK REL="next" HREF="MIF_2.2.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1262"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1258"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1254"
+  HREF="Variable_Substitution.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1260"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1263"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Up:</B> <A NAME="tex2html1259"
+  HREF="MIF_2.1.html">MIF 2.1</A>
+<B> Previous:</B> <A NAME="tex2html1255"
+  HREF="Variable_Substitution.html">Variable Substitution</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001835000000000000000"></A><A NAME="sec:mif2sample"></A>
+<BR>
+Sample MIF&nbsp;2.1 File
+</H2>
+<A NAME="fig:mif2sample"></A>
+
+  <BR CLEAR="ALL">
+<HR><PRE>
+# MIF 2.1
+#
+# All units are SI.
+#
+# This file must be a valid Tcl script.
+#
+
+# Initialize random number generators with seed=1
+RandomSeed 1
+
+# Individual Oxs_Ext objects are loaded and initialized via
+# Specify command blocks.  The following block defines the
+# extents (in meters) of the volume to be modeled.  The
+# prefix "Oxs_BoxAtlas" specifies the type of Oxs_Ext object
+# to create, and the suffix ":WorldAtlas" is the name
+# assigned to this particular instance.  Each object created
+# by a Specify command must have a unique full name (here
+# "Oxs_BoxAtlas:WorldAtlas").  If the suffix is not
+# explicitly given, then the default ":" is automatically
+# assigned.  References may be made to either the full name,
+# or the shorter suffix instance name (here ":WorldAtlas")
+# if the latter is unique. See the Oxs_TimeDriver block for
+# some reference examples.
+Specify Oxs_BoxAtlas:WorldAtlas {
+  xrange {0 500e-9}
+  yrange {0 250e-9}
+  zrange {0 10e-9}
+}
+
+# The Oxs_RectangularMesh object is initialized with the
+# discretization cell size (in meters).
+Specify Oxs_RectangularMesh:mesh {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :WorldAtlas
+}
+
+# Magnetocrystalline anisotropy block.   The setting for
+# K1 (500e3 J/m^3) implicitly creates an embedded
+# Oxs_UniformScalarField object.  Oxs_RandomVectorField
+# is an explicit embedded Oxs_Ext object.
+Specify Oxs_UniaxialAnisotropy {
+  K1  530e3
+  axis { Oxs_RandomVectorField {
+           min_norm 1
+           max_norm 1
+  } }
+}
+
+# Homogeneous exchange energy, in J/m.  This may be set
+# from the command line with an option like
+#    -parameters "A 10e-12"
+# If not set from the command line, then the default value
+# specified here (13e-12) is used.
+Parameter A 13e-12
+Specify Oxs_UniformExchange:NiFe [subst {
+  A  $A
+}]
+
+# Define a couple of constants for later use.
+set PI [expr {4*atan(1.)}]
+set MU0 [expr {4*$PI*1e-7}]
+
+# The Oxs_UZeeman class is initialized with field ranges in A/m.
+# The following block uses the multiplier option to allow ranges
+# to be specified in mT.  Use the Tcl "subst" command to enable
+# variable and command substitution inside a Specify block.
+Specify Oxs_UZeeman:AppliedField [subst {
+  multiplier [expr 0.001/$MU0]
+  Hrange {
+    {  0  0  0   10  0  0   2 }
+    { 10  0  0  -10  0  0   2 }
+    {  0  0  0    0 10  0   4 }
+    {  1  1  1    5  5  5   0 }
+  }
+}]
+
+# Enable demagnetization (self-magnetostatic) field
+# computation.  This block takes no parameters.
+Specify Oxs_Demag {}
+
+# Runge-Kutta-Fehlberg ODE solver, with default parameter values.
+Specify Oxs_RungeKuttaEvolve {}
+
+# The following procedure is used to set the initial spin
+# configuration in the Oxs_TimeDriver block.  The arguments
+# x, y, and z are coordinates relative to the min and max
+# range of each dimension, e.g., 0&lt;=x&lt;=1, where x==0
+# corresponds to xmin, x==1 corresponds to xmax.
+proc UpDownSpin { x y z } {
+  if { $x &lt; 0.45 } {
+    return "0 1 0"
+  } elseif { $x &gt; 0.55 } {
+    return "0 -1 0"
+  } else {
+    return "0 0 1"
+  }
+}
+
+Specify Oxs_TimeDriver {
+ evolver Oxs_RungeKuttaEvolve
+ stopping_dm_dt 0.01
+ mesh :mesh
+ Ms 8e5   comment {implicit Oxs_UniformScalarField object}
+ m0 { Oxs_ScriptVectorField {
+        script {UpDownSpin}
+        norm  1
+        atlas :WorldAtlas
+ } }
+ basename example
+ comment {If you don't specify basename, then the default
+          is taken from the MIF filename.}
+}
+
+# Default outputs
+Destination hystgraph mmGraph:Hysteresis
+Destination monitor   mmGraph   new
+Destination archive   mmArchive
+
+Schedule DataTable hystgraph Stage 1
+Schedule DataTable monitor   Step 5
+Schedule DataTable archive   Stage 1
+Schedule Oxs_TimeDriver::Magnetization archive Stage 3
+Schedule "Oxs_RungeKuttaEvolve::Total field" archive Stage 3
+</PRE>
+  <DIV ALIGN="CENTER">
+Figure 17.2:
+    Example MIF&nbsp;2.1
+   file.
+    <A HREF="MIF_2.1.html#sec:mif2format">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

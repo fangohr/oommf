@@ -11,23 +11,11 @@
 #ifndef _OC
 #define _OC
 
-#define OC_STRINGIFY(x) OC_STRINGIFY1(x)
-#define OC_STRINGIFY1(x) #x
-#define OC_JOIN(a,b) OC_JOIN1(a,b)
-#define OC_JOIN1(a,b) a##b
-
-#define OC_MAKE_VERSION(x) OC_STRINGIFY(OC_JOIN(x,_MAJOR_VERSION)) "." \
-                           OC_STRINGIFY(OC_JOIN(x,_MINOR_VERSION)) \
-                           OC_JOIN(x,_RELEASE_LEVEL) \
-                           OC_STRINGIFY(OC_JOIN(x,_RELEASE_SERIAL))
-
 /*
- * Get version macros from another file so they can be 
+ * Get version macros from another file so they can be
  * automatically generated
  */
 #include "version.h"
-
-#define OC_VERSION OC_MAKE_VERSION(OC)
 
 /* Header containing macros and typedefs describing the platform */
 #include "ocport.h"
@@ -50,6 +38,9 @@
 # include <emmintrin.h>
 #endif
 
+/* System headers */
+#include <string>
+
 /* Prototypes imported from other extensions and libraries */
 #include "imports.h"
 
@@ -69,6 +60,14 @@
 
 /* End includes */     /* Optional directive to pimake */
 
+// Note: OC_STRINGIFY and OC_JOIN are #define'd in autobuf.h
+#define OC_MAKE_VERSION(x) OC_STRINGIFY(OC_JOIN(x,_MAJOR_VERSION)) "." \
+                           OC_STRINGIFY(OC_JOIN(x,_MINOR_VERSION)) \
+                           OC_JOIN(x,_RELEASE_LEVEL) \
+                           OC_STRINGIFY(OC_JOIN(x,_RELEASE_SERIAL))
+
+#define OC_VERSION OC_MAKE_VERSION(OC)
+
 /* Functions to be passed to the Tcl/Tk libraries */
 Tcl_PackageInitProc	Oc_Init;
 
@@ -80,6 +79,8 @@ Tcl_PackageInitProc	Oc_Init;
  * interp apparently unchanged.
  */
 Tcl_Interp*	Oc_GlobalInterpreter();
+OC_BOOL Oc_IsGlobalInterpThread(); // Returns true iff running thread
+                                  /// is the thread with globalInterp.
 int		Oc_InitScript(Tcl_Interp*, const char*, const char*);
 int		Oc_AppMain(int,char**);
 int		Oc_RegisterCommand(Tcl_Interp*,const char*,Tcl_CmdProc*);
@@ -120,9 +121,22 @@ typedef void OcSigFunc(int,ClientData); // C++ linkage OK here
 void Oc_AppendSigTermHandler(OcSigFunc* handler,ClientData);
 void Oc_RemoveSigTermHandler(OcSigFunc* handler,ClientData);
 
+// Read access to Oc_Option database
+OC_BOOL Oc_GetOcOption(const std::string& classname,
+                       const std::string& option,
+                       std::string& value);
+
 void Oc_StrError(int errnum,char* buf,size_t buflen);
 // Note: There is a bare declare of this function in ocnuma.cc.  If the
 // signature of Oc_StrError changes it should be updated both here and
 // in ocnuma.cc.
+
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+std::string Oc_WinStrError(DWORD errorID); // NB: Used in ocexcept.cc
+/// If signature changes propagate changes to there too.
+std::string Oc_WinGetFileSID(const std::string& filename);
+std::string Oc_WinGetCurrentProcessSID();
+std::string Oc_WinGetSIDAccountName(const std::string& sidstr);
+#endif
 
 #endif /* _OC */

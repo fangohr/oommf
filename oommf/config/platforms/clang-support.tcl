@@ -75,7 +75,7 @@ proc GetClangBannerVersion { clang } {
 #   echo 'int;' | clang -xc -Ofast - -o /dev/null -\#\#\#
 # to see what flags combination options like -Ofast enable.
 #
-proc GetClangGeneralOptFlags { clang_version } {
+proc GetClangGeneralOptFlags { clang_version optlevel } {
    # At present state of development, this proc ignores the
    # clang_version import.
    # NB: In at least some versions of clang (such as the one for the
@@ -86,11 +86,16 @@ proc GetClangGeneralOptFlags { clang_version } {
 
    # Note: -Ofast enables -ffast-math, which includes non-value-safe
    # optimizations.  If this causes problems replace -Ofast with -O3.
-   lappend opts -Ofast
-   lappend opts -std=c++11
-   #lappend opts -ffast-math  ;# Breaks Nb_Xpfloat
-   # Likewise, -Ofast enables -ffast-math
-
+   set opts -std=c++11
+   if {$optlevel <= 0} {
+      lappend opts -O0
+   } elseif {$optlevel == 1} {
+      lappend opts -O1
+   } elseif {$optlevel == 2} {
+      lappend opts -O2
+   } else {
+      lappend opts -Ofast
+   }
    return $opts
 }
 
@@ -99,14 +104,11 @@ proc GetClangGeneralOptFlags { clang_version } {
 # preceding GuessGccVersion proc.  Note that the flags accepted by gcc
 # vary by version.
 #
-proc GetClangValueSafeOptFlags { clang_version } {
-   set opts [GetClangGeneralOptFlags $clang_version]
-   foreach check {-Ofast} {
-      while {[set index [lsearch -exact $opts $check]]>=0} {
-         set opts [lreplace $opts $index $index]
-      }
+proc GetClangValueSafeOptFlags { clang_version optlevel } {
+   set opts [GetClangGeneralOptFlags $clang_version $optlevel]
+   if {[set index [lsearch -exact $opts -Ofast]]>=0} {
+         set opts [lreplace $opts $index $index -O3]
    }
-   lappend opts {-O3}
    return $opts
 }
 

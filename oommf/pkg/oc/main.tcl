@@ -218,6 +218,21 @@ Oc_Class Oc_Main {
           Oc_Option Get foo
        }
        $class SetInstanceName
+
+       # Init C++ Oc_LogSupport interface. This mimics the log prefix
+       # used in Oc_Class Oc_FileLogger (q.v.). (Only do this if the
+       # C portion of the oc package is loaded.)
+       if {[llength [info commands Oc_InitLogPrefix]]} {
+          global tcl_platform
+          regsub {[.].*$} [info hostname] {} hostname
+          if {[catch {set tcl_platform(user)} username]} {
+             set username {}
+          } else {
+             set username "-[string trim $username]"
+          }
+          Oc_InitLogPrefix "$appName<[pid]-$hostname$username>"
+       }
+
        return $appName
     }
 

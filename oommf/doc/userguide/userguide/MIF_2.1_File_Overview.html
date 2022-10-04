@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>MIF 2.1 File Overview</TITLE>
+<META NAME="description" CONTENT="MIF 2.1 File Overview">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="MIF_2.1_Extension_Commands.html">
+<LINK REL="previous" HREF="MIF_2.1.html">
+<LINK REL="up" HREF="MIF_2.1.html">
+<LINK REL="next" HREF="MIF_2.1_Extension_Commands.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1216"
+  HREF="MIF_2.1_Extension_Commands.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1212"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1206"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1214"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1217"
+  HREF="MIF_2.1_Extension_Commands.html">MIF&nbsp;2.1 Extension Commands</A>
+<B> Up:</B> <A NAME="tex2html1213"
+  HREF="MIF_2.1.html">MIF 2.1</A>
+<B> Previous:</B> <A NAME="tex2html1207"
+  HREF="MIF_2.1.html">MIF 2.1</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001831000000000000000"></A><A NAME="sec:mif2overview"></A><A NAME="21615"></A>
+<BR>
+MIF 2.1 File Overview
+</H2>
+
+<P>
+The first line of a MIF file must be of the form ``<code>#</code> MIF x.y'',
+where x.y represents the format revision number, here 2.1.  Unlike
+MIF&nbsp;1.1 files, the structure of MIF&nbsp;2.1 files are governed by the
+requirement that they be valid Tcl scripts, albeit with a handful of
+extensions.  These files are evaluated inside a Tcl interpreter, which
+may be a ``safe'' interpreter, i.e., one in which disk and other system
+access is disabled.  (Refer to the documentation of the Tcl <TT>interp</TT> command for details on safe interpreters.)  The security
+level is controlled by the <TT>MIFinterp</TT> option in the <TT><B>options.tcl</B></TT>
+<A HREF="Local_Customizations.html#sec:install.custom">customization file</A>.
+The default setting is
+
+<BLOCKQUOTE>
+<PRE>
+Oc_Option Add Oxs* MIFinterp safety custom
+</PRE>
+
+</BLOCKQUOTE>
+which enables all the Tcl interpreter extensions described in
+the
+<A HREF="MIF_2.1_Extension_Commands.html#sec:mif2ExtensionCommands">MIF&nbsp;2.1 Extension Commands</A>
+section
+below, but otherwise provides a standard Tcl safe interpreter.  The
+keyword <TT>custom</TT> above may be replaced with either <TT>safe</TT> or
+<TT>unsafe</TT>.  The <TT>safe</TT> selection is similar to <TT>custom</TT>, except
+that the <TT>DateSort</TT>, <TT>ReadFile</TT> and <TT>RGlob</TT> extensions are
+not provided, thereby eliminating all disk access at the MIF script
+level.  At the other extreme, choosing <TT>unsafe</TT> provides an
+unrestricted Tcl interpreter.  This option should be used with
+caution, especially if you are working with MIF files from an
+unknown or untrusted source.
+
+<P>
+After the first line, there is considerable flexibility in the layout of
+the file.  Generally near the top of the file one places any
+<A HREF="MIF_2.1_Extension_Commands.html#html:mif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
+<A HREF="MIF_2.1_Extension_Commands.html#html:mif2parameter"><TT>Parameter</TT></A>, and
+<A HREF="MIF_2.1_Extension_Commands.html#html:mif2randomseed"><TT>RandomSeed</TT></A> statements, as
+desired.
+
+<P>
+This is followed by the major content of the file, the various
+<A HREF="MIF_2.1_Extension_Commands.html#html:specifyCmd"><TT>Specify</TT></A> blocks, which initialize
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext"><TT>Oxs_Ext</TT> objects</A>:
+
+<UL>
+<LI>Atlas (one or more)
+</LI>
+<LI>Mesh (one)
+</LI>
+<LI>Energy terms (one or more)
+</LI>
+<LI>Evolver (one)
+</LI>
+<LI>Driver(one)
+</LI>
+</UL>
+The <TT>Specify</TT> blocks are processed in order, so any block that is
+referred to by another block must occur earlier in the file.  For that
+reason, the main atlas object, which is referenced in many other
+<TT>Specify</TT> blocks, is generally listed first.  The atlas object
+defines the spatial extent of the simulation, and optionally declares
+subregions inside the simulation volume.
+
+<P>
+The mesh object details the spatial discretization of the simulation
+volume.  Conventionally its <TT>Specify</TT> block follows the <TT>Specify</TT>
+block for the main atlas object; the mesh is referenced by the driver,
+so in any event the mesh <TT>Specify</TT> block needs to precede the driver
+<TT>Specify</TT> block.
+
+<P>
+The energy terms describe the typical micromagnetic energies and fields
+that determine the evolution of the simulation, such as exchange energy,
+magnetostatic fields, and anisotropy energies.  Material parameters,
+such as the anisotropy constant <TT>K1</TT> and the exchange constant
+<TT>A</TT>, are generally specified inside the <TT>Specify</TT> block for the
+relevant energy, e.g., <TT>Oxs_UniaxialAnisotropy</TT> or
+<TT>Oxs_Exchange6Ngbr</TT>.  The exception to this is saturation
+magnetization, <TT>Ms</TT>, which is declared in the driver <TT>Specify</TT> block.
+The initial magnetization, <TT>m0</TT>, is also specified in the driver
+<TT>Specify</TT> block.  In many cases these material parameters may be
+varied spatially by defining them using scalar or vector
+<A HREF="Field_Objects.html#sec:oxsFieldObjects">field objects</A>.  As discussed
+in the section on <A HREF="Specify_Conventions.html#sec:specConventions">Specify Conventions</A>, auxiliary objects such as scalar and
+vector fields can be defined either inline (i.e., inside the body of the
+referencing <TT>Specify</TT> block) or in their own, standalone top-level
+<TT>Specify</TT> blocks.  In the latter case, the auxiliary
+<TT>Specify</TT> blocks must precede the referencing <TT>Specify</TT> blocks in
+the MIF&nbsp;2.1 file.
+
+<P>
+Given the energies and fields, the evolver and driver form a matched
+pair that advance the magnetic state from an initial configuration,
+obeying either Landau-Lifshitz-Gilbert (LLG) dynamics or direct energy
+minimization.  For energy minimization studies, the driver must be an
+<TT>Oxs_MinDriver</TT> object, and the evolver must be a minimization
+evolver.  At the time of this writing, the only minimization evolver
+packaged with OOMMF is the <TT>Oxs_CGEvolve</TT> conjugate-gradient
+evolver.  For time-evolution (LLG) simulations, the driver must be an
+<TT>Oxs_TimeDriver</TT> object, and the evolver must be a time evolver,
+such as <TT>Oxs_RungeKuttaEvolve</TT>.  The evolver to be used is cited
+inside the driver <TT>Specify</TT> block, so the evolver must precede the
+driver in the MIF&nbsp;2.1 file.  As noted above, the pointwise saturation
+magnetization <TT>Ms</TT> and initial magnetization configuration <TT>m0</TT>
+are declared inside the driver <TT>Specify</TT> block as well.
+
+<P>
+The pre-specified outputs, indicated by zero or more
+<A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT></A> and
+<A HREF="MIF_2.1_Extension_Commands.html#html:scheduleCmd"><TT>Schedule</TT></A> commands, are
+conventionally placed after the <TT>Specify</TT> blocks.  Output selection
+can also be modified at runtime using the
+<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> or
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"><B>Boxsi</B></A> interactive interfaces.
+
+<P>
+Auxiliary Tcl procs may be placed anywhere in the file, but
+commonly either near their point of use or else at the bottom of the
+MIF file.  If a proc is only referenced from inside <TT>Specify</TT> blocks, then
+it can be placed anywhere in the file.  On the other hand, if a proc is
+used at the top level of the MIF file, for example to dynamically
+create part of the problem specification ``on-the-fly,'' then it must be
+defined before it is used, in the normal Tcl manner.
+
+<P>
+A sample MIF&nbsp;2.1 file is <A HREF="Sample_MIF_2.1_File.html#fig:mif2sample">included below.</A>
+More details on the individual <TT>Oxs_Ext</TT> objects can be found in the
+<A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">Standard Oxs_Ext Child Classes section</A>
+of the Oxs documentation.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1216"
+  HREF="MIF_2.1_Extension_Commands.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1212"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1206"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1214"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

@@ -112,6 +112,7 @@ Oc_Class Mmd_PlotSelectConfigure {
 	    arrow,colorreverse 0
             arrow,autosample   1
             arrow,subsample    0
+            arrow,viewscale     1
             arrow,size         1
             pixel,status       0
             pixel,colormap     Red-Black-Blue
@@ -261,7 +262,6 @@ Oc_Class Mmd_PlotSelectConfigure {
 		-onvalue 1 -offvalue 0]
         lappend state_dep(arrow) $arrautosample
 
-
         pack [$arrsr Cget -winpath] -anchor n -fill x -padx 5 -pady 5
         pack  $arrautosample -anchor n -fill both -expand 1 -padx 5
 
@@ -271,8 +271,16 @@ Oc_Class Mmd_PlotSelectConfigure {
 		-valuewidth 5 -valuejustify right \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(arrow,size)
-        pack [$arrsize Cget -winpath] -anchor n -fill x -padx 5 -pady 5
         lappend state_dep(arrow) $arrsize
+
+        set arrviewscale [checkbutton $a15.as -text "View\nscale" \
+                -borderwidth 2 -pady 0 \
+                -variable ${gpsc}(arrow,viewscale) \
+                -onvalue 1 -offvalue 0]
+        lappend state_dep(arrow) $arrviewscale
+
+        pack [$arrsize Cget -winpath] -anchor n -fill x -padx 5 -pady 5
+        pack  $arrviewscale -anchor n -fill both -expand 1 -padx 5
 
         # Initialize arrow type display state
         $this UpdatePlotTypeState arrow
@@ -573,7 +581,8 @@ Oc_Class Mmd_PlotSelectConfigure {
     }
 
     callback method UpdateSubsampleState { plottype win name elt ops } {
-	if {$psc($plottype,status) && !$psc($plottype,autosample)} {
+       # plottype should be either "arrow" or "pixel".
+       if {$psc($plottype,status) && !$psc($plottype,autosample)} {
 	    $win configure -state normal
 	} else {
 	    $win configure -state disabled

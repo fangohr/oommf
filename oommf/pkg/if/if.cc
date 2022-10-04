@@ -13,13 +13,13 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <ctype.h>
+#include <cassert>
+#include <cctype>
 #include <limits>
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
-#define USE_OLD_IMAGE
+//#define USE_OLD_IMAGE
 #include "oc.h"
 #include "if.h"
 
@@ -195,7 +195,7 @@ public:
   /// file that we know how to read.
 
   int FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
-	   char* fileName,Tk_PhotoHandle imageHandle,
+	   const char* fileName,Tk_PhotoHandle imageHandle,
 	   int destX,int destY,int width,int height,int srcX,int srcY);
   /// Fills in imageHandle as requested, one row at a time.
 
@@ -490,7 +490,7 @@ int If_MSBitmap::ReadCheck(Tcl_Channel chan,
 
 int
 If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
-		    char* fileName,Tk_PhotoHandle imageHandle,
+		    const char* fileName,Tk_PhotoHandle imageHandle,
 		    int destX,int destY,int reqwidth,int reqheight,
 		    int srcX,int srcY)
 { // Fills in imageHandle as requested, one row at a time.
@@ -726,7 +726,7 @@ public:
   /// Returns 1 if the file on chan looks like a PPM P3.
 
   int FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
-	   char* fileName,Tk_PhotoHandle imageHandle,
+	   const char* fileName,Tk_PhotoHandle imageHandle,
 	   int destX,int destY,int width,int height,int srcX,int srcY);
   /// Fills in imageHandle as requested, one row at a time.
 
@@ -861,7 +861,7 @@ int If_PPM::ReadCheck
 
 int If_PPM::FillPhoto
 (Tcl_Interp*  interp,Tcl_Channel  chan,
- char* fileName,Tk_PhotoHandle imageHandle,
+ const char* fileName,Tk_PhotoHandle imageHandle,
  int destX,int destY,int width,int height,int srcX,int srcY)
 { // Fills in imageHandle as requested, one row at a time.
   // Returns TCL_OK on success, TCL_ERROR on failure.
@@ -1300,9 +1300,9 @@ int If_PPM::WritePhoto
 // formats are simply not available in pre-8.0 interpreters.
 #if (TK_MAJOR_VERSION >= 8)
 extern "C" {
-  Tk_ImageFileMatchProc bmpFileMatchProc;
-  Tk_ImageFileReadProc  bmpFileReadProc;
-  Tk_ImageFileWriteProc bmpFileWriteProc;
+  Tk_ImageFileMatchProc bmpFileMatchProcWrap;
+  Tk_ImageFileReadProc  bmpFileReadProcWrap;
+  Tk_ImageFileWriteProc bmpFileWriteProcWrap;
 }
 
 
@@ -1320,9 +1320,20 @@ bmpFileMatchProc(Tcl_Channel chan,
 }
 
 extern "C" int
+bmpFileMatchProcWrap(	Tcl_Channel	chan,
+			const char*	/* fileName */,
+			Tcl_Obj *	/* formatString */,
+			int *		widthPtr,
+			int *		heightPtr,
+			Tcl_Interp *	/* interp */)
+{
+  return bmpFileMatchProc(chan, NULL, NULL, widthPtr, heightPtr);
+}
+
+extern "C" int
 bmpFileReadProc(Tcl_Interp*  interp,
                 Tcl_Channel  chan,
-                char*        fileName,
+                const char*  fileName,
                 char*        /* formatString */,
                 Tk_PhotoHandle imageHandle,
                 int destX,int destY,
@@ -1335,8 +1346,22 @@ bmpFileReadProc(Tcl_Interp*  interp,
 }
 
 extern "C" int
+bmpFileReadProcWrap(Tcl_Interp*  interp,
+                Tcl_Channel  chan,
+                const char*  fileName,
+                Tcl_Obj *    /* formatString */,
+                Tk_PhotoHandle imageHandle,
+                int destX,int destY,
+                int width,int height,
+                int srcX,int srcY)
+{
+  return bmpFileReadProc(interp, chan, fileName, NULL, imageHandle, destX, destY,
+		width, height, srcX, srcY);
+}
+
+extern "C" int
 bmpFileWriteProc(Tcl_Interp* interp,
-		 char* fileName,
+		 const char* fileName,
 		 char* /* format */,
 		 Tk_PhotoImageBlock* blockPtr)
 {
@@ -1344,25 +1369,34 @@ bmpFileWriteProc(Tcl_Interp* interp,
   return msb.WritePhoto(interp,fileName,blockPtr);
 }
 
+extern "C" int
+bmpFileWriteProcWrap(Tcl_Interp* interp,
+		 const char* fileName,
+		 Tcl_Obj* /* format */,
+		 Tk_PhotoImageBlock* blockPtr)
+{
+  return bmpFileWriteProc(interp, fileName, NULL, blockPtr);
+}
+
 static Tk_PhotoImageFormat bmpformat = 
 {
   bmpnamestr,             // Format name
-  bmpFileMatchProc,       // File format identifier routine
+  bmpFileMatchProcWrap,   // File format identifier routine
   NULL,                   // String format id routine
-  bmpFileReadProc,        // File read routine
+  bmpFileReadProcWrap,    // File read routine
   NULL,                   // String read routine
-  bmpFileWriteProc,       // File write routine
+  bmpFileWriteProcWrap,   // File write routine
   NULL,                   // String write routine
   NULL			  // NULL nextPtr to be overwritten by Tk
 };
 
 extern "C" {
-  Tk_ImageFileMatchProc   ppmFileMatchProc;
-  Tk_ImageFileReadProc    ppmFileReadProc;
-  Tk_ImageFileWriteProc   ppmFileWriteProc;
-  Tk_ImageStringMatchProc ppmStringMatchProc;
-  Tk_ImageStringReadProc  ppmStringReadProc;
-  Tk_ImageStringWriteProc ppmStringWriteProc;
+  Tk_ImageFileMatchProc   ppmFileMatchProcWrap;
+  Tk_ImageFileReadProc    ppmFileReadProcWrap;
+  Tk_ImageFileWriteProc   ppmFileWriteProcWrap;
+  Tk_ImageStringMatchProc ppmStringMatchProcWrap;
+  Tk_ImageStringReadProc  ppmStringReadProcWrap;
+  Tk_ImageStringWriteProc ppmStringWriteProcWrap;
 }
 
 
@@ -1380,9 +1414,20 @@ ppmFileMatchProc(Tcl_Channel chan,
 }
 
 extern "C" int
+ppmFileMatchProcWrap(Tcl_Channel chan,
+                 const char*  /* filename */,
+                 Tcl_Obj*     /* formatString */,
+                 int*         widthPtr,
+                 int*         heightPtr,
+		 Tcl_Interp * /* interp */)
+{
+  return ppmFileMatchProc(chan, NULL, NULL, widthPtr, heightPtr);
+}
+
+extern "C" int
 ppmFileReadProc(Tcl_Interp*  interp,
                 Tcl_Channel  chan,
-                char*        filename,
+                const char*  filename,
                 char*        /* formatString */,
                 Tk_PhotoHandle imageHandle,
                 int destX, int destY,
@@ -1395,13 +1440,36 @@ ppmFileReadProc(Tcl_Interp*  interp,
 }
 
 extern "C" int
+ppmFileReadProcWrap(Tcl_Interp*  interp,
+                Tcl_Channel  chan,
+                const char*  filename,
+                Tcl_Obj*     /* formatString */,
+                Tk_PhotoHandle imageHandle,
+                int destX, int destY,
+                int width, int height,
+                int srcX,  int srcY)
+{
+  return ppmFileReadProc(interp, chan, filename, NULL, imageHandle,
+			destX, destY, width, height, srcX, srcY);
+}
+
+extern "C" int
 ppmFileWriteProc(Tcl_Interp* interp,
-		 char* filename,
+		 const char* filename,
 		 char* /* format */,
 		 Tk_PhotoImageBlock* blockPtr)
 {
   If_PPM ppm;
   return ppm.WritePhoto(interp,filename,blockPtr);
+}
+
+extern "C" int
+ppmFileWriteProcWrap(Tcl_Interp* interp,
+		 const char* filename,
+		 Tcl_Obj* /* format */,
+		 Tk_PhotoImageBlock* blockPtr)
+{
+  return ppmFileWriteProc(interp, filename, NULL, blockPtr);
 }
 
 extern "C" int
@@ -1412,6 +1480,16 @@ ppmStringMatchProc(char* data,
 {
   If_PPM ppm;
   return ppm.ReadCheck(data,*widthPtr,*heightPtr);
+}
+
+extern "C" int
+ppmStringMatchProcWrap(Tcl_Obj* data,
+		   Tcl_Obj* /* formatString */,
+		   int* widthPtr,
+		   int* heightPtr,
+		   Tcl_Interp * /* interp */)
+{
+  return ppmStringMatchProc(Tcl_GetString(data), NULL, widthPtr, heightPtr);
 }
 
 extern "C" int
@@ -1429,6 +1507,19 @@ ppmStringReadProc(Tcl_Interp *interp,
 }
 
 extern "C" int
+ppmStringReadProcWrap(Tcl_Interp *interp,
+		  Tcl_Obj* data,
+		  Tcl_Obj* /* formatString */,
+		  Tk_PhotoHandle imageHandle,
+		  int destX, int destY,
+		  int width, int height,
+		  int srcX,  int srcY)
+{
+  return ppmStringReadProc(interp, Tcl_GetString(data), NULL, imageHandle,
+			destX, destY, width, height, srcX, srcY);
+}
+
+extern "C" int
 ppmStringWriteProc(Tcl_Interp* interp,
 		   Tcl_DString* dataPtr,
 		   char* /* formatString */,
@@ -1438,16 +1529,33 @@ ppmStringWriteProc(Tcl_Interp* interp,
   return ppm.WritePhoto(interp,dataPtr,blockPtr);
 }
 
+extern "C" int
+ppmStringWriteProcWrap(Tcl_Interp* interp,
+		   Tcl_Obj* /* formatString */,
+		   Tk_PhotoImageBlock* blockPtr)
+{
+  Tcl_DString buffer;
+  int code;
+
+  code = ppmStringWriteProc(interp, &buffer, NULL, blockPtr);
+  if (code == TCL_OK) {
+    Tcl_DStringResult(interp, &buffer);
+  } else {
+    Tcl_DStringFree(&buffer);
+  }
+  return code;
+}
+
 
 static Tk_PhotoImageFormat ppmformat = 
 {
   ppmnamestr,             // Format name
-  ppmFileMatchProc,       // File format identifier routine
-  ppmStringMatchProc,     // String format id routine
-  ppmFileReadProc,        // File read routine
-  ppmStringReadProc,      // String read routine
-  ppmFileWriteProc,       // File write routine
-  ppmStringWriteProc,     // String write routine
+  ppmFileMatchProcWrap,   // File format identifier routine
+  ppmStringMatchProcWrap, // String format id routine
+  ppmFileReadProcWrap,    // File read routine
+  ppmStringReadProcWrap,  // String read routine
+  ppmFileWriteProcWrap,   // File write routine
+  ppmStringWriteProcWrap, // String write routine
   NULL			  // NULL nextPtr to be overwritten by Tk
 };
 #endif

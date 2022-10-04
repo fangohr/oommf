@@ -8,7 +8,7 @@
 Oc_CheckTclIndex mmSolve
 
 # NOTE: version number below must match that in ./mmsolve.h
-package require -exact Mms 2.0a3
+package require -exact Mms 2.0b0
 
 # Set up for autoloading of Oc extension commands
 set mms(library) [file dirname [info script]]

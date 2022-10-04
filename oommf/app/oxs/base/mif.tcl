@@ -121,14 +121,17 @@ Oc_Class Oxs_Mif {
                # Hack for 7.6 auto loader bug
                catch {auto_load Oxs_ReadFile}
                catch {auto_load Oxs_RGlob}
+               catch {auto_load Oxs_DateSort}
             }
             interp alias $mif_interp ReadFile {} Oxs_ReadFile
             interp alias $mif_interp RGlob {} Oxs_RGlob
+            interp alias $mif_interp DateSort {} Oxs_DateSort
         } else {
             # In safe interpreters, set up "extra" commands
             # to raise errors
             interp alias $mif_interp ReadFile {} $this Missing ReadFile
             interp alias $mif_interp RGlob {} $this Missing RGlob
+            interp alias $mif_interp DateSort {} $this Missing DateSort
         }
         # Make sure child interp uses same atan2 function as parent. (In
         # particular, as concerns behavior of atan2(0.,0.).)
@@ -983,6 +986,7 @@ Oc_Class Oxs_Mif {
 
         # Read file into a string.  Hopefully this isn't too big.
         set chan [open $filename]
+        fconfigure $chan -encoding utf-8
         set filestr [read $chan]
         close $chan
 

@@ -18,7 +18,7 @@
 
 #include "arrayscalarfield.h"
 
-#include <assert.h>
+#include <cassert>
 #include <string>
 
 OC_USE_STRING;

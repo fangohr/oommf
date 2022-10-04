@@ -1545,7 +1545,7 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
       ++step_events;
       if(report_max_spin_angle) {
         // Update max spin angle data, as necessary
-        OC_REAL8m angle_data;
+        OC_REAL8m angle_data = 0.0; // Dummy init to pacify compilers
         if(maxSpinAng_output.cache.state_id != cstate.Id()
            && cstate.GetDerivedData(DataName("Max Spin Ang"),angle_data)) {
           maxSpinAng_output.cache.value = angle_data;

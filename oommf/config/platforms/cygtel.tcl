@@ -247,6 +247,14 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_linker_extra_args
 #    {-L/opt/local/lib -lfftw3 -lsundials_cvode -lsundials_nvecserial}
 # 
+#
+## Debugging options. These control memory alignment. See the
+## "Debugging OOMMF" section in the OOMMF Programming Manual for
+## details.
+# $config SetValue program_compiler_c++_property_cache_linesize 1
+# $config SetValue program_compiler_c++_property_pagesize 1
+# $config SetValue sse_no_aligned_access 1
+#
 # END LOCAL CONFIGURATION
 ########################################################################
 #
@@ -432,10 +440,15 @@ if {[string match g++* $ccbasename]} {
    }
    catch {unset nowarn}
 
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
+
    # Aggressive optimization flags, some of which are specific to
    # particular gcc versions, but are all processor agnostic.
-   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version]]
-   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version]]
+   set valuesafeopts [concat $opts [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
 
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]

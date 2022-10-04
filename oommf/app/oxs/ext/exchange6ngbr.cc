@@ -5,7 +5,7 @@
  *
  */
 
-#include <stdio.h> // For some versions of g++ on Windows, if stdio.h is
+#include <cstdio> // For some versions of g++ on Windows, if stdio.h is
 /// #include'd after a C++-style header, then printf format modifiers
 /// like OC_INDEX_MOD and OC_INT4m_MOD aren't handled properly.
 

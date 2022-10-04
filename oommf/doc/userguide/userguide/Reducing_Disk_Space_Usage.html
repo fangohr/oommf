@@ -1,0 +1,72 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Reducing Disk Space Usage</TITLE>
+<META NAME="description" CONTENT="Reducing Disk Space Usage">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Local_Customizations.html">
+<LINK REL="previous" HREF="Advanced_Installation.html">
+<LINK REL="up" HREF="Advanced_Installation.html">
+<LINK REL="next" HREF="Local_Customizations.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html318"
+  HREF="Local_Customizations.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html314"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html308"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html316"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html319"
+  HREF="Local_Customizations.html">Local Customizations</A>
+<B> Up:</B> <A NAME="tex2html315"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Previous:</B> <A NAME="tex2html309"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00331000000000000000"></A><A NAME="sec:install.reducedisk"></A>
+<BR>
+Reducing Disk Space Usage
+</H2>
+
+<P>
+<A NAME="1306"></A>
+To delete the intermediate files created when building the OOMMF software from source code, use
+<A HREF="Platform_Independent_Make_p.html#sec:pimake">pimake</A>
+to build the target
+<TT>objclean</TT> in the root directory of the OOMMF distribution.
+<PRE>
+tclsh oommf.tcl pimake objclean
+</PRE>
+Running your platform <TT><B>strip</B></TT> utility on the OOMMF executable files
+should also reduce their size somewhat.
+<A NAME="1315"></A>
+
+<P>
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

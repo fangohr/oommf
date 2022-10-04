@@ -8,13 +8,21 @@
  * Last modified by: $Author: donahue $
  */
 
-#include <assert.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdio.h>
-#include "oc.h"
+#include <cassert>
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+#include <ctime>
+
+#include <chrono>    // chrono
+#include <fstream>   // filebuf
+#include <memory>    // unique_ptr
+#include <streambuf> // streambuf
+#include <utility>   // move
+#include <vector>    // vector
 
 #include "messages.h"
+#include "oc.h"
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -24,9 +32,9 @@ WindowsMessageBox(const char *buf)
 {
   MessageBeep(MB_ICONEXCLAMATION);
   // Title?
-  MessageBox(NULL, Oc_AutoTBuf(buf), Oc_AutoTBuf("OOMMF Error"),
-             MB_ICONSTOP | MB_OK | MB_TASKMODAL | MB_SETFOREGROUND);
-
+  MessageBoxExW(NULL,Oc_AutoWideBuf(buf),Oc_AutoWideBuf("OOMMF Error"),
+                MB_ICONSTOP | MB_OK | MB_TASKMODAL | MB_SETFOREGROUND,
+                0);
   return TCL_OK;
 }
 
@@ -37,12 +45,13 @@ Oc_WindowsMessageBoxCmd(ClientData, Tcl_Interp *interp,
     Tcl_ResetResult(interp);
     if (argc != 2) {
         Tcl_AppendResult(interp, argv[0], " must be called with"
-            " 1 argument: messsage", (char *) NULL);
+            " 1 argument: message", (char *) NULL);
         return TCL_ERROR;
     }
     return WindowsMessageBox(argv[1]);
 }
-#endif
+
+#endif // OC_WINDOWS
 
 /*
  * Return msg, truncated to have at most maxLines lines.
@@ -110,7 +119,7 @@ Oc_SetPanicHeaderCmd(ClientData, Tcl_Interp *interp, int argc,
     Tcl_ResetResult(interp);
     if (argc != 2) {
         Tcl_AppendResult(interp, argv[0], " must be called with"
-            " 1 argument: messsage", (char *) NULL);
+            " 1 argument: message", (char *) NULL);
         return TCL_ERROR;
     }
     Oc_SetPanicHeader(argv[1]);
@@ -277,3 +286,156 @@ Oc_ErrorWrite(const char *format, ...) {
     Tcl_DStringFree(&cmd);
 }
 
+
+// Oc_LogSupport
+std::string Oc_LogSupport::log_prefix;
+
+std::string
+Oc_LogSupport::GetTimeStamp()
+{
+  using std::chrono::system_clock;
+  using std::chrono::time_point;
+  using std::chrono::duration_cast;
+
+  const time_point<system_clock> current_time = system_clock::now();
+  std::chrono::seconds sec =
+    duration_cast<std::chrono::seconds>(current_time.time_since_epoch());
+  std::chrono::milliseconds ms =
+    duration_cast<std::chrono::milliseconds>(current_time.time_since_epoch())
+    - duration_cast<std::chrono::milliseconds>(sec);
+  // ms is the overhang time in milliseconds
+
+  char tfmt[32];
+  Oc_Snprintf(tfmt,sizeof(tfmt),"%%H:%%M:%%S.%03d %%Y-%%m-%%d",
+              static_cast<int>(ms.count()));
+
+  std::time_t ct = system_clock::to_time_t(current_time);
+  char tbuf[32];
+  std::strftime(tbuf,sizeof(tbuf),tfmt,localtime(&ct));
+
+  return std::string(tbuf);
+}
+
+std::string
+Oc_LogSupport::GetLogMark()
+{
+  std::string mark = std::string("[")
+    + log_prefix +  std::string(" ")
+    + GetTimeStamp() + std::string("] ");
+  return mark;
+}
+
+int
+Oc_LogSupportInitPrefixCmd
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char **argv)
+{
+    Tcl_ResetResult(interp);
+    if (argc != 2) {
+        Tcl_AppendResult(interp, argv[0], " must be called with"
+            " 1 argument: message", (char *) NULL);
+        return TCL_ERROR;
+    }
+    Oc_LogSupport::InitPrefix(std::string(argv[1]));
+    return TCL_OK;
+}
+
+int
+Oc_LogSupportGetLogMarkCmd
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char **argv)
+{
+    Tcl_ResetResult(interp);
+    if (argc != 1) {
+        Tcl_AppendResult(interp, argv[0], " must be called with"
+            " no arguments", (char *) NULL);
+        return TCL_ERROR;
+    }
+    std::string mark = Oc_LogSupport::GetLogMark();
+    Tcl_AppendResult(interp,mark.c_str(),(char *)NULL);
+    return TCL_OK;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Oc_Report logging class. Not called Oc_Log to prevent confusion with
+// the OOMMF Oc_Log Tcl (Oc_Class) class.
+//   This class is based in part on public domain code by Thomas Guest,
+// 2009-05-13:
+//    https://wordaligned.org/articles/cpp-streambufs
+namespace Oc_Report {
+  class TeeBuffer: public std::streambuf {
+  public:
+    // streambuf which copies output to std::clog and a list of files.
+    void AddFile(const std::string& filename) {
+      std::unique_ptr<std::filebuf> pfile(new std::filebuf);
+      if(!pfile->open(filename,ios_base::out|ios_base::app)) {
+        std::string errmsg = std::string("Unable to open file ") + filename;
+        OC_THROWEXCEPT("Oc_Report","AddFile",errmsg.c_str());
+      }
+      files.push_back(std::move(pfile));
+    }
+    // If needed, we could add a method to remove files.
+  private:
+    // TeeBuffer has no buffer. So every character "overflows"
+    // and can be put directly into the teed buffers.
+    virtual int overflow(int c) {
+      if (c == EOF) return !EOF;
+      bool eofcheck = false;
+      if(std::clog.rdbuf()->sputc(static_cast<char>(c)) == EOF) {
+        eofcheck = true;
+      }
+      for(auto it=files.begin();it!=files.end();++it) {
+        if((*it)->sputc(static_cast<char>(c)) == EOF) {
+          eofcheck = true;
+        }
+      }
+      return (eofcheck ? EOF : c);
+    }
+
+    // Sync all buffers
+    virtual int sync() {
+      bool synccheck = true;
+      if(std::clog.rdbuf()->pubsync() != 0) synccheck = false;
+      for(auto it=files.begin();it!=files.end();++it) {
+        if((*it)->pubsync() != 0) synccheck = false;
+      }
+      return (synccheck ? 0 : -1);
+    }
+    std::vector< std::unique_ptr<std::filebuf> > files;
+  };
+
+  TeeStream::TeeStream(TeeBuffer* buf) : std::ostream(buf), tbuf(buf) {}
+  void TeeStream::AddFile(const std::string& filename) {
+    tbuf->AddFile(filename);
+  }
+
+  // Instances
+  TeeBuffer teebuf; // teebuf should be accessed only by Oc_Report::Log
+  TeeStream Log(&teebuf); // Primary external access point
+} // namespace Oc_Report
+
+
+// Tcl interface to Oc_Report::Log.AddFile(). This allows the log file
+// to be registered from Tcl code.
+int Oc_ReportAddCLogFile
+(ClientData, Tcl_Interp *interp,
+ int argc,CONST84 char **argv)
+{
+    Tcl_ResetResult(interp);
+    if (argc != 2) {
+        Tcl_AppendResult(interp, argv[0], " must be called with"
+            " 1 argument: message", (char *) NULL);
+        return TCL_ERROR;
+    }
+    try {
+      Oc_Report::Log.AddFile(std::string(argv[1]));
+    } catch(const Oc_Exception& err) {
+      Oc_AutoBuf msg;
+      Tcl_AppendResult(interp,err.ConstructMessage(msg),(char *)NULL);
+      return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
+// Oc_Report logging class.
+////////////////////////////////////////////////////////////////////////

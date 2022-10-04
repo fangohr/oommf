@@ -24,32 +24,30 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html267"
+<A NAME="tex2html452"
   HREF="Command_Line_Launching.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html263"
+<A NAME="tex2html448"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html257"
+<A NAME="tex2html442"
   HREF="quickstart.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html269"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html265"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html450"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html268"
+<B> Next:</B> <A NAME="tex2html453"
   HREF="Command_Line_Launching.html">Command Line Launching</A>
-<B> Up:</B> <A NAME="tex2html264"
+<B> Up:</B> <A NAME="tex2html449"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html258"
+<B> Previous:</B> <A NAME="tex2html443"
   HREF="quickstart.html">Quick Start: Example OOMMF</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00050000000000000000"></A><A NAME="sec:arch"></A><A NAME="3168"></A>
+<H1><A NAME="SECTION00500000000000000000"></A><A NAME="sec:arch"></A><A NAME="3498"></A>
 <BR>
 OOMMF Architecture Overview
 </H1>
@@ -65,24 +63,24 @@ architecture is that each program may be improved or even replaced
 without a need to redesign the entire system.
 
 <P>
-The OOMMF  programs work together by providing services<A NAME="3169"></A>
+The OOMMF  programs work together by providing services<A NAME="3499"></A>
 to one another.  
 The programs communicate using localhost Internet
-(TCP/IP<A NAME="3170"></A>) connections.
-<A NAME="3171"></A>
+(TCP/IP<A NAME="3500"></A>) connections.
+<A NAME="3501"></A>
 When two OOMMF applications are in
 the relationship that one is requesting a service from the other,
 it is convenient to introduce some clarifying terminology.  Let
 us refer to the application that is providing a service as
-the ``server application<A NAME="3172"></A>'' and the application requesting the
-service as the ``client application<A NAME="3173"></A>.''  
+the ``server application<A NAME="3502"></A>'' and the application requesting the
+service as the ``client application<A NAME="3503"></A>.''  
 Note that a single application
 can be both a server application in one service relationship and a 
 client application in another service relationship.  
-<A NAME="3174"></A>
+<A NAME="3504"></A>
 
 <P>
-<A NAME="3175"></A>
+<A NAME="3505"></A>
 Each server application provides its service on a particular
 Internet port, and needs to inform potential client applications 
 how to obtain its service.  Each client application needs to be able
@@ -96,12 +94,12 @@ host and the corresponding Internet ports at which those services
 may be obtained.
 OOMMF server applications register their services with
 the corresponding account service directory application.  OOMMF client applications look up service providers running under a 
-particular user ID<A NAME="3176"></A> in the corresponding account server directory 
+particular user ID<A NAME="3506"></A> in the corresponding account server directory 
 application.  
-<A NAME="3177"></A>
+<A NAME="3507"></A>
 
 <P>
-<A NAME="3178"></A>
+<A NAME="3508"></A>
 The account service directory applications simplify the problem
 of matching servers and clients, but they do not completely solve
 it.  OOMMF applications still need a mechanism to find out how
@@ -112,19 +110,19 @@ where to obtain the services of account service directories on that
 host. It provides this service on a ``well-known'' port that is
 configured into the OOMMF software.  By default, this is port 15136.
 OOMMF software can be 
-<A HREF="Advanced_Installation.html#sec:custom"
- NAME="3183">customized</A>
+<A HREF="Local_Customizations.html#sec:install.custom"
+ NAME="3513">customized</A>
 to use a different port number.
-<A NAME="3184"></A>
+<A NAME="3514"></A>
 
 <P>
-<A NAME="3185"></A>
-<A NAME="3186"></A>
+<A NAME="3515"></A>
+<A NAME="3516"></A>
 These service directory applications are vitally important to the operation
 of the total OOMMF micromagnetic simulation system.  However, it would be
 easy to overlook them.  They act entirely behind the scenes without a user
 interface window.  Furthermore, they are usually not launched directly by
-the user.  (The notable exception involves<A NAME="3187"></A>
+the user.  (The notable exception involves<A NAME="3517"></A>
 <A HREF="Launching_OOMMF_host_server.html#sec:launchhost"><B>launchhost</B></A>,
 which is used when multiple host servers are needed to isolate groups of
 OOMMF applications running on one machine.) When any server application
@@ -136,14 +134,14 @@ service.  After all server applications terminate, and there are no longer
 any services registered with a service directory application, it terminates
 as well.  Similarly, when all service directory applications terminate, the
 host service directory application exits. The command line
-utility<A NAME="3192"></A>
+utility<A NAME="3522"></A>
 <A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A>
 can be used to check the current status of the host and account service
 directory applications.
-<A NAME="3197"></A>
-<A NAME="3198"></A>
-<A NAME="3199"></A>
-<A NAME="3200"></A>
+<A NAME="3527"></A>
+<A NAME="3528"></A>
+<A NAME="3529"></A>
+<A NAME="3530"></A>
 
 <P>
 In the sections which follow, the OOMMF applications are
@@ -154,22 +152,20 @@ they require.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html267"
+<A NAME="tex2html452"
   HREF="Command_Line_Launching.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html263"
+<A NAME="tex2html448"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html257"
+<A NAME="tex2html442"
   HREF="quickstart.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html270"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html265"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html450"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

@@ -50,7 +50,7 @@
  *            were too small by a factor of 2. -mjd
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "magelt.h"
 

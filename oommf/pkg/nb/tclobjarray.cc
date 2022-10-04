@@ -10,7 +10,7 @@
  */
 
 
-#include <string.h>
+#include <cstring>
 #include "tclobjarray.h"
 
 /* End includes */

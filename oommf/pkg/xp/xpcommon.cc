@@ -6,7 +6,7 @@
  *
  */
 
-#include <assert.h>
+#include <cassert>
 #include "xpcommon.h"
 
 #if XP_USE_FLOAT_TYPE == XP_MPFR_TYPE

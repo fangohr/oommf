@@ -84,6 +84,17 @@ Oc_Class Oc_Option {
     }
 
     proc Get {className args} {
+        # This proc can be called with 1, 2, or 3 args, i.e.,
+        #    Oc_Option Get class ?option? ?varName?
+        # If called with one arg, that arg is used as a glob-pattern and
+        # the return is a list of all classes matching that pattern.  If
+        # called with two args, the second arg is used as a glob-pattern
+        # and the return is a list of all options matching that pattern
+        # for the specified class. If called with three args then the
+        # return value is 0 if the class+option pair is defined and the
+        # variable specified by the third arg is filled with the
+        # class+option value.  If the class+option pair is not defined
+        # then the return value is 1.
 	if {!$classConstructorDone} {
 	    global errorInfo errorCode
 	    set errorCode NONE
@@ -118,6 +129,17 @@ Oc_Class Oc_Option {
             return [catch {set v $db($className,$option)}]
         }
         return -code error "Usage: $class Get class ?option? ?varName?"
+    }
+
+    proc GetValue { className option } {
+       # Reduced version of proc Get, that simply returns the
+       # value of the option if it exists, or otherwise returns
+       # an error.
+       if {[info exists db(${className},${option})]} {
+          return $db(${className},${option})
+       }
+       return -code error \
+          "Pair ${className},${option} not in Oc_Option database."
     }
 
     Constructor {} {

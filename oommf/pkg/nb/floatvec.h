@@ -206,6 +206,7 @@ public:
   Nb_BoundingBox(const Nb_BoundingBox<T2>& newbb)
     : bbmin(static_cast<Nb_Vec3<T> >(newbb.bbmin)),
       bbmax(static_cast<Nb_Vec3<T> >(newbb.bbmax)) {}
+  Nb_BoundingBox(const Nb_BoundingBox<T>& newbb) = default;
 
   // Construction from two Nb_Vec3<T>'s.
   template <class T2>
@@ -222,11 +223,7 @@ public:
     bbmax = static_cast<Nb_Vec3<T> >(bb_maxpt);
     return *this;
   }
-  Nb_BoundingBox<T>& operator=(const Nb_BoundingBox<T>& bb) {
-    bbmin = bb.bbmin;
-    bbmax = bb.bbmax;
-    return *this;
-  }
+  Nb_BoundingBox<T>& operator=(const Nb_BoundingBox<T>& bb) = default;
   /// Note: The MSVC++ 6.0 compiler wants the template<class T2>
   /// version of operator= declared before the base <class T>
   /// version.  Otherwise, the compiler complains about the

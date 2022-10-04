@@ -18,7 +18,7 @@
 #ifndef _OXS_CHUNKENERGY
 #define _OXS_CHUNKENERGY
 
-#include <assert.h>
+#include <cassert>
 
 #include <vector>
 

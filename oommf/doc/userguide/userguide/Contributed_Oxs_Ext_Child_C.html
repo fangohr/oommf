@@ -1,0 +1,124 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Contributed Oxs_Ext Child Classes</TITLE>
+<META NAME="description" CONTENT="Contributed Oxs_Ext Child Classes">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="up" HREF="OOMMF_eXtensible_Solver.html">
+<LINK REL="next" HREF="Micromagnetic_Problem_Edito.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html634"
+  HREF="Micromagnetic_Problem_Edito.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html630"
+  HREF="OOMMF_eXtensible_Solver.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html626"
+  HREF="MIF_Support_Classes.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html632"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html635"
+  HREF="Micromagnetic_Problem_Edito.html">Micromagnetic Problem Editor: mmProbEd</A>
+<B> Up:</B> <A NAME="tex2html631"
+  HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
+<B> Previous:</B> <A NAME="tex2html627"
+  HREF="MIF_Support_Classes.html">MIF Support Classes</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00840000000000000000"></A><A NAME="sec:contriboxsext"></A>
+<BR>
+Contributed Oxs_Ext Child Classes
+</H1><A NAME="6826"></A>
+The <TT>Oxs_Ext</TT> classes discussed in the <A HREF="Standard_Oxs_Ext_Child_Clas.html#sec:oxsext">previous section</A>
+were written and are maintained by the OOMMF core development
+team. Additional <TT>Oxs_Ext</TT> classes are available from third-parties
+or may be written by the end user (see
+the <A NAME="tex2html24"
+  HREF="https://math.nist.gov/oommf/doc/"><I>OOMMF Programming Manual</I></A>). Available extensions known to the OOMMF developers are listed on the
+<A NAME="tex2html25"
+  HREF="https://math.nist.gov/oommf/contrib/oxsext/">Oxs Extensions Modules</A>
+page. These extensions are included in OOMMF distributions, current as
+of the time of release.
+
+<P>
+Contributed extensions can be found under <TT><B>oommf/app/oxs/contrib/</B></TT> in
+individual directories. These are ``installed'' by (1) using
+the <A HREF="Oxs_package_management_oxsp.html#sec:oxspkg"><B>oxspkg install</B></A> command to copy the source code from
+the distribution area into <TT><B>oommf/app/oxs/local/</B></TT>, and then (2)
+running <A HREF="Platform_Independent_Make_p.html#sec:pimake"><B>pimake</B></A>
+to compile and link the extension into the Oxs executable.
+
+<P>
+All of the extensions distributed in an OOMMF release that do not
+require libraries beyond those needed to run OOMMF are distributed in
+the installed state. It is up to the end user to install additional
+libraries in the needed if they wish to activate other extensions. See
+the <TT>requires</TT> subcommand in
+the <A HREF="Oxs_package_management_oxsp.html#sec:oxspkg"><B>oxspkg</B></A> documentation for details.
+
+<P>
+Note that extensions are distributed as source code; at this time there
+are no provisions for binary distribution of <TT>Oxs_Ext</TT> modules. This
+means that to add extensions to your OOMMF installation you need to
+have a supported
+<A HREF="Requirements.html#sec:install.requirements">C++ compiler</A> installed, and you
+must run <A HREF="Platform_Independent_Make_p.html#sec:pimake"><B>pimake</B></A> to build the
+extensions. If you are running OOMMF on Windows with pre-built
+binaries, then you should first <TT>cd</TT> to the OOMMF root directory and
+run
+<PRE>
+$ tclsh oommf.tcl pimake distclean
+</PRE>
+to completely delete all pre-built binary files. Afterwards run
+<PRE>
+$ tclsh oommf.tcl pimake
+</PRE>
+to create a fresh build of OOMMF. This ensures that the new extension
+binaries are compatible with the rest of the OOMMF infrastructure.
+
+<P>
+Third party extensions are not maintained or documented by the OOMMF development team. Such extensions are provided ``as-is.'' Some extension
+authors may provide limited support for their extensions, but be aware
+that extensions are generally provided as a public service to the
+community and support is not compulsory.
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html634"
+  HREF="Micromagnetic_Problem_Edito.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html630"
+  HREF="OOMMF_eXtensible_Solver.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html626"
+  HREF="MIF_Support_Classes.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html632"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

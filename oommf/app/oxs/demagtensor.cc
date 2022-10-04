@@ -39,7 +39,7 @@
 
 #include "ext/demagcoef.h"
 
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <cfloat>
@@ -154,6 +154,8 @@ struct TensorParams {
     std::string dircheck = dirstr;
     std::transform(dircheck.begin(), dircheck.end(),
                    dircheck.begin(), ::tolower);
+    /// Note: Visual C++ complains here about possible precision loss
+    /// because ::tolower returns an int rather than a char.
     if(dircheck.compare("none")==0) {
       direction = PbcDirection::none;
     } else if(dircheck.compare("x")==0) {

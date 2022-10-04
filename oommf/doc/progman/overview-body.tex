@@ -1,27 +1,26 @@
-\section{Programming Overview of \OOMMF}\label{sec:overview}
+\chapter{Programming Overview of \OOMMF}\label{sec:overview}
 The
 \htmladdnormallinkfoot{\OOMMF}{https://math.nist.gov/oommf/} (Object
 Oriented Micromagnetic Framework) project in the
-\htmladdnormallink{Information Technology
-Laboratory}{https://www.nist.gov/itl/} (ITL) at the
-\htmladdnormallink{National Institute of Standards and
+\htmladdnormallinkfoot{Information Technology Laboratory}{https://www.nist.gov/itl/}
+(ITL) at the
+\htmladdnormallinkfoot{National Institute of Standards and
 Technology}{https://www.nist.gov/} (NIST) is intended to develop a
 portable, extensible public domain micromagnetic program and associated
 tools.  This manual aims to document the programming interfaces to
 \OOMMF\ at the source code level.  The main developers of this code are
-\ifnotpdf{\htmladdnormallink{Mike Donahue}{https://math.nist.gov/\~{}MDonahue}}
-\pdfonly{\htmladdnormallink{Mike Donahue}{https://math.nist.gov/\%7EMDonahue}}
+\psonly{\htmladdnormallinkfoot{Mike Donahue}{https://math.nist.gov/\%7EMDonahue}}
+\notpsonly{\htmladdnormallink{Mike Donahue}{https://math.nist.gov/\%7EMDonahue}}
 and
-\ifnotpdf{\htmladdnormallink{Don Porter}{https://math.nist.gov/\~{}DPorter}.}
-\pdfonly{\htmladdnormallink{Don Porter}{https://math.nist.gov/\%7EDPorter}.}
+\psonly{\htmladdnormallinkfoot{Don Porter}{https://math.nist.gov/\%7EDPorter}.}
+\notpsonly{\htmladdnormallink{Don Porter}{https://math.nist.gov/\%7EDPorter}.}
 
 The underlying numerical engine for \OOMMF\ is written in \Cplusplus,
 which provides a reasonable compromise with respect to efficiency,
 functionality, availability and portability.  The interface and glue
 code is written primarily in \Tcl/\Tk, which hides most platform
 specific issues. \Tcl\ and \Tk\ are available for free
-\htmladdnormallinkfoot{download
-}{http://purl.org/tcl/home/software/tcltk/choose.html}
+\htmladdnormallinkfoot{download}{http://purl.org/tcl/home/software/tcltk/choose.html}
 from the
 \htmladdnormallinkfoot{Tcl Developer Xchange}{http://purl.org/tcl/home/}.
 
@@ -38,12 +37,13 @@ is designed with modification at this level in mind.
 
 If you want to receive e-mail\index{e-mail}
 notification\index{announcements} of updates to this project, register
-your e-mail address with the ``\mumag\ Announcement'' mailing list:
+your e-mail address with the ``{\mumag} Announcement'' mailing list:
+% Note: For some reason, the braces above about \mumag discourage line
+% breaking between $\mu$ and Mag in the latexml/browser display.
 \begin{center}
-\ifnotpdf{\htmladdnormallink{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}.}
-\pdfonly{\htmladdnormallink{https://www.ctcms.nist.gov/\~{}rdm/email-list.html}{https://www.ctcms.nist.gov/\%7Erdm/email-list.html}.}
+\htmladdnormallink{\url{https://www.ctcms.nist.gov/~rdm/email-list.html}}{https://www.ctcms.nist.gov/\%7Erdm/email-list.html}.
 \end{center}
 
 The \OOMMF\ developers are always interested in your comments about
-\OOMMF.  See the \hyperrefhtml{Credits}{Credits (Sec.~}{)}{sec:credits}
+\OOMMF.  See the \hyperrefhtml{Credits}{Credits (Ch.~}{) }{sec:credits}
 for instructions on how to contact them.

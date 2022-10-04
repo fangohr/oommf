@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Managing OOMMF Platform Names</TITLE>
+<META NAME="description" CONTENT="Managing OOMMF Platform Names">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Parallelization.html">
+<LINK REL="up" HREF="Advanced_Installation.html">
+<LINK REL="next" HREF="Platform_Specific_Installat.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html364"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html360"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html356"
+  HREF="Parallelization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html362"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html365"
+  HREF="Platform_Specific_Installat.html">Platform Specific Installation Issues</A>
+<B> Up:</B> <A NAME="tex2html361"
+  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Previous:</B> <A NAME="tex2html357"
+  HREF="Parallelization.html">Parallelization</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html366"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335100000000000000">Changing the name OOMMF assigns to your platform</A>
+<LI><A NAME="tex2html367"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335200000000000000">Adding a new platform type</A>
+<LI><A NAME="tex2html368"
+  HREF="Managing_OOMMF_Platform_Nam.html#SECTION00335300000000000000">Resolving platform name conflicts</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H2><A NAME="SECTION00335000000000000000"></A><A NAME="sec:install.platformnames"></A><A NAME="1471"></A>
+<BR>
+Managing OOMMF Platform Names
+</H2>
+
+<P>
+OOMMF software classifies computing platforms into different types
+using the scripts in the directory <TT><B>config/names</B></TT> relative to the
+root directory of the OOMMF distribution.
+Each type of computing platform is assigned a unique name.
+These names are used as directory names
+and in index and configuration files so that a single
+OOMMF installation may contain platform-dependent sections for many
+different types of computing platforms.
+
+<P>
+To learn what name OOMMF software uses to refer to your computing
+platform, run
+<PRE>
+tclsh oommf.tcl +platform
+</PRE>
+in the OOMMF root directory.
+
+<P>
+
+<H3><A NAME="SECTION00335100000000000000">
+Changing the name OOMMF assigns to your platform</A>
+</H3>
+First, use
+<A HREF="Platform_Independent_Make_p.html#sec:pimake">pimake</A>
+to build the target <TT>distclean</TT> to
+clear away any compiled executables built using the old platform
+name.
+<PRE>
+tclsh oommf.tcl pimake distclean
+</PRE>
+Then, to change the name OOMMF software uses to describe your platform from
+<TT>foo</TT> to <TT>bar</TT>, simply rename the file
+<BLOCKQUOTE>
+<TT><B>config/names/foo.tcl</B></TT>
+  to  
+<TT><B>config/names/bar.tcl</B></TT>
+
+</BLOCKQUOTE>
+and
+<BLOCKQUOTE>
+<TT><B>config/platforms/foo.tcl</B></TT>
+  to  
+<TT><B>config/platforms/bar.tcl</B></TT>.
+
+</BLOCKQUOTE>
+After renaming your platform type, you should recompile your executables
+using the new platform name.
+
+<P>
+
+<H3><A NAME="SECTION00335200000000000000">
+Adding a new platform type</A>
+</H3>
+If <TT>oommf.tcl +platform</TT> reports the platform name
+<TT>unknown</TT>, then none of the scripts in <TT><B>config/names/</B></TT>
+recognizes your platform type.  As an example, to add the platform
+name <TT>foo</TT> to OOMMF's vocabulary of platform names, create the
+file <TT><B>config/names/foo.tcl</B></TT>.  The simplest way to proceed is to
+copy an existing file in the directory <TT><B>config/names</B></TT> and edit it
+to recognize your platform.
+
+<P>
+The files in <TT><B>config/names</B></TT> include Tcl code like this:
+
+<P>
+<PRE>
+  Oc_Config New _ \
+    [string tolower [file rootname [file tail [info script]]]] {
+      # In this block place the body of a Tcl proc which returns 1
+      # if the machine on which the proc is executed is of the
+      # platform type identified by this file, and which returns 0
+      # otherwise.
+      #
+      # The usual Tcl language mechanism for discovering details
+      # about the machine on which the proc is running is to
+      # consult the global Tcl variable 'tcl_platform'.  See the
+      # existing files for examples, or contact the OOMMF
+      # developers for further assistance.
+  }
+</PRE>
+
+<P>
+After creating the new platform name file <TT><B>config/names/foo.tcl</B></TT>, you
+also need to create a new platform file <TT><B>config/platforms/foo.tcl</B></TT>.
+A reasonable starting point is to copy the file
+<TT><B>config/platforms/unknown.tcl</B></TT> for editing.  Contact the OOMMF developers for assistance.
+
+<P>
+Please consider contributing your new platform recognition and
+configuration files to the OOMMF developers for inclusion in
+future releases of OOMMF software.
+
+<P>
+
+<H3><A NAME="SECTION00335300000000000000">
+Resolving platform name conflicts</A>
+</H3>
+If the script <TT>oommf.tcl +platform</TT> reports ``Multiple platform names are
+compatible with your computer'', then there are multiple files in the
+directory <TT><B>config/names/</B></TT> that return 1 when run on your computer.
+For each compatible platform name reported, edit the corresponding
+file in <TT><B>config/names/</B></TT> so that only one of them returns 1.
+Experimenting using <TT><B>tclsh</B></TT> to probe the Tcl variable
+<TT>tcl_platform</TT> should assist you in this task.  If that fails, you
+can explicitly assign a platform type corresponding to your computing
+platform by matching its hostname.  For example, if your machine's
+host name is <TT>foo.bar.net</TT>:
+<PRE>
+  Oc_Config New _ \
+    [string tolower [file rootname [file tail [info script]]]] {
+      if {[string match foo.bar.net [info hostname]]} {
+          return 1
+      }
+      # Continue with other tests...
+  }
+</PRE>
+
+<P>
+Contact the OOMMF developers if you need further assistance.
+<A NAME="1519"></A>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html364"
+  HREF="Platform_Specific_Installat.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html360"
+  HREF="Advanced_Installation.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html356"
+  HREF="Parallelization.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html362"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

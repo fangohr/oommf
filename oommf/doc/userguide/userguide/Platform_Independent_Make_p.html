@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Platform-Independent Make: pimake</TITLE>
+<META NAME="description" CONTENT="Platform-Independent Make: pimake">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="OOMMF_Process_ID_Informatio.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Problem_Specification_File_.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1042"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1038"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1034"
+  HREF="OOMMF_Process_ID_Informatio.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1040"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1043"
+  HREF="Problem_Specification_File_.html">Problem Specification File Formats</A>
+<B> Up:</B> <A NAME="tex2html1039"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html1035"
+  HREF="OOMMF_Process_ID_Informatio.html">OOMMF and Process ID</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION0017200000000000000000"></A><A NAME="sec:pimake"></A><A NAME="19067"></A>
+<BR>
+Platform-Independent Make:
+            pimake
+</H1>
+
+<P>
+The application <B>pimake</B><A NAME="19069"></A> is used to
+construct OOMMF end-user executables (and optionally documentation)
+from the distributed source code. It is similar in operation to the
+Unix utility program <B>make</B><A NAME="19071"></A>, but it is
+written entirely in Tcl so that it will run anywhere Tcl is
+installed.  Like <B>make</B>, <B>pimake</B> controls the building of a
+<EM>target</EM> from other files.  Just as <B>make</B> is controlled by
+rules in files named <TT><B>Makefile</B></TT> or <TT><B>makefile</B></TT>, <B>pimake</B> is
+controlled by rules in files named <TT><B>makerules.tcl</B></TT>. <B>pimake</B>
+generally operates recursively, starting in the current working
+directory and continuing downward through all subdirectories. (The chief
+exception to this is the documentation under <TT><B>oommf/doc</B></TT>;
+<B>pimake</B> build requests started in the root directory <TT><B>oommf</B></TT>
+ignore the <TT><B>oommf/doc</B></TT> subdirectory. Building the
+OOMMF documentation requires a working installation of
+<A NAME="tex2html29"
+  HREF="https://www.latex-project.org">L<SUP><SMALL>A</SMALL></SUP>T<SMALL>E</SMALL>X</A>
+and either
+<A NAME="tex2html30"
+  HREF="https://www.latex2html.org">L<SUP><SMALL>A</SMALL></SUP>T<SMALL>E</SMALL>X2HTML</A>
+or
+, so
+OOMMF distributions include pre-built versions of the full
+OOMMF documentation to relieve the end-user the burden of installing
+those tools. On the other hand, clean requests, including in particular
+<TT>maintainer-clean</TT>, will recurse into <TT><B>oommf/doc</B></TT>.) The
+OOMMF standard command line option <TT>-cwd</TT> may be used to change the
+starting directory.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>pimake</B> launch command is:
+<PRE>
+tclsh oommf.tcl pimake [standard options] \
+   [-d] [-i] [-k] [-out file] [-root] [target]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-d</B></TT></STRONG></DT>
+<DD>Print verbose information about dependencies.
+</DD>
+<DT><STRONG><TT><B>-i</B></TT></STRONG></DT>
+<DD>Normally an error halts operation.  When <TT>-i</TT> is specified,
+  ignore errors and try to continue updating all dependencies
+  of target.
+</DD>
+<DT><STRONG><TT><B>-k</B></TT></STRONG></DT>
+<DD>Normally an error halts operation.
+  When <TT>-k</TT> is specified, and an error is encountered, stop
+  processing dependencies which depend on the error, but continue
+  updating other dependencies of target.
+</DD>
+<DT><STRONG><TT><B>-out file</B></TT></STRONG></DT>
+<DD>Write informational output to named file instead of to the standard
+  output.
+</DD>
+<DT><STRONG><TT><B>-root</B></TT></STRONG></DT>
+<DD>Change to the OOMMF root directory. Command line options are
+  processed from left to right, so if used in conjunction with the
+  standard option <TT>-cwd</TT>, <TT>-root</TT> should come first.
+</DD>
+<DT><STRONG><TT><B>target</B></TT></STRONG></DT>
+<DD>The file to build.  May also be (and usually is) a symbolic
+  target name.  See below for standard symbolic targets.  By default,
+  the first target in <TT><B>makerules.tcl</B></TT> is built.
+</DD>
+</DL>
+
+<P>
+There are several targets which may be used as arguments to
+<B>pimake</B> to achieve different tasks.
+Each target builds in the current directory
+and all subdirectories.  The standard targets are:
+<DL>
+<DT><STRONG><TT><B>upgrade</B></TT></STRONG></DT>
+<DD>Used immediately after unpacking a distribution, it removes
+any files which were part of a previous release, but are not
+part of the unpacked distribution.
+</DD>
+<DT><STRONG><TT><B>all</B></TT></STRONG></DT>
+<DD>Creates all files created by the <TT><B>configure</B></TT> target (see below).
+Compiles and links all the executables and libraries.
+Constructs all index files.
+</DD>
+<DT><STRONG><TT><B>configure</B></TT></STRONG></DT>
+<DD>Creates subdirectories with the same name as the platform type.
+Constructs a <TT><B>ocport.h</B></TT> file which includes C++ header information
+specific to the platform.
+</DD>
+<DT><STRONG><TT><B>objclean</B></TT></STRONG></DT>
+<DD>Removes the intermediate object files created by the compile and
+link steps.  Leaves working executables in place.  Leaves
+OOMMF in the state of its distribution with pre-compiled
+executables.
+</DD>
+<DT><STRONG><TT><B>clean</B></TT></STRONG></DT>
+<DD>Removes the files removed by the <TT><B>objclean</B></TT> target.
+Also removes the executables and libraries created by the <TT><B>all</B></TT>
+target.  Leaves the files generated by the <TT><B>configure</B></TT> target.
+</DD>
+<DT><STRONG><TT><B>distclean</B></TT></STRONG></DT>
+<DD>Removes the files removed by the <TT><B>clean</B></TT> target.
+Also removes all files and directories generated by
+<TT><B>configure</B></TT> target.  Leaves only the files which
+are part of the source code distribution.
+</DD>
+<DT><STRONG><TT><B>maintainer-clean</B></TT></STRONG></DT>
+<DD>Remove all files which can possibly be generated from other files.  If
+run from the OOMMF root directory then all such files,
+<B>including OOMMF documentation files</B>, will be deleted.
+Rebuilding may require specialized developer tools, so use with care.
+This target is intended primarily for developers, not end-users.
+</DD>
+<DT><STRONG><TT><B>help</B></TT></STRONG></DT>
+<DD>Print a summary of the standard targets.
+</DD>
+</DL>
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1042"
+  HREF="Problem_Specification_File_.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1038"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1034"
+  HREF="OOMMF_Process_ID_Informatio.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1040"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

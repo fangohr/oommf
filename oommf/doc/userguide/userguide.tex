@@ -1,47 +1,66 @@
+\documentclass[12pt]{report}
 \input{../common/oommfhead}
-\usepackage{l2hbugs}
-
-% If there are more than nine subsections in a section (for example,
-% in the ``Command Line Utilities'' section, then in the table of
-% contents the subsection numbers run into the subsection titles.  One
-% workaround is:
-%
-%   \usepackage{tocloft}
-%   \setlength{\cftsubsecnumwidth}{2.7em}
-%
-% However this increases the spacing between subsection numbers and
-% titles for all subsections in the toc.  A slightly less ugly
-% alternative is
-%
-\usepackage{tocloft}
-\newlength{\oommftocsslen}
-\setlength{\oommftocsslen}{0.5em} % need some extra space at end of number
-\renewcommand{\cftsubsecpresnum}{\hfill} % note the double `l'
-\renewcommand{\cftsubsecaftersnum}{\hspace*{\oommftocsslen}}
-\addtolength{\cftsubsecnumwidth}{\oommftocsslen}
-%
-% This typesets subsection numbers flushright.  With this the
-% subsection numbers after .9 stick out to the left, but otherwise
-% everything lines up.
-%
-% Another approach may be to hack the userguide.toc file directly.
-% But probably the first thing to do is to change the \documentclass
-% from article to something more fitting for a 250 page document.
-% (Perhaps ``report''?)  And maybe ``Command Line Utilities'' just has
-% too many sections and needs to be broken up.
 
 %\HTMLset{toppage}{userguide.html}
 %\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{userguide.html}}
 
+\title{\OOMMF\ User's Guide}
+%This manual documents release 2.0b0.\\[1ex]
+%WARNING: In this alpha release, the
+%documentation may not be up to date.\\[1ex]
+%WARNING: This document is under construction.}
+%\author{Michael Donahue and Donald Porter}
+%\date{\today}
+\author{\today\\[1ex]
+This manual documents release 2.0b0.\\[1ex]
+%\begin{abstract}
+\begin{flushleft} %This is a hack to work around \author being a centering
+% environment, and AFAICT there is no way to override a justification
+% setting to return to the default fully justified mode. Maybe we can
+% fix this up better, perhaps with the titlepage environment, after
+% userguide is switched to \documentclass{report}
+This manual describes \OOMMF\ (Object Oriented Micromagnetic Framework),
+a public domain micromagnetics program developed at the
+\htmladdnormallink{National Institute of Standards and Technology}
+{https://www.nist.gov/}.  The program is designed
+to be portable, flexible, and extensible, with a user-friendly graphical
+interface.  The code is written in C++ and Tcl/Tk. Target systems
+include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
+\end{flushleft}
+%\end{abstract}
+}
+
 \begin{document}
 
-\nocite{*}  % Include all entries from .bib file.  Putting this at the
-	    % top retains the .bib file ordering.
-
+\notlatexmlonly{\nocite{*}}  % Include all entries from .bib file.
+% Putting this at the top retains the .bib file ordering.  Except, as
+% far as I can tell, LaTeXML ignores \nocite{*}. You can manually list
+% references as below, but they get marked as "Cited by: OOMMF User's
+% Guide" with a pointer to the nocite location(?). Also, LaTeXML drops
+% in a backlink to the first citation point in the document. AFAIK there
+% is no way to add additional backlinks or control which citation is
+% linked to.
+\latexmlonly{\nocite{
+%%%   %aharoni1996,
+%%%   %donahue1999,
+%%%   %fidler2000,
+gillette1958,   % Magnetization Reversal by Rotation !!!
+%%%   mcmichael1997,  % Head-to-head
+%%%   neel1955,       % Thermal?
+scheinfein1991, % Domain walls at surfaces
+%%%   stoner1948      % SW model
+}}
 
 \pagenumbering{roman}
+
+%begin{latexonly}
+\iflatexml
+\maketitle
+\else
+%end{latexonly}
 \begin{titlepage}
-\label{page:contents}
+%\label{page:contents}
+\setcounter{page}{0}    % Hack 'destination with the same identifier' warning
 \par
 \vspace*{\fill}
 \begin{center}
@@ -51,13 +70,10 @@ User's Guide\\[2ex]
 \large
 {\today}
 {}\\[2ex]
-This manual documents release 2.0a3.\\[1ex]
-WARNING: In this alpha release, the
-documentation may not be up to date.
-
+This manual documents release 2.0b0.\\[1ex]
 \end{center}
-\vspace{10\baselineskip}
-\begin{abstract}
+\vspace{7\baselineskip}
+%\begin{abstract}
 This manual describes \OOMMF\ (Object Oriented Micromagnetic Framework),
 a public domain micromagnetics program developed at the
 \htmladdnormallink{National Institute of Standards and Technology}
@@ -65,14 +81,34 @@ a public domain micromagnetics program developed at the
 to be portable, flexible, and extensible, with a user-friendly graphical
 interface.  The code is written in C++ and Tcl/Tk. Target systems
 include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
-\end{abstract}
+%\end{abstract}
 \vspace*{\fill}
-\par
+%\par
 \end{titlepage}
+%begin{latexonly}
+\fi
+%end{latexonly}
 
-\begin{latexonly}
+%begin{latexonly}
+\iflatexml
+% Hack for broken LaTeXML .xslt that typesets table of contents header
+% at <h6>, which is ridiculously small. One fix is to replace the "h6"
+% setting in the
+%
+%   <xsl:template match="ltx:TOC">
+%      ...
+%   </xsl:template>
+%
+% of oommf/doc/common/xmlextras/xslt/oommf-webpage-xhtml.xsl to
+% something larger. But, we don't really need the header in the web
+% version of the page, so we can drop it altogether by redefining
+% \contentsname to an empty string:
+ \renewcommand{\contentsname}{}
+\else
+ \renewcommand{\contentsname}{Table of Contents}
+\fi
 \tableofcontents
-\end{latexonly}
+%end{latexonly}
 
 % Index cross-references; if these are moved to the bottom of this file
 % then two LaTeX passes are required to get them in the .idx file.
@@ -80,7 +116,7 @@ include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 \index{bitmap~files|see{file,~bitmap}}
 \index{Borland~C++|see{platform,~Windows,~Borland~C++}}
 \index{bug~reports|see{reporting~bugs}}
-\index{control~points|see{simulation,~control~point}}
+\index{control~points|see{simulation~2D,~control~point}}
 \index{Cygwin|see{platform,~Windows,~Cygwin~environment}}
 \index{decompress|see{compressed~files}}
 \index{file!hosts|see{platform,~Windows,~hosts~file}}
@@ -96,19 +132,27 @@ include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 \index{mesh|see{grid}}
 \index{MIF|see{file,~mif}}
 \index{movies|see{animations}}
-\index{mxh|see{simulation,~mxh}}
-\index{network~socket!bug|see{platform,~Windows,~network~socket~bug}}
+\index{mxh|see{simulation~2D,~mxh}}
 \index{OBS|see{application,~OOMMF~Batch~System}}
-\index{batch processing|see{application, Boxsi, launchhost, and OOMMF~Batch~System}}
+\index{batch~processing|see{application,~Boxsi and application,~launchhost}}
+\HTMLoutput{\index{batch~processing~2D|see{application,~OOMMF~Batch~System}}}
+\NONHTMLoutput{\index{batch~processing~2D|see{application, OOMMF Batch System}}}
+% The tildes are needed to get links in the HTML output, but cause the
+% listing to overflow into the second column in the non-HTML output.
+% The non-HTML output doesn't provide links on "see" and "see also"
+% listings, so we can handle the two cases separately.
 \index{requirement!application~version|see{launch,~version~requirement}}
 \index{self-magnetostatic|see{demagnetization}}
 \index{threads,~parallel|see{parallelization}}
-\index{torque|see{simulation,~mxh}}
+\index{torque|see{simulation~2D,~mxh}}
 \index{total~field|see{field,~effective}}
 \index{Xvfb|see{application,~Xvfb}}
 
 \newpage
-\input{../common/disclaimer-body}
+\chapter*{Disclaimer}
+\addcontentsline{toc}{chapter}{Disclaimer}\label{disclaimer}
+% Note: LaTeXML uses \label value to set file names.
+\input{../common/disclaimer-text}
 \newpage
 
 \pagenumbering{arabic}
@@ -134,20 +178,51 @@ include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 
 \include{trouble-body}
 
+\include{credits-body}
+
 % Apparently ``seealso'' needs to go after references, assuming you want
 % the ``see also'' after the numeric listings.
 \index{parallelization|seealso{NUMA}}
 \index{NUMA|seealso{parallelization}}
 
+%%%%%%%%%%%%%%%%%%%%%%%% Bibliography and Index %%%%%%%%%%%%%%%%%%%%%%%%
+% Manually add bibliography and index to the table of contents.  This
+% could be done automatically using the tocbibind package, but the
+% LaTeXML 0.8.6 binding for tocbibind is incomplete. We may revisit this
+% if we decide we want Bibliography to be a numbered section, but
+% otherwise the simplest solution probably creates the fewest
+% complications across all output modalities (latex, pdflatex,
+% latex2html, latexml).
+
+% Use \phantomsection so hyperref index link in TOC point properly (otherwise
+% it points to the previous section).
+\clearpage\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
 %\include{biblio}
-%\bibliographystyle{osa}
-%\bibliographystyle{ieeetr}
-%\bibliographystyle{acm}
+% References indicate that the LaTeX built-in bibliography styles are
+%   plain, unsrt, alpha, abbr, acm, and ieeetr.
+% The
+%  /opt/local/lib/perl5/vendor_perl/5.28/LaTeXML/Package/LaTeX.pool.ltxml
+% file appears to imply support for styles
+%   plain, unsrt, alpha, abbrv, plainnat, unsrtnat, alphanat, abbrvnat
+% YMMV.
+%
+%begin{latexonly}
+\iflatexml
+\bibliographystyle{plain}
+\else
 \bibliographystyle{../common/oommf}
-\bibliography{oommf}
+\fi
+%end{latexonly}
+\html{\bibliographystyle{../common/oommf}}
+\bibliography{oommf}\label{bibliography}
+% Note: LaTeXML uses \label value to set file names.
 
-\include{credits-body}
-
-\printindex
+% Use \phantomsection so hyperref "Index" link in TOC points properly
+% (otherwise it points to the bibliography).
+\clearpage\phantomsection
+\addcontentsline{toc}{chapter}{Index}
+\printindex\label{index}
+% Note: LaTeXML uses \label value to set file names.
 
 \end{document}

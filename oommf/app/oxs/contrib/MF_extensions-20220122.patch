@@ -1,0 +1,229 @@
+diff -ru MF_extensions/MF_CurrentFlowEvolver.cc MF_extensions-new/MF_CurrentFlowEvolver.cc
+--- MF_extensions/MF_CurrentFlowEvolver.cc	2022-01-22 02:39:23.914148843 -0500
++++ MF_extensions-new/MF_CurrentFlowEvolver.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -12,7 +12,7 @@
+  * This code is public domain work based on other public domains contributions
+  */
+ 
+-#include <float.h>
++#include <cfloat>
+ #include <string>
+ #include <fstream>
+ #include <iostream>
+@@ -75,7 +75,7 @@
+ RA_ap = GetRealInitValue("RA_ap",0.);
+ work_mode = GetRealInitValue("current_mode",0.);
+ Voltage = 0.;
+-state_num = -1;
++state_num = static_cast<OC_UINT4m>(-1);
+ OC_REAL8m vmult = GetRealInitValue("multiplier",1.0);
+ 
+ 
+@@ -522,14 +522,16 @@
+   // Zero spin torque on fixed spins
+ 	const OC_INDEX size = mesh->Size();
+ 
+-	OC_INDEX i,j;
++	OC_INDEX i;
+ 
+   UpdateFixedSpinList(mesh); // Safety
+ 
++#if 0 // This block doesn't do anything  -mjd
+   const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+-    OC_INDEX i = GetFixedSpin(j);  // This is a NOP?! -mjd
++    OC_INDEX i = GetFixedSpin(j);
+   }
++#endif
+ 
+   alpha_init->FillMeshValue(mesh,alpha);
+   gamma_init->FillMeshValue(mesh,gamma);
+@@ -2272,7 +2274,6 @@
+   // filled.
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+-    = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
+ = mr_output.cache.state_id
+ = oersted_x_output.cache.state_id
+@@ -2331,8 +2332,8 @@
+ //ComputeConductance(state);
+ const Oxs_RectangularMesh* mesh
+     = dynamic_cast<const Oxs_RectangularMesh*>(state.mesh);
+-const OC_INDEX size = mesh->Size();
+-const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state.Ms);
++// const OC_INDEX size = mesh->Size();
++// const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state.Ms);
+ Oxs_MeshValue<ThreeVector>& con = conductance_output.cache.value;
+ Oxs_MeshValue<ThreeVector>& cur = current_density_output.cache.value;
+ con.AdjustSize(mesh);
+@@ -2460,7 +2461,7 @@
+   const Oxs_RectangularMesh* mesh
+     = dynamic_cast<const Oxs_RectangularMesh*>(state.mesh);
+   const OC_INDEX size = mesh->Size();
+-  OC_INDEX i,j;
++  // OC_INDEX i,j;
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+ 
+diff -ru MF_extensions/MF_CurrentFlowEvolver.h MF_extensions-new/MF_CurrentFlowEvolver.h
+--- MF_extensions/MF_CurrentFlowEvolver.h	2017-06-14 13:50:09.000000000 -0400
++++ MF_extensions-new/MF_CurrentFlowEvolver.h	2022-01-22 02:31:37.000000000 -0500
+@@ -214,7 +214,7 @@
+ ThreeVector STT_perp_p;
+ Oxs_MeshValue<ThreeVector> oersted_field;
+ int pom;
+-int state_num;
++OC_UINT4m state_num;
+ int dimY,dimX,dimZ,dimXY,cooXYZ;
+ OC_REAL8m distance;
+ OC_REAL8m area_x, area_y, area_z, delta_x, delta_y, delta_z;
+Only in MF_extensions: MF_CurrentFlowEvolver_README.txt
+Only in MF_extensions: MF_MagCut_README.txt
+diff -ru MF_extensions/MF_MagnetoResistance.cc MF_extensions-new/MF_MagnetoResistance.cc
+--- MF_extensions/MF_MagnetoResistance.cc	2017-06-14 13:50:09.000000000 -0400
++++ MF_extensions-new/MF_MagnetoResistance.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -370,6 +370,7 @@
+     field[j] +=    Ms_inverse[j]*mdiff;
+   }
+ 
++#if 0 // The following block has no effect, because all the variables are local.  -mjd
+   // Set maxang data
+   OC_REAL8m maxang;
+   // Handle extremal cases separately in case spins drift off S2
+@@ -382,6 +383,7 @@
+   const Oxs_SimState* oldstate = NULL;
+   OC_REAL8m stage_maxang = -1;
+   OC_REAL8m run_maxang = -1;
++#endif // NOP
+ }
+ 
+ 
+@@ -429,7 +431,8 @@
+ area_conductance2 = 0.;
+ area_conductance3 = 0.;
+ OC_INDEX indeks,a,b,ii3 =0;
+-indeks = (++links.begin())->index1;
++it = links.begin(); ++it; indeks = it->index1; // Compacting this
++                                  // confuses some compilers -mjd
+ mesh->GetCoords(indeks,a,b,ii3);
+ for (int i1=area_x; i1 <= area_x +delta_x; i1++)
+ {
+Only in MF_extensions: MF_MagnetoResistance_README.txt
+diff -ru MF_extensions/MF_X_MagCut.cc MF_extensions-new/MF_X_MagCut.cc
+--- MF_extensions/MF_X_MagCut.cc	2017-06-14 13:50:09.000000000 -0400
++++ MF_extensions-new/MF_X_MagCut.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -66,8 +66,8 @@
+  ) const
+ {
+ 
+-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  // const Oxs_MeshValue<ThreeVector>& spin = state.spin;
++  // const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+@@ -96,6 +96,7 @@
+   for(index=0;index<size;index++) energy[index]=0.;
+   for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+ 
++#if 0 // The following block has no effect, because all the variables are local.  -mjd
+   OC_REAL8m mindot = 1;
+   OC_REAL8m hcoef = 2.0/MU0;
+ 
+@@ -111,6 +112,7 @@
+   const Oxs_SimState* oldstate = NULL;
+   OC_REAL8m stage_maxang = -1;
+   OC_REAL8m run_maxang = -1;
++#endif // NOP
+ }
+ 
+ 
+@@ -127,7 +129,7 @@
+ const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state.Ms);
+ 
+ OC_INDEX pom;
+-OC_REAL8m tmp1,tmp2,tmp3;
++OC_REAL8m tmp1;
+ OC_REAL8m counter = 0.;
+ 
+ ThreeVector tmp;
+diff -ru MF_extensions/MF_Y_MagCut.cc MF_extensions-new/MF_Y_MagCut.cc
+--- MF_extensions/MF_Y_MagCut.cc	2017-06-14 13:50:09.000000000 -0400
++++ MF_extensions-new/MF_Y_MagCut.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -66,8 +66,8 @@
+  ) const
+ {
+ 
+-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  // const Oxs_MeshValue<ThreeVector>& spin = state.spin;
++  // const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+@@ -96,6 +96,7 @@
+   for(index=0;index<size;index++) energy[index]=0.;
+   for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+ 
++#if 0 // The following block has no effect, because all the variables are local.  -mjd
+   OC_REAL8m mindot = 1;
+   OC_REAL8m hcoef = 2.0/MU0;
+ 
+@@ -111,6 +112,7 @@
+   const Oxs_SimState* oldstate = NULL;
+   OC_REAL8m stage_maxang = -1;
+   OC_REAL8m run_maxang = -1;
++#endif // NOP
+ }
+ 
+ 
+@@ -127,7 +129,7 @@
+ const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state.Ms);
+ 
+ OC_INDEX pom;
+-OC_REAL8m tmp1,tmp2,tmp3;
++OC_REAL8m tmp1;
+ OC_REAL8m counter = 0.;
+ 
+ ThreeVector tmp;
+diff -ru MF_extensions/MF_Z_MagCut.cc MF_extensions-new/MF_Z_MagCut.cc
+--- MF_extensions/MF_Z_MagCut.cc	2017-06-14 13:50:09.000000000 -0400
++++ MF_extensions-new/MF_Z_MagCut.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -69,8 +69,8 @@
+  ) const
+ {
+ 
+-  const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  // const Oxs_MeshValue<ThreeVector>& spin = state.spin;
++  // const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+@@ -100,6 +100,7 @@
+   for(index=0;index<size;index++) field[index].Set(0.,0.,0.);
+ 
+ 
++#if 0 // The following block has no effect, because all the variables are local.  -mjd
+   OC_REAL8m mindot = 1;
+   OC_REAL8m hcoef = 2.0/MU0;
+ 
+@@ -116,6 +117,7 @@
+   const Oxs_SimState* oldstate = NULL;
+   OC_REAL8m stage_maxang = -1;
+   OC_REAL8m run_maxang = -1;
++#endif // NOP
+ }
+ 
+ 
+@@ -132,7 +134,7 @@
+ const Oxs_MeshValue<OC_REAL8m>& Ms_ = *(state.Ms);
+ 
+ OC_INDEX pom;
+-OC_REAL8m tmp1,tmp2,tmp3;
++OC_REAL8m tmp1;
+ OC_REAL8m counter = 0.;
+ 
+ ThreeVector tmp;

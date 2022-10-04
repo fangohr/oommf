@@ -1,0 +1,99 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>MIF Support Classes</TITLE>
+<META NAME="description" CONTENT="MIF Support Classes">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="previous" HREF="Field_Objects.html">
+<LINK REL="up" HREF="Standard_Oxs_Ext_Child_Clas.html">
+<LINK REL="next" HREF="Contributed_Oxs_Ext_Child_C.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html624"
+  HREF="Contributed_Oxs_Ext_Child_C.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html620"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html616"
+  HREF="Field_Objects.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html622"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html625"
+  HREF="Contributed_Oxs_Ext_Child_C.html">Contributed Oxs_Ext Child Classes</A>
+<B> Up:</B> <A NAME="tex2html621"
+  HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
+<B> Previous:</B> <A NAME="tex2html617"
+  HREF="Field_Objects.html">Field Objects</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00837000000000000000"></A><A NAME="oxsMIF"></A>
+<BR>
+MIF Support Classes
+</H2>
+<A NAME="PTLV"></A><DL>
+<DD><A NAME="6807"></A></DD>
+<DT><STRONG>Oxs_LabelValue:</STRONG></DT>
+<DD>A convenience object that holds label + value
+   pairs.  <TT>Oxs_LabelValue</TT> objects may be referenced via the
+   standard <TT>attributes</TT> field in other Specify blocks, as in
+   this example:
+
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_LabelValue:probdata {
+  alpha 0.5
+  start_dm 0.01
+}
+
+Specify Oxs_EulerEvolve {
+  attributes :probdata
+}
+</PRE>
+
+</BLOCKQUOTE>
+   The Specify block string for <TT>Oxs_LabelValue</TT> objects is an
+   arbitrary Tcl list with an even number of elements.  The first
+   element in each pair is interpreted as a label, the second as the
+   value.  The <TT>attribute</TT> option causes this list to be dropped
+   verbatim into the surrounding object.  This technique is most useful
+   if the label + value pairs in the <TT>Oxs_LabelValue</TT> object are
+   used in multiple Specify blocks, either inside the same MIF    file, or across several MIF files into which the
+   <TT>Oxs_LabelValue</TT> block is imported using the <TT>ReadFile</TT> MIF    extension command.
+
+<P>
+
+<B>Examples:</B> The MIF files <TT><B>sample-rotate.mif</B></TT> and
+     <TT><B>sample-reflect.mif</B></TT> use the <TT>Oxs_LabelValue</TT> object
+     stored in the <TT><B>sample-attributes.tcl</B></TT> file.
+   
+<P>
+</DD>
+</DL>
+
+<P>
+Refer to the MIF&nbsp;2 documentation for details on the base format
+specification.
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

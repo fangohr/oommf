@@ -14,7 +14,7 @@
 
 <LINK REL="STYLESHEET" HREF="progman.css">
 
-<LINK REL="next" HREF="bibliography.html">
+<LINK REL="next" HREF="Debugging_OOMMF.html">
 <LINK REL="previous" HREF="OOMMF_Variable_Types_Macros.html">
 <LINK REL="up" HREF="progman.html">
 <LINK REL="next" HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
@@ -24,37 +24,33 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html96"
+<A NAME="tex2html130"
   HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html92"
+<A NAME="tex2html126"
   HREF="progman.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html86"
+<A NAME="tex2html120"
   HREF="OOMMF_Variable_Types_Macros.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html98"
-  HREF="progman.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html94"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html128"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html97"
+<B> Next:</B> <A NAME="tex2html131"
   HREF="Sample_TT_Oxs_Energy_TT_Cla.html">Sample Oxs_Energy Class</A>
-<B> Up:</B> <A NAME="tex2html93"
+<B> Up:</B> <A NAME="tex2html127"
   HREF="progman.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html87"
+<B> Previous:</B> <A NAME="tex2html121"
   HREF="OOMMF_Variable_Types_Macros.html">OOMMF Variable Types and</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION00050000000000000000"></A><A NAME="sec:oxs"></A>
+<H1><A NAME="SECTION00500000000000000000"></A><A NAME="sec:oxs"></A>
 <BR>
 OOMMF eXtensible Solver
 </H1>
-
-<P>
 The OOMMF eXtensible Solver (OXS) top level architecture is shown in
 <A HREF="#fig:oxsclass">the class diagram below</A>.
 The ``Tcl Control Script'' block represents the user interface and
@@ -67,7 +63,7 @@ architecture diagram represents C++ classes.
 
 <P>
 <DIV ALIGN="CENTER">
-<A NAME="fig:oxsclass"></A> <B>Figure 1: OXS
+<A NAME="fig:oxsclass"></A> <B>Figure 4.1: OXS
 top-level class diagram.</B>
 <BR> <IMG ALT="OXS top-level class diagram" SRC="../giffiles/oxsclass.gif">
 
@@ -86,10 +82,11 @@ The general steps involved in adding an <TT>Oxs_Ext</TT> child class to OXS
 are:
 
 <OL>
-<LI>Add new source code files to <TT><B>oommf/app/oxs/local</B></TT> containing
-your class definitions.  The C++ non-header source code file(s)
-must be given the <TT>.cc</TT> extension.  (Header files are typically
-denoted with the <TT>.h</TT> extension, but this is not mandatory.)
+<LI>Create a subdirectory under <TT><B>oommf/app/oxs/local</B></TT>, and add
+source code files with class definitions into this subdirectory. The
+C++ non-header source code file(s) must be given the <TT>.cc</TT> or
+<TT>.cpp</TT> extension.  (Header files are typically denoted with the
+<TT>.h</TT> extension, but this is not mandatory.)
 </LI>
 <LI>Run <B>pimake</B> to compile your new code and link it in to the OXS
 executable.
@@ -107,12 +104,13 @@ an <TT>Oxs_Energy</TT> class.  Base details on adding a new energy term are
 
 <P>
 The <B>pimake</B> application automatically detects all files in the
-<TT><B>oommf/app/oxs/local</B></TT> directory with the <TT>.cc</TT> extension, and searches
-them for <TT><TT>#</TT>include</TT> requests to construct a build dependency tree.
-Then <B>pimake</B> compiles and links them together with the rest of the
-OXS files into the <B>oxs</B> executable.  Because of the automatic file
-detection, no modifications are required to any files of the standard
-OOMMF distribution in order to add local extensions.
+<TT><B>oommf/app/oxs/local</B></TT> directory with the <TT>.cc</TT> or <TT>.cpp</TT>
+extensions, and searches them for <TT><TT>#</TT>include</TT> requests to construct
+a build dependency tree.  Then <B>pimake</B> compiles and links them
+together with the rest of the OXS files into the <B>oxs</B> executable.
+Because of the automatic file detection, no modifications are required
+to any files of the standard OOMMF distribution in order to add local
+extensions.
 
 <P>
 Local extensions are then activated by <TT>Specify</TT> requests in the
@@ -133,31 +131,31 @@ the MIF&nbsp;2.0 file format section of the OOMMF User's Guide.
 <A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
 <UL>
-<LI><A NAME="tex2html100"
+<LI><A NAME="tex2html132"
   HREF="Sample_TT_Oxs_Energy_TT_Cla.html">Sample <TT>Oxs_Energy</TT> Class</A>
-<LI><A NAME="tex2html101"
+<LI><A NAME="tex2html133"
   HREF="Writing_New_TT_Oxs_Energy_T.html">Writing a New <TT>Oxs_Energy</TT> Extension</A>
+<LI><A NAME="tex2html134"
+  HREF="Writing_New_TT_Oxs_Evolver_.html">Writing a New <TT>Oxs_Evolver</TT> Extension</A>
 </UL>
 <!--End of Table of Child-Links-->
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html96"
+<A NAME="tex2html130"
   HREF="Sample_TT_Oxs_Energy_TT_Cla.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html92"
+<A NAME="tex2html126"
   HREF="progman.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html86"
+<A NAME="tex2html120"
   HREF="OOMMF_Variable_Types_Macros.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html99"
-  HREF="progman.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html94"
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html128"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

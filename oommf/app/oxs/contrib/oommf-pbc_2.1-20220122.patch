@@ -1,0 +1,4586 @@
+diff -ru oommf-pbc_2.1/kl_demag.cc oommf-pbc_2.1-new/kl_demag.cc
+--- oommf-pbc_2.1/kl_demag.cc	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_demag.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -49,9 +49,9 @@
+ /* End includes */
+ 
+ // Helper function
+-UINT4m Klm_Demag_PBC::NextPowerOfTwo(UINT4m n) const
++OC_INDEX Klm_Demag_PBC::NextPowerOfTwo(OC_INDEX n) const
+ { // Returns first power of two >= n
+-  UINT4m m=1;
++  OC_INDEX m=1;
+   while(m<n) m*=2;
+   return m;
+ }
+@@ -101,7 +101,7 @@
+ */  
+ 
+   // KL(m), process arguments
+-  INT4m i_tmp;
++  OC_INT4m i_tmp;
+   // Repetition distance for z-direction. In meters.
+   // Value of zero will be later replaced by the z-dimension.
+   zPeriod_param = GetRealInitValue("z_period",0.0);
+@@ -191,6 +191,14 @@
+   // KL(m) end
+   
+   VerifyAllInitArgsUsed();
++  if(sizeof(Oxs_Complex)!=2*sizeof(OXS_COMPLEX_REAL_TYPE)) {
++    // Some of the code below relies on being able to access an array
++    // of Oxs_Complex as an array of the underlying floating point
++    // type.  This punning will fail if Oxs_Complex is not tight
++    // packed.
++    String msg = String("Oxs_Complex structure packing failure detected");
++    throw Oxs_ExtError(this,msg);
++  }
+ }
+ 
+ Klm_Demag_PBC::~Klm_Demag_PBC() {
+@@ -214,7 +222,7 @@
+   ReleaseMemory();
+ }
+ 
+-BOOL Klm_Demag_PBC::Init()
++OC_BOOL Klm_Demag_PBC::Init()
+ {
+ #if REPORT_TIME
+   Oc_TimeVal cpu,wall;
+@@ -288,15 +296,15 @@
+   cstridey = cdimx + 1;  // Pad by one to avoid cache line entanglement
+   cstridez = cstridey*cdimy;
+ 
+-  UINT4m ctotalsize=cstridez*cdimz;
+-  UINT4m rtotalsize=2*ctotalsize;
++  OC_INDEX ctotalsize=cstridez*cdimz;
++  OC_INDEX rtotalsize=2*ctotalsize;
+   if(rtotalsize<2*cdimx || rtotalsize<cdimy || rtotalsize<cdimz) {
+     // Partial overflow check
+     String msg =
+-      String("UINT4m overflow in ")
++      String("OC_INDEX overflow in ")
+       + String(InstanceName())
+       + String(": Product cdimx*cdimy*cdimz too big"
+-               " to fit in a UINT4m variable");
++               " to fit in a OC_INDEX variable");
+     throw Oxs_Ext::Error(this,msg);
+   }
+ 
+@@ -309,7 +317,7 @@
+   adimz=1+cdimz/2;
+   astridey=adimx;
+   astridez=adimy*astridey;
+-  UINT4m atotalsize=adimz*astridez;
++  OC_INDEX atotalsize=adimz*astridez;
+   A00   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+   A01   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+   A02   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+@@ -325,11 +333,11 @@
+     throw Oxs_Ext::Error(this,msg);
+   }
+ 
+-  REALWIDE *rxcomp = static_cast<REALWIDE*>(static_cast<void*>(xcomp));
+-  REALWIDE *rycomp = static_cast<REALWIDE*>(static_cast<void*>(ycomp));
+-  REALWIDE *rzcomp = static_cast<REALWIDE*>(static_cast<void*>(zcomp));
+-  UINT4m rstridey=2*cstridey;
+-  UINT4m rstridez=2*cstridez;
++  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
++  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
++  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
++  OC_INDEX rstridey=2*cstridey;
++  OC_INDEX rstridez=2*cstridez;
+ 
+   // According (16) in Newell's paper, the demag field is given by
+   //                        H = -N*M
+@@ -354,21 +362,21 @@
+   //                                      A22:=fs*Nzz
+   //  where fs = -1/(2*cdimx*cdimy*cdimz)
+ 
+-  UINT4m index,i,j,k,istop,jstop,kstop;
++  OC_INDEX index,i,j,k,istop,jstop,kstop;
+ 
+-  REALWIDE dx = mesh->EdgeLengthX();
+-  REALWIDE dy = mesh->EdgeLengthY();
+-  REALWIDE dz = mesh->EdgeLengthZ();
++  OC_REALWIDE dx = mesh->EdgeLengthX();
++  OC_REALWIDE dy = mesh->EdgeLengthY();
++  OC_REALWIDE dz = mesh->EdgeLengthZ();
+   // For demag calculation, all that matters is the relative
+   // size of dx, dy and dz.  To help insure we don't run
+   // outside floating point range, rescale these values so
+   // largest is 1.0
+-  REALWIDE maxedge=dx;
++  OC_REALWIDE maxedge=dx;
+   if(dy>maxedge) maxedge=dy;
+   if(dz>maxedge) maxedge=dz;
+   dx/=maxedge; dy/=maxedge; dz/=maxedge;
+ 
+-  REALWIDE scale = 1.0/(4*PI*dx*dy*dz);
++  OC_REALWIDE scale = 1.0/(4*PI*dx*dy*dz);
+ 
+   // Also throw in FFT scaling.  This allows the "NoScale" FFT routines
+   // to be used.
+@@ -388,13 +396,13 @@
+   jstop=1; if(rdimy>1) jstop=rdimy+2;
+   istop=1; if(rdimx>1) istop=rdimx+2;
+   for(k=0;k<kstop;k++) {
+-    UINT4m kindex = k*rstridez;
+-    REALWIDE z = 0.0;
++    OC_INDEX kindex = k*rstridez;
++    OC_REALWIDE z = 0.0;
+     if(k==0) z = -dz;
+     else if(k>1) z = dz*(k-1);
+     for(j=0;j<jstop;j++) {
+-      UINT4m jkindex = kindex + j*rstridey;
+-      REALWIDE y = 0.0;
++      OC_INDEX jkindex = kindex + j*rstridey;
++      OC_REALWIDE y = 0.0;
+       if(j==0) y = -dy;
+       else if(j>1) y = dy*(j-1);
+       for(i=0;i<istop;i++) {
+@@ -406,12 +414,15 @@
+ 	  throw Oxs_Ext::Error(this,msg);
+ 	}
+ #endif // NDEBUG
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rxcomp[index] = scale*Newell_f(x,y,z);
+-	rycomp[index] = scale*Newell_f(y,x,z);
+-	rzcomp[index] = scale*Newell_f(z,y,x);
++	rxcomp[index]
++          = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(x,y,z).Hi());
++	rycomp[index]
++          = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(y,x,z).Hi());
++	rzcomp[index]
++          = scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(z,y,x).Hi());
+       }
+     }
+   }
+@@ -420,20 +431,23 @@
+   if(kstop==1) {
+     // Only 1 layer in z-direction of f stored in r?comp arrays.
+     for(j=0;j<jstop;j++) {
+-      UINT4m jkindex = j*rstridey;
+-      REALWIDE y = 0.0;
++      OC_INDEX jkindex = j*rstridey;
++      OC_REALWIDE y = 0.0;
+       if(j==0) y = -dy;
+       else if(j>1) y = dy*(j-1);
+       for(i=0;i<istop;i++) {
+ 	index = i+jkindex;
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rxcomp[index] -= scale*Newell_f(x,y,0);
++	rxcomp[index]
++          -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(x,y,0).Hi());
+ 	rxcomp[index] *= 2;
+-	rycomp[index] -= scale*Newell_f(y,x,0);
++	rycomp[index]
++          -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(y,x,0).Hi());
+ 	rycomp[index] *= 2;
+-	rzcomp[index] -= scale*Newell_f(0,y,x);
++	rzcomp[index]
++          -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_f(0,y,x).Hi());
+ 	rzcomp[index] *= 2;
+ 	/// Use f is even in z, so for example
+ 	/// f(x,y,-dz) - 2f(x,y,0) + f(x,y,dz)
+@@ -442,9 +456,9 @@
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2*rstridez];
+@@ -457,9 +471,9 @@
+       }
+     }
+     for(k=rdimz;k<kstop;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -473,30 +487,30 @@
+   if(jstop==1) {
+     // Only 1 layer in y-direction of f stored in r?comp arrays.
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
+-      REALWIDE z = dz*k;
++      OC_INDEX kindex = k*rstridez;
++      OC_REALWIDE z = dz*k;
+       for(i=0;i<istop;i++) {
+ 	index = i+kindex;
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rxcomp[index] -= scale * 
+-	  ((Newell_f(x,0,z-dz)+Newell_f(x,0,z+dz))-2*Newell_f(x,0,z));
++	rxcomp[index] -= scale * static_cast<OC_REALWIDE>
++          ((Oxs_Newell_f(x,0,z-dz)+Oxs_Newell_f(x,0,z+dz)-2*Oxs_Newell_f(x,0,z)).Hi());
+ 	rxcomp[index] *= 2;
+-	rycomp[index] -= scale * 
+-	  ((Newell_f(0,x,z-dz)+Newell_f(0,x,z+dz))-2*Newell_f(0,x,z));
++	rycomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((Oxs_Newell_f(0,x,z-dz)+Oxs_Newell_f(0,x,z+dz)-2*Oxs_Newell_f(0,x,z)).Hi());
+ 	rycomp[index] *= 2;
+-	rzcomp[index] -= scale * 
+-	  ((Newell_f(z-dz,0,x)+Newell_f(z+dz,0,x))-2*Newell_f(z,0,x));
++	rzcomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((Oxs_Newell_f(z-dz,0,x)+Oxs_Newell_f(z+dz,0,x)-2*Oxs_Newell_f(z,0,x)).Hi());
+ 	rzcomp[index] *= 2;
+ 	/// Use f is even in y
+       }
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2*rstridey];
+@@ -509,9 +523,9 @@
+       }
+     }
+     for(k=0;k<rdimz;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=rdimy;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -525,40 +539,40 @@
+   if(istop==1) {
+     // Only 1 layer in x-direction of f stored in r?comp arrays.
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
+-      REALWIDE z = dz*k;
++      OC_INDEX kindex = k*rstridez;
++      OC_REALWIDE z = dz*k;
+       for(j=0;j<rdimy;j++) {
+ 	index = kindex + j*rstridey;
+-	REALWIDE y = dy*j;
+-	rxcomp[index] -= scale * 
+-	  ((4*Newell_f(0,y,z)
+-	    +Newell_f(0,y+dy,z+dz)+Newell_f(0,y-dy,z+dz)
+-	    +Newell_f(0,y+dy,z-dz)+Newell_f(0,y-dy,z-dz))
+-	   -2*(Newell_f(0,y+dy,z)+Newell_f(0,y-dy,z)
+-	       +Newell_f(0,y,z+dz)+Newell_f(0,y,z-dz)));
++	OC_REALWIDE y = dy*j;
++	rxcomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((4*Oxs_Newell_f(0,y,z)
++	    +Oxs_Newell_f(0,y+dy,z+dz)+Oxs_Newell_f(0,y-dy,z+dz)
++	    +Oxs_Newell_f(0,y+dy,z-dz)+Oxs_Newell_f(0,y-dy,z-dz)
++            -2*(Oxs_Newell_f(0,y+dy,z)+Oxs_Newell_f(0,y-dy,z)
++                +Oxs_Newell_f(0,y,z+dz)+Oxs_Newell_f(0,y,z-dz))).Hi());
+ 	rxcomp[index] *= 2;
+-	rycomp[index] -= scale * 
+-	  ((4*Newell_f(y,0,z)
+-	    +Newell_f(y+dy,0,z+dz)+Newell_f(y-dy,0,z+dz)
+-	    +Newell_f(y+dy,0,z-dz)+Newell_f(y-dy,0,z-dz))
+-	   -2*(Newell_f(y+dy,0,z)+Newell_f(y-dy,0,z)
+-	       +Newell_f(y,0,z+dz)+Newell_f(y,0,z-dz)));
++	rycomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((4*Oxs_Newell_f(y,0,z)
++	    +Oxs_Newell_f(y+dy,0,z+dz)+Oxs_Newell_f(y-dy,0,z+dz)
++	    +Oxs_Newell_f(y+dy,0,z-dz)+Oxs_Newell_f(y-dy,0,z-dz)
++            -2*(Oxs_Newell_f(y+dy,0,z)+Oxs_Newell_f(y-dy,0,z)
++                +Oxs_Newell_f(y,0,z+dz)+Oxs_Newell_f(y,0,z-dz))).Hi());
+ 	rycomp[index] *= 2;
+-	rzcomp[index] -= scale * 
+-	  ((4*Newell_f(z,y,0)
+-	    +Newell_f(z+dz,y+dy,0)+Newell_f(z+dz,y-dy,0)
+-	    +Newell_f(z-dz,y+dy,0)+Newell_f(z-dz,y-dy,0))
+-	   -2*(Newell_f(z,y+dy,0)+Newell_f(z,y-dy,0)
+-	       +Newell_f(z+dz,y,0)+Newell_f(z-dz,y,0)));
++	rzcomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((4*Oxs_Newell_f(z,y,0)
++	    +Oxs_Newell_f(z+dz,y+dy,0)+Oxs_Newell_f(z+dz,y-dy,0)
++	    +Oxs_Newell_f(z-dz,y+dy,0)+Oxs_Newell_f(z-dz,y-dy,0)
++            -2*(Oxs_Newell_f(z,y+dy,0)+Oxs_Newell_f(z,y-dy,0)
++                +Oxs_Newell_f(z+dz,y,0)+Oxs_Newell_f(z-dz,y,0))).Hi());
+ 	rzcomp[index] *= 2;
+ 	/// Use f is even in x.
+       }
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<rdimx;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2];
+@@ -571,9 +585,9 @@
+       }
+     }
+     for(k=0;k<rdimz;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=rdimx;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -586,52 +600,52 @@
+ 
+   // Step 3: Use symmetries to reflect into other octants.
+   for(k=0;k<rdimz;k++) {
+-    UINT4m kindex = k*rstridez;
++    OC_INDEX kindex = k*rstridez;
+     for(j=0;j<rdimy;j++) {
+-      UINT4m jkindex = kindex + j*rstridey;
++      OC_INDEX jkindex = kindex + j*rstridey;
+       for(i=0;i<rdimx;i++) {
+ 	index = i+jkindex;
+-	REALWIDE xtemp = rxcomp[index];
+-	REALWIDE ytemp = rycomp[index];
+-	REALWIDE ztemp = rzcomp[index];
++	OC_REALWIDE xtemp = rxcomp[index];
++	OC_REALWIDE ytemp = rycomp[index];
++	OC_REALWIDE ztemp = rzcomp[index];
+ 	if(i>0) {
+-	  UINT4m tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(j>0) {
+-	  UINT4m tindex = i+(cdimy-j)*rstridey+k*rstridez;
++	  OC_INDEX tindex = i+(cdimy-j)*rstridey+k*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(k>0) {
+-	  UINT4m tindex = i+j*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = i+j*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(i>0 && j>0) {
+-	  UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(i>0 && k>0) {
+-	  UINT4m tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(j>0 && k>0) {
+-	  UINT4m tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+ 	}
+ 	if(i>0 && j>0 && k>0) {
+-	  UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex]=xtemp;
+ 	  rycomp[tindex]=ytemp;
+ 	  rzcomp[tindex]=ztemp;
+@@ -641,12 +655,12 @@
+   }
+ 
+   // Special "SelfDemag" code may be more accurate at index 0,0,0
+-  REALWIDE sizescale = -2.0 * static_cast<REALWIDE>(cdimx*cdimy*cdimz);
++  OC_REALWIDE sizescale = -2.0 * static_cast<OC_REALWIDE>(cdimx*cdimy*cdimz);
+   /// Careful... cdimx, cdimy, cdimz are unsigned, so don't try
+   ///  -2*cdimx*cdimy*cdimz (although -2.0*cdimx*cdimy*cdimz is OK).
+-  rxcomp[0] = SelfDemagNx(dx,dy,dz)/sizescale;
+-  rycomp[0] = SelfDemagNy(dx,dy,dz)/sizescale;
+-  rzcomp[0] = SelfDemagNz(dx,dy,dz)/sizescale;
++  rxcomp[0] = static_cast<OC_REALWIDE>(Oxs_SelfDemagNx(dx,dy,dz).Hi())/sizescale;
++  rycomp[0] = static_cast<OC_REALWIDE>(Oxs_SelfDemagNy(dx,dy,dz).Hi())/sizescale;
++  rzcomp[0] = static_cast<OC_REALWIDE>(Oxs_SelfDemagNz(dx,dy,dz).Hi())/sizescale;
+ 
+   // Step 4: Transform into frequency domain.
+   fft.ForwardRealDataNoScale(xcomp,2*cdimx,cdimy,cdimz,
+@@ -659,7 +673,7 @@
+   // Copy results from ?comp into A??.  We only need store 1/8th
+   // of the results because of symmetries.
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx-1;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     index = i+j*cstridey+k*cstridez;
+     A00[aindex] = xcomp[index].real();
+     A11[aindex] = ycomp[index].real();
+@@ -677,7 +691,7 @@
+     Oxs_Complex temp22 = fft.RetrievePackedIndex(zcomp,
+ 		   cdimx,cdimy,cdimz,cstridey,cstridez,
+ 		   adimx-1,j,k);
+-    UINT4m aindex = (adimx-1)+j*astridey+k*astridez;
++    OC_INDEX aindex = (adimx-1)+j*astridey+k*astridez;
+     A00[aindex] = temp00.real();
+     A11[aindex] = temp11.real();
+     A22[aindex] = temp22.real();
+@@ -693,23 +707,23 @@
+     zcomp[index].Set(0.,0.);
+   }
+   for(k=0;k<kstop;k++) {
+-    UINT4m kindex = k*rstridez;
+-    REALWIDE z = 0.0;
++    OC_INDEX kindex = k*rstridez;
++    OC_REALWIDE z = 0.0;
+     if(k==0) z = -dz;
+     else if(k>1) z = dz*(k-1);
+     for(j=0;j<jstop;j++) {
+-      UINT4m jkindex = kindex + j*rstridey;
+-      REALWIDE y = 0.0;
++      OC_INDEX jkindex = kindex + j*rstridey;
++      OC_REALWIDE y = 0.0;
+       if(j==0) y = -dy;
+       else if(j>1) y = dy*(j-1);
+       for(i=0;i<istop;i++) {
+ 	index = i+jkindex;
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rxcomp[index] = scale*Newell_g(x,y,z);
+-	rycomp[index] = scale*Newell_g(x,z,y);
+-	rzcomp[index] = scale*Newell_g(y,z,x);
++	rxcomp[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,y,z).Hi());
++	rycomp[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,z,y).Hi());
++	rzcomp[index] = scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(y,z,x).Hi());
+       }
+     }
+   }
+@@ -718,16 +732,16 @@
+   if(kstop==1) {
+     // Only 1 layer in z-direction of g stored in r?comp arrays.
+     for(j=0;j<jstop;j++) {
+-      UINT4m jkindex = j*rstridey;
+-      REALWIDE y = 0.0;
++      OC_INDEX jkindex = j*rstridey;
++      OC_REALWIDE y = 0.0;
+       if(j==0) y = -dy;
+       else if(j>1) y = dy*(j-1);
+       for(i=0;i<istop;i++) {
+ 	index = i+jkindex;
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rxcomp[index] -= scale*Newell_g(x,y,0);
++	rxcomp[index] -= scale*static_cast<OC_REALWIDE>(Oxs_Newell_g(x,y,0).Hi());
+ 	rxcomp[index] *= 2;
+ 	// NOTE: g is even in z.
+ 	// If zdim==1, then rycomp and rzcomp, i.e., Nxz and Nyz,
+@@ -737,9 +751,9 @@
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2*rstridez];
+@@ -752,9 +766,9 @@
+       }
+     }
+     for(k=rdimz;k<kstop;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -768,15 +782,15 @@
+   if(jstop==1) {
+     // Only 1 layer in y-direction of f stored in r?comp arrays.
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
+-      REALWIDE z = dz*k;
++      OC_INDEX kindex = k*rstridez;
++      OC_REALWIDE z = dz*k;
+       for(i=0;i<istop;i++) {
+ 	index = i+kindex;
+-	REALWIDE x = 0.0;
++	OC_REALWIDE x = 0.0;
+ 	if(i==0) x = -dx;
+ 	else if(i>1) x = dx*(i-1);
+-	rycomp[index] -= scale * 
+-	  ((Newell_g(x,z-dz,0)+Newell_g(x,z+dz,0))-2*Newell_g(x,z,0));
++	rycomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((Oxs_Newell_g(x,z-dz,0)+Oxs_Newell_g(x,z+dz,0)-2*Oxs_Newell_g(x,z,0)).Hi());
+ 	rycomp[index] *= 2;
+ 	// Note: g is even in its third argument.
+ 	// If ydim==1, then rxcomp and rzcomp, i.e., Nxy and Nyz,
+@@ -786,9 +800,9 @@
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2*rstridey];
+@@ -801,9 +815,9 @@
+       }
+     }
+     for(k=0;k<rdimz;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=rdimy;j<jstop;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -817,17 +831,17 @@
+   if(istop==1) {
+     // Only 1 layer in x-direction of f stored in r?comp arrays.
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
+-      REALWIDE z = dz*k;
++      OC_INDEX kindex = k*rstridez;
++      OC_REALWIDE z = dz*k;
+       for(j=0;j<rdimy;j++) {
+ 	index = kindex + j*rstridey;
+-	REALWIDE y = dy*j;
+-	rzcomp[index] -= scale * 
+-	  ((4*Newell_g(y,z,0)
+-	    +Newell_g(y+dy,z+dz,0)+Newell_g(y-dy,z+dz,0)
+-	    +Newell_g(y+dy,z-dz,0)+Newell_g(y-dy,z-dz,0))
+-	   -2*(Newell_g(y+dy,z,0)+Newell_g(y-dy,z,0)
+-	       +Newell_g(y,z+dz,0)+Newell_g(y,z-dz,0)));
++	OC_REALWIDE y = dy*j;
++	rzcomp[index] -= scale * static_cast<OC_REALWIDE>
++	  ((4*Oxs_Newell_g(y,z,0)
++	    +Oxs_Newell_g(y+dy,z+dz,0)+Oxs_Newell_g(y-dy,z+dz,0)
++	    +Oxs_Newell_g(y+dy,z-dz,0)+Oxs_Newell_g(y-dy,z-dz,0)
++            -2*(Oxs_Newell_g(y+dy,z,0)+Oxs_Newell_g(y-dy,z,0)
++                +Oxs_Newell_g(y,z+dz,0)+Oxs_Newell_g(y,z-dz,0))).Hi());
+ 	rzcomp[index] *= 2;
+ 	// Note: g is even in its third argument.
+ 	// If xdim==1, then rxcomp and rycomp, i.e., Nxy and Nxz,
+@@ -837,9 +851,9 @@
+     }
+   } else {
+     for(k=0;k<rdimz;k++) {
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=0;i<rdimx;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] += rxcomp[index+2];
+@@ -852,9 +866,9 @@
+       }
+     }
+     for(k=0;k<rdimz;k++) { // Zero-fill overhang
+-      UINT4m kindex = k*rstridez;
++      OC_INDEX kindex = k*rstridez;
+       for(j=0;j<rdimy;j++) {
+-	UINT4m jkindex = kindex + j*rstridey;
++	OC_INDEX jkindex = kindex + j*rstridey;
+ 	for(i=rdimx;i<istop;i++) {
+ 	  index = i+jkindex;
+ 	  rxcomp[index] = 0.0;
+@@ -871,9 +885,9 @@
+   //     be close to 0, but will likely be slightly off due to
+   //     rounding errors.
+   for(k=0;k<rdimz;k++) {
+-    UINT4m kindex = k*rstridez;
++    OC_INDEX kindex = k*rstridez;
+     for(j=0;j<rdimy;j++) {
+-      UINT4m jkindex = kindex + j*rstridey;
++      OC_INDEX jkindex = kindex + j*rstridey;
+       for(i=0;i<rdimx;i++) {
+ 	index = i+jkindex;
+ 
+@@ -881,47 +895,47 @@
+ 	if(i==0 || k==0) rycomp[index]=0.0;
+ 	if(j==0 || k==0) rzcomp[index]=0.0;
+ 
+-	REALWIDE xtemp = rxcomp[index];
+-	REALWIDE ytemp = rycomp[index];
+-	REALWIDE ztemp = rzcomp[index];
++	OC_REALWIDE xtemp = rxcomp[index];
++	OC_REALWIDE ytemp = rycomp[index];
++	OC_REALWIDE ztemp = rzcomp[index];
+ 	if(i>0) {
+-	  UINT4m tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
+ 	  rxcomp[tindex] = -1*xtemp;
+ 	  rycomp[tindex] = -1*ytemp;
+ 	  rzcomp[tindex] =    ztemp;
+ 	}
+ 	if(j>0) {
+-	  UINT4m tindex = i+(cdimy-j)*rstridey+k*rstridez;
++	  OC_INDEX tindex = i+(cdimy-j)*rstridey+k*rstridez;
+ 	  rxcomp[tindex] = -1*xtemp;
+ 	  rycomp[tindex] =    ytemp;
+ 	  rzcomp[tindex] = -1*ztemp;
+ 	}
+ 	if(k>0) {
+-	  UINT4m tindex = i+j*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = i+j*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex] =    xtemp;
+ 	  rycomp[tindex] = -1*ytemp;
+ 	  rzcomp[tindex] = -1*ztemp;
+ 	}
+ 	if(i>0 && j>0) {
+-	  UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
+ 	  rxcomp[tindex] =    xtemp;
+ 	  rycomp[tindex] = -1*ytemp;
+ 	  rzcomp[tindex] = -1*ztemp;
+ 	}
+ 	if(i>0 && k>0) {
+-	  UINT4m tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex] = -1*xtemp;
+ 	  rycomp[tindex] =    ytemp;
+ 	  rzcomp[tindex] = -1*ztemp;
+ 	}
+ 	if(j>0 && k>0) {
+-	  UINT4m tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex] = -1*xtemp;
+ 	  rycomp[tindex] = -1*ytemp;
+ 	  rzcomp[tindex] =    ztemp;
+ 	}
+ 	if(i>0 && j>0 && k>0) {
+-	  UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++	  OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+ 	  rxcomp[tindex] = xtemp;
+ 	  rycomp[tindex] = ytemp;
+ 	  rzcomp[tindex] = ztemp;
+@@ -941,7 +955,7 @@
+   // Copy results from ?comp into A??.  We only need store 1/8th
+   // of the results because of symmetries.
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx-1;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     index = i+j*cstridey+k*cstridez;
+     A01[aindex] = xcomp[index].real();
+     A02[aindex] = ycomp[index].real();
+@@ -958,7 +972,7 @@
+     Oxs_Complex temp12 = fft.RetrievePackedIndex(zcomp,
+ 		   cdimx,cdimy,cdimz,cstridey,cstridez,
+ 		   adimx-1,j,k);
+-    UINT4m aindex = (adimx-1)+j*astridey+k*astridez;
++    OC_INDEX aindex = (adimx-1)+j*astridey+k*astridez;
+     A01[aindex] = temp01.real();
+     A02[aindex] = temp02.real();
+     A12[aindex] = temp12.real();
+@@ -996,13 +1010,13 @@
+   cstridey = cdimx + 1;  // Pad by one to avoid cache line entanglement
+   cstridez = cstridey*cdimy;
+ 
+-  UINT4m ctotalsize=cstridez*cdimz;
+-  UINT4m rtotalsize=2*ctotalsize;
++  OC_INDEX ctotalsize=cstridez*cdimz;
++  OC_INDEX rtotalsize=2*ctotalsize;
+   if(rtotalsize<2*cdimx || rtotalsize<cdimy || rtotalsize<cdimz) {
+     // Partial overflow check
+-    String msg = String("UINT4m overflow in ") + String(InstanceName())
++    String msg = String("OC_INDEX overflow in ") + String(InstanceName())
+       + String(": Product cdimx*cdimy*cdimz too big"
+-               " to fit in a UINT4m variable");
++               " to fit in a OC_INDEX variable");
+     throw Oxs_Ext::Error(this,msg);
+   }
+ 
+@@ -1012,7 +1026,7 @@
+   adimz=1+cdimz/2;
+   astridey=adimx;
+   astridez=adimy*astridey;
+-  UINT4m atotalsize=adimz*astridez;
++  OC_INDEX atotalsize=adimz*astridez;
+   A00   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+   A01   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+   A02   = new OXS_COMPLEX_REAL_TYPE[atotalsize];
+@@ -1031,11 +1045,11 @@
+     throw Oxs_Ext::Error(this,msg);
+   }
+ 
+-  REALWIDE *rxcomp = static_cast<REALWIDE*>(static_cast<void*>(xcomp));
+-  REALWIDE *rycomp = static_cast<REALWIDE*>(static_cast<void*>(ycomp));
+-  REALWIDE *rzcomp = static_cast<REALWIDE*>(static_cast<void*>(zcomp));
+-  UINT4m rstridey=2*cstridey;
+-  UINT4m rstridez=2*cstridez;
++  OXS_COMPLEX_REAL_TYPE *rxcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
++  OXS_COMPLEX_REAL_TYPE *rycomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(ycomp));
++  OXS_COMPLEX_REAL_TYPE *rzcomp = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
++  OC_INDEX rstridey=2*cstridey;
++  OC_INDEX rstridez=2*cstridez;
+ 
+   // According (16) in Newell's paper, the demag field is given by
+   //                        H = -N*M
+@@ -1055,21 +1069,21 @@
+   // As a result, the transform of each of the Axx interaction
+   // matrices will be real, with the same even/odd properties.
+ 
+-  UINT4m index,i,j,k;
++  OC_INDEX index,i,j,k;
+ 
+-  REALWIDE dx = mesh->EdgeLengthX();
+-  REALWIDE dy = mesh->EdgeLengthY();
+-  REALWIDE dz = mesh->EdgeLengthZ();
++  OC_REALWIDE dx = mesh->EdgeLengthX();
++  OC_REALWIDE dy = mesh->EdgeLengthY();
++  OC_REALWIDE dz = mesh->EdgeLengthZ();
+   // For demag calculation, all that matters is the relative
+   // sizes of dx, dy and dz.  To help insure we don't run
+   // outside floating point range, rescale these values so
+   // largest is 1.0
+-  REALWIDE maxedge=dx;
++  OC_REALWIDE maxedge=dx;
+   if(dy>maxedge) maxedge=dy;
+   if(dz>maxedge) maxedge=dz;
+   dx/=maxedge; dy/=maxedge; dz/=maxedge;
+ 
+-  REALWIDE scale = -1./(4*PI*dx*dy*dz);
++  OC_REALWIDE scale = -1./(4*PI*dx*dy*dz);
+   
+   // KL(m)
+   // WARNING for developement: here is an important parameter 
+@@ -1106,31 +1120,31 @@
+ 
+ #ifdef DUMP_COEF_TEST
+ fprintf(stderr,"Nxy(1,2,3,1,2,3)=%.17g   Nxy(10,1,1,1,2,3)=%.17g\n",
+-	(double)CalculateSDA01(1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
+-	(double)CalculateSDA01(10.,1.,1.,1.,2.,3.)/(4*PI*1.*2.*3.));
++	(double)Oxs_CalculateSDA01(1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
++	(double)Oxs_CalculateSDA01(10.,1.,1.,1.,2.,3.)/(4*PI*1.*2.*3.));
+ fprintf(stderr,"Nxy(-1,2,3,1,2,3)=%.17g   Nxy(10,1,-1,1,2,3)=%.17g\n",
+-	(double)CalculateSDA01(-1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
+-	(double)CalculateSDA01(10.,1.,-1.,1.,2.,3.)/(4*PI*1.*2.*3.));
++	(double)Oxs_CalculateSDA01(-1.,2.,3.,1.,2.,3.)/(4*PI*1.*2.*3.),
++	(double)Oxs_CalculateSDA01(10.,1.,-1.,1.,2.,3.)/(4*PI*1.*2.*3.));
+ fprintf(stderr,"Nxy(1,1,0,1,2,3)=%.17g   Nxy(1,1,0,2,1,3)=%.17g\n",
+-	(double)CalculateSDA01(1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
+-	(double)CalculateSDA01(1.,1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
++	(double)Oxs_CalculateSDA01(1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
++	(double)Oxs_CalculateSDA01(1.,1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
+ fprintf(stderr,"Nxy(-1,1,0,1,2,3)=%.17g   Nxy(1,-1,0,2,1,3)=%.17g\n",
+-	(double)CalculateSDA01(-1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
+-	(double)CalculateSDA01(1.,-1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
++	(double)Oxs_CalculateSDA01(-1.,1.,0.,1.,2.,3.)/(4*PI*1.*2.*3.),
++	(double)Oxs_CalculateSDA01(1.,-1.,0.,2.,1.,3.)/(4*PI*1.*2.*3.));
+ #endif // DUMP_COEF_TEST
+ 
+   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) for(i=0;i<rdimx;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE a00=scale*CalculateSDA00(x,y,z,dx,dy,dz);
+-    //REALWIDE a01=scale*CalculateSDA01(x,y,z,dx,dy,dz);
+-    //REALWIDE a02=scale*CalculateSDA02(x,y,z,dx,dy,dz);
+-    REALWIDE a00= scale*demag_pbc.CalculateSDA(n00, i, j, k); 
+-    REALWIDE a01= scale*demag_pbc.CalculateSDA(n01, i, j, k); 
+-    REALWIDE a02= scale*demag_pbc.CalculateSDA(n02, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE a00=scale*Oxs_CalculateSDA00(x,y,z,dx,dy,dz);
++    //OC_REALWIDE a01=scale*Oxs_CalculateSDA01(x,y,z,dx,dy,dz);
++    //OC_REALWIDE a02=scale*Oxs_CalculateSDA02(x,y,z,dx,dy,dz);
++    OC_REALWIDE a00= scale*demag_pbc.Oxs_CalculateSDA(n00, i, j, k); 
++    OC_REALWIDE a01= scale*demag_pbc.Oxs_CalculateSDA(n01, i, j, k); 
++    OC_REALWIDE a02= scale*demag_pbc.Oxs_CalculateSDA(n02, i, j, k); 
+ 
+     index = i+j*rstridey+k*rstridez;
+ 
+@@ -1139,43 +1153,43 @@
+     rzcomp[index]=a02;
+ 
+     if(i>0) {
+-      UINT4m tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=-a01;
+       rzcomp[tindex]=-a02;
+     }
+     if(j>0) {
+-      UINT4m tindex = i+(cdimy-j)*rstridey+k*rstridez;
++      OC_INDEX tindex = i+(cdimy-j)*rstridey+k*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=-a01;
+       rzcomp[tindex]=a02;
+     }
+     if(k>0) {
+-      UINT4m tindex = i+j*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = i+j*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=a01;
+       rzcomp[tindex]=-a02;
+     }
+     if(i>0 && j>0) {
+-      UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=a01;
+       rzcomp[tindex]=-a02;
+     }
+     if(i>0 && k>0) {
+-      UINT4m tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=-a01;
+       rzcomp[tindex]=a02;
+     }
+     if(j>0 && k>0) {
+-      UINT4m tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=-a01;
+       rzcomp[tindex]=-a02;
+     }
+     if(i>0 && j>0 && k>0) {
+-      UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a00;
+       rycomp[tindex]=a01;
+       rzcomp[tindex]=a02;
+@@ -1193,7 +1207,7 @@
+   // Copy results from ?comp into A??.  We only need store 1/8th
+   // of the results because of symmetries.
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx-1;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     index = i+j*cstridey+k*cstridez;
+     A00[aindex] = xcomp[index].real();
+     A01[aindex] = ycomp[index].real();
+@@ -1210,7 +1224,7 @@
+     Oxs_Complex temp02 = fft.RetrievePackedIndex(zcomp,
+ 		   cdimx,cdimy,cdimz,cstridey,cstridez,
+ 		   adimx-1,j,k);
+-    UINT4m aindex = (adimx-1)+j*astridey+k*astridez;
++    OC_INDEX aindex = (adimx-1)+j*astridey+k*astridez;
+     A00[aindex] = temp00.real();
+     A01[aindex] = temp01.real();
+     A02[aindex] = temp02.real();
+@@ -1229,56 +1243,56 @@
+   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) for(i=0;i<rdimx;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;    REALWIDE y = dy*j;    REALWIDE z = dz*k;
+-    //REALWIDE a11=scale*CalculateSDA11(x,y,z,dx,dy,dz);
+-    //REALWIDE a12=scale*CalculateSDA12(x,y,z,dx,dy,dz);
+-    //REALWIDE a22=scale*CalculateSDA22(x,y,z,dx,dy,dz);
+-    REALWIDE a11= scale*demag_pbc.CalculateSDA(n11, i, j, k); 
+-    REALWIDE a12= scale*demag_pbc.CalculateSDA(n12, i, j, k); 
+-    REALWIDE a22= scale*demag_pbc.CalculateSDA(n22, i, j, k); 
++    //OC_REALWIDE x = dx*i;    OC_REALWIDE y = dy*j;    OC_REALWIDE z = dz*k;
++    //OC_REALWIDE a11=scale*Oxs_CalculateSDA11(x,y,z,dx,dy,dz);
++    //OC_REALWIDE a12=scale*Oxs_CalculateSDA12(x,y,z,dx,dy,dz);
++    //OC_REALWIDE a22=scale*Oxs_CalculateSDA22(x,y,z,dx,dy,dz);
++    OC_REALWIDE a11= scale*demag_pbc.Oxs_CalculateSDA(n11, i, j, k); 
++    OC_REALWIDE a12= scale*demag_pbc.Oxs_CalculateSDA(n12, i, j, k); 
++    OC_REALWIDE a22= scale*demag_pbc.Oxs_CalculateSDA(n22, i, j, k); 
+     
+     index = i+j*rstridey+k*rstridez;
+     rxcomp[index]=a11;
+     rycomp[index]=a12;
+     rzcomp[index]=a22;
+     if(i>0) {
+-      UINT4m tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+j*rstridey+k*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=a12;
+       rzcomp[tindex]=a22;
+     }
+     if(j>0) {
+-      UINT4m tindex = i+(cdimy-j)*rstridey+k*rstridez;
++      OC_INDEX tindex = i+(cdimy-j)*rstridey+k*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=-a12;
+       rzcomp[tindex]=a22;
+     }
+     if(k>0) {
+-      UINT4m tindex = i+j*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = i+j*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=-a12;
+       rzcomp[tindex]=a22;
+     }
+     if(i>0 && j>0) {
+-      UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+k*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=-a12;
+       rzcomp[tindex]=a22;
+     }
+     if(i>0 && k>0) {
+-      UINT4m tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+j*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=-a12;
+       rzcomp[tindex]=a22;
+     }
+     if(j>0 && k>0) {
+-      UINT4m tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = i+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=a12;
+       rzcomp[tindex]=a22;
+     }
+     if(i>0 && j>0 && k>0) {
+-      UINT4m tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
++      OC_INDEX tindex = (2*cdimx-i)+(cdimy-j)*rstridey+(cdimz-k)*rstridez;
+       rxcomp[tindex]=a11;
+       rycomp[tindex]=a12;
+       rzcomp[tindex]=a22;
+@@ -1293,7 +1307,7 @@
+ 			     cdimx,cdimy,cdimz,cstridey,cstridez);
+ 
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx-1;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     index = i+j*cstridey+k*cstridez;
+     A11[aindex] = xcomp[index].real();
+     A12[aindex] = ycomp[index].real();
+@@ -1309,7 +1323,7 @@
+     Oxs_Complex temp22 = fft.RetrievePackedIndex(zcomp,
+ 		   cdimx,cdimy,cdimz,cstridey,cstridez,
+ 		   adimx-1,j,k);
+-    UINT4m aindex = (adimx-1)+j*astridey+k*astridez;
++    OC_INDEX aindex = (adimx-1)+j*astridey+k*astridez;
+     A11[aindex] = temp11.real();
+     A12[aindex] = temp12.real();
+     A22[aindex] = temp22.real();
+@@ -1323,13 +1337,13 @@
+ /**/
+   printf("\n Index     A00        A11        A22\n");
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     printf("%d %d %d  %#10.4g  %#10.4g  %#10.4g\n",
+ 	   i,j,k,A00[aindex],A11[aindex],A22[aindex]);
+   }
+   printf("\n Index     A01        A02        A12\n");
+   for(k=0;k<adimz;k++) for(j=0;j<adimy;j++) for(i=0;i<adimx;i++) {
+-    UINT4m aindex = i+j*astridey+k*astridez;
++    OC_INDEX aindex = i+j*astridey+k*astridez;
+     printf("%d %d %d  %#10.4g  %#10.4g  %#10.4g\n",
+ 	   i,j,k,A01[aindex],A02[aindex],A12[aindex]);
+   }
+@@ -1350,20 +1364,20 @@
+   }
+ 
+   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<REAL8m>& Ms = *(state.Ms);
++  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+   oed.field = oed.field_buffer;
+-  Oxs_MeshValue<REAL8m>& energy = *oed.energy_buffer;
++  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
+   Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+ 
+   // Calculate FFT of Mx, My and Mz
+-  UINT4m i,j,k;
+-  UINT4m mstridey=rdimx;  // Assume import mesh is tight packed
+-  UINT4m mstridez=rdimy*mstridey;
+-  UINT4m rstridey=2*cstridey;
+-  UINT4m rstridez=2*cstridez;
++  OC_INDEX i,j,k;
++  OC_INDEX mstridey=rdimx;  // Assume import mesh is tight packed
++  OC_INDEX mstridez=rdimy*mstridey;
++  OC_INDEX rstridey=2*cstridey;
++  OC_INDEX rstridez=2*cstridez;
+   OXS_COMPLEX_REAL_TYPE* rxcomp
+     = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(xcomp));
+   OXS_COMPLEX_REAL_TYPE* rycomp
+@@ -1372,10 +1386,10 @@
+     = static_cast<OXS_COMPLEX_REAL_TYPE*>(static_cast<void*>(zcomp));
+ 
+   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) {
+-    UINT4m mindex = j*mstridey+k*mstridez;
+-    UINT4m rindex = j*rstridey+k*rstridez;
++    OC_INDEX mindex = j*mstridey+k*mstridez;
++    OC_INDEX rindex = j*rstridey+k*rstridez;
+     for(i=0;i<rdimx;i++) {
+-      REAL8m scale = Ms[mindex];
++      OC_REAL8m scale = Ms[mindex];
+       const ThreeVector& vec = spin[mindex];
+       ++mindex;
+       rxcomp[rindex]=scale*vec.x;
+@@ -1404,9 +1418,9 @@
+ #if REPORT_TIME
+   convtime.Start();
+ #endif // REPORT_TIME
+-  UINT4m block;
++  OC_INDEX block;
+   for(block=0;block<4;block++) {
+-    UINT4m base_offset = 0;
++    OC_INDEX base_offset = 0;
+     if(block%2==1) {
+       if(cdimy==1) continue; // There is no second "j" block
+       base_offset += cstridey*(cdimy/2);
+@@ -1422,7 +1436,7 @@
+     int ksign=1; if(block/2==1) ksign=-1;
+     Oxs_Complex Mx,My,Mz;
+     OXS_COMPLEX_REAL_TYPE a00,a11,a22,a01,a02,a12;
+-    UINT4m aindex=0,cindex;
++    OC_INDEX aindex=0,cindex;
+     k=0;
+     do {
+       // j==0, i==0
+@@ -1556,8 +1570,8 @@
+ #endif // REPORT_TIME
+   OXS_COMPLEX_REAL_TYPE mult =  -0.5 * MU0;
+   for(k=0;k<rdimz;k++) for(j=0;j<rdimy;j++) {
+-    UINT4m mindex = j*mstridey+k*mstridez;
+-    UINT4m rindex = j*rstridey+k*rstridez;
++    OC_INDEX mindex = j*mstridey+k*mstridez;
++    OC_INDEX rindex = j*rstridey+k*rstridez;
+     for(i=0;i<rdimx;i++) {
+       field[mindex].x=rxcomp[rindex];
+       field[mindex].y=rycomp[rindex];
+diff -ru oommf-pbc_2.1/kl_demag.h oommf-pbc_2.1-new/kl_demag.h
+--- oommf-pbc_2.1/kl_demag.h	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_demag.h	2022-01-22 02:31:37.000000000 -0500
+@@ -42,36 +42,36 @@
+   // KL(m) parameters
+   // Repetition distance for z-direction. In cell meters.
+   // If 0.0 (or absent): use sample z-length
+-  REAL4m zPeriod_param;
++  OC_REAL4m zPeriod_param;
+   
+   // Fitted accurancy/error (absolute) of the calculations: "image" & "dipole".
+   // The errors are fitted with following function (r is the distance cell-cell):
+   //      A * r^p
+   // You should put a value here basing on previous results analysis.
+   // Different values for diagonal (like nXX) and off-diag elements (like nYZ)
+-  REAL4m error_A_img_diag;  
+-//  REAL4m error_p_img_diag;  we fix it
+-  REAL4m error_A_dip_diag;  
+-//  REAL4m error_p_dip_diag;  
+-  REAL4m error_A_img_OFFdiag;  
+-//  REAL4m error_p_img_OFFdiag;  
+-  REAL4m error_A_dip_OFFdiag;  
+-//  REAL4m error_p_dip_OFFdiag;  
++  OC_REAL4m error_A_img_diag;  
++//  OC_REAL4m error_p_img_diag;  we fix it
++  OC_REAL4m error_A_dip_diag;  
++//  OC_REAL4m error_p_dip_diag;  
++  OC_REAL4m error_A_img_OFFdiag;  
++//  OC_REAL4m error_p_img_OFFdiag;  
++  OC_REAL4m error_A_dip_OFFdiag;  
++//  OC_REAL4m error_p_dip_OFFdiag;  
+   
+   // The summation will be done until the *cont* error is below a certain 
+   // fraction of the actual tensor value:
+   //     error_inf_tail < err_ratio_cont_to_N * N
+-  REAL4m err_ratio_cont_to_N;  
++  OC_REAL4m err_ratio_cont_to_N;  
+   // Safety stopper in that case (for instance in the case where N==0)
+-  UINT4m max_no_sum_elements;  
++  OC_INDEX max_no_sum_elements;  
+   
+   // Fixed number of repetitions in the summation.
+   // If set (i.e, non-zero), then this criteria is used
+   // instead of the err_ratio_cont_to_N checking
+-  UINT4m no_of_sum_elements;  
++  OC_INDEX no_of_sum_elements;  
+   // Include inifinite tails computation?
+   // This is evidently for debugging purposes only
+-  BOOL include_inf_tails;
++  OC_BOOL include_inf_tails;
+   
+   // Tensor file storage for future use.
+   // The tensor will be kept in two files differing by ID (1 or 2). 
+@@ -94,38 +94,38 @@
+   // Only implemented for SimpleDemag, so far.
+ // String turbo; 
+   // to perform deeper statistics, or not?
+-  BOOL compute_stats;
++  OC_BOOL compute_stats;
+   // End of parameters.
+   // KL(m) end
+ 
+-  mutable UINT4m rdimx; // Natural size of real data
+-  mutable UINT4m rdimy; // Digital Mars compiler wants these as separate
+-  mutable UINT4m rdimz; //    statements, because of "mutable" keyword.
+-  mutable UINT4m cdimx; // Full size of complex data
+-  mutable UINT4m cdimy;
+-  mutable UINT4m cdimz;
++  mutable OC_INDEX rdimx; // Natural size of real data
++  mutable OC_INDEX rdimy; // Digital Mars compiler wants these as separate
++  mutable OC_INDEX rdimz; //    statements, because of "mutable" keyword.
++  mutable OC_INDEX cdimx; // Full size of complex data
++  mutable OC_INDEX cdimy;
++  mutable OC_INDEX cdimz;
+   // 2*cdimx>=rdimx, cdimy>=rdimy, cdimz>=rdimz
+   // cdim[xyz] should be powers of 2.
+-  mutable UINT4m cstridey; // Strides across complex data
+-  mutable UINT4m cstridez;
++  mutable OC_INDEX cstridey; // Strides across complex data
++  mutable OC_INDEX cstridez;
+   // cstridey>=cdimx, cstridez>=cdimy*cstridey
+   // The stride sizes for the real arrays are just double the
+   // complex strides, except cstride1 and rstride1 are assumed
+   // to be 1.  Total matrix size is effectively cdimz*cstridez
+   // Oxs_Complex elements, or twice that many "double" elements.
+ 
+-  mutable UINT4m mesh_id;
++  mutable OC_UINT4m mesh_id;
+ 
+   // The A## arrays hold demag coefficients, transformed into
+   // frequency domain.  These are held long term.  xcomp,
+   // ycomp, and zcomp are used as temporary space, first to hold
+   // the transforms of Mx, My, and Mz, then to store Hx, Hy, and
+   // Hz.
+-  mutable UINT4m adimx;
+-  mutable UINT4m adimy;
+-  mutable UINT4m adimz;
+-  mutable UINT4m astridey;
+-  mutable UINT4m astridez;
++  mutable OC_INDEX adimx;
++  mutable OC_INDEX adimy;
++  mutable OC_INDEX adimz;
++  mutable OC_INDEX astridey;
++  mutable OC_INDEX astridez;
+   mutable OXS_COMPLEX_REAL_TYPE *A00;
+   mutable OXS_COMPLEX_REAL_TYPE *A01;
+   mutable OXS_COMPLEX_REAL_TYPE *A02;
+@@ -144,7 +144,7 @@
+   /// The "standard" variant is simpler but slower, and is retained
+   /// mainly for testing and development purposes.
+ 
+-  UINT4m NextPowerOfTwo(UINT4m n) const;  // Helper function
++  OC_INDEX NextPowerOfTwo(OC_INDEX n) const;  // Helper function
+   void ReleaseMemory() const;
+ 
+ protected:
+@@ -158,7 +158,7 @@
+ 	    Oxs_Director* newdtr, // App director
+ 	    const char* argstr);  // MIF input block parameters
+   virtual ~Klm_Demag_PBC();
+-  virtual BOOL Init();
++  virtual OC_BOOL Init();
+ };
+ 
+ 
+diff -ru oommf-pbc_2.1/kl_infinite_prism.mif oommf-pbc_2.1-new/kl_infinite_prism.mif
+--- oommf-pbc_2.1/kl_infinite_prism.mif	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_infinite_prism.mif	2022-01-22 02:31:37.000000000 -0500
+@@ -48,7 +48,7 @@
+ }
+ 
+ Specify Klm_Demag_PBC [subst {
+-  tensor_file_name    "/tmp/demag_tensor/"  
++  tensor_file_name    "./"  
+   progress_script     {[OOMMFRootDir]/app/oxs/local/kl_progress.tcl}
+ }]
+ 
+diff -ru oommf-pbc_2.1/kl_pbc_util.cc oommf-pbc_2.1-new/kl_pbc_util.cc
+--- oommf-pbc_2.1/kl_pbc_util.cc	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_pbc_util.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -3,11 +3,12 @@
+  */
+ // KL(m) 
+ 
++#include <float.h>        // For FLT_MAX
+ 
+ #include "vf.h"           // tensor buffer file I/O
+ #include "oxswarn.h"      // for messages
+ #include "kl_pbc_util.h"
+-#include "demagcoef.h"    // we use its functions CalculateSDA<ij>
++#include "demagcoef.h"    // we use its functions Oxs_CalculateSDA<ij>
+ 
+ /* End includes */
+ 
+@@ -19,67 +20,94 @@
+    "$Author: donahue $",
+    "Kristof M. Lebecki (lebecki(ot)ifpan.edu.pl)");
+ 
+-// const REAL8m eps=1e-10;
+-const REAL8m eps=REAL8_EPSILON; // error used for comparisons: x==0.0 <-> fabs(x)<eps 
++// const OC_REAL8m eps=1e-10;
++const OC_REAL8m eps=OC_REAL8_EPSILON; // error used for comparisons: x==0.0 <-> fabs(x)<eps 
+ 
+ // We set these values fixed. 
+ //  First, because MD proved analythically their value.
+ //  Second, we anyhow assume at some point value of error_p_dip, 
+-//  namely in the function CalculateSDA_dip_err_accumulated.
+-const REAL4m error_p_img= 3.0;
+-const REAL4m error_p_dip=-7.0;
++//  namely in the function Oxs_CalculateSDA_dip_err_accumulated.
++const OC_REAL4m error_p_img= 3.0;
++const OC_REAL4m error_p_dip=-7.0;
+ 
+ // Helper functions to shorten the code for large integer (positive) power.
+-inline REALWIDE pow2(REALWIDE x)
++inline OC_REALWIDE pow2(OC_REALWIDE x)
+ { return x*x; }
+-inline REALWIDE pow3(REALWIDE x)
++inline OC_REALWIDE pow3(OC_REALWIDE x)
+ { return x*x*x; }
+-inline REALWIDE pow4(REALWIDE x)
++inline OC_REALWIDE pow4(OC_REALWIDE x)
+ { return x*x*x*x; }
+-inline REALWIDE pow5(REALWIDE x)
++inline OC_REALWIDE pow5(OC_REALWIDE x)
+ { return x*x*x*x*x; }
+ 
+ // Often I write e.g. sqrt(X*X*X*X*X) instead of pow(X,2.5)
+ // Reason: for speed-up (30 times faster on IEEE-754 processors).
+ 
++// Wrappers for OOMMF 20181207 API update.
++// Note: The Oxs_CalculateNxx and company routines use double-double
++//       arithmetic, which makes them more accurate but much slower than
++//       the older Oxs_CalculateSDA00 (and company) routines which the
++//       replace.  There is also a scaling difference, which is
++//       accounted for in the wrappers.
++#if OOMMF_API_INDEX >= 20181207
++inline OC_REALWIDE Oxs_CalculateSDA00(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNxx(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++inline OC_REALWIDE Oxs_CalculateSDA11(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNyy(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++inline OC_REALWIDE Oxs_CalculateSDA22(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNzz(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++inline OC_REALWIDE Oxs_CalculateSDA01(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNxy(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++inline OC_REALWIDE Oxs_CalculateSDA02(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNxz(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++inline OC_REALWIDE Oxs_CalculateSDA12(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++                                      OC_REALWIDE dx,OC_REALWIDE dy,OC_REALWIDE dz)
++{ return static_cast<OC_REALWIDE>(Oxs_CalculateNyz(x,y,z,dx,dy,dz).Hi())*(4*PI*dx*dy*dz); }
++#endif
++
+ // Functions for calculating the sphere / dipole N-values
+ // These functions can be succesfully used as a far-distance approximation
+ //   (replacement) for exact cube-cube Newell functions. 
+ // Following functions are taken from paper [1], eq. (15).
+ // They have to be multiplied by scale_dip_rel, see 
+ //   comment about "scale multiplicative ready" (scale-ready).
+-inline REALWIDE CalculateSDA00_dip(REALWIDE x,REALWIDE y,REALWIDE z)
++inline OC_REALWIDE Oxs_CalculateSDA00_dip(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
+ { // This is Nxx term (or N00) from eq. (15) without the mul-factor
+   return (2.*x*x-y*y-z*z) / (3.*sqrt( pow5(x*x+y*y+z*z) ));
+ }
+-inline REALWIDE CalculateSDA11_dip(REALWIDE x, REALWIDE y, REALWIDE z)
+-{ return CalculateSDA00_dip(y,x,z); }
+-inline REALWIDE CalculateSDA22_dip(REALWIDE x, REALWIDE y, REALWIDE z)
+-{ return CalculateSDA00_dip(z,y,x); }
++inline OC_REALWIDE Oxs_CalculateSDA11_dip(OC_REALWIDE x, OC_REALWIDE y, OC_REALWIDE z)
++{ return Oxs_CalculateSDA00_dip(y,x,z); }
++inline OC_REALWIDE Oxs_CalculateSDA22_dip(OC_REALWIDE x, OC_REALWIDE y, OC_REALWIDE z)
++{ return Oxs_CalculateSDA00_dip(z,y,x); }
+ //
+-inline REALWIDE CalculateSDA01_dip(REALWIDE x,REALWIDE y,REALWIDE z)
++inline OC_REALWIDE Oxs_CalculateSDA01_dip(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z)
+ { // This is Nxy term (or N01) from eq. (15) without the mul-factor
+   return x*y / sqrt( pow5(x*x+y*y+z*z) );
+ }
+-inline REALWIDE CalculateSDA02_dip(REALWIDE x, REALWIDE y, REALWIDE z)
+-{ return CalculateSDA01_dip(x,z,y); }
+-inline REALWIDE CalculateSDA12_dip(REALWIDE x, REALWIDE y, REALWIDE z)
+-{ return CalculateSDA01_dip(y,z,x); }
++inline OC_REALWIDE Oxs_CalculateSDA02_dip(OC_REALWIDE x, OC_REALWIDE y, OC_REALWIDE z)
++{ return Oxs_CalculateSDA01_dip(x,z,y); }
++inline OC_REALWIDE Oxs_CalculateSDA12_dip(OC_REALWIDE x, OC_REALWIDE y, OC_REALWIDE z)
++{ return Oxs_CalculateSDA01_dip(y,z,x); }
+ 
+ // Functions to calculate the approximated tails in infinities.
+ // Following functions reflect summation {from -\infty to -n_max} 
+ //  plus {from +n_max to +\infty}. For instance:
+-//   CalculateSDA00_tails ~=   \sum _-\infty ^-n_max CalculateSDA00_dip
+-//                            +\sum _+n_max ^-\infty CalculateSDA00_dip
++//   Oxs_CalculateSDA00_tails ~=   \sum _-\infty ^-n_max Oxs_CalculateSDA00_dip
++//                            +\sum _+n_max ^-\infty Oxs_CalculateSDA00_dip
+ // These functions are scale-ready.
+ // See [2].(A2.6), (A2.7).
+ // Acording to Mike's advice they require better shape:
+ // "with the exception of Nzz^cont, the formulas in (A2.6) are 
+ //  numerically rather poor.  Nxy^cont is especially bad"
+-REALWIDE CalculateSDA00_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
++OC_REALWIDE Oxs_CalculateSDA00_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
+ { 
+-  const REALWIDE nmin05=static_cast<REALWIDE>(n_max)-0.5;	
++  const OC_REALWIDE nmin05=static_cast<OC_REALWIDE>(n_max)-0.5;	
+   // thus, n_max = nmin_05+0.5; or n_max -> nmin05+0.5;	
+   if(fabs(x-y)>eps){ // i.e. x<>y
+     return ( \
+@@ -102,10 +130,10 @@
+   }
+ }
+ 
+-REALWIDE CalculateSDA01_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
++OC_REALWIDE Oxs_CalculateSDA01_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
+ { 
+-  const REALWIDE nmin05=static_cast<REALWIDE>(n_max)-0.5;	
++  const OC_REALWIDE nmin05=static_cast<OC_REALWIDE>(n_max)-0.5;	
+   if(fabs(x)>eps||fabs(y)>eps){ // i.e. NOT( x==y==0 )
+     return ( \
+ 	-((x*y*(4/(pow2(x) + pow2(y)) +  \
+@@ -124,10 +152,10 @@
+   }
+ }
+ 
+-REALWIDE CalculateSDA02_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
++OC_REALWIDE Oxs_CalculateSDA02_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
+ { 
+-  const REALWIDE nmin05=static_cast<REALWIDE>(n_max)-0.5;	
++  const OC_REALWIDE nmin05=static_cast<OC_REALWIDE>(n_max)-0.5;	
+   return ( \
+ 	-((x*(-1./sqrt(pow3(pow2(x) + pow2(y) + pow2(z - nmin05*zPeriod))) +  \
+ 	         1./sqrt(pow3(pow2(x) + pow2(y) + pow2(z + nmin05*zPeriod)))))/ \
+@@ -135,10 +163,10 @@
+   );
+ }
+ 
+-REALWIDE CalculateSDA22_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
++OC_REALWIDE Oxs_CalculateSDA22_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
+ { 
+-  const REALWIDE nmin05=static_cast<REALWIDE>(n_max)-0.5;	
++  const OC_REALWIDE nmin05=static_cast<OC_REALWIDE>(n_max)-0.5;	
+   return ( \
+ 	-((-((z - nmin05*zPeriod)/ \
+ 	          sqrt(pow3(pow2(x) + pow2(y) + pow2(z - nmin05*zPeriod)))) +  \
+@@ -147,33 +175,33 @@
+   );
+ }
+ 
+-inline REALWIDE CalculateSDA11_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
+-{ return CalculateSDA00_tails(y,x,z,zPeriod,n_max); }
++inline OC_REALWIDE Oxs_CalculateSDA11_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
++{ return Oxs_CalculateSDA00_tails(y,x,z,zPeriod,n_max); }
+         
+-inline REALWIDE CalculateSDA12_tails(REALWIDE x,REALWIDE y,REALWIDE z,
+-			REALWIDE zPeriod, UINT4m n_max)
+-{ return CalculateSDA02_tails(y,x,z,zPeriod,n_max); }
++inline OC_REALWIDE Oxs_CalculateSDA12_tails(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			OC_REALWIDE zPeriod, OC_INDEX n_max)
++{ return Oxs_CalculateSDA02_tails(y,x,z,zPeriod,n_max); }
+ 
+ // helper functions
+-inline REAL4m powI4(const UINT4m n) {
+-  return static_cast<REAL4m>(n)*static_cast<REAL4m>(n)
+-        *static_cast<REAL4m>(n)*static_cast<REAL4m>(n);
++inline OC_REAL4m powI4(const OC_INDEX n) {
++  return static_cast<OC_REAL4m>(n)*static_cast<OC_REAL4m>(n)
++        *static_cast<OC_REAL4m>(n)*static_cast<OC_REAL4m>(n);
+ }
+-inline REAL4m powI6(const UINT4m n) {
+-  return powI4(n)*static_cast<REAL4m>(n)*static_cast<REAL4m>(n);
++inline OC_REAL4m powI6(const OC_INDEX n) {
++  return powI4(n)*static_cast<OC_REAL4m>(n)*static_cast<OC_REAL4m>(n);
+ }
+-inline REAL4m powR3(const REALWIDE x) {
+-  return static_cast<REAL4m>(x)*static_cast<REAL4m>(x)*static_cast<REAL4m>(x);
++inline OC_REAL4m powR3(const OC_REALWIDE x) {
++  return static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(x);
+ }
+-inline REAL4m powR5(const REALWIDE x) {
+-  return powR3(x)*static_cast<REAL4m>(x)*static_cast<REAL4m>(x);
++inline OC_REAL4m powR5(const OC_REALWIDE x) {
++  return powR3(x)*static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(x);
+ }
+-inline REAL4m powR7(const REALWIDE x) {
+-  return powR5(x)*static_cast<REAL4m>(x)*static_cast<REAL4m>(x);
++inline OC_REAL4m powR7(const OC_REALWIDE x) {
++  return powR5(x)*static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(x);
+ }
+ 
+-// The functions CalculateSDAxx_tails return results with an error.
++// The functions Oxs_CalculateSDAxx_tails return results with an error.
+ //  This error can be estimated "from top" by two, values, see [2].(A2.3):
+ //  - by the cont-error (nonnegative).
+ //  - by the dip-error (positive).
+@@ -182,31 +210,31 @@
+ //
+ // These errors come out of the eq. [2].(A2.9), if you multiply it by 
+ //   |scale|.
+-REAL4m CalculateSDA00_cont_err(REALWIDE /*x*/,REALWIDE /*y*/,REALWIDE /*z*/,
+-			        REALWIDE zPeriod, UINT4m n) { 
++OC_REAL4m Oxs_CalculateSDA00_cont_err(OC_REALWIDE /*x*/,OC_REALWIDE /*y*/,OC_REALWIDE /*z*/,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
+   return 1. / (4.*powR3(zPeriod)*powI4(n));
+ }			        
+-inline REAL4m CalculateSDA11_cont_err(REALWIDE x,REALWIDE y,REALWIDE z,
+-			        REALWIDE zPeriod, UINT4m n) { 
+-  return CalculateSDA00_cont_err(y, x, z, zPeriod, n);
++inline OC_REAL4m Oxs_CalculateSDA11_cont_err(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
++  return Oxs_CalculateSDA00_cont_err(y, x, z, zPeriod, n);
+ }			        
+-REAL4m CalculateSDA22_cont_err(REALWIDE /*x*/,REALWIDE /*y*/,REALWIDE /*z*/,
+-			        REALWIDE zPeriod, UINT4m n) { 
++OC_REAL4m Oxs_CalculateSDA22_cont_err(OC_REALWIDE /*x*/,OC_REALWIDE /*y*/,OC_REALWIDE /*z*/,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
+   return 1 / (2.*powR3(zPeriod)*powI4(n));
+ }			        
+-REAL4m CalculateSDA01_cont_err(REALWIDE x,REALWIDE y,REALWIDE /*z*/,
+-			        REALWIDE zPeriod, UINT4m n) { 
+-  return 5.*static_cast<REAL4m>(x)*static_cast<REAL4m>(y) \
++OC_REAL4m Oxs_CalculateSDA01_cont_err(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE /*z*/,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
++  return 5.*static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(y) \
+            / (4.*powR5(zPeriod)*powI6(n));
+ }			        
+-REAL4m CalculateSDA02_cont_err(REALWIDE x,REALWIDE /*y*/,REALWIDE z,
+-			        REALWIDE zPeriod, UINT4m n) { 
+-  return 5.*static_cast<REAL4m>(x)*static_cast<REAL4m>(z) \
++OC_REAL4m Oxs_CalculateSDA02_cont_err(OC_REALWIDE x,OC_REALWIDE /*y*/,OC_REALWIDE z,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
++  return 5.*static_cast<OC_REAL4m>(x)*static_cast<OC_REAL4m>(z) \
+            / (powR5(zPeriod)*powI6(n));
+ }			        
+-inline REAL4m CalculateSDA12_cont_err(REALWIDE x,REALWIDE y,REALWIDE z,
+-			        REALWIDE zPeriod, UINT4m n) { 
+-  return CalculateSDA02_cont_err(y, x, z, zPeriod, n);
++inline OC_REAL4m Oxs_CalculateSDA12_cont_err(OC_REALWIDE x,OC_REALWIDE y,OC_REALWIDE z,
++			        OC_REALWIDE zPeriod, OC_INDEX n) { 
++  return Oxs_CalculateSDA02_cont_err(y, x, z, zPeriod, n);
+ }			        
+ 
+ // These errors come out of the eq. [2].(A2.1),(A2.2), if you multiply it by 
+@@ -214,14 +242,14 @@
+ //   and -\inf is here included.
+ // This value has to be further multipled by the 'A' parametr from [2].(A2.1), 
+ //   (A2.2). Beside it, it is "scale multiplicative ready".
+-REAL4m CalculateSDA_dip_err_accumulated(REALWIDE zPeriod, UINT4m n) { 
++OC_REAL4m Oxs_CalculateSDA_dip_err_accumulated(OC_REALWIDE zPeriod, OC_INDEX n) { 
+   return 4.*PI / (3.*powR7(zPeriod)*powI6(n));
+ }			        
+ 
+ // Helper function
+-UINT4m NextPowerOfTwo(UINT4m n)
++OC_INDEX NextPowerOfTwo(OC_INDEX n)
+ { // Returns first power of two >= n
+-  UINT4m m=1;
++  OC_INDEX m=1;
+   while(m<n) m*=2;
+   return m;
+ }
+@@ -236,31 +264,31 @@
+       
+ // how many progress steps. 
+ // This is determined by the progress.tcl script requirement
+-const UINT4m progress_steps = 100;  
++const OC_INDEX progress_steps = 100;  
+ 
+ // how large real number I can imagine
+ // important *only* for statistics initiatialization of "min" values
+-const REAL4m MAX_REAL = 1e100;
++const OC_REAL4m MAX_REAL = FLT_MAX;
+           
+ // DemagPBC class
+ 
+ // Constructor
+ DemagPBC::DemagPBC( 
+       const Oxs_Mesh*	genmesh_param,
+-      const REAL4m 	zPeriod_param,
+-      const REAL4m 	error_A_img_diag_param   ,
+-      const REAL4m 	error_A_dip_diag_param   ,
+-      const REAL4m 	error_A_img_OFFdiag_param,
+-      const REAL4m 	error_A_dip_OFFdiag_param,
+-      const REAL4m 	err_ratio_cont_to_N_param,
+-      const UINT4m 	max_no_sum_elements_param,
+-      const UINT4m 	no_of_sum_elements_param,
+-      const BOOL 	include_inf_tails_param,
++      const OC_REAL4m 	zPeriod_param,
++      const OC_REAL4m 	error_A_img_diag_param   ,
++      const OC_REAL4m 	error_A_dip_diag_param   ,
++      const OC_REAL4m 	error_A_img_OFFdiag_param,
++      const OC_REAL4m 	error_A_dip_OFFdiag_param,
++      const OC_REAL4m 	err_ratio_cont_to_N_param,
++      const OC_INDEX 	max_no_sum_elements_param,
++      const OC_INDEX 	no_of_sum_elements_param,
++      const OC_BOOL 	include_inf_tails_param,
+       const String 	tensor_file_name_param,
+       const String 	tensor_file_suffix_param,
+       const String 	progress_script_param,
+       const T_exec_order exec_order_param,
+-      const BOOL        compute_stats_param) 
++      const OC_BOOL        compute_stats_param) 
+       : genmesh(NULL),mesh(NULL),zPeriod(0.0),
+         // the error fitting funtion has a form err==A*r^p
+         // But we need here 4*PI*dx*dy*dz*err^2, i.e. we will store internally 
+@@ -293,9 +321,8 @@
+         // n_max and other tables are initialized in the constructor body below
+         tensor_buffer(NULL)
+ { 
+-  // highest possible UINT4m value
+-  UINT4m MAX_UINT = 0;
+-  MAX_UINT--;
++  // highest possible OC_INDEX value
++  OC_INDEX MAX_INDEX = OC_INDEX(OC_UINDEX(-1)/2);
+   // members that could not be initialized in the initializer list	
+   n_max[n00]=0.0; 
+   n_max[n11]=0.0; 
+@@ -303,12 +330,12 @@
+   n_max[n01]=0.0; 
+   n_max[n02]=0.0; 
+   n_max[n12]=0.0; 
+-  n_min[n00]=MAX_UINT;
+-  n_min[n11]=MAX_UINT; 
+-  n_min[n22]=MAX_UINT; 
+-  n_min[n01]=MAX_UINT; 
+-  n_min[n02]=MAX_UINT; 
+-  n_min[n12]=MAX_UINT; 
++  n_min[n00]=MAX_INDEX;
++  n_min[n11]=MAX_INDEX; 
++  n_min[n22]=MAX_INDEX; 
++  n_min[n01]=MAX_INDEX; 
++  n_min[n02]=MAX_INDEX; 
++  n_min[n12]=MAX_INDEX; 
+   n_sum[n00]=0.0; 
+   n_sum[n11]=0.0; 
+   n_sum[n22]=0.0; 
+@@ -382,7 +409,7 @@
+   // sizes of dx, dy and dz.  To help insure we don't run
+   // outside floating point range, rescale these values so
+   // largest is 1.0
+-  REALWIDE maxedge=dx;
++  OC_REALWIDE maxedge=dx;
+   if(dy>maxedge) maxedge=dy;
+   if(dz>maxedge) maxedge=dz;
+   dx/=maxedge; dy/=maxedge; dz/=maxedge;
+@@ -399,17 +426,17 @@
+   // zPeriod
+   // It depends on dimension variables!
+   if(zPeriod_param==0) { // we take zdim in that case (atlas length)
+-    zPeriod = static_cast<REAL8m>(zdim) * dz;
++    zPeriod = static_cast<OC_REAL8m>(zdim) * dz;
+   } else { // we take parameter value in that case
+-    zPeriod = static_cast<REAL8m>(zPeriod_param / (mesh->EdgeLengthZ())) * dz;
++    zPeriod = static_cast<OC_REAL8m>(zPeriod_param / (mesh->EdgeLengthZ())) * dz;
+   }
+-  if(zPeriod_param<(static_cast<REAL8m>(zdim) * (mesh->EdgeLengthZ())) && 
++  if(zPeriod_param<(static_cast<OC_REAL8m>(zdim) * (mesh->EdgeLengthZ())) && 
+      zPeriod_param!=0.0) {
+     char buf[1024];
+     Oc_Snprintf(buf,sizeof(buf), "Strange parameter value:"
+   	    " Specified \"zPeriod\" is %g (should be zero or >= %g, i.e. the z-length)\n"
+ 	      "I cannot imagine why you have done it, but as you wish...\n"
+-  	    ,zPeriod_param, static_cast<REAL8m>(zdim) * (mesh->EdgeLengthZ())
++  	    ,zPeriod_param, static_cast<OC_REAL8m>(zdim) * (mesh->EdgeLengthZ())
+ 	  );
+     static Oxs_WarningMessage foo(1);
+     foo.Send(revision_info,OC_STRINGIFY(__LINE__), buf);	  
+@@ -433,7 +460,7 @@
+       // in the Title line of this file. 
+       // So even small changes in this input parametr will cause the file to be re-computed :)
+       Oc_Snprintf(buf,sizeof(buf),"t-%d-%d-%d-%d-",xdim,ydim,zdim,
+-      				  static_cast<UINT4m>(OC_ROUND(zPeriod/dz)));
++      				  static_cast<OC_INDEX>(OC_ROUND(zPeriod/dz)));
+       tensor_file_prefix = tensor_file_name_param + buf; 	      	                      
+     } else
+       // it is just a file name
+@@ -497,11 +524,11 @@
+       throw Oxs_Ext::Error("Tcl interpretor not initialized");
+     int errcode = TCL_OK;
+     // now, we start the progress-script
+-    errcode = Tcl_Eval(interp,("set klmchan [open \"|wish "
+-                              +progress_script+"\" w+]").c_str());
++    errcode = Tcl_Eval(interp,Oc_AutoBuf(String("set klmchan [open \"|wish ")
++                                         + progress_script + String("\" w+]")));
+     if(errcode==TCL_OK) {
+       // Configure process channel, and double-check launch success
+-      errcode = Tcl_Eval(interp,"\n\
++      errcode = Tcl_Eval(interp,Oc_AutoBuf("\n\
+         fconfigure $klmchan -blocking 0 -buffering line\n\
+         set kl_pbc_check_loop 10\n\
+         while {[set kl_pbc_check_count [gets $klmchan kl_pbc_check_value]]<1} {\n\
+@@ -520,7 +547,7 @@
+            catch {close $klmchan}\n\
+            error \"Bad progress script check string: -->$kl_pbc_check_value<--\"\n\
+         }\n\
+-      ");
++      "));
+     }
+     if(errcode!=TCL_OK) {
+       static Oxs_WarningMessage foo(-1);
+@@ -536,7 +563,7 @@
+ // error of the *img* computation done for teXX element,
+ // with r inter-cell distance.
+ // r2=r^2, the result is also error^2
+-REAL4m DemagPBC::CalculateSDAerrIMG_2(const REALWIDE r2, 
++OC_REAL4m DemagPBC::Oxs_CalculateSDAerrIMG_2(const OC_REALWIDE r2, 
+                                       const T_tens_el teXX) const
+ { 
+   // the error fitting funtion has a form err==A*r^p
+@@ -554,7 +581,7 @@
+     return 0.0;
+ }
+ // similarly for *dip* method
+-REAL4m DemagPBC::CalculateSDAerrDIP_2(const REALWIDE r2, 
++OC_REAL4m DemagPBC::Oxs_CalculateSDAerrDIP_2(const OC_REALWIDE r2, 
+                                       const T_tens_el teXX) const
+ { 
+   if(compute_stats) {
+@@ -573,7 +600,7 @@
+                                  const String title,
+                                  const char* desc) const
+ {
+-  const BOOL write_headers = 1;
++  const OC_BOOL write_headers = 1;
+   const char* valueunit = "{}";
+   const char* meshtype = genmesh->NaturalOutputType();
+   const char* datatype  = "binary";
+@@ -581,7 +608,7 @@
+ //  const char* datatype  = "text";
+ //  const char* precision = "%.20g";
+   //
+-  genmesh->WriteOvf(file_name.c_str(),
++  genmesh->WriteOvfFile(file_name.c_str(),
+      	  write_headers,
+ 		    title.c_str(),desc,
+ 		    valueunit,meshtype,datatype,precision,
+@@ -594,8 +621,8 @@
+                        const String replace_by)
+ {
+   String tmp = str;
+-  UINT4m i = tmp.find(replace_what);
+-  while(i != (UINT4m)String::npos) { // casting to avoid compiler warnings
++  OC_INDEX i = tmp.find(replace_what);
++  while(i != (OC_INDEX)String::npos) { // casting to avoid compiler warnings
+     tmp = tmp.replace(i, replace_what.length(), replace_by);
+     i = tmp.find(replace_what);
+   }
+@@ -603,7 +630,7 @@
+ }                          
+ 
+ // Fills the tensor_buffer from a file
+-BOOL DemagPBC::load_tensor_file( const String file_name, 
++OC_BOOL DemagPBC::load_tensor_file( const String file_name, 
+                                  const String title) const
+ // Result: succesfull (1) or not (0) load process
+ // For a success the file_mesh has to be *exactly* the same as the current one
+@@ -649,12 +676,12 @@
+       throw Oxs_Ext::Error(buf);
+     }
+     // mesh size
+-    if(static_cast<UINT4m>(file_mesh->GetSize())!=mesh->Size()) {
++    if(static_cast<OC_INDEX>(file_mesh->GetSize())!=mesh->Size()) {
+       char buf[4096];
+       Oc_Snprintf(buf,sizeof(buf),
+     		"\nDifferent mesh sizes:\n"
+     		"%d != %d\n"
+-    		,static_cast<UINT4m>(file_mesh->GetSize())
++    		,static_cast<OC_INDEX>(file_mesh->GetSize())
+         ,mesh->Size());
+       throw Oxs_Ext::Error(buf);
+     }
+@@ -662,13 +689,13 @@
+       tensor_buffer.AdjustSize(mesh); // safety, should never happen
+       
+     // Cellsize
+-    Nb_Vec3<REAL4> file_dim= file_mesh->GetApproximateCellDimensions();   
+-    const REAL4 edgeX = static_cast<REAL4>(mesh->EdgeLengthX());
+-    const REAL4 edgeY = static_cast<REAL4>(mesh->EdgeLengthY());
+-    const REAL4 edgeZ = static_cast<REAL4>(mesh->EdgeLengthZ());    
+-    if( fabs(edgeX - file_dim.x)>REAL4_EPSILON*edgeX ||
+-        fabs(edgeY - file_dim.y)>REAL4_EPSILON*edgeY ||
+-        fabs(edgeZ - file_dim.z)>REAL4_EPSILON*edgeZ ) {
++    Nb_Vec3<OC_REAL4> file_dim= file_mesh->GetApproximateCellDimensions();   
++    const OC_REAL4 edgeX = static_cast<OC_REAL4>(mesh->EdgeLengthX());
++    const OC_REAL4 edgeY = static_cast<OC_REAL4>(mesh->EdgeLengthY());
++    const OC_REAL4 edgeZ = static_cast<OC_REAL4>(mesh->EdgeLengthZ());    
++    if( fabs(edgeX - file_dim.x)>OC_REAL4_EPSILON*edgeX ||
++        fabs(edgeY - file_dim.y)>OC_REAL4_EPSILON*edgeY ||
++        fabs(edgeZ - file_dim.z)>OC_REAL4_EPSILON*edgeZ ) {
+       char buf[4096];
+       Oc_Snprintf(buf,sizeof(buf),
+     		"\nDifferent cell sizes:\n"
+@@ -683,21 +710,21 @@
+       
+     // mesh boundaries
+     // file
+-    Nb_BoundingBox<REAL8m> file_range;
++    Nb_BoundingBox<OC_REAL8m> file_range;
+     file_mesh->GetPreciseRange(file_range); // including boundary
+-    REAL8m fxMin, fyMin, fzMin, fxMax, fyMax, fzMax;
++    OC_REAL8m fxMin, fyMin, fzMin, fxMax, fyMax, fzMax;
+     file_range.GetMinPt(fxMin, fyMin, fzMin);
+     file_range.GetMaxPt(fxMax, fyMax, fzMax);
+     // actual
+     Oxs_Box bbox;    
+     mesh->GetBoundingBox(bbox);
+     // check
+-    if( fabs(fxMin - bbox.GetMinX())>REAL8_EPSILON*fabs(fxMin) ||
+-        fabs(fyMin - bbox.GetMinY())>REAL8_EPSILON*fabs(fyMin) ||
+-        fabs(fzMin - bbox.GetMinZ())>REAL8_EPSILON*fabs(fzMin) ||
+-        fabs(fxMax - bbox.GetMaxX())>REAL8_EPSILON*fabs(fxMax) ||
+-        fabs(fyMax - bbox.GetMaxY())>REAL8_EPSILON*fabs(fyMax) ||
+-        fabs(fzMax - bbox.GetMaxZ())>REAL8_EPSILON*fabs(fzMax) ) {
++    if( fabs(fxMin - bbox.GetMinX())>OC_REAL8_EPSILON*fabs(fxMin) ||
++        fabs(fyMin - bbox.GetMinY())>OC_REAL8_EPSILON*fabs(fyMin) ||
++        fabs(fzMin - bbox.GetMinZ())>OC_REAL8_EPSILON*fabs(fzMin) ||
++        fabs(fxMax - bbox.GetMaxX())>OC_REAL8_EPSILON*fabs(fxMax) ||
++        fabs(fyMax - bbox.GetMaxY())>OC_REAL8_EPSILON*fabs(fyMax) ||
++        fabs(fzMax - bbox.GetMaxZ())>OC_REAL8_EPSILON*fabs(fzMax) ) {
+       char buf[4096];
+       Oc_Snprintf(buf,sizeof(buf),
+     		"\nDifferent mesh boundaries:\n"
+@@ -719,18 +746,18 @@
+     // number of cells in every direction
+     // This checking is redundant, but if you are writing re-scaling code
+     // you can use it...
+-    /* const UINT4m f_noX = \
+-        static_cast<UINT4m>(OC_ROUND(file_range.GetWidth() /file_dim.x));
+-    const UINT4m f_noY = \
+-        static_cast<UINT4m>(OC_ROUND(file_range.GetHeight()/file_dim.y));
+-    const UINT4m f_noZ = \
+-        static_cast<UINT4m>(OC_ROUND(file_range.GetDepth() /file_dim.z));
+-    const UINT4m noX = \
+-        static_cast<UINT4m>(OC_ROUND((bbox.GetMaxX()-bbox.GetMinX())/edgeX));
+-    const UINT4m noY = \
+-        static_cast<UINT4m>(OC_ROUND((bbox.GetMaxY()-bbox.GetMinY())/edgeY));
+-    const UINT4m noZ = \
+-        static_cast<UINT4m>(OC_ROUND((bbox.GetMaxZ()-bbox.GetMinZ())/edgeZ));
++    /* const OC_INDEX f_noX = \
++        static_cast<OC_INDEX>(OC_ROUND(file_range.GetWidth() /file_dim.x));
++    const OC_INDEX f_noY = \
++        static_cast<OC_INDEX>(OC_ROUND(file_range.GetHeight()/file_dim.y));
++    const OC_INDEX f_noZ = \
++        static_cast<OC_INDEX>(OC_ROUND(file_range.GetDepth() /file_dim.z));
++    const OC_INDEX noX = \
++        static_cast<OC_INDEX>(OC_ROUND((bbox.GetMaxX()-bbox.GetMinX())/edgeX));
++    const OC_INDEX noY = \
++        static_cast<OC_INDEX>(OC_ROUND((bbox.GetMaxY()-bbox.GetMinY())/edgeY));
++    const OC_INDEX noZ = \
++        static_cast<OC_INDEX>(OC_ROUND((bbox.GetMaxZ()-bbox.GetMinZ())/edgeZ));
+     if( f_noX!=noX || f_noY!=noY || f_noZ!=noZ ) {
+       char buf[4096];
+       Oc_Snprintf(buf,sizeof(buf),
+@@ -741,19 +768,19 @@
+     		,f_noX, noX
+     		,f_noY, noY
+     		,f_noZ, noZ
+-    		,file_range.GetWidth(), static_cast<REAL8>(bbox.GetMaxX()-bbox.GetMinX())
+-        ,file_range.GetHeight(),static_cast<REAL8>(bbox.GetMaxY()-bbox.GetMinY())
+-        ,file_range.GetDepth(), static_cast<REAL8>(bbox.GetMaxZ()-bbox.GetMinZ()));
++    		,file_range.GetWidth(), static_cast<OC_REAL8>(bbox.GetMaxX()-bbox.GetMinX())
++        ,file_range.GetHeight(),static_cast<OC_REAL8>(bbox.GetMaxY()-bbox.GetMinY())
++        ,file_range.GetDepth(), static_cast<OC_REAL8>(bbox.GetMaxZ()-bbox.GetMinZ()));
+       throw Oxs_Ext::Error(buf);
+     } */
+     
+     // Fill the buffer
+-    UINT4m size = tensor_buffer.Size();
+-    for(UINT4m i=0;i<size;i++) {
++    OC_INDEX size = tensor_buffer.Size();
++    for(OC_INDEX i=0;i<size;i++) {
+       ThreeVector location;
+       mesh->Center(i,location);
+-      Nb_Vec3<REAL8> pos(location.x,location.y,location.z);
+-      Nb_LocatedVector<REAL8> lv;
++      Nb_Vec3<OC_REAL8> pos(location.x,location.y,location.z);
++      Nb_LocatedVector<OC_REAL8> lv;
+       file_mesh->FindPreciseClosest(pos,lv);
+       ThreeVector value(lv.value.x,lv.value.y,lv.value.z);
+       tensor_buffer[i] = value * file_mesh->GetValueMultiplier();
+@@ -794,8 +821,8 @@
+                      title_2[exec_order]+important_parameters);
+ }
+ 
+-REAL8m DemagPBC::GetTensorElementFromBuffer(
+-    const UINT4m el_idx, const T_tens_el teXX) const 
++OC_REAL8m DemagPBC::GetTensorElementFromBuffer(
++    const OC_INDEX el_idx, const T_tens_el teXX) const 
+ {
+   switch(exec_order) {
+     case _SimpleDemag:
+@@ -837,7 +864,7 @@
+ }
+ // conceptually const
+ void DemagPBC::PutTensorElementToBuffer(
+-    const REAL8m elem, const UINT4m el_idx, const T_tens_el teXX) const
++    const OC_REAL8m elem, const OC_INDEX el_idx, const T_tens_el teXX) const
+ {    
+   switch(exec_order) {
+     case _SimpleDemag:
+@@ -893,8 +920,8 @@
+ // KL2.0 change (remove only inf_* ???)
+ // Inf_tails and sum_coeff are written on request to appr tables 
+ // (with index store_inf_sum_idx)
+-REALWIDE DemagPBC::CalculateSDA_PBC_really( \
+-    const UINT4m i, const UINT4m j, const UINT4m k, \
++OC_REALWIDE DemagPBC::Oxs_CalculateSDA_PBC_really( \
++    const OC_INDEX i, const OC_INDEX j, const OC_INDEX k, \
+     const T_tens_el teXX) const
+ { // conceptually const
+ 
+@@ -906,40 +933,40 @@
+   // "not altered" means that the *average* will be accordingly lowered, due to the divisio at the end.
+   // But the *mins* will reflect non-zero minimums.
+   // This step is also *IMPORTANT*, because the n-index loop-braking will work now for sure.
+-  if(teXX==n01 && (i==0 || j==0) ||
+-     teXX==n02 && (i==0 || k==0) ||
+-     teXX==n12 && (j==0 || k==0)) {
++  if((teXX==n01 && (i==0 || j==0)) ||
++     (teXX==n02 && (i==0 || k==0)) ||
++     (teXX==n12 && (j==0 || k==0))) {
+     return 0.0; }
+     
+   // The above code uses antisymmetric property of Nij.
+   // For code speed-up we could also use symmetric property of both Nii and Nij
+   // (to shorten the summation by factor of 0.5). This is however not implemented, yet.
+ 
+-  const REALWIDE x = dx*i;
+-  const REALWIDE y = dy*j;
+-  const REALWIDE z = dz*k;
++  const OC_REALWIDE x = dx*i;
++  const OC_REALWIDE y = dy*j;
++  const OC_REALWIDE z = dz*k;
+   
+   // OOMMF code uses not the demagnetization tensor, 'N', but rather
+-  //   (-4.*PI*dx*dy*dz)*N - at least this is what CalculateSDA_PBC_really 
++  //   (-4.*PI*dx*dy*dz)*N - at least this is what Oxs_CalculateSDA_PBC_really 
+   //   functions are supposed to return.
+   // So, we report everywhere here N multiplied by (-4.*PI*dx*dy*dz).
+   //
+   // That is why following factor from eq. (19) or (28) (Newell's papaper) 
+   //   with additional minus sign is defined in OOMMF:
+-  //   const REALWIDE scale = -1./(4.*PI*dx*dy*dz);
++  //   const OC_REALWIDE scale = -1./(4.*PI*dx*dy*dz);
+   //
+   // Another factor comes from eq. (15) with additional minus sign. 
+   //   This is scale factor for dipole-dipole approximation formula:
+-  //   const REALWIDE scale_dip = (3.*dx*dy*dz)/(4.*PI);
++  //   const OC_REALWIDE scale_dip = (3.*dx*dy*dz)/(4.*PI);
+   // As we prepare our results to be "scale multiplicative ready",
+   //  it means they will be outside multiplied by scale (not scale_dip):
+   //	- *img*  has to be not-multiplied (internally)
+   //	- *dip*  has to be multiplied by scale_dip_rel = scale_dip / scale;
+   //    - *cont* has to be not-multiplied (the errors as well)
+-  const REALWIDE scale_dip_rel = -3.*pow2(dx*dy*dz);
++  const OC_REALWIDE scale_dip_rel = -3.*pow2(dx*dy*dz);
+   
+   // This will be square of appriopriate max_celldistance_img_
+-  REALWIDE  max_dist_SQR_XXX;
++  OC_REALWIDE  max_dist_SQR_XXX;
+   if(teXX==n00 || teXX==n11 || teXX==n22)
+     // diagonal elements
+     max_dist_SQR_XXX= max_celldistance_img_diag*max_celldistance_img_diag;
+@@ -949,132 +976,131 @@
+   
+   // Now, we substitute depending on teXX:
+   //  appriopriate functiones ...
+-  REALWIDE \
+-    (*CalculateSDAXX)(REALWIDE,REALWIDE,REALWIDE,REALWIDE,REALWIDE,REALWIDE) = NULL,
+-    (*CalculateSDAXX_dip)(REALWIDE,REALWIDE,REALWIDE)                        = NULL,
+-    (*CalculateSDAXX_tails)(REALWIDE,REALWIDE,REALWIDE,REALWIDE,UINT4m)      = NULL;
+-  REAL4m \
+-    (*CalculateSDAXX_cont_err)(REALWIDE,REALWIDE,REALWIDE,REALWIDE,UINT4m)   = NULL;
++  OC_REALWIDE \
++    (*Oxs_CalculateSDAXX)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_REALWIDE) = NULL,
++    (*Oxs_CalculateSDAXX_dip)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE)                        = NULL,
++    (*Oxs_CalculateSDAXX_tails)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_INDEX)      = NULL;
++  OC_REAL4m \
++    (*Oxs_CalculateSDAXX_cont_err)(OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_REALWIDE,OC_INDEX)   = NULL;
+   switch(teXX) {
+     case n00: 
+-      CalculateSDAXX =           CalculateSDA00; 
+-      CalculateSDAXX_dip =       CalculateSDA00_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA00_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA00_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA00; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA00_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA00_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA00_cont_err; 
+       break;
+     case n11: 
+-      CalculateSDAXX =           CalculateSDA11; 
+-      CalculateSDAXX_dip =       CalculateSDA11_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA11_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA11_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA11; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA11_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA11_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA11_cont_err; 
+       break;
+     case n22: 
+-      CalculateSDAXX =           CalculateSDA22; 
+-      CalculateSDAXX_dip =       CalculateSDA22_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA22_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA22_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA22; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA22_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA22_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA22_cont_err; 
+       break;
+     case n01: 
+-      CalculateSDAXX =           CalculateSDA01; 
+-      CalculateSDAXX_dip =       CalculateSDA01_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA01_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA01_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA01; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA01_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA01_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA01_cont_err; 
+       break;
+     case n02: 
+-      CalculateSDAXX =           CalculateSDA02; 
+-      CalculateSDAXX_dip =       CalculateSDA02_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA02_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA02_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA02; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA02_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA02_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA02_cont_err; 
+       break;
+     case n12: 
+-      CalculateSDAXX =           CalculateSDA12; 
+-      CalculateSDAXX_dip =       CalculateSDA12_dip; 
+-      CalculateSDAXX_tails =     CalculateSDA12_tails; 
+-      CalculateSDAXX_cont_err =  CalculateSDA12_cont_err; 
++      Oxs_CalculateSDAXX =           Oxs_CalculateSDA12; 
++      Oxs_CalculateSDAXX_dip =       Oxs_CalculateSDA12_dip; 
++      Oxs_CalculateSDAXX_tails =     Oxs_CalculateSDA12_tails; 
++      Oxs_CalculateSDAXX_cont_err =  Oxs_CalculateSDA12_cont_err; 
+       break;
+   }
+   
+-  REALWIDE coef; // result of the function
++  OC_REALWIDE coef; // result of the function
+   // this will be sum of *img*, *dip*, and *cont* repetitions
+   
+   // error^2 of the result, total and absolute. This will be sum-of-squares
+-  REAL4m err2;  
++  OC_REAL4m err2;  
+   
+-  REALWIDE x2y2=x*x+y*y; // this value will be repetitively used
++  OC_REALWIDE x2y2=x*x+y*y; // this value will be repetitively used
+   
+   // 0_z-repetinion
+   if(x2y2+z*z < max_dist_SQR_XXX)
+   {
+-    coef = (*CalculateSDAXX)(x,y,z,dx,dy,dz);               // not scaled
+-    err2 = CalculateSDAerrIMG_2(x2y2+z*z,teXX);
++    coef = (*Oxs_CalculateSDAXX)(x,y,z,dx,dy,dz);               // not scaled
++    err2 = Oxs_CalculateSDAerrIMG_2(x2y2+z*z,teXX);
+   }
+   else 
+   {
+-    coef = scale_dip_rel * (*CalculateSDAXX_dip)(x,y,z);    // scaled
+-    err2 = CalculateSDAerrDIP_2(x2y2+z*z,teXX);
++    coef = scale_dip_rel * (*Oxs_CalculateSDAXX_dip)(x,y,z);    // scaled
++    err2 = Oxs_CalculateSDAerrDIP_2(x2y2+z*z,teXX);
+   }
+   
+   // n_z-repetinion (n and -n)
+   // we sum from highest "coef" values to highest :(
+   // I know, it should be opposite
+-  volatile REALWIDE summation_corrector = 0.0; // For compensated summation
+-  REAL4m inf_tail_error; // This is the error of the infinite tail
+-  UINT4m MAX_UINT = 0; // for range overflow checking
+-  MAX_UINT--;
+-  UINT4m n=0; // repetinion counter
++  volatile OC_REALWIDE summation_corrector = 0.0; // For compensated summation
++  OC_REAL4m inf_tail_error; // This is the error of the infinite tail
++  OC_INDEX MAX_INDEX = OC_INDEX(OC_UINDEX(-1)/2); // for range overflow checking
++  OC_INDEX n=0; // repetinion counter
+   do 
+   {
+     n++; // we start with n==1
+     // range overflow checking. Just to have a stopper somewhere.
+     // Details are less important
+-    if(n>MAX_UINT/3) {
++    if(n>MAX_INDEX/3) {
+       char buf[4096];
+       Oc_Snprintf(buf,sizeof(buf),
+                   "Range overflow, PBC repetition index reached %d\n", n);
+       throw Oxs_Ext::Error(buf);
+     }
+-    const REALWIDE n_zPeriod=(static_cast<REALWIDE>(n))*zPeriod;
+-    REALWIDE part; // result for this +n and -n
++    const OC_REALWIDE n_zPeriod=(static_cast<OC_REALWIDE>(n))*zPeriod;
++    OC_REALWIDE part; // result for this +n and -n
+     // first we evaluate z+n*zPeriod
+     if(x2y2+(z+n_zPeriod)*(z+n_zPeriod) < max_dist_SQR_XXX) 
+     {
+-      part = (*CalculateSDAXX)(x,y,z+n_zPeriod,dx,dy,dz);           // not scaled  
+-      err2 += CalculateSDAerrIMG_2(x2y2+(z+n_zPeriod)*(z+n_zPeriod),teXX);
++      part = (*Oxs_CalculateSDAXX)(x,y,z+n_zPeriod,dx,dy,dz);           // not scaled  
++      err2 += Oxs_CalculateSDAerrIMG_2(x2y2+(z+n_zPeriod)*(z+n_zPeriod),teXX);
+     }
+     else 
+     { 
+-      part = scale_dip_rel * (*CalculateSDAXX_dip)(x,y,z+n_zPeriod); // scaled
+-      err2 += CalculateSDAerrDIP_2(x2y2+(z+n_zPeriod)*(z+n_zPeriod),teXX);
++      part = scale_dip_rel * (*Oxs_CalculateSDAXX_dip)(x,y,z+n_zPeriod); // scaled
++      err2 += Oxs_CalculateSDAerrDIP_2(x2y2+(z+n_zPeriod)*(z+n_zPeriod),teXX);
+     }
+     // Now, we evaluate z-n_zPeriod
+     if(x2y2+(z-n_zPeriod)*(z-n_zPeriod) < max_dist_SQR_XXX) 
+     {
+-      part+= (*CalculateSDAXX)(x,y,z-n_zPeriod,dx,dy,dz);           // not scaled  
+-      err2 += CalculateSDAerrIMG_2(x2y2+(z-n_zPeriod)*(z-n_zPeriod),teXX);
++      part+= (*Oxs_CalculateSDAXX)(x,y,z-n_zPeriod,dx,dy,dz);           // not scaled  
++      err2 += Oxs_CalculateSDAerrIMG_2(x2y2+(z-n_zPeriod)*(z-n_zPeriod),teXX);
+     }
+     else 
+     {
+-      part+= scale_dip_rel * (*CalculateSDAXX_dip)(x,y,z-n_zPeriod); // scaled
+-      err2 += CalculateSDAerrDIP_2(x2y2+(z-n_zPeriod)*(z-n_zPeriod),teXX);
++      part+= scale_dip_rel * (*Oxs_CalculateSDAXX_dip)(x,y,z-n_zPeriod); // scaled
++      err2 += Oxs_CalculateSDAerrDIP_2(x2y2+(z-n_zPeriod)*(z-n_zPeriod),teXX);
+     }
+     // Add up using compensated summation.
+-    volatile REALWIDE part_corr = part;           // this will be a summation corrector
+-    volatile REALWIDE sum_corr = coef + part; // this will be a corrected sum
++    volatile OC_REALWIDE part_corr = part;           // this will be a summation corrector
++    volatile OC_REALWIDE sum_corr = coef + part; // this will be a corrected sum
+     part_corr -= sum_corr-coef;         
+     summation_corrector += part_corr;
+     coef = sum_corr; 
+          
+     // error of both infinite tails (positive)
+     // this is |Ncont-Ndip|
+-    inf_tail_error = (*CalculateSDAXX_cont_err)(x,y,z,zPeriod,n+1);
++    inf_tail_error = (*Oxs_CalculateSDAXX_cont_err)(x,y,z,zPeriod,n+1);
+     // this is |Nimg-Ndip|
+     if(teXX==n00 || teXX==n11 || teXX==n22)
+           // diagonal elements
+       inf_tail_error += error_A_dip_diag * \
+-                        CalculateSDA_dip_err_accumulated(zPeriod,n+1);
++                        Oxs_CalculateSDA_dip_err_accumulated(zPeriod,n+1);
+     else  // off-diagonal elements
+       inf_tail_error += error_A_dip_OFFdiag * \
+-                        CalculateSDA_dip_err_accumulated(zPeriod,n+1);
++                        Oxs_CalculateSDA_dip_err_accumulated(zPeriod,n+1);
+   } while (
+ // such a test: 1 instead of N
+ //    (no_of_sum_elements==0 && err_ratio_cont_to_N<inf_tail_error
+@@ -1086,14 +1112,14 @@
+   );
+   
+   // "Infinite tails"
+-  const REALWIDE infinity_tails = (*CalculateSDAXX_tails)(x,y,z,zPeriod,n+1);
++  const OC_REALWIDE infinity_tails = (*Oxs_CalculateSDAXX_tails)(x,y,z,zPeriod,n+1);
+ // till 16-2-2008 this line looked as following:
+-//  	(scale_dip_rel/3.) * (*CalculateSDAXX_tailsOLD)(x,y,z,zPeriod,n+1); 
++//  	(scale_dip_rel/3.) * (*Oxs_CalculateSDAXX_tailsOLD)(x,y,z,zPeriod,n+1); 
+ // The new for is corect with the paper and gives better result.
+ // (The bug might have been somewhere, I did not trace it)
+ //
+ // till 18-4-2007 this line looked as following:
+-//  	fabs(scale_dip_rel/3.) * (*CalculateSDAXX_tails)(x,y,z,zPeriod,n+1); 
++//  	fabs(scale_dip_rel/3.) * (*Oxs_CalculateSDAXX_tails)(x,y,z,zPeriod,n+1); 
+ // This was apperently a bug.
+   	
+   // We add everything together:
+@@ -1105,9 +1131,9 @@
+   // Statistics: errors, and not only
+   
+   // no of summation elements
+-  if(n_max[teXX]<static_cast<REAL4m>(n)) n_max[teXX]=static_cast<REAL4m>(n);
+-  if(n_min[teXX]>static_cast<REAL4m>(n)) n_min[teXX]=static_cast<REAL4m>(n);
+-  n_sum[teXX] += static_cast<REAL4m>(n);
++  if(n_max[teXX]<static_cast<OC_REAL4m>(n)) n_max[teXX]=static_cast<OC_REAL4m>(n);
++  if(n_min[teXX]>static_cast<OC_REAL4m>(n)) n_min[teXX]=static_cast<OC_REAL4m>(n);
++  n_sum[teXX] += static_cast<OC_REAL4m>(n);
+ 
+   if(compute_stats) {
+     err2 += inf_tail_error*inf_tail_error;
+@@ -1120,7 +1146,7 @@
+     err_sum[teXX] += sqrt(err2);
+     
+     // Summation compensation ratio
+-    const REAL4m tmp = fabs(summation_corrector)/sqrt(err2);
++    const OC_REAL4m tmp = fabs(summation_corrector)/sqrt(err2);
+     if(err_sum_ratio_max[teXX]<tmp) err_sum_ratio_max[teXX]=tmp;
+     if(err_sum_ratio_min[teXX]>tmp) err_sum_ratio_min[teXX]=tmp;
+     err_sum_ratio_sum[teXX] += tmp;
+@@ -1129,21 +1155,21 @@
+   return coef;
+ }
+ 
+-REALWIDE DemagPBC::CalculateSDA(const T_tens_el teXX,
+-                  const UINT4m i, const UINT4m j, const UINT4m k) const
++OC_REALWIDE DemagPBC::Oxs_CalculateSDA(const T_tens_el teXX,
++                  const OC_INDEX i, const OC_INDEX j, const OC_INDEX k) const
+ { // conceptually const
+-  REALWIDE coef;
++  OC_REALWIDE coef;
+ 
+   if(tensor_rw==NOTHING || tensor_rw==WRITE) {
+     // we have to calculate it ...
+     if(show_progress==1) { // progress
+       cell_cnt++; // increase the cell counter
+       // what can we report, 6 because we have six tensor elements
+-      UINT4m actual_cnt = (cell_cnt * progress_steps) / (totalsize * 6);
++      OC_INDEX actual_cnt = (cell_cnt * progress_steps) / (totalsize * 6);
+       if(actual_cnt > progress_cnt) {    // is it different from prev. value?
+         progress_cnt = actual_cnt;
+         char buf[100];
+-        sprintf(buf,"puts $klmchan %d",progress_cnt);
++        sprintf(buf,"puts $klmchan %ld",(long)progress_cnt);
+         int errcode = TCL_OK;
+         errcode = Tcl_Eval(interp,buf);
+         if(errcode!=TCL_OK)
+@@ -1151,7 +1177,7 @@
+                                     +Tcl_GetStringResult(interp)).c_str());
+       }    
+     }
+-    coef = CalculateSDA_PBC_really(i, j, k, teXX);
++    coef = Oxs_CalculateSDA_PBC_really(i, j, k, teXX);
+         
+     if(tensor_rw==WRITE)
+       // filling up the tensor
+@@ -1168,9 +1194,9 @@
+   tensor_buffer.Release(); 
+ }
+ 
+-REAL4m minimum6el(const REAL4m *table) {
+-// shit, I hope it is ok. this table is: REAL4m[tens_el_MAX]	
+-  REAL4m tmp= table[n00];
++OC_REAL4m minimum6el(const OC_REAL4m *table) {
++// shit, I hope it is ok. this table is: OC_REAL4m[tens_el_MAX]	
++  OC_REAL4m tmp= table[n00];
+   if(table[n11]<tmp) tmp= table[n11];
+   if(table[n22]<tmp) tmp= table[n22];
+   if(table[n01]<tmp) tmp= table[n01];
+@@ -1179,8 +1205,8 @@
+   return tmp;
+ }
+ 
+-REAL4m maximum6el(const REAL4m *table) {
+-  REAL4m tmp= table[n00];
++OC_REAL4m maximum6el(const OC_REAL4m *table) {
++  OC_REAL4m tmp= table[n00];
+   if(table[n11]>tmp) tmp= table[n11];
+   if(table[n22]>tmp) tmp= table[n22];
+   if(table[n01]>tmp) tmp= table[n01];
+@@ -1189,14 +1215,14 @@
+   return tmp;
+ }
+ 
+-REAL4m average6el(const REAL4m *table) {
+-  REAL4m tmp= 
++OC_REAL4m average6el(const OC_REAL4m *table) {
++  OC_REAL4m tmp= 
+     (table[n00]+table[n11]+table[n22]+table[n01]+table[n02]+table[n12])/6;
+   return tmp;
+ }
+ 
+-REAL4m sum6el(const REAL4m *table) {
+-  REAL4m tmp= 
++OC_REAL4m sum6el(const OC_REAL4m *table) {
++  OC_REAL4m tmp= 
+     table[n00]+table[n11]+table[n22]+table[n01]+table[n02]+table[n12];
+   return tmp;
+ }
+@@ -1208,7 +1234,7 @@
+   // We write it to the file (only)
+   if(tensor_rw==WRITE) {
+     // Information show
+-    REAL4m tmp = static_cast<REAL4m>(totalsize);
++    OC_REAL4m tmp = static_cast<OC_REAL4m>(totalsize);
+     Oc_Snprintf(buf_statistics,sizeof(buf_statistics),
+       "   ***   PBC statistics   ***\n"
+           "max_celldistance_img_Diag=%g, max_celldistance_img_OffDiag=%g\n"
+@@ -1263,7 +1289,7 @@
+   // Progress closure
+   if(show_progress==1 && tensor_rw!=READ) {
+     int errcode = TCL_OK;
+-    errcode = Tcl_Eval(interp,"puts $klmchan exit");
++    errcode = Tcl_Eval(interp,Oc_AutoBuf("puts $klmchan exit"));
+     if(errcode!=TCL_OK)
+       throw Oxs_Ext::Error((String("Tcl error\n")
+                                 +Tcl_GetStringResult(interp)).c_str());
+@@ -1284,7 +1310,7 @@
+ 	  "%.20g %.20g %.20g\n"
+ 	  "%.20g\n"
+ 	  ,n,teXX
+-	  ,sum_coef, part, scale_dip_rel * (*CalculateSDAXX_dip)(x,y,z+n_zPeriod)
++	  ,sum_coef, part, scale_dip_rel * (*Oxs_CalculateSDAXX_dip)(x,y,z+n_zPeriod)
+ 	  ,error_img_dip_diag * fabs(sum_coef)
+ 	  );
+ //	throw Oxs_Ext::Error(buf);
+diff -ru oommf-pbc_2.1/kl_pbc_util.h oommf-pbc_2.1-new/kl_pbc_util.h
+--- oommf-pbc_2.1/kl_pbc_util.h	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_pbc_util.h	2022-01-22 02:31:37.000000000 -0500
+@@ -72,9 +72,9 @@
+       results of the summation from an finite to infinite 
+       limit. 
+  Each part (area) will use following functions:
+-   1. CalculateSDA** (defined in the OOMMF libraries)
+-   2. CalculateSDA**_dip
+-   3. CalculateSDA00_tails
++   1. Oxs_CalculateSDA** (defined in the OOMMF libraries)
++   2. Oxs_CalculateSDA**_dip
++   3. Oxs_CalculateSDA00_tails
+   Concluding, we will sum several elements using way "1", "2"
+   and add to it "infinite tails" using funtions **_tails
+ 
+@@ -95,17 +95,17 @@
+ 
+ /* End includes */
+ 
+-// used ex. in the CalculateSDA_PBC_really function
++// used ex. in the Oxs_CalculateSDA_PBC_really function
+ // tensor element indicator
+ enum  T_tens_el { n00, n11, n22, n01, n02, n12 }; // !! update tens_el_MAX !!
+-const UINT2m tens_el_MAX=6; // number of elements !! keep this value up-to-date
++const OC_UINT2m tens_el_MAX=6; // number of elements !! keep this value up-to-date
+ /* This can _maybe_ solved _somehow_ as Mike advices:
+ You could do something like this:
+         enum T_tens_el { n00, n11, n22, n01, n02, n12 };
+-        mutable UINT4m n_max[n12+1];
++        mutable OC_INDEX n_max[n12+1];
+ or put an unused marker at the end of the enum list:
+         enum T_tens_el { n00, n11, n22, n01, n02, n12, tens_invalid };
+-        mutable UINT4m n_max[tens_invalid]; */
++        mutable OC_INDEX n_max[tens_invalid]; */
+ 
+ // tensor_file relation
+ enum FileAccessType { WRITE, READ, NOTHING };
+@@ -118,7 +118,7 @@
+ // This order affects:
+ //	- tensor file storage (done during computations and in I/O methods)
+ enum  T_exec_order { _SimpleDemag, _Demag }; // !! update exec_order_MAX !!
+-const UINT2m exec_order_MAX=2; // number of elements 
++const OC_UINT2m exec_order_MAX=2; // number of elements 
+                                // !! keep this value up-to-date
+ 
+ class DemagPBC {
+@@ -133,39 +133,39 @@
+     
+     // z-period
+     // in fact const (IFC), but initialized inside the constructor body
+-    mutable REALWIDE zPeriod;   // in relative "dz" units
++    mutable OC_REALWIDE zPeriod;   // in relative "dz" units
+     
+     // Fitted accurancy/error (absolute) of the calculations: "image" & "dipole".
+     // The errors are fitted with following function (r is the distance cell-cell):
+     //      A * r^p
+     // Instead of 'A' we will store internally some modifications of them,
+     // details are in CC file.
+-    mutable REAL4m error_A2modif_img_diag;    // IFC
+-    mutable REAL4m error_A2modif_dip_diag;
+-    mutable REAL4m error_A2modif_img_OFFdiag;  
+-    mutable REAL4m error_A2modif_dip_OFFdiag;  
++    mutable OC_REAL4m error_A2modif_img_diag;    // IFC
++    mutable OC_REAL4m error_A2modif_dip_diag;
++    mutable OC_REAL4m error_A2modif_img_OFFdiag;  
++    mutable OC_REAL4m error_A2modif_dip_OFFdiag;  
+     // inf-tail error evaluation
+-    const REAL4m error_A_dip_diag;  
+-    const REAL4m error_A_dip_OFFdiag;  
+-//    const REAL4m error_p_img_diag;  we fixed it
+-//    const REAL4m error_p_dip_diag;  
+-//    const REAL4m error_p_img_OFFdiag;  
+-//    const REAL4m error_p_dip_OFFdiag;  
++    const OC_REAL4m error_A_dip_diag;  
++    const OC_REAL4m error_A_dip_OFFdiag;  
++//    const OC_REAL4m error_p_img_diag;  we fixed it
++//    const OC_REAL4m error_p_dip_diag;  
++//    const OC_REAL4m error_p_img_OFFdiag;  
++//    const OC_REAL4m error_p_dip_OFFdiag;  
+   
+     // The summation will be done until the *cont* error is below a certain 
+     // fraction of the actual tensor value:
+     //     error_inf_tail < err_ratio_cont_to_N * N
+-    const REAL4m err_ratio_cont_to_N;  
++    const OC_REAL4m err_ratio_cont_to_N;  
+     // Safety stopper in that case
+-    const UINT4m max_no_sum_elements;  
++    const OC_INDEX max_no_sum_elements;  
+     
+     // Fixed number of repetitions in the summation.
+     // If set (i.e, non-zero), then this criteria is used
+     // instead of the err_ratio_cont_to_N checking
+-    const UINT4m no_of_sum_elements;  
++    const OC_INDEX no_of_sum_elements;  
+     // Include inifinite tails computation?
+     // This is evidently for debugging purposes only
+-    const BOOL include_inf_tails;
++    const OC_BOOL include_inf_tails;
+     
+     const   String tensor_file_suffix;
+     // progress script is not needed (to be seen globally). See below, as well...
+@@ -173,7 +173,7 @@
+     const   T_exec_order exec_order;
+     
+     // te perform deeper statistics, or not?
+-    const BOOL compute_stats;
++    const OC_BOOL compute_stats;
+     
+     // "input" paramters END    
+     
+@@ -182,15 +182,15 @@
+     // Above this radius dipole-dipole ("dipole") estimation is used.
+     // They are calcualted basing on error_A_img_diag, etc. variables
+     // Different values for diagonal (like nXX) and off-diag elements (like nYZ)
+-    const REAL4m max_celldistance_img_diag; 
+-    const REAL4m max_celldistance_img_OFFdiag; 
++    const OC_REAL4m max_celldistance_img_diag; 
++    const OC_REAL4m max_celldistance_img_OFFdiag; 
+     
+     // mesh parameters
+-    mutable UINT4m xdim, ydim, zdim; // natural size
+-    mutable UINT4m xydim;
+-    mutable UINT4m totalsize;
++    mutable OC_INDEX xdim, ydim, zdim; // natural size
++    mutable OC_INDEX xydim;
++    mutable OC_INDEX totalsize;
+     // relative cell edge sizes
+-    mutable REALWIDE dx, dy, dz;
++    mutable OC_REALWIDE dx, dy, dz;
+     
+     // tensor_file-specific
+     mutable FileAccessType tensor_rw; // read or write or else
+@@ -205,26 +205,26 @@
+     // in the constuctor-initialization-finalization-destructor cycle.
+     const String progress_script;
+     mutable Tcl_Interp* interp;       // for Tcl_Eval
+-    mutable BOOL show_progress;       // Yes or No 
++    mutable OC_BOOL show_progress;       // Yes or No 
+     // Numerator, "actual done work", in units, say 0..100
+-    mutable UINT4m progress_cnt;      
++    mutable OC_INDEX progress_cnt;      
+     // the same, but now in units, 0..totalsize
+-    mutable UINT4m cell_cnt;      
++    mutable OC_INDEX cell_cnt;      
+ 
+ // STATISTICS begin
+     
+     // Number of summations done. Maximal, average, and minimal
+-    mutable REAL4m n_max[tens_el_MAX];
+-    mutable REAL4m n_sum[tens_el_MAX]; // for arithmetic average
+-    mutable REAL4m n_min[tens_el_MAX];
++    mutable OC_REAL4m n_max[tens_el_MAX];
++    mutable OC_REAL4m n_sum[tens_el_MAX]; // for arithmetic average
++    mutable OC_REAL4m n_min[tens_el_MAX];
+     
+     // Errors (absolute).
+     // Equals to <error of the discrete sum> + <infinite tails error>
+     // Instead of an average error a "total" error for the whole sample
+     // is given. This total is computed as a \sum abs(error)
+-    mutable REAL4m err_max[tens_el_MAX];
+-    mutable REAL4m err_sum[tens_el_MAX]; // summary of abs(errors) for all tensor elements
+-    mutable REAL4m err_min[tens_el_MAX];
++    mutable OC_REAL4m err_max[tens_el_MAX];
++    mutable OC_REAL4m err_sum[tens_el_MAX]; // summary of abs(errors) for all tensor elements
++    mutable OC_REAL4m err_min[tens_el_MAX];
+     
+     // Summation error ratio.
+     // During the *img* + *dip* summation, a "doubly compensated summation"
+@@ -233,9 +233,9 @@
+     // I am simply unsure how large mistakes are introduced by the fact 
+     // that we sum from highest to lowest values. 
+     // According to theory, we should do it in an opposite order...
+-    mutable REAL4m err_sum_ratio_max[tens_el_MAX];
+-    mutable REAL4m err_sum_ratio_sum[tens_el_MAX]; // for arithmetic average
+-    mutable REAL4m err_sum_ratio_min[tens_el_MAX];
++    mutable OC_REAL4m err_sum_ratio_max[tens_el_MAX];
++    mutable OC_REAL4m err_sum_ratio_sum[tens_el_MAX]; // for arithmetic average
++    mutable OC_REAL4m err_sum_ratio_min[tens_el_MAX];
+     
+ // STATISTICS end
+ 
+@@ -253,31 +253,31 @@
+     // Inf_tails and sum_coeff are written on request to appr tables 
+     // (with index store_inf_sum_idx)
+     // conceptually const
+-    REALWIDE CalculateSDA_PBC_really( \
+-        const UINT4m i, const UINT4m j, const UINT4m k, \
++    OC_REALWIDE Oxs_CalculateSDA_PBC_really( \
++        const OC_INDEX i, const OC_INDEX j, const OC_INDEX k, \
+         const T_tens_el teXX) const;
+         
+     // error of the *img* computation done for teXX element,
+     // with r inter-cell distance.
+     // r2=r^2, the result is also error^2,
+     // result is positive
+-    REAL4m CalculateSDAerrIMG_2(const REALWIDE r2, 
++    OC_REAL4m Oxs_CalculateSDAerrIMG_2(const OC_REALWIDE r2, 
+                                 const T_tens_el teXX) const;
+     // similarly for *dip* method
+-    REAL4m CalculateSDAerrDIP_2(const REALWIDE r2, 
++    OC_REAL4m Oxs_CalculateSDAerrDIP_2(const OC_REALWIDE r2, 
+                                 const T_tens_el teXX) const;
+         
+     // all tensor_buffer accesses should use following methods
+     // (as Mike plans to change some OOMMF code somaday)
+-    REAL8m GetTensorElementFromBuffer(
+-        const UINT4m el_idx, const T_tens_el teXX) const;
++    OC_REAL8m GetTensorElementFromBuffer(
++        const OC_INDEX el_idx, const T_tens_el teXX) const;
+     // conceptually const
+     void PutTensorElementToBuffer(
+-        const REAL8m elem, const UINT4m el_idx, const T_tens_el teXX) const;
++        const OC_REAL8m elem, const OC_INDEX el_idx, const T_tens_el teXX) const;
+         
+     // Upload/download routines
+     // conceptually conts, changes the tensor_buffer
+-    BOOL load_tensor_file( const String file_name, 
++    OC_BOOL load_tensor_file( const String file_name, 
+                            const String title) const;
+     // really const
+     void save_tensor_file( const String file_name, 
+@@ -289,24 +289,24 @@
+     // Mainly imports the parameters and does small evaluation of them,
+     // initializes the variables
+     DemagPBC( const Oxs_Mesh* genmesh,
+-              const REAL4m zPeriod_param,
+-	      const REAL4m error_A_img_diag   ,
+-	      const REAL4m error_A_dip_diag   ,
+-	      const REAL4m error_A_img_OFFdiag,
+-	      const REAL4m error_A_dip_OFFdiag,
+-//	      const REAL4m error_p_img_diag   ,
+-//	      const REAL4m error_p_dip_diag   ,
+-//	      const REAL4m error_p_img_OFFdiag,
+-//	      const REAL4m error_p_dip_OFFdiag,
+-	      const REAL4m err_ratio_cont_to_N,
+-	      const UINT4m max_no_sum_elements,
+-	      const UINT4m no_of_sum_elements,
+-	      const BOOL   include_inf_tails,
++              const OC_REAL4m zPeriod_param,
++	      const OC_REAL4m error_A_img_diag   ,
++	      const OC_REAL4m error_A_dip_diag   ,
++	      const OC_REAL4m error_A_img_OFFdiag,
++	      const OC_REAL4m error_A_dip_OFFdiag,
++//	      const OC_REAL4m error_p_img_diag   ,
++//	      const OC_REAL4m error_p_dip_diag   ,
++//	      const OC_REAL4m error_p_img_OFFdiag,
++//	      const OC_REAL4m error_p_dip_OFFdiag,
++	      const OC_REAL4m err_ratio_cont_to_N,
++	      const OC_INDEX max_no_sum_elements,
++	      const OC_INDEX no_of_sum_elements,
++	      const OC_BOOL   include_inf_tails,
+               const String tensor_file_name,
+               const String tensor_file_suffix,
+               const String progress_script,
+               const T_exec_order exec_order,
+-              const BOOL   compute_stats
++              const OC_BOOL   compute_stats
+             );
+     
+     // Written separately as errors thorw here are better evaluated
+@@ -317,8 +317,8 @@
+     
+     // computation of the tensor for the given cell
+     // conceptually const                       
+-    REALWIDE CalculateSDA(const T_tens_el teXX,
+-                  const UINT4m i, const UINT4m j, const UINT4m k) const;
++    OC_REALWIDE Oxs_CalculateSDA(const T_tens_el teXX,
++                  const OC_INDEX i, const OC_INDEX j, const OC_INDEX k) const;
+                   
+     // Tensor_file upload/download.
+     // Should be run in the middle of computations: after 00, 11, 22
+diff -ru oommf-pbc_2.1/kl_simpledemag.cc oommf-pbc_2.1-new/kl_simpledemag.cc
+--- oommf-pbc_2.1/kl_simpledemag.cc	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_simpledemag.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -47,9 +47,9 @@
+ /* End includes */
+ 
+ // Helper function
+-UINT4m Klm_SimpleDemag_PBC::NextPowerOfTwo(UINT4m n) const
++OC_INDEX Klm_SimpleDemag_PBC::NextPowerOfTwo(OC_INDEX n) const
+ { // Returns first power of two >= n
+-  UINT4m m=1;
++  OC_INDEX m=1;
+   while(m<n) m*=2;
+   return m;
+ }
+@@ -76,7 +76,7 @@
+     Mx(NULL),My(NULL),Mz(NULL),Hcomp(NULL)
+ {
+   // KL(m), process arguments
+-  INT4m i_tmp;
++  OC_INT4m i_tmp;
+   // Repetition distance for z-direction. In meters.
+   // Value of zero will be later replaced by the z-dimension.
+   zPeriod_param = GetRealInitValue("z_period",0.0);
+@@ -179,7 +179,7 @@
+   VerifyAllInitArgsUsed();
+ }
+ 
+-BOOL Klm_SimpleDemag_PBC::Init()
++OC_BOOL Klm_SimpleDemag_PBC::Init()
+ {
+   mesh_id = 0;
+   ReleaseMemory();
+@@ -224,9 +224,9 @@
+   if(xdim==0 || ydim==0 || zdim==0) return; // Empty mesh!
+   if(totalsize < xdim || totalsize < ydim || totalsize < zdim) {
+     // Partial overflow check
+-    String msg = String("UINT4m overflow in ") + String(InstanceName())
++    String msg = String("OC_INDEX overflow in ") + String(InstanceName())
+       + String(": Product xdim*ydim*zdim too big"
+-               " to fit in a UINT4m variable");
++               " to fit in a OC_INDEX variable");
+     throw Oxs_Ext::Error(msg.c_str());
+   }
+   pxdim = NextPowerOfTwo(2*xdim);
+@@ -234,7 +234,7 @@
+   
+   // KL(m)
+   // Regarding pzdim, its value depends on the turbo parameter
+-  BOOL turbo_used=0;
++  OC_BOOL turbo_used=0;
+   if(  turbo.compare("sometimes")==0 && NextPowerOfTwo(zdim)==zdim 
+     && zPeriod_param==0.0 ) {
+     // turbo _can_ be ON
+@@ -274,9 +274,9 @@
+   ptotalsize=pxdim*pydim*pzdim;
+   if(ptotalsize < pxdim || ptotalsize < pydim || ptotalsize < pzdim) {
+     // Partial overflow check
+-    String msg = String("UINT4m overflow in ") + String(InstanceName())
++    String msg = String("OC_INDEX overflow in ") + String(InstanceName())
+       + String(": Product pxdim*pydim*pzdim too big"
+-               " to fit in a UINT4m variable");
++               " to fit in a OC_INDEX variable");
+     throw Oxs_Ext::Error(msg.c_str());
+   }
+ 
+@@ -301,7 +301,7 @@
+   }
+   
+   // Initialize interaction matrices to zeros
+-  UINT4m pindex;
++  OC_INDEX pindex;
+   for(pindex=0;pindex<ptotalsize;pindex++) A00[pindex].Set(0.,0.);
+   for(pindex=0;pindex<ptotalsize;pindex++) A01[pindex].Set(0.,0.);
+   for(pindex=0;pindex<ptotalsize;pindex++) A02[pindex].Set(0.,0.);
+@@ -321,20 +321,20 @@
+   // A01 is odd in x and y, even in z.
+   // A02 is odd in x and z, even in y.
+   // A12 is odd in y and z, even in x.
+-  UINT4m i,j,k;
+-  UINT4m pxydim=pxdim*pydim;
+-  REALWIDE dx = mesh->EdgeLengthX();
+-  REALWIDE dy = mesh->EdgeLengthY();
+-  REALWIDE dz = mesh->EdgeLengthZ();
++  OC_INDEX i,j,k;
++  OC_INDEX pxydim=pxdim*pydim;
++  OC_REALWIDE dx = mesh->EdgeLengthX();
++  OC_REALWIDE dy = mesh->EdgeLengthY();
++  OC_REALWIDE dz = mesh->EdgeLengthZ();
+   // For demag calculation, all that matters is the relative
+   // sizes of dx, dy and dz.  To help insure we don't run
+   // outside floating point range, rescale these values so
+   // largest is 1.0
+-  REALWIDE maxedge=dx;
++  OC_REALWIDE maxedge=dx;
+   if(dy>maxedge) maxedge=dy;
+   if(dz>maxedge) maxedge=dz;
+   dx/=maxedge; dy/=maxedge; dz/=maxedge;
+-  REALWIDE scale = -1./(4*PI*dx*dy*dz);
++  OC_REALWIDE scale = -1./(4*PI*dx*dy*dz);
+   
+   // KL(m)
+   DemagPBC demag_pbc( genmesh, 
+@@ -359,11 +359,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA00(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n00, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA00(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n00, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -394,11 +394,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA11(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n11, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA11(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n11, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -429,11 +429,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA22(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n22, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA22(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n22, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -468,11 +468,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA01(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n01, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA01(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n01, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -503,11 +503,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA02(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n02, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA02(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n02, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -538,11 +538,11 @@
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     
+     // KL(m)
+-    //REALWIDE x = dx*i;
+-    //REALWIDE y = dy*j;
+-    //REALWIDE z = dz*k;
+-    //REALWIDE coef=scale*CalculateSDA12(x,y,z,dx,dy,dz);
+-    REALWIDE coef = scale*demag_pbc.CalculateSDA(n12, i, j, k); 
++    //OC_REALWIDE x = dx*i;
++    //OC_REALWIDE y = dy*j;
++    //OC_REALWIDE z = dz*k;
++    //OC_REALWIDE coef=scale*Oxs_CalculateSDA12(x,y,z,dx,dy,dz);
++    OC_REALWIDE coef = scale*demag_pbc.Oxs_CalculateSDA(n12, i, j, k); 
+ 
+     // KL(m)
+     if(turbo_used==0) {
+@@ -596,26 +596,26 @@
+   }
+ 
+   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<REAL8m>& Ms = *(state.Ms);
++  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+   oed.field = oed.field_buffer;
+-  Oxs_MeshValue<REAL8m>& energy = *oed.energy_buffer;
++  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
+   Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+ 
+   // Calculate FFT of Mx, My and Mz
+-  UINT4m xydim=xdim*ydim;
+-  UINT4m pxydim=pxdim*pydim;
+-  UINT4m index,pindex;
+-  UINT4m i,j,k;
++  OC_INDEX xydim=xdim*ydim;
++  OC_INDEX pxydim=pxdim*pydim;
++  OC_INDEX index,pindex;
++  OC_INDEX i,j,k;
+   for(pindex=0;pindex<ptotalsize;pindex++) Mx[pindex].Set(0.,0.);
+   for(pindex=0;pindex<ptotalsize;pindex++) My[pindex].Set(0.,0.);
+   for(pindex=0;pindex<ptotalsize;pindex++) Mz[pindex].Set(0.,0.);
+   for(k=0;k<zdim;k++) for(j=0;j<ydim;j++) for(i=0;i<xdim;i++) {
+     index  = i+j*xdim+k*xydim;
+     pindex = i+j*pxdim+k*pxydim;
+-    REAL8m scale = Ms[index];
++    OC_REAL8m scale = Ms[index];
+     const ThreeVector& vec = spin[index];
+     Mx[pindex].Set(scale*(vec.x),0);
+     My[pindex].Set(scale*(vec.y),0);
+@@ -665,7 +665,7 @@
+   }
+ 
+   // Calculate pointwise energy density: -0.5*MU0*<M,H>
+-  REAL8m mult = -0.5 * MU0;
++  OC_REAL8m mult = -0.5 * MU0;
+   for(index=0;index<totalsize;index++) {
+     energy[index] = mult * Ms[index] * (spin[index]*field[index]);
+   }
+diff -ru oommf-pbc_2.1/kl_simpledemag.h oommf-pbc_2.1-new/kl_simpledemag.h
+--- oommf-pbc_2.1/kl_simpledemag.h	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_simpledemag.h	2022-01-22 02:31:37.000000000 -0500
+@@ -38,36 +38,36 @@
+   // KL(m) parameters
+   // Repetition distance for z-direction. In cell meters.
+   // If 0.0 (or absent): use sample z-length
+-  REAL4m zPeriod_param;
++  OC_REAL4m zPeriod_param;
+   
+   // Fitted accurancy/error (absolute) of the calculations: "image" & "dipole".
+   // The errors are fitted with following function (r is the distance cell-cell):
+   //      A * r^p
+   // You should put a value here basing on previous results analysis.
+   // Different values for diagonal (like nXX) and off-diag elements (like nYZ)
+-  REAL4m error_A_img_diag;  
+-//  REAL4m error_p_img_diag;  we fix it
+-  REAL4m error_A_dip_diag;  
+-//  REAL4m error_p_dip_diag;  
+-  REAL4m error_A_img_OFFdiag;  
+-//  REAL4m error_p_img_OFFdiag;  
+-  REAL4m error_A_dip_OFFdiag;  
+-//  REAL4m error_p_dip_OFFdiag;  
++  OC_REAL4m error_A_img_diag;  
++//  OC_REAL4m error_p_img_diag;  we fix it
++  OC_REAL4m error_A_dip_diag;  
++//  OC_REAL4m error_p_dip_diag;  
++  OC_REAL4m error_A_img_OFFdiag;  
++//  OC_REAL4m error_p_img_OFFdiag;  
++  OC_REAL4m error_A_dip_OFFdiag;  
++//  OC_REAL4m error_p_dip_OFFdiag;  
+   
+   // The summation will be done until the *cont* error is below a certain 
+   // fraction of the actual tensor value:
+   //     error_inf_tail < err_ratio_cont_to_N * N
+-  REAL4m err_ratio_cont_to_N;  
++  OC_REAL4m err_ratio_cont_to_N;  
+   // Safety stopper in that case (for instance in the case where N==0)
+-  UINT4m max_no_sum_elements;  
++  OC_INDEX max_no_sum_elements;  
+   
+   // Fixed number of repetitions in the summation.
+   // If set (i.e, non-zero), then this criteria is used
+   // instead of the err_ratio_cont_to_N checking
+-  UINT4m no_of_sum_elements;  
++  OC_INDEX no_of_sum_elements;  
+   // Include inifinite tails computation?
+   // This is evidently for debugging purposes only
+-  BOOL include_inf_tails;
++  OC_BOOL include_inf_tails;
+   
+   // Tensor file storage for future use.
+   // The tensor will be kept in two files differing by ID (1 or 2). 
+@@ -90,19 +90,19 @@
+   // Only implemented for SimpleDemag, so far.
+   String turbo;
+   // to perform deeper statistics, or not?
+-  BOOL compute_stats;
++  OC_BOOL compute_stats;
+   // End of parameters.
+   // KL(m) end
+   //
+-  mutable UINT4m xdim;    // Natural size
+-  mutable UINT4m ydim;
+-  mutable UINT4m zdim;
+-  mutable UINT4m totalsize;
+-  mutable UINT4m pxdim;   // Padded size
+-  mutable UINT4m pydim;
+-  mutable UINT4m pzdim;
+-  mutable UINT4m ptotalsize;
+-  mutable UINT4m mesh_id;
++  mutable OC_INDEX xdim;    // Natural size
++  mutable OC_INDEX ydim;
++  mutable OC_INDEX zdim;
++  mutable OC_INDEX totalsize;
++  mutable OC_INDEX pxdim;   // Padded size
++  mutable OC_INDEX pydim;
++  mutable OC_INDEX pzdim;
++  mutable OC_INDEX ptotalsize;
++  mutable OC_UINT4m mesh_id;
+   // The A## arrays hold demag coefficients, transformed into
+   // frequency domain.  These are held long term.  Mx, My, Mz
+   // and Hcomp are used as temporary space to convert M into
+@@ -123,7 +123,7 @@
+   void FillCoefficientArrays(const Oxs_Mesh* mesh) const;
+   /// Conceptually const.
+ 
+-  UINT4m NextPowerOfTwo(UINT4m n) const;  // Helper function
++  OC_INDEX NextPowerOfTwo(OC_INDEX n) const;  // Helper function
+   void ReleaseMemory() const; // Conceptually const.
+ 
+ protected:
+@@ -137,7 +137,7 @@
+ 		  Oxs_Director* newdtr,  // App director
+ 		  const char* argstr);   // MIF input block parameters
+   virtual ~Klm_SimpleDemag_PBC() { ReleaseMemory(); }
+-  virtual BOOL Init();
++  virtual OC_BOOL Init();
+ };
+ 
+ 
+diff -ru oommf-pbc_2.1/kl_uniformexchange.cc oommf-pbc_2.1-new/kl_uniformexchange.cc
+--- oommf-pbc_2.1/kl_uniformexchange.cc	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_uniformexchange.cc	2022-01-22 02:31:37.000000000 -0500
+@@ -44,8 +44,8 @@
+     kernel(NGBR_UNKNOWN), mesh_id(0)
+ {
+   // Process arguments
+-  BOOL has_A = HasInitValue("A");
+-  BOOL has_lex = HasInitValue("lex");
++  OC_BOOL has_A = HasInitValue("A");
++  OC_BOOL has_lex = HasInitValue("lex");
+   if(has_A && has_lex) {
+     throw Oxs_Ext::Error(this,"Invalid exchange coefficient request:"
+ 			 " both A and lex specified; only one should"
+@@ -115,7 +115,7 @@
+ Klm_UniformExchange::~Klm_UniformExchange()
+ {}
+ 
+-BOOL Klm_UniformExchange::Init()
++OC_BOOL Klm_UniformExchange::Init()
+ {
+   mesh_id = 0;
+   xcoef.Free();
+@@ -127,27 +127,27 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrZD2
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-        REAL8m Msii = Ms_inverse[i];
++        OC_REAL8m Msii = Ms_inverse[i];
+         if(Msii == 0.0) {
+           energy[i]=0.0;
+           field[i].Set(0.,0.,0.);
+@@ -157,24 +157,24 @@
+         ThreeVector base = spin[i];
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) sum = (spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+             sum += (spin[j] - base);
+           }
+         }
+ 	if(xdim>2) { // m''=0 boundary correction
+ 	  if(x==0 || x==xdim-2) {
+-	    UINT4m j = i+1;
++	    OC_INDEX j = i+1;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      sum -= 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(x==1 || x==xdim-1) {
+-	    UINT4m j = i-1;
++	    OC_INDEX j = i-1;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      sum -= 0.5*(spin[j] - base);
+ 	    }
+@@ -184,24 +184,24 @@
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j] - base);
+           }
+         }
+ 	if(ydim>2) { // m''=0 boundary correction
+ 	  if(y==0 || y==ydim-2) {
+-	    UINT4m j = i+xdim;
++	    OC_INDEX j = i+xdim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp -= 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(y==1 || y==ydim-1) {
+-	    UINT4m j = i-xdim;
++	    OC_INDEX j = i-xdim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp -= 0.5*(spin[j] - base);
+ 	    }
+@@ -211,24 +211,24 @@
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j]- base);
+           }
+         }
+ 	if(zdim>2) {  // m''=0 boundary correction
+ 	  if(z==0 || z==zdim-2) {
+-	    UINT4m j = i+xydim;
++	    OC_INDEX j = i+xydim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp -= 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(z==1 || z==zdim-1) {
+-	    UINT4m j = i-xydim;
++	    OC_INDEX j = i-xydim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp -= 0.5*(spin[j] - base);
+ 	    }
+@@ -246,27 +246,27 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrFree
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-        REAL8m Msii = Ms_inverse[i];
++        OC_REAL8m Msii = Ms_inverse[i];
+         if(Msii == 0.0) {
+           energy[i]=0.0;
+           field[i].Set(0.,0.,0.);
+@@ -276,24 +276,24 @@
+         ThreeVector base = spin[i];
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) sum = (spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+             sum += (spin[j] - base);
+           }
+         }
+ 	if(xdim>2) { // Free boundary correction
+ 	  if(x==0 || x==xdim-2) {
+-	    UINT4m j = i+1;
++	    OC_INDEX j = i+1;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      sum += 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(x==1 || x==xdim-1) {
+-	    UINT4m j = i-1;
++	    OC_INDEX j = i-1;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      sum += 0.5*(spin[j] - base);
+ 	    }
+@@ -303,24 +303,24 @@
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j] - base);
+           }
+         }
+ 	if(ydim>2) { // Free boundary correction
+ 	  if(y==0 || y==ydim-2) {
+-	    UINT4m j = i+xdim;
++	    OC_INDEX j = i+xdim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp += 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(y==1 || y==ydim-1) {
+-	    UINT4m j = i-xdim;
++	    OC_INDEX j = i-xdim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp += 0.5*(spin[j] - base);
+ 	    }
+@@ -330,24 +330,24 @@
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j]- base);
+           }
+         }
+ 	if(zdim>2) { // Free boundary correction
+ 	  if(z==0 || z==zdim-2) {
+-	    UINT4m j = i+xydim;
++	    OC_INDEX j = i+xydim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp += 0.5*(spin[j] - base);
+ 	    }
+ 	  }
+ 	  if(z==1 || z==zdim-1) {
+-	    UINT4m j = i-xydim;
++	    OC_INDEX j = i-xydim;
+ 	    if(Ms_inverse[j]!=0.0) {
+ 	      temp += 0.5*(spin[j] - base);
+ 	    }
+@@ -365,41 +365,41 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrMirror
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+ 	if(0 == Ms_inverse[i]) {
+ 	    energy[i] = 0.0;
+ 	    field[i].Set(0.,0.,0.);
+ 	    continue;
+ 	}
+-	const REAL8m hmult = (-2/MU0) * Ms_inverse[i];
++	const OC_REAL8m hmult = (-2/MU0) * Ms_inverse[i];
+ 
+         ThreeVector base = spin[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) sum = (spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+             sum += (spin[j] - base);
+           }
+@@ -408,11 +408,11 @@
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j] - base);
+           }
+@@ -421,11 +421,11 @@
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j]- base);
+           }
+@@ -443,41 +443,41 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrZPeriodicCond
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+ 	if(0 == Ms_inverse[i]) {
+ 	    energy[i] = 0.0;
+ 	    field[i].Set(0.,0.,0.);
+ 	    continue;
+ 	}
+-	const REAL8m hmult = (-2/MU0) * Ms_inverse[i];
++	const OC_REAL8m hmult = (-2/MU0) * Ms_inverse[i];
+ 
+         ThreeVector base = spin[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) sum = (spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+             sum += (spin[j] - base);
+           }
+@@ -486,11 +486,11 @@
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j] - base);
+           }
+@@ -499,23 +499,23 @@
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }
+         //kl(m)
+         if(z==0) {
+-          UINT4m j = i+(zdim-1)*xydim; // The neighbor 'on the other side'; Index(x,y,zdim-1)
++          OC_INDEX j = i+(zdim-1)*xydim; // The neighbor 'on the other side'; Index(x,y,zdim-1)
+           if(Ms_inverse[j]!=0.0) temp = (spin[j] - base);
+         }        
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j]- base);
+           }
+         }
+         //kl(m)
+         if(z==zdim-1) {
+-          UINT4m j = i%xydim; // The neighbor 'on the other side'; Index(x,y,0)
++          OC_INDEX j = i%xydim; // The neighbor 'on the other side'; Index(x,y,0)
+           if(Ms_inverse[j]!=0.0) {
+             temp += (spin[j]- base);
+           }
+@@ -532,63 +532,63 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrMirror_lex
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms,
++ const Oxs_MeshValue<OC_REAL8m>& Ms,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  REAL8m wgtx = lex*lex/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = lex*lex/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = lex*lex/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  OC_REAL8m wgtx = lex*lex/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = lex*lex/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = lex*lex/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+ 	if(0 == Ms[i]) {
+ 	    energy[i] = 0.0;
+ 	    field[i].Set(0.,0.,0.);
+ 	    continue;
+ 	}
+-	const REAL8m emult = (-0.5*MU0)*Ms[i];
++	const OC_REAL8m emult = (-0.5*MU0)*Ms[i];
+ 
+         ThreeVector base = spin[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           sum = Ms[j]*(spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+ 	  sum += Ms[j]*(spin[j] - base);
+         }
+         sum *= wgtx;
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           temp = Ms[j]*(spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+ 	  temp += Ms[j]*(spin[j] - base);
+         }
+         sum += wgty*temp;
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           temp = Ms[j]*(spin[j] - base);
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+ 	  temp += Ms[j]*(spin[j]- base);
+         }
+         sum += wgtz*temp;
+@@ -604,73 +604,73 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrZPeriodicCond_lex
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms,
++ const Oxs_MeshValue<OC_REAL8m>& Ms,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  REAL8m wgtx = lex*lex/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = lex*lex/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = lex*lex/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  OC_REAL8m wgtx = lex*lex/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = lex*lex/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = lex*lex/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+ 	if(0 == Ms[i]) {
+ 	    energy[i] = 0.0;
+ 	    field[i].Set(0.,0.,0.);
+ 	    continue;
+ 	}
+-	const REAL8m emult = (-0.5*MU0)*Ms[i];
++	const OC_REAL8m emult = (-0.5*MU0)*Ms[i];
+ 
+         ThreeVector base = spin[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           sum = Ms[j]*(spin[j] - base);
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+ 	  sum += Ms[j]*(spin[j] - base);
+         }
+         sum *= wgtx;
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           temp = Ms[j]*(spin[j] - base);
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+ 	  temp += Ms[j]*(spin[j] - base);
+         }
+         sum += wgty*temp;
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           temp = Ms[j]*(spin[j] - base);
+         }
+         //kl(m)
+         if(z==0) {
+-          UINT4m j = i+(zdim-1)*xydim; // The neighbor 'on the other side'; Index(x,y,zdim-1)
++          OC_INDEX j = i+(zdim-1)*xydim; // The neighbor 'on the other side'; Index(x,y,zdim-1)
+           temp = Ms[j]*(spin[j] - base);
+         }             
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+ 	  temp += Ms[j]*(spin[j]- base);
+         }
+         //kl(m)
+         if(z==zdim-1) {
+-          UINT4m j = i%xydim; // The neighbor 'on the other side'; Index(x,y,0)
++          OC_INDEX j = i%xydim; // The neighbor 'on the other side'; Index(x,y,0)
+ 	  temp += Ms[j]*(spin[j]- base);
+         }          
+         sum += wgtz*temp;
+@@ -685,9 +685,9 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrMirrorStd
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ { // This is the same as ::CalcEnergy6NgbrMirror,
+   // except that the spin at cell i is *not* subtracted
+@@ -697,34 +697,34 @@
+   // formulation are inferior to the other, in the case
+   // where spin i and neighboring spin j are nearly
+   // parallel.
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+ 	if(0 == Ms_inverse[i]) {
+ 	    energy[i] = 0.0;
+ 	    field[i].Set(0.,0.,0.);
+ 	    continue;
+ 	}
+-	const REAL8m hmult = (-2/MU0) * Ms_inverse[i];
++	const OC_REAL8m hmult = (-2/MU0) * Ms_inverse[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) sum = spin[j];
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+             sum += spin[j];
+           }
+@@ -733,11 +733,11 @@
+ 
+         ThreeVector temp(0.,0.,0.);
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) temp = spin[j];
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += spin[j];
+           }
+@@ -746,11 +746,11 @@
+ 
+         temp.Set(0.,0.,0.);
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) temp = spin[j];
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+             temp += spin[j];
+           }
+@@ -764,7 +764,7 @@
+   }
+ }
+ 
+-REAL8m
++OC_REAL8m
+ Klm_UniformExchange::ComputeAngle
+ (const ThreeVector& u1,
+  const ThreeVector& u2) const
+@@ -784,27 +784,27 @@
+ void
+ Klm_UniformExchange::CalcEnergy6NgbrBigAngMirror
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-        UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++        OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-        REAL8m Msii = Ms_inverse[i];
++        OC_REAL8m Msii = Ms_inverse[i];
+         if(Msii == 0.0) {
+           energy[i]=0.0;
+           field[i].Set(0.,0.,0.);
+@@ -814,12 +814,12 @@
+         ThreeVector base = spin[i];
+ 
+         ThreeVector sum(0.,0.,0.);
+-        REAL8m Esum = 0.0;
++        OC_REAL8m Esum = 0.0;
+         if(x>0) {
+-          UINT4m j = i-1;
++          OC_INDEX j = i-1;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Esum = theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -827,10 +827,10 @@
+           }
+         }
+         if(x<xdim-1) {
+-          UINT4m j = i+1;
++          OC_INDEX j = i+1;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Esum += theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -841,12 +841,12 @@
+         sum *= wgtx;
+ 
+         ThreeVector temp(0.,0.,0.);
+-        REAL8m Etemp = 0.0;
++        OC_REAL8m Etemp = 0.0;
+         if(y>0) {
+-          UINT4m j = i-xdim;
++          OC_INDEX j = i-xdim;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Etemp = theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -854,10 +854,10 @@
+           }
+         }
+         if(y<ydim-1) {
+-          UINT4m j = i+xdim;
++          OC_INDEX j = i+xdim;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Etemp += theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -870,10 +870,10 @@
+         temp.Set(0.,0.,0.);
+         Etemp = 0.0;
+         if(z>0) {
+-          UINT4m j = i-xydim;
++          OC_INDEX j = i-xydim;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Etemp = theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -881,10 +881,10 @@
+           }
+         }
+         if(z<zdim-1) {
+-          UINT4m j = i+xydim;
++          OC_INDEX j = i+xydim;
+           if(Ms_inverse[j]!=0.0) {
+-            REAL8m theta = ComputeAngle(spin[j],base);
+-            REAL8m sintheta = sin(theta);
++            OC_REAL8m theta = ComputeAngle(spin[j],base);
++            OC_REAL8m sintheta = sin(theta);
+             Etemp += theta*theta;
+             ThreeVector vtmp = spin[j] - base;
+             if(sintheta>0.0) vtmp *= theta/sintheta;
+@@ -905,9 +905,9 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrFree
+ (const Oxs_MeshValue<ThreeVector>&,
+- const Oxs_MeshValue<REAL8m>&,
++ const Oxs_MeshValue<OC_REAL8m>&,
+  const Oxs_RectangularMesh*,
+- Oxs_MeshValue<REAL8m>&,
++ Oxs_MeshValue<OC_REAL8m>&,
+  Oxs_MeshValue<ThreeVector>&) const
+ {
+   throw Oxs_Ext::Error(this,"Klm_UniformExchange::CalcEnergy12NgbrFree()"
+@@ -918,9 +918,9 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrZD1
+ (const Oxs_MeshValue<ThreeVector>&,
+- const Oxs_MeshValue<REAL8m>&,
++ const Oxs_MeshValue<OC_REAL8m>&,
+  const Oxs_RectangularMesh*,
+- Oxs_MeshValue<REAL8m>&,
++ Oxs_MeshValue<OC_REAL8m>&,
+  Oxs_MeshValue<ThreeVector>&) const
+ {
+   throw Oxs_Ext::Error(this,"Klm_UniformExchange::CalcEnergy12NgbrZD1()"
+@@ -933,20 +933,20 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrFree
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*1152.);
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*1152.);
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*1152.);
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*1152.);
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*1152.);
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*1152.);
+ 
+   // See mjd's NOTES II, 12-Aug-2002, p186-192
+   // EXTRA NOTE: Beware that "field" computed here is
+@@ -962,29 +962,29 @@
+   }
+   // Note: Integral weights ai, bj, and ck are derived in mjd
+   // NOTES II, 5-Aug-2002, p178-181.
+-  for(UINT4m z=0;z<zdim;z++) {
+-    REAL8m ck=1.0;
++  for(OC_INDEX z=0;z<zdim;z++) {
++    OC_REAL8m ck=1.0;
+     if(z==0 || z==zdim-1) ck=26./24.;
+     if(z==1 || z==zdim-2) ck=21./24.;
+     if(z==2 || z==zdim-3) ck=25./24.;
+ 
+-    for(UINT4m y=0;y<ydim;y++) {
+-      REAL8m bj=1.0;
++    for(OC_INDEX y=0;y<ydim;y++) {
++      OC_REAL8m bj=1.0;
+       if(y==0 || y==ydim-1) bj=26./24.;
+       if(y==1 || y==ydim-2) bj=21./24.;
+       if(y==2 || y==ydim-3) bj=25./24.;
+ 
+-      for(UINT4m x=0;x<xdim;x++) {
+-	UINT4m i = mesh->Index(x,y,z); // Get base linear address
++      for(OC_INDEX x=0;x<xdim;x++) {
++	OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-	REAL8m Msii = Ms_inverse[i];
++	OC_REAL8m Msii = Ms_inverse[i];
+ 	if(Msii == 0.0) {
+ 	  energy[i]=0.0;
+ 	  field[i].Set(0.,0.,0.);
+ 	  continue;
+ 	}
+ 
+-	REAL8m ai=1.0;
++	OC_REAL8m ai=1.0;
+ 	if(x==0 || x==xdim-1) ai=26./24.;
+ 	if(x==1 || x==xdim-2) ai=21./24.;
+ 	if(x==2 || x==xdim-3) ai=25./24.;
+@@ -1235,20 +1235,20 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrZD1
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
+-
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*240768.);
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*240768.);
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*240768.);
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
++
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*240768.);
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*240768.);
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*240768.);
+ 
+   // See mjd's NOTES III, 7/30-Jan-2003, p27-35
+   // EXTRA NOTE: Beware that "field" computed here is
+@@ -1265,33 +1265,33 @@
+   }
+   // Note: Integral weights ai, bj, and ck are derived in mjd
+   // NOTES II, 5-Aug-2002, p178-181.
+-  for(UINT4m z=0;z<zdim;z++) {
+-    REAL8m ck=1.0;
++  for(OC_INDEX z=0;z<zdim;z++) {
++    OC_REAL8m ck=1.0;
+     if(zdim>1) {
+       if(z==0 || z==zdim-1) ck=26./24.;
+       if(z==1 || z==zdim-2) ck=21./24.;
+       if(z==2 || z==zdim-3) ck=25./24.;
+     }
+ 
+-    for(UINT4m y=0;y<ydim;y++) {
+-      REAL8m bj=1.0;
++    for(OC_INDEX y=0;y<ydim;y++) {
++      OC_REAL8m bj=1.0;
+       if(ydim>1) {
+ 	if(y==0 || y==ydim-1) bj=26./24.;
+ 	if(y==1 || y==ydim-2) bj=21./24.;
+ 	if(y==2 || y==ydim-3) bj=25./24.;
+       }
+ 
+-      for(UINT4m x=0;x<xdim;x++) {
+-	UINT4m i = mesh->Index(x,y,z); // Get base linear address
++      for(OC_INDEX x=0;x<xdim;x++) {
++	OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-	REAL8m Msii = Ms_inverse[i];
++	OC_REAL8m Msii = Ms_inverse[i];
+ 	if(Msii == 0.0) {
+ 	  energy[i]=0.0;
+ 	  field[i].Set(0.,0.,0.);
+ 	  continue;
+ 	}
+ 
+-	REAL8m ai=1.0;
++	OC_REAL8m ai=1.0;
+ 	if(xdim>1) {
+ 	  if(x==0 || x==xdim-1) ai=26./24.;
+ 	  if(x==1 || x==xdim-2) ai=21./24.;
+@@ -1509,9 +1509,9 @@
+ 
+ void
+ Klm_UniformExchange::InitCoef_12NgbrZD1
+-(UINT4m size,
+- REAL8m wgt[3],
+- Nb_2DArrayWrapper<REAL8m>& coef) const
++(OC_INDEX size,
++ OC_REAL8m wgt[3],
++ Nb_2DArrayWrapper<OC_REAL8m>& coef) const
+ {
+   if(size==0) {
+     coef.Free();
+@@ -1521,10 +1521,10 @@
+   if(size>10) size=10; // 10x10 is largest special coefficient
+   /// array ever needed.
+ 
+-  UINT4m i,j;
++  OC_INDEX i,j;
+ 
+   // Allocate memory
+-  UINT4m tsize1,tsize2;
++  OC_INDEX tsize1,tsize2;
+   coef.GetSize(tsize1,tsize2);
+   if(tsize1!=size || tsize2!=size) {
+     coef.Free();
+@@ -1601,14 +1601,14 @@
+ 
+   // Symmetrize
+   for(i=0;i<size;i++) for(j=i+1;j<size;j++) {
+-    REAL8m tmp = (coef(i,j) + coef(j,i))/2.0;
++    OC_REAL8m tmp = (coef(i,j) + coef(j,i))/2.0;
+     coef(i,j) = coef(j,i) = tmp;
+   }
+ 
+   // For improved numerics, adjust diagonal elements so rows
+   // are zero-sum
+   for(i=0;i<size;i++) {
+-    REAL8m rowsum=0.0;
++    OC_REAL8m rowsum=0.0;
+     for(j=0;j<size;j++) rowsum += coef(i,j);
+     coef(i,i) -= rowsum;
+   }
+@@ -1619,19 +1619,19 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrZD1B
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+   // See mjd's NOTES III, 7/30-Jan-2003, p27-35
+   // EXTRA NOTE: Beware that "field" computed here is
+   //  -grad(E)/(mu_0*cellvolume), which is not a good representation
+   //  for H.  See mjd's NOTES II, 9-Aug-2002, p183.
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
+   if((1<xdim && xdim<5) || (1<ydim && ydim<5)
+      || (1<zdim && zdim<5)) {
+     char buf[1024];
+@@ -1651,49 +1651,49 @@
+     mesh_id = mesh->Id();
+   }
+ 
+-  const REAL8m hcoef = -2/MU0;
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
+-
+-  for(UINT4m z=0;z<zdim;z++) {
+-    UINT4m zoff = z;        // "Distance" from boundary
+-    UINT4m zcoef_index = z; // Index into zcoef array
++  const OC_REAL8m hcoef = -2/MU0;
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX());
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY());
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ());
++
++  for(OC_INDEX z=0;z<zdim;z++) {
++    OC_INDEX zoff = z;        // "Distance" from boundary
++    OC_INDEX zcoef_index = z; // Index into zcoef array
+     if(zdim-1<2*z) { // Backside
+       zoff = zdim - 1 - z;
+       zcoef_index = OC_MIN(10,zdim) - 1 - zoff;
+     }
+-    REAL8m ck=1.0;
++    OC_REAL8m ck=1.0;
+     if(zoff<3) ck = zinteg[zoff];  // Integration weight
+     /// Note: zcoef_index is only valid if zoff<5
+ 
+-    for(UINT4m y=0;y<ydim;y++) {
+-      UINT4m yoff = y;
+-      UINT4m ycoef_index = y;
++    for(OC_INDEX y=0;y<ydim;y++) {
++      OC_INDEX yoff = y;
++      OC_INDEX ycoef_index = y;
+       if(ydim-1<2*y) {
+ 	yoff = ydim - 1 - y;
+ 	ycoef_index = OC_MIN(10,ydim) - 1 - yoff;
+       }
+-      REAL8m bj=1.0;
++      OC_REAL8m bj=1.0;
+       if(yoff<3) bj = yinteg[yoff];
+       /// Note: ycoef_index is only valid if yoff<5
+ 
+-      for(UINT4m x=0;x<xdim;x++) {
+-	UINT4m i = mesh->Index(x,y,z); // Get base linear address
+-	REAL8m Msii = Ms_inverse[i];
++      for(OC_INDEX x=0;x<xdim;x++) {
++	OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
++	OC_REAL8m Msii = Ms_inverse[i];
+ 	if(Msii == 0.0) {
+ 	  energy[i]=0.0;
+ 	  field[i].Set(0.,0.,0.);
+ 	  continue;
+ 	}
+ 
+-	UINT4m xoff = x;
+-	UINT4m xcoef_index = x;
++	OC_INDEX xoff = x;
++	OC_INDEX xcoef_index = x;
+ 	if(xdim-1<2*x) {
+ 	  xoff = xdim - 1 - x;
+ 	  xcoef_index = OC_MIN(10,xdim) - 1 - xoff;
+ 	}
+-	REAL8m ai=1.0;
++	OC_REAL8m ai=1.0;
+ 	if(xoff<3) ai = xinteg[xoff];
+ 	/// Note: xcoef_index is only valid if xoff<5
+ 
+@@ -1710,9 +1710,9 @@
+ 	    tsum += ( -1./12.)*spin[i+2];
+ 	  } else {
+ 	    tsum.Set(0.,0.,0.);
+-	    INT4m jmin = -1 * static_cast<INT4m>(OC_MIN(2,x));
+-	    INT4m jmax = static_cast<INT4m>(OC_MIN(3,xdim-x));
+-	    for(INT4m j=jmin;j<jmax;j++) {
++	    OC_INT4m jmin = -1 * static_cast<OC_INT4m>(OC_MIN(2,x));
++	    OC_INT4m jmax = static_cast<OC_INT4m>(OC_MIN(3,xdim-x));
++	    for(OC_INT4m j=jmin;j<jmax;j++) {
+ 	      tsum += xcoef(xcoef_index,xcoef_index+j)*spin[i+j];
+ 	    }
+ 	  }
+@@ -1729,9 +1729,9 @@
+ 	    tsum += ( -1./12.)*spin[i+2*xdim];
+ 	  } else {
+ 	    tsum.Set(0.,0.,0.);
+-	    INT4m jmin = -1*static_cast<INT4m>(OC_MIN(2,y));
+-	    INT4m jmax = static_cast<INT4m>(OC_MIN(3,ydim-y));
+-	    for(INT4m j=jmin;j<jmax;j++) {
++	    OC_INT4m jmin = -1*static_cast<OC_INT4m>(OC_MIN(2,y));
++	    OC_INT4m jmax = static_cast<OC_INT4m>(OC_MIN(3,ydim-y));
++	    for(OC_INT4m j=jmin;j<jmax;j++) {
+ 	      tsum += ycoef(ycoef_index,ycoef_index+j)*spin[i+j*xdim];
+ 	    }
+ 	  }
+@@ -1748,9 +1748,9 @@
+ 	    tsum += ( -1./12.)*spin[i+2*xydim];
+ 	  } else {
+ 	    tsum.Set(0.,0.,0.);
+-	    INT4m jmin = -1*static_cast<INT4m>(OC_MIN(2,z));
+-	    INT4m jmax = static_cast<INT4m>(OC_MIN(3,zdim-z));
+-	    for(INT4m j=jmin;j<jmax;j++) {
++	    OC_INT4m jmin = -1*static_cast<OC_INT4m>(OC_MIN(2,z));
++	    OC_INT4m jmax = static_cast<OC_INT4m>(OC_MIN(3,zdim-z));
++	    for(OC_INT4m j=jmin;j<jmax;j++) {
+ 	      tsum += zcoef(zcoef_index,zcoef_index+j)*spin[i+j*xydim];
+ 	    }
+ 	  }
+@@ -1767,17 +1767,17 @@
+ void
+ Klm_UniformExchange::CalcEnergy12NgbrMirror
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
+ 
+-  const REAL8m hcoef = -2/MU0;
++  const OC_REAL8m hcoef = -2/MU0;
+ 
+   // Second derivative weighting matrix is (-1 16 -30 16 -1)/12.
+   // Introduce 2 row mirror boundary, i.e., if edge is
+@@ -1790,15 +1790,15 @@
+   //      b  a | a  b  c  d ...
+   //           |
+   //
+-  REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*12.);
+-  REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*12.);
+-  REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*12.);
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-	UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  OC_REAL8m wgtx = -A/(mesh->EdgeLengthX()*mesh->EdgeLengthX()*12.);
++  OC_REAL8m wgty = -A/(mesh->EdgeLengthY()*mesh->EdgeLengthY()*12.);
++  OC_REAL8m wgtz = -A/(mesh->EdgeLengthZ()*mesh->EdgeLengthZ()*12.);
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++	OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-	REAL8m Msii = Ms_inverse[i];
++	OC_REAL8m Msii = Ms_inverse[i];
+ 	if(Msii == 0.0) {
+ 	  energy[i]=0.0;
+ 	  field[i].Set(0.,0.,0.);
+@@ -1810,32 +1810,32 @@
+ 	ThreeVector sum_inner(0.,0.,0.);
+ 	ThreeVector sum_outer(0.,0.,0.);
+ 	if(x > 1) {
+-	  UINT4m j1 =  i - 1;
+-	  UINT4m j2 = j1 - 1;
++	  OC_INDEX j1 =  i - 1;
++	  OC_INDEX j2 = j1 - 1;
+ 	  if(Ms_inverse[j1]!=0.0) sum_inner = spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) sum_outer = spin[j1] - spin[j2];
+ 	} else if(x == 1) {
+-	  UINT4m j = i - 1;
++	  OC_INDEX j = i - 1;
+ 	  if(Ms_inverse[j]!=0.0) sum_inner = spin[j] - base;
+ 	} else if(xdim > 1) {
+ 	  // x==0.  Add edge correction.
+-	  UINT4m j = i + 1;
++	  OC_INDEX j = i + 1;
+ 	  if(Ms_inverse[j]!=0.0) sum_outer = base - spin[j];
+ 	}
+ 	if(x+2 < xdim) {
+ 	  // Note: We have to compare 'x+2<xdim', NOT 'x<xdim-2',
+ 	  // because x and xdim are unsigned, and xdim may be
+ 	  // as small as 1.
+-	  UINT4m j1 =  i + 1;
+-	  UINT4m j2 = j1 + 1;
++	  OC_INDEX j1 =  i + 1;
++	  OC_INDEX j2 = j1 + 1;
+ 	  if(Ms_inverse[j1]!=0.0) sum_inner += spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) sum_outer += spin[j1] - spin[j2];
+ 	} else if(x+2 == xdim) {
+-	  UINT4m j = i + 1;
++	  OC_INDEX j = i + 1;
+ 	  if(Ms_inverse[j]!=0.0) sum_inner += spin[j] - base;
+ 	} else if(xdim > 1) {
+ 	  // x==xdim-1.  Add edge correction.
+-	  UINT4m j = i - 1;
++	  OC_INDEX j = i - 1;
+ 	  if(Ms_inverse[j]!=0.0) sum_outer += base - spin[j];
+ 	}
+ 	sum_inner *= wgtx;
+@@ -1844,29 +1844,29 @@
+ 	ThreeVector temp_inner(0.,0.,0.);
+ 	ThreeVector temp_outer(0.,0.,0.);
+ 	if(y > 1) {
+-	  UINT4m j1 =  i - xdim;
+-	  UINT4m j2 = j1 - xdim;
++	  OC_INDEX j1 =  i - xdim;
++	  OC_INDEX j2 = j1 - xdim;
+ 	  if(Ms_inverse[j1]!=0.0) temp_inner = spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) temp_outer = spin[j1] - spin[j2];
+ 	} else if(y == 1) {
+-	  UINT4m j = i - xdim;
++	  OC_INDEX j = i - xdim;
+ 	  if(Ms_inverse[j]!=0.0) temp_inner = spin[j] - base;
+ 	} else if(ydim > 1) {
+ 	  // y==0.  Add edge correction.
+-	  UINT4m j = i + xdim;
++	  OC_INDEX j = i + xdim;
+ 	  if(Ms_inverse[j]!=0.0) temp_outer = base - spin[j];
+ 	}
+ 	if(y+2 < ydim) {
+-	  UINT4m j1 =  i + xdim;
+-	  UINT4m j2 = j1 + xdim;
++	  OC_INDEX j1 =  i + xdim;
++	  OC_INDEX j2 = j1 + xdim;
+ 	  if(Ms_inverse[j1]!=0.0) temp_inner += spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) temp_outer += spin[j1] - spin[j2];
+ 	} else if(y+2 == ydim) {
+-	  UINT4m j = i + xdim;
++	  OC_INDEX j = i + xdim;
+ 	  if(Ms_inverse[j]!=0.0) temp_inner += spin[j] - base;
+ 	} else if(ydim > 1) {
+ 	  // y==ydim-1.  Add edge correction.
+-	  UINT4m j = i - xdim;
++	  OC_INDEX j = i - xdim;
+ 	  if(Ms_inverse[j]!=0.0) temp_outer += base - spin[j];
+ 	}
+ 	sum_inner += wgty*temp_inner;
+@@ -1875,29 +1875,29 @@
+ 	temp_inner.Set(0.,0.,0.);
+ 	temp_outer.Set(0.,0.,0.);
+ 	if(z > 1) {
+-	  UINT4m j1 =  i - xydim;
+-	  UINT4m j2 = j1 - xydim;
++	  OC_INDEX j1 =  i - xydim;
++	  OC_INDEX j2 = j1 - xydim;
+ 	  if(Ms_inverse[j1]!=0.0) temp_inner = spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) temp_outer = spin[j1] - spin[j2];
+ 	} else if(z == 1) {
+-	  UINT4m j = i - xydim;
++	  OC_INDEX j = i - xydim;
+ 	  if(Ms_inverse[j]!=0.0) temp_inner = spin[j] - base;
+ 	} else if(zdim > 1) {
+ 	  // z==0.  Add edge correction.
+-	  UINT4m j = i + xydim;
++	  OC_INDEX j = i + xydim;
+ 	  if(Ms_inverse[j]!=0.0) temp_outer = base - spin[j];
+ 	}
+ 	if(z+2 < zdim) {
+-	  UINT4m j1 =  i + xydim;
+-	  UINT4m j2 = j1 + xydim;
++	  OC_INDEX j1 =  i + xydim;
++	  OC_INDEX j2 = j1 + xydim;
+ 	  if(Ms_inverse[j1]!=0.0) temp_inner += spin[j1] - base;
+ 	  if(Ms_inverse[j2]!=0.0) temp_outer += spin[j1] - spin[j2];
+ 	} else if(z+2 == zdim) {
+-	  UINT4m j = i + xydim;
++	  OC_INDEX j = i + xydim;
+ 	  if(Ms_inverse[j]!=0.0) temp_inner += spin[j] - base;
+ 	} else if(zdim > 1) {
+ 	  // z==zdim-1.  Add edge correction.
+-	  UINT4m j = i - xydim;
++	  OC_INDEX j = i - xydim;
+ 	  if(Ms_inverse[j]!=0.0) temp_outer += base - spin[j];
+ 	}
+ 	sum_inner += wgtz*temp_inner;
+@@ -1916,30 +1916,30 @@
+ void
+ Klm_UniformExchange::CalcEnergy26Ngbr
+ (const Oxs_MeshValue<ThreeVector>& spin,
+- const Oxs_MeshValue<REAL8m>& Ms_inverse,
++ const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+  const Oxs_RectangularMesh* mesh,
+- Oxs_MeshValue<REAL8m>& energy,
++ Oxs_MeshValue<OC_REAL8m>& energy,
+  Oxs_MeshValue<ThreeVector>& field) const
+ {
+-  UINT4m xdim = mesh->DimX();
+-  UINT4m ydim = mesh->DimY();
+-  UINT4m zdim = mesh->DimZ();
+-  UINT4m xydim = xdim*ydim;
++  OC_INDEX xdim = mesh->DimX();
++  OC_INDEX ydim = mesh->DimY();
++  OC_INDEX zdim = mesh->DimZ();
++  OC_INDEX xydim = xdim*ydim;
+ 
+-  const REAL8m hcoef = -2/MU0;
++  const OC_REAL8m hcoef = -2/MU0;
+ 
+   // Construct term weightings.  See mjd's NOTES I, 23-Oct-1997,
+   // pp 168-171.
+-  REAL8m delxsq = mesh->EdgeLengthX()*mesh->EdgeLengthX();
+-  REAL8m delysq = mesh->EdgeLengthY()*mesh->EdgeLengthY();
+-  REAL8m delzsq = mesh->EdgeLengthZ()*mesh->EdgeLengthZ();
+-  REAL8m delisum = (1.0/delxsq)+(1.0/delysq)+(1.0/delzsq);
+-  REAL8m Amult = A/18.0;
++  OC_REAL8m delxsq = mesh->EdgeLengthX()*mesh->EdgeLengthX();
++  OC_REAL8m delysq = mesh->EdgeLengthY()*mesh->EdgeLengthY();
++  OC_REAL8m delzsq = mesh->EdgeLengthZ()*mesh->EdgeLengthZ();
++  OC_REAL8m delisum = (1.0/delxsq)+(1.0/delysq)+(1.0/delzsq);
++  OC_REAL8m Amult = A/18.0;
+ 
+   // Nearest neighbor weights.  These are all zero for cubic cells.
+   // Might want to implement special handling in the algorithm
+   // below for this common case.
+-  REAL8m wgt_x=0.,wgt_y=0.,wgt_z=0.;
++  OC_REAL8m wgt_x=0.,wgt_y=0.,wgt_z=0.;
+   if(delxsq!=delysq || delxsq!=delzsq || delysq!=delzsq) {
+     wgt_x = 4*Amult*(delisum-3.0/delxsq);
+     wgt_y = 4*Amult*(delisum-3.0/delysq);
+@@ -1947,19 +1947,19 @@
+   }
+ 
+   // 2nd nearest neighbor weights.
+-  REAL8m wgt_xy = 2*Amult*(-delisum + 3.0/(2*delzsq));
+-  REAL8m wgt_xz = 2*Amult*(-delisum + 3.0/(2*delysq));
+-  REAL8m wgt_yz = 2*Amult*(-delisum + 3.0/(2*delxsq));
++  OC_REAL8m wgt_xy = 2*Amult*(-delisum + 3.0/(2*delzsq));
++  OC_REAL8m wgt_xz = 2*Amult*(-delisum + 3.0/(2*delysq));
++  OC_REAL8m wgt_yz = 2*Amult*(-delisum + 3.0/(2*delxsq));
+ 
+   // Corner neighbor weight.
+-  REAL8m wgt_corner = -0.5*Amult*delisum;
++  OC_REAL8m wgt_corner = -0.5*Amult*delisum;
+ 
+-  for(UINT4m z=0;z<zdim;z++) {
+-    for(UINT4m y=0;y<ydim;y++) {
+-      for(UINT4m x=0;x<xdim;x++) {
+-	UINT4m i = mesh->Index(x,y,z); // Get base linear address
++  for(OC_INDEX z=0;z<zdim;z++) {
++    for(OC_INDEX y=0;y<ydim;y++) {
++      for(OC_INDEX x=0;x<xdim;x++) {
++	OC_INDEX i = mesh->Index(x,y,z); // Get base linear address
+ 
+-	REAL8m Msii = Ms_inverse[i];
++	OC_REAL8m Msii = Ms_inverse[i];
+ 	if(Msii == 0.0) {
+ 	  energy[i]=0.0;
+ 	  field[i].Set(0.,0.,0.);
+@@ -1971,11 +1971,11 @@
+ 	// Nearest x neighbors.  At most 2.
+ 	ThreeVector sum_x(0.,0.,0.);
+ 	if(x>0) {
+-	  UINT4m j = i-1;
++	  OC_INDEX j = i-1;
+ 	  if(Ms_inverse[j]!=0.0) sum_x = (spin[j] - base);
+ 	}
+ 	if(x<xdim-1) {
+-	  UINT4m j = i+1;
++	  OC_INDEX j = i+1;
+ 	  if(Ms_inverse[j]!=0.0) sum_x += (spin[j] - base);
+ 	}
+ 	sum_x *= wgt_x;
+@@ -1983,11 +1983,11 @@
+ 	// Nearest y neighbors.  At most 2.
+ 	ThreeVector sum_y(0.,0.,0.);
+ 	if(y>0) {
+-	  UINT4m j = i-xdim;
++	  OC_INDEX j = i-xdim;
+ 	  if(Ms_inverse[j]!=0.0) sum_y = (spin[j] - base);
+ 	}
+ 	if(y<ydim-1) {
+-	  UINT4m j = i+xdim;
++	  OC_INDEX j = i+xdim;
+ 	  if(Ms_inverse[j]!=0.0) sum_y += (spin[j] - base);
+ 	}
+ 	sum_y *= wgt_y;
+@@ -1995,17 +1995,17 @@
+ 	// Nearest z neighbors.  At most 2.
+ 	ThreeVector sum_z(0.,0.,0.);
+ 	if(z>0) {
+-	  UINT4m j = i-xydim;
++	  OC_INDEX j = i-xydim;
+ 	  if(Ms_inverse[j]!=0.0) sum_z = (spin[j] - base);
+ 	}
+ 	if(z<zdim-1) {
+-	  UINT4m j = i+xydim;
++	  OC_INDEX j = i+xydim;
+ 	  if(Ms_inverse[j]!=0.0) sum_z += (spin[j] - base);
+ 	}
+ 	sum_z *= wgt_z;
+ 
+ 	// xy-neighbors.  At most 4.
+-	UINT4m j;
++	OC_INDEX j;
+ 	ThreeVector sum_xy;
+ 	j = i;  if(x>0)      j -= 1;  if(y>0)      j -= xdim;
+ 	if(Ms_inverse[j]!=0.0) sum_xy = (spin[j] - base);
+@@ -2043,7 +2043,7 @@
+ 
+ 	// Corner neighbors.  At most 8.
+ 	ThreeVector sum_corner;
+-	UINT4m iz=i;
++	OC_INDEX iz=i;
+ 	if(z>0) iz -= xydim;
+ 	j = iz;  if(x>0)      j -= 1;  if(y>0)      j -= xdim;
+ 	if(Ms_inverse[j]!=0.0) sum_corner = (spin[j] - base);
+@@ -2084,13 +2084,13 @@
+  ) const
+ {
+   const Oxs_MeshValue<ThreeVector>& spin = state.spin;
+-  const Oxs_MeshValue<REAL8m>& Ms = *(state.Ms);
+-  const Oxs_MeshValue<REAL8m>& Ms_inverse = *(state.Ms_inverse);
++  const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
++  const Oxs_MeshValue<OC_REAL8m>& Ms_inverse = *(state.Ms_inverse);
+ 
+   // Use supplied buffer space, and reflect that use in oed.
+   oed.energy = oed.energy_buffer;
+   oed.field = oed.field_buffer;
+-  Oxs_MeshValue<REAL8m>& energy = *oed.energy_buffer;
++  Oxs_MeshValue<OC_REAL8m>& energy = *oed.energy_buffer;
+   Oxs_MeshValue<ThreeVector>& field = *oed.field_buffer;
+ 
+   const Oxs_RectangularMesh* mesh
+diff -ru oommf-pbc_2.1/kl_uniformexchange.h oommf-pbc_2.1-new/kl_uniformexchange.h
+--- oommf-pbc_2.1/kl_uniformexchange.h	2017-06-14 13:50:09.000000000 -0400
++++ oommf-pbc_2.1-new/kl_uniformexchange.h	2022-01-22 02:31:37.000000000 -0500
+@@ -24,8 +24,8 @@
+   enum ExchangeCoefType {
+     A_UNKNOWN, A_TYPE, LEX_TYPE
+   }  excoeftype;
+-  REAL8m A;
+-  REAL8m lex;
++  OC_REAL8m A;
++  OC_REAL8m lex;
+ 
+   enum ExchangeKernel { NGBR_UNKNOWN,
+ 			NGBR_6_FREE,
+@@ -43,103 +43,103 @@
+   // of the CalcEnergy routines.  (Well, currently just 12NgbrZD1.)
+   // They are "mutable" so they can be changed from inside the
+   // (const) CalcEnergy routines.
+-  mutable UINT4m mesh_id;
+-  mutable Nb_2DArrayWrapper<REAL8m> xcoef;
+-  mutable Nb_2DArrayWrapper<REAL8m> ycoef;
+-  mutable Nb_2DArrayWrapper<REAL8m> zcoef;
+-  mutable REAL8m xinteg[3];
+-  mutable REAL8m yinteg[3];
+-  mutable REAL8m zinteg[3];
+-
+-  void InitCoef_12NgbrZD1(UINT4m size,
+-			  REAL8m wgt[3],
+-			  Nb_2DArrayWrapper<REAL8m>& coef) const;
++  mutable OC_UINT4m mesh_id;
++  mutable Nb_2DArrayWrapper<OC_REAL8m> xcoef;
++  mutable Nb_2DArrayWrapper<OC_REAL8m> ycoef;
++  mutable Nb_2DArrayWrapper<OC_REAL8m> zcoef;
++  mutable OC_REAL8m xinteg[3];
++  mutable OC_REAL8m yinteg[3];
++  mutable OC_REAL8m zinteg[3];
++
++  void InitCoef_12NgbrZD1(OC_INDEX size,
++			  OC_REAL8m wgt[3],
++			  Nb_2DArrayWrapper<OC_REAL8m>& coef) const;
+   /// Sets "coef" and "integ" arrays for use by NGBR_12_ZD1 kernel.
+ 
+   // Utility routine for CalcEnergy6NgbrBigAngleMirror
+-  REAL8m ComputeAngle(const ThreeVector& u1,const ThreeVector& u2) const;
++  OC_REAL8m ComputeAngle(const ThreeVector& u1,const ThreeVector& u2) const;
+ 
+   // Calculation routines for each of the
+   // aforementioned energy formulations.
+   void CalcEnergy6NgbrFree
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrMirror
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrMirrorStd
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrMirror_lex
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms,
++   const Oxs_MeshValue<OC_REAL8m>& Ms,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrBigAngMirror
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrZD2
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   //kl(m)
+   void CalcEnergy6NgbrZPeriodicCond
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy6NgbrZPeriodicCond_lex
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms,
++   const Oxs_MeshValue<OC_REAL8m>& Ms,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   //   
+   void CalcEnergy12NgbrFree
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy12NgbrZD1
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy12NgbrZD1B
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy12NgbrMirror
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+   void CalcEnergy26Ngbr
+   (const Oxs_MeshValue<ThreeVector>& spin,
+-   const Oxs_MeshValue<REAL8m>& Ms_inverse,
++   const Oxs_MeshValue<OC_REAL8m>& Ms_inverse,
+    const Oxs_RectangularMesh* mesh,
+-   Oxs_MeshValue<REAL8m>& energy,
++   Oxs_MeshValue<OC_REAL8m>& energy,
+    Oxs_MeshValue<ThreeVector>& field) const;
+ 
+ protected:
+@@ -153,7 +153,7 @@
+ 		    Oxs_Director* newdtr, // App director
+ 		    const char* argstr);  // MIF input block parameters
+   virtual ~Klm_UniformExchange();
+-  virtual BOOL Init();
++  virtual OC_BOOL Init();
+ };
+ 
+ 

@@ -124,7 +124,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName OOMMF
-Oc_Main SetVersion 2.0a3
+Oc_Main SetVersion 2.0b0
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for
@@ -147,13 +147,39 @@ Oc_CommandLine Option err {errFile} {global err; set err $errFile} \
 set err ""
 
 Oc_CommandLine Option platform {} {
+   global dump_platform ; set dump_platform 1
+} "Print platform summary and exit"
+set dump_platform 0
+
+Oc_CommandLine Option v {} { global verbose ; set verbose 1 } \
+   "Verbose output (with platform summary)"
+set verbose 0
+
+Oc_CommandLine Option [Oc_CommandLine Switch] {
+	{{appSpec optional} {expr {![string length $appSpec]
+		|| [string match {[a-zA-Z]*} [lindex $appSpec 0]]}}
+		"Application to launch:\
+		\"appName \[-exact\] \[version-requirement\]\""}
+	{{arg list} {} "Arguments to pass to the application"}
+	} {
+    if {[string length $appSpec] == 0} {
+	set appSpec mmLaunch
+    }
+    global argv; set argv [concat [list $appSpec] $arg]
+} "End of options; next argument is appSpec"
+
+Oc_CommandLine Parse $argv
+
+if {$dump_platform} {
+   # Run this after Oc_CommandLine Parse so we can check
+   # for verbose request (Oc_CommandLine Option v).
    # A not uncommon source of problems is erroneously set environment
    # variables.  Grab these up front so we can report them if
    # Oc_Config fails to initialize.  (NB: Oc_Config initialization
    # fills missing values in the local copy of env, so to report the
    # original configuration we need to cache the existing names before
    # calling Oc_Config.)
-   global env
+   global env verbose
    set predefinedEnvVars [concat [array names env OOMMF*] \
                              [array names env TCL*] [array names env TK*]]
    if {[catch {Oc_Config RunPlatform} runplatform]} {
@@ -177,23 +203,83 @@ Oc_CommandLine Option platform {} {
    puts "OOMMF release\
          [package provide Oc]$snapshot\n[$runplatform \
 	 Summary]"
+
+   if {$verbose} {
+      set rootdir [Oc_Main GetOOMMFRootDir]
+
+      # Dump active lines from local options.tcl
+      set loptionsfile [file join $rootdir config local options.tcl]
+      if {![file exists $loptionsfile]} {
+         puts "\nNo local options.tcl file"
+      } else {
+         if {[catch {open $loptionsfile} chan]} {
+            puts stderr "ERROR: Can't open local options file\
+                         \"$loptionsfile\": $chan"
+         } else {
+            set lopts [split [read -nonewline $chan] "\n"]
+            close $chan
+            # Dump active lines from local options file
+            set lopts [lsearch -inline -all -not -regexp $lopts "^\s*#"]
+            set lopts [lsearch -inline -all -not -regexp $lopts "^\s*$"]
+            if {[llength $lopts]==0} {
+               puts "\nNo local options set"
+            } else {
+               puts "\n--- Local config options ---"
+               foreach line $lopts { puts "   $line" }
+            }
+         }
+      }
+
+      # Dump active lines from local platform file
+      set platform [$runplatform GetValue platform_name]
+      set lplatformfile \
+         [file join $rootdir config platforms local ${platform}.tcl]
+      if {![file exists $lplatformfile]} {
+         puts "\nNo local platform file"
+      } else {
+         if {[catch {open $lplatformfile} chan]} {
+            puts stderr "ERROR: Can't open local platform file\
+                         \"$lplatformfile\": $chan"
+         } else {
+            set lopts [split [read -nonewline $chan] "\n"]
+            close $chan
+            # Dump active lines from local platform file
+            set lopts [lsearch -inline -all -not -regexp $lopts "^\s*#"]
+            set lopts [lsearch -inline -all -not -regexp $lopts "^\s*$"]
+            if {[llength $lopts]==0} {
+               puts "\nNo local platform options set"
+            } else {
+               puts "\n--- Local platform options ---"
+               foreach line $lopts { puts "   $line" }
+            }
+         }
+      }
+
+      # Dump compile options
+      source [file join $rootdir app pimake platform.tcl]
+      if {![catch {$runplatform GetValue \
+                     program_compiler_c++_option_optlevel} copts]} {
+         set copts [eval $copts]
+      } elseif {![catch {$runplatform GetValue \
+                     program_compiler_c++_option_opt} copts]} {
+         set copts [eval $copts]
+      } else {
+         set copts "ERROR: $copts"
+      }
+      if {[catch {$runplatform GetValue \
+                     program_compiler_c++_option_valuesafeopt} cvsopts]} {
+         set cvsopts "ERROR: $cvsopts"
+      } else {
+         set cvsopts [eval $cvsopts]
+      }
+      puts "\n--- Compiler options ---"
+      puts "     Standard options: $copts"
+      puts "   Value-safe options: $cvsopts"
+
+      puts "\nOOMMF root directory: $rootdir"
+   }
    exit
-} "Print platform summary and exit"
-
-Oc_CommandLine Option [Oc_CommandLine Switch] {
-	{{appSpec optional} {expr {![string length $appSpec] 
-		|| [string match {[a-zA-Z]*} [lindex $appSpec 0]]}}
-		"Application to launch:\
-		\"appName \[-exact\] \[version-requirement\]\""}
-	{{arg list} {} "Arguments to pass to the application"}
-	} {
-    if {[string length $appSpec] == 0} {
-	set appSpec mmLaunch
-    }
-    global argv; set argv [concat [list $appSpec] $arg]
-} "End of options; next argument is appSpec"
-
-Oc_CommandLine Parse $argv
+}
 
 if {[catch {eval Oc_Application CommandLine $argv} cmd]} {
     return -code error $cmd

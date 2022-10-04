@@ -1,0 +1,455 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Introduction to the GNU gdb debugger</TITLE>
+<META NAME="description" CONTENT="Introduction to the GNU gdb debugger">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Introduction_to_LLVM_lldb.html">
+<LINK REL="previous" HREF="C++_source_code_debuggers.html">
+<LINK REL="up" HREF="C++_source_code_debuggers.html">
+<LINK REL="next" HREF="Introduction_to_LLVM_lldb.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html273"
+  HREF="Introduction_to_LLVM_lldb.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html269"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html263"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html271"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html274"
+  HREF="Introduction_to_LLVM_lldb.html">Introduction to the LLVM</A>
+<B> Up:</B> <A NAME="tex2html270"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<B> Previous:</B> <A NAME="tex2html264"
+  HREF="C++_source_code_debuggers.html">C++ source code debuggers</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00661000000000000000"></A><A NAME="sec:debug:gdbintro"></A>
+<BR>
+Introduction to the GNU <B>gdb</B> debugger
+</H2>
+This section provides a brief overview on using <B>gdb</B> for debugging
+OOMMF programs. For a more thorough background you can refer to the
+extensive documentation available from the GNU Project or the many
+online tutorials.
+
+<P>
+In the following examples, the (<B>bash</B>) shell prompt is indicated by
+<TT>$</TT>, and the <B>gdb</B> prompt with <TT>(gdb)</TT>. You launch <B>gdb</B>
+from the command line with the name of the executable file. You can
+provide arguments to the executable when you <TT>run</TT> the program inside
+<B>gdb</B>. For example, to debug a problem with an <TT>Oxs</TT> extension,
+we would run <B>Boxsi</B> with a sample troublesome <TT>.mif</TT> file, say
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">cd oommf/app/oxs</FONT>
+<BR>$ <FONT COLOR="#00bbee">gdb linux-x86_64/oxs</FONT>
+<BR>(gdb) <FONT COLOR="#ff3311">run boxsi.tcl local/foo/foo.mif -threads 1</FONT>
+<BR></TT>
+</DIV>
+<BR>
+Subsequent <TT>run</TT> commands will reuse the same arguments unless you
+specify new ones. In this example the <TT>-threads 1</TT> option to
+<B>Boxsi</B> is used to simplify the debugging process. If you need or
+want to debug with multiple threads, then read up on the ``thread''
+command in the <B>gdb</B> documentation.
+
+<P>
+The program run will automatically terminate and return to the
+<TT>(gdb)</TT> prompt if the program exits or aborts. Alternately you can
+<TT>Ctrl-C</TT> at any time to manually halt. To exit <B>gdb</B> type
+<TT>quit</TT> at the <TT>(gdb)</TT> prompt.
+
+<P>
+<B>gdb</B> has a large collection of commands that you can use to control
+program flow and inspect program data. An example we saw before is
+<TT>backtrace</TT>, which can be abbreviated as
+<TT>bt</TT>. Fig.&nbsp;<A HREF="#oommfgdbcheat">5.3</A> lists a few of the more common
+commands, and Figs.&nbsp;<A HREF="#fig:oommfgdbsession1">5.4</A> and
+<A HREF="#fig:oommfgdbsession2">5.5</A> provide an example debugging session
+illustrating their use.
+
+<P>
+<A NAME="oommfgdbcheat"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+<DIV ALIGN="CENTER">
+<TABLE CELLPADDING=3 BORDER="1">
+<TR><TD ALIGN="LEFT" COLSPAN=3><B>Shellcommand:</B><TT> gdb linux-x86_64/oxs [corefile (opt)]</TT></TD>
+</TR>
+<TR><TD ALIGN="CENTER" COLSPAN=1><B>Command</B></TD>
+<TD ALIGN="CENTER" COLSPAN=1><B>Abbr.</B></TD>
+<TD ALIGN="LEFT" COLSPAN=1><B>Description</B></TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#00b300"><B>Process control</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">run [<I>args</I>]</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">run executable with <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">run</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">run executable with last <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">show args</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">display current <I>args</I></TD>
+</TR>
+<TR><TD ALIGN="LEFT">set env FOO bar</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">set envr. variable FOO to ``bar''</TD>
+</TR>
+<TR><TD ALIGN="LEFT">unset env FOO</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">unset environment variable FOO</TD>
+</TR>
+<TR><TD ALIGN="LEFT">Ctrl-C</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">stop and return to (gdb) prompt</TD>
+</TR>
+<TR><TD ALIGN="LEFT">kill</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">terminate current run</TD>
+</TR>
+<TR><TD ALIGN="LEFT">quit</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">exit gdb</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#0000ff"><B>Introspection</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">backtrace</TD>
+<TD ALIGN="LEFT">bt</TD>
+<TD ALIGN="LEFT">stack trace</TD>
+</TR>
+<TR><TD ALIGN="LEFT">frame 7</TD>
+<TD ALIGN="LEFT">f 7</TD>
+<TD ALIGN="LEFT">change to stack frame 7</TD>
+</TR>
+<TR><TD ALIGN="LEFT">list 123</TD>
+<TD ALIGN="LEFT">l 123</TD>
+<TD ALIGN="LEFT">list source about line 123</TD>
+</TR>
+<TR><TD ALIGN="LEFT">list foo.cc:50</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">list source about line 50 of foo.cc</TD>
+</TR>
+<TR><TD ALIGN="LEFT">list -</TD>
+<TD ALIGN="LEFT">l -</TD>
+<TD ALIGN="LEFT">list preceding ten lines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">list foo::bar</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">list first ten lines of function foo::bar()</TD>
+</TR>
+<TR><TD ALIGN="LEFT">set listsize 20</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">change list output length to 20 lines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">info locals</TD>
+<TD ALIGN="LEFT">i lo</TD>
+<TD ALIGN="LEFT">print local variables</TD>
+</TR>
+<TR><TD ALIGN="LEFT">info args</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">print function arguments</TD>
+</TR>
+<TR><TD ALIGN="LEFT">print foo</TD>
+<TD ALIGN="LEFT">p foo</TD>
+<TD ALIGN="LEFT">write info on variable foo</TD>
+</TR>
+<TR><TD ALIGN="LEFT">printf <code>"</code>%g<code>"</code>, foo</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">print foo with format %g (note comma)</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#ff0000"><B>Flow control</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">break bar.cc:13</TD>
+<TD ALIGN="LEFT">b bar.cc:13</TD>
+<TD ALIGN="LEFT">set breakpoint at line 13 of bar.cc</TD>
+</TR>
+<TR><TD ALIGN="LEFT">break foo::bar</TD>
+<TD ALIGN="LEFT">b foo::bar</TD>
+<TD ALIGN="LEFT">break on entry to C++ routine foo::bar()</TD>
+</TR>
+<TR><TD ALIGN="LEFT">info breakpoints</TD>
+<TD ALIGN="LEFT">i b</TD>
+<TD ALIGN="LEFT">list breakpoints</TD>
+</TR>
+<TR><TD ALIGN="LEFT">delete 4</TD>
+<TD ALIGN="LEFT">d 4</TD>
+<TD ALIGN="LEFT">delete breakpoint 4</TD>
+</TR>
+<TR><TD ALIGN="LEFT">delete</TD>
+<TD ALIGN="LEFT">d</TD>
+<TD ALIGN="LEFT">delete all breakpoints</TD>
+</TR>
+<TR><TD ALIGN="LEFT">ignore 3 100</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">skip breakpoint 3 100 times</TD>
+</TR>
+<TR><TD ALIGN="LEFT">watch -location foo</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">break when foo changes value</TD>
+</TR>
+<TR><TD ALIGN="LEFT">condition 2 foo<code>&gt;</code>10</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">break if foo<code>&gt;</code>10 at breakpoint 2</TD>
+</TR>
+<TR><TD ALIGN="LEFT">continue</TD>
+<TD ALIGN="LEFT">c</TD>
+<TD ALIGN="LEFT">continue running</TD>
+</TR>
+<TR><TD ALIGN="LEFT">step [#]</TD>
+<TD ALIGN="LEFT">s [#]</TD>
+<TD ALIGN="LEFT">take # steps, follow into subroutines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">next [#]</TD>
+<TD ALIGN="LEFT">n [#]</TD>
+<TD ALIGN="LEFT">take # steps, step over subroutines</TD>
+</TR>
+<TR><TD ALIGN="LEFT">finish</TD>
+<TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">run to end of current subroutine (step out)</TD>
+</TR>
+<TR><TD ALIGN="LEFT" COLSPAN=3><FONT COLOR="#9900e6"><B>Threads</B></FONT></TD>
+</TR>
+<TR><TD ALIGN="LEFT">info threads</TD>
+<TD ALIGN="LEFT">i th</TD>
+<TD ALIGN="LEFT">list threads</TD>
+</TR>
+<TR><TD ALIGN="LEFT">thread 4</TD>
+<TD ALIGN="LEFT">t 4</TD>
+<TD ALIGN="LEFT">switch context to thread 4</TD>
+</TR>
+</TABLE>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.3:
+    <B>gdb</B> Debugger
+    Cheatsheet
+    <A HREF="#sec:debug:gdbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<A NAME="fig:oommfgdbsession1"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">cd app/oxs</FONT>
+<BR>$ <FONT COLOR="#00bbee">gdb linux-x86_64/oxs</FONT>
+<BR>(gdb) <FONT COLOR="#ff3311">run boxsi.tcl examples/stdprob1.mif -threads 1</FONT>
+<BR>
+Starting program: oommf/app/oxs/linux-x86_64/oxs boxsi.tcl examples/stdp...
+<BR>
+oxs: oommf/app/oxs/base/meshvalue.h:319: const T&amp; Oxs_MeshValue&lt;T&gt;::oper...
+<BR>&nbsp;&nbsp;Assertion `0&lt;=index &amp;&amp; index&lt;size' failed.
+<BR>
+<BR>
+Thread 1 &#34;oxs&#34; received signal SIGABRT, Aborted.
+<BR>
+0x00007ffff65d837f in raise () from /lib64/libc.so.6
+<BR>(gdb) <FONT COLOR="#ff3311">bt</FONT>
+<BR>#0 &nbsp;0x00007ffff65d837f in raise () from /lib64/libc.so.6
+<BR>[...]
+<BR>#4 &nbsp;0x000000000041012a in Oxs_MeshValue&lt;double&gt;::operator[]
+<BR>&nbsp;&nbsp;(this=0xcbeb58, index=40000) at oommf/app/oxs/base/meshvalue.h:319
+<BR>#5 &nbsp;0x000000000061e88a in Oxs_UniaxialAnisotropy::RectIntegEnergy
+<BR>&nbsp;&nbsp;(this=0x1307d60, state=..., ocedt=..., ocedtaux=..., node_start=36864,
+<BR>&nbsp;&nbsp;node_stop=40000) at oommf/app/oxs/ext/uniaxialanisotropy.cc:241
+<BR>[...]
+<BR>(gdb) <FONT COLOR="#ff3311">frame 5</FONT>
+<BR>#5 &nbsp;0x000000000061e88a in Oxs_UniaxialAnisotropy::RectIntegEnergy...
+<BR>
+241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>(gdb) <FONT COLOR="#ff3311">set listsize 5</FONT>
+<BR>(gdb) <FONT COLOR="#ff3311">list</FONT>
+<BR>
+239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>
+240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>
+241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>
+242 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} else {
+<BR>
+243 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!Ha_is_uniform) field_mult = Ha[i];
+<BR>(gdb) <FONT COLOR="#ff3311">print i</FONT>
+<BR>$1 = 40000
+<BR>(gdb) <FONT COLOR="#ff3311">print Ms_inverse</FONT>
+<BR>$2 = (const Oxs_MeshValue&lt;double&gt; &amp;) @0xcbeb58: {arr = 0x7ffff7ebf000,
+<BR>&nbsp;&nbsp;size = 40000, arrblock = {datablock = 0x7ffff7ebe010 &#34;",
+<BR>&nbsp;&nbsp;arr = 0x7ffff7ebf000, arr_size = 40000, strip_count = 1,
+<BR>&nbsp;&nbsp;strip_size = 320000, strip_pos = std::vector of length 2,
+<BR>&nbsp;&nbsp;capacity 2 = {0, 320000}}, static MIN_THREADING_SIZE = 10000}
+<BR>(gdb) <FONT COLOR="#ff3311">kill</FONT>
+<BR>
+Kill the program being debugged? (y or n) y
+<BR>[Inferior 1 (process 1309854) killed]
+<BR></TT>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.4:
+    Sample <B>gdb</B> session,
+    part 1: Locating the error
+    <A HREF="#sec:debug:gdbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+<A NAME="fig:oommfgdbsession2"></A>
+
+  <BR CLEAR="ALL">
+<HR>
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ (gdb) <FONT COLOR="#ff3311">break uniaxialanisotropy.cc:239</FONT>
+<BR>
+Breakpoint 1 at 0x61e811: file ext/uniaxialanisotropy.cc, line 239.
+<BR>(gdb) <FONT COLOR="#ff3311">run</FONT>
+<BR>
+Starting program: oommf/app/oxs/linux-x86_64/oxs boxsi.tcl examples/s...
+<BR>[...]
+<BR>
+Thread 1 &#34;oxs&#34; hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+<BR>
+239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>(gdb) <FONT COLOR="#ff3311">info breakpoints</FONT>
+<BR>
+Num &nbsp;&nbsp;&nbsp;&nbsp;Type &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Disp Enb Address &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;What
+<BR>
+1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;breakpoint &nbsp;&nbsp;&nbsp;&nbsp;keep y &nbsp;&nbsp;0x000000000061e811 in Oxs_UniaxialAni...
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;breakpoint already hit 1 time
+<BR>(gdb) <FONT COLOR="#ff3311">ignore 1 39999</FONT>
+<BR>
+Will ignore next 39999 crossings of breakpoint 1.
+<BR>(gdb) <FONT COLOR="#ff3311">continue</FONT>
+<BR>
+<BR>
+Thread 1 &#34;oxs&#34; hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+<BR>
+239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>(gdb) <FONT COLOR="#ff3311">print i</FONT>
+<BR>$3 = 39991
+<BR>(gdb) <FONT COLOR="#ff3311">condition 1 i&gt;=40000</FONT>
+<BR>(gdb) <FONT COLOR="#ff3311">c</FONT>
+<BR>
+<BR>
+Thread 1 &#34;oxs&#34; hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+<BR>
+239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>(gdb) <FONT COLOR="#ff3311">l</FONT>
+<BR>
+237
+<BR>
+238 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for(OC_INDEX i=node_start;i&lt;=node_stop;++i) {
+<BR>
+239 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(aniscoeftype == K1_TYPE) {
+<BR>
+240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>
+241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>(gdb) <FONT COLOR="#ff3311">next</FONT>
+<BR>
+240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if(!K1_is_uniform) k = K1[i];
+<BR>(gdb) <FONT COLOR="#ff3311">n</FONT>
+<BR>
+241 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;field_mult = (2.0/MU0)*k*Ms_inverse[i];
+<BR>(gdb) <FONT COLOR="#ff3311">step</FONT>
+<BR>
+Oxs_MeshValue&lt;double&gt;::operator[] (this=0xcbeb58, index=40000)
+<BR>&nbsp;&nbsp;at oommf/app/oxs/base/meshvalue.h:319
+<BR>
+319 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;assert(0&lt;=index &amp;&amp; index&lt;size);
+<BR>(gdb) <FONT COLOR="#ff3311">printf &#34;%d,%d<TT>&#92;</TT>n&#34;, index, size</FONT>
+<BR>
+40000,40000
+<BR>(gdb) <FONT COLOR="#ff3311">quit</FONT>
+<BR></TT>
+</DIV>
+<BR>
+  <DIV ALIGN="CENTER">
+Figure 5.5:
+    Sample <B>gdb</B> session,
+    part 2: Bug details
+    <A HREF="#sec:debug:gdbintro">(description)</A>
+  
+</DIV>
+  <BR CLEAR="ALL">
+<HR>
+<P>
+Two notes concerning <B>gdb</B> on macOS: First, as mentioned earlier,
+if you install <B>gdb</B> through MacPorts, the executable name is
+<TT>ggdb</TT>. Second, debuggers operate outside the normal end-user program
+envelope and may run afoul of the OS security system. In particular to
+use <B>gdb</B> you may need to set up a certificate in the
+macOS System Keychain for it; details on this process can be found
+online. This issue might be resolved for <B>lldb</B> (next section) as
+part of the installation process if it and <B>clang++</B> were installed
+as part of the Xcode package.
+
+<P>
+This introduction only scratches the surface of <B>gdb</B> commands and
+capabilities. You can find tutorials and additional information online,
+or else refer to the <B>gdb</B> documentation from GNU for full details.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html273"
+  HREF="Introduction_to_LLVM_lldb.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html269"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html263"
+  HREF="C++_source_code_debuggers.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html271"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

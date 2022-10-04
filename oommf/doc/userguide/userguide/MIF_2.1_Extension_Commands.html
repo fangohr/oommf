@@ -1,0 +1,684 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>MIF&nbsp;2.1 Extension Commands</TITLE>
+<META NAME="description" CONTENT="MIF&nbsp;2.1 Extension Commands">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Specify_Conventions.html">
+<LINK REL="previous" HREF="MIF_2.1_File_Overview.html">
+<LINK REL="up" HREF="MIF_2.1.html">
+<LINK REL="next" HREF="Specify_Conventions.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1228"
+  HREF="Specify_Conventions.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1224"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1218"
+  HREF="MIF_2.1_File_Overview.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1226"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1229"
+  HREF="Specify_Conventions.html">Specify Conventions</A>
+<B> Up:</B> <A NAME="tex2html1225"
+  HREF="MIF_2.1.html">MIF 2.1</A>
+<B> Previous:</B> <A NAME="tex2html1219"
+  HREF="MIF_2.1_File_Overview.html">MIF 2.1 File Overview</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001832000000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="21716"></A>
+<BR>
+MIF&nbsp;2.1 Extension Commands
+</H2>
+In addition to the standard Tcl commands (modulo the safe Tcl restrictions outlined above), a number of additional commands are
+available in MIF&nbsp;2.1 files:
+<A HREF="#html:specifyCmd"><TT>Specify</TT></A>,
+<A HREF="#html:mif2ClearSpec"><TT>ClearSpec</TT></A>,
+<A HREF="#html:mif2datesort"><TT>DateSort</TT></A>,
+<A HREF="#html:destinationCmd"><TT>Destination</TT></A>,
+<A HREF="#html:GetStateData"><TT>GetStateData</TT></A>,
+<A HREF="#html:mif2Ignore"><TT>Ignore</TT></A>,
+<A HREF="#html:mif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
+<A HREF="#html:mif2parameter"><TT>Parameter</TT></A>,
+<A HREF="#html:mif2Random"><TT>Random</TT></A>,
+<A HREF="#html:mif2randomseed"><TT>RandomSeed</TT></A>,
+<A HREF="#html:MifReport"><TT>Report</TT></A>,
+<A HREF="#html:ReadFile"><TT>ReadFile</TT></A>,
+<A HREF="#html:mif2rglob"><TT>RGlob</TT></A>,
+and <A HREF="#html:scheduleCmd"><TT>Schedule</TT></A>.
+
+<P>
+<DL>
+<DT><STRONG>Specify<A NAME="html:specifyCmd"></A></STRONG></DT>
+<DD><A NAME="21748"></A>
+An Oxs simulation is built as a collection of <TT>Oxs_Ext</TT> (Oxs
+Extension) objects.  In general, <TT>Oxs_Ext</TT> objects are specified and
+initialized in the input MIF&nbsp;2.1 file using the <TT>Specify</TT> command,
+making Specify blocks the primary component of the problem
+definition.  The <TT>Specify</TT> command takes two arguments: the name of
+the <TT>Oxs_Ext</TT> object to create, and an <I>initialization string</I>
+that is passed to the <TT>Oxs_Ext</TT> object during its construction.
+The objects are created in the order in which they appear in the MIF file. Order is important in some cases; for example, if one <TT>Oxs_Ext</TT>
+object refers to another in its initialization string, then the referred
+to object must precede the referrer in the MIF file.
+
+<P>
+Here is a simple Specify block:
+
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_EulerEvolve:foo {
+  alpha 0.5
+  start_dm 0.01
+}
+</PRE>
+
+</BLOCKQUOTE>
+The name of the new <TT>Oxs_Ext</TT> object is ``Oxs_EulerEvolve:foo.''
+The first part of this name, up to the colon, is the the C++ class name of the object.  This must be a child of the <TT>Oxs_Ext</TT>
+class.  Here, <TT>Oxs_EulerEvolve</TT> is a class that integrates the
+Landau-Lifshitz ODE using a simple forward Euler method.  The second
+part of the name, i.e., the part following the colon, is
+the <I>instance name</I><A NAME="21763"></A> for
+this particular instance of the object.  In general, it is possible to
+have multiple instances of an <TT>Oxs_Ext</TT> child class in a simulation,
+but each instance must have a unique name.  These names are used for
+identification by output routines, and to allow one Specify block to
+refer to another Specify block appearing earlier in the MIF file.  If
+the second part of the name is not given, then as a default the empty
+string is appended.  For example, if instead of ``Oxs_EulerEvolve:foo''
+above the name was specified as just ``Oxs_EulerEvolve'', then the
+effective full name of the created object would be
+``Oxs_EulerEvolve:''.
+
+<P>
+The second argument to the <TT>Specify</TT> command, here everything between
+the curly braces, is a string that is interpreted by the new
+<TT>Oxs_Ext</TT> (child) object in its constructor.  The format of this
+string is up to the designer of the child class, but there are a number
+of conventions that designers are encouraged to follow.  These
+conventions are described in the
+<A HREF="Specify_Conventions.html#sec:specConventions">Specify Conventions</A> section below.
+
+<P>
+</DD>
+<DT><STRONG>ClearSpec<A NAME="html:mif2ClearSpec"></A></STRONG></DT>
+<DD>This command is used to disable one or all preceding <TT>Specify</TT>
+commands.  In particular, one could use <TT>ClearSpec</TT> to nullify a
+Specify block from a base MIF file that was imported using the
+<TT>ReadFile</TT> command.  Sample usage is
+
+<BLOCKQUOTE>
+<PRE>
+ClearSpec Oxs_EulerEvolve:foo
+</PRE>
+
+</BLOCKQUOTE>
+where the parameter is the full name (here <TT>Oxs_EulerEvolve:foo</TT>) of
+the Specify block to remove.  If no parameter is given, then all
+preceding Specify blocks are removed.
+
+<P>
+</DD>
+<DT><STRONG>DateSort<A NAME="html:mif2datesort"></A></STRONG></DT>
+<DD>Given a list of filenames, returns the list sorted by modification
+time, with oldest first. The files must all exist. Sample usage is
+
+  <BLOCKQUOTE>
+<PRE>
+set last_omf [lindex [DateSort [RGlob *omf]] end]
+</PRE>
+
+  </BLOCKQUOTE>
+Here <TT>last_omf</TT> will be set to the <TT><B>*.omf</B></TT> file in the current
+directory with the most recent modification time.
+
+<P>
+</DD>
+<DT><STRONG>Destination<A NAME="html:destinationCmd"></A></STRONG></DT>
+<DD><A NAME="21786"></A><A NAME="21787"></A>
+The format for the <TT>Destination</TT> command is
+
+<BLOCKQUOTE>
+<PRE>
+Destination &lt;desttag&gt; &lt;appname&gt; [new]
+</PRE>
+
+</BLOCKQUOTE>
+This command associates a symbolic <I>desttag</I> with an
+application.  The tags are used by the
+<A HREF="#html:scheduleCmd"><TT>Schedule</TT></A> command
+to refer to specific application instances.  The <I>appname</I> may
+either be an OOMMF application name, e.g., mmDisp, or else a
+specific application instance in the form application:nickname, such
+as mmDisp:Spock.  In the first case, the tag is associated with the
+running instance of the requested application (here <TT>mmDisp</TT>) with
+the lowest OOMMF ID (OID) that has not yet been associated with
+another tag.  If no running application can be found that meets these
+criteria, then a new instance of the application is launched.
+
+<P>
+If the <I>appname</I> refers to a specific application instance, then
+the tag is associated with the running instance of the application (say
+<B>mmDisp</B>) that has been assigned the specified nickname.  Name
+matching is case insensitive.  If there is no running copy of the
+application meeting this condition, then a new instance of the
+application is launched and it is assigned the specified nickname.  The
+OOMMF <A HREF="OOMMF_Architecture_Overview.html#sec:arch">account service directory</A> guarantees
+that there is never more than one instance of an application with a
+given nickname.  However, as with the object name in the <TT>Specify</TT>
+command, instances of two different applications, e.g., <B>mmDisp</B> and
+<B>mmGraph</B>, are allowed to share nicknames, because their full
+instance names, say mmDisp:Spock and mmGraph:Spock, are unique.
+
+<P>
+The <TT>Destination</TT> commands are processed in the order in which they
+appear in the the MIF file.  No <I>desttag</I> may appear in more
+than one <TT>Destination</TT> command, and no two destination tags may refer
+to the same application instance.  To insure the latter, the user is
+advised to place all <TT>Destination</TT> commands referring to specific
+instances (e.g., mmDisp:Spock) before any <TT>Destination</TT> commands
+using generic application references (e.g., mmDisp).  Otherwise a
+generic reference might be associated to a running application holding a
+nickname that is referenced by a later <TT>Destination</TT> command.
+
+<P>
+The tag association by the <TT>Destination</TT> command is only known to the
+solver reading the MIF file.  In contrast, assigned instance nicknames
+are recognized across applications.  In particular, multiple solvers may
+reference the same running application by nickname.  For example,
+several sequential solver runs could send stage output to the same
+<B>mmGraph</B> widget, to build up overlapping hysteresis loops.
+
+<P>
+The last parameter to the Destination command is the optional
+<TT>new</TT> keyword.  If present, then a fresh copy of the requested
+application is always launched for association with the given tag.  The
+<TT>new</TT> option can be safely used with any generic application
+reference, but caution must be taken when using this option with
+specific instance references, because an error is raised if the
+requested nickname is already in use.
+
+<P>
+</DD>
+<DT><STRONG>GetStateData<A NAME="html:GetStateData"></A></STRONG></DT>
+<DD>The <TT>GetStateData</TT> command retrieves data attached to a specific
+magnetization state:
+
+<BLOCKQUOTE>
+<PRE>
+GetStateData [-glob|-exact|-regexp] [-pairs] [--] &lt;state_id&gt; \
+             [pattern ...]
+</PRE>
+
+</BLOCKQUOTE>
+The data associated with a state are stored as key-value pairs.
+If no patterns are specified then <TT>GetStateData</TT> returns the list of
+keys available for the given state.  If one or more patterns are
+specified, then all values with keys matching some pattern are
+collected.  If the <TT>-pairs</TT> option is specified then the return is an
+even length list of keys and values interleaved.  If <TT>-pairs</TT> is not
+specified then the return is a list of just the values.  The values are
+returned in key-match order.  Key matching style is controlled by the
+first slate of options, with default being glob.  Two hyphens may be
+used to denote the end of options.
+
+<P>
+The <TT>state_id</TT> is a positive integer identifying the state.  This is
+generally obtained via a <TT>script_args</TT> option in the
+<TT>Specify</TT> block of a conforming <TT>Oxs_Ext</TT> object.  For example,
+
+<BLOCKQUOTE>
+<PRE>
+proc SpinMag { stage_time state_id } {
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+Specify Oxs_ScriptUZeeman {
+  script SpinMag
+  script_args {stage_time base_state_id}
+}
+</PRE>
+
+</BLOCKQUOTE>
+Typically two states may be accessed this way: the step base state
+and a candidate (test) state.  The former, accessed
+as <TT>base_state_id</TT>, corresponds to the last valid, accepted
+magnetization state.  The latter, accessed as <TT>current_state_id</TT>,
+is the latest working state from the evolver object.  In some cases
+these two states may coincide.
+
+<P>
+The keys associated with a state vary with the details of the
+simulation.  The following keys are always available:
+
+<BLOCKQUOTE>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><TT>state_id</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>previous_state_id</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>iteration_count</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>stage_number</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>stage_iteration_count</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>stage_start_time</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>stage_elapsed_time</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>total_elapsed_time</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>last_timestep</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>step_done</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>stage_done</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>run_done</TT></TD>
+</TR>
+<TR><TD ALIGN="LEFT"><TT>max_absMs</TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT">&nbsp;</TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT">&nbsp;</TD>
+</TR>
+</TABLE>
+
+</BLOCKQUOTE>
+Times are in seconds, the <TT>step</TT>/<TT>stage</TT>/<TT>run_done</TT> values are
+one of 1 (done), 0 (not done) or -1 (not yet determined),
+and <TT>max_absMs</TT> is in A/m.
+
+<P>
+Additional key-value pairs may be attached to a state by <TT>Oxs_Ext</TT>
+objects.  For example,
+<A HREF="Evolvers.html#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>
+adds the average magnetization <B><I>x</I></B>-component under the key name
+<TT>Oxs_RungeKuttaEvolve:<TT>&lt;</TT>instance_name<TT>&gt;</TT>:Mx</TT>.
+(Here <TT><TT>&lt;</TT>instance_name<TT>&gt;</TT></TT> is the instance name of the
+object; this is typically an empty string or something like
+``evolver''.)  See the documentation for the various <TT>Oxs_Ext</TT>
+objects for details.
+
+<P>
+Moreover, the keys available for a state may depend on the simulation
+status or processing step.  In particular, the current state indexed
+by <TT>current_state_id</TT> typically only has the default keys from the
+table above available.  For this reason, and additionally because
+the <TT>current_state_id</TT> is only a test state that may be rejected,
+user scripts should generally avoid using data tied to the current state
+in favor of data collected from the base state.  Likewise, the available
+keys may be different for a state (even a base state) marking the start
+of a new stage as compared to states arising inside a stage.  In case of
+problems, a <TT>Report</TT> command inside a script proc can be used to
+dump state information to the Oxsii console, for example,
+
+<BLOCKQUOTE>
+<PRE>
+proc SpinMag { stage_time state_id } {
+   Report "State $state_id, Keys: [GetStateData $base_state_id]"
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+or
+
+<BLOCKQUOTE>
+<PRE>
+proc SpinMag { stage_time state_id } {
+   set report {}
+   foreach {key value} [GetStateData $state_id *] {
+      append report [format "%42s : $value\n" $key]
+   }
+   Report "--- State data ---\n$report"
+   lassign [GetStateData $state_id *:Mx *:My *:Mz] Mx My Mz
+   ...
+}
+</PRE>
+
+</BLOCKQUOTE>
+
+<P>
+For example use of <TT>GetStateData</TT>, see the sample files
+<TT><B>spinmag.mif</B></TT> and <TT><B>spinmag2.mif</B></TT> in the
+directory <TT><B>oommf/app/oxs/examples/</B></TT>.
+
+<P>
+</DD>
+<DT><STRONG>Ignore<A NAME="html:mif2Ignore"></A></STRONG></DT>
+<DD>The <TT>Ignore</TT> command takes an arbitrary number of arguments, which
+are thrown away without being interpreted.  The primary use of
+<TT>Ignore</TT> is to temporarily ``comment out'' (i.e., disable) Specify
+blocks.
+
+<P>
+</DD>
+<DT><STRONG>OOMMFRootDir<A NAME="html:mif2oommfrootdir"></A></STRONG></DT>
+<DD>This command takes no arguments, and returns the full directory path of
+the OOMMF root directory.  This is useful in conjunction with the
+<TT>ReadFile</TT> command for locating files within the OOMMF hierarchy,
+and can also be used to place output files.  File paths must be created
+directly since the Tcl <TT>file</TT> command is not accessible inside safe
+interpreters.  For example
+
+<BLOCKQUOTE>
+<PRE>
+set outfile [OOMMFRootDir]/data/myoutput
+</PRE>
+
+</BLOCKQUOTE>
+In this context one should always use Tcl path conventions.  In
+particular, use forward slashes, ``<TT>/</TT>'', to separate directories.
+
+<P>
+</DD>
+<DT><STRONG>Parameter<A NAME="html:mif2parameter"></A></STRONG></DT>
+<DD>The Oxs interfaces
+(<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii">Oxsii</A> and
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi">Boxsi</A>)
+allow specified variables in the MIF file to be set from the command
+line via the <TT>-parameters</TT> option.  This functionality is enabled
+inside the MIF file via the <TT>Parameter</TT> command:
+<BLOCKQUOTE>
+<TT>Parameter</TT> <I>varname</I> <I>optional_default_value</I>
+
+</BLOCKQUOTE>
+Here <I>varname</I> is the name of a variable that may be set from
+the command line.  If it is not set on the command line then the
+variable is set to the optional default value, if any, or otherwise an
+error is raised.  An error is also raised if a variable set on the
+command line does not have a corresponding <TT>Parameter</TT> command in the
+MIF file.  See also the notes on
+<A HREF="Variable_Substitution.html#sec:varSubst">variable substitution</A> below.
+
+<P>
+</DD>
+<DT><STRONG>Random<A NAME="html:mif2Random"></A></STRONG></DT>
+<DD>Returns a pseudo-random number in the interval <B>[0, 1]</B>, using a
+C-library random number generator.  This random number generator is
+specified by the <TT>OMF_RANDOM</TT> macro in the <TT><B>ocport.h</B></TT> file found in
+the system-specific subdirectory of <TT><B>oommf/pkg/oc/</B></TT>.  The standard
+Tcl <TT>expr rand()</TT> command is also available.
+
+<P>
+</DD>
+<DT><STRONG>RandomSeed<A NAME="html:mif2randomseed"></A></STRONG></DT>
+<DD>Initializes both the Tcl and the C-library random number generators.
+If no parameter is given, then a seed is drawn from the system clock.
+Otherwise, one integer parameter may be specified to be used as the
+seed.
+
+<P>
+</DD>
+<DT><STRONG>Report<A NAME="html:MifReport"></A></STRONG></DT>
+<DD>Intended primarily as a MIF debugging aid, <TT>Report</TT> takes one
+string argument that is printed to the solver interface console and the
+Oxs log file.  It is essentially a replacement for the standard Tcl <TT>puts</TT> command, which is not available in safe interpreters.
+
+<P>
+</DD>
+<DT><STRONG>ReadFile<A NAME="html:ReadFile"></A></STRONG></DT>
+<DD>The Tcl <TT>read</TT> command is absent from safe interpreters.  The
+<TT>ReadFile</TT> command is introduced as a replacement available in
+``custom'' and ``unsafe'' interpreters.  <TT>ReadFile</TT> takes two
+arguments, the file to be read and an optional translation
+specification.  The file may either be specified with an absolute path,
+i.e., one including all its directory components, or with a relative
+path interpreted with respect to the directory containing the MIF file.  The <TT>OOMMFRootDir</TT> command can be used to advantage to locate
+files in other parts of the OOMMF directory tree.
+
+<P>
+The translation specification should be one of <TT>binary</TT>, <TT>auto</TT>
+(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="21917"></A>.  The
+first two translation modes provide the functionality of the
+<TT>-translation</TT> option of the Tcl <TT>fconfigure</TT> command.  Refer to
+the Tcl documentation for details.  Specifying <TT>image</TT> causes the
+input file to be read as an image file.  The file will be read
+directly if it in the PPM P3 (text), PPM P6 (binary), or uncompressed
+BMP formats; otherwise it is filtered through the OOMMF <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><B>any2ppm</B></A>
+program.  (Note that <B>any2ppm</B> requires Tk, and Tk requires a
+display.)  The input file is converted into a string that mimics a PPM
+P3 text file, minus the leading ``P3''.  In particular, after conversion
+the first 3 whitespace separated values are image width, height and
+maxvalue, followed by an array of 3 <B><TT>x</TT></B> width <B><TT>x</TT></B> height
+values, where each triplet corresponds to the red, green and blue
+components of an image pixel, sequenced in normal English reading order.
+Each component is in the range <!-- MATH
+ $[0,maxvalue]$
+ -->
+<B>[0, <I>maxvalue</I>]</B>.  This output contains no
+comments, and may be treated directly as a Tcl list.  The
+<TT>floatimage</TT> option is very similar to the <TT>image</TT> option, except
+that the third value (i.e., maxvalue) in the resulting string is always
+``1'', and the succeeding red, green and blue values are floating point
+values in the range <B>[0, 1]</B>.
+
+<P>
+In all cases, the return value from the <TT>ReadFile</TT> command is a
+string corresponding to the contents of the (possibly translated) file.
+For example,
+
+<BLOCKQUOTE>
+<PRE>
+eval [ReadFile extra_mif_commands.tcl]
+</PRE>
+
+</BLOCKQUOTE>
+can be used to embed a separate Tcl file into a MIF&nbsp;2.1 file.
+
+<P>
+<A NAME="21931"></A>Here's a more complicated example that uses a color image file to
+create a vector field:
+
+<BLOCKQUOTE>
+<PRE>
+set colorimage [ReadFile mirror.ppm floatimage]
+set imagewidth [lindex $colorimage 0]
+set imageheight [lindex $colorimage 1]
+set imagedepth [lindex $colorimage 2] ;# Depth value should be 1
+if {$imagedepth != 1} {
+   Report "ReadFile returned unexpected list value."
+}
+
+proc ColorField { x y z } {
+     global colorimage imagewidth imageheight
+     set i [expr {int(floor(double($x)*$imagewidth))}]
+     if {$i&gt;=$imagewidth} {set i [expr {$imagewidth-1}]}
+     set j [expr {int(floor(double(1-$y)*$imageheight))}]
+     if {$j&gt;=$imageheight} {set j [expr {$imageheight-1}]}
+     set index [expr {3*($j*$imagewidth+$i)+3}]  ;# +3 is to skip header
+     set vx [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Red
+     set vy [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Green
+     set vz [expr {2*[lindex $colorimage $index]-1}] ; incr index  ;# Blue
+     return [list $vx $vy $vz]
+}
+
+Specify Oxs_ScriptVectorField:sample {
+   atlas :atlas
+   norm 1.0
+   script ColorField
+}
+</PRE>
+
+</BLOCKQUOTE>
+<A NAME="21934"></A>
+If the input image is large, then it is best to work with the image list
+(i.e., the variable <TT>colorimage</TT> in the preceding example) directly,
+as illustrated above.  The image list as returned by <TT>ReadFile</TT> is in
+a packed format; if you make modifications to the list values then the
+memory footprint of the list can grow substantially.
+
+<P>
+The <TT>ReadFile</TT> command is not available if the <TT>MIFinterp safety</TT>
+option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
+<A HREF="Local_Customizations.html#sec:install.custom">customization file</A>.
+
+<P>
+</DD>
+<DT><STRONG>RGlob<A NAME="html:mif2rglob"></A></STRONG></DT>
+<DD>This command is modeled on the Tcl <TT>glob</TT> command (q.v.), but
+is restricted to the current working directory, that is, the
+directory holding the MIF file.  The syntax is
+
+<BLOCKQUOTE>
+<PRE>
+RGlob [-types typelist] [--] &lt;pattern&gt; [...]
+</PRE>
+
+</BLOCKQUOTE>
+The optional <TT>typelist</TT> restricts the match to files meeting the
+typelist criteria.  The optional <code>--</code> switch marks the end of
+options.  The one or more <TT>pattern</TT>'s should be glob-style
+patterns (strings containing asterisks and question marks) intended to
+match filenames in the current working directory.  See the Tcl <TT>glob</TT> documentation for details on the <TT>-types</TT> option and
+glob pattern details.
+
+<P>
+One use of this command is to identify files created by earlier runs of
+Oxs.  For example, suppose we wanted to use the mmArchive magnetization
+output from the third stage of a previous MIF file with basename ``sample''.
+Output files are tagged by stage number (here ``2'' since stages are
+counted from 0) and iteration.  The iteration is generally not known a
+priori, but assuming the output files are in the same directory as the
+current MIF file, we could use a command like
+
+<BLOCKQUOTE>
+<PRE>
+set file [RGlob sample-Oxs_MinDriver-Magnetization-02-???????.omf]
+</PRE>
+
+</BLOCKQUOTE>
+to determine the name of the magnetization file.  If more than one
+magnetization state was saved for that stage, then the variable
+<TT>file</TT> will hold a list of filenames.  In this case the Tcl <TT>lsort</TT>
+command can be used to select the one with the highest iteration number.
+The <TT>file</TT> variable can be used in conjunction with the
+<A HREF="Field_Objects.html#item:FileVectorField"><TT>Oxs_FileVectorField</TT></A>
+class to import the magnetization into the new simulation, for example
+to set the initial magnetization configuration.
+
+<P>
+The <TT>RGlob</TT> command is not available if the <TT>MIFinterp safety</TT>
+option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
+<A HREF="Local_Customizations.html#sec:install.custom">customization file</A>.  If <TT>MIFinterp safety</TT> is set to
+<TT>unsafe</TT>, then the standard (and more capable) Tcl <TT>glob</TT> command will be available.
+
+<P>
+</DD>
+<DT><STRONG>Schedule<A NAME="html:scheduleCmd"></A></STRONG></DT>
+<DD><A NAME="21972"></A>
+The <TT>Schedule</TT> command is used to setup outputs from the MIF file.
+This functionality is critical for solvers running in batch mode, but is
+also useful for setting up default connections in interactive mode.
+
+<P>
+The syntax for the <TT>Schedule</TT> command is
+
+<BLOCKQUOTE>
+<PRE>
+Schedule &lt;outname&gt; &lt;desttag&gt; &lt;event&gt; &lt;frequency&gt;
+</PRE>
+
+</BLOCKQUOTE>
+The <TT>Schedule</TT> command mirrors the interactive output scheduling
+provided by the
+<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii"><B>Oxsii</B></A> and
+<A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"><B>Boxsi</B></A>
+graphical interfaces.  The first parameter
+to the <TT>Schedule</TT> command is the name of the output being scheduled.
+These names are the same as those appearing in the ``Outputs'' list in
+the Oxs graphical interfaces, for example ``DataTable'' or
+``Oxs_CubicAnisotropy:Nickel:Field.''  The name must be presented to
+the <TT>Schedule</TT> command as a single argument; if the name includes one
+or more spaces then use double quotes to protect the spaces.  Aside from
+the DataTable output which is always present, the
+<I>outname</I>'s are MIF file dependent.
+
+<P>
+The second parameter to the <TT>Schedule</TT> command is a destination tag.
+This is a tag associated to a running application by a previous
+<A HREF="#html:destinationCmd"><TT>Destination</TT> command</A>.  The symbolic destination tag replaces the application:OID
+nomenclature used in the graphical interface, because in general it is
+not possible to know the OOMMF ID for application instances at the
+time the MIF file is composed.  In fact, some of the applications may
+be launched by <TT>Destination</TT> commands, and so don't even have OID's
+at the time the <TT>Destination</TT> command is processed.
+
+<P>
+The <I>event</I> parameter should be one of the keywords <TT>Step</TT>,
+<TT>Stage</TT>, or <TT>Done</TT>.  For <TT>Step</TT> and <TT>Stage</TT> events the
+<I>frequency</I> parameter should be a non-negative integer, representing
+with what frequency of the specified event should output be dispatched.
+For example, if <TT>Step 5</TT> is given, then on every fifth step of the
+solver (iterations 0, 5, 10, ...) output of the indicated type will
+be sent to the selected destination.  Set <I>frequency</I> to 1 to
+send output each time the event occurs. A value of 0
+for <I>frequency</I> results in output on only the very first event of
+that type; in particular, <TT>Step 0</TT> will output the simulation initial
+state, but will not fire on any subsequent <TT>Step</TT> events.
+The <TT>Done</TT> event occurs at the successful completion of a simulation;
+as such, there is at most one ``Done'' event per simulation.
+Accordingly, the <I>frequency</I> parameter for <TT>Done</TT> events is
+optional; if present it should be the value 1.
+
+<P>
+There are examples of scheduling with the <TT>Destination</TT> and
+<TT>Schedule</TT> commands in the <A HREF="Sample_MIF_2.1_File.html#fig:mif2sample">sample MIF&nbsp;2.1
+file</A>.  There,
+three destinations are tagged.  The first refers to a possibly already
+running instance of <B>mmGraph</B>, having nickname Hysteresis.  The
+associated <TT>Schedule</TT> command sends DataTable output to this
+application at the end of each Stage, so hysteresis graphs can be
+produced.  The second destination tag references a different copy of
+<B>mmGraph</B> that will be used for monitoring the run.  To make sure
+that this output is rendered onto a blank slate, the <TT>new</TT>
+keyword is used to launch a fresh copy of <B>mmGraph</B>.  The
+<TT>Schedule</TT> command for the monitor destination delivers output to
+the monitoring <B>mmGraph</B> every 5 iterations of the solver.  The last
+<TT>Destination</TT> command tags an arbitrary <B>mmArchive</B> application,
+which is used for file storage of DataTable results at the end of each
+stage, and snapshots of the magnetization and total field at the end of
+every third stage.  Note that double quotes enclose the
+``Oxs_EulerEvolve::Total field'' output name.  Without the quotes, the
+<TT>Schedule</TT> command would see five arguments,
+``Oxs_EulerEvolve::Total'', ``field'', ``archive'', ``Stage'', and
+``3''.
+</DD>
+</DL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1228"
+  HREF="Specify_Conventions.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1224"
+  HREF="MIF_2.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1218"
+  HREF="MIF_2.1_File_Overview.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1226"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

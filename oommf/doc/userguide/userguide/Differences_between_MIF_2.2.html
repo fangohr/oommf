@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats</TITLE>
+<META NAME="description" CONTENT="Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="MIF_2.2_New_Extension_Comma.html">
+<LINK REL="previous" HREF="MIF_2.2.html">
+<LINK REL="up" HREF="MIF_2.2.html">
+<LINK REL="next" HREF="MIF_2.2_New_Extension_Comma.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1289"
+  HREF="MIF_2.2_New_Extension_Comma.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1285"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1279"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1287"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1290"
+  HREF="MIF_2.2_New_Extension_Comma.html">MIF&nbsp;2.2 New Extension Commands</A>
+<B> Up:</B> <A NAME="tex2html1286"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<B> Previous:</B> <A NAME="tex2html1280"
+  HREF="MIF_2.2.html">MIF 2.2</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001841000000000000000"></A><A NAME="sec:mif22diffs"></A>
+<BR>
+Differences between MIF&nbsp;2.2 and MIF&nbsp;2.1 Formats
+</H2>
+
+<OL>
+<LI>The first line of a MIF&nbsp;2.2 file must be ``<code>#</code> MIF 2.2''.
+</LI>
+<LI>The <TT>basename</TT>, <TT>scalar_output_format</TT> and
+ <TT>vector_field_output_format</TT> options to the <TT>Oxs_TimeDriver</TT>
+ and <TT>Oxs_MinDriver</TT> objects are no longer supported.  Instead,
+ there is a new top-level extension command, <TT>SetOptions</TT>, where
+ these options are declared.  The <TT>SetOptions</TT> block also
+ supports new options for controlling output vector field mesh type
+ (rectangular or irregular) and scalar field output format.
+</LI>
+<LI>In the MIF&nbsp;2.1 format, MIF files are
+ processed in a two pass mode.  During the first pass, <TT>Specify</TT>
+ commands simply store the contents of the <TT>Specify</TT> blocks without
+ creating any <TT>Oxs_Ext</TT> objects.  The <TT>Oxs_Ext</TT> objects
+ associated with each <TT>Specify</TT> block are created in the second pass
+ from the data stored in the first pass.  In the MIF&nbsp;2.2 format, this is
+ replaced with a one pass mode, where <TT>Oxs_Ext</TT> objects are created
+ at the time that the <TT>Specify</TT> commands are parsed.  This processing
+ model is more intuitive for MIF file authors, but has two main
+ consequences.  The first is that in MIF&nbsp;2.1 format files, Tcl procs that
+ are used only inside <TT>Specify</TT> commands can be placed anywhere inside
+ the MIF file (for example, commonly at the end), because they won't be
+ called during the first pass.  As long as they are defined at any point
+ during the first pass, they will be available for use in the second
+ pass.  In contrast, in the MIF&nbsp;2.2 format, Tcl procs definitions must
+ generally be moved forward, before any references in <TT>Specify</TT>
+ blocks.  The second consequence is that <TT>Oxs_Ext</TT> objects defined by
+ <TT>Specify</TT> commands are available for use inside the MIF file.  This
+ allows support for the new commands discussed next.
+</LI>
+</OL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1289"
+  HREF="MIF_2.2_New_Extension_Comma.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1285"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1279"
+  HREF="MIF_2.2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1287"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

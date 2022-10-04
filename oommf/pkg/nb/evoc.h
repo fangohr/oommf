@@ -13,7 +13,7 @@
 
 #include "oc.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 
 #if (OC_SYSTEM_TYPE == OC_UNIX)
@@ -26,7 +26,7 @@
 # endif // Mac OS X
 #endif // OC_SYSTEM_TYPE
 
-#include <time.h>
+#include <ctime>
 
 using std::ceil;
 using std::floor;

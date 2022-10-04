@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Part geometry</TITLE>
+<META NAME="description" CONTENT="Part geometry">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Initial_magnetization.html">
+<LINK REL="previous" HREF="Demag_specification.html">
+<LINK REL="up" HREF="MIF_1.1.html">
+<LINK REL="next" HREF="Initial_magnetization.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1129"
+  HREF="Initial_magnetization.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1125"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1119"
+  HREF="Demag_specification.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1127"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1130"
+  HREF="Initial_magnetization.html">Initial magnetization</A>
+<B> Up:</B> <A NAME="tex2html1126"
+  HREF="MIF_1.1.html">MIF 1.1</A>
+<B> Previous:</B> <A NAME="tex2html1120"
+  HREF="Demag_specification.html">Demag specification</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION001813000000000000000"></A><A NAME="sec:partgeometry"></A><A NAME="21419"></A>
+<BR>
+Part geometry
+</H2>
+
+<UL>
+<LI><B>Part Width:</B> Nominal part width (<B><I>x</I></B>-dimension) in
+      meters.  Should be an integral multiple of Cell&nbsp;Size.
+</LI>
+<LI><B>Part Height:</B> Nominal part height (<B><I>y</I></B>-dimension) in
+      meters.  Should be an integral multiple of Cell&nbsp;Size.
+</LI>
+<LI><B>Part&nbsp;Thickness:</B> Part thickness (<B><I>z</I></B>-dimension) in meters.
+      Required for all demag types except FastPipe and None.
+</LI>
+<LI><B>Cell Size:</B><A NAME="21425"></A> In-plane (<B><I>xy</I></B>-plane) edge
+      dimension of base calculation cell.  This cell is a rectangular
+      brick, with square in-plane cross-section and thickness given by
+      Part&nbsp;Thickness.  N.B.: Part&nbsp;Width and Part&nbsp;Height should be
+      integral multiples of Cell&nbsp;Size.  Part&nbsp;Width and Part&nbsp;Height will
+      be automatically adjusted slightly (up to 0.01%) to meet this
+      condition (affecting a small change to the problem), but if the
+      required adjustment is too large then the problem specification is
+      considered to be invalid, and the solver will signal an error.
+</LI>
+<LI><B>Part Shape:</B> Optional.  Part shape in the <B><I>xy</I></B>-plane;
+      must be one of the following:
+   
+<UL>
+<LI><B>Rectangle</B>
+<BR>
+The sample fills the area specified by Part Width and Part
+         Height. (Default.)
+</LI>
+<LI><B>Ellipse</B>
+<BR>
+The sample (or the magnetically active
+         portion thereof) is an ellipse inscribed into the rectangular
+         area specified by Part Width and Part Height.
+</LI>
+<LI><B>Ellipsoid</B>
+<BR>
+Similar to the Ellipse shape, but the part thickness is
+         varied to simulate an ellipsoid, with axis lengths of
+         Part Width, Part Height and Part Thickness.
+</LI>
+<LI><B>Oval r</B>
+<BR>
+Shape is a rounded rectangle, where each
+         corner is replaced by a quarter circle with radius <B><I>r</I></B>, where
+         <!-- MATH
+ $0 <= r <= 1$
+ -->
+<B>0 &lt; = <I>r</I> &lt; = 1</B>
+         is relative to the half-width of the rectangle.
+</LI>
+<LI><B>Pyramid overhang</B>
+<BR>
+Shape is a truncated pyramid, with ramp transition base
+         width (overhang) specified in meters.
+</LI>
+<LI><B>Mask filename</B><A NAME="21436"></A><A NAME="21437"></A><A NAME="html:mifvariablethickness"></A>
+<BR>
+Shape and thickness are determined by a bitmap file, the name
+         of which is specified as the second parameter.  The overall
+         size of the simulation is still determined by Part Width and
+         Part Height (above); the bitmap is spatially scaled to fit
+         those dimensions.  Note that this scaling will not be square if
+         the aspect ratio of the part is different from the aspect ratio
+         of the bitmap.
+
+<P>
+The given filename must be accessible to the solver
+         application.  At present the bitmap file must be in either the
+         PPM<A NAME="21439"></A> (portable pixmap), GIF<A NAME="21440"></A>, or
+         BMP<A NAME="21441"></A> formats.  (Formats other than the PPM P3
+         (text) format may be handled by spawning an
+         <A HREF="Bitmap_File_Format_Conversi.html#sec:any2ppm"><B>any2ppm</B></A>
+         subprocess<A NAME="21446"></A>.)
+
+<P>
+White areas of the bitmap are interpreted as being non-magnetic
+         (or having 0 thickness); all other areas are assumed to be
+         composed of the material specified in the ``Material
+         Parameters'' section.  Thickness is determined by the relative
+         darkness of the pixels in the bitmap.  Black pixels are given
+         full nominal thickness (specified by the ``Part Thickness''
+         parameter above), and gray pixels are linearly mapped to a
+         thickness between the nominal thickness and 0.  In general,
+         bitmap pixel values are converted to a thickness relative to
+         the nominal thickness by the formula 1-(R+G+B)/(3M), where R, G
+         and B are the magnitudes of the red, green and blue components,
+         respectively, and M is the maximum allowed component magnitude.
+         For example, black has R=G=B=0, so the relative thickness is 1,
+         and white has R=G=B=M, so the relative thickness is 0.
+   
+</LI>
+</UL>
+   The code does not perform a complete 3D evaluation of thickness
+   effects.  Instead, the approximation discussed in [<A
+ HREF="bibliography.html#porter2001">24</A>] is
+   implemented.
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1129"
+  HREF="Initial_magnetization.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1125"
+  HREF="MIF_1.1.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1119"
+  HREF="Demag_specification.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1127"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

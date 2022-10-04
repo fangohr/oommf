@@ -1,0 +1,13 @@
+/* CSS for left navigation bar */
+
+.ltx_page_navbar {
+    display:block!important; position:fixed; left:0px; top:0px; width:180px;
+    margin:0em; padding:1em; font: bold 75% sans-serif; 
+    border: 3px double; overflow-y: auto; max-height: 95vh; }
+.ltx_page_navbar ul {
+    margin-left:-2em; }
+.ltx_page_main {
+    position:absolute; left:190px; top:0px; right:2px; 
+    margin:0px; padding:1em 3em 1em 2em;
+    padding:min(1em,1.5%) min(3em,4.5%) min(1em,1.5%) min(2em, 3%);
+    width:75%; }

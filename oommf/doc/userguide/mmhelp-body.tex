@@ -1,11 +1,11 @@
-\section{Documentation Viewer: mmHelp}\label{sec:mmhelp}
+\chapter{Documentation Viewer: mmHelp}\label{sec:mmhelp}
 \index{application!mmHelp}
 
 \begin{center}
 \includepic{mmhelp-ss}{mmHelp Screen Shot}
 \end{center}
 
-\ssechead{Overview}
+\starsechead{Overview}
 The application {\bf mmHelp} manages the display and navigation of
 hypertext (HTML) help files\index{file!HTML}.  
 %It presents an interface similar
@@ -25,10 +25,10 @@ browsers.
 %file:/path/to/oommf/doc/userguide/userguide/Documentation\_Viewer\_mmHelp.html
 %\end{center}
 \OOMMF\ software can be \hyperrefhtml{customized}{customized (See
-Sec.~}{)}{sec:custom} to use another program to display the HTML help
-files\index{customize!help~file~browser}.
+Sec.~}{)}{sec:install.custom} to use another program to display the HTML
+help files\index{customize!help~file~browser}.
 
-\ssechead{Launching}
+\starsechead{Launching}
 {\bf mmHelp} may be launched from the command line via
 \begin{verbatim}
 tclsh oommf.tcl mmHelp [standard options] [URL]
@@ -38,7 +38,7 @@ page (home page) to be displayed.  If no URL is specified,
 {\bf mmHelp} displays the Table of Contents of the {\em \OOMMF\ User's
 Guide} by default.
 
-\ssechead{Controls}
+\starsechead{Controls}
 Each page of hypertext is displayed in the main {\bf mmHelp} window.
 Words which are underlined and colored blue are hyperlinks which {\bf
 mmHelp} knows how to follow.  Words which are underlined and colored red
@@ -108,10 +108,10 @@ The menu selection \btn{File\pipe Exit} or the \btn{Exit} button
 terminates the {\bf mmHelp} application.  
 The menu \btn{Help} provides the usual help facilities.
 
-\ssechead{Known Bugs}
+\starsechead{Known Bugs}
 \app{mmHelp} is pretty slow.  You may be happier using
 \hyperrefhtml{local customization}{local
-customization (Sec.~}{)}{sec:custom} methods to replace it
+customization (Sec.~}{)}{sec:install.custom} methods to replace it
 with another more powerful HTML browser.  Also, we have noticed that the
 underscore character in the italic font is not displayed (or is
 displayed as a space) at some font sizes on some platforms.

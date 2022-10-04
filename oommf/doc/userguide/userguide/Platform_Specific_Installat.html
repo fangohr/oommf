@@ -16,326 +16,79 @@
 
 <LINK REL="previous" HREF="Advanced_Installation.html">
 <LINK REL="up" HREF="Installation.html">
-<LINK REL="next" HREF="quickstart.html">
+<LINK REL="next" HREF="Unix_Configuration.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html229"
-  HREF="quickstart.html">
+<A NAME="tex2html377"
+  HREF="Unix_Configuration.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html225"
+<A NAME="tex2html373"
   HREF="Installation.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html221"
-  HREF="Advanced_Installation.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html231"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.gif"></A> 
-<A NAME="tex2html227"
+<A NAME="tex2html369"
+  HREF="Managing_OOMMF_Platform_Nam.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html375"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html230"
-  HREF="quickstart.html">Quick Start: Example OOMMF</A>
-<B> Up:</B> <A NAME="tex2html226"
+<B> Next:</B> <A NAME="tex2html378"
+  HREF="Unix_Configuration.html">Unix Configuration</A>
+<B> Up:</B> <A NAME="tex2html374"
   HREF="Installation.html">Installation</A>
-<B> Previous:</B> <A NAME="tex2html222"
-  HREF="Advanced_Installation.html">Advanced Installation</A>
+<B> Previous:</B> <A NAME="tex2html370"
+  HREF="Managing_OOMMF_Platform_Nam.html">Managing OOMMF Platform Names</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
-<!--Table of Child-Links-->
-<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
-<UL>
-<LI><A NAME="tex2html233"
-  HREF="Platform_Specific_Installat.html#SECTION00034100000000000000">Unix Configuration</A>
-<UL>
-<LI><A NAME="tex2html234"
-  HREF="Platform_Specific_Installat.html#SECTION00034110000000000000">Missing Tcl/Tk files</A>
-<LI><A NAME="tex2html235"
-  HREF="Platform_Specific_Installat.html#SECTION00034120000000000000">Compiler Optimization Options</A>
-<LI><A NAME="tex2html236"
-  HREF="Platform_Specific_Installat.html#SECTION00034130000000000000">Portland Group pgCC compiler on Linux</A>
-</UL>
-<BR>
-<LI><A NAME="tex2html237"
-  HREF="Platform_Specific_Installat.html#SECTION00034200000000000000">macOS Configuration</A>
-<LI><A NAME="tex2html238"
-  HREF="Platform_Specific_Installat.html#SECTION00034300000000000000">Microsoft Windows Options</A>
-<UL>
-<LI><A NAME="tex2html239"
-  HREF="Platform_Specific_Installat.html#SECTION00034310000000000000">Using Microsoft Visual C++</A>
-<LI><A NAME="tex2html240"
-  HREF="Platform_Specific_Installat.html#SECTION00034320000000000000">Using MinGW g++</A>
-<LI><A NAME="tex2html241"
-  HREF="Platform_Specific_Installat.html#SECTION00034330000000000000">Using the Cygwin toolkit</A>
-<LI><A NAME="tex2html242"
-  HREF="Platform_Specific_Installat.html#SECTION00034340000000000000">Setting the TCL_LIBRARY environment variable</A>
-</UL></UL>
-<!--End of Table of Child-Links-->
-<HR>
-
-<H2><A NAME="SECTION00034000000000000000"></A><A NAME="sec:install.platform"></A>
+<H1><A NAME="SECTION00340000000000000000"></A><A NAME="sec:install.platformissues"></A>
 <BR>
 Platform Specific Installation Issues
-</H2>
-
-<P>
+</H1>
 The installation procedure discussed in the previous sections applies to
 all platforms (Unix, Windows, macOS).  There are, however, some
 details which pertain only to a particular platform.  These issues are
 discussed below.
 
 <P>
-<A NAME="1180"></A>
+<A NAME="1522"></A>
+<BR> <HR>
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
 
-<H3><A NAME="SECTION00034100000000000000">
-Unix Configuration</A>
-</H3>
-
-<H4><A NAME="SECTION00034110000000000000">
-Missing Tcl/Tk files</A>
-</H4>
-The basic installation procedure should be sufficient to install OOMMF on most Unix systems.  Sometimes, however, the build will fail due to
-missing Tcl header files (<TT><B>tcl.h</B></TT>, <TT><B>tk.h</B></TT>) or libraries (e.g.,
-<TT><B>libtcl.so</B></TT>, <TT><B>libtk.so</B></TT>).  This problem can usually be solved by
-installing a ``development'' version of Tcl/Tk, which may be found on
-the operating system installation disks, or may be available from the
-system vendor.  There are also binary releases of Tcl/Tk for a number
-of systems available from ActiveState, under the name
-<A NAME="tex2html13"
-  HREF="https://www.activestate.com/products/tcl/">ActiveTcl</A>.
-Alternatively, one may download the sources for Tcl and Tk from the
-<A NAME="tex2html14"
-  HREF="http://purl.org/tcl/home/">Tcl Developer
-Xchange</A>, and build and install Tcl/Tk from source.  The Tcl/Tk build follows the usual Unix <TT><B>configure</B></TT>, <TT><B>make</B></TT>, <TT><B>make install</B></TT> build convention.
-
-<P>
-
-<H4><A NAME="SECTION00034120000000000000">
-Compiler Optimization Options</A>
-</H4>
-On most systems, OOMMF builds by default with relatively unaggressive
-compiler optimization options.  As discussed earlier
-(under <A HREF="Advanced_Installation.html#sec:optimize">Optimization)</A>, you may edit the appropriate
-<TT><B>oommf/config/platforms/</B></TT> file to change the default compilation options.
-However, on some common systems (e.g., Linux, some BSD variants) OOMMF will try to deduce the hardware architecture (i.e., the CPU subtype,
-such as Pentium 3 vs. Pentium 4) and apply architecture-specific options
-to the compile commands.  This is probably what you want if OOMMF is
-to be run only on the system on which it was built, or if it is run on a
-homogeneous cluster.  If, instead, you intend to run OOMMF on a
-heterogeneous cluster you may need to restrict the compiler options to
-those supported across your target machines.  In that case, open the
-appropriate configuration file in the <TT><B>oommf/config/platforms/</B></TT>
-directory, and look for the lines
-<PRE>
-    # You can override the GuessCPU results by directly setting or
-    # unsetting the cpuopts variable, e.g.,
-    #
-    #    set cpuopts [list -march=skylake]
-    # or
-    #    unset cpuopts
-    #
-</PRE>
-Uncomment either the ``unset cpuopts'' line to make a generic build, or
-else edit the ``set cpuopts'' line to an appropriate common-denominator
-architecture and uncomment that line.
-
-<P>
-In a similar vein, some compilers support a ``-fast'' switch, which
-usually creates an architecture-specific executable.  The same
-considerations apply in this case.
-
-<P>
-An advanced alternative would be to define separate OOMMF ``platforms'' for each CPU subtype in your cluster.  At a minimum, this
-would involve creating separate platform name files in
-<TT><B>oommf/config/names/</B></TT> for each subtype, and then making copies of the
-appropriate <TT><B>oommf/config/platforms</B></TT> file for each new platform.  The
-platform name files would have to be written so as to reliably detect
-the CPU subtype on each machine.  See <A HREF="Advanced_Installation.html#sec:platformNames">``Managing OOMMF platform names''</A> for details on creating platform name
-files.  <A NAME="1210"></A>
-
-<P>
-
-<H4><A NAME="SECTION00034130000000000000">
-Portland Group pgCC compiler on Linux</A>
-</H4>
-The platform build scripts for Linux,
-<TT><B>oommf/config/platforms/lintel.tcl</B></TT> (32-bit) and
-<TT><B>oommf/config/platforms/linux-x86_64.tcl</B></TT> (64-bit) contain sections
-supporting the Portland Group pgCC compiler.  Non-threaded builds of
-OOMMF using this compiler run fine, but threaded builds segfault when
-running <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"><TT><B>Oxsii</B></TT>/<TT><B>Boxsi</B></TT></A>.  The source of this problem is not known at this
-time.
-
-<P>
-
-<H3><A NAME="SECTION00034200000000000000"></A><A NAME="sec:install.macosx"></A><A NAME="1222"></A>
+<UL>
+<LI><A NAME="tex2html379"
+  HREF="Unix_Configuration.html">Unix Configuration</A>
+<UL>
+<LI><A NAME="tex2html380"
+  HREF="Unix_Configuration.html#SECTION00341100000000000000">Missing Tcl/Tk files</A>
+<LI><A NAME="tex2html381"
+  HREF="Unix_Configuration.html#SECTION00341200000000000000">Compiler Optimization Options</A>
+<LI><A NAME="tex2html382"
+  HREF="Unix_Configuration.html#SECTION00341300000000000000">Portland Group pgCC compiler on Linux</A>
+</UL>
 <BR>
-macOS Configuration
-</H3>
-The build procedure for macOS is the same as for Unix.  The
-platform name is ``darwin''.  If the <A HREF="Basic_Installation.html#sec:platform.configuration">platform
-configuration check</A> does not find a C++ compiler,
-then you will have to install one.  One option is the Xcode command line
-developer tools provided by Apple.  You can install these from a
-Terminal window via the command
-<PRE>
-xcode-select --install
-</PRE>
-You should run this command even if you install the full Xcode IDE.
-Refer to your system documentation for details.
-<A NAME="1229"></A>
-
-<P>
-<A NAME="1230"></A>
-
-<H3><A NAME="SECTION00034300000000000000"></A><A NAME="sec:install.windows"></A>
-<BR>
-Microsoft Windows Options
-</H3>
-
-<P>
-This section lists installation options for Microsoft Windows.
-
-<P>
-
-<H4><A NAME="SECTION00034310000000000000"></A>
-<A NAME="1234"></A>
-<BR>
-Using Microsoft Visual C++
-</H4>
-If you are building OOMMF software from source using the Microsoft
-Visual C++ command line compiler, <TT><B>cl.exe</B></TT>, it is necessary to set up
-the path and some environment variables before running the compiler.
-There is a batch file distributed with Visual C++ that you can run to do
-this.  The name of the file varies between Visual C++ releases, but for
-example may be <TT><B>vcvarsall.bat</B></TT> or <TT><B>setenv.cmd</B></TT>.  For 64-bit builds
-you may need to include the ``amd64'' option on the batch file command
-line.  You may want to set up your system so this batch file gets run
-automatically when you open a command window.  See your compiler and
-system documentation for details.
-
-<P>
-
-<H4><A NAME="SECTION00034320000000000000"></A>
-<A NAME="1239"></A>
-<BR>
-Using MinGW g++
-</H4>
-
-<P>
-Both 32-bit and 64-bit builds are supported using the MinGW ports of
-g++.  (The 32-bit and 64-bit versions of g++ are separate downloads.)
-Use a standard Windows Tcl/Tk, such as the
-<A NAME="tex2html15"
-  HREF="https://www.activestate.com/products/tcl/">ActiveTcl</A>
-release from ActiveState.  You will also need to edit the appropriate
-platform file to select g++ as the compiler.  If you are using a 32-bit
-Tcl/Tk and g++, then the platform file is
-<TT><B>oommf<TT>&#92;</TT>config<TT>&#92;</TT>platforms<TT>&#92;</TT>wintel.tcl</B></TT>.  For 64-bit
-Tcl/Tk and g++ the platform file is
-<TT><B>oommf<TT>&#92;</TT>config<TT>&#92;</TT>platforms<TT>&#92;</TT>windows-x86_64.tcl</B></TT>.
-
-<P>
-
-<H4><A NAME="SECTION00034330000000000000"></A><A NAME="par:install.cygwin"></A><A NAME="1246"></A>
-<BR>
-Using the Cygwin toolkit
-</H4>
-The <A NAME="tex2html16"
-  HREF="http://www.cygwin.com/">Cygwin Project</A>
-is
-a free port of the GNU development environment to Windows, which
-includes the GNU C++ compiler g++ and X11.  To build OOMMF within the
-Cygwin environment, start up a Cygwin or Cygwin64 shell and follow the
-usual Unix build procedure.  The platform name will be <TT><B>cygtel</B></TT>
-or <TT><B>cygwin-x86_64</B></TT>, according to whether you are running a 32- or
-64-bit Cygwin <TT><B>tclsh</B></TT>, respectively.  The resulting OOMMF build
-requires the Cygwin environment to run, so it will need to be launched
-from a Cygwin shell.  Moreover, OOMMF on Cygwin uses X11 as the
-windowing interface, so you will need to have the Cygwin port of X11
-installed; typically OOMMF will be started from an X11 xterm or
-equivalent.  Of course, you will also need the Tcl and Tk packages
-installed (called <TT><B>tcl</B></TT> and <TT><B>tcl-tk</B></TT>, respectively, by the
-Cygwin package manager).  To build OOMMF from source you will
-need the <TT><B>gcc-g++</B></TT>, <TT><B>tcl-devel</B></TT>, and <TT><B>tcl-tk-devel</B></TT>
-packages and dependencies.
-
-<P>
-If you get errors saying a child process couldn't be forked (typically
-with either ``resource temporarily unavailable'' or ``Loaded to
-different address'' error messages), then follow this procedure:
-
-<OL>
-<LI>Exit all Cygwin processes
-</LI>
-<LI>Use Windows Explorer or a Windows command shell to launch
-  <TT><B>c:<TT>&#92;</TT>cygwin<TT>&#92;</TT>bin<TT>&#92;</TT>ash.exe</B></TT>
-</LI>
-<LI>Run <TT><B>/bin/rebaseall</B></TT> inside the ash shell.
-</LI>
-</OL>
-Additional information on this problem can be found in the Cygwin
-documentation.
-
-<P>
-The Cygwin versions of Tcl/Tk prior to 8.6 were not threaded, so
-OOMMF built with Tcl/Tk 8.5 and older will likewise not be
-threaded.  This limitation is removed with the Cygwin Tcl/Tk 8.6
-release.
-
-<P>
-
-<H4><A NAME="SECTION00034340000000000000"></A>
-<A NAME="1262"></A>
-<BR>
-Setting the TCL_LIBRARY environment variable
-</H4>
-
-<P>
-If you encounter difficulties during OOMMF start up, you may need to set
-the environment variable 
-TCL_LIBRARY<A NAME="1263"></A>.  (NOTE: This
-is almost never necessary!)
-
-<P>
-Bring up the Control Panel (e.g., by selecting 
-<FONT COLOR="#800000"><B>Settings|Control Panel</B></FONT> off the Start menu), and select 
-<FONT COLOR="#800000"><B>System</B></FONT>.  Go to the <FONT COLOR="#800000"><B>Environment</B></FONT> tab, and enter
-TCL_LIBRARY as the Variable, and the name of the directory containing
-<TT><B>init.tcl</B></TT> for the Value, e.g.,
-<PRE>
-%SystemDrive%\Program Files\Tcl\lib\tcl8.0
-</PRE>
-Click <FONT COLOR="#800000"><B>Set</B></FONT> and <FONT COLOR="#800000"><B>OK</B></FONT> to finish.
-
-<P>
- 
-<P>
-<HR>
-<!--Navigation Panel--><A NAME="tex2html1"
-  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html229"
-  HREF="quickstart.html">
-<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html225"
-  HREF="Installation.html">
-<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html221"
-  HREF="Advanced_Installation.html">
-<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A> 
-<A NAME="tex2html232"
-  HREF="userguide.html"><IMG ALIGN="BOTTOM" ALT="Contents" BORDER="0" SRC="contents.gif"></A> 
-<A NAME="tex2html227"
-  HREF="docindex.html">
-<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
-<BR>
-<!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 29, 2021</I>
+<LI><A NAME="tex2html383"
+  HREF="macOS_Configuration.html">macOS Configuration</A>
+<LI><A NAME="tex2html384"
+  HREF="Microsoft_Windows_Options.html">Microsoft Windows Options</A>
+<UL>
+<LI><A NAME="tex2html385"
+  HREF="Microsoft_Windows_Options.html#SECTION00343100000000000000">Using Microsoft Visual C++</A>
+<LI><A NAME="tex2html386"
+  HREF="Microsoft_Windows_Options.html#SECTION00343200000000000000">Using MinGW g++</A>
+<LI><A NAME="tex2html387"
+  HREF="Microsoft_Windows_Options.html#SECTION00343300000000000000">Using the Cygwin toolkit</A>
+<LI><A NAME="tex2html388"
+  HREF="Microsoft_Windows_Options.html#SECTION00343400000000000000">Setting the TCL_LIBRARY environment variable</A>
+</UL></UL>
+<!--End of Table of Child-Links-->
+<BR> <HR>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
 </BODY>
 </HTML>

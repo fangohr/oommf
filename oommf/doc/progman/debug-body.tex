@@ -1,0 +1,1107 @@
+\chapter{Debugging \OOMMF}\label{sec:debug}
+\newlength{\sswidth} % Width for screen shot figures
+\setlength{\sswidth}{\textwidth}
+\addtolength{\sswidth}{-1em}
+This chapter provides an introduction to debugging \OOMMF\ and
+\OOMMF\ extension source code, providing background to the \OOMMF\ build
+architecture and detailing some tools and techniques for uncovering
+programming errors. It begins with a look at the \OOMMF\ \app{pimake}
+application used for compiling and linking \OOMMF\ programs, followed by
+some considerations involving the \app{oommf.tcl} bootstrap
+wrapper. Then configuration files governing build and runtime behavior
+are detailed.  After this methods for identifying and locating runtime
+errors are presented, including a brief introduction on using debugger
+applications with \OOMMF. Although the primary focus of this chapter is
+on errors in \C++\ code, the interface and glue code linking the various
+\OOMMF\ applications rely on \Tcl\ script.  An example of working with
+\Tcl\ in \OOMMF\ is provided in Fig.~\ref{fig:oommftclintrospection}
+
+Throughout this chapter, unless otherwise stated, commands are
+implicitly assumed to be run from the \OOMMF\ root directory (i.e. the
+directory containing the file \fn{oommf.tcl}), and directory paths are
+taken relative to this directory (e.g., \fn{app/oxs/} refers
+to the directory \fn{<oommf\_root>/app/oxs/}).
+
+In text blocks containing command statements and program output,
+command statements are indicated with a leading character
+representing the shell command prompt. On \Windows\ this character is
+typically ``\verb+>+'', whereas the \Unix\ and \MacOSX\ shells more commonly
+use ``\verb+$+'' with \cd{bash} shells or ``\verb+%+'' with
+\cd{zsh}. All three are used below, but ``\verb+%+'' is limited to
+\MacOSX\ specific examples to minimize confusion with the \Tcl\ command
+prompt, which is also ``\verb+%+''. For additional visibility shell
+commands are colored \shellcmd{\shellcmdcolorname}\ and program commands
+(\Tcl\ and debugger) are colored \pgmcmd{\pgmcmdcolorname}. (Computer
+responses remain in black text.)
+
+Some details in what follows may vary depending on the particular
+operating system and application version, but hopefully the differences
+are sufficiently small that this description remains a useful guide.
+
+\section{Configuration Files}\label{sec:debug:configfiles}
+There are several \OOMMF\ configuration settings that impact debug
+operations. The controlling files are \fn{config/options.tcl} and
+\fn{config/platforms/<platform>.tcl}, where the \texttt{<platform>} is
+\texttt{windows-x86\_64}, \texttt{linux-x86\_64}, or \texttt{darwin} for
+\Windows, \Linux, or \MacOSX\ operating systems respectively. In practice,
+rather than modifying the default distribution files directly, you should
+place your modifications in local files
+\fn{config/local/options.tcl} and
+\fn{config/platforms/local/<platform>.tcl}.
+The \fn{local/} directories and files are not part of the
+\OOMMF\ distribution; you will need to create them manually. The files
+can be empty initially, and then populated as desired.
+
+The \fn{options.tcl} file contains platform-agnostic settings that are
+stored in the \cd{Oc\_Option} database. Some of these settings affect
+the build process, while others control post-build runtime behavior.
+All are set using the \cd{Oc\_Option} command, which takes
+name\,+\,value pairs.  The \cd{cflags} and \cd{optlevel} settings
+control compiler options. The default setting for \cd{cflags} is
+\begin{verbatim}
+Oc_Option Add * Platform cflags {-def NDEBUG}
+\end{verbatim}
+which causes the C macro ``\texttt{NDEBUG}'' to be defined. If this is
+not set then various run-time checks such as \cd{assert} statements and
+some array index checks are activated. These checks slow execution but
+may be helpful in diagnosing errors. Other \cd{cflag} options include
+\cd{-warn}, which enables compiler warning messages, and \cd{-debug},
+which tells the compiler to generate debugging symbols. A good
+\cd{cflags} setting for debugging is
+\begin{verbatim}
+Oc_Option Add * Platform cflags {-warn 1 -debug 1}
+\end{verbatim}
+There is also an \cd{lflags} option, similar to \cd{cflags}, that
+controls options to the linker. The default is an empty string (no
+options), and you generally don't need to change this.
+
+The \cd{optlevel} option sets the compiler optimization level, with an
+integer value between 0 and 3. The default value is 2, which selects for
+a high but reliable level of optimizations. Some optimizations may
+reorder and combine source code statements, making it harder to debug
+code, so you may want to use
+\begin{verbatim}
+Oc_Option Add * Platform optlevel 0
+\end{verbatim}
+to disable all optimizations.
+
+The \fn{config/platforms/<platform>.tcl} files set default platform and
+compiler specific options. For example,
+\fn{config/platforms/windows-x86\_64.tcl} is the base platform file for
+64-bit \Windows. There are separate sections inside this file for the
+various supported compilers. You can make local changes to the default
+settings by creating a subdirectory of \fn{config/platforms/} named
+\cd{local/}, and creating there an initially empty file with the
+same name as the base platform file. Inside the base platform file is a
+code block labeled \cd{LOCAL CONFIGURATION}, which lists all the
+available local modifications. You can copy some or all of this
+\Tcl\ code block to your new \cd{config/platforms/local/} file, and then
+uncomment and modify options as desired. For example, if you are using
+the Visual \Cplusplus\ compiler on \Windows, you may want to include the
+\cd{/RTCus} compiler flag to enable some run-time error checks. You can
+do that with these lines in your
+\fn{local/windows-x86\_64.tcl} file:
+\begin{verbatim}
+$config SetValue program_compiler_c++_remove_flags {/O2}
+$config SetValue program_compiler_c++_remove_valuesafeflags {/O2}
+$config SetValue program_compiler_c++_add_flags {/RTCus}
+$config SetValue program_compiler_c++_add_valuesafeflags {/RTCus}
+\end{verbatim}
+The \cd{*\_valuesafeflags} options are for code with sensitive
+floating-point operations that must be evaluated exactly as
+specified. This pertains primarily to the double-double routines in
+\fn{pkg/xp/}. The \cd{*\_flags} options are for everything else. The
+\cd{*\_remove\_*} controls remove options from the default compile
+command. This can be a (\Tcl) list, with each element matching as a
+regular expression. (Refer to the
+\htmladdnormallinkfoot{\Tcl\ documentation}{https://www.tcl-lang.org/man/}
+on the \cd{regexp} command for details.) The \cd{*\_add\_*} controls
+append options. \OOMMF\ sets \cd{/O2} optimization by default, but
+\cd{/O2} is incompatible with \cd{/RTCus}, so in this example \cd{/O2}
+is removed to allow \cd{/RTCus} to be added. (Setting \cd{optlevel 0} in
+the \fn{config/local/options.tcl} file, as explained above, replaces
+\cd{/O2} with \cd{/Od}. So strictly speaking it is not necessary to
+remove \cd{/O2} in that case, but it doesn't hurt either.)
+
+You can run the command ``\cd{oommf.tcl +platform +v}'' to see the
+effects of your current \fn{options.tcl} and \fn{<platform>.tcl}
+settings. For example,
+\begin{alltt}
+$ \shellcmd{tclsh oommf.tcl +platform +v}
+[...]
+--- Local config options ---
+[...]
+   Oc_Option Add * Platform cflags {-debug 1 -warn 1}
+   Oc_Option Add * Platform optlevel 0
+[...]
+--- Local platform options ---
+   $config SetValue program_compiler_c++_remove_flags {/O2}
+   $config SetValue program_compiler_c++_remove_valuesafeflags {/O2}
+   $config SetValue program_compiler_c++_add_flags {/RTCus}
+   $config SetValue program_compiler_c++_add_valuesafeflags {/RTCus}
+
+--- Compiler options ---
+     Standard options: /Od /D_CRT_SECURE_NO_DEPRECATE /RTCus
+   Value-safe options: /Od /fp:precise /D_CRT_SECURE_NO_DEPRECATE /RTCus
+\end{alltt}
+
+To see the exact, full platform-specific compile and link commands, you
+can delete and rebuild individual executables in the
+\OOMMF\ package. Two examples, one using the standard build options
+(\fn{pkg/oc/<platform>/varinfo}) and one using the value-safe options
+(\fn{pkg/xp/<platform>/build\_port}) are presented below. (The response
+lines have been edited for clarity.)
+\begin{alltt}
+% \shellcmd{cd pkg/oc}
+% \shellcmd{tclsh ../../oommf.tcl pimake clean}
+% \shellcmd{tclsh ../../oommf.tcl pimake darwin/varinfo}
+clang++ -c -DNDEBUG -m64 -std=c++11 -Ofast -o darwin/varinfo.o varinfo.cc
+clang++ -m64 darwin/varinfo.o -o darwin/varinfo
+
+% \shellcmd{cd ../..}
+% \shellcmd{cd pkg/xp}
+% \shellcmd{tclsh ../../oommf.tcl pimake clean}
+% \shellcmd{tclsh ../../oommf.tcl pimake darwin/build_port}
+clang++ -c -DNDEBUG -m64 -std=c++11 -O3 -DXP_USE_MPFR=0
+   -o darwin/build_port.o build_port.cc
+clang++ -m64 darwin/build_port.o -o darwin/build_port
+\end{alltt}\html{\newline}
+The above is for \MacOSX. Adjust the \cd{<platform>} field as appropriate,
+and on \Windows\ append \fn{.exe} to the executable targets (\fn{varinfo}
+and \fn{build\_port}).
+
+You can also use this method to manually compile and/or link individual
+files: (1) Change to the relevant build directory (always one level below
+either \cd{pkg} or \cd{app}), (2) delete the file you want to rebuild from
+the \cd{<platform>} directory, (3) run \cd{pimake} as above to build the
+file, (4) copy and paste the compile/link command to the shell prompt,
+edit as desired, and rerun.
+
+The \fn{varinfo} and \fn{build\_port} executables are
+used to construct the platform-specific header files
+\fn{pkg/oc/<platform>/ocport.h} and
+\fn{pkg/xp/<platform>/xpport.h}. These files contain
+\Cplusplus\ macro definitions, typedefs, and function wrappers,
+and are an important adjunct when reading the \OOMMF\ source code.
+
+\pttarget{PTtclintrospection}
+For in-depth investigations \Tcl\ can be used to directly query and debug
+\OOMMF\ initialization scripts. Start a \Tcl\ shell, and from inside the
+shell append the \OOMMF\ \fn{pkg/oc} directory to the \Tcl\ global
+\cd{auto\_path} variable. Next run \cd{package require Oc} to load the
+\Tcl-only portion of the \OOMMF\ \cd{Oc} library into the shell. Then
+you can check any and all \cd{Oc\_Option} values from
+\fn{config/options.tcl}, platform configuration settings from
+\fn{config/platforms/<platform>.tcl}, and perform various other types of
+introspection from the \Tcl\ shell. See
+Fig.~\ref{fig:oommftclintrospection} for a sample session.
+
+\begin{codelisting}{f}{fig:oommftclintrospection}{Sample \Tcl-level
+    \OOMMF\ introspection session. Shell commands are colored
+    \shellcmd{\shellcmdcolorname}\ (with \texttt{\$} prompt) and
+    \Tcl\ commands are colored \pgmcmd{\pgmcmdcolorname}\ (with
+    \texttt{\%} prompt).}{PTtclintrospection}{hyperlink}
+\begin{alltt}
+$ \shellcmd{pwd}
+/Users/barney/oommf
+$ \shellcmd{tclsh}
+% \pgmcmd{set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1}
+% \pgmcmd{lappend auto_path [file join [pwd] pkg oc]}
+% \pgmcmd{package require Oc}
+
+% # Miscellaneous utilities from Oc_Main (oommf/pkg/oc/main.tcl)
+% \pgmcmd{Oc_Main GetOOMMFRootDir}    ;# OOMMF root directory
+/Users/barney/oommf
+% \pgmcmd{Oc_Main GetPid}             ;# Process id
+17423
+
+% # Oc_Option database (oommf/config/options.tcl)
+% # Code details in oommf/pkg/oc/option.tcl
+% \pgmcmd{Oc_Option Get *}            ;# Registered Option classes (glob-match)
+Net_Link Oc_Url Platform Menu Nb_InputFilter Net_Server Oc_Class Color
+Net_Host MIFinterp OxsLogs {}
+% \pgmcmd{Oc_Option Get Platform *}   ;# All options for class Platform (glob-match)
+cflags lflags optlevel
+% \pgmcmd{Oc_Option GetValue Platform cflags}  ;# Platform,cflags value
+-def NDEBUG
+
+% # Configuration values (oommf/config/platforms/<platform>.tcl)
+% # Code details in oommf/pkg/oc/config.tcl
+% \pgmcmd{set config [Oc_Config RunPlatform]}
+% \pgmcmd{$config GetValue platform_name}                          ;# Platform name
+darwin
+% \pgmcmd{$config GetValue program_compiler_c++_name}              ;# C++ compiler
+clang++
+% \pgmcmd{$config GetValue program_compiler_c++_typedef_realwide}  ;# realwide typedef
+long double
+% \pgmcmd{$config Features program_linker*}             ;# GetValue names (glob-match)
+program_linker_option_lib program_linker program_linker_rpath
+program_linker_uses_-L-l program_linker_option_out program_linker_option_obj
+
+% \pgmcmd{exit}                                ;# Exit Tcl shell
+\end{alltt}\html{\newline}
+\end{codelisting}
+
+
+\section{Understanding \app{pimake}}\label{sec:debug:pimake}
+The \OOMMF\ \app{pimake} application controls the compiling and linking
+of \OOMMF's \Cplusplus\ components. Based broadly on the \Unix\ make
+utility, \app{pimake} is a platform independent tool written in
+\Tcl. Each of the source code directories in the \OOMMF\ distribution
+tree has a \fn{makerules.tcl} file that specifies build targets and
+dependencies. A dependency tree is build from this information augmented
+with recursive tracking of \cd{\#include} statements inside the
+referenced source code files.  Each time \app{pimake} is run it compares
+file timestamps against the dependency tree, and compiles and links any
+object and executable files that are older than any of their
+dependencies.
+
+After editing \fn{*.h} or \fn{*.cc} files in \OOMMF, you should run
+\app{pimake} to propagate your changes to the associated
+\OOMMF\ executable(s).  If you run \cd{tclsh oommf.tcl pimake} in a
+directory below the \OOMMF\ root directory, then only changes at that
+directory and lower are affected. You can use the \cd{-cwd} option to
+\app{pimake} to change the effective starting directory. Changes to the
+\OOMMF\ \hyperrefhtml{configuration files}{configuration files
+  (Sec.~}{)}{sec:debug:configfiles} do \textbf{not} trigger dependency
+updates, so if you make changes affecting the build process in these
+files you should manually run
+\begin{alltt}
+$ \shellcmd{tclsh oommf.tcl pimake distclean}
+$ \shellcmd{tclsh oommf.tcl pimake}
+\end{alltt}\html{\newline}
+from the \OOMMF\ root directory to delete and then rebuild the full
+\OOMMF\ project.
+
+\section{Bypassing the \cd{oommf.tcl} bootstrap}\label{sec:debug:bootstrap}
+When an application is launched by clicking a button in \app{mmLaunch} or from
+the command shell like
+\begin{alltt}
+> \shellcmd{tclsh oommf.tcl mmdisp}
+\end{alltt}\html{\newline}
+the application (here \app{mmDisp}) is not executed directly but rather
+through the ``bootstrap'' program \cd{oommf.tcl}. The bootstrap
+constructs a list linking application names to commands
+using the \fn{appindex.tcl} files in the various application (\fn{oommf/app/})
+directories, and then runs the command associated with the given
+name. This is convenient for normal use, but the additional execution
+layer can obfuscate the debugging process. You can obtain the
+direct command from the bootstrap program itself with the \cd{+command}
+option
+\begin{alltt}
+> \shellcmd{tclsh oommf.tcl mmdisp +command}
+app/mmdisp/windows-x86_64/mmdispsh.exe app/mmdisp/scripts/mmdisp.tcl &
+\end{alltt}\html{\newline}
+The response is the command as used inside a \Tcl\ shell to launch the
+application. You may need to make minor edits to run the application at
+your shell command prompt. For example, the trailing ampersand runs the
+program in the background, which is not what one usually wants when
+debugging, so you would omit this. On \Windows\ you may want to change
+the forward slash path separators to backslashes. Another
+\Windows-specific modification involves the first component of this
+command, \fn{app/mmdisp/windows-x86\_64/mmdispsh.exe}. This is an
+executable containing an embedded \Tcl\ interpreter that processes the
+\Tcl\ script specified as the second command component. If you examine
+the \fn{app/mmdisp/windows-x86\_64/} directory you'll find two
+executables, \fn{mmdispsh.exe} and \fn{condispsh.exe}. On \Unix\ and
+\MacOSX\ these two programs are the same, but on \Windows\ the first is
+linked as a native \Windows\ application and the second as a console
+application. The importance of this is that only the second provides the
+usual \Cplusplus\ standard channels \cd{stdin}, \cd{stdout}, and
+\cd{stderr}. In case of abnormal operation programs will sometimes write
+error messages to \cd{stdout} or \cd{stderr}, which will be lost if the
+program is not running as a console application. The upshot is that for
+debugging purposes you would probably want to run \app{mmDisp} (for
+example) from a \Windows\ command console as
+\begin{alltt}
+> \shellcmd{app{\bs}mmdisp{\bs}windows-x86_64{\bs}condispsh.exe app/mmdisp/scripts/mmdisp.tcl}
+\end{alltt}
+
+It is worth noting that on the bootstrap command line, arguments
+starting with `\cd{+}' (for example, ``\cd{+command}'') are options to
+\cd{oommf.tcl} itself. Run ``\cd{tclsh oommf.tcl +h}'' to see the
+bootstrap help message. Options to the \OOMMF\ application follow the
+application name and start with `\cd{-}'.  For example, to see the help
+message for a particular application, run
+``\cd{tclsh oommf.tcl <appName> -h}''.
+
+
+\section{Segfaults and other asynchronous termination}\label{sec:debug:segfaults}
+If an \OOMMF\ application suddenly aborts without displaying an error
+message, the most likely culprit is a segfault caused by attempted
+access to memory outside the program's purview. If this occurs while
+running \app{oxsii} or \app{boxsi}, the first thing to check is the
+\fn{oxsii.log} and \fn{boxsi.log} log files in the \OOMMF\ root
+directory. If there are no hints there, and the error is repeatable,
+then you can enable core dumps and re-run the program until the crash
+repeats. You can then obtain a stack trace from the core dump to
+determine the origin of the failure.
+
+On \Linux, enable core dumps with the shell command \cd{ulimit -Sc
+  unlimited}, and then run \cd{ulimit -Sc} to check that the
+request was honored. If not, then ask your sysadmin about enabling core
+dumps. (Core dumps can be rather large, so after analysis is complete
+you should disable core dumps by running \cd{ulimit -Sc 0} in the
+affected shell, or else exit that shell altogether.) Once core dumps are
+enabled, run the offending application from the core-dumped enabled
+shell prompt. When the application aborts an image of the program state
+at the time of termination is written to disk. The name and location of
+the core dump varies between \Linux\ distributions. On older systems the
+core file will be written to the current working directory with a name
+of the form \fn{core.<pid>}, where \cd{<pid>} is the pid of the
+process. (If the process is \app{oxsii} or \app{boxsi} then the working
+directory will be the directory containing the \fn{.mif} file.)
+Otherwise, use the command \cd{sysctl kernel.core\_pattern} to determine
+the pattern used to create core files. If the pattern begins with a
+\cd{|} ``pipe'' symbol, then the core is piped through the indicated
+program, and you will have to check the system documentation for that
+program to figure out where the core went!
+
+If the core was piped through \app{systemd-coredump}, then you can use
+the \app{coredumpctl} utility to gain information about the
+process. (More on this below.) Some \Linux\ variants, for example Ubuntu, use
+\app{apport}, but may configure it to effectively disable core dumps for
+executables outside the system package management system. In this case
+you might want to install the \cd{systemd-coredump} package to replace
+\app{apport}, or else use \cd{sysctl} to change
+\cd{kernel.core\_pattern} to a simple file pattern (e.g.,
+\cd{/tmp/core-\%e.\%p.\%h.\%t}).
+
+If you have a core dump, you can run the GNU debugger \app{gdb} on the
+executable and core dump to determine where the fault occurred:
+% The \shellcmd and \pgmcmd commands color text a predefined color.
+% See oommfhead.tex for specifics.
+\begin{alltt}
+$ \shellcmd{cd app/oxs}
+$ \shellcmd{gdb linux-x86_64/oxs /tmp/core.12345}
+Program terminated with signal 11, Segmentation fault.
+#0  0x00000000005a40da in Oxs_UniaxialAnisotropy::RectIntegEnergy
+  (Oxs_SimState const&, Oxs_ComputeEnergyDataThreaded&,
+  Oxs_ComputeEnergyDataThreadedAux&, long, long) const ()
+(gdb) \pgmcmd{bt}
+#0  0x00000000005a40da in Oxs_UniaxialAnisotropy::RectIntegEnergy
+  (Oxs_SimState const&, Oxs_ComputeEnergyDataThreaded&,
+  Oxs_ComputeEnergyDataThreadedAux&, long, long) const ()
+#1  0x00000000005a6fed in Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+  (Oxs_SimState const&, Oxs_ComputeEnergyDataThreaded&,
+  Oxs_ComputeEnergyDataThreadedAux&, long, long, int) const ()
+#2  0x000000000040ce44 in Oxs_ComputeEnergiesChunkThread::Cmd(int,
+   void*) ()
+#3  0x00000000004697bd in _Oxs_Thread_threadmain(Oxs_Thread*) ()
+#4  0x00007f90ea7fb330 in ?? () from /lib64/libstdc++.so.6
+#5  0x00007f90ea019ea5 in start_thread () from /lib64/libpthread.so.0
+#6  0x00007f90e9d42b0d in clone () from /lib64/libc.so.6
+(gdb) \pgmcmd{quit}
+\end{alltt}\html{\newline}
+(For visibility, shell commands are colored
+\shellcmd{\shellcmdcolorname}, and \app{gdb} commands are
+\pgmcmd{\pgmcmdcolorname}. The \app{gdb} commands are also prefixed with
+the \cd{(gdb)} prompt. For example, ``bt'' above invokes the \app{gdb}
+``backtrace'' command.) We see that the segmentation fault occurred in
+the member routine \cd{RectIntegEnergy} of class
+\cd{Oxs\_UniaxialAnisotropy}, called by \cd{ComputeEnergyChunk}, and so
+on. If \app{oxs} had been built with debugging symbols
+(\hyperrefhtml{cf. configuration files}{cf. configuration files,
+  Sec.~}{}{sec:debug:configfiles}), then the stack trace would include
+the corresponding source code files and line numbers.
+
+If the core dump was journaled by \app{systemd-coredump}, then the
+command \cd{coredumpctl list} will list all available core dumps,
+including a timestamp, the pid, and the name of the executable. You can
+get a stack trace with \cd{coredumpctl info <pid>}, or load the core
+dump directly into \app{gdb} with \cd{coredumpctl gdb <pid>}. (Some
+versions of \app{coredumpctl} want ``debug'' in place of ``gdb'' in that
+command; check your system documentation for details.)
+
+On \MacOSX, crash reports are automatically generated and can be viewed
+from the \MacOSX\ \app{Console} app. Select ``User Reports'' or ``Crash
+Reports'' from the left hand sidebar, and select the crashed
+process. The report provides details about the run, including a stack
+trace.
+
+You can also create core files on \MacOSX\ in a very similar way as on
+\Linux. Set \cd{ulimit -Sc unlimited} and run the application. Core
+files are written to the directory \fn{/cores/}, with naming convention
+\fn{core.<pid>}. If you built \OOMMF\ with \app{g++}, then you can
+obtain a stack trace with \app{gdb} as above. (Note that in MacPorts the
+\app{gdb} executable is named \cd{ggdb}.) If you built with
+\app{clang++} then you may want to use the LLVM \app{lldb} debugger,
+which should be included with the \app{clang++} package. Here is an
+example \app{lldb} session, for an \app{oxs} executable built with
+debugging symbols:
+\begin{alltt}
+% \shellcmd{cd app/oxs}
+% \shellcmd{lldb -c /cores/core.54416 darwin/oxs}
+(lldb) target create "darwin/oxs" --core "/cores/core.54416"
+Core file '/cores/core.54416' (x86_64) was loaded.
+(lldb) \pgmcmd{bt}
+* thread #1, stop reason = signal SIGSTOP
+ * frame #0: 0x0000000103cfc188 oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy
+ (this=0x00007ff0f4801000, state=0x00007ff0f350e830, ocedt=0x00007ffeec35a9a8,
+ ocedtaux=0x00007ff0f350e6a0, node_start=16384, node_stop=20000) const at
+ uniaxialanisotropy.cc:246
+   frame #1: 0x0000000103cfd864 oxs`Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+ (this=0x00007ff0f4801000, state=0x00007ff0f350e830, ocedt=0x00007ffeec35a9a8,
+ ocedtaux=0x00007ff0f350e6a0, node_start=16384, node_stop=20000, (null)=0)
+ const at uniaxialanisotropy.cc:454
+   frame #2: 0x00000001038a1739 oxs`Oxs_ComputeEnergiesChunkThread::Cmd
+ (this=0x00007ffeec35b440, threadnumber=0, (null)=0x0000000000000000) at
+ chunkenergy.cc:199
+   frame #3: 0x00000001039eabaf oxs`Oxs_ThreadTree::LaunchTree
+ (this=0x0000000103ef3860, runobj=0x00007ffeec35b440, data=0x0000000000000000)
+ at oxsthread.cc:856
+[...]
+(lldb) \pgmcmd{quit}
+\end{alltt}\html{\newline}
+Similar to the \app{gdb} example, the debugger prompt is ``(lldb)'', and
+``bt'' requests a stack trace.
+
+To create and examine core dumps on \Windows, download and install
+\app{ProcDump} and either \app{WinDbg} or \app{Visual Studio}
+applications from Microsoft. To get symbols in the process dump file you
+will need to build OOMMF with symbols, i.e., include
+\begin{verbatim}
+Oc_Option Add * Platform cflags {-debug 1}
+\end{verbatim}
+in the \fn{config/local/options.tcl}. Also, since \cd{-def NDEBUG} is
+not included on this line, the \C\ macro \cd{NDEBUG} will not be
+defined, which enables code \cd{assert} statements and other consistency
+checks, including in particular array bound checks for
+\cd{Oxs\_MeshValue} arrays.
+
+You can create an \cd{oxs} process dump by
+\begin{alltt}
+> \shellcmd{cd app{\bs}oxs}
+> \shellcmd{procdump -ma -t -e -x . windows-x86_64{\bs}oxs.exe boxsi.tcl foo.mif}
+\end{alltt}\html{\newline}
+On program exit (termination, \cd{-t}) or unhandled exception (\cd{-e})
+\cd{procdump} will write a full dump file (\cd{-ma}) to
+\fn{oxs.exe\_YYMMDD\_HHMMSS.dmp} in the \fn{app/oxs} directory.
+
+Follow this procedure to examine the dump file in \app{WinDbg}:
+\begin{enumerate}
+\item Launch \app{WinDbg}.
+\item Use the menu item \cd{File|Open Crash Dump...} to load the
+  \fn{.dmp} file.
+\item Then \cd{View|Call Stack} will open a call stack window.
+\item Double-clicking on a call stack frame will highlight the
+  corresponding line of code in the \Cplusplus\ source. By default only
+  the upper portion of the call stack is displayed, which may be just
+  system exit handling code. You may need to click the ``More'' control
+  in the toolbar one or more times and scroll down to reach
+  \OOMMF\ routines. Enable the ``Source'' toolbar option to include
+  filenames and line references in the stack list.
+\item You can examine variable values at the time of the crash by
+  opening the \cd{View|Locals} window. Referring to the the source code
+  and local variable windows in
+  \hyperrefhtml{the figure below}{Fig.~}{}{fig:windbgstack},
+  we see that the index variable \cd{i} has value 40000, but the size of
+  the \cd{Ms\_inverse} array only has size 40000. Thus the access into
+  \cd{Ms\_inverse} on line 241 (highlighted) is one element beyond the
+  end of the array.
+\end{enumerate}
+% NB: Make certain that the fourth argument to \includeimage
+% does not include any newlines or extraneous whitespace.
+\ofig{\includeimage{\sswidth}{!}{windbg-stacktrace}{\app{WinDbg}~screenshot}}{\app{WinDbg}
+  screenshot displaying call stack, source code, and local variables
+  read from a crash dump generated by \app{procdump}.}{fig:windbgstack}
+
+An alternative to \app{WinDbg} is to use the debugger built into Visual
+Microsoft's Visual Studio:
+\begin{enumerate}
+\item Launch Visual Studio.
+\item Select the \cd{Continue without code} option (below the ``Get
+  started'' column).
+\item Select \cd{File|Open|File ...}, and load the \fn{*.dmp} file.
+\item Under ``Actions'' in the ``Minidump File Summary'' window, select
+    \cd{Debug with Native Only}.
+\item If not automatically displayed, bring up \cd{Debug|Windows|Call Stack}.
+\item Double-clicking in the call stack will bring up and highlight the
+    corresponding line of code in the \Cplusplus\ source.
+\item Use the \cd{Debug|Windows|Autos} and \cd{Debug|Windows|Locals} menu
+  items to display variable values.
+\end{enumerate}
+
+\section{Out-of-bounds memory access}\label{sec:debug:outofbounds}
+One of the more common coding errors is allowing array access outside
+the allocated range of an array. This error can be insidious because the
+program may continue to run past the point of invalid access, but plant
+a seed that grows into a seemingly unrelated fatal error later on. There
+are a number of tools designed to uncover this problem, but an
+especially easy one to use that is common on \Linux\ systems is the
+venerable Electric Fence, original written by Bruce Perens in 1987. If
+the \fn{libefence.so} shared library is installed, then from the
+\cd{bash} prompt in the \fn{oommf/app/oxs} directory you can run
+\begin{alltt}
+$ \shellcmd{LD_PRELOAD=libefence.so linux-x86_64/oxs boxsi.tcl foo.mif}
+\end{alltt}\html{\newline}
+(On some installations there may also be an equivalent shell wrapper
+\cd{ef}.)  This will abort with a segfault if an invalid memory
+reference (read or write) is detected. One nice feature is that you
+don't have to rebuild \OOMMF\ to use this debugger---the \cd{efence}
+shared library transparently replaces the standard system memory
+allocator with the instrumented Electric Fence version at runtime. If
+you enable core dumps as explained above, then on \Linux\ systems even
+without debug symbols a stack trace on the core dump will provide the
+function call list. If you build \OOMMF\ with debugging symbols
+(\cd{Oc\_Option cflags} option \cd{-debug} in
+\fn{config/local/options.tcl}), then the core stack trace will give the
+source file and line number where the invalid memory access
+occurred. Also, \OOMMF\ runs at normal speed with Electric Fence
+enabled, so you can use it to check for errors in large simulations.
+
+One caveat is that for performance reasons, \OOMMF\ sometimes allocates
+larger memory blocks than needed. Electric Fence detects memory
+accesses outside the requested memory range, so \OOMMF\ accesses of
+memory outside its proper range but inside the requested range will not
+be flagged. You can have \OOMMF\ request tight blocks by putting these
+lines in your \fn{local/<platform>.tcl} file:
+\begin{verbatim}
+$config SetValue program_compiler_c++_property_cache_linesize 1
+$config SetValue program_compiler_c++_property_pagesize 1
+$config SetValue sse_no_aligned_access 1
+\end{verbatim}
+and rebuilding \OOMMF\ (\cd{pimake distclean} plus \cd{pimake}).
+
+Normally Electric Fence detects accesses to memory locations above the
+allocated range (index too high), but you can have it check
+instead for memory accesses preceding the allocated range (index too
+low) by setting the environment variable \cd{EF\_PROTECT\_BELOW} to 1.
+
+The Electric Fence documentation warns that core dumps of Electric Fence
+enabled runs can be significantly larger than core dumps without
+Electric Fence, and so recommends running Electric Fence with the
+selected executable (here \fn{oxs}) from inside a debugger rather than
+creating a core dump. This does not appear to be a problem when used
+with \OOMMF\ however, as the core dumps with Electric Fence tend to be
+only modestly larger than those without.
+
+A similar tool on \MacOSX\ is the gmalloc (Guard Malloc) package, which
+is included with Xcode. Run it from the \fn{oommf/app/oxs} bash or zsh
+command line with
+\begin{alltt}
+% \shellcmd{DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib darwin/oxs boxsi.tcl foo.mif}
+\end{alltt}\html{\newline}
+See the documentation from Apple for full details.
+
+\section{\Cplusplus\ source code debuggers}\label{sec:debug:debuggers}
+If you know roughly where a bug is occurring in the code, you can often
+debug it by temporarily inserting \cd{printf} or \cd{std::cout <{}<}
+statements in the code. But for more complex problems it can be more
+informative and quicker in the long run to create a debugging build (i.e.,
+one with debugging symbols and perhaps with compiler optimizations
+disabled) and run the program in a debugger. This section provides
+general information on running \OOMMF\ in a debugger, including short
+examples in three common debuggers: \app{gdb}, \app{lldb}, and \app{Visual
+  Studio Debugger}.
+
+First edit the configuration files for debugging, as explained in
+\hyperrefhtml{the \textbf{Configuration files}
+  section.}{Sec.~}{.}{sec:debug:configfiles}
+Then run
+\begin{alltt}
+$ \shellcmd{tclsh oommf.tcl pimake distclean}
+$ \shellcmd{tclsh oommf.tcl pimake}
+\end{alltt}\html{\newline}
+to create a build of \OOMMF\ with debugging symbols. After this you can
+load an \OOMMF\ executable into a debugger, run the
+program, and examine its execution.  (Remember to \hyperrefhtml{bypass
+the \cd{oommf.tcl} bootstrap}{bypass the \cd{oommf.tcl} bootstrap as
+explained in Sec.~}{}{sec:debug:bootstrap}.)  There are many debuggers
+available, some with multiple front-ends. But one overriding criterion
+in selecting a debugger is to choose one that supports the debugging
+symbol format output by your \Cplusplus\ compiler. To provide a brief
+taste of this subject, we will look at three debuggers: GNU's venerable
+\app{gdb} for use with \cd{g++}, the \app{lldb} debugger packaged with
+Xcode/\app{clang++} on \MacOSX, and the debugger built into Microsoft's
+\app{Visual Studio} for use with Visual \Cplusplus\ \cd{cl} binaries.
+
+\subsection{Introduction to the GNU \app{gdb} debugger}\label{sec:debug:gdbintro}
+This section provides a brief overview on using \app{gdb} for debugging
+\OOMMF\ programs. For a more thorough background you can refer to the
+extensive documentation available from the GNU Project or the many
+online tutorials.
+
+In the following examples, the (\app{bash}) shell prompt is indicated by
+\cd{\$}, and the \app{gdb} prompt with \cd{(gdb)}. You launch \app{gdb}
+from the command line with the name of the executable file. You can
+provide arguments to the executable when you \cd{run} the program inside
+\app{gdb}. For example, to debug a problem with an \cd{Oxs} extension,
+we would run \app{Boxsi} with a sample troublesome \cd{.mif} file, say
+\begin{alltt}
+$ \shellcmd{cd oommf/app/oxs}
+$ \shellcmd{gdb linux-x86_64/oxs}
+(gdb) \pgmcmd{run boxsi.tcl local/foo/foo.mif -threads 1}
+\end{alltt}\html{\newline}
+Subsequent \cd{run} commands will reuse the same arguments unless you
+specify new ones. In this example the \cd{-threads 1} option to
+\app{Boxsi} is used to simplify the debugging process. If you need or
+want to debug with multiple threads, then read up on the ``thread''
+command in the \app{gdb} documentation.
+
+The program run will automatically terminate and return to the
+\cd{(gdb)} prompt if the program exits or aborts. Alternately you can
+\cd{Ctrl-C} at any time to manually halt. To exit \app{gdb} type
+\cd{quit} at the \cd{(gdb)} prompt.
+
+\app{gdb} has a large collection of commands that you can use to control
+program flow and inspect program data. An example we saw before is
+\cd{backtrace}, which can be abbreviated as
+\cd{bt}. Fig.~\ref{oommfgdbcheat} lists a few of the more common
+commands, and Figs.~\ref{fig:oommfgdbsession1} and
+\ref{fig:oommfgdbsession2} provide an example debugging session
+illustrating their use.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{codelisting}{f}{oommfgdbcheat}{\app{gdb} Debugger
+    Cheatsheet\HTMLoutput{\phantom{\rule{1pt}{1.5\baselineskip}}}}{sec:debug:gdbintro}{ref}
+% For some reason latexml shoves the following table flush up against
+% the figure caption; maybe it's not expecting the caption to be at the
+% top of the figure? Also, if I make the \rule with 0pt wide then
+% latexml drops the rule space. But 1pt wide inside \phantom works.
+\begin{center}\begin{tabular}{|l|l|l|}\hline
+  \multicolumn{3}{|l|}{\rule[-1ex]{0pt}{3ex}\textbf{Shell%
+   command:}\texttt{ gdb linux-x86\_64/oxs [corefile (opt)]}}\\\hline
+  \multicolumn{1}{|c}{\rule[-1ex]{0pt}{3.5ex}
+    \textbf{Command}}
+  & \multicolumn{1}{|c}{\textbf{Abbr.}}
+  & \multicolumn{1}{|l|}{\textbf{Description}}\\\hline
+  \multicolumn{3}{|l|}{
+  \rule{0pt}{2.5ex}\textcolor[rgb]{0,0.7,0}{\textbf{Process control}}}\\\hline
+  run [\textit{args}] & & run executable with \textit{args}\\
+  run & &  run executable with last \textit{args}\\
+  show args & & display current \textit{args}\\
+  set env FOO bar  & & set envr.\ variable FOO to ``bar''\\
+  unset env FOO & & unset environment variable FOO\\
+  Ctrl-C & & stop and return to (gdb) prompt\\
+  kill & & terminate current run\\
+  quit & & exit gdb\\[0.5ex]\hline
+
+  \multicolumn{3}{|l|}{
+  \rule{0pt}{2.5ex}\textcolor{blue}{\textbf{Introspection}}}\\\hline
+  backtrace & bt & stack trace\\
+  frame 7 & f 7 & change to stack frame 7\\
+  list 123 & l 123 & list source about line 123\\
+  list foo.cc:50 & & list source about line 50 of foo.cc\\
+  list - & l - & list preceding ten lines\\
+  list foo::bar & & list first ten lines of function foo::bar()\\
+  set listsize 20 & & change list output length to 20 lines\\
+  info locals & i lo & print local variables\\
+  info args  & & print function arguments\\
+  print foo & p foo & write info on variable foo\\
+  printf \verb+"+\%g\verb+"+, foo &
+    & print foo with format \%g (note comma)\\[0.5ex]\hline
+
+  \multicolumn{3}{|l|}{
+    \rule{0pt}{2.5ex}\textcolor{red}{\textbf{Flow control}}}\\\hline
+  break bar.cc:13 & b bar.cc:13
+    & set breakpoint at line 13 of bar.cc\\
+  break foo::bar
+  & b foo::bar & break on entry to \Cplusplus\ routine foo::bar()\\
+  info breakpoints & i b & list breakpoints\\
+  delete 4 & d 4 & delete breakpoint 4\\
+  delete & d & delete all breakpoints\\
+  ignore 3 100 & & skip breakpoint 3 100 times\\
+  watch -location foo & & break when foo changes value\\
+  condition 2 foo\verb+>+10 & & break if foo\verb+>+10 at breakpoint 2\\
+  continue & c & continue running\\
+  step [\#] & s [\#] & take \# steps, follow into subroutines\\
+  next [\#] & n [\#] & take \# steps, step over subroutines\\
+  finish & & run to end of current subroutine (step out)\\[0.5ex]\hline
+
+  \multicolumn{3}{|l|}{
+    \rule{0pt}{2.5ex}\textcolor[rgb]{0.6,0,0.9}{\textbf{Threads}}}\\\hline
+  info threads & i th & list threads\\
+  thread 4 & t 4 & switch context to thread 4\\\hline
+  \end{tabular}
+  \end{center}\html{\newline}
+\end{codelisting}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{codelisting}{p}{fig:oommfgdbsession1}{Sample \app{gdb} session,
+    part 1: Locating the error}{sec:debug:gdbintro}{ref}
+\NONHTMLoutput{\small}
+\begin{alltt}
+$ \shellcmd{cd app/oxs}
+$ \shellcmd{gdb linux-x86_64/oxs}
+(gdb) \pgmcmd{run boxsi.tcl examples/stdprob1.mif -threads 1}
+Starting program: oommf/app/oxs/linux-x86_64/oxs boxsi.tcl examples/stdp...
+oxs: oommf/app/oxs/base/meshvalue.h:319: const T& Oxs_MeshValue<T>::oper...
+  Assertion `0<=index && index<size' failed.
+
+Thread 1 "oxs" received signal SIGABRT, Aborted.
+0x00007ffff65d837f in raise () from /lib64/libc.so.6
+(gdb) \pgmcmd{bt}
+#0  0x00007ffff65d837f in raise () from /lib64/libc.so.6
+[...]
+#4  0x000000000041012a in Oxs_MeshValue<double>::operator[]
+  (this=0xcbeb58, index=40000) at oommf/app/oxs/base/meshvalue.h:319
+#5  0x000000000061e88a in Oxs_UniaxialAnisotropy::RectIntegEnergy
+  (this=0x1307d60, state=..., ocedt=..., ocedtaux=..., node_start=36864,
+  node_stop=40000) at oommf/app/oxs/ext/uniaxialanisotropy.cc:241
+[...]
+(gdb) \pgmcmd{frame 5}
+#5  0x000000000061e88a in Oxs_UniaxialAnisotropy::RectIntegEnergy...
+241           field_mult = (2.0/MU0)*k*Ms_inverse[i];
+(gdb) \pgmcmd{set listsize 5}
+(gdb) \pgmcmd{list}
+239         if(aniscoeftype == K1_TYPE) \{
+240           if(!K1_is_uniform) k = K1[i];
+241           field_mult = (2.0/MU0)*k*Ms_inverse[i];
+242         \} else \{
+243           if(!Ha_is_uniform) field_mult = Ha[i];
+(gdb) \pgmcmd{print i}
+$1 = 40000
+(gdb) \pgmcmd{print Ms_inverse}
+$2 = (const Oxs_MeshValue<double> &) @0xcbeb58: \{arr = 0x7ffff7ebf000,
+  size = 40000, arrblock = \{datablock = 0x7ffff7ebe010 "",
+  arr = 0x7ffff7ebf000, arr_size = 40000, strip_count = 1,
+  strip_size = 320000, strip_pos = std::vector of length 2,
+  capacity 2 = \{0, 320000\}\}, static MIN_THREADING_SIZE = 10000\}
+(gdb) \pgmcmd{kill}
+Kill the program being debugged? (y or n) y
+[Inferior 1 (process 1309854) killed]
+\end{alltt}\html{\newline}
+\end{codelisting}
+
+\begin{codelisting}{f}{fig:oommfgdbsession2}{Sample \app{gdb} session,
+    part 2: Bug details}{sec:debug:gdbintro}{ref}
+\NONHTMLoutput{\small}
+\begin{alltt}
+(gdb) \pgmcmd{break uniaxialanisotropy.cc:239}
+Breakpoint 1 at 0x61e811: file ext/uniaxialanisotropy.cc, line 239.
+(gdb) \pgmcmd{run}
+Starting program: oommf/app/oxs/linux-x86_64/oxs boxsi.tcl examples/s...
+[...]
+Thread 1 "oxs" hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+239         if(aniscoeftype == K1_TYPE) \{
+(gdb) \pgmcmd{info breakpoints}
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep y   0x000000000061e811 in Oxs_UniaxialAni...
+        breakpoint already hit 1 time
+(gdb) \pgmcmd{ignore 1 39999}
+Will ignore next 39999 crossings of breakpoint 1.
+(gdb) \pgmcmd{continue}
+
+Thread 1 "oxs" hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+239         if(aniscoeftype == K1_TYPE) \{
+(gdb) \pgmcmd{print i}
+$3 = 39991
+(gdb) \pgmcmd{condition 1 i>=40000}
+(gdb) \pgmcmd{c}
+
+Thread 1 "oxs" hit Breakpoint 1, Oxs_UniaxialAnisotropy::RectIntegEne...
+239         if(aniscoeftype == K1_TYPE) \{
+(gdb) \pgmcmd{l}
+237
+238       for(OC_INDEX i=node_start;i<=node_stop;++i) \{
+239         if(aniscoeftype == K1_TYPE) \{
+240           if(!K1_is_uniform) k = K1[i];
+241           field_mult = (2.0/MU0)*k*Ms_inverse[i];
+(gdb) \pgmcmd{next}
+240           if(!K1_is_uniform) k = K1[i];
+(gdb) \pgmcmd{n}
+241           field_mult = (2.0/MU0)*k*Ms_inverse[i];
+(gdb) \pgmcmd{step}
+Oxs_MeshValue<double>::operator[] (this=0xcbeb58, index=40000)
+  at oommf/app/oxs/base/meshvalue.h:319
+319       assert(0<=index && index<size);
+(gdb) \pgmcmd{printf "%d,%d{\bs}n", index, size}
+40000,40000
+(gdb) \pgmcmd{quit}
+\end{alltt}\normalsize\html{\newline}
+\end{codelisting}
+
+Two notes concerning \app{gdb} on \MacOSX: First, as mentioned earlier,
+if you install \app{gdb} through MacPorts, the executable name is
+\cd{ggdb}. Second, debuggers operate outside the normal end-user program
+envelope and may run afoul of the OS security system. In particular to
+use \app{gdb} you may need to set up a certificate in the
+\MacOSX\ System Keychain for it; details on this process can be found
+online. This issue might be resolved for \app{lldb} (next section) as
+part of the installation process if it and \app{clang++} were installed
+as part of the Xcode package.
+
+This introduction only scratches the surface of \app{gdb} commands and
+capabilities. You can find tutorials and additional information online,
+or else refer to the \app{gdb} documentation from GNU for full details.
+
+\subsection{Introduction to the LLVM \app{lldb}}\label{sec:debug:lldbintro}
+If you are working on \MacOSX, you may be building \OOMMF\ with
+\app{g++} or \app{clang++}. The native debugger for \app{clang++} is
+\app{lldb}, which is included as part of the Xcode package. Both
+\app{g++} and \app{clang++} use the same debugging symbol format, so in
+principle you should be able to use either debugger with either
+compiler, but if you have problems with one try the other.
+
+The \app{lldb} debugger is a command-line debugger very similar in
+concept to \app{gdb}, and although the command syntax is somewhat
+different, \app{lldb} provides a fair number of aliases to ease the
+transition for veteran \app{gdb} users.  Fig.~\ref{fig:oommflldbcheat}
+lists a few of the more common \app{lldb} commands, and
+Figs.~\ref{fig:oommflldbsession1} and \ref{fig:oommflldbsession2}
+illustrate an \app{lldb} debugging session analogous to the \app{gdb}
+session presented in Figs.~\ref{fig:oommfgdbsession1} and
+\ref{fig:oommfgdbsession2}.
+
+% NOTE: I had trouble getting latex2html to render ``--'' as two
+%       separate dashes instead of an endash. \verb works, but is not
+%       allowed inside \makecell. However, the following \dblhyp command
+%       appears to do the trick. You can use \textsf in place of \texttt
+%       if you with, but the html hyphen looks low up against \textrm in
+%       my text browser. (And \textrm{-} puts a big space between the
+%       hyphens in the html.)
+\newcommand{\dblhyp}{\texttt{-}\texttt{-}}
+
+\begin{codelisting}{f}{fig:oommflldbcheat}{\app{lldb} Debugger
+    Cheatsheet\HTMLoutput{\phantom{\rule{1pt}{1.5\baselineskip}}}}{sec:debug:lldbintro}{ref}
+  \begin{center}
+    \begin{tabular}{|l|l|l|}\hline
+  \multicolumn{3}{|l|}{\rule[-1ex]{0pt}{3ex}\textbf{Shell
+      command:}\texttt{ lldb [-c corefile (opt)] darwin/oxs}}\\\hline
+  \multicolumn{1}{|c}{\rule[-1ex]{0pt}{3.5ex}
+    \textbf{Command}}
+  & \multicolumn{1}{|c}{\textbf{Abbr.}}
+  & \multicolumn{1}{|l|}{\textbf{Description}}\\\hline
+  \multicolumn{3}{|l|}{
+  \rule{0pt}{3ex}\textcolor[rgb]{0,0.7,0}{\textbf{Process control}}}\\\hline
+  process launch \dblhyp\ [\textit{args}] & r [\textit{args}]
+  & run executable with \textit{args}\\
+  process launch & r &  run executable with last \textit{args}\\
+
+  settings show target.run-args & & display current \textit{args}\\
+
+  settings set target.env-vars & \multirow{2}{*}{env FOO=bar}
+     & \multirow{2}{*}{set envr.\ variable FOO to ``bar''} \\
+  ~~~FOO=bar && \\
+  % AFAICT, LaTeX2HTML either draws line across every row
+  % or nont at all, depending on whether or not any \hline
+  % command appears in the tabular. This provides less than
+  % ideal behavior in the non-multirowed column. OTOH, LaTeXML
+  % appears to handle this OK.
+
+  Ctrl-C & & stop and return to (lldb) prompt\\
+  process kill & kill & terminate current run\\
+  quit & & exit lldb\\\hline
+
+  \multicolumn{3}{|l|}{
+    \rule{0pt}{3ex}\textcolor{blue}{\textbf{Introspection}}}\\\hline
+  thread backtrace & bt & stack trace of current thread\\
+
+  frame select 5 & f 5 & change to stack frame 5\\
+  frame variable &  & print args \& vars for current frame\\
+  frame variable foo & p foo & print value of variable foo\\
+  source list -f foo.cc -l 50 & l foo.cc:50 & list source after line 50 of foo.cc\\
+  source list & l & list next ten lines\\
+  source list -r & l - & list preceding ten lines\\
+  source list -c 20 & & list 20 lines\\\hline
+
+  \multicolumn{3}{|l|}{
+    \rule{0pt}{3ex}\textcolor{red}{\textbf{Flow control}}}\\\hline
+
+  breakpoint set && \multirow{2}{*}{set breakpoint at line 99 of foo.cc}\\
+  ~~{\dblhyp}file foo.cc {\dblhyp}line 99 && \\
+
+  breakpoint set && \multirow{2}{*}{break at \Cplusplus\ routine foo::bar()}\\
+  ~~{\dblhyp}name foo::bar && \\
+
+  breakpoint list & br l & list breakpoints\\
+  breakpoint delete 4 & br del 4 & delete breakpoint 4\\
+  breakpoint delete & br del & delete all breakpoints\\
+
+  breakpoint modify -i 100 3 & & skip breakpoint 3 100 times\\
+  breakpoint modify -c i\verb+>+7 3
+   && break if i\verb+>+7 at breakpoint 3\\
+  watchpoint set variable foo && break when foo changes value\\[1ex]
+
+  thread continue & c & continue running\\
+  thread step-in & s & take one step, into subroutines\\
+  thread step-over & n & take one step, over subroutines\\
+  thread step-out & finish & run to end of current subroutine\\[1ex]\hline
+
+  \multicolumn{3}{|l|}{
+  \rule{0pt}{3ex}\textcolor[rgb]{0.6,0,0.9}{\textbf{Threads}}}\\\hline
+  thread list &  & list all threads\\
+  thread select 2 & & switch context to thread 2\\\hline
+    \end{tabular}
+  \end{center}\html{\newline}
+\end{codelisting}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{codelisting}{f}{fig:oommflldbsession1}{Sample \app{lldb} session,
+    part 1: Locating the error}{sec:debug:lldbintro}{ref}
+\NONHTMLoutput{\small}
+\begin{alltt}
+% \shellcmd{cd app/oxs}
+% \shellcmd{lldb darwin/oxs}
+(lldb) target create "darwin/oxs"
+Current executable set to 'oommf/app/oxs/darwin/oxs' (x86_64).
+(lldb) \pgmcmd{process launch -- boxsi.tcl examples/stdprob1.mif -threads 1}
+Process 36662 launched: 'oommf/app/oxs/darwin/oxs' (x86_64)
+Assertion failed: (0<=index && index<size) [...] file meshvalue.h, line 319.
+Process 36662 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = hit program assert
+    frame #4: 0x00000001000065cc oxs [...] at meshvalue.h:319:3
+   316  template<class T>
+   317  const T& Oxs_MeshValue<T>::operator[](OC_INDEX index) const
+   318  \{
+-> 319    assert(0<=index && index<size);
+   320    return arr[index];
+   321  \}
+   322
+Target 0: (oxs) stopped.
+(lldb) \pgmcmd{bt}
+* thread #1, queue = 'com.apple.main-thread', stop reason = hit program assert
+    frame #0: 0x00007fff207ba91e libsystem_kernel.dylib`__pthread_kill + 10
+[...]
+  * frame #4: 0x00000001000065cc oxs`Oxs_MeshValue<double>::operator[](th...
+    frame #5: 0x0000000100350fa8 oxs`Oxs_UniaxialAnisotropy::RectIntegEne...
+[...]
+(lldb) \pgmcmd{frame select 5}
+frame #5: 0x0000000100350fa8 oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(...
+   238    for(OC_INDEX i=node_start;i<=node_stop;++i) \{
+   239      if(aniscoeftype == K1_TYPE) \{
+   240        if(!K1_is_uniform) k = K1[i];
+-> 241        field_mult = (2.0/MU0)*k*Ms_inverse[i];
+   242      \} else \{
+   243        if(!Ha_is_uniform) field_mult = Ha[i];
+   244        k = 0.5*MU0*field_mult*Ms[i];
+(lldb) \pgmcmd{frame variable i}
+(OC_INDEX) i = 40000
+(lldb) \pgmcmd{frame variable Ms_inverse}
+(const Oxs_MeshValue<double> &) Ms_inverse = 0x0000000102b77928: \{
+  arr = 0x0000000101da4000
+  size = 40000
+[...]
+(lldb) \pgmcmd{process kill}
+Process 36662 exited with status = 9 (0x00000009)
+\end{alltt}\html{\newline}
+\end{codelisting}
+
+\begin{codelisting}{f}{fig:oommflldbsession2}{Sample \app{lldb} session,
+   part 2: Bug details (lldb output edited for
+   space)}{sec:debug:lldbintro}{ref}
+\NONHTMLoutput{\small}
+\begin{alltt}
+(lldb) \pgmcmd{breakpoint set --file uniaxialanisotropy.cc --line 239}
+Breakpoint 1: where = oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(Oxs_Sim...
+(lldb) \pgmcmd{process launch}
+Process 36718 launched: 'oommf/app/oxs/darwin/oxs' (x86_64)
+[...]
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+   238    for(OC_INDEX i=node_start;i<=node_stop;++i) \{
+-> 239      if(aniscoeftype == K1_TYPE) \{
+   240        if(!K1_is_uniform) k = K1[i];
+   241        field_mult = (2.0/MU0)*k*Ms_inverse[i];
+(lldb) \pgmcmd{breakpoint list}
+Current breakpoints:
+1: file = 'uniaxialanisotropy.cc', line = 239, exact_match = 0, locations...
+  1.1: where = oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy(Oxs_SimState c...
+(lldb) \pgmcmd{breakpoint modify -i 39999 1}
+(lldb) \pgmcmd{thread continue}
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+-> 239      if(aniscoeftype == K1_TYPE) \{
+(lldb) \pgmcmd{p i}
+(OC_INDEX) $0 = 39991
+(lldb) \pgmcmd{breakpoint modify -c i>=40000}
+(lldb) \pgmcmd{c}
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+-> 239      if(aniscoeftype == K1_TYPE) \{
+(lldb) \pgmcmd{thread step-over}
+* thread #1, queue = 'com.apple.main-thread', stop reason = step over
+-> 240        if(!K1_is_uniform) k = K1[i];
+(lldb) \pgmcmd{n}
+* thread #1, queue = 'com.apple.main-thread', stop reason = step over
+-> 241        field_mult = (2.0/MU0)*k*Ms_inverse[i];
+(lldb) \pgmcmd{thread step-in}
+* thread #1, queue = 'com.apple.main-thread', stop reason = step in
+   317  const T& Oxs_MeshValue<T>::operator[](OC_INDEX index) const
+   318  \{
+-> 319    assert(0<=index && index<size);
+(lldb) \pgmcmd{print (void) printf("%d,%d{\bs}n", index, size)}
+40000,40000
+(lldb) \pgmcmd{quit}
+\end{alltt}\html{\newline}
+\end{codelisting}
+
+\subsection{Debugging \OOMMF\ in Visual Studio}\label{sec:debug:visualstudiodebugger}
+The debugger built into Microsoft's Visual Studio provides largely
+similar functionality to \app{gdb} and \app{lldb}, but with a GUI
+interface. It understands the debugging symbol files produced by the
+Visual \Cplusplus\ \cd{cl} compiler, namely ``Program DataBase'' files
+having the \fn{.pdb} extension. Other debugger options for this symbol
+file format include the GUI \app{WinDbg} mentioned earlier, and the
+related command line tool \app{CDB}.
+
+Visual Studio is an integrated development environment, and normal usage
+involves building ``projects'' that specify all the source code files
+and rules for building them into an executable program. \OOMMF\ does not
+follow this paradigm, but rather maintains similar information in a
+collection of \Tcl\ \fn{makerules.tcl} files distributed across the
+development tree. Thus there is no \OOMMF\ project file to load into
+Visual Studio. Instead, to debug an \OOMMF\ application in Visual Studio
+you need to load the application executable directly, along with some
+supplemental run information. The following details the process for
+Visual Studio 2022; specifics may differ somewhat for other releases.
+\begin{enumerate}
+\item Launch Visual Studio
+\item Select \cd{Open a project or solution} from the \cd{Getting
+  started} pane and then navigate to and select the executable.
+\item In the \cd{Solution Explorer} pane, right click on the executable
+  and select \cd{Properties}.
+\item Under \cd{Parameters}, fill in the \cd{Arguments} and \cd{Working
+  Directory} fields as appropriate. You may also have to modify the
+  \cd{Environment} setting, in particular if the \Tcl\ and
+  \Tk\ \fn{.dll}'s are not on the default path used by Visual
+  Studio. In this case click on the ellipsis at the right of the
+  \cd{Environment} row, and then click the \cd{Fetch} button at the
+  bottom of the \cd{Environment} pop-up to load the current
+  environment. Scroll down to variable \cd{path} and edit as necessary.
+  Close when complete.
+\item Select \cd{Start} from the toolbar or \cd{Debug|Start Debugging}
+  from the top-level menu bar.
+\item Debug! You can use the drop-down menus to perform actions
+  analogous to those described above for the \app{gdb} and \app{lldb}
+  debuggers. If you get a message that no symbols were loaded, then most
+  likely either the \cd{/Zi} switch was missing from the compile command
+  or else the \cd{/DEBUG} option was missing from the link command. In
+  this case review the \OOMMF\ \hyperrefhtml{configuration file
+  settings}{configuration file settings
+    (Sec.~}{)}{sec:debug:configfiles}) and rebuild \OOMMF.  The symbols 
+  for the executable should be stored in a \fn{*.pdb} file next to the
+  executable file.
+\item The call stack should automatically appear when you start
+  debugging. If not, you can manually call it up through the menu option
+  \cd{Debug|Windows|Call Stack}. A curious feature of Visual Studio
+  is that the call stack window disappears when execution exits. This
+  happens even when the exit is caused by an abnormal event, for example
+  via an assertion failure. In default \OOMMF\ builds many types
+  of fatal errors are routed through the
+  \cd{Oc\_AsyncError::CatchSignal(int)} routine in
+  \fn{pkg/oc/ocexcept.cc}. If you set a breakpoint in this function then
+  the debugger will stop if it hits this function, but will not exit the
+  debugger, so you can still examine the call stack. Do this before you
+  start the debugging run by pulling up the \cd{Debug|New
+    Breakpoint|Function Breakpoint...} dialog, enter
+  \cd{Oc\_AsyncError::CatchSignal(int)} in the ``Function Name'' box,
+  and click ``OK''.
+  \item Double-clicking on a row in the Call Stack window will bring up
+    the relevant line of source code. Menu option
+    \cd{Debug|Windows|Locals} will open a window showing the variable
+    values accessible at this point in the code. An example is shown in
+    \hyperrefhtml{the figure below}{Fig.~}{}{fig:vsdbgassert}, where we
+    see that the index variable \cd{i} at line 241 of
+    \fn{uniaxialanisotropy.cc} has value 40000, but the size of
+    \cd{Ms\_inverse} is 40000, meaning the maximum valid index into
+    \cd{Ms\_inverse} is only 39999.
+\item When you exit the debugger you will be asked if you want to save the
+  \fn{.sln} (solution) file. If you do, it will be written in the same
+  directory as the executable and \fn{.pdb} files. In later debugging
+  sessions you can load the solution file in step 2 above and bypass
+  steps 3 and 4.
+\end{enumerate}
+% NB: Make certain that the fourth argument to \includeimage
+% does not include any newlines or extraneous whitespace.
+\ofig{\includeimage{\sswidth}{!}{vsdbg-assert}{\app{Visual~Studio~Debugger}~screenshot}}{\app{Visual
+    Studio Debugger} screenshot displaying call stack, source code, and
+  local variables from a debugging session.}{fig:vsdbgassert}

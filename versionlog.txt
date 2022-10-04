@@ -73,3 +73,14 @@ date: Thu 30 Sep 2021 22:34:00 CEST
      source-url: http://math.nist.gov/oommf/dist/oommf20a3_20210930.tar.gz
    github-url: https://github.com/fangohr/oommf
    github version: fe2d38f8f95277268896e1219d05d4d8f572d2e5
+=======================================================
+date: Tue  4 Oct 2022 09:37:34 CEST 
+   unpacked oommf20b0_20220930.tar.gz
+   OOMMF:
+     version: 20b0
+     date: 20220930
+     build: b0
+     modified: 
+     source-url: http://math.nist.gov/oommf/dist/oommf20b0_20220930.tar.gz
+   github-url: https://github.com/fangohr/oommf
+   github version: ec3eaa008b7b071049b5de4d80f764044cbf8d0a

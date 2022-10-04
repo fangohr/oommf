@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Segfaults and other asynchronous termination</TITLE>
+<META NAME="description" CONTENT="Segfaults and other asynchronous termination">
+<META NAME="keywords" CONTENT="progman">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="progman.css">
+
+<LINK REL="next" HREF="Out_bounds_memory_access.html">
+<LINK REL="previous" HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<LINK REL="up" HREF="Debugging_OOMMF.html">
+<LINK REL="next" HREF="Out_bounds_memory_access.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html236"
+  HREF="Out_bounds_memory_access.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html232"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html226"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html234"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html237"
+  HREF="Out_bounds_memory_access.html">Out-of-bounds memory access</A>
+<B> Up:</B> <A NAME="tex2html233"
+  HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
+<B> Previous:</B> <A NAME="tex2html227"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">Bypassing the oommf.tcl bootstrap</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00640000000000000000"></A><A NAME="sec:debug:segfaults"></A>
+<BR>
+Segfaults and other asynchronous termination
+</H1>
+If an OOMMF application suddenly aborts without displaying an error
+message, the most likely culprit is a segfault caused by attempted
+access to memory outside the program's purview. If this occurs while
+running <B>oxsii</B> or <B>boxsi</B>, the first thing to check is the
+<TT><B>oxsii.log</B></TT> and <TT><B>boxsi.log</B></TT> log files in the OOMMF root
+directory. If there are no hints there, and the error is repeatable,
+then you can enable core dumps and re-run the program until the crash
+repeats. You can then obtain a stack trace from the core dump to
+determine the origin of the failure.
+
+<P>
+On Linux, enable core dumps with the shell command <TT>ulimit -Sc
+  unlimited</TT>, and then run <TT>ulimit -Sc</TT> to check that the
+request was honored. If not, then ask your sysadmin about enabling core
+dumps. (Core dumps can be rather large, so after analysis is complete
+you should disable core dumps by running <TT>ulimit -Sc 0</TT> in the
+affected shell, or else exit that shell altogether.) Once core dumps are
+enabled, run the offending application from the core-dumped enabled
+shell prompt. When the application aborts an image of the program state
+at the time of termination is written to disk. The name and location of
+the core dump varies between Linux distributions. On older systems the
+core file will be written to the current working directory with a name
+of the form <TT><B>core.&lt;pid&gt;</B></TT>, where <TT>&lt;pid&gt;</TT> is the pid of the
+process. (If the process is <B>oxsii</B> or <B>boxsi</B> then the working
+directory will be the directory containing the <TT><B>.mif</B></TT> file.)
+Otherwise, use the command <TT>sysctl kernel.core_pattern</TT> to determine
+the pattern used to create core files. If the pattern begins with a
+<TT>|</TT> ``pipe'' symbol, then the core is piped through the indicated
+program, and you will have to check the system documentation for that
+program to figure out where the core went!
+
+<P>
+If the core was piped through <B>systemd-coredump</B>, then you can use
+the <B>coredumpctl</B> utility to gain information about the
+process. (More on this below.) Some Linux variants, for example Ubuntu, use
+<B>apport</B>, but may configure it to effectively disable core dumps for
+executables outside the system package management system. In this case
+you might want to install the <TT>systemd-coredump</TT> package to replace
+<B>apport</B>, or else use <TT>sysctl</TT> to change
+<TT>kernel.core_pattern</TT> to a simple file pattern (e.g.,
+<TT>/tmp/core-%e.%p.%h.%t</TT>).
+
+<P>
+If you have a core dump, you can run the GNU debugger <B>gdb</B> on the
+executable and core dump to determine where the fault occurred:
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ $ <FONT COLOR="#00bbee">cd app/oxs</FONT>
+<BR>$ <FONT COLOR="#00bbee">gdb linux-x86_64/oxs /tmp/core.12345</FONT>
+<BR>
+Program terminated with signal 11, Segmentation fault.
+<BR>#0 &nbsp;0x00000000005a40da in Oxs_UniaxialAnisotropy::RectIntegEnergy
+<BR>&nbsp;&nbsp;(Oxs_SimState const&amp;, Oxs_ComputeEnergyDataThreaded&amp;,
+<BR>&nbsp;&nbsp;Oxs_ComputeEnergyDataThreadedAux&amp;, long, long) const ()
+<BR>(gdb) <FONT COLOR="#ff3311">bt</FONT>
+<BR>#0 &nbsp;0x00000000005a40da in Oxs_UniaxialAnisotropy::RectIntegEnergy
+<BR>&nbsp;&nbsp;(Oxs_SimState const&amp;, Oxs_ComputeEnergyDataThreaded&amp;,
+<BR>&nbsp;&nbsp;Oxs_ComputeEnergyDataThreadedAux&amp;, long, long) const ()
+<BR>#1 &nbsp;0x00000000005a6fed in Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+<BR>&nbsp;&nbsp;(Oxs_SimState const&amp;, Oxs_ComputeEnergyDataThreaded&amp;,
+<BR>&nbsp;&nbsp;Oxs_ComputeEnergyDataThreadedAux&amp;, long, long, int) const ()
+<BR>#2 &nbsp;0x000000000040ce44 in Oxs_ComputeEnergiesChunkThread::Cmd(int,
+<BR>&nbsp;&nbsp;&nbsp;void*) ()
+<BR>#3 &nbsp;0x00000000004697bd in _Oxs_Thread_threadmain(Oxs_Thread*) ()
+<BR>#4 &nbsp;0x00007f90ea7fb330 in ?? () from /lib64/libstdc++.so.6
+<BR>#5 &nbsp;0x00007f90ea019ea5 in start_thread () from /lib64/libpthread.so.0
+<BR>#6 &nbsp;0x00007f90e9d42b0d in clone () from /lib64/libc.so.6
+<BR>(gdb) <FONT COLOR="#ff3311">quit</FONT>
+<BR></TT>
+</DIV>
+<BR>
+(For visibility, shell commands are colored
+<FONT COLOR="#00bbee">cyan</FONT>, and <B>gdb</B> commands are
+<FONT COLOR="#ff3311">red</FONT>. The <B>gdb</B> commands are also prefixed with
+the <TT>(gdb)</TT> prompt. For example, ``bt'' above invokes the <B>gdb</B>
+``backtrace'' command.) We see that the segmentation fault occurred in
+the member routine <TT>RectIntegEnergy</TT> of class
+<TT>Oxs_UniaxialAnisotropy</TT>, called by <TT>ComputeEnergyChunk</TT>, and so
+on. If <B>oxs</B> had been built with debugging symbols
+(<A HREF="Configuration_Files.html#sec:debug:configfiles">cf. configuration files</A>), then the stack trace would include
+the corresponding source code files and line numbers.
+
+<P>
+If the core dump was journaled by <B>systemd-coredump</B>, then the
+command <TT>coredumpctl list</TT> will list all available core dumps,
+including a timestamp, the pid, and the name of the executable. You can
+get a stack trace with <TT>coredumpctl info &lt;pid&gt;</TT>, or load the core
+dump directly into <B>gdb</B> with <TT>coredumpctl gdb &lt;pid&gt;</TT>. (Some
+versions of <B>coredumpctl</B> want ``debug'' in place of ``gdb'' in that
+command; check your system documentation for details.)
+
+<P>
+On macOS, crash reports are automatically generated and can be viewed
+from the macOS <B>Console</B> app. Select ``User Reports'' or ``Crash
+Reports'' from the left hand sidebar, and select the crashed
+process. The report provides details about the run, including a stack
+trace.
+
+<P>
+You can also create core files on macOS in a very similar way as on
+Linux. Set <TT>ulimit -Sc unlimited</TT> and run the application. Core
+files are written to the directory <TT><B>/cores/</B></TT>, with naming convention
+<TT><B>core.&lt;pid&gt;</B></TT>. If you built OOMMF with <B>g++</B>, then you can
+obtain a stack trace with <B>gdb</B> as above. (Note that in MacPorts the
+<B>gdb</B> executable is named <TT>ggdb</TT>.) If you built with
+<B>clang++</B> then you may want to use the LLVM <B>lldb</B> debugger,
+which should be included with the <B>clang++</B> package. Here is an
+example <B>lldb</B> session, for an <B>oxs</B> executable built with
+debugging symbols:
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ % <FONT COLOR="#00bbee">cd app/oxs</FONT>
+<BR>% <FONT COLOR="#00bbee">lldb -c /cores/core.54416 darwin/oxs</FONT>
+<BR>(lldb) target create &#34;darwin/oxs&#34; -core &#34;/cores/core.54416&#34;
+<BR>
+Core file '/cores/core.54416' (x86_64) was loaded.
+<BR>(lldb) <FONT COLOR="#ff3311">bt</FONT>
+<BR>* thread #1, stop reason = signal SIGSTOP
+<BR>&nbsp;* frame #0: 0x0000000103cfc188 oxs`Oxs_UniaxialAnisotropy::RectIntegEnergy
+<BR>&nbsp;(this=0x00007ff0f4801000, state=0x00007ff0f350e830, ocedt=0x00007ffeec35a9a8,
+<BR>&nbsp;ocedtaux=0x00007ff0f350e6a0, node_start=16384, node_stop=20000) const at
+<BR>&nbsp;uniaxialanisotropy.cc:246
+<BR>&nbsp;&nbsp;&nbsp;frame #1: 0x0000000103cfd864 oxs`Oxs_UniaxialAnisotropy::ComputeEnergyChunk
+<BR>&nbsp;(this=0x00007ff0f4801000, state=0x00007ff0f350e830, ocedt=0x00007ffeec35a9a8,
+<BR>&nbsp;ocedtaux=0x00007ff0f350e6a0, node_start=16384, node_stop=20000, (null)=0)
+<BR>&nbsp;const at uniaxialanisotropy.cc:454
+<BR>&nbsp;&nbsp;&nbsp;frame #2: 0x00000001038a1739 oxs`Oxs_ComputeEnergiesChunkThread::Cmd
+<BR>&nbsp;(this=0x00007ffeec35b440, threadnumber=0, (null)=0x0000000000000000) at
+<BR>&nbsp;chunkenergy.cc:199
+<BR>&nbsp;&nbsp;&nbsp;frame #3: 0x00000001039eabaf oxs`Oxs_ThreadTree::LaunchTree
+<BR>&nbsp;(this=0x0000000103ef3860, runobj=0x00007ffeec35b440, data=0x0000000000000000)
+<BR>&nbsp;at oxsthread.cc:856
+<BR>[...]
+<BR>(lldb) <FONT COLOR="#ff3311">quit</FONT>
+<BR></TT>
+</DIV>
+<BR>
+Similar to the <B>gdb</B> example, the debugger prompt is ``(lldb)'', and
+``bt'' requests a stack trace.
+
+<P>
+To create and examine core dumps on Windows, download and install
+<B>ProcDump</B> and either <B>WinDbg</B> or <B>Visual Studio</B>
+applications from Microsoft. To get symbols in the process dump file you
+will need to build OOMMF with symbols, i.e., include
+<PRE>
+Oc_Option Add * Platform cflags {-debug 1}
+</PRE>
+in the <TT><B>config/local/options.tcl</B></TT>. Also, since <TT>-def NDEBUG</TT> is
+not included on this line, the C macro <TT>NDEBUG</TT> will not be
+defined, which enables code <TT>assert</TT> statements and other consistency
+checks, including in particular array bound checks for
+<TT>Oxs_MeshValue</TT> arrays.
+
+<P>
+You can create an <TT>oxs</TT> process dump by
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &gt; <FONT COLOR="#00bbee">cd app<TT>&#92;</TT>oxs</FONT>
+<BR>&gt; <FONT COLOR="#00bbee">procdump -ma -t -e -x . windows-x86_64<TT>&#92;</TT>oxs.exe boxsi.tcl foo.mif</FONT>
+<BR></TT>
+</DIV>
+<BR>
+On program exit (termination, <TT>-t</TT>) or unhandled exception (<TT>-e</TT>)
+<TT>procdump</TT> will write a full dump file (<TT>-ma</TT>) to
+<TT><B>oxs.exe_YYMMDD_HHMMSS.dmp</B></TT> in the <TT><B>app/oxs</B></TT> directory.
+
+<P>
+Follow this procedure to examine the dump file in <B>WinDbg</B>:
+
+<OL>
+<LI>Launch <B>WinDbg</B>.
+</LI>
+<LI>Use the menu item <TT>File|Open Crash Dump...</TT> to load the
+  <TT><B>.dmp</B></TT> file.
+</LI>
+<LI>Then <TT>View|Call Stack</TT> will open a call stack window.
+</LI>
+<LI>Double-clicking on a call stack frame will highlight the
+  corresponding line of code in the C++ source. By default only
+  the upper portion of the call stack is displayed, which may be just
+  system exit handling code. You may need to click the ``More'' control
+  in the toolbar one or more times and scroll down to reach
+  OOMMF routines. Enable the ``Source'' toolbar option to include
+  filenames and line references in the stack list.
+</LI>
+<LI>You can examine variable values at the time of the crash by
+  opening the <TT>View|Locals</TT> window. Referring to the the source code
+  and local variable windows in
+  <A HREF="#fig:windbgstack">the figure below</A>,
+  we see that the index variable <TT>i</TT> has value 40000, but the size of
+  the <TT>Ms_inverse</TT> array only has size 40000. Thus the access into
+  <TT>Ms_inverse</TT> on line 241 (highlighted) is one element beyond the
+  end of the array.
+</LI>
+</OL>
+<DIV ALIGN="CENTER">
+<A NAME="fig:windbgstack"></A> <B>Figure 5.2: <B>WinDbg</B>
+  screenshot displaying call stack, source code, and local variables
+  read from a crash dump generated by <B>procdump</B>.</B>
+<BR> <IMG ALT="<B>WinDbg</B>&nbsp;screenshot" SRC="../giffiles/windbg-stacktrace.gif">
+
+</DIV>
+
+<P>
+An alternative to <B>WinDbg</B> is to use the debugger built into Visual
+Microsoft's Visual Studio:
+
+<OL>
+<LI>Launch Visual Studio.
+</LI>
+<LI>Select the <TT>Continue without code</TT> option (below the ``Get
+  started'' column).
+</LI>
+<LI>Select <TT>File|Open|File ...</TT>, and load the <TT><B>*.dmp</B></TT> file.
+</LI>
+<LI>Under ``Actions'' in the ``Minidump File Summary'' window, select
+    <TT>Debug with Native Only</TT>.
+</LI>
+<LI>If not automatically displayed, bring up <TT>Debug|Windows|Call Stack</TT>.
+</LI>
+<LI>Double-clicking in the call stack will bring up and highlight the
+    corresponding line of code in the C++ source.
+</LI>
+<LI>Use the <TT>Debug|Windows|Autos</TT> and <TT>Debug|Windows|Locals</TT> menu
+  items to display variable values.
+</LI>
+</OL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html236"
+  HREF="Out_bounds_memory_access.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html232"
+  HREF="Debugging_OOMMF.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html226"
+  HREF="Bypassing_TT_oommf.tcl_TT_b.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html234"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

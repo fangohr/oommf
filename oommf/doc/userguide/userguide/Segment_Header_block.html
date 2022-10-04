@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Segment Header block</TITLE>
+<META NAME="description" CONTENT="Segment Header block">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Data_block.html">
+<LINK REL="previous" HREF="OVF_1.0_format.html">
+<LINK REL="up" HREF="OVF_1.0_format.html">
+<LINK REL="next" HREF="Data_block.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1388"
+  HREF="Data_block.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1384"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1378"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1386"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1389"
+  HREF="Data_block.html">Data block</A>
+<B> Up:</B> <A NAME="tex2html1385"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<B> Previous:</B> <A NAME="tex2html1379"
+  HREF="OVF_1.0_format.html">The OVF 1.0 format</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION002021000000000000000"></A><A NAME="sec:ovfsegmentheader"></A>
+<BR>
+Segment Header block
+</H2>
+The Segment Header block start is marked by the line
+``<TT>#</TT>&nbsp;Begin: Header'' and the end by ``<TT>#</TT>&nbsp;End: Header''.  Everything
+between these lines should be either comments or one of the following
+file descriptor lines.  They are order independent.  All are required
+unless otherwise stated.  Numeric values are floating point values
+unless ``integer'' is explicitly stated.
+
+<UL>
+<LI><B>title:</B> Long file name or title.
+</LI>
+<LI><B>desc:</B> Description line.  Optional.  Use as many as desired.
+   Description lines may be displayed by post-processing programs,
+   unlike comment lines which are ignored by all automated processing.
+</LI>
+<LI><B>meshunit:</B> Fundamental mesh spatial unit, treated as a
+   label.  The comment marker `<code>##</code>' is not allowed in this label.
+   Example value: ``nm''.
+</LI>
+<LI><B>valueunit:</B> Fundamental field value unit, treated as a
+   label.  The comment marker `<code>##</code>' is not allowed in this label.
+   Example: ``kA/m.''
+</LI>
+<LI><B>valuemultiplier:</B> Values in the data block are multiplied by
+   this to get true values in units of ``valueunit.''  This simplifies
+   the use of normalized values.
+</LI>
+<LI><B>xmin, ymin, zmin, xmax, ymax, zmax:</B> Six separate lines,
+   specifying the bounding box for the mesh, in units of ``meshunit.''
+   This may be used by display programs to limit the display area,
+   and may be used for drawing a boundary frame if ``boundary'' is not
+   specified.
+</LI>
+<LI><B>boundary:</B> List of <I>(x,y,z)</I> triples specifying the
+   vertices of a boundary frame.  Optional.
+</LI>
+<LI><B>ValueRangeMaxMag, ValueRangeMinMag:</B>  The maximum and
+   minimum field magnitudes in the data block, in the same
+   units and scale as used in the data block.  These are for optional
+   use as hints by postprocessing programs; for example, <B>mmDisp</B>
+   will not display any vector with magnitude smaller than
+   ValueRangeMinMag.  If both ValueRangeMinMag and ValueRangeMaxMag
+   are zero, then the values should be ignored.
+</LI>
+<LI><B>meshtype:</B><A NAME="22659"></A> Grid structure; should be either
+   ``rectangular'' or
+   ``irregular.''  Irregular grid files should specify ``pointcount''
+   in the header; rectangular grid files should specify instead
+   ``xbase, ybase, zbase,'' ``xstepsize, ystepsize, zstepsize,'' and
+   ``xnodes, ynodes, znodes.''
+</LI>
+<LI><B>pointcount:</B> Number of data sample points/locations, i.e.,
+   nodes (integer).  For irregular grids only.
+</LI>
+<LI><B>xbase, ybase, zbase:</B> Three separate lines, denoting the
+   position of the first point in the data section, in units of
+   ``meshunit.''  For rectangular grids only.
+</LI>
+<LI><B>xstepsize, ystepsize, zstepsize:</B> Three separate lines,
+   specifying the distance between adjacent grid points, in units
+   of ``meshunit.''  Required for rectangular grids, but may be
+   specified as a display hint for irregular grids.
+</LI>
+<LI><B>xnodes, ynodes, znodes:</B> Three separate lines, specifying
+   the number of nodes along each axis (integers).  For
+   rectangular grids only.
+</LI>
+</UL>
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1388"
+  HREF="Data_block.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1384"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1378"
+  HREF="OVF_1.0_format.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1386"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+</BODY>
+</HTML>

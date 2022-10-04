@@ -114,7 +114,7 @@ Oc_Class Ow_DirSelect {
 	    set temppath [pwd]
 	    if {[string compare $value $temppath]!=0} {
 		# Verify directory read access
-		if {[catch {glob -nocomplain *}]} {
+		if {[catch {glob -nocomplain ?}]} {
 		    # No read access; revert to old path
 		    catch {cd $value}
 		} else {
@@ -139,10 +139,7 @@ Oc_Class Ow_DirSelect {
 	$pathbox Set $value
 	$dirlist delete 0 end
 	$dirlist insert end ".."
-	set filelist [lsort [glob -nocomplain *]]
-	foreach i $filelist {
-	    if {[file isdirectory $i]} { $dirlist insert end $i }
-	}
+	$dirlist insert end {*}[lsort [glob -nocomplain -type d *]]
     }
     Destructor {
 	# Delete pathbox
