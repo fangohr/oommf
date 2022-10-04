@@ -112,9 +112,10 @@ Docker
 In the `docker <docker/>`__ directory we provide
 `Dockerfile <docker/Dockerfile>`__ and `Makefile <docker/Makefile>`__
 for building and running Docker images containg OOMMF. In addition, we
-also provide pre-built image at DockerHub under
-`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
-repository. More information about Docker as well as on how to install
+also provide pre-built images at DockerHub under the
+`oommf/oommf <https://hub.docker.com/r/oommf/oommf/>`__
+repository (`available container images <https://hub.docker.com/r/oommf/oommf/tags>`__).
+More information about Docker as well as on how to install
 it on your system can be found `here <https://www.docker.com/>`__. This
 Docker image is also used by
 `Ubermag <https://ubermag.github.io/installation.html#how-does-ubermag-find-oommf>`__.
@@ -129,15 +130,15 @@ directory and run
 
    make build
 
-This command builds the image under the ``ubermag/oommf:latest`` name.
+This command builds the image under the ``oommf/oommf:latest`` name.
 Otherwise, you can obtain the most recent image by pulling it from
 DockerHub
-`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
+`oommf/oommf <https://hub.docker.com/r/oommf/oommf/>`__
 repository
 
 ::
 
-   docker pull ubermag/oommf
+   docker pull oommf/oommf
 
 Using the Docker container
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,7 +153,7 @@ Or you can type the full command yourself:
 
 ::
 
-   docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest 
+   docker run --rm -ti -v `pwd`:/io oommf/oommf:latest 
 
 Once inside the container, the ``oommf.tcl`` file is in
 ``/usr/local/oommf/oommf/oommf.tcl``. For convenience, we provide a
@@ -170,7 +171,7 @@ example:
 
 ::
 
-   docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest oommf +version
+   docker run --rm -ti -v `pwd`:/io oommf/oommf:latest oommf +version
    <7> oommf.tcl 2.0a1  info:
    oommf.tcl 2.0a1
 
@@ -287,7 +288,7 @@ Acknowledgements
 ----------------
 
 The repository which holds the OOMMF source code was developed as a part of
-`OpenDreamKit <http://opendreamkit.org/>`__ – Horizon 2020 European Research
+`OpenDreamKit <https://opendreamkit.org/>`__ – Horizon 2020 European Research
 Infrastructure project (676541) and the `EPSRC Programme grant on Skyrmionics
 (EP/N032128/1) <https://www.skyrmions.ac.uk/>`__. Further thanks go to the
 `University of Southampton <https://www.soton.ac.uk>`__ and the `Max Planck
@@ -354,9 +355,10 @@ Once this is done, one can
    repository: if a new OOMMF version is added through a pull request, this
    needs to be merged before the Dockerhub image is built.
 
-8. if desired, update other packaging systems providing OOMMF (for example
-   `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__,
-   `spack <http://github.com/fangohr/oommf-in-spack>`__)
+8. if desired, update other packaging systems providing OOMMF, for example
+   `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__, and
+   `spack <https://spack.io/>`__
+   (`package.py <https://github.com/spack/spack/blob/develop/var/spack/repos/builtin/packages/oommf/package.py>`__)
 
 This `README <README.rst>`__ will need updating (where specific version numbers are mentioned).
 
@@ -379,7 +381,7 @@ Github workflows
 -  Replay OOMMF upgrade procedure (see above):
    |in-docker-repeat-oommf-update|
    
--  Building `Dockerhub image <https://hub.docker.com/u/ubermag/oommf>`__ used by
+-  Building `Dockerhub image <https://hub.docker.com/u/oommf/oommf>`__ used by
    Ubermag: |ubermag-oommf-docker-image-status|
 
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
