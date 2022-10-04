@@ -354,9 +354,10 @@ Once this is done, one can
    repository: if a new OOMMF version is added through a pull request, this
    needs to be merged before the Dockerhub image is built.
 
-8. if desired, update other packaging systems providing OOMMF (for example
-   `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__,
-   `spack <http://github.com/fangohr/oommf-in-spack>`__)
+8. if desired, update other packaging systems providing OOMMF, for example
+   `conda-forge <https://github.com/conda-forge/oommf-feedstock>`__, and
+   `spack <https://spack.io/>`__
+   (`package.py <https://github.com/spack/spack/blob/develop/var/spack/repos/builtin/packages/oommf/package.py>`__)
 
 This `README <README.rst>`__ will need updating (where specific version numbers are mentioned).
 
