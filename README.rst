@@ -288,7 +288,7 @@ Acknowledgements
 ----------------
 
 The repository which holds the OOMMF source code was developed as a part of
-`OpenDreamKit <http://opendreamkit.org/>`__ – Horizon 2020 European Research
+`OpenDreamKit <https://opendreamkit.org/>`__ – Horizon 2020 European Research
 Infrastructure project (676541) and the `EPSRC Programme grant on Skyrmionics
 (EP/N032128/1) <https://www.skyrmions.ac.uk/>`__. Further thanks go to the
 `University of Southampton <https://www.soton.ac.uk>`__ and the `Max Planck
