@@ -113,7 +113,7 @@ In the `docker <docker/>`__ directory we provide
 `Dockerfile <docker/Dockerfile>`__ and `Makefile <docker/Makefile>`__
 for building and running Docker images containg OOMMF. In addition, we
 also provide pre-built image at DockerHub under
-`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
+`oommf/oommf <https://hub.docker.com/r/oommf/oommf/>`__
 repository. More information about Docker as well as on how to install
 it on your system can be found `here <https://www.docker.com/>`__. This
 Docker image is also used by
@@ -129,15 +129,15 @@ directory and run
 
    make build
 
-This command builds the image under the ``ubermag/oommf:latest`` name.
+This command builds the image under the ``oommf/oommf:latest`` name.
 Otherwise, you can obtain the most recent image by pulling it from
 DockerHub
-`ubermag/oommf <https://hub.docker.com/r/ubermag/oommf/>`__
+`oommf/oommf <https://hub.docker.com/r/oommf/oommf/>`__
 repository
 
 ::
 
-   docker pull ubermag/oommf
+   docker pull oommf/oommf
 
 Using the Docker container
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,7 +152,7 @@ Or you can type the full command yourself:
 
 ::
 
-   docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest 
+   docker run --rm -ti -v `pwd`:/io oommf/oommf:latest 
 
 Once inside the container, the ``oommf.tcl`` file is in
 ``/usr/local/oommf/oommf/oommf.tcl``. For convenience, we provide a
@@ -170,7 +170,7 @@ example:
 
 ::
 
-   docker run --rm -ti -v `pwd`:/io ubermag/oommf:latest oommf +version
+   docker run --rm -ti -v `pwd`:/io oommf/oommf:latest oommf +version
    <7> oommf.tcl 2.0a1  info:
    oommf.tcl 2.0a1
 
@@ -380,7 +380,7 @@ Github workflows
 -  Replay OOMMF upgrade procedure (see above):
    |in-docker-repeat-oommf-update|
    
--  Building `Dockerhub image <https://hub.docker.com/u/ubermag/oommf>`__ used by
+-  Building `Dockerhub image <https://hub.docker.com/u/oommf/oommf>`__ used by
    Ubermag: |ubermag-oommf-docker-image-status|
 
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
