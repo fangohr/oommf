@@ -112,9 +112,10 @@ Docker
 In the `docker <docker/>`__ directory we provide
 `Dockerfile <docker/Dockerfile>`__ and `Makefile <docker/Makefile>`__
 for building and running Docker images containg OOMMF. In addition, we
-also provide pre-built image at DockerHub under
+also provide pre-built images at DockerHub under the
 `oommf/oommf <https://hub.docker.com/r/oommf/oommf/>`__
-repository. More information about Docker as well as on how to install
+repository (`available container images <https://hub.docker.com/r/oommf/oommf/tags>`__).
+More information about Docker as well as on how to install
 it on your system can be found `here <https://www.docker.com/>`__. This
 Docker image is also used by
 `Ubermag <https://ubermag.github.io/installation.html#how-does-ubermag-find-oommf>`__.
