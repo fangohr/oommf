@@ -43,6 +43,7 @@ RUN chmod a+x oommf
 # Mounting directory.
 WORKDIR /io
 
-# Quick sanity check:
+# Quick sanity checks:
+RUN cat /etc/issue
 RUN oommf +version
 RUN oommf +platform
