@@ -18,3 +18,5 @@ RUN chown -R oommfuser /usr/local  # directory where OOMMF is built.
 USER oommfuser
 
 WORKDIR /usr/local/oommf
+
+RUN cat /etc/issue
