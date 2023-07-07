@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: Initialisation
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Build OOMMF in Container from master branch
       run: cd docker && make build
