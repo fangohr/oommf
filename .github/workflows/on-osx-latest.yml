@@ -14,7 +14,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: how many cores in hardware
         run: |
           sysctl -n hw.ncpu
