@@ -374,7 +374,9 @@ Github workflows
 -  Compile OOMMF on latest Ubuntu on Github’s systems:
    |on-ubuntu-latest|
 
--  Compile OOMMF on Ubuntu 21:04 (in Docker container): |on-ubuntu-in-docker|
+-  Compile OOMMF on Ubuntu 22:04 (in Docker container): |on-ubuntu-in-docker|
+   This uses the `Dockerfile <Dockerfile>`__ to define the environment, in which
+   the compilation is then executed via the `Makefile <Makefile>`__.
 
 -  Compile OOMMF on latest OSX on Github's systems: |badge-osx|
 
@@ -383,6 +385,9 @@ Github workflows
    
 -  Building `Dockerhub image <https://hub.docker.com/u/oommf/oommf>`__ used by
    Ubermag: |ubermag-oommf-docker-image-status|
+
+   This uses the `docker/Dockerfile <docker/Dockerfile>`__: compilation of OOMMF is carried out as
+   part of the Dockerfile.
 
 .. |Anaconda-Server Badge| image:: https://anaconda.org/conda-forge/oommf/badges/version.svg
    :target: https://anaconda.org/conda-forge/oommf
