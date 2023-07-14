@@ -109,7 +109,7 @@ and
 and
 
 5. a generalised Zhang-Li extension supporting current in arbitrary direction
-   (`Anv_SpinTEvolve_3d`, `repository
+   (``Anv_SpinTEvolve_3d``, `repository
    <https://github.com/oommf-extensions/anv-spintevolve-3d>`__, starting with
    `this commit
    <https://github.com/fangohr/oommf/pull/51/commits/990ecd9d09ec6d57c08eb4dd7a2dec18de3bfcaa>`__
