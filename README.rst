@@ -106,6 +106,15 @@ and
 4. the OOMMF Magnetoelastic Extension Module
    (`repository <https://github.com/yuyahagi/oommf-mel>`__) from Yu Yahagi.
 
+and
+
+5. a generalised Zhang-Li extension supporting current in arbitrary direction
+   (`Anv_SpinTEvolve_3d`, `repository
+   <https://github.com/oommf-extensions/anv-spintevolve-3d>`__, starting with
+   `this commit
+   <https://github.com/fangohr/oommf/pull/51/commits/990ecd9d09ec6d57c08eb4dd7a2dec18de3bfcaa>`__
+   on 2023-07-14)
+
 Docker
 ------
 
