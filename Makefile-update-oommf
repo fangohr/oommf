@@ -16,7 +16,7 @@
 OOMMF_ROOT="oommf"
 OOMMFVERSION="20b0"
 # USE dot in conda version numbers:
-OOMMFVERSIONCONDA="2.0b0"
+OOMMFVERSIONCONDA="2.0b0-1"
 # The release date shown on webpage
 OOMMFDATE="20220930"
 OOMMFBUILD="b0"
@@ -112,7 +112,7 @@ DMICNVREPO="oommf-extension-dmi-cnv"
 DMITREPO="oommf-extension-dmi-t"
 DMID2DREPO="oommf-extension-dmi-d2d"
 MELREPO="oommf-mel"
-
+SPINTEVOLVE3DREPO="anv-spintevolve-3d"
 
 get-cnv:
 	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
@@ -126,7 +126,10 @@ get-d2d:
 get-mel:
 	python3 clone-log-and-extract-src.py https://github.com/yuyahagi/$(MELREPO).git .
 
-fetch-all-extensions: get-cnv get-d2d get-t get-mel 
+get-spintevolve-3d:
+	python3 clone-log-and-extract-src.py https://github.com/oommf-extensions/$(SPINTEVOLVE3DREPO).git src
+
+fetch-all-extensions: get-cnv get-d2d get-t get-mel get-spintevolve-3d
 
 
 #

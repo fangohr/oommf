@@ -1,0 +1,18 @@
+== git-repo-url: https://github.com/oommf-extensions/anv-spintevolve-3d.git
+== repo-name: anv-spintevolve-3d
+== snap-shot-of-repo: provenance-anv-spintevolve-3d-HEAD.zip
+== cloned-on-date: Fri Jul 14 16:20:47 2023
+== copied-files-from-path-in-repo: src/
+last commit:
+commit 535a5cbd0685204d9b43a0464e9d3cfd01cbce59
+Author: Martin Lang <67915889+lang-m@users.noreply.github.com>
+Date:   Fri Jul 14 16:13:53 2023 +0200
+
+    Update README.md
+
+== src file-list:
+total 92
+-rw-r--r-- 1 mlang cfel 80620 Jul 14 16:20 spintevolve_3d.cc
+-rw-r--r-- 1 mlang cfel 11495 Jul 14 16:20 spintevolve_3d.h
+
+== see contents of provenance-anv-spintevolve-3d-HEAD.zip for additional info, examples, etc.
