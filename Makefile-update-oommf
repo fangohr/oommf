@@ -126,10 +126,10 @@ get-d2d:
 get-mel:
 	python3 clone-log-and-extract-src.py https://github.com/yuyahagi/$(MELREPO).git .
 
-get-spinevolve-3d:
+get-spintevolve-3d:
 	python3 clone-log-and-extract-src.py https://github.com/oommf-extensions/$(SPINTEVOLVE3DREPO).git src
 
-fetch-all-extensions: get-cnv get-d2d get-t get-mel get-spinevolve-3d
+fetch-all-extensions: get-cnv get-d2d get-t get-mel get-spintevolve-3d
 
 
 #
