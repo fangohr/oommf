@@ -1,6 +1,6 @@
 # Ubermag OOMMF container
 
-The files in this directory create the [Docker image](https://hub.docker.com/u/oommf) containing the OOMMF
+The files in this directory create the [Docker image](https://hub.docker.com/r/oommf/oommf) containing the OOMMF
 installation, which is used by [Ubermag](https://ubermag.github.io) if Ubermag
 uses Docker to execute oommf.
 
