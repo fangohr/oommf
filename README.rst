@@ -52,7 +52,7 @@ Version
 -------
 
 The current version of OOMMF code in this repository is the beta
-release of OOMMF 2.0 (``20b0 20220930 b0``).
+release of OOMMF 2.0 (``20b0-1 20220930 b0``).
 
 You can check which version you have, by inspecting the content of the
 `oommf-version <oommf-version>`__ file.
