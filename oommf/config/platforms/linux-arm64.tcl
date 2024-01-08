@@ -313,13 +313,6 @@ if {[string match g++ [file tail [lindex \
 
    # Default warnings disable
    set nowarn [list -Wno-non-template-friend]
-   if {[lindex $gcc_version 0]>=6} {
-      lappend nowarn {-Wno-misleading-indentation}
-   }
-   if {[lindex $gcc_version 0]>=8} {
-      # Allow strncpy to truncate strings
-      lappend nowarn {-Wno-stringop-truncation}
-   }
    if {[info exists nowarn] && [llength $nowarn]>0} {
       set opts [concat $opts $nowarn]
    }
