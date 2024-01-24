@@ -1,6 +1,6 @@
-# unknown.tcl
+# FILE: linux-arm64.tcl
 #
-# Configuration feature definitions for the configuration 'unknown'
+# Configuration feature definitions for the configuration 'linux-x86_64'
 #
 # Editing instructions begin at "START EDIT HERE" below.
 
@@ -50,8 +50,8 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 ########################################################################
 # START EDIT HERE
 # OOMMF software cannot classify your computing platform type.  See
-# the Installation section of the OOMMF User Manual for instructions on 
-# how to add a new platform type to the collection of types recognized 
+# the Installation section of the OOMMF User Manual for instructions on
+# how to add a new platform type to the collection of types recognized
 # by OOMMF software.
 #
 # Say you add the new platform type 'foo' to describe your computing
@@ -63,9 +63,9 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # OOMMF developers for assistance setting up OOMMF for your particular
 # circumstances.
 ########################################################################
-# In order to properly build, install, and run on your computing 
+# In order to properly build, install, and run on your computing
 # platform, the OOMMF software must know certain features of your
-# computing environment.  In this file are lines which set the value of 
+# computing environment.  In this file are lines which set the value of
 # certain features of your computing environment.  Each line looks like:
 #
 # $config SetValue <feature> {<value>}
@@ -73,7 +73,7 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 # where each <feature> is the name of some feature of interest,
 # and <value> is the value which is assigned to that feature in a
 # description of your computing environment.  Your task is to edit
-# the values as necessary to properly describe your computing 
+# the values as necessary to properly describe your computing
 # environment.
 #
 # The character '#' at the beginning of a line is a comment character.
@@ -95,11 +95,11 @@ if {[info exists env(OOMMF_BUILDTEST)] && $env(OOMMF_BUILDTEST)} {
 ########################################################################
 # REQUIRED CONFIGURATION
 
-# Set the feature 'program_compiler_c++' to the program to run on this 
-# platform to compile source code files written in the language C++ into 
-# object files.  Select from the choices below.  If the compiler is not 
-# in your path, be sure to use the whole pathname.  Also include any 
-# options required to instruct your compiler to only compile, not link.  
+# Set the feature 'program_compiler_c++' to the program to run on this
+# platform to compile source code files written in the language C++ into
+# object files.  Select from the choices below.  If the compiler is not
+# in your path, be sure to use the whole pathname.  Also include any
+# options required to instruct your compiler to only compile, not link.
 #
 # If your compiler is not listed below, additional features will have
 # to be added in the BUILD CONFIGURATION section below to describe to
@@ -245,7 +245,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # Default handling of local defaults:
 #
 if {[catch {$config GetValue oommf_threads}]} {
-   # Value not set in platforms/local/linux-x86_64.tcl,
+   # Value not set in platforms/local/linux-arm64.tcl,
    # so use Tcl setting.
    global tcl_platform
    if {[info exists tcl_platform(threaded)] \
@@ -309,7 +309,16 @@ if {![info exists env(OOMMF_BUILD_ENVIRONMENT_NEEDED)] \
 if {[string match g++ [file tail [lindex \
                        [$config GetValue program_compiler_c++] 0]]]} {
    # ...for GNU g++ C++ compiler
-   set opts [list -O%s]
+   set opts {}
+   set gccexec [lindex [$config GetValue program_compiler_c++] 0]
+   if {![info exists gcc_version]} {
+      set gcc_version [GuessGccVersion $gccexec]
+   }
+
+   # User-requested optimization level
+   if {[catch {Oc_Option GetValue Platform optlevel} optlevel]} {
+      set optlevel 2 ;# Default
+   }
 
    # Default warnings disable
    set nowarn [list -Wno-non-template-friend]
@@ -318,14 +327,27 @@ if {[string match g++ [file tail [lindex \
    }
    catch {unset nowarn}
 
+   # Aggressive optimization flags, some of which are specific to
+   # particular gcc versions, but are all processor agnostic.
+   set valuesafeopts [concat $opts \
+                         [GetGccValueSafeOptFlags $gcc_version $optlevel]]
+   set opts [concat $opts [GetGccGeneralOptFlags $gcc_version $optlevel]]
+
    # Make user requested tweaks to compile line options
    set opts [LocalTweakOptFlags $config $opts]
+   set valuesafeopts [LocalTweakValueSafeOptFlags $config $valuesafeopts]
 
+   # NOTE: If you want good performance, be sure to edit ../options.tcl
+   #  or ../local/options.tcl to include the line
+   #    Oc_Option Add * Platform cflags {-def NDEBUG}
+   #  so that the NDEBUG symbol is defined during compile.
    $config SetValue program_compiler_c++_option_opt "format \"$opts\""
-
+   $config SetValue program_compiler_c++_option_valuesafeopt \
+      "format \"$valuesafeopts\""
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
+   $config SetValue program_compiler_c++_option_debug {format "-g"}
    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
    # Widest natively support floating point type
@@ -339,6 +361,32 @@ if {[string match g++ [file tail [lindex \
    $config SetValue \
       program_compiler_c++_system_include_path [list /usr/include]
 }
+
+
+########################################################################
+# If we're linking to the Tcl and Tk shared libraries, we don't need to
+# explicitly pull in the extra libraries set in the TCL_LIBS and TK_LIBS
+# variables by tclConfig.sh and tkConfig.sh.  Moreover, the TK_LIBS list
+# may contain libraries such as -lXft that aren't installed on the oommf
+# target.  For Tcl/Tk 8.3 and latter, shared libraries are the default.
+# Adjust as necessary.
+set major [set minor [set serial 0]]
+foreach {major minor serial} [split [info patchlevel] .] { break }
+if {$major>8 || ($major==8 && $minor>=3)} {
+   $config SetValue TCL_LIBS {}
+   $config SetValue TK_LIBS {}
+}
+unset major ; unset minor ; unset serial
+
+########################################################################
+if {[catch {$config GetValue program_linker_extra_libs} extra_libs]} {
+   set extra_libs {}
+}
+if {[llength $extra_libs]>0} {
+   $config SetValue TCL_LIBS [concat [$config GetValue TCL_LIBS] $extra_libs]
+   $config SetValue TK_LIBS [concat [$config GetValue TK_LIBS] $extra_libs]
+}
+
 
 # The program to run on this platform to link together object files and
 # library files to create an executable binary.
