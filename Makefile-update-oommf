@@ -16,7 +16,7 @@
 OOMMF_ROOT="oommf"
 OOMMFVERSION="21a0"
 # USE dot in conda version numbers:
-OOMMFVERSIONCONDA="2.1a0-1"
+OOMMFVERSIONCONDA="2.1a0"
 # The release date shown on webpage
 OOMMFDATE="20230927"
 OOMMFBUILD="a0"
