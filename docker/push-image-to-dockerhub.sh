@@ -1,21 +1,19 @@
 #!/usr/bin/env bash
 
+set -e
+
 # login with docker hub account
+echo "Run 'docker login'"
 docker login
 
-# build image (this will clone github.com/fangohr/oommf master)
-# - must make sure that is the right version, or update the
-# Dockerfile
-docker build --no-cache -t oommf/oommf:20b0-1 .
+echo "Build-multi-architecture container:"
 
-# push image to dockerhub
-echo "Run 'docker push oommf/oommf:20b0-1' to push to dockerhub"
+# if no builder exists yet, then create one. We use the exit code of `docker buildx inspect` to decide
+# (source: https://github.com/docker/buildx/discussions/1319)
+docker buildx inspect || echo docker buildx create --name container --driver=docker-container
 
-# the 'latest' tag is not added by DockerHub as one may guess:
-# https://medium.com/@mccode/the-misunderstood-docker-tag-latest-af3babfd6375
-# so if we want to allow our users to use 'docker pull oommf//oommf', then we need to define
-# the 'latest' tag manually.
-#
-echo "Also run these commands to set the 'latest' tag to the new image:"
-echo "  docker tag oommf/oommf:20b0-1 oommf/oommf:latest"
-echo "  docker push oommf/oommf:latest"
+# multi-platform build and push to Dockerhub
+time docker buildx build --tag oommf/oommf:latest  --platform linux/arm64,linux/amd64 --builder container --push .
+
+# TODO add tag "--tag oommf/oommf:20b0-1" once working
+
