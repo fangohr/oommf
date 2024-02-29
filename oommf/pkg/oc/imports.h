@@ -18,10 +18,12 @@
 #define _OC_IMPORTS
 
 #include <cfloat>
+#include <chrono>  // Used for clock-based RNG initialization
 #include <cmath>
 #include <cstdio>
 #include <limits>
 #include <mutex>     // std::mutex, std::lock
+#include <random>    // Needed for C++11 RNG library
 #include "ocport.h"
 
 /*
@@ -42,7 +44,7 @@ extern "C" {
 #endif
 
 /***********************************************************************
- * Defensive programming against varying contents of different versions 
+ * Defensive programming against varying contents of different versions
  * of tcl.h
  **********************************************************************/
 #if OOMMF_THREADS
@@ -81,143 +83,10 @@ extern "C" {
 #  error "tcl.h version mismatch"
 #endif
 
-/*
- * Safety that all macros have a definition (even in Tcl 7.5).
- */
-
-#ifndef TCL_PATCH_LEVEL
-#define TCL_PATCH_LEVEL CONFIG_TCL_PATCH_LEVEL
-#define TCL_RELEASE_SERIAL CONFIG_TCL_RELEASE_SERIAL
-#define TCL_RELEASE_LEVEL CONFIG_TCL_RELEASE_LEVEL
-#endif
-
 /* For OOMMF 2, set new baseline requirement of Tcl 8.5 */
 #if ((TCL_MAJOR_VERSION < 8) \
         || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION < 5)))
 #  error "OOMMF 2 requires Tcl 8.5+"
-#endif
-
-#if !defined(_ANSI_ARGS_)
-#    define _ANSI_ARGS_(x) x
-#endif
-
-/*
- * Tcl 7.5p0 had no prototype for Tcl_Free()
- */
-#if (TCL_MAJOR_VERSION == 7) && (TCL_MINOR_VERSION == 5) \
-	&& (TCL_RELEASE_LEVEL == 2) && (TCL_RELEASE_LEVEL == 0)
-#define Tcl_Free Tcl_Ckfree
-#endif
-
-/*
- * Provide a fake implementation of Tcl_GetStringResult for pre-8
- * Tcl libraries.
- */
-#if (TCL_MAJOR_VERSION < 8)
-#define Tcl_GetStringResult(interp) (interp->result)
-#endif
-
-/*
- * Provide Tcl_GetChannelHandle() to pre-8.0 interpreters
- * The TCL_STORAGE_CLASS stuff makes sure we don't make
- * the MSVC compiler think that the Tcl library will be
- * supplying the function.
- *
- * NB: 8.1aX, 8.1b1  not supported here.
- */
-
-#if (TCL_MAJOR_VERSION < 8)
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS
-EXTERN int Tcl_GetChannelHandle _ANSI_ARGS_((Tcl_Channel, int, ClientData*));
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
-#define Tcl_GetChannelOption(i,c,o,d) Tcl_GetChannelOption(c,o,d)
-#endif
-
-/*
- * In the tcl.h file released with Tcl 8.0.3 and Tcl 8.0.4, the
- * prototype for Tcl_AppInit is mistakenly declared with linkage
- * type __declspec(dllimport) on Windows platforms when tcl.h
- * is included in other apps, causing warnings from the MSVC
- * compiler.  The following declaration and macro work around
- * that bug.
- */
-
-#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0) \
-    && (TCL_RELEASE_LEVEL == 2) && (TCL_RELEASE_SERIAL > 2) \
-    && (TCL_RELEASE_SERIAL < 5) && (OC_SYSTEM_TYPE == OC_WINDOWS)
-Tcl_AppInitProc Oc_AppInit;
-#define Tcl_AppInit Oc_AppInit
-#endif
-
-/*
- * Provide Tcl_PkgPresent() to pre-8.0.6 interpreters
- * The TCL_STORAGE_CLASS stuff makes sure we don't make
- * the MSVC compiler think that the Tcl library will be
- * supplying the function.
- *
- * NB: 8.1aX, 8.1b1  not supported here.
- */
-
-#if ((TCL_MAJOR_VERSION < 8) || ((TCL_MAJOR_VERSION == 8) \
-    && (TCL_MINOR_VERSION == 0) && (TCL_RELEASE_SERIAL < 6)))
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS
-EXTERN char * Tcl_PkgPresent _ANSI_ARGS_((Tcl_Interp *, char *, char *, int));
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
-#endif
-
-/*
- * A "declaration" for panic first appears in the 8.1b2 tcl.h .
- * (Really it's a macro definition to Tcl_Panic. "panic" is deprecated.)
- * For earlier Tcl versions, supply the missing prototype, but use the
- * panic() supplied by the Tcl library.
- *
- * NB: 8.1aX, 8.1b1  not supported here.
- */
-
-#if ((TCL_MAJOR_VERSION < 8) \
-    || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0)))
-typedef void (Tcl_PanicProc) _ANSI_ARGS_(TCL_VARARGS(char *, format));
-EXTERN void panic _ANSI_ARGS_(TCL_VARARGS(char *,format));
-# define Tcl_Panic panic
-#endif
-
-/*
- * The Tcl_SaveResult(), Tcl_RestoreResult(), and Tcl_DiscardResult()
- * routines and the Tcl_SavedResult struct were introduced in Tcl 8.1.
- * Provide a simplified form of them for pre-8.1 interpreters.
- *
- * Likewise for Tcl_UtfToExternalDString().
- *
- * NB: 8.1aX, 8.1b1  not supported here.
- */
-#if ((TCL_MAJOR_VERSION < 8) \
-    || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0)))
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS
-typedef struct Tcl_SavedResult {
-    char *result;
-    Tcl_FreeProc *freeProc;
-} Tcl_SavedResult;
-EXTERN void Tcl_DiscardResult _ANSI_ARGS_((Tcl_SavedResult *));
-EXTERN void Tcl_RestoreResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
-EXTERN void Tcl_SaveResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLIMPORT
-#define Tcl_UtfToExternalDString(e, s, l, d) \
-        (Tcl_DStringInit(d), Tcl_DStringAppend(d, s, l))
-#endif
-
-#ifndef CONST84
-#    define CONST84 const
-#endif
-#define OC_USING_CONST84 1
-
-#ifndef CONST
-#    define CONST const
 #endif
 
 #ifndef TCL_INTEGER_SPACE
@@ -228,14 +97,14 @@ EXTERN void Tcl_SaveResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
  * Tcl_Tell() and Tcl_Seek() changed signatures in Tcl 8.4.  Define
  * a new type for their return type to bridge the difference.
  */
-#ifdef TCL_WIDE_INT_TYPE
-  typedef Tcl_WideInt Oc_SeekPos;
-#else
-  typedef int Oc_SeekPos;
-#endif
+typedef Tcl_WideInt Oc_SeekPos;
 
 #if OC_USE_TK
 # include <tk.h>
+#if ((TK_MAJOR_VERSION < 8) \
+        || ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION < 5)))
+#  error "OOMMF 2 requires Tk 8.5+"
+#endif
 #else  /* !OC_USE_TK */
   /*
    * User-requested no-Tk build.  Supply dummy replacements here to
@@ -278,40 +147,16 @@ EXTERN void Tcl_SaveResult _ANSI_ARGS_((Tcl_Interp *, Tcl_SavedResult *));
 #endif
 
 /*
- * Tk_SafeInit() was introduced with Tk 8.0
- */
-
-#if (TK_MAJOR_VERSION < 8)
-#define Tk_SafeInit ((Tcl_PackageInitProc *) NULL)
-#endif
-
-/*
  * Tk_InitConsoleChannels() and Tk_CreateConsoleWindow() first worked
  * in Tk 8.2.0.
  */
-#if (TK_MAJOR_VERSION < 8) \
-	|| ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION < 2)) \
-	|| ((OC_SYSTEM_TYPE == OC_UNIX) && (OC_SYSTEM_SUBTYPE != OC_DARWIN))
+#if (OC_SYSTEM_TYPE == OC_UNIX) && (OC_SYSTEM_SUBTYPE != OC_DARWIN)
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS
-EXTERN void Tk_InitConsoleChannels _ANSI_ARGS_((Tcl_Interp *));
+EXTERN void Tk_InitConsoleChannels(Tcl_Interp *);
 #define Tk_CreateConsoleWindow(interp) (0)
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS DLLIMPORT
-#endif
-
-/*
- * A pretty ugly hack to get around exit crashes in Tk 8.1.x on MS Windows.
- * The Tk Dll cleanup routines try to call Tcl_GetThreadData, but calls
- * to Tcl_* crash, unless the Tk DLL has called Tcl_InitStubs.  This is
- * normally done in Tk_Init, but since we're "statically" linking Tk,
- * we sometimes omit Tk_Init.  The routine Tk_Main also calls Tcl_InitStubs
- * from within the Tk DLL, so if we always call Tk_Main, we're safe.
- */
-#if (OC_SYSTEM_TYPE == OC_WINDOWS) && (TK_MAJOR_VERSION == 8) \
-        && (TK_MINOR_VERSION == 1) && (TK_RELEASE_LEVEL == 2) \
-        && (TK_RELEASE_SERIAL < 2)
-#define Tcl_Main Tk_Main
 #endif
 
 #ifdef __cplusplus
@@ -350,6 +195,7 @@ private:
   OC_UINT4m arr[SIZE+SEP];
 
   void Init(OC_UINT4m seed);
+  void Init(); // Initialize with a clock-based seed.
   OC_UINT4m Step();
 
   // For debugging. Returns 1 on success, 0 if string length n is too
@@ -359,9 +205,9 @@ private:
     const size_t statelen = sizeof(arr)/sizeof(arr[0]);
     if(n<9*statelen) return 0; // str too short
     for(size_t i=0;i<statelen;++i) {
-      sprintf(str+9*i,"%08X ", arr[i] & 0xFFFFFFFF);
+      snprintf(str+9*i,n-9*i,"%08X ", arr[i] & 0xFFFFFFFF);
     }
-    str[9*statelen-1] = '\0';
+    str[9*statelen-1] = '\0'; // Safety
     return 1;
   }
 
@@ -402,6 +248,12 @@ public:
 #endif // OOMMF_THREADS
     state.Init(seed);
   }
+  static void Srandom() {
+#if OOMMF_THREADS
+    std::lock_guard<std::mutex> lck(random_state_mutex);
+#endif // OOMMF_THREADS
+    state.Init();
+  }
   static OC_INT4m Random() {
 #if OOMMF_THREADS
     std::lock_guard<std::mutex> lck(random_state_mutex);
@@ -415,6 +267,9 @@ public:
   // re-entrancy --- which may allow for faster access.
   static void Srandom(Oc_RandomState& mystate,OC_UINT4m seed) {
     mystate.Init(seed);
+  }
+  static void Srandom(Oc_RandomState& mystate) {
+    mystate.Init();
   }
   static OC_INT4m Random(Oc_RandomState& mystate) {
     OC_UINT4m step_result = mystate.Step();
@@ -433,7 +288,7 @@ public:
   int ReadRNGState(Oc_RandomState& mystate,char* str,size_t n) {
     return mystate.ReadRNGState(str,n);
   }
-  
+
 private:
 #if OOMMF_THREADS
   static std::mutex random_state_mutex;  // Thread-safe hack.
@@ -451,6 +306,50 @@ double Oc_UnifRand(Oc_RandomState& mystate);
  * calling Oc_Srand() or Oc_Srand(seed).  In the first case
  * the seed is determined by sampling the system clock.
  */
+
+
+////////////////////////////////////////////////////////////////////////
+// C++ library-based random number generators. Requires C++11.
+template <template<class> class DIST,
+          typename RVTYPE=double,
+          typename ENGINE=std::mt19937_64>
+class Oc_RandomClib {
+private:
+  std::random_device rd;  // WARNING: Might be deterministic?!
+  ENGINE engine; // Default is 64-bit Mersenne Twister (Matsumoto
+                 // and Nishimura, 2000)
+  DIST<RVTYPE> distribution;  // DIST is the distibution type.
+  // This should be either std::uniform_real_distibution or
+  // std::normal_distribution. DISTTYPE is the RV return type.
+
+  unsigned int RandSeed() {
+    // Clock-based. Workaround for possibly deterministic
+    // std::random_device.
+    uint64_t seed
+      = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    return static_cast<unsigned int>(seed);
+  }
+
+public:
+  // Note: Not thread safe!
+  Oc_RandomClib() : engine(rd()) { engine.seed(RandSeed()); }
+  Oc_RandomClib(unsigned int seed) : engine(rd()) { engine.seed(RandSeed()); }
+  void Seed(unsigned int seed) { distribution.reset(); engine.seed(seed); }
+  void Seed() { Seed(RandSeed()); }
+  RVTYPE operator()() { return distribution(engine); }
+};
+
+// Tcl access to global C++ library based PRNG. These use static
+// instances of Oc_RandomClib<> intended for use only from Tcl, but they
+// are mutex locked for safety. C++ code should create and use local
+// Oc_RandomClib<> instances (which btw are not mutex-locked).
+void Oc_SeedRV();
+void Oc_SeedRV(unsigned int seed);
+double Oc_NormalRV();
+double Oc_UniformRV();
+
+////////////////////////////////////////////////////////////////////////
+
 
 /* Utility filesystem command */
 //  Oc_FSync mimics the unix fysnc() or Windows
@@ -547,12 +446,12 @@ T Oc_Hypot(T x,T y,T z) {
   if(x<sqrt(std::numeric_limits<T>::min())) { // x too small to square
     if(z<x*sqrt(std::numeric_limits<T>::max())) {
       y /= x;
-      z /= x; 
+      z /= x;
       return x*sqrt(1.0+y*y+z*z);
     }
     if(z<y*sqrt(std::numeric_limits<T>::max())) {
       x /= y;
-      z /= y; 
+      z /= y;
       return y*sqrt(x*x+1.0+z*z);
     }
   }
@@ -567,6 +466,9 @@ extern "C" {
 Tcl_CmdProc OcSrand;
 Tcl_CmdProc OcUnifRand;
 Tcl_CmdProc OcReadRNGState;
+Tcl_CmdProc OcSeedRV;
+Tcl_CmdProc OcUniformRV;
+Tcl_CmdProc OcNormalRV;
 Tcl_CmdProc OcAtan2;
 #if OC_TCL_TYPE==OC_WINDOWS && defined(__CYGWIN__)
 Tcl_CmdProc OcCygwinChDir;

@@ -28,7 +28,8 @@ proc GuessGccVersion { gcc } {
    if {[catch {
           set fptr [open $testcmd r]
           set verstr [read $fptr]
-      close $fptr}]} {
+      close $fptr} errmsg]} {
+      puts stderr "ERROR: Unable to check \"$gcc\" version: $errmsg"
       return $guess
    }
    set digstr {[0-9]+\.[0-9.]+}
@@ -186,6 +187,12 @@ proc GetGccValueSafeOptFlags { gcc_version optlevel } {
          if {[lsearch -exact $opts $check]<0} {
             lappend opts $check
          }
+      }
+      if {$verA==12} {
+         # Prior to gcc 12, -ftree-slp-vectorize was only
+         # enabled by default at -O3. In gcc 12 it is enabled
+         # at -O2, and appears to not be value-safe.
+         lappend opts -fno-tree-slp-vectorize
       }
    }
 

@@ -1,4 +1,4 @@
-# MIF 2.1
+# MIF 2.2
 # MIF Example File: yoyo.mif
 # Description: Head-to-head domain wall motion in an infinite strip.
 #    Used in conjunction with:
@@ -28,11 +28,11 @@
 # file (yoyo.mif) with relax set to 1 to compute new equilibrium initial
 # state.  Finally, the fresh edge field and equilibrium state can be
 # used as input to yoyo.mif with relax set to 0.
-#   For additional details about this simulation, see
 #
-#  D. G. Porter and M. J. Donahue, "Velocity of Transverse Domain Wall
-#  Motion Along Thin, Narrow Strips," Journal of Applied Physics, 95,
-#  6729-6731 (2004).
+# For additional details about this simulation, see
+#   D. G. Porter and M. J. Donahue, "Velocity of Transverse Domain Wall
+#   Motion Along Thin, Narrow Strips," Journal of Applied Physics, 95,
+#   6729-6731 (2004).
 #
 
 set pi [expr {4*atan(1.0)}]
@@ -78,7 +78,52 @@ if {$relax == 0} {
 
    # Initial magnetization configuration
    Parameter start_m0 yoyo_start.omf
+
+   proc ShortStageSF { params } {
+      set stage [dict get $params stage]
+      set event [dict get $params event]
+      set name  [dict get $params name]
+      set basename  [dict get $params basename]
+      set stage_fmt [dict get $params stage_fmt]
+      if {[string compare Stage $event]==0} {
+         # Special case construction
+         set filename [format $name-${stage_fmt}.oef $stage]
+      } else {
+         # Default construction
+         set iteration [dict get $params iteration]
+         set iteration_fmt [dict get $params iteration_fmt]
+         set filename [format $name-${stage_fmt}-${iteration_fmt}.oef \
+                          $stage $iteration]
+      }
+      return [SanitizeFilename $basename-$filename]
+   }
+
+   proc ShortStageVF { params } {
+      set filename [DefaultFieldFilename $params]
+      set event [dict get $params event]
+      if {[string compare Stage $event] == 0} {
+         # Strip trailing iteration count (but retaining extension)
+         regsub -- {-[0-9]+(\.[a-zA-Z]+)$} $filename {\1} filename
+      }
+      return $filename
+   }
+
+   SetOptions [subst {
+      basename [format "yoyo_%gwx%gt_%02dmT_%04dps_%.3falpha" \
+                   [expr {$width*1e9}] [expr {$thickness*1e9}] \
+                   $step_height $rise_time $alpha]
+      scalar_field_output_filename_script ShortStageSF
+      vector_field_output_filename_script ShortStageVF
+   }]
+
+} else {
+   # Static minimization simulation
+   SetOptions {
+      basename yoyo_relaxed
+   }
 }
+
+
 
 # Main atlas
 Specify Oxs_BoxAtlas:atlas [subst {
@@ -148,7 +193,7 @@ if {abs($width/$thickness - 7.0) < 1e-8} {
 }
 
 # Field from the left edge
-Specify Oxs_FixedZeeman:leftadj { 
+Specify Oxs_FixedZeeman:leftadj {
    field :leftedge
    multiplier -1
 }
@@ -157,7 +202,7 @@ Specify Oxs_FixedZeeman:leftadj {
 # but rotated about the origin via the 'M -1' entry (the *.ohf fields
 # are located in the first octant), and translated into position with
 # the offset entry.
-Specify Oxs_FixedZeeman:rightadj [subst { 
+Specify Oxs_FixedZeeman:rightadj [subst {
    field { Oxs_AffineOrientVectorField {
       field :leftedge
       M -1
@@ -201,6 +246,12 @@ if {$relax==0} {
       $zhang_damping
    }]
 
+   # Use default filename format for Oxs_TimeDriver vector field outputs
+   SetOptions [subst {
+      vector_field_output_filename_script {}
+      scalar_output_format %.12g
+   }]
+
    # Driver
    Specify Oxs_TimeDriver [subst {
       evolver Oxs_RungeKuttaEvolve
@@ -212,16 +263,20 @@ if {$relax==0} {
          norm  1
       } }
       stopping_time  { { $stage_time $number_of_stages } :expand: }
-      basename [format "yoyo_%gwx%gt_%02dmT_%04dps_%.3falpha" \
-                   [expr {$width*1e9}] [expr {$thickness*1e9}] \
-                   $step_height $rise_time $alpha]
    }]
 
 
-   # Sample Destination and Schedule commands.  Uncomment and
-   # modify as desired.
+   # Sample Destination and Schedule commands.  Uncomment and modify as
+   # desired.
    #
+   proc EvenFilter { offset cnt } {
+      return [expr { $cnt % 2 == $offset }]
+   }
    #Destination archive mmArchive
+   #Destination datatable mmDataTable
+   #Schedule DataTable datatable Step 3 [list EvenFilter 1]
+   #Schedule DataTable archive Step 3 [list EvenFilter 1]
+   #Schedule DataTable archive Step 3
    #Schedule DataTable archive Stage 1
    #Schedule Oxs_TimeDriver::Magnetization archive stage 9
 
@@ -242,7 +297,6 @@ if {$relax==0} {
          norm 1.0
       } }
       stopping_mxHxm 0.001
-      basename yoyo_relaxed
    }]
 
    proc HeadToHead { x y z } {
@@ -258,3 +312,4 @@ if {$relax==0} {
    Destination archive mmArchive
    Schedule Oxs_MinDriver::Spin archive stage 1
 }
+

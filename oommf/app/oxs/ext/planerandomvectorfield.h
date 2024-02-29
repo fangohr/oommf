@@ -27,8 +27,14 @@ private:
 
   // Caching
   Oxs_OwnedPointer<Oxs_Mesh> cache_mesh;
-  mutable map<OC_INDEX,ThreeVector> results_cache;  // Conceptually const
+  Oxs_MeshValue<ThreeVector> results_cache;
   OC_BOOL use_cache;
+
+  // Optional base field
+  Oxs_OwnedPointer<Oxs_VectorField> base_field;
+
+  // Util function
+  ThreeVector CreatePlaneVector(ThreeVector plane_normal) const;
 
 public:
   virtual const char* ClassName() const; // ClassName() is
@@ -44,9 +50,7 @@ public:
   virtual void Value(const ThreeVector& pt,ThreeVector& value) const;
 
   virtual void FillMeshValue(const Oxs_Mesh* mesh,
-			     Oxs_MeshValue<ThreeVector>& array) const {
-    DefaultFillMeshValue(mesh,array);
-  }
+			     Oxs_MeshValue<ThreeVector>& array) const;
 };
 
 

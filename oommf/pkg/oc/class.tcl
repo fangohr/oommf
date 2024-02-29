@@ -342,7 +342,7 @@ proc Oc_Class {class definition} {
         foreach type {SCUC SCRC} {
             foreach constCommon $classDef($type) {
                 if {[info exists classDef(_$constCommon)]} {
-                    trace variable _${class}(_$constCommon) wu [list \
+                    trace add variable _${class}(_$constCommon) {write unset} [list \
                             __Oc_ClassConstScalar _$class \
                             _$constCommon $classDef(_$constCommon)]
                 } else {
@@ -357,7 +357,7 @@ proc Oc_Class {class definition} {
             foreach constCommon $classDef($type) {
                 global $classDef(_$constCommon)
                 if {[array exists $classDef(_$constCommon)]} {
-                    trace variable $classDef(_$constCommon) wu \
+                    trace add variable $classDef(_$constCommon) {write unset} \
                             [list __Oc_ClassConstArray _$class \
                             _$constCommon [array get \
                             $classDef(_$constCommon)]]
@@ -560,7 +560,7 @@ proc Oc_Class {class definition} {
         set foo($slot) $value
         if {[string match u $ops]} {
             global $array
-            trace variable ${array}($slot) wu \
+            trace add variable ${array}($slot) {write unset} \
                     [list __Oc_ClassConstScalar $array $slot $value]
         }
         return -code error "\n\tAttempt to modify const variable or\
@@ -573,7 +573,7 @@ proc Oc_Class {class definition} {
     if {[array exists foo]} {
         global $foo($slot)
         # Temporarily suppress traces
-        trace vdelete $foo($slot) wu [list __Oc_ClassConstArray $array \
+        trace remove variable $foo($slot) {write unset} [list __Oc_ClassConstArray $array \
                 $slot $value]
         if {[string match w $ops]} {
             # Remove bogus entry
@@ -583,7 +583,7 @@ proc Oc_Class {class definition} {
         # Restore constant value
         array set $foo($slot) $value
         # Restore traces
-        trace variable $foo($slot) wu [list __Oc_ClassConstArray \
+        trace add variable $foo($slot) {write unset} [list __Oc_ClassConstArray \
                 $array $slot $value]
         return -code error "\n\tAttempt to modify const array variable\
                 or common '[string range $slot 1 end]'"
@@ -821,7 +821,7 @@ proc Oc_Class {class definition} {
         foreach type {SCUV SCRV} {
             foreach constVar $classDef($type) {
                 if {[info exists state(_$constVar)]} {
-                    trace variable _${this}(_$constVar) wu [list \
+                    trace add variable _${this}(_$constVar) {write unset} [list \
                             __Oc_ClassConstScalar _$this _$constVar \
                             $state(_$constVar)]
                 } else {
@@ -837,7 +837,7 @@ proc Oc_Class {class definition} {
             foreach constVar $classDef($type) {
                 global $state(_$constVar)
                 if {[array exists $state(_$constVar)]} {
-                    trace variable $state(_$constVar) wu \
+                    trace add variable $state(_$constVar) {write unset} \
                             [list __Oc_ClassConstArray _$this \
                             _$constVar [array get $state(_$constVar)]]
                 } else {

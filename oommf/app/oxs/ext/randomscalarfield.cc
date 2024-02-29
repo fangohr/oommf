@@ -54,8 +54,8 @@ Oxs_RandomScalarField::Oxs_RandomScalarField(
   if(range_min == range_max) use_cache = 0;  // All values same.
 
   if(use_cache) {
-    // Fill map here (as opposed to a lazy fill), so that concurrent
-    // accesses are supported.
+    // Fill map here (as opposed to a lazy fill), so that repeatable
+    // concurrent accesses are supported.
     const OC_INDEX count = cache_mesh->Size();
     if(count<1) {
       throw Oxs_ExtError(this,"Empty mesh");
@@ -121,7 +121,7 @@ Oxs_RandomScalarField::FillMeshValue
           String msg = String("Import pt not mapped, indicating that mesh \"");
           msg += String(cache_mesh->InstanceName());
           msg += String("\" has changed since initialization of"
-                        " Oxs_ScalarVectorField \"");
+                        " Oxs_RandomScalarField \"");
           msg += String(InstanceName());
           msg += String("\"");
           throw Oxs_ExtError(this,msg);

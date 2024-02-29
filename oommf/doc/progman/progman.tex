@@ -8,15 +8,37 @@
 %\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{progman.html}}
 
 \title{\OOMMF\\Programming Manual}
-%This manual documents release 2.0b0.\\[1ex]
+%This manual documents release 2.1a0.\\[1ex]
 %WARNING: In this alpha release, the
 %documentation may not be up to date.\\[1ex]
-%WARNING: This document is under construction.}
+%
+%%% Note: In LaTeXML 0.8.7, interline space requested inside \author via
+%%% the \\[Xex] construct appears to be ignored. Use blank lines
+%%% instead.
+%
 %\author{Michael Donahue and Donald Porter}
 %\date{\today}
-\author{\today\\[1ex]
-This manual documents release 2.0b0.\\[1ex]
-WARNING: This document is under construction.}
+\author{\today\\\\
+This manual documents release 2.1a0.\\\\
+WARNING: This document is under construction.\\
+%\begin{abstract}
+\begin{flushleft} %This is a hack to work around \author being a centering
+% environment, and AFAICT there is no way to override a justification
+% setting to return to the default fully justified mode. Maybe we can
+% fix this up better, perhaps with the titlepage environment, after
+% userguide is switched to \documentclass{report}
+%%% ABSTRACT USED IN LATEXML. All other modes use the abstract %%%
+%%% following \begin{document}. The two should match!          %%%
+This manual provides source code level information on
+\htmladdnormallink{\OOMMF}{https://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework), a public domain micromagnetics
+program developed at the \htmladdnormallink{National Institute of
+Standards and Technology}{https://www.nist.gov/}.  Refer to the
+\OOMMF\ User's Guide for an overview of the project and end-user
+details.
+\end{flushleft}
+%\end{abstract}
+}
 
 
 \begin{document}
@@ -46,16 +68,21 @@ Programming Manual\\[2ex]
 \large
 {\today}
 {}\\[2ex]
-This manual documents release 2.0b0.\\[1ex]
+This manual documents release 2.1a0.\\[1ex]
 WARNING: This document is under construction.
 \end{center}
 %\vspace{10\baselineskip}
 %\begin{abstract}
-This manual provides source code level information on \OOMMF\ (Object Oriented Micromagnetic Framework),
-a public domain micromagnetics program developed at the
-\htmladdnormallink{National Institute of Standards and Technology}
-{https://www.nist.gov/}.  Refer to the \OOMMF\ User's Guide for an
-overview of the project and end-user details.
+%%% ABSTRACT USED FOR ALL MODES EXCEPT LATEXML. In LaTeXML mode %%%
+%%% the abstract is buried inside the \author{} command above.  %%%
+%%% The two should match!                                       %%%
+This manual provides source code level information on
+\htmladdnormallink{\OOMMF}{https://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework), a public domain micromagnetics
+program developed at the \htmladdnormallink{National Institute of
+Standards and Technology}{https://www.nist.gov/}.  Refer to the
+\OOMMF\ User's Guide for an overview of the project and end-user
+details.
 %\end{abstract}
 %\vspace*{\fill}
 %\par

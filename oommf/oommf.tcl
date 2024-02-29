@@ -124,7 +124,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName OOMMF
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Switch +
 # Disable the default command line options that don't make sense for
@@ -281,7 +281,7 @@ if {$dump_platform} {
    exit
 }
 
-if {[catch {eval Oc_Application CommandLine $argv} cmd]} {
+if {[catch {Oc_Application CommandLine {*}$argv} cmd]} {
     return -code error $cmd
 }
 

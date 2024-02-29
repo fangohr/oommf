@@ -7,8 +7,9 @@
 #include <cassert>
 #include <cctype>
 #include <cfloat>
-
+#include <iostream>
 #include <string>
+#include <utility>
 
 #include "nb.h"
 #include "director.h"
@@ -17,6 +18,7 @@
 #include "cgevolve.h"
 #include "key.h"
 #include "threevector.h"
+#include "util.h"
 #include "oxswarn.h"
 
 #if OOMMF_THREADS
@@ -191,34 +193,34 @@ Oxs_CGEvolve::Oxs_CGEvolve(
 
   // Setup output.  Note: MSVC++ 6.0 requires fully qualified
   // member function names.
-  total_H_field_output.Setup(this,InstanceName(),"H","A/m",1,
+  total_H_field_output.Setup(this,InstanceName(),"H","A/m",
               &Oxs_CGEvolve::UpdateDerivedFieldOutputs);
-  mxHxm_output.Setup(this,InstanceName(),"mxHxm","A/m",1,
+  mxHxm_output.Setup(this,InstanceName(),"mxHxm","A/m",
 	      &Oxs_CGEvolve::UpdateDerivedFieldOutputs);
   total_energy_density_output.Setup(this,InstanceName(),
-              "Total energy density","J/m^3",1,
+              "Total energy density","J/m^3",
               &Oxs_CGEvolve::UpdateDerivedFieldOutputs);
-  max_mxHxm_output.Setup(this,InstanceName(),"Max mxHxm","A/m",0,
+  max_mxHxm_output.Setup(this,InstanceName(),"Max mxHxm","A/m",
 	      &Oxs_CGEvolve::UpdateDerivedOutputs);
-  total_energy_output.Setup(this,InstanceName(),"Total energy","J",0,
+  total_energy_output.Setup(this,InstanceName(),"Total energy","J",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
-  delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+  delta_E_output.Setup(this,InstanceName(),"Delta E","J",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
-  bracket_count_output.Setup(this,InstanceName(),"Bracket count","",0,
+  bracket_count_output.Setup(this,InstanceName(),"Bracket count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
-  line_min_count_output.Setup(this,InstanceName(),"Line min count","",0,
+  line_min_count_output.Setup(this,InstanceName(),"Line min count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
   conjugate_cycle_count_output.Setup(this,InstanceName(),
-              "Conjugate cycle count","",0,
+              "Conjugate cycle count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
   cycle_count_output.Setup(this,InstanceName(),
-              "Cycle count","",0,
+              "Cycle count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
   cycle_sub_count_output.Setup(this,InstanceName(),
-              "Cycle sub count","",0,
+              "Cycle sub count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
   energy_calc_count_output.Setup(this,InstanceName(),
-              "Energy calc count","",0,
+              "Energy calc count","",
               &Oxs_CGEvolve::UpdateDerivedOutputs);
 
   total_H_field_output.Register(director,-5);
@@ -376,6 +378,11 @@ OC_BOOL Oxs_CGEvolve::Init()
   scratch_energy.Release();
   scratch_field.Release();
 
+  // Attach mxHxm field to Oxs_SimState so that it is available to
+  // the mxHxm_output w/o re-computation.
+  director->WellKnownQuantityAttachRequest
+    (Oxs_Director::WellKnownQuantity::total_mxHxm);
+
   return Oxs_MinEvolver::Init();
 }
 
@@ -475,6 +482,12 @@ void Oxs_CGEvolve::InitializePreconditioner(const Oxs_SimState* state)
   // cell Ms and volume don't change without a change in the mesh.  If
   // this assumption becomes untrue, then modifications will be
   // required.
+
+  // Note: Some clients may need to run Tcl scripts to initialize, so
+  //       this routine must only be run inside the main thread (Per
+  //       Tcl spec, only the thread originating the interpreter is
+  //       allowed to make calls into it.
+  assert(Oxs_IsRootThread());
 
   // For code details, see NOTES VI, 18-28 July 2011, pp 6-15.
 
@@ -1054,7 +1067,7 @@ class _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC : public Oxs_ThreadRunObj {
 public:
   // Note: The following are static, so only one "set" of this class may
   // be run at one time.
-  static Oxs_JobControl<OC_REAL8m> job_basket; 
+  static Oxs_JobControl<OC_REAL8m> job_basket;
   static Oc_AlignedVector<Nb_Xpfloat> etemp;
   const Oxs_Mesh* mesh;
   const Oxs_MeshValue<OC_REAL8m>* energy;
@@ -1538,9 +1551,9 @@ void _Oxs_CGEvolve_SetBasePoint_ThreadC::Cmd(int threadnumber,
       sumsq_0.Accum(sbase_direction[j].z*sbase_direction[j].z);
       /// See mjd's NOTES II, 29-May-2002, p156.
     }
-    Oc_Duet Ntx,Nty,Ntz; 
-    Oc_Duet Nsx,Nsy,Nsz; 
-    Oc_Duet Nmsv;        
+    Oc_Duet Ntx,Nty,Ntz;
+    Oc_Duet Nsx,Nsy,Nsz;
+    Oc_Duet Nmsv;
     if(j+3<jsize) { // asdf +3
       Oxs_ThreeVectorPairLoadAligned(sbest_mxHxm+j,Ntx,Nty,Ntz);
       Oxs_ThreeVectorPairLoadAligned(sP+j,Nsx,Nsy,Nsz);
@@ -1617,11 +1630,10 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
 (const Oxs_SimState* state,          // Import
  Oxs_MeshValue<OC_REAL8m>& export_energy,      // Export
  Oxs_MeshValue<ThreeVector>& export_mxHxm,  // Export
- Oxs_MeshValue<ThreeVector>* export_Hptr)   // Export
+ Oxs_MeshValue<ThreeVector>* Hptr)         // Export
+
 { // Fills export_energy and export_mxHxm, which must be different than
-  // scratch_energy and scratch_mxHxm.  Also fills export_Hptr with
-  // total field, unless export_Hptr == NULL, in which case the total
-  // field is not saved.
+  // scratch_energy and scratch_mxHxm.
   //   This routine also updates energy_calc_count, and fills "Total
   // energy", "Bracket_count", "Line min count", "Energy calc count",
   // and "Cycle count" derived data into state.  These class values
@@ -1650,31 +1662,26 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
         "Programming error in Oxs_CGEvolve::GetEnergyAndmxHxm():"
 	" export_mxHxm is same as scratch_field.");
   }
-  if(export_Hptr == &scratch_field) {
-      throw Oxs_ExtError(this,
-        "Programming error in Oxs_CGEvolve::GetEnergyAndmxHxm():"
-	" export_Hptr is same as scratch_field.");
-  }
 
   ++energy_calc_count;    // Update call count
 
   // For convenience
   const Oxs_Mesh* mesh = state->mesh;
 
-  // Set up energy computation output data structure
-  Oxs_ComputeEnergyData oced(*state);
-  oced.scratch_energy = &scratch_energy;
-  oced.scratch_H      = &scratch_field;
-  oced.energy_accum   = &export_energy;
-  oced.H_accum        = export_Hptr;
-  oced.mxH_accum      = 0;  // Fill export_mxHxm instead
-  oced.energy         = 0;
-  oced.H              = 0;
-  oced.mxH            = 0;
-
+  // Set up energy computation data structures
   UpdateFixedSpinList(mesh);
-  Oxs_ComputeEnergyExtraData oceed(GetFixedSpinList(),
-                                   &export_mxHxm);
+  Oxs_ComputeEnergiesImports ocei(*director,*state,
+                                  director->GetEnergyObjects(),
+                                  GetFixedSpinList(),
+                                  &scratch_energy,
+                                  &scratch_field);
+
+  Oxs_ComputeEnergiesExports ocee;
+  ocee.energy   = &export_energy;
+  ocee.H        = Hptr;
+  ocee.mxH      = nullptr;  // Fill export_mxHxm instead
+  ocee.mxHxm    = &export_mxHxm;
+  // Remaining ocee members are initialized to zero by default.
 
   // Compute total energy and torque
 #if REPORT_TIME
@@ -1688,11 +1695,14 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
     TS(energyobjtime.Start());
 #endif // REPORT_TIME_CGDEVEL
   }
+
 #if REPORT_TIME_CGDEVEL
   TS(getenergyandmxHxmtime.Stop());
 #endif // REPORT_TIME_CGDEVEL
 #endif // REPORT_TIME
-  Oxs_ComputeEnergies(*state,oced,director->GetEnergyObjects(),oceed);
+
+  GetEnergies(ocei,ocee);
+
 #if REPORT_TIME
 #if REPORT_TIME_CGDEVEL
   TS(getenergyandmxHxmtime.Start());
@@ -1708,7 +1718,7 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
     TS(steponlytime.Start());
   }
 #endif // REPORT_TIME
-  if(oced.pE_pt != 0.0) {
+  if(ocee.pE_pt != 0.0) {
     String msg =
       String("Oxs_CGEvolve::GetEnergyAndmxHxm:"
              " At least one energy object is time varying; this"
@@ -1717,9 +1727,9 @@ void Oxs_CGEvolve::GetEnergyAndmxHxm
   }
 
   // Fill supplemental derived data.
-  state->AddDerivedData("Max mxHxm",oceed.max_mxH);
+  state->AddDerivedData("Max mxHxm",ocee.max_mxH);
   state->AddDerivedData("Energy density error estimate",
-                        oced.energy_density_error_estimate);
+                        ocee.energy_density_error_estimate);
 
 #if REPORT_TIME_CGDEVEL
 TS(timer[8].Start()); /**/ // 2 secs
@@ -1747,6 +1757,10 @@ TS(timer[8].Start()); /**/ // 2 secs
     Nb_Xpfloat etemp = _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::etemp[0];
     for(int i=1;i<thread_count;++i) {
       etemp += _Oxs_CGEvolve_GetEnergyAndmxHxm_ThreadC::etemp[i];
+    }
+    if(!isfinite(etemp.GetValue())) {
+      throw Oxs_ExtError(this,"Floating point overflow detected"
+                         " in energy density computation.");
     }
     state->AddDerivedData("Total energy",etemp.GetValue());
   }
@@ -1778,16 +1792,17 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
   // and derivative in base_direction (-mu0.H*base_direction).
   // The base_direction and best_energy arrays _must_ be set
   // before calling this function.
-
-  // Uses mxHxm instead of H in calculation of derivative, because
-  // energy is calculated off of normalized m, so component of H in m
-  // direction doesn't actually have any effect.  Plus, experiments
+  //
+  // This routine uses mxHxm instead of H in calculation of derivative,
+  // because energy is calculated off of normalized m, so component of H
+  // in m direction doesn't actually have any effect.  Plus, experiments
   // appear to show generally faster convergence with mxHxm than with H.
 
   const Oxs_SimState* state = statekey.GetPtr();
+  endpt.Clear();
   endpt.key = statekey;
   endpt.key.GetReadReference();
-  GetEnergyAndmxHxm(state,endpt.energy,endpt.mxHxm,NULL);
+  GetEnergyAndmxHxm(state,endpt.energy,endpt.mxHxm);
 
 #if REPORT_TIME_CGDEVEL
   TS(timer[1].Start()); /**/ // 2secs
@@ -1883,6 +1898,12 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
     relenergy = etemp.GetValue();
     derivative = -MU0 * dtemp.GetValue();
     grad_norm = sqrt(stemp.GetValue());
+    if(!isfinite(relenergy)
+       || !isfinite(derivative) || !isfinite(grad_norm)) {
+      throw Oxs_ExtError(this,"Floating point overflow detected"
+               " in relative energy and derivative computation.");
+    }
+
     OC_REAL8m cell_volume = 0.0;
     if(mesh->HasUniformCellVolumes(cell_volume)) {
       // If (and only if) mesh has uniform cells, then threaded
@@ -1910,7 +1931,7 @@ void Oxs_CGEvolve::GetRelativeEnergyAndDerivative(
   if(mesh->Size()>0) {
     endpt.E_error_estimate += energy_density_error_estimate
       * mesh->TotalVolume()/sqrt(2.0*OC_REAL8m(mesh->Size()));
-    // See NOTES VII, 5-7 July 2017, p 154-155.  
+    // See NOTES VII, 5-7 July 2017, p 154-155.
     // Might want to revisit scaling if mesh is not uniform.  Here
     // cell volume is TotalVolume()/Size(), error grows like
     // sqrt(2*Size()) (factor 2 comes from difference operation
@@ -1991,6 +2012,8 @@ void Oxs_CGEvolve::InitializeWorkState
   // Do the first part of work_state structure initialization.
   driver->FillStateMemberData(*cstate,
                               work_state_key.GetWriteReference());
+  driver->FillStateSupplemental(*cstate,
+                              work_state_key.GetWriteReference());
   // Note: Leaves work_state_key holding a write lock
 }
 
@@ -2006,7 +2029,7 @@ void Oxs_CGEvolve::FillBracket
 #if REPORT_TIME_CGDEVEL
   TS(fillbrackettime.Start());
 #endif
-  
+
   try {
     InitializeWorkState(driver,oldstateptr,statekey);
     Oxs_SimState& workstate
@@ -2064,6 +2087,7 @@ timer_counts[0].Increment(timer[0],
 #if REPORT_TIME_CGDEVEL
     TS(fillbrackettime.Stop());
 #endif
+    endpt.Clear();
     GetRelativeEnergyAndDerivative(statekey,offset,endpt);
 #if REPORT_TIME_CGDEVEL
     TS(fillbrackettime.Start());
@@ -2126,6 +2150,11 @@ Oxs_CGEvolve::UpdateBrackets
 
   OC_REAL8m energy_slack = EstimateEnergySlack();
 
+  // Place tracker on tbracket in order to handle force_bestpt requests.
+  // (bestpt holds a pointer to a bracket, which does not follow the
+  // bracket data on a Bracket::Swap() call.)
+  OC_REAL8m tbracket_offset = tbracket.offset;
+
   // Manage brackets
   if(bracket.right.offset<0) {
     // Right bracket not yet set; initialize with tbracket
@@ -2145,7 +2174,8 @@ Oxs_CGEvolve::UpdateBrackets
          (bracket.right.E <= bracket.left.E + energy_slack
           && fabs(bracket.right.Ep) <= fabs(bracket.left.Ep))) {
         // A related but perhaps better secondary test might be
-        //  ave_slope = (bracket.right.E - bracket.left.E)/(bracket.right.offset - bracket.left.offset);
+        //  ave_slope = (bracket.right.E - bracket.left.E)
+        //              /(bracket.right.offset - bracket.left.offset);
         //  Test: bracket.left.Ep < ave_slope < bracket.right.Ep
         bracket.left.Swap(bracket.right);
       }
@@ -2199,16 +2229,22 @@ Oxs_CGEvolve::UpdateBrackets
     if(keepbracket == -1) {
       // Keep left pair
       bracket.right.Swap(tbracket);
-      if(force_bestpt) bestpt.SetBracket(bracket.right);
     } else {
       // Keep right pair
       bracket.left.Swap(tbracket);
-      if(force_bestpt) bestpt.SetBracket(bracket.left);
     }
   }
 
   // Update bestpt if necessary.  See NOTES VII, 4-Aug-2017, p164.
-  if(!force_bestpt) {
+  if(force_bestpt) {
+    assert(bracket.left.offset == tbracket_offset
+           || bracket.right.offset == tbracket_offset);
+    if(bracket.left.offset == tbracket_offset) {
+      bestpt.SetBracket(bracket.left);
+    } else {
+      bestpt.SetBracket(bracket.right);
+    }
+  } else {
     const Bracket* best_endpt = &(bracket.left);
     if(bracket.right.E < bracket.left.E - energy_slack ||
        (bracket.right.E < bracket.left.E + energy_slack &&
@@ -2270,7 +2306,7 @@ OC_REAL8m Oxs_CGEvolve::EstimateQuadraticMinimum
     offset = numer/denom;
     offset *= h; // Doing the h multiply last may slightly improve
                 /// numerics for wgt=0 case.
-  } 
+  }
 
   return offset;
 }
@@ -2296,15 +2332,20 @@ OC_REAL8m Oxs_CGEvolve::FindCubicMinimum
       lambda = -c/(2*b);
     }
   } else {
+    OC_REAL8m scale = 1.0/(abs(Ediff) + abs(lEp) + abs(rEp));
+    a *= scale;  b *= scale;  c *= scale; // Overflow protection
+    // Might need to check against aggressive compiler optimization
+    // re-ordering the "*= scale" above and the computation of disc
+    // below:
     OC_REAL8m disc = b*b - 3*a*c;
     if(disc<=0.0) disc=0.0;          // Safety check.  See NOTES II,
     else          disc = sqrt(disc); // 1-Sep-2001, p135.
     if(b>=0.) {
       if(fabs(c)>=b+disc) lambda = Nb_Signum(-c);
-      else                   lambda = -c/(b + disc);
+      else                lambda = -c/(b + disc);
     } else {
       if(fabs(3*a)<=(-b + disc)) lambda = Nb_Signum(a);
-      else                          lambda = (-b + disc)/(3*a);
+      else                       lambda = (-b + disc)/(3*a);
     }
   }
   return lambda;
@@ -2323,7 +2364,14 @@ void Oxs_CGEvolve::FindBracketStep
   assert(bracket_right_offset>=bracket.left.offset && bracket.left.Ep<=0.0);
 
   if(bracket.left.Ep == 0.0) { // Special case handling
-    bracket.min_bracketed=1;
+    if(bracket.right.offset < 0.0) {
+      // Initialize right bracket
+      const OC_REAL8m offset = OC_REAL8m_EPSILON;
+      FillBracket(driver,offset,oldstate,statekey,extra_bracket);
+      UpdateBrackets(extra_bracket,0);
+    } else {
+      bracket.min_bracketed=1;
+    }
     return;
   }
 
@@ -2387,7 +2435,8 @@ void Oxs_CGEvolve::FindBracketStep
   //          ==> Minimum is bracketed
   //  2) right.E<=left.E+energy_slack and right.Ep<0
   //          ==> Minimum not bracketed
-  assert(0 <= bracket.left.offset && bracket.left.offset <= bracket.right.offset);
+  assert(0 <= bracket.left.offset
+         && bracket.left.offset <= bracket.right.offset);
   OC_REAL8m energy_slack = EstimateEnergySlack();
   if((bracket.bad_Edata || bracket.right.E<=bracket.left.E+energy_slack)
      && bracket.right.Ep<0) {
@@ -2442,11 +2491,12 @@ void Oxs_CGEvolve::FindLineMinimumStep
   //       rightpt.Ep<0), then the updated bracket pair will also be
   //       strong.)
 
-  assert(0 <= bracket.left.offset && bracket.left.offset <= bracket.right.offset);
+  assert(0 <= bracket.left.offset
+         && bracket.left.offset <= bracket.right.offset);
   assert(bracket.left.Ep<=0.0
 	 && (bracket.right.E>bracket.left.E || bracket.right.Ep>=0));
-  OC_REAL8m span = bracket.right.offset - bracket.left.offset;
-  OC_REAL8m energy_slack = EstimateEnergySlack();
+  const OC_REAL8m span = bracket.right.offset - bracket.left.offset;
+  const OC_REAL8m energy_slack = EstimateEnergySlack();
   OC_REAL8m nudge = OC_REAL8m_MAX/2;
   if(basept.direction_max_mag>=1.
      || OC_REAL8m_EPSILON<nudge*basept.direction_max_mag) {
@@ -2556,19 +2606,31 @@ void Oxs_CGEvolve::FindLineMinimumStep
   // using the declared E density error estimate.)
 
   OC_REAL8m lambda = 0.5; // Relative offset
-  OC_REAL8m lEp = bracket.left.Ep * span;
-  OC_REAL8m rEp = bracket.right.Ep * span;
-  OC_REAL8m Ediff = bracket.right.E - bracket.left.E;
+  OC_REAL8m lEp = bracket.left.Ep;
+  OC_REAL8m rEp = bracket.right.Ep;
+  OC_REAL8m Ediff = (bracket.right.E - bracket.left.E)/span;
+  OC_REAL8m Eslack = energy_slack/span;
+  if(!isfinite(Ediff)) {
+     // Overflow; use alternate scheme. Note that this approach can
+     // cause lEp to underflow to zero, which FindCubicMinimum doesn't
+     // like.
+     lEp = bracket.left.Ep * span;
+     rEp = bracket.right.Ep * span;
+     Ediff = bracket.right.E - bracket.left.E;
+     Eslack = energy_slack;
+  }
 
   // Compute cubic estimate and approximate error using E and Ep.  See
   // NOTES II, 1-Sep-2001, p134-136. Also NOTES VII, 20-Jul-2017,
   // p156-163.
   OC_REAL8m cubic_testpt=0.5;
   OC_REAL8m cubic_error=1.0;
-  if(rEp>0 || Ediff-energy_slack>=0.0) {
+  if(lEp<0 && (rEp>0 || Ediff-Eslack>=0.0)) {
+    // The lEp<0 check is in case of underflow in the alternate lEp
+    // computation above.
     cubic_testpt=FindCubicMinimum(Ediff,lEp,rEp);
-    OC_REAL8m cubic_chk_a = FindCubicMinimum(Ediff+energy_slack,lEp,rEp);
-    OC_REAL8m cubic_chk_b = FindCubicMinimum(Ediff-energy_slack,lEp,rEp);
+    OC_REAL8m cubic_chk_a = FindCubicMinimum(Ediff+Eslack,lEp,rEp);
+    OC_REAL8m cubic_chk_b = FindCubicMinimum(Ediff-Eslack,lEp,rEp);
     // Aside from rounding error, cubic_chk_b should be strictly greater than
     // cubic_chk_a --- see NOTES VII, 20-Jul-2017, p156-163.
     if(0<cubic_chk_a && cubic_chk_b<1.0) {
@@ -2606,17 +2668,17 @@ void Oxs_CGEvolve::FindLineMinimumStep
         if(0.0<=extra_bracket.offset &&
            extra_bracket.offset < bracket.left.offset*(1-OC_REAL8m_EPSILON)) {
           // Extra bracket to left of main brackets
-          OC_REAL8m lspan = bracket.left.offset - extra_bracket.offset;
-          OC_REAL8m rspan = span;
           OC_REAL8m tspan = bracket.right.offset - extra_bracket.offset;
+          OC_REAL8m lspant = (bracket.left.offset - extra_bracket.offset)/tspan;
+          OC_REAL8m rspant = span/tspan;
 
           OC_REAL8m A = extra_bracket.Ep;
           OC_REAL8m B = bracket.left.Ep;
           OC_REAL8m C = bracket.right.Ep;
 
-          OC_REAL8m a = (lspan*C+rspan*A-tspan*B)*tspan/(lspan*rspan);
-          OC_REAL8m b = (tspan*tspan*B-lspan*lspan*C-rspan*(tspan+lspan)*A)
-                        /(lspan*rspan);
+          OC_REAL8m a = (lspant*C+rspant*A-B)/(lspant*rspant);
+          OC_REAL8m b = (B-lspant*lspant*C-rspant*(1+lspant)*A)
+                        /(lspant*rspant);
           OC_REAL8m c = A;
 
           OC_REAL8m disc = b*b-4*a*c;
@@ -2629,21 +2691,21 @@ void Oxs_CGEvolve::FindLineMinimumStep
             }
             // The computed alt_testpt is across tspan.  Subsequent
             // code wants alt_testpt across [left.offset,right.offset].
-            alt_testpt = (alt_testpt*tspan - lspan)/rspan;
+            alt_testpt = (alt_testpt - lspant)/rspant;
           }
         } else if(bracket.right.offset*(1+OC_REAL8m_EPSILON)<extra_bracket.offset) {
           // Extra bracket to right of main brackets
-          OC_REAL8m lspan = span;
-          OC_REAL8m rspan = extra_bracket.offset - bracket.right.offset;
           OC_REAL8m tspan = extra_bracket.offset - bracket.left.offset;
+          OC_REAL8m lspant = span/tspan;
+          OC_REAL8m rspant = (extra_bracket.offset - bracket.right.offset)/tspan;
 
           OC_REAL8m A = bracket.left.Ep;
           OC_REAL8m B = bracket.right.Ep;
           OC_REAL8m C = extra_bracket.Ep;
 
-          OC_REAL8m a = (lspan*C+rspan*A-tspan*B)*tspan/(lspan*rspan);
-          OC_REAL8m b = (tspan*tspan*B-lspan*lspan*C-rspan*(tspan+lspan)*A)
-                        /(lspan*rspan);
+          OC_REAL8m a = (lspant*C+rspant*A-B)/(lspant*rspant);
+          OC_REAL8m b = (B-lspant*lspant*C-rspant*(1+lspant)*A)
+                        /(lspant*rspant);
           OC_REAL8m c = A;
 
           OC_REAL8m disc = b*b-4*a*c;
@@ -2656,7 +2718,7 @@ void Oxs_CGEvolve::FindLineMinimumStep
             }
             // The computed alt_testpt is across tspan.  Subsequent
             // code wants alt_testpt across [left.offset,right.offset].
-            alt_testpt *= tspan/lspan;
+            alt_testpt /= lspant;
           }
         }
       }
@@ -2673,13 +2735,14 @@ void Oxs_CGEvolve::FindLineMinimumStep
       // Bad rightpt.Ep.  Guess at minpt using leftpt.E/Ep and rightpt.E
       const OC_REAL8m reduce_limit = 1./32.; // The
       /// situation rightpt.Ep<0 is suspicious, so limit reduction.
-      OC_REAL8m numerator = -1.0 * lEp; // This is > 0.
+      OC_REAL8m numerator = -1.0 * lEp; // This should be >0, unless
+      /// the lEp computation underflowed to -0.0.
       OC_REAL8m denominator = 2*(Ediff - lEp);
-      // denominator must also be >0, because rightpt.E>=leftpt.E
+      // denominator must also be >=0, because rightpt.E>=leftpt.E
       // if a minimum is bracketed with rightpt.Ep<0.
-      denominator = fabs(denominator); // But play it safe, because
-      /// checks below depend on denominator>0.
-      if(numerator<reduce_limit*denominator) {
+      if(denominator <= 0.0) {  // This should only happen if
+        alt_testpt = 0.5;      /// numerator == denominator == 0.0
+      } else if(numerator<reduce_limit*denominator) {
         alt_testpt = reduce_limit;
       } else if(numerator>(1-reduce_limit)*denominator) {
         alt_testpt = 1-reduce_limit;
@@ -2723,16 +2786,19 @@ void Oxs_CGEvolve::FindLineMinimumStep
     if(temp<0.5*span) max_reduce = temp/span;
     else              max_reduce = 0.5;
   }
-  if(/* span>256*nudge && */ span*max_reduce<nudge) max_reduce = nudge/span;
-  /// There are some difficulties with the above nudge barrier control.
-  /// In particular, even if the difference in offset values between
-  /// test_offset and left/right.offset is less than OC_REAL8m_EPSILON,
-  /// the difference in the spin configuration at the test point may
-  /// be different than the spin configuration at the closer endpt
-  /// because of roundoff errors.  Some tests have appeared to indicate
-  /// that this sloppiness aids in the small mxHxm situation, so we
-  /// restrict the nudge barrier operation to just those intervals that
-  /// are wide relative to nudge.
+  if(/* span>256*nudge && */ span*max_reduce<nudge) {
+    max_reduce = nudge/span;
+    if(max_reduce>0.5) max_reduce = 0.5;
+    /// There are some difficulties with the above nudge barrier
+    /// control.  In particular, even if the difference in offset values
+    /// between test_offset and left/right.offset is less than
+    /// OC_REAL8m_EPSILON, the difference in the spin configuration at
+    /// the test point may be different than the spin configuration at
+    /// the closer endpt because of roundoff errors.  Some tests have
+    /// appeared to indicate that this sloppiness aids in the small
+    /// mxHxm situation, so we restrict the nudge barrier operation to
+    /// just those intervals that are wide relative to nudge.
+  }
   assert(max_reduce<=0.5);
   if(max_reduce>0.5) max_reduce=0.5; // Safety; This shouldn't trigger.
   if(lambda>0.5) {
@@ -2938,12 +3004,25 @@ void Oxs_CGEvolve::AdjustDirection
   work_Ep = thread_Ep[0];
 }
 
-void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
+void Oxs_CGEvolve::SetBasePoint
+(Oxs_ConstKey<Oxs_SimState> cstate_key)
 {
   const Oxs_SimState* cstate = cstate_key.GetPtr();
   if(cstate->Id() == basept.id && basept.valid) {
+    // In this case bracket.min_found had better be false, because
+    // otherwise returning to ::TryStep will create an infinite
+    // do-nothing loop.
+    if(bracket.min_found) {
+      throw Oxs_ExtError(this,
+        "Inconsistent Oxs_CGEvolve internal state detected."
+        " Programming error?");
+    }
     return;  // Already set
   }
+
+#if REPORT_TIME_CGDEVEL
+  TS(basepttime.Start());
+#endif // REPORT_TIME_CGDEVEL
 
   if(preconditioner_mesh_id !=  cstate->mesh->Id()) {
     InitializePreconditioner(cstate);
@@ -2978,14 +3057,16 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
   // cstate and bestpt should be same
   if(bestpt.bracket && bestpt.bracket->key.SameState(cstate_key)) {
     // Move bestpt to bracket.left
-    assert(bestpt.bracket == &(bracket.left) || bestpt.bracket == &(bracket.right));
+    assert(bestpt.bracket == &(bracket.left)
+           || bestpt.bracket == &(bracket.right));
     bracket.left.Swap(*const_cast<Oxs_CGEvolve::Bracket*>(bestpt.bracket));
     bestpt.bracket = &(bracket.left);
   } else {
     // Fill left bracket from cstate and point bestpt to bracket.left
+    bracket.left.Clear();
     bracket.left.key = cstate_key;
     bracket.left.key.GetReadReference();
-    GetEnergyAndmxHxm(cstate,bracket.left.energy,bracket.left.mxHxm,NULL);
+    GetEnergyAndmxHxm(cstate,bracket.left.energy,bracket.left.mxHxm);
     /// Should next_step_guess be set to 0 in this case???
   }
   OC_REAL8m edee;
@@ -2999,7 +3080,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
   bracket.left.E       = 0.;
   bracket.left.E_error_estimate = edee
     * mesh->TotalVolume()/sqrt(2.0*OC_REAL8m(mesh->Size()));
-  // See NOTES VII, 5-7 July 2017, p 154-155.  
+  // See NOTES VII, 5-7 July 2017, p 154-155.
   bestpt.SetBracket(bracket.left);
 
   // Determine new direction
@@ -3102,7 +3183,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
 
       // Store results
       for(int i=1;i<thread_count;++i) {
-        _Oxs_CGEvolve_SetBasePoint_ThreadA::gamma_sum[0] += 
+        _Oxs_CGEvolve_SetBasePoint_ThreadA::gamma_sum[0] +=
           _Oxs_CGEvolve_SetBasePoint_ThreadA::gamma_sum[i];
         _Oxs_CGEvolve_SetBasePoint_ThreadA::g_sum_sq[0] +=
           _Oxs_CGEvolve_SetBasePoint_ThreadA::g_sum_sq[i];
@@ -3330,6 +3411,7 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
     basept.g_sum_sq = sumsq;
     basept.direction_norm = sqrt(sumsq);
     Ep *= -MU0; // See mjd's NOTES II, 29-May-2002, p156.
+    assert(Ep <= 0.0);
     basept.Ep = bracket.left.Ep = Ep;
     basept.valid=1;
 
@@ -3406,6 +3488,9 @@ void Oxs_CGEvolve::SetBasePoint(Oxs_ConstKey<Oxs_SimState> cstate_key)
   bracket.right.Clear();
   extra_bracket.Clear();
   bestpt.is_line_minimum = 0;
+#if REPORT_TIME_CGDEVEL
+  TS(basepttime.Stop());
+#endif // REPORT_TIME_CGDEVEL
 }
 
 void Oxs_CGEvolve::RuffleBasePoint
@@ -3423,7 +3508,8 @@ void Oxs_CGEvolve::RuffleBasePoint
       = statekey.GetWriteReference(); // Write lock
     Oxs_MeshValue<ThreeVector>& workspin = workstate.spin;
     const Oxs_MeshValue<ThreeVector>& oldspin = oldstate->spin;
-    Oxs_RunThreaded<ThreeVector,std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
+    Oxs_RunThreaded<ThreeVector,
+                    std::function<void(OC_INT4m,OC_INDEX,OC_INDEX)> >
       (workspin,
        [&](OC_INT4m thread_number,OC_INDEX istart,OC_INDEX istop) {
         // Note: Results will vary run-to-run, depending on number of
@@ -3520,8 +3606,14 @@ void Oxs_CGEvolve::NudgeBestpt
 OC_BOOL Oxs_CGEvolve::InitNewStage
 (const Oxs_MinDriver* /* driver */,
  Oxs_ConstKey<Oxs_SimState> state,
- Oxs_ConstKey<Oxs_SimState> /* prevstate */)
+ Oxs_ConstKey<Oxs_SimState> /* prevstate */,
+ Oxs_DriverStageInfo& /* stage_info */)
 {
+  // Should we perform additional initialization steps here?
+  // It might make sense to do
+  //   bracket.Init();
+  // but that changes oxsregression results, and I'm not sure
+  // which way is better.
   SetBasePoint(state);
   return 1;
 }
@@ -3529,7 +3621,7 @@ OC_BOOL Oxs_CGEvolve::InitNewStage
 
 OC_BOOL Oxs_CGEvolve::TryStep(const Oxs_MinDriver* driver,
                         Oxs_ConstKey<Oxs_SimState> current_state_key,
-                        const Oxs_DriverStepInfo& /* step_info */,
+                        Oxs_DriverStepInfo& /* step_info */,
                         Oxs_ConstKey<Oxs_SimState>& next_state_key)
 {
 #if REPORT_TIME
@@ -3573,16 +3665,14 @@ OC_BOOL Oxs_CGEvolve::TryStep(const Oxs_MinDriver* driver,
     }
   }
 
+  // Check class state consistency.  If this check fails then
+  // Oxs_CGEvolve can fall into an infinite loop.
+  assert(!(cstate->Id() == basept.id && basept.valid && bracket.min_found));
+
   if(!basept.valid
      || basept.stage != cstate->stage_number
      || bracket.min_found) {
-#if REPORT_TIME_CGDEVEL
-  TS(basepttime.Start());
-#endif // REPORT_TIME_CGDEVEL
     SetBasePoint(current_state_key);
-#if REPORT_TIME_CGDEVEL
-  TS(basepttime.Stop());
-#endif // REPORT_TIME_CGDEVEL
   }
 
   if(!bracket.min_bracketed) {
@@ -3598,17 +3688,20 @@ OC_BOOL Oxs_CGEvolve::TryStep(const Oxs_MinDriver* driver,
     TS(findlinemintime.Start());
 #endif // REPORT_TIME_CGDEVEL
     FindLineMinimumStep(driver,cstate,work_state_key);
-    if(bracket.min_found && bestpt.bracket->offset==0.0) {
-      if(cycle_sub_count==0) {
-        NudgeBestpt(driver,cstate,work_state_key);
-      } else {
-        basept.valid = 0;
-        SetBasePoint(current_state_key);
-      }
-    }
 #if REPORT_TIME_CGDEVEL
   TS(findlinemintime.Stop());
 #endif // REPORT_TIME_CGDEVEL
+  }
+
+  // NB: bracket.min_found may be set true by either FindLineMinimumStep
+  // (usual case) of FindBracketStep (uncommon, but possible).
+  if(bracket.min_found && bestpt.bracket->offset==0.0) {
+    if(cycle_sub_count==0) {
+      NudgeBestpt(driver,cstate,work_state_key);
+    } else {
+      basept.valid = 0;
+      SetBasePoint(current_state_key);
+    }
   }
 
   // If work state was used (work_state_key.GetPtr()!=0), then finish
@@ -3642,24 +3735,47 @@ OC_BOOL Oxs_CGEvolve::TryStep(const Oxs_MinDriver* driver,
 
 void Oxs_CGEvolve::UpdateDerivedFieldOutputs(const Oxs_SimState& state)
 { // Fill Oxs_VectorOutput's that have CacheRequest enabled.
-  Oxs_MeshValue<ThreeVector>* Hptr
-    = (total_H_field_output.GetCacheRequestCount()>0
-       ? &total_H_field_output.cache.value : 0);
-  if((Hptr != 0 && total_H_field_output.cache.state_id != state.Id())
-     || (total_energy_density_output.GetCacheRequestCount()>0
-         && total_energy_density_output.cache.state_id != state.Id())
-     || (mxHxm_output.GetCacheRequestCount()>0
-         && mxHxm_output.cache.state_id != state.Id())) {
+  Oxs_MeshValue<ThreeVector>* Hptr = nullptr;
+  if(total_H_field_output.GetCacheRequestCount()>0
+     && total_H_field_output.GetCacheStateId() != state.Id()) {
+    total_H_field_output.ResetCache(&state);
+    Hptr = total_H_field_output.GetCacheBuffer(&state);
+  }
+  const OC_BOOL mxHxm_cache_current = mxHxm_output.IsCacheValid(&state);
+  const OC_BOOL energy_cache_current
+    = total_energy_density_output.IsCacheValid(&state);
+
+  if(Hptr ||
+     (mxHxm_output.GetCacheRequestCount()>0 && !mxHxm_cache_current) ||
+     (total_energy_density_output.GetCacheRequestCount()>0
+      && !energy_cache_current)) {
     // Need to call GetEnergyAndmxHxm
-    total_energy_density_output.cache.state_id
-      = mxHxm_output.cache.state_id
-      = total_H_field_output.cache.state_id = 0;
-    GetEnergyAndmxHxm(&state,
-                      total_energy_density_output.cache.value,
-                      mxHxm_output.cache.value,Hptr);
-    total_energy_density_output.cache.state_id
-      = mxHxm_output.cache.state_id
-      = total_H_field_output.cache.state_id = state.Id();
+
+    // total_energy_density_output and total_H_field_output are the
+    // older Oxs_VectorFieldSimStateOutput type, mxHxm_output is type
+    // Oxs_VectorFieldSimStateOutput. These have different interfaces,
+    // but perhaps they should be homogenized?
+
+    // We might want to rework GetEnergyAndmxHxm() to make mxHxm and
+    // energy_density optional exports; if nothing else we could save
+    // memory bandwidth passing around unneeded bytes. Regardless, at
+    // present both are required, so set up buffers to receive the
+    // output.
+    Oxs_MeshValue<OC_REAL8m> energy_density_value(state.GetMeshNodesPtr());
+    Oxs_MeshValue<ThreeVector> mxHxm_value(state.GetMeshNodesPtr());
+    GetEnergyAndmxHxm(&state,energy_density_value,mxHxm_value,Hptr);
+
+    if(!mxHxm_cache_current) {
+      // If mxHxm is already set in state, then we don't need to reset
+      // it. (Moreover, once set, Oxs_SimState DerivedValues can't be
+      // reset.) Otherwise, since it's computed, move mxHxm into
+      // Oxs_SimState regardless of whether it was requested or not.
+      mxHxm_output.MoveToCache(&state,mxHxm_value);
+    }
+    if(!energy_cache_current) {
+      total_energy_density_output.MoveToCache(&state,energy_density_value);
+    }
+    if(Hptr) total_H_field_output.SetCacheStateId(state.Id());
   }
 }
 
@@ -3690,12 +3806,24 @@ void Oxs_CGEvolve::UpdateDerivedOutputs(const Oxs_SimState& state)
      !state.GetDerivedData("Line min count",
 			   line_min_count_output.cache.value)) {
     // Missing at least some data
-    Oxs_MeshValue<ThreeVector>* Hptr
-      = (total_H_field_output.GetCacheRequestCount()>0
-         ? &total_H_field_output.cache.value : 0);
-    GetEnergyAndmxHxm(&state,
-                      total_energy_density_output.cache.value,
-                      mxHxm_output.cache.value,Hptr);
+
+    // If we can ascertain that the total_energy_density and/or mxHxm
+    // field outputs are not needed, then we might want to rework
+    // GetEnergyAndmxHxm to accept nullptr as a flag so as
+    // to at least not waste memory bandwidth filling dummy arrays.
+    Oxs_MeshValue<OC_REAL8m> energy_density_value(state.GetMeshNodesPtr());
+    Oxs_MeshValue<ThreeVector> mxHxm_value(state.GetMeshNodesPtr());
+    GetEnergyAndmxHxm(&state,energy_density_value,mxHxm_value);
+    // Since energy and mxHxm field values were computed, we might as
+    // well go ahead and attach them to the state. NB: If the total
+    // energy density and mxHxm fields are not already set in the state
+    // DerivedData, then they will be *moved* in (leaving the
+    // Oxs_MeshValue objects on this side empty). OTOH, if a field is
+    // already set in the state DerivedData, then the corresponding
+    // MoveToCache() will return false and the the Oxs_MeshValue object
+    // will be left unchanged (until it is deleted at block end).
+    total_energy_density_output.MoveToCache(&state,energy_density_value);
+    mxHxm_output.MoveToCache(&state,mxHxm_value);
     if(!state.GetDerivedData("Energy calc count",
 			     energy_calc_count_output.cache.value) ||
        !state.GetDerivedData("Max mxHxm",max_mxHxm_output.cache.value) ||

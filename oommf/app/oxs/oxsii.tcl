@@ -12,7 +12,7 @@ Oc_IgnoreTermLoss  ;# Try to keep going, even if controlling terminal
 
 # Application description boilerplate
 Oc_Main SetAppName Oxsii
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2016/01/30 00:38:48 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -53,7 +53,7 @@ Oc_CommandLine Option restart {
 } {1 => use <basename>.restart file to restart simulation}
 set restart_flag 0
 Oxs_SetRestartFlag $restart_flag
-trace variable restart_flag w {Oxs_SetRestartFlag $restart_flag ;# }
+trace add variable restart_flag write {Oxs_SetRestartFlag $restart_flag ;# }
 
 # Note: At present, the restart file dir is set from the command line
 # at problem start and never changed.  Trying to change this once a
@@ -78,14 +78,14 @@ Oc_CommandLine Option restartfiledir {
 
 
 Oc_CommandLine Option nocrccheck {
-	{flag {expr {$flag==0 || $flag==1}} {= 0 (default) or 1}}
+        {flag {expr {$flag==0 || $flag==1}} {= 0 (default) or 1}}
     } {
-	global nocrccheck_flag; set nocrccheck_flag $flag
+        global nocrccheck_flag; set nocrccheck_flag $flag
 } {1 => Disable CRC check on simulation restarts}
 set nocrccheck_flag 0
 Oxs_SetRestartCrcCheck [expr {!$nocrccheck_flag}]
-trace variable nocrccheck_flag w \
-	{Oxs_SetRestartCrcCheck [expr {!$nocrccheck_flag}] ;# }
+trace add variable nocrccheck_flag write \
+        {Oxs_SetRestartCrcCheck [expr {!$nocrccheck_flag}] ;# }
 
 Oc_CommandLine Option parameters \
 {{params {expr {([llength $params]%2)==0}} { is a list of name+value pairs}}} \
@@ -94,23 +94,23 @@ Oc_CommandLine Option parameters \
 set MIF_params {}
 
 Oc_CommandLine Option exitondone {
-	{flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 (default) or 1}}
+        {flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 (default) or 1}}
     } {
-	global exitondone; set exitondone $flag
+        global exitondone; set exitondone $flag
 } {1 => Exit when problem solved}
 set exitondone 0
 
 Oc_CommandLine Option pause {
-	{flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 or 1 (default)}}
+        {flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 or 1 (default)}}
     } {
-	global autorun_pause; set autorun_pause $flag
+        global autorun_pause; set autorun_pause $flag
 } {1 => Pause after autorun initialization}
 set autorun_pause 1
 
 Oc_CommandLine Option nice {
-	{flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 or 1 (default)}}
+        {flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 or 1 (default)}}
     } {
-	global nice; set nice $flag
+        global nice; set nice $flag
 } {1 => Drop priority after starting}
 set nice 1
 
@@ -131,6 +131,17 @@ Oc_CommandLine Option loglevel {
    global loglevel;  set loglevel $level
 } {Level of log detail to oxsii.errors (default is 1)}
 set loglevel 1
+
+Oc_CommandLine Option quiet {
+        {flag {expr {![catch {expr {$flag && $flag}}]}} {= 0 or 1 (default)}}
+    } {
+        global quiet; set quiet $flag
+} {0 => Echo log messages to stderr}
+set quiet 1
+
+# Note difference between -loglevel and -quiet: The former controls how
+# much gets written to the log file. The latter controls how much gets
+# written to stderr.
 
 # Multi-thread support
 if {[Oc_HaveThreads]} {
@@ -174,12 +185,12 @@ if {[Oc_NumaAvailable]} {
 set autorun 0
 Oc_CommandLine Option [Oc_CommandLine Switch] {
     {{filename {optional}} {} {
-	Optional input MIF 2.1 problem file to load and run.}}
+        Optional input MIF 2.1 problem file to load and run.}}
 } {
     if {![string match {} $filename]} {
-	global problem autorun
-	set autorun 1
-	set problem $filename
+        global problem autorun
+        set autorun 1
+        set problem $filename
     }
 } {End of options}
 
@@ -255,6 +266,18 @@ unset aboutinfo
 ##########################################################################
 proc UpdateCheckpointControl { name1 name2 op } {
    global checkpoint_control checkpoint_control_list
+
+   # Check that change request doesn't pretain to previously loaded problem
+   if {[set index [lsearch -exact $checkpoint_control_list init_count]]<0} {
+      error "Import checkpoint_control_list missing init_count value"
+   }
+   if {$checkpoint_control(init_count) \
+          != [lindex $checkpoint_control_list [incr index]]} {
+      # Checkpoint control interface is out-of-date. Reset and return.
+      set checkpoint_control_list [array get checkpoint_control]
+      return
+   }
+
    foreach {name value} $checkpoint_control_list {
       if {[string compare $value $checkpoint_control($name)]==0} {
          continue   ;# No change in setting
@@ -284,11 +307,12 @@ proc UpdateCheckpointControl { name1 name2 op } {
 
 Oc_EventHandler New _ Oxs Checkpoint {
    set checkpoint_control(timestamp) [Oxs_CheckpointTimestamp]
-   trace vdelete checkpoint_control_list w UpdateCheckpointControl
+   trace remove variable checkpoint_control_list write UpdateCheckpointControl
    set checkpoint_control_list [array get checkpoint_control]
-   trace variable checkpoint_control_list w UpdateCheckpointControl
+   trace add variable checkpoint_control_list write UpdateCheckpointControl
 }
 
+set checkpoint_control(init_count)   0
 proc InitializeCheckpointControl {} {
    global checkpoint_control checkpoint_control_list
    global checkpoint_timestamp
@@ -305,9 +329,13 @@ proc InitializeCheckpointControl {} {
    set checkpoint_control(timestamp) "never"
    ## No checkpoint file (yet) from this run
 
-   trace vdelete checkpoint_control_list w UpdateCheckpointControl
+   # Track initialization count to allow change requests
+   # from previous problems to be discarded.
+   incr checkpoint_control(init_count)
+
+   trace remove variable checkpoint_control_list write UpdateCheckpointControl
    set checkpoint_control_list [array get checkpoint_control]
-   trace variable checkpoint_control_list w UpdateCheckpointControl
+   trace add variable checkpoint_control_list write UpdateCheckpointControl
 }
 
 InitializeCheckpointControl
@@ -337,7 +365,7 @@ append gui "[list Oc_Main SetVersion [Oc_Main GetVersion]]\n"
 append gui "[list Oc_Main SetExtraInfo [Oc_Main GetExtraInfo]]\n"
 append gui {
 share update_extra_info
-trace variable update_extra_info w { Oc_Main SetExtraInfo $update_extra_info ;# }
+trace add variable update_extra_info write { Oc_Main SetExtraInfo $update_extra_info ;# }
 }
 append gui "[list Oc_Main SetPid [pid]]\n"
 append gui {
@@ -397,7 +425,7 @@ catch {
 }
 
 append gui {
-proc ConsoleInfo {m t s} {
+proc ConsoleInfo {m t s args} {
    set timestamp [clock format [clock seconds] -format %T]
    puts stderr "\[$timestamp\] $m"
 }
@@ -407,7 +435,7 @@ Oc_Log AddType infolog ;# Record in log file only
 set menubar .mb
 foreach {fmenu omenu hmenu} [Ow_MakeMenubar . $menubar File Options Help] break
 $fmenu add command -label "Load..." \
-	-command [list LoadButton $fmenu "Load..."] -underline 0
+        -command [list LoadButton $fmenu "Load..."] -underline 0
 if {![Oc_Option Get Menu show_console_option _] && $_} {
    $fmenu add command -label "Show Console" -command { console show } \
        -underline 0
@@ -421,12 +449,12 @@ $omenu add command -label "Checkpoint Control..." -underline 0 \
       -command [list CheckpointControlButton $omenu "Checkpoint Control..."] \
       -state disabled
 # Enable Checkpoint control only after a problem has been loaded
-trace variable problem w [format {
+trace add variable problem write [format {
    if {![string match {} $problem]} {
       %s entryconfigure %s -state normal
    } ;# } $omenu [$omenu index end]]
 
-trace variable problem w { after 0 {Ow_PropagateGeometry .} ;# }
+trace add variable problem write { after 0 {Ow_PropagateGeometry .} ;# }
 
 
 $omenu add separator
@@ -454,17 +482,17 @@ proc LoadButton { btn item } {
     #  port on machines with disparate filesystems. -mjd, 5-Nov-2001
     global SmartDialogs
     Ow_FileDlg New dialog -callback LoadCallback \
-	    -dialog_title "[Oc_Main GetTitle]: Load Problem" \
+            -dialog_title "[Oc_Main GetTitle]: Load Problem" \
             -allow_browse 1 \
             -optionbox_setup LoadOptionBoxSetup \
             -selection_title "Load MIF File..." \
             -select_action_id LOAD \
-	    -filter [list *.mif *.mif2] \
-	    -dir_must_exist 0 \
-	    -file_must_exist 0 \
-	    -menu_data [list $btn $item] \
-	    -optbox_position bottom \
-	    -smart_menu $SmartDialogs
+            -filter [list *.mif *.mif2] \
+            -dir_must_exist 0 \
+            -file_must_exist 0 \
+            -menu_data [list $btn $item] \
+            -optbox_position bottom \
+            -smart_menu $SmartDialogs
 
    # Set icon
    Ow_SetIcon [$dialog Cget -winpath]
@@ -605,8 +633,8 @@ proc LoadOptionBoxSetup { widget frame } {
 
 proc LoadCallback { widget actionid args } {
     if {[string match DELETE $actionid]} {
-	# This really is the way it has to be!  The quoting on $args
-	# is just plain weird.
+        # This really is the way it has to be!  The quoting on $args
+        # is just plain weird.
         eval [join $args]
         return
     }
@@ -652,7 +680,7 @@ source [file join [Oc_Main GetOOMMFRootDir] app oxs checkpoint.tcl]
 
 ########################################################################
 
-trace variable problem w { Ow_BkgdLogger Reset ;# }
+trace add variable problem write { Ow_BkgdLogger Reset ;# }
 
 set menuwidth [Ow_GuessMenuWidth $menubar]
 set bracewidth [Ow_GetWindowTitleSize [wm title .]]
@@ -672,17 +700,17 @@ share control_interface_state
 
 set bf [frame .buttons]
 pack [button $bf.reload -text Reload -command {set problem $problem} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 pack [button $bf.reset -text Reset -command {set status Initializing...} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 pack [button $bf.run -text Run -command {set status Run} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 pack [button $bf.relax -text Relax -command {set status Relax} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 pack [button $bf.step -text Step -command {set status Step} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 pack [button $bf.pause -text Pause -command {set status Pause} \
-	-state $control_interface_state] -fill x -side left
+        -state $control_interface_state] -fill x -side left
 
 pack $bf -side top -fill x
 
@@ -705,31 +733,31 @@ if {![info exists number_of_stages]} {
     set number_of_stages 100 ;# Dummy init value
 }
 Ow_EntryScale New stageES $mf.stage \
-	-label "  Stage:" \
-	-variable stagerequest \
-	-valuewidth 4 \
-	-valuetype posint \
-	-rangemax [expr {$number_of_stages-1}] \
-	-scalestep 1 \
-	-outer_frame_options "-bd 0 -relief flat" \
-	-state $control_interface_state
+        -label "  Stage:" \
+        -variable stagerequest \
+        -valuewidth 4 \
+        -valuetype posint \
+        -rangemax [expr {$number_of_stages-1}] \
+        -scalestep 1 \
+        -outer_frame_options "-bd 0 -relief flat" \
+        -state $control_interface_state
 pack [$stageES Cget -winpath] -side top -fill x
 
 pack $mf -side top -fill x
 
-trace variable number_of_stages w [format {
+trace add variable number_of_stages write [format {
     %s Configure -rangemax [uplevel #0 expr {$number_of_stages-1}]
     ;# } $stageES]
 
-trace variable control_interface_state w [format {
+trace add variable control_interface_state write [format {
     foreach _ [winfo children .buttons] {
-	if {[string match Reload [$_ cget -text]] \
-		&& [info exists problem] \
-		&& ![string match {} $problem]} {
-	    $_ configure -state normal
-	} else {
-	    $_ configure -state [uplevel #0 set control_interface_state];
-	}
+        if {[string match Reload [$_ cget -text]] \
+                && [info exists problem] \
+                && ![string match {} $problem]} {
+            $_ configure -state normal
+        } else {
+            $_ configure -state [uplevel #0 set control_interface_state];
+        }
     }
     %s Configure -state [uplevel #0 set control_interface_state] ;# } $stageES]
 
@@ -750,21 +778,21 @@ Ow_ListBox New oplb $opframe.lb -height 4 -variable oplbsel
 lappend output_owbox_list $oplb
 pack [$oplb Cget -winpath] -side top -fill both -expand 1
 share opAssocList
-trace variable opAssocList w { uplevel #0 {
+trace add variable opAssocList write { uplevel #0 {
     catch {unset opArray}
     array set opArray $opAssocList
     set opList [lsort [array names opArray]]
     UpdateSchedule } ;# }
-trace variable opList w {
+trace add variable opList write {
     $oplb Remove 0 end
     eval [list $oplb Insert 0] $opList ;# }
-trace variable oplbsel w {uplevel #0 {
-    trace vdelete destList w {SetDestinationList; UpdateSchedule ;#}
+trace add variable oplbsel write {uplevel #0 {
+    trace remove variable destList write {SetDestinationList; UpdateSchedule ;#}
     if {[llength $oplbsel]} {
-	upvar 0 $opArray([lindex $oplbsel 0])List destList
-	SetDestinationList
+        upvar 0 $opArray([lindex $oplbsel 0])List destList
+        SetDestinationList
     }
-    trace variable destList w {SetDestinationList; UpdateSchedule ;#}
+    trace add variable destList write {SetDestinationList; UpdateSchedule ;#}
 } ;# }
 pack $opframe -side left -fill both -expand 1
 
@@ -789,7 +817,7 @@ proc SetDestinationList {} {
     $dlb Remove 0 end
     eval [list $dlb Insert 0] $destList
 }
-trace variable destList w {SetDestinationList; UpdateSchedule ;#}
+trace add variable destList write {SetDestinationList; UpdateSchedule ;#}
 pack $dframe -side left -fill both -expand 1
 
 set sframe [frame $oframe.schedule]
@@ -797,13 +825,13 @@ grid [label $sframe.l -text Schedule -relief groove] - -sticky new
 grid columnconfigure $sframe 0 -pad 15
 grid columnconfigure $sframe 1 -weight 1
 grid [button $sframe.send -command \
-	{remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0] 1} \
-	-text Send] - -sticky new
+  {remote Oxs_Output Send [lindex $oplbsel 0] [lindex $dlbsel 0] Interactive} \
+  -text Send] - -sticky new
 lappend output_tkbox_list $sframe.send
 
 #
 # FOR NOW JUST HACK IN THE EVENTS WE SUPPORT
-#	eventually this may be driver-dependent
+#       eventually this may be driver-dependent
 set events [list Step Stage Done]
 set schedwidgets [list $sframe.send]
 foreach event $events {
@@ -854,10 +882,10 @@ proc ToggleOutputState {} {
    }
    UpdateSchedule
 }
-trace variable output_interface_state w "ToggleOutputState ;#"
+trace add variable output_interface_state write "ToggleOutputState ;#"
 
-trace variable oplbsel w "UpdateSchedule ;#"
-trace variable dlbsel w "UpdateSchedule ;#"
+trace add variable oplbsel write "UpdateSchedule ;#"
+trace add variable dlbsel write "UpdateSchedule ;#"
 Oc_EventHandler Bindtags UpdateSchedule UpdateSchedule
 proc UpdateSchedule {} {
     global oplbsel dlbsel schedwidgets opArray
@@ -866,17 +894,17 @@ proc UpdateSchedule {} {
     set ds [lindex $dlbsel 0]
     set state disabled
     if {[info exists opArray($os)]} {
-	upvar #0 $opArray($os)List destList
-	if {[lsearch -exact $destList $ds] >= 0} {
-	    set state normal
-	}
+        upvar #0 $opArray($os)List destList
+        if {[lsearch -exact $destList $ds] >= 0} {
+            set state normal
+        }
     }
     foreach _ $schedwidgets {
-	if {[string match *EntryBox* $_]} {
-	    $_ Configure -state $state
-	} else {
-	    $_ configure -state $state
-	}
+        if {[string match *EntryBox* $_]} {
+            $_ Configure -state $state
+        } else {
+            $_ configure -state $state
+        }
     }
     Ow_PropagateGeometry .
     if {[string compare normal $state]} {return}
@@ -889,47 +917,47 @@ proc UpdateSchedule {} {
     global Schedule---frequencyA
 
     if {![info exists Schedule-$os-$ds-active]} {
-	share Schedule-$os-$ds-active
-	trace variable Schedule-$os-$ds-active w [subst { uplevel #0 {
-	    catch {[list unset Schedule-$os-$ds-activeA]}
-	    [list array set Schedule-$os-$ds-activeA] \[[list set \
-	    Schedule-$os-$ds-active]] } ;# }]
+        share Schedule-$os-$ds-active
+        trace add variable Schedule-$os-$ds-active write [subst { uplevel #0 {
+            catch {[list unset Schedule-$os-$ds-activeA]}
+            [list array set Schedule-$os-$ds-activeA] \[[list set \
+            Schedule-$os-$ds-active]] } ;# }]
     }
 
     if {![info exists Schedule-$os-$ds-frequency]} {
-	share Schedule-$os-$ds-frequency
+        share Schedule-$os-$ds-frequency
     } else {
-	array set Schedule---frequencyA [set Schedule-$os-$ds-frequency]
+        array set Schedule---frequencyA [set Schedule-$os-$ds-frequency]
     }
 
     # Reconfigure Schedule widgets
     foreach _ $schedwidgets {
-	if {[regexp {.+[.]a([^.]+)$} $_ -> e]} {
-	    $_ configure -variable Schedule-$os-$ds-activeA($e)
-	}
+        if {[regexp {.+[.]a([^.]+)$} $_ -> e]} {
+            $_ configure -variable Schedule-$os-$ds-activeA($e)
+        }
     }
 
     # When entry boxes commit - write change to shared variable.
-    trace variable Schedule---frequencyA w [subst { uplevel #0 {
-	    [list set Schedule-$os-$ds-frequency] \
-	    \[[list array get Schedule---frequencyA]]} ;# }]
+    trace add variable Schedule---frequencyA write [subst { uplevel #0 {
+            [list set Schedule-$os-$ds-frequency] \
+            \[[list array get Schedule---frequencyA]]} ;# }]
 
     Oc_EventHandler New _ UpdateSchedule Reset \
-	    [subst {trace vdelete Schedule---frequencyA w { uplevel #0 {
-	    [list set Schedule-$os-$ds-frequency] \
-	    \[[list array get Schedule---frequencyA]]} ;# }}] \
-	    -oneshot 1
+            [subst {trace remove variable Schedule---frequencyA write { uplevel #0 {
+            [list set Schedule-$os-$ds-frequency] \
+            \[[list array get Schedule---frequencyA]]} ;# }}] \
+            -oneshot 1
 
     # When shared variable changes - write change to entry box
-    trace variable Schedule-$os-$ds-frequency w [subst { uplevel #0 {
-	    [list array set Schedule---frequencyA] \[[list set \
-	    Schedule-$os-$ds-frequency]] } ;# }]
+    trace add variable Schedule-$os-$ds-frequency write [subst { uplevel #0 {
+            [list array set Schedule---frequencyA] \[[list set \
+            Schedule-$os-$ds-frequency]] } ;# }]
 
     Oc_EventHandler New _ UpdateSchedule Reset [subst \
-	    {[list trace vdelete Schedule-$os-$ds-frequency w] { uplevel #0 {
-	    [list array set Schedule---frequencyA] \[[list set \
-	    Schedule-$os-$ds-frequency]] } ;# }}] \
-	    -oneshot 1
+            {[list trace remove variable Schedule-$os-$ds-frequency write] { uplevel #0 {
+            [list array set Schedule---frequencyA] \[[list set \
+            Schedule-$os-$ds-frequency]] } ;# }}] \
+            -oneshot 1
 }
 UpdateSchedule
 proc ClearSchedule {} {
@@ -938,12 +966,12 @@ proc ClearSchedule {} {
 
     # Loop over all the outputs and destinations
     foreach o $opList {
-	upvar #0 $opArray($o)List destList
-	foreach d $destList {
-	    remote Oxs_Schedule Set $o $d Active Stage 0
-	    remote Oxs_Schedule Set $o $d Active Step 0
-	    remote Oxs_Schedule Set $o $d Active Done 0
-	}
+        upvar #0 $opArray($o)List destList
+        foreach d $destList {
+            remote Oxs_Schedule Set $o $d Active Stage 0
+            remote Oxs_Schedule Set $o $d Active Step 0
+            remote Oxs_Schedule Set $o $d Active Done 0
+        }
     }
 }
 
@@ -951,7 +979,7 @@ proc ClearSchedule {} {
 proc DeleteVerify {} {
    set response [Ow_Dialog 1 "Exit [Oc_Main GetInstanceName]?" \
                     warning "Are you *sure* you want to exit \
-			[Oc_Main GetInstanceName]?" {} 1 Exit Cancel]
+                        [Oc_Main GetInstanceName]?" {} 1 Exit Cancel]
    if {$response == 0} {
       after 10 exit
    }
@@ -982,7 +1010,7 @@ if {[Oc_Main HasTk]} {
 }
 
 # Set up to write log messages to oommf/oxsii.errors (or alternative).
-Oc_FileLogger StderrEcho 0  ;# Don't echo log messages to stderr
+Oc_FileLogger StderrEcho [expr {!$quiet}] ;# Echo log messages to stderr?
 Oc_FileLogger SetFile $logfile
 Oc_Log SetLogHandler [list Oc_FileLogger Log] panic Oc_Log
 Oc_Log SetLogHandler [list Oc_FileLogger Log] error Oc_Log
@@ -1002,7 +1030,7 @@ if {$loglevel>1} {
    Oc_Log SetLogHandler [list Oc_FileLogger Log] status
 }
 
-if {[catch {Oc_AddCLogFile $logfile} errmsg]} { ;# For C++-level logging
+if {[catch {Oc_ReportAddLogFile $logfile} errmsg]} { ;# For C++-level logging
    Oc_Log Log $errmsg panic
    exit
 }
@@ -1012,29 +1040,29 @@ if {[catch {Oc_AddCLogFile $logfile} errmsg]} { ;# For C++-level logging
 # and the set of Tcl commands provided by OXS
 ##########################################################################
 # OXS provides the following classes:
-#	Oxs_Mif
+#       Oxs_Mif
 # and the following operations:
-#	Oxs_ProbInit $file $params	: Calls Oxs_ProbRelease.  Reads
-#					: $file into an Oxs_Mif object
+#       Oxs_ProbInit $file $params      : Calls Oxs_ProbRelease.  Reads
+#                                       : $file into an Oxs_Mif object
 #                                       : with $params parameter list.
-#					: Creates Ext and Output objects
-#					: Resets objects (driver)
-#	Oxs_ProbReset			: Resets objects (driver)
+#                                       : Creates Ext and Output objects
+#                                       : Resets objects (driver)
+#       Oxs_ProbReset                   : Resets objects (driver)
 #       Oxs_SetRestartFlag $flag        : Determines whether the next
 #                                       : call to Oxs_ProbInit generates
 #                                       : a fresh run, or if instead a
 #                                       : checkpoint file is used to
 #                                       : restart a previously suspended
 #                                       : run.
-#	Oxs_Run				: driver takes steps, may generate
-#					: Step, Stage, Done events
-#	Oxs_ProbRelease			: Destroys Ext and Output objects
-#	Oxs_ListRegisteredExtClasses	: returns names
-#	Oxs_ListExtObjects		: returns names
-#	Oxs_ListEnergyObjects		: returns names
-#	Oxs_ListOutputObjects		: returns output tokens
-#	Oxs_OutputGet $outputToken $args : return or write output value
-#	Oxs_OutputNames $outputToken	: returns name/type/units of output
+#       Oxs_Run                         : driver takes steps, may generate
+#                                       : Step, Stage, Done events
+#       Oxs_ProbRelease                 : Destroys Ext and Output objects
+#       Oxs_ListRegisteredExtClasses    : returns names
+#       Oxs_ListExtObjects              : returns names
+#       Oxs_ListEnergyObjects           : returns names
+#       Oxs_ListOutputObjects           : returns output tokens
+#       Oxs_OutputGet $outputToken $args : return or write output value
+#       Oxs_OutputNames $outputToken    : returns name/type/units of output
 #
 # Some of these commands only make sense when the solver is in a
 # particular state.  For example, [Oxs_Run] can only succeed if a
@@ -1044,7 +1072,7 @@ if {[catch {Oc_AddCLogFile $logfile} errmsg]} { ;# For C++-level logging
 
 # Any changes to status get channeled through [ChangeStatus]
 set status UNINITIALIZED
-trace variable status w [list ChangeStatus $status]
+trace add variable status write [list ChangeStatus $status]
 proc ChangeStatus {old args} {
     global status problem
     global control_interface_state
@@ -1058,48 +1086,48 @@ proc ChangeStatus {old args} {
           return
        }
     }
-    trace vdelete status w [list ChangeStatus $old]
-    trace variable status w [list ChangeStatus $status]
+    trace remove variable status write [list ChangeStatus $old]
+    trace add variable status write [list ChangeStatus $status]
     Oc_EventHandler DeleteGroup ChangeStatus
     switch -exact -- $status {
-	"" {
-	    # The initial state -- no problem loaded.
-	    # Also the state after any problem load fails, or
-	    # a problem is released.
-	    set control_interface_state disabled
-	    set output_interface_state disabled
-	}
-	Loading... {
-	    set control_interface_state disabled
-	    set output_interface_state disabled
-	    # Let interface get updated with above changes, then
-	    # call ProblemLoad
-	    after idle LoadProblem problem
-	}
+        "" {
+            # The initial state -- no problem loaded.
+            # Also the state after any problem load fails, or
+            # a problem is released.
+            set control_interface_state disabled
+            set output_interface_state disabled
+        }
+        Loading... {
+            set control_interface_state disabled
+            set output_interface_state disabled
+            # Let interface get updated with above changes, then
+            # call ProblemLoad
+            after idle LoadProblem problem
+        }
         Initializing... {
-	    set control_interface_state disabled
-	    set output_interface_state disabled
-	    after idle Reset
-	}
-	Pause {
-	    # A problem is loaded, but not running.
-	    set control_interface_state normal
-	    set output_interface_state normal
-	}
-	Run {
-	    after idle Loop Run
-	}
-	Relax {
-	    Oc_EventHandler New _ Oxs Stage [list set status Pause] \
-		    -oneshot 1 -groups [list ChangeStatus]
-	    after idle Loop Relax
-	}
+            set control_interface_state disabled
+            set output_interface_state disabled
+            after idle Reset
+        }
+        Pause {
+            # A problem is loaded, but not running.
+            set control_interface_state normal
+            set output_interface_state normal
+        }
+        Run {
+            after idle Loop Run
+        }
+        Relax {
+            Oc_EventHandler New _ Oxs Stage [list set status Pause] \
+                    -oneshot 1 -groups [list ChangeStatus]
+            after idle Loop Relax
+        }
         Step {
             Oc_EventHandler New _ Oxs Step [list set status Pause] \
                     -oneshot 1 -groups [list ChangeStatus]
             after idle Loop Step
         }
-	Done {
+        Done {
            global problem exitondone
            if {[info exists problem]} {
               Oc_Log Log "Done \"[file tail $problem]\"" infolog
@@ -1111,8 +1139,8 @@ proc ChangeStatus {old args} {
            } else {
               # do nothing ?
            }
-	}
-	default {error "Status: $status not yet implemented"}
+        }
+        default {error "Status: $status not yet implemented"}
     }
 }
 # Initialize status to "" -- no problem loaded.
@@ -1124,18 +1152,25 @@ Oc_EventHandler New _ Oc_Main Shutdown Oxs_FlushLog
 Oc_EventHandler New _ Oc_Main Shutdown Oxs_FlushData
 
 proc ReleaseProblem { {errcode 0} } {
-    # We're about to release any loaded problem.  Spread the word.
-    Oc_EventHandler Generate Oxs Release
+   # We're about to release any loaded problem.  Spread the word.
+   set mif [Oxs_GetMif]
+   if {[llength [info commands $mif]] == 1} {
+      # If error occurs during problem load, then mif object
+      # might not be set.
+      catch [$mif Cleanup]
+   }
+
+   Oc_EventHandler Generate Oxs Release
     if {[catch {
-	Oxs_ProbRelease $errcode
+        Oxs_ProbRelease $errcode
     } msg]} {
-	# This is really bad.  Kill the solver.
-	#
-	# ...but first flush any pending log messages to the
-	# error log file.
-	Oxs_FlushLog
-	Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
-	exit
+        # This is really bad.  Kill the solver.
+        #
+        # ...but first flush any pending log messages to the
+        # error log file.
+        Oxs_FlushLog
+        Oc_Log Log "Oxs_ProbRelease FAILED:\n\t$msg" panic
+        exit
     }
     global problem status
     if {[info exists problem]} {
@@ -1247,6 +1282,7 @@ proc LoadProblem {fname} {
       after idle [subst {[list set errorInfo $errorInfo]; \
                             [list set errorCode $errorCode]; [list \
            Oc_Log Log "Error loading $f:\n\t$msg" error LoadProblem]}]
+      puts stderr "*** Error loading $f:\n\t$msg"
       set status ""
       cd $origdir  ;# Make certain cwd is same as on entry
       set workdir $origdir
@@ -1281,11 +1317,11 @@ proc SetupInitialSchedule {script} {
     upvar #0 a acct
     if {![$acct Ready]} {
         Oc_EventHandler New _ $acct Ready [info level 0] -oneshot 1
-	return
+        return
     }
     set mif [Oxs_GetMif]
     Oc_EventHandler New _ $mif ScheduleReady $script -oneshot 1 \
-	    -groups [list $mif]
+            -groups [list $mif]
     $mif SetupSchedule $acct
 }
 
@@ -1295,21 +1331,21 @@ proc Reset {} {
     set status Pause
     Oc_EventHandler Generate Oxs Cleanup
     if {[catch {
-	Oxs_ProbReset
+        Oxs_ProbReset
     } msg]} {
-	global errorInfo errorCode
-	after idle [subst {[list set errorInfo $errorInfo]; \
-		[list set errorCode $errorCode]; [list \
-		Oc_Log Log "Reset error:\n\t$msg" error Reset]}]
-	ReleaseProblem 1
+        global errorInfo errorCode
+        after idle [subst {[list set errorInfo $errorInfo]; \
+                [list set errorCode $errorCode]; [list \
+                Oc_Log Log "Reset error:\n\t$msg" error Reset]}]
+        ReleaseProblem 1
     } else {
         foreach {step stage number_of_stages} [Oxs_GetRunStateCounts] break
         set stagerequest $stage
-	# Should the schedule be reset too?
-	# No, we decided that a Reset during interactive operations should
-	# keep whatever schedule has been set up interactively.  For batch
-	# use, resets will be rare, and if it turns out that in that case
-	# we should reset the schedule, we'll add it when that becomes clear.
+        # Should the schedule be reset too?
+        # No, we decided that a Reset during interactive operations should
+        # keep whatever schedule has been set up interactively.  For batch
+        # use, resets will be rare, and if it turns out that in that case
+        # we should reset the schedule, we'll add it when that becomes clear.
     }
 }
 
@@ -1349,11 +1385,11 @@ proc Loop {type} {
     global status
     if {![string match $type $status]} {return}
     if {[catch {Oxs_Run} msg]} {
-	global errorInfo errorCode
-	after idle [subst {[list set errorInfo $errorInfo]; \
-		[list set errorCode $errorCode]; \
-		[list Oc_Log Log $msg error Loop]}]
-	ReleaseProblem 1
+        global errorInfo errorCode
+        after idle [subst {[list set errorInfo $errorInfo]; \
+                [list set errorCode $errorCode]; \
+                [list Oc_Log Log $msg error Loop]}]
+        ReleaseProblem 1
     } else {
        # Fire event handlers
        GenerateRunEvents $msg
@@ -1363,7 +1399,7 @@ proc Loop {type} {
 
 # When the Load... menu item chooses a problem,
 # $problem is the file to load.
-trace variable problem w {uplevel #0 set status Loading... ;#}
+trace add variable problem write {uplevel #0 set status Loading... ;#}
 
 # Update Stage and Step counts for Oxs_Schedule
 proc ChangeStageRequestTraceCmd { args } {
@@ -1396,9 +1432,9 @@ Oc_EventHandler New _ Oxs Release [list Oc_EventHandler Generate Oxs Cleanup]
 # Our server offers GeneralInterface protocol services -- start it
 ##########################################################################
 Net_Server New server -alias [Oc_Main GetAppName] \
-	-protocol [Net_GeneralInterfaceProtocol $gui {
-		Oxs_Output Oxs_Schedule
-	}]
+        -protocol [Net_GeneralInterfaceProtocol $gui {
+                Oxs_Output Oxs_Schedule
+        }]
 $server Start 0
 Oc_EventHandler New register_failure $server RegisterFail \
     [list error "Failure to register with account server"]] \
@@ -1421,8 +1457,8 @@ Oc_EventHandler New _ $server RegisterSuccess \
 
 ##########################################################################
 # Track the servers known to the account server
-#	code mostly cribbed from mmLaunch.
-#	Good candidate for library code?
+#       code mostly cribbed from mmLaunch.
+#       Good candidate for library code?
 ##########################################################################
 # Get server info from account server:
 proc Initialize {acct} {
@@ -1467,7 +1503,7 @@ proc GetServicesReply { acct } {
     # quartet of the form: advertisedname sid port protocolname.
     if {![lindex $services 0]} {
         foreach quartet [lrange $services 1 end] {
-	    NewService $acct $quartet
+            NewService $acct $quartet
         }
     }
 }

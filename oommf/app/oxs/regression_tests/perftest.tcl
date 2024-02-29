@@ -540,7 +540,7 @@ proc CollectSystemInfo {} {
        }
    }
 }
-   
+
 proc WriteJobHeader {} {
    global system_info
    if {![info exists system_info(date)]} {

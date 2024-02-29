@@ -9,7 +9,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ps
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 
@@ -32,7 +32,7 @@ set configFiles [list [file join [file dirname \
         [Oc_DirectPathname [info script]]] avf2ps.config]]
 Oc_CommandLine Option config {file} {
         global configFiles; lappend configFiles $file
-} "Append file to list of configuration files"
+} {Append file to list of configuration files} multi
 
 set inputPattern [list]
 Oc_CommandLine Option ipat {
@@ -163,7 +163,7 @@ if {$verbosity >= 2} {
  Margin: $plot_config(misc,margin)
  Dimensions: $plot_config(misc,width) x $plot_config(misc,height)
  Zoom: $plot_config(misc,zoom)
- Crop: $plot_config(misc,crop)
+ CropToMargin: $plot_config(misc,croptomargin)
  CropToView: $print_config(croptoview)
  Rotation: $plot_config(misc,rotation)
  Datascale: $plot_config(misc,datascale)$centerstr"
@@ -285,24 +285,24 @@ foreach in [concat $inGlob $infile] {
         # that contains spaces, which will confuse [open] unless it is
         # structured in proper Tcl list syntax.
         set endChan $outChan
-        
+
 	if {[string compare windows $tcl_platform(platform)]!=0} {
             # On non-windows platforms, we expect the command line to be
             # quoted so that the value of $filter can be passed to [open]
             # as is.
-            
+
             set cmdLine [concat 2>@stderr $filter [list >@ $endChan]]
-            
-        } else { 
+
+        } else {
             # On Windows, the facilities of quoting on the command line
             # are primitive, the use of backslashes in paths is a mismatch
             # to Tcl syntax, and spaces in paths are far more common.  We
             # attempt some probing and processing to try to work around these
             # limitations. It is unlikely this is 100% foolproof.
-            
+
             foreach cmd [split $filter |] {
                 set parts [split [string trim $cmd] { }]
-                set numParts [llength $parts] 
+                set numParts [llength $parts]
                 for {set pgmEnd 0} {$pgmEnd < $numParts} {incr pgmEnd} {
                     set program [join [lrange $parts 0 $pgmEnd] { }]
                     set toExec [auto_execok $program]

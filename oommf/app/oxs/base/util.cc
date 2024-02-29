@@ -62,13 +62,7 @@ void Oxs_TclInterpState::Discard()
     OXS_THROW(Oxs_BadResourceDealloc,
 	      "Oxs_TclInterpState::Discard(): No state to discard");
   }
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
   Tcl_DiscardInterpState(state);
-#else
-  Tcl_DiscardResult(&result);
-  error_info_set = 0; error_info.erase();
-  error_code_set = 0; error_code.erase();
-#endif
   interp=NULL;
 }
 
@@ -78,27 +72,7 @@ void Oxs_TclInterpState::Restore()
     OXS_THROW(Oxs_BadResourceDealloc,
 	      "Oxs_TclInterpState::Restore(): No state to restore");
   }
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
   Tcl_RestoreInterpState(interp, state);
-#else
-  Tcl_RestoreResult(interp,&result);
-  if(error_info_set) {
-    const char *p = Tcl_GetStringResult(interp);
-
-    if (error_info.find(p, 0) == 0) {
-      String tail = error_info.substr(strlen(p));
-
-      Tcl_AddErrorInfo(interp, OC_CONST84_CHAR( tail.c_str() ));
-    } else {
-      Tcl_AddErrorInfo(interp, OC_CONST84_CHAR(error_info.c_str()));
-    }
-  }
-  if(error_code_set) {
-    Tcl_SetErrorCode(interp, OC_CONST84_CHAR(error_code.c_str()), NULL);
-  }
-  error_info_set = 0; error_info.erase();
-  error_code_set = 0; error_code.erase();
-#endif
   interp=NULL;
 }
 
@@ -111,29 +85,7 @@ void Oxs_TclInterpState::Save(Tcl_Interp* import_interp)
 {
   if(interp!=NULL) Discard();
   interp = import_interp;
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
   state = Tcl_SaveInterpState(interp, TCL_OK);
-#else
-  Tcl_SaveResult(interp,&result);
-  const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                              TCL_GLOBAL_ONLY);
-  if(ei!=NULL) {
-    error_info_set = 1;
-    error_info = String(ei);
-  } else { // Safety
-    error_info_set = 0;
-    error_info.erase();
-  }
-  const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                              TCL_GLOBAL_ONLY);
-  if(ec!=NULL) {
-    error_code_set = 1;
-    error_code = String(ec);
-  } else { // Safety
-    error_code_set = 0;
-    error_code.erase();
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////

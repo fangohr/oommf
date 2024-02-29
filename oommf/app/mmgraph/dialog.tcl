@@ -110,6 +110,7 @@ Oc_Class PlotConfigure {
            curve_width 0
            symbol_freq 0
            symbol_size 10
+           symbols_only 0
            ptbufsize  0
         }
         set gpsc [$this GlobalName psc]
@@ -132,7 +133,7 @@ Oc_Class PlotConfigure {
                     }
                 }
             }
-            trace variable userinit w "$this ExternalUpdate $import_arrname"
+            trace add variable userinit write "$this ExternalUpdate $import_arrname"
         }
 
 	# Title
@@ -405,7 +406,18 @@ Oc_Class PlotConfigure {
 
 	grid $cf -columnspan 6 -row $rowcnt
 
-        
+        # Plot item display selection
+        global config_dialog_pib2
+        set config_dialog_pib2 [expr {$psc(symbol_freq) ? 1 : 0}]
+        label $cf.pilab -text "Display:"
+        checkbutton $cf.pib1 -text "curves" \
+           -variable ${gpsc}(symbols_only) -onvalue 0 -offvalue 1
+        checkbutton $cf.pib2 -variable config_dialog_pib2 \
+           -text "symbols" -onvalue 1 -offvalue 0 \
+           -command "set ${gpsc}(symbol_freq) \$config_dialog_pib2"
+        grid configure $cf.pilab -row 2 -sticky e
+        grid configure x $cf.pib1 $cf.pib2 -row 2 -sticky w
+
 	# Spacer
 	set rowcnt [lindex [grid size $rf] 1]
 	grid rowconfigure $rf $rowcnt -minsize 10
@@ -420,12 +432,17 @@ Oc_Class PlotConfigure {
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(curve_width) \
                 -valuetype posint -valuejustify right
+        proc UpdateConfigDialogPib2 { widget action _ value } {
+           global config_dialog_pib2
+           set config_dialog_pib2 [expr {$value==0 ? 0 : 1}]
+        }
         Ow_EntryBox New sf $mf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {Symbol Freq:} -valuewidth 5 \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(symbol_freq) \
-                -valuetype posint -valuejustify right
+                -valuetype posint -valuejustify right \
+                -callback UpdateConfigDialogPib2
         Ow_EntryBox New ss $mf \
                 -outer_frame_options "-bd 0 -relief flat" \
                 -label {Symbol Size:} -valuewidth 5 \
@@ -547,7 +564,7 @@ Oc_Class PlotConfigure {
         if {[catch {
             if {![string match {} $import_arrname]} {
                 upvar #0 $import_arrname userinit
-                trace vdelete userinit w "$this ExternalUpdate $import_arrname"
+                trace remove variable userinit write "$this ExternalUpdate $import_arrname"
             }
         } errmsg]} {
             Oc_Log Log $errmsg error

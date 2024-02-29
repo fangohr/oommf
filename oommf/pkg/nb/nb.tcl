@@ -13,7 +13,7 @@
 #
 # NOTE: version number below must match that in ./nb.h
 
-package require -exact Nb 2.0b0
+package require -exact Nb 2.1a0
 
 Oc_CheckTclIndex Nb
 

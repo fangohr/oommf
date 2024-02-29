@@ -395,7 +395,7 @@ OC_INDEX Oxs_ImageAtlas::GetRegionId(const ThreeVector& point) const
   case zx: mapx = point.z; mapy = point.x; break;
   case yz: mapx = point.y; mapy = point.z; break;
   }
-  
+
   OC_REAL8m tempc = floor((mapx-column_offset)*column_scale);
   OC_INDEX column_index = 0;
   if(tempc>=image_width) column_index = image_width-1;

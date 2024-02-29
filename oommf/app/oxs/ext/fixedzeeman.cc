@@ -39,7 +39,7 @@ OC_BOOL Oxs_FixedZeeman::Init()
   mesh_id = 0;
   energy_density_error_estimate = -1.0;
   fixedfield.Release();
-  return Oxs_Energy::Init();
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void Oxs_FixedZeeman::ComputeEnergyChunkInitialize

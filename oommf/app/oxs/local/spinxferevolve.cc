@@ -37,6 +37,25 @@ Oxs_SpinXferEvolve::Oxs_SpinXferEvolve(
     energy_state_id(0),next_timestep(0.),
     rkstep_ptr(NULL)
 {
+  // The inputs to Oxs_SpinXferEvolve differ radically from
+  // Anv_SpinTEvolve. Convert Anv_SpinTEvolve u and beta to
+  // Oxs_SpinXferEvolve input like so:
+  //
+  //    set polarization 0.4
+  //    set Lambda 1
+  //    set current_density [expr {-43140*$Ms*u}]
+  //    set eps_prime [expr {$beta/5.}]
+  //    Specify Oxs_SpinXferEvolve:evolver [subst {
+  //       alpha $alpha
+  //       J $current_density
+  //       P $Polarization
+  //       Lambda $Lambda
+  //       eps_prime $eps_prime
+  //       propagate_mp 1
+  //       J_direction +x
+  //    }]
+  //
+
   // Process arguments
   if(HasInitValue("P")) {
     OXS_GET_INIT_EXT_OBJECT("P",Oxs_ScalarField,P_fixed_init);
@@ -99,13 +118,20 @@ Oxs_SpinXferEvolve::Oxs_SpinXferEvolve(
     eps_prime_init.SetAsOwner(dynamic_cast<Oxs_ScalarField*>(foo));
   }
 
+  // Use m to modify mp in-flight?  Propagation direction is computed
+  // using direction directly opposite J_direction (i.e., in the nominal
+  // electron flow direction), without considering J or J_profile.
+  mp_propagate = GetIntInitValue("propagate_mp",0);
+
   // Direction of current flow.  This is *opposite* the direction of
   // electron flow. NB: If propagate_mp is false, then J_direction only
   // affects the size of thickness t, and thereby the magnitude of beta.
   // Moreover, in that context J_direction "+x" and "-x" (likewise +-y,
   // +-z) behave exactly the same.
   J_direction = JD_INVALID;
-  String J_direction_str = GetStringInitValue("J_direction","-z");
+  String default_Jdir = "-z";
+  if(mp_propagate) default_Jdir = "+x";
+  String J_direction_str = GetStringInitValue("J_direction",default_Jdir);
   Oxs_ToLower(J_direction_str);
   if(J_direction_str.compare("+x")==0) {
     J_direction = JD_X_POS;
@@ -149,13 +175,16 @@ Oxs_SpinXferEvolve::Oxs_SpinXferEvolve(
                                                  cmdoptreq));
   }
 
-  // Use m to modify mp in-flight?  Propagation direction is computed
-  // using direction directly opposite J_direction (i.e., in the nominal
-  // electron flow direction), without considering J or J_profile.
-  mp_propagate = GetIntInitValue("propagate_mp",0);
-
-  // "mp" is required input, but is actually used iff mp_propagate is 0.
-  OXS_GET_INIT_EXT_OBJECT("mp",Oxs_VectorField,mp_init);
+  // "mp" is accepted and required iff mp_propagate is 0.
+  if(mp_propagate) {
+    // Initial mp value doesn't matter if mp_propagate is true,
+    // so fill mp_init with a dummy "1 0 0" vector field.
+    Oxs_Ext* dummy = MakeNew("Oxs_UniformVectorField",director,
+                             "vector {1 0 0}");
+    mp_init.SetAsOwner(dynamic_cast<Oxs_VectorField*>(dummy));
+  } else {
+    OXS_GET_INIT_EXT_OBJECT("mp",Oxs_VectorField,mp_init);
+  }
 
   // NOTE: Currently only coded up for J_direction = JD_X_*.
 
@@ -292,21 +321,22 @@ Oxs_SpinXferEvolve::Oxs_SpinXferEvolve(
   VerifyAllInitArgsUsed();
 
   // Setup outputs
-  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",
      &Oxs_SpinXferEvolve::UpdateDerivedOutputs);
-  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",
      &Oxs_SpinXferEvolve::UpdateDerivedOutputs);
-  delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+  delta_E_output.Setup(this,InstanceName(),"Delta E","J",
      &Oxs_SpinXferEvolve::UpdateDerivedOutputs);
-  ave_J_output.Setup(this,InstanceName(),"average J","A/m^2",0,
+  ave_J_output.Setup(this,InstanceName(),"average J","A/m^2",
      &Oxs_SpinXferEvolve::UpdateSpinTorqueOutputs);
-  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+
+  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",
      &Oxs_SpinXferEvolve::UpdateDerivedOutputs);
-  mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+  mxH_output.Setup(this,InstanceName(),"mxH","A/m",
      &Oxs_SpinXferEvolve::UpdateDerivedOutputs);
-  spin_torque_output.Setup(this,InstanceName(),"Spin torque","rad/s",0,
+  spin_torque_output.Setup(this,InstanceName(),"Spin torque","rad/s",
      &Oxs_SpinXferEvolve::UpdateSpinTorqueOutputs);
-  Jmp_output.Setup(this,InstanceName(),"J*mp","A/m^2",0,
+  Jmp_output.Setup(this,InstanceName(),"J*mp","A/m^2",
      &Oxs_SpinXferEvolve::UpdateSpinTorqueOutputs);
 
   // Register outputs
@@ -440,7 +470,7 @@ void Oxs_SpinXferEvolve::UpdateMeshArrays(const Oxs_Mesh* mesh)
       free_factor_minus = sqrt(free_temp-1.0);
       minus_ratio = fixed_factor_minus/free_factor_minus;
     }
-    
+
     beta_eps_prime[i] *= beta;
     B[i] = fixed_factor_minus*free_factor_minus;
     A[i] = fixed_factor_plus*free_factor_plus;
@@ -469,7 +499,7 @@ void Oxs_SpinXferEvolve::UpdateMeshArrays(const Oxs_Mesh* mesh)
 
   mp_init->FillMeshValue(mesh,mp);
   for(i=0;i<size;i++) mp[i].MakeUnit(); // These are suppose
-  /// to be unit vectors!
+                                     /// to be unit vectors!
 
   alpha_init->FillMeshValue(mesh,alpha);
   gamma_init->FillMeshValue(mesh,gamma);
@@ -1146,7 +1176,7 @@ void Oxs_SpinXferEvolve::NegotiateTimeStep
   nstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
   // Additional timestep control
-  driver->FillStateSupplemental(nstate);
+  driver->FillStateSupplemental(cstate,nstate);
 
   // Check for forced step.
   // Note: The driver->FillStateSupplemental call may increase the
@@ -2318,7 +2348,7 @@ void Oxs_SpinXferEvolve::AdjustStepHeadroom(OC_INT4m step_reject)
 OC_BOOL
 Oxs_SpinXferEvolve::Step(const Oxs_TimeDriver* driver,
                       Oxs_ConstKey<Oxs_SimState> current_state_key,
-                      const Oxs_DriverStepInfo& step_info,
+                      Oxs_DriverStepInfo& step_info,
                       Oxs_Key<Oxs_SimState>& next_state_key)
 {
   const OC_REAL8m bad_energy_cut_ratio = 0.75;
@@ -2334,7 +2364,7 @@ Oxs_SpinXferEvolve::Step(const Oxs_TimeDriver* driver,
   OC_BOOL start_dm_active=0;
   if(next_timestep<=0.0 ||
      (cstate.stage_iteration_count<1
-      && step_info.current_attempt_count==0)) {
+      && step_info.GetCurrentAttemptCount()==0)) {
     if(cstate.stage_number==0
        || stage_init_step_control == SISC_START_DM) {
       start_dm_active = 1;

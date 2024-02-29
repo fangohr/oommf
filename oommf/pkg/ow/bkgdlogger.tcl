@@ -7,7 +7,7 @@
 
 # There are two "Log" procs within this class: DisplayLog and FileLog.
 # The DisplayLog is meant for use by processes (or interp threads) that
-# has a display and want a one-at-a-time interactive display of
+# have a display and want a one-at-a-time interactive display of
 # messages.  This is typically used by the interface half of background
 # processes like Oxs or mmArchive.  The alternative FileLog is used
 # by processes without a display, but want all messages logged to
@@ -85,7 +85,7 @@ Oc_Class Ow_BkgdLogger {
    # source may be used in generating a message id for a message that is
    # sent to the Log proc without an id.)
    #
-   # When a message id is disabled by the user, and entry is placed in
+   # When a message id is disabled by the user, an entry is placed in
    # the disabled_messages array.  The message id is used as the index
    # (element "name").  The value associated with the index is set to
    # "1", but at present that value is not used; rather it is the
@@ -137,7 +137,7 @@ Oc_Class Ow_BkgdLogger {
       return $id
    }
 
-   private proc BuildQueueItem { msg type src einfo ecode timestamp } {
+   private proc BuildQueueItem { msgid msg type src einfo ecode timestamp } {
       # Each entry on the message_queue is a list with the
       # following elements:
       #      message id
@@ -171,9 +171,7 @@ Oc_Class Ow_BkgdLogger {
          set source $src
       }
 
-      set id [Ow_BkgdLogger GetMsgId $msg]
-      
-      return [list $id $timestamp $msg $stack $source $type]
+      return [list $msgid $timestamp $msg $stack $source $type]
    }
 
    # Log is a wrapper around AddMessage that is suitable
@@ -181,11 +179,15 @@ Oc_Class Ow_BkgdLogger {
    # be called directly if errorInfo, errorCode, and timestamp
    # have been previously recorded.
 
-   proc AddMessage { msg type src einfo ecode timestamp } {
-      set entry [Ow_BkgdLogger BuildQueueItem $msg $type $src \
-                    $einfo $ecode $timestamp]
-      set id [lindex $entry 0]
-      if {![info exists disabled_messages($id)]} {
+   proc AddMessage { msg type src einfo ecode timestamp args } {
+      set msgid {}
+      if {[llength $args]>0} { set msgid [lindex $args 0] }
+      if {[string match {} $msgid]} {
+         set msgid [Ow_BkgdLogger GetMsgId $msg]
+      }
+      set entry [Ow_BkgdLogger BuildQueueItem $msgid $msg $type $src \
+                     $einfo $ecode $timestamp]
+      if {![info exists disabled_messages($msgid)]} {
          # Message not disabled; append to queue
          lappend message_queue $entry
          if {[string match {} $display_window]} {
@@ -194,10 +196,13 @@ Oc_Class Ow_BkgdLogger {
       }
    }
 
-   proc Log { msg type src } {
+   proc Log { msg type src args } {
       global errorInfo errorCode
       set timestamp [clock seconds]
-      Ow_BkgdLogger AddMessage $msg $type $src $errorInfo $errorCode $timestamp
+      set msgid {}
+      if {[llength $args]>0} { set msgid [lindex $args 0] }
+      Ow_BkgdLogger AddMessage $msg $type $src \
+         $errorInfo $errorCode $timestamp $msgid
    }
 
    private proc DisableMessage { msg_id } {
@@ -333,7 +338,19 @@ Oc_Class Ow_BkgdLogger {
       Ow_SetIcon $window
 
       update idletasks
-      bind $window <Configure> {+ Ow_BkgdLogger ChangeDisplaySize %W %w %h}
+      # For some reason, Tcl/Tk 8.6.12/aqua on macOS Big Sur (11.7.1)
+      # sends a Configure event with width=1, height=1 immediately
+      # following the return from this function. Best guess is that the
+      # preceding 'update idletasks' isn't sizing the window?! Putting
+      # the Configure binding on the 'after <delaytime>' stack appears
+      # to work around this problem, but there is also a fail-safe in
+      # ChangeDisplaySize.
+      after 20 [subst -nocommands {
+         if {[winfo exists $window]} {
+            bind $window <Configure> \
+               {+ Ow_BkgdLogger ChangeDisplaySize %W %w %h}
+         }
+      }]
       Ow_BkgdLogger ShowMessage
    }
 
@@ -399,9 +416,13 @@ Oc_Class Ow_BkgdLogger {
 
    callback proc ChangeDisplaySize { win newwidth newheight } {
       if {[string compare $display_window $win]==0} {
-         # Track size changes
-         set display_window_width $newwidth
-         set display_window_height $newheight
+         if {$newwidth>5 && $newheight>5} {
+            # Track size changes. The size check is a fail-safe against
+            # Configure events sent before the error message window is
+            # fully set up.
+            set display_window_width $newwidth
+            set display_window_height $newheight
+         }
          # Update message display
          Ow_BkgdLogger ShowMessage
       }

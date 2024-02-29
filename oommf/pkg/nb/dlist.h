@@ -219,7 +219,7 @@ public:
     Free(); // Release current *this storage, if any.
 
     int argc;
-    CONST84 char ** argv;
+    const char ** argv;
     if(Tcl_SplitList(NULL,Oc_AutoBuf(str),&argc,&argv)!=TCL_OK) {
       return 0; // Bad list
     }
@@ -249,14 +249,14 @@ public:
 template<class T> void Nb_List<T>::Reset(OC_INDEX _rib_xtnd_size)
 {
 #define MEMBERNAME "Reset()"
-  if(alloc_spine>0 && arr!=NULL) {
+  if(alloc_spine>0 && arr!=nullptr) {
     // Deallocate existing memory
     for(OC_INDEX i=alloc_rib_count-1;i>=0;--i) {
       delete[] arr[i];
     }
     delete[] arr;
   }
-  alloc_rib_count=0; alloc_spine=0;  arr=NULL;
+  alloc_rib_count=0; alloc_spine=0;  arr=nullptr;
 
   spine_xtnd_size=SPINE_EXTEND_SIZE;
   if(_rib_xtnd_size>0) rib_xtnd_size=_rib_xtnd_size;
@@ -271,9 +271,9 @@ template<class T> void Nb_List<T>::Reset(OC_INDEX _rib_xtnd_size)
 
 // Default constructor
 template<class T> Nb_List<T>::Nb_List(OC_INDEX _rib_xtnd_size)
-  : class_doc(NB_LIST_DOC_INFO)
+  : class_doc(NB_LIST_DOC_INFO), alloc_spine(0), arr(nullptr)
 {
-  arr=NULL;  Reset(_rib_xtnd_size);
+  Reset(_rib_xtnd_size);
   /// Note: If _rib_xtnd_size is 0, then one gets the default length,
   ///  which is RIB_EXTEND_MEMSSIZE/sizeof(T);  RIB_EXTEND_MEMSIZE is
   ///  currently OC_PAGESIZE, which is (suppose to be) system dependent,
@@ -283,9 +283,9 @@ template<class T> Nb_List<T>::Nb_List(OC_INDEX _rib_xtnd_size)
 
 // Copy constructor
 template<class T> Nb_List<T>::Nb_List(const Nb_List<T> &src)
-  : class_doc(NB_LIST_DOC_INFO)
+  : class_doc(NB_LIST_DOC_INFO), alloc_spine(0), arr(nullptr)
 {
-  arr=NULL;  Reset(src.rib_xtnd_size);  Copy(src);
+  Reset(src.rib_xtnd_size);  Copy(src);
 }
 
 template<class T> void Nb_List<T>::Copy(const Nb_List<T> &src)

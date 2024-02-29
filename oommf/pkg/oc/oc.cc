@@ -244,9 +244,9 @@ Oc_InitScript(Tcl_Interp *interp, const char *pkg, const char *version)
     int code;
 
     Tcl_DStringInit(&buf);
-    Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR("Oc_InitScript"));
-    Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR(pkg));
-    Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR(version));
+    Tcl_DStringAppendElement(&buf, "Oc_InitScript");
+    Tcl_DStringAppendElement(&buf, pkg);
+    Tcl_DStringAppendElement(&buf, version);
     code = Tcl_GlobalEval(interp, Tcl_DStringValue(&buf));
     Tcl_DStringFree(&buf);
     return code;
@@ -256,8 +256,7 @@ int
 Oc_RegisterCommand(Tcl_Interp* interp, const char* name,
                    Tcl_CmdProc* cmd)
 {
-  if(Tcl_CreateCommand(interp,OC_CONST84_CHAR(name),cmd,
-		       NULL,NULL)==NULL) {
+  if(Tcl_CreateCommand(interp,name,cmd, NULL,NULL)==NULL) {
     Tcl_ResetResult(interp);
     Tcl_AppendResult(interp, "Unable to register command ->",
                      name, "<- with Tcl interpreter", (char *) NULL);
@@ -266,13 +265,11 @@ Oc_RegisterCommand(Tcl_Interp* interp, const char* name,
   return TCL_OK;
 }
 
-#if TCL_MAJOR_VERSION >= 8  // Obj interface available
 int
 Oc_RegisterObjCommand(Tcl_Interp* interp, const char* name,
                       Tcl_ObjCmdProc* cmd)
 {
-  if(Tcl_CreateObjCommand(interp,OC_CONST84_CHAR(name),cmd,
-                          NULL,NULL)==NULL) {
+  if(Tcl_CreateObjCommand(interp,name,cmd, NULL,NULL)==NULL) {
     Tcl_ResetResult(interp);
     Tcl_AppendResult(interp, "Unable to register command ->",
                      name, "<- with Tcl interpreter", (char *) NULL);
@@ -280,7 +277,6 @@ Oc_RegisterObjCommand(Tcl_Interp* interp, const char* name,
   }
   return TCL_OK;
 }
-#endif
 
 // C++ interface to the Oc_DirectPathname Tcl command.  NB: This uses
 // the global Tcl interp, so it can only be called from the main thread.
@@ -305,8 +301,7 @@ void Oc_DirectPathname(const char *nickname,Oc_AutoBuf& fullname)
   Oc_AutoBuf cmd = merged_string; // Copy list into autobuf
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
 
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
     Oc_AutoBuf msg;
     const char* errfmt = "Error in Oc_DirectPathname:\n"
@@ -315,13 +310,13 @@ void Oc_DirectPathname(const char *nickname,Oc_AutoBuf& fullname)
                   +strlen(Tcl_GetStringResult(interp)));
     Oc_Snprintf(msg.GetStr(),msg.GetLength(),
                 errfmt,cmd.GetStr(),Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(msg); // Don't throw msg.GetStr(), because msg gets
     /// deleted out-of-scope and the pointer to its character string
     /// becomes invalid.
   }
   fullname.Dup(Tcl_GetStringResult(interp));
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
 }
 
 // C++ interface to 'file' Tcl command.
@@ -349,8 +344,7 @@ void Oc_TclFileCmd(const char* subcmd,const char* filename,Oc_AutoBuf& result)
   Oc_AutoBuf cmd = merged_string; // Copy list into autobuf
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
 
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
     Oc_AutoBuf msg;
     const char* errfmt = "Error in Oc_TclFileCmd:\n"
@@ -359,13 +353,13 @@ void Oc_TclFileCmd(const char* subcmd,const char* filename,Oc_AutoBuf& result)
                   +strlen(Tcl_GetStringResult(interp)));
     Oc_Snprintf(msg.GetStr(),msg.GetLength(),
                 errfmt,cmd.GetStr(),Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(msg); // Don't throw msg.GetStr(), because msg gets
     /// deleted out-of-scope and the pointer to its character string
     /// becomes invalid.
   }
   result.Dup(Tcl_GetStringResult(interp));
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
 }
 
 
@@ -430,14 +424,13 @@ extern "C" void DisableStdio(int);
 void DisableStdio(int)
 { // Redirects stdio channels to NULL
   // Get name of NULL device
-  Tcl_Eval(globalInterp,
-     OC_CONST84_CHAR("[Oc_Config RunPlatform] GetValue path_device_null"));
+  Tcl_Eval(globalInterp, "[Oc_Config RunPlatform] GetValue path_device_null");
   Oc_AutoBuf nulin(Tcl_GetStringResult(globalInterp));
 #ifndef DEBUG_DISABLESTDIO
   Oc_AutoBuf nulout(Tcl_GetStringResult(globalInterp));
 #else
   char buf[512];
-  sprintf(buf,"/tmp/dummynul-%d",Oc_GetPid());
+  snprintf(buf,sizeof(buf),"/tmp/dummynul-%d",Oc_GetPid());
   Oc_AutoBuf nulout(buf);
 #endif // DEBUG_DISABLESTDIO
 
@@ -461,17 +454,16 @@ void DisableStdio(int)
 
   // Reset Tcl channels
   Tcl_Channel nulchanin =
-    Tcl_OpenFileChannel(NULL,(char*)nulin,OC_CONST84_CHAR("r"),0644);
+    Tcl_OpenFileChannel(NULL,(char*)nulin,"r",0644);
   Tcl_Channel nulchanout =
-    Tcl_OpenFileChannel(NULL,(char*)nulout,OC_CONST84_CHAR("a+"),0644);
+    Tcl_OpenFileChannel(NULL,(char*)nulout,"a+",0644);
   Tcl_SetStdChannel(nulchanin,TCL_STDIN);
   Tcl_SetStdChannel(nulchanout,TCL_STDOUT);
   Tcl_SetStdChannel(nulchanout,TCL_STDERR);
   Tcl_RegisterChannel(globalInterp,nulchanin);
   Tcl_RegisterChannel(globalInterp,nulchanout);
 #ifdef DEBUG_DISABLESTDIO
-  Tcl_SetChannelOption(NULL,nulchanout,OC_CONST84_CHAR("-buffering"),
-		       OC_CONST84_CHAR("none"));
+  Tcl_SetChannelOption(NULL,nulchanout,"-buffering", "none");
 #endif // DEBUG_DISABLESTDIO
 
   // Disable future SIGHUP, SIGTTIN and SIGTTOU signals
@@ -855,14 +847,13 @@ OC_BOOL Oc_GetOcOption
   // element. When the list is destroyed it decrements the ref count on
   // each element it still holds.
 
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   const int tcl_result
     = Tcl_EvalObjEx(interp,cmd,TCL_EVAL_GLOBAL | TCL_EVAL_DIRECT);
   if(tcl_result == TCL_OK) {
     value = std::string(Tcl_GetStringResult(interp));
   }
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   Tcl_DecrRefCount(cmd);
 #undef OGOOTHROW
   return (tcl_result == TCL_OK);
@@ -969,7 +960,7 @@ std::string Oc_WinGetFileSID(const std::string& filename)
 
 int OcWinGetFileSID // Tcl wrapper for preceding
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char **argv)
+ int argc,const char **argv)
 {
   Tcl_ResetResult(interp);
   if (argc != 2) {
@@ -1009,7 +1000,7 @@ std::string Oc_WinGetCurrentProcessSID()
 
 int OcWinGetCurrentProcessSID // Tcl wrapper for preceding
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char ** /* argv */)
+ int argc,const char ** /* argv */)
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -1053,7 +1044,7 @@ std::string Oc_WinGetSIDAccountName
 
 int OcWinGetSIDAccountName // Tcl wrapper for preceding
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char **argv)
+ int argc,const char **argv)
 {
   Tcl_ResetResult(interp);
   if (argc != 2) {
@@ -1074,7 +1065,7 @@ LockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
 {
   // Returns 0 on success, 1 if file already locked,
   // -1 on GetChannel error, -2 on GetChannelHandle error
-  Tcl_Channel chan=Tcl_GetChannel(interp,OC_CONST84_CHAR(channelName),NULL);
+  Tcl_Channel chan=Tcl_GetChannel(interp,channelName,NULL);
   if(chan==NULL) return -1;
   int direction=TCL_WRITABLE;
   if(!writespec) direction=TCL_READABLE;
@@ -1169,7 +1160,7 @@ UnlockChannel(Tcl_Interp *interp,const char* channelName,int writespec)
   // Returns 0 on success
   // -1 on GetChannel error, -2 on GetChannelHandle error
   // -3 on locking error
-  Tcl_Channel chan=Tcl_GetChannel(interp,OC_CONST84_CHAR(channelName),NULL);
+  Tcl_Channel chan=Tcl_GetChannel(interp,channelName,NULL);
   if(chan==NULL) return -1;
   int direction=TCL_WRITABLE;
   if(!writespec) direction=TCL_READABLE;
@@ -1271,7 +1262,7 @@ ClearGlobalInterpreter(ClientData, Tcl_Interp *interp)
     globalInterp = (Tcl_Interp *) NULL;
     globalInterpThread = std::thread::id(); // Reset to null thread
   } else {
-    Tcl_Panic(OC_CONST84_CHAR("Global interpreter mismatch!"));
+    Tcl_Panic("Global interpreter mismatch!");
   }
 }
 
@@ -1292,9 +1283,9 @@ static const char* tk_usage_info="\n\
 
 static int
 separateArgumentStrings(Tcl_Interp *interp,
-CONST84 char *wholestr,
-int &tkc, CONST84 char * &tkstr,
-int &appc, CONST84 char * &appstr,
+const char *wholestr,
+int &tkc, const char * &tkstr,
+int &appc, const char * &appstr,
 int &consoleRequested)
 {
   int i,j;
@@ -1304,18 +1295,18 @@ int &consoleRequested)
   };
 
   // Extract Tk options from tk_usage_info
-  int tkuic; CONST84 char ** tkuiv;
+  int tkuic; const char ** tkuiv;
 
   // No argv?  Then no argument strings.
-  Tcl_SplitList(interp,OC_CONST84_CHAR(tk_usage_info),&tkuic,&tkuiv);
+  Tcl_SplitList(interp,tk_usage_info,&tkuic,&tkuiv);
   _Option_Info *oi=new _Option_Info[size_t(tkuic)];
   for(j=0;j<tkuic;j++) {
-    int optionc; CONST84 char ** optionv;
+    int optionc; const char ** optionv;
     // Split option list into 3 components: name, type(s), description
     Tcl_SplitList(interp,tkuiv[j],&optionc,&optionv);
     oi[j].name=new char[strlen(optionv[0])+1];
     strcpy(oi[j].name,optionv[0]);
-    int typec; CONST84 char ** typev;
+    int typec; const char ** typev;
     // Parse type(s) list to determine parameter count
     Tcl_SplitList(interp,optionv[1],&typec,&typev);
     oi[j].count=typec;
@@ -1326,20 +1317,20 @@ int &consoleRequested)
   // Note: tkstr and appstr are dynamically allocated.  It is
   //       the responsibility of the calling routine to call
   //       Tcl_Free to release their memory.
-  int wc;  CONST84 char ** wv;  // Whole list
+  int wc;  const char ** wv;  // Whole list
   if (wholestr == NULL) {
     wc = 0;
     // Some versions of g++ complain about casting the return from
     // Tcl_Alloc directly to a char**, claiming the latter has increased
     // alignment restrictions.  Just hack around via a void*.
-    wv = static_cast<CONST84 char **>((void*)Tcl_Alloc(1));
+    wv = static_cast<const char **>((void*)Tcl_Alloc(1));
     (*wv) = NULL;
   } else if (Tcl_SplitList(interp,wholestr,&wc,&wv) != TCL_OK) {
     return TCL_ERROR;
   }
 
-  int tc; CONST84 char ** tv=new CONST84 char *[size_t(wc)];  // Tk's arg list
-  int ac; CONST84 char ** av=new CONST84 char *[size_t(wc)];  // App's arg list
+  int tc; const char ** tv=new const char *[size_t(wc)];  // Tk's arg list
+  int ac; const char ** av=new const char *[size_t(wc)];  // App's arg list
 
   i=tc=ac=0;
   int opts_done=0;  // Terminate options processing, due to "--" flag.
@@ -1387,7 +1378,7 @@ int &consoleRequested)
  * decrementing argc.
  */
 static void
-removeArg(int &argc, CONST84 char ** argv, int remove_index)
+removeArg(int &argc, const char ** argv, int remove_index)
 {
   if(remove_index<0 || remove_index>=argc) return;
   for(int j=remove_index+1;j<argc;j++) {
@@ -1405,9 +1396,8 @@ extractOcOptions(Tcl_Interp *interp)
   char scratch[256];
 
   // Pull out and decompose Tcl argv variable
-  int argc; CONST84 char ** argv; CONST84 char * argvstr;
-  if((argvstr=Tcl_GetVar(interp,OC_CONST84_CHAR("argv"),
-			 TCL_GLOBAL_ONLY))==NULL) return;
+  int argc; const char ** argv; const char * argvstr;
+  if((argvstr=Tcl_GetVar(interp,"argv", TCL_GLOBAL_ONLY))==NULL) return;
   Tcl_SplitList(interp,argvstr,&argc,&argv);
 
   int i=0;
@@ -1433,10 +1423,9 @@ extractOcOptions(Tcl_Interp *interp)
 
   // Re-assemble Tcl argv variable
   argvstr=Tcl_Merge(argc,argv);
-  Tcl_SetVar(interp,OC_CONST84_CHAR("argv"),OC_CONST84_CHAR(argvstr),
-	     TCL_GLOBAL_ONLY);
-  sprintf(scratch,"%d",argc);
-  Tcl_SetVar(interp,OC_CONST84_CHAR("argc"),scratch,TCL_GLOBAL_ONLY);
+  Tcl_SetVar(interp,"argv",argvstr, TCL_GLOBAL_ONLY);
+  snprintf(scratch,sizeof(scratch),"%d",argc);
+  Tcl_SetVar(interp,"argc",scratch,TCL_GLOBAL_ONLY);
 
   // Release memory dynamically allocated by Tcl library routines.
   Tcl_Free((char *)argv);
@@ -1479,32 +1468,28 @@ Oc_Init(Tcl_Interp *interp)
     // Set environment variable TCL_LIBRARY, unless already set.
     // We set this instead of tcl_library, because the tcl_library
     // is not inherited into slave interpreters.
-    if(Tcl_GetVar2(interp,OC_CONST84_CHAR("env"),
-                   OC_CONST84_CHAR("TCL_LIBRARY"),
-                   TCL_GLOBAL_ONLY)==NULL) {
-      Tcl_SetVar2(interp,OC_CONST84_CHAR("env"),
-                  OC_CONST84_CHAR("TCL_LIBRARY"),
-                  OC_CONST84_CHAR(OC_STRINGIFY(CONFIG_TCL_LIBRARY)),
+    if(Tcl_GetVar2(interp,"env", "TCL_LIBRARY", TCL_GLOBAL_ONLY)==NULL) {
+      Tcl_SetVar2(interp,"env", "TCL_LIBRARY", OC_STRINGIFY(CONFIG_TCL_LIBRARY),
                   TCL_GLOBAL_ONLY);
     }
 #endif
     if (Tcl_Init(interp) != TCL_OK) {
       if(strncmp("Can't find a usable",
                  Tcl_GetStringResult(interp),19)==0) {
-        Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s\n\n"
+        Tcl_Panic("Tcl initialization error:\n\n%s\n\n"
                                   "As a workaround, set the environment variable\n"
                                   "TCL_LIBRARY to the name of a directory\n"
-                                  "containing an error-free init.tcl."),
+                                  "containing an error-free init.tcl.",
                   Tcl_GetStringResult(interp));
       } else {
-        Tcl_Panic(OC_CONST84_CHAR("Tcl initialization error:\n\n%s"),
+        Tcl_Panic("Tcl initialization error:\n\n%s",
                   Tcl_GetStringResult(interp));
       }
     }
   }
 
   if (Nullchannel_Init(interp) != TCL_OK) {
-      Tcl_Panic(OC_CONST84_CHAR("Nullchannel initialization error:\n\n%s"),
+      Tcl_Panic("Nullchannel initialization error:\n\n%s",
                 Tcl_GetStringResult(interp));
   }
 
@@ -1516,12 +1501,12 @@ Oc_Init(Tcl_Interp *interp)
 
   // Initialize Tk, if requested.
   if (use_tk &&
-      (Tcl_PkgPresent(interp,OC_CONST84_CHAR("Tk"),NULL,0) == NULL)) {
+      (Tcl_PkgPresent(interp,"Tk",NULL,0) == NULL)) {
     // Patch a bug in Tk 4.2
-    if (Tcl_Eval(interp, OC_CONST84_CHAR(patchScript0)) != TCL_OK) {
-      Tcl_Panic(OC_CONST84_CHAR("Tcl/Tk initialization error:\n\n"
+    if (Tcl_Eval(interp, patchScript0) != TCL_OK) {
+      Tcl_Panic("Tcl/Tk initialization error:\n\n"
                "Unable to patch installation bug in Tk 4.2\n\n"
-               "Patch script returned error:%s"),
+               "Patch script returned error:%s",
 	    Tcl_GetStringResult(interp));
     }
 
@@ -1530,63 +1515,56 @@ Oc_Init(Tcl_Interp *interp)
     // app_argc, and app_argv to quiet some nanny compilers.
     int tk_argc=0;
     int app_argc=0;
-    CONST84 char* orig_argv;
-    CONST84 char* tk_argv=0;
-    CONST84 char* app_argv=0;
+    const char* orig_argv;
+    const char* tk_argv=0;
+    const char* app_argv=0;
     int consoleRequested = 0;
-    orig_argv=Tcl_GetVar2(interp,OC_CONST84_CHAR("argv"),
-                          (char *)NULL,TCL_GLOBAL_ONLY);
+    orig_argv=Tcl_GetVar2(interp,"argv", (char *)NULL,TCL_GLOBAL_ONLY);
     separateArgumentStrings(interp,orig_argv,
                             tk_argc,tk_argv,
                             app_argc,app_argv,consoleRequested);
 
-#if ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION > 0))       \
-     || (TK_MAJOR_VERSION > 8)
     // We have to call Tk_InitConsoleChannels before Tk_Init (arguably a
     // Tk bug).  Tk_InitConsoleChannels first appears in Tk 8.1
     if (consoleRequested && (interp == globalInterp)) {
       Tk_InitConsoleChannels(interp);
     }
-#endif
 
     // Initialize Tk, with argv copied from tk_argv
-    Tcl_SetVar(interp,OC_CONST84_CHAR("argv"),
-	       OC_CONST84_CHAR(tk_argv),TCL_GLOBAL_ONLY);
-    sprintf(scratch,"%d",tk_argc);
-    Tcl_SetVar(interp,OC_CONST84_CHAR("argc"),scratch,TCL_GLOBAL_ONLY);
+    Tcl_SetVar(interp,"argv", tk_argv,TCL_GLOBAL_ONLY);
+    snprintf(scratch,sizeof(scratch),"%d",tk_argc);
+    Tcl_SetVar(interp,"argc",scratch,TCL_GLOBAL_ONLY);
     if (Tk_Init(interp) != TCL_OK) {
       if (globalInterp != interp) {
         return TCL_ERROR;
       }
       if(strncmp("Can't find a usable",
                  Tcl_GetStringResult(interp),19)==0) {
-        Tcl_Panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s\n\n"
+        Tcl_Panic("Tk initialization error:\n\n%s\n\n"
                  "As a workaround, set the environment variable\n"
                  "TK_LIBRARY to the name of a directory\n"
-                 "containing an error-free tk.tcl."),
+                 "containing an error-free tk.tcl.",
               Tcl_GetStringResult(interp));
       } else {
-        Tcl_Panic(OC_CONST84_CHAR("Tk initialization error:\n\n%s"),
-                  Tcl_GetStringResult(interp));
+        Tcl_Panic("Tk initialization error:\n\n%s", Tcl_GetStringResult(interp));
       }
     }
 
     // Reset argv with app arguments
-    Tcl_SetVar(interp,OC_CONST84_CHAR("argv"),
-	       OC_CONST84_CHAR(app_argv),TCL_GLOBAL_ONLY);
-    sprintf(scratch,"%d",app_argc);
-    Tcl_SetVar(interp,OC_CONST84_CHAR("argc"),scratch,TCL_GLOBAL_ONLY);
+    Tcl_SetVar(interp,"argv", app_argv,TCL_GLOBAL_ONLY);
+    snprintf(scratch,sizeof(scratch),"%d",app_argc);
+    Tcl_SetVar(interp,"argc",scratch,TCL_GLOBAL_ONLY);
     Tcl_Free((char *)tk_argv); Tcl_Free((char *)app_argv);  // Release
 
     // Set up so that [info loaded] result includes Tk
-    Tcl_StaticPackage(interp,OC_CONST84_CHAR("Tk"), Tk_Init, Tk_SafeInit);
+    Tcl_StaticPackage(interp,"Tk", Tk_Init, Tk_SafeInit);
 
     if (consoleRequested && (interp == globalInterp)) {
       if (Tk_CreateConsoleWindow(interp) != TCL_OK) {
-        Tcl_Panic(OC_CONST84_CHAR("Tk console initialization error:\n\n%s"),
+        Tcl_Panic("Tk console initialization error:\n\n%s",
                   Tcl_GetStringResult(interp));
       }
-      Tcl_Eval(interp,OC_CONST84_CHAR("console hide"));
+      Tcl_Eval(interp,"console hide");
     }
   }
 
@@ -1618,12 +1596,19 @@ Oc_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"Oc_UnifRand",(Tcl_CmdProc *)OcUnifRand);
   Oc_RegisterCommand(interp,"Oc_ReadRNGState",
                      (Tcl_CmdProc *)OcReadRNGState);
+
+  Oc_RegisterCommand(interp,"Oc_SeedRV",(Tcl_CmdProc *)OcSeedRV);
+  Oc_RegisterCommand(interp,"Oc_UniformRV",(Tcl_CmdProc *)OcUniformRV);
+  Oc_RegisterCommand(interp,"Oc_NormalRV",(Tcl_CmdProc *)OcNormalRV);
+
   Oc_RegisterCommand(interp,"Oc_InitLogPrefix",
                      (Tcl_CmdProc *)Oc_LogSupportInitPrefixCmd);
   Oc_RegisterCommand(interp,"Oc_GetLogMark",
                      (Tcl_CmdProc *)Oc_LogSupportGetLogMarkCmd);
-  Oc_RegisterCommand(interp,"Oc_AddCLogFile",
-                     (Tcl_CmdProc *)Oc_ReportAddCLogFile);
+  Oc_RegisterCommand(interp,"Oc_ReportAddLogFile",
+                     (Tcl_CmdProc *)Oc_ReportAddLogFile);
+  Oc_RegisterCommand(interp,"Oc_ReportWriteToClog",
+                     (Tcl_CmdProc *)Oc_ReportWriteToClog);
 
   // Import Oc_Atan2 into Tcl, and replace default expr/mathfunc atan2
   // with it. NB: Child interpreters appear to revert back to default
@@ -1645,25 +1630,25 @@ Oc_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"Oc_NumaInit",
 		     (Tcl_CmdProc *)OcNumaInit);
 
-  if (Tcl_Eval(interp, OC_CONST84_CHAR(initScript0)) != TCL_OK
-      || Tcl_Eval(interp, OC_CONST84_CHAR(initScript1)) != TCL_OK
-      || Tcl_Eval(interp, OC_CONST84_CHAR(initScript2)) != TCL_OK
-      || Tcl_Eval(interp, OC_CONST84_CHAR(initScript3)) != TCL_OK) {
+  if (Tcl_Eval(interp, initScript0) != TCL_OK
+      || Tcl_Eval(interp, initScript1) != TCL_OK
+      || Tcl_Eval(interp, initScript2) != TCL_OK
+      || Tcl_Eval(interp, initScript3) != TCL_OK) {
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
-             "Error evaluating pre-initialization scripts:\n%s"),
+    Tcl_Panic("Error in extension 'Oc':\n\n"
+             "Error evaluating pre-initialization scripts:\n%s",
               Tcl_GetStringResult(interp));
   }
 
 #if OC_TCL_TYPE==OC_WINDOWS && defined(__CYGWIN__)
-  if (Tcl_Eval(interp, OC_CONST84_CHAR(initScript_cygwin)) != TCL_OK) {
+  if (Tcl_Eval(interp, initScript_cygwin) != TCL_OK) {
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
-             "Error evaluating cygwin pre-initialization script:\n%s"),
+    Tcl_Panic("Error in extension 'Oc':\n\n"
+             "Error evaluating cygwin pre-initialization script:\n%s",
               Tcl_GetStringResult(interp));
   }
 #endif // OC_WINDOWS && __CYGWIN__
@@ -1672,8 +1657,7 @@ Oc_Init(Tcl_Interp *interp)
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    Tcl_Panic(OC_CONST84_CHAR("%s"),
-	  Tcl_GetVar(interp, OC_CONST84_CHAR("errorInfo"), TCL_GLOBAL_ONLY));
+    Tcl_Panic("%s", Tcl_GetVar(interp, "errorInfo", TCL_GLOBAL_ONLY));
   }
 
   // At this stage Oc_Log is available for displaying error messages
@@ -1700,7 +1684,7 @@ Oc_Init(Tcl_Interp *interp)
     // which is in octhread.tcl.
 #if OOMMF_THREADS
     int otc = -1;
-    if(Tcl_Eval(interp,OC_CONST84_CHAR("Oc_GetDefaultThreadCount")) == TCL_OK) {
+    if(Tcl_Eval(interp,"Oc_GetDefaultThreadCount") == TCL_OK) {
       otc = atoi(Tcl_GetStringResult(interp));
     }
     if(otc<1) otc = 1; // Safety
@@ -1712,14 +1696,14 @@ Oc_Init(Tcl_Interp *interp)
 
   // Constants from tcl.h, limits.h, float.h, and ocport.h
   if(Tcl_Eval(interp,
-      OC_CONST84_CHAR("if {[catch {set config [Oc_Config RunPlatform]} msg]} "
+      "if {[catch {set config [Oc_Config RunPlatform]} msg]} "
 		      " {catch {Oc_Log Log $msg error} "
-		      "; error {Command \"Oc_Config RunPlatform\" failed} }")) != TCL_OK) {
+		      "; error {Command \"Oc_Config RunPlatform\" failed} }") != TCL_OK) {
     if (globalInterp != interp) {
       return TCL_ERROR;
     }
-    Tcl_Panic(OC_CONST84_CHAR("Error in extension 'Oc':\n\n"
-             "Error evaluating post-initialization scripts:\n%s"),
+    Tcl_Panic("Error in extension 'Oc':\n\n"
+             "Error evaluating post-initialization scripts:\n%s",
               Tcl_GetStringResult(interp));
   }
 
@@ -1730,12 +1714,12 @@ Oc_Init(Tcl_Interp *interp)
   do {                                                               \
   Oc_Snprintf(buf,sizeof(buf),                                       \
               "$config SetValue "  name  " "  format,macro);         \
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(buf)) != TCL_OK) {              \
+  if(Tcl_Eval(interp,buf) != TCL_OK) {                               \
      if (globalInterp != interp) return TCL_ERROR;                   \
      Tcl_DStringInit(&tbuf);                                         \
-     Tcl_DStringAppend(&tbuf, OC_CONST84_CHAR("Oc_Log Log"), -1);    \
+     Tcl_DStringAppend(&tbuf, "Oc_Log Log", -1);                     \
      Tcl_DStringAppendElement(&tbuf, Tcl_GetStringResult(interp));   \
-     Tcl_DStringAppendElement(&tbuf, OC_CONST84_CHAR("error"));      \
+     Tcl_DStringAppendElement(&tbuf, "error");                       \
      Tcl_Eval(interp, Tcl_DStringValue(&tbuf));                      \
      Tcl_DStringFree(&tbuf);                                         \
      errcount++;                                                     \
@@ -1773,34 +1757,29 @@ Oc_Init(Tcl_Interp *interp)
   }
 # undef CTC_SET
 
-  if(Tcl_Eval(interp,
-	      OC_CONST84_CHAR("catch {unset config} ; catch {unset msg}"))
-     != TCL_OK) {
+  if(Tcl_Eval(interp, "catch {unset config} ; catch {unset msg}") != TCL_OK) {
      if (globalInterp != interp) return TCL_ERROR;
      Tcl_DStringInit(&tbuf);
-     Tcl_DStringAppend(&tbuf, OC_CONST84_CHAR("Oc_Log Log"), -1);
+     Tcl_DStringAppend(&tbuf, "Oc_Log Log", -1);
      Tcl_DStringAppendElement(&tbuf, Tcl_GetStringResult(interp));
-     Tcl_DStringAppendElement(&tbuf, OC_CONST84_CHAR("error"));
+     Tcl_DStringAppendElement(&tbuf, "error");
      Tcl_Eval(interp, Tcl_DStringValue(&tbuf));
      Tcl_DStringFree(&tbuf);
      errcount++;
   }
 
   // Make sure DBL values above are in-range
-  Tcl_Eval(interp,
-	   OC_CONST84_CHAR("Oc_FixupConfigBadDouble compiletime_dbl_min"));
-  Tcl_Eval(interp,
-	   OC_CONST84_CHAR("Oc_FixupConfigBadDouble compiletime_dbl_max"));
+  Tcl_Eval(interp, "Oc_FixupConfigBadDouble compiletime_dbl_min");
+  Tcl_Eval(interp, "Oc_FixupConfigBadDouble compiletime_dbl_max");
 
   // If we have no script to evaluate, parse the command line ourselves
   // to display a console
   if ((interp == globalInterp) && parseCommandLine) {
-    if (Tcl_Eval(interp,
-		 OC_CONST84_CHAR("Oc_CommandLine Parse $argv")) != TCL_OK) {
+    if (Tcl_Eval(interp, "Oc_CommandLine Parse $argv") != TCL_OK) {
         Tcl_DStringInit(&tbuf);
-        Tcl_DStringAppend(&tbuf, OC_CONST84_CHAR("Oc_Log Log"), -1);
+        Tcl_DStringAppend(&tbuf, "Oc_Log Log", -1);
         Tcl_DStringAppendElement(&tbuf, Tcl_GetStringResult(interp));
-        Tcl_DStringAppendElement(&tbuf, OC_CONST84_CHAR("error"));
+        Tcl_DStringAppendElement(&tbuf, "error");
         Tcl_Eval(interp, Tcl_DStringValue(&tbuf));
         Tcl_DStringFree(&tbuf);
         errcount++;
@@ -1888,12 +1867,12 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
   // (if set), but is afterwards stored elsewhere.
   CFBundleRef mainBundle = CFBundleGetMainBundle();
   if (!mainBundle) {
-    Tcl_Panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+    Tcl_Panic("%s","Mac OS X API error: "
               "Unable to get main bundle.");
   }
   CFDictionaryRef bundleInfoDict = CFBundleGetInfoDictionary(mainBundle);
   if (!bundleInfoDict) {
-    Tcl_Panic(OC_CONST84_CHAR("%s"),"Mac OS X API error: "
+    Tcl_Panic("%s","Mac OS X API error: "
               "Unable to get main bundle dictionary.");
   }
   CFStringRef key = CFStringCreateWithCString(NULL,"CFBundleName",
@@ -1933,19 +1912,18 @@ void Oc_Main(int argc,char** argv,Tcl_AppInitProc* appinit)
     Tk_Main(argc,argv,appinit);
   }
   catch (bad_alloc&) {
-    Tcl_Panic(OC_CONST84_CHAR("Out of memory!\n"));
+    Tcl_Panic("Out of memory!\n");
   }
   catch (Oc_Exception& err) {
     Oc_AutoBuf msg;
-    Tcl_Panic(OC_CONST84_CHAR("%s"),err.ConstructMessage(msg));
+    Tcl_Panic("%s",err.ConstructMessage(msg));
   }
   catch (EXCEPTION& e) {
-    Tcl_Panic(OC_CONST84_CHAR("Uncaught standard exception: %s\n"
-                              "Probably out of memory."),
-              e.what());
+    Tcl_Panic("Uncaught standard exception: %s\n"
+                              "Probably out of memory.", e.what());
   }
   catch (const char* err) {
-    Tcl_Panic(OC_CONST84_CHAR("%s"),err);
+    Tcl_Panic("%s",err);
   }
 }
 
@@ -1982,16 +1960,16 @@ NullifyTclStandardChannel(int type) {
       switch (type)
 	{
 	case TCL_STDIN:
-	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard input channel"));
+	  Tcl_Panic("Couldn't create a standard input channel");
           break; // Keep compilers happy
 	case TCL_STDOUT:
-	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard output channel"));
+	  Tcl_Panic("Couldn't create a standard output channel");
           break; // Keep compilers happy
 	case TCL_STDERR:
-	  Tcl_Panic(OC_CONST84_CHAR("Couldn't create a standard error channel"));
+	  Tcl_Panic("Couldn't create a standard error channel");
           break; // Keep compilers happy
 	default:
-	  Tcl_Panic(OC_CONST84_CHAR("Bad standard channel type: %d"), type);
+	  Tcl_Panic("Bad standard channel type: %d", type);
           break; // Keep compilers happy
         }
     }
@@ -2005,7 +1983,7 @@ NullifyTclStandardChannel(int type) {
  * The common startup initializations for all platforms
  */
 void
-CommonMain(CONST char* exename) {
+CommonMain(const char* exename) {
   // Mask floating-point exceptions to allow rolling Infs and NaNs.
   Oc_FpuControlData::MaskExceptions();
 
@@ -2027,7 +2005,7 @@ CommonMain(CONST char* exename) {
   // Tcl_FindExecutable does some double-secret special
   // initializations without which some Tcl C APIs (like
   // Tcl_CreateChannel()) will crash.  So, call it here.
-  Tcl_FindExecutable(OC_CONST84_CHAR(exename));
+  Tcl_FindExecutable(exename);
 }
 
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
@@ -2166,14 +2144,13 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
   // Windows doesn't tokenize the command line
   int argc;
   char *argv[256];
-  CONST84 char **argv_temp;
+  const char **argv_temp;
   char cmdline[16384];
   if(Tcl_SplitList(NULL,lpszCmdLine,&argc,&argv_temp)!=TCL_OK) {
-    Tcl_Panic(OC_CONST84_CHAR("Bad command line: %s"),lpszCmdLine);
+    Tcl_Panic("Bad command line: %s",lpszCmdLine);
   }
   if(size_t(argc+1)>sizeof(argv)/sizeof(argv[0])) {
-    Tcl_Panic(OC_CONST84_CHAR("Too many command line parameters: %d>%lu"),
-              argc+1,
+    Tcl_Panic("Too many command line parameters: %d>%lu", argc+1,
               static_cast<unsigned long>(sizeof(argv)/sizeof(argv[0])));
   }
 
@@ -2186,7 +2163,7 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     argv[i+1]=cmdline+total_length;
     total_length+=strlen(argv_temp[i])+1;
     if(total_length>sizeof(cmdline)) {
-      Tcl_Panic(OC_CONST84_CHAR("Parsed command line too long (%lu)"),
+      Tcl_Panic("Parsed command line too long (%lu)",
                 static_cast<unsigned long>(sizeof(cmdline)));
     }
     strcpy(argv[i+1],argv_temp[i]);
@@ -2200,19 +2177,15 @@ WinMain(HINSTANCE /* hInstance */, HINSTANCE /* hPrevInstance */,
     errorcode = Oc_AppMain(argc, argv);
   } catch(std::exception& errexc) {
     std::cerr << "\nUNCAUGHT EXCEPTION: " << errexc.what() << "\n";
-    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception: %s\n"),
-              errexc.what());
+    Tcl_Panic("Uncaught exception: %s\n", errexc.what());
   } catch(string& errstr) {
     std::cerr << "\nUNCAUGHT EXCEPTION: " << errstr << "\n";
-    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (string): %s\n"),
-              errstr.c_str());
+    Tcl_Panic("Uncaught exception (string): %s\n", errstr.c_str());
   } catch(char* err_cstr) {
     std::cerr << "\nUNCAUGHT EXCEPTION: " << err_cstr << "\n";
-    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (char*): %s\n"),
-              err_cstr);
+    Tcl_Panic("Uncaught exception (char*): %s\n", err_cstr);
   } catch(...) {
-    Tcl_Panic(OC_CONST84_CHAR("Uncaught exception\n"));
-    errorcode=99;
+    Tcl_Panic("Uncaught exception\n"); errorcode=99;
   }
 
   return errorcode;
@@ -2246,18 +2219,15 @@ main(int argc, char **argv)
       errorcode = Oc_AppMain(argc, argv);
     } catch(std::exception& errexc) {
       std::cerr << "\nUNCAUGHT EXCEPTION: " << errexc.what() << "\n";
-      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception: %s\n"),
-                errexc.what());
+      Tcl_Panic("Uncaught exception: %s\n", errexc.what());
     } catch(string& errstr) {
       std::cerr << "\nUNCAUGHT EXCEPTION: " << errstr << "\n";
-      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (string): %s\n"),
-                errstr.c_str());
+      Tcl_Panic("Uncaught exception (string): %s\n", errstr.c_str());
     } catch(char* err_cstr) {
       std::cerr << "\nUNCAUGHT EXCEPTION: " << err_cstr << "\n";
-      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception (char*): %s\n"),
-                err_cstr);
+      Tcl_Panic("Uncaught exception (char*): %s\n", err_cstr);
     } catch(...) {
-      Tcl_Panic(OC_CONST84_CHAR("Uncaught exception\n"));
+      Tcl_Panic("Uncaught exception\n");
       errorcode=99;
     }
 

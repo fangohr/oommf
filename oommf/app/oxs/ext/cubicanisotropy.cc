@@ -82,8 +82,8 @@ Oxs_CubicAnisotropy::Oxs_CubicAnisotropy(
     // as opposed to {0.57735027,0.57735027,0.57735027}, or
     //
     //      Specify Oxs_UniformVectorField {
-    //        norm 1 
-    //        vector { 1 1 1 } 
+    //        norm 1
+    //        vector { 1 1 1 }
     //    }
     tmpptr1->SetMag(1.0);
     axis1_is_uniform = 1;
@@ -168,7 +168,7 @@ void Oxs_CubicAnisotropy::ComputeEnergyChunkInitialize
           throw Oxs_ExtError(msg.c_str());
         }
         if(fabs(axis2[i].MagSq()-1)>eps) {
-          String msg = 
+          String msg =
             String("Invalid initialization detected for object ")
             + String(InstanceName())
             + String(": Anisotropy axis 2 isn't norm 1");
@@ -193,7 +193,7 @@ void Oxs_CubicAnisotropy::ComputeEnergyChunkInitialize
         throw Oxs_ExtError(msg.c_str());
       }
       if(fabs(uniform_axis2_value.MagSq()-1)>eps) { // Safety
-        String msg = 
+        String msg =
           String("Invalid initialization detected for object ")
           + String(InstanceName())
           + String(": Anisotropy axis 2 isn't norm 1");

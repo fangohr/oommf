@@ -17,15 +17,16 @@
 #include "nb.h"
 #include "director.h"
 #include "driver.h"
-#include "simstate.h"
-#include "ext.h"
 #include "energy.h"
-#include "util.h"
+#include "ext.h"
 #include "key.h"
 #include "mesh.h"
 #include "meshvalue.h"
-#include "threevector.h"
 #include "oxswarn.h"
+#include "simstate.h"
+#include "stateinitializer.h"
+#include "threevector.h"
+#include "util.h"
 
 // Read <algorithm> last, because with some pgc++ installs the
 // <emmintrin.h> header is not interpreted properly if <algorithm> is
@@ -60,10 +61,9 @@ Oxs_Director::Oxs_Director(Tcl_Interp *i)
   Tcl_CreateExitHandler((Tcl_ExitProc *) ExitProc, (ClientData) this);
 
   // Make sure tcl_precision is full
-  Tcl_Eval(interp,OC_CONST84_CHAR("set tcl_precision 17"));
+  Tcl_Eval(interp,"set tcl_precision 17");
 
-  if (TCL_OK != Tcl_Eval(interp,
-      OC_CONST84_CHAR("Oc_Main Preload Oc_TempName Oc_TempFile"))) {
+  if (TCL_OK != Tcl_Eval(interp, "Oc_Main Preload Oc_TempName Oc_TempFile")) {
     OXS_THROW(Oxs_IncompleteInitialization,"tempfile support unavilable");
   }
 }
@@ -86,22 +86,67 @@ int Oxs_Director::ProbReset()
     tcl_state.Restore();
   }
 
-  // Run Init() on all Oxs_Ext's
-  vector<Oxs_Ext*>::iterator it = ext_obj.begin();
+  // Reset well_known_quantity_store
+  well_known_quantity_store.Reset();
+
+  // Run Init() on all Oxs_Ext's.  The driver Init() is called first so
+  // that other Oxs_Ext's can interact with it if needed.
+  if(driver==NULL) {
+    OXS_THROW(Oxs_IncompleteInitialization,
+              "no driver identified (Oxs_Director::ProbReset()");
+  }
+
+  const char* phase = nullptr;
+  vector<Oxs_Ext*>::iterator it;
+  String instance_name; // Note: If an error occurs inside an Oxs_Ext
+  /// member routine, the instance may be destructed before returning
+  /// to this level. In particular, (*it)->InstanceName() may
+  /// segfault. So we keep a running copy of the active instance for
+  /// error reporting.
+
   try {
+    phase = "PreInit()";
+    it = ext_obj.begin();
     while(it!=ext_obj.end() && errcode==TCL_OK) {
-      if(!((*it)->Init())) errcode = TCL_ERROR;
+      instance_name = (*it)->InstanceName();
+      if(!((*it)->PreInit())) errcode = TCL_ERROR;
       it++;
     }
-  } catch (Oxs_ExtError& err) {
-    String head = String("Error in Init() function of ")
-      + String((*it)->InstanceName())
+
+    phase = "Init()";
+    Oxs_Ext* driver_ext = driver; // driver->Init() is protected
+    it = ext_obj.begin();
+    while(it!=ext_obj.end() && errcode==TCL_OK) {
+      instance_name = (*it)->InstanceName();
+      if((*it) != driver_ext && !((*it)->Init())) errcode = TCL_ERROR;
+      it++;
+    }
+    // The Oxs_Driver children Init() routines search the list of
+    // outputs for particular items, such as torque and energy.  To
+    // ensure the outputs are registered, run the driver Init() last.
+    if(!(driver_ext->Init())) errcode = TCL_ERROR; // Run Driver Init last
+
+    phase = "PostInit()";
+    it = ext_obj.begin();
+    while(it!=ext_obj.end() && errcode==TCL_OK) {
+      instance_name = (*it)->InstanceName();
+      if(!((*it)->PostInit())) errcode = TCL_ERROR;
+      it++;
+    }
+
+  } catch(Oxs_ExtError& err) {
+    String head
+      = String("Oxs_ExtError in ")
+      + String(phase) + String(" function of ")
+      + instance_name
       + String(" --- ");
     err.Prepend(head);
     throw;
-  } catch (Oxs_Exception& err) {
-    String head = String("Error in Init() function of ")
-      + String((*it)->InstanceName())
+  } catch(Oxs_Exception& err) {
+    String head
+      = String("Oxs_Exception error in ")
+      + String(phase) + String(" function of ")
+      + instance_name
       + String(" --- ");
     err.Prepend(head);
     throw;
@@ -336,14 +381,12 @@ OC_UINT4m Oxs_Director::ComputeMifCrc()
   String cmd = mif_object + String(" GetCrc");
 
   Oxs_TclInterpState orig_result(interp);
-  int errcode = Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()));
+  int errcode = Tcl_Eval(interp,cmd.c_str());
   String evalresult = Tcl_GetStringResult(interp);
   if(errcode!=TCL_OK) {
     // Extended error info
-    const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                                TCL_GLOBAL_ONLY);
-    const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                                TCL_GLOBAL_ONLY);
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
     if(ei==NULL) ei = "";
     if(ec==NULL) ec = "";
     OXS_TCLTHROW(evalresult,String(ei),String(ec));
@@ -381,14 +424,12 @@ String Oxs_Director::ReadMifParameters()
   String cmd = mif_object + String(" GetParameters");
 
   Oxs_TclInterpState orig_result(interp);
-  int errcode = Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()));
+  int errcode = Tcl_Eval(interp,cmd.c_str());
   String params = Tcl_GetStringResult(interp);
   if(errcode!=TCL_OK) {
     // Extended error info
-    const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                                TCL_GLOBAL_ONLY);
-    const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                                TCL_GLOBAL_ONLY);
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
     if(ei==NULL) ei = "";
     if(ec==NULL) ec = "";
     OXS_TCLTHROW(params,String(ei),String(ec));
@@ -425,14 +466,12 @@ int Oxs_Director::CheckMifParameters(const String& test_params) const
     + String(" [list ") + test_params + String(" ]");
 
   Oxs_TclInterpState orig_result(interp);
-  int errcode = Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()));
+  int errcode = Tcl_Eval(interp,cmd.c_str());
   String evalresult = static_cast<String>(Tcl_GetStringResult(interp));
   if(errcode!=TCL_OK) {
     // Extended error info
-    const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                                TCL_GLOBAL_ONLY);
-    const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                                TCL_GLOBAL_ONLY);
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
     if(ei==NULL) ei = "";
     if(ec==NULL) ec = "";
     OXS_TCLTHROW(evalresult,String(ei),String(ec));
@@ -464,13 +503,49 @@ OC_BOOL Oxs_Director::GetMifOption(const char* label,String& value) const
   /// The "list" construct allows for labels with embedded spaces.
 
   Oxs_TclInterpState orig_result(interp);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str())) == TCL_OK) {
+  if(Tcl_Eval(interp,cmd.c_str()) == TCL_OK) {
     value = static_cast<String>(Tcl_GetStringResult(interp));
     success = 1;
   } // Otherwise, assume failure due to option not being set.
   orig_result.Restore();
 
   return success;
+}
+
+void Oxs_Director::GetAllMifOptions(std::map<String,String>& options) const
+{ // Fills options with all MIF option label->value pairs.
+  // Throws an error if no problem is loaded.
+  if(mif_object.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error in Oxs_Directory::GetAllMifOptions:"
+                " no MIF object found.");
+  }
+
+  String cmd = mif_object + String(" GetAllOptions");
+
+  Oxs_TclInterpState orig_result(interp);
+  if(Tcl_Eval(interp,cmd.c_str()) != TCL_OK) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error in Oxs_Directory::GetAllMifOptions:"
+                " GetAllOptions call failure.");
+  }
+  String strlist = static_cast<String>(Tcl_GetStringResult(interp));
+  orig_result.Restore();
+
+  // Convert list result into a vector string of label + value pairs
+  std::vector<String> vecpairs;
+  Nb_SplitList veclist;
+  veclist.Split(strlist);
+  veclist.FillParams(vecpairs);
+  assert(vecpairs.size()%2 ==0);
+
+  // Fill options map
+  options.clear();
+  for(size_t i=0;i+1<vecpairs.size();i+=2) {
+    options[vecpairs[i]] = vecpairs[i+1];
+  }
+
+  return;
 }
 
 int Oxs_Director::ExtCreateAndRegister
@@ -609,10 +684,15 @@ int Oxs_Director::ProbInit(const char* filename,
   if(Oc_NumaReady()) {
     Oc_AutoBuf ab;
     Oc_NumaGetInterleaveMask(ab);
-    fprintf(stderr,"NUMA node count/memory interleave mask: %d/%s\n",
-            Oc_NumaGetNodeCount(),ab.GetStr());
+    Oc_Report::Log << "\n" << Oc_LogSupport::GetLogMark()
+                   << "\nNUMA node count/memory interleave mask: "
+                   << Oc_NumaGetNodeCount()
+                   << "/" << ab.GetStr()
+                   << std::endl;
   } else {
-    fprintf(stderr,"NUMA not enabled.\n");
+    Oc_Report::Log <<"\n" << Oc_LogSupport::GetLogMark()
+                   << "\nNUMA not enabled."
+                   << std::endl;
   }
 #endif
 
@@ -620,7 +700,7 @@ int Oxs_Director::ProbInit(const char* filename,
   Oxs_ThreadTree::InitThreads(Oc_GetMaxThreadCount());
 
   // Create mif object; side effect: creates a slave interpreter
-  error_code = Tcl_Eval(interp,OC_CONST84_CHAR("Oxs_Mif New _"));
+  error_code = Tcl_Eval(interp,"Oxs_Mif New _");
   if(error_code!=TCL_OK) return error_code;
   mif_object = String(Tcl_GetStringResult(interp));
   Tcl_ResetResult(interp); // Make frequent calls to Tcl_ResetResult
@@ -640,10 +720,19 @@ int Oxs_Director::ProbInit(const char* filename,
   cmdvec.push_back(mif_params);
   cmd = Nb_MergeList(cmdvec);
   cmdvec.clear();
-  error_code = Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()));
+  error_code = Tcl_Eval(interp,cmd.c_str());
+  String evalresult = Tcl_GetStringResult(interp);
   if(error_code!=TCL_OK) {
+    // Extended error info
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
+    if(ei==NULL) ei = "";
+    if(ec==NULL) ec = "";
     Release();
-    return error_code;
+    fprintf(stderr,"ERROR Reading MIF file: %s\n"
+            " See log file for additional details\n",
+            evalresult.c_str());
+    OXS_TCLTHROW(evalresult,String(ei),String(ec));
   }
   Tcl_ResetResult(interp);
 
@@ -667,7 +756,7 @@ int Oxs_Director::ProbInit(const char* filename,
   }
   Tcl_ResetResult(interp);
 
-  // Run Init() on all Oxs_Ext's
+  // Run Init() on all Oxs_Ext's.
   if(ProbReset()!=TCL_OK) {
     Release(); // Delete any Oxs_Ext objects already constructed
     return TCL_ERROR;
@@ -699,6 +788,8 @@ void Oxs_Director::ForceRelease()
   chunk_output_compute_obj.clear();
   error_status = 0; // Clear error indicator (if any)
   Oxs_ThreadTree::EndThreads();  // Thread cleanup; NOP if non-threaded.
+  Oxs_MeshValue<OC_REAL8m>::arrblock_pool.EmptyPool();
+  Oxs_MeshValue<ThreeVector>::arrblock_pool.EmptyPool();
   fflush(stderr);  fflush(stdout);  // Safety
 }
 
@@ -765,7 +856,7 @@ void Oxs_Director::Release()
     if(mif_object.length()>0) {
       String cmd = mif_object + String(" Delete");
       Tcl_ResetResult(interp);
-      if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()))!=TCL_OK) {
+      if(Tcl_Eval(interp,cmd.c_str())!=TCL_OK) {
         tcl_state.Discard();
         OXS_THROW(Oxs_BadResourceDealloc,
                   "Error deleting MIF object during problem release.");
@@ -794,6 +885,10 @@ void Oxs_Director::Release()
     Oxs_WarningMessage::TransmitMessageHold();
     Oxs_WarningMessage::ClearHoldAndCounts();
 
+    // Empty Oxs_MeshValue pools
+    Oxs_MeshValue<OC_REAL8m>::arrblock_pool.EmptyPool();
+    Oxs_MeshValue<ThreeVector>::arrblock_pool.EmptyPool();
+
   } catch(...) {
     ForceRelease();
     throw;
@@ -810,16 +905,35 @@ Oxs_Director::~Oxs_Director()
   fflush(stderr);  fflush(stdout);
 }
 
-Tcl_Interp* Oxs_Director::GetMifInterp() const
-{
-  Tcl_Interp* mif_interp = NULL;
-  Oxs_TclInterpState istate(interp);
-  String cmd = mif_object + String(" Cget -mif_interp");
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.c_str()))==TCL_OK) {
-    mif_interp = Tcl_GetSlave(interp,Tcl_GetStringResult(interp));
+String Oxs_Director::GetMifInterpName() const
+{ // Returns name for MIF child interpreter as known in the main Tcl
+  // interpreter (interp). Throws an error on failure. (Note: This
+  // result can also be obtained by calling GetMifOption with import
+  // label set to "mif_interp".)
+  if(mif_object.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error in Oxs_Directory::GetMifInterpName:"
+                " no MIF object found.");
   }
-  istate.Restore();
-  return mif_interp;
+  String interp_name;
+  String cmd = mif_object + String(" Cget -mif_interp");
+  Oxs_TclInterpState orig_result(interp);
+  if(Tcl_Eval(interp,cmd.c_str()) == TCL_OK) {
+    interp_name = static_cast<String>(Tcl_GetStringResult(interp));
+  }
+  orig_result.Restore();
+  if(interp_name.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Error in Oxs_Directory::GetMifInterpName:"
+                " no MIF interp.");
+  }
+  return interp_name;
+}
+
+Tcl_Interp* Oxs_Director::GetMifInterp() const
+{ // Returns a C-level pointer to the MIF child interpreter.
+  String mif_interp_name = GetMifInterpName();
+  return Tcl_GetSlave(interp,mif_interp_name.c_str());
 }
 
 int Oxs_Director::GetLogFilename(String& logname) const
@@ -829,7 +943,7 @@ int Oxs_Director::GetLogFilename(String& logname) const
   // empty string.
   OC_BOOL err = 0;
   Oxs_TclInterpState istate(interp);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR("FileLogger GetFile"))!=TCL_OK) {
+  if(Tcl_Eval(interp,"FileLogger GetFile")!=TCL_OK) {
     err=1;
     logname = "";
   } else {
@@ -891,12 +1005,19 @@ int Oxs_Director::StoreExtObject(Oxs_OwnedPointer<Oxs_Ext>& obj)
   ext_obj.push_back(obj_ptr);
   obj.ReleaseOwnership();
 
-  // If this is an Oxs_Energy object, then append it to
+  // If this is an Oxs_Energy object then append it to
   // the energy_obj list as well.
   Oxs_Energy* energy_ptr
     = dynamic_cast<Oxs_Energy*>(obj_ptr);
   if(energy_ptr!=NULL)
     energy_obj.push_back(energy_ptr);
+
+  // If this is an Oxs_StateInitializer object then append it
+  // to the initstate_obj list too.
+  Oxs_StateInitializer* initstate_ptr
+    = dynamic_cast<Oxs_StateInitializer*>(obj_ptr);
+  if(initstate_ptr!=NULL)
+    initstate_obj.push_back(initstate_ptr);
 
   // Set driver data member if this is the first driver object
   if(driver==NULL) {
@@ -1009,6 +1130,20 @@ String Oxs_Director::ListEnergyObjects() const
   if(it!=energy_obj.end()) {
     result.append((*it)->InstanceName());
     while((++it)!=energy_obj.end()) {
+      result.append("\n");
+      result.append((*it)->InstanceName());
+    }
+  }
+  return result;
+}
+
+String Oxs_Director::ListStateInitializerObjects() const
+{
+  String result;
+  vector<Oxs_StateInitializer*>::const_iterator it = initstate_obj.begin();
+  if(it!=initstate_obj.end()) {
+    result.append((*it)->InstanceName());
+    while((++it)!=initstate_obj.end()) {
       result.append("\n");
       result.append((*it)->InstanceName());
     }
@@ -1198,7 +1333,8 @@ Oxs_Director::MakeOutputToken(OC_INDEX index,OC_UINT4m probid) const
 {
   static Oc_AutoBuf buf;
   buf.SetLength(4*sizeof(unsigned long)+8);
-  sprintf(static_cast<char *>(buf),"%" OC_INDEX_MOD "X %" OC_INT4m_MOD "X",
+  snprintf(static_cast<char *>(buf),buf.GetLength(),
+          "%" OC_INDEX_MOD "X %" OC_INT4m_MOD "X",
           static_cast<OC_UINDEX>(index),probid);
   return static_cast<char *>(buf);
 }
@@ -1282,7 +1418,7 @@ Oxs_Output* Oxs_Director::FindOutputObject(const char* regexp) const
     OXS_THROW(Oxs_BadPointer,"MIF interpreter not initialized in "
              "Oxs_Director::FindOutputObject()");
   }
-  Tcl_RegExp rp = Tcl_RegExpCompile(mif_interp,OC_CONST84_CHAR(regexp));
+  Tcl_RegExp rp = Tcl_RegExpCompile(mif_interp,regexp);
   if(rp==NULL) {
     String msg = "Invalid regular expression in "
       "Oxs_Director::FindOutputObject(): ";
@@ -1297,19 +1433,15 @@ Oxs_Output* Oxs_Director::FindOutputObject(const char* regexp) const
     String output_name = obj->LongName();
     Oc_AutoBuf ab = output_name.c_str();
     int match_result
-      = Tcl_RegExpExec(mif_interp,rp,
-                       OC_CONST84_CHAR(output_name.c_str()),
-                       OC_CONST84_CHAR(output_name.c_str()));
+      = Tcl_RegExpExec(mif_interp,rp, output_name.c_str(), output_name.c_str());
     if(match_result==0) continue; // No match
     if(match_result<0) { // Error
       String msg = "Regular expression match error in "
         "Oxs_Director::FindOutputObject(): ";
       msg += String(Tcl_GetStringResult(mif_interp));
       // Extended error info
-      const char* ei = Tcl_GetVar(mif_interp,OC_CONST84_CHAR("errorInfo"),
-                                  TCL_GLOBAL_ONLY);
-      const char* ec = Tcl_GetVar(mif_interp,OC_CONST84_CHAR("errorCode"),
-                                  TCL_GLOBAL_ONLY);
+      const char* ei = Tcl_GetVar(mif_interp,"errorInfo", TCL_GLOBAL_ONLY);
+      const char* ec = Tcl_GetVar(mif_interp,"errorCode", TCL_GLOBAL_ONLY);
       if(ei==NULL) ei = "";
       if(ec==NULL) ec = "";
       OXS_TCLTHROW(msg,String(ei),String(ec));
@@ -1345,7 +1477,7 @@ Oxs_Output* Oxs_Director::FindOutputObjectExact(const char* outname) const
 
 int Oxs_Director::Output(const char* output_token,
                          Tcl_Interp* use_interp,
-                         int argc,CONST84 char** argv)
+                         int argc,const char** argv)
 {
   if(driver==NULL) {
     Tcl_AppendResult(use_interp,"No driver specified\n",(char *)NULL);
@@ -1419,20 +1551,19 @@ Oxs_Director::OutputCacheRequestIncrement(const char* output_token,
                                           OC_INT4m incr) const
 {
   Oxs_Output* obj = InterpretOutputToken(output_token);
-  if (obj->CacheRequestIncrement(incr)) return TCL_OK;
-  return TCL_ERROR;
+  obj->CacheRequestIncrement(incr);
+  return TCL_OK;
 }
 
 void Oxs_Director::OutputNames(const char* output_token,
-                               vector<String>& names) const
-{ // Fills export "names" with, in order, owner_name, output_name,
-  // output_type, and output_units, for output object associated
-  // with output_token.
+                               vector<String>& label_value_names) const
+{ // Fills export label_value_names with label-value pairs for the
+  // output object associated with output_token. These pairs can be used
+  // to directly initialize a Tcl dictionary.  The labels include
+  // "owner", "name", "type", and "units".  Field outputs include an
+  // additional field, "filename_script".
   Oxs_Output* obj = InterpretOutputToken(output_token);
-  names.push_back(obj->OwnerName());
-  names.push_back(obj->OutputName());
-  names.push_back(obj->OutputType());
-  names.push_back(obj->OutputUnits());
+  obj->GetNames(label_value_names);
 }
 
 class OxsDirectorChunkOutputThread : public Oxs_ThreadRunObj {
@@ -1630,6 +1761,19 @@ Oxs_Energy* Oxs_Director::GetEnergyObj(OC_UINT4m i) const {
   return energy_obj[i];
 }
 
+// Oxs_SimState initializer object index access
+Oxs_StateInitializer*
+Oxs_Director::GetStateInitializerObj(OC_UINT4m i) const {
+  if(i >=  initstate_obj.size()) {
+    char buf[1024];
+    Oc_Snprintf(buf,sizeof(buf),"Request for state initializer"
+                " object (%u) past end of list (%u)",
+                (unsigned int)i,(unsigned int)initstate_obj.size());
+    OXS_THROW(Oxs_BadIndex,buf);
+  }
+  return initstate_obj[i];
+}
+
 
 // Collect stage requests from all registered Oxs_Ext objects.
 void Oxs_Director::ExtObjStageRequestCounts
@@ -1739,13 +1883,40 @@ Oxs_Director::FindExistingSimulationState(OC_UINT4m id) const
     OXS_THROW(Oxs_ProgramLogicError,
              "Find request for invalid simulation state id (0).");
   }
-  vector<Oxs_SimState*>::const_iterator it = simulation_state.begin();
-  while(it!=simulation_state.end()) {
-    const Oxs_SimState* sptr = *it;
-    if(sptr->Id() == id) return sptr;
-    ++it;
+  for(const auto& ss : simulation_state) {
+    if(ss->Id() == id &&
+       (ss->ReadLockCount()>0 || ss->WriteLockCount()>0)) {
+      // If ReadLockCount() and WriteLockCount() are both
+      // zero, then state is not in use.
+      return ss;
   }
-  return 0;
+  }
+  return nullptr;
+}
+
+// FindSuccessorSimulationStates scans through the simulation state list
+// and returns a vector of read-only pointers to any simulation states
+// that have the import prev_id as their previous_state_id.  The return
+// vector will be empty if none are found. We might want to consider
+// adding iterator access if a need develops for additional whole
+// simulation state list searches.
+std::vector<const Oxs_SimState*>
+Oxs_Director::FindSuccessorSimulationStates(OC_UINT4m prev_id) const
+{
+  std::vector<const Oxs_SimState*> matches;
+  if(prev_id==0) {
+    OXS_THROW(Oxs_ProgramLogicError,
+             "Find successor request for invalid simulation state id (0).");
+  }
+  for(const auto& ss : simulation_state) {
+    if(ss->previous_state_id == prev_id &&
+       (ss->ReadLockCount()>0 || ss->WriteLockCount()>0)) {
+      matches.push_back(ss);
+      /// If ReadLockCount() and WriteLockCount() are both
+      /// zero, then state is not in use.
+    }
+  }
+  return matches;
 }
 
 // FindBaseStep takes the id of an existing state and checks the
@@ -1778,6 +1949,125 @@ Oxs_Director::FindBaseStepState(const Oxs_SimState* stateptr) const
   return stateptr;
 }
 
+const std::initializer_list<Oxs_Director::WellKnownQuantity>
+Oxs_Director::WellKnownQuantity_List =
+    { WellKnownQuantity::total_energy_density,
+      WellKnownQuantity::total_H,
+      WellKnownQuantity::total_mxH,
+      WellKnownQuantity::total_mxHxm,
+      WellKnownQuantity::dm_dt };
+
+void
+Oxs_Director::WellKnownQuantityAttachRequest
+(WellKnownQuantity quantity)
+{
+  switch(quantity) {
+  case WellKnownQuantity::total_energy_density:
+    well_known_quantity_store.E_density.attach_request=true; break;
+  case WellKnownQuantity::total_H:
+    well_known_quantity_store.H.attach_request=true;         break;
+  case WellKnownQuantity::total_mxH:
+    well_known_quantity_store.mxH.attach_request=true;       break;
+  case WellKnownQuantity::total_mxHxm:
+    well_known_quantity_store.mxHxm.attach_request=true;     break;
+  default:
+    OXS_THROW(Oxs_BadParameter,
+              "Invalid \"well known quantity\" request.");
+  }
+}
+void
+Oxs_Director::SetWellKnownQuantityLabel
+(WellKnownQuantity quantity,
+ const String& label)
+{
+  switch(quantity) {
+  case WellKnownQuantity::total_energy_density:
+    if(!well_known_quantity_store.E_density.derived_label.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Well known quantity label \"total_energy_density\""
+                " set multiple times.");
+    }
+    well_known_quantity_store.E_density.derived_label=label; break;
+  case WellKnownQuantity::total_H:
+    if(!well_known_quantity_store.H.derived_label.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Well known quantity label \"total_H\""
+                " set multiple times.");
+    }
+    well_known_quantity_store.H.derived_label=label;         break;
+  case WellKnownQuantity::total_mxH:
+    if(!well_known_quantity_store.mxH.derived_label.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Well known quantity label \"total_mxH\""
+                " set multiple times.");
+    }
+    well_known_quantity_store.mxH.derived_label=label;       break;
+  case WellKnownQuantity::total_mxHxm:
+    if(!well_known_quantity_store.mxHxm.derived_label.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Well known quantity label \"total_mxHxm\""
+                " set multiple times.");
+    }
+    well_known_quantity_store.mxHxm.derived_label=label;     break;
+  case WellKnownQuantity::dm_dt:
+    if(!well_known_quantity_store.dm_dt.derived_label.empty()) {
+      OXS_THROW(Oxs_ProgramLogicError,
+                "Well known quantity label \"dm_dt\""
+                " set multiple times.");
+    }
+    well_known_quantity_store.dm_dt.derived_label=label;     break;
+
+  default:
+    OXS_THROW(Oxs_BadParameter,
+              "Invalid \"well known quantity\" request.");
+  }
+}
+
+String
+Oxs_Director::GetWellKnownQuantityLabel
+(WellKnownQuantity quantity)
+  const
+{
+  String label;
+  switch(quantity) {
+  case WellKnownQuantity::total_energy_density:
+    label=well_known_quantity_store.E_density.derived_label; break;
+  case WellKnownQuantity::total_H:
+    label=well_known_quantity_store.H.derived_label;         break;
+  case WellKnownQuantity::total_mxH:
+    label=well_known_quantity_store.mxH.derived_label;       break;
+  case WellKnownQuantity::total_mxHxm:
+    label=well_known_quantity_store.mxHxm.derived_label;     break;
+  default:
+    OXS_THROW(Oxs_BadParameter,
+              "Invalid \"well known quantity\" request.");
+  }
+  return label;
+}
+
+bool
+Oxs_Director::WellKnownQuantityRequestStatus
+(WellKnownQuantity quantity)
+  const
+{
+  bool status = false;
+  switch(quantity) {
+  case WellKnownQuantity::total_energy_density:
+    status = well_known_quantity_store.E_density.attach_request; break;
+  case WellKnownQuantity::total_H:
+    status = well_known_quantity_store.H.attach_request;         break;
+  case WellKnownQuantity::total_mxH:
+    status = well_known_quantity_store.mxH.attach_request;       break;
+  case WellKnownQuantity::total_mxHxm:
+    status = well_known_quantity_store.mxHxm.attach_request;     break;
+  case WellKnownQuantity::dm_dt:
+    status = well_known_quantity_store.dm_dt.attach_request;     break;
+  default:
+    OXS_THROW(Oxs_BadParameter,
+              "Invalid \"well known quantity\" request.");
+  }
+  return status;
+}
 
 // #define DEVELOP_TEST to make DoDevelopTest active.  It may
 // then be accessed from the Oxs solver console (use '-tk 1 -console'
@@ -1790,7 +2080,7 @@ Oxs_Director::FindBaseStepState(const Oxs_SimState* stateptr) const
 int Oxs_Director::DoDevelopTest
 (const String& /* subroutine */,
  String& result_str,
- int /* argc */,CONST84 char** /* argv */)
+ int /* argc */,const char** /* argv */)
 {
   result_str = "DoDevelopTest not enabled.";
   return 1;

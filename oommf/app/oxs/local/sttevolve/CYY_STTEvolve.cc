@@ -832,7 +832,7 @@ void CYY_STTEvolve::NegotiateTimeStep
   if(stepsize<timestep_lower_bound) stepsize = timestep_lower_bound;
 
   // Negotiate with driver over size of next step
-  driver->FillState(cstate,nstate);
+  driver->FillStateMemberData(cstate,nstate);
   UpdateTimeFields(cstate,nstate,stepsize);
 
   // Update iteration count
@@ -840,7 +840,11 @@ void CYY_STTEvolve::NegotiateTimeStep
   nstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
   // Additional timestep control
+#if OOMMF_API_INDEX < 20230325
   driver->FillStateSupplemental(nstate);
+#else
+  driver->FillStateSupplemental(cstate,nstate);
+#endif
 
   // Check for forced step
   force_step = 0;
@@ -1847,7 +1851,7 @@ void CYY_STTEvolve::AdjustStepHeadroom(OC_INT4m step_reject)
 OC_BOOL
 CYY_STTEvolve::Step(const Oxs_TimeDriver* driver,
                       Oxs_ConstKey<Oxs_SimState> current_state_key,
-                      const Oxs_DriverStepInfo& step_info,
+                      Oxs_DriverStepInfo& step_info,
                       Oxs_Key<Oxs_SimState>& next_state_key)
 {
   const OC_REAL8m bad_energy_cut_ratio = 0.75;
@@ -1863,7 +1867,7 @@ CYY_STTEvolve::Step(const Oxs_TimeDriver* driver,
   OC_BOOL start_dm_active=0;
   if(next_timestep<=0.0 ||
      (cstate.stage_iteration_count<1
-      && step_info.current_attempt_count==0)) {
+      && step_info.GetCurrentAttemptCount()==0)) {
     if(cstate.stage_number==0
        || stage_init_step_control == SISC_START_DM) {
       start_dm_active = 1;

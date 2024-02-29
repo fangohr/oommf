@@ -14,6 +14,8 @@
 #include <cstring>
 #include <cstdarg>
 
+#include <string>
+
 #include "oc.h"
 #include "functions.h"
 #include "errhandlers.h"
@@ -74,16 +76,12 @@ OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported.
 
 // Dummy routine to force evaluation of temporaries.  Used as a
 // hack to work around some compiler bugs.
-// NOTE: The <stdarg.h> macros do not support a function signature
-//       with no fixed parameters.  We don't use the parameters
-//       anyway, but to be safe we implement this via overloading.
-//       Add more as needed.
 void Nb_NOP() {}
-void Nb_NOP(OC_REAL8m) {}
-void Nb_NOP(void*) {}
+OC_REAL8m Nb_NOP(OC_REAL8m x) { return x; }
+void* Nb_NOP(void* px) { return px; }
 
 // Tcl wrapper for Nb_Gcd
-int NbGcdCmd(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+int NbGcdCmd(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   char buf[1024];
   Tcl_ResetResult(interp);
@@ -175,7 +173,7 @@ void Nb_RatApprox(double x,int steps,int &num,int &denom)
 }
 
 // Tcl wrapper for the above
-int NbRatApprox(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+int NbRatApprox(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   char buf[1024];
   Tcl_ResetResult(interp);
@@ -240,6 +238,25 @@ int Nb_FindRatApprox
     p = q2;  q = p2;
   }
   return (fabs(x0*q2 - p2*y0) <= relerr*x0*q2);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Routine to convert a string value to a boolean. Returns true if input
+// is a non-zero integer or nocase "true". Otherwise returns false.
+bool Nb_StringToBoolean(const char* cstr) {
+  bool result = false;
+  try {
+    int ival = std::stoi(cstr);
+    if(ival) result = true;
+  } catch(...) {
+    std::string str;
+    const char* cptr = cstr;
+    while(*cptr != '\0') {
+      str += std::tolower(*cptr++);
+    }
+    std::istringstream(str) >> std::boolalpha >> result;
+  }
+  return result;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -624,23 +641,19 @@ OC_BOOL Nb_GetColor(const char* color,
     // Tk numeric color format, or else an error occurred
     // reading the string.  Assume symbolic name, and do a
     // lookup in the color database
-    Tcl_SavedResult saved;
-    Tcl_SaveResult(interp, &saved);
+    Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
 
     const char* cptr=NULL;
 
     // First check to see if nbcolordatabase array has been
     // initialized.
-    if(Tcl_GetVar2(interp,OC_CONST84_CHAR("nbcolordatabase"),
-		   OC_CONST84_CHAR("black"),TCL_GLOBAL_ONLY)==NULL) {
+    if(Tcl_GetVar2(interp,"nbcolordatabase", "black",TCL_GLOBAL_ONLY)==NULL) {
       // Array not yet filled.  Evaluate a Tcl script to
       // source the file(s) specified in the Oc_Option
       // database.
 
-      if(Tcl_GlobalEval(interp,
-		OC_CONST84_CHAR("Oc_Option Get Color filename _fl ;"
-				" foreach _f $_fl { source $_f }"))
-	 != TCL_OK) {
+      if(Tcl_GlobalEval(interp, "Oc_Option Get Color filename _fl ;"
+			" foreach _f $_fl { source $_f }") != TCL_OK) {
 	PlainWarning("Error sourcing color database file(s): %s",
 		     Tcl_GetStringResult(interp));
 	goto finished;
@@ -648,14 +661,11 @@ OC_BOOL Nb_GetColor(const char* color,
 
       // Add black entry just to be sure that we don't
       // initialize again next time through.
-      Tcl_SetVar2(interp,OC_CONST84_CHAR("nbcolordatabase"),
-		  OC_CONST84_CHAR("black"),
-		  OC_CONST84_CHAR("0 0 0"),TCL_GLOBAL_ONLY);
+      Tcl_SetVar2(interp,"nbcolordatabase", "black", "0 0 0",TCL_GLOBAL_ONLY);
     }
 
     // Try to read color from database
-    cptr = Tcl_GetVar2(interp,OC_CONST84_CHAR("nbcolordatabase"),
-		       buf,TCL_GLOBAL_ONLY);
+    cptr = Tcl_GetVar2(interp,"nbcolordatabase", buf,TCL_GLOBAL_ONLY);
     if(cptr!=NULL) {
       // Success; Convert from hex triplet into floats
       unsigned int r,g,b;
@@ -671,7 +681,7 @@ OC_BOOL Nb_GetColor(const char* color,
     }
 
   finished:
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
   }
 
   delete[] buf;
@@ -679,7 +689,7 @@ OC_BOOL Nb_GetColor(const char* color,
 }
 
 // Tcl wrapper for the above
-int NbGetColor(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+int NbGetColor(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   char buf[1024];
   Tcl_ResetResult(interp);
@@ -742,17 +752,16 @@ Nb_DString Nb_TclFileJoin(const Nb_List<Nb_DString>& parts)
                           "Nb_TclFileJoin",NB_FUNCTIONS_ERRBUFSIZE,
                           "No Tcl interpreter available"));
   }
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.GetStr())) != TCL_OK) {
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
+  if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
     Oc_Exception foo(__FILE__,__LINE__,NULL,
                      "Nb_TclFileJoin",2001,
                      "%.2000s",Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(foo);
   }
   Nb_DString result = Tcl_GetStringResult(interp);
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return result;
 }
 
@@ -778,17 +787,16 @@ Nb_TclGlob(const char* options,const char* globstr,
                           "Nb_TclGlob",NB_FUNCTIONS_ERRBUFSIZE,
                           "No Tcl interpreter available"));
   }
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.GetStr())) != TCL_OK) {
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
+  if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
     Oc_Exception foo(__FILE__,__LINE__,NULL,
                      "Nb_TclGlob",2001,
                      "%.2000s",Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(foo);
   }
   results.TclSplit(Tcl_GetStringResult(interp));
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return results.GetSize();
 }
 
@@ -816,17 +824,16 @@ Nb_DString Nb_TempName
                           "Nb_TempName",NB_FUNCTIONS_ERRBUFSIZE,
                           "No Tcl interpreter available"));
   }
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR(cmd.GetStr())) != TCL_OK) {
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
+  if(Tcl_Eval(interp,cmd.GetStr()) != TCL_OK) {
     Oc_Exception foo(__FILE__,__LINE__,NULL,
                      "Nb_TempName",2001,
                      "%.2000s",Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(foo);
   }
   Nb_DString result = Tcl_GetStringResult(interp);
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return result;
 }
 
@@ -841,43 +848,75 @@ const char* Nb_GetOOMMFRootDir(Oc_AutoBuf& ab)
                           "No Tcl interpreter available"));
   }
 
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(Tcl_Eval(interp,OC_CONST84_CHAR("Oc_Main GetOOMMFRootDir")) != TCL_OK) {
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
+  if(Tcl_Eval(interp,"Oc_Main GetOOMMFRootDir") != TCL_OK) {
     Oc_Exception foo(__FILE__,__LINE__,NULL,
                      "Nb_GetOOMMFRootDir",2001,
                      "%.2000s",Tcl_GetStringResult(interp));
-    Tcl_DiscardResult(&saved);
+    Tcl_DiscardInterpState(saved);
     OC_THROW(foo);
   }
   ab.Dup(Tcl_GetStringResult(interp));
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return ab.GetStr();
 }
 
+// Utility template. Returns the OS native name for an import const
+// char*, as either std::wstring (Windows) or std::string (everything
+// else).
+template<typename T>
+void Nb_GetNativeName
+(const char* filename, // Import file name
+ std::basic_string<T>& nativename) // Export native name
+{
+  // Get normalized (absolute path) filename as a Tcl_Obj.
+  Tcl_Obj* fileobj = Tcl_NewStringObj(filename,-1);
+  Tcl_IncrRefCount(fileobj);
+  Tcl_Obj* normalized = Tcl_FSGetNormalizedPath(NULL,fileobj);
+  if(normalized == nullptr) {
+    Tcl_DecrRefCount(fileobj);
+    Oc_Exception foo(__FILE__,__LINE__,NULL,
+                     "Nb_GetNativeName",1200,
+                     "Error: Invalid filename: %.1000s",
+                     filename);
+    OC_THROW(foo);
+  }
+  Tcl_IncrRefCount(normalized);
+
+  // Get path native version for use in system calls.
+  // Tcl_FSGetNativePath returns a void*, which should be case to
+  // WCHAR* on Windows or char* otherwise.
+  nativename.assign(static_cast<const T*>(Tcl_FSGetNativePath(normalized)));
+  Tcl_DecrRefCount(normalized);
+  Tcl_DecrRefCount(fileobj);
+}
 
 // Slightly portable versions of fopen, remove, and rename
 FILE *Nb_FOpen(const char *path,const char *mode)
 {
-  Oc_TclObj objpath(path);
-  const void* nativepath = Tcl_FSGetNativePath(objpath.GetObj());
 #if (OC_SYSTEM_TYPE != OC_WINDOWS)
-  return fopen(static_cast<const char*>(nativepath),mode);
+  std::string nativename;
+  Nb_GetNativeName(path,nativename);
+  return fopen(nativename.c_str(),mode);
 #else // Windows version. Uses WCHAR for intl char support.
+  std::wstring nativename;
+  Nb_GetNativeName(path,nativename);
   Oc_AutoWideBuf wmode(mode);
-  return _wfopen(static_cast<const wchar_t*>(nativepath),wmode);
+  return _wfopen(nativename.c_str(),wmode);
 #endif
 }
 
 int
 Nb_Remove(const char *path)
 {
-  Oc_TclObj objpath(path);
-  const void* nativepath = Tcl_FSGetNativePath(objpath.GetObj());
 #if (OC_SYSTEM_TYPE != OC_WINDOWS)
-  return remove(static_cast<const char*>(nativepath));
-#else // Windows version. Uses WCHAR for intl char support.
-  return _wremove(static_cast<const wchar_t*>(nativepath));
+  std::string nativename;
+  Nb_GetNativeName(path,nativename);
+  return remove(nativename.c_str());
+#else // Windows version. Use WCHAR for intl char support
+  std::wstring nativename;
+  Nb_GetNativeName(path,nativename);
+  return _wremove(nativename.c_str());
 #endif
 }
 
@@ -912,30 +951,15 @@ void Nb_RenameNoInterp
   // 1) Catch simplest case where strings are identical
   if(strcmp(oldpath,newpath)==0) return; // Nothing to do
 
-  // Get normalized versions of paths
-  Oc_TclObj oldobj(oldpath);  Oc_TclObj newobj(newpath);
-  Tcl_Obj* oldnorm = Tcl_FSGetNormalizedPath(nullptr,oldobj.GetObj());
-  Tcl_Obj* newnorm = Tcl_FSGetNormalizedPath(nullptr,newobj.GetObj());
-  if(oldnorm == nullptr) {
-    Oc_Exception foo(__FILE__,__LINE__,NULL,
-                     "Nb_RenameNoInterp",1200,
-                     "Error: Invalid oldpath spec: %.1000s",
-                     oldpath);
-    OC_THROW(foo);
-  }
-  if(newnorm == nullptr) {
-    Oc_Exception foo(__FILE__,__LINE__,NULL,
-                     "Nb_RenameNoInterp",1200,
-                     "Error: Invalid newpath spec: %.1000s",
-                     newpath);
-    OC_THROW(foo);
-  }
-  if(strcmp(Tcl_GetString(oldnorm),Tcl_GetString(newnorm))==0) return; // Same file
+  // Buffers for native file names; on Windows the type is WCHAR*.
+#if (OC_SYSTEM_TYPE == OC_WINDOWS)
+  std::wstring oldfile;  std::wstring newfile;
+#else
+  std::string  oldfile;  std::string newfile;
+#endif
 
-  // Get native versions of paths for use by system calls. On Windows
-  // the return is WCHAR*; otherwise it's char*.
-  const void* oldnative = Tcl_FSGetNativePath(oldnorm);
-  const void* newnative = Tcl_FSGetNativePath(newnorm);
+  Nb_GetNativeName(oldpath,oldfile);
+  Nb_GetNativeName(newpath,newfile);
 
   // On Windows, one can use the GetFileInformationByHandle call and
   // check the VolumeSerialNumber and FileIndex in the
@@ -955,18 +979,16 @@ void Nb_RenameNoInterp
 
 #if (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
   /// Add more tests if an extant unix variant turns up w/o stat
-  const char* oldfile = static_cast<const char*>(oldnative);
-  const char* newfile = static_cast<const char*>(newnative);
   struct stat old_statbuf;
-  if(stat(oldfile,&old_statbuf)!=0) {
+  if(stat(oldfile.c_str(),&old_statbuf)!=0) {
       Oc_Exception foo(__FILE__,__LINE__,NULL,
                        "Nb_RenameNoInterp",1200,
                        "Error; can't stat source file %.1000s",
-                       oldfile);
+                       oldfile.c_str());
       OC_THROW(foo);
   }
   struct stat new_statbuf;
-  if(stat(newfile,&new_statbuf)==0) {
+  if(stat(newfile.c_str(),&new_statbuf)==0) {
     // If stat fails on newpath, assume newpath does not exist.
     if(old_statbuf.st_ino == new_statbuf.st_ino
        && old_statbuf.st_dev == new_statbuf.st_dev) {
@@ -991,9 +1013,7 @@ void Nb_RenameNoInterp
 #endif
 
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
-  const WCHAR* oldfile = static_cast<const WCHAR*>(oldnative);
-  const WCHAR* newfile = static_cast<const WCHAR*>(newnative);
-  BOOL result = MoveFileExW(oldfile,newfile,
+  BOOL result = MoveFileExW(oldfile.c_str(),newfile.c_str(),
                             MOVEFILE_COPY_ALLOWED
                             | MOVEFILE_REPLACE_EXISTING
                             | (sync ? MOVEFILE_WRITE_THROUGH : 0));
@@ -1008,7 +1028,7 @@ void Nb_RenameNoInterp
     OC_THROW(foo);
   }
 #else
-  int errorcode = rename(oldfile,newfile);
+  int errorcode = rename(oldfile.c_str(),newfile.c_str());
   if(errorcode != 0) {
     // Some some failure occurred.  In particular, the ANSI C rename
     // call can fail if the paths are on different volumes.  Fall back
@@ -1016,8 +1036,8 @@ void Nb_RenameNoInterp
     // target for writing if source doesn't exist; that case is an
     // error in which case we don't want the target truncated.)
     errorcode = 1;
-    FILE* fin = fopen(oldfile,"rb");
-    FILE* fout = (fin!=0 ? fopen(newfile,"wb") : 0);
+    FILE* fin = fopen(oldfile.c_str(),"rb");
+    FILE* fout = (fin!=0 ? fopen(newfile.c_str(),"wb") : 0);
     if(fin!=0 && fout!=0) {
       const unsigned int BSIZE = 32768;
       char buf[BSIZE];
@@ -1035,13 +1055,13 @@ void Nb_RenameNoInterp
     if(fout) fclose(fout);
     if(errorcode == 0) {
       // Copy was successful.  Remove original file
-      errorcode = remove(oldfile);
+      errorcode = remove(oldfile.c_str());
     }
     if(errorcode) {
       Oc_Exception foo(__FILE__,__LINE__,NULL,
                        "Nb_RenameNoInterp",2200,
                        "Error moving file %.1000s to %.1000s",
-                       oldfile,newfile);
+                       oldfile.c_str(),newfile.c_str());
       OC_THROW(foo);
     }
   }
@@ -1052,7 +1072,7 @@ void Nb_RenameNoInterp
     int sync_error = 0;
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
     // Note: CreateFile() supports longer file names than OpenFile().
-    HANDLE hFile = CreateFileW(newfile,GENERIC_WRITE,0,0,
+    HANDLE hFile = CreateFileW(newfile.c_str(),GENERIC_WRITE,0,0,
                                OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
     if(hFile == INVALID_HANDLE_VALUE) {
       ++sync_error;
@@ -1066,7 +1086,7 @@ void Nb_RenameNoInterp
     }
 #elif (OC_SYSTEM_TYPE == OC_UNIX) || (OC_SYSTEM_TYPE == OC_DARWIN)
     /// Add more tests if an extant unix variant turns up w/o fsync
-    int fd = open(newfile,O_RDWR);
+    int fd = open(newfile.c_str(),O_RDWR);
     /// Note: O_APPEND not directly supported on NFS.
     if(fd == -1) {
       ++sync_error;
@@ -1095,30 +1115,41 @@ void Nb_RenameNoInterp
 // in Nb_WriteChannel is 'char*', not 'const char*'.  Blame pre-8.4
 // Tcl_Write for this.  If bytecount is <0, then buf should
 // be NULL terminated, and everything up to the NULL byte is
-// output.  The return value is the number of bytes written,
-// or -1 in case of error.
+// output.  The return value is the number of bytes written;
+// An Oc_Exception is thrown on error.
 OC_INDEX
 Nb_WriteChannel(Tcl_Channel channel,const char* buf,OC_INDEX bytecount)
 {
   if(bytecount<0) { // Special case
-    return static_cast<OC_INDEX>(Tcl_Write(channel,const_cast<char*>(buf),-1));
+    bytecount = static_cast<OC_INDEX>(Tcl_Write(channel,
+                                                const_cast<char*>(buf),-1));
+  } else {
+    // According to the docs, the type specifier for the byte count
+    // to Tcl_Write is an "int".  Handle case where import bytecount
+    // is too big to fit in an "int"
+    OC_INDEX bytes_out = 0;
+    while(bytes_out<bytecount) {
+      int attempt_size = INT_MAX;
+      if(bytecount - bytes_out < OC_INDEX(attempt_size)) {
+        attempt_size = int(bytecount-bytes_out);
+      }
+      int result = Tcl_Write(channel,const_cast<char*>(buf),attempt_size);
+      if (attempt_size != result) {
+        bytecount = -1;
+        break;
+      }
+      buf += attempt_size;
+      bytes_out += attempt_size;
+    }
   }
+  if(bytecount<0) {
+    const int errorCode = Tcl_GetErrno();
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,NULL,
+                          "Nb_WriteChannel",NB_FUNCTIONS_ERRBUFSIZE,
+                          "Write error: %.*s",
+                          NB_FUNCTIONS_ERRBUFSIZE-32,
+                          Tcl_ErrnoMsg(errorCode)));
 
-  // According to the docs, the type specifier for the byte count
-  // to Tcl_Write is an "int".  Handle case where import bytecount
-  // is too big to fit in an "int"
-  OC_INDEX bytes_out = 0;
-  while(bytes_out<bytecount) {
-    int attempt_size = INT_MAX;
-    if(bytecount - bytes_out < OC_INDEX(attempt_size)) {
-      attempt_size = int(bytecount-bytes_out);
-    }
-    if (attempt_size
-        != Tcl_Write(channel,const_cast<char*>(buf),attempt_size)) {
-      return -1; // Error
-    }
-    buf += attempt_size;
-    bytes_out += attempt_size;
   }
   return bytecount;
 }
@@ -1159,13 +1190,13 @@ Nb_FprintfChannel(Tcl_Channel channel,char* buf,OC_INDEX bufsize,
   if(len==0) return 0;
 
   // Write formatted string to channel.
+  // Nb_WriteChannel throws an Oc_Exception on error.
   OC_INDEX result = Nb_WriteChannel(channel,buf,len);
-  if(result != len) {
+  if(result != len) { // Shouldn't happen?!
     OC_THROW(Oc_Exception(__FILE__,__LINE__,NULL,
-           "Nb_FprintfChannel",NB_FUNCTIONS_ERRBUFSIZE,
-           "Write error (device full?)"));
+                          "Nb_FprintfChannel",
+                          "Unknown write error"));
   }
-
   return static_cast<OC_UINT4m>(result);
 }
 
@@ -1196,7 +1227,7 @@ OC_BOOL Nb_GetUserId(OC_INT4m& numeric_id)
 
 // Tcl wrapper around Nb_GetUserId
 int NbGetUserId(ClientData,Tcl_Interp *interp,
-                int argc,CONST84 char** /* argv */)
+                int argc,const char** /* argv */)
 { // Numeric form of user id (unix only).
   Tcl_ResetResult(interp);
   if(argc!=1) {
@@ -1254,7 +1285,7 @@ OC_BOOL Nb_GetUserName(Nb_DString& string_id)
 
 // Tcl wrapper around Nb_GetUserName
 int NbGetUserName(ClientData,Tcl_Interp *interp,
-                int argc,CONST84 char** /* argv */)
+                int argc,const char** /* argv */)
 {
   Tcl_ResetResult(interp);
   if(argc!=1) {
@@ -1298,7 +1329,7 @@ OC_BOOL Nb_GetUserName(Nb_DString& string_id)
 
 // Tcl wrapper around Nb_GetUserName
 int NbGetUserName(ClientData,Tcl_Interp *interp,
-                int argc,CONST84 char** /* argv */)
+                int argc,const char** /* argv */)
 {
   Tcl_ResetResult(interp);
   if(argc!=1) {
@@ -1397,7 +1428,7 @@ int Nb_GetPidUserName(OC_INT4m pid,Nb_DString& username)
 // if the lookup fails for any reason.  Otherwise, returns a string
 // of the form "domain\username".
 int NbGetPidUserName(ClientData,Tcl_Interp *interp,
-                     int argc,CONST84 char** argv)
+                     int argc,const char** argv)
 {
   Tcl_ResetResult(interp);
   if(argc!=2) {

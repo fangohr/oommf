@@ -74,29 +74,12 @@ String Nb_MergeList(const vector<String>* args)
   int argc = static_cast<int>(args->size());
   assert(argc>0 && args->size() == size_t(argc)); // Overflow check
 
-#if TCL_MAJOR_VERSION<8 || (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4)
-  // Life would be so much simpler if Tcl would use const char*
-  // instead of char* in parameter lists.  Sigh...
-  Oc_AutoBuf* mybuf = new Oc_AutoBuf[size_t(argc)];
-  char **argv = new char*[size_t(argc)];
-  for(int i=0;i<argc;i++) {
-    mybuf[i].Dup((*args)[size_t(i)].c_str());
-    argv[i] = mybuf[i].GetStr();
-  }
-  char* merged_string = Tcl_Merge(argc,argv);
-  result = merged_string; // Copy into result string
-  Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
-  delete[] argv;
-  delete[] mybuf;
-#else // TCL version
-  // Yeah!  Life is easier.
   const char* *argv =  new const char*[size_t(argc)];
   for(int i=0;i<argc;i++) argv[i] = (*args)[i].c_str();
   char* merged_string = Tcl_Merge(argc,argv);
   result = merged_string; // Copy into result string
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
   delete[] argv;
-#endif // TCL version
 
   return result;
 }
@@ -106,7 +89,6 @@ String Nb_MergeList(const vector<String>& args)
   return Nb_MergeList(&args);
 }
 
-#if (TCL_MAJOR_VERSION > 8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>0))
 String Nb_MergeList(const Nb_TclObjArray& arr)
 {
   String result;
@@ -116,33 +98,15 @@ String Nb_MergeList(const Nb_TclObjArray& arr)
   int argc = static_cast<int>(arr.Size());
   assert(argc>0 && arr.Size() == argc); // Overflow check
 
-#if TCL_MAJOR_VERSION<8 || (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 4)
-  // Life would be so much simpler if Tcl would use const char*
-  // instead of char* in parameter lists.  Sigh...
-  Oc_AutoBuf* mybuf = new Oc_AutoBuf[size_t(argc)];
-  char **argv = new char*[size_t(argc)];
-  for(int i=0;i<argc;i++) {
-    mybuf[i].Dup(arr.GetString(i).c_str());
-    argv[i] = mybuf[i].GetStr();
-  }
-  char* merged_string = Tcl_Merge(argc,argv);
-  result = merged_string; // Copy into result string
-  Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
-  delete[] argv;
-  delete[] mybuf;
-#else // TCL version
-  // Yeah!  Life is easier.
   const char* *argv =  new const char*[size_t(argc)];
   for(int i=0;i<argc;i++) argv[i] = arr.GetString(i).c_str();
   char* merged_string = Tcl_Merge(argc,argv);
   result = merged_string; // Copy into result string
   Tcl_Free(merged_string); // Free memory allocated inside Tcl_Merge()
   delete[] argv;
-#endif // TCL version
 
   return result;
 }
-#endif // Tcl version check
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -253,7 +217,7 @@ void Nb_TclCommand::ReleaseBaseCommand()
   // information.  The alternative is to dump all the results except the
   // one at the bottom of the stack, with a command like
   //
-  // if(it == result_stack.rend()-1) Tcl_RestoreResult(interp,&(*it));
+  // if(it == result_stack.rend()-1) Tcl_RestoreInterpState(interp,(*it));
   //
   // The boolean "unbalanced" is set true if the result stack is not
   // empty.  This presumably indicates a programming error.  After
@@ -261,10 +225,10 @@ void Nb_TclCommand::ReleaseBaseCommand()
   // provided an exception is not currently being processed, and also
   // provided an earlier exception did not explicitly request no warning
   // by setting the member variable no_too_few_restores_warning true.
-  vector<Tcl_SavedResult>::reverse_iterator it = result_stack.rbegin();
+  vector<Tcl_InterpState>::reverse_iterator it = result_stack.rbegin();
   OC_BOOL unbalanced = (it != result_stack.rend());
   while(it != result_stack.rend()) {
-    Tcl_DiscardResult(&(*it));
+    Tcl_DiscardInterpState((*it));
     ++it;
   }
   result_stack.clear();
@@ -324,7 +288,7 @@ void Nb_TclCommand::SetBaseCommand
 void Nb_TclCommand::SaveInterpResult() const
 { // Conceptually const
   result_stack.resize(result_stack.size()+1);
-  Tcl_SaveResult(interp,&(result_stack.back()));
+  result_stack.back() = Tcl_SaveInterpState(interp, TCL_OK);
 }
 
 void Nb_TclCommand::RestoreInterpResult() const
@@ -335,7 +299,7 @@ void Nb_TclCommand::RestoreInterpResult() const
                " with no interp result saved.");
     OC_THROWTEXT(msg);
   }
-  Tcl_RestoreResult(interp,&(result_stack.back()));
+  Tcl_RestoreInterpState(interp,(result_stack.back()));
   result_stack.pop_back();
 }
 
@@ -347,7 +311,7 @@ void Nb_TclCommand::DiscardInterpResult() const
                " with no interp result saved.");
     OC_THROWTEXT(msg);
   }
-  Tcl_DiscardResult(&(result_stack.back()));
+  Tcl_DiscardInterpState((result_stack.back()));
   result_stack.pop_back();
 }
 
@@ -477,7 +441,7 @@ void Nb_TclCommand::Eval() const
 
   int errcode = TCL_OK;
   try {
-    errcode = Tcl_Eval(interp,OC_CONST84_CHAR(script.c_str()));
+    errcode = Tcl_Eval(interp,script.c_str());
   } catch(...) {
     no_too_few_restores_warning = 1; // We're throwing an exception.
     /// This is expected to unbalance the results stack.  There does
@@ -519,10 +483,8 @@ void Nb_TclCommand::Eval() const
       + String(Tcl_GetString(eval_result));
 #endif
     // Extended error info
-    const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                                TCL_GLOBAL_ONLY);
-    const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                                TCL_GLOBAL_ONLY);
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
     if(ei==NULL) ei = "";
     if(ec==NULL) ec = "";
 

@@ -70,7 +70,7 @@ Oxs_StageZeeman::Oxs_StageZeeman(
                        director->GetMifInterp(),
                        dummy_cmd,1);
 
-    number_of_stages 
+    number_of_stages
       = GetUIntInitValue("stage_count",
                          static_cast<OC_UINT4m>(filelist.size()));
     /// Default number_of_stages in this case is the length
@@ -90,13 +90,13 @@ Oxs_StageZeeman::Oxs_StageZeeman(
   }
 
   // Initialize outputs.
-  Bapp_output.Setup(this,InstanceName(),"B max","mT",1,
+  Bapp_output.Setup(this,InstanceName(),"B max","mT",
                     &Oxs_StageZeeman::Fill__Bapp_output);
-  Bappx_output.Setup(this,InstanceName(),"Bx max","mT",1,
+  Bappx_output.Setup(this,InstanceName(),"Bx max","mT",
                      &Oxs_StageZeeman::Fill__Bapp_output);
-  Bappy_output.Setup(this,InstanceName(),"By max","mT",1,
+  Bappy_output.Setup(this,InstanceName(),"By max","mT",
                      &Oxs_StageZeeman::Fill__Bapp_output);
-  Bappz_output.Setup(this,InstanceName(),"Bz max","mT",1,
+  Bappz_output.Setup(this,InstanceName(),"Bz max","mT",
                      &Oxs_StageZeeman::Fill__Bapp_output);
 
   // Register outputs.
@@ -256,6 +256,21 @@ void Oxs_StageZeeman::ComputeEnergyChunk
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(state.Ms);
   Nb_Xpfloat energy_sum = 0.0;
 
+  // The next two stanzas could be pushed down into the main loop, but
+  // it is expected that ocedt.H and ocedt.H_accum will be nullptr most
+  // of the time.
+  if(ocedt.H)       {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      (*ocedt.H)[i]  = stagefield[i];
+    }
+  }
+  if(ocedt.H_accum) {
+    for(OC_INDEX i=node_start;i<node_stop;++i) {
+      (*ocedt.H_accum)[i] += stagefield[i];
+    }
+  }
+
+
   for(OC_INDEX i=node_start;i<node_stop;++i) {
     OC_REAL8m ei,tx,ty,tz;
     OC_REAL8m Msi = Ms[i];
@@ -275,8 +290,8 @@ void Oxs_StageZeeman::ComputeEnergyChunk
     } else {
       ei = tx = ty = tz = 0.0;
     }
-    if(ocedt.energy) (*ocedt.energy)[i] = ei;
-    if(ocedt.mxH)       (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
+    if(ocedt.energy)   (*ocedt.energy)[i] = ei;
+    if(ocedt.mxH)         (*ocedt.mxH)[i] = ThreeVector(tx,ty,tz);
   }
   ocedtaux.energy_total_accum += energy_sum;
   // ocedtaux.pE_pt_accum += 0.0;

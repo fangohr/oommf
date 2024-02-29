@@ -45,6 +45,11 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
     use_cache = 1;
   }
 
+  if(HasInitValue("base_field")) {
+    // Get pointer to base field object
+    OXS_GET_INIT_EXT_OBJECT("base_field",Oxs_VectorField,base_field);
+  }
+
   VerifyAllInitArgsUsed();
 
   if(min_norm>max_norm) {
@@ -62,8 +67,8 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
   maxcubed = max_norm*max_norm*max_norm;
 
   if(use_cache) {
-    // Fill map here (as opposed to a lazy fill), so that concurrent
-    // accesses are supported.
+    // Fill map here (as opposed to a lazy fill), so that repeatable
+    // concurrent accesses are supported.
     const OC_INDEX count = cache_mesh->Size();
     if(count<1) {
       throw Oxs_ExtError(this,"Empty mesh");
@@ -74,6 +79,12 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
       // No spread in magnitudes
       for(OC_INDEX i=0;i<count;++i) {
         value.Random(max_norm);
+        if(base_field.GetPtr()) {
+          ThreeVector pt, base_value;
+          cache_mesh->Center(i,pt);
+          base_field->Value(pt,base_value);
+          value += base_value;
+        }
         results_cache[i] = value;
       }
     } else {
@@ -84,6 +95,12 @@ Oxs_RandomVectorField::Oxs_RandomVectorField(
         OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
                             OC_REAL8m(1.)/OC_REAL8m(3.));
         value.Random(mag);
+        if(base_field.GetPtr()) {
+          ThreeVector pt, base_value;
+          cache_mesh->Center(i,pt);
+          base_field->Value(pt,base_value);
+          value += base_value;
+        }
         results_cache[i] = value;
       }
     }
@@ -123,6 +140,49 @@ Oxs_RandomVectorField::Value
       OC_REAL8m mag = pow((1-randval)*mincubed+randval*maxcubed,
                           OC_REAL8m(1.)/OC_REAL8m(3.));
       value.Random(mag);
+    }
+    if(base_field.GetPtr()) {
+      ThreeVector tmpvalue;
+      base_field->Value(pt,tmpvalue);
+      value += tmpvalue;
+    }
+  }
+}
+
+void
+Oxs_RandomVectorField::FillMeshValue
+(const Oxs_Mesh* mesh,
+ Oxs_MeshValue<ThreeVector>& array) const
+{
+  if(use_cache && mesh == cache_mesh.GetPtr()) {
+    // Copy data directly from cache. Don't do this unless the meshes
+    // are exactly the same, as otherwise the index-to-location mapping
+    // might be different. In particular, the example/randomcache.mif
+    // sample file caches values on a coarse mesh but then retrieves
+    // using a fine mesh (which results in block "grains"). The
+    // alternative branch will function correctly, if somewhat slower,
+    // dues to the need to translate between mesh indices and spatial
+    // locations. But in practice this branch is expected to be more
+    // common, so the optimization may be worthwhile. (Note: there is
+    // similar code in planerandomvectorfield.cc.)
+    if(mesh->Size() != results_cache.Size()) {
+      String msg = String("Cache and mesh sizes differ,"
+                          " indicating that mesh \"");
+      msg += String(cache_mesh->InstanceName());
+      msg += String("\" has changed since initialization of"
+                    " Oxs_RandomVectorField \"");
+      msg += String(InstanceName());
+      msg += String("\"");
+      throw Oxs_ExtError(this,msg);
+    }
+    array = results_cache;
+  } else {
+    array.AdjustSize(mesh);
+    const OC_INDEX size=mesh->Size();
+    for(OC_INDEX i=0;i<size;i++) {
+      ThreeVector pt;
+      mesh->Center(i,pt); // In this branch pt is actually only needed if
+      Value(pt,array[i]); // base_field is in use.
     }
   }
 }

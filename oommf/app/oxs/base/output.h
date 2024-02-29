@@ -36,7 +36,18 @@ private:
   String output_type;  // "scalar", "vector field", or "scalar field"
   String output_units;
 
-  OC_BOOL cache_support; // If true, then caching is supported
+  // The CacheRequestIncrement routine puts requests in (positive
+  // argument) or out (negative argument) to have the cache updated with
+  // new results. This allows output requests to be grouped for
+  // efficiency. Such requests are applied to subsequent UpdateCache
+  // requests; UpdateCache() will only update the cache if the request
+  // count is bigger than zero. UpdateCache() does not adjust the cache
+  // request count---cache requests are persistent, remaining until
+  // expressed removed by a subsequent CacheRequestIncrement with a
+  // negative increment.
+  //   The output object automatically manages the cache. In particular,
+  // the cache control may release the cache when cache_request_count
+  // goes to zero.
   OC_UINT4m cache_request_count;
 
   OC_INT4m priority; // Output evaluation priority.  Smaller
@@ -48,28 +59,34 @@ private:
   /// immediately after loading a problem, and use that list
   /// throughout the lifetime of the problem.
 
-  // Disable copy constructor and assignment operator by declaring
-  // them without defining them.
-  Oxs_Output(const Oxs_Output&);
-  Oxs_Output& operator=(const Oxs_Output&);
+  Oxs_Output(const Oxs_Output&) = delete;
+  Oxs_Output& operator=(const Oxs_Output&) = delete;
 
 protected:
-  OC_BOOL ForceCacheIncrement(OC_INT4m incr);
-  /// Analogous to CacheRequestIncrement, but ignores
-  /// cache_support value.  Returns 1 if increment was
-  /// successful.  For use by child classes.
-
   OC_BOOL GetMifOption(const char* label,String& value) const;
 
   const char* GetProblemName() const;
 
+  void GetBaseNames(vector<String>& label_value_names) const {
+    label_value_names.clear();
+    label_value_names.emplace_back("owner");
+    label_value_names.emplace_back(owner_name);
+    label_value_names.emplace_back("name");
+    label_value_names.emplace_back(output_name);
+    label_value_names.emplace_back("type");
+    label_value_names.emplace_back(output_type);
+    label_value_names.emplace_back("units");
+    label_value_names.emplace_back(output_units);
+  }
+
   void Setup(const char* owner_name_,
              const char* output_name_,
              const char* output_type_,
-             const char* output_units_,
-             OC_BOOL cache_support_);
-  // Called from public child Setup members, to initialize
-  // private data.  Also resets cache_request_count to 0.
+             const char* output_units_);
+  // Called from public child Setup members, to initialize private
+  // data.  Also resets cache_request_count to 0.  A previous fifth
+  // optional parameter "cache_support" has been deprecated since
+  // 2021-03-18 (commit 110419aca0d2).
 
   Oxs_Director* GetDirector() const { return director; }
 
@@ -83,6 +100,7 @@ public:
   Oxs_Output();
   virtual ~Oxs_Output(); // Deregisters
 
+  virtual void GetNames(vector<String>& label_value_names) const =0;
   String OwnerName()  const { return owner_name;  }
   String OutputName() const { return output_name; }
   String LongName() const;
@@ -92,22 +110,20 @@ public:
   virtual String GetOutputFormat() const =0;
 
   virtual int Output(const Oxs_SimState*,Tcl_Interp*,int argc,
-                     CONST84 char** argv) =0;
+                     const char** argv) =0;
 
-  // Cache flag control.  Returns 1 if increment was successful.
-  // NB: The controlling cache_request_count variable gets reset
-  //  each time Setup is called.  So CacheRequestIncrement should
-  //  be called only _after_ Setup, and cache request needs must
-  //  be re-requested any time Setup is re-called.
-  OC_BOOL CacheRequestIncrement(OC_INT4m incr)
-  {
-    if(!cache_support) return 0; // Caching disabled
-    return ForceCacheIncrement(incr);
+  // Cache request control.
+  // Note 1: The controlling cache_request_count variable gets reset
+  //  each time Setup is called.  So CacheRequestIncrement should be
+  //  called only _after_ Setup, and cache request needs must be
+  //  re-requested any time Setup is re-called.
+  // Note 2: CacheRequestIncrement() may be overridden by a child class,
+  //  for example to release cache buffers when cache_request_count goes
+  //  to zero.
+  void virtual CacheRequestIncrement(OC_INT4m incr) {
+    cache_request_count += incr;
   }
-
   OC_UINT4m GetCacheRequestCount() const { return cache_request_count; }
-
-  OC_BOOL IsCacheSupported() const { return cache_support; }
 
   OC_INT4m Priority() const { return priority; }
 

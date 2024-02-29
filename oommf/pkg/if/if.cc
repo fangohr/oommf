@@ -6,7 +6,7 @@
  * various image formats.  When the extension is loaded into
  * an interpreter in which Tk has been loaded, it registers
  * corresponding photo image formats with Tk.
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2013/05/22 07:15:30 $
@@ -18,6 +18,8 @@
 #include <limits>
 #include <cstdio>
 #include <cstring>
+#include <ostream>
+#include <vector>
 
 //#define USE_OLD_IMAGE
 #include "oc.h"
@@ -550,11 +552,8 @@ If_MSBitmap::FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
   pib.offset[0]=int(((unsigned char*)&pix[0].Red)   - (unsigned char*)pix);
   pib.offset[1]=int(((unsigned char*)&pix[0].Green) - (unsigned char*)pix);
   pib.offset[2]=int(((unsigned char*)&pix[0].Blue)  - (unsigned char*)pix);
-#if (TK_MAJOR_VERSION > 8) \
-	|| ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION >= 3))
   // Jan Nijtmans recommends this safe way to disable alpha processing
   pib.offset[3]=pib.offset[0];
-#endif
 
   // Skip unrequested leading rows
   Tcl_Seek(chan,OffBits+startrow*FileRowSize,SEEK_SET);
@@ -599,12 +598,9 @@ int If_MSBitmap::WritePhoto
 
   // Open Tcl channel to handle output
   Tcl_Channel chan
-    = Tcl_OpenFileChannel(interp,OC_CONST84_CHAR(fileName),
-			  OC_CONST84_CHAR("w"),0666);
+    = Tcl_OpenFileChannel(interp,fileName, "w",0666);
   if(chan==NULL) return TCL_ERROR;
-  int errcode = Tcl_SetChannelOption(interp,chan,
-				     OC_CONST84_CHAR("-translation"),
-                                     OC_CONST84_CHAR("binary"));
+  int errcode = Tcl_SetChannelOption(interp,chan, "-translation", "binary");
   if(errcode!=TCL_OK) {
     Tcl_Close(interp,chan);
     return errcode;
@@ -641,9 +637,9 @@ int If_MSBitmap::WritePhoto
   // MS Bitmap format is little-endian ordered;
   // Adjust byte ordering, if necessary.
 #if OC_BYTEORDER != 4321
-#if OC_BYTEORDER != 1234
-#error "Unsupported byte-order format"
-#endif
+# if OC_BYTEORDER != 1234
+#  error "Unsupported byte-order format"
+# endif
   Oc_Flip4(&FileSize);
   Oc_Flip2(&Reserved1);      Oc_Flip2(&Reserved2);
   Oc_Flip4(&OffBits);        Oc_Flip4(&BmiSize);
@@ -714,11 +710,6 @@ int If_MSBitmap::WritePhoto
 ////////////////////////////////////////////////////////////////////////
 // OOMMF If_PPM class
 class If_PPM {
-private:
-  int ReadNumber(Tcl_Channel chan,int& number);
-  char* ReadNumber(char* data,int& number);
-  char* ReadHeader(char* data,
-		   int& imagewidth,int& imageheight,int& maxval);
 public:
   If_PPM() {}
   ~If_PPM() {}
@@ -726,34 +717,135 @@ public:
   /// Returns 1 if the file on chan looks like a PPM P3.
 
   int FillPhoto(Tcl_Interp*  interp,Tcl_Channel  chan,
-	   const char* fileName,Tk_PhotoHandle imageHandle,
-	   int destX,int destY,int width,int height,int srcX,int srcY);
-  /// Fills in imageHandle as requested, one row at a time.
+                const char* fileName,Tk_PhotoHandle imageHandle,
+                int destX,int destY,int width,int height,int srcX,int srcY) {
+    return PhotoFill<Tcl_Channel>(interp,chan,fileName,imageHandle,
+                                  destX,destY,width,height,srcX,srcY);
+  }
 
   int WritePhoto(Tcl_Interp*  interp,const char* filename,
 		 Tk_PhotoImageBlock* blockPtr);
   // Write PhotoImageBlock to file "filename" in PPM P3 format.
 
   // String versions of the above
-  int ReadCheck(char* data,int& imagewidth,int& imageheight);
-  int FillPhoto(Tcl_Interp*  interp,char* data,Tk_PhotoHandle imageHandle,
-		int destX,int destY,int width,int height,int srcX,int srcY);
+  int ReadCheck(const unsigned char* data,int& imagewidth,int& imageheight);
+  int FillPhoto(Tcl_Interp*  interp,const unsigned char* data,
+                Tk_PhotoHandle imageHandle,
+		int destX,int destY,int width,int height,int srcX,int srcY) {
+      return PhotoFill<const unsigned char*>(interp,data,nullptr,imageHandle,
+                                          destX,destY,width,height,srcX,srcY);
+  }
+
   int WritePhoto(Tcl_Interp*  interp,Tcl_DString* dataPtr,
 		 Tk_PhotoImageBlock* blockPtr);
 
-
 private:
+  enum class FileType { INVALID, P1, P2, P3, P4, P5, P6 };
+
+  // Hack workaround for unsigned char <-> signed char functions
+  static const unsigned char* uustrchr(const unsigned char *s,int c) {
+    return reinterpret_cast<const unsigned char*>
+      (strchr(reinterpret_cast<const char*>(s),c));
+  }
+
+  static long int uustrtol (const unsigned char* str,
+                            const unsigned char* * endptr, int base) {
+    return strtol(reinterpret_cast<const char*>(str),
+                  const_cast<char**>(reinterpret_cast<const char**>(endptr)),
+                  base);
+  }
+  
+  class ValueText { // Class for whitespace separated plain text values.
+    // Unlike the other parallel "ReadNumber" classes, which are used
+    // only to read data from the PPM value block for particular PPM
+    // sub-types, this class is additionally used to read the header for
+    // all PPM file types. For convenient access, the ReadNumber
+    // functions in this class are static. These are member functions
+    // for the others, which supports instance-specific storage (in
+    // particular, a byte cache in the binary ValueBit class).
+  public:
+    static void ReadNumber(Tcl_Channel chan, int& number);
+    static void ReadNumber(const unsigned char* &data, int& number);
+    // Note: The ReadNumber routines in this class are
+    //       static
+  };
+  class ValueTextBit { // Class for single text digit, 0 or 1.
+    // This class maps "0" to the integer 1, and "1" to 0, to match the
+    // PBM file format to the brightness interpretation used by the rest
+    // of the code.
+  public:
+    void ReadNumber(Tcl_Channel chan, int& number);
+    void ReadNumber(const unsigned char* &data, int& number);
+  };
+  class ValueBit { // Class for binary single bit values.
+    // This is the binary analog to ValueTextBit, intended
+    // for use reading PPM P4 files. As in that class, a
+    // 0 bit is returned as 1, and a 1 bit as 0.
+    // NB: The ReadNumber routines read one byte from the source,
+    //     cache it, and advance the pointer.  The next seven
+    //     subsequent calls return bits from the cached value
+    //     without advancing the pointer.  Therefore, don't
+    //     intersperse reads with ValueBit on a source with other
+    //     accesses.
+  public:
+    void ReadNumber(Tcl_Channel chan, int& number);
+    void ReadNumber(const unsigned char* &data, int& number);
+    ValueBit() : cache(0), cache_mask(0)
+#ifndef NDEBUG
+              , cache_source(nullptr)
+#endif
+    {}
+  private:
+    unsigned char cache;
+    unsigned char cache_mask;
+#ifndef NDEBUG
+    const void* cache_source;
+#endif
+  };
+  class ValueByte { // Class for binary single byte values
+  public:
+    void ReadNumber(Tcl_Channel chan, int& number);
+    void ReadNumber(const unsigned char* &data, int& number);
+  };
+  class ValueDyad { // Class for binary big endian double byte values
+  public:
+    void ReadNumber(Tcl_Channel chan, int& number);
+    void ReadNumber(const unsigned char* &data, int& number);
+  };
+
+  int  ReadHeader(Tcl_Channel chan,
+                  int& imagewidth, int& imageheight, int& maxvalue,
+                  FileType &filetype);
+  int  ReadHeader(const unsigned char* &data,
+                  int& imagewidth, int& imageheight, int& maxvalue,
+                  FileType &filetype);
+
+
+  // Templates to handle filling in a Tk_PhotoHandle as requested.
+  template<typename T,typename R>
+  int PhotoFillData
+  (Tcl_Interp*  interp,T inhandle,
+   const char* fileName,Tk_PhotoHandle imageHandle,
+   int destX,int destY,int width,int height,int srcX,int srcY,
+   int imagewidth,int imageheight,int maxvalue,
+   If_PPM::FileType filetype);
+
+  template<typename T> int PhotoFill
+  (Tcl_Interp*  interp,T inhandle,
+   const char* fileName,Tk_PhotoHandle imageHandle,
+   int destX,int destY,int width,int height,int srcX,int srcY);
+  /// Fills in imageHandle as requested, one row at a time.
+
   int SprintColorValues(unsigned char* buf,
                         int red,int green,int blue);
-
 };
 
-int If_PPM::ReadNumber(Tcl_Channel chan,int& number)
+void If_PPM::ValueText::ReadNumber(Tcl_Channel chan,int& number)
 { // Consumes the next integer on chan, and also the first subsequent
   // non-number character, from chan.  Converts from text to int,
-  // storing the result in the export "number". Returns 0 on success,
-  // otherwise an errorcode>0.
-  
+  // storing the result in the export "number". Throws a const char* on
+  // error.
+
   number = 0; // Safety
 
   // Pass over whitespace and comments
@@ -761,7 +853,7 @@ int If_PPM::ReadNumber(Tcl_Channel chan,int& number)
   while(1) {
     if(Tcl_Read(chan,&ch,sizeof(char))!=1) {
       // Premature EOF
-      return 1;
+      throw("Premature EOF in PPM file.");
     }
     if(!isspace(ch)) {
       if(ch!='#') break; // Start of number detected
@@ -785,228 +877,570 @@ int If_PPM::ReadNumber(Tcl_Channel chan,int& number)
   char* cptr;
   long int lnum = strtol(buf,&cptr,10);
   number = static_cast<int>(lnum);
-  if(*cptr != '\0') return 2;
-  return 0;
+  if(*cptr != '\0') {
+    throw("Invalid data in PPM file.");
+  }
 }
 
-char* If_PPM::ReadNumber(char* data,int& number)
-{ // After skipping leading whitespace and comments,
-  // converts the first integer from text to int,
-  // storing the result in the export "number".
-  // On success, the return points to the first
-  // character past the end of the converted number.
-  // Returns NULL on failure
+void If_PPM::ValueText::ReadNumber(const unsigned char* &data,int& number)
+{ // After skipping leading whitespace and comments, converts the first
+  // integer from text to int, storing the result in the export
+  // "number". On success, data is adjusted to point to the second
+  // character past the end of the converted number. (This mimics the
+  // ReadNumber Tcl_Channel variant.) Throws a const char* on failure.
 
   number = 0; // Safety
 
   // Pass over whitespace and comments
-  char* cptr = data;
-  while(cptr!=NULL) {
+  const unsigned char* cptr = data;
+  while(cptr!=nullptr) {
     if(!isspace(*cptr)) {
       if(*cptr!='#') break; // Start of number detected
       // Otherwise, comment detected; read to end of line
-      if((cptr = strchr(cptr,'\n'))==NULL) return NULL;
+      if((cptr = uustrchr(cptr,'\n'))==nullptr) {
+        throw("Premature EOD in PPM data.");
+      }
     }
     ++cptr;
   }
 
   // At this point, cptr should point to the first non-whitespace
   // character outside of any comments.
-  long int lnum = strtol(cptr,&cptr,10);
+  long int lnum = uustrtol(cptr,&cptr,10);
   number = static_cast<int>(lnum);
-  return cptr;
+  data = ++cptr; // Skip over trailing whitespace
+}
+
+void If_PPM::ValueTextBit::ReadNumber(Tcl_Channel chan,int& number)
+{ // Skips leading whitespace and comments on chan, and tries to
+  // converts the next character to an integer value to store in import
+  // "number". The conversion fails if that character is neither "0" or
+  // "1", in which case a const char* error is thrown. Otherwise, "0" is
+  // mapped to the integer 1, and "1" to 0, matching the PBM file format
+  // interpretation to the usual brightness connotation.
+
+  // Pass over whitespace and comments
+  char ch;
+  while(1) {
+    if(Tcl_Read(chan,&ch,sizeof(char))!=1) {
+      // Premature EOF
+      throw("Premature EOF in PPM file.");
+    }
+    if(!isspace(ch)) {
+      if(ch!='#') break; // Start of number detected
+      // Otherwise, comment detected; read to end of line
+      while(Tcl_Read(chan,&ch,sizeof(char))==1 && ch!='\n') {}
+    }
+  }
+
+  // At this point, cptr should point to the first non-whitespace
+  // character outside of any comments. This value should be
+  // either "0" or "1".
+  switch(ch) {
+  case '0': number = 1; break;
+  case '1': number = 0; break;
+  default: throw("Invalid character in PPM data.");
+  }
+}
+
+void If_PPM::ValueTextBit::ReadNumber(const unsigned char* &data,int& number)
+{ // Same as If_PPM::ValueTextBit::ReadNumber(Tcl_Channel,int&)
+  // but reads from a character array instead of Tcl_Channel,
+  // and advances &data instead of chan.
+
+  // Pass over whitespace and comments
+  const unsigned char* cptr = data;
+  while(cptr!=nullptr) {
+    if(!isspace(*cptr)) {
+      if(*cptr!='#') break; // Start of number detected
+      // Otherwise, comment detected; read to end of line
+      if((cptr = uustrchr(cptr,'\n'))==nullptr) {
+        throw("Premature EOD in PPM data.");
+      }
+    }
+    ++cptr;
+  }
+
+  // At this point, cptr should point to the first non-whitespace
+  // character outside of any comments. This value should be
+  // either "0" or "1".
+  switch(*cptr) {
+  case '0': number = 1; break;
+  case '1': number = 0; break;
+  default: throw("Invalid character in PPM data.");
+  }
+  data = ++cptr;
+}
+
+void If_PPM::ValueBit::ReadNumber(Tcl_Channel chan,int& number)
+{ // Reads one byte from chan, caches it, and returns lead bit (as a 0
+  // or 1). Subsequent calls return the next bit downward without
+  // reading from chan, until all bits have been consumed. Rinse and
+  // repeat.  Caller is responsible for ensuring chan is in binary
+  // mode. Throws a const char* on error.
+  //
+  // This class is the binary analog to ValueTextBit, intended for use
+  // reading PPM P4 files. As in that class, a 0 bit is returned as 1,
+  // and a 1 bit as 0.
+  //
+  // Note: Tcl 8.6 docs say Tcl_Read is deprecated, but use it anyway as
+  //       it does exactly what we want. But we may need to change this
+  //       in the future. If so, we may want to change export "number"
+  //       to type ObjPtr.
+
+  // chan should point inside the file binary data block.
+#ifndef NDEBUG
+  if(!cache_source) {
+    cache_source = chan;
+  }
+#endif
+  assert(cache_source == chan); // Consistency check
+
+  if(cache_mask == 0) {
+    if(Tcl_Read(chan,reinterpret_cast<char*>(&cache),1)!=1) {
+      throw("Premature EOF in PPM file.");
+    }
+    cache_mask = 0x80;
+  }
+  number = (cache & cache_mask ? 0 : 1);
+  cache_mask >>= 1;
+}
+
+void If_PPM::ValueBit::ReadNumber(const unsigned char* &data,int& number)
+{ // Pulls one byte from data[], caches it, advances data ptr, and
+  // returns lead bit (as a 0 or 1). Subsequent calls return the next
+  // bit downward on the cache without accessing data[], until all bits
+  // have been consumed. Rinse and repeat.
+  //
+  // This class is the binary analog to ValueTextBit, intended for use
+  // reading PPM P4 files. As in that class, a 0 bit is returned as 1,
+  // and a 1 bit as 0.
+
+#ifndef NDEBUG
+  if(!cache_source) {
+    cache_source = data;
+  }
+#endif
+  assert(cache_source == data); // Consistency check
+
+  // *data should point inside the file binary data block.
+  if(cache_mask == 0) {
+    cache = *data;
+    ++data;
+    cache_mask = 0x80;
+#ifndef NDEBUG
+    cache_source = data;
+#endif
+  }
+  number = (cache & cache_mask ? 0 : 1);
+  cache_mask >>= 1;
+}
+
+void If_PPM::ValueByte::ReadNumber(Tcl_Channel chan,int& number)
+{ // Consumes the next binary byte on chan, and stores the result as an
+  // unsigned int in number. Caller is responsible for ensuring
+  // chan is in binary mode. Throws a const char* on error.
+
+  // Note: Tcl 8.6 docs say Tcl_Read is deprecated, but use it anyway as
+  //       it does exactly what we want. But we may need to change this
+  //       in the future. If so, we may want to change export "number"
+  //       to type ObjPtr.
+
+  // At this point, ch should hold first non-whitespace
+  // character outside of any comments.
+  unsigned char byte;
+  if(Tcl_Read(chan,reinterpret_cast<char*>(&byte),1)!=1) {
+    throw("Premature EOF in PPM file.");
+  }
+  number = static_cast<int>(byte);
+}
+
+void If_PPM::ValueByte::ReadNumber(const unsigned char* &data,int& number)
+{ // Copies byte at data as an unsigned character into number
+  // and increments data.
+  number = static_cast<int>(*data);
+  ++data;
+}
+
+void If_PPM::ValueDyad::ReadNumber(Tcl_Channel chan,int& number)
+{ // Consumes the next two binary bytes on chan, and stores the result
+  // as an unsigned two-byte big-endian value in number. Caller is
+  // responsible for ensuring chan is in binary mode. Throws a const
+  // char* on error.
+
+  // Note: Tcl 8.6 docs say Tcl_Read is deprecated, but use it anyway as
+  //       it does exactly what we want. But we may need to change this
+  //       in the future. If so, we may want to change export "number"
+  //       to type ObjPtr.
+
+  // At this point, ch should hold first non-whitespace
+  // character outside of any comments.
+  unsigned char byte[2];
+  if(Tcl_Read(chan,reinterpret_cast<char*>(byte),2)!=2) {
+    throw("Premature EOF in PPM file.");
+  }
+  number = static_cast<int>(static_cast<unsigned int>((byte[0])<<8) + byte[1]);
+}
+
+void If_PPM::ValueDyad::ReadNumber(const unsigned char* &data,int& number)
+{ // Copies byte at data as an unsigned character into number
+  // and increments data.
+  unsigned int hibyte = data[0];
+  unsigned int lobyte = data[1];
+  number = static_cast<int>((hibyte<<8) + lobyte);
+  data+=2;
+}
+
+
+int If_PPM::ReadHeader
+(Tcl_Channel chan,
+ int& imagewidth,int& imageheight,int& maxvalue,
+ FileType &filetype)
+{ // Returns 1 if the data doesn't looks like PPM data.  Otherwise,
+  // returns 0 and advances channel pointer to end of header.
+
+  // Check signature
+  char type[2];
+  Tcl_Read(chan,type,2*sizeof(char));
+  if(type[0]!='P') return 1;
+  switch(type[1]) {
+  case '1': filetype = FileType::P1; break;
+  case '2': filetype = FileType::P2; break;
+  case '3': filetype = FileType::P3; break;
+  case '4': filetype = FileType::P4; break;
+  case '5': filetype = FileType::P5; break;
+  case '6': filetype = FileType::P6; break;
+  default: return 1;
+  }
+  try {
+    ValueText::ReadNumber(chan,imagewidth);
+    ValueText::ReadNumber(chan,imageheight);
+    if(filetype == FileType::P1 || filetype == FileType::P4) {
+      maxvalue = 1;  // Simple bitmap
+    } else {
+      ValueText::ReadNumber(chan,maxvalue);
+    }
+  } catch(...) {
+    return 1;
+  }
+  return 0;
+}
+
+
+int If_PPM::ReadHeader
+(const unsigned char* &data,
+ int& imagewidth,int& imageheight,int& maxvalue,
+ FileType &filetype)
+{ // Returns 1 if the data doesn't looks like PPM data.  Otherwise,
+  // fills the export values, and adjusts data to point to first byte
+  // past header, and returns 0.
+
+  // Check signature
+  if(data[0]!='P') return 1;
+  switch(data[1]) {
+  case '1': filetype = FileType::P1; break;
+  case '2': filetype = FileType::P2; break;
+  case '3': filetype = FileType::P3; break;
+  case '4': filetype = FileType::P4; break;
+  case '5': filetype = FileType::P5; break;
+  case '6': filetype = FileType::P6; break;
+  default: return 1;
+  }
+  const unsigned char* cptr = data + 2;
+  try {
+    ValueText::ReadNumber(cptr,imagewidth);
+    ValueText::ReadNumber(cptr,imageheight);
+    if(filetype == FileType::P1 || filetype == FileType::P4) {
+      maxvalue = 1;  // Simple bitmap
+    } else {
+      ValueText::ReadNumber(cptr,maxvalue);
+    }
+  } catch(...) {
+    return 1;
+  }
+  data = cptr;
+  return 0;
 }
 
 int If_PPM::ReadCheck
 (Tcl_Channel chan,int& imagewidth,int& imageheight)
-{ // Returns 1 if the file on chan looks like a PPM P3
-
-  // Read and check signature
-  char type[2];
-  Tcl_Read(chan,type,2*sizeof(char));
-  if(type[0]!='P' || type[1]!='3') return 0;
-
-  if(ReadNumber(chan,imagewidth)!=0)  return 0;
-  if(ReadNumber(chan,imageheight)!=0) return 0;
-  
-  return 1;
-}
-
-char* If_PPM::ReadHeader
-(char* data,int& imagewidth,int& imageheight,int& maxval)
-{ // Returns NULL if the data doesn't looks like PPM P3
-  // data.  Otherwise, returns pointer to first byte
-  // past header.
-
-  // Check signature
-  if(data[0]!='P' || data[1]!='3') return NULL;
-
-  char* cptr = data + 2;
-  if((cptr = ReadNumber(cptr,imagewidth))==NULL)  return NULL;
-  if((cptr = ReadNumber(cptr,imageheight))==NULL) return NULL;
-  if((cptr = ReadNumber(cptr,maxval))==NULL) return NULL;
-  
-  return cptr;
-}
-
-int If_PPM::ReadCheck
-(char* data,int& imagewidth,int& imageheight)
 { // Returns 1 if the data looks like a PPM P3
-  int maxval;
-  if(ReadHeader(data,imagewidth,imageheight,maxval)==NULL) {
+  int maxvalue;
+  FileType filetype;
+  if(ReadHeader(chan,imagewidth,imageheight,maxvalue,filetype)!=0) {
     return 0;
   }
   return 1;
 }
 
-int If_PPM::FillPhoto
-(Tcl_Interp*  interp,Tcl_Channel  chan,
+int If_PPM::ReadCheck
+(const unsigned char* data,int& imagewidth,int& imageheight)
+{ // Returns 1 if the data looks like a PPM P3
+  int maxvalue;
+  FileType filetype;
+  if(ReadHeader(data,imagewidth,imageheight,maxvalue,filetype)!=0) {
+    return 0;
+  }
+  return 1;
+}
+
+template<typename T,typename R>
+int If_PPM::PhotoFillData
+(Tcl_Interp*  interp,T inhandle,
+ const char* fileName,Tk_PhotoHandle imageHandle,
+ int destX,int destY,int width,int height,int srcX,int srcY,
+ int imagewidth,int imageheight,int maxvalue,
+ If_PPM::FileType filetype)
+{ // T selects Tcl_Channel vs data[],
+  // R select data type
+  std::string errheader = std::string("Data from ");
+  if(fileName) {
+    errheader += std::string(fileName);
+  } else {
+    errheader += std::string("[data]");
+  }
+
+  const int srcwidth
+    = (srcX+width <= imagewidth ? width : imagewidth-srcX);
+  const int srcheight
+    = (srcY+height <= imageheight ? height : imageheight-srcY);
+  if(srcwidth<=0 || srcheight<=0) {
+    return TCL_OK;  // ?! Nothing to copy
+  }
+
+  // Restrict block size to source dimensions.
+
+  // The 8.6 Tk_PhotoImageBlock docs state:
+  //
+  //    The pixelPtr field points to the first pixel, that is, the
+  //    top-left pixel in the block. The width and height fields specify
+  //    the dimensions of the block of pixels. The pixelSize field
+  //    specifies the address difference between two horizontally
+  //    adjacent pixels. It should be 4 for RGB and 2 for grayscale
+  //    image data. Other values are possible, if the offsets in the
+  //    offset array are adjusted accordingly (e.g. for red, green and
+  //    blue data stored in different planes). Using such a layout is
+  //    strongly discouraged, though. Due to a bug, it might not work
+  //    correctly if an alpha channel is provided. (see the BUGS section
+  //    below). The pitch field specifies the address difference between
+  //    two vertically adjacent pixels. The offset array contains the
+  //    offsets from the address of a pixel to the addresses of the
+  //    bytes containing the red, green, blue and alpha (transparency)
+  //    components. If the offsets for red, green and blue are equal,
+  //    the image is interpreted as grayscale. If they differ, RGB data
+  //    is assumed. Normally the offsets will be 0, 1, 2, 3 for RGB data
+  //    and 0, 0, 0, 1 for grayscale. It is possible to provide image
+  //    data without an alpha channel by setting the offset for alpha to
+  //    a negative value and adjusting the pixelSize field
+  //    accordingly. This use is discouraged, though (see the BUGS
+  //    section below)...
+  //
+  //    [BUGS] ... The problem is that the pixelSize field is
+  //    (incorrectly) used to determine whether the image has an alpha
+  //    channel. Currently, if the offset for the alpha channel is
+  //    greater or equal than pixelSize, tk_PhotoPutblock assumes no
+  //    alpha data is present and makes the image fully opaque. This
+  //    means that for layouts where the channels are separate (or any
+  //    other exotic layout where pixelSize has to be smaller than the
+  //    alpha offset), the alpha channel will not be read correctly. In
+  //    order to be on the safe side if this issue will be corrected in
+  //    a future release, it is strongly recommended you always provide
+  //    alpha data - even if the image has no transparency - and only
+  //    use the "standard" layout with a pixelSize of 2 for grayscale
+  //    and 4 for RGB data with offsets of 0, 0, 0, 1 or 0, 1, 2, 3
+  //    respectively.
+  //
+  // I don't know the origin of this, but I also have a note that Jan
+  // Nijtmans recommends this safe way to disable alpha processing is
+  // set pib.offset[3]=pib.offset[0], which AFAICT does work in
+  // practice.
+  //
+  // Considering this, the code below does the following:
+  //  (1) For RGB color, sets pixelSize=4, offset[]={0,1,2,3}, scales
+  //      R/B/G values to [0,255], and sets the alpha channel to 255
+  //      (fully opaque).
+  //
+  //  (2) For grayscale with maxvalue<=255, sets pixelSize=2,
+  //      offset[]={0,0,0,1}, scales the gray intensity value to
+  //      [0,255], and sets the alpha channel to 255 (fully opaque).
+  //
+  //  (3) For grayscale with maxvalue>255, the safe thing to do is to
+  //      repeat (2). But it would be nice to try to retain higher
+  //      intensity bit depth when present, so the code instead sets
+  //      pixelSize=2 with big endian format, offset[]={0,0,0,2}, scales
+  //      the gray intensity value to [0,65535], with no alpha
+  //      setting. If hiccups occur one can try following Nijtmans'
+  //      advice and set offset[]={0,0,0,0}, or the docs with
+  //      offset[]={0,0,0,-1}. I don't know if the Tk library even
+  //      retains more than 8 color bits, but regardless this
+  //      capability may be useful if I ever code up an interface
+  //      to this code that bypasses Tk.
+
+  Tk_PhotoImageBlock pib; // See Tk_FindPhoto documentation for
+  pib.width=srcwidth;    /// Tk_PhotoImageBlock details.
+  pib.height=srcheight;
+  int ppm_pixel_width = 0;
+  switch(filetype) {
+    // Gray scale images
+  case FileType::P1:
+  case FileType::P2:
+  case FileType::P4:
+  case FileType::P5:
+    ppm_pixel_width = 1; // Input value count per pixel
+    pib.pixelSize = 2;   // Output pixel information
+    pib.offset[0]=0;    pib.offset[1]=0;
+    pib.offset[2]=0;    pib.offset[3]=(maxvalue<256 ? 1 : 2);
+    // Tk uses 2 bytes for grayscale images. Typically this
+    // is one byte for brightness and one for alpha, but
+    // PGM supports greater depths. The above tries to cram
+    // up to two bytes of brightness info into the Tk photo
+    // structure in a way which is suppose to disable alpha.
+    // But this may be fragile --- see the BUGS note above.
+    break;
+
+    // RGB images
+  case FileType::P3:
+  case FileType::P6:
+    ppm_pixel_width = 3; // Input value count per pixel
+    pib.pixelSize = 4; // Tk uses 3 bytes for R+G+B and 1 byte for alpha
+    pib.offset[0]=0;    pib.offset[1]=1;
+    pib.offset[2]=2;    pib.offset[3]=3;
+    break;
+
+  default:
+    Tcl_AppendResult(interp,errheader.c_str(),
+                     " is not a supported PPM type.",
+                     nullptr);
+    return TCL_ERROR;
+  }
+  pib.pitch=static_cast<int>(pib.pixelSize*srcwidth);
+  std::vector<unsigned char> pixvec(pib.pixelSize*srcwidth*srcheight);
+  unsigned char* pix = pixvec.data();
+  pib.pixelPtr=pix;
+
+  // Create a buffer for storing one row of data. The size of this
+  // buffer depends on the image width and the ppm input pixel width,
+  // i.e., the number of values for each pixel: three for RGB and 1 for
+  // grayscale.
+  std::vector<int> ppm_data(ppm_pixel_width*width);
+
+  // Skip over unrequested rows and left margin on first requested row
+  R reader;
+  try {
+    int dummy;
+    for(int i=0;i<srcY;i++) {
+      for(int j=0;j<ppm_pixel_width*imagewidth;j++) {
+        reader.ReadNumber(inhandle,dummy);
+      }
+    }
+    for(int j=0;j<ppm_pixel_width*srcX;j++) {
+        reader.ReadNumber(inhandle,dummy);
+    }
+  } catch(...) {
+    Tcl_ResetResult(interp);
+    Tcl_AppendResult(interp,errheader.c_str(),
+                     " doesn't conform to PPM format (bad data).",
+                     nullptr);
+    return TCL_ERROR;
+  }
+
+  // Read and write data. Note that at the start of each
+  // row pass the read pointer is already placed just past
+  // the left hand read margin.
+  try {
+    for(int i=0;i<srcheight;i++) {
+      unsigned char* pixrow = &(pix[i*pib.pixelSize*srcwidth]);
+      // Process one row
+      for(int j=0;j<ppm_pixel_width*srcwidth;j++) {
+        reader.ReadNumber(inhandle,ppm_data[j]);
+      }
+      // Convert to Tk photo values. Scale through unsigned long to
+      // protect against overflow.
+      if(pib.pixelSize == 2 && pib.offset[3] == 1) {
+        // 1 byte grayscale, 1 byte alpha
+        for(int j=0;j<width;j++) {
+          unsigned long tmp =
+            (static_cast<unsigned long>(ppm_data[j])*2*255+maxvalue)
+            /(2*maxvalue);
+          pixrow[2*j]   = static_cast<unsigned char>(tmp);
+          pixrow[2*j+1] = 255; // Opaque
+        }
+      } else if(pib.pixelSize == 2) {
+        // 2 byte grayscale, no alpha
+        for(int j=0;j<width;j++) {
+          unsigned long tmp =
+            (static_cast<unsigned long>(ppm_data[j])*2*65535+maxvalue)
+            /(2*maxvalue);
+          // Tk FindPhoto man page does not specify byte order???
+          // Testing on Windows indicates big endian.
+          pixrow[2*j]   = static_cast<unsigned char>(tmp >> 8);
+          pixrow[2*j+1] = static_cast<unsigned char>(tmp & 0xFF);
+        }
+      } else {
+        // RGB + alpha
+        for(int j=0;j<width;j++) {
+          unsigned long tmp;
+          tmp = (static_cast<unsigned long>(ppm_data[3*j])*2*255+maxvalue)
+            /(2*maxvalue);
+          pixrow[4*j] = static_cast<unsigned char>(tmp);
+          tmp = (static_cast<unsigned long>(ppm_data[3*j+1])*2*255+maxvalue)
+            /(2*maxvalue);
+          pixrow[4*j+1] = static_cast<unsigned char>(tmp);
+          tmp = (static_cast<unsigned long>(ppm_data[3*j+2])*2*255+maxvalue)
+            /(2*maxvalue);
+          pixrow[4*j+2] = static_cast<unsigned char>(tmp);
+          pixrow[4*j+3] = 255; // Fully opaque
+        }
+      }
+
+      // Skip ahead over right margin in current row and past left
+      // margin in next row (i.e., imagewidth-srcwidth pixels)
+      int dummy;
+      for(int j=ppm_pixel_width*srcwidth;j<ppm_pixel_width*imagewidth;j++) {
+        reader.ReadNumber(inhandle,dummy);
+      }
+    } // for(int i=0;i<height;i++) ...
+
+    // Copy block. NB: Tk_PhotoPutBlock will clip or copy pib data
+    // as necessary to fill width x height region in imageHandle.
+    // (See Tk_PhotoPutBlock documentation for details.)
+    Tk_PhotoPutBlock(interp,imageHandle,&pib,destX,destY,width,height,
+                     TK_PHOTO_COMPOSITE_OVERLAY);
+
+  } catch(const char* errmsg) {
+    Tcl_ResetResult(interp);
+    Tcl_AppendResult(interp,errheader.c_str(),
+                     " doesn't conform to PPM format (bad data): ",
+                     errmsg,nullptr);
+    return TCL_ERROR;
+  }
+  return TCL_OK;
+}
+
+template<typename T>
+int If_PPM::PhotoFill
+(Tcl_Interp*  interp,T inhandle,
  const char* fileName,Tk_PhotoHandle imageHandle,
  int destX,int destY,int width,int height,int srcX,int srcY)
 { // Fills in imageHandle as requested, one row at a time.
   // Returns TCL_OK on success, TCL_ERROR on failure.
-
-  int imagewidth,imageheight;
-  if(ReadCheck(chan,imagewidth,imageheight)==0) {
-    Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp,"Header in file ",fileName,
-                     " not recognized as a PPM P3 header.",
-                     (char *)NULL);
-    return TCL_ERROR;
+  std::string errheader = std::string("Data from");
+  if(fileName) {
+    // Fill from file
+    errheader += std::string(" file ") + string(fileName);
+  } else {
+    // Fill from string
+    errheader += std::string(" string");
   }
-
-  int maxvalue;
-  if(ReadNumber(chan,maxvalue)!=0) {
-    Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp,"File ",fileName,
-                     " doesn't conform to PPM P3 format (bad maxvalue).",
-                     (char *)NULL);
-    return TCL_ERROR;
-  }
-
-  // Safety checks
-  if(srcX<0) { width += srcX; srcX=0; }
-  if(srcX+width>imagewidth) {
-    width = imagewidth-srcX;
-  }
-  if(srcY<0) {height += srcY; srcY=0; }
-  if(srcY+height>imageheight) {
-    height = imageheight-srcY;
-  }
-  if(width<1 || height<1) return TCL_OK; // Nothing to do
-
-
-  // Skip through file until we get to (srcX,srcY)
-  int i,j;
-  int red,green,blue;
-  for(i=0;i<srcY;i++) {
-    for(j=0;j<imagewidth;j++) {
-      int errcode = ReadNumber(chan,red);
-      errcode += ReadNumber(chan,green);
-      errcode += ReadNumber(chan,blue);
-      if(errcode != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"File ",fileName,
-			 " doesn't conform to PPM P3 format (bad data).",
-			 (char *)NULL);
-	return TCL_ERROR;
-      }
-    }
-  }
-  for(j=0;j<srcX;j++) {
-    int errcode = ReadNumber(chan,red);
-    errcode += ReadNumber(chan,green);
-    errcode += ReadNumber(chan,blue);
-    if(errcode != 0) {
-      Tcl_ResetResult(interp);
-      Tcl_AppendResult(interp,"File ",fileName,
-		       " doesn't conform to PPM P3 format (bad data).",
-		       (char *)NULL);
-      return TCL_ERROR;
-    }
-  }
-
-  // Setup Tk_PhotoImageBlock for writing data
-  assert(width>=0);
-  unsigned char* pix=new unsigned char[3*size_t(width)];
-  Tk_PhotoImageBlock pib;
-  pib.pixelPtr=(unsigned char *)pix;
-  pib.width=width;
-  pib.height=1;
-  pib.pixelSize = 3*sizeof(pix[0]);
-  pib.pitch=int(pib.pixelSize*imagewidth);
-  pib.offset[0]=int(((unsigned char*)&pix[0]) - (unsigned char*)pix);
-  pib.offset[1]=int(((unsigned char*)&pix[1]) - (unsigned char*)pix);
-  pib.offset[2]=int(((unsigned char*)&pix[2]) - (unsigned char*)pix);
-#if (TK_MAJOR_VERSION > 8) \
-	|| ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION >= 3))
-  // Jan Nijtmans recommends this safe way to disable alpha processing
-  pib.offset[3]=pib.offset[0];
-#endif
-
-  // Read and write data
-  for(i=0;i<height;i++) {
-    for(j=0;j<width;j++) {
-      int errcode = ReadNumber(chan,red);
-      errcode += ReadNumber(chan,green);
-      errcode += ReadNumber(chan,blue);
-      if(errcode != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"File ",fileName,
-			 " doesn't conform to PPM P3 format (bad data).",
-			 (char *)NULL);
-	delete[] pix;
-	return TCL_ERROR;
-      }
-      // Convert to implicit(?) palette
-      // NOTE: Potential overflow problems, if maxvalue*256 doesn't
-      //  fit in a signed integer.  But since this event seems
-      //  rather unlikely, so we'll just ignore that possibility 
-      //  for now.
-      pix[3*j]
-	= static_cast<unsigned char>((red*255   + maxvalue/2)/maxvalue);
-      pix[3*j+1]
-	= static_cast<unsigned char>((green*255 + maxvalue/2)/maxvalue);
-      pix[3*j+2]
-	= static_cast<unsigned char>((blue*255  + maxvalue/2)/maxvalue);
-    }
-    // Write row
-    Tk_PhotoPutBlock( interp, imageHandle, &pib, destX, destY + i, width, 1,
-	    TK_PHOTO_COMPOSITE_OVERLAY);
-    // Skip through to next row
-    for(j=width;j<imagewidth;j++) {
-      int errcode = ReadNumber(chan,red);
-      errcode += ReadNumber(chan,green);
-      errcode += ReadNumber(chan,blue);
-      if(errcode != 0) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,"File ",fileName,
-			 " doesn't conform to PPM P3 format (bad data).",
-			 (char *)NULL);
-	delete[] pix;
-	return TCL_ERROR;
-      }
-    }
-  }
-  
-  delete[] pix;
-  return TCL_OK;
-}
-
-int If_PPM::FillPhoto
-(Tcl_Interp*  interp,char* data,
- Tk_PhotoHandle imageHandle,
- int destX,int destY,int width,int height,int srcX,int srcY)
-{ // Fills in imageHandle as requested, one row at a time.
-  // Returns TCL_OK on success, TCL_ERROR on failure.
 
   int imagewidth,imageheight,maxvalue;
-  char* cptr = ReadHeader(data,imagewidth,imageheight,maxvalue);
-  if(cptr==NULL) {
+  FileType filetype;
+  int foo=-1;
+  if((foo=ReadHeader(inhandle,imagewidth,imageheight,maxvalue,filetype))!=0) {
     Tcl_ResetResult(interp);
-    Tcl_AppendResult(interp,
-		     "Data header not recognized as a PPM P3 header.",
-                     (char *)NULL);
+    Tcl_AppendResult(interp,errheader.c_str(),
+                     " not recognized as a PPM P1|2|3|4|5|6 header.",
+                     nullptr);
     return TCL_ERROR;
   }
 
@@ -1021,98 +1455,62 @@ int If_PPM::FillPhoto
   }
   if(width<1 || height<1) return TCL_OK; // Nothing to do
 
+  int fill_result=TCL_ERROR;
+  switch(filetype) {
+    // Plain text input formats //////////////////////////////////////
+  case FileType::P1:
+    fill_result= If_PPM::PhotoFillData<T,If_PPM::ValueTextBit>
+      (interp,inhandle,fileName,imageHandle,
+       destX,destY,width,height,srcX,srcY,
+       imagewidth,imageheight,maxvalue,filetype);
+    break;
+  case FileType::P2:
+    // fall through
+  case FileType::P3:
+    fill_result= If_PPM::PhotoFillData<T,If_PPM::ValueText>
+      (interp,inhandle,fileName,imageHandle,
+       destX,destY,width,height,srcX,srcY,
+       imagewidth,imageheight,maxvalue,filetype);
+    break;
 
-  // Skip through file until we get to (srcX,srcY)
-  int i,j;
-  int red,green,blue;
-  for(i=0;i<srcY;i++) {
-    for(j=0;j<imagewidth;j++) {
-      if((cptr = ReadNumber(cptr,red))==NULL
-	 || (cptr = ReadNumber(cptr,green))==NULL
-	 || (cptr = ReadNumber(cptr,blue))==NULL) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,
-			 "Data doesn't conform to PPM P3 format.",
-			 (char *)NULL);
-	return TCL_ERROR;
-      }
-    }
-  }
-  for(j=0;j<srcX;j++) {
-    if((cptr = ReadNumber(cptr,red))==NULL
-       || (cptr = ReadNumber(cptr,green))==NULL
-       || (cptr = ReadNumber(cptr,blue))==NULL) {
-      Tcl_ResetResult(interp);
-      Tcl_AppendResult(interp,
-		       "Data doesn't conform to PPM P3 format.",
-		       (char *)NULL);
+    // Binary input formats //////////////////////////////////////////
+  case FileType::P4: // One bit per value
+    fill_result= If_PPM::PhotoFillData<T,If_PPM::ValueBit>
+      (interp,inhandle,fileName,imageHandle,
+       destX,destY,width,height,srcX,srcY,
+       imagewidth,imageheight,maxvalue,filetype);
+    break;
+  case FileType::P5:
+  case FileType::P6:
+    if(maxvalue<256) { // One byte per value
+      fill_result= If_PPM::PhotoFillData<T,If_PPM::ValueByte>
+        (interp,inhandle,fileName,imageHandle,
+         destX,destY,width,height,srcX,srcY,
+         imagewidth,imageheight,maxvalue,filetype);
+    } else if(maxvalue<65536) { // Two bytes per value
+      fill_result= If_PPM::PhotoFillData<T,If_PPM::ValueDyad>
+        (interp,inhandle,fileName,imageHandle,
+         destX,destY,width,height,srcX,srcY,
+         imagewidth,imageheight,maxvalue,filetype);
+    } else {
+      Tcl_AppendResult(interp,errheader.c_str(),
+                       " has unsupported binary width.",
+                       nullptr);
       return TCL_ERROR;
+
     }
+    break;
+
+  default:
+    Tcl_AppendResult(interp,errheader.c_str(),
+                     " is not a supported PPM type.",
+                     nullptr);
+    return TCL_ERROR;
   }
 
-  // Setup Tk_PhotoImageBlock for writing data
-  unsigned char* pix=new unsigned char[3*size_t(width)];
-  Tk_PhotoImageBlock pib;
-  pib.pixelPtr=(unsigned char *)pix;
-  pib.width=width;
-  pib.height=1;
-  pib.pixelSize = 3*sizeof(pix[0]);
-  pib.pitch=int(pib.pixelSize*imagewidth);
-  pib.offset[0]=int(((unsigned char*)&pix[0]) - (unsigned char*)pix);
-  pib.offset[1]=int(((unsigned char*)&pix[1]) - (unsigned char*)pix);
-  pib.offset[2]=int(((unsigned char*)&pix[2]) - (unsigned char*)pix);
-#if (TK_MAJOR_VERSION > 8) \
-	|| ((TK_MAJOR_VERSION == 8) && (TK_MINOR_VERSION >= 3))
-  // Jan Nijtmans recommends this safe way to disable alpha processing
-  pib.offset[3]=pib.offset[0];
-#endif
-
-  // Read and write data
-  for(i=0;i<height;i++) {
-    for(j=0;j<width;j++) {
-      if((cptr = ReadNumber(cptr,red))==NULL
-	 || (cptr = ReadNumber(cptr,green))==NULL
-	 || (cptr = ReadNumber(cptr,blue))==NULL) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,
-			 "Data doesn't conform to PPM P3 format.",
-			 (char *)NULL);
-	delete[] pix;
-	return TCL_ERROR;
-      }
-      // Convert to implicit(?) palette
-      // NOTE: Potential overflow problems, if maxvalue*256 doesn't
-      //  fit in a signed integer.  But since this event seems
-      //  rather unlikely, so we'll just ignore that possibility 
-      //  for now.
-      pix[3*j]
-	= static_cast<unsigned char>((red*255   + maxvalue/2)/maxvalue);
-      pix[3*j+1]
-	= static_cast<unsigned char>((green*255 + maxvalue/2)/maxvalue);
-      pix[3*j+2]
-	= static_cast<unsigned char>((blue*255  + maxvalue/2)/maxvalue);
-    }
-    // Write row
-    Tk_PhotoPutBlock( interp, imageHandle, &pib, destX, destY + i, width, 1,
-	    TK_PHOTO_COMPOSITE_OVERLAY);
-    // Skip through to next row
-    for(j=width;j<imagewidth;j++) {
-      if((cptr = ReadNumber(cptr,red))==NULL
-	 || (cptr = ReadNumber(cptr,green))==NULL
-	 || (cptr = ReadNumber(cptr,blue))==NULL) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp,
-			 "Data doesn't conform to PPM P3 format.",
-			 (char *)NULL);
-	delete[] pix;
-	return TCL_ERROR;
-      }
-    }
-  }
-
-  delete[] pix;
-  return TCL_OK;
+  return fill_result;
 }
+
 
 int If_PPM::SprintColorValues(unsigned char* buf,
                               int red,int green,int blue) {
@@ -1161,24 +1559,19 @@ int If_PPM::WritePhoto
 
   // Open Tcl channel to handle output
   Tcl_Channel chan
-    = Tcl_OpenFileChannel(interp,OC_CONST84_CHAR(filename),
-			  OC_CONST84_CHAR("w"),0666);
+    = Tcl_OpenFileChannel(interp,filename, "w",0666);
   if(chan==NULL) return TCL_ERROR;
-  int errcode = Tcl_SetChannelOption(interp,chan,
-				     OC_CONST84_CHAR("-translation"),
-                                     OC_CONST84_CHAR("auto"));
+  int errcode = Tcl_SetChannelOption(interp,chan, "-translation", "auto");
   if(errcode!=TCL_OK) {
     Tcl_Close(interp,chan);
     return errcode;
   }
-  errcode = Tcl_SetChannelOption(interp,chan,OC_CONST84_CHAR("-buffering"),
-                                 OC_CONST84_CHAR("full"));
+  errcode = Tcl_SetChannelOption(interp,chan,"-buffering", "full");
   if(errcode!=TCL_OK) {
     Tcl_Close(interp,chan);
     return errcode;
   }
-  errcode = Tcl_SetChannelOption(interp,chan,OC_CONST84_CHAR("-buffersize"),
-                                 OC_CONST84_CHAR("131072"));
+  errcode = Tcl_SetChannelOption(interp,chan,"-buffersize", "131072");
   if(errcode!=TCL_OK) {
     Tcl_Close(interp,chan);
     return errcode;
@@ -1196,12 +1589,13 @@ int If_PPM::WritePhoto
   // Header info
   int width  = blockPtr->width;
   int height = blockPtr->height;
-  int maxval = 255; // Assumed
+  int maxvalue = 255; // Assumed
 
   // Write header
   Oc_Snprintf(reinterpret_cast<char *>(buf),
-              sizeof(buf),"P3\n%d %d\n%d\n",
-	      width,height,maxval);
+              sizeof(buf),
+              "P3\n# Created by OOMMF If library\n%d %d\n%d\n",
+	      width,height,maxvalue);
   size_t buf_strlen = strlen(reinterpret_cast<char *>(buf));
   assert(buf_strlen<=INT_MAX);
   if(Tcl_Write(chan,reinterpret_cast<char *>(buf),
@@ -1270,11 +1664,12 @@ int If_PPM::WritePhoto
   // Header info
   int width  = blockPtr->width;
   int height = blockPtr->height;
-  int maxval = 255; // Assumed
+  int maxvalue = 255; // Assumed
 
   // Write header
-  outlen = (int)Oc_Snprintf(buf,sizeof(buf),"P3\n%d %d\n%d\n",
-                            width,height,maxval);
+  outlen = (int)Oc_Snprintf(buf,sizeof(buf),
+                  "P3\n# Created by OOMMF If library (data)\n%d %d\n%d\n",
+                  width,height,maxvalue);
   Tcl_DStringInit(dataPtr);
   Tcl_DStringAppend(dataPtr,buf,outlen);
 
@@ -1294,11 +1689,6 @@ int If_PPM::WritePhoto
 }
 
 
-// The C interface for extending the photo image formats changed
-// incompatibly between versions 4 and 8 of Tk.  May want to code a
-// workaround eventually.  For now, the bmp and ppm p3 photo image
-// formats are simply not available in pre-8.0 interpreters.
-#if (TK_MAJOR_VERSION >= 8)
 extern "C" {
   Tk_ImageFileMatchProc bmpFileMatchProcWrap;
   Tk_ImageFileReadProc  bmpFileReadProcWrap;
@@ -1306,7 +1696,15 @@ extern "C" {
 }
 
 
-static char bmpnamestr[] = "BMP";
+static char bmpnamestr[] = "bmp";
+// NB: According to the Tk_CreatePhotoImageFormat man page (Tk 8.6.13),
+// the first letter of the namestring must not be an uppercase ASCII
+// character (i.e., A-Z), as those are reserved for the legacy interface
+// (Tk 8.2 and earlier). In practice if both "BMP" and "bmp" are
+// registered (say one from here and the other by the Img library) then
+// the lowercase registration takes precedence. There is a note in the
+// Tk 8.6 docs that the legacy interface is expected to disappear in
+// Tcl/Tk 9, so this undocumented behavior may change.
 
 extern "C" int
 bmpFileMatchProc(Tcl_Channel chan,
@@ -1378,7 +1776,7 @@ bmpFileWriteProcWrap(Tcl_Interp* interp,
   return bmpFileWriteProc(interp, fileName, NULL, blockPtr);
 }
 
-static Tk_PhotoImageFormat bmpformat = 
+static Tk_PhotoImageFormat bmpformat =
 {
   bmpnamestr,             // Format name
   bmpFileMatchProcWrap,   // File format identifier routine
@@ -1400,7 +1798,15 @@ extern "C" {
 }
 
 
-static char ppmnamestr[] = "P3";
+static char ppmnamestr[] = "p3";
+// NB: According to the Tk_CreatePhotoImageFormat man page (Tk 8.6.13),
+// the first letter of the namestring must not be an uppercase ASCII
+// character (i.e., A-Z), as those are reserved for the legacy interface
+// (Tk 8.2 and earlier). In practice if both upper and lowercase forms
+// are registered (say one from here and the other by the Img library)
+// then the lowercase registration takes precedence. The Tk 8.6 docs
+// state that the legacy interface is expected to disappear in Tcl/Tk 9,
+// so this undocumented behavior may change.
 
 extern "C" int
 ppmFileMatchProc(Tcl_Channel chan,
@@ -1473,7 +1879,7 @@ ppmFileWriteProcWrap(Tcl_Interp* interp,
 }
 
 extern "C" int
-ppmStringMatchProc(char* data,
+ppmStringMatchProc(const unsigned char* data,
 		   char* /* formatString */,
 		   int* widthPtr,
 		   int* heightPtr)
@@ -1489,12 +1895,13 @@ ppmStringMatchProcWrap(Tcl_Obj* data,
 		   int* heightPtr,
 		   Tcl_Interp * /* interp */)
 {
-  return ppmStringMatchProc(Tcl_GetString(data), NULL, widthPtr, heightPtr);
+  return ppmStringMatchProc(Tcl_GetByteArrayFromObj(data,(int *)nullptr),
+                            nullptr, widthPtr, heightPtr);
 }
 
 extern "C" int
 ppmStringReadProc(Tcl_Interp *interp,
-		  char* data,
+		  const unsigned char* data,
 		  char* /* formatString */,
 		  Tk_PhotoHandle imageHandle,
 		  int destX, int destY,
@@ -1515,8 +1922,9 @@ ppmStringReadProcWrap(Tcl_Interp *interp,
 		  int width, int height,
 		  int srcX,  int srcY)
 {
-  return ppmStringReadProc(interp, Tcl_GetString(data), NULL, imageHandle,
-			destX, destY, width, height, srcX, srcY);
+  return ppmStringReadProc(interp, Tcl_GetByteArrayFromObj(data,(int *)nullptr),
+                           nullptr, imageHandle,
+                           destX, destY, width, height, srcX, srcY);
 }
 
 extern "C" int
@@ -1547,7 +1955,7 @@ ppmStringWriteProcWrap(Tcl_Interp* interp,
 }
 
 
-static Tk_PhotoImageFormat ppmformat = 
+static Tk_PhotoImageFormat ppmformat =
 {
   ppmnamestr,             // Format name
   ppmFileMatchProcWrap,   // File format identifier routine
@@ -1558,43 +1966,37 @@ static Tk_PhotoImageFormat ppmformat =
   ppmStringWriteProcWrap, // String write routine
   NULL			  // NULL nextPtr to be overwritten by Tk
 };
-#endif
 
-int 
+int
 If_Init(Tcl_Interp *interp)
 {
 #define RETURN_TCL_ERROR                                               \
-    Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in If_Init())")); \
+    Tcl_AddErrorInfo(interp, "\n    (in If_Init())");                  \
     return TCL_ERROR
 
-    if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
-		       OC_CONST84_CHAR("2"), 0) == NULL) {
-        Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(If " IF_VERSION " needs Oc 2)"),
-                NULL);
+    if (Tcl_PkgPresent(interp, "Oc", "2", 0) == NULL) {
+        Tcl_AppendResult(interp, "\n\t(If " IF_VERSION " needs Oc 2)", NULL);
         RETURN_TCL_ERROR;
     }
 
 // See note above.
-#if (TK_MAJOR_VERSION >= 8)
 # if 0
-    // As of 2007-10-30, the BMP handler in this file handles
-    // some 16-bit BMP formats not inside Img, so we load our
-    // BMP code regardless.
-    if(Tcl_PkgPresent(interp,OC_CONST84_CHAR("Img"),NULL,0)==NULL) {
+    if(Tcl_PkgPresent(interp,"Img",NULL,0)==NULL) {
       // The Img package provides support for BMP, so
       // don't load our BMP handler if Img is already
       // loaded.
       Tk_CreatePhotoImageFormat(&bmpformat);
     }
 # else
+    // As of 2007-10-30, the BMP handler in this file handles
+    // some 16-bit BMP formats not inside Img, so we load our
+    // BMP code regardless. (Note: The omfsh/filtersh shell
+    // will load Img if possible.)
     Tk_CreatePhotoImageFormat(&bmpformat);
 # endif
     Tk_CreatePhotoImageFormat(&ppmformat);
-#endif
 
-    if (Tcl_PkgProvide(interp, OC_CONST84_CHAR("If"),
-		       OC_CONST84_CHAR(IF_VERSION)) != TCL_OK) {
+    if (Tcl_PkgProvide(interp, "If", IF_VERSION) != TCL_OK) {
         RETURN_TCL_ERROR;
     }
 
@@ -1614,14 +2016,13 @@ If_Init(Tcl_Interp *interp)
 
 #else /* !OC_USE_TK */
 
-int 
+int
 If_Init(Tcl_Interp *interp)
 {
-  Tcl_AppendResult(interp,
-                   OC_CONST84_CHAR("\n\t(If " IF_VERSION
-                     " requires Tk (this is a no-Tk build of OOMMF)"),
+  Tcl_AppendResult(interp, "\n\t(If " IF_VERSION
+                     " requires Tk (this is a no-Tk build of OOMMF)",
                    NULL);
-  Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in If_Init())"));
+  Tcl_AddErrorInfo(interp, "\n    (in If_Init())");
   return TCL_ERROR;
 }
 

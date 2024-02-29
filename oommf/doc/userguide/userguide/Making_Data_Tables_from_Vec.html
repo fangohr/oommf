@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html828"
+<A NAME="tex2html834"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html824"
+<A NAME="tex2html830"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html818"
+<A NAME="tex2html824"
   HREF="Bitmap_File_Format_Conversi.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html826"
+<A NAME="tex2html832"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html829"
+<B> Next:</B> <A NAME="tex2html835"
   HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
-<B> Up:</B> <A NAME="tex2html825"
+<B> Up:</B> <A NAME="tex2html831"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html819"
+<B> Previous:</B> <A NAME="tex2html825"
   HREF="Bitmap_File_Format_Conversi.html">Bitmap File Format Conversion:</A>
 <BR>
 <BR>
@@ -51,7 +51,7 @@
 <BR>
 Making Data Tables from Vector Fields:
           avf2odt
-</H1><A NAME="17861"></A><A NAME="17862"></A><A NAME="17863"></A><A NAME="17864"></A><A NAME="17865"></A>
+</H1><A NAME="18201"></A><A NAME="18202"></A><A NAME="18203"></A><A NAME="18204"></A><A NAME="18205"></A>
 The <B>avf2odt</B> program converts <I>rectangularly</I> meshed vector field
 files in any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A> (OVF, VIO)
@@ -74,9 +74,9 @@ tclsh oommf.tcl avf2odt [standard options] \
    [-index label units valexpr] [-ipat pattern] [-normalize &lt;0|1&gt;] \
    [-numfmt fmt] [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
    [-region xmin ymin zmin xmax ymax zmax] \
-   [-rregion rxmin rymin rzmin rxmax rymax rzmax] \
-   [-truncate &lt;0|1&gt;] [-v level] [-valfunc label units fcnexpr] \
-   [infile ...]
+   [-rregion rxmin rymin rzmin rxmax rymax rzmax] [-truncate &lt;0|1&gt;] \
+   [-v level] [-valfunc label units fcnexpr] \
+   [-wgtfunc fcnexpr exclude_zeros] [infile ...]
 </PRE>
 where
 <DL>
@@ -101,7 +101,7 @@ where
   point in the selected region, where the first 3 columns are the
   point coordinates, and the last 3 are the <B><I>v</I><SUB>x</SUB></B>, <B><I>v</I><SUB>y</SUB></B> and <B><I>v</I><SUB>z</SUB></B>
   values at the point.  If the type is <TT>ball</TT>, then one line is
-  output for each sample point for which a ball of radius <TT>brad</TT>
+  output for each sample point for which a ball of radius brad
   (see <TT>-ball_radius</TT> option) centered about that point lies
   entirely inside the selected region.  The output values consist of 6
   columns: the ball center point location and the <B><I>v</I><SUB>x</SUB></B>, <B><I>v</I><SUB>y</SUB></B> and
@@ -128,7 +128,7 @@ where
 </DD>
 <DT><STRONG><TT><B>-ball_radius brad</B></TT></STRONG></DT>
 <DD>This option is required if <TT>-average</TT> is <TT>ball</TT>, in which case
-  <TT>brad</TT> specifies the radius of the averaging ball in problem
+  brad specifies the radius of the averaging ball in problem
   units (e.g., meters).  If  <TT>-average</TT> is not <TT>ball</TT>, then this
   option is ignored.
 </DD>
@@ -293,11 +293,16 @@ where
   values and magnitude.  The output is the value of fcnexpr averaged
   across the manifold selected by the <TT>-average</TT> option.  A couple
   of examples are
-<PRE>
-   -valfunc Ms   A/m '$vmag'
-   -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
-</PRE>
-  As with the valexpr string for <TT>-index</TT>, the fcnexpr string
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &nbsp;&nbsp;&nbsp;-valfunc Ms &nbsp;&nbsp;A/m <code>'</code>$vmag<code>'</code>
+<BR>&nbsp;&nbsp;&nbsp;-valfunc M110 A/m <code>'</code>($vx+$vy)/sqrt(2.)<code>'</code>
+<BR></TT>
+</DIV>
+As with the valexpr string for <TT>-index</TT>, the fcnexpr string
   should be surrounding by single quotes on Unix in order to
   forestall interpolation of the special variables by the shell.  On
   Windows, the fcnexpr string should be surrounded by double quotes as
@@ -308,6 +313,65 @@ where
   columns in the output file, in the order specified.  These
   additional columns will be append to the right of all other columns in
   the output file.
+</DD>
+<DT><STRONG><TT><B>-wgtfunc fcnexpr exclude_zeros</B></TT></STRONG></DT>
+<DD>The <TT>-wgtfunc</TT> option provides a pointwise weighting to the file
+  field values. The fcnexpr is a Tcl <TT>expr</TT> expression of the same
+  form as used in the <TT>valfunc</TT> option, and supports the same special
+  variables. At each spatial location the expression is evaluated (the
+  weight) and is multiplied against the field value there. If
+  exclude_zeros is non-zero then points with zero weight are excluded
+  from the average. Multiple instances of this option are stacked; in
+  this case a point is excluded from the average if any of the instances
+  with exclude_zeros set true have weight = 0. For the <TT>plane</TT>,
+  <TT>line</TT>, and <TT>ball</TT> manifold types, if exclude_zeros&gt;1 then
+  an additional column is included in the output reporting the number
+  of points in the averaging manifold.
+
+<P>
+One use of the <TT>-wgtfunc</TT> option with exclude_zeros &gt; 0 is to
+  average across irregular subsets of the full volume. (As compared to
+  the <TT>-region</TT> and <TT>-rregion</TT> options which create only
+  axis-parallel rectangular subregions.) For example, to take averages
+  across a full-height cylindrical volume of radius 15&nbsp;nm centered about
+  <!-- MATH
+ $(x,y) = (400\times 10^{-9},200\times 10^{-9})$
+ -->
+<B>(<I>x</I>, <I>y</I>) = (400 <TT>x</TT> 10<SUP>-9</SUP>, 200 <TT>x</TT> 10<SUP>-9</SUP>)</B>, use
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &nbsp;&nbsp;&nbsp;-wgtfunc <code>'</code>pow($x-400e-9,2)+pow($y-200e-9,2)&lt;pow(15e-9,2) ? 1 : 0<code>'</code> 1
+<BR></TT>
+</DIV>
+
+  (On Windows replace the single quotes with double quotes.) As
+  another example, given a magnetization file (<TT>.omf</TT>) for a magnetic
+  part with an irregular boundary, find the magnetization
+  averaged across the magnetically active portion (i.e., the part with
+  <!-- MATH
+ $\textbf{M}\neq0$
+ -->
+<B><B>M</B> <IMG
+ WIDTH="17" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img79.gif"
+ ALT="$\neq$"> 0</B>) with
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ &nbsp;&nbsp;&nbsp;-wgtfunc <code>'</code>$vmag == 0 ? 0 : 1<code>'</code> 1
+<BR></TT>
+</DIV>
+
+  (If exclude_zeros here were 0 instead of 1, then the average
+  would be across the full volume, yielding a smaller result
+  because of the averaged-in zeros.)
+
+<P>
 </DD>
 <DT><STRONG><TT><B>infile ...</B></TT></STRONG></DT>
 <DD>Input file list.  Files must be one of the recognized
@@ -325,7 +389,7 @@ wildcards before handing control over to the invoked application, so the
 <TT>-ipat</TT> option is not usually needed--although it is useful in case of a
 ``command-line too long'' error.  DOS does not do this expansion, so
 you must use <TT>-ipat</TT> to get wildcard
-expansion<A NAME="18017"></A> in Windows.
+expansion<A NAME="18373"></A> in Windows.
 The resulting file list is sorted  based on the <TT>-filesort</TT>
 specification as described above.
 
@@ -345,20 +409,20 @@ replaces this with the extension <TT><B>.odt</B></TT>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html828"
+<A NAME="tex2html834"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html824"
+<A NAME="tex2html830"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html818"
+<A NAME="tex2html824"
   HREF="Bitmap_File_Format_Conversi.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html826"
+<A NAME="tex2html832"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

@@ -7,6 +7,7 @@
 #ifndef _OXS_DIRECTOR
 #define _OXS_DIRECTOR
 
+#include <initializer_list>
 #include <list>
 #include <map>
 #include <string>
@@ -18,6 +19,7 @@
 #include "mesh.h"
 #include "meshvalue.h"
 #include "threevector.h"
+#include "util.h"
 #include "oxsthread.h"
 
 // Microsoft Visual C++ version 5 apparently wants energy.h included
@@ -38,24 +40,29 @@ OC_USE_STRING;
 
 /* End includes */
 
-class Oxs_Ext;       // Forward declarations
-class Oxs_Energy;
-class Oxs_Driver;
-class Oxs_Output;
-class Oxs_BaseScalarOutput;
+// Forward declarations
 class Oxs_BaseChunkScalarOutput;
+class Oxs_BaseScalarOutput;
+class Oxs_Driver;
+class Oxs_Energy;
+class Oxs_Ext;
+class Oxs_StateInitializer;
+class Oxs_Output;
 
 // Supplemental types
-enum OxsRunEventTypes { OXS_INVALID_EVENT,
-                        OXS_STEP_EVENT,
-                        OXS_STAGE_DONE_EVENT,
-                        OXS_RUN_DONE_EVENT,
-                        OXS_CHECKPOINT_EVENT };
+enum class OxsRunEventTypes {
+  OXS_INVALID_EVENT,
+  OXS_STEP_EVENT,
+  OXS_STAGE_DONE_EVENT,
+  OXS_RUN_DONE_EVENT,
+  OXS_CHECKPOINT_EVENT
+};
+
 struct OxsRunEvent {
 public:
   OxsRunEventTypes event;
   Oxs_ConstKey<Oxs_SimState> state_key;
-  OxsRunEvent() : event(OXS_INVALID_EVENT) {}
+  OxsRunEvent() : event(OxsRunEventTypes::OXS_INVALID_EVENT) {}
   OxsRunEvent(const OxsRunEventTypes& event_,
               const Oxs_ConstKey<Oxs_SimState>& state_key_)
     : event(event_), state_key(state_key_) {
@@ -132,24 +139,26 @@ private:
   /// disposal code in Oxs_Driver.  This flag is automatically
   /// cleared at the bottom of the Release() method.
 
-  vector<Oxs_Ext*> ext_obj;  // Ordered list of instantiated Oxs_Ext
-  /// objects.  This list "owns" the objects, and is responsible for
-  /// their destruction.
-  map<String,Oxs_Ext*> ext_map; // Mapping of Ext names to objects
-  vector<Oxs_Energy*> energy_obj; // Ordered list of energy terms.  This
-  // is a sublist of ext_obj.
+  std::vector<Oxs_Ext*> ext_obj;  // Ordered list of instantiated
+  /// Oxs_Ext objects.  This list "owns" the objects, and is responsible
+  /// for their destruction.
+  std::map<String,Oxs_Ext*> ext_map; // Mapping of Ext names to objects
+  std::vector<Oxs_Energy*> energy_obj; // Ordered list of energy terms.
+  /// This is a sublist of ext_obj.
+  std::vector<Oxs_StateInitializer*> initstate_obj; // Ordered list of
+  /// Oxs_SimState initializer objects. This is a sublist of ext_obj.
 
-  vector<Oxs_Output*> output_obj; // List of all registered output objects
-  /// When an output object deregisters, its slot in output_obj is
-  /// replaced with a NULL pointer.  This makes it easy for external
-  /// code (in particular, Tcl script) to refer to a registered object---
-  /// once an object is registered its index (i.e., position in the
-  /// output_obj list) never changes.  The output_obj list is reset each
-  /// time a new problem is loaded.  However, this is a poor algorithm
-  /// if during one problem many output objects register and deregister,
-  /// since the size of output_obj will grow accordingly.  At some point
-  /// a different indexing scheme should replace this.  Perhaps a hash
-  /// lookup?
+  std::vector<Oxs_Output*> output_obj; // List of all registered output
+  /// objects. When an output object deregisters, its slot in output_obj
+  /// is replaced with a NULL pointer.  This makes it easy for external
+  /// code (in particular, Tcl script) to refer to a registered
+  /// object--- once an object is registered its index (i.e., position
+  /// in the output_obj list) never changes.  The output_obj list is
+  /// reset each time a new problem is loaded.  However, this is a poor
+  /// algorithm if during one problem many output objects register and
+  /// deregister, since the size of output_obj will grow accordingly.
+  /// At some point a different indexing scheme should replace this.
+  /// Perhaps a hash lookup?
 
   std::list<Oxs_BaseScalarOutput*> scalar_output_obj; // Sorted list of
   // all registered scalar output objects.
@@ -174,7 +183,7 @@ private:
   // array "owns" the simulations states, i.e., is responsible for their
   // destruction.
   OC_UINT4m simulation_state_reserve_count;
-  vector<Oxs_SimState*> simulation_state;
+  std::vector<Oxs_SimState*> simulation_state;
 
   // NB: Because ext_map and energy_obj hold duplicate pointers to
   // objects stored in ext_obj, one has to be careful to release all
@@ -183,6 +192,42 @@ private:
   // instead of pointers; this would provide notification of hanging
   // pointers, but since Oxs_Director is the owner of these objects, at
   // present I don't think this is necessary. -mjd
+
+  // Internal support for "well known quantities" access. See
+  // "well known quantities" in public section for details.
+  // NB: Be sure to manage linkage between WellKnownQuantityInfo struct,
+  //     enum class WellKnownQuantity, and WellKnownQuantity_List.  Or
+  //     replace with a hash container.
+  struct WellKnownQuantityInfo {
+    bool attach_request;
+    String derived_label;
+    WellKnownQuantityInfo() : attach_request(false) {}
+    void Reset() {
+      attach_request = false;
+      derived_label.clear();
+    }
+  };
+  struct {
+    WellKnownQuantityInfo E_density;
+    WellKnownQuantityInfo H;
+    WellKnownQuantityInfo mxH;
+    WellKnownQuantityInfo mxHxm;
+    WellKnownQuantityInfo dm_dt;
+    bool AnyRequests() const {
+      return (E_density.attach_request
+              || H.attach_request
+              || mxH.attach_request
+              || mxHxm.attach_request
+              || dm_dt.attach_request);
+    }
+    void Reset() {
+      E_density.Reset();
+      H.Reset();
+      mxH.Reset();
+      mxHxm.Reset();
+      dm_dt.Reset();
+    }
+  } well_known_quantity_store;
 
   // Director is responsible for deletion of simulation_state objects
   // on destruction.  This responsibility shouldn't be copied, so
@@ -241,7 +286,7 @@ public:
   OC_UINT4m GetErrorStatus() const { return error_status; }
   /// See notes above concerning error_status.
 
-  void ProbRun(vector<OxsRunEvent>& results);
+  void ProbRun(std::vector<OxsRunEvent>& results);
   /// Fills results with event list.  Throws an exception on error.
 
 
@@ -252,7 +297,7 @@ public:
   int GetStage();
   int GetNumberOfStages();
   int SetStage(int requestedStage,
-               vector<OxsRunEvent>& events);
+               std::vector<OxsRunEvent>& events);
 
   int IsRunDone();
   // Reads current Oxs_SimState run_done status.  Returns 1 if run_done
@@ -270,7 +315,6 @@ public:
   OC_UINT4m GetCurrentStateId();
 
   String GetMifHandle() const;
-  Tcl_Interp* GetMifInterp() const;
 
   OC_UINT4m GetMifCrc() const;
   /// Returns CRC of buffer representation of current MIF file.
@@ -292,6 +336,20 @@ public:
   /// Returns 1 on success, or 0 if "label" has not been set.
   /// Throws an error if no problem is loaded.
   /// NOTE: "value" is guaranteed unchanged if return value is 0.
+
+  void GetAllMifOptions(std::map<String,String>& options) const;
+  /// Returns a map holding all MIF option label->value pairs.
+  /// Throws an error if no problem is loaded.
+
+  String GetMifInterpName() const;
+  /// Returns name for MIF child interpreter as known in the main Tcl
+  /// interpreter (interp). Throws an error on failure. Use this routine
+  /// to access the MIF interpreter from Tcl code. (Note: This result
+  /// can also be obtained by calling GetMifOption with import label set
+  /// to "mif_interp".)
+
+  Tcl_Interp* GetMifInterp() const;
+  /// Returns a C-level pointer to the MIF child interpreter.
 
   int GetLogFilename(String& logname) const;
   /// Returns name of log file registered with FileLogger
@@ -350,6 +408,7 @@ public:
 
   String ListExtObjects() const;  // Mainly for debugging.
   String ListEnergyObjects() const;  // Mainly for debugging.
+  String ListStateInitializerObjects() const;  // Mainly for debugging.
 
   // The following output (de)registration routines throw exceptions
   // on failure. NOTE: All objects registering output are expected to
@@ -359,19 +418,23 @@ public:
   void RegisterOutput(Oxs_Output*);
   void DeregisterOutput(const Oxs_Output*);
   OC_BOOL IsRegisteredOutput(const Oxs_Output*) const;
-  void ListOutputObjects(vector<String> &outputs) const; // Returns token
-  /// list, sorted first by priority and second by registration order.
+  void ListOutputObjects(std::vector<String> &outputs) const; // Returns
+  /// token list, sorted first by priority and second by registration
+  /// order.
   int Output(const char* output_token,
              Tcl_Interp* interp,
-             int argc,CONST84 char** argv);
+             int argc,const char** argv);
   int OutputCacheRequestIncrement(const char* output_token,
                                   OC_INT4m incr) const;
-  void OutputNames(const char* output_token,vector<String>& names) const;
-  /// Fills export "names" with, in order, owner_name, output_name,
-  /// output_type, and output_units, for output object associated
-  /// with output_token.
+  void OutputNames(const char* output_token,
+                   std::vector<String>& label_value_names) const;
+  /// Fills export label_value_names with label-value pairs for the
+  /// output object associated with output_token. These pairs can be
+  /// used to directly initialize a Tcl dictionary.  The labels include
+  /// "owner", "name", "type", and "units".  Field outputs include an
+  /// additional field, "filename_script".
 
-  void GetAllScalarOutputs(vector<String>& triples);
+  void GetAllScalarOutputs(std::vector<String>& triples);
   /// Returns a flat list of triples, (output name, units, value), for
   /// each registered scalar output.
 
@@ -399,7 +462,17 @@ public:
     return static_cast<OC_UINT4m>(energy_obj.size());
   }
   Oxs_Energy* GetEnergyObj(OC_UINT4m i) const;
-  vector<Oxs_Energy*> GetEnergyObjects() const { return energy_obj; }
+  std::vector<Oxs_Energy*> GetEnergyObjects() const { return energy_obj; }
+
+  // Oxs_SimState initializer object access. The last returns a *copy*
+  // of the initstate_obj vector.
+  OC_UINT4m GetStateInitializerObjCount() const {
+    return static_cast<OC_UINT4m>(initstate_obj.size());
+  }
+  Oxs_StateInitializer* GetStateInitializerObj(OC_UINT4m i) const;
+  std::vector<Oxs_StateInitializer*> GetStateInitializerObjects() const {
+    return initstate_obj;
+  }
 
   // Collect stage requests from all registered Oxs_Ext objects.
   void ExtObjStageRequestCounts(unsigned int& min,
@@ -439,11 +512,34 @@ public:
 
   // FindExistingSimulationState scans through the simulation state
   // list and returns a read-only pointer to the one matching the
-  // import id.  The import id must by positive.  The return value
+  // import id.  The import id must be positive.  The return value
   // is nullptr if no matching id is found.
   const Oxs_SimState* FindExistingSimulationState(OC_UINT4m id) const;
 
-// FindBaseStep takes the id of an existing state and checks the
+  // FindSuccessorSimulationStates scans through the simulation state
+  // list and returns a vector of read-only pointers to any simulation
+  // states that have the import prev_id as their previous_state_id.
+  // The return vector will be empty if none are found. We might want to
+  // consider adding iterator access if a need develops for additional
+  // whole simulation state list searches.
+  std::vector<const Oxs_SimState*>
+  FindSuccessorSimulationStates(OC_UINT4m prev_id) const;
+
+#ifndef NDEBUG
+  String DumpSimulationStatesOverview() const {
+    String buf;
+    for(const auto& cit : simulation_state) {
+      if(cit->ReadLockCount()>0 || cit->WriteLockCount()>0) {
+        buf += cit->DumpStateOverview() + String("\n");
+        // If ReadLockCount() and WriteLockCount() are both
+        // zero, then state is not in use.
+      }
+    }
+    return buf;
+  }
+#endif
+
+  // FindBaseStep takes the id of an existing state and checks the
   // step_done status for that state.  If the status is not DONE, then
   // it traces backwards through the previous_state_id until it either
   // finds a state with step_done == DONE, or else runs out of cached
@@ -453,9 +549,66 @@ public:
   const Oxs_SimState* FindBaseStepState(OC_UINT4m id) const;
   const Oxs_SimState* FindBaseStepState(const Oxs_SimState* stateptr) const;
 
+
+  // There are several "well known quantities" that various parts of a
+  // simulation may want to access. The following API allows Oxs_Ext
+  // objects to request that said quantities be computed and
+  // automatically attached to the corresponding Oxs_SimState at
+  // computation time (attach_request) and discover the label that
+  // quantity is stored under in the Oxs_SimState derived area.
+
+  //   Attach requests should be made by Oxs_Ext objects during their
+  // Init() phase. Also, any Oxs_Ext object that can produce a well
+  // known quantity should record the derived data label for that
+  // quantity during its Init() phase. The derived data labels are
+  // then available for inspection during the Oxs_Ext PostInit()
+  // phase. An empty string for a derived label implies that that
+  // quantity is not available during the simulation.
+  //
+  // NB: Be sure to manage linkage between WellKnownQuantityInfo struct,
+  //     enum class WellKnownQuantity, and WellKnownQuantity_List.  Or
+  //     replace with a hash container.
+  //
+  // Note: In principle it would be nice to initialize WellKnownQuantity_List
+  //    inline here, but C++11 rules require a "literal type", and there is
+  //    apparently a good bit of confusion at this time as to whether or
+  //    not std::initializer_list is a literal type. The construct
+  //
+  //       static const std::initializer_list<WellKnownQuantity>
+  //       WellKnownQuantity_List =
+  //         { WellKnownQuantity::total_energy_density,
+  //           WellKnownQuantity::total_H,
+  //           WellKnownQuantity::total_mxH,
+  //           WellKnownQuantity::total_mxHxm,
+  //           WellKnownQuantity::dm_dt };
+  //
+  // is allowed by g++ 10.3.0 but not by clang++ "Apple LLVM version 10.0.0".
+  //
+  // TODO: Maybe change the following to "StandardQuantity"?
+  // TODO: Maybe advertise in PreInit phase? Should requests
+  //       be opened up more generally? How would clients know
+  //       how to identify quantities---from MIF initialization
+  //       parameters? Would that be actually useful?
+  enum class WellKnownQuantity {
+    total_energy_density, total_H, total_mxH, total_mxHxm, dm_dt, invalid
+  };
+  static const std::initializer_list<WellKnownQuantity> WellKnownQuantity_List;
+  // Use like
+  //    for(auto q : Oxs_Director::WellKnownQuantity_List) { ... }
+
+  void WellKnownQuantityAttachRequest(WellKnownQuantity quantity);
+  void SetWellKnownQuantityLabel(WellKnownQuantity quantity,
+                                 const String& label);
+  String GetWellKnownQuantityLabel(WellKnownQuantity quantity) const;
+  bool WellKnownQuantityRequestStatus(WellKnownQuantity quantity) const;
+  bool WellKnownQuantityRequestStatus() const {
+     // Returns true if any attach requests have been made.
+    return well_known_quantity_store.AnyRequests();
+  }
+
   // Hook for develop tests
   int DoDevelopTest(const String& subroutine, String& result_str,
-                    int argc,CONST84 char** argv);
+                    int argc,const char** argv);
 };
 
 #endif // _OXS_DIRECTOR

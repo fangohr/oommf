@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html840"
+<A NAME="tex2html846"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html836"
+<A NAME="tex2html842"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html830"
+<A NAME="tex2html836"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html838"
+<A NAME="tex2html844"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html841"
+<B> Next:</B> <A NAME="tex2html847"
   HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
-<B> Up:</B> <A NAME="tex2html837"
+<B> Up:</B> <A NAME="tex2html843"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html831"
+<B> Previous:</B> <A NAME="tex2html837"
   HREF="Making_Data_Tables_from_Vec.html">Making Data Tables from</A>
 <BR>
 <BR>
@@ -51,7 +51,7 @@
 <BR>
 Vector Field File Format Conversion:
           avf2ovf
-</H1><A NAME="18031"></A><A NAME="18032"></A><A NAME="18033"></A><A NAME="18034"></A>
+</H1><A NAME="18387"></A><A NAME="18388"></A><A NAME="18389"></A><A NAME="18390"></A>
 The <B>avf2ovf</B> program converts vector field files from any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats">recognized formats</A> (OVF, VIO)
 into the OOMMF OVF or the Python NumPy NPY format.
@@ -103,7 +103,7 @@ where
   to the <B>+ <I>y</I></B> axis, <B><I>y</I></B> to the -<B><I>x</I></B> axis, and leaves <B><I>z</I></B> unchanged.
 </DD>
 <DT><STRONG><TT><B>-grid <TT><B>&lt;</B></TT>rect|irreg<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD>Specify output grid<A NAME="18056"></A> structure.  The default is <TT>rect</TT>,
+<DD>Specify output grid<A NAME="18412"></A> structure.  The default is <TT>rect</TT>,
   which will output a regular rectangular grid if the input is recognized
   as a regular rectangular grid.  The option ``-grid irreg'' forces
   irregular mesh style output.
@@ -259,7 +259,31 @@ specified by ``<code># valueunit</code>'' and ``<code># valuemultiplier</code>''
 header lines (OVF version 1 only).
 
 <P>
-For output format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
+The <B>avf2ovf</B> command processes only one file at at time. To convert
+a large collection of files use the looping facilities in your command
+shell. For example, if you are running a Bourne shell derivative such
+<TT>bash</TT> (common on Linux) or <TT>zsh</TT> (macOS), you can convert all
+<TT>.omf</TT> files in the current directory to NumPy NPY format with the
+command
+<PRE>
+ for i in *.omf ; do \
+   tclsh oommf.tcl avf2ovf -fileformat npy 1 $i ${i%.omf}.npy ; \
+ done
+</PRE>
+Here the shell variable <TT>i</TT> is set in turn to the name of each
+<TT>.omf</TT> file, and fed as the <TT>infile</TT> to <TT>avf2ovf</TT>. For the
+<TT>outfile</TT>, the syntax
+<code>${i%.omf}.npy</code> replaces the <TT>.omf</TT> extension with <TT>.npy</TT>.
+
+<P>
+The equivalent on Windows is
+<PRE>
+ for %i in (*.omf) do tclsh oommf.tcl avf2ovf -fileformat npy 1 %i %~ni.npy
+</PRE>
+In this case <code>%~ni.npy</code> replaces the filename extension.
+
+<P>
+For file format details, see the <A HREF="OVF_1.0_format.html#sec:ovfformat">OVF file
 description</A>.
 
 <P>
@@ -281,20 +305,20 @@ boundary edges that don't run parallel to a coordinate axis.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html840"
+<A NAME="tex2html846"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html836"
+<A NAME="tex2html842"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html830"
+<A NAME="tex2html836"
   HREF="Making_Data_Tables_from_Vec.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html838"
+<A NAME="tex2html844"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

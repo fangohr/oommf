@@ -26,24 +26,24 @@ Oxsii">
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html511"
+<A NAME="tex2html515"
   HREF="OOMMF_eXtensible_Solver_Bat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html507"
+<A NAME="tex2html511"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html501"
+<A NAME="tex2html505"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html509"
+<A NAME="tex2html513"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html512"
+<B> Next:</B> <A NAME="tex2html516"
   HREF="OOMMF_eXtensible_Solver_Bat.html">OOMMF eXtensible Solver Batch</A>
-<B> Up:</B> <A NAME="tex2html508"
+<B> Up:</B> <A NAME="tex2html512"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
-<B> Previous:</B> <A NAME="tex2html502"
+<B> Previous:</B> <A NAME="tex2html506"
   HREF="OOMMF_eXtensible_Solver.html">OOMMF eXtensible Solver</A>
 <BR>
 <BR>
@@ -53,7 +53,7 @@ Oxsii">
 <BR>
 OOMMF eXtensible Solver Interactive Interface:
 Oxsii
-</H1><A NAME="4077"></A><A NAME="4078"></A>
+</H1><A NAME="4118"></A><A NAME="4119"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -73,7 +73,7 @@ application. <B>Oxsii</B> is a client of data table display and storage
 applications, and vector field display and storage applications.
 <B>Oxsii</B> is the server of a solver control service for which the only
 client is <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"
- NAME="4096"><B>mmLaunch</B></A>.  It is through
+ NAME="4137"><B>mmLaunch</B></A>.  It is through
 this service that <B>mmLaunch</B> provides a user interface window (shown
 above) on behalf of <B>Oxsii</B>.
 
@@ -118,7 +118,7 @@ where
 </DD>
 <DT><STRONG><TT><B>-logfile logname</B></TT></STRONG></DT>
 <DD>Write log and error messages to file <I>logname</I>.  The default log
-  file is <TT><B>oommf/oxsii.errors</B></TT>.
+  file is <TT><B>oommf/oxsii.errors</B></TT>.<A NAME="4166"></A>
 </DD>
 <DT><STRONG><TT><B>-loglevel level</B></TT></STRONG></DT>
 <DD>Controls the detail level of log messages, with larger values of
@@ -138,8 +138,8 @@ where
   this option is enabled (i.e., 1) then the check is disabled.
 </DD>
 <DT><STRONG><TT><B>-numanodes <TT><B>&lt;</B></TT>nodes<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4134"></A>
-  <A NAME="4135"></A>
+<DD><A NAME="4176"></A>
+  <A NAME="4177"></A>
   This option is available on <A HREF="Parallelization.html#sec:install.parallel">NUMA-aware</A> builds of Oxs.  The <I>nodes</I>
   parameter must be either a comma separated list of 0-based node
   numbers, the keyword ``auto'', or the keyword ``none''.  In the first
@@ -161,7 +161,7 @@ where
   system is free to move the threads among processors.  In the other two
   cases, each thread is tied to a particular node for the lifetime of
   the <B>Oxsii</B> instance.  See also the discussion
-  on <A HREF="OOMMF_eXtensible_Solver_Bat.html#html:threadconsider">threading considerations</A> in the
+  on <A HREF="OOMMF_eXtensible_Solver_Bat.html#HTMLthreadconsider">threading considerations</A> in the
   Boxsi documentation.
 
 <P>
@@ -184,14 +184,14 @@ The default behavior is modified (in increasing order of priority) by the
   <TT>numanodes</TT> setting in the active <TT><B>oommf/config/platform/</B></TT> platform
   file, by the <TT>numanodes</TT> setting in the <TT><B>oommf/config/options.tcl</B></TT>
   or <TT><B>oommf/config/local/options.tcl</B></TT> file, or by the environment variable
-  <TT>OOMMF_NUMANODES</TT><A NAME="4164"></A>.  The
-  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4166"></A>
+  <TT>OOMMF_NUMANODES</TT><A NAME="4206"></A>.  The
+  <TT>-numanodes</TT> command line option, if any, overrides all.<A NAME="4208"></A>
 </DD>
 <DT><STRONG><TT><B>-outdir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where output files are written by
   <B>mmArchive</B>.  This option is useful when the default output
   directory is inaccessible or slow. The environment variable
-  <TT>OOMMF_OUTDIR</TT><A NAME="4170"></A> sets the
+  <TT>OOMMF_OUTDIR</TT><A NAME="4212"></A> sets the
   default output directory.  If <TT>OOMMF_OUTDIR</TT> is set to the empty
   string, or not set at all, then the default is the directory holding
   the MIF file.  If this option is specified on the command line, or
@@ -204,7 +204,7 @@ The default behavior is modified (in increasing order of priority) by the
   parameters.  The <I>params</I> argument should be a list with an
   even number of arguments, corresponding to name + value pairs.  Each
   ``name'' must appear in a
-  <A HREF="MIF_2.1_Extension_Commands.html#html:mif2parameter"><TT>Parameter</TT></A>
+  <A HREF="MIF_2.1_Extension_Commands.html#PTmif2parameter"><TT>Parameter</TT></A>
   statement in the input
   MIF file.  The entire name + value list must be quoted so it is
   presented to <B>Oxsii</B> as a single item on the command line.  For
@@ -223,7 +223,7 @@ The default behavior is modified (in increasing order of priority) by the
   is 1, i.e., to ``Pause'' once the problem is loaded. This switch has
   no effect if miffile is not specified.
 </DD>
-<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="7426"></A></B></TT></STRONG></DT>
+<DT><STRONG><TT><B>-restart <TT><B>&lt;</B></TT>0|1<TT><B>&gt;</B></TT><A NAME="7542"></A></B></TT></STRONG></DT>
 <DD>Controls the initial setting of the restart flag, and thereby
   the load restart behavior of any <TT>miffile</TT> specified on the command
   line.  The restart flag is described in the
@@ -233,9 +233,9 @@ The default behavior is modified (in increasing order of priority) by the
 <DT><STRONG><TT><B>-restartfiledir dir</B></TT></STRONG></DT>
 <DD>Specifies the directory where restart files are written.
   The default is determined by the environment variable
-  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4201"></A>,
+  <TT>OOMMF_RESTARTFILEDIR</TT><A NAME="4243"></A>,
   or if this is not set then by
-  <TT>OOMMF_OUTDIR</TT><A NAME="4203"></A>.  If
+  <TT>OOMMF_OUTDIR</TT><A NAME="4245"></A>.  If
   neither environment variable is set then the default is the
   directory holding the MIF file.  Write access is required to the
   restart file directory.  Also, you may want to consider whether the
@@ -243,13 +243,13 @@ The default behavior is modified (in increasing order of priority) by the
   network mount.
 </DD>
 <DT><STRONG><TT><B>-threads <TT><B>&lt;</B></TT>count<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
-<DD><A NAME="4205"></A>
+<DD><A NAME="4247"></A>
   The option is available on <A HREF="Parallelization.html#sec:install.parallel">threaded</A> builds of Oxs.  The <I>count</I>
   parameter is the number of threads to run.  The default count value is
   set by the <TT>oommf_thread_count</TT> value in
   the <TT><B>config/platforms/</B></TT> file for your platform, but may be
   overridden by
-  the <TT>OOMMF_THREADS</TT><A NAME="4214"></A>
+  the <TT>OOMMF_THREADS</TT><A NAME="4256"></A>
   environment variable or this command line option.  In most cases the
   default count value will equal the number of processing cores on the
   system; this can be checked via the command <TT>tclsh oommf.tcl
@@ -264,11 +264,11 @@ The default behavior is modified (in increasing order of priority) by the
 All the above switches are optional.
 
 <P>
-Since <B>Oxsii</B><A NAME="4222"></A> does not present
+Since <B>Oxsii</B><A NAME="4264"></A> does not present
 any user interface window of its own, it depends on
-<B>mmLaunch</B><A NAME="4224"></A> to provide an interface on
+<B>mmLaunch</B><A NAME="4266"></A> to provide an interface on
 its behalf.  The entry for an instance of <B>Oxsii</B> in the
-<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4227"></A> column of any running copy of
+<FONT COLOR="#800000"><B>Threads</B></FONT><A NAME="4269"></A> column of any running copy of
 <B>mmLaunch</B> has a checkbutton next to it.  This button toggles the
 presence of a user interface window through which the user may control
 that instance of <B>Oxsii</B>.
@@ -293,7 +293,7 @@ any plain text editor.
 <P>
 
 <P>
-<FONT SIZE="+1"><B>Outputs<A NAME="html:oxsiioutputs"></A></B></FONT>
+<FONT SIZE="+1"><B>Outputs<A NAME="HTMLoxsiioutputs"></A></B></FONT>
 <BR>
 Once a problem has been loaded, the scroll box under the Output
 heading will fill with a list of available outputs.  The contents of
@@ -306,8 +306,8 @@ selection under the Destination heading, and then specify the output
 timing under the Schedule heading.  Outputs may be scheduled by the
 step or stage, and may be sent out interactively by pressing the
 <FONT COLOR="#800000"><B>Send</B></FONT> button.  The initial output configuration is set by
-<A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT></A> and
-<A HREF="MIF_2.1_Extension_Commands.html#html:scheduleCmd"><TT>Schedule</TT></A> commands in the input
+<A HREF="MIF_2.1_Extension_Commands.html#PTdestinationCmd"><TT>Destination</TT></A> and
+<A HREF="MIF_2.1_Extension_Commands.html#PTscheduleCmd"><TT>Schedule</TT></A> commands in the input
 MIF file.
 
 <P>
@@ -320,11 +320,11 @@ When the <TT>DataTable</TT> entry is selected, the Destination box will
 list all OOMMF applications accepting datatable-style input, i.e., all
 currently running
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="4274"><B>mmDataTable</B></A>,
+ NAME="4316"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="4279"><B>mmGraph</B></A>, and
+ NAME="4321"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4284"><B>mmArchive</B></A> processes.
+ NAME="4326"><B>mmArchive</B></A> processes.
 
 <P>
 The vector field outputs include pointwise magnetization, various total
@@ -333,9 +333,9 @@ outputs, the vector field outputs are listed individually in the Output
 scroll box.  Allowed destinations for vector field output are running
 instances of
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="4289"><B>mmDisp</B></A> and
+ NAME="4331"><B>mmDisp</B></A> and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="4294"><B>mmArchive</B></A>.  Caution is
+ NAME="4336"><B>mmArchive</B></A>.  Caution is
 advised when scheduling vector field output, especially with large
 problems, because the output may run many megabytes.
 
@@ -349,7 +349,7 @@ Interface, Clear Schedule and Exit Oxsii.  <FONT COLOR="#800000"><B>File|Load...
 launches a dialog box that allows the user to select an input MIF problem description file.  <FONT COLOR="#800000"><B>File|Show&nbsp;Console</B></FONT> brings up a
 Tcl shell console running off the <B>Oxsii</B> interface Tcl interpreter.  This console is intended primary for debugging purposes.
 In particular, output from
-MIF <A HREF="MIF_2.1_Extension_Commands.html#html:MifReport">Report</A> commands
+MIF <A HREF="MIF_2.1_Extension_Commands.html#PTMifReport">Report</A> commands
 may be viewed here.  <FONT COLOR="#800000"><B>File|Close Interface</B></FONT> will remove the
 interface window from the display, but leaves the solver running.  This
 effect may also be obtained by deselecting the
@@ -424,23 +424,42 @@ Refer to the appropriate Oxs_Ext class documentation for simulation and
 computational details.
 
 <P>
+Error and status messages are written to the log file<A NAME="4378"></A>
+(default <TT><B>oommf/oxsii.errors</B></TT>). This is a plain text file where each
+record is prefixed with a timestamp and source identification. The start
+of each simulation is recorded with a <TT>Start:</TT> record, and
+an <TT>End</TT> record marks successful completion of the simulation. If you
+have multiple simulations running simultaneously, either on the same
+machine or on different machines but logging to the same (networked)
+file, then records from the different simulations will be
+intermingled. The OOMMF command line application
+<A HREF="Oxs_Log_File_Review_logrevi.html#sec:logreview"
+ NAME="4386"><B>logreview</B></A> can be used as an
+aid for reading <B>Oxsii</B> log files. See also the command line
+application
+<A HREF="Last_Oxsii_Boxsi_Run_lastjo.html#sec:lastjob"
+ NAME="4392"><B>lastjob</B></A>, which relies on the
+log file to determine the last simulation run and optionally restart
+interrupted simulations.
+
+<P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html511"
+<A NAME="tex2html515"
   HREF="OOMMF_eXtensible_Solver_Bat.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html507"
+<A NAME="tex2html511"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html501"
+<A NAME="tex2html505"
   HREF="OOMMF_eXtensible_Solver.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html509"
+<A NAME="tex2html513"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

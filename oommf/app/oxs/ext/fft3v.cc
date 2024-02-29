@@ -17084,7 +17084,7 @@ Oxs_FFTStrided::InverseFFTSize4ZP
 
   for(i=0;i<arrcount;++i) {
     OXS_FFT_REAL_TYPE* const v = arr + 2*i;  // Working vector
-                 
+
     OXS_FFT_REAL_TYPE ax  = v[0] + v[2*rstride]   + v[rstride]   + v[3*rstride];
     OXS_FFT_REAL_TYPE bx  = v[0] - v[2*rstride]   - v[rstride+1] + v[3*rstride+1];
     OXS_FFT_REAL_TYPE ay  = v[1] + v[2*rstride+1] + v[rstride+1] + v[3*rstride+1];

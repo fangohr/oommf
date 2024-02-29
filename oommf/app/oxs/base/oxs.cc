@@ -13,7 +13,7 @@
 #include "ext.h"	// Needed to make MSVC++ 5.x happy
 #include "energy.h"	// Needed to make MSVC++ 5.x happy
 
-/* End includes */     
+/* End includes */
 
 extern void OxsInitializeExt();
 extern void OxsRegisterInterfaceCommands(Oxs_Director* director,
@@ -69,21 +69,19 @@ Tcl_PackageInitProc	Oxs_Init;
 
 int Oxs_Init(Tcl_Interp *interp)
 {
-#define RETURN_TCL_ERROR                                    \
-    Tcl_AddErrorInfo(interp,OC_CONST84_CHAR("\n    (in Oxs_Init())")); \
+#define RETURN_TCL_ERROR                              \
+    Tcl_AddErrorInfo(interp,"\n    (in Oxs_Init())"); \
     return TCL_ERROR
 
   Oc_AutoBuf ab;
 
-  if (Tcl_PkgRequire(interp,OC_CONST84_CHAR("Oc"),
-                     OC_CONST84_CHAR("2"), 0) == NULL) {
+  if (Tcl_PkgRequire(interp,"Oc","2", 0) == NULL) {
     Tcl_AppendResult(interp,ab("\n\t(Oxs " OXS_VERSION
 				"needs Oc 2)"), NULL);
     RETURN_TCL_ERROR;
   }
 
-  if (Tcl_PkgRequire(interp,OC_CONST84_CHAR("Nb"),
-                     OC_CONST84_CHAR("2"), 0) == NULL) {
+  if (Tcl_PkgRequire(interp,"Nb", "2", 0) == NULL) {
     Tcl_AppendResult(interp,ab("\n\t(Oxs " OXS_VERSION
 				"needs Nb 2)"), NULL);
     RETURN_TCL_ERROR;
@@ -93,8 +91,7 @@ int Oxs_Init(Tcl_Interp *interp)
   Oxs_Director *director = new Oxs_Director(interp);
 
   // Arrange for *interp destruction to destroy *director
-  Tcl_SetAssocData(interp,OC_CONST84_CHAR("director"),
-		   OxsDeleteDirector,director);
+  Tcl_SetAssocData(interp,"director", OxsDeleteDirector,director);
 
   // Run Ext child class initialization (including registration).
   OxsInitializeExt();
@@ -102,9 +99,7 @@ int Oxs_Init(Tcl_Interp *interp)
   // Add Tcl interface commands to interpreter.
   OxsRegisterInterfaceCommands(director,interp);
 
-  if(Tcl_PkgProvide(interp,OC_CONST84_CHAR("Oxs"),
-                    OC_CONST84_CHAR(OXS_VERSION))
-     != TCL_OK) {
+  if(Tcl_PkgProvide(interp,"Oxs", OXS_VERSION) != TCL_OK) {
     RETURN_TCL_ERROR;
   }
   if (Oc_InitScript(interp,"Oxs",OXS_VERSION) == TCL_OK) {
@@ -123,40 +118,40 @@ int Tcl_AppInit(Tcl_Interp *interp)
     if (Oc_Init(interp) != TCL_OK) {
        return TCL_ERROR;
     }
-    Tcl_StaticPackage(interp, OC_CONST84_CHAR("Oc"), Oc_Init, NULL);
+    Tcl_StaticPackage(interp, "Oc", Oc_Init, NULL);
 
     if (Nb_Init(interp) == TCL_ERROR) {
         Tcl_DStringInit(&buf);
-        Tcl_DStringAppend(&buf, OC_CONST84_CHAR("Oc_Log Log"), -1);
+        Tcl_DStringAppend(&buf, "Oc_Log Log", -1);
         Tcl_DStringAppendElement(&buf, Tcl_GetStringResult(interp));
-        Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR("error"));
+        Tcl_DStringAppendElement(&buf, "error");
         Tcl_Eval(interp, Tcl_DStringValue(&buf));
         Tcl_DStringFree(&buf);
         Tcl_Exit(1);
     }
-    Tcl_StaticPackage(interp, OC_CONST84_CHAR("Nb"), Nb_Init, NULL);
+    Tcl_StaticPackage(interp, "Nb", Nb_Init, NULL);
 
     if (Vf_Init(interp) == TCL_ERROR) {
         Tcl_DStringInit(&buf);
-        Tcl_DStringAppend(&buf, OC_CONST84_CHAR("Oc_Log Log"), -1);
+        Tcl_DStringAppend(&buf, "Oc_Log Log", -1);
         Tcl_DStringAppendElement(&buf, Tcl_GetStringResult(interp));
-        Tcl_DStringAppendElement(&buf, OC_CONST84_CHAR("error"));
+        Tcl_DStringAppendElement(&buf, "error");
         Tcl_Eval(interp, Tcl_DStringValue(&buf));
         Tcl_DStringFree(&buf);
         Tcl_Exit(1);
     }
-    Tcl_StaticPackage(interp, OC_CONST84_CHAR("Vf"), Vf_Init, NULL);
+    Tcl_StaticPackage(interp, "Vf", Vf_Init, NULL);
 
     if (Oxs_Init(interp) != TCL_OK) {
         Tcl_DStringInit(&buf);
-        Tcl_DStringAppend(&buf,OC_CONST84_CHAR("Oc_Log Log"),-1);
+        Tcl_DStringAppend(&buf,"Oc_Log Log",-1);
         Tcl_DStringAppendElement(&buf, Tcl_GetStringResult(interp));
-        Tcl_DStringAppendElement(&buf,OC_CONST84_CHAR("panic"));
+        Tcl_DStringAppendElement(&buf,"panic");
         Tcl_Eval(interp, Tcl_DStringValue(&buf));
         Tcl_DStringFree(&buf);
         Tcl_Exit(1);
     }
-    Tcl_StaticPackage(interp, OC_CONST84_CHAR("Oxs"), Oxs_Init, NULL);
+    Tcl_StaticPackage(interp, "Oxs", Oxs_Init, NULL);
     return TCL_OK;
 }
 

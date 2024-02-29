@@ -66,8 +66,8 @@ pbc_2d_error(0), xdim(0), ydim(0), zdim(0),
 sample_repeat_nx(0), sample_repeat_ny(0),
 asymptotic_radius(0), dipolar_radius(0),
 asymptotic_radius_sq(0), dipolar_radius_sq(0),
-Npbc_diag(NULL), Npbc_offdiag(NULL), Mtemp(0),
-embed_convolution(0), embed_block_size(0) {
+Npbc_diag(), Npbc_offdiag(), Mtemp(0),
+embed_convolution(0), embed_block_size(0), cache_size(Oc_CacheSize()) {
 
 
     tensor_file_name = GetStringInitValue("tensor_file_name", "");
@@ -491,7 +491,7 @@ void PBC_Demag_2D::FillCoefficientArrays(const Oxs_CommonRectangularMesh* mesh) 
     }
 
 
-   #if VERBOSE_DEBUG && !defined(NDEBUG)
+#   if VERBOSE_DEBUG && !defined(NDEBUG)
     for (k = 0; k < ldimz; ++k) {
         for (j = 0; j < ldimy; ++j) {
             for (i = 0; i < ldimx; ++i) {
@@ -506,7 +506,7 @@ void PBC_Demag_2D::FillCoefficientArrays(const Oxs_CommonRectangularMesh* mesh) 
         }
     }
     fflush(stdout);
-   #endif // NDEBUG
+#   endif // NDEBUG
 
 
 
@@ -643,7 +643,7 @@ void PBC_Demag_2D::FillCoefficientArrays(const Oxs_CommonRectangularMesh* mesh) 
     }
 
 
-  #if VERBOSE_DEBUG && !defined(NDEBUG)
+#if VERBOSE_DEBUG && !defined(NDEBUG)
   for(k=0;k<ldimz;++k) {
     for(j=0;j<ldimy;++j) {
       for(i=0;i<ldimx;++i) {

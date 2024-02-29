@@ -46,13 +46,13 @@ Oxs_ScriptUZeeman::Oxs_ScriptUZeeman(
   number_of_stages = GetUIntInitValue("stage_count",0);
   /// Default number_of_stages is 0, i.e., no preference.
 
-  Bapp_output.Setup(this,InstanceName(),"B","mT",1,
+  Bapp_output.Setup(this,InstanceName(),"B","mT",
 		    &Oxs_ScriptUZeeman::Fill__Bapp_output);
-  Bappx_output.Setup(this,InstanceName(),"Bx","mT",1,
+  Bappx_output.Setup(this,InstanceName(),"Bx","mT",
 		     &Oxs_ScriptUZeeman::Fill__Bapp_output);
-  Bappy_output.Setup(this,InstanceName(),"By","mT",1,
+  Bappy_output.Setup(this,InstanceName(),"By","mT",
 		     &Oxs_ScriptUZeeman::Fill__Bapp_output);
-  Bappz_output.Setup(this,InstanceName(),"Bz","mT",1,
+  Bappz_output.Setup(this,InstanceName(),"Bz","mT",
 		     &Oxs_ScriptUZeeman::Fill__Bapp_output);
 
   Bapp_output.Register(director,0);
@@ -78,7 +78,8 @@ Oxs_ScriptUZeeman::~Oxs_ScriptUZeeman()
 
 OC_BOOL Oxs_ScriptUZeeman::Init()
 {
-  return Oxs_Energy::Init();
+  // Run parent initializer.
+  return Oxs_ChunkEnergy::Init();
 }
 
 void

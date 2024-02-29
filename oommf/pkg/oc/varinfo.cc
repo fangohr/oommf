@@ -24,14 +24,13 @@
 #endif
 
 #include <cerrno>
+#include <cfloat>
+#include <climits>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <climits>
-#include <cmath>
-#include <cfloat>
-
 #include <iostream>
 
 #ifdef __APPLE__
@@ -136,7 +135,6 @@
 #endif
 
 #if EXTRALONGDOUBLE
-#include <cmath>    // Get long double overloads
 typedef long double HUGEFLOAT;
 const char* HUGEFLOATTYPE = "long double";
 #endif
@@ -450,13 +448,7 @@ void Usage()
 /* Declaration for dummy zero routine.  Definition at bottom of file. */
 double zero();
 
-#ifdef __cplusplus
 int main(int argc,char** argv)
-#else
-int main(argc,argv)
-int argc;
-char **argv;
-#endif
 {
   short s;
   int i;
@@ -728,11 +720,11 @@ char **argv;
 #endif
   int fltdigs = DecimalDigits(FLT_MANT_DIG) - 1; // "-1" to use %e
   printf("FLT_MIN: %.*e\n",fltdigs,FLT_MIN);
-  printf("SQRT_FLT_MIN: %.*e\n",fltdigs,sqrt(FLT_MIN));
+  printf("SQRT_FLT_MIN: %.*e\n",fltdigs,(double)std::sqrt(FLT_MIN));
   printf("FLT_MAX: %.*e\n",fltdigs,FLT_MAX);
-  printf("SQRT_FLT_MAX: %.*e\n",fltdigs,sqrt(FLT_MAX));
+  printf("SQRT_FLT_MAX: %.*e\n",fltdigs,(double)std::sqrt(FLT_MAX));
   printf("FLT_EPSILON: %.*e\n",fltdigs,FLT_EPSILON);
-  printf("SQRT_FLT_EPSILON: %.*e\n",fltdigs,sqrt(FLT_EPSILON));
+  printf("SQRT_FLT_EPSILON: %.*e\n",fltdigs,(double)std::sqrt(FLT_EPSILON));
   printf("CUBE_ROOT_FLT_EPSILON: %.*e\n",
          fltdigs,pow(double(FLT_EPSILON),1./3.));
 
@@ -745,11 +737,11 @@ char **argv;
 #endif
   int dbldigs = DecimalDigits(DBL_MANT_DIG) - 1; // "-1" to use %e
   printf("DBL_MIN: %.*e\n",dbldigs,DBL_MIN);
-  printf("SQRT_DBL_MIN: %.*e\n",dbldigs,sqrt(DBL_MIN));
+  printf("SQRT_DBL_MIN: %.*e\n",dbldigs,std::sqrt(DBL_MIN));
   printf("DBL_MAX: %.*e\n",dbldigs,DBL_MAX);
-  printf("SQRT_DBL_MAX: %.*e\n",dbldigs,sqrt(DBL_MAX));
+  printf("SQRT_DBL_MAX: %.*e\n",dbldigs,std::sqrt(DBL_MAX));
   printf("DBL_EPSILON: %.*e\n",dbldigs,DBL_EPSILON);
-  printf("SQRT_DBL_EPSILON: %.*e\n",dbldigs,sqrt(DBL_EPSILON));
+  printf("SQRT_DBL_EPSILON: %.*e\n",dbldigs,std::sqrt(DBL_EPSILON));
   printf("CUBE_ROOT_DBL_EPSILON: %.*e\n",dbldigs,pow(DBL_EPSILON,1./3.));
 
 #if EXTRALONGDOUBLE
@@ -771,14 +763,16 @@ char **argv;
 # endif
 # if !NO_L_FORMAT && defined(LDBL_MIN) && defined(LDBL_MAX)
   printf("LDBL_MIN: %.*LeL\n",ldbldigs,LDBL_MIN);
+  printf("SQRT_LDBL_MIN: %.*LeL\n",ldbldigs,std::sqrt(LDBL_MIN));
   printf("LDBL_MAX: %.*LeL\n",ldbldigs,LDBL_MAX);
+  printf("SQRT_LDBL_MAX: %.*LeL\n",ldbldigs,std::sqrt(LDBL_MAX));
 # elif defined(LDBL_MANT_DIG) && defined(LDBL_MIN_EXP) && defined(LDBL_MAX_EXP)
   // Probably missing L format, but handle here also case where LDBL_MIN
   // and/or LDBL_MAX are missing.  It's a little tricky to get the
   // long double representations right using just doubles, in part
   // because while %.17g is lossless for doubles (assuming 53-bit mantissa
   // doubles), you generally can't just suffix an L (e.g., "%.17gL")
-  // and get a correct long double value, because unless the value is and
+  // and get a correct long double value, because unless the value is an
   // integer then it won't round to the right long double.  Bottom line:
   // if you change one character in the following code, be certain to
   // carefully test that it still works.
@@ -787,7 +781,9 @@ char **argv;
     // Presumably HUGEFLOAT and double are identical, so
     // it doesn't matter that L modifier is missing.
     printf("LDBL_MIN: %.*e\n",dbldigs,double(LDBL_MIN));
+    printf("SQRT_LDBL_MIN: %.*e\n",dbldigs,double(std::sqrt(LDBL_MIN)));
     printf("LDBL_MAX: %.*e\n",dbldigs,double(LDBL_MAX));
+    printf("SQRT_LDBL_MAX: %.*e\n",dbldigs,double(std::sqrt(LDBL_MAX)));
   } else {
     double pot = pow(2.0,DBL_MAX_EXP-1);
     int ldblexp = -1*LDBL_MIN_EXP;
@@ -797,6 +793,7 @@ char **argv;
       ldblexp -= (DBL_MAX_EXP-1);
     }
     printf("*%.*e))\n",dbldigs,pow(2.0,ldblexp));
+    printf("SQRT_LDBL_MIN: std::sqrt(LDBL_MIN)\n");
 
     double tweaka=1, tweakb=1;
     for(i=0;i<DBL_MANT_DIG-2;++i) tweaka *= 2.0;
@@ -809,19 +806,20 @@ char **argv;
       ldblexp -= (DBL_MAX_EXP-1);
     }
     printf("*%.*e)\n",dbldigs,pow(2.0,ldblexp));
+    printf("SQRT_LDBL_MAX: std::sqrt(LDBL_MAX)\n");
   }
 # endif
 # if defined(LDBL_EPSILON)
 #  if NO_L_FORMAT
   printf("LDBL_EPSILON: %.*e\n",dbldigs,double(LDBL_EPSILON));
-  printf("SQRT_LDBL_EPSILON: %.*e\n",dbldigs,double(sqrt(LDBL_EPSILON)));
+  printf("SQRT_LDBL_EPSILON: %.*e\n",dbldigs,double(std::sqrt(LDBL_EPSILON)));
   printf("CUBE_ROOT_LDBL_EPSILON: %.*e\n",dbldigs,
          pow(LDBL_EPSILON,HUGEFLOAT(1.)/3.));
 #  else
   printf("LDBL_EPSILON: %.*LeL\n",ldbldigs,LDBL_EPSILON);
   // sqrt and pow may overload to long versions, but if not then
   // fix up with a few Newton steps.
-  HUGEFLOAT sqrteps = sqrt(LDBL_EPSILON);
+  HUGEFLOAT sqrteps = std::sqrt(LDBL_EPSILON);
   HUGEFLOAT check = sqrteps*sqrteps;
   HUGEFLOAT err = check - LDBL_EPSILON;
   HUGEFLOAT abserr = (err>0?err:-1*err);

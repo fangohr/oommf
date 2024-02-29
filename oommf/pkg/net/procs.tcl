@@ -61,8 +61,8 @@ proc Net_GeneralInterfaceProtocol {gui cmds} {
         # The script to be run in the client, when $local is written in the
         # server.  %s holds the place for the [set] command to go along with
         # the new value.
-        set ctraceFmt "[list trace vdelete $remote w $trace]; %s;\
-            [list trace variable $remote w $trace] ;#"
+        set ctraceFmt "[list trace remove variable $remote write $trace]; %s;\
+            [list trace add variable $remote write $trace] ;#"
 
         # A common prefix for the local write trace, and the script which
         # only starts write traces in the client.  The latter is used
@@ -80,13 +80,13 @@ proc Net_GeneralInterfaceProtocol {gui cmds} {
         if {[info exists $local]} {eval $strace} else {eval "$pfx {}]"}
 
         # Set the trace, so changes here get reflected in the client.
-        trace variable $local w $strace
+        trace add variable $local write $strace
 
         # Make sure this write trace is destroyed if we ever lose contact
         # with the client
         regsub -all -- % $strace %% strace
         Oc_EventHandler New _ $connection CloseGui \
-                [list trace vdelete $local w $strace]
+                [list trace remove variable $local write $strace]
         return [list start [list 0 ""]]
     }
     return $protocol

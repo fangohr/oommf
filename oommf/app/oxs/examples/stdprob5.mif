@@ -82,7 +82,6 @@ if {$initproblem} {
 	P		$P
 	J		$J
 	eps_prime	[expr {$xi/2}]
-	mp		{1 0 0}
 	propagate_mp	1
 	J_direction	+x
     }]

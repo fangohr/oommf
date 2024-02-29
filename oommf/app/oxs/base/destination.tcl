@@ -17,6 +17,11 @@ Oc_Class Oxs_Destination {
 
    const public variable protocol
    const public variable name       ;# alias<oid:#>
+   public variable basename   ;# If Oxs_Destination is linked to a
+   ## Destination command in the MIF file, then basename is set to the
+   ## MIF Option "basename" setting at that point in the MIF file.
+   ## Otherwise basename is set to the value of MIF Option "basename"
+   ## at the end of the MIF file.
 
    # If you have an already existing Net_Thread object, then that
    # alone suffices to create an Oxs_Destination instance. OTOH, if
@@ -83,6 +88,37 @@ Oc_Class Oxs_Destination {
             return -code error "Invalid sid format: \"$sid\""
       }
       set destmap($oid,$protocol) $name
+
+      # Get basename from Oxs_Mif
+      set miflist [Oxs_Mif Instances]
+      if {[llength $miflist]>1} {
+         return -code error \
+            "Error Oxs_Destination: Multiple Oxs_Mif Objects?!"
+      }
+      if {[llength $miflist]==0} {
+         set basename {} ;# MIF file not yet loaded
+      } else {
+         set mifobj [lindex $miflist 0]
+         if {![catch {$mifobj GetDestExtra $oid} destextra] \
+                && [dict exists $destextra -basename]} {
+            set basename [dict get $destextra -basename]
+         } elseif {[catch {$mifobj GetOption basename} basename]} {
+            return -code error \
+               "Error Oxs_Destination: basename not set"
+         }
+         # Convert basename to absolute pathname if not already in that form.
+         if {[string match relative [file pathtype $basename]]} {
+            # The relative check may not be strictly necessary, but may
+            # be helpful in case basename is volume relative...in which
+            # case we punt and don't change it.
+            global output_directory workdir  ;# Set in oxsii.tcl/boxsi.tcl
+            if {[string match {} $output_directory]} {
+               set basename [file join $workdir $basename]
+            } else {
+               set basename [file join $output_directory $basename]
+            }
+         }
+      }
 
       upvar #0 ${protocol}List list
       lappend list $name

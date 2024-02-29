@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html864"
+<A NAME="tex2html870"
   HREF="Vector_Field_File_Differenc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html860"
+<A NAME="tex2html866"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html854"
+<A NAME="tex2html860"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html862"
+<A NAME="tex2html868"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html865"
+<B> Next:</B> <A NAME="tex2html871"
   HREF="Vector_Field_File_Differenc.html">Vector Field File Difference:</A>
-<B> Up:</B> <A NAME="tex2html861"
+<B> Up:</B> <A NAME="tex2html867"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html855"
+<B> Previous:</B> <A NAME="tex2html861"
   HREF="Making_Bitmaps_from_Vector_.html">Making Bitmaps from Vector</A>
 <BR>
 <BR>
@@ -51,17 +51,21 @@
 <BR>
 Making PostScript from Vector Fields:
             avf2ps
-</H1><A NAME="18277"></A><A NAME="18278"></A><A NAME="18279"></A>
+</H1><A NAME="18667"></A><A NAME="18668"></A><A NAME="18669"></A>
 
 <P>
-The <B>avf2ps</B><A NAME="18281"></A> utility creates a
-collection of color Encapsulated PostScript files from a collection of
-vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>), which can be embedded
-into larger PostScript documents or printed directly on a PostScript printer.  Operation of the <B>avf2ps</B> command is modeled after the
+The <B>avf2ps</B><A NAME="18671"></A> utility creates a collection
+of color Encapsulated PostScript (<TT><B>.eps</B></TT>) files from a collection of vector field files
+(e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>). Third party tools can be used to convert
+<TT><B>.eps</B></TT> files into other formats such as the Portable Document Format that can be
+embedded into larger documents. An advantage of <TT><B>.eps</B></TT> files over
+bitmap images such as <TT><B>.png</B></TT> or <TT><B>.tiff</B></TT> is that arrows in the
+<TT><B>.eps</B></TT> files scale without pixelization to any magnification.
+Operation of the <B>avf2ps</B> command is modeled after the
 <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="18289"><B>avf2ppm</B> command</A> and the print
+ NAME="18685"><B>avf2ppm</B> command</A> and the print
 dialog box in <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="18294"><B>mmDisp</B></A>.
+ NAME="18690"><B>mmDisp</B></A>.
 
 <P>
 
@@ -123,11 +127,11 @@ The file specification options, <TT>-ipat</TT>, <TT>-opatexp</TT>, and
 
 <P>
 If you have command line PostScript processing ``filter'' programs,
-e.g., <B>ghostscript</B><A NAME="18329"></A>, then you can
+e.g., <B>ghostscript</B><A NAME="18725"></A>, then you can
 use the <TT>-filter</TT> option to pipe the output of <B>avf2ps</B> through
 that filter before it is written to the output file specified by the
 <TT>-opat*</TT> expressions.  If the processing changes the format of the
-file, (e.g., from PostScript to PDF<A NAME="18333"></A>), then you will
+file, (e.g., from PostScript to PDF<A NAME="18729"></A>), then you will
 likely want to specify a <TT>-opatsub</TT> different from the default.
 
 <P>
@@ -140,13 +144,13 @@ tclsh oommf.tcl avf2ps -ipat *.ovf -opatsub .pdf -filter "ps2pdf - -"
 </PRE>
 On Unix, either drop the <TT>-ipat</TT> flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
-<TT>-ipat '*.ovf'</TT>.
+<code>-ipat '*.ovf'</code>.
 
 <P>
 
 <P>
 <FONT SIZE="+1"><B>Configuration files<A NAME="sec:avf2psconfig"></A></B></FONT>
-<BR><A NAME="18343"></A>
+<BR><A NAME="18738"></A>
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration file</A>.
@@ -171,12 +175,35 @@ documentation, except that <B>avf2ps</B> ignores the
 <TT>misc,defaultwindowwidth</TT> and <TT>misc,defaultwindowheight</TT>
 parameters, and the following additional parameters are available:
 <DL>
+<DT><STRONG><TT><B>arrow,length</B></TT></STRONG></DT>
+<DD>Full length of arrow, from tail to tip. All of the arrow dimensions,
+  including this one, are measured relative to the sample cell size. The
+  default value for <TT>arrow,length</TT> is 0.9, which being less than 1.0
+  ensures that arrows in neighboring cells don't overlap.
+</DD>
+<DT><STRONG><TT><B>arrow,width</B></TT></STRONG></DT>
+<DD>Width of the arrow shaft.
+</DD>
+<DT><STRONG><TT><B>arrow,tipwidth</B></TT></STRONG></DT>
+<DD>Width of the arrow at its tip
+</DD>
+<DT><STRONG><TT><B>arrow,headwidth</B></TT></STRONG></DT>
+<DD>Width of the arrowhead at its widest point.
+</DD>
+<DT><STRONG><TT><B>arrow,headilength</B></TT></STRONG></DT>
+<DD>Distance from the tip of the arrow back to the point where the
+  arrowhead detaches from the shaft.
+</DD>
+<DT><STRONG><TT><B>arrow,headolength</B></TT></STRONG></DT>
+<DD>Distance along the shaft from the tip of the arrow back to the widest
+  point of the arrowhead.
+</DD>
 <DT><STRONG><TT><B>arrow,outlinewidth</B></TT></STRONG></DT>
 <DD>Width of a colored outline around each arrow; this can improve
  visibility of an arrow when it is overlayed against a background with
  color similar to that of the arrow.  Default value is zero, meaning no
- outline.  A value of 1 produces an outline with a recommended width,
- and other positive values are scaled relative to this.
+ outline. Reasonable non-zero values are generally some fraction of the
+ the arrow shaft width.
 </DD>
 <DT><STRONG><TT><B>arrow,outlinecolor</B></TT></STRONG></DT>
 <DD>If <TT>arrow,outlinewidth</TT> is positive, then this is the color of the
@@ -189,26 +216,34 @@ parameters, and the following additional parameters are available:
 </DD>
 <DT><STRONG><TT><B>misc,matwidth</B></TT></STRONG></DT>
 <DD>Specifies the width, in pixels, of a mat (frame) around the outer edge
- of the image.  The mat is drawn in front of all other objects.  To
- disable, set matwidth to 0.
+ of the image.  The mat is drawn inwards from the margin, in front of
+ all other objects.  To disable, set matwidth to 0.
 </DD>
 <DT><STRONG><TT><B>misc,matcolor</B></TT></STRONG></DT>
 <DD>Color of the mat.
 </DD>
 <DT><STRONG><TT><B>misc,width</B></TT>, <TT><B>misc,height</B></TT></STRONG></DT>
-<DD>Maximum width and height of the output bitmap, in pixels.  If
- <TT>misc,crop</TT> is enabled, then one or both of these dimensions may be
- shortened.
+<DD>Maximum width and height of the output, in pixels.
+  One or both of these dimensions may be shortened if
+  <TT>misc,croptomargin</TT> is enabled.
+</DD>
+<DT><STRONG><TT><B>misc,croptomargin</B></TT></STRONG></DT>
+<DD>If disabled (0), then any leftover space in the output (of dimensions
+ <TT>misc,width</TT> by <TT>misc,height</TT>) after packing the image are filled
+ with the background color.  If enabled (1), then the output is cropped
+ at the margins specified by <TT>misc,margin</TT>. <B>NOTES:</B> If the
+ arrow or pixel glyphs are oversized (<TT>size</TT> bigger than 1), then
+ they may extend beyond the margin. In this case the glyphs will be
+ clipped by <TT>misc,croptomargin</TT>. If this is not desired, then either
+ increase the margin size to compensate, or else disable
+ <TT>misc,croptomargin</TT> and use third party tools such as <B>epstool</B>,
+<PRE>
+epstool --copy --bbox input.eps output.eps
+</PRE>
+ or <B>epstopdf</B> + <B>pdfcrop</B> to obtain tight cropping.
 </DD>
 <DT><STRONG><TT><B>misc,crop</B></TT></STRONG></DT>
-<DD>If disabled (0), then any leftover space in the bitmap (of dimensions
- <TT>misc,width</TT> by <TT>misc,height</TT>) after packing the image are filled
- with the background color.  If enabled (1), then the bitmap is cropped
- to just include the image (with the margin specified by
- <TT>misc,margin</TT>).  <B>NOTE:</B> Some movie formats require that
- bitmap dimensions be multiples of 8 or 16.  For such purposes, you
- should disable <TT>misc,crop</TT> and specify appropriate dimensions
- directly with <TT>misc,width</TT> and <TT>misc,height</TT>.
+<DD>Deprecated option replaced by <TT>misc,croptomargin</TT>.
 </DD>
 </DL>
 
@@ -225,34 +260,43 @@ the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
 <P>
+The <TT><B>misc,datascale</B></TT> and <TT><B>arrow,colorphase</B></TT>, <TT><B>pixel,colorphase</B></TT>
+configuration options can be used to control the mapping of values to
+the selected colormap. See the
+<A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"><B>avf2ppm</B> documentation</A> for details.
+
+<P>
 <A NAME="fig:avf2ps.config"></A>
 
   <BR CLEAR="ALL">
 <HR><PRE>
 array set plot_config {
-  arrow,status       1                  misc,background    #FFFFFF
-  arrow,antialias    1                  misc,drawboundary  1
-  arrow,colormap     Red-Black-Blue     misc,boundarywidth 1
-  arrow,colorcount   100                misc,boundarycolor #000000
-  arrow,quantity     z                  misc,boundarypos   front
-  arrow,colorphase   0                  misc,matwidth      0
-  arrow,colorreverse 0                  misc,matcolor      blue
-  arrow,autosample   1                  misc,margin        10
-  arrow,subsample    10                 misc,width         640
-  arrow,size         1                  misc,height        480
-  arrow,viewscale    1                  misc,crop          1
-  arrow,boundarywidth 0.0               misc,zoom          0
-  arrow,boundarycolor #000000           misc,rotation      0
-  arrow,outlinewidth 0.0                misc,datascale     0
-  arrow,outlinecolor #000000            misc,relcenterpt   {0.5 0.5 0.5}
-
-  pixel,status       1                  viewaxis            +z
-  pixel,colormap     Teal-White-Red     viewaxis,xarrowspan {}
-  pixel,colorcount   100                viewaxis,xpixelspan {}
-  pixel,opaque       1                  viewaxis,yarrowspan {}
-  pixel,quantity     x                  viewaxis,ypixelspan {}
-  pixel,colorphase   0                  viewaxis,zarrowspan {}
-  pixel,colorreverse 0                  viewaxis,zpixelspan {}
+  arrow,status       1                  misc,background     #FFFFFF
+  arrow,colormap     Red-Black-Blue     misc,drawboundary   1
+  arrow,colorcount   100                misc,boundarywidth  1
+  arrow,quantity     z                  misc,boundarycolor  #000000
+  arrow,colorphase   0                  misc,boundarypos    front
+  arrow,colorreverse 0                  misc,matwidth       0
+  arrow,autosample   1                  misc,matcolor       #FFFFFF
+  arrow,subsample    10                 misc,margin         10
+  arrow,size         1                  misc,width          640
+  arrow,length       0.9                misc,height         480
+  arrow,width        0.075              misc,croptomargin   1
+  arrow,tipwidth     0.01875            misc,zoom           0
+  arrow,headwidth    0.4                misc,rotation       0
+  arrow,headilength  0.4                misc,datascale      0
+  arrow,headolength  0.5                misc,relcenterpt {0.5 0.5 0.5}
+  arrow,outlinewidth 0.0
+  arrow,outlinecolor #000000            viewaxis            +z
+                                        viewaxis,xarrowspan {}
+  pixel,status       1                  viewaxis,xpixelspan {}
+  pixel,colormap     Teal-White-Red     viewaxis,yarrowspan {}
+  pixel,colorcount   225                viewaxis,ypixelspan {}
+  pixel,opaque       1                  viewaxis,zarrowspan {}
+  pixel,quantity     x                  viewaxis,zpixelspan {}
+  pixel,colorphase   0.
+  pixel,colorreverse 0
+  pixel,colorinvert  0
   pixel,autosample   1
   pixel,subsample    0
   pixel,size         1
@@ -278,20 +322,20 @@ Figure 16.2:
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html864"
+<A NAME="tex2html870"
   HREF="Vector_Field_File_Differenc.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html860"
+<A NAME="tex2html866"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html854"
+<A NAME="tex2html860"
   HREF="Making_Bitmaps_from_Vector_.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html862"
+<A NAME="tex2html868"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

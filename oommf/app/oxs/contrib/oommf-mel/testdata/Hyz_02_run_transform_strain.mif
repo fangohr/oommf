@@ -1,0 +1,239 @@
+# MIF 2.1
+# Simulation of a single ellipse of 30nm thick Ni (150x75um)
+# with bias field at 30deg from surface normal and AC field
+# The spatial shape of the AC field is imported from a separated file
+#
+# H = 6000, 5500, 5000, ..., 1000, 750 Oe
+# at 30deg from the surface normal
+# No crystalline anisotorpy included
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ms and gamma are obtained through fitting the film frequencies
+# Ms = 341.2 emu/cc = 341.2e3 A/m
+# gamma = 1.94 rad/s/Oe = 2.44 m/A/s or free electron value
+# Axhg = 9e-7 erg/cm = 9e-12 J/m
+# 01 Magnetization initialization
+
+# Parameters (shows default value but you should input them from command line
+set gamma_input 2.44e5
+set Ms_input  341.2e3
+set file_input  0
+set H_input 7000
+set HAcAmpCoef_input 1
+
+# For TransformStageMEL
+set tSimulation 1e-9
+set tSample 2e-12
+set tStage $tSample
+set nStageHmel [expr int($tSimulation/$tStage)]
+set nStage $nStageHmel
+
+# Stopping time list
+set stopping_time_list {}
+for { set i 0 } { $i < $nStageHmel } { incr i } {
+  set stopping_time_list [lappend stopping_time_list $tStage]
+}
+
+# Constants
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+# Field value
+set Hy  [expr $H_input*sin(30.0*$pi/180.0)]
+set Hz  [expr $H_input*cos(30.0*$pi/180.0)]
+
+# Basename
+set workname_run [format "Hyz_02_run_file%02g_H%04g_AC%04g" $file_input $H_input $HAcAmpCoef_input]
+set workname_M_file [format "Hyz_01_init-Oxs_TimeDriver-Magnetization-%02g.omf" $file_input]
+
+RandomSeed 1
+
+Specify Oxs_ImageAtlas:atlas {
+   xrange {0  75e-9}
+   yrange {0 150e-9}
+   zrange {0.0e-9 30e-9}
+   image vellipse150x75.bmp
+   viewplane "xy"
+   colormap {
+	   black Ni
+	   default universe
+   }
+   matcherror 0.1
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :atlas
+}]
+
+# No crystalline anisotropy
+
+Specify Oxs_Exchange6Ngbr {
+	default_A 0
+	atlas atlas
+	A {
+		Ni Ni 9e-12
+	}
+}
+
+# Bias field in Oe
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.0001/$mu0]
+  Hrange {
+    { 0     $Hy              $Hz  0     $Hy              $Hz  [expr $nStageHmel-1] }
+  }
+}]
+
+Specify Oxs_Demag {}
+
+# YY_TransformStageMEL test
+Specify Oxs_UniformScalarField:B {
+  value 7.85e6
+}
+
+Specify YY_TransformStageMEL:StageField1 [subst {
+  B1 :B
+  B2 :B
+  e_diag_script e_diag_filefield1
+  e_offdiag_script e_offdiag_filefield1
+  stage_count $nStage
+  type diagonal
+  script { Transform1 $tStage }
+}]
+
+Specify YY_TransformStageMEL:StageField2 [subst {
+  B1 :B
+  B2 :B
+  e_diag_script e_diag_filefield2
+  e_offdiag_script e_offdiag_filefield2
+  stage_count $nStage
+  type diagonal
+  script { Transform2 $tStage }
+}]
+#  script { Transform2 10e9 }
+
+proc e_diag_filefield1 { stage } {
+  set filelist { strain_diag_0.ovf strain_diag_1.ovf strain_diag_2.ovf strain_diag_3.ovf strain_diag_4.ovf strain_diag_5.ovf strain_diag_6.ovf strain_diag_7.ovf strain_diag_8.ovf strain_diag_9.ovf strain_diag_10.ovf strain_diag_11.ovf strain_diag_12.ovf strain_diag_13.ovf strain_diag_14.ovf strain_diag_15.ovf strain_diag_16.ovf strain_diag_17.ovf strain_diag_18.ovf strain_diag_19.ovf strain_diag_20.ovf strain_diag_21.ovf strain_diag_22.ovf strain_diag_23.ovf strain_diag_24.ovf strain_diag_25.ovf strain_diag_26.ovf strain_diag_27.ovf strain_diag_28.ovf strain_diag_29.ovf strain_diag_30.ovf strain_diag_31.ovf strain_diag_32.ovf strain_diag_33.ovf strain_diag_34.ovf strain_diag_35.ovf strain_diag_36.ovf strain_diag_37.ovf strain_diag_38.ovf strain_diag_39.ovf strain_diag_40.ovf }
+  set spec Oxs_FileVectorField
+  lappend spec [subst {
+    atlas :atlas
+    file [lindex $filelist $stage]
+  }]
+  return $spec
+}
+
+proc e_offdiag_filefield1 { stage } {
+  set filelist { strain_offdiag_0.ovf strain_offdiag_1.ovf strain_offdiag_2.ovf strain_offdiag_3.ovf strain_offdiag_4.ovf strain_offdiag_5.ovf strain_offdiag_6.ovf strain_offdiag_7.ovf strain_offdiag_8.ovf strain_offdiag_9.ovf strain_offdiag_10.ovf strain_offdiag_11.ovf strain_offdiag_12.ovf strain_offdiag_13.ovf strain_offdiag_14.ovf strain_offdiag_15.ovf strain_offdiag_16.ovf strain_offdiag_17.ovf strain_offdiag_18.ovf strain_offdiag_19.ovf strain_offdiag_20.ovf strain_offdiag_21.ovf strain_offdiag_22.ovf strain_offdiag_23.ovf strain_offdiag_24.ovf strain_offdiag_25.ovf strain_offdiag_26.ovf strain_offdiag_27.ovf strain_offdiag_28.ovf strain_offdiag_29.ovf strain_offdiag_30.ovf strain_offdiag_31.ovf strain_offdiag_32.ovf strain_offdiag_33.ovf strain_offdiag_34.ovf strain_offdiag_35.ovf strain_offdiag_36.ovf strain_offdiag_37.ovf strain_offdiag_38.ovf strain_offdiag_39.ovf strain_offdiag_40.ovf }
+  set spec Oxs_FileVectorField
+  lappend spec [subst {
+    atlas :atlas
+    file [lindex $filelist $stage]
+  }]
+  return $spec
+}
+
+proc e_diag_filefield2 { stage } {
+  set filelist { strain_diag_1.ovf strain_diag_2.ovf strain_diag_3.ovf strain_diag_4.ovf strain_diag_5.ovf strain_diag_6.ovf strain_diag_7.ovf strain_diag_8.ovf strain_diag_9.ovf strain_diag_10.ovf strain_diag_11.ovf strain_diag_12.ovf strain_diag_13.ovf strain_diag_14.ovf strain_diag_15.ovf strain_diag_16.ovf strain_diag_17.ovf strain_diag_18.ovf strain_diag_19.ovf strain_diag_20.ovf strain_diag_21.ovf strain_diag_22.ovf strain_diag_23.ovf strain_diag_24.ovf strain_diag_25.ovf strain_diag_26.ovf strain_diag_27.ovf strain_diag_28.ovf strain_diag_29.ovf strain_diag_30.ovf strain_diag_31.ovf strain_diag_32.ovf strain_diag_33.ovf strain_diag_34.ovf strain_diag_35.ovf strain_diag_36.ovf strain_diag_37.ovf strain_diag_38.ovf strain_diag_39.ovf strain_diag_40.ovf strain_diag_41.ovf }
+  set spec Oxs_FileVectorField
+  lappend spec [subst {
+    atlas :atlas
+    file [lindex $filelist $stage]
+  }]
+  return $spec
+}
+
+proc e_offdiag_filefield2 { stage } {
+  set filelist { strain_offdiag_1.ovf strain_offdiag_2.ovf strain_offdiag_3.ovf strain_offdiag_4.ovf strain_offdiag_5.ovf strain_offdiag_6.ovf strain_offdiag_7.ovf strain_offdiag_8.ovf strain_offdiag_9.ovf strain_offdiag_10.ovf strain_offdiag_11.ovf strain_offdiag_12.ovf strain_offdiag_13.ovf strain_offdiag_14.ovf strain_offdiag_15.ovf strain_offdiag_16.ovf strain_offdiag_17.ovf strain_offdiag_18.ovf strain_offdiag_19.ovf strain_offdiag_20.ovf strain_offdiag_21.ovf strain_offdiag_22.ovf strain_offdiag_23.ovf strain_offdiag_24.ovf strain_offdiag_25.ovf strain_offdiag_26.ovf strain_offdiag_27.ovf strain_offdiag_28.ovf strain_offdiag_29.ovf strain_offdiag_30.ovf strain_offdiag_31.ovf strain_offdiag_32.ovf strain_offdiag_33.ovf strain_offdiag_34.ovf strain_offdiag_35.ovf strain_offdiag_36.ovf strain_offdiag_37.ovf strain_offdiag_38.ovf strain_offdiag_39.ovf strain_offdiag_40.ovf strain_offdiag_41.ovf }
+  set spec Oxs_FileVectorField
+  lappend spec [subst {
+    atlas :atlas
+    file [lindex $filelist $stage]
+  }]
+  return $spec
+}
+
+Ignore proc Transform1 { tStage stage stagetime totaltime } {
+  set coef1 [expr 1-double($stagetime)/$tStage]
+  set dcoef1 [expr -double(1)/$tStage]
+  set coef2 [expr 2*(1-double($stagetime)/$tStage)]
+  set dcoef2 [expr 2*(-double(1)/$tStage)]
+  set coef3 [expr 3*(1-double($stagetime)/$tStage)]
+  set dcoef3 [expr 3*(-double(1)/$tStage)]
+  return [list $coef1 $coef2 $coef3 $coef2 $coef1 $coef1 $dcoef1 $dcoef2 $dcoef3 $dcoef2 $dcoef1 $dcoef1]
+}
+
+Ignore proc Transform2 { freq stage stagetime totaltime } {
+  global pi
+  set w [expr {$freq*2*$pi}]
+  set ct [expr {cos($w*$totaltime)}]
+  set mct [expr {-1*$ct}]      ;# "mct" is "minus cosine (w)t"
+  set st [expr {sin($w*$totaltime)}]
+  set mst [expr {-1*$st}]      ;# "mst" is "minus sine (w)t"
+  return [list  $ct $mst  0 \
+                $st $ct   0 \
+                  0   0   1 \
+                [expr {$w*$mst}] [expr {$w*$mct}] 0 \
+                [expr {$w*$ct}]  [expr {$w*$mst}] 0 \
+                       0                0         0]
+}
+
+proc Transform1 { tStage stage stagetime totaltime } {
+  set coef1 [expr 1-double($stagetime)/$tStage]
+  set dcoef1 [expr -double(1)/$tStage]
+  set coef2 [expr 2*(1-double($stagetime)/$tStage)]
+  set dcoef2 [expr 2*(-double(1)/$tStage)]
+  set coef3 [expr 3*(1-double($stagetime)/$tStage)]
+  set dcoef3 [expr 3*(-double(1)/$tStage)]
+  return [list $coef1 $coef2 $coef3 $dcoef1 $dcoef2 $dcoef3]
+}
+
+proc Transform2 { tStage stage stagetime totaltime } {
+  set coef1 [expr double($stagetime)/$tStage]
+  set dcoef1 [expr double(1)/$tStage]
+  set coef2 [expr 2*(double($stagetime)/$tStage)]
+  set dcoef2 [expr 2*(double(1)/$tStage)]
+  set coef3 [expr 3*double($stagetime)/$tStage]
+  set dcoef3 [expr 3*double(1)/$tStage]
+  return [list $coef1 $coef2 $coef3 $dcoef1 $dcoef2 $dcoef3]
+}
+
+# Evolver/Driver
+Specify Oxs_EulerEvolve [subst {
+  gamma_LL $gamma_input
+  alpha 0.05
+  do_precess 1
+  max_timestep 3e-12
+  start_dm 0.01
+} ]
+
+Specify Oxs_TimeDriver [subst {
+ basename $workname_run
+ evolver Oxs_EulerEvolve
+ comment {1 deg/ns = 17453293 rad/sec; If Ms=8.6e5, and lambda is small,
+         then mxh=1e-6 translates into dm/dt = 2e5 rad/sec = 0.01 deg/ns}
+ stopping_time { $stopping_time_list }
+ mesh :mesh
+ Ms { Oxs_AtlasScalarField {
+	 atlas atlas
+	 default_value 0
+	 values {
+		 Ni $Ms_input
+	 }
+ } }
+ m0 { Oxs_FileVectorField {
+   atlas atlas
+   file $workname_M_file
+   norm 1
+ }}
+} ]
+
+Destination monitor_table mmDataTable
+Destination monitor_graph mmGraph
+Destination monitor_disp1 mmDisp
+Destination monitor_disp2 mmDisp
+Destination archive mmArchive
+
+Schedule DataTable monitor_table step 1
+Schedule DataTable monitor_graph step 1
+Schedule YY_TransformStageMEL:StageField1:Field monitor_disp1 step 1
+Schedule YY_TransformStageMEL:StageField2:Field monitor_disp2 step 1
+#Schedule DataTable archive step 100

@@ -18,9 +18,13 @@
 #ifndef _OXS_UTIL
 #define _OXS_UTIL
 
+#include <cassert>
 #include <cstdio>
 #include <string>
+#include <memory>   // For std::shared_ptr
+#include <typeinfo>
 #include <vector>
+
 #include "oc.h"
 #include "nb.h" // This is needed in util.cc.  We include it here
 /// to get it into the dependency tree for overaggressive compilers
@@ -29,13 +33,13 @@
 /// not naming names, but their initials are s, g and i.
 
 #include "threevector.h"
+#include "oxswarn.h"
 #include "oxsexcept.h"
 
 OC_USE_STD_NAMESPACE;  // Specify std namespace, if supported
 OC_USE_STRING;
 
 /* End includes */
-
 
 ////////////////////////////////////////////////////////////////////////
 // Couple of routines to change case of characters inside an STL string.
@@ -48,6 +52,15 @@ void Oxs_ToLower(String& str);
 String Oxs_QuoteListElement(const char* import);
 
 ////////////////////////////////////////////////////////////////////////
+// Wrapper around assert(); allows a breakpoint to be set when
+// debugging.
+inline void Assert(int test) {
+  if(!test) {
+    assert(test);  // <-- Set breakpoint here
+  }
+}
+
+////////////////////////////////////////////////////////////////////////
 // Class to save and restore Tcl interpreter state,
 // including error information.  Saved results can be either
 // restored or discarded, once and only once.  If a state
@@ -56,29 +69,13 @@ String Oxs_QuoteListElement(const char* import);
 class Oxs_TclInterpState {
 private:
   Tcl_Interp* interp; // ==NULL iff no state is currently held
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
   Tcl_InterpState state;
-#else
-  Tcl_SavedResult result;
-  OC_BOOL error_info_set;
-  String error_info;
-  OC_BOOL error_code_set;
-  String error_code;
-#endif
 public:
   Oxs_TclInterpState()
     : interp(NULL)
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
-#else
-, error_info_set(0), error_code_set(0)
-#endif
   {}
   Oxs_TclInterpState(Tcl_Interp* import_interp)
     : interp(NULL)
-#if (TCL_MAJOR_VERSION > 8) || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>4)
-#else
-, error_info_set(0), error_code_set(0)
-#endif
   {
     Save(import_interp);
   }
@@ -251,7 +248,8 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 // Owned pointer class.  A smart pointer with mediocre intelligence.
-// New work should use instead one of the C++11 smart pointer types.
+// Deprecated.  New code should use the C++11 shared_ptr template where
+// possible.
 template<class T> class Oxs_OwnedPointer
 {
 private:
@@ -305,33 +303,153 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
+// Oxs_Pool
+//
+// Possible improvements:
+//
+//   1) The searching algorithm is O(n), where n is the length of the
+//      pool vector.  This could be slow if there are many items in the
+//      pool.  We might want to upgrade the Oxs_PoolPtr class to make a
+//      callback to the pool on destruction to allow Oxs_Pool to keep an
+//      up-to-date list of free items.
+//
+// The following alias is used to make future upgrades (as above)
+// easier to implement.
+template <typename T> using OXS_POOL_PTR = std::shared_ptr<T>;
+
+template <typename T>
+class Oxs_Pool
+{
+private:
+  class std::vector< OXS_POOL_PTR<T> > pool;
+public:
+  Oxs_Pool() = default;
+  OXS_POOL_PTR<T> GetFreePtr(const OC_INDEX size=0);
+  void Recycle(OXS_POOL_PTR<T>& oldptr);
+
+  void EmptyPool();
+  ~Oxs_Pool() { EmptyPool(); }
+};
+
+
+template <typename T>
+OXS_POOL_PTR<T> Oxs_Pool<T>::GetFreePtr(const OC_INDEX size)
+{
+  OXS_POOL_PTR<T> fallback_ptr;
+  if(size>0) {
+    for(OXS_POOL_PTR<T>& sptr : pool) {
+      if(sptr.use_count() == 1) { // sptr is not in use
+        // Test if sptr is size compatible
+        if(sptr->GetSize() == size) {
+          return sptr; // Looks good; recycle
+        } else {
+          // Not size compatible. Use only if necessary.
+          if(!fallback_ptr) fallback_ptr = sptr;
+        }
+      }
+    }
+  }
+
+  // No exact match found. If non-null, use fallback_ptr, else create
+  // a fresh pool object.
+  // NOTE: This is a non-robust algorithm. If a T of one size is created
+  //       and then released, and then a second T is requested of a
+  //       different size, then, if there are no available T of the new
+  //       size, then the first T will be returned even though it is the
+  //       wrong size. If this second T is released and then a new
+  //       request comes in for the original size, the cycle repeats.
+  if(fallback_ptr) { // Resize fallback object
+    fallback_ptr->SetSize(size);
+  } else { // Make fresh pool object
+    fallback_ptr = std::make_shared<T>(size);
+    pool.push_back(fallback_ptr);
+  }
+
+  return fallback_ptr;
+}
+
+template <typename T>
+void Oxs_Pool<T>::Recycle
+(OXS_POOL_PTR<T>& oldptr)
+{
+  if(!oldptr || oldptr.use_count() == 2) {
+    // If oldptr is nullptr, then simply return.
+    // Otherwise, if use_count()==2, then the only shares on oldptr are
+    // from the pool and itself, so return unchanged.
+    return;
+  }
+  // Otherwise, we need a new memory block
+  oldptr = GetFreePtr(oldptr->GetSize());
+}
+
+
+template <typename T>
+void Oxs_Pool<T>::EmptyPool()
+{
+  int in_use_count = 0;
+  for(OXS_POOL_PTR<T>& sptr : pool) {
+    if(sptr.use_count() > 1) ++in_use_count;
+  }
+  if(in_use_count>0) {
+    String msg = String("Oxs_Pool<")
+      + typeid(T).name() + String("> holding ")
+      + to_string(in_use_count)
+      + String(" externally held objects at clean-up."
+               "  This is a potential memory leak.");
+    OXS_THROW(Oxs_BadResourceDealloc,msg);
+  }
+  pool.clear();
+}
+// Oxs_Pool
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
 // Class wrapper around a union type that can be used for arrays
 // of heterogeneous objects.  Extend types as needed.
 class Oxs_MultiType
 {
 public:
   enum VarType { TYPE_UNSET, TYPE_INTEGER, TYPE_UNSIGNED, TYPE_REAL };
-  Oxs_MultiType() : var_type(TYPE_UNSET) {}
+  Oxs_MultiType() : var_type(TYPE_UNSET), print_real_as_double(0) {}
   Oxs_MultiType(OC_INT4 ival)
-    : var_type(TYPE_INTEGER), value(static_cast<OC_INT8>(ival)) {}
+    : var_type(TYPE_INTEGER), value(static_cast<OC_INT8>(ival)),
+      print_real_as_double(0) {}
   Oxs_MultiType(OC_INT8 ival)
-    : var_type(TYPE_INTEGER), value(ival) {}
+    : var_type(TYPE_INTEGER), value(ival), print_real_as_double(0) {}
   Oxs_MultiType(OC_UINT4 ival)
-    : var_type(TYPE_UNSIGNED), value(static_cast<OC_UINT8>(ival)) {}
+    : var_type(TYPE_UNSIGNED), value(static_cast<OC_UINT8>(ival)),
+      print_real_as_double(0) {}
   Oxs_MultiType(OC_UINT8 ival)
-    : var_type(TYPE_UNSIGNED), value(ival) {}
+    : var_type(TYPE_UNSIGNED), value(ival), print_real_as_double(0) {}
   Oxs_MultiType(OC_REAL4 ival)
-    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)) {}
+    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)),
+      print_real_as_double(0) {}
   Oxs_MultiType(OC_REAL8 ival)
-    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)) {}
+    : var_type(TYPE_REAL), value(static_cast<OC_REALWIDE>(ival)),
+      print_real_as_double(0) {}
 #if !OC_REALWIDE_IS_OC_REAL4 && !OC_REALWIDE_IS_OC_REAL8
   Oxs_MultiType(OC_REALWIDE ival)
-    : var_type(TYPE_REAL), value(ival) {}
+    : var_type(TYPE_REAL), value(ival), print_real_as_double(0) {}
 #endif
-  
+
   // Type query
   VarType GetType() const { return var_type; }
-  
+
+  // TYPE_REAL output control
+
+  // By default, the Fill command appends an "L" suffix to long double
+  // reals, in accordance with C and C++ specs. But Tcl only works
+  // with type double real values, and doesn't recognize the L suffix
+  // notation as a real value. Call PrintRealAsDouble with a true
+  // argument to cause Fill() to convert real values to strings with
+  // no L suffix.
+  bool PrintRealAsDouble(bool new_state) {
+    bool old_state = print_real_as_double;
+    print_real_as_double = new_state;
+    return old_state;
+  }
+
+
   // Set value operators
   const OC_INT8& operator=(const OC_INT4& other) {
     *this = static_cast<OC_INT8>(other);
@@ -450,7 +568,13 @@ public:
       // drop the L suffix if REAL8 is type double.
       other = Nb_FloatToString(static_cast<OC_REAL8>(value.real));
 #else
-      other = Nb_FloatToString(value.real);
+      if(print_real_as_double) {
+        other = Nb_FloatToString(static_cast<OC_REAL8>(value.real));
+      } else {
+        // In this branch "other" will include an "L" suffix
+        // denoting a long double value.
+        other = Nb_FloatToString(value.real);
+      }
 #endif
       break;
     default:             other=""; break;
@@ -468,7 +592,9 @@ private:
     VALUE(OC_UINT8 ival)    : unsigned_integer(ival) {}
     VALUE(OC_REALWIDE ival) : real(ival) {}
   } value;
-
+  bool print_real_as_double;
 };
+// Oxs_MultiType
+////////////////////////////////////////////////////////////////////////
 
 #endif // _OXS_UTIL

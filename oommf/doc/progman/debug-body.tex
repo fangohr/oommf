@@ -184,16 +184,16 @@ used to construct the platform-specific header files
 \Cplusplus\ macro definitions, typedefs, and function wrappers,
 and are an important adjunct when reading the \OOMMF\ source code.
 
-\pttarget{PTtclintrospection}
-For in-depth investigations \Tcl\ can be used to directly query and debug
-\OOMMF\ initialization scripts. Start a \Tcl\ shell, and from inside the
-shell append the \OOMMF\ \fn{pkg/oc} directory to the \Tcl\ global
-\cd{auto\_path} variable. Next run \cd{package require Oc} to load the
-\Tcl-only portion of the \OOMMF\ \cd{Oc} library into the shell. Then
-you can check any and all \cd{Oc\_Option} values from
-\fn{config/options.tcl}, platform configuration settings from
-\fn{config/platforms/<platform>.tcl}, and perform various other types of
-introspection from the \Tcl\ shell. See
+
+For in-depth \pttarget[investigations]{PTtclintrospection} \Tcl\ can be
+used to directly query and debug \OOMMF\ initialization scripts. Start a
+\Tcl\ shell, and from inside the shell append the \OOMMF\ \fn{pkg/oc}
+directory to the \Tcl\ global \cd{auto\_path} variable. Next run
+\cd{package require Oc} to load the \Tcl-only portion of the
+\OOMMF\ \cd{Oc} library into the shell. Then you can check any and all
+\cd{Oc\_Option} values from \fn{config/options.tcl}, platform
+configuration settings from \fn{config/platforms/<platform>.tcl}, and
+perform various other types of introspection from the \Tcl\ shell. See
 Fig.~\ref{fig:oommftclintrospection} for a sample session.
 
 \begin{codelisting}{f}{fig:oommftclintrospection}{Sample \Tcl-level

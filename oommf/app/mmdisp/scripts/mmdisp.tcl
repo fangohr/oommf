@@ -14,7 +14,7 @@ Oc_DisableAutoSize .
 
 ########################### PROGRAM DOCUMENTATION ###################
 Oc_Main SetAppName mmDisp
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 23:19:21 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -43,9 +43,10 @@ set enableServer 1
 # file.
 set configFiles [list [file join [file dirname \
         [Oc_DirectPathname [info script]]] mmdisp.config]]
+set userconfigFiles {}
 Oc_CommandLine Option config {file} {
-        global configFiles; lappend configFiles $file
-} "Append file to list of configuration files"
+        global userconfigFiles; lappend userconfigFiles $file
+} {Append file to list of configuration files} multi
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
         {{file optional} {} {Vector field file to display}}
@@ -225,6 +226,9 @@ set MaxViewportHeight 1
 #   box returned by GetPlotBox.
 #
 
+set ScrollbarOverlapSlop 1 ;# Amount display portal is allowed extend
+## beyond the viewport before scrollbars are automatically turned on.
+
 set AllowViewportResize 1  ;# If 1, then user may interactively change the
 ## viewpoint size, "Wrap" is allowed, and viewport dimensions follow the
 ## rotation angle.  See procs UpdateViewportResizePermission, WrapDisplay,
@@ -249,6 +253,49 @@ proc CanResize {} {
 # Notes:
 #   misc,scrollcrossdim  --- Width of yscroll, height of xscroll
 #
+proc ApplyConfigString { cfg } {
+   # Source string in safe interp and then copy into config arrays
+   set safe [interp create -safe]
+   # Set argv0 so the info script check in the config file header is passed.
+   interp eval $safe \
+      [list set argv0 "Hand me that piano."]
+   # Source string
+   if {[catch {interp eval $safe $cfg} errmsg]} {
+      Ow_NonFatalError "Error applying configuration string: $errmsg"
+      return $errmsg
+   }
+   set pltcfg [set prncfg 0]
+   if {![catch {interp eval $safe array get plot_config} result] \
+          && [llength $result]>0} {
+      ApplyPlotConfiguration $result
+      set pltcfg 1
+   }
+   if {![catch {interp eval $safe array get print_config} result] \
+          && [llength $result]>0} {
+      global print_config
+      array set print_config $result
+      set prncfg 1
+   }
+   interp delete $safe
+   if { $pltcfg==0 && $prncfg==0 } {
+      Ow_NonFatalError "Input configuration string doesn't set\
+                        plot or print configurations:\n---\n$cfg\n---"
+   }
+}
+
+proc ReadUserConfigFiles { filelist } {
+   foreach fn $filelist {
+      if {[catch {
+         set chan [open $fn]
+         set cfg [read $chan]
+         close $chan
+      } errmsg]} {
+         Ow_NonFatalError "Error reading configuration file $fn: $errmsg"
+      }
+      ApplyConfigString $cfg
+   }
+}
+
 array set plot_config_extras {
     quantitylist       {}
     misc,dataunits     {}
@@ -497,13 +544,13 @@ proc PrintDrawFrameCount { name elt op } {
     global DrawFrameCount
     Oc_Log Log "DrawFrame call count: $DrawFrameCount" status
 }
-trace variable DrawFrameCount w PrintDrawFrameCount
+trace add variable DrawFrameCount write PrintDrawFrameCount
 
 proc PrintUpdateViewCount { name elt op } {
     global UpdateViewCount
     Oc_Log Log "UpdateView call count: $UpdateViewCount" status
 }
-trace variable UpdateViewCount w PrintUpdateViewCount
+trace add variable UpdateViewCount write PrintUpdateViewCount
 
 ########################## DISPLAY PROC'S ###########################
 proc UpdateWindowTitle {name elt op} {
@@ -519,7 +566,7 @@ proc UpdateWindowTitle {name elt op} {
     wm title . $title     ;## This is a memory leak in Tk 8.0p0
     wm iconname . $title  ;## through 8.0.3.  It is fixed in Tk 8.0.4.
 }
-trace variable FileId w UpdateWindowTitle
+trace add variable FileId write UpdateWindowTitle
 
 proc GetCanvasBox {} {
     # Returns plot coordinates of canvas viewport
@@ -736,13 +783,13 @@ proc PackViewport { {newviewwidth {}} {newviewheight {}} \
         set vheight $newviewheight
     }
 
-    # Determine new scroll states & canvas display size
-    set slop 1 ;# Amount of lap over to allow before requiring
-               ## scrollbars.
+   # Determine new scroll states & canvas display size
+    global ScrollbarOverlapSlop
     GetPlotExtents fwidth fheight
     DetermineScrollStates $vwidth $vheight \
-            [expr {$fwidth-$slop}] [expr {$fheight-$slop}] \
-            newxstate newystate
+       [expr {$fwidth-$ScrollbarOverlapSlop}] \
+       [expr {$fheight-$ScrollbarOverlapSlop}] \
+       newxstate newystate
     if { $newystate } {
         set cwidth [expr {$vwidth - $plot_config(misc,scrollcrossdim)}]
     } else {
@@ -1051,6 +1098,32 @@ proc ClearFrame {} {
     ReadFile {} {} 1 1 0
 }
 
+proc ConvertCenterToRelativeCenter { xc yc zc } {
+   global plot_config
+   lassign [GetMeshRange] xmin ymin zmin xmax ymax zmax
+   lassign [ApplyAxisTransform $plot_config(viewaxis) +z \
+               $xmin $ymin $zmin] xmin ymin zmin
+   lassign [ApplyAxisTransform $plot_config(viewaxis) +z \
+               $xmax $ymax $zmax] xmax ymax zmax
+   if {[string match {-?} $plot_config(viewaxis)]} {
+      # Negative view axis
+      set tmp $xmin ; set xmin $xmax ; set xmax $tmp
+      set tmp $ymin ; set ymin $ymax ; set ymax $tmp
+      set tmp $zmin ; set zmin $zmax ; set zmax $tmp
+   }
+   set xrel [set yrel [set zrel 0.5]]
+   if {$xmax!=$xmin} {
+      catch {set xrel [expr {($xc-$xmin)/($xmax-$xmin)}]}
+   }
+   if {$ymax!=$ymin} {
+      catch {set yrel [expr {($yc-$ymin)/($ymax-$ymin)}]}
+   }
+   if {$zmax!=$zmin} {
+      catch {set zrel [expr {($zc-$zmin)/($zmax-$zmin)}]}
+   }
+   return [list $xrel $yrel $zrel]
+}
+
 proc GetRelativeDisplayCenter {} {
     global DisplayRotation plot_config view_transform
     GetScrollCenter hor ver
@@ -1259,7 +1332,7 @@ proc ReadFile { filename title {width {}} {height {}} {rot {}} \
     global view_transform
     global watchcursor_windows
 
-    # Put up watch cursor.  Note: Ow_PushWatchCursor includes
+    # Put up watch cursor.  Note: Ow_PushWatchCursor
     # makes an 'update idletasks' call.
     Ow_PushWatchCursor $watchcursor_windows
 
@@ -1523,7 +1596,7 @@ array set savefiledialog_subwidgets {
 proc SaveFileDialogCleanup {} {
    global FileId savefiledialog_subwidgets
 
-   trace vdelete FileId w SaveFileDialogTrace
+   trace remove variable FileId write SaveFileDialogTrace
    ## This trace is set at the place where the save file dialog box is
    ## launched.
 
@@ -1603,7 +1676,7 @@ proc SaveFileCallback { widget } {
     # Check to see if file already exists
     if { [file exists $filename] } {
         set answer [Ow_Dialog 1 "File Save: File exists" question \
-                "File $filename already exists.\nOverwrite?" \
+                "File $filename already exists. Overwrite?" \
                 {} 1 "Yes" "No" ]
         if { $answer != 0 } {
             lappend errmsg "ERROR: File exists; no overwrite requested."
@@ -1706,127 +1779,174 @@ proc WriteConfigOptionBoxSetup { widget frame } {
     pack $cpt $rcpt $data $span $zoom -side top -anchor w
 }
 
-proc WriteConfigFileCallback { widget } {
-    global plot_config plot_config_extras plot_config_writecheck
-    global print_config
+proc CreateConfigString { {filename {}} {config_ignore {}} } {
+   global plot_config plot_config_extras
+   global print_config
 
-    set errmsg {}
+   #####################################################################
+   # Setup processing
+   array set myconfig [array get plot_config]
 
-    # Get filename
-    set filename [$widget GetFilename]
+   # Special values
+   global DisplayRotation
+   set myconfig(misc,rotation) $DisplayRotation
+   foreach {xrel yrel zrel} [GetRelativeDisplayCenter] break
+   set myconfig(misc,relcenterpt) [list $xrel $yrel $zrel]
+   foreach {xmin ymin zmin xmax ymax zmax} [GetMeshRange] break
+   foreach {xmin ymin zmin} [ApplyAxisTransform \
+                $myconfig(viewaxis) +z $xmin $ymin $zmin] break
+   foreach {xmax ymax zmax} [ApplyAxisTransform \
+                $myconfig(viewaxis) +z $xmax $ymax $zmax] break
+   if {[string match {-?} $plot_config(viewaxis)]} {
+      # Negative view axis
+      set tmp $xmin ; set xmin $xmax ; set xmax $tmp
+      set tmp $ymin ; set ymin $ymax ; set ymax $tmp
+      set tmp $zmin ; set zmin $zmax ; set zmax $tmp
+   }
+   set xc [expr {(1-$xrel)*$xmin+$xrel*$xmax}]
+   set yc [expr {(1-$yrel)*$ymin+$yrel*$ymax}]
+   set zc [expr {(1-$zrel)*$zmin+$zrel*$zmax}]
+   set myconfig(misc,centerpt) [list $xc $yc $zc]
 
-    # Check to see if file already exists
-    if { [file exists $filename] } {
-        set answer [Ow_Dialog 1 "File Save: File exists" question \
-                "File $filename already exists.\nOverwrite?" \
-                {} 1 "Yes" "No" ]
-        if { $answer != 0 } {
-            lappend errmsg "ERROR: File exists; no overwrite requested."
-            return $errmsg
-        }
-    }
-    if { [string length $filename] == 0 } {
-        lappend errmsg "PROGRAMMING ERROR: Can't write to stdout in\
-                [Oc_Main GetAppName]"
-        return $errmsg
-    }
+   # Remove elements from plot_config_extras, which represent
+   # non-configurable items.
+   foreach elt [array names plot_config_extras] {
+      if {[info exists myconfig($elt)]} {
+         unset myconfig($elt)
+      }
+   }
 
-    global watchcursor_windows
-    Ow_PushWatchCursor $watchcursor_windows
+   # Remove elements as specified in config_ignore. This is a courtesy
+   # for proc WriteConfigFileCallback.  Note that the search in myconfig
+   # is a glob-style match.
+   foreach {pat keep} $config_ignore {
+      if {!$keep} {
+         foreach subelt [array names myconfig $pat] {
+            unset myconfig($subelt)
+         }
+      }
+   }
 
-    array set myconfig [array get plot_config]
+   # Update print_config print widths
+   if {$print_config(croptoview)} {
+      set aspect $print_config(aspect_crop)
+   } else {
+      set aspect $print_config(aspect_nocrop)
+   }
+   if {![string match {} $aspect] && $aspect>0} {
+      set print_config(pheight) \
+         [expr round(1000.*$print_config(pwidth)/$aspect)/1000.]
+   }
 
-    # Special values
-    global DisplayRotation
-    set myconfig(misc,rotation) $DisplayRotation
-    foreach {xrel yrel zrel} [GetRelativeDisplayCenter] break
-    set myconfig(misc,relcenterpt) [list $xrel $yrel $zrel]
-    foreach {xmin ymin zmin xmax ymax zmax} [GetMeshRange] break
-    foreach {xmin ymin zmin} [ApplyAxisTransform \
-            $myconfig(viewaxis) +z $xmin $ymin $zmin] break
-    foreach {xmax ymax zmax} [ApplyAxisTransform \
-            $myconfig(viewaxis) +z $xmax $ymax $zmax] break
-    if {[string match {-?} $plot_config(viewaxis)]} {
-        # Negative view axis
-        set tmp $xmin ; set xmin $xmax ; set xmax $tmp
-        set tmp $ymin ; set ymin $ymax ; set ymax $tmp
-        set tmp $zmin ; set zmin $zmax ; set zmax $tmp
-    }
-    set xc [expr {(1-$xrel)*$xmin+$xrel*$xmax}]
-    set yc [expr {(1-$yrel)*$ymin+$yrel*$ymax}]
-    set zc [expr {(1-$zrel)*$zmin+$zrel*$zmax}]
-    set myconfig(misc,centerpt) [list $xc $yc $zc]
-
-    # Remove elements from plot_config_extras, which represent
-    # non-configurable items.
-    foreach elt [array names plot_config_extras] {
-        if {[info exists myconfig($elt)]} {
-            unset myconfig($elt)
-        }
-    }
-
-    # Remove elements as specified in plot_config_writecheck.
-    # Note that the search in myconfig is a glob-style match.
-    foreach elt [array names plot_config_writecheck] {
-        if {!$plot_config_writecheck($elt)} {
-            foreach subelt [array names myconfig $elt] {
-                unset myconfig($subelt)
-            }
-        }
-    }
-
-    # Update print_config print widths
-    if {$print_config(croptoview)} {
-	set aspect $print_config(aspect_crop)
-    } else {
-	set aspect $print_config(aspect_nocrop)
-    }
-    if {![string match {} $aspect] && $aspect>0} {
-	set print_config(pheight) \
-	    [expr round(1000.*$print_config(pwidth)/$aspect)/1000.]
-    }
-
-    # Write header
-    set chan [open $filename w]
-    if {[catch {
-       puts $chan "# FILE: [file tail $filename]           -*-Mode: tcl-*-"
-       puts $chan \
-{#
+   #####################################################################
+   # Create configuration string
+   if {![string match {} $filename]} {
+      set cfg "# FILE: [file tail $filename]           -*-Mode: tcl-*-\n#\n"
+   }
+   append cfg {
 # mmDisp configuration.  This file must be valid Tcl code.
 
 # This file should only be sourced from within another Tcl application.
 # Check to make sure we aren't at the top application level
 if {[string match [info script] $argv0]} {
     error "'[info script]' must be evaluated by an mmdisp-style application"
+}}
+   append cfg "\n\n"
+
+   # Append plot_config label-value pairs
+   append cfg "# Plot configuration array\narray set plot_config \{\n"
+   foreach elt [lsort [array names myconfig]] {
+      append cfg [format "   %-25s %s\n" $elt [list $myconfig($elt)]]
+   }
+   append cfg "\}\n"
+
+   # Append print_config label-value pairs
+   append cfg "\narray set print_config \{\n"
+   foreach elt [lsort [array names print_config]] {
+      if {[string match "aspect_*" $elt]} {
+         continue  ;# Don't save aspect_crop and aspect_nocrop
+      }
+      append cfg [format "   %-25s %s\n" $elt [list $print_config($elt)]]
+   }
+   append cfg "\}\n"
+
+   return $cfg
 }
 
-# Plot configuration array}
+proc CopyConfigToClipboard {} {
+   clipboard clear
+   clipboard append -- [CreateConfigString]
+}
+proc PasteConfigFromClipboard {} {
+   ApplyConfigString [clipboard get]
+}
 
-       # Write plot_config label-value pairs
-       puts $chan "array set plot_config \{"
-       foreach elt [lsort [array names myconfig]] {
-             puts $chan [format "   %-25s %s" $elt [list $myconfig($elt)]]
-       }
-       puts $chan "\}"
+proc WriteConfigFileCallback { widget } {
+   set errmsg {}
 
-       # Write print_config label-value pairs
-       puts $chan "\narray set print_config \{"
-       foreach elt [lsort [array names print_config]] {
-	   if {[string match "aspect_*" $elt]} {
-	       continue  ;# Don't save aspect_crop and aspect_nocrop
-	   }
-           puts $chan [format "   %-25s %s" $elt [list $print_config($elt)]]
-       }
-       puts $chan "\}"
+   # Get filename
+   set filename [$widget GetFilename]
 
-       # Close
-       flush $chan  ;# Make sure error is raised on disk full.
-       close $chan
-    } msg]} {
-       error "Error writing file \"$filename\": $msg"
+   # Check to see if file already exists
+   if { [file exists $filename] } {
+      set answer [Ow_Dialog 1 "File Save: File exists" question \
+                   "File $filename already exists. Overwrite?" \
+                     {} 1 "Yes" "No" ]
+      if { $answer != 0 } {
+         lappend errmsg "ERROR: File exists; no overwrite requested."
+         return $errmsg
+      }
+   }
+   if { [string length $filename] == 0 } {
+      lappend errmsg "PROGRAMMING ERROR: Can't write to stdout in\
+                        [Oc_Main GetAppName]"
+      return $errmsg
+   }
+
+   global watchcursor_windows
+   Ow_PushWatchCursor $watchcursor_windows
+
+   # Get configuration string
+   global plot_config_writecheck
+   set cfgstr [CreateConfigString $filename \
+                  [array get plot_config_writecheck]]
+
+   # Write configuration string to file
+   if {[catch {
+      set chan [open $filename w]
+      puts $chan $cfgstr
+      flush $chan  ;# Make sure error is raised on disk full.
+      close $chan
+   } msg]} {
+      error "Error writing file \"$filename\": $msg"
+   }
+   Ow_PopWatchCursor
+
+   return $errmsg
+}
+
+proc LoadConfigFileCallback { widget } {
+    set errmsg {}
+
+    # Get filename from File|Load config widget
+    set filename [$widget GetFilename]
+
+   if { ![file exists $filename] } {
+        Ow_Dialog 0 "[Oc_Main GetInstanceName]:Error" warning \
+                "File $filename does not exist." 10c
+        lappend errmsg "ERROR: File does not exists"
+    } elseif { ![file isfile $filename] } {
+        Ow_Dialog 0 "[Oc_Main GetInstanceName]:Error" warning \
+                "File $filename is not an ordinary file." 10c
+        lappend errmsg "ERROR: Special file"
+    } elseif { ![file readable $filename] } {
+        Ow_Dialog 0 "[Oc_Main GetInstanceName]:Error" warning \
+                "Don't have read access to file $filename." 10c
+        lappend errmsg "ERROR: No read access"
+    } else {
+       # Process configuration file
+       ReadUserConfigFiles [list $filename]
     }
-    Ow_PopWatchCursor
-
     return $errmsg
 }
 
@@ -1886,6 +2006,8 @@ proc DialogCallback { widget actionid args } {
         set errmsg [SaveFileCallback $widget]
     } elseif {[string match WRITECONFIG $actionid]} {
         set errmsg [WriteConfigFileCallback $widget]
+    } elseif {[string match LOADCONFIG $actionid]} {
+        set errmsg [LoadConfigFileCallback $widget]
     }
 
     return $errmsg
@@ -1914,7 +2036,7 @@ proc UpdatePrintAspectRatios { args } {
     }
 }
 
-trace variable UpdateViewCount w UpdatePrintAspectRatios
+trace add variable UpdateViewCount write UpdatePrintAspectRatios
 
 proc PrintCallback { printwidget arrname } {
     upvar $arrname dialogprn
@@ -1964,13 +2086,22 @@ proc LaunchDialog { menuname itemlabel action } {
          -menu_data [list $menuname $itemlabel] \
          -smart_menu $SmartDialogs \
          -delete_callback_arg SaveFileDialogCleanup
-       trace variable FileId w SaveFileDialogTrace
+       trace add variable FileId write SaveFileDialogTrace
    } elseif {[string match WRITECONFIG $action]} {
       Ow_FileDlg New dialogbox -callback DialogCallback \
          -optionbox_setup WriteConfigOptionBoxSetup \
          -dialog_title "Write Config -- $basetitle" \
          -selection_title "Save Config File As..." \
          -select_action_id "WRITECONFIG" \
+         -filter "*.config" \
+         -menu_data [list $menuname $itemlabel] \
+         -smart_menu $SmartDialogs
+   } elseif {[string match LOADCONFIG $action]} {
+      Ow_FileDlg New dialogbox -callback DialogCallback \
+         -dialog_title "Load Config -- $basetitle" \
+         -allow_browse 1 \
+         -selection_title "Load Config file..." \
+         -select_action_id "LOADCONFIG" \
          -filter "*.config" \
          -menu_data [list $menuname $itemlabel] \
          -smart_menu $SmartDialogs
@@ -2009,7 +2140,82 @@ proc UpdateCoordColors { args } {
     SetCoordColors $coords_win $bgcolor $axiscolors
 }
 
-proc SetPlotConfiguration { cfgname } {
+proc DetermineViewportFromPortal { request_width request_height } {
+   # Returns the dimensions needed by the viewport to enclose the canvas
+   # portal (viewable portion) dimensions width x height. The main
+   # complicating factor is determining whether or not scrollbars are
+   # needed.
+   # NB: This code assumes the data is set in the active mesh.
+   global plot_config ScrollbarOverlapSlop
+   set meshrange [GetMeshRange]
+   set minpt [GetDisplayCoordinates {*}[lrange $meshrange 0 2]]
+   set maxpt [GetDisplayCoordinates {*}[lrange $meshrange 3 5]]
+   set width [expr {abs([lindex $maxpt 0]-[lindex $minpt 0])}]
+   set height [expr {abs([lindex $maxpt 1]-[lindex $minpt 1])}]
+   if {$height < 2} {  ;# Empty display
+      return [list $width $height]
+   }
+   set width [expr {$width + 2*$plot_config(misc,margin) \
+                       - $ScrollbarOverlapSlop}]
+   set height [expr {$height + 2*$plot_config(misc,margin) \
+                        - $ScrollbarOverlapSlop}]
+   set horizontal_scrollbars [set vertical_scrollbars 0]
+   set display_width  $request_width
+   set display_height $request_height
+   if {$width > $request_width} {
+      set display_height [expr {$display_height
+                               + $plot_config(misc,scrollcrossdim)}]
+   }
+   if {$height >  $request_height} {
+      set display_width [expr {$display_width
+                               + $plot_config(misc,scrollcrossdim)}]
+   }
+   return [list $display_width $display_height]
+}
+
+proc ApplyPlotConfiguration { cfglist } {
+   global watchcursor_windows
+   Ow_PushWatchCursor $watchcursor_windows
+
+   array set import_config $cfglist
+
+   set rotation_request \
+      [expr {90*round($import_config(misc,rotation)/90.)}]  ;# Safety
+
+   global AllowViewportResize
+   set orig_sizelock $AllowViewportResize
+
+   ChangeView $import_config(viewaxis)
+
+   set AllowViewportResize 0
+   global DisplayRotation
+   set DisplayRotation $rotation_request
+   set AllowViewportResize $orig_sizelock
+
+   PlotConfigurationCallback import_config
+
+   # Determine and set display viewport from requested canvas viewable
+   # portal size.
+   lassign [DetermineViewportFromPortal \
+               $import_config(misc,width) $import_config(misc,height)] \
+      display_width display_height
+   PackViewport $display_width $display_height 1
+
+   set xrel [set yrel [set zrel 0.5]]
+   if {[info exists import_config(misc,relcenterpt)] \
+          && ![string match {} $import_config(misc,relcenterpt)]} {
+      lassign $import_config(misc,relcenterpt) xrel yrel zrel
+   } elseif {[info exists import_config(misc,centerpt)] \
+                && ![string match {} $import_config(misc,centerpt)]} {
+      lassign [ConvertCenterToRelativeCenter \
+                  {*}$import_config(misc,centerpt)] xrel yrel zrel
+   }
+   SetRelativeDisplayCenter $xrel $yrel $zrel
+
+   Ow_PopWatchCursor
+}
+
+proc PlotConfigurationCallback { cfgname } {
     global plot_config canvas SliceCompat
     upvar $cfgname cfg
 
@@ -2017,11 +2223,11 @@ proc SetPlotConfiguration { cfgname } {
     global watchcursor_windows
     Ow_PushWatchCursor $watchcursor_windows
 
-    # Replace any empty strings in cfg with current plot_config values
-    foreach elt [array names cfg] {
-       if {[string match {} $cfg($elt)] && [info exists plot_config($elt)]} {
-            set cfg($elt) $plot_config($elt)
-        }
+    # Fill missing cfg values with current plot_config values
+    foreach elt [array names plot_config] {
+       if {![info exists cfg($elt)] || [string match {} $cfg($elt)]} {
+          set cfg($elt) $plot_config($elt)
+       }
     }
 
     GetScrollCenter xcenter ycenter  ;# Except for 'Margin', plot
@@ -2231,7 +2437,7 @@ MakeCanvas
 # Option frame and widgets
 set ctrlbar [frame .ctrlbar -borderwidth 2 -relief raised]
 set ctrlbar_entry_widgets {}
-trace variable omfCtrlBarState w OMF_ChangeCtrlBarState
+trace add variable omfCtrlBarState write OMF_ChangeCtrlBarState
 proc OMF_ChangeCtrlBarState { name elt op } {
     global omfCtrlBarState ctrlbar canvas_frame
     if {$omfCtrlBarState} {
@@ -2258,7 +2464,7 @@ proc UpdateCoordDisplay { newrot } {
     set win $coords_win
     ShowCoords $win $newrot $plot_config(viewaxis)
 }
-trace variable DisplayRotation w DisplayRotationTrace
+trace add variable DisplayRotation write DisplayRotationTrace
 catch {bind $coords_win <<Ow_LeftButton>> {
     set temp [expr {(round($DisplayRotation/90.)+1)%%4}]
     set DisplayRotation [expr {$temp*90}]
@@ -2325,7 +2531,7 @@ proc ArrowAutosamplingTrace { args } {
         $arrowsswidget Configure -state normal
     }
 }
-trace variable plot_config(arrow,autosample) w ArrowAutosamplingTrace
+trace add variable plot_config(arrow,autosample) write ArrowAutosamplingTrace
 ArrowAutosamplingTrace
 
 # Arrow autosampling
@@ -2982,7 +3188,6 @@ proc LaunchCommandConsole { menuname itemlabel } {
    set title "[Oc_Main GetTitle] Console"
    $command_console eval [list console title $title]
 
-
    $command_console eval console show
 }
 
@@ -3026,6 +3231,8 @@ if {![Oc_Option Get Menu show_console_option _] && $_} {
 $filemenu add separator
 $filemenu add command -label "Write config..." -underline 0 \
         -command { LaunchDialog $filemenu "Write config..." WRITECONFIG }
+$filemenu add command -label "Load config..." -underline 0 \
+        -command { LaunchDialog $filemenu "Load config..." LOADCONFIG }
 $filemenu add separator
 $filemenu add command -label "Exit" -command { exit } -underline 1
 wm protocol . WM_DELETE_WINDOW { exit }
@@ -3034,7 +3241,7 @@ set viewaxes [menu $viewmenu.viewaxes -tearoff 1 \
         -tearoffcommand {SetupTearOff <Control-Key-v>}]
 bind . <Control-Key-v> "$viewaxes invoke 0"  ;# Launches viewpoint menu
 set viewaxis_menuselect $plot_config(viewaxis)
-trace variable plot_config(viewaxis) w \
+trace add variable plot_config(viewaxis) write \
    { global viewaxis_menuselect ; \
      set viewaxis_menuselect $plot_config(viewaxis) ;# }
 $viewaxes add radio -label "+x" \
@@ -3068,9 +3275,23 @@ $optionmenu add command -label "Configure..." -underline 0 \
                   -menu "$optionmenu {Configure...}" \
                   -menuraise $SmartDialogs \
                   -import_arrname plot_config \
-                  -apply_callback SetPlotConfiguration
+                  -apply_callback PlotConfigurationCallback
               }
+$optionmenu add command \
+        -label "Copy configuration to clipboard" \
+        -accelerator "Ctrl+Shift+C" \
+        -underline 19 -command CopyConfigToClipboard
+$optionmenu add command \
+        -label "Paste configuration from clipboard" \
+        -accelerator "Ctrl+Shift+V" \
+        -underline 21 -command PasteConfigFromClipboard
 bind . <Control-Key-c> { $optionmenu invoke "Configure..." }
+# Only the Control and Shift modifiers work reliably across platforms,
+# so bind copy and paste using these. (See NOTES VI, p7, 16-Jan-2014 and
+# the oommf/dvl/tkexplore app for the full story.)
+bind . <Control-Shift-Key-C> { CopyConfigToClipboard }
+bind . <Control-Shift-Key-V> { PasteConfigFromClipboard }
+
 $optionmenu add checkbutton -label "Control Bar" -underline 8 \
         -variable omfCtrlBarState
 $optionmenu add checkbutton -label "Lock size" -underline 0 \
@@ -3796,12 +4017,23 @@ if {[catch {cd $firstpath} msg]} {
     ## $firstfile out of current directory
 }
 
-update  ;# This update is needed for some reason to prevent a
+if {![string match {} $firstfile] && ![file readable $firstfile]} {
+    Ow_NonFatalError "WARNING: Can't access requested input file\
+                      \"$firstfile\""
+    set firstfile {}
+}
+
+#update  ;# This update is needed for some reason to prevent a
 ## fatal error in the case where firstfile is non-empty but
 ## points to a non-existent file.  This situation triggers
 ## a modal Ow_Dialog warning (actually, an "info" message)
 ## that generates a fatal error under Windows XP, with
 ## ActiveTcl 8.4.14.
+
+Ow_PushWatchCursor $watchcursor_windows ;# Blocks update idletask
+## calls from inside other Ow_PushWatchCursor calls. This gives a
+## cleaner start-up experience, especially when loading an initial
+## file and applying a user-specified config file.
 
 # Load first file
 if {[string match {} $firstfile]} {
@@ -3833,35 +4065,19 @@ if {[string match {} $firstfile]} {
 
 set xrel 0.5;  set yrel 0.5;  set zrel 0.5
 if {[info exists startup_plot_config(misc,centerpt)] \
-        && ![string match {} $startup_plot_config(misc,centerpt)]} {
-    foreach {xc yc zc} $startup_plot_config(misc,centerpt) break
-    foreach {xmin ymin zmin xmax ymax zmax} [GetMeshRange] break
-    foreach {xmin ymin zmin} [ApplyAxisTransform \
-            $plot_config(viewaxis) +z $xmin $ymin $zmin] break
-    foreach {xmax ymax zmax} [ApplyAxisTransform \
-            $plot_config(viewaxis) +z $xmax $ymax $zmax] break
-    if {[string match {-?} $plot_config(viewaxis)]} {
-        # Negative view axis
-        set tmp $xmin ; set xmin $xmax ; set xmax $tmp
-        set tmp $ymin ; set ymin $ymax ; set ymax $tmp
-        set tmp $zmin ; set zmin $zmax ; set zmax $tmp
-    }
-    if {$xmax!=$xmin} {
-        catch {set xrel [expr {($xc-$xmin)/($xmax-$xmin)}]}
-    }
-    if {$ymax!=$ymin} {
-        catch {set yrel [expr {($yc-$ymin)/($ymax-$ymin)}]}
-    }
-    if {$zmax!=$zmin} {
-        catch {set zrel [expr {($zc-$zmin)/($zmax-$zmin)}]}
-    }
+       && ![string match {} $startup_plot_config(misc,centerpt)]} {
+   lassign [ConvertCenterToRelativeCenter \
+               {*}$startup_plot_config(misc,centerpt)] xrel yrel zrel
 } elseif {[info exists startup_plot_config(misc,relcenterpt)] \
-        && ![string match {} $startup_plot_config(misc,relcenterpt)]} {
-    foreach {xrel yrel zrel} $startup_plot_config(misc,relcenterpt) break
+             && ![string match {} $startup_plot_config(misc,relcenterpt)]} {
+   lassign $startup_plot_config(misc,relcenterpt) xrel yrel zrel
 }
 SetRelativeDisplayCenter $xrel $yrel $zrel
 $slicewidget ScaleForce commit ;# Adjust slice center to
 ## value compatible with scale resolution
+
+ReadUserConfigFiles $userconfigFiles
+Ow_PopWatchCursor
 
 # Initialize and show coords display
 bind $coords_win <Configure> {}  ;# Not needed
@@ -3879,6 +4095,5 @@ focus $canvas_frame
 
 # Initialize omfSavedDisplayState
 OMF_SaveDisplayState
-
 
 after idle Ow_SetIcon .

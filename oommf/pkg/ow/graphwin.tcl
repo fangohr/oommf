@@ -255,8 +255,10 @@ Oc_Class Ow_GraphWin {
     # Symbol display frequency and size
     public common default_symbol_freq
     public common default_symbol_size
+    public common default_symbols_only
     public variable symbol_freq
     public variable symbol_size
+    public variable symbols_only  ;# No curves drawn if true
 
     # Select color by "curve", or by "segment"
     public common default_color_selection
@@ -611,6 +613,10 @@ Oc_Class Ow_GraphWin {
 
 	if {![info exists symbol_size]} {
 	    set symbol_size $default_symbol_size
+	}
+
+	if {![info exists symbols_only]} {
+	    set symbols_only $default_symbols_only
 	}
 
 	if {![info exists color_selection]} {
@@ -1620,7 +1626,7 @@ Oc_Class Ow_GraphWin {
 	}
     }
     callback method DragInit { obj x y button state } {
-       graph but1x but1y lmargin tmargin plotwidth plotheight
+       graph but1x but1y lmargin showkey tmargin plotwidth plotheight
     } {
         if {$button!=1 && $button!=3} { return }
         set but1x [$graph canvasx $x]
@@ -1631,14 +1637,18 @@ Oc_Class Ow_GraphWin {
                 [expr {$tmargin+$plotheight}]] {}
         switch $obj {
             hrule {
-                $graph lower hrule key
+                if {$showkey} {
+                   $graph lower hrule key
+                }
                 set but1x $cx
                 set but1y [lindex [$graph coords hrule] 1]
                 ## Shift to line center
 		$this ShowPosition $cx $cy $button $state 0 pos
             }
             vrule {
-                $graph lower vrule key
+                if {$showkey} {
+                   $graph lower vrule key
+                }
                 set but1x [lindex [$graph coords vrule] 0]
                 set but1y $cy
                 ## Shift to line center
@@ -2719,6 +2729,13 @@ Oc_Class Ow_GraphWin {
           lappend gids [$graph create line \
                            $x1 $y1 $x2 $y1 $x2 $y2 $x1 $y2 $x1 $y1 \
                            -fill $color -width $curve_width -tags $tags]
+          if {$symbols_only} {
+             # Mark center point; helpful for location queries by cursor
+             lappend gids [$graph create rectangle \
+                              [expr {$x-0.5}] [expr {$y-0.5}] \
+                              [expr {$x+0.5}] [expr {$y+0.5}] \
+                              -fill $color -width 0 -tags $tags]
+          }
        }
        return $gids
     }
@@ -2735,6 +2752,13 @@ Oc_Class Ow_GraphWin {
           lappend gids [$graph create line \
                            $x1 $y $x $y1 $x2 $y $x $y2 $x1 $y \
                            -fill $color -width $curve_width -tags $tags]
+          if {$symbols_only} {
+             # Mark center point; helpful for location queries by cursor
+             lappend gids [$graph create rectangle \
+                              [expr {$x-0.5}] [expr {$y-0.5}] \
+                              [expr {$x+0.5}] [expr {$y+0.5}] \
+                              -fill $color -width 0 -tags $tags]
+          }
        }
        return $gids
     }
@@ -2769,6 +2793,13 @@ Oc_Class Ow_GraphWin {
           lappend gids [$graph create line \
                            $x1 $y1 $x2 $y1 $x $y2 $x1 $y1 \
                            -fill $color -width $curve_width -tags $tags]
+          if {$symbols_only} {
+             # Mark center point; helpful for location queries by cursor
+             lappend gids [$graph create rectangle \
+                              [expr {$x-0.5}] [expr {$y-0.5}] \
+                              [expr {$x+0.5}] [expr {$y+0.5}] \
+                              -fill $color -width 0 -tags $tags]
+          }
        }
        return $gids
     }
@@ -2786,6 +2817,13 @@ Oc_Class Ow_GraphWin {
           lappend gids [$graph create line \
                            $x1 $y2 $x $y1 $x2 $y2 $x1 $y2 \
                            -fill $color -width $curve_width -tags $tags]
+          if {$symbols_only} {
+             # Mark center point; helpful for location queries by cursor
+             lappend gids [$graph create rectangle \
+                              [expr {$x-0.5}] [expr {$y-0.5}] \
+                              [expr {$x+0.5}] [expr {$y+0.5}] \
+                              -fill $color -width 0 -tags $tags]
+          }
        }
        return $gids
     }
@@ -2884,8 +2922,8 @@ Oc_Class Ow_GraphWin {
                }
                set symbol_id [lindex $curve($curveid,segsymbol) $segindex]
             }
-            set color [lindex $colorset $color_id 0]
-            if {[llength $ptlist]>=4} {
+            if {!$symbols_only && [llength $ptlist]>=4} {
+               set color [lindex $colorset $color_id 0]
                set gid [eval $graph create line $ptlist \
                            -fill $color \
                            -width $curve_width \
@@ -2925,53 +2963,53 @@ Oc_Class Ow_GraphWin {
                if {$totalsize==0} { continue }
                OWgwAssert {$totalsize%2==0} \
                   {PC-b Bad ptlist: $ptlist}                     ;###
-               set color [lindex $colorset $color_id 0]
-               if {!$usedrawpiece} {
-                  if {$totalsize>=4} {
-                     set cmd [linsert $ptlist 0 $graph create line]
-                     lappend cmd -fill $color \
-                        -width $curve_width \
-                        -smooth $smoothcurves \
-                        -tags [list tag$curveid showpos]
-                     set gid [eval $cmd]
-                     $graph lower $gid $matteid
-                  }
-                  $this PlotSymbols $symbol_id $color_id \
-                     [list tag$curveid showpos] $matteid 0 $ptlist
-               } else {
-                  if {$smoothcurves} {
-                     set piecesize $drawsmoothpiece
+               if {!$symbols_only} {
+                  set color [lindex $colorset $color_id 0]
+                  if {!$usedrawpiece} {
+                     if {$totalsize>=4 && !$symbols_only} {
+                        set cmd [linsert $ptlist 0 $graph create line]
+                        lappend cmd -fill $color \
+                           -width $curve_width \
+                           -smooth $smoothcurves \
+                           -tags [list tag$curveid showpos]
+                        set gid [eval $cmd]
+                        $graph lower $gid $matteid
+                     }
                   } else {
-                     set piecesize $drawpiece
-                  }
-                  set piecestart 0
-                  set piecestop [expr {$piecestart+$piecesize}]
-                  while {$piecestop<$totalsize} {
-                     set cmd [linsert \
-                                 [lrange $ptlist $piecestart $piecestop] \
-                                 0 $graph create line]
-                     lappend cmd -fill $color \
-                        -width $curve_width \
-                        -smooth $smoothcurves \
-                        -tags [list tag$curveid showpos]
-                     set gid [eval $cmd]
-                     $graph lower $gid $matteid
-                     set piecestart [expr {$piecestop-1}]
+                     if {$smoothcurves} {
+                        set piecesize $drawsmoothpiece
+                     } else {
+                        set piecesize $drawpiece
+                     }
+                     set piecestart 0
                      set piecestop [expr {$piecestart+$piecesize}]
+                     while {$piecestop<$totalsize} {
+                        set cmd [linsert \
+                                    [lrange $ptlist $piecestart $piecestop] \
+                                    0 $graph create line]
+                        lappend cmd -fill $color \
+                           -width $curve_width \
+                           -smooth $smoothcurves \
+                           -tags [list tag$curveid showpos]
+                        set gid [eval $cmd]
+                        $graph lower $gid $matteid
+                        set piecestart [expr {$piecestop-1}]
+                        set piecestop [expr {$piecestart+$piecesize}]
+                     }
+                     if {$piecestart<[expr {$totalsize-2}]} {
+                        set cmd [linsert [lrange $ptlist $piecestart end] \
+                                    0 $graph create line]
+                        lappend cmd -fill $color \
+                           -width $curve_width \
+                           -smooth $smoothcurves \
+                           -tags [list tag$curveid showpos]
+                        set gid [eval $cmd]
+                        $graph lower $gid $matteid
+                     }
                   }
-                  if {$piecestart<[expr {$totalsize-2}]} {
-                     set cmd [linsert [lrange $ptlist $piecestart end] \
-                                 0 $graph create line]
-                     lappend cmd -fill $color \
-                        -width $curve_width \
-                        -smooth $smoothcurves \
-                        -tags [list tag$curveid showpos]
-                     set gid [eval $cmd]
-                     $graph lower $gid $matteid
-                  }
-                  $this PlotSymbols $symbol_id $color_id \
-                     [list tag$curveid showpos] $matteid 0 $ptlist
                }
+               $this PlotSymbols $symbol_id $color_id \
+                  [list tag$curveid showpos] $matteid 0 $ptlist
             }
          }
         if {$entry_segcount != $segcount} {
@@ -3753,16 +3791,38 @@ Oc_Class Ow_GraphWin {
    # error in the latter cases, if a point on a boundary is
    # somehow classified as being outside the boundary, so watch
    # for that.
+   #
+   # Addendum: If u0 or v0 are infinite (which can happen in particular
+   # if xprev or yprev are zero on a log axis), then ediff and udiff can
+   # compare as equal w/o either (u0,v0) or (u1,v1) lying on the
+   # boundary. In principal points with zero values against a log axis
+   # are filtered out before calling this routine, but zero u0 or v0 do
+   # occur in practice. The active code below skips over such points,
+   # but there is also some commented out code which draws clipped lines
+   # from such points onto the canvas. The code is deactivated because
+   # it produces non-uniform behavior as compared to zero points
+   # filtered out by the calling process, but is left here for future
+   # reference.
    foreach ubdry [list $ulo $uhi] {
       set ediff [expr {$ubdry-$u0}]
-      if {$udiff*$ediff>0 && abs($ediff)<$absudiff} {
-         # 0 < t = ediff/udiff < 1.  Check crossing is between top and
-         # bottom edges
-         set tst [expr {abs($ediff)*$vdiff}]
-         if {$absudiff*($vlo-$v0)<= $tst && $tst <= $absudiff*($vhi-$v0)} {
-            # Tests passed
-            set t [expr {$ediff/$udiff}]  ;#  t should be in (0,1) (i.e.,
-            set vt [expr {floor($v0+$vdiff*$t+0.5)}] ;## no overflow)
+      if {$udiff*$ediff>0} {
+         if { abs($ediff)<$absudiff} {
+            # 0 < t = ediff/udiff < 1.
+            set t [expr {$ediff/$udiff}] ;# t should be in (0,1) (no overflow)
+            set vt [expr {$v0*(1-$t)+$v1*$t}] ;# v0 xor v1 infinite OK
+         } else {
+            # if { $ediff == $udiff && $ediff*($u1-$ubdry)>0} {
+            #    # Handles infinite u0 case
+            #    set t 1.0
+            #    set vt $v1
+            # } else {
+            #    continue
+            # }
+            continue
+         }
+         # Check crossing is between top and bottom edges
+         if {$vlo <= $vt && $vt <= $vhi} {
+            set vt [expr {floor($vt+0.5)}]
             lappend crossings [list $t $ubdry $vt]
          }
       }
@@ -3773,14 +3833,24 @@ Oc_Class Ow_GraphWin {
    # are integers.)
    foreach vbdry [list $vlo $vhi] {
       set ediff [expr {$vbdry-$v0}]
-      if {$vdiff*$ediff>0 && abs($ediff)<$absvdiff} {
-         # 0 < t = ediff/vdiff < 1.  Check crossing is between left and
-         # right edges
-         set tst [expr {abs($ediff)*$udiff}]
-         if {$absvdiff*($ulo-$u0)<= $tst && $tst <= $absvdiff*($uhi-$u0)} {
-            # Tests passed
-            set t [expr {$ediff/$vdiff}]  ;#  t should be in (0,1) (i.e.,
-            set ut [expr {floor($u0+$udiff*$t+0.5)}] ;## no overflow)
+      if {$vdiff*$ediff>0} {
+         if {abs($ediff)<$absvdiff} {
+            # 0 < t = ediff/vdiff < 1.
+            set t [expr {$ediff/$vdiff}] ;# t should be in (0,1) (no overflow)
+            set ut [expr {$u0*(1-$t)+$u1*$t}] ;# u0 xor u1 infinite OK
+         } else {
+            # if { $ediff == $vdiff && $ediff*($v1-$vbdry)>0} {
+            #    # Handles infinite v0 case
+            #    set t 1.0
+            #    set ut $u1
+            # } else {
+            #    continue
+            # }
+            continue
+         }
+         #  Check crossing is between left and right edges
+         if {$ulo <= $ut && $ut <= $uhi} {
+            set ut [expr {floor($ut+0.5)}]
             lappend crossings [list $t $ut $vbdry]
          }
       }

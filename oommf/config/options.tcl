@@ -100,7 +100,7 @@ Oc_Option Add mmHelp Font baseSize 16
 Oc_Option Add * Color filename [list \
   [file join [file dirname [Oc_DirectPathname [info script]]] colors.config]]
 ########################################################################
-# OOMMF color scheme: default (default), light, or dark
+# OOMMF color scheme: auto (default), light, or dark
 #Oc_Option Add * {} ColorScheme light
 ########################################################################
 # Input filter programs for mmDisp and mmGraph
@@ -142,9 +142,11 @@ if {[string match windows $tcl_platform(platform)]} {
 ########################################################################
 # Default symbol frequency and size in mmGraph.  These should be
 # non-negative integers.  To default to no symbols, set
-# default_symbol_freq to 0.  Symbol size is in pixels.
+# default_symbol_freq to 0.  Symbol size is in pixels. If symbols_only
+# is true, then symbols are drawn without connecting curves.
 Oc_Option Add mmGraph Ow_GraphWin default_symbol_freq  0
 Oc_Option Add mmGraph Ow_GraphWin default_symbol_size 10
+Oc_Option Add mmGraph Ow_GraphWin default_symbols_only 0
 #
 ########################################################################
 # Default curve coloring selection method in mmGraph; should be either
@@ -308,6 +310,13 @@ Oc_Option Add * Platform cflags {-def NDEBUG}
 # compliance or be risky in some other way --- use with care.
 Oc_Option Add * Platform optlevel 2
 #
+# If debugging is enabled (i.e. NDEBUG is not defined), then by default
+# C++ exceptions in Oxs print an error message to stderr and immediately
+# abort, without unwinding the call stack. If you wish to allow Oxs to
+# provide alternate error handling, set DebugAbort to "unwind". (In
+# particular, this stops MIF file errors from aborting Oxsii.)
+# Oc_Option Add * {} DebugAbort immediate
+#
 ########################################################################
 # Platform-generic default flags for linking
 Oc_Option Add * Platform lflags {}
@@ -321,11 +330,12 @@ Oc_Option Add * Platform lflags {}
 # SEH handling is only available with Windows executables built using
 # the Visual C++ compiler.
 #   If handling is set to "none", then asynchronous exceptions such as
-# SIGSEGV (segmentation fault) immediately abort. If set to "POSIX",
-# then trapping signals are caught and the error is logged before
-# aborting. If set to "SEH" and the Visual C++ compiler is used, then
-# "structured exceptions" are caught and logged before aborting. SEH
-# handling may have a small negative performance impact.
+# SIGSEGV (segmentation fault) immediately abort. This may provide
+# more useful backtrace information when debugging. If handling is set
+# to "POSIX", then trapping signals are caught and the error is logged
+# before aborting. If set to "SEH" and the Visual C++ compiler is
+# used, then "structured exceptions" are caught and logged before
+# aborting. SEH handling may have a small negative performance impact.
 # Oc_Option Add * {} AsyncExceptionHandling POSIX
 #
 ########################################################################

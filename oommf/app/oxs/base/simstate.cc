@@ -4,6 +4,9 @@
  *
  */
 
+#include <algorithm>   // std::sort
+#include <utility>     // std::move
+
 #include "nb.h"
 #include "vf.h"
 
@@ -20,8 +23,8 @@ Oxs_SimState::Oxs_SimState()
   : previous_state_id(0),iteration_count(0),
     stage_number(0),stage_iteration_count(0),
     stage_start_time(0.),stage_elapsed_time(0.),
-    last_timestep(0.),
-    mesh(NULL),Ms(NULL),Ms_inverse(NULL),max_absMs(-1),
+    last_timestep(0.),mesh(nullptr),reference_Ms(nullptr),
+    Ms(nullptr),Ms_inverse(nullptr),max_absMs(-1),
     step_done(UNKNOWN), stage_done(UNKNOWN), run_done(UNKNOWN)
 {}
 
@@ -42,7 +45,7 @@ void Oxs_SimState::Reset()
 {
   ClearDerivedData();
   ClearAuxData();
-  
+
   previous_state_id=0;
   iteration_count=0;
   stage_number=0;
@@ -51,9 +54,10 @@ void Oxs_SimState::Reset()
   stage_elapsed_time=0.;
   last_timestep=0.;
 
-  mesh=NULL;
-  Ms=NULL;
-  Ms_inverse=NULL;
+  mesh=nullptr;
+  reference_Ms=nullptr;
+  Ms=nullptr;
+  Ms_inverse=nullptr;
   max_absMs=-1;
 
   step_done=UNKNOWN;
@@ -70,29 +74,29 @@ void Oxs_SimState::Reset()
 
 }
 
+// Derived data of scalar type:
 OC_BOOL Oxs_SimState::AddDerivedData
-(const char* name,
+(const String& name,
  OC_REAL8m value) const
 { // Note: The derived_data map object is mutable.
-  const String csname = name;
-  pair<const String,OC_REAL8m> newdata(csname,value);
+  pair<const String,OC_REAL8m> newdata(name,value);
   // According to the C++ spec, the first member of pair<>, given as
   // input to map.insert(), is const.  Compilers should promote
   // non-const to const, but some compilers are broken.  It doesn't
   // hurt us here to be precise, so we specify const String for
   // portability.
-  pair<map<DerivedDataKey,OC_REAL8m>::iterator,bool> p
+  pair<std::unordered_map<DerivedDataKey,OC_REAL8m>::iterator,bool> p
     = derived_data.insert(newdata);
   return p.second;
 }
 
 OC_BOOL Oxs_SimState::GetDerivedData
-(const char* name,
+(const String& name,
  OC_REAL8m& value) const
 {
-  map<DerivedDataKey,OC_REAL8m>::const_iterator it
-    = derived_data.find(String(name));
-  if(it==derived_data.end()) {
+  std::unordered_map<DerivedDataKey,OC_REAL8m>::const_iterator it
+    = derived_data.find(name);
+  if(it == derived_data.end()) {
     return 0;
   }
   value = it->second;
@@ -101,37 +105,212 @@ OC_BOOL Oxs_SimState::GetDerivedData
 
 void Oxs_SimState::AppendListDerivedData(vector<String>& names) const
 { // Class internal routine
-  for(map<DerivedDataKey,OC_REAL8m>::const_iterator
+  for(std::unordered_map<DerivedDataKey,OC_REAL8m>::const_iterator
         cit = derived_data.begin(); cit!=derived_data.end(); ++cit) {
     names.push_back(cit->first);
   }
 }
-
 void Oxs_SimState::ListDerivedData(vector<String>& names) const
 {
   names.clear();
   AppendListDerivedData(names);
 }
 
+// Derived data of Oxs_MeshValue array of scalars type:
+#if 0 // Copy version is expensive; disable
+OC_BOOL Oxs_SimState::AddDerivedData // Expensive copy version
+(const String& name,
+ const Oxs_MeshValue<OC_REAL8m>& value) const
+{ // Note: The derived_scalar_meshvalue_data map object is mutable.
+  pair<const String,Oxs_MeshValue<OC_REAL8m> > newdata(name,value);
+  pair<std::unordered_map<DerivedDataKey,
+                          Oxs_MeshValue<OC_REAL8m> >
+       ::iterator,bool> p
+    = derived_scalar_meshvalue_data.insert(std::move(newdata));
+  // NB: Creation of newdata uses the expensive Oxs_MeshValue<>
+  //     copy constructor. Using std::move to .insert ensures
+  //     that a second copy isn't made for the map insertion.
+  return p.second;
+}
+#endif // Expensive copy
+OC_BOOL Oxs_SimState::AddDerivedData // Move assignment version
+(const String& name,
+ Oxs_MeshValue<OC_REAL8m>&& value) const
+{ // Note 1: The derived_scalar_meshvalue_data map object is mutable.
+  // Note 2: Import "value" should generally be made using std::move().
+  //         If this call is successful, then on the client side "value"
+  //         be empty on return.  If you want to retain access to value,
+  //         then use Oxs_MeshValue<T>::SharedCopy() to make a shared
+  //         copy and move the copy, e.g.,
+  //
+  //    foo.AddDerivedData("bar-name",std::move(bar.SharedCopy());
+  //
+  // Note 2.5: bar.SharedCopy() above will mark both bar and the image
+  //         in foo as read-only. You may want to check if "bar-name" is
+  //         already in the map first, so you don't have to make the
+  //         shared copy if it's not going to be used. (BTW, in addition
+  //         to marking the value as read-only, the shared copy
+  //         operation copies the std::shared_ptr<T> arrblock, which
+  //         goes through a mutex to ensure thread safety.) Of course,
+  //         once you make the SharedCopy the read-only-lock is set,
+  //         even if the AddDerivedData() call fails, for whatever
+  //         reason.
+
+  // If name is already in map, do nothing and return false.
+  if(derived_scalar_meshvalue_data.count(name)>0) {
+    return 0;
+  }
+
+  // Otherwise, move value into map
+  pair<const String,Oxs_MeshValue<OC_REAL8m> >
+    newdata(name,std::move(value));
+  pair<std::unordered_map<DerivedDataKey,
+                          Oxs_MeshValue<OC_REAL8m> >
+       ::iterator,bool> p
+    = derived_scalar_meshvalue_data.insert(std::move(newdata));
+
+  if(!p.second) {
+    // For some reason insertion failed. Move data back from newdata
+    // into value.
+    value = std::move(newdata.second);
+  }
+  return p.second;
+}
+
+OC_BOOL Oxs_SimState::GetDerivedData
+(const String& name,
+ const Oxs_MeshValue<OC_REAL8m>* &value) const
+{
+  std::unordered_map<DerivedDataKey,
+                     Oxs_MeshValue<OC_REAL8m> >
+    ::const_iterator it = derived_scalar_meshvalue_data.find(name);
+  if(it == derived_scalar_meshvalue_data.end()) {
+    return 0;
+  }
+  value = &(it->second);
+  return 1;
+}
+
+void
+Oxs_SimState::ListDerivedScalarMeshValueData(vector<String>& names) const
+{
+  names.clear();
+  std::unordered_map<DerivedDataKey,
+                     Oxs_MeshValue<OC_REAL8m> >
+    ::const_iterator it = derived_scalar_meshvalue_data.begin();
+  while(it!=derived_scalar_meshvalue_data.end()) {
+    names.push_back(it->first);
+    ++it;
+  }
+}
+
+// Derived data of Oxs_MeshValue array of threevectors type:
+#if 0 // Copy version is expensive; disable
+OC_BOOL Oxs_SimState::AddDerivedData // Expensive copy version
+(const String& name,
+ const Oxs_MeshValue<ThreeVector>& value) const
+{ // Note: The derived_threevector_meshvalue_data map object is
+  //       mutable.
+  pair<const String,Oxs_MeshValue<ThreeVector> > newdata(name,value);
+  pair<std::unordered_map<DerivedDataKey,Oxs_MeshValue<ThreeVector> >
+       ::iterator,bool> p
+    = derived_threevector_meshvalue_data.insert(std::move(newdata));
+  // NB: Creation of newdata uses the expensive Oxs_MeshValue<>
+  //     copy constructor. Using std::move to .insert ensures
+  //     that a second copy isn't made for the map insertion.
+  return p.second;
+}
+#endif // Expensive copy
+
+OC_BOOL Oxs_SimState::AddDerivedData // Move assignment version
+(const String& name,
+ Oxs_MeshValue<ThreeVector>&& value) const
+{ // Note 1: The derived_threevector_meshvalue_data map object is mutable.
+  // Note 2: Import "value" should generally be made using std::move().
+  //         If this call is successful, then on the client side "value"
+  //         be empty on return.  If you want to retain access to value,
+  //         then use Oxs_MeshValue<T>::SharedCopy() to make a shared
+  //         copy and move the copy, e.g.,
+  //
+  //    foo.AddDerivedData("bar-name",std::move(bar.SharedCopy()));
+  //
+  // Note 2.5: bar.SharedCopy() above will mark both bar and the image
+  //         in foo as read-only. You may want to check if "bar-name" is
+  //         already in the map first, so you don't have to make the
+  //         shared copy if it's not going to be used. (BTW, in addition
+  //         to marking the value as read-only, the shared copy
+  //         operation copies the std::shared_ptr<T> arrblock, which
+  //         goes through a mutex to ensure thread safety.) Of course,
+  //         once you make the SharedCopy the read-only-lock is set,
+  //         even if the AddDerivedData() call fails, for whatever
+  //         reason.
+
+  // If name is already in map, do nothing and return false.
+  if(derived_threevector_meshvalue_data.count(name)>0) {
+    return 0;
+  }
+
+  // Otherwise, move value into map
+  pair<const String,Oxs_MeshValue<ThreeVector> >
+    newdata(name,std::move(value));
+  pair<std::unordered_map<DerivedDataKey,
+                          Oxs_MeshValue<ThreeVector> >
+       ::iterator,bool> p
+    = derived_threevector_meshvalue_data.insert(std::move(newdata));
+
+  if(!p.second) {
+    // For some reason insertion failed. Move data back from newdata
+    // into value.
+    value = std::move(newdata.second);
+  }
+  return p.second;
+}
+
+OC_BOOL Oxs_SimState::GetDerivedData
+(const String& name,
+ const Oxs_MeshValue<ThreeVector>* &value) const
+{
+  std::unordered_map<DerivedDataKey,Oxs_MeshValue<ThreeVector> >
+    ::const_iterator it = derived_threevector_meshvalue_data.find(name);
+  if(it == derived_threevector_meshvalue_data.end()) {
+    return 0;
+  }
+  value = &(it->second);
+  return 1;
+}
+
+void
+Oxs_SimState::ListDerivedThreeVectorMeshValueData(vector<String>& names) const
+{
+  names.clear();
+  std::unordered_map<DerivedDataKey,Oxs_MeshValue<ThreeVector> >
+    ::const_iterator it = derived_threevector_meshvalue_data.begin();
+  while(it!=derived_threevector_meshvalue_data.end()) {
+    names.push_back(it->first);
+    ++it;
+  }
+}
+
 void Oxs_SimState::ClearDerivedData()
 {
   derived_data.clear();
+  derived_scalar_meshvalue_data.clear();
+  derived_threevector_meshvalue_data.clear();
 }
 
 void Oxs_SimState::AddAuxData
-(const char* name,
+(const String& name,
  OC_REAL8m value) const
 { // Note: The auxiliary_data map object is mutable.
-  const String csname = name;
-  auxiliary_data[csname] = value;
+  auxiliary_data[name] = value;
 }
 
 OC_BOOL Oxs_SimState::GetAuxData
-(const char* name,
+(const String& name,
  OC_REAL8m& value) const
 {
-  map<AuxDataKey,OC_REAL8m>::const_iterator it
-    = auxiliary_data.find(String(name));
+  std::unordered_map<AuxDataKey,OC_REAL8m>::const_iterator it
+    = auxiliary_data.find(name);
   if(it==auxiliary_data.end()) {
     return 0;
   }
@@ -141,12 +320,11 @@ OC_BOOL Oxs_SimState::GetAuxData
 
 void Oxs_SimState::AppendListAuxData(vector<String>& names) const
 { // Class internal routine
-  for(map<AuxDataKey,OC_REAL8m>::const_iterator
+  for(std::unordered_map<AuxDataKey,OC_REAL8m>::const_iterator
         cit = auxiliary_data.begin(); cit!=auxiliary_data.end(); ++cit) {
     names.push_back(cit->first);
   }
 }
-
 void Oxs_SimState::ListAuxData(vector<String>& names) const
 {
   names.clear();
@@ -251,6 +429,34 @@ void Oxs_SimState::QueryScalarValues
   }
 }
 
+void Oxs_SimState::MsSetup
+(std::unique_ptr< Oxs_MeshValue<OC_REAL8m> > Ms_import)
+{ // Moves (transfers ownership of) Ms_import to Ms, fills Ms_inverse,
+  // and sets max_absMs.  NB: It should be OK to share this->Ms, for
+  // example with other Oxs_SimState objects, because as a const object
+  // it won't change. But Ms_import might be non-const in the caller, so
+  // it's safer to transfer ownership.
+  Ms = std::shared_ptr< const Oxs_MeshValue<OC_REAL8m> >(Ms_import.release()); // Move
+  OC_REAL8m work_max_absMs = 0;
+  const OC_INDEX work_size = Ms->Size();
+  std::shared_ptr< Oxs_MeshValue<OC_REAL8m> > work_Ms_inverse
+    = std::make_shared< Oxs_MeshValue<OC_REAL8m> >(work_size);
+  for(OC_INDEX icell=0;icell<work_size;icell++) {
+    const OC_REAL8m Ms_i = (*Ms)[icell];
+    if(Ms_i==0.0) {
+      (*work_Ms_inverse)[icell] = 0.0; // Special case handling
+    } else {
+      (*work_Ms_inverse)[icell] = 1.0/Ms_i;
+      if(Ms_i>work_max_absMs) {
+        work_max_absMs = Ms_i;
+      }
+    }
+  }
+  max_absMs = work_max_absMs;
+  Ms_inverse = work_Ms_inverse; // Shares as const, and becomes
+  /// sole owner after work_Ms_inverse is destroyed.
+}
+
 void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
 {
   new_state.previous_state_id     = previous_state_id;
@@ -261,6 +467,7 @@ void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
   new_state.stage_elapsed_time    = stage_elapsed_time;
   new_state.last_timestep         = last_timestep;
   new_state.mesh                  = mesh;
+  new_state.reference_Ms          = reference_Ms;
   new_state.Ms                    = Ms;
   new_state.Ms_inverse            = Ms_inverse;
   new_state.max_absMs             = max_absMs;
@@ -272,14 +479,16 @@ void Oxs_SimState::CloneHeader(Oxs_SimState& new_state) const
 void Oxs_SimState::SaveState(const char* filename,
 			     const char* title,
 			     const Oxs_Director* director) const
-{ // Write state to file.  Primarily, this is done by dumping the
-  // spin configuration as an OVF file via the mesh WriteOvf interface.
+{ // Write state to file.  Primarily, this is done by dumping the spin
+  // configuration as an OVF file via the mesh WriteOvf interface.
   // The non-spin state data is stored as name-value pairs as OVF
-  // "desc" lines.  The Ms, Ms_inverse, and mesh data are not written,
-  // but must be supplied independently for the restore operation.
-  //   Note: WriteOvf throws an exception on failure, and deletes
-  // any partially written file.  In particular, this happens if
-  // the disk is (or becomes) full.
+  // "desc" lines.  The Ms_reference, Ms, Ms_inverse, and mesh data
+  // are not written, but must be supplied independently for the
+  // restore operation.  Any Oxs_MeshValue derived data is likewise
+  // not retained; if possible it should be regenerated from other
+  // data.  Note: WriteOvf throws an exception on failure, and deletes
+  // any partially written file.  In particular, this happens if the
+  // disk is (or becomes) full.
 
   char buf[1024];
 
@@ -334,32 +543,83 @@ void Oxs_SimState::SaveState(const char* filename,
 	      run_done);
   desc += String(buf);
 
-  // Derived data
-  map<DerivedDataKey,OC_REAL8m>::const_iterator it = derived_data.begin();
-  while(it!=derived_data.end()) {
-    string_array.clear();
-    string_array.push_back("DRV");
-    string_array.push_back(it->first);
-    Oc_Snprintf(buf,sizeof(buf),"%.17g",
-                static_cast<double>(it->second));
-    string_array.push_back(String(buf));
-    desc += String("\n");
-    desc += Nb_MergeList(string_array);
-    ++it;
+  { // Scalar derived data.
+    // For consistency, save data in order sorted by key
+    std::vector<DerivedDataKey> keys;
+    keys.reserve (derived_data.size());
+    for (auto& it : derived_data) {
+      keys.push_back(it.first);
+    }
+    std::sort(keys.begin(), keys.end());
+    for (auto& it : keys) {
+      string_array.clear();
+      string_array.push_back("DRV");
+      string_array.push_back(it);
+      Oc_Snprintf(buf,sizeof(buf),"%.17g",
+                  static_cast<double>(derived_data[it]));
+      string_array.push_back(String(buf));
+      desc += String("\n");
+      desc += Nb_MergeList(string_array);
+    }
   }
 
-  // Auxiliary data
-  map<AuxDataKey,OC_REAL8m>::const_iterator ait = auxiliary_data.begin();
-  while(ait!=auxiliary_data.end()) {
-    string_array.clear();
-    string_array.push_back("AUX");
-    string_array.push_back(ait->first);
-    Oc_Snprintf(buf,sizeof(buf),"%.17g",
-                static_cast<double>(ait->second));
-    string_array.push_back(String(buf));
-    desc += String("\n");
-    desc += Nb_MergeList(string_array);
-    ++ait;
+  { // Oxs_MeshValue scalar array data: This is not saved,
+    // but the label and array size is recorded.
+    std::vector<DerivedDataKey> keys;
+    keys.reserve (derived_scalar_meshvalue_data.size());
+    for (auto& it : derived_scalar_meshvalue_data) {
+      keys.push_back(it.first);
+    }
+    std::sort(keys.begin(), keys.end());
+    for (auto& it : keys) {
+      string_array.clear();
+      string_array.push_back("DRV_SMV");
+      string_array.push_back(it);
+      Oc_Snprintf(buf,sizeof(buf),"%ld",
+        static_cast<long int>(derived_scalar_meshvalue_data[it].Size()));
+      string_array.push_back(String(buf));
+      desc += String("\n");
+      desc += Nb_MergeList(string_array);
+    }
+  }
+
+  { // Oxs_MeshValue threevector array data: This is not saved,
+    // but the label and array size is recorded.
+    std::vector<DerivedDataKey> keys;
+    keys.reserve (derived_threevector_meshvalue_data.size());
+    for (auto& it : derived_threevector_meshvalue_data) {
+      keys.push_back(it.first);
+    }
+    std::sort(keys.begin(), keys.end());
+    for (auto& it : keys) {
+      string_array.clear();
+      string_array.push_back("DRV_TVMV");
+      string_array.push_back(it);
+      Oc_Snprintf(buf,sizeof(buf),"%ld",
+        static_cast<long int>(derived_threevector_meshvalue_data[it].Size()));
+      string_array.push_back(String(buf));
+      desc += String("\n");
+      desc += Nb_MergeList(string_array);
+    }
+  }
+
+  { // Auxiliary data
+    std::vector<DerivedDataKey> keys;
+    keys.reserve (auxiliary_data.size());
+    for (auto& it : auxiliary_data) {
+      keys.push_back(it.first);
+    }
+    std::sort(keys.begin(), keys.end());
+    for (auto& it : keys) {
+      string_array.clear();
+      string_array.push_back("AUX");
+      string_array.push_back(it);
+      Oc_Snprintf(buf,sizeof(buf),"%.17g",
+                  static_cast<double>(auxiliary_data[it]));
+      string_array.push_back(String(buf));
+      desc += String("\n");
+      desc += Nb_MergeList(string_array);
+    }
   }
 
   vector<String> valuelabels;
@@ -379,26 +639,29 @@ void Oxs_SimState::SaveState(const char* filename,
      fsync);
 }
 
-
 void Oxs_SimState::RestoreState
 (const char* filename,
  const Oxs_Mesh* import_mesh,
+ // TODO: Include Ms_reference import. Until then, just use import_Ms
  const Oxs_MeshValue<OC_REAL8m>* import_Ms,
- const Oxs_MeshValue<OC_REAL8m>* import_Ms_inverse,
- OC_REAL8m import_max_absMs,
  const Oxs_Director* director,
  String& export_MIF_info)
 { // Fill state from channel
-  mesh = import_mesh;
-  Ms = import_Ms;
-  Ms_inverse = import_Ms_inverse;
-  max_absMs = import_max_absMs;
-
-  if(mesh==NULL || Ms==NULL || Ms_inverse==NULL) {
+  if(import_mesh==nullptr || import_Ms==nullptr) {
     String msg=String("NULL pointer input as parameter to"
 		      " Oxs_SimState::RestoreState.");
     OXS_THROW(Oxs_BadParameter,msg);
   }
+  mesh = import_mesh;
+  // Import (copy) initial_Ms into *this and set up related values.
+  // Create a copy of import_Ms and set shared ownership
+  // TODO: Add separate reference_Ms import support
+  std::unique_ptr< Oxs_MeshValue<OC_REAL8m> >
+    import_Ms_copy(new Oxs_MeshValue<OC_REAL8m>(*import_Ms)); // Mimic
+                 /// std::make_unique, which is introduced with C++14.
+  MsSetup(std::move(import_Ms_copy)); // Note move semantics
+  reference_Ms = Ms;  // Share
+
 
   // Create and load Vf_Mesh object with file data
   Vf_FileInput* vffi=Vf_FileInput::NewReader(filename);
@@ -570,3 +833,40 @@ void Oxs_SimState::RestoreState
 
   export_MIF_info = mif_filename;
 }
+
+#ifndef NDEBUG
+String
+Oxs_SimState::DumpStateOverview() const
+{
+    String buf;
+    buf += String("*** State ")
+      + Oc_MakeString(Id()) + String(" overview *************************");
+    buf += String("\n Previous state: ") + Oc_MakeString(previous_state_id);
+    buf += String("\n Stage number: ") + Oc_MakeString(stage_number);
+    buf += String("\n Iteration count: ") + Oc_MakeString(iteration_count);
+    buf += String("\n Status step: ") + StatusToString(step_done) +
+           String(", stage: ") + StatusToString(step_done) +
+           String(", run: ") + StatusToString(run_done);
+    buf += String("\n Scalar derived values---");
+    for(const auto& cit : derived_data) {
+      buf += String("\n  ") + cit.first
+        + String(" : ") + Oc_MakeString(cit.second);
+    }
+    buf += String("\n Scalar field derived values---");
+    for(const auto& cit : derived_scalar_meshvalue_data) {
+      buf += String("\n  ") + cit.first
+        + String(" : @") + Oc_MakeString(cit.second.GetArrayBlock());
+    }
+    buf += String("\n ThreeVector field derived values---");
+    for(const auto& cit : derived_threevector_meshvalue_data) {
+      buf += String("\n  ") + cit.first
+        + String(" : @") + Oc_MakeString(cit.second.GetArrayBlock());
+    }
+    buf += String("\n Auxiliary scalar values---");
+    for(const auto& cit : auxiliary_data) {
+      buf += String("\n  ") + cit.first
+        + String(" : ") + Oc_MakeString(cit.second);
+    }
+    return buf;
+  }
+#endif // NDEBUG

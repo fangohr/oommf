@@ -69,6 +69,61 @@ if {[Oc_AmRoot]>0} {
    exit 666
 }
 
+proc Oc_AccountName {} {
+   global env tcl_platform
+   set name {}
+   if {[info exists env(OOMMF_ACCOUNT_NAME)]
+       && [string length $env(OOMMF_ACCOUNT_NAME)]} {
+      set name $env(OOMMF_ACCOUNT_NAME)
+   } elseif {[info exists tcl_platform(user)]
+             && [string length $tcl_platform(user)]} {
+      set name $tcl_platform(user)
+   } else {
+      switch -- $tcl_platform(platform) {
+         unix {
+            if {[info exists env(USER)]
+                && [string length $env(USER)]} {
+               set name $env(USER)
+            } elseif {[info exists env(LOGNAME)]
+                      && [string length $env(LOGNAME)]} {
+               set name $env(LOGNAME)
+            } elseif {![catch {exec whoami} check]
+                      && [string length $check]} {
+               set name $check
+            } elseif {![catch {exec id -u -n} check]
+                      && [string length $check]} {
+               # whoami is deprecated by posix id command
+               set name $check
+            } elseif {![catch {exec id} check]
+                      && [string length $check]} {
+               # Solaris has a non-posix id command that
+               # doesn't support the -u and -n switches.
+               if {[regexp {uid=[0-9]+\(([^\)]+)\)} $check dummy check2]
+                   && [string length $check2]} {
+                  set name $check2
+               }
+            }
+         }
+         windows {
+            # Check environment
+            if {[info exists env(USERNAME)]
+                && [string length $env(USERNAME)]} {
+               set name $env(USERNAME)
+            }
+            if {![catch {file tail [Nb_GetUserName]} check]} {
+               set name $check
+            }
+            # Find some reliable entry in the registry?
+         }
+      }
+   }
+   if {[string match {} $name]} {
+      # Ultimate fallback
+      set name oommf
+   }
+   return $name
+}
+
 proc Oc_CheckTclIndex {pkg} {
     if {[llength [info commands Oc_DirectPathname]]} {
         # Cosmetic fix, if it's available
@@ -102,7 +157,7 @@ if {[catch {Oc_CheckTclIndex Oc}]} {
 }
 
 # CVS 
-package provide Oc 2.0b0
+package provide Oc 2.1a0
 
 # Set up for autoloading of Oc extension commands
 set oc(library) [file dirname [info script]]
@@ -115,16 +170,8 @@ if { [lsearch -exact $auto_path [file dirname $oc(library)]] == -1 } {
     lappend auto_path [file dirname $oc(library)]
 }
 
-# Patch any bugs and missing features in old versions of Tcl
-regsub {[.]} [package provide Tcl] {} _
-set _ [file join [file dirname [info script]] bug$_.tcl]
-if {[file readable $_]} {
-    source $_
-} else {
-    source [file join [file dirname [info script]] bug.tcl]
-}
-
 # Bring in OOMMF customizations
+source [file join [file dirname [info script]] bug.tcl]
 source [file join [file dirname [info script]] custom.tcl]
 
 # Initialize the Oc_Main class

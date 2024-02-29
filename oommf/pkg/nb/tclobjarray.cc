@@ -15,7 +15,6 @@
 
 /* End includes */
 
-#if NB_TCLOBJARRAY_AVAILABLE
 ////////////////////////////////////////////////////////////////////////
 // Wrapper for Tcl_Obj**
 
@@ -77,8 +76,7 @@ Nb_TclObjArray::WriteString(int index,const char* cptr)
     Tcl_IncrRefCount(obj);
     Tcl_DecrRefCount(tmp);
   }
-  Tcl_SetStringObj(obj,OC_CONST84_CHAR(cptr),
-		   static_cast<int>(strlen(cptr)));
+  Tcl_SetStringObj(obj,cptr, static_cast<int>(strlen(cptr)));
 }
 
 void
@@ -184,4 +182,3 @@ Nb_TclObjArray::GetString(int index) const
 #endif
   return String(Tcl_GetString(arr[index]));
 }
-#endif // NB_TCLOBJARRAY_AVAILABLE

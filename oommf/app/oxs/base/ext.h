@@ -91,10 +91,9 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // Macros to construct and downcast Oxs_Ext references.
 // These macros can only be used from inside a child of Oxs_Ext.
-// NOTE: We use Oc_Snprintf instead of string templates in the
-// error handling because at least some versions of gcc (egcs 2.91.66
-// on Linux/AXP) slurp up a lot of memory processing string template
-// operations.
+// NOTE: We use Oc_Snprintf instead of std::string in the error handling
+// because historically some versions of gcc (egcs 2.91.66 on Linux/AXP)
+// slurp up a lot of memory processing std::string operations.
 #define OXS_GET_EXT_OBJECT(params,subtype,obj)                        \
    { Oxs_OwnedPointer<Oxs_Ext> _goeo_tmp;                             \
      FindOrCreateObject(params,_goeo_tmp,#subtype);                   \
@@ -150,14 +149,11 @@ public:
   Oxs_ChunkScalarOutput<Oxs_Ext> output;
   std::vector<OC_REAL8m> chunk_storage;
   String source_field_name;
-  Oxs_VectorFieldOutputCache* source_field;
+
+  Oxs_FieldOutput<ThreeVector>* source_field; // Should be either
+  /// Oxs_VectorFieldOutput or Oxs_SimStateVectorFieldOutput
   vector<String> selector_init;
   Oxs_MeshValue<ThreeVector> selector;
-  Oxs_MeshValue<ThreeVector> source_buffer; // Only used if source
-  /// is not cacheable.  Note that if used, then memory space
-  /// allocated in source_buffer remains reserved through lifetime
-  /// of OxsExtUserOutput object.
-  OC_BOOL source_cacheable;
   OC_BOOL normalize;
   OC_BOOL exclude_0_Ms;
   OC_REAL8m scaling; // For regular meshes (includes user_scaling)
@@ -166,7 +162,7 @@ public:
   String units;
   OC_BOOL units_specified;
   OxsExtUserOutput()
-    : director(0), source_field(0), source_cacheable(0),
+    : director(nullptr), source_field(nullptr),
       normalize(1), exclude_0_Ms(0),
       scaling(0.), user_scaling(1.), units_specified(0) {}
   ~OxsExtUserOutput();
@@ -174,10 +170,9 @@ public:
   /// The director field must be set before calling this
   /// function.
 private:
-  // Disable copy constructor and assignment operators by
-  // declaring them w/o providing definition.
-  OxsExtUserOutput(const OxsExtUserOutput&);
-  OxsExtUserOutput& operator=(const OxsExtUserOutput&);
+  // Disable copy constructor and assignment operators.
+  OxsExtUserOutput(const OxsExtUserOutput&) = delete;
+  OxsExtUserOutput& operator=(const OxsExtUserOutput&) = delete;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -201,15 +196,19 @@ private:
 
   const String instanceId;     // Object instance name
 
-  // Disable copy constructor and assignment operators.  Don't
-  // provide definitions for these!
-  Oxs_Ext(const Oxs_Ext&);
-  Oxs_Ext& operator=(const Oxs_Ext&);
+  // Disable copy constructor and assignment operators.
+  Oxs_Ext(const Oxs_Ext&) = delete;
+  Oxs_Ext& operator=(const Oxs_Ext&) = delete;
 
   // Helper function for extended constructor (see below).
   // Throws exception if 'key' is already in init_strings;
   // otherwise adds key+value to init_strings.
   void AddNewInitStringPair(const String& key,const String& value);
+
+  // Copy of MIF Options block at the time this object was constructed.
+  // Access through this->GetExtMifOption() can be used by Oxs_Output
+  // objects for their initialization.
+  map<String,String> mif_options;
 
   // User defined outputs
   Nb_ArrayWrapper<OxsExtUserOutput> user_output;
@@ -449,21 +448,63 @@ public:
     // and Oxs_SimState::Add/GetAuxData().
     return instanceId + String(":") + String(item);
   }
-  
-  virtual OC_BOOL Init();  // This can be called at any time to reset
-  /// an Ext object to its initial, post constructor state.  The
-  /// constructor should set all static object state information, and
-  /// then call this function to initialize any state information that
-  /// might change during the lifetime of the object.  It is incumbent
-  /// upon the constructor to save whatever information is necessary for
-  /// Init() to completely reset itself.  Return value of 1 indicates
-  /// success, 0 indicates error.  Perhaps this should be changed to
-  /// void return, with an exception thrown on error?
-  ///
-  /// NB: Any child that overrides the default Oxs_Ext::Init()
-  ///     function should embed a call to Oxs_Ext::Init() for
-  ///     proper initialization of general Oxs_Ext members (in
-  ///     particular, user outputs).
+
+  // Read access to mif_options member (above). If import label is a key
+  // in mif_options, then fills export value and returns true. Otherwise
+  // returns 0 and leaves value unchanged.
+  OC_BOOL GetExtMifOption(const String& label, String& value) const {
+    const auto cit = mif_options.find(label);
+    if(cit == mif_options.cend()) return 0;
+    value = cit->second;
+    return 1;
+  }
+
+  // Post-construction Oxs_Ext object initialization and resets are
+  // implemented via three routines:
+  //
+  //    PreInit(), Init(), PostInit()
+  //
+  // These routines are called, in order, immediately following object
+  // construction and any time a simulation reset is desired.  The three
+  // phase structure supports communication among Oxs_Ext objects.  The
+  // guidelines for the three phases are:
+  //
+  //    PreInit(): In case of resets, clear all member values to the
+  //               initial post-construction value, and internal
+  //               initialization not requiring input from any other
+  //               Oxs_Ext objects.  Preparations needed to reply to
+  //               data requests in later phases from other Oxs_Ext
+  //               objects, i.e., producer initialization, should be
+  //               completed in this phase.  Registration of output
+  //               objects and other data with Oxs_Director can begin
+  //               here.
+  //
+  //       Init(): Make data requests to other Oxs_Ext objects, i.e.,
+  //               consumer requests, and processing of the data return.
+  //               Registration actions with Oxs_Director should be
+  //               completed by the end of this phase.
+  //
+  //   PostInit(): Internal adjustments reflecting consumer requests
+  //               from the previous phase, and finalization of
+  //               initialization.  Querying of Oxs_Director for
+  //               registration information from other Oxs_Ext objects.
+  //
+  // An Oxs_Ext object's internal initialization may spread across any
+  // or all of the three phases, as long as the producer/consumer
+  // expectations are honored.  In particular, prior to OOMMF API
+  // 20191207 this process consisted of only a single routine, Init(),
+  // so older code may fall back on default implementations of PreInit()
+  // and PostInit().  For this reason queries to Oxs_Director concerning
+  // registration from other Oxs_Ext objects should be delayed until the
+  // PostInit() phase.
+  //
+  // NB: Any child that overrides any of the Init functions should embed
+  //     a call to the Oxs_Ext version of that function to ensure proper
+  //     initialization of general Oxs_Ext members (in particular, user
+  //     outputs).
+  virtual OC_BOOL PreInit();
+  virtual OC_BOOL Init() { return 1; };
+  virtual OC_BOOL PostInit() { return 1; };
 
   static Oxs_Ext* MakeNew(const char* idstring, // Child object name
                           Oxs_Director* dtr,   // App director

@@ -96,7 +96,7 @@ OC_BOOL Oxs_TransformZeeman::Init()
   Dtfrm_row1.Set(0,0,0);
   Dtfrm_row2.Set(0,0,0);
   Dtfrm_row3.Set(0,0,0);
-  return Oxs_Energy::Init();
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void

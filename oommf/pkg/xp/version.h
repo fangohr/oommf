@@ -21,8 +21,8 @@
  */
 
 #define XP_MAJOR_VERSION	2
-#define XP_MINOR_VERSION	0
-#define XP_RELEASE_LEVEL	"b"
+#define XP_MINOR_VERSION	1
+#define XP_RELEASE_LEVEL	"a"
 #define XP_RELEASE_SERIAL	0
 
 #define XP_VERSION OC_MAKE_VERSION(XP)

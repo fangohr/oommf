@@ -89,7 +89,7 @@ void ArgLine::Set(const char* argstr)
   *bptr='\0';
 
   // Use Tcl_SplitList to parse input string
-  int new_argc;  CONST84 char ** new_argv;
+  int new_argc;  const char ** new_argv;
   if(Tcl_SplitList(NULL,buf,&new_argc,&new_argv)!=TCL_OK)
     return;  // ERROR! Improper list structure.  No change made.
 
@@ -287,7 +287,7 @@ int MIF::ReadLine(FILE* infile,int max_strc,int &strc,Nb_DString* strv)
   // list, in which case we reinstate the character and
   // retry at the next comment character (if any).
   char *cmtptr;
-  int paramc=0;  CONST84 char ** paramv=NULL;
+  int paramc=0;  const char ** paramv=NULL;
   cmtptr=workbuf+offset;
   while(1) {
     if((cmtptr=strchr(cmtptr,MIFCOMMENT))!=NULL) 
@@ -1125,8 +1125,9 @@ Nb_DString MIF::Write(int &errorcode)
   outstr="# MIF 1.1\n";
 
   // Material parameters
-  sprintf(buf,"Ms: %.17g\nA: %.17g\nK1: %.17g\nEdge K1: %.17g\n",
-	  Ms,A,K1,EdgeK1);
+  snprintf(buf,sizeof(buf),
+           "Ms: %.17g\nA: %.17g\nK1: %.17g\nEdge K1: %.17g\n",
+           Ms,A,K1,EdgeK1);
   outstr.Append(buf);
   buf[0]='\0';
   strcpy(buf,"Anisotropy Type: ");
@@ -1137,18 +1138,19 @@ Nb_DString MIF::Write(int &errorcode)
     default: errorcode++; buf[0]='\0'; break;
     }
   outstr.Append(buf);
-  sprintf(buf,"Anisotropy Dir1: %.17g %.17g %.17g\n",
+  snprintf(buf,sizeof(buf),"Anisotropy Dir1: %.17g %.17g %.17g\n",
 	  AnisDir1.GetX(),AnisDir1.GetY(),AnisDir1.GetZ());
   outstr.Append(buf);
-  sprintf(buf,"Anisotropy Dir2: %.17g %.17g %.17g\n",
+  snprintf(buf,sizeof(buf),"Anisotropy Dir2: %.17g %.17g %.17g\n",
 	  AnisDir2.GetX(),AnisDir2.GetY(),AnisDir2.GetZ());
   outstr.Append(buf);
   AnisInitArgs.Get(sbuf);
   outstr.Append("Anisotropy Initialization: ");
   outstr.Append(sbuf);
   outstr.Append("\n");
-  sprintf(buf,"Do Precess: %d\nGyratio: %.17g\nDamp Coef: %.17g\n",
-	  DoPrecess,GyRatio,DampCoef);
+  snprintf(buf,sizeof(buf),
+           "Do Precess: %d\nGyratio: %.17g\nDamp Coef: %.17g\n",
+           DoPrecess,GyRatio,DampCoef);
   outstr.Append(buf);
   
   // Demag Specification
@@ -1167,9 +1169,9 @@ Nb_DString MIF::Write(int &errorcode)
   outstr.Append(buf);
 
   // Part Geometry
-  sprintf(buf,"Part Width: %.17g\nPart Height: %.17g\n"
-	  "Part Thickness: %.17g\nCell Size: %.17g\n",
-	  PartWidth,PartHeight,PartThickness,CellSize);
+  snprintf(buf,sizeof(buf),"Part Width: %.17g\nPart Height: %.17g\n"
+           "Part Thickness: %.17g\nCell Size: %.17g\n",
+           PartWidth,PartHeight,PartThickness,CellSize);
   outstr.Append(buf);
   strcpy(buf,"Part Shape: ");
   switch(GeomType)
@@ -1204,7 +1206,7 @@ Nb_DString MIF::Write(int &errorcode)
   outstr.Append("\n");
 
   // Experiment Parameters 
-  int frl_argc; CONST84 char ** frl_argv;
+  int frl_argc; const char ** frl_argv;
   if(Tcl_SplitList(NULL,ab(FieldRangeList.GetStr()),
 		   &frl_argc,&frl_argv)==TCL_OK) {
     for(int i=0;i<frl_argc;i++) {
@@ -1258,9 +1260,9 @@ Nb_DString MIF::Write(int &errorcode)
   }
 
   // Miscellaneous
-  sprintf(buf,"Randomizer Seed: %d\n"
-	  "Min Time Step: %.17g\nMax Time Step: %.17g\n",
-	  RandomizerSeed,MinTimeStep,MaxTimeStep);
+  snprintf(buf,sizeof(buf),"Randomizer Seed: %d\n"
+           "Min Time Step: %.17g\nMax Time Step: %.17g\n",
+           RandomizerSeed,MinTimeStep,MaxTimeStep);
   outstr.Append(buf);
   if(UserComment.Length()>0) {
     outstr.Append("User Comment: ");

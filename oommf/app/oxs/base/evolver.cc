@@ -97,7 +97,7 @@ void Oxs_Evolver::UpdateFixedSpinList(const Oxs_Mesh* mesh)
   // Sort into increasing order.  This may improve cache locality
   // for accesses by solvers, but in particular is assumed by
   // the threaded portion of the energy/field evaluation code,
-  // Oxs_ComputeEnergies (see oxs/base/energy.cc).
+  // Oxs_ComputeEnergies (see oxs/base/chunkenergy.cc).
   sort(fixed_spin_list.begin(),fixed_spin_list.end());
 
 }
@@ -141,7 +141,9 @@ OC_BOOL Oxs_Evolver::Init()
 {
   if(!Oxs_Ext::Init()) return 0;
 
+  // Clear fixed spins
   mesh_id = 0;
   fixed_spin_list.clear();
+
   return 1;
 }

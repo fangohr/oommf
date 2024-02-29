@@ -178,7 +178,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## NUMA development (numactl-devel) packages installed.
 # $config SetValue use_numa 1  ;# 1 to enable, 0 (default) to disable.
 #
-## Default nodes if NUMA is enables.  This is either a numeric list or
+## Default nodes if NUMA is enabled.  This is either a numeric list or
 ## else one of the keywords "auto" or "none".
 # $config SetValue numanodes auto
 #
@@ -253,16 +253,20 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_remove_valuesafeflags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 # $config SetValue program_compiler_c++_add_valuesafeflags \
-#                          {-funroll-loops}
+#                          {-funroll-loops -fno-tree-slp-vectorize}
 #
 ## For debugging builds try
 # $config SetValue program_compiler_c++_remove_flags {.*}
-# $config SetValue program_compiler_c++_add_flags {--std=c++11 -pthread -O0}
+# $config SetValue program_compiler_c++_add_flags \
+#                    {--std=c++11 -pthread -O0 -Wno-non-template-friend}
 # $config SetValue program_compiler_c++_remove_valuesafeflags {.*}
-# $config SetValue program_compiler_c++_add_valuesafeflags {--std=c++11 -pthread -O0}
-#
+# $config SetValue program_compiler_c++_add_valuesafeflags \
+#                                             {--std=c++11 -pthread -O0}
+# $config SetValue fma_type 0
+##  (for fma_type other than 0 include appropriate -m flags in
+##   *add_flags; run 'tclsh oommf.tcl +platform +v' to see active flags.)
 ## and set
-##  Oc_Option Add * Platform cflags {-debug 1}
+#  Oc_Option Add * Platform cflags {-debug 1}
 ## in oommf/config/local/options.tcl
 #
 #

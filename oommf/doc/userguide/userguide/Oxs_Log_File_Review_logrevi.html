@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Oxs Log File Review: logreview</TITLE>
+<META NAME="description" CONTENT="Oxs Log File Review: logreview">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="H_Fields_from_Magnetization.html">
+<LINK REL="previous" HREF="OOMMF_Host_Server_launchhos.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="H_Fields_from_Magnetization.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html954"
+  HREF="H_Fields_from_Magnetization.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html950"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html944"
+  HREF="OOMMF_Host_Server_launchhos.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html952"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html955"
+  HREF="H_Fields_from_Magnetization.html">H Fields from Magnetization</A>
+<B> Up:</B> <A NAME="tex2html951"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html945"
+  HREF="OOMMF_Host_Server_launchhos.html">The OOMMF Host Server:</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION0017120000000000000000"></A><A NAME="sec:logreview"></A><A NAME="19204"></A><A NAME="19205"></A>
+<BR>
+Oxs Log File Review: logreview
+</H1>
+The OOMMF applications
+<A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
+ NAME="19212"><B>Oxsii</B> and <B>Boxsi</B></A> record status and error
+messages from job runs into log files (default
+<TT><B>oommf/oxsii.errors</B></TT> and <TT><B>oommf/boxsi.errors</B></TT>, respectively). These
+are plain text files, but they can grow rather long and messages from
+multiple <B>Oxsii</B> or <B>Boxsi</B> instances running simultaneously can
+interweave making the log difficult to interpret. The <B>logreview</B>
+application can make the logs easier to understand by extracting subsets
+of log records based on various criteria. (See too the command line
+tool <A HREF="Last_Oxsii_Boxsi_Run_lastjo.html#sec:lastjob"
+ NAME="19222"><B>lastjob</B></A>, which also
+accesses the default log files.)
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>logreview</B> command line is:
+<PRE>
+tclsh oommf.tcl logreview [standard options] &lt;oxsii|boxsi|-file logfile&gt; \
+  [-after timestamp] [-before timestamp] [-collate] [-firstrun] \
+  [-glob globstr] [-grep regexpr] [-info] [-lastrun] [-machine name] \
+  [-pid pid] [-runselect first last] [-user username]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>oxsii|boxsi|-file logfile</B></TT></STRONG></DT>
+<DD>Specifies the input log
+  file.  If <TT>oxsii</TT> (resp. <TT>boxsi</TT>) is selected then the default
+  <B>Oxsii</B> (<B>Boxsi</B>) log file <TT><B>oxsii.errors</B></TT>
+  (<TT><B>boxsi.errors</B></TT>) in the OOMMF root directory is read. Otherwise
+  use <TT>-file</TT> to select the file. (Use ``-'' to read from stdin.)
+</DD>
+<DT><STRONG><TT><B>-after timestamp</B></TT></STRONG></DT>
+<DD>Select only log entries on or after
+  <TT>timestamp</TT>, where <TT>timestamp</TT> is in a format recognized by the
+  Tcl command <TT>clock scan</TT> in ``Free Form Scan'' mode.
+</DD>
+<DT><STRONG><TT><B>-before timestamp</B></TT></STRONG></DT>
+<DD>Select only log entries on or before
+  <TT>timestamp</TT>, where <TT>timestamp</TT> is in a format recognized by the
+  Tcl command <TT>clock scan</TT> in ``Free Form Scan'' mode.
+</DD>
+<DT><STRONG><TT><B>-collate</B></TT></STRONG></DT>
+<DD>Reorder log entries to group individual job run
+  log records together. Job run log entries typically begin with a
+  <TT>Start:</TT> record and finish with an <TT>End</TT> record, but if multiple
+  instances of <B>Oxsii</B> or <B>Boxsi</B> are running simultaneously
+  then log messages from the different instances can become intertwined.
+  The <TT>-collate</TT> option retains the ordering of the first record in
+  each job.
+</DD>
+<DT><STRONG><TT><B>-firstrun</B></TT></STRONG></DT>
+<DD>Prints all records for the first run in
+  the log. Shorthand for <TT>-runselect 0 0</TT>.
+</DD>
+<DT><STRONG><TT><B>-glob globstr</B></TT></STRONG></DT>
+<DD>Restrict to log entries matching the
+  glob-style pattern <TT>globstr</TT>, as used by the Tcl <TT>string match</TT>
+  command. This is a full entry, multi-line match, so <TT>globstr</TT> will
+  typically start and end with the asterisk `<TT>*</TT>' wildcard character.
+</DD>
+<DT><STRONG><TT><B>-grep regexpr</B></TT></STRONG></DT>
+<DD>Restrict to log entries matching the
+  regular-expression pattern <TT>regexpr</TT>, as used by the Tcl <TT>regexp</TT>
+  command. If the `<TT>&#94;</TT>' (string start) and `<TT>$</TT>' (string end)
+  anchors are not specified, then a match to any part of the log entry
+  is accepted. Use the newline character `<TT><TT>&#92;</TT>n</TT>' to tie a pattern to
+  the start of a line inside a log entry.
+</DD>
+<DT><STRONG><TT><B>-info</B></TT></STRONG></DT>
+<DD>Print informational details about the log
+  selection instead of the normal result. If <TT>-collate</TT> is specified
+  then this output will include the number of job runs.
+</DD>
+<DT><STRONG><TT><B>-lastrun</B></TT></STRONG></DT>
+<DD>Prints all records for the last run in
+  the log. Shorthand for <TT>-runselect end end</TT>.
+</DD>
+<DT><STRONG><TT><B>-machine name</B></TT></STRONG></DT>
+<DD>Restrict to log entries recorded from the
+  specified machine.
+</DD>
+<DT><STRONG><TT><B>-pid pid</B></TT></STRONG></DT>
+<DD>Restrict to log entries from processes with
+  system process id <TT>pid</TT>. The <TT>pid</TT> parameter may be a quoted
+  list of multiple PIDs to select entries from multiple processes. (For
+  active OOMMF applications, the OOMMF command line program
+  <A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A> can
+  be used to map OOMMF IDs to system PIDs.)  Operating systems recycle
+  PIDs, and they are assigned separately on each machine, so it may be
+  necessary to use the <TT>-after</TT>, <TT>-before</TT>, and <TT>-machine</TT>
+  options to separate duplicate PID assignments.
+</DD>
+<DT><STRONG><TT><B>-runselect first last</B></TT></STRONG></DT>
+<DD>Prints all records for jobs
+  indexed <TT>first</TT> through <TT>last</TT>, inclusive, where <TT>first</TT> and
+  <TT>last</TT> are 0-based indices as interpreted by the Tcl <TT>lindex</TT>
+  command. In particular, <TT>end</TT> may be used to denote the last
+  run. This option implies <TT>-collate</TT>. It is applied before
+  <TT>-glob</TT> and <TT>-grep</TT> but after the other filtering options.
+</DD>
+<DT><STRONG><TT><B>-user username</B></TT></STRONG></DT>
+<DD>Restrict to log entries from user
+  <TT>username</TT>.
+</DD>
+</DL>
+The result is printed to stdout. If <TT>-info</TT> is not requested, then
+the output will be a collection of records in the usual
+<B>Oxsii</B>/<B>Boxsi</B> plain text log format. Be aware that <TT>Start:</TT>
+records can be trimmed off by <TT>-after</TT> requests, and <TT>End</TT> records
+can be trimmed by <TT>-before</TT> requests, or missing altogether if a
+job aborts due to an error.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Examples</B></FONT>
+<BR>
+The following prints all <B>Oxsii</B> <TT>Start:</TT> and
+<TT>End</TT> records from yesterday afternoon, collated by job:
+<PRE>
+   tclsh oommf.tcl logreview oxsii -collate -grep "\nStart:|\nEnd" \
+      -after "12:00 yesterday" -before "17:00 yesterday"
+</PRE>
+The next example uses the <TT>-info</TT> and <TT>-collate</TT> options together
+to get a count of jobs that ran during some time window:
+<PRE>
+   tclsh oommf.tcl logreview boxsi -info -collate \
+      -after "10 days ago" -before "3 days ago"
+</PRE>
+To see the records for the last three runs in the <B>Boxsi</B> log:
+<PRE>
+   tclsh oommf.tcl logreview boxsi -runselect end-2 end
+</PRE>
+Over time the default log files can become quite large. To trim
+records preceding some date, one can do
+<PRE>
+   tclsh oommf.tcl logreview oxsii -after 1-Apr-2023 &gt; trimmedlog.txt
+</PRE>
+and then move the <TT><B>trimmedlog.txt</B></TT> file to <TT><B>oommf/oxsii.errors</B></TT>.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html954"
+  HREF="H_Fields_from_Magnetization.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html950"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html944"
+  HREF="OOMMF_Host_Server_launchhos.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html952"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
+</BODY>
+</HTML>

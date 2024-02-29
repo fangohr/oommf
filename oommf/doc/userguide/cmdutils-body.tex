@@ -107,9 +107,9 @@ tclsh oommf.tcl avf2odt [standard options] \
    [-index label units valexpr] [-ipat pattern] [-normalize <0|1>] \
    [-numfmt fmt] [-onefile outfile] [-opatexp regexp] [-opatsub sub] \
    [-region xmin ymin zmin xmax ymax zmax] \
-   [-rregion rxmin rymin rzmin rxmax rymax rzmax] \
-   [-truncate <0|1>] [-v level] [-valfunc label units fcnexpr] \
-   [infile ...]
+   [-rregion rxmin rymin rzmin rxmax rymax rzmax] [-truncate <0|1>] \
+   [-v level] [-valfunc label units fcnexpr] \
+   [-wgtfunc fcnexpr exclude_zeros] [infile ...]
 \end{verbatim}
 where
 \begin{description}
@@ -134,7 +134,7 @@ where
   point in the selected region, where the first 3 columns are the
   point coordinates, and the last 3 are the $v_x$, $v_y$ and $v_z$
   values at the point.  If the type is \cd{ball}, then one line is
-  output for each sample point for which a ball of radius \cd{brad}
+  output for each sample point for which a ball of radius brad
   (see \cd{-ball\_radius} option) centered about that point lies
   entirely inside the selected region.  The output values consist of 6
   columns: the ball center point location and the $v_x$, $v_y$ and
@@ -159,7 +159,7 @@ where
   is \cd{x}.
 \item[\optkey{-ball\_radius brad}]
   This option is required if \cd{-average} is \cd{ball}, in which case
-  \cd{brad} specifies the radius of the averaging ball in problem
+  brad specifies the radius of the averaging ball in problem
   units (e.g., meters).  If  \cd{-average} is not \cd{ball}, then this
   option is ignored.
 \item[\optkey{-defaultpos \boa 0\pipe 1\bca}]
@@ -284,10 +284,10 @@ where
   values and magnitude.  The output is the value of fcnexpr averaged
   across the manifold selected by the \cd{-average} option.  A couple
   of examples are
-\begin{verbatim}
-   -valfunc Ms   A/m '$vmag'
-   -valfunc M110 A/m '($vx+$vy)/sqrt(2.)'
-\end{verbatim}
+\begin{alltt}
+   -valfunc Ms   A/m \ssquote\$vmag\ssquote
+   -valfunc M110 A/m \ssquote(\$vx+\$vy)/sqrt(2.)\ssquote
+\end{alltt}
   As with the valexpr string for \cd{-index}, the fcnexpr string
   should be surrounding by single quotes on \Unix\ in order to
   forestall interpolation of the special variables by the shell.  On
@@ -299,6 +299,41 @@ where
   columns in the output file, in the order specified.  These
   additional columns will be append to the right of all other columns in
   the output file.
+\item[\optkey{-wgtfunc fcnexpr exclude\_zeros}]
+  The \cd{-wgtfunc} option provides a pointwise weighting to the file
+  field values. The fcnexpr is a \Tcl\ \cd{expr} expression of the same
+  form as used in the \cd{valfunc} option, and supports the same special
+  variables. At each spatial location the expression is evaluated (the
+  weight) and is multiplied against the field value there. If
+  exclude\_zeros is non-zero then points with zero weight are excluded
+  from the average. Multiple instances of this option are stacked; in
+  this case a point is excluded from the average if any of the instances
+  with exclude\_zeros set true have weight = 0. For the \cd{plane},
+  \cd{line}, and \cd{ball} manifold types, if exclude\_zeros>1 then
+  an additional column is included in the output reporting the number
+  of points in the averaging manifold.
+
+  One use of the \cd{-wgtfunc} option with exclude\_zeros > 0 is to
+  average across irregular subsets of the full volume. (As compared to
+  the \cd{-region} and \cd{-rregion} options which create only
+  axis-parallel rectangular subregions.) For example, to take averages
+  across a full-height cylindrical volume of radius 15~nm centered about
+  $(x,y) = (400\times 10^{-9},200\times 10^{-9})$, use
+\begin{alltt}
+   -wgtfunc {\ssquote}pow(\$x-400e-9,2)+pow(\$y-200e-9,2)<pow(15e-9,2) ? 1 : 0\ssquote\ 1
+\end{alltt}
+  (On \Windows\ replace the single quotes with double quotes.) As
+  another example, given a magnetization file (\cd{.omf}) for a magnetic
+  part with an irregular boundary, find the magnetization
+  averaged across the magnetically active portion (i.e., the part with
+  $\vM\neq0$) with
+\begin{alltt}
+   -wgtfunc \ssquote\$vmag == 0 ? 0 : 1\ssquote\ 1
+\end{alltt}
+  (If exclude\_zeros here were 0 instead of 1, then the average
+  would be across the full volume, yielding a smaller result
+  because of the averaged-in zeros.)
+
 \item[\optkey{infile \ldots}]
   Input file list.  Files must be one of the recognized
   formats,  \OVF\ 1.0 or \VIO, in a rectangular mesh subformat.
@@ -475,7 +510,29 @@ value.  Pay attention, however, to the scaling of the vector value as
 specified by ``\verb+# valueunit+'' and ``\verb+# valuemultiplier+''
 header lines (OVF version 1 only).
 
-For output format details, see the \hyperrefhtml{OVF file
+The \app{avf2ovf} command processes only one file at at time. To convert
+a large collection of files use the looping facilities in your command
+shell. For example, if you are running a Bourne shell derivative such
+\cd{bash} (common on \Linux) or \cd{zsh} (\MacOSX), you can convert all
+\cd{.omf} files in the current directory to NumPy NPY format with the
+command
+\begin{verbatim}
+ for i in *.omf ; do \
+   tclsh oommf.tcl avf2ovf -fileformat npy 1 $i ${i%.omf}.npy ; \
+ done
+\end{verbatim}
+Here the shell variable \cd{i} is set in turn to the name of each
+\cd{.omf} file, and fed as the \cd{infile} to \cd{avf2ovf}. For the
+\cd{outfile}, the syntax
+\verb+${i%.omf}.npy+ replaces the \cd{.omf} extension with \cd{.npy}.
+
+The equivalent on \Windows\ is
+\begin{verbatim}
+ for %i in (*.omf) do tclsh oommf.tcl avf2ovf -fileformat npy 1 %i %~ni.npy
+\end{verbatim}
+In this case \verb+%~ni.npy+ replaces the filename extension.
+
+For file format details, see the \hyperrefhtml{OVF file
 description}{OVF file description (Sec.~}{,
 page~\pageref{sec:ovfformat})}{sec:ovfformat}.
 
@@ -655,17 +712,18 @@ parameters, and the following additional parameters are available:
  Color of the mat.
 \item[\optkey{misc,width}, \optkey{misc,height}]
  Maximum width and height of the output bitmap, in pixels.  If
- \cd{misc,crop} is enabled, then one or both of these dimensions may be
- shortened.
-\item[\optkey{misc,crop}]
+ \cd{misc,croptomargin} is enabled, then one or both of these dimensions
+ may be shortened.
+\item[\optkey{misc,croptomargin}]
  If disabled (0), then any leftover space in the bitmap (of dimensions
  \cd{misc,width} by \cd{misc,height}) after packing the image are filled
  with the background color.  If enabled (1), then the bitmap is cropped
- to just include the image (with the margin specified by
- \cd{misc,margin}).  {\bf NOTE:} Some movie formats require that
- bitmap dimensions be multiples of 8 or 16.  For such purposes, you
- should disable \cd{misc,crop} and specify appropriate dimensions
- directly with \cd{misc,width} and \cd{misc,height}.
+ at the margins specified by \cd{misc,margin}. {\bf NOTE:} Some movie
+ formats require that bitmap dimensions be multiples of 8 or 16.  For
+ such purposes, you should disable \cd{misc,croptomargin} and specify
+ appropriate dimensions directly with \cd{misc,width} and
+ \cd{misc,height}.
+\item[\optkey{misc,crop}] Deprecated option replaced by \cd{misc,croptomargin}.
 \end{description}
 
 The \hyperrefhtml{default configuration file}{default configuration file
@@ -681,6 +739,27 @@ configuration files by specifying multiple user configuration files on
 the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
+The \cd{misc,datascale} configuration option can be used in conjunction
+with the \cd{colorphase} settings to control the assignment of values to
+the selected colormap. If \cd{colorphase} is zero then the colormap
+extremes correspond to $\pm\,\cd{misc,datascale}$.  If you want to shift
+the colors to a specific range, say to have the pixel color display
+range from $a$ to $b$ with $b>a$, then use
+\begin{eqnarray*}
+  \cd{misc,datascale} & = & (b-a)/2 \\
+  \cd{pixel,colorphase} & = & -(b+a)/\left[(b-a)/2\right]
+\end{eqnarray*}
+The \cd{pixel,colorreverse} setting can be used to invert the colormap
+direction, e.g., to change Green-White-Orange to Orange-White-Green.
+
+The \fn{oommf/app/mmdisp/} directory contains the
+files\index{colorbar,~making}\index{colorwheel,~making}
+\fn{colorbar.config}, \fn{colorbar.ovf} and \fn{colorwheel.config},
+\fn{colorwheel.ovf} that may be used to create colorbar and colorwheel
+images that can be embedded in figures for publications and
+presentations. Refer to the notes included at the bottom of
+\fn{colorbar.config} for details.
+
 \begin{codelisting}{f}{fig:avf2ppm.config}{Contents of default configuration
 file \fn{avf2ppm.config}.}{sec:avf2ppmconfig}{ref}
 \begin{verbatim}
@@ -695,7 +774,7 @@ array set plot_config {
     arrow,colorphase   0                misc,margin        10
     arrow,colorreverse 0                misc,width         640
     arrow,autosample   1                misc,height        480
-    arrow,subsample    10               misc,crop          1
+    arrow,subsample    10               misc,croptomargin  1
     arrow,size         1                misc,zoom          0
     arrow,viewscale    1                misc,rotation      0
                                         misc,datascale     0
@@ -719,11 +798,14 @@ array set plot_config {
             avf2ps}\label{sec:avf2ps}%
 \index{file!PostScript}\index{file!vector~field}\index{file!conversion}
 
-The \app{avf2ps}\index{application!avf2ps} utility creates a
-collection of color \eps\ files from a collection of
-vector field files (e.g., \fn{.omf}, \fn{.ovf}), which can be embedded
-into larger \postscript\ documents or printed directly on a \postscript\
-printer.  Operation of the \app{avf2ps} command is modeled after the
+The \app{avf2ps}\index{application!avf2ps} utility creates a collection
+of color \eps\ (\fn{.eps}) files from a collection of vector field files
+(e.g., \fn{.omf}, \fn{.ovf}). Third party tools can be used to convert
+\fn{.eps} files into other formats such as the \pdf\ that can be
+embedded into larger documents. An advantage of \fn{.eps} files over
+bitmap images such as \fn{.png} or \fn{.tiff} is that arrows in the
+\fn{.eps} files scale without pixelization to any magnification.
+Operation of the \app{avf2ps} command is modeled after the
 {\hyperrefhtml{\app{avf2ppm} command}{\app{avf2ppm} command
 (Sec.~}{)}{sec:avf2ppm}\index{application!avf2ppm}} and the print
 dialog box in {\hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
@@ -791,7 +873,7 @@ tclsh oommf.tcl avf2ps -ipat *.ovf -opatsub .pdf -filter "ps2pdf - -"
 \end{verbatim}
 On \Unix, either drop the \cd{-ipat} flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
-\cd{-ipat '*.ovf'}.
+\verb+-ipat '*.ovf'+.
 
 \starssechead{Configuration files\label{sec:avf2psconfig}}\index{file!configuration}
 The details of the conversion process are specified by plain-text
@@ -816,12 +898,29 @@ documentation, except that \app{avf2ps} ignores the
 \cd{misc,defaultwindowwidth} and \cd{misc,defaultwindowheight}
 parameters, and the following additional parameters are available:
 \begin{description}
+\item[\optkey{arrow,length}]
+  Full length of arrow, from tail to tip. All of the arrow dimensions,
+  including this one, are measured relative to the sample cell size. The
+  default value for \cd{arrow,length} is 0.9, which being less than 1.0
+  ensures that arrows in neighboring cells don't overlap.
+\item[\optkey{arrow,width}]
+  Width of the arrow shaft.
+\item[\optkey{arrow,tipwidth}]
+  Width of the arrow at its tip
+\item[\optkey{arrow,headwidth}]
+  Width of the arrowhead at its widest point.
+\item[\optkey{arrow,headilength}]
+  Distance from the tip of the arrow back to the point where the
+  arrowhead detaches from the shaft.
+\item[\optkey{arrow,headolength}]
+  Distance along the shaft from the tip of the arrow back to the widest
+  point of the arrowhead.
 \item[\optkey{arrow,outlinewidth}]
  Width of a colored outline around each arrow; this can improve
  visibility of an arrow when it is overlayed against a background with
  color similar to that of the arrow.  Default value is zero, meaning no
- outline.  A value of 1 produces an outline with a recommended width,
- and other positive values are scaled relative to this.
+ outline. Reasonable non-zero values are generally some fraction of the
+ the arrow shaft width.
 \item[\optkey{arrow,outlinecolor}]
  If \cd{arrow,outlinewidth} is positive, then this is the color of the
  arrow outline.
@@ -831,23 +930,29 @@ parameters, and the following additional parameters are available:
  elements.
 \item[\optkey{misc,matwidth}]
  Specifies the width, in pixels, of a mat (frame) around the outer edge
- of the image.  The mat is drawn in front of all other objects.  To
- disable, set matwidth to 0.
+ of the image.  The mat is drawn inwards from the margin, in front of
+ all other objects.  To disable, set matwidth to 0.
 \item[\optkey{misc,matcolor}]
  Color of the mat.
 \item[\optkey{misc,width}, \optkey{misc,height}]
- Maximum width and height of the output bitmap, in pixels.  If
- \cd{misc,crop} is enabled, then one or both of these dimensions may be
- shortened.
-\item[\optkey{misc,crop}]
- If disabled (0), then any leftover space in the bitmap (of dimensions
+  Maximum width and height of the output, in pixels.
+  One or both of these dimensions may be shortened if
+  \cd{misc,croptomargin} is enabled.
+\item[\optkey{misc,croptomargin}]
+ If disabled (0), then any leftover space in the output (of dimensions
  \cd{misc,width} by \cd{misc,height}) after packing the image are filled
- with the background color.  If enabled (1), then the bitmap is cropped
- to just include the image (with the margin specified by
- \cd{misc,margin}).  {\bf NOTE:} Some movie formats require that
- bitmap dimensions be multiples of 8 or 16.  For such purposes, you
- should disable \cd{misc,crop} and specify appropriate dimensions
- directly with \cd{misc,width} and \cd{misc,height}.
+ with the background color.  If enabled (1), then the output is cropped
+ at the margins specified by \cd{misc,margin}. \textbf{NOTES:} If the
+ arrow or pixel glyphs are oversized (\cd{size} bigger than 1), then
+ they may extend beyond the margin. In this case the glyphs will be
+ clipped by \cd{misc,croptomargin}. If this is not desired, then either
+ increase the margin size to compensate, or else disable
+ \cd{misc,croptomargin} and use third party tools such as \app{epstool},
+\begin{verbatim}
+epstool --copy --bbox input.eps output.eps
+\end{verbatim}
+ or \app{epstopdf} + \app{pdfcrop} to obtain tight cropping.
+\item[\optkey{misc,crop}] Deprecated option replaced by \cd{misc,croptomargin}.
 \end{description}
 
 The \hyperrefhtml{default configuration file}{default configuration file
@@ -863,33 +968,42 @@ configuration files by specifying multiple user configuration files on
 the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
 
+The \fn{misc,datascale} and \fn{arrow,colorphase}, \fn{pixel,colorphase}
+configuration options can be used to control the mapping of values to
+the selected colormap. See the
+\hyperrefhtml{\app{avf2ppm} documentation}{\app{avf2ppm} documentation
+(Sec.~}{)}{sec:avf2ppm} for details.
+
 \begin{codelisting}{f}{fig:avf2ps.config}{Contents of default configuration
   file \fn{avf2ps.config}.}{sec:avf2psconfig}{ref}
 \begin{verbatim}
 array set plot_config {
-  arrow,status       1                  misc,background    #FFFFFF
-  arrow,antialias    1                  misc,drawboundary  1
-  arrow,colormap     Red-Black-Blue     misc,boundarywidth 1
-  arrow,colorcount   100                misc,boundarycolor #000000
-  arrow,quantity     z                  misc,boundarypos   front
-  arrow,colorphase   0                  misc,matwidth      0
-  arrow,colorreverse 0                  misc,matcolor      blue
-  arrow,autosample   1                  misc,margin        10
-  arrow,subsample    10                 misc,width         640
-  arrow,size         1                  misc,height        480
-  arrow,viewscale    1                  misc,crop          1
-  arrow,boundarywidth 0.0               misc,zoom          0
-  arrow,boundarycolor #000000           misc,rotation      0
-  arrow,outlinewidth 0.0                misc,datascale     0
-  arrow,outlinecolor #000000            misc,relcenterpt   {0.5 0.5 0.5}
-
-  pixel,status       1                  viewaxis            +z
-  pixel,colormap     Teal-White-Red     viewaxis,xarrowspan {}
-  pixel,colorcount   100                viewaxis,xpixelspan {}
-  pixel,opaque       1                  viewaxis,yarrowspan {}
-  pixel,quantity     x                  viewaxis,ypixelspan {}
-  pixel,colorphase   0                  viewaxis,zarrowspan {}
-  pixel,colorreverse 0                  viewaxis,zpixelspan {}
+  arrow,status       1                  misc,background     #FFFFFF
+  arrow,colormap     Red-Black-Blue     misc,drawboundary   1
+  arrow,colorcount   100                misc,boundarywidth  1
+  arrow,quantity     z                  misc,boundarycolor  #000000
+  arrow,colorphase   0                  misc,boundarypos    front
+  arrow,colorreverse 0                  misc,matwidth       0
+  arrow,autosample   1                  misc,matcolor       #FFFFFF
+  arrow,subsample    10                 misc,margin         10
+  arrow,size         1                  misc,width          640
+  arrow,length       0.9                misc,height         480
+  arrow,width        0.075              misc,croptomargin   1
+  arrow,tipwidth     0.01875            misc,zoom           0
+  arrow,headwidth    0.4                misc,rotation       0
+  arrow,headilength  0.4                misc,datascale      0
+  arrow,headolength  0.5                misc,relcenterpt {0.5 0.5 0.5}
+  arrow,outlinewidth 0.0
+  arrow,outlinecolor #000000            viewaxis            +z
+                                        viewaxis,xarrowspan {}
+  pixel,status       1                  viewaxis,xpixelspan {}
+  pixel,colormap     Teal-White-Red     viewaxis,yarrowspan {}
+  pixel,colorcount   225                viewaxis,ypixelspan {}
+  pixel,opaque       1                  viewaxis,zarrowspan {}
+  pixel,quantity     x                  viewaxis,zpixelspan {}
+  pixel,colorphase   0.
+  pixel,colorreverse 0
+  pixel,colorinvert  0
   pixel,autosample   1
   pixel,subsample    0
   pixel,size         1
@@ -1003,6 +1117,197 @@ For output file format details, see the \hyperrefhtml{OVF file
 description}{OVF file description (Sec.~}{)}{sec:ovfformat}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Field from Magnetization (3D):
+            computefield}\label{sec:computefield}%
+\index{file!magnetization}%
+\index{file!vector~field}\index{file!scalar~field}%
+\index{file!conversion}\index{file!demag~field}
+
+Inspired by the 2D-solver based
+\hyperrefhtml{\app{mag2hfield}}{\app{mag2hfield}
+  (Sec.~}{)}{sec:mag2hfield}, the
+\app{computefield}\index{application!computefield} application uses the
+3D Oxs solver engine to compute demagnetization and other fields from a
+magnetization snapshot. Various options allow fields to be computed
+outside the original simulation volume (say the stray field above a thin
+film sample) or to isolate the field arising from one portion of the
+sample (for example from one layer in a multilayer structure).
+
+\starssechead{Launching}
+The \app{computefield} launch command is:
+\begin{alltt}
+tclsh oommf.tcl computefield [standard options] \bs
+   [-cwd directory] [-Msfile Msinputfile] [-Msspec spec] \bs
+   [-Msmask maskexpr] [-simulationbox xmin ymin zmin xmax ymax zmax] \bs
+   [-outdemagenergy demagenergyfile] [-outmif miffile] \bs
+   [-outM magfile] [-pbc axes] [-userscriptfile energyscriptfile] \bs
+   [-useroutputs {\sdquote}name1 file1 ...{\sdquote}] \bs
+   [-runboxsi <0|1>] [-runopts boxsiopts] <m0_infile> [outdemagfile]
+\end{alltt}
+where
+\begin{description}
+\item[\optkey{-cwd directory}]
+  Make directory the active working directory.
+\item[\optkey{-Msfile Msinputfile}]
+  Set pointwise saturation magnetization values from
+  \fn{Msinputfile}, overriding $M_s$ values from \fn{m0\_infile}.  Any
+  points outside the span of \fn{Msinputfile} have $M_s$ set to 0.
+\item[\optkey{-Msspec spec}]
+  Override the $M_s$ values from \fn{m0\_infile} with the (quoted)
+  \cd{spec} string in the form of an inline
+  \hyperrefhtml{\cd{Specify}}{\cd{Specify} (Sec.~}{)}{sec:specConventions}
+  block. Note: If \cd{spec} is a single numeric value representing a
+  uniform saturation magnetization (in A/m), then that value is
+  applied but restricted to the simulation volume described by the
+  \fn{m0\_infile}, with $M_s$ is set to 0 A/m in any extended volume
+  requested by the \cd{-simulationbox} option.
+
+  At most one of \cd{-Msfile} and \cd{-Msspec} may be used.
+
+\item[\optkey{-Msmask maskexpr}]
+  At each point in the simulation volume, the \Tcl\ expr-expression
+  \cd{maskexpr} is evaluated to rescale (multiply) the otherwise set
+  saturation magnetization $M_s$. The expr-expression may include the
+  special variables \cd{\$x}, \cd{\$y}, \cd{\$z}, \cd{\$rx}, \cd{\$ry},
+  \cd{\$rz}, \cd{\$Ms}, \cd{\$mx}, \cd{\$my}, and \cd{\$mz}. The first
+  three are the raw pointwise location in meters, the second three are
+  the relative location (each in the range [0,1]), \cd{\$Ms} is the
+  saturation magnetization at the point, and \cd{(\$mx,\$my,\$,mz)} is
+  the reduced (unit normalized) magnetization. Analogous to the
+  \cd{-wgtfunc} option of \hyperrefhtml{\app{avf2odt}}{\app{avf2odt}
+    (Sec.~}{)}{sec:avf2odt}, \cd{maskexpr} is typically a 0/1 valued
+  function used to mask off a portion of the simulation part. See the
+  first example below.
+
+\item[\optkey{-simulationbox xmin ymin zmin xmax ymax zmax}]
+  Use the specified values for the simulation volume, overriding the
+  extents in the input \fn{m0\_infile} magnetization file.  The
+  x/y/z/min/max values can be listed as either six individual values or
+  quoted as a single element to \cd{computefield}. Any entry specified
+  as a single hyphen (`-') will inherit the corresponding value from the
+  \fn{m0\_infile}.  (The \cd{-info} option to the command line utility
+  \hyperrefhtml{avf2ovf}{avf2ovf (Sec.~}{)}{sec:avf2ovf} can be used to
+  view the \fn{m0\_infile} extents.)
+
+  The \cd{simulationbox} option is typically used to compute stray
+  fielda outside the original simulation volume. If the original volume
+  extends outside the requested volume, then magnetization outside the
+  requested volume is ignored and a warning is printed.
+
+\item[\optkey{-outdemagenergy demagenergyfile}]
+  Write the demagnetization energy density scalar field (.oef) to
+  \fn{demagenergyfile}.
+\item[\optkey{-outmif miffile}]
+  The \app{computefield} application creates a temporary MIF used as
+  input for running \app{boxsi}. This MIF file is deleted after
+  \app{boxsi} exits, but the \cd{-outmif} option will save a copy in
+  \fn{miffile}.
+\item[\optkey{-outM magfile}]
+  Saves a copy of the magnetization as used in the computation,
+  incorporating \fn{m0\_infile} and \cd{Ms/file/spec/mask} options.
+  This can be helpful for checking that input parameters, in particular
+  \cd{-Msmask}, are behaving as expected.
+\item[\optkey{-pbc axes}]
+  Creates a periodic mesh for the simulation. The \cd{axes}
+  should be a string of one or more of the letters ``\cd{x}'',
+  ``\cd{y}'', and ``\cd{z}'', denoting the periodic direction(s), as
+  used by the \cd{periodic} option to the
+  \htmlonlyref{\cd{Oxs\_PeriodicRectangularMesh}}{HTMLoxsperiodicrectangularmesh}
+  \cd{Specify} block\latex{ (Sec.~\ref{sec:Meshes})}.
+
+\item[\optkey{-userscriptfile energyscriptfile}]
+  The only outputs directly supported on the \app{computefield} command
+  line are demagnetization field, demagnetization energy density, and
+  magnetization. However, the user can create a separate \Tcl\ script
+  file (\cd{energyscriptfile}) with additional \cd{Oxs\_Energy} objects
+  to include in the run. (See second example below.) The name of each
+  desired output and the associated filename should be appended to the
+  \Tcl\ list ``\cd{user\_outputs}'', either directly inside the script
+  file, or via the \cd{-useroutputs} command line option.
+
+\item[\optkey{-useroutputs {\sdquote}name1 file1 ...{\sdquote}}]
+  A list, quoted as a single element on the command line, of alternating
+  outputs and filenames, referring to \cd{Oxs\_Energy} objects specified
+  in the separate \cd{-userscriptfile}. This command line option
+  augments and amends any \cd{user\_outputs} setting in the script file.
+
+\item[\optkey{-runboxsi {\oab}0{\pipe}1{\cab}}]
+  By default, \app{computefield} runs
+  \hyperrefhtml{\app{boxsi}}{\app{boxsi} (Sec.~}{)}{sec:boxsi} on its
+  constructed MIF file to compute the requested output fields. This
+  behavior is short circuited with \cd{-runboxsi 0}, which can be used in
+  conjunction with \cd{-outmif} to allow additional user edits to the
+  MIF file preceding a manual \app{boxsi} run.
+
+\item[\optkey{-runopts boxsiopts}]
+  Command line options passed to the automatic \app{boxsi} run. The
+  \cd{boxsiopts} string must be quoted as a single argument to
+  \app{computefield}.
+
+\item[\optkey{m0\_infile}]
+  Input magnetization (.omf) file. Required. This file sets the
+  magnetization direction at each point, i.e., the MIF \cd{m0} value
+  in the \htmlonlyref{\cd{Oxs\_TimeDriver}}{item:TimeDriver} and
+  \htmlonlyref{\cd{Oxs\_MinDriver}}{item:MinDriver} \cd{Specify} blocks.
+  The pointwise saturation magnetization (MIF \cd{Ms} option) and
+  simulation volume extents (MIF atlas object) are also derived from
+  this file unless overridden by other options.
+
+\item[\optkey{outdemagfile}]
+  Demagnetization output file name. Optional. If not specified then the
+  demagnetization field is not output.
+
+\end{description}
+
+\starssechead{Examples}
+Consider a multilayer thin film having total thickness 30 nm, with the
+top layer 10 nm thick. A simulation is run and the magnetization at some
+interesting point is saved to the file \fn{foo.omf}. For efficiency, the
+simulation volume was set to contain only the film itself, but for
+analysis we want to know the stray field out to 150~nm above the top of
+the film. Moreover, we would like to know the portion of the stray field
+coming from just the top 10~nm layer. The command
+\begin{verbatim}
+tclsh oommf.tcl computefield -simulationbox - - - - - 180e-9 \
+  -Msmask '20e-9<$z && $z<30e-9 ? 1 : 0' foo.omf foo-toplayer.ohf
+\end{verbatim}
+will compute this and save the results in \fn{foo-toplayer.ohf}. (On
+the \Windows\ command line, remove or replace the backslash line
+continuation character with a caret, \verb+^+, and replace the
+single quotes with double quotes.)
+
+As another example, suppose \fn{bar.omf} holds \cd{Oxs\_MinDriver::Spin}
+normalized magnetization output for a sample with uniform saturation
+magnetization of 1400~kA/m. If we want to know the magnetocrystalline
+anisotropy field at that magnetization state, we can construct a
+separate file, say barK.tcl, that contains the anisotropy block from
+the original simulation:
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy:K {
+   K1 520e3
+   axis {0 0 1}
+}
+lappend user_outputs Oxs_UniaxialAnisotropy:K:Field barK.ohf
+\end{verbatim}
+The last line requests the field output be written to the file
+\fn{barK.ohf}. We will feed this file to \app{computefield} using the
+\cd{-userscriptfile} option. After closing \fn{barK.tcl} we decide we
+would also like to have the anisotropy energy density, so we'll use the
+\cd{-useroutput} option to request that, and for good measure request
+the demagnetization energy density with \cd{-outdemagenergy} as
+well. The accompanying \app{computefield} command is
+\begin{verbatim}
+tclsh oommf.tcl computefield -Msspec 1.4e6 -userscriptfile barK.tcl \
+   -useroutputs "Oxs_UniaxialAnisotropy:K:Energy\ density barK.oef" \
+   -outdemagenergy bar-demag.oef bar.omf
+\end{verbatim}
+Note that the demagnetization field is not requested and so won't be
+saved. (If that field is wanted, just add the filename after
+\fn{bar.omf}.)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Cyclic Redundancy Check: crc32\label{sec:crc32}}%
 \index{application!crc32}\index{CRC-32}
 
@@ -1077,7 +1382,7 @@ where
 \item[\optkey{-shownames}]
  Don't kill anything, just print nicknames of matching targets, where
  nicknames are as set by the \MIF\ 2.1
- \htmlonlyref{\cd{Destination}}{html:destinationCmd}
+ \ptlink{\cd{Destination}}{PTdestinationCmd}
  command\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}.
 \item[\optkey{-test}]
  Don't kill anything, just test that targets are responding.
@@ -1098,23 +1403,24 @@ the ``Threads'' list of \hyperrefhtml{\app{mmLaunch}}{\app{mmLaunch}
 \begin{verbatim}
 tclsh oommf.tcl killoommf all
 \end{verbatim}
-is essentially equivalent to the ``\cd{File\pipe Exit All OOMMF}''
-menu option in \app{mmLaunch}, except that \app{killoommf} does not
-shut down any \app{mmLaunch} processes.
+is equivalent to the ``\cd{File\pipe Exit All OOMMF}''
+menu option in \app{mmLaunch}.
 
 An \OOMMF\ application that does not respond to \app{killoommf} can be
-killed by using the \OOMMF\ command line program
-\hyperrefhtml{\app{pidinfo}}{\app{pidinfo} (Sec.~}{)}{sec:pidinfo} to
-determine its PID (process identification) as used by the operating
-system, and then using the system facilities for terminating processes
+killed using the
+operating system pid (process identification)
+and the operating system facilities for terminating processes
 (e.g., \cd{kill} on \Unix, or the \cd{Windows Task Manager} on
-\Windows).
+\Windows). The mapping from OOMMF oids to pids can be obtained from
+either the \OOMMF\ command line program
+\hyperrefhtml{\app{pidinfo}}{\app{pidinfo} (Sec.~}{)}{sec:pidinfo}
+or \app{killoommf} with the \cd{-show} option.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Last Oxsii/Boxsi run:
+\section{Last Oxsii/Boxsi Run:
             lastjob\label{sec:lastjob}}%
-\index{application!lastjob}
+\index{application!lastjob}\index{file!log}
 
 The \app{lastjob} command reads through \hyperrefhtml{Oxs}{Oxs
 (Ch.~}{)}{sec:oxs}\index{application!Oxs} log files and identifies
@@ -1131,6 +1437,9 @@ files}{checkpoint files (Sec.~\ref{sec:oxsDrivers},
 page~}{)}{PToxsdrivercheckpoint} to disk every fifteen minutes.  If a
 simulation is aborted, for example by a system crash, then the
 checkpoint file can be used to restart the simulation.)
+Refer also to the \hyperrefhtml{\app{logreview}}{\app{logreview}
+(Sec.~}{)}{sec:logreview}\index{application!logreview} command line
+tool.
 
 \starssechead{Launching}
 The \app{lastjob} launch command is:
@@ -1174,7 +1483,7 @@ protect them from expansion by the shell.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Launching the \OOMMF\ host server:
+\section{The \OOMMF\ Host Server:
    launchhost\label{sec:launchhost}}%
 \index{application!launchhost}\index{processes!host~server}\index{ports}
 
@@ -1246,7 +1555,122 @@ example.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Calculating \vH\ Fields from Magnetization:
+\section{Oxs Log File Review: logreview\label{sec:logreview}}%
+\index{application!logreview}\index{file!log}
+The \OOMMF\ applications
+\hyperrefhtml{\app{Oxsii} and \app{Boxsi}}{\app{Oxsii} and \app{Boxsi}
+(Ch.~}{)}{sec:oxs}\index{application!Oxs} record status and error
+messages from job runs into log files (default
+\fn{oommf/oxsii.errors} and \fn{oommf/boxsi.errors}, respectively). These
+are plain text files, but they can grow rather long and messages from
+multiple \app{Oxsii} or \app{Boxsi} instances running simultaneously can
+interweave making the log difficult to interpret. The \app{logreview}
+application can make the logs easier to understand by extracting subsets
+of log records based on various criteria. (See too the command line
+tool \hyperrefhtml{\app{lastjob}}{\app{lastjob}
+(Sec.~}{)}{sec:lastjob}\index{application!lastjob}, which also
+accesses the default log files.)
+
+\starssechead{Launching}
+The \app{logreview} command line is:
+\begin{verbatim}
+tclsh oommf.tcl logreview [standard options] <oxsii|boxsi|-file logfile> \
+  [-after timestamp] [-before timestamp] [-collate] [-firstrun] \
+  [-glob globstr] [-grep regexpr] [-info] [-lastrun] [-machine name] \
+  [-pid pid] [-runselect first last] [-user username]
+\end{verbatim}
+where
+\begin{description}
+\item[\optkey{oxsii\pipe{}boxsi\pipe{}-file logfile}] Specifies the input log
+  file.  If \cd{oxsii} (resp.\ \cd{boxsi}) is selected then the default
+  \app{Oxsii} (\app{Boxsi}) log file \fn{oxsii.errors}
+  (\fn{boxsi.errors}) in the \OOMMF\ root directory is read. Otherwise
+  use \cd{-file} to select the file. (Use ``-'' to read from stdin.)
+\item[\optkey{-after timestamp}] Select only log entries on or after
+  \cd{timestamp}, where \cd{timestamp} is in a format recognized by the
+  \Tcl\ command \cd{clock scan} in ``Free Form Scan'' mode.
+\item[\optkey{-before timestamp}] Select only log entries on or before
+  \cd{timestamp}, where \cd{timestamp} is in a format recognized by the
+  \Tcl\ command \cd{clock scan} in ``Free Form Scan'' mode.
+\item[\optkey{-collate}] Reorder log entries to group individual job run
+  log records together. Job run log entries typically begin with a
+  \cd{Start:} record and finish with an \cd{End} record, but if multiple
+  instances of \app{Oxsii} or \app{Boxsi} are running simultaneously
+  then log messages from the different instances can become intertwined.
+  The \cd{-collate} option retains the ordering of the first record in
+  each job.
+\item[\optkey{-firstrun}] Prints all records for the first run in
+  the log. Shorthand for \cd{-runselect 0 0}.
+\item[\optkey{-glob globstr}] Restrict to log entries matching the
+  glob-style pattern \cd{globstr}, as used by the \Tcl\ \cd{string match}
+  command. This is a full entry, multi-line match, so \cd{globstr} will
+  typically start and end with the asterisk `\cd{*}' wildcard character.
+\item[\optkey{-grep regexpr}] Restrict to log entries matching the
+  regular-expression pattern \cd{regexpr}, as used by the \Tcl\ \cd{regexp}
+  command. If the `\cd{\textasciicircum}' (string start) and `\cd{\$}' (string end)
+  anchors are not specified, then a match to any part of the log entry
+  is accepted. Use the newline character `\cd{{\bs}n}' to tie a pattern to
+  the start of a line inside a log entry.
+\item[\optkey{-info}] Print informational details about the log
+  selection instead of the normal result. If \cd{-collate} is specified
+  then this output will include the number of job runs.
+\item[\optkey{-lastrun}] Prints all records for the last run in
+  the log. Shorthand for \cd{-runselect end end}.
+\item[\optkey{-machine name}] Restrict to log entries recorded from the
+  specified machine.
+\item[\optkey{-pid pid}] Restrict to log entries from processes with
+  system process id \cd{pid}. The \cd{pid} parameter may be a quoted
+  list of multiple PIDs to select entries from multiple processes. (For
+  active \OOMMF\ applications, the \OOMMF\ command line program
+  \hyperrefhtml{\app{pidinfo}}{\app{pidinfo} (Sec.~}{)}{sec:pidinfo} can
+  be used to map \OOMMF\ IDs to system PIDs.)  Operating systems recycle
+  PIDs, and they are assigned separately on each machine, so it may be
+  necessary to use the \cd{-after}, \cd{-before}, and \cd{-machine}
+  options to separate duplicate PID assignments.
+\item[\optkey{-runselect first last}] Prints all records for jobs
+  indexed \cd{first} through \cd{last}, inclusive, where \cd{first} and
+  \cd{last} are 0-based indices as interpreted by the \Tcl\ \cd{lindex}
+  command. In particular, \cd{end} may be used to denote the last
+  run. This option implies \cd{-collate}. It is applied before
+  \cd{-glob} and \cd{-grep} but after the other filtering options.
+\item[\optkey{-user username}] Restrict to log entries from user
+  \cd{username}.
+\end{description}
+The result is printed to stdout. If \cd{-info} is not requested, then
+the output will be a collection of records in the usual
+\app{Oxsii}/\app{Boxsi} plain text log format. Be aware that \cd{Start:}
+records can be trimmed off by \cd{-after} requests, and \cd{End} records
+can be trimmed by \cd{-before} requests, or missing altogether if a
+job aborts due to an error.
+
+\starssechead{Examples}
+The following prints all \app{Oxsii} \cd{Start:}\ and
+\cd{End} records from yesterday afternoon, collated by job:
+\begin{verbatim}
+   tclsh oommf.tcl logreview oxsii -collate -grep "\nStart:|\nEnd" \
+      -after "12:00 yesterday" -before "17:00 yesterday"
+\end{verbatim}
+The next example uses the \cd{-info} and \cd{-collate} options together
+to get a count of jobs that ran during some time window:
+\begin{verbatim}
+   tclsh oommf.tcl logreview boxsi -info -collate \
+      -after "10 days ago" -before "3 days ago"
+\end{verbatim}
+To see the records for the last three runs in the \app{Boxsi} log:
+\begin{verbatim}
+   tclsh oommf.tcl logreview boxsi -runselect end-2 end
+\end{verbatim}
+Over time the default log files can become quite large. To trim
+records preceding some date, one can do
+\begin{verbatim}
+   tclsh oommf.tcl logreview oxsii -after 1-Apr-2023 > trimmedlog.txt
+\end{verbatim}
+and then move the \fn{trimmedlog.txt} file to \fn{oommf/oxsii.errors}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{\vH\ Fields from Magnetization (2D):
             mag2hfield}\label{sec:mag2hfield}%
 \index{file!magnetization}\index{file!vector~field}\index{file!conversion}
 
@@ -1254,13 +1678,16 @@ The \app{mag2hfield}\index{application!mag2hfield} utility takes a
 \MIF~1.1 micromagnetic problem specification file
 (\hyperrefhtml{\fn{.mif}}{\fn{.mif}, see Sec.~}{}{sec:mif1format}) and a
 magnetization file (\hyperrefhtml{\fn{.omf}}{\fn{.omf}, see
-Ch.~}{}{sec:vfformats}) and uses the \hyperrefhtml{mmSolve2D}{mmSolve2D
-(Sec.~}{)}{sec:mmsolve2d} computation engine to calculate the resulting
-component (self-magnetostatic, exchange, crystalline anisotropy, Zeeman)
-and total energy and/or \vH\ fields.  The main use of this utility to study
-the fields in a simulation using magnetization files generated by an
-earlier
-\app{mmSolve2D} run.
+Ch.~}{}{sec:vfformats}) and uses the
+\hyperrefhtml{mmSolve2D}{mmSolve2D (Sec.~}{)}{sec:mmsolve2d} computation
+engine to calculate the resulting component (self-magnetostatic,
+exchange, crystalline anisotropy, Zeeman) and total energy and/or
+\vH\ fields.  The main use of this utility to study the fields in a
+simulation using magnetization files generated by an earlier
+\app{mmSolve2D} run. (Deprecated; for most applications use the 3D
+Oxs-based \hyperrefhtml{\app{computefield}}{\app{computefield}
+(Sec.~}{)}{sec:computefield} utility instead.)
+
 
 \starssechead{Launching}
 The \app{mag2hfield} launch command is:
@@ -1274,7 +1701,7 @@ where
 \begin{description}
 \item[\optkey{-component
   [all,][anisotropy,][demag,][exchange,][total,][zeeman]}]
-  Specify all energy/field components that are desired.  Optional;
+  Specify all desired energy/field components.  Optional;
   default is {\tt total}, which is the sum of the crystalline
   anisotropy, demagnetization (self-magnetostatic), exchange, and Zeeman
   (applied field) terms.
@@ -1375,7 +1802,7 @@ where
 
 The \app{nickname} command associates nicknames to running instances
 of \OOMMF\ applications.  These names are used by the \MIF\ 2.x
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} command\latex{
+\ptlink{\cd{Destination}}{PTdestinationCmd} command\latex{
 (Sec.~\ref{sec:mif2ExtensionCommands})}.
 
 \starssechead{Launching}
@@ -1414,7 +1841,7 @@ where
 \end{description}
 This command is used to associate nicknames with running instances of
 \OOMMF\ applications.  The \MIF\ 2
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} command can then
+\ptlink{\cd{Destination}}{PTdestinationCmd} command can then
 use the nickname to link Oxs output to a given OOMMF application
 instance at problem load time.  Nicknames for GUI applications can be
 viewed in the application \cd{About} dialog box, or can be seen for
@@ -1442,12 +1869,12 @@ existing columns.
 \starssechead{Launching}
 The \app{odtcalc} launch command is:
 \begin{verbatim}
-tclsh oommf.tcl odtcalc [standard options] [var expr unit ...] \
+tclsh oommf.tcl odtcalc [standard options] [var unit expr ...] \
     <infile >outfile
 \end{verbatim}
 where
 \begin{description}
-\item[\optkey{var expr unit \ldots}]
+\item[\optkey{var unit expr \ldots}]
   Each triplet of command line arguments determines the calculation
   to make for the production of a new column in the output data table.
   Each {\tt var} value becomes the new {\tt Columns:} entry in the
@@ -1466,21 +1893,23 @@ where
   ``\bca'' to send output to a file.
 \end{description}
 
-The computation of a new data value for each row of each new column
-of data is performed by passing the corresponding {\tt expr} command
-line argument to Tcl's {\bf expr} command.  The standard collection
-of operators and functions are available.  The value of other columns
-in the same row may be accessed by use of the column label as a variable
-name.  For example, the value of the {\tt Iteration} column can be used
-in {\tt expr} by including the variable substitution {\tt \$Iteration}.
-When column labels include colons, the {\tt expr} has the option of using
-just the portion of the column label after the last colon as the variable
-name.  For example, the value of the {\tt Oxs\_UZeeman::Bx} column can
-be used in {\tt expr} by including the variable substitution {\tt \$Bx}.
-When multiple triples specifying new data columns are provided, the
-values of earlier new columns may be used to compute the values of later
-new columns.  The order of command line arguments controls the order of
-the new columns that are added to the right side of the data table.
+The computation of a new data value for each row of each new column of
+data is performed by passing the corresponding {\tt expr} command line
+argument to Tcl's {\bf expr} command.  The standard collection of
+operators and functions are available, and also the variables {\tt \$pi}
+and {\tt \$mu0} representing the commonly used values $\pi$ and $\mu_0$.
+The value of other columns in the same row may be accessed by use of the
+column label as a variable name.  For example, the value of the
+{\tt Iteration} column can be used in {\tt expr} by including the variable
+substitution {\tt \$Iteration}.  When column labels include colons, the
+{\tt expr} has the option of using just the portion of the column label
+after the last colon as the variable name.  For example, the value of the
+{\tt Oxs\_UZeeman::Bx} column can be used in {\tt expr} by including the
+variable substitution {\tt \$Bx}.  When multiple triples specifying new
+data columns are provided, the values of earlier new columns may be used
+to compute the values of later new columns.  The order of command line
+arguments controls the order of the new columns that are added to the
+right side of the data table.
 
 \starssechead{Example}
 Suppose \fn{ring.odt} contains hysteresis loop data from an \app{Oxsii}
@@ -1490,7 +1919,7 @@ magnetization axis component values $B_x$, $B_y$, $m_x$, and $m_y$.  We
 want field and magnetization data projected onto the applied field
 axis.  We can create those values using \app{odtcalc} like so:
 \begin{verbatim}
-tclsh oommf.tcl odtcalc B '$Bx*0.86602540378443865+$By*0.5' mT \
+tclsh oommf.tcl odtcalc B mT '$Bx*0.86602540378443865+$By*0.5' \
    m '$mx*0.86602540378443865+$my*0.5' '' \
    < ring.odt > ring-augmented.odt
 \end{verbatim}
@@ -1675,7 +2104,7 @@ specified, then the help message is displayed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Oxs package management:
+\section{Oxs Package Management:
             oxspkg\label{sec:oxspkg}}%
 \index{application!oxspkg}
 
@@ -1702,7 +2131,7 @@ The \app{oxspkg} launch command is:
 \item[\textbf{or}]\html{\\}
 \item \verb+tclsh oommf.tcl oxspkg install [-v] [-nopatch] pkg [pkg ...]+
 \item[\textbf{or}]\html{\\}
-\item \verb+tclsh oommf.tcl oxspkg uninstall pkg [pkg ...]+
+\item \verb+tclsh oommf.tcl oxspkg uninstall [-f] pkg [pkg ...]+
 \item[\textbf{or}]\html{\\}
 \item \verb+tclsh oommf.tcl oxspkg copyout pkg [pkg ...] destination+
 \end{duplex}
@@ -1769,16 +2198,33 @@ additional installation information in the package \fn{README} file.
   be reported during the install process.
 
   The \cd{-v} option requests more verbose output.
-\item[\optkey{uninstall pkg [pkg \ldots]}]
+\item[\optkey{uninstall [-f] pkg [pkg \ldots]}]
  Deletes all files in \fn{oommf/app/oxs/local/} associated with the
  selected package.  Here ``associated'' means a file name match with a
  file in the package directory \fn{oommf/app/oxs/contrib/\oab pkg\cab/}.
- There is no checking of contents or timestamps between the files.
+ There is no checking of contents or timestamps between the files. The
+ install directory \fn{oommf/app/oxs/local/\oab pkg\cab/} will also be
+ removed if it is empty after deleting the package files or if the
+ \cd{-f} (force) option is specified.
+
 \item[\optkey{copyout pkg [pkg \ldots] destination}]
   Selects files in the same manner as the \cd{uninstall} command, but
-  rather than deleting the files instead copies them to the
-  \fn{destination} directory.  This is intended as a development aid
-  for creating patches for packages.
+  rather than deleting the files instead copies the files of each
+  package from \fn{oommf/app/oxs/local/\oab pkg\cab/} to
+  \fn{destination/\oab pkg\cab/}. The directory \fn{destination} will
+  be created if it does not exist. This command is a development aid for
+  creating patches for packages: Edit the package files in
+  \fn{oommf/app/oxs/local/\oab pkg\cab/} as necessary and use \app{oxspkg
+  copyout} to copy the package files to \fn{destination}. Then, from the
+  \fn{oommf/app/oxs/contrib/} directory, run
+\begin{verbatim}
+diff -ru  <pkg>/  destination/<pkg>/  >  <pkg>-<date>.patch
+\end{verbatim}
+  for each package to create an updated patch. Here \cd{diff} is the unix-compatible
+  file comparison utility. If the destination directory is in
+  \fn{oommf/app/oxs/contrib/}, then name it either \fn{tmp}, \fn{new}, or
+  \fn{newcontrib} to prevent \app{oxspkg} from treating it as a new
+  package directory.
 \end{description}
 Most of the optional packages controlled by \app{oxspkg} are from
 third-party contributors.  Some may originate with the \OOMMF\ core
@@ -1790,7 +2236,7 @@ standard Oxs extension classes.  The various
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Oxs regression tests:
+\section{Oxs Regression Tests:
             oxsregression\label{sec:oxsregression}}%
 \index{application!regression}
 
@@ -1914,7 +2360,7 @@ where
  overrides the former).  The standard setting is 15136.
 \item[\optkey{-names}]\index{nicknames}
  Display application nicknames, which are used by the \MIF\ 2.1
- \htmlonlyref{\cd{Destination}}{html:destinationCmd}
+ \ptlink{\cd{Destination}}{PTdestinationCmd}
  command\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}.
 \item[\optkey{-noheader}]
  Don't print column headers.
@@ -1968,7 +2414,7 @@ exception to this is the documentation under \fn{oommf/doc};
 ignore the \fn{oommf/doc} subdirectory. Building the
 \OOMMF\ documentation requires a working installation of
 \htmladdnormallinkfoot{\LaTeX}{https://www.latex-project.org} and either
-\htmladdnormallinkfoot{\LaTeX2HTML}{https://www.latex2html.org} or
+\htmladdnormallinkfoot{\latextohtml}{https://www.latex2html.org} or
 \htmladdnormallinkfoot{\LaTeXML}{http://dlmf.nist.gov/LaTeXML/}, so
 \OOMMF\ distributions include pre-built versions of the full
 \OOMMF\ documentation to relieve the end-user the burden of installing

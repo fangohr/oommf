@@ -1,9 +1,20 @@
 # FILE: pidinfo.tcl
 #
-# This file must be evaluated by omfsh
+# PURPOSE: Prints the oid, pid, application name, and optionally
+#    nicknames and server ports for all OOMMF applications currently
+#    registered with the account server. Can also list the pid and
+#    server ports for the OOMMF host and account servers.
+
+# Ensure pkg directory is on auto_path in case sourcing executable is
+# unadorned tclsh
+set chkpath [file join [file dirname [file dirname [file dirname \
+             [info script]]]] pkg]
+if {[lsearch -exact $auto_path $chkpath]<0} {
+   lappend auto_path $chkpath
+}
+unset chkpath
 
 package require Oc
-package require Net
 
 ########################################################################
 # Support procs
@@ -12,11 +23,10 @@ package require Net
 #     assigned the dummy OIDs -2 and -1, respectively. The PidReport
 #     proc replaces the dummy OIDs with hyphens on output.
 
-# Default initializer of the accountname.  Tries to determine account name
-# under which current thread is running.  This code is uses the
-# DefaultAccountName proc in the Net_Account class.
+# Default initializer of the accountname.  Tries to determine account
+# name under which current thread is running.
 proc DefaultAccountName {} {
-   return [Net_Account DefaultAccountName]
+   return [Oc_AccountName]
 }
 
 set querycount -1
@@ -173,7 +183,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName pidinfo
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}
@@ -212,6 +222,13 @@ Oc_CommandLine Option names {
    global shownames ; set shownames 1
 } {Display application nicknames}
 set shownames 0
+
+Oc_CommandLine Option noaccesschecks {
+} {
+   # Override account access check settings in options.tcl
+   Oc_Option Add * Net_Server checkUserIdentities 0
+   Oc_Option Add * Net_Link checkUserIdentities 0
+} {Disable access checks}
 
 Oc_CommandLine Option noheader {
 } {
@@ -254,6 +271,11 @@ Oc_CommandLine Option [Oc_CommandLine Switch] {
 set oidlist "all"
 
 Oc_CommandLine Parse $argv
+
+if {[catch {package require Net} netloadmsg]} {
+   puts stderr "ERROR: $netloadmsg"
+   exit 86
+}
 
 # Only accounts on localhost currently supported
 set host localhost

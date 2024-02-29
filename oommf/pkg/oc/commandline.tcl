@@ -10,7 +10,7 @@
 # variable $argv.  The parsing of the command line arguments is done by
 # evaluating [Oc_CommandLine Parse $argv] at global scope.
 #
-# The global list variable $argv holds a list of strings.  
+# The global list variable $argv holds a list of strings.
 # [Oc_CommandLine Parse $argv] searches through $argv, one string at a
 # time, looking for an "option".  [Oc_CommandLine Parse] can distinguish
 # an "option" from other strings because all options begin with a common
@@ -32,7 +32,7 @@
 # switch string.  For example, when the switch string is "-" (the
 # default) and <name> is "foo", then this evaluation of
 # [Oc_CommandLine Option] describes how to process the option "-foo" in
-# $argv.  
+# $argv.
 #
 # If <name> is the same string value as [Oc_CommandLine Switch], the
 # option is handled specially.  See below.  For now, assume another
@@ -56,7 +56,7 @@
 # taken from $argv and assigned to the variable <argName> is
 # acceptable.  <validationScript> should return 1 if the value is
 # acceptable, 0 otherwise.  <validationScript> may access variables
-# holding *all* the arguments to this option; it is not limited to 
+# holding *all* the arguments to this option; it is not limited to
 # the value of the argument it is validating.  That way, multiple
 # arguments to one option may be validated against one another.
 # The <validationScript> must return 1 or 0, and must not raise an
@@ -79,12 +79,12 @@
 # This behavior can be changed to stack multiple instances of an
 # option by specifying the "multi" opttype at the tail of the option
 # declaration (see below).
-# 
+#
 # <docString> is used in the construction of the usage message returned
-# by [Oc_CommandLine Usage] which summarizes the options which 
+# by [Oc_CommandLine Usage] which summarizes the options which
 # [Oc_CommandLine] has been told to recognize.  <docString> is optional.
 # If it is omitted, the value of an empty string is assumed.
-# 
+#
 # All of that description is probably not as useful as an example:
 #
 # 	Oc_CommandLine Option range {
@@ -101,7 +101,7 @@
 #
 # When $argv contains: ... -range -1 5 ... then [Oc_CommandLine Parse $argv]
 # will cause an error message to be displayed before exiting the app:
-# 
+#
 # <12345> appName appVersion Oc_CommandLine panic:
 # Invalid argument lo=-1 in
 #         -range lo hi
@@ -448,7 +448,7 @@ Oc_Class Oc_CommandLine {
 	    $class Panic "Missing required argument:\
 		    [lindex [lindex $arg($sswitch) [llength $rest]] 0]"
 	}
-	if {[string compare args [lindex $argSpec end]] 
+	if {[string compare args [lindex $argSpec end]]
 		&& [llength $rest] > $min + $optcount} {
 	    $class Panic "Too many arguments"
 	}
@@ -546,14 +546,25 @@ Oc_Class Oc_CommandLine {
 	if {![llength $optList]} {
 	    return $ret
 	}
-	append ret "\nAvailable options:"
-	foreach opt $optList {
-	    append ret "\n  [format %-13s\ %-13s $switch$opt $arg($opt)]"
-	    append ret [lindex $doc($opt) 0]
-	    foreach d [lrange $doc($opt) 1 end] {
-		append ret "\n                            $d"
-	    }
-	}
+        append ret "\nAvailable options:"
+        set optwidth [set namewidth 13]
+        foreach opt $optList { ;# Determine label widths
+           if {[string length $switch$opt]>$optwidth} {
+              set optwidth [string length $switch$opt]
+           }
+           if {[string length $arg($opt)]>$namewidth} {
+              set namewidth [string length $arg($opt)]
+           }
+        }
+        foreach opt $optList {
+           append ret "\n  [format %-${optwidth}s\ %-${namewidth}s\
+                               $switch$opt $arg($opt)]"
+           append ret [lindex $doc($opt) 0]
+           foreach d [lrange $doc($opt) 1 end] {
+              append ret [format "\n %*s %s" \
+                             [expr {$optwidth+$namewidth}] "" $d]
+           }
+        }
 	if {[llength $arg($switch)]} {
 	    append ret "\n  [format %-13s%-13s $switch$switch ""]"
 	    append ret [lindex $doc($switch) 0]

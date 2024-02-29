@@ -255,7 +255,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 # $config SetValue program_compiler_c++_remove_valuesafeflags \
 #                          {-fomit-frame-pointer -fprefetch-loop-arrays}
 # $config SetValue program_compiler_c++_add_valuesafeflags \
-#                          {-funroll-loops}
+#                          {-funroll-loops -fno-tree-slp-vectorize}
 #
 ### Options for Xp_DoubleDouble high precision package
 ## Select base variable type.  One of auto (default), double, long double
@@ -782,7 +782,8 @@ if {[string match cl $ccbasename]} {
    $config SetValue program_compiler_c++_option_out {format "-o \"%s\""}
    $config SetValue program_compiler_c++_option_src {format \"%s\"}
    $config SetValue program_compiler_c++_option_inc {format "\"-I%s\""}
-   $config SetValue program_compiler_c++_option_debug {format "-g"}
+   $config SetValue program_compiler_c++_option_debug \
+      {format "-g -fno-omit-frame-pointer"}
    $config SetValue program_compiler_c++_option_def {format "\"-D%s\""}
 
    # Compiler warnings:

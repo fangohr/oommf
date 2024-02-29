@@ -22,12 +22,21 @@ public:
 	      OC_REAL8m xmin,OC_REAL8m ymin,
 	      OC_REAL8m xmax,OC_REAL8m ymax,
 	      OommfPackedRGB background_color,
-              OC_REAL8m arrow_outline_width,
-              OommfPackedRGB arrow_outline_color);
+              OC_REAL8m matwidth,
+              OommfPackedRGB matcolor,
+              OommfPackedRGB arrow_outline_color,
+              OC_REAL8m arrow_outline_width=0.0,
+              OC_REAL8m arrow_width     =0.075,
+              OC_REAL8m arrow_tip_width =0.01875,
+              OC_REAL8m arrow_length    =0.9,
+              OC_REAL8m arrow_head_width=0.4,
+              OC_REAL8m arrow_head_ilen =0.4,
+              OC_REAL8m arrow_head_olen =0.5);
   /// Write header.  Offsets and print sizes are in points, x/y
   /// range values in pixels.  px/yoff are to lower lefthand
   /// corner of image.  Pixel coordinates run from upper lefthand
   /// corner of image.
+
   ~OommfPSDraw();                   // Write trailer
 
   // Draws (potentially fat) line segments between each successive pair
@@ -63,20 +72,25 @@ public:
 			 OommfPackedRGB innercolor);
   /// Symbol representing in-to-plane vectors.
 
-  void AddMat(OC_REAL8m width,OommfPackedRGB color);
-  /// Lays flat mat around border of specified width (in pixels)
-  /// and color.
+  void ApplyMat();
+  /// Lays flat mat around border of specified width and color.
 
 private:
   static const ClassDoc class_doc;
   Tcl_Channel channel;
-  const OC_REAL8m LineWidth;
-  const OC_REAL8m ArrowLength;
-  const OC_REAL8m ArrowHeadRatio;
-  const OC_REAL8m ArrowOutlineWidth;
+  const int bbox_xmin,bbox_ymin,bbox_xmax,bbox_ymax;
+  const OC_REAL8m scale;  // Multiply by scale to convert to print units
+  const OC_REAL8m mat_width;
+  const OommfPackedRGB mat_color;
   const OommfPackedRGB ArrowOutlineColor;
+  const OC_REAL8m ArrowOutlineWidth;
+  const OC_REAL8m ArrowWidth;
+  const OC_REAL8m ArrowTipWidth;
+  const OC_REAL8m ArrowLength;
+  const OC_REAL8m ArrowHeadWidth;
+  const OC_REAL8m ArrowHeadInnerLength;
+  const OC_REAL8m ArrowHeadOuterLength;
   const OC_REAL8m InOutTipRadius;
-  const OC_REAL8m plot_xmin,plot_ymin,plot_xmax,plot_ymax;
 
   // Disable copy constructor and assignment operator by declaring
   // them without defining them.

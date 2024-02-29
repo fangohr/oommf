@@ -29,7 +29,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName launchhost
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}

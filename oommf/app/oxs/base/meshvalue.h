@@ -25,8 +25,8 @@
 #ifndef _OXS_MESHVALUE
 #define _OXS_MESHVALUE
 
-#include <cstring>  // For memcpy
-
+#include <cstring>  // memcpy
+#include <memory>   // std::shared_ptr
 #include <vector>
 
 #include "vf.h"
@@ -34,8 +34,22 @@
 #include "oxsexcept.h"
 #include "oxsthread.h"
 #include "threevector.h"
+#include "util.h"
 
 /* End includes */
+
+#ifdef NDEBUG
+# define OxsMeshValueReadOnlyCheck
+#else // NDEBUG not defined
+# define OxsMeshValueReadOnlyCheck                          \
+    if(read_only_lock) {                                    \
+      OXS_THROW(Oxs_ProgramLogicError,                      \
+                String("Write access attempt to read-only"  \
+                       " Oxs_MeshValue object at address ") \
+                  + Oc_MakeString((void*)this));            \
+    }
+#endif // NDEBUG
+
 
 ///////////////////////////////////////////////////////////////////////
 /// OVF 2.0 output routines
@@ -98,7 +112,7 @@ void Oxs_MeshValueOutputField
  Vf_OvfFileVersion ovf_version,
  int fsync=0)
 {
-  if(filename==NULL) { // Bad input
+  if(filename==nullptr) { // Bad input
     OXS_THROW(Oxs_BadParameter,
               "Failure in Oxs_MeshValueOutputField:"
               " filename not specified.");
@@ -106,12 +120,12 @@ void Oxs_MeshValueOutputField
 
   int orig_errno=Tcl_GetErrno();
   Tcl_SetErrno(0);
-  Tcl_Channel channel = Tcl_OpenFileChannel(NULL,
+  Tcl_Channel channel = Tcl_OpenFileChannel(nullptr,
 	Oc_AutoBuf(filename),Oc_AutoBuf("w"),0666);
   int new_errno=Tcl_GetErrno();
   Tcl_SetErrno(orig_errno);
 
-  if(channel==NULL) {
+  if(channel==nullptr) {
     // File open failure
     String msg=String("Failure in Oxs_MeshValueOutputField:")
       + String(" Unable to open file ") + String(filename);
@@ -124,20 +138,20 @@ void Oxs_MeshValueOutputField
 
   try {
     // Set channel options
-    Tcl_SetChannelOption(NULL,channel,Oc_AutoBuf("-buffering"),
+    Tcl_SetChannelOption(nullptr,channel,Oc_AutoBuf("-buffering"),
 			 Oc_AutoBuf("full"));
-    Tcl_SetChannelOption(NULL,channel,Oc_AutoBuf("-buffersize"),
+    Tcl_SetChannelOption(nullptr,channel,Oc_AutoBuf("-buffersize"),
 			 Oc_AutoBuf("100000"));
     /// What's a good size???
     if(datastyle != vf_oascii) {
       // Binary mode
-      Tcl_SetChannelOption(NULL,channel,Oc_AutoBuf("-encoding"),
+      Tcl_SetChannelOption(nullptr,channel,Oc_AutoBuf("-encoding"),
 			   Oc_AutoBuf("binary"));
-      Tcl_SetChannelOption(NULL,channel,Oc_AutoBuf("-translation"),
+      Tcl_SetChannelOption(nullptr,channel,Oc_AutoBuf("-translation"),
 			   Oc_AutoBuf("binary"));
     }
 
-    if(title==NULL || title[0]=='\0') {
+    if(title==nullptr || title[0]=='\0') {
       title=filename;
     }
 
@@ -145,7 +159,7 @@ void Oxs_MeshValueOutputField
                              valuelabels,valueunits,meshtype,
                              datastyle,textfmt,mesh,val,ovf_version);
   } catch (...) {
-    Tcl_Close(NULL,channel);
+    Tcl_Close(nullptr,channel);
     Nb_Remove(filename); // Delete possibly corrupt or
                         /// empty file on error.
     throw;
@@ -153,7 +167,7 @@ void Oxs_MeshValueOutputField
   if(fsync) {
     Oc_Fsync(channel); // Flush data to disk
   }
-  if(Tcl_Close(NULL,channel) != TCL_OK) {
+  if(Tcl_Close(nullptr,channel) != TCL_OK) {
     // File close failure
     int close_code = Tcl_GetErrno();
     String errno_id = Tcl_ErrnoId();
@@ -168,25 +182,93 @@ void Oxs_MeshValueOutputField
 
 template<class T> class Oxs_MeshValue {
 private:
-  T* const arr;         // Convenience variables; these shadow settings
-  OC_INDEX const size; /// in arrblock;
+  T* arr;         // Convenience variables; these shadow settings
+  OC_INDEX size; /// in arrblock;
 
-  Oxs_StripedArray<T> arrblock;
+  // arrblock are filled and/or recycled from the arrblock_pool
+  // static member.
+  static Oxs_Pool< Oxs_StripedArray<T> > arrblock_pool;
+  OXS_POOL_PTR< Oxs_StripedArray<T> > arrblock;
 
-  void Free();
+  friend Oxs_Director; // Allow Oxs_Director to call
+  /// arrblock_pool.EmptyPool() on simulation exits.
+
+
+  OC_BOOL read_only_lock; // If true, then only const members(*) can be
+  /// accessed. (Actually only enforced if NDEBUG is not defined.)
+  /// read_only_lock is set either directly through the MarkAsReadOnly()
+  /// member, or implicitly when the SharedCopy() member is called. The
+  /// read_only_lock can be cleared via the Reset() or Release() members
+  /// (which invalidate the current array data) or by destructing the
+  /// object.
+  /// (*) Exception: The primary purpose of read_only_lock is to protect
+  ///     shared copies of arrblock being changed. The Swap() member
+  ///     only moves the arrblock pointer around, so Swap() is allowed
+  ///     regardless of the read_only_lock setting. We may want to
+  ///     revisit this if read_only_lock usage broadens.
+  ///
+  /// NB: The locking is NOT atomic, and this code does not provide any
+  /// multi-thread access protection. It is the responsibility of the
+  /// client to provide any necessary thread synchronization.
+  ///
+  /// Note: It might be convenient to be able to reset the
+  ///       read_only_lock if the arrblock pointer use_count indicates
+  ///       that it's not shared. For example, if a shared copy is made
+  ///       to insert into an Oxs_SimState's DerivedData area, but the
+  ///       insert fails, then the shared copy is not needed. When the
+  ///       shared copy is deleted the shared copy count is decremented,
+  ///       but this read_only_lock stays set.
+
+  void Free() { // Releases arrblock memory
+    arrblock=nullptr;
+    arr = nullptr;
+    size = 0;
+    read_only_lock=0;
+  }
+
   static const OC_INDEX MIN_THREADING_SIZE = 10000; // If size is
   // smaller than this, then don't thread array operations.
 
 public:
-  Oxs_MeshValue() : arr(0), size(0) {}
+  Oxs_MeshValue() : arr(0), size(0), read_only_lock(0) {}
   Oxs_MeshValue(const Vf_Ovf20_MeshNodes* mesh)
-    : arr(0), size(0) {
+    : arr(0), size(0), read_only_lock(0) {
     AdjustSize(mesh);
+  }
+  Oxs_MeshValue(OC_INDEX size_import)
+    : arr(0), size(0), read_only_lock(0) {
+    AdjustSize(size_import);
   }
   ~Oxs_MeshValue() { Free(); }
 
+  // Note: The copy constructor and operator= duplicate the
+  // arrblock contents. Use SharedCopy() if you want instead
+  // a quick copy with a shared_ptr to arrblock. (NB: In the
+  // shared scenario both objects get marked read_only.)
   Oxs_MeshValue(const Oxs_MeshValue<T> &other);  // Copy constructor
   Oxs_MeshValue<T>& operator=(const Oxs_MeshValue<T> &other);
+
+  // Move constructor and assignment operator.
+  Oxs_MeshValue(Oxs_MeshValue<T>&& other);
+  Oxs_MeshValue<T>& operator=(Oxs_MeshValue<T>&& other);
+
+  // Mark as read-only. Once set, cannot be unset.
+  // This facility is intended for debugging Oxs_MeshValue use through a
+  // std::shared_ptr. If the compiler macro NDEBUG is not defined, then
+  // an exception is thrown if any non-const member other than the
+  // destructor is called. This check is not airtight, since the
+  // destructor could be called from a non-const pointer obtained via
+  // the T* GetPtr() member prior to the MarkAsReadOnly call.
+  OC_BOOL MarkAsReadOnly() {
+    OxsMeshValueReadOnlyCheck; // Logically, marking something as
+    // read-only that is already read-only doesn't change anything,
+    // so we could consider this member to be const and not raise
+    // an error if called multiple times.
+    return (read_only_lock=1);
+  }
+  OC_BOOL IsReadOnly() const {
+    return read_only_lock;
+  }
 
   // The +=, -=, *=, and /= operators can only be used with
   // types T that support the corresponding operator at the
@@ -209,7 +291,49 @@ public:
 
   void Swap(Oxs_MeshValue<T>& other);
 
-  void Release() { Free(); }  // Frees arr
+  void Reset() { // Similar to Release() in that the data
+    // in arrblock is invalidated, but differs in that the arrblock
+    // memory is nominally retained---what actually happens is that
+    // a request is made to arrblock_pool for a fresh block of
+    // memory. If the current block is not in use elsewhere then it will
+    // be immediately returned.
+    read_only_lock=0;
+    arrblock_pool.Recycle(arrblock);
+    if(arrblock) arr = arrblock->GetArrBase();
+    else         arr = nullptr;
+    // As a debugging aid, one might want to initialize arrblock
+    // in some way to help catch use of old values after resets.
+  }
+
+  Oxs_MeshValue<T> SharedCopy() {
+    // Makes a copy with a shared arrblock, and sets read_only_lock
+    // to protect against changes.
+    Oxs_MeshValue<T> copy;
+    copy.arr = arr;
+    copy.size = size;
+    copy.arrblock = arrblock; // Increments use_count
+    copy.read_only_lock = read_only_lock = 1;
+    return copy;
+  }
+
+  Oxs_MeshValue<T> SharedCopy() const {
+    // Same as non-const version, but throws an error if read_only_lock
+    // is not already set.
+    if(!read_only_lock) {
+      OXS_THROW(Oxs_BadLock,"SharedCopy() attempt with a"
+                " const Oxs_MeshValue and read_only_lock not set.");
+    }
+    Oxs_MeshValue<T> copy;
+    copy.arr = arr;
+    copy.size = size;
+    copy.arrblock = arrblock; // Increments use_count
+    copy.read_only_lock = 1;
+    return copy;
+  }
+
+  void Release() {  // Frees arr
+    Free();
+  }
   void AdjustSize(const Vf_Ovf20_MeshNodes* newmesh);
   /// Compares current size to size of newmesh.  If different, deletes
   /// current arr and allocates new one compatible with newmesh.
@@ -223,7 +347,7 @@ public:
   OC_BOOL CheckMesh(const Vf_Ovf20_MeshNodes* mesh) const;
   /// Returns true if current arr size is compatible with mesh.
 
-  inline OC_BOOL IsSame(const Oxs_MeshValue<T>& other) {
+  inline OC_BOOL IsSame(const Oxs_MeshValue<T>& other) const {
     return ( (this->arr) == (other.arr) );
   }
 
@@ -234,11 +358,14 @@ public:
   // Avoid using the GetPtr() functions, since these expose
   // implementation details.
   const T* GetPtr() const { return arr; }
-  T* GetPtr() { return arr; }
+  T* GetPtr() {
+    OxsMeshValueReadOnlyCheck;
+    return arr;
+  }
 
   inline const Oxs_StripedArray<T>* GetArrayBlock() const {
-    // Provides memory node striping information
-    return &arrblock;
+    // Provides memory node striping information. Use sparingly!
+    return arrblock.get();
   }
 
   // For debugging: FirstDifferent() returns 0 if all the elements of
@@ -277,8 +404,10 @@ public:
 
 
   // Friends, for OVF 2.0 output.
-  // NOTE: Oxs_MeshValueOutputField is *intentionally* non-templated.
+  // NOTE 1: Oxs_MeshValueOutputField is *intentionally* non-templated.
   //       This is not an error, despite what most compilers suggest.
+  // NOTE 2: Only accesses Oxs_MeshValue<T> via a const ptr, so should
+  //         not trigger any problems with read-only access.
   friend void Oxs_MeshValueOutputField
   (Tcl_Channel channel,
    OC_BOOL do_headers,
@@ -295,6 +424,9 @@ public:
 
 };
 
+// Static pool members:
+template<class T>
+Oxs_Pool< Oxs_StripedArray<T> > Oxs_MeshValue<T>::arrblock_pool;
 
 ////////////////////////////////////////////////////////////////////////
 // Include all implementations here.  This is required by compiler/linkers
@@ -323,17 +455,22 @@ const T& Oxs_MeshValue<T>::operator[](OC_INDEX index) const
 template<class T>
 T& Oxs_MeshValue<T>::operator[](OC_INDEX index)
 {
-  assert(0<=index && index<size);
+  OxsMeshValueReadOnlyCheck;
+#ifndef NDEBUG
+  if(index<0 || index>=size) {
+    char buf[512];
+    Oc_Snprintf(buf,sizeof(buf),
+                "T& Oxs_MeshValue<T>::operator[]: "
+                "Array out-of-bounds; index=%ld, size=%ld",
+                long(index),long(size));
+#if 0
+    fprintf(stderr,"%s\n",buf); fflush(stderr);
+    abort();
+#endif
+    OXS_THROW(Oxs_BadIndex,buf);
+  }
+#endif
   return arr[index];
-}
-
-template<class T>
-void Oxs_MeshValue<T>::Free()
-{
-  // Free value array.
-  arrblock.Free();
-  const_cast<T*&>(arr) = 0;
-  const_cast<OC_INDEX&>(size) = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -342,29 +479,22 @@ void Oxs_MeshValue<T>::Free()
 template<class T>
 void Oxs_MeshValue<T>::AdjustSize(OC_INDEX newsize)
 {
+  OxsMeshValueReadOnlyCheck;
   if(newsize != size) {
-    Free(); // Sets "size" to 0.
-    if(newsize>0) {
-      arrblock.SetSize(newsize);
-      const_cast<T*&>(arr) = arrblock.GetArrBase();
-      if(arr==NULL) {
-        char errbuf[256];
-        Oc_Snprintf(errbuf,sizeof(errbuf),
-                    "Unable to allocate memory for %ld objects of size %lu"
-                    " (Oxs_MeshValue<T>::AdjustSize)",
-                    (long)newsize,(unsigned long)sizeof(T));
-        OXS_THROW(Oxs_NoMem,errbuf);
-      }
-      const_cast<OC_INDEX&>(size) = newsize;
-    }
+    arrblock = arrblock_pool.GetFreePtr(newsize);
+    if(arrblock) arr = arrblock->GetArrBase();
+    else         arr = nullptr;
+    size = newsize;
+    read_only_lock = 0;
   }
 }
 
 template<class T>
 void Oxs_MeshValue<T>::AdjustSize(const Vf_Ovf20_MeshNodes* newmesh)
 {
+  OxsMeshValueReadOnlyCheck;
   OC_INDEX newsize = 0;
-  if(newmesh != NULL) {
+  if(newmesh != nullptr) {
     newsize = newmesh->Size();
   }
   AdjustSize(newsize);
@@ -373,13 +503,20 @@ void Oxs_MeshValue<T>::AdjustSize(const Vf_Ovf20_MeshNodes* newmesh)
 template<class T>
 void Oxs_MeshValue<T>::AdjustSize(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(this == &other) return;  // Nothing to do.
   AdjustSize(other.size);
 }
 
+// Copy assignment operator: This makes a completely separate copy of
+// arrblock, and is therefore expensive. Faster alternatives, where
+// applicable, are move assignment (which leaves other empty) and
+// SharedCopy which uses the arrblock shared_ptr to make a shared
+// copy of arrblock.
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator=(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(this == &other) return *this;  // Nothing to do.
   AdjustSize(other);
   if(size < 1) return *this; // Nothing to copy
@@ -396,25 +533,47 @@ Oxs_MeshValue<T>::operator=(const Oxs_MeshValue<T>& other)
   return *this;
 }
 
+// Copy constructor
 template<class T>
 Oxs_MeshValue<T>::Oxs_MeshValue(const Oxs_MeshValue<T> &other)
-  : arr(0), size(0)
-{ // Copy constructor.
+  : arr(0), size(0), read_only_lock(0)
+{
   operator=(other);
+}
+
+// Move assignment operator. See also SharedCopy
+template<class T> Oxs_MeshValue<T>&
+Oxs_MeshValue<T>::operator=(Oxs_MeshValue<T>&& other)
+{
+  OxsMeshValueReadOnlyCheck;
+  if(this == &other) return *this;  // Nothing to do.
+  arrblock = std::move(other.arrblock);
+  arr = other.arr;                       other.arr = nullptr;
+  size = other.size;                     other.size = 0;
+  read_only_lock = other.read_only_lock; other.read_only_lock=0;
+  return *this;
+}
+
+// Move constructor
+template<class T>
+Oxs_MeshValue<T>::Oxs_MeshValue(Oxs_MeshValue<T>&& other)
+  : arr(other.arr), size(other.size),
+    arrblock(std::move(other.arrblock)),
+    read_only_lock(other.read_only_lock)
+{
+  other.arr = nullptr;
+  other.size = 0;
+  other.read_only_lock=0;
 }
 
 template<class T>
 void Oxs_MeshValue<T>::Swap(Oxs_MeshValue<T>& other)
-{ // Note: This works okay also if this==&other
-  OC_INDEX tsize = size;
-  const_cast<OC_INDEX&>(size) = other.size;
-  const_cast<OC_INDEX&>(other.size) = tsize;
-
-  T*              tarr  = arr;
-  const_cast<T*&>(arr)  = other.arr;
-  const_cast<T*&>(other.arr)  = tarr;
-
-  arrblock.Swap(other.arrblock);
+{ // Note: No read-only check
+  if( this == &other) return;
+  std::swap(size,other.size);
+  std::swap(arr,other.arr);
+  std::swap(arrblock,other.arrblock);
+  std::swap(read_only_lock,other.read_only_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -423,6 +582,7 @@ void Oxs_MeshValue<T>::Swap(Oxs_MeshValue<T>& other)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator+=(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator+=");
@@ -444,6 +604,7 @@ Oxs_MeshValue<T>::operator+=(const Oxs_MeshValue<T>& other)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator-=(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator-=");
@@ -465,6 +626,7 @@ Oxs_MeshValue<T>::operator-=(const Oxs_MeshValue<T>& other)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator*=(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator*=");
@@ -486,6 +648,7 @@ Oxs_MeshValue<T>::operator*=(const Oxs_MeshValue<T>& other)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator/=(const Oxs_MeshValue<T>& other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::operator/=");
@@ -507,6 +670,7 @@ Oxs_MeshValue<T>::operator/=(const Oxs_MeshValue<T>& other)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator+=(const T& value)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size<MIN_THREADING_SIZE) {
     for(OC_INDEX i=0;i<size;i++) arr[i]+=value;
   } else {
@@ -524,6 +688,7 @@ Oxs_MeshValue<T>::operator+=(const T& value)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator*=(OC_REAL8m mult)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size<MIN_THREADING_SIZE) {
     for(OC_INDEX i=0;i<size;i++) arr[i]*=mult;
   } else {
@@ -542,6 +707,7 @@ Oxs_MeshValue<T>::operator*=(OC_REAL8m mult)
 template<class T> Oxs_MeshValue<T>&
 Oxs_MeshValue<T>::operator=(const T &value)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size<MIN_THREADING_SIZE) {
     for(OC_INDEX i=0;i<size;i++) arr[i]=value;
   } else {
@@ -561,6 +727,7 @@ Oxs_MeshValue<T>::Accumulate
 (OC_REAL8m mult,
  const Oxs_MeshValue<T> &other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::Accumulate");
@@ -584,6 +751,7 @@ Oxs_MeshValue<T>::HornerStep
 (OC_REAL8m mult,
  const Oxs_MeshValue<T> &other)
 {
+  OxsMeshValueReadOnlyCheck;
   if(size!=other.size) {
     OXS_THROW(Oxs_BadIndex,
              "Size mismatch in Oxs_MeshValue<T>::HornerStep");
@@ -701,7 +869,7 @@ inline void Oxs_MeshValueOutputField
   // Write header
   if(do_headers) fileheader.WriteHeader(channel);
 
-  const OC_REAL8m* arrptr = NULL;
+  const OC_REAL8m* arrptr = nullptr;
   Nb_ArrayWrapper<OC_REAL8m> rbuf;
   if(sizeof(ThreeVector) == 3*sizeof(OC_REAL8m)) {
     // Use MeshValue array directly

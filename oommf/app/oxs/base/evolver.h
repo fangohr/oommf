@@ -70,8 +70,10 @@ protected:
   }
 
   virtual OC_BOOL Init();  // All children of Oxs_Evolver should call
-  /// this routine from inside their Init() routines.  The purpose
-  /// at this time is to reset the fixed spin data.
+  /// this routine from inside their Init() routines.  This will reset
+  /// fixed spin data. Oxs_Evolver children should use their Init()
+  /// routines to advertise any "well known quantities" that they
+  /// can provide support for attaching to Oxs_SimStates.
 
 public:
   virtual ~Oxs_Evolver();

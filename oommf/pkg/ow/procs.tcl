@@ -30,11 +30,72 @@ proc Ow_GetShade { color {win .}} {
 }
 
 ########################################################################
+# Routine that takes two colors, converts them into decimal 3-tuples as
+# returned by 'winfo rgb $window' (i.e., each component value a decimal
+# integer in the range [0,65535]) and returns the "redmean" distance as
+# a floating point value on scale [0,3], with 0 if the colors are the
+# same and 3 if the colors are black and white. The formula for the
+# distance is
+#    sqrt((2+rm)*(rd)^2 + 4*(gd)^2 + (3-rm)*(bd)^2)
+# where
+#    rm = 0.5*(R1+R2)/65535.
+#    rd = (R1-R2)/65535.
+#    gd = (G1-G2)/65535.
+#    bd = (B1-B2)/65535.
+# with (R1,G1,B1) and (R2,G2,B2) being the return values from
+# 'winfo rgb $window $C1', 'winfo rgb $window $C2', respectively.
+proc Ow_RedMeanDist { window C1 C2 } {
+   # Convert colors to decimal format
+   lassign [winfo rgb $window $C1] R1 G1 B1
+   lassign [winfo rgb $window $C2] R2 G2 B2
+   set scale 65535.
+   set rm [expr {($R1+$R2)/(2*$scale)}]
+   set rd [expr {($R1-$R2)/$scale}]
+   set gd [expr {($G1-$G2)/$scale}]
+   set bd [expr {($B1-$B2)/$scale}]
+   set val [expr {sqrt((2+$rm)*$rd*$rd + 4*$gd*$gd
+                       + (3-$rm)*$bd*$bd)}]
+   return $val
+}
+
+
+########################################################################
 # Change OOMMF color scheme
 ########################################################################
 proc Ow_ChangeColorScheme { scheme } {
-   # At present only support color schemes are Tk default and light
-   if {[string match default $scheme]} { return }
+   # Supported color schemes are light, dark, and auto (default)
+   if {![catch {tk windowingsystem} _] && [string match aqua $_]} {
+      # Mac
+      if { ($scheme eq "default") || ($scheme eq "auto") } {
+         set style auto
+      } elseif { $scheme eq "light" } {
+         set style aqua
+      } elseif { $scheme eq "dark" } {
+         set style darkaqua
+      } else {
+         return -code error "unsupported scheme request: \"$scheme\".\
+                Should be one of \"auto\" or \"light\", or \"dark\"."
+      }
+      update idletasks ;# Needed for tk::unsupported::MacWindowStyle call
+      # Change appearance style for all toplevel windows
+      catch {::tk::unsupported::MacWindowStyle appearance . $style}
+      foreach window [Ow_Descendents .] {
+         if { $window eq [winfo toplevel $window] } { ;# Toplevel
+            if { [winfo class $window] eq "Menu" } {
+               continue ;# Skip menu objects. These don't change style
+               ## and issue the message
+               ##   Failed to read appearance name; try calling update
+               ##   idletasks before getting/setting the appearance of
+               ##   the window.
+            }
+            catch {
+               ::tk::unsupported::MacWindowStyle appearance $window $style
+            }
+         }
+      }
+      return
+   }
+
    switch -exact -- $scheme {
       light { _Ow_ChangeColorScheme_light }
       dark  { _Ow_ChangeColorScheme_dark }
@@ -349,6 +410,10 @@ proc Ow_ChangeColorScheme { scheme } {
    # existing ones, which should be OK provided this routine is called
    # before any menus are created.
    if {![catch {tk windowingsystem} _] && [string match aqua $_]} {
+      update idletasks ;# Needed for tk::unsupported::MacWindowStyle call
+      catch {::tk::unsupported::MacWindowStyle appearance . aqua}
+      ## Adjust root titlebar color; ignore on failure
+
       set menu_colors {
               activebackground systemMenuActive
               activeforeground systemMenuActiveText
@@ -360,6 +425,24 @@ proc Ow_ChangeColorScheme { scheme } {
       foreach {name value} $menu_colors {
          option add *Menu.$name $value
       }
+
+if {0} {
+      # Ensure existing listbox colors are reset properly.
+      set bgclr #FFFFFF
+      set fgclr #000000
+      foreach window [Ow_Descendents .] {
+         if {[string compare Listbox [winfo class $window]]==0} {
+            # $window is a Listbox object
+            $window configure -background $bgclr -foreground $fgclr
+         }
+         # Fixup title bar coloring on toplevel widgets
+         if {[string compare $window [winfo toplevel $window]]==0} {
+            catch {
+               ::tk::unsupported::MacWindowStyle appearance $window aqua
+            }
+         }
+      }
+}
    }
    # Another way to affect menu colors is to add a code block like the
    # following into proc Ow_MakeMenubar in oommf/pkg/ow/procs.tcl:
@@ -459,6 +542,39 @@ proc Ow_ChangeColorScheme { scheme } {
        }
       foreach {name value} $menu_colors {
          option add *Menu.$name $value
+      }
+
+      # Match default aqua behavior that sets Tk button text in black.
+      # This is necessary to work around the lack of button face color
+      # control, namely that the button face color surrounding the
+      # button text is forced white when a window goes active. As with
+      # the menu_colors, changing the option database does not affect
+      # existing widgets, but the tk_setPalette call does, so to reset
+      # button foreground color to existing widget we walk through the
+      # window hierarchy and reset the foreground color on all "Button"
+      # class widgets. Listboxes are a little cranky too, so clean up
+      # those too.
+      set btnfg #000000
+      option add *Button.foreground $btnfg
+      set lstbg $bgcolor
+      set lstfg #FFFFFF
+      foreach window [Ow_Descendents .] {
+         if {[string compare Button [winfo class $window]]==0} {
+            # $window is a Button object
+            $window configure -foreground $btnfg
+         }
+         if {[string compare Listbox [winfo class $window]]==0} {
+            # $window is a Listbox object
+            $window configure -background $lstbg -foreground $lstfg
+         }
+         # Fixup title bar coloring on toplevel widgets
+         if {[string compare $window [winfo toplevel $window]]==0
+             && [string compare Menu [winfo class $window]]!=0} {
+            ## ::tk::unsupported::MacWindowStyle appearance fails on menus
+            catch {
+               ::tk::unsupported::MacWindowStyle appearance $window darkaqua
+            }
+         }
       }
    }
 }
@@ -1625,7 +1741,7 @@ proc Ow_PromptDialog { title message {defaultvalue {}} \
     return $result
 }
 
-proc Ow_Message {msg type src} {
+proc Ow_Message {msg type src args} {
     global errorInfo errorCode
     foreach {ei ec} [list $errorInfo $errorCode] {break}
     if {[catch {winfo exists .} result] || !$result} {

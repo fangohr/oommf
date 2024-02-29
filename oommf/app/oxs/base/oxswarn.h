@@ -47,6 +47,10 @@ OC_USE_STRING;
  *  with the message.  The actual message count are stored in the
  *  Oxs_WarningMessage::message_counts class static variable.
  *
+ * UPDATE Dec 2019: OOMMF migrated from CVS to git quite some time ago,
+ *    so the Revision, Date, and Author keywords are no longer in play.
+ *    New code should instead use the alternate Send message that takes
+ *    a string (usualy __FILE__) as its first argument.
  **********************************************************************/
 
 struct Oxs_WarningMessageRevisionInfo {
@@ -89,6 +93,11 @@ public:
            const char* line,const char* msg,
            const char* src=NULL,const char* id=NULL);
 
+  // Alternate Send that does not require Oxs_WarningMessageRevisionInfo
+  int Send(const char* file,
+           const char* line,const char* msg,
+           const char* src=NULL,const char* id=NULL);
+
   // The design intention is for clients to call Send; HoldMessage and
   // TransmitMessageHold are intended as helper methods for Send in
   // the case Send is called from a non-root thread.  However,
@@ -96,7 +105,7 @@ public:
   // Oxs_ThreadBush, and Oxs_Director to make automatic dumps of the
   // hold, so both HoldMessage and TransmitMessageHold are made
   // public.
-  int HoldMessage(const Oxs_WarningMessageRevisionInfo& revinfo,
+  int HoldMessage(const char* file,
                   const char* line,const char* msg,
                   const char* src,const char* id=NULL);
   // Call from any thread.  Message is stored and not transmitted
@@ -149,7 +158,7 @@ private:
   }
 
   int FormatMessage
-  (const Oxs_WarningMessageRevisionInfo& revinfo,
+  (const char* file,
    const char* line,
    const char* msg,
    const char* src,

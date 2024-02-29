@@ -25,14 +25,9 @@
 
 // Dummy routine to force evaluation of temporaries.  Used as a
 // hack to work around some compiler bugs.
-// NOTE: The <stdarg.h> macros do not support a function signature
-//       with no fixed parameters.  We don't use the parameters
-//       anyway (see implementation in functions.cc), but to be
-//       safe we implement this via overloading.
-//       Add more as needed.
 void Nb_NOP();
-void Nb_NOP(OC_REAL8m);
-void Nb_NOP(void*);
+OC_REAL8m Nb_NOP(OC_REAL8m x);
+void* Nb_NOP(void* px);
 
 // Sign function
 template<class T> T Nb_Signum(T x) { return (x>0 ? 1 : (x<0 ? -1 : 0)); }
@@ -74,6 +69,13 @@ Tcl_CmdProc NbRatApprox;
 int Nb_FindRatApprox(OC_REALWIDE x,OC_REALWIDE y,
                      OC_REALWIDE relerr, OC_REALWIDE maxq,
                      OC_REALWIDE& p, OC_REALWIDE& q);
+
+// Routine to convert a string value to a boolean. Returns true if input
+// is a non-zero integer or nocase "true". Otherwise returns false.
+bool Nb_StringToBoolean(const char* str);
+inline bool Nb_StringToBoolean(std::string str) {
+  return Nb_StringToBoolean(str.c_str());
+}
 
 // Version of atof that allows 'D' or 'd' to be used to denote exponent.
 double Nb_Atof(const char *nptr);

@@ -24,30 +24,30 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1105"
+<A NAME="tex2html1135"
   HREF="Demag_specification.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1101"
+<A NAME="tex2html1131"
   HREF="MIF_1.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1095"
+<A NAME="tex2html1125"
   HREF="MIF_1.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1103"
+<A NAME="tex2html1133"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html1106"
+<B> Next:</B> <A NAME="tex2html1136"
   HREF="Demag_specification.html">Demag specification</A>
-<B> Up:</B> <A NAME="tex2html1102"
+<B> Up:</B> <A NAME="tex2html1132"
   HREF="MIF_1.1.html">MIF 1.1</A>
-<B> Previous:</B> <A NAME="tex2html1096"
+<B> Previous:</B> <A NAME="tex2html1126"
   HREF="MIF_1.1.html">MIF 1.1</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION001811000000000000000"></A><A NAME="sec:mif1materials"></A><A NAME="21332"></A>
+<H2><A NAME="SECTION001811000000000000000"></A><A NAME="sec:mif1materials"></A><A NAME="22587"></A>
 <BR>
 Material parameters
 </H2>
@@ -58,13 +58,13 @@ Material parameters
    relates a symbolic name (e.g., Iron) to specific values to the next
    4 items.  Ignored by solvers.
 </LI>
-<LI><B>Ms:</B> Saturation magnetization<A NAME="21337"></A>
+<LI><B>Ms:</B> Saturation magnetization<A NAME="22592"></A>
    in A/m.
 </LI>
-<LI><B>A:</B> Exchange stiffness<A NAME="21339"></A> in J/m.
+<LI><B>A:</B> Exchange stiffness<A NAME="22594"></A> in J/m.
 </LI>
 <LI><B>K1:</B> Crystalline
- anisotropy<A NAME="21341"></A><A NAME="21342"></A>
+ anisotropy<A NAME="22596"></A><A NAME="22597"></A>
    constant in J/m<B><SUP>3</SUP></B>.  If <B><I>K</I>1 &gt; 0</B>, then the anisotropy axis (or axes)
    is an easy axis; if <B><I>K</I>1 &lt; 0</B> then the anisotropy axis is a hard axis.
 </LI>
@@ -102,7 +102,7 @@ For uniaxial materials it suffices to specify only Anisotropy
    record is optional; the default value is <TT>Constant</TT>.
 </LI>
 <LI><B>Edge K1:</B>  Anisotropy
-   constant<A NAME="21357"></A><A NAME="21358"></A>
+   constant<A NAME="22612"></A><A NAME="22613"></A>
    similar to crystalline anisotropy constant K1 described above, but
    applied only along the edge surface of the part.  This is a uniaxial
    anisotropy, directed along the normal to the boundary surface.  Units
@@ -111,18 +111,18 @@ For uniaxial materials it suffices to specify only Anisotropy
    default value for Edge K1 is 0, which disables the term.
 </LI>
 <LI><B>Do Precess:</B>
-   If 1, then enable the precession<A NAME="21361"></A> term in the
-   Landau-Lifshitz ODE<A NAME="21362"></A>.  If 0, then do pure
+   If 1, then enable the precession<A NAME="22616"></A> term in the
+   Landau-Lifshitz ODE<A NAME="22617"></A>.  If 0, then do pure
    damping only.  (Optional; default value is 1.)
 </LI>
 <LI><B>Gyratio:</B>
-   The Landau-Lifshitz gyromagnetic ratio<A NAME="21364"></A>, in
+   The Landau-Lifshitz gyromagnetic ratio<A NAME="22619"></A>, in
    m/(A.s).  This is optional, with default value of 2.21e5.  See the discussion of the Landau-Lifshitz ODE
    under the Damp&nbsp;Coef record identifier description.
 </LI>
 <LI><B>Damp Coef:</B>
    The ODE solver in OOMMF integrates the Landau-Lifshitz
-   equation<A NAME="21368"></A>&nbsp;[<A
+   equation<A NAME="22623"></A>&nbsp;[<A
  HREF="bibliography.html#gilbert1955">12</A>,<A
  HREF="bibliography.html#landau1935">17</A>],
    written as
@@ -149,7 +149,7 @@ where
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> is the Landau-Lifshitz gyromagnetic ratio
                         (m/(A.s)),
@@ -170,7 +170,7 @@ where
   will typically have a damping coefficient in the range 0.004 to
   0.15.  The 2D solver engine
   <A HREF="2D_Micromagnetic_Solver.html#sec:mmsolve"
- NAME="21396"><B>mmSolve</B></A> requires a
+ NAME="22651"><B>mmSolve</B></A> requires a
   non-zero damping coefficient.
 </LI>
 </UL>
@@ -179,20 +179,20 @@ where
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1105"
+<A NAME="tex2html1135"
   HREF="Demag_specification.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1101"
+<A NAME="tex2html1131"
   HREF="MIF_1.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1095"
+<A NAME="tex2html1125"
   HREF="MIF_1.1.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1103"
+<A NAME="tex2html1133"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

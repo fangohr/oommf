@@ -5,11 +5,30 @@
  */
 
 #include <iostream>
+#include <cctype>    // std::tolower
 #include <cstdlib>
 
 #include "oxsexcept.h"
 
 /* End includes */
+
+#ifndef NDEBUG
+enum class OxsExceptionAbortBehavior { immediate, unwind };
+OxsExceptionAbortBehavior CheckAbort()
+{
+  std::string request = "immediate"; // Default setting
+  Oc_GetOcOption("","DebugAbort",request);
+  for(auto it=request.begin(); it!= request.end(); ++it) {
+    // Make lowercase to simplify comparison
+    *it = static_cast<char>(std::tolower(*it));
+  }
+  OxsExceptionAbortBehavior oeab = OxsExceptionAbortBehavior::immediate;
+  if(request.compare("immediate")!=0) {
+    oeab = OxsExceptionAbortBehavior::unwind;
+  }
+  return oeab;
+}
+#endif // NDEBUG
 
 
 // Note: We put these constructors in a separate file so we
@@ -20,7 +39,9 @@ Oxs_Exception::Oxs_Exception(const String& text)
 {
 #ifndef NDEBUG
   std::cerr << "\nDEBUG EXCEPTION---\n" <<  text << "\n---" << std::endl;
-  abort();
+  if(CheckAbort() == OxsExceptionAbortBehavior::immediate) {
+    abort();
+  }
 #endif
 }
 
@@ -37,7 +58,9 @@ Oxs_Exception::Oxs_Exception
 {
 #ifndef NDEBUG
   std::cerr << "\nDEBUG EXCEPTION---\n" <<  text << "\n---" << std::endl;
-  abort();
+  if(CheckAbort() == OxsExceptionAbortBehavior::immediate) {
+    abort();
+  }
 #endif
 }
 

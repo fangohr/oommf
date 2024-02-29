@@ -1,7 +1,7 @@
 /* FILE: boxatlas.cc                 -*-Mode: c++-*-
  *
- * Atlas class derived from Oxs_Atlas class that uses an import
- * image file for region demarcation.
+ * Atlas class derived from Oxs_Atlas class providing a simple
+ * axes-parallel "box" (right rectangular prism) region.
  */
 
 #include <vector>

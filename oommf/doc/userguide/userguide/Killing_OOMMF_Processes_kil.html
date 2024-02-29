@@ -14,40 +14,40 @@
 
 <LINK REL="STYLESHEET" HREF="userguide.css">
 
-<LINK REL="next" HREF="Last_Oxsii_Boxsi_run_lastjo.html">
+<LINK REL="next" HREF="Last_Oxsii_Boxsi_Run_lastjo.html">
 <LINK REL="previous" HREF="Cyclic_Redundancy_Check_crc.html">
 <LINK REL="up" HREF="Command_Line_Utilities.html">
-<LINK REL="next" HREF="Last_Oxsii_Boxsi_run_lastjo.html">
+<LINK REL="next" HREF="Last_Oxsii_Boxsi_Run_lastjo.html">
 </HEAD>
 
 <BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html900"
-  HREF="Last_Oxsii_Boxsi_run_lastjo.html">
+<A NAME="tex2html918"
+  HREF="Last_Oxsii_Boxsi_Run_lastjo.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html896"
+<A NAME="tex2html914"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html890"
+<A NAME="tex2html908"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html898"
+<A NAME="tex2html916"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html901"
-  HREF="Last_Oxsii_Boxsi_run_lastjo.html">Last Oxsii/Boxsi run: lastjob</A>
-<B> Up:</B> <A NAME="tex2html897"
+<B> Next:</B> <A NAME="tex2html919"
+  HREF="Last_Oxsii_Boxsi_Run_lastjo.html">Last Oxsii/Boxsi Run: lastjob</A>
+<B> Up:</B> <A NAME="tex2html915"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html891"
+<B> Previous:</B> <A NAME="tex2html909"
   HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION001780000000000000000"></A><A NAME="sec:killoommf"></A><A NAME="18505"></A><A NAME="18506"></A>
+<H1><A NAME="SECTION001790000000000000000"></A><A NAME="sec:killoommf"></A><A NAME="19066"></A><A NAME="19067"></A>
 <BR>
 Killing OOMMF Processes: killoommf
 </H1>
@@ -72,7 +72,7 @@ where
 <DD>Specify the account name.  The default is the same used by
  <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch"><B>mmLaunch</B></A>:
  the current user login name, except on Windows&nbsp;9X, where the dummy
- account ID  ``oommf''<A NAME="18518"></A> may be used
+ account ID  ``oommf''<A NAME="19079"></A> may be used
  instead.
 </DD>
 <DT><STRONG><TT><B>-hostport port</B></TT></STRONG></DT>
@@ -93,7 +93,7 @@ where
 <DT><STRONG><TT><B>-shownames</B></TT></STRONG></DT>
 <DD>Don't kill anything, just print nicknames of matching targets, where
  nicknames are as set by the MIF 2.1
- <A HREF="MIF_2.1_Extension_Commands.html#html:destinationCmd"><TT>Destination</TT></A>
+ <A HREF="MIF_2.1_Extension_Commands.html#PTdestinationCmd"><TT>Destination</TT></A>
  command.
 </DD>
 <DT><STRONG><TT><B>-test</B></TT></STRONG></DT>
@@ -116,37 +116,38 @@ the ``Threads'' list of <A HREF="OOMMF_Launcher_Control_Inte.html#sec:mmlaunch">
 <PRE>
 tclsh oommf.tcl killoommf all
 </PRE>
-is essentially equivalent to the ``<TT>File|Exit All OOMMF</TT>''
-menu option in <B>mmLaunch</B>, except that <B>killoommf</B> does not
-shut down any <B>mmLaunch</B> processes.
+is equivalent to the ``<TT>File|Exit All OOMMF</TT>''
+menu option in <B>mmLaunch</B>.
 
 <P>
 An OOMMF application that does not respond to <B>killoommf</B> can be
-killed by using the OOMMF command line program
-<A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A> to
-determine its PID (process identification) as used by the operating
-system, and then using the system facilities for terminating processes
+killed using the
+operating system pid (process identification)
+and the operating system facilities for terminating processes
 (e.g., <TT>kill</TT> on Unix, or the <TT>Windows Task Manager</TT> on
-Windows).
+Windows). The mapping from OOMMF oids to pids can be obtained from
+either the OOMMF command line program
+<A HREF="OOMMF_Process_ID_Informatio.html#sec:pidinfo"><B>pidinfo</B></A>
+or <B>killoommf</B> with the <TT>-show</TT> option.
 
 <P>
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html900"
-  HREF="Last_Oxsii_Boxsi_run_lastjo.html">
+<A NAME="tex2html918"
+  HREF="Last_Oxsii_Boxsi_Run_lastjo.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html896"
+<A NAME="tex2html914"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html890"
+<A NAME="tex2html908"
   HREF="Cyclic_Redundancy_Check_crc.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html898"
+<A NAME="tex2html916"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

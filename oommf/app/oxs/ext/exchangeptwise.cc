@@ -13,6 +13,7 @@
 #include "nb.h"
 #include "key.h"
 #include "director.h"
+#include "driver.h"
 #include "mesh.h"
 #include "meshvalue.h"
 #include "oxswarn.h"
@@ -52,15 +53,15 @@ Oxs_ExchangePtwise::Oxs_ExchangePtwise(
   VerifyAllInitArgsUsed();
 
   // Setup outputs
-  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
+  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",
              &Oxs_ExchangePtwise::UpdateDerivedOutputs);
   maxspinangle_output.Register(director,0);
   stage_maxspinangle_output.Setup(this,InstanceName(),
-             "Stage Max Spin Ang","deg",1,
+             "Stage Max Spin Ang","deg",
              &Oxs_ExchangePtwise::UpdateDerivedOutputs);
   stage_maxspinangle_output.Register(director,0);
   run_maxspinangle_output.Setup(this,InstanceName(),
-             "Run Max Spin Ang","deg",1,
+             "Run Max Spin Ang","deg",
              &Oxs_ExchangePtwise::UpdateDerivedOutputs);
   run_maxspinangle_output.Register(director,0);
 }
@@ -73,7 +74,12 @@ OC_BOOL Oxs_ExchangePtwise::Init()
   mesh_id = 0;
   A.Release();
   energy_density_error_estimate = -1;
-  return Oxs_Energy::Init();
+
+  // Stage and run max angle computations require access to the
+  // immediate predecessor of the current state.
+  director->GetDriver()->SimstateHoldRequest(2);
+
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void Oxs_ExchangePtwise::ComputeEnergyChunkInitialize

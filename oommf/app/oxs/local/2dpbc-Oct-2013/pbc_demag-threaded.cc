@@ -237,8 +237,8 @@ pbc_2d_error(0), xdim(0), ydim(0), zdim(0),
 sample_repeat_nx(0), sample_repeat_ny(0),
 asymptotic_radius(0), dipolar_radius(0),
 asymptotic_radius_sq(0), dipolar_radius_sq(0),
-Npbc_diag(NULL), Npbc_offdiag(NULL), Mtemp(0),
-MaxThreadCount(Oc_GetMaxThreadCount()), embed_block_size(0) {
+Npbc_diag(), Npbc_offdiag(), Mtemp(0),
+MaxThreadCount(Oc_GetMaxThreadCount()), embed_block_size(0), cache_size(Oc_CacheSize()) {
 
 
     tensor_file_name = GetStringInitValue("tensor_file_name", "");

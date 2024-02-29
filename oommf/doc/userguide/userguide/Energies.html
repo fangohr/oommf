@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html578"
+<A NAME="tex2html582"
   HREF="Evolvers.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html574"
+<A NAME="tex2html578"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html568"
+<A NAME="tex2html572"
   HREF="Meshes.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html576"
+<A NAME="tex2html580"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html579"
+<B> Next:</B> <A NAME="tex2html583"
   HREF="Evolvers.html">Evolvers</A>
-<B> Up:</B> <A NAME="tex2html575"
+<B> Up:</B> <A NAME="tex2html579"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
-<B> Previous:</B> <A NAME="tex2html569"
+<B> Previous:</B> <A NAME="tex2html573"
   HREF="Meshes.html">Meshes</A>
 <BR>
 <BR>
@@ -81,10 +81,8 @@ calc count'' value provided by the evolver.
 <P>
 <FONT SIZE="+1"><B>Anisotropy Energy</B></FONT>
 <BR><DL>
-<DD><A NAME="PTUA"></A><A NAME="5044"></A></DD>
 <DT><STRONG>Oxs_UniaxialAnisotropy:</STRONG></DT>
-<DD>Uniaxial magneto-crystalline
-  anisotropy.  The Specify block has the form
+<DD><A NAME="PTUA"></A><A NAME="5118"></A>Uniaxial magneto-crystalline anisotropy.  The Specify block has the form
    
    <BLOCKQUOTE><DL><DT>
    <TT>Specify Oxs_UniaxialAnisotropy:</TT><I>name</I> <TT>{</TT>
@@ -153,10 +151,9 @@ The formulae in the two cases (easy axis vs. easy plane) differ by a
 
 <B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>, <TT><B>grill.mif</B></TT>.
 <P>
-<A NAME="PTCA"></A><A NAME="5079"></A></DD>
+</DD>
 <DT><STRONG>Oxs_CubicAnisotropy:</STRONG></DT>
-<DD>Cubic magneto-crystalline anisotropy.
-  The Specify block has the form
+<DD><A NAME="PTCA"></A><A NAME="5153"></A>Cubic magneto-crystalline anisotropy. The Specify block has the form
    
    <BLOCKQUOTE><DL><DT>
    <TT>Specify Oxs_CubicAnisotropy:</TT><I>name</I> <TT>{</TT>
@@ -264,9 +261,8 @@ where <!-- MATH
 <P>
 <FONT SIZE="+1"><B>Exchange Energy</B></FONT>
 <BR><DL>
-<DD><A NAME="PTE6"></A><A NAME="5116"></A></DD>
 <DT><STRONG>Oxs_Exchange6Ngbr:</STRONG></DT>
-<DD>Standard 6-neighbor exchange energy.  The
+<DD><A NAME="PTE6"></A><A NAME="5190"></A>Standard 6-neighbor exchange energy.  The
    exchange energy density contribution from cell <B><I>i</I></B> is given by
    
 <P></P>
@@ -297,7 +293,7 @@ where <B><I>N</I><SUB>i</SUB></B> is the set consisting of the 6 cells nearest t
  $\Delta_{ij}$
  -->
 <B><IMG
- WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="28" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img10.gif"
  ALT="$\Delta_{{ij}}^{}$"></B> is the discretization step size between cell <B><I>i</I></B> and
    cell <B><I>j</I></B> (in meters).
@@ -380,7 +376,10 @@ In addition to the standard energy and field outputs,
 
 <UL>
 <LI><B>Max Spin Ang:</B> maximum angle, in degrees, between
-  neigboring spins for the current magnetization state.
+  neigboring spins for the current magnetization state. Two spins <B><I>i</I></B>
+  and <B><I>j</I></B> are neighbors if <B><I>A</I><SUB>ij</SUB></B> is non-zero. If <B><I>A</I><SUB>ij</SUB> &lt; 0</B> then
+  <TT>Max Spin Ang</TT> is measured as the difference from <B>180<SUP><TT>o</TT></SUP></B>,
+  because in that case the low-energy state has the spins anti-parallel.
 </LI>
 <LI><B>Stage Max Spin Ang:</B> Maximum value of <TT>Max Spin Ang</TT>
   for the current stage.
@@ -389,15 +388,17 @@ In addition to the standard energy and field outputs,
   <TT>Max Spin Ang</TT> during the simulation.
 </LI>
 </UL>
+   These values are also accessible inside the MIF file through the
+   <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command.
 
 <P>
 
 <B>Examples:</B> <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
    
 <P>
-<A NAME="PTUE"></A><A NAME="5156"></A></DD>
+</DD>
 <DT><STRONG>Oxs_UniformExchange:</STRONG></DT>
-<DD>Similar to <TT>Oxs_Exchange6Ngbr</TT>, except the exchange constant <B><I>A</I></B>
+<DD><A NAME="PTUE"></A><A NAME="5235"></A>Similar to <TT>Oxs_Exchange6Ngbr</TT>, except the exchange constant <B><I>A</I></B>
    (or exchange length <B><I>lex</I></B>) is uniform across all space.  The
    Specify block is very simple, consisting of either the label
    <B>A</B> with the desired exchange coefficient value in J/m, or
@@ -411,18 +412,19 @@ In addition to the standard energy and field outputs,
    <TT>Oxs_UniformExchange</TT> provides the three scalar outputs
    <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
    <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
-   These values are also accessible through the MIF    <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command.
+   These values are also accessible inside the MIF file through the
+   <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command.
 
 <P>
 
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>stdprob3.mif</B></TT>.
    
 <P>
-<A NAME="PTEP"></A><A NAME="5176"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ExchangePtwise:</STRONG></DT>
-<DD>The exchange coefficient <B><I>A</I><SUB>i</SUB></B> is specified on
+<DD><A NAME="PTEP"></A><A NAME="5255"></A>The exchange coefficient <B><I>A</I><SUB>i</SUB></B> is specified on
    a point-by-point (or cell-by-cell) basis, as opposed to the pairwise
-   specification model used by <TT>Oxs_Exchange6Ngbr</TT>.  The exchange
+   model used by <TT>Oxs_Exchange6Ngbr</TT>.  The exchange
    energy density at a cell <B><I>i</I></B> is computed across its nearest 6 neighbors,
    <B><I>N</I><SUB>i</SUB></B>, using the formula
    <P><!-- MATH
@@ -445,7 +447,7 @@ where <!-- MATH
  $\Delta_{ij}$
  -->
 <B><IMG
- WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="28" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img10.gif"
  ALT="$\Delta_{{ij}}^{}$"></B> is the discretization step size from cell <B><I>i</I></B> to
    cell <B><I>j</I></B> in meters, and
@@ -496,7 +498,7 @@ A_{ij,{\rm eff}} & = & A_{ji,{\rm eff}} \\
 <TD WIDTH=10 ALIGN="RIGHT">
 &nbsp;</TD></TR>
 <TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><IMG
- WIDTH="34" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="34" HEIGHT="47" ALIGN="MIDDLE" BORDER="0"
  SRC="img14.gif"
  ALT="$\displaystyle \lim_{{A_i\downarrow 0}}^{}$"><I>A</I><SUB>ij, eff</SUB></BIG></TD>
 <TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
@@ -529,7 +531,7 @@ Evaluating the exchange energy with this formulation of <!-- MATH
 <B><I>A</I><SUB>ij, eff</SUB></B> is equivalent to finding the minimum possible exchange energy
    between cells <B><I>i</I></B> and <B><I>j</I></B> under the assumption that <B><I>A</I><SUB>i</SUB></B> and <B><I>A</I><SUB>j</SUB></B>
    are constant in each of the two cells.  Similar considerations are
-   made in computing the exchange energy for a <A HREF="Part_geometry.html#html:mifvariablethickness">2D variable
+   made in computing the exchange energy for a <A HREF="Part_geometry.html#HTMLmifvariablethickness">2D variable
    thickness model</A> [<A
  HREF="bibliography.html#porter2001">24</A>].
 
@@ -549,6 +551,8 @@ In addition to the standard energy and field outputs,
    <TT>Oxs_ExchangePtwise</TT> provides the three scalar outputs
    <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
    <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+   These values are also accessible inside the MIF file through the
+   <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command.
 
 <P>
 
@@ -556,9 +560,52 @@ In addition to the standard energy and field outputs,
      <TT><B>antidots-filled.mif</B></TT>.
    
 <P>
-<A NAME="PTTS"></A><A NAME="5222"></A></DD>
+</DD>
+<DT><STRONG>Oxs_RandomSiteExchange:</STRONG></DT>
+<DD><A NAME="PTSE"></A><A NAME="5303"></A>A randomized exchange energy.  The Specify block has the form
+   
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_RandomSiteExchange:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>linkprob </TT><I>probability</I>
+       <DD> <TT>Amin </TT><I>A_lower_bound</I>
+       <DD> <TT>Amax </TT><I>A_upper_bound</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+Each adjacent pair of cells <B><I>i</I></B>, <B><I>j</I></B>, is given <B>linkprob</B>
+   probability of having a non-zero exchange coefficient <B><I>A</I><SUB>ij</SUB></B>.  Here
+   two cells are adjacent if they lie in each other's 6-neighborhood.
+   If a pair is found to have a non-zero exchange coefficient, then
+   <B><I>A</I><SUB>ij</SUB></B> is drawn uniformly from the range <!-- MATH
+ $[\texttt{Amin},\texttt{Amax}]$
+ -->
+<B>[<texttt>Amin</texttt>,<texttt>Amax</texttt>]</B>.
+   The exchange energy is computed using (<A HREF="#eq:ExchangeEnergy">7.1</A>), the
+   formula used by the <TT>Oxs_Exchange6Ngbr</TT> energy object.  The
+   value <B><I>A</I><SUB>ij</SUB></B> for each pair of cells is determined during problem
+   initialization, and is held fixed thereafter.  The limits
+   <I>A_lower_bound</I> and <I>A_upper_bound</I> may be any real
+   numbers; negative values may be used to weaken the exchange
+   interaction arising from other exchange energy terms.  The only
+   restriction is that <I>A_lower_bound</I> must not be greater than
+   <I>A_upper_bound</I>.  The <TT>linkprob</TT> value <I>probability</I>
+   must lie in the range <B>[0, 1]</B>.
+
+<P>
+In addition to the standard energy and field outputs,
+   <TT>Oxs_RandomSiteExchange</TT> provides the three scalar outputs
+   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
+   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+   These values are also accessible inside the MIF file through the
+   <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command.
+
+<P>
+
+<B>Example:</B> 
+     <TT><B>randexch.mif</B></TT>.
+   
+<P>
+</DD>
 <DT><STRONG>Oxs_TwoSurfaceExchange:</STRONG></DT>
-<DD>Provides long-range bilinear and biquadratic exchange.  Typically
+<DD><A NAME="PTTS"></A><A NAME="5329"></A>Provides long-range bilinear and biquadratic exchange.  Typically
    used to simulate RKKY-style coupling across non-magnetic spacers in
    spinvalves.  The specify block has the form
    
@@ -580,6 +627,7 @@ In addition to the standard energy and field outputs,
        <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
        <DD> <TT>scalarside </TT><I>side</I>
    </DL><TT>}</TT>
+   <DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
    <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 Here <B>sigma</B> and <B>sigma2</B> are the bilinear and
    biquadratic surface (interfacial) exchange energies, in
@@ -660,7 +708,7 @@ where <B><IMG
  $\Delta_{ij}$
  -->
 <B><IMG
- WIDTH="28" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="28" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img10.gif"
  ALT="$\Delta_{{ij}}^{}$"></B> is the discretization cell size in the direction from
    cell <B><I>i</I></B> towards cell <B><I>j</I></B>, in meters.  Note that if <B><IMG
@@ -735,55 +783,24 @@ Specify Oxs_TwoSurfaceExchange:AF {
 
 <P>
 In addition to the standard energy and field outputs,
-   <TT>Oxs_TwoSurfaceExchange</TT> provides the three scalar outputs
+   <TT>Oxs_TwoSurfaceExchange</TT> provides three optional scalar outputs,
    <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
-   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
+   <TT>Run Max Spin Ang</TT>, as described for
+   <A HREF="#PTE6"><TT>Oxs_Exchange6Ngbr</TT></A>. Note,
+   however, that ``neighboring spins'' are those that interact through
+   exchange coupling. For <TT>Oxs_TwoSurfaceExchange</TT> this means spins
+   that are not necessarily spatially close, and so the maximum
+   ``neighbor'' spin angle is less meaningful in this context. These
+   outputs are disabled by default, but can be activated by setting
+   the <B>report_max_spin_angle</B> option to 1. These values are
+   always accessible inside the MIF file via
+   the <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command,
+   regardless of the <B>report_max_spin_angle</B> setting.
 
 <P>
 
 <B>Example:</B> 
   <TT><B>spinvalve-af.mif</B></TT>.
-<P>
-<A NAME="PTSE"></A><A NAME="5267"></A></DD>
-<DT><STRONG>Oxs_RandomSiteExchange:</STRONG></DT>
-<DD>A randomized exchange energy.  The Specify block has the form
-   
-   <BLOCKQUOTE><DL><DT>
-   <TT>Specify Oxs_RandomSiteExchange:</TT><I>name</I> <TT>{</TT>
-       <DD> <TT>linkprob </TT><I>probability</I>
-       <DD> <TT>Amin </TT><I>A_lower_bound</I>
-       <DD> <TT>Amax </TT><I>A_upper_bound</I>
-   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
-Each adjacent pair of cells <B><I>i</I></B>, <B><I>j</I></B>, is given <B>linkprob</B>
-   probability of having a non-zero exchange coefficient <B><I>A</I><SUB>ij</SUB></B>.  Here
-   two cells are adjacent if they lie in each other's 6-neighborhood.
-   If a pair is found to have a non-zero exchange coefficient, then
-   <B><I>A</I><SUB>ij</SUB></B> is drawn uniformly from the range <!-- MATH
- $[\texttt{Amin},\texttt{Amax}]$
- -->
-<B>[<texttt>Amin</texttt>,<texttt>Amax</texttt>]</B>.
-   The exchange energy is computed using (<A HREF="#eq:ExchangeEnergy">7.1</A>), the
-   formula used by the <TT>Oxs_Exchange6Ngbr</TT> energy object.  The
-   value <B><I>A</I><SUB>ij</SUB></B> for each pair of cells is determined during problem
-   initialization, and is held fixed thereafter.  The limits
-   <I>A_lower_bound</I> and <I>A_upper_bound</I> may be any real
-   numbers; negative values may be used to weaken the exchange
-   interaction arising from other exchange energy terms.  The only
-   restriction is that <I>A_lower_bound</I> must not be greater than
-   <I>A_upper_bound</I>.  The <TT>linkprob</TT> value <I>probability</I>
-   must lie in the range <B>[0, 1]</B>.
-
-<P>
-In addition to the standard energy and field outputs,
-   <TT>Oxs_RandomSiteExchange</TT> provides the three scalar outputs
-   <TT>Max Spin Ang</TT>, <TT>Stage Max Spin Ang</TT>, and
-   <TT>Run Max Spin Ang</TT> as described for <TT>Oxs_Exchange6Ngbr</TT>.
-
-<P>
-
-<B>Example:</B> 
-     <TT><B>randexch.mif</B></TT>.
-   
 <P>
 </DD>
 </DL>
@@ -793,9 +810,8 @@ In addition to the standard energy and field outputs,
 <P>
 <FONT SIZE="+1"><B>Self-Magnetostatic Energy</B></FONT>
 <BR><DL>
-<DD><A NAME="PTDE"></A><A NAME="5294"></A></DD>
 <DT><STRONG>Oxs_Demag:</STRONG></DT>
-<DD>Standard demagnetization energy term, built upon
+<DD><A NAME="PTDE"></A><A NAME="5383"></A>Standard demagnetization energy term, built upon
    the assumption that the magnetization is constant in each cell.
    It computes the average demagnetization field in each cell using
    formulae from [<A
@@ -803,9 +819,9 @@ In addition to the standard energy and field outputs,
  HREF="bibliography.html#newell1993">23</A>] and convolution
    via the Fast Fourier Transform.  This class supports non-periodic
    simulations if the mesh object in the MIF file is of the
-   <A HREF="Meshes.html#html:oxsrectangularmesh"><TT>Oxs_RectangularMesh</TT></A>
+   <A HREF="Meshes.html#HTMLoxsrectangularmesh"><TT>Oxs_RectangularMesh</TT></A>
    type; for simulations periodic along one axis direction use the
-   <A HREF="Meshes.html#html:oxsperiodicrectangularmesh"><TT>Oxs_PeriodicRectangularMesh</TT></A>
+   <A HREF="Meshes.html#HTMLoxsperiodicrectangularmesh"><TT>Oxs_PeriodicRectangularMesh</TT></A>
    class.  Periodicity in more than one direction is not supported at
    this time.  The specify block has the form
    
@@ -868,9 +884,9 @@ The example file <TT><B>demagtensor.mif</B></TT> can be used to extract the
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>pbcbrick.mif</B></TT>, <TT><B>demagtensor.mif</B></TT>.
    
 <P>
-<A NAME="PTSD"></A><A NAME="5320"></A></DD>
+</DD>
 <DT><STRONG>Oxs_SimpleDemag:</STRONG></DT>
-<DD>This is the same as the <TT>Oxs_Demag</TT> object, except that
+<DD><A NAME="PTSD"></A><A NAME="5409"></A>This is the same as the <TT>Oxs_Demag</TT> object, except that
    periodicity is not supported and asymptotic formulae are not used.
    The implementation does not use any of the symmetries
    inherent in the demagnetization kernel, or special properties of the
@@ -895,9 +911,8 @@ The example file <TT><B>demagtensor.mif</B></TT> can be used to extract the
 <P>
 <FONT SIZE="+1"><B>Zeeman Energy</B></FONT>
 <BR><DL>
-<DD><A NAME="PTUZ"></A><A NAME="5332"></A></DD>
-<DT><STRONG>Oxs_UZeeman:<A NAME="html:UZeeman"></A></STRONG></DT>
-<DD>Uniform (homogeneous) applied field energy.  This class is frequently
+<DT><STRONG>Oxs_UZeeman:<A NAME="HTMLUZeeman"></A></STRONG></DT>
+<DD><A NAME="PTUZ"></A><A NAME="5422"></A>Uniform (homogeneous) applied field energy.  This class is frequently
    used for simulating hysteresis loops.  The specify block takes an
    optional <B>multiplier</B> entry, and a required field range list
    <B>Hrange</B>.  The field range list should be a compound list,
@@ -955,9 +970,9 @@ In addition to the standard energy and field outputs, the
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>, <TT><B>marble.mif</B></TT>.
    
 <P>
-<A NAME="PTFZ"></A><A NAME="5350"></A></DD>
+</DD>
 <DT><STRONG>Oxs_FixedZeeman:</STRONG></DT>
-<DD>Non-uniform, non-time varying applied field.
+<DD><A NAME="PTFZ"></A><A NAME="5439"></A>Non-uniform, non-time varying applied field.
    This can be used to simulate a biasing field.  The specify block
    takes one required parameter, which defines the field, and one
    optional parameter, which specifies a multiplication factor.
@@ -975,9 +990,9 @@ The default value for <I>multiplier</I> is 1.  The field units,
 <B>Examples:</B> <TT><B>spinvalve.mif</B></TT>, <TT><B>spinvalve-af.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
    
 <P>
-<A NAME="PTSU"></A><A NAME="5359"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ScriptUZeeman:</STRONG></DT>
-<DD>Spatially uniform applied field,
+<DD><A NAME="PTSU"></A><A NAME="5448"></A>Spatially uniform applied field,
    potentially varying as a function of time and stage, determined by a
    Tcl script.  The Specify block has the form
       
@@ -997,7 +1012,7 @@ Here <B>script</B> indicates the Tcl script to use.  The script
    stage_time total_time base_state_id current_state_id}</TT>.
    The units for the time options are seconds.  The two
    <TT>state_id</TT> options are intended for use with the
-   MIF <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command;
+   MIF <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command;
    refer to the documentation on that command in the MIF&nbsp;2.1 section
    for details.  If <TT>script_args</TT> is not specified, the default
    argument list is <TT>{stage stage_time total_time}</TT>.
@@ -1078,13 +1093,12 @@ In addition to the standard energy and field outputs, the
      <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
    
 <P>
-<A NAME="PTTZ"></A><A NAME="5413"></A></DD>
+</DD>
 <DT><STRONG>Oxs_TransformZeeman:</STRONG></DT>
-<DD>Essentially a combination of the <TT>Oxs_FixedZeeman</TT> and
-   <TT>Oxs_ScriptUZeeman</TT> classes, where an applied field is produced
-   by applying a spatially uniform, but time and stage varying linear
-   transform to a spatially varying but temporally static field.  The
-   transform is specified by a Tcl script.
+<DD><A NAME="PTTZ"></A><A NAME="5502"></A>A Tcl script specifies a spatially uniform, but time and stage
+   varying linear transform that is applied to a spatially varying but
+   temporally static field. This essentially combines
+   the <TT>Oxs_ScriptUZeeman</TT> and <TT>Oxs_FixedZeeman</TT> classes.
 
 <P>
 The Specify block has the form
@@ -1197,9 +1211,9 @@ block</A>.
 
 <B>Examples:</B> <TT><B>sample2.mif</B></TT>, <TT><B>tickle.mif</B></TT>, <TT><B>rotatecenter.mif</B></TT>.
 <P>
-<A NAME="PTSZ"></A><A NAME="5489"></A></DD>
+</DD>
 <DT><STRONG>Oxs_StageZeeman:</STRONG></DT>
-<DD>The <TT>Oxs_StageZeeman</TT> class provides spatially varying applied
+<DD><A NAME="PTSZ"></A><A NAME="5578"></A>The <TT>Oxs_StageZeeman</TT> class provides spatially varying applied
    fields that are updated once per stage.  In its general form, the
    field at each stage is provided by an <A HREF="Field_Objects.html#sec:oxsFieldObjects">Oxs vector field
    object</A>
@@ -1258,18 +1272,18 @@ Specify Oxs_StageZeeman {
 </BLOCKQUOTE>
 
 <P>
-The <TT>SlidingFieldSpec</TT> proc is used to generate the initialization
-   string for an <TT>Oxs_ScriptVectorField</TT> vector field object, which
-   in turn uses the <TT>SlidingField</TT> proc to specify the applied field
-   on a position-by-position basis.  The resulting field will be
-   2e4 A/m in the positive x-direction at
-   all points with relative x-coordinate larger than <TT>$stage/10.</TT>,
-   and 0 otherwise.  <TT>$stage</TT> is the stage index, which here is
-   one of 0, 1, ..., 10.  For example, if <TT>$stage</TT> is 5, then the
-   left half of the sample will see a 2e4
-   A/m field directed to the right, and the right half of the sample
-   will see none.  The return value from <TT>SlidingFieldSpec</TT> in this
-   case will be
+The <TT>SlidingFieldSpec</TT> proc generates an initialization string
+   that is used to create an <TT>Oxs_ScriptVectorField</TT> vector field
+   object, which in turn uses the <TT>SlidingField</TT> proc to specify the
+   applied field on a position-by-position basis.  The resulting field
+   will be 2e4 A/m in the positive
+   x-direction at all points with relative x-coordinate larger
+   than <TT>$stage/10.</TT>, and 0 otherwise.  <TT>$stage</TT> is the stage
+   index, which here is one of 0, 1, ..., 10.  For example,
+   if <TT>$stage</TT> is 5, then the left half of the sample will see
+   a 2e4 A/m field directed to the right,
+   and the right half of the sample will see none.  The return value
+   from <TT>SlidingFieldSpec</TT> in this case will be
 
 <BLOCKQUOTE><PRE>
 Oxs_ScriptVectorField {
@@ -1403,20 +1417,20 @@ B&nbsp;max&nbsp;=&nbsp;[(Bx&nbsp;max)<SUP>2</SUP>+(By&nbsp;max)<SUP>2</SUP>+(Bz&
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html578"
+<A NAME="tex2html582"
   HREF="Evolvers.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html574"
+<A NAME="tex2html578"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html568"
+<A NAME="tex2html572"
   HREF="Meshes.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html576"
+<A NAME="tex2html580"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

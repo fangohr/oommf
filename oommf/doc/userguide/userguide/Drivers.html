@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html602"
+<A NAME="tex2html606"
   HREF="Field_Objects.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html598"
+<A NAME="tex2html602"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html592"
+<A NAME="tex2html596"
   HREF="Evolvers.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html600"
+<A NAME="tex2html604"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html603"
+<B> Next:</B> <A NAME="tex2html607"
   HREF="Field_Objects.html">Field Objects</A>
-<B> Up:</B> <A NAME="tex2html599"
+<B> Up:</B> <A NAME="tex2html603"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
-<B> Previous:</B> <A NAME="tex2html593"
+<B> Previous:</B> <A NAME="tex2html597"
   HREF="Evolvers.html">Evolvers</A>
 <BR>
 <BR>
@@ -70,18 +70,17 @@ criteria.
 <P>
 There are two drivers in Oxs,
 <A HREF="#item:TimeDriver"><TT>Oxs_TimeDriver</TT></A>
-for controlling time evolvers such as
-<A HREF="Evolvers.html#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>,
+for controlling LLG time evolvers such as
+<A HREF="Evolvers.html#HTMLRungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>,
 and
-<A HREF="#html:MinDriver"><TT>Oxs_MinDriver</TT></A>
-for controlling minimization evolvers like
-<A HREF="Evolvers.html#html:CGEvolve"><TT>Oxs_CGEvolve</TT></A>.
+<A HREF="#item:MinDriver"><TT>Oxs_MinDriver</TT></A>
+for controlling energy minimization evolvers like
+<A HREF="Evolvers.html#HTMLCGEvolve"><TT>Oxs_CGEvolve</TT></A>.
 
 <P>
 <DL>
-<DD><A NAME="PTTD"></A><A NAME="6011"></A></DD>
 <DT><STRONG>Oxs_TimeDriver:<A NAME="item:TimeDriver"></A></STRONG></DT>
-<DD>The Oxs time driver is <B>Oxs_TimeDriver</B>.  The specify block has
+<DD><A NAME="PTTD"></A><A NAME="6101"></A>The Oxs time driver is <B>Oxs_TimeDriver</B>.  The specify block has
 the form
 
 <BLOCKQUOTE><DL><DT>
@@ -120,14 +119,14 @@ initial configuration for the magnetization unit spins, i.e., <!-- MATH
 at each point.  These four parameters are required.
 
 <P>
-The next group of 3 parameters control stage stopping criteria.  The
-<B>stopping_dm_dt</B> value, in degrees per nanosecond, specifies that a
-stage should be considered complete when the maximum <!-- MATH
+The next group of three parameters control stage stopping criteria.
+Measured in degrees per nanosecond, the <B>stopping_dm_dt</B>
+value specifies that a stage should be considered complete when the
+maximum <!-- MATH
  $|d\textbf{m}/dt|$
  -->
-<B>| <I>d</I><B>m</B>/<I>dt</I>|</B> across
-all spins drops below this value.  Similarly, the
-<B>stopping_time</B> value specifies the maximum ``Simulation
+<B>| <I>d</I><B>m</B>/<I>dt</I>|</B> across all spins drops below this value.  Similarly,
+the <B>stopping_time</B> value specifies the maximum ``Simulation
 time,'' i.e., the Landau-Lifshitz-Gilbert ODE (<A HREF="Evolvers.html#eq:oxsllode">7.2</A>),
 (<A HREF="Evolvers.html#eq:oxsllgode">7.3</A>) time, allowed per stage.  For example, if
 <I>time_criteria</I> is
@@ -147,7 +146,7 @@ criteria all provide a default value of 0, meaning no constraint, but
 usually at least one is specified since otherwise there is no automatic
 stage termination control.  For quasi-static simulations, a
 <TT>stopping_dm_dt</TT> value in the range of 1.0 to 0.01 is reasonable;
-the numerical precision of the energy calculations usually makes in not
+the numerical precision of the energy calculations usually makes it not
 possible to obtain <!-- MATH
  $|d\textbf{m}/dt|$
  -->
@@ -166,7 +165,7 @@ If <TT>stage_count</TT> is not specified, or is given the value 0, then the
 effective <I>number_of_stages</I> value is computed by examining the
 length of the stopping criteria lists, and also any other <TT>Oxs_Ext</TT>
 object that has stage length expectations, such as
-<A HREF="Energies.html#html:UZeeman"><TT>Oxs_UZeeman</TT></A>.  The longest of these is
+<A HREF="Energies.html#HTMLUZeeman"><TT>Oxs_UZeeman</TT></A>.  The longest of these is
 taken to be the stage limit value.  Typically these lengths, along with
 <TT>stage_count</TT> if specified, will all be the same, and any
 differences indicate an error in the MIF file.  Oxs will automatically
@@ -179,7 +178,7 @@ the full simulation stage length.  In this case, the stage count check
 can be disabled by setting <I>test</I> to 0.
 
 <P>
-The <A NAME="PToxsdrivercheckpoint"></A><A NAME="6048"></A><A NAME="6049"></A>
+The <A NAME="PToxsdrivercheckpoint"></A><A NAME="6137"></A><A NAME="6138"></A>
 options are used to control the saving of solver state to disk; these
 saves are used by the <B>oxsii</B> and <B>boxsi</B> restart feature.
 The value of the <B>checkpoint_file</B> option is the name to
@@ -218,11 +217,11 @@ The <B>normalize_aveM_output</B> option is used to control the
 scaling and units on the average magnetization components <B><I>M</I><SUB>x</SUB></B>, <B><I>M</I><SUB>y</SUB></B>
 and <B><I>M</I><SUB>z</SUB></B> sent as DataTable output (this includes output sent to
 <A HREF="Data_Table_Display_mmDataTa.html#sec:mmdatatable"
- NAME="6072"><B>mmDataTable</B></A>,
+ NAME="6161"><B>mmDataTable</B></A>,
 <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
- NAME="6077"><B>mmGraph</B></A>, and
+ NAME="6166"><B>mmGraph</B></A>, and
 <A HREF="Data_Archive_mmArchive.html#sec:mmarchive"
- NAME="6082"><B>mmArchive</B></A>).  If
+ NAME="6171"><B>mmArchive</B></A>).  If
 <I>aveMflag</I> is true (1), then the output values are scaled to lie
 in the range <B>[- 1, 1]</B>, where the extreme values are obtained only at
 saturation (i.e., all the spins are aligned).  If <I>aveMflag</I> is
@@ -234,9 +233,10 @@ additional values: <B>basename</B>,
 <B>scalar_output_format</B>, and
 <B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format
 these output controls have been moved into the <TT>SetOptions</TT> block.
-See the <A HREF="MIF_2.2_New_Extension_Comma.html#html:mif2SetOptions"
- NAME="6093"><TT>SetOptions</TT></A>
-documentation for details.
+See the <A HREF="MIF_2.2_New_Extension_Comma.html#PTmif2SetOptions"><TT>SetOptions</TT></A>
+
+<P>
+documentation for details.<A NAME="6184"></A>
 
 <P>
 <TT>Oxs_TimeDriver</TT> provides 12 scalar outputs and 2 vector field
@@ -291,12 +291,12 @@ The three ``Max Spin Ang'' outputs are disabled by default.  In general
 one should refer instead to the neighboring spin angle outputs provided
 by the exchange energies.  However, for backward compatibility, or for
 simulations without any exchange energy terms, the driver spin angle
-outputs can be enabled by setting the
-<B>report_max_spin_angle</B> option to to 1.
+outputs can be enabled by setting
+the <B>report_max_spin_angle</B> option to 1.
 
 <P>
 The ``Wall time'' output is also disabled by default.  It can be enabled
-by setting the <B>report_wall_time</B> option to to 1.  It reports
+by setting the <B>report_wall_time</B> option to 1.  It reports
 the wall clock time, in seconds, since a system-dependent zero-time.
 This output may be useful for performance comparisions and
 debugging. (Note: The timestamp for a magnetization state is recorded
@@ -325,9 +325,9 @@ always exporting at full precision.
 
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>pulse.mif</B></TT>.
 <P>
-<A NAME="PTMD"></A><A NAME="6126"></A></DD>
-<DT><STRONG>Oxs_MinDriver:<A NAME="html:MinDriver"></A></STRONG></DT>
-<DD>The Oxs driver for controlling minimization evolvers is
+</DD>
+<DT><STRONG>Oxs_MinDriver:<A NAME="item:MinDriver"></A></STRONG></DT>
+<DD><A NAME="PTMD"></A><A NAME="6218"></A>The Oxs driver for controlling minimization evolvers is
 <B>Oxs_MinDriver</B>.  The specify block has the form
 
 <BLOCKQUOTE><DL><DT>
@@ -377,10 +377,11 @@ block supports three additional values: <B>basename</B> to control
 output filenames, and output format controls
 <B>scalar_output_format</B> and
 <B>vector_field_output_format</B>.  In the MIF&nbsp;2.2 format these
-output controls have been moved into the <TT>SetOptions</TT> block.  See the
-<A HREF="MIF_2.2_New_Extension_Comma.html#html:mif2SetOptions"
- NAME="6148"><TT>SetOptions</TT></A>
-documentation for details.
+output controls have been moved into the <TT>SetOptions</TT> block.
+See the <A HREF="MIF_2.2_New_Extension_Comma.html#PTmif2SetOptions"><TT>SetOptions</TT></A>
+
+<P>
+documentation for details.<A NAME="6241"></A>
 
 <P>
 <TT>Oxs_MinDriver</TT> provides 10 scalar outputs and 2 vector
@@ -428,8 +429,8 @@ Ang'' obtained across the current run, in degrees.
 As is the case for the <TT>Oxs_TimeDriver</TT>, the three ``Max Spin Ang''
 outputs and ``Wall time'' are disabled by default.  They angle outputs
 are enabled by setting the <B>report_max_spin_angle</B> option to
-to 1, and the wall time output is enabled by setting the
-<B>report_wall_time</B> option to to 1.
+1, and the wall time output is enabled by setting the
+<B>report_wall_time</B> option to 1.
 
 <P>
 The vector field outputs are
@@ -460,20 +461,20 @@ always exporting at full precision.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html602"
+<A NAME="tex2html606"
   HREF="Field_Objects.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html598"
+<A NAME="tex2html602"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html592"
+<A NAME="tex2html596"
   HREF="Evolvers.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html600"
+<A NAME="tex2html604"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

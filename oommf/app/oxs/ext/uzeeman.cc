@@ -107,13 +107,13 @@ Oxs_UZeeman::Oxs_UZeeman(
   }
   DeleteInitValue("Hrange");
 
-  Bapp_output.Setup(this,InstanceName(),"B","mT",1,
+  Bapp_output.Setup(this,InstanceName(),"B","mT",
 		    &Oxs_UZeeman::Fill__Bapp_output);
-  Bappx_output.Setup(this,InstanceName(),"Bx","mT",1,
+  Bappx_output.Setup(this,InstanceName(),"Bx","mT",
 		     &Oxs_UZeeman::Fill__Bapp_output);
-  Bappy_output.Setup(this,InstanceName(),"By","mT",1,
+  Bappy_output.Setup(this,InstanceName(),"By","mT",
 		     &Oxs_UZeeman::Fill__Bapp_output);
-  Bappz_output.Setup(this,InstanceName(),"Bz","mT",1,
+  Bappz_output.Setup(this,InstanceName(),"Bz","mT",
 		     &Oxs_UZeeman::Fill__Bapp_output);
 
   Bapp_output.Register(director,0);
@@ -129,7 +129,7 @@ Oxs_UZeeman::~Oxs_UZeeman()
 
 OC_BOOL Oxs_UZeeman::Init()
 {
-  return Oxs_ChunkEnergy::Init();
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void Oxs_UZeeman::StageRequestCount

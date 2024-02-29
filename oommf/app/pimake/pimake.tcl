@@ -30,6 +30,8 @@ exec tclsh "$0" ${1+"$@"}
 #
 ########################################################################
 
+set start_time [clock seconds]
+
 # Announce to those concerned that a build is in progress
 global env
 set env(OOMMF_BUILD_ENVIRONMENT_NEEDED) 1
@@ -143,7 +145,7 @@ if {[Oc_Main HasTk]} {
     wm withdraw .
 }
 Oc_Main SetAppName pimake
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 # Disable the -console option; we don't enter an event loop
 Oc_CommandLine Option console {} {}
@@ -214,10 +216,23 @@ if {[catch {MakeRule Build $target} errmsg]} {
     flush stdout
     Oc_Log Log "[MakeRule NumErrors] Error(s) detected" info
 } else {
+    set stop_time [clock seconds]
+    set logmsg "Target '$target' up to date."
+    if {$errmsg>0} {
+       set build_time [clock format [expr {$errmsg - [MakeRule Offset]}]]
+       append logmsg "\nBuilt $build_time"
+    }
+    append logmsg "\nCurrent time: [clock format [clock seconds]]"
+    set time_delta [expr {$stop_time - $start_time}]
+    if {$time_delta > 29} {
+       set mins [expr {$time_delta/60}]
+       incr time_delta [expr {-60*$mins}]
+       set secs $time_delta
+       append logmsg [format "\nPimake run time: %d:%02d" \
+                         $mins $secs]
+    }
     flush stdout
-    Oc_Log Log "Target '$target' up to date.\nBuilt [clock format [expr \
-    {$errmsg - [MakeRule Offset]}]]\nCurrent time: [clock format \
-    [clock seconds]]" info
+    Oc_Log Log $logmsg info
 }
 
 ########################################################################

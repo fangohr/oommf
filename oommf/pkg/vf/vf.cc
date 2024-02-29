@@ -59,26 +59,19 @@ int
 Vf_Init(Tcl_Interp *interp)
 {
 // Use macro instead of goto
-#define RETURN_TCL_ERROR                                                \
-    Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in Vf_Init())"));  \
+#define RETURN_TCL_ERROR                               \
+    Tcl_AddErrorInfo(interp, "\n    (in Vf_Init())");  \
     return TCL_ERROR
 
-    if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
-		       OC_CONST84_CHAR("2"), 0) == NULL) {
-        Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(Vf " VF_VERSION " needs Oc 2)"),
-                NULL);
+    if (Tcl_PkgPresent(interp, "Oc", "2", 0) == NULL) {
+        Tcl_AppendResult(interp, "\n\t(Vf " VF_VERSION " needs Oc 2)", NULL);
         RETURN_TCL_ERROR;
     }
-    if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Nb"),
-		       OC_CONST84_CHAR("2"), 0) == NULL) {
-        Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(Vf " VF_VERSION " needs Nb 2)"),
-                NULL);
+    if (Tcl_PkgPresent(interp, "Nb", "2", 0) == NULL) {
+        Tcl_AppendResult(interp, "\n\t(Vf " VF_VERSION " needs Nb 2)", NULL);
         RETURN_TCL_ERROR;
     }
-    if (Tcl_PkgProvide(interp, OC_CONST84_CHAR("Vf"),
-		       OC_CONST84_CHAR(VF_VERSION)) != TCL_OK) {
+    if (Tcl_PkgProvide(interp, "Vf", VF_VERSION) != TCL_OK) {
         RETURN_TCL_ERROR;
     }
     if (Oc_InitScript(interp, "Vf", VF_VERSION) != TCL_OK) {

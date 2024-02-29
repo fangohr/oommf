@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include "imports.h" // OC_USING_CONST84 definition
+#include "imports.h"
 
 /* End includes */     /* Optional directive to pimake */
 
@@ -87,13 +87,8 @@ public:
   const char& operator[](int i) const {
 #ifndef NDEBUG
     if(i<0 || static_cast<size_t>(i) > bufsize) {
-#if OC_USING_CONST84
       Tcl_Panic("%s","Out-of-bounds access in"
                 " Oc_AutoBuf::operator[] const");
-#else
-      Tcl_Panic((char*)("%s"),"Out-of-bounds access in"
-                " Oc_AutoBuf::operator[] const");
-#endif
     }
 #endif
     return str[i];
@@ -101,13 +96,8 @@ public:
   char& operator[](int i) {
 #ifndef NDEBUG
     if(i<0 || static_cast<size_t>(i) > bufsize) {
-#if OC_USING_CONST84
       Tcl_Panic("%s","Out-of-bounds access in"
                 " Oc_AutoBuf::operator[]");
-#else
-      Tcl_Panic((char*)("%s"),"Out-of-bounds access in"
-                " Oc_AutoBuf::operator[]");
-#endif
     }
 #endif
     return str[i];
@@ -121,20 +111,6 @@ inline const Oc_AutoBuf operator+(const Oc_AutoBuf& a,const Oc_AutoBuf& b)
   c.Append(b);
   return c;
 }
-
-
-// NOTE: OC_USING_CONST84 is #define'd in oc/imports.h
-// The OC_CONST84_CHAR macro can be used to wrap "const char*"
-// arguments to the Tcl API that changed from char* to const char*
-// between Tcl 8.3 and 8.4.  On Tcl 8.4 and later OC_CONST84_CHAR
-// translates to a nop.  On Tcl 8.3 and earlier OC_CONST84_CHAR
-// copies the const char* into a temporary Oc_AutoBuf, and forwards
-// a pointer to the char buf in Oc_AutoBuf.
-#if OC_USING_CONST84
-# define OC_CONST84_CHAR(x) (x)
-#else
-# define OC_CONST84_CHAR(x) (Oc_AutoBuf(x).GetStr())
-#endif
 
 
 #if (OC_SYSTEM_TYPE == OC_WINDOWS)
@@ -305,6 +281,7 @@ public:
 
   // Copy operators. Add more as needed.
   Oc_TclObj& operator=(const Oc_TclObj& other) {
+    if(this == &other) return *this; // Same object
     Tcl_DecrRefCount(objPtr);
     objPtr = Tcl_DuplicateObj(other.objPtr);
     Tcl_IncrRefCount(objPtr);

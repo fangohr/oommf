@@ -146,7 +146,8 @@ private:
     }
     void Clear () {
       key.Release(); // Puts key in INVALID state and set key ptr to 0.
-      // Reserve memory in energy or mxHxm arrays
+      energy.Reset(); // Reserve memory in energy or mxHxm arrays
+      mxHxm.Reset();
       offset = -1.0;
       E = E_error_estimate = Ep = grad_norm = 0.0;
     }
@@ -245,8 +246,8 @@ private:
   // Field outputs
   void UpdateDerivedFieldOutputs(const Oxs_SimState& state);
   Oxs_VectorFieldOutput<Oxs_CGEvolve> total_H_field_output;
-  Oxs_VectorFieldOutput<Oxs_CGEvolve> mxHxm_output;
-  Oxs_ScalarFieldOutput<Oxs_CGEvolve> total_energy_density_output;
+  Oxs_SimStateVectorFieldOutput<Oxs_CGEvolve> mxHxm_output;
+  Oxs_SimStateScalarFieldOutput<Oxs_CGEvolve> total_energy_density_output;
 
   // Scalar outputs
   void UpdateDerivedOutputs(const Oxs_SimState&);
@@ -264,7 +265,7 @@ private:
   (const Oxs_SimState* state,          // Import
    Oxs_MeshValue<OC_REAL8m>& energy,   // Export
    Oxs_MeshValue<ThreeVector>& mxHxm,  // Export
-   Oxs_MeshValue<ThreeVector>* Hptr);  // Export
+   Oxs_MeshValue<ThreeVector>* Hptr=nullptr); // Export
 
   void GetRelativeEnergyAndDerivative
   (Oxs_ConstKey<Oxs_SimState> statekey, // Import
@@ -347,12 +348,13 @@ public:
   virtual OC_BOOL
   InitNewStage(const Oxs_MinDriver* driver,
                Oxs_ConstKey<Oxs_SimState> state,
-               Oxs_ConstKey<Oxs_SimState> prevstate);
+               Oxs_ConstKey<Oxs_SimState> prevstate,
+               Oxs_DriverStageInfo& stage_info);
 
   virtual OC_BOOL
   TryStep(const Oxs_MinDriver* driver,
           Oxs_ConstKey<Oxs_SimState> current_state,
-          const Oxs_DriverStepInfo& step_info,
+          Oxs_DriverStepInfo& step_info,
           Oxs_ConstKey<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.

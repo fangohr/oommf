@@ -102,7 +102,7 @@ public:
   // rather csize/2, because the real array is first packed with
   // alternating values as real and imaginary parts into a complex
   // array of size csize/2, the full complex FFT is taken of the
-  // packed array, and then the packed array is unpacked into the 
+  // packed array, and then the packed array is unpacked into the
   // half-size+1 array that would arise if an FFT of size csize
   // had been taken instead on the original array.  Because of this,
   // the scale factor arising from taking a forward followed by
@@ -375,7 +375,7 @@ private:
   // imaginary part < (resp. >) 0.  So, in this case
   //
   //     array size = [fftsize - 3*(n-1)/2 - 26] + 15
-  //                = fftsize - 3*(n-1)/2 - 11, 
+  //                = fftsize - 3*(n-1)/2 - 11,
   //                                    if n = log_2(fftsize) is odd.
 
   OXS_FFT_REAL_TYPE* UReals; // Roots of unity for unpacking
@@ -449,7 +449,7 @@ private:
  * entries are adjacent in memory, i.e.,
  *
  *         -- memory index increases by 1 -->
- *   
+ *
  *   |     a0_x  a0_y  b0_x  b0_y  c0_x c0_y ...
  *  mem    a1_x  a1_y  b1_x  b1_y  c1_x c1_y ...
  * index   ...
@@ -723,7 +723,7 @@ private:
   // imaginary part < (resp. >) 0.  So, in this case
   //
   //     array size = [fftsize - 3*(n-1)/2 - 26] + 15
-  //                = fftsize - 3*(n-1)/2 - 11, 
+  //                = fftsize - 3*(n-1)/2 - 11,
   //                                    if n = log_2(fftsize) is odd.
 
   OXS_FFT_REAL_TYPE* UForwardRadix4; // Radix 4, inline,

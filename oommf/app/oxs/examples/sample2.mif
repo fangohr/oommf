@@ -66,23 +66,6 @@ Specify Oxs_TransformZeeman  [subst {
 
 Specify Oxs_Demag {}
 
-Specify Oxs_RungeKuttaEvolve:evolve {}
-
-Specify Oxs_TimeDriver [subst {
- basename sample2
- evolver :evolve
- stopping_time 1e-9
- stage_count 10
- mesh :mesh
- Ms 490e3
- m0 { Oxs_ScriptVectorField {
-    atlas :atlas
-    script  [list $m0script]
-    script_args [list $m0scriptargs]
-    norm  1
- } }
-}]
-
 proc UpDownSpin { x y z } {
     if { $x < 0.45 } {
         return "0 1 0"
@@ -197,3 +180,26 @@ proc Rotate { freq stage stagetime totaltime } {
                  [expr {$w*$ct}]  [expr {$w*$mst}] 0 \
                         0                0         0]
 }
+
+Specify Oxs_RungeKuttaEvolve:evolve {}
+
+Specify Oxs_TimeDriver [subst {
+ basename sample2
+ evolver :evolve
+ stopping_time 1e-9
+ stage_count 10
+ mesh :mesh
+ Ms 490e3
+   m0 { Oxs_RandomVectorField {
+      min_norm 0.0
+      max_norm 0.5
+      base_field { Oxs_ScriptVectorField {
+         atlas :atlas
+         script  [list $m0script]
+         script_args [list $m0scriptargs]
+         norm  1
+      }}
+     cache_grid :mesh
+   }}
+}]
+

@@ -2,7 +2,7 @@
 #
 # The server process for an OOMMF account.
 #
-# It listens on the port name by its first command line argument, and 
+# It listens on the port named by its first command line argument, and
 # directs communications among all OOMMF threads owned by this account.
 #
 # Last modified on: $Date: 2015/09/30 07:41:35 $
@@ -154,11 +154,14 @@ if {[llength $argv] > 2} {
     }
 } else {
     set nextOOMMFId 0
-} 
+}
 
-# Second, there is a map from OOMMF process ID to a list of data describing
-# that process: the name of the program (eg. mmDataTable), the connection
-# over which we communicate to that process, the process ID.
+# Second, there is a map from OOMMF process ID to a list of data
+# describing that process: the name of the program (eg. mmDataTable),
+# the connection over which we communicate to that process, the process
+# ID, and the list of names associated with that oid. The last always
+# includes at a minimum the lowercased application name suffixed with a
+# colon and the oid.
 array set info [list]
 
 # Third, there is an array that maps a service ID (really a pair (OOMMF
@@ -314,7 +317,7 @@ $master(protocol) AddMessage start newoid {appname pid start {oid -1}} {
     set process($pid,$start) $oid
     Oc_EventHandler Generate NotifyNewOid $pid -oid $oid
     Oc_EventHandler Generate Oc_Main NewOid -oid $oid -appname $appname
-    
+
     foreach x [array names info] {
 	set c [lindex $info($x) 1]
 	if {[llength [info commands $c]]} {
@@ -592,6 +595,63 @@ $master(protocol) AddMessage start getpids {oidpats args} {
     return [list start $result]
 }
 
+$master(protocol) AddMessage start ping {detail args} {
+   # Initiates a ping+response sequence with the account server.  This
+   # can be used by the client to verify that its account server
+   # connection is active, or as part of the tickle+ping+tell_alive
+   # sequence that one client can use to check that another account
+   # server client is alive. (See the "tickle" message for details.)
+   #
+   # The ping response from the server is the keyword "ack" followed by
+   # the "detail" import, which is an arbitrary string from the client
+   # that the account server echos back.
+   #
+   # Additionally, the server broadcasts an "aliveping oid" message to
+   # all 'trackoids' subscribers.
+
+   # Determine the OID through "connection" (which is the implicit,
+   # first import on all message handler procs --- see the Net_Protocol
+   # method AddMessage in oommf/pkg/net/protocol.tcl for details). Q: Is
+   # there an easier way to find the oid?
+   global info
+   set oid -1
+   foreach testoid [array names info] {
+      Oc_Log Log "info($testoid): $info($testoid)" status
+      if {[lsearch -exact $info($testoid) $connection]>=0} {
+         set oid $testoid
+         break
+      }
+   }
+   if {$oid<0} {
+      return [list start \
+                 [list 1 "No oid registered with connection $connection"]]
+   }
+
+   # Send "Tell alive" communique
+   Oc_EventHandler Generate Oc_Main AlivePing -oid $oid -detail $detail
+
+   return [list start [list 0 ack $detail]]
+}
+
+$master(protocol) AddMessage start tickle {oid detail args} {
+   # The tickle message requests the account server to send a 'tell
+   # pingme' communication to the specified oid.  That oid is then
+   # expected to send a ping message back to the server. The "detail"
+   # import is an arbitrary string that the initiating client can set
+   # to track the reply.
+   global info
+   if {![info exists info($oid)]} {
+      return [list start \
+                 [list 1 "Oid $oid not registered with account server"]]
+   }
+   set oidconn [lindex $info($oid) 1]
+   if {[catch {$oidconn Tell private pingme $detail} errmsg]} {
+      return [list start \
+                 [list 2 "Oid $oid account server connection error: $errmsg"]]
+   }
+   return [list start 0]
+}
+
 $master(protocol) AddMessage start kill {oidpats args} {
    # Given a list of glob-style oid patterns (probably either a single
    # oid or "*"), does a tell "die" on each account server connection.
@@ -633,7 +693,7 @@ $master(protocol) AddMessage start kill {oidpats args} {
       set oidconn [lindex $info($oid) 1]
       $oidconn Tell private die
    }
-   return [list start $oidlist]
+   return [list start [concat 0 $oidlist]]
 }
 
 $master(protocol) AddMessage start threads {} {
@@ -673,13 +733,16 @@ $master(protocol) AddMessage start threads {} {
     Oc_EventHandler New _ Oc_Main DeleteOid \
             [list catch [list $connection Tell deleteoid %oid]] \
             -groups [list $connection NewThread-$connection]
+    Oc_EventHandler New _ Oc_Main AlivePing \
+            [list catch [list $connection Tell aliveping %oid %detail]] \
+            -groups [list $connection NewThread-$connection]
     return [list start [concat 0 $ret]]
 }
 
 $master(protocol) AddMessage start trackoids {} {
    # Returns list of all active OIDs (with appnames), and marks
-   # connection to receive notification of all future OID assignments
-   # and deletions.
+   # connection to receive notification of all future OID assignments,
+   # deletions, and "alive" ping receipts.
    global info
    set oidnames [list]
    foreach oid [lsort -integer [array names info]] {
@@ -690,6 +753,9 @@ $master(protocol) AddMessage start trackoids {} {
       -groups [list $connection TrackOids-$connection]
    Oc_EventHandler New _ Oc_Main DeleteOid \
       [list catch [list $connection Tell deleteoid %oid]] \
+      -groups [list $connection TrackOids-$connection]
+   Oc_EventHandler New _ Oc_Main AlivePing \
+      [list catch [list $connection Tell aliveping %oid %detail]] \
       -groups [list $connection TrackOids-$connection]
    return [list start [concat 0 $oidnames]]
 }
@@ -817,7 +883,7 @@ $master(protocol) AddMessage start register {sid alias port protocolname} {
     return [list start [list 0 {}]]
 }
 $master(protocol) AddMessage start deregister { sid } {
-    # De-register a service.  
+    # De-register a service.
     global service protocol regname info
 
     # First verify de-registration request comes from correct app
@@ -868,8 +934,8 @@ $master(protocol) AddMessage start deregister { sid } {
 # query 4 bye
 # reply 4 0 Bye!
 #
-# If the connection doesn't close, type 'Ctrl+[' to go into telnet
-# command mode and type 'close'.
+# If the connection doesn't close, type 'Ctrl+]' to go into telnet
+# command mode and type 'close' or 'quit'.
 #
 # Notes:
 #  1) Each Oc_Class instance maintains an array holding class instance
@@ -998,7 +1064,7 @@ if {0} {
 ### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ### DEBUGGING TOOLS ####################################################
 
-# Define and start server 
+# Define and start server
 # add -allow and -deny options to control access
 # We have to do a manual registration with host server
 set master(registered) 0
@@ -1023,7 +1089,7 @@ if {[file readable [file join $master(pdir) omfExport.tcl]]} {
 }
 
 proc CheckExportTimes {} {
-    # Check .omfExport file modification times against the 
+    # Check .omfExport file modification times against the
     # modification time when last sourced.  Returns 1 if any
     # of the files have a different mtime, 0 otherwise
     global Omf_export_mtime

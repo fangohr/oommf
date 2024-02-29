@@ -7,11 +7,15 @@ Generic process for updating patch files for contributed packages:
 
 3) Create a temporary holding directory, say oommf/app/oxs/contrib/foo
    and use the oxspkg copyout command to copy the package files from
-   oxs/local to the holding directory.
+   oxs/local to the holding directory:
+
+     tclsh oommf.tcl oxspkg copyout my_great_package foo
 
 4) Working in the oxs/contrib directory, move the copied files like so
 
+     cd app/oxs/contrib
      mv foo/my_great_package ./my_great_package-new
+     rmdir foo
 
 5) Create the new patch set, indexed with the current date
 
@@ -28,6 +32,4 @@ Generic process for updating patch files for contributed packages:
    Check that the new patch file is applied during the install.  Run
    pimake and double-check the build.
 
--mjd, 7-Nov-2018
-
-
+-mjd, 26-Jan-2021

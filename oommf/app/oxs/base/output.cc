@@ -12,8 +12,7 @@
 /* End includes */
 
 Oxs_Output::Oxs_Output()
-  : director(NULL),
-    cache_support(0), cache_request_count(0),
+  : director(NULL), cache_request_count(0),
     priority(0)
 {}
 
@@ -26,14 +25,12 @@ void Oxs_Output::Setup
 (const char* owner_name_,
  const char* output_name_,
  const char* output_type_,
- const char* output_units_,
- OC_BOOL cache_support_)
+ const char* output_units_)
 {
   owner_name = owner_name_;
   output_name = output_name_;
   output_type = output_type_;
   output_units = output_units_;
-  cache_support = cache_support_;
   cache_request_count = 0;  // Reset to 0.
 }
 
@@ -103,16 +100,3 @@ const char* Oxs_Output::GetProblemName() const {
   }
   return director->GetProblemName();
 }
-
-// Cache flag control
-OC_BOOL Oxs_Output::ForceCacheIncrement(OC_INT4m incr)
-{
-  if(incr>0) cache_request_count+=incr;
-  else if(incr<0) {
-    OC_UINT4m decr = -1*incr;
-    if(cache_request_count < decr) cache_request_count = 0;
-    else                           cache_request_count -= decr;
-  }
-  return 1;
-}
-

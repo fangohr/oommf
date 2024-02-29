@@ -5,27 +5,30 @@
 %\htmladdtonavigation{\htmladdnormallink{\htmladdimg{../common/contents.gif}}{userguide.html}}
 
 \title{\OOMMF\ User's Guide}
-%This manual documents release 2.0b0.\\[1ex]
+%This manual documents release 2.1a0.\\[1ex]
 %WARNING: In this alpha release, the
 %documentation may not be up to date.\\[1ex]
 %WARNING: This document is under construction.}
 %\author{Michael Donahue and Donald Porter}
 %\date{\today}
 \author{\today\\[1ex]
-This manual documents release 2.0b0.\\[1ex]
+This manual documents release 2.1a0.\\[1ex]
 %\begin{abstract}
 \begin{flushleft} %This is a hack to work around \author being a centering
 % environment, and AFAICT there is no way to override a justification
 % setting to return to the default fully justified mode. Maybe we can
 % fix this up better, perhaps with the titlepage environment, after
 % userguide is switched to \documentclass{report}
-This manual describes \OOMMF\ (Object Oriented Micromagnetic Framework),
-a public domain micromagnetics program developed at the
-\htmladdnormallink{National Institute of Standards and Technology}
-{https://www.nist.gov/}.  The program is designed
-to be portable, flexible, and extensible, with a user-friendly graphical
-interface.  The code is written in C++ and Tcl/Tk. Target systems
-include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
+%%% ABSTRACT USED IN LATEXML. All other modes use the abstract %%%
+%%% following \begin{document}. The two should match!          %%%
+This manual describes
+\htmladdnormallink{\OOMMF}{https://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework), a public domain micromagnetics
+program developed at the \htmladdnormallink{National Institute of
+Standards and Technology}{https://www.nist.gov/}.  The program is
+designed to be portable, flexible, and extensible, with a user-friendly
+graphical interface.  The code is written in C++ and Tcl/Tk. Target
+systems include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 \end{flushleft}
 %\end{abstract}
 }
@@ -70,17 +73,21 @@ User's Guide\\[2ex]
 \large
 {\today}
 {}\\[2ex]
-This manual documents release 2.0b0.\\[1ex]
+This manual documents release 2.1a0.\\[1ex]
 \end{center}
 \vspace{7\baselineskip}
 %\begin{abstract}
-This manual describes \OOMMF\ (Object Oriented Micromagnetic Framework),
-a public domain micromagnetics program developed at the
-\htmladdnormallink{National Institute of Standards and Technology}
-{https://www.nist.gov/}.  The program is designed
-to be portable, flexible, and extensible, with a user-friendly graphical
-interface.  The code is written in C++ and Tcl/Tk. Target systems
-include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
+%%% ABSTRACT USED FOR ALL MODES EXCEPT LATEXML. In LaTeXML mode %%%
+%%% the abstract is buried inside the \author{} command above.  %%%
+%%% The two should match!                                       %%%
+This manual describes
+\htmladdnormallink{\OOMMF}{https://math.nist.gov/oommf/} (Object
+Oriented Micromagnetic Framework), a public domain micromagnetics
+program developed at the \htmladdnormallink{National Institute of
+Standards and Technology}{https://www.nist.gov/}.  The program is
+designed to be portable, flexible, and extensible, with a user-friendly
+graphical interface.  The code is written in C++ and Tcl/Tk. Target
+systems include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 %\end{abstract}
 \vspace*{\fill}
 %\par
@@ -128,6 +135,7 @@ include a wide range of \Unix, \Windows, and \MacOSX\ platforms.
 \index{file!restart|see{file,~checkpoint}}
 \index{Internet|see{TCP/IP}}
 \index{Landau-Lifshitz|see{ODE,~Landau-Lifshitz}}
+\index{log~file|see{file,~log}}
 \index{mask~file|see{file,~mask}}
 \index{mesh|see{grid}}
 \index{MIF|see{file,~mif}}

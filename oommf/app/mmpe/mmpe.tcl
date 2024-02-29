@@ -19,7 +19,7 @@ wm withdraw .
 set mmpe_directory [file dirname [Oc_DirectPathname [info script]]]
 
 Oc_Main SetAppName mmProbEd
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -723,7 +723,7 @@ proc ListButtons {name matfile } {
     global vals
     SyncMatDisplay
     foreach id {2 3 4 5} name {Name Ms A K1} {
-	trace variable vals($id) w SyncMatDisplay
+	trace add variable vals($id) write SyncMatDisplay
     }
 
     # Arrange to have changes (if any) in the material types
@@ -1484,7 +1484,7 @@ $optmenu add radiobutton -label "MIF 1.1" -underline 6 \
 $optmenu add radiobutton -label "MIF 1.2" -underline 6 \
 	-value 1.2 -variable mif_format
 set mif_format 1.1 ;# Default format
-trace variable mif_format w MifFormatChange
+trace add variable mif_format write MifFormatChange
 
 Ow_StdHelpMenu $helpmenu
 global resetfilepath initfilepath

@@ -1,24 +1,40 @@
 # FILE: killoommf.tcl
 #
-# This file must be evaluated by omfsh
+# PURPOSE: Issues "kill" messages through the account server to
+#    terminate a specified list of OOMMF applications. Can also check
+#    that account connections from OOMMF applications are active (i.e.,
+#    not zombies).
 
-# TODO: This app operates by sending an "exit" message to Net_Server
-#       objects. Applications such as mmLaunch that don't have server
-#       components can't be closed this way. Instead, killoommf should
-#       be changed to use the account server "kill" message which can
-#       terminate any application connected to the account
-#       server. This is the method used by the current mmLaunch
-#       iterate.
+# Ensure pkg directory is on auto_path in case sourcing executable is
+# unadorned tclsh
+set chkpath [file join [file dirname [file dirname [file dirname \
+             [info script]]]] pkg]
+if {[lsearch -exact $auto_path $chkpath]<0} {
+   lappend auto_path $chkpath
+}
+unset chkpath
 
 ########################################################################
 # Support procs
 
-# Default initializer of the accountname.  Tries to determine account name
-# under which current thread is running.  This code is uses the
-# DefaultAccountName proc in the Net_Account class.
-package require Net
+# Clean shutdown proc
+set oidchan [set acctchan {}]
+proc CloseSockets {} {
+   global oidchan acctchan
+   foreach channame [list oidchan acctchan] {
+      set chan [set $channame]
+      if {![string match {} $chan]} {
+         catch { AskServer $chan bye }
+         catch { close $chan }
+         set $channame {}
+      }
+   }
+}
+
+# Default initializer of the accountname.  Tries to determine account
+# name under which current thread is running.
 proc DefaultAccountName {} {
-   return [Net_Account DefaultAccountName]
+   return [Oc_AccountName]
 }
 
 set querycount -1
@@ -27,10 +43,6 @@ proc AskServer {chan args} {
    set timeout_incr 100
    set timeout_count [expr {int(ceil(double($timeout)/$timeout_incr))}]
    incr querycount
-   # Configure socket.  This is inefficient if we are making many
-   # calls to AskServer, but this routine is intended to only be
-   # called once or twice on a channel, so that shouldn't matter.
-   fconfigure $chan -blocking 0 -buffering line -translation {auto crlf}
    puts $chan [concat query $querycount $args]
    while {$timeout_count>0} {
       if {[catch {gets $chan response} count]} {
@@ -61,9 +73,6 @@ proc AskServer {chan args} {
    return -code error "Timeout waiting for reply from server socket"
 }
 
-proc KillApp { port } {
-}
-
 ########################################################################
 
 package require Oc
@@ -72,7 +81,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName killoommf
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 # Remove a bunch of inapplicable default options from -help message
 Oc_CommandLine Option console {} {}
@@ -99,6 +108,13 @@ Oc_CommandLine Option hostport {
 } {
     global hostport;  set hostport $port
 } [subst {Host server port (default is $hostport)}]
+
+Oc_CommandLine Option noaccesschecks {
+} {
+   # Override account access check settings in options.tcl
+   Oc_Option Add * Net_Server checkUserIdentities 0
+   Oc_Option Add * Net_Link checkUserIdentities 0
+} {Disable access checks}
 
 Oc_CommandLine Option timeout {
    {secs {regexp {^[0-9]+$} $secs} {is timeout in seconds (default is 5)}}
@@ -137,18 +153,23 @@ Oc_CommandLine Option [Oc_CommandLine Switch] {
    {{oid list} {} {is one or more oids,\
      appnames, or "all".  REQUIRED  (No default targets)}}
    } {
-      global oidlist; if {[llength $oid]} {set oidlist $oid}
-} {End of options; next argument is oid}
-set oidlist {}
+      global killrequests; if {[llength $oid]} {set killrequests $oid}
+} {End of options; next argument is oid/app}
+set killrequests {}
 
 Oc_CommandLine Parse $argv
+
+if {[catch {package require Net} netloadmsg]} {
+   Oc_RobustPuts stderr "ERROR: $netloadmsg"
+   exit 86
+}
 
 if {$shownamesonly} {
    # The shownamesonly flag overrides showonly
    set showonly 0
 }
 
-if {[llength $oidlist]==0} {
+if {[llength $killrequests]==0} {
     Oc_Log Log [Oc_CommandLine Usage] info
     exit
 }
@@ -161,8 +182,10 @@ if {[catch {socket $host $hostport} hostchan]} {
    Oc_RobustPuts "(No host server responding on host $host, port $hostport.)"
    exit
 }
+fconfigure $hostchan -blocking 0 -buffering line -translation {auto crlf}
+
 if {[catch {AskServer $hostchan lookup $acctname} acctport]} {
-    puts stderr "Account lookup failure: $acctport"
+    Oc_RobustPuts stderr "Account lookup failure: $acctport"
     close $hostchan
     exit 1
 }
@@ -186,211 +209,238 @@ if {[info exists tcl_platform(user)] &&
 }
 
 if {[catch {socket $host $acctport} acctchan]} {
-    puts stderr "ERROR: Unable to connect to account server\
+    Oc_RobustPuts stderr "ERROR: Unable to connect to account server\
                  on host $host, port $acctport"
     exit 1
 }
+fconfigure $acctchan -blocking 0 -buffering line -translation {auto crlf}
 
 if {$do_id_check && [Net_CheckSocketAccess $acctchan]==0} {
-   puts stderr "WARNING: Account server owner is not \"$acctname\""
+   Oc_RobustPuts stderr "WARNING: Account server owner is not \"$acctname\""
 }
 
-if {[catch {AskServer $acctchan threads} portsreply]} {
-    puts stderr "Ports lookup failure: $portsreply"
-    close $acctchan
-    exit 1
-}
-
-foreach entry $portsreply {
-    foreach {appname server port} $entry break
-    set appname [string tolower $appname]
-    regexp {^([0-9]+):([0-9]+)$} $server dummy oid servnumber
-    if {![info exists oidport($oid)]} {
-	set oidport($oid) $port
-	set oidapp($oid) $appname
-	lappend appoid($appname) $oid
-    }
-}
-
-if {[string match all $oidlist]} {
-   set oidlist [lsort -integer [array names oidport]]
-} else {
-   if {$pidselect} {
-      # Input oidlist is really a pidlist.  Build convert table.
-      if {[catch {AskServer $acctchan getpids *} portsreply]} {
-         puts stderr "PID lookup failure: $portsreply"
-         close $acctchan
-         exit 1
+# Open a separate channel to the account server for tracking oid updates
+set oid_rip {}
+set tickle_detail [list killoommf [pid]]
+proc OidMsgHandler { chan } {
+   if {[catch {gets $chan line} readCount]} { ;# socket error
+      CloseSockets ; return
+   }
+   if {$readCount < 0} {
+      if {[fblocked $chan]} { return }
+      if {[eof $chan]} { CloseSockets ; return }
+   }
+   global testflag
+   if {$testflag} {
+      global tickle_detail
+      if {[regexp {^tell aliveping ([0-9]+) (.*)$} $line _ oid detail] \
+             && [string compare $tickle_detail [lindex $detail 0]]==0} {
+         global oid_rip
+         lappend oid_rip $oid
       }
-      foreach elt $portsreply {
-         set pidoid_table([lindex $elt 1]) [lindex $elt 0]
+   } else {
+      if {[regexp {^tell deleteoid ([0-9]+)$} $line _ oid]} {
+         global oid_rip
+         lappend oid_rip $oid
       }
    }
+}
+if {[catch {socket $host $acctport} oidchan]} {
+    Oc_RobustPuts stderr "ERROR: Unable to connect to account server\
+                 on host $host, port $acctport (oid channel)"
+    exit 1
+}
+fconfigure $oidchan -blocking 0 -buffering line -translation {auto crlf}
+if {[catch {AskServer $oidchan trackoids} trackreply]} {
+   Oc_RobustPuts stderr "Track oid failure: $trackreply"
+   CloseSockets
+   exit 1
+}
 
-   set newlist {}
-   foreach elt $oidlist {
+fileevent $oidchan readable [list OidMsgHandler $oidchan]
+
+
+# Get list of application names and nicknames
+if {[catch {AskServer $acctchan names} namesreply]} {
+   Oc_RobustPuts stderr "Names lookup failure: $namesreply"
+   CloseSockets
+   exit 1
+}
+
+set names [dict create]
+dict for {key value} [dict create {*}$namesreply] {
+   if {![regexp -- {^([^:]+):([0-9]+)$} [lindex $value 0] _ appname oid] \
+       || $key != $oid} {
+      Oc_RobustPuts stderr "Invalid name response for oid $key: $value"
+      CloseSockets
+      exit 1
+   }
+   # Insert unadorned appname at front of names list for each oid
+   dict append names $key [linsert $value 0 $appname]
+}
+
+# Get oid+pid pairs
+if {[catch {AskServer $acctchan getpids *} pidlist]} {
+   Oc_RobustPuts stderr "Pid lookup failure: $pidlist"
+   CloseSockets
+   exit 1
+}
+
+# Construct oid kill list
+set oidlist {}
+if {[lsearch -exact $killrequests all]>=0} {
+   # Terminate all OOMMF apps
+   set oidlist [dict keys $names]
+} else {
+   foreach elt $killrequests {
       if {[regexp {^[0-9]+$} $elt]} {
          # Numeric selection
          if {$pidselect} {
-            if {![info exists pidoid_table($elt)]} {
-               puts stderr "Application with pid $elt does not\
-                            exist or is not registered; skipping."
+            set index [lsearch -exact -integer -index 1 $pidlist $elt]
+            if {$index<0} {
+               Oc_RobustPuts stderr "WARNING: No match for pid $elt; skipping"
                continue
             }
-            set pid $elt ;# For error handling
-            set elt $pidoid_table($elt)
-         }
-         # Selection by oid
-         if {[info exists oidport($elt)]} {
-            lappend newlist $elt
+            lappend oidlist [lindex $pidlist $index 0]
          } else {
-            if {$pidselect} {
-               puts stderr "Application with pid $pid (oid=$elt)\
-                            has no servers; skipping."
+            if {[dict exists $names $elt]} {
+               lappend oidlist $elt
             } else {
-               puts stderr "Application with oid $elt either\
-                   does not exist or has no servers; skipping."
+               Oc_RobustPuts stderr "WARNING: No match for oid $elt; skipping"
+               continue
             }
          }
       } else {
          # Selection by name
-         if {0} {
-            set elt [string tolower $elt]
-            if {[info exists appoid($elt)]} {
-               set newlist [concat $newlist \
-                               [lsort -integer $appoid($elt)]]
-            } else {
-               puts stderr "Either no $elt application running,\
-                   or application $elt has no servers; skipping."
+         set oidsize [llength $oidlist]
+         dict for {key value} $names {
+            # For each oid, check if the killrequest pattern
+            # matches any of the names associated with that
+            # oid. If so, append oid.
+            if {[lsearch -glob -nocase $value $elt]>=0} {
+               lappend oidlist $key
             }
-         } else {
-            if {[string first ":" $elt] == -1} {
-               append elt ":*"
-            }
-            if {[catch {AskServer $acctchan find $elt} matches]} {
-               puts stderr "Account server find error: $matches"
-               close $acctchan
-               exit 1
-            }
-            set matches [lindex [lindex $matches 0] 0]
-            if {[llength $matches]>0} {
-               set newlist [concat $newlist $matches]
-            }
+         }
+         if {[llength $oidlist]==$oidsize} {
+            Oc_RobustPuts stderr "WARNING: No matches for pattern $elt"
          }
       }
    }
-   set oidlist $newlist
 }
-
-if {[llength $oidlist]==0} {
-    Oc_RobustPuts "No applications match oid list"
-    close $acctchan
-    exit
-}
-
-# Remove duplicates, and any entries not in oidport array.
-# The latter can happen in particular if the account server
-# "find" query returns applications such as mmLaunch that
-# don't have a server.
-set newlist {}
-foreach elt $oidlist {
-    if {[info exists oidport($elt)] && \
-	    [lsearch -exact $newlist $elt] == -1} {
-	lappend newlist $elt
-    }
-}
-set oidlist $newlist
-
-set oidstrsize 1
-set appstrsize 1
-foreach oid $oidlist {
-    set tsize [string length $oid]
-    if {$tsize>$oidstrsize} { set oidstrsize $tsize }
-    set tsize [string length $oidapp($oid)]
-    if {$tsize>$appstrsize} { set appstrsize $tsize }
-}
-
-if {$showonly} {
-    Oc_RobustPuts "Application selection (no exit requests sent):"
-    foreach oid $oidlist {
-	Oc_RobustPuts [format " <%*d> %*s" \
-		  $oidstrsize $oid $appstrsize $oidapp($oid)]
-    }
-    close $acctchan
-    exit
-}
-
-if {$shownamesonly} {
-   Oc_RobustPuts "Application selection (no exit requests sent):"
-   set appstrsize [expr {$appstrsize+1+$oidstrsize}]
-   foreach oid $oidlist {
-      if {[catch {AskServer $acctchan names $oid} nicknames]} {
-         puts stderr "Account server names error: $nicknames"
-         close $acctchan
-         exit 1
-      }
-      set nicknames [lindex $nicknames 1]  ;# First element is oid
-      # Pull default name from list for separate handling.
-      set appname $oidapp($oid)
-      set defaultname [string tolower "${appname}:$oid"]
-      if {[set index [lsearch -exact [string tolower $nicknames] \
-                         $defaultname]]>=0} {
-         set nicknames [lreplace $nicknames $index $index]
-         set rightspace [expr {$oidstrsize - [string length $oid]}]
-         if {$rightspace>0} {
-            set defaultname [format "%s%*s" $defaultname $rightspace {}]
-         }
-      } else {
-         set defaultname {}
-      }
-
-      Oc_RobustPuts [format " <%*d> %*s %s" \
-               $oidstrsize $oid $appstrsize $defaultname $nicknames]
-   }
-   close $acctchan
+if {[llength oidlist]==0} {
+   Oc_RobustPuts "No applications match oid list"
+   CloseSockets
    exit
 }
 
-close $acctchan
-
-foreach oid $oidlist {
-    flush stdout
-    flush stderr
-    if {[catch {socket $host $oidport($oid)} chan]} {
-	puts stderr "ERROR: Unable to connect to server\
-                 for $oidapp($oid) <$oid>, port $oidport($oid): $chan"
-	continue
-    }
-
-    if {$do_id_check && [Net_CheckSocketAccess $chan]==0} {
-       puts stderr "WARNING: $oidapp($oid) <$oid> owner is not \"$acctname\""
-    }
-
-    if {!$testflag} {
-	if {[catch {AskServer $chan exit} exitreply]} {
-	    Oc_RobustPuts [format " <%*d> %*s not responding: $exitreply" \
-		      $oidstrsize $oid $appstrsize $oidapp($oid)]
-	    close $chan
-	    continue
-	}
-	close $chan
-	if {!$quietflag} {
-	    Oc_RobustPuts [format " <%*d> %*s killed" \
-		      $oidstrsize $oid $appstrsize $oidapp($oid)]
-	}
-    } else {
-	if {[catch {AskServer $chan bye} byereply]} {
-	    Oc_RobustPuts [format " <%*d> %*s not responding: $byereply" \
-		      $oidstrsize $oid $appstrsize $oidapp($oid)]
-	    close $chan
-	    continue
-	}
-	close $chan
-	if {!$quietflag} {
-	    Oc_RobustPuts [format " <%*d> %*s is alive" \
-		      $oidstrsize $oid $appstrsize $oidapp($oid)]
-	}
-    }
+# Remove duplicates
+set kill_list [lindex $oidlist 0]
+foreach oid [lrange $oidlist 1 end] {
+   if {[lsearch -exact -integer $kill_list $oid]<0} {
+      lappend kill_list $oid
+   }
 }
 
-exit
+# Determine report table column widths
+set oidwidth 1   ;# OID field add angle bracket padding (2 characters)
+set pidwidth 3
+set appwidth 0
+foreach oid $kill_list {
+   if {[string length $oid]>$oidwidth} {
+      set oidwidth [string length $oid]
+   }
+   set pid [lindex [lsearch -exact -integer -index 0 -inline $pidlist $oid] 1]
+   if {[string length $pid]>$pidwidth} {
+      set pidwidth [string length $pid]
+   }
+   set appname [lindex [dict get $names $oid] 0]
+   if {[string length $appname]>$appwidth} {
+      set appwidth [string length $appname]
+   }
+}
+set oidpad [expr {($oidwidth+2-3)/2}]
+set oidlead [expr {$oidwidth+2-$oidpad}]
+set pidpad [expr {($pidwidth-3)/2}]
+set pidlead [expr {$pidwidth-$pidpad}]
+
+if {$showonly || $shownamesonly} {
+   Oc_RobustPuts "Application selection (no exit requests sent):"
+   Oc_RobustPuts [format \
+          " %${oidlead}s%${oidpad}s  %${pidlead}s%${pidpad}s  Application" \
+          OID "" PID ""]
+   foreach oid $kill_list {
+      set pid [lindex \
+                  [lsearch -exact -integer -index 0 -inline $pidlist $oid] 1]
+      if {$shownamesonly} {
+         set appname [lrange [dict get $names $oid] 1 end]
+      } else {
+         set appname [lindex [dict get $names $oid] 0]
+      }
+      Oc_RobustPuts [format " <%${oidwidth}d>  %${pidwidth}d  %s" \
+                        $oid $pid $appname]
+   }
+   CloseSockets
+   exit
+}
+
+set kill_check {}
+if {$testflag} {
+   # Test only
+   set check_result "alive"
+   foreach oid $kill_list {
+      if {[catch {AskServer $acctchan tickle $oid $tickle_detail} reply]} {
+         Oc_RobustPuts [format " <%*d> : Tickle error --- $reply" $oidwidth $oid]
+      } else {
+         lappend kill_check $oid
+      }
+   }
+} else {
+   # Kill
+   set check_result "killed"
+   foreach oid $kill_list {
+      if {[catch {AskServer $acctchan kill $oid} reply]} {
+         Oc_RobustPuts [format " <%*d> : Kill error --- $reply" $oidwidth $oid]
+      } else {
+         lappend kill_check $oid
+      }
+   }
+}
+
+# Enter event loop to process trackoid messages
+while {[llength $kill_check]>0} {
+   after $timeout {lappend oid_rip -1}
+   vwait oid_rip
+   foreach oid $oid_rip { ;# Remove each oid from kill_check
+      if {$oid<0} { ;# Timeout
+         break
+      }
+      set index [lsearch -exact -integer $kill_check $oid]
+      if {$index>=0} {
+         set kill_check [lreplace $kill_check $index $index]
+      }
+   }
+   if {$oid<0} { break }
+   set oid_rip {}  ;# Clear processed messages
+}
+set exitcode [llength $kill_check]
+
+flush stdout
+flush stderr
+if {!$quietflag} {
+   Oc_RobustPuts [format " %${oidlead}s%${oidpad}s Application" \
+       OID ""]
+   foreach oid $kill_list {
+      set appname [lindex [dict get $names $oid] 0]
+      Oc_RobustPuts -nonewline [format " <%*d> %*s " \
+                                   $oidwidth $oid $appwidth $appname]
+      if {[lsearch -exact -integer $kill_check $oid]<0} {
+         Oc_RobustPuts $check_result
+      } else {
+         Oc_RobustPuts "not responding"
+      }
+   }
+}
+
+CloseSockets
+
+exit $exitcode

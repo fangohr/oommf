@@ -62,7 +62,7 @@ void Oxs_FFT::ReleaseMemory() const
   realdata_wforward=realdata_winverse=(Oxs_Complex *)NULL;
 }
 
-Oxs_FFT::Oxs_FFT() : 
+Oxs_FFT::Oxs_FFT() :
   vecsize(0),vecsize_normalization(0.),log2vecsize(-1),
   Uforward(NULL),Uinverse(NULL),permindex(NULL),
   realdata_vecsize(0),realdata_wforward(NULL),realdata_winverse(NULL)
@@ -157,8 +157,9 @@ void Oxs_FFT::Setup(OXS_FFT_INT_TYPE size) const
 {
   if(size<1) {
     char buf[512];
-    sprintf(buf,"Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
-		"length (%" OXS_FFT_INT_MOD "d) must be >0",size);
+    snprintf(buf,sizeof(buf),
+             "Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
+             "length (%" OXS_FFT_INT_MOD "d) must be >0",size);
     OXS_THROW(Oxs_BadParameter,buf);
   }
   OXS_FFT_INT_TYPE k;
@@ -167,7 +168,8 @@ void Oxs_FFT::Setup(OXS_FFT_INT_TYPE size) const
   for(k=size;k>=2;k/=2) {
     if(k%2!=0) {
       char buf[512];
-      sprintf(buf,"Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
+      snprintf(buf,sizeof(buf),
+               "Error in Oxs_FFT::Setup(OXS_FFT_INT_TYPE): Requested "
 	       "length (%" OXS_FFT_INT_MOD "d) is not a power of 2",size);
       OXS_THROW(Oxs_BadParameter,buf);
     }
@@ -304,7 +306,7 @@ void Oxs_FFT::InverseDecTime(OXS_FFT_INT_TYPE size,Oxs_Complex *vec) const
 }
 
 void Oxs_FFT::InverseDecTimeRealDataNoScale(OXS_FFT_INT_TYPE size,
-                                            void *vec) const 
+                                            void *vec) const
 { // Performs iFFT on a conjugate symmetric complex sequence.  The
   // import size should be the size of then entire sequence, and
   // must be a positive power of two.  It is assumed that vec on
@@ -536,7 +538,7 @@ void Oxs_FFT::BaseDecFreqForward(Oxs_Complex *vec) const
       x2=v[4];      y2=v[5];      x3=v[6];      y3=v[7];
 
       OXS_FFT_REAL_TYPE xs02=x0+x2;
-      OXS_FFT_REAL_TYPE xs13=x1+x3; 
+      OXS_FFT_REAL_TYPE xs13=x1+x3;
       v[0]=xs02+xs13;
       v[2]=xs02-xs13;
 
@@ -651,7 +653,7 @@ void Oxs_FFT::BaseDecTimeInverse(Oxs_Complex *vec) const
     /// block (of size 8) here so we can finish all the rest two blocks
     /// at a time.
     ///   Note also that since vecsize is at least 4, if log2vecsize is
-    /// odd, then vecsize must actually be at least 8.    
+    /// odd, then vecsize must actually be at least 8.
     blockcount/=2;
     blocksize*=2;   // blocksize==8
     for(block=0,v=dvec;block<blockcount;block++,v+=16) {
@@ -760,7 +762,7 @@ void Oxs_FFT::BaseDecTimeInverse(Oxs_Complex *vec) const
       t1x=v[vecsize];       t1y=v[vecsize+1];
       m1x=U[offset];        m1y=U[offset+1];
       x1=t1x*m1x-t1y*m1y;   y1=t1y*m1x+t1x*m1y;
-      v[0]         = x0+x1; 
+      v[0]         = x0+x1;
       v[vecsize]   = x0-x1;
       v[1]         = y0+y1;
       v[vecsize+1] = y0-y1;
@@ -999,7 +1001,7 @@ Oxs_FFT3D::Forward(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
       aptr += xsize;
     }
   }
-  
+
   // Do 1D FFT's in y-direction
   if(ysize>1) {
     for(k=0;k<zsize;k++) {
@@ -1124,7 +1126,7 @@ Oxs_FFT3D::Inverse(OC_INDEX xsize,OC_INDEX ysize,OC_INDEX zsize,
       }
     }
   }
-  
+
   // Do 1D iFFT's in y-direction
   if(ysize>1) {
     for(k=0;k<zsize;k++) {
@@ -1239,7 +1241,7 @@ Oxs_FFT3D::ForwardRealDataScrambledNoScale
       yfft.ForwardDecFreqNoScale(csize2_out,cptr);
       // 3) Unpack
       yfft.UnpackRealPairImage(csize2_out,cptr);
-      
+
       // Do the remaining planes
       for(i=1;i<csize1_out;i++) {
 	cptr = GetNextBlockRun();
@@ -1377,7 +1379,7 @@ Oxs_FFT3D::ForwardRealDataNoScale
       yfft.ForwardDecFreqNoScale(csize2_out,cptr);
       // 3) Unpack
       yfft.UnpackRealPairImage(csize2_out,cptr);
-      
+
       // Do the remaining planes
       for(i=1;i<csize1_out;i++) {
 	cptr = GetNextBlockRun();

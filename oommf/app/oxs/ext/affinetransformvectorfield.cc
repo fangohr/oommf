@@ -168,7 +168,7 @@ Oxs_AffineTransformVectorField::Value
   value += offset;
 }
 
-void 
+void
 Oxs_AffineTransformVectorField::FillMeshValue
 (const Oxs_Mesh* mesh,
  Oxs_MeshValue<ThreeVector>& array) const

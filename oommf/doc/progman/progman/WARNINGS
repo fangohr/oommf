@@ -1,3 +1,6 @@
 No implementation found for style `multirow'
+No implementation found for style `lmodern'
 An unknown named entity (&micro;) appears in the source text.
 An unknown named entity (&mdash;) appears in the source text.
+
+*** wrap_cmd_LaTeXML not defined, cannot wrap \LaTeXML 

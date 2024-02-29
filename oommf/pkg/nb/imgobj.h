@@ -144,10 +144,6 @@ class Nb_ImgObj {
 // list looks like a P3 file, but without the leading "P3" and with
 // no comments.
 //
-#if TCL_MAJOR_VERSION < 8  // String interface
-Tcl_CmdProc NbImgObjCmd;
-#else // Obj interface
 Tcl_ObjCmdProc NbImgObjCmd;
-#endif
 
 #endif // _NB_IMGOBJ

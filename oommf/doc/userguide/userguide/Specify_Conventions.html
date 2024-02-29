@@ -24,36 +24,36 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1240"
+<A NAME="tex2html1270"
   HREF="Variable_Substitution.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1236"
+<A NAME="tex2html1266"
   HREF="MIF_2.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1230"
+<A NAME="tex2html1260"
   HREF="MIF_2.1_Extension_Commands.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1238"
+<A NAME="tex2html1268"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html1241"
+<B> Next:</B> <A NAME="tex2html1271"
   HREF="Variable_Substitution.html">Variable Substitution</A>
-<B> Up:</B> <A NAME="tex2html1237"
+<B> Up:</B> <A NAME="tex2html1267"
   HREF="MIF_2.1.html">MIF 2.1</A>
-<B> Previous:</B> <A NAME="tex2html1231"
+<B> Previous:</B> <A NAME="tex2html1261"
   HREF="MIF_2.1_Extension_Commands.html">MIF&nbsp;2.1 Extension Commands</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION001833000000000000000"></A><A NAME="sec:specConventions"></A><A NAME="22029"></A>
+<H2><A NAME="SECTION001833000000000000000"></A><A NAME="sec:specConventions"></A><A NAME="23298"></A>
 <BR>
 Specify Conventions
 </H2>
 The Specify blocks in the input MIF file determine the collection
 of <TT>Oxs_Ext</TT> objects defining the Oxs simulation.  As explained
-above, the <A HREF="MIF_2.1_Extension_Commands.html#html:specifyCmd"><TT>Specify</TT></A> command takes two
+above, the <A HREF="MIF_2.1_Extension_Commands.html#PTspecifyCmd"><TT>Specify</TT></A> command takes two
 arguments, the name of the <TT>Oxs_Ext</TT> object to create, and an
 initialization string.  The format of the initialization string can
 be arbitrary, as determined by the author of the <TT>Oxs_Ext</TT> class.
@@ -66,12 +66,36 @@ be found in the
 <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs">Oxs section</A>
 of this document.
 
+<BR>
+<BR>
+  <TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT" VALIGN="TOP" WIDTH=0><TT>
+  <A HREF="#PTffSIS">Initialization string format</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>
+  <A HREF="#PTffSA">Attributes</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD></TR>
+<TR><TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT" VALIGN="TOP" WIDTH=0><TT> 
+  <A HREF="#PTffSC">Comments</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>
+  <A HREF="#PTffSGL">Grouped lists</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD></TR>
+<TR><TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT" VALIGN="TOP" WIDTH=0><TT> 
+  <A HREF="#PTffSOER">Oxs_Ext referencing</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT"><TT>
+  <A HREF="#PTffSSP">User defined support procedures</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD></TR>
+<TR><TD ALIGN="LEFT">&nbsp;</TD><TD ALIGN="LEFT" VALIGN="TOP" WIDTH=0><TT> 
+  <A HREF="#PTffSUSO">User defined scalar outputs</A> </TT></TD>
+<TD ALIGN="LEFT">&nbsp;</TD><TD></TD>
+<TD ALIGN="LEFT">&nbsp;</TD></TR>
+</TABLE>
+
+
 <P>
 
 <P>
-<FONT SIZE="+1"><B>Initialization string format</B></FONT>
-<BR><A NAME="par:specInitString"></A><A NAME="22045"></A>
-Consider again the simple Specify block presented above:
+<FONT SIZE="+1"><B>Initialization string format<A NAME="PTffSIS"></A></B></FONT>
+<BR><A NAME="par:specInitString"></A><A NAME="23336"></A>Consider again the simple Specify block presented above:
 
 <BLOCKQUOTE>
 <PRE>
@@ -83,7 +107,7 @@ Specify Oxs_EulerEvolve:foo {
 
 </BLOCKQUOTE>
 The first convention is that the initialization string be structured as
-a Tcl list<A NAME="22048"></A> with an even number of elements, with
+a Tcl list<A NAME="23339"></A> with an even number of elements, with
 consecutive elements consisting of a label + value pairs.  In the above
 example, the initialization string consists of two label + value pairs,
 ``alpha 0.5'' and ``start_dm 0.01''.  The first specifies that the
@@ -126,8 +150,147 @@ the present discussion.)
 <P>
 
 <P>
-<FONT SIZE="+1"><B><TT>Oxs_Ext</TT> referencing</B></FONT>
-<BR><A NAME="par:oxsExtReferencing"></A><A NAME="22057"></A>
+<FONT SIZE="+1"><B>Attributes<A NAME="PTffSA"></A></B></FONT>
+<BR><A NAME="par:specifyAttributes"></A><A NAME="23348"></A>
+Sometimes it is convenient to define label + value pairs outside a
+particular Specify block, and then import them using the
+``attributes'' label.  For example:
+
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_LabelValue:probdata {
+  alpha 0.5
+  start_dm 0.01
+}
+
+Specify Oxs_EulerEvolve {
+  attributes :probdata
+}
+</PRE>
+
+</BLOCKQUOTE>
+The <TT>Oxs_LabelValue</TT> object is an <TT>Oxs_Ext</TT> class that does
+nothing except hold label + value pairs.  The ``attributes'' label acts as an
+include statement, causing the label + value pairs contained in the
+specified <TT>Oxs_LabelValue</TT> object to be embedded into the enclosing
+<TT>Specify</TT> initialization string.  This technique is most useful if the
+label + value pairs in the <TT>Oxs_LabelValue</TT> object are used in
+multiple Specify blocks, either inside the same MIF file, or
+across several MIF files into which the <TT>Oxs_LabelValue</TT> block is
+imported using the <TT>ReadFile</TT> MIF extension command.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Comments<A NAME="PTffSC"></A></B></FONT>
+<BR><A NAME="par:specifyComments"></A><A NAME="23360"></A>
+The standard Tcl commenting mechanism treats all text running from an
+initial <TT>#</TT> symbol through to the end of a line as a comment.  You may
+note in the above examples that newlines are treated the same as
+other whitespace inside the curly braces delimiting the <TT>Specify</TT>
+initialization string.  Because of this and additional reasons, Tcl comments cannot be used inside Specify blocks.  Instead, by
+convention any label + value pair where label is ``comment'' is treated
+as a comment and thrown away.  For example:
+
+<BLOCKQUOTE>
+<PRE>
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  comment {K1  4500e3}
+  K1 530e3
+  comment { 530e3 J/m^3 is nominal for Co }
+}
+</PRE>
+
+</BLOCKQUOTE>
+Pay attention to the difference between ``comment'' used here as the
+label portion of a label + value pair, and the MIF extension command
+``Ignore'' used outside Specify blocks.  In particular, <TT>Ignore</TT>
+takes an arbitrary number of arguments, but the value element associated
+with a comment label must be grouped as a single element, just as any
+other value element.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Grouped lists<A NAME="PTffSGL"></A></B></FONT>
+<BR><A NAME="par:groupedLists"></A><A NAME="23367"></A>
+As noted earlier, sometimes the value portion of a label + value pair
+will be a list.  Some Oxs objects support <I>grouped lists</I>, which
+provide a type of run-length encoding for lists.  Consider the sample
+list
+<PRE>
+   { 1.1  1.2  1.2  1.2  1.2  1.3 }
+</PRE>
+In a grouped list the middle run of 1.2's may be represented as a
+sublist with a repeat count of 4, like so
+<PRE>
+   { 1.1  { 1.2  4 } 1.3 :expand: }
+</PRE>
+Here the <TT>:expand:</TT> keyword, when appearing as the last element of
+the top level list, enables the group expansion mechanism.  Any
+preceding element, such as <TT>{ 1.2 4 }</TT>, that 1) is a proper
+sublist, and 2) has a positive integer as the last element, is treated
+as a grouped sublist with repeat count given by the last element.  No
+element of the top-level list is ever interpreted as a repeat count.
+For example, the short form of the list
+<PRE>
+   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
+</PRE>
+is
+<PRE>
+   { { 1e-9 6 } :expand: }
+</PRE>
+Note the additional level of brace grouping.  Grouped lists may also be
+nested, as in this example
+<PRE>
+   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
+</PRE>
+which is equivalent to
+<PRE>
+   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
+</PRE>
+There are some difficulties with this mechanism when the list components
+are strings, such as filenames, that may contain embedded spaces.  For
+example, consider the list
+<PRE>
+   { "file 3" "file 3" "5 file" }
+</PRE>
+If we tried to write this as
+<PRE>
+   { { "file 3" 2 } "5 file" :expand: }
+</PRE>
+we would find that, because of the nested grouping rules, this grouped
+list gets expanded into
+<PRE>
+   { file file file file file file "5 file" }
+</PRE>
+Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
+Following normal Tcl rules, the double quotes are treated as equivalents
+to braces for grouping purposes.  However, the keyword <TT>:noexpand:</TT>
+may be used to disable further expansion, like so
+<PRE>
+   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
+</PRE>
+The <TT>:noexpand:</TT> keyword placed at the end of a list disables all
+group expansion in that list.  Although it is an unlikely example,
+if one had a flat, i.e., non-grouped list with last element ``:expand:'',
+then one would have to disable the grouping mechanism that would
+otherwise be invoked by appending <TT>:noexpand:</TT> to the list.  In
+flat lists generated by program code, it is recommended to append
+<TT>:noexpand:</TT> just to be certain that the list is not expanded.
+
+<P>
+As a matter of nomenclature, standard (i.e., flat) lists and single
+values are also considered grouped lists, albeit trivial ones.  Any Oxs
+object that accepts grouped lists in its Specify block should explicitly
+state so in its documentation.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B><TT>Oxs_Ext</TT> referencing<A NAME="PTffSOER"></A></B></FONT>
+<BR><A NAME="par:oxsExtReferencing"></A><A NAME="23398"></A>
 The ``atlas'' value in the mesh Specify block of the preceding example
 refers to an earlier <TT>Oxs_Ext</TT> object, ``Oxs_BoxAtlas:myatlas''.
 It frequently occurs that one <TT>Oxs_Ext</TT> object needs access to
@@ -242,147 +405,8 @@ blocks, and not as embedded objects.
 <P>
 
 <P>
-<FONT SIZE="+1"><B>Grouped lists</B></FONT>
-<BR><A NAME="par:groupedLists"></A><A NAME="22095"></A>
-As noted earlier, sometimes the value portion of a label + value pair
-will be a list.  Some Oxs objects support <I>grouped lists</I>, which
-provide a type of run-length encoding for lists.  Consider the sample
-list
-<PRE>
-   { 1.1  1.2  1.2  1.2  1.2  1.3 }
-</PRE>
-In a grouped list the middle run of 1.2's may be represented as a
-sublist with a repeat count of 4, like so
-<PRE>
-   { 1.1  { 1.2  4 } 1.3 :expand: }
-</PRE>
-Here the <TT>:expand:</TT> keyword, when appearing as the last element of
-the top level list, enables the group expansion mechanism.  Any
-preceding element, such as <TT>{ 1.2 4 }</TT>, that 1) is a proper
-sublist, and 2) has a positive integer as the last element, is treated
-as a grouped sublist with repeat count given by the last element.  No
-element of the top-level list is ever interpreted as a repeat count.
-For example, the short form of the list
-<PRE>
-   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
-</PRE>
-is
-<PRE>
-   { { 1e-9 6 } :expand: }
-</PRE>
-Note the additional level of brace grouping.  Grouped lists may also be
-nested, as in this example
-<PRE>
-   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
-</PRE>
-which is equivalent to
-<PRE>
-   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
-</PRE>
-There are some difficulties with this mechanism when the list components
-are strings, such as filenames, that may contain embedded spaces.  For
-example, consider the list
-<PRE>
-   { "file 3" "file 3" "5 file" }
-</PRE>
-If we tried to write this as
-<PRE>
-   { { "file 3" 2 } "5 file" :expand: }
-</PRE>
-we would find that, because of the nested grouping rules, this grouped
-list gets expanded into
-<PRE>
-   { file file file file file file "5 file" }
-</PRE>
-Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
-Following normal Tcl rules, the double quotes are treated as equivalents
-to braces for grouping purposes.  However, the keyword <TT>:noexpand:</TT>
-may be used to disable further expansion, like so
-<PRE>
-   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
-</PRE>
-The <TT>:noexpand:</TT> keyword placed at the end of a list disables all
-group expansion in that list.  Although it is an unlikely example,
-if one had a flat, i.e., non-grouped list with last element ``:expand:'',
-then one would have to disable the grouping mechanism that would
-otherwise be invoked by appending <TT>:noexpand:</TT> to the list.  In
-flat lists generated by program code, it is recommended to append
-<TT>:noexpand:</TT> just to be certain that the list is not expanded.
-
-<P>
-As a matter of nomenclature, standard (i.e., flat) lists and single
-values are also considered grouped lists, albeit trivial ones.  Any Oxs
-object that accepts grouped lists in its Specify block should explicitly
-state so in its documentation.
-
-<P>
-
-<P>
-<FONT SIZE="+1"><B>Comments</B></FONT>
-<BR><A NAME="par:specifyComments"></A><A NAME="22125"></A>
-The standard Tcl commenting mechanism treats all text running from an
-initial <TT>#</TT> symbol through to the end of a line as a comment.  You may
-note in the above examples that newlines are treated the same as
-other whitespace inside the curly braces delimiting the <TT>Specify</TT>
-initialization string.  Because of this and additional reasons, Tcl comments cannot be used inside Specify blocks.  Instead, by
-convention any label + value pair where label is ``comment'' is treated
-as a comment and thrown away.  For example:
-
-<BLOCKQUOTE>
-<PRE>
-Specify Oxs_UniaxialAnisotropy {
-  axis { 1 0 0 }
-  comment {K1  4500e3}
-  K1 530e3
-  comment { 530e3 J/m^3 is nominal for Co }
-}
-</PRE>
-
-</BLOCKQUOTE>
-Pay attention to the difference between ``comment'' used here as the
-label portion of a label + value pair, and the MIF extension command
-``Ignore'' used outside Specify blocks.  In particular, <TT>Ignore</TT>
-takes an arbitrary number of arguments, but the value element associated
-with a comment label must be grouped as a single element, just as any
-other value element.
-
-<P>
-
-<P>
-<FONT SIZE="+1"><B>Attributes</B></FONT>
-<BR><A NAME="par:specifyAttributes"></A><A NAME="22132"></A>
-Sometimes it is convenient to define label + value pairs outside a
-particular Specify block, and then import them using the
-``attributes'' label.  For example:
-
-<BLOCKQUOTE>
-<PRE>
-Specify Oxs_LabelValue:probdata {
-  alpha 0.5
-  start_dm 0.01
-}
-
-Specify Oxs_EulerEvolve {
-  attributes :probdata
-}
-</PRE>
-
-</BLOCKQUOTE>
-The <TT>Oxs_LabelValue</TT> object is an <TT>Oxs_Ext</TT> class that does
-nothing except hold label + value pairs.  The ``attributes'' label acts as an
-include statement, causing the label + value pairs contained in the
-specified <TT>Oxs_LabelValue</TT> object to be embedded into the enclosing
-<TT>Specify</TT> initialization string.  This technique is most useful if the
-label + value pairs in the <TT>Oxs_LabelValue</TT> object are used in
-multiple Specify blocks, either inside the same MIF file, or
-across several MIF files into which the <TT>Oxs_LabelValue</TT> block is
-imported using the <TT>ReadFile</TT> MIF extension command.
-
-<P>
-
-<P>
-<FONT SIZE="+1"><B>User defined support procedures</B></FONT>
-<BR><A NAME="par:supportProcs"></A><A NAME="22144"></A>
+<FONT SIZE="+1"><B>User defined support procedures<A NAME="PTffSSP"></A></B></FONT>
+<BR><A NAME="par:supportProcs"></A><A NAME="23436"></A>
 A number of <TT>Oxs_Ext</TT> classes utilize user-defined Tcl procedures (procs) to provide extended runtime functionality.  The
 most common examples are the various field initialization script
 classes, which call a user specified Tcl proc for each point in the
@@ -506,7 +530,7 @@ multiple substitution where such bracing cannot be applied.  See the
 Tcl documentation for the <TT>expr</TT> command for details.
 
 <P>
-<A NAME="22184"></A>Sometimes externally defined data can be put to good use inside a
+<A NAME="23476"></A>Sometimes externally defined data can be put to good use inside a
 Tcl support proc, as in this example:
 
 <BLOCKQUOTE>
@@ -541,17 +565,17 @@ converted into an index into the list, and the proc return value is
 either 0 or 8e5 depending on whether the corresponding point in the mask
 is 0 or 1.  This is essentially the same technique used in the
 <TT>ColorField</TT> proc example presented in the
-<A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+<A HREF="MIF_2.1_Extension_Commands.html#PTReadFile"><TT>ReadFile</TT></A> MIF extension command
 documented above,
 except that there the data structure values are built from a separate
 image file rather than from data embedded inside the MIF file.
-<A NAME="22194"></A>
+<A NAME="23486"></A>
 
 <P>
 
 <P>
-<FONT SIZE="+1"><B>User defined scalar outputs</B></FONT>
-<BR><A NAME="par:userScalarOutputs"></A><A NAME="22197"></A>
+<FONT SIZE="+1"><B>User defined scalar outputs<A NAME="PTffSUSO"></A></B></FONT>
+<BR><A NAME="par:userScalarOutputs"></A><A NAME="23489"></A>
 OOMMF <TT>Oxs_Ext</TT> objects support a general method to allow users to
 define scalar (DataTable) outputs derived from vector field outputs.
 These scalar outputs are defined by ``<TT>user_output</TT>'' sub-blocks inside
@@ -600,10 +624,10 @@ output is computed according to
 <TR VALIGN="MIDDLE"><TD ALIGN="CENTER" NOWRAP><BIG>
 <B><IMG
  WIDTH="28" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
- SRC="img83.gif"
+ SRC="img89.gif"
  ALT="$\displaystyle \sum_{i}^{}$"><I>W</I><SUB>select</SUB>[<I>i</I>]<SUP> . </SUP><I>V</I><SUB>source</SUB>[<I>i</I>]/<IMG
  WIDTH="28" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
- SRC="img83.gif"
+ SRC="img89.gif"
  ALT="$\displaystyle \sum_{i}^{}$">| <I>W</I><SUB>select</SUB>[<I>i</I>]|</B>
 </BIG></TD>
 <TD WIDTH=10 ALIGN="RIGHT">
@@ -630,7 +654,7 @@ as shown in (<A HREF="#eq:UserScalarOutput">17.1</A>).  If <I>norm_request</I> i
 then instead the denominator is replaced with the number of cells in the
 simulation, i.e., <B><IMG
  WIDTH="24" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
- SRC="img84.gif"
+ SRC="img90.gif"
  ALT="$\sum_{i}^{}$">1</B>.
 
 <P>
@@ -723,20 +747,20 @@ files <TT><B>ext.h</B></TT> and <TT><B>ext.cc</B></TT> in the directory
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1240"
+<A NAME="tex2html1270"
   HREF="Variable_Substitution.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1236"
+<A NAME="tex2html1266"
   HREF="MIF_2.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1230"
+<A NAME="tex2html1260"
   HREF="MIF_2.1_Extension_Commands.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1238"
+<A NAME="tex2html1268"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

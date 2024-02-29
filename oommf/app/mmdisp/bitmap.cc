@@ -607,10 +607,12 @@ void OommfBitmap::DrawFilledArrow(OC_REAL8m xc,OC_REAL8m yc,OC_REAL8m size,
   work_poly.Shift(xc,yc);
   DrawFilledPoly(work_poly,color,antialias);
   if(outline_width != 0.0) {
-    const OC_REAL8m base_width = 1.5; // Emperical value
+    const OC_REAL8m base_width = 0.25*BitmapLineWidth*size;
+    OC_REAL8m ow = outline_width*base_width;
+    ow = (ow<1.0 ? 1.0 : ow); // Minimum outline width == 1 pixel
     Nb_List<PlanePoint> vlist;
     work_poly.MakeVertexList(vlist);
-    DrawPolyLine(vlist,outline_width*base_width,outline_color,2,antialias);
+    DrawPolyLine(vlist,ow,outline_color,2,antialias);
   }
 }
 
@@ -746,11 +748,9 @@ int OommfBitmap::WritePPMChannel(Tcl_Channel channel,int ppm_type)
   Tcl_SetChannelOption(NULL, channel,
                        Oc_AutoBuf("-translation"), Oc_AutoBuf("binary"));
 
-  /// Note: On some (non-ANSI) compilers, sprintf() returns a pointer
-  ///       to the buffer instead of an output byte count.
   if(ppm_type==6) {
     char scratch[256];  // Make sure this is big enough as used below!
-    sprintf(scratch,"P6\n%d %d\n%d\n",xsize,ysize,255);
+    snprintf(scratch,sizeof(scratch),"P6\n%d %d\n%d\n",xsize,ysize,255);
     Tcl_Write(channel,scratch,int(strlen(scratch)));
     for(int i=0;i<totalsize;i++) {
       // Note: The following code breaks encapsulation of
@@ -761,7 +761,7 @@ int OommfBitmap::WritePPMChannel(Tcl_Channel channel,int ppm_type)
     }
   } else {
     char scratch[1024];  // Make sure this is big enough as used below!
-    sprintf(scratch,"P3\n%d %d\n%d\n",xsize,ysize,255);
+    snprintf(scratch,sizeof(scratch),"P3\n%d %d\n%d\n",xsize,ysize,255);
     Tcl_Write(channel,scratch,int(strlen(scratch)));
     unsigned int comp[12];
     int i,chunksize;
@@ -771,7 +771,8 @@ int OommfBitmap::WritePPMChannel(Tcl_Channel channel,int ppm_type)
       bitmap[i+1].Get(comp[3],comp[4],comp[5]);
       bitmap[i+2].Get(comp[6],comp[7],comp[8]);
       bitmap[i+3].Get(comp[9],comp[10],comp[11]);
-      sprintf(scratch,"%u %u %u\n%u %u %u\n%u %u %u\n%u %u %u\n",
+      snprintf(scratch,sizeof(scratch),
+               "%u %u %u\n%u %u %u\n%u %u %u\n%u %u %u\n",
 	      comp[0],comp[1],comp[2],comp[3],comp[4],comp[5],
 	      comp[6],comp[7],comp[8],comp[9],comp[10],comp[11]);
       chunksize=int(strlen(scratch));
@@ -782,7 +783,7 @@ int OommfBitmap::WritePPMChannel(Tcl_Channel channel,int ppm_type)
     for(;i<totalsize;i++) {
       // Remainder
       bitmap[i].Get(comp[0],comp[1],comp[2]);
-      sprintf(scratch,"%u %u %u\n",comp[0],comp[1],comp[2]);
+      snprintf(scratch,sizeof(scratch),"%u %u %u\n",comp[0],comp[1],comp[2]);
       chunksize=int(strlen(scratch));
       if(Tcl_Write(channel,scratch,chunksize) != chunksize) {
 	return 4;

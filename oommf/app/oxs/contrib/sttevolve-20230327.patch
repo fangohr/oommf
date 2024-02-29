@@ -1,0 +1,115 @@
+diff -ru sttevolve/CYY_STTEvolve.cc sttevolve-new/CYY_STTEvolve.cc
+--- sttevolve/CYY_STTEvolve.cc	2022-10-26 22:15:46.000000000 -0400
++++ sttevolve-new/CYY_STTEvolve.cc	2023-03-25 16:22:38.000000000 -0400
+@@ -17,7 +17,7 @@
+ */
+ 
+ 
+-#include <float.h>
++#include <cfloat>
+ #include <string>
+ 
+ #include "nb.h"
+@@ -393,14 +393,16 @@
+   // Zero spin torque on fixed spins
+ 	const OC_INDEX size = mesh->Size();
+ 
+-	OC_INDEX i,j;
++	OC_INDEX i;
+ 
+   UpdateFixedSpinList(mesh); // Safety
+ 
++#if 0  // This block does nothing?! -mjd
+   const OC_INDEX fixed_count = GetFixedSpinCount();
+   for(j=0;j<fixed_count;j++) {
+-    OC_INDEX i = GetFixedSpin(j);  // This is a NOP?! -mjd
++    OC_INDEX i = GetFixedSpin(j);
+   }
++#endif
+ 
+   alpha_init->FillMeshValue(mesh,alpha);
+   gamma_init->FillMeshValue(mesh,gamma);
+@@ -830,7 +832,7 @@
+   if(stepsize<timestep_lower_bound) stepsize = timestep_lower_bound;
+ 
+   // Negotiate with driver over size of next step
+-  driver->FillState(cstate,nstate);
++  driver->FillStateMemberData(cstate,nstate);
+   UpdateTimeFields(cstate,nstate,stepsize);
+ 
+   // Update iteration count
+@@ -838,7 +840,11 @@
+   nstate.stage_iteration_count = cstate.stage_iteration_count + 1;
+ 
+   // Additional timestep control
++#if OOMMF_API_INDEX < 20230325
+   driver->FillStateSupplemental(nstate);
++#else
++  driver->FillStateSupplemental(cstate,nstate);
++#endif
+ 
+   // Check for forced step
+   force_step = 0;
+@@ -1845,7 +1851,7 @@
+ OC_BOOL
+ CYY_STTEvolve::Step(const Oxs_TimeDriver* driver,
+                       Oxs_ConstKey<Oxs_SimState> current_state_key,
+-                      const Oxs_DriverStepInfo& step_info,
++                      Oxs_DriverStepInfo& step_info,
+                       Oxs_Key<Oxs_SimState>& next_state_key)
+ {
+   const OC_REAL8m bad_energy_cut_ratio = 0.75;
+@@ -1861,7 +1867,7 @@
+   OC_BOOL start_dm_active=0;
+   if(next_timestep<=0.0 ||
+      (cstate.stage_iteration_count<1
+-      && step_info.current_attempt_count==0)) {
++      && step_info.GetCurrentAttemptCount()==0)) {
+     if(cstate.stage_number==0
+        || stage_init_step_control == SISC_START_DM) {
+       start_dm_active = 1;
+@@ -2079,7 +2085,6 @@
+   // filled.
+   max_dm_dt_output.cache.state_id
+     = dE_dt_output.cache.state_id
+-    = dE_dt_output.cache.state_id
+     = delta_E_output.cache.state_id
+     = 0;  // Mark change in progress
+ 
+@@ -2157,8 +2162,8 @@
+ 
+   const Oxs_RectangularMesh* mesh
+     = dynamic_cast<const Oxs_RectangularMesh*>(state.mesh);		// CYYOU
+-  const OC_INDEX size = mesh->Size();
+-  OC_INDEX i,j;
++  // const OC_INDEX size = mesh->Size();
++  // OC_INDEX i,j;
+ 	ThreeVector scratch;
+ 	ThreeVector scratch2;
+ 
+@@ -2205,10 +2210,10 @@
+     OC_REAL8m bJ0 = init_bJ0;
+ 	OC_REAL8m bJ1 = init_bJ1;
+ 	OC_REAL8m bJ2 = init_bJ2;
+-	OC_REAL8m aJ_s, aJ_p;
++	OC_REAL8m aJ_s /*, aJ_p */;
+     
+ 	aJ_s = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
+-	aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
++	// aJ_p = Jmult*hbar/(2*el*mu0)*eta0/(Ms[i]*mesh->EdgeLengthZ());  
+ 
+ //	ThreeVector mdiff = spin[i]-spin[j];
+ //  OC_REAL8m temp = 0.5*mdiff.MagSq();
+diff -ru sttevolve/CYY_STTEvolve.h sttevolve-new/CYY_STTEvolve.h
+--- sttevolve/CYY_STTEvolve.h	2022-10-26 22:15:46.000000000 -0400
++++ sttevolve-new/CYY_STTEvolve.h	2023-03-21 18:57:29.000000000 -0400
+@@ -351,7 +351,7 @@
+   virtual  OC_BOOL
+   Step(const Oxs_TimeDriver* driver,
+        Oxs_ConstKey<Oxs_SimState> current_state,
+-       const Oxs_DriverStepInfo& step_info,
++       Oxs_DriverStepInfo& step_info,
+        Oxs_Key<Oxs_SimState>& next_state);
+   // Returns true if step was successful, false if
+   // unable to step as requested.
+Only in sttevolve: versdate.txt

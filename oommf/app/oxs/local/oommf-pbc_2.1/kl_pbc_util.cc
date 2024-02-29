@@ -319,7 +319,7 @@ DemagPBC::DemagPBC(
         interp(NULL),
         show_progress(0),progress_cnt(0),cell_cnt(0),
         // n_max and other tables are initialized in the constructor body below
-        tensor_buffer(NULL)
+        tensor_buffer()
 { 
   // highest possible OC_INDEX value
   OC_INDEX MAX_INDEX = OC_INDEX(OC_UINDEX(-1)/2);
@@ -839,6 +839,11 @@ OC_REAL8m DemagPBC::GetTensorElementFromBuffer(
              return tensor_buffer[el_idx].y;
         case n12:
              return tensor_buffer[el_idx].z;
+        default:
+          // This branch can't happen because all possible T_tens_el
+          // values are cased above, but some compilers will whine
+          // anyway.
+          throw Oxs_Ext::Error("Invalid T_tens_el value");
       }
     case _Demag:
       switch(teXX) { // now, the nXX order is different!
@@ -854,6 +859,11 @@ OC_REAL8m DemagPBC::GetTensorElementFromBuffer(
              return tensor_buffer[el_idx].y;
         case n22:
              return tensor_buffer[el_idx].z;
+        default:
+          // This branch can't happen because all possible T_tens_el
+          // values are cased above, but some compilers will whine
+          // anyway.
+          throw Oxs_Ext::Error("Invalid T_tens_el value");
       }
   }
   // this should never happen, as we evaluated all possible cases...
@@ -1169,7 +1179,7 @@ OC_REALWIDE DemagPBC::Oxs_CalculateSDA(const T_tens_el teXX,
       if(actual_cnt > progress_cnt) {    // is it different from prev. value?
         progress_cnt = actual_cnt;
         char buf[100];
-        sprintf(buf,"puts $klmchan %ld",(long)progress_cnt);
+        snprintf(buf,sizeof(buf),"puts $klmchan %ld",(long)progress_cnt);
         int errcode = TCL_OK;
         errcode = Tcl_Eval(interp,buf);
         if(errcode!=TCL_OK)

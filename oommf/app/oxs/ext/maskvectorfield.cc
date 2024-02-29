@@ -1,8 +1,8 @@
 /* FILE: maskvectorfield.cc      -*-Mode: c++-*-
  *
- * Vector field object, derived from Oxs_VectorField class,
- * that applies an affine transformation to the output of
- * another vector field object.
+ * Vector field object, derived from Oxs_VectorField class, that
+ * multiplies a vector field pointwise by a scalar vector field (the
+ * mask) to produce a new vector field.
  *
  */
 
@@ -46,7 +46,7 @@ Oxs_MaskVectorField::Value
   value *= mask->Value(pt);
 }
 
-void 
+void
 Oxs_MaskVectorField::FillMeshValue
 (const Oxs_Mesh* mesh,
  Oxs_MeshValue<ThreeVector>& array) const

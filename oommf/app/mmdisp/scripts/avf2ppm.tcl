@@ -9,12 +9,12 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ppm
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 
 Oc_CommandLine Option v {
-        {level {regexp {^[0-9]+$} $level} {is a decimal integer}} 
+        {level {regexp {^[0-9]+$} $level} {is a decimal integer}}
     } {
 	global verbosity;  scan $level %d verbosity
 } {Verbosity level (default = 1)}
@@ -46,7 +46,7 @@ set configFiles [list [file join [file dirname \
 	[Oc_DirectPathname [info script]]] avf2ppm.config]]
 Oc_CommandLine Option config {file} {
 	global configFiles; lappend configFiles $file
-} "Append file to list of configuration files"
+} {Append file to list of configuration files} multi
 
 set inputPattern [list]
 Oc_CommandLine Option ipat {
@@ -72,7 +72,7 @@ set opatexp {(\.[^.]?[^.]?[^.]?(.gz)?$|$)}
 
 Oc_CommandLine Option opatsub {sub} {
 	global opatsub;  set opatsub $sub
-} {Replacement in input filename to get output filename} 
+} {Replacement in input filename to get output filename}
 
 Oc_CommandLine Option filter {
 	{pipeline {} {is an output pipeline}}
@@ -89,7 +89,7 @@ Oc_CommandLine Parse $argv
 
 # Get the configuration settings from config file list
 foreach c $configFiles {
-    source $c
+   source $c
 }
 
 # Turn -ipat pattern into list of input files
@@ -184,7 +184,7 @@ if {$verbosity >= 3} {
  Margin: $plot_config(misc,margin)
  Dimensions: $plot_config(misc,width) x $plot_config(misc,height)
  Zoom: $plot_config(misc,zoom)
- Crop: $plot_config(misc,crop)
+ Crop to margin: $plot_config(misc,croptomargin)
  Rotation: $plot_config(misc,rotation)
  Datascale: $plot_config(misc,datascale)$centerstr"
     set axis [string index $plot_config(viewaxis) end]
@@ -229,7 +229,7 @@ proc ConvertToEng { z sigfigs } {
 }
 
 proc ReadFile { filename } {
-    # On success, returns bounding box 6-tuple 
+    # On success, returns bounding box 6-tuple
     global plot_config view_transform
 
     if {![file exists $filename]} {
@@ -259,9 +259,8 @@ proc ReadFile { filename } {
     set rot [expr {(round($rot/90.) % 4)*90}]
     ChangeMesh $workname \
 	    $plot_config(misc,width) $plot_config(misc,height) \
-	    $rot $plot_config(misc,zoom) 
+	    $rot $plot_config(misc,zoom)
 
-    
     foreach i [GetMeshRange] j {xmin ymin zmin xmax ymax zmax} {
 	set $j [ConvertToEng $i 6]
     }
@@ -308,7 +307,7 @@ foreach in $input_file_list {
 	# Note: $filter might itself be a pipeline, or a command
 	# with arguments.  It might also include a path to a filter program
 	# that contains spaces, which will confuse [open] unless it is
-	# structured in proper Tcl list syntax.  
+	# structured in proper Tcl list syntax.
 
 	set endChan $outChan
 

@@ -138,13 +138,14 @@ close $chan
 
 # Search through logfile data for entries from this host/username
 set lines [split $data "\n"]
-if {[catch {lsearch -all -regexp $lines $scanexp} checklines]} {
-   # Apparently old version of lsearch that doesn't support -all.
-   # Do it by hand.
+if {[catch {lsearch -all -nocase -regexp $lines $scanexp} checklines]} {
+   # Apparently an old version of lsearch that doesn't support either
+   # -all (<Tcl8.4) or -nocase (<Tcl8.5). Do it by hand.
    set checklines {}
-   set worklines $lines
+   set workscanexp [string tolower $scanexp]
+   set worklines [string tolower $lines]
    set offset 0
-   while {[set match [lsearch -regexp $worklines $scanexp]]>=0} {
+   while {[set match [lsearch -regexp $worklines $workscanexp]]>=0} {
       lappend checklines [incr offset $match]
       set worklines [lrange $worklines [incr match] end]
       incr offset
@@ -161,7 +162,7 @@ catch {unset donejob_info}
 for {set i [llength $checklines]} {[incr i -1] >= 0} {} {
    set index [lindex $checklines $i]
    set infoline [lindex $lines $index]
-   if {![regexp -- $pidexp $infoline dummy pid]} {
+   if {![regexp -nocase -- $pidexp $infoline dummy pid]} {
       puts stderr "Invalid log record: $infoline"
       exit 45
    }

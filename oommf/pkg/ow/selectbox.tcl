@@ -95,7 +95,7 @@ Oc_Class Ow_SelectBox {
 	set callback $callback_keep
     }
     public method SetFileDisplayTrace { cmd } {
-	trace variable fileshadowvalue w $cmd
+	trace add variable fileshadowvalue write $cmd
 	return $fileshadowvalue
     }
     private method CombineName { path file } {

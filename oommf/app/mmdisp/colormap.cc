@@ -265,7 +265,7 @@ const char* MakeColorRedBlackBlue(OC_REAL8m relative_shade)
     red=0;
     blue=2*(value-128)+1;
   }
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -290,7 +290,7 @@ const char* MakeColorBlueWhiteRed(OC_REAL8m relative_shade)
     red=255;
     blue=green=510-2*value;
   }
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -316,7 +316,7 @@ const char* MakeColorTealWhiteRed(OC_REAL8m relative_shade)
     red=255;
     blue=green=510-2*value;
   }
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -342,7 +342,7 @@ const char* MakeColorGreenWhiteOrange(OC_REAL8m relative_shade)
     blue=510-2*value;
     green=345-(45*value)/64;
   }
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -358,7 +358,7 @@ const char* MakeColorBlackGrayWhite(OC_REAL8m relative_shade)
     if(value<0)   value=0;
     if(value>255) value=255;
   }
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -376,7 +376,7 @@ const char* MakeColorHighContrastGray(OC_REAL8m relative_shade)
     if(value<0)   value=0;
     if(value>255) value=255;
   }
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -392,7 +392,7 @@ const char* MakeColorBlackWhiteBlack(OC_REAL8m relative_shade)
     if(value<0)   value=0;
     if(value>255) value=255;
   }
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -409,7 +409,7 @@ const char* MakeColorWhiteBlackWhite(OC_REAL8m relative_shade)
     if(value>255) value=255;
   }
   value = 255 - value;
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -425,7 +425,7 @@ const char* MakeColorBlackWhiteWhite(OC_REAL8m relative_shade)
     if(value<0)   value=0;
     if(value>255) value=255;
   }
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -441,7 +441,7 @@ const char* MakeColorBlackBlackWhite(OC_REAL8m relative_shade)
     if(value<0)   value=0;
     if(value>255) value=255;
   }
-  sprintf(color,"#%02X%02X%02X",value,value,value);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",value,value,value);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -461,7 +461,7 @@ const char* MakeColorWhiteGreenBlack(OC_REAL8m relative_shade)
   red=blue=255-value;
   green=255;
   if(value>127) green=510-2*value;
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }
@@ -474,7 +474,7 @@ const char* MakeColorRedGreenBlueRed(OC_REAL8m relative_shade)
   int   red = int(OC_ROUND(R*256.));  if(  red>255)   red=255;
   int green = int(OC_ROUND(G*256.));  if(green>255) green=255;
   int  blue = int(OC_ROUND(B*256.));  if( blue>255)  blue=255;
-  sprintf(color,"#%02X%02X%02X",red,green,blue);
+  snprintf(color,sizeof(color),"#%02X%02X%02X",red,green,blue);
   color[TKCOLORLENGTH+2]='\0'; // Safety
   return color;
 }

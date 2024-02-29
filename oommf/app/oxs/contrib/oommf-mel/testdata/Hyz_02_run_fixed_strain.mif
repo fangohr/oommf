@@ -1,0 +1,137 @@
+# MIF 2.1
+# Simulation of a single ellipse of 30nm thick Ni (150x75um)
+# with bias field at 30deg from surface normal and AC field
+# The spatial shape of the AC field is imported from a separated file
+#
+# H = 6000, 5500, 5000, ..., 1000, 750 Oe
+# at 30deg from the surface normal
+# No crystalline anisotorpy included
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ms and gamma are obtained through fitting the film frequencies
+# Ms = 341.2 emu/cc = 341.2e3 A/m
+# gamma = 1.94 rad/s/Oe = 2.44 m/A/s or free electron value
+# Axhg = 9e-7 erg/cm = 9e-12 J/m
+# 01 Magnetization initialization
+
+# Parameters (shows default value but you should input them from command line
+set gamma_input 2.44e5
+set Ms_input  341.2e3
+set file_input  0
+set H_input 7000
+set HAcAmpCoef_input 1
+
+# Constants
+set pi [expr 4*atan(1.0)]
+set mu0 [expr 4*$pi*1e-7]
+
+# Field value
+set Hy  [expr $H_input*sin(30.0*$pi/180.0)]
+set Hz  [expr $H_input*cos(30.0*$pi/180.0)]
+
+# Basename
+set workname_run [format "Hyz_02_run_file%02g_H%04g_AC%04g" $file_input $H_input $HAcAmpCoef_input]
+set workname_M_file [format "Hyz_01_init-Oxs_TimeDriver-Magnetization-%02g.omf" $file_input]
+
+RandomSeed 1
+
+Specify Oxs_ImageAtlas:atlas {
+   xrange {0  75e-9}
+   yrange {0 150e-9}
+   zrange {0.0e-9 30e-9}
+   image vellipse150x75.bmp
+   viewplane "xy"
+   colormap {
+	   black Ni
+	   default universe
+   }
+   matcherror 0.1
+}
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {5e-9 5e-9 5e-9}
+  atlas :atlas
+}]
+
+# No crystalline anisotropy
+
+Specify Oxs_Exchange6Ngbr {
+	default_A 0
+	atlas atlas
+	A {
+		Ni Ni 9e-12
+	}
+}
+
+# Bias field in Oe
+Specify Oxs_UZeeman [subst {
+  multiplier [expr 0.0001/$mu0]
+  Hrange {
+    { 0     $Hy              $Hz  1.414 [expr $Hy+1.414] $Hz  0 }
+    { 1.414 [expr $Hy+1.414] $Hz  0     $Hy              $Hz  1 }
+  }
+}]
+
+Specify Oxs_Demag {}
+
+# YY_FixedMEL test
+Specify Oxs_UniformScalarField:B {
+  value 7.85e6
+}
+
+Specify Oxs_FileVectorField:fileediagfield {
+  atlas atlas
+  file strain_diag_0.ovf
+}
+
+Specify Oxs_FileVectorField:fileeoffdiagfield {
+  atlas atlas
+  file strain_offdiag_0.ovf
+}
+
+Specify YY_FixedMEL:MELField [subst {
+  B1 :B
+  B2 :B
+  e_diag_field :fileediagfield
+  e_offdiag_field :fileeoffdiagfield
+}]
+
+# Evolver/Driver
+Specify Oxs_EulerEvolve [subst {
+  gamma_LL $gamma_input
+  alpha 0.05
+  do_precess 1
+  max_timestep 3e-12
+  start_dm 0.01
+} ]
+
+Specify Oxs_TimeDriver [subst {
+ basename $workname_run
+ evolver Oxs_EulerEvolve
+ comment {1 deg/ns = 17453293 rad/sec; If Ms=8.6e5, and lambda is small,
+         then mxh=1e-6 translates into dm/dt = 2e5 rad/sec = 0.01 deg/ns}
+ stopping_time { 0.5e-12 0.5e-12 1e-9 }
+ mesh :mesh
+ Ms { Oxs_AtlasScalarField {
+	 atlas atlas
+	 default_value 0
+	 values {
+		 Ni $Ms_input
+	 }
+ } }
+ m0 { Oxs_FileVectorField {
+   atlas atlas
+   file $workname_M_file
+   norm 1
+ }}
+} ]
+
+Destination monitor_table mmDataTable
+Destination monitor_graph mmGraph
+Destination monitor_disp1 mmDisp
+Destination monitor_disp2 mmDisp
+Destination archive mmArchive
+
+Schedule DataTable monitor_table step 2
+Schedule DataTable monitor_graph step 2
+Schedule YY_FixedMEL:MELField:Field monitor_disp1 step 2
+#Schedule DataTable archive step 100

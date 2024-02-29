@@ -38,10 +38,10 @@ public:
   }
   void SetAngle(OC_REAL8m angle) {
     // Note: SetAngle(ang) == SetAngle(|ang|)
-    OC_REAL8m dot = cos(angle);     
+    OC_REAL8m dot = cos(angle);
     OC_REAL8m cross = sin(angle);
     sdotsq = dot*fabs(dot);
-    crosssq = cross*cross;    
+    crosssq = cross*cross;
   }
   OC_REAL8m GetAngle() {
     // Returns angle in radians, 0<= ang <= pi
@@ -161,7 +161,7 @@ Oxs_CommonRectangularMesh::Oxs_CommonRectangularMesh
 {
   // Process arguments
   cellsize = GetThreeVectorInitValue("cellsize");
-  
+
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
   OXS_GET_INIT_EXT_OBJECT("atlas",Oxs_Atlas,atlas);
 
@@ -1012,7 +1012,7 @@ OC_REAL8m Oxs_RectangularMesh::MaxNeighborAngle
                   " const Oxs_MeshValue<OC_REAL8m>& scale)");
   }
   if(Size()<2) return 0.0;
-  
+
   OxsRectangularMeshAngle maxangX(0.0); // 0.0 is min possible angle
   OxsRectangularMeshAngle maxangY(0.0);
   OxsRectangularMeshAngle maxangZ(0.0);
@@ -1109,7 +1109,7 @@ OC_REAL8m Oxs_PeriodicRectangularMesh::MaxNeighborAngle
                   " const Oxs_MeshValue<OC_REAL8m>& scale)");
   }
   if(Size()<2) return 0.0;
-  
+
   OxsRectangularMeshAngle maxangX(0.0); // 0.0 is min possible angle
   OxsRectangularMeshAngle maxangY(0.0);
   OxsRectangularMeshAngle maxangZ(0.0);

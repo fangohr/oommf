@@ -67,7 +67,7 @@ public:
   // Any of the char* may be set to NULL, in which case an empty string
   // will be substituted.
 
-  // Version of the previous where the error message is a pure string
+  // Versions of the previous where the error message is a pure string
   // not requiring any formatting.
   Oc_Exception
   (const char* file_in,      // File from which exception is thrown
@@ -75,6 +75,13 @@ public:
    const char* classname_in, // Name of class throwing exception
    const char* funcname_in,  // Name of function throwing exception
    const char* errmsg_in);   // Error message
+
+  Oc_Exception
+  (const char* file_in,      // File from which exception is thrown
+   int lineno_in,            // Line number from which exception is thrown
+   const char* classname_in, // Name of class throwing exception
+   const char* funcname_in,  // Name of function throwing exception
+   const std::string& errmsg_in); // Error message
 
   virtual ~Oc_Exception() {} // Make sure all child classes get
   /// their destructor called on destruction of base class ptr.

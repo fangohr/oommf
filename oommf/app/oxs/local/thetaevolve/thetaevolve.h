@@ -183,12 +183,13 @@ public:
   virtual OC_BOOL
   InitNewStage(const Oxs_TimeDriver* driver,
                Oxs_ConstKey<Oxs_SimState> state,
-               Oxs_ConstKey<Oxs_SimState> prevstate);
+               Oxs_ConstKey<Oxs_SimState> prevstate,
+               Oxs_DriverStageInfo& stage_info);
 
   virtual  OC_BOOL
   Step(const Oxs_TimeDriver* driver,
        Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_Key<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.

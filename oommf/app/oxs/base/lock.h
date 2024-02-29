@@ -27,10 +27,12 @@
  *
  * Access to the lock class is generally performed through the Oxs_Key
  * class.  This insures proper semantics and guarantees lock removal
- * when the Oxs_Key is destroyed.
+ * when the Oxs_Key is destroyed. NB: The three Oxs_Key get reference
+ * calls, GetDepReference(), GetReadReference(), and GetDepReference()
  *
- * This class was originally written for single threaded code, and
- * then later only accessed from the main thread.  However, later the
+ *
+ * This class was originally written for single threaded code and
+ * only accessed from the main thread.  However, later the
  * problem checkpoint write code was transitioned into a separate
  * (throwaway) thread: The main thread puts a read lock on a
  * Oxs_SimState to guarantee that the state is not destroyed before it
@@ -133,7 +135,7 @@ private:
   // Disable copy constructor and assignment operator.
   Oxs_Lock(const Oxs_Lock& other);
   Oxs_Lock& operator=(const Oxs_Lock&);
-  
+
 public:
   Oxs_Lock() : lock_data(GetNextFreeId()), dep_lock(0) {}
   virtual ~Oxs_Lock();
@@ -170,7 +172,7 @@ public:
   //
   // It is important that any code acquiring a lock release it when
   // done...even if an exception is raised.  Release can be managed
-  // automatically by using the Oxs_Key class.  
+  // automatically by using the Oxs_Key class.
   void SetDepLock() { ++dep_lock; }
   void ReleaseDepLock();
   OC_BOOL SetReadLock();

@@ -2,6 +2,58 @@
 # Associate internals original text with physical files.
 
 
+$key = q/HTMLCGEvolve/;
+$ref_files{$key} = "$dir".q|Evolvers.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLEulerEvolve/;
+$ref_files{$key} = "$dir".q|Evolvers.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLRungeKuttaEvolve/;
+$ref_files{$key} = "$dir".q|Evolvers.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLSpinXferEvolve/;
+$ref_files{$key} = "$dir".q|Evolvers.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLUZeeman/;
+$ref_files{$key} = "$dir".q|Energies.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLmifvariablethickness/;
+$ref_files{$key} = "$dir".q|Part_geometry.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLmmdispdatascale/;
+$ref_files{$key} = "$dir".q|Vector_Field_Display_mmDisp.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLoxsImageAtlas/;
+$ref_files{$key} = "$dir".q|Atlases.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLoxsiioutputs/;
+$ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Int.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLoxsperiodicrectangularmesh/;
+$ref_files{$key} = "$dir".q|Meshes.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLoxsrectangularmesh/;
+$ref_files{$key} = "$dir".q|Meshes.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLoxsrkeprecision/;
+$ref_files{$key} = "$dir".q|Evolvers.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/HTMLthreadconsider/;
+$ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Bat.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/PTAOSF/;
 $ref_files{$key} = "$dir".q|Field_Objects.html|; 
 $noresave{$key} = "$nosave";
@@ -70,6 +122,10 @@ $key = q/PTFZ/;
 $ref_files{$key} = "$dir".q|Energies.html|; 
 $noresave{$key} = "$nosave";
 
+$key = q/PTGetStateData/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/PTIA/;
 $ref_files{$key} = "$dir".q|Atlases.html|; 
 $noresave{$key} = "$nosave";
@@ -102,6 +158,10 @@ $key = q/PTMVF/;
 $ref_files{$key} = "$dir".q|Field_Objects.html|; 
 $noresave{$key} = "$nosave";
 
+$key = q/PTMifReport/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/PTPRM/;
 $ref_files{$key} = "$dir".q|Meshes.html|; 
 $noresave{$key} = "$nosave";
@@ -124,6 +184,10 @@ $noresave{$key} = "$nosave";
 
 $key = q/PTRVF/;
 $ref_files{$key} = "$dir".q|Field_Objects.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTReadFile/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/PTSA/;
@@ -218,6 +282,110 @@ $key = q/PTbatchsolveFindFile/;
 $ref_files{$key} = "$dir".q|2D_Micromagnetic_Solver_Bat.html|; 
 $noresave{$key} = "$nosave";
 
+$key = q/PTdestinationCmd/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSA/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSC/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSGL/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSIS/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSOER/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSSP/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTffSUSO/;
+$ref_files{$key} = "$dir".q|Specify_Conventions.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2ClearSpec/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2DefaultFieldFilename/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2EvalScalarField/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2EvalVectorField/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2GetAtlasRegionByPosition/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2GetAtlasRegions/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2GetMifFilename/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2GetMifParameters/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2GetOptions/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2Ignore/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2NormalRV/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2Random/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2SetOptions/;
+$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2datesort/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2oommfrootdir/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2parameter/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2randomseed/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTmif2rglob/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/PToxsdrivercheckpoint/;
 $ref_files{$key} = "$dir".q|Drivers.html|; 
 $noresave{$key} = "$nosave";
@@ -230,8 +398,16 @@ $key = q/PToxsiirestartflag/;
 $ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Int.html|; 
 $noresave{$key} = "$nosave";
 
+$key = q/PTscheduleCmd/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/PTsecodtformat/;
 $ref_files{$key} = "$dir".q|Data_Table_File_Format_ODT.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/PTspecifyCmd/;
+$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/bibliography/;
@@ -454,150 +630,6 @@ $key = q/fig:svfsample/;
 $ref_files{$key} = "$dir".q|OVF_0.0_format.html|; 
 $noresave{$key} = "$nosave";
 
-$key = q/html:CGEvolve/;
-$ref_files{$key} = "$dir".q|Evolvers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:EulerEvolve/;
-$ref_files{$key} = "$dir".q|Evolvers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:GetStateData/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:MifReport/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:MinDriver/;
-$ref_files{$key} = "$dir".q|Drivers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:ReadFile/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:RungeKuttaEvolve/;
-$ref_files{$key} = "$dir".q|Evolvers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:SpinXferEvolve/;
-$ref_files{$key} = "$dir".q|Evolvers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:UZeeman/;
-$ref_files{$key} = "$dir".q|Energies.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:destinationCmd/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2ClearSpec/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2EvalScalarField/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2EvalVectorField/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2GetAtlasRegionByPosition/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2GetAtlasRegions/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2GetMifFilename/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2GetMifParameters/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2GetOptions/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2Ignore/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2Random/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2SetOptions/;
-$ref_files{$key} = "$dir".q|MIF_2.2_New_Extension_Comma.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2datesort/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2oommfrootdir/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2parameter/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2randomseed/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mif2rglob/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mifvariablethickness/;
-$ref_files{$key} = "$dir".q|Part_geometry.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:mmdispdatascale/;
-$ref_files{$key} = "$dir".q|Vector_Field_Display_mmDisp.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:oxsImageAtlas/;
-$ref_files{$key} = "$dir".q|Atlases.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:oxsiioutputs/;
-$ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Int.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:oxsperiodicrectangularmesh/;
-$ref_files{$key} = "$dir".q|Meshes.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:oxsrectangularmesh/;
-$ref_files{$key} = "$dir".q|Meshes.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:oxsrkeprecision/;
-$ref_files{$key} = "$dir".q|Evolvers.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:scheduleCmd/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:specifyCmd/;
-$ref_files{$key} = "$dir".q|MIF_2.1_Extension_Commands.html|; 
-$noresave{$key} = "$nosave";
-
-$key = q/html:threadconsider/;
-$ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Bat.html|; 
-$noresave{$key} = "$nosave";
-
 $key = q/index/;
 $ref_files{$key} = "$dir".q|docindex.html|; 
 $noresave{$key} = "$nosave";
@@ -640,6 +672,10 @@ $noresave{$key} = "$nosave";
 
 $key = q/item:MaskVectorField/;
 $ref_files{$key} = "$dir".q|Field_Objects.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/item:MinDriver/;
+$ref_files{$key} = "$dir".q|Drivers.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/item:RandomScalarField/;
@@ -782,6 +818,10 @@ $key = q/sec:cmdutils/;
 $ref_files{$key} = "$dir".q|Command_Line_Utilities.html|; 
 $noresave{$key} = "$nosave";
 
+$key = q/sec:computefield/;
+$ref_files{$key} = "$dir".q|Field_from_Magnetization_3D.html|; 
+$noresave{$key} = "$nosave";
+
 $key = q/sec:contriboxsext/;
 $ref_files{$key} = "$dir".q|Contributed_Oxs_Ext_Child_C.html|; 
 $noresave{$key} = "$nosave";
@@ -887,15 +927,19 @@ $ref_files{$key} = "$dir".q|Killing_OOMMF_Processes_kil.html|;
 $noresave{$key} = "$nosave";
 
 $key = q/sec:lastjob/;
-$ref_files{$key} = "$dir".q|Last_Oxsii_Boxsi_run_lastjo.html|; 
+$ref_files{$key} = "$dir".q|Last_Oxsii_Boxsi_Run_lastjo.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:launchhost/;
-$ref_files{$key} = "$dir".q|Launching_OOMMF_host_server.html|; 
+$ref_files{$key} = "$dir".q|OOMMF_Host_Server_launchhos.html|; 
+$noresave{$key} = "$nosave";
+
+$key = q/sec:logreview/;
+$ref_files{$key} = "$dir".q|Oxs_Log_File_Review_logrevi.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:mag2hfield/;
-$ref_files{$key} = "$dir".q|Calculating_H_Fields_from_M.html|; 
+$ref_files{$key} = "$dir".q|H_Fields_from_Magnetization.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:mif12format/;
@@ -1095,11 +1139,11 @@ $ref_files{$key} = "$dir".q|OOMMF_eXtensible_Solver_Int.html|;
 $noresave{$key} = "$nosave";
 
 $key = q/sec:oxspkg/;
-$ref_files{$key} = "$dir".q|Oxs_package_management_oxsp.html|; 
+$ref_files{$key} = "$dir".q|Oxs_Package_Management_oxsp.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:oxsregression/;
-$ref_files{$key} = "$dir".q|Oxs_regression_tests_oxsreg.html|; 
+$ref_files{$key} = "$dir".q|Oxs_Regression_Tests_oxsreg.html|; 
 $noresave{$key} = "$nosave";
 
 $key = q/sec:partgeometry/;

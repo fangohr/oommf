@@ -84,10 +84,8 @@ OC_BOOL Oc_IsGlobalInterpThread(); // Returns true iff running thread
 int		Oc_InitScript(Tcl_Interp*, const char*, const char*);
 int		Oc_AppMain(int,char**);
 int		Oc_RegisterCommand(Tcl_Interp*,const char*,Tcl_CmdProc*);
-#if TCL_MAJOR_VERSION >= 8  // Obj interface available
 int		Oc_RegisterObjCommand(Tcl_Interp*,
                                       const char*,Tcl_ObjCmdProc*);
-#endif
 void		Oc_SetDefaultTkFlag(int);
 void		Oc_Main(int,char**,Tcl_AppInitProc*);
 float           Oc_Nop(float);

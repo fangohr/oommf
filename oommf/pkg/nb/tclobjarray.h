@@ -19,15 +19,6 @@ OC_USE_STRING;         // Map String --> std::string
 
 /* End includes */
 
-#ifndef NB_TCLOBJARRAY_AVAILABLE
-# if (TCL_MAJOR_VERSION > 8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>0))
-#  define NB_TCLOBJARRAY_AVAILABLE 1
-# else
-#  define NB_TCLOBJARRAY_AVAILABLE 0
-# endif
-#endif
-
-#if NB_TCLOBJARRAY_AVAILABLE
 ////////////////////////////////////////////////////////////////////////
 // Wrapper for Tcl_Obj**
 typedef Tcl_Obj* NbTclObjPtr;
@@ -92,7 +83,6 @@ public:
   String GetString(int index) const;
 
 };
-#endif // NB_TCLOBJARRAY_AVAILABLE
 
 
 #endif // _NB_TCLOBJARRAY

@@ -16,20 +16,16 @@
 int
 Xp_Init(Tcl_Interp *interp)
 {
-#define RETURN_TCL_ERROR                                               \
-    Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in Xp_Init())")); \
+#define RETURN_TCL_ERROR                              \
+    Tcl_AddErrorInfo(interp, "\n    (in Xp_Init())"); \
     return TCL_ERROR
 
-    if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
-		       OC_CONST84_CHAR("1.1"), 0) == NULL) {
-        Tcl_AppendResult(interp,
-		OC_CONST84_CHAR("\n\t(Xp " XP_VERSION " needs Oc 1.1)"),
-                NULL);
+    if (Tcl_PkgPresent(interp, "Oc", "1.1", 0) == NULL) {
+        Tcl_AppendResult(interp, "\n\t(Xp " XP_VERSION " needs Oc 1.1)", NULL);
         RETURN_TCL_ERROR;
     }
 
-    if (Tcl_PkgProvide(interp, OC_CONST84_CHAR("Xp"),
-		       OC_CONST84_CHAR(XP_VERSION)) != TCL_OK) {
+    if (Tcl_PkgProvide(interp, "Xp", XP_VERSION) != TCL_OK) {
       RETURN_TCL_ERROR;
     }
 

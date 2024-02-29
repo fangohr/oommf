@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html852"
+<A NAME="tex2html858"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html848"
+<A NAME="tex2html854"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html842"
+<A NAME="tex2html848"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html850"
+<A NAME="tex2html856"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html853"
+<B> Next:</B> <A NAME="tex2html859"
   HREF="Making_PostScript_from_Vect.html">Making PostScript from Vector</A>
-<B> Up:</B> <A NAME="tex2html849"
+<B> Up:</B> <A NAME="tex2html855"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html843"
+<B> Previous:</B> <A NAME="tex2html849"
   HREF="Vector_Field_File_Format_Co.html">Vector Field File Format</A>
 <BR>
 <BR>
@@ -51,16 +51,16 @@
 <BR>
 Making Bitmaps from Vector Fields:
             avf2ppm
-</H1><A NAME="18128"></A><A NAME="18129"></A><A NAME="18130"></A><A NAME="18131"></A>
+</H1><A NAME="18499"></A><A NAME="18500"></A><A NAME="18501"></A><A NAME="18502"></A>
 
 <P>
-The <B>avf2ppm</B><A NAME="18133"></A> utility converts a
+The <B>avf2ppm</B><A NAME="18504"></A> utility converts a
 collection of vector field files (e.g., <TT><B>.omf</B></TT>, <TT><B>.ovf</B></TT>) into color
 bitmaps suitable for inclusion into documents or collating into movies.
 The command line arguments control filename and format selection, while
 plain-text configuration files, modeled after the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdisp"
- NAME="18140"><B>mmDisp</B></A> configuration dialog
+ NAME="18511"><B>mmDisp</B></A> configuration dialog
 box, specify display parameters.
 
 <P>
@@ -94,12 +94,12 @@ where
 </DD>
 <DT><STRONG><TT><B>-format <TT><B>&lt;</B></TT>P3|P6|B24|PNG<TT><B>&gt;</B></TT></B></TT></STRONG></DT>
 <DD>Specify the output image file format.  Currently supported formats are
-  the true color <I>Portable Pixmap</I> (PPM)<A NAME="18161"></A> formats P3
+  the true color <I>Portable Pixmap</I> (PPM)<A NAME="18532"></A> formats P3
   (ASCII text) and P6 (binary), the uncompressed Windows
-  BMP<A NAME="18162"></A> 24 bits-per-pixel format, and the compressed
+  BMP<A NAME="18533"></A> 24 bits-per-pixel format, and the compressed
   <I>Portable Network Graphics</I> (PNG) format.  Conversion to the
   PNG format requires either Tk 8.6+, or earlier Tk plus the
-  <A NAME="tex2html28"
+  <A NAME="tex2html30"
   HREF="https://wiki.tcl-lang.org/page/Img"><I>Img</I></A>
 package.  The default format is P6.
 </DD>
@@ -138,7 +138,7 @@ wildcards before handing control over to the invoked application, so the
 <TT>-ipat</TT> option is not needed (although it is useful in case of a
 ``command-line too long'' error).  DOS does not do this expansion, so
 you must use <TT>-ipat</TT> to get
-wildcard expansion<A NAME="18184"></A> in Windows.
+wildcard expansion<A NAME="18555"></A> in Windows.
 
 <P>
 As each input file is processed, a name for the output file is produced
@@ -153,13 +153,13 @@ default <TT>-opatsub</TT> string replaces this with the extension
 
 <P>
 If you have command line image processing ``filter'' programs, e.g.,
-<B>ppmtogif</B><A NAME="18196"></A> (part of the
-NetPBM<A NAME="18197"></A> package), then you can use the <TT>-filter</TT>
+<B>ppmtogif</B><A NAME="18567"></A> (part of the
+NetPBM<A NAME="18568"></A> package), then you can use the <TT>-filter</TT>
 option to pipe the output of <B>avf2ppm</B> through that filter before it
 is written to the output file specified by the <TT>-opat*</TT>
 expressions.  If the processing changes the format of the file, (e.g.,
-<B>ppmtogif</B> converts from PPM<A NAME="18202"></A> to
-GIF<A NAME="18203"></A>), then you will likely want to specify a
+<B>ppmtogif</B> converts from PPM<A NAME="18573"></A> to
+GIF<A NAME="18574"></A>), then you will likely want to specify a
 <TT>-opatsub</TT> different from the default.
 
 <P>
@@ -172,13 +172,13 @@ tclsh oommf.tcl avf2ppm -ipat *.omf -opatsub .gif -filter ppmtogif
 (On Unix, either drop the <TT>-ipat</TT> flag, or use quotes to protect
 the input file specification string from expansion by the shell, as in
 <TT>-ipat '*.omf'</TT>.)  You may also pipe together multiple filters, e.g.,
-<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="18213"></A>.
+<TT>-filter "ppmquant 256 | ppmtogif"</TT><A NAME="18584"></A>.
 
 <P>
 
 <P>
 <FONT SIZE="+1"><B>Configuration files<A NAME="sec:avf2ppmconfig"></A></B></FONT>
-<BR><A NAME="18215"></A>
+<BR><A NAME="18586"></A>
 The details of the conversion process are specified by plain-text
 configuration files, in the same format as the
 <A HREF="Vector_Field_Display_mmDisp.html#sec:mmdispconfig"><B>mmDisp</B> configuration file</A>.
@@ -204,7 +204,7 @@ documentation, except that <B>avf2ppm</B> ignores the
 parameters, and the following additional parameters are available:
 <DL>
 <DT><STRONG><TT><B>arrow,antialias</B></TT></STRONG></DT>
-<DD>If 1<A NAME="18236"></A>, then each pixel along the edge of an arrow is
+<DD>If 1<A NAME="18607"></A>, then each pixel along the edge of an arrow is
  drawn not with the color of the arrow, but with a mixture of the arrow
  color and the background color.  This makes arrow boundaries appear
  less jagged, but increases computation time.  Also, the colors used in
@@ -238,18 +238,21 @@ parameters, and the following additional parameters are available:
 </DD>
 <DT><STRONG><TT><B>misc,width</B></TT>, <TT><B>misc,height</B></TT></STRONG></DT>
 <DD>Maximum width and height of the output bitmap, in pixels.  If
- <TT>misc,crop</TT> is enabled, then one or both of these dimensions may be
- shortened.
+ <TT>misc,croptomargin</TT> is enabled, then one or both of these dimensions
+ may be shortened.
 </DD>
-<DT><STRONG><TT><B>misc,crop</B></TT></STRONG></DT>
+<DT><STRONG><TT><B>misc,croptomargin</B></TT></STRONG></DT>
 <DD>If disabled (0), then any leftover space in the bitmap (of dimensions
  <TT>misc,width</TT> by <TT>misc,height</TT>) after packing the image are filled
  with the background color.  If enabled (1), then the bitmap is cropped
- to just include the image (with the margin specified by
- <TT>misc,margin</TT>).  <B>NOTE:</B> Some movie formats require that
- bitmap dimensions be multiples of 8 or 16.  For such purposes, you
- should disable <TT>misc,crop</TT> and specify appropriate dimensions
- directly with <TT>misc,width</TT> and <TT>misc,height</TT>.
+ at the margins specified by <TT>misc,margin</TT>. <B>NOTE:</B> Some movie
+ formats require that bitmap dimensions be multiples of 8 or 16.  For
+ such purposes, you should disable <TT>misc,croptomargin</TT> and specify
+ appropriate dimensions directly with <TT>misc,width</TT> and
+ <TT>misc,height</TT>.
+</DD>
+<DT><STRONG><TT><B>misc,crop</B></TT></STRONG></DT>
+<DD>Deprecated option replaced by <TT>misc,croptomargin</TT>.
 </DD>
 </DL>
 
@@ -264,6 +267,59 @@ that you do not want to change from the default.  You may ``layer''
 configuration files by specifying multiple user configuration files on
 the command line.  These are processed from left to right, with the last
 value set for each entry taking precedence.
+
+<P>
+The <TT>misc,datascale</TT> configuration option can be used in conjunction
+with the <TT>colorphase</TT> settings to control the assignment of values to
+the selected colormap. If <TT>colorphase</TT> is zero then the colormap
+extremes correspond to <!-- MATH
+ $\pm\,\texttt{misc,datascale}$
+ -->
+<B><IMG
+ WIDTH="17" HEIGHT="28" ALIGN="MIDDLE" BORDER="0"
+ SRC="img80.gif"
+ ALT="$\pm$">&nbsp;<texttt>misc, datascale</texttt></B>.  If you want to shift
+the colors to a specific range, say to have the pixel color display
+range from <B><I>a</I></B> to <B><I>b</I></B> with <B><I>b</I> &gt; <I>a</I></B>, then use
+<BR>
+<DIV ALIGN="CENTER">
+<!-- MATH
+ \begin{eqnarray*}
+\texttt{misc,datascale} & = & (b-a)/2 \\
+  \texttt{pixel,colorphase} & = & -(b+a)/\left[(b-a)/2\right]
+\end{eqnarray*}
+ -->
+<TABLE CELLPADDING="0" ALIGN="CENTER" WIDTH="100%">
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><texttt>misc, datascale</texttt></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>(<I>b</I> - <I>a</I>)/2</BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><BIG><texttt>pixel, colorphase</texttt></BIG></TD>
+<TD WIDTH="10" ALIGN="CENTER" NOWRAP><BIG>=</BIG></TD>
+<TD ALIGN="LEFT" NOWRAP><BIG>- (<I>b</I> + <I>a</I>)/<IMG
+ WIDTH="12" HEIGHT="38" ALIGN="MIDDLE" BORDER="0"
+ SRC="img81.gif"
+ ALT="$\displaystyle \left[\vphantom{(b-a)/2}\right.$">(<I>b</I> - <I>a</I>)/2<IMG
+ WIDTH="12" HEIGHT="38" ALIGN="MIDDLE" BORDER="0"
+ SRC="img82.gif"
+ ALT="$\displaystyle \left.\vphantom{(b-a)/2}\right]$"></BIG></TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+&nbsp;</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL">
+
+The <TT>pixel,colorreverse</TT> setting can be used to invert the colormap
+direction, e.g., to change Green-White-Orange to Orange-White-Green.
+
+<P>
+The <TT><B>oommf/app/mmdisp/</B></TT> directory contains the
+files<A NAME="18649"></A><A NAME="18650"></A>
+<TT><B>colorbar.config</B></TT>, <TT><B>colorbar.ovf</B></TT> and <TT><B>colorwheel.config</B></TT>,
+<TT><B>colorwheel.ovf</B></TT> that may be used to create colorbar and colorwheel
+images that can be embedded in figures for publications and
+presentations. Refer to the notes included at the bottom of
+<TT><B>colorbar.config</B></TT> for details.
 
 <P>
 <A NAME="fig:avf2ppm.config"></A>
@@ -281,7 +337,7 @@ array set plot_config {
     arrow,colorphase   0                misc,margin        10
     arrow,colorreverse 0                misc,width         640
     arrow,autosample   1                misc,height        480
-    arrow,subsample    10               misc,crop          1
+    arrow,subsample    10               misc,croptomargin  1
     arrow,size         1                misc,zoom          0
     arrow,viewscale    1                misc,rotation      0
                                         misc,datascale     0
@@ -310,20 +366,20 @@ file <TT><B>avf2ppm.config</B></TT>.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html852"
+<A NAME="tex2html858"
   HREF="Making_PostScript_from_Vect.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html848"
+<A NAME="tex2html854"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html842"
+<A NAME="tex2html848"
   HREF="Vector_Field_File_Format_Co.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html850"
+<A NAME="tex2html856"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

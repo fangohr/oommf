@@ -127,16 +127,7 @@ int Tcl_AppInit(Tcl_Interp *interp)
     // Any mmsolve-based applications may assume that the
     // current working directory is the OOMMF root directory.
     // Make it so.
-#if ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION > 0))       \
-     || (TCL_MAJOR_VERSION > 8)
     Tcl_Chdir(Nb_GetOOMMFRootDir(ab));
-#else
-    Tcl_DStringInit(&buf);
-    Tcl_DStringAppendElement(&buf, ab("cd"));
-    Nb_GetOOMMFRootDir(ab);
-    Tcl_Eval(interp, Tcl_DStringAppendElement(&buf, ab));
-    Tcl_DStringFree(&buf);
-#endif
 
     return TCL_OK;
 }

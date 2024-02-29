@@ -165,7 +165,7 @@ Oxs_AffineOrientVectorField::Value
   field->Value(newpt,value);
 }
 
-void 
+void
 Oxs_AffineOrientVectorField::FillMeshValue
 (const Oxs_Mesh* mesh,
  Oxs_MeshValue<ThreeVector>& array) const

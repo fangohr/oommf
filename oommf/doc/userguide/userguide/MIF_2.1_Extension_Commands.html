@@ -24,54 +24,55 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1228"
+<A NAME="tex2html1258"
   HREF="Specify_Conventions.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1224"
+<A NAME="tex2html1254"
   HREF="MIF_2.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1218"
+<A NAME="tex2html1248"
   HREF="MIF_2.1_File_Overview.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1226"
+<A NAME="tex2html1256"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html1229"
+<B> Next:</B> <A NAME="tex2html1259"
   HREF="Specify_Conventions.html">Specify Conventions</A>
-<B> Up:</B> <A NAME="tex2html1225"
+<B> Up:</B> <A NAME="tex2html1255"
   HREF="MIF_2.1.html">MIF 2.1</A>
-<B> Previous:</B> <A NAME="tex2html1219"
+<B> Previous:</B> <A NAME="tex2html1249"
   HREF="MIF_2.1_File_Overview.html">MIF 2.1 File Overview</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H2><A NAME="SECTION001832000000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="21716"></A>
+<H2><A NAME="SECTION001832000000000000000"></A><A NAME="sec:mif2ExtensionCommands"></A><A NAME="22971"></A>
 <BR>
 MIF&nbsp;2.1 Extension Commands
 </H2>
 In addition to the standard Tcl commands (modulo the safe Tcl restrictions outlined above), a number of additional commands are
 available in MIF&nbsp;2.1 files:
-<A HREF="#html:specifyCmd"><TT>Specify</TT></A>,
-<A HREF="#html:mif2ClearSpec"><TT>ClearSpec</TT></A>,
-<A HREF="#html:mif2datesort"><TT>DateSort</TT></A>,
-<A HREF="#html:destinationCmd"><TT>Destination</TT></A>,
-<A HREF="#html:GetStateData"><TT>GetStateData</TT></A>,
-<A HREF="#html:mif2Ignore"><TT>Ignore</TT></A>,
-<A HREF="#html:mif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
-<A HREF="#html:mif2parameter"><TT>Parameter</TT></A>,
-<A HREF="#html:mif2Random"><TT>Random</TT></A>,
-<A HREF="#html:mif2randomseed"><TT>RandomSeed</TT></A>,
-<A HREF="#html:MifReport"><TT>Report</TT></A>,
-<A HREF="#html:ReadFile"><TT>ReadFile</TT></A>,
-<A HREF="#html:mif2rglob"><TT>RGlob</TT></A>,
-and <A HREF="#html:scheduleCmd"><TT>Schedule</TT></A>.
+<A HREF="#PTspecifyCmd"><TT>Specify</TT></A>,
+<A HREF="#PTmif2ClearSpec"><TT>ClearSpec</TT></A>,
+<A HREF="#PTmif2datesort"><TT>DateSort</TT></A>,
+<A HREF="#PTdestinationCmd"><TT>Destination</TT></A>,
+<A HREF="#PTGetStateData"><TT>GetStateData</TT></A>,
+<A HREF="#PTmif2Ignore"><TT>Ignore</TT></A>,
+<A HREF="#PTmif2oommfrootdir"><TT>OOMMFRootDir</TT></A>,
+<A HREF="#PTmif2parameter"><TT>Parameter</TT></A>,
+<A HREF="#PTmif2Random"><TT>Random</TT></A>,
+<A HREF="#PTmif2NormalRV"><TT>NormalRV</TT></A>,
+<A HREF="#PTmif2randomseed"><TT>RandomSeed</TT></A>,
+<A HREF="#PTMifReport"><TT>Report</TT></A>,
+<A HREF="#PTReadFile"><TT>ReadFile</TT></A>,
+<A HREF="#PTmif2rglob"><TT>RGlob</TT></A>,
+and <A HREF="#PTscheduleCmd"><TT>Schedule</TT></A>.
 
 <P>
 <DL>
-<DT><STRONG>Specify<A NAME="html:specifyCmd"></A></STRONG></DT>
-<DD><A NAME="21748"></A>
+<DT><STRONG>Specify</STRONG></DT>
+<DD><A NAME="PTspecifyCmd"></A><A NAME="23005"></A>
 An Oxs simulation is built as a collection of <TT>Oxs_Ext</TT> (Oxs
 Extension) objects.  In general, <TT>Oxs_Ext</TT> objects are specified and
 initialized in the input MIF&nbsp;2.1 file using the <TT>Specify</TT> command,
@@ -100,7 +101,7 @@ The first part of this name, up to the colon, is the the C++ class name of the o
 class.  Here, <TT>Oxs_EulerEvolve</TT> is a class that integrates the
 Landau-Lifshitz ODE using a simple forward Euler method.  The second
 part of the name, i.e., the part following the colon, is
-the <I>instance name</I><A NAME="21763"></A> for
+the <I>instance name</I><A NAME="23020"></A> for
 this particular instance of the object.  In general, it is possible to
 have multiple instances of an <TT>Oxs_Ext</TT> child class in a simulation,
 but each instance must have a unique name.  These names are used for
@@ -123,8 +124,8 @@ conventions are described in the
 
 <P>
 </DD>
-<DT><STRONG>ClearSpec<A NAME="html:mif2ClearSpec"></A></STRONG></DT>
-<DD>This command is used to disable one or all preceding <TT>Specify</TT>
+<DT><STRONG>ClearSpec</STRONG></DT>
+<DD><A NAME="PTmif2ClearSpec"></A>This command is used to disable one or all preceding <TT>Specify</TT>
 commands.  In particular, one could use <TT>ClearSpec</TT> to nullify a
 Specify block from a base MIF file that was imported using the
 <TT>ReadFile</TT> command.  Sample usage is
@@ -141,8 +142,8 @@ preceding Specify blocks are removed.
 
 <P>
 </DD>
-<DT><STRONG>DateSort<A NAME="html:mif2datesort"></A></STRONG></DT>
-<DD>Given a list of filenames, returns the list sorted by modification
+<DT><STRONG>DateSort</STRONG></DT>
+<DD><A NAME="PTmif2datesort"></A>Given a list of filenames, returns the list sorted by modification
 time, with oldest first. The files must all exist. Sample usage is
 
   <BLOCKQUOTE>
@@ -156,19 +157,19 @@ directory with the most recent modification time.
 
 <P>
 </DD>
-<DT><STRONG>Destination<A NAME="html:destinationCmd"></A></STRONG></DT>
-<DD><A NAME="21786"></A><A NAME="21787"></A>
+<DT><STRONG>Destination</STRONG></DT>
+<DD><A NAME="PTdestinationCmd"></A><A NAME="23043"></A><A NAME="23044"></A>
 The format for the <TT>Destination</TT> command is
 
 <BLOCKQUOTE>
 <PRE>
-Destination &lt;desttag&gt; &lt;appname&gt; [new]
+Destination &lt;desttag&gt; &lt;appname&gt; [new] [-basename rootname]
 </PRE>
 
 </BLOCKQUOTE>
 This command associates a symbolic <I>desttag</I> with an
 application.  The tags are used by the
-<A HREF="#html:scheduleCmd"><TT>Schedule</TT></A> command
+<A HREF="#PTscheduleCmd"><TT>Schedule</TT></A> command
 to refer to specific application instances.  The <I>appname</I> may
 either be an OOMMF application name, e.g., mmDisp, or else a
 specific application instance in the form application:nickname, such
@@ -212,18 +213,22 @@ several sequential solver runs could send stage output to the same
 <B>mmGraph</B> widget, to build up overlapping hysteresis loops.
 
 <P>
-The last parameter to the Destination command is the optional
-<TT>new</TT> keyword.  If present, then a fresh copy of the requested
-application is always launched for association with the given tag.  The
-<TT>new</TT> option can be safely used with any generic application
-reference, but caution must be taken when using this option with
-specific instance references, because an error is raised if the
-requested nickname is already in use.
+If the optional <TT>new</TT> keyword is included in the <TT>Destination</TT>
+command, then a fresh copy of the requested application is always
+launched for association with the given tag.  The <TT>new</TT> option can be
+safely used with any generic application reference, but caution must be
+taken when using this option with specific instance references, because
+an error is raised if the requested nickname is already in use.
+
+<P>
+The <TT>-basename</TT> option overrides the current output file basename
+setting with the value given by <I>rootname</I>. (Cf. the <TT>basename</TT> option to the
+<A HREF="MIF_2.2_New_Extension_Comma.html#sec:mif22ExtensionCommands">MIF&nbsp;2.2 <TT>SetOptions</TT></A> command.)
 
 <P>
 </DD>
-<DT><STRONG>GetStateData<A NAME="html:GetStateData"></A></STRONG></DT>
-<DD>The <TT>GetStateData</TT> command retrieves data attached to a specific
+<DT><STRONG>GetStateData</STRONG></DT>
+<DD><A NAME="PTGetStateData"></A>The <TT>GetStateData</TT> command retrieves data attached to a specific
 magnetization state:
 
 <BLOCKQUOTE>
@@ -305,7 +310,7 @@ and <TT>max_absMs</TT> is in A/m.
 <P>
 Additional key-value pairs may be attached to a state by <TT>Oxs_Ext</TT>
 objects.  For example,
-<A HREF="Evolvers.html#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>
+<A HREF="Evolvers.html#HTMLRungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>
 adds the average magnetization <B><I>x</I></B>-component under the key name
 <TT>Oxs_RungeKuttaEvolve:<TT>&lt;</TT>instance_name<TT>&gt;</TT>:Mx</TT>.
 (Here <TT><TT>&lt;</TT>instance_name<TT>&gt;</TT></TT> is the instance name of the
@@ -360,16 +365,16 @@ directory <TT><B>oommf/app/oxs/examples/</B></TT>.
 
 <P>
 </DD>
-<DT><STRONG>Ignore<A NAME="html:mif2Ignore"></A></STRONG></DT>
-<DD>The <TT>Ignore</TT> command takes an arbitrary number of arguments, which
+<DT><STRONG>Ignore</STRONG></DT>
+<DD><A NAME="PTmif2Ignore"></A>The <TT>Ignore</TT> command takes an arbitrary number of arguments, which
 are thrown away without being interpreted.  The primary use of
 <TT>Ignore</TT> is to temporarily ``comment out'' (i.e., disable) Specify
 blocks.
 
 <P>
 </DD>
-<DT><STRONG>OOMMFRootDir<A NAME="html:mif2oommfrootdir"></A></STRONG></DT>
-<DD>This command takes no arguments, and returns the full directory path of
+<DT><STRONG>OOMMFRootDir</STRONG></DT>
+<DD><A NAME="PTmif2oommfrootdir"></A>This command takes no arguments, and returns the full directory path of
 the OOMMF root directory.  This is useful in conjunction with the
 <TT>ReadFile</TT> command for locating files within the OOMMF hierarchy,
 and can also be used to place output files.  File paths must be created
@@ -387,8 +392,8 @@ particular, use forward slashes, ``<TT>/</TT>'', to separate directories.
 
 <P>
 </DD>
-<DT><STRONG>Parameter<A NAME="html:mif2parameter"></A></STRONG></DT>
-<DD>The Oxs interfaces
+<DT><STRONG>Parameter</STRONG></DT>
+<DD><A NAME="PTmif2parameter"></A>The Oxs interfaces
 (<A HREF="OOMMF_eXtensible_Solver_Int.html#sec:oxsii">Oxsii</A> and
 <A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi">Boxsi</A>)
 allow specified variables in the MIF file to be set from the command
@@ -408,8 +413,8 @@ MIF file.  See also the notes on
 
 <P>
 </DD>
-<DT><STRONG>Random<A NAME="html:mif2Random"></A></STRONG></DT>
-<DD>Returns a pseudo-random number in the interval <B>[0, 1]</B>, using a
+<DT><STRONG>Random</STRONG></DT>
+<DD><A NAME="PTmif2Random"></A>Returns a pseudo-random number in the interval <B>[0, 1]</B>, using a
 C-library random number generator.  This random number generator is
 specified by the <TT>OMF_RANDOM</TT> macro in the <TT><B>ocport.h</B></TT> file found in
 the system-specific subdirectory of <TT><B>oommf/pkg/oc/</B></TT>.  The standard
@@ -417,23 +422,30 @@ Tcl <TT>expr rand()</TT> command is also available.
 
 <P>
 </DD>
-<DT><STRONG>RandomSeed<A NAME="html:mif2randomseed"></A></STRONG></DT>
-<DD>Initializes both the Tcl and the C-library random number generators.
-If no parameter is given, then a seed is drawn from the system clock.
-Otherwise, one integer parameter may be specified to be used as the
-seed.
+<DT><STRONG>NormalRV</STRONG></DT>
+<DD><A NAME="PTmif2NormalRV"></A>Returns a pseudo-random number with standard normal distribution (mean
+0, variance 1) using the C++11 <TT>std::normal_distribution</TT>
+library.
 
 <P>
 </DD>
-<DT><STRONG>Report<A NAME="html:MifReport"></A></STRONG></DT>
-<DD>Intended primarily as a MIF debugging aid, <TT>Report</TT> takes one
+<DT><STRONG>RandomSeed</STRONG></DT>
+<DD><A NAME="PTmif2randomseed"></A>Initializes both the Tcl and the C/C++-library random number
+generators. If no parameter is given, then a seed is drawn from the
+system clock. Otherwise, one integer parameter may be specified to be
+used as the seed.
+
+<P>
+</DD>
+<DT><STRONG>Report</STRONG></DT>
+<DD><A NAME="PTMifReport"></A>Intended primarily as a MIF debugging aid, <TT>Report</TT> takes one
 string argument that is printed to the solver interface console and the
 Oxs log file.  It is essentially a replacement for the standard Tcl <TT>puts</TT> command, which is not available in safe interpreters.
 
 <P>
 </DD>
-<DT><STRONG>ReadFile<A NAME="html:ReadFile"></A></STRONG></DT>
-<DD>The Tcl <TT>read</TT> command is absent from safe interpreters.  The
+<DT><STRONG>ReadFile</STRONG></DT>
+<DD><A NAME="PTReadFile"></A>The Tcl <TT>read</TT> command is absent from safe interpreters.  The
 <TT>ReadFile</TT> command is introduced as a replacement available in
 ``custom'' and ``unsafe'' interpreters.  <TT>ReadFile</TT> takes two
 arguments, the file to be read and an optional translation
@@ -444,7 +456,7 @@ files in other parts of the OOMMF directory tree.
 
 <P>
 The translation specification should be one of <TT>binary</TT>, <TT>auto</TT>
-(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="21917"></A>.  The
+(the default), <TT>image</TT> or <TT>floatimage</TT><A NAME="23186"></A>.  The
 first two translation modes provide the functionality of the
 <TT>-translation</TT> option of the Tcl <TT>fconfigure</TT> command.  Refer to
 the Tcl documentation for details.  Specifying <TT>image</TT> causes the
@@ -482,7 +494,7 @@ eval [ReadFile extra_mif_commands.tcl]
 can be used to embed a separate Tcl file into a MIF&nbsp;2.1 file.
 
 <P>
-<A NAME="21931"></A>Here's a more complicated example that uses a color image file to
+<A NAME="23200"></A>Here's a more complicated example that uses a color image file to
 create a vector field:
 
 <BLOCKQUOTE>
@@ -516,7 +528,7 @@ Specify Oxs_ScriptVectorField:sample {
 </PRE>
 
 </BLOCKQUOTE>
-<A NAME="21934"></A>
+<A NAME="23203"></A>
 If the input image is large, then it is best to work with the image list
 (i.e., the variable <TT>colorimage</TT> in the preceding example) directly,
 as illustrated above.  The image list as returned by <TT>ReadFile</TT> is in
@@ -530,8 +542,8 @@ option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
 
 <P>
 </DD>
-<DT><STRONG>RGlob<A NAME="html:mif2rglob"></A></STRONG></DT>
-<DD>This command is modeled on the Tcl <TT>glob</TT> command (q.v.), but
+<DT><STRONG>RGlob</STRONG></DT>
+<DD><A NAME="PTmif2rglob"></A>This command is modeled on the Tcl <TT>glob</TT> command (q.v.), but
 is restricted to the current working directory, that is, the
 directory holding the MIF file.  The syntax is
 
@@ -580,8 +592,8 @@ option is set to <TT>safe</TT> in the <TT><B>options.tcl</B></TT>
 
 <P>
 </DD>
-<DT><STRONG>Schedule<A NAME="html:scheduleCmd"></A></STRONG></DT>
-<DD><A NAME="21972"></A>
+<DT><STRONG>Schedule</STRONG></DT>
+<DD><A NAME="PTscheduleCmd"></A><A NAME="23241"></A>
 The <TT>Schedule</TT> command is used to setup outputs from the MIF file.
 This functionality is critical for solvers running in batch mode, but is
 also useful for setting up default connections in interactive mode.
@@ -612,7 +624,7 @@ the DataTable output which is always present, the
 <P>
 The second parameter to the <TT>Schedule</TT> command is a destination tag.
 This is a tag associated to a running application by a previous
-<A HREF="#html:destinationCmd"><TT>Destination</TT> command</A>.  The symbolic destination tag replaces the application:OID
+<A HREF="#PTdestinationCmd"><TT>Destination</TT> command</A>.  The symbolic destination tag replaces the application:OID
 nomenclature used in the graphical interface, because in general it is
 not possible to know the OOMMF ID for application instances at the
 time the MIF file is composed.  In fact, some of the applications may
@@ -665,20 +677,20 @@ every third stage.  Note that double quotes enclose the
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html1228"
+<A NAME="tex2html1258"
   HREF="Specify_Conventions.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html1224"
+<A NAME="tex2html1254"
   HREF="MIF_2.1.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html1218"
+<A NAME="tex2html1248"
   HREF="MIF_2.1_File_Overview.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html1226"
+<A NAME="tex2html1256"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

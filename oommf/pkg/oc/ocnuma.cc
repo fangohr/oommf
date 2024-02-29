@@ -28,6 +28,17 @@ void Oc_StrError(int errnum,char* buf,size_t buflen);  // From oc.cc
 
 /* End includes */     /* Optional directive to pimake */
 
+void Oc_NumaNodemaskBinaryStringRep(std::vector<int>& imask,String& bits)
+{ // Converts a vector<int> representing a NUMA interleave
+  // mask to a binary string representation. (Same for both
+  // OC_USE_NUMA and !OC_USE_NUMA.)
+  bits.clear();
+  for (std::vector<int>::reverse_iterator rit = imask.rbegin(); 
+        rit != imask.rend(); ++rit ) { 
+    if(*rit) { bits += "1"; } else { bits += "0"; }
+  } 
+}
+
 #if !OC_USE_NUMA
 void* Oc_AllocThreadLocal(size_t size)
 {
@@ -184,7 +195,7 @@ void Oc_FreeThreadLocal(void* start,size_t /* size */)
  * node mapping.
 */ 
 
-static vector<int> nodeselect;
+static std::vector<int> nodeselect;
 static int numa_ready = 0;  // Set to 1 by Oc_NumaInit.
 
 void Oc_NumaDisable() {
@@ -198,7 +209,7 @@ void Oc_NumaDisable() {
 #endif
 }
 
-void Oc_NumaInit(int max_threads,vector<int>& nodes) {
+void Oc_NumaInit(int max_threads,std::vector<int>& nodes) {
   // Init numa library
   assert(max_threads>0);
   numa_ready = 0;
@@ -381,7 +392,22 @@ void Oc_SetMemoryPolicyFirstTouch(char* start,OC_UINDEX len)
   // 26-July-2010.  It doesn't matter here, though, because we want all
   // node flags cleared anyway.  But see the use of mbind in
   // Oc_AllocThreadLocal below.
-  int errcode = mbind(start,len,MPOL_PREFERRED,NULL,numa_max_node()+1,0);
+  //
+  // Update 24-Sep-2023: The docs state:
+  //
+  //   A NULL  value  of nodemask or a maxnode value of zero specifies
+  //   the empty set of nodes.
+  //
+  // Does this mean nodemask == nullptr or *nodemask == 0?
+  // valgrind-3.19.0/memcheck on Linux kernel 4.18.0 complains
+  // that
+  //
+  //   Syscall param mbind(nodemask) points to unaddressable byte(s)
+  //
+  // if the 4th arg to mbind is nullptr. Testing indicates that setting
+  // *nodemask = 0 works, at least on this platform.
+  unsigned long nodemask = 0;
+  int errcode = mbind(start,len,MPOL_PREFERRED,&nodemask,numa_max_node()+1,0);
   if(errcode != 0) {
     int errsav = errno;  // Save code from global errno
     char errbuf[1024];
@@ -542,8 +568,8 @@ void Oc_FreeThreadLocal(void* start,size_t /* size */)
 }
 
 
-void Oc_NumaNodemaskStringRep(vector<int>& imask,Oc_AutoBuf& ab)
-{ // Converts a vector<int> representing a NUMA interleave
+void Oc_NumaNodemaskStringRep(std::vector<int>& imask,Oc_AutoBuf& ab)
+{ // Converts a std::vector<int> representing a NUMA interleave
   // mask to a string representation.
   const int node_count = imask.size();
   unsigned int buf = 0;
@@ -588,7 +614,7 @@ void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab)
   if(!numa_ready) {
     ab = "numa library not initialized";
   } else {
-    vector<int> imask;
+    std::vector<int> imask;
     const int maxnode = numa_max_node();
 #if defined(LIBNUMA_API_VERSION) && LIBNUMA_API_VERSION>=2
     struct bitmask* bmask = numa_get_interleave_mask();
@@ -607,14 +633,18 @@ void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab)
   }
 }
 
-void Oc_NumaGetRunMask(Oc_AutoBuf& ab)
+void Oc_NumaGetRunMask(std::vector<int>& imask)
 { // Wrapper around nodemask_t numa_get_run_node_mask(void),
   // which fills export "ab" with a hexadecimal rendering of
   // the node mask.
+  if(nodeselect.size() == 0) {  // Numa not enabled.
+    imask.clear();
+    return;
+  }
   if(!numa_ready) {
-    ab = "numa library not initialized";
+    OC_THROW("NUMA library not initialized.");
   } else {
-    vector<int> imask;
+    imask.clear();
     const int maxnode = numa_max_node();
 #if defined(LIBNUMA_API_VERSION) && LIBNUMA_API_VERSION>=2
     struct bitmask* bmask = numa_get_run_node_mask();
@@ -629,9 +659,24 @@ void Oc_NumaGetRunMask(Oc_AutoBuf& ab)
       imask.push_back(nodemask_isset(&nmask,i));
     }
 #endif
+  }
+}
+
+void Oc_NumaGetRunMask(Oc_AutoBuf& ab)
+{ // Wrapper around nodemask_t numa_get_run_node_mask(void),
+  // which fills export "ab" with a hexadecimal rendering of
+  // the node mask.
+  if(!numa_ready) {
+    ab = "numa library not initialized";
+  } else {
+    std::vector<int> imask;
+    Oc_NumaGetRunMask(imask);
     Oc_NumaNodemaskStringRep(imask,ab);
   }
 }
+
+
+
 #endif // OC_USE_NUMA
 
 ////////////////////////////////////////////////////////////////////////
@@ -645,7 +690,7 @@ void Oc_NumaGetRunMask(Oc_AutoBuf& ab)
 // Note 2: Unlike Oc_NumaInit, the OcNumaInit wrapper also calls
 //   Oc_NumaRunOnNode to tie the current thread to the first node.
 int
-OcNumaAvailable(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv) 
+OcNumaAvailable(ClientData, Tcl_Interp *interp, int argc,const char **argv) 
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -659,7 +704,7 @@ OcNumaAvailable(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv)
 }
 
 int
-OcNumaDisable(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv) 
+OcNumaDisable(ClientData, Tcl_Interp *interp, int argc,const char **argv) 
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -671,7 +716,7 @@ OcNumaDisable(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv)
 }
 
 int
-OcNumaInit(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+OcNumaInit(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   char buf[1024];
   Tcl_ResetResult(interp);
@@ -697,9 +742,9 @@ OcNumaInit(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
   }
   int nodecount = Oc_NumaGetNodeCount();
 
-  vector<int> nodes;
+  std::vector<int> nodes;
   int node_argc;
-  CONST84 char** node_argv;
+  const char** node_argv;
   if(TCL_OK != Tcl_SplitList(interp, argv[2], &node_argc, &node_argv)) {
     Oc_Snprintf(buf,sizeof(buf),"Import node_list to Oc_NumaInit"
                 " is not a proper list (got \"%.500s\")", argv[2]);

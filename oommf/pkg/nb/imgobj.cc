@@ -25,6 +25,7 @@
 #include <climits>
 #include <cmath>        /* For floor() on Solaris with Forte compiler */
 #include <cstring>
+#include <string>
 
 #include "oc.h"
 #include "imgobj.h"
@@ -143,7 +144,7 @@ void Nb_ImgObj::LoadFile(const char* infilename)
   Nb_InputChannel chan;
   chan.OpenFile(filename,"binary");
 
-  // See if we file is a Microsoft .bmp format that we can read.
+  // See if file is a Microsoft .bmp format that we can read.
   {
     Tcl_Channel tclchan = chan.DetachChannel();
     if(ReadMSBitmap(tclchan)) return;  // Yes.
@@ -163,18 +164,23 @@ void Nb_ImgObj::LoadFile(const char* infilename)
                                || (byte3=chan.ReadChar())<0) {
     if(chan.Close(interp)!=TCL_OK) {
       // Close error.
+      std::string errmsg
+        = std::string("Premature EOF reading header plus"
+                      " error closing input channel for file \"")
+        + std::string(filename.GetStr()) + std::string("\": ")
+        + std::string(Tcl_ErrnoMsg(Tcl_GetErrno()));
+      if(interp != nullptr) {
+        errmsg += std::string(" : ")
+          + std::string(Tcl_GetStringResult(interp));
+      }
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
-                            NB_IMGOBJ_ERRBUFSIZE+2000,
-                            "Premature EOF reading header"
-                            " plus error closing input channel"
-                            " for file \"%.2000s\".",
-                            filename.GetStr()));
+                            errmsg.c_str()));
     }
+    std::string errmsg
+      = std::string("Premature EOF reading header on input channel for file \"")
+      + std::string(filename.GetStr()) + std::string("\"");
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
-                          NB_IMGOBJ_ERRBUFSIZE+2000,
-                          "Premature EOF reading header"
-                          " on input channel for file \"%.2000s\".",
-                          filename.GetStr()));
+                            errmsg.c_str()));
   }
 
   if(byte1=='P' && byte2 == '3' && isspace(byte3)) {
@@ -189,20 +195,23 @@ void Nb_ImgObj::LoadFile(const char* infilename)
     char buf[NB_IMGOBJ_CMDBUFSIZE];
     if(chan.Close(interp)!=TCL_OK) {
       // Close error.
+      std::string errmsg = std::string("Error closing input channel for file \"")
+        + std::string(filename.GetStr()) + std::string("\": ")
+        + std::string(Tcl_ErrnoMsg(Tcl_GetErrno()));
+      if(interp != nullptr) {
+        errmsg += std::string(" : ") + std::string(Tcl_GetStringResult(interp));
+      }
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
-                         NB_IMGOBJ_ERRBUFSIZE+2000,
-                         "Error closing input channel for file \"%.2000s\".",
-                         filename.GetStr()));
+                            errmsg.c_str()));
     }
 
-    Tcl_SavedResult saved;
-    Tcl_SaveResult(interp, &saved);
+    Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
 
     // Find name of null device on platform
     Oc_Snprintf(buf,sizeof(buf),
                 "[Oc_Config RunPlatform] GetValue path_device_null");
     if(Tcl_Eval(interp,buf)!=TCL_OK) {
-      Tcl_RestoreResult(interp, &saved);
+      Tcl_RestoreInterpState(interp, saved);
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                          NB_IMGOBJ_ERRBUFSIZE,
                          "Can't determine null device name."));
@@ -215,7 +224,7 @@ void Nb_ImgObj::LoadFile(const char* infilename)
                 " -noinfo -format P6 -o - {%s}",
                 filename.GetStr());
     if(Tcl_Eval(interp,buf)!=TCL_OK) {
-      Tcl_RestoreResult(interp, &saved);
+      Tcl_RestoreInterpState(interp, saved);
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                          NB_IMGOBJ_ERRBUFSIZE+2000,
                          "Can't find any2ppm program to"
@@ -240,9 +249,9 @@ void Nb_ImgObj::LoadFile(const char* infilename)
 
     // Parse command line
     int argc;
-    CONST84 char ** argv;
+    const char ** argv;
     if(Tcl_SplitList(NULL,buf,&argc,&argv)!=TCL_OK) {
-      Tcl_RestoreResult(interp, &saved);
+      Tcl_RestoreInterpState(interp, saved);
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                          NB_IMGOBJ_ERRBUFSIZE+2000,
                          "Can't parse command string: \"%.2000s\"",buf));
@@ -254,19 +263,16 @@ void Nb_ImgObj::LoadFile(const char* infilename)
       Oc_Exception errmsg(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                  NB_IMGOBJ_ERRBUFSIZE+strlen(Tcl_GetStringResult(interp)),
                  "any2ppm launch error: %s",Tcl_GetStringResult(interp));
-      Tcl_RestoreResult(interp, &saved);
+      Tcl_RestoreInterpState(interp, saved);
       Tcl_Free((char *)argv);
       OC_THROW(errmsg);
     }
     Tcl_Free((char *)argv);
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
 
-    if(Tcl_SetChannelOption(NULL,tmpchan,OC_CONST84_CHAR("-translation"),
-			    OC_CONST84_CHAR("binary"))!=TCL_OK ||
-       Tcl_SetChannelOption(NULL,tmpchan,OC_CONST84_CHAR("-buffering"),
-			    OC_CONST84_CHAR("full"))!=TCL_OK ||
-       Tcl_SetChannelOption(NULL,tmpchan,OC_CONST84_CHAR("-buffersize"),
-			    OC_CONST84_CHAR("65536"))!=TCL_OK) {
+    if(Tcl_SetChannelOption(NULL,tmpchan,"-translation", "binary")!=TCL_OK ||
+       Tcl_SetChannelOption(NULL,tmpchan,"-buffering", "full")!=TCL_OK ||
+       Tcl_SetChannelOption(NULL,tmpchan,"-buffersize", "65536")!=TCL_OK) {
       // Channel configuration error.
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                 NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -282,13 +288,18 @@ void Nb_ImgObj::LoadFile(const char* infilename)
        || (byte3=chan.ReadChar())<0) {
       if(chan.Close(interp)!=TCL_OK) {
         // Close error.
+        std::string errmsg
+          = std::string("Premature EOF reading child process"
+                        " any2ppm output plus"
+                        " error closing input channel for file \"")
+          + std::string(filename.GetStr()) + std::string("\": ")
+          + std::string(Tcl_ErrnoMsg(Tcl_GetErrno()));
+        if(interp != nullptr) {
+          errmsg += std::string(" : ")
+            + std::string(Tcl_GetStringResult(interp));
+        }
         OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
-                              NB_IMGOBJ_ERRBUFSIZE+4000,
-                              "Premature EOF reading child process"
-                              " any2ppm output plus"
-                              " error closing input channel"
-                              " from file \"%.2000s\".",
-                              filename.GetStr()));
+                              errmsg.c_str()));
       }
       OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
                             NB_IMGOBJ_ERRBUFSIZE+2000,
@@ -417,10 +428,14 @@ void Nb_ImgObj::LoadFile(const char* infilename)
 
   if(chan.Close(interp)!=TCL_OK) {
     // Close error.
+    std::string errmsg = std::string("Error closing input channel for file \"")
+      + std::string(filename.GetStr()) + std::string("\": ")
+      + std::string(Tcl_ErrnoMsg(Tcl_GetErrno()));
+    if(interp != nullptr) {
+      errmsg += std::string(" : ") + std::string(Tcl_GetStringResult(interp));
+    }
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_ImgObj","LoadFile",
-             NB_IMGOBJ_ERRBUFSIZE+2000,
-             "Error closing input channel for file \"%.2000s\".",
-             filename.GetStr()));
+                          errmsg.c_str()));
   }
 
   return;
@@ -861,83 +876,10 @@ Nb_ImgObj::ReadMSBitmap(Tcl_Channel  chan)
 //   If the "-double" option is specified, then the max_color_value
 // in the return list has (integer) value 1, and the remainder of
 // the return is a list of double values, in the range [0,1].
-//   WARNING: If you are using the old string-interface (i.e., Tcl
-// version 7.x), then the pixel values under the -double option
-// are formatted using "%.17g", which in toto may be quite large.
 //
-#if TCL_MAJOR_VERSION < 8  // Use string interface
-int NbImgObjCmd(ClientData,Tcl_Interp *interp,int argc,
-                CONST84 char** argv)
-{
-  Tcl_ResetResult(interp);
-
-  int double_flag = 0;
-  const char* filename = NULL;
-  for(int index=1;index<argc;++index) {
-    const char* tmpstr = argv[index];
-    if(strcmp("-double",tmpstr)==0) {
-      double_flag = 1;
-    } else {
-      if(filename != NULL) {
-        char buf[1024];
-        Oc_Snprintf(buf,sizeof(buf),"wrong # args: should be \"Nb_ImgObj"
-                    " ?-double? filename\" (%d arguments passed)",argc-1);
-        Tcl_AppendResult(interp,buf,(char *)NULL);
-        return TCL_ERROR;
-      }
-      filename = tmpstr;
-    }
-  }
-  if(filename == NULL) {
-    char buf[1024];
-    Oc_Snprintf(buf,sizeof(buf),"wrong # args: should be \"Nb_ImgObj"
-                " ?-double? filename\" (%d arguments passed)",argc-1);
-    Tcl_AppendResult(interp,buf,(char *)NULL);
-    return TCL_ERROR;
-  }
-
-  Nb_ImgObj image;
-  image.LoadFile(filename);
-  const OC_INT4m imgwidth  = image.Width();
-  const OC_INT4m imgheight = image.Height();
-  const OC_INT4m maxval    = image.MaxValue();
-  const double dblscale = 1.0/static_cast<double>(maxval);
-
-  char cbuf[1024];
-
-  Tcl_DString tbuf;
-  Tcl_DStringInit(&tbuf);
-
-  Oc_Snprintf(cbuf,sizeof(cbuf),"%ld %ld %d\n",
-              (long int)imgwidth,(long int)imgheight,
-              (double_flag ? 1 : (int)maxval));
-  Tcl_DStringAppend(&tbuf, cbuf, -1);
-
-  for(OC_INT4m i=0;i<imgheight;++i) {
-    for(OC_INT4m j=0;j<imgwidth;++j) {
-      OC_INT4m r,g,b;
-      image.PixelValue(i,j,r,g,b);
-      if(!double_flag) {
-        Oc_Snprintf(cbuf,sizeof(cbuf),"%ld %ld %ld\n",
-                    (long int)r,(long int)g,(long int)b);
-      } else {
-        Oc_Snprintf(cbuf,sizeof(cbuf),"%.17g %.17g %.17g\n",
-                    (double)r*dblscale,(double)g*dblscale,
-                    (double)b*dblscale);
-      }
-      Tcl_DStringAppend(&tbuf, cbuf, -1);  // Alternatively,
-      /// we could use Tcl_DStringAppendElement().
-    }
-  }
-  Tcl_DStringResult(interp,&tbuf);
-  Tcl_DStringFree(&tbuf);
-  return TCL_OK;
-}
-
-#else // TCL_MAJOR_VERSION >=8 --> use obj interface
 
 int NbImgObjCmd(ClientData,Tcl_Interp *interp,int objc,
-                Tcl_Obj * CONST objv[])
+                Tcl_Obj * const objv[])
 {
   Tcl_ResetResult(interp);
 
@@ -1079,4 +1021,3 @@ int NbImgObjCmd(ClientData,Tcl_Interp *interp,int objc,
 
   return TCL_OK;
 }
-#endif // TCL_MAJOR_VERSION

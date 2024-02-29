@@ -1,0 +1,46 @@
+diff -ru DMI_C2v/DMI_C2v.cc DMI_C2v-new/DMI_C2v.cc
+--- DMI_C2v/DMI_C2v.cc	2021-04-06 18:46:05.545247024 -0400
++++ DMI_C2v-new/DMI_C2v.cc	2023-06-22 17:24:34.000000000 -0400
+@@ -43,9 +43,8 @@
+   Oxs_Director* newdtr, // App director
+   const char* argstr)   // MIF input block parameters
+   : Oxs_Energy(name,newdtr,argstr),
+-    A_size(0), Dx(NULL), Dy(NULL), 
+-    xperiodic(0), yperiodic(0), zperiodic(0),
+-    mesh_id(0)
++    A_size(0), Dx(NULL), Dy(NULL), mesh_id(0),
++    xperiodic(0), yperiodic(0), zperiodic(0)
+ {
+   // Process arguments
+   OXS_GET_INIT_EXT_OBJECT("atlas",Oxs_Atlas,atlas);
+@@ -106,7 +105,7 @@
+ 		  (unsigned int)params.size());
+       throw Oxs_Ext::Error(this,buf);
+   }
+-  for(i=0;i<params.size();i+=3) {
++  for(i=0; static_cast<OC_UINDEX>(i) < params.size(); i+=3) {
+     OC_INT4m i1 = atlas->GetRegionId(params[i]);
+     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
+     if(i1<0 || i2<0) {
+@@ -163,7 +162,7 @@
+ 		  (unsigned int)params.size());
+       throw Oxs_Ext::Error(this,buf);
+   }
+-  for(i=0;i<params.size();i+=3) {
++  for(i=0; static_cast<OC_UINDEX>(i) < params.size(); i+=3) {
+     OC_INT4m i1 = atlas->GetRegionId(params[i]);
+     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
+     if(i1<0 || i2<0) {
+diff -ru DMI_C2v/DMI_C2v.h DMI_C2v-new/DMI_C2v.h
+--- DMI_C2v/DMI_C2v.h	2021-04-06 18:46:05.546247063 -0400
++++ DMI_C2v-new/DMI_C2v.h	2023-06-22 17:13:09.000000000 -0400
+@@ -37,7 +37,7 @@
+   OC_REAL8m** Dy;  
+   Oxs_Key<Oxs_Atlas> atlaskey;  
+   Oxs_OwnedPointer<Oxs_Atlas> atlas;
+-  mutable OC_INT4m mesh_id;
++  mutable OC_UINT4m mesh_id;
+   mutable Oxs_MeshValue<OC_INT4m> region_id;
+ 
+   // Periodic boundaries?
+Only in DMI_C2v: versdate.txt

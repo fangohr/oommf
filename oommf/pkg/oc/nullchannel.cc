@@ -34,7 +34,7 @@ OcNullInput(ClientData, char *, int, int *)
 }
 
 extern "C" int
-OcNullOutput(ClientData, CONST84 char*, int toWrite, int *)
+OcNullOutput(ClientData, const char*, int toWrite, int *)
 {
     return toWrite;		/* Report success, but don't write anything */
 }
@@ -50,7 +50,6 @@ OcNullHandle(ClientData, int, ClientData *)
     return TCL_ERROR;
 }
 
-#if (TCL_MAJOR_VERSION > 7)
 static Tcl_ChannelType nullChannelType = {
     (char *)"null",             /* Type name. */
     NULL,                       /* Always non-blocking.*/
@@ -75,56 +74,25 @@ static Tcl_ChannelType nullChannelType = {
     NULL,                       /* ThreadActionProc (reserved slot) */
     NULL,                       /* TruncateProc (reserved slot) */
 #else	/* TCL_MAJOR_VERSION == 8 */
-#if !((TCL_MINOR_VERSION == 0) && (TCL_RELEASE_SERIAL < 3))
     NULL,			/* Close2 proc or reserved slot */
-#if ((TCL_MINOR_VERSION >= 4) \
-    || ((TCL_MINOR_VERSION == 3) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
-    && (TCL_RELEASE_SERIAL >= 2)))
     NULL,			/* Block mode proc (reserved slot) */
     NULL,			/* Flush proc (reserved slot) */
     NULL,			/* Handler proc (reserved slot) */
-#endif
-#if ((TCL_MINOR_VERSION >= 5) \
-    || ((TCL_MINOR_VERSION == 4) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
-    && (TCL_RELEASE_SERIAL >= 1)))
     NULL,                       /* WideSeekProc (reserved slot) */
-#endif
-#if ((TCL_MINOR_VERSION >= 5) \
-    || ((TCL_MINOR_VERSION == 4) && (TCL_RELEASE_LEVEL == TCL_FINAL_RELEASE) \
-    && (TCL_RELEASE_SERIAL >= 10)))
     NULL,                       /* ThreadActionProc (reserved slot) */
-#endif
-#if (TCL_MINOR_VERSION >= 5)
     NULL,                       /* TruncateProc (reserved slot) */
 #endif
-#endif
-#endif
 };
-#endif
 
 Tcl_Channel
 Nullchannel_Open()
 {
-#if (TCL_MAJOR_VERSION > 7)
     char channelName[16 + TCL_INTEGER_SPACE];
     static int nullChannelCount = 0;
 
-    sprintf(channelName, "null%d", nullChannelCount++);
+    snprintf(channelName,sizeof(channelName), "null%d", nullChannelCount++);
     return Tcl_CreateChannel(&nullChannelType, channelName, NULL,
 	    TCL_READABLE | TCL_WRITABLE);
-#else
-# if (OC_SYSTEM_TYPE == OC_WINDOWS)
-    return Tcl_OpenFileChannel(NULL, OC_CONST84_CHAR("NUL:"),
-			       OC_CONST84_CHAR("a+"), 0666);
-# else
-#  if (OC_SYSTEM_TYPE == OC_UNIX)
-    return Tcl_OpenFileChannel(NULL, OC_CONST84_CHAR("/dev/null"),
-			       OC_CONST84_CHAR("a+"), 0666);
-#  else
-    return NULL;
-#  endif
-# endif
-#endif
 }
 
 
@@ -133,7 +101,6 @@ Nullchannel_Init(Tcl_Interp *interp)
 {
 // Channel creation interfacce changed incompatibly with Tcl 8 release.
 // nullChannelType conforms to Tcl 8 interface.
-#if (TCL_MAJOR_VERSION > 7)
     // Since we can't redirect to the channel "null", this may not
     // be all that useful :(.
 /*
@@ -143,7 +110,6 @@ Nullchannel_Init(Tcl_Interp *interp)
 	    (char *)"null", NULL, TCL_READABLE | TCL_WRITABLE);
     Tcl_RegisterChannel(interp, nullChan);
  */
-#endif
 
     /* Here we could register the package, once this is separated from Oc */
     return (interp ? TCL_OK : TCL_OK);
