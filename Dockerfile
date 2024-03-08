@@ -6,7 +6,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get -y update
-RUN apt-get install -y git tk-dev tcl-dev
+RUN apt-get install -y git tk-dev tcl-dev tcl-thread
 # Needed only for updating-oommf-sources 
 RUN apt-get install -y wget python3 rsync
 
