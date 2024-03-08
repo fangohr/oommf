@@ -357,17 +357,13 @@ void Oxs_Mesh::WriteOvfFile
 
   try {
     // Set channel options
-    Tcl_SetChannelOption(NULL,channel,OC_CONST84_CHAR("-buffering"),
-			 OC_CONST84_CHAR("full"));
-    Tcl_SetChannelOption(NULL,channel,OC_CONST84_CHAR("-buffersize"),
-			 OC_CONST84_CHAR("100000"));
+    Tcl_SetChannelOption(NULL,channel,"-buffering", "full");
+    Tcl_SetChannelOption(NULL,channel,"-buffersize", "100000");
     /// What's a good size???
     if(strcmp("text",datatype)!=0) {
       // Binary mode
-      Tcl_SetChannelOption(NULL,channel,OC_CONST84_CHAR("-encoding"),
-			   OC_CONST84_CHAR("binary"));
-      Tcl_SetChannelOption(NULL,channel,OC_CONST84_CHAR("-translation"),
-			   OC_CONST84_CHAR("binary"));
+      Tcl_SetChannelOption(NULL,channel,"-encoding", "binary");
+      Tcl_SetChannelOption(NULL,channel,"-translation", "binary");
     }
 
     if(title==NULL || title[0]=='\0') {

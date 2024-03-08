@@ -318,7 +318,7 @@ void Oxs_ThreeVectorPairMakeUnit
     error.Set(error.GetA(),0.0);
   } else if(fabs(error.GetB())>OC_CUBE_ROOT_REAL8_EPSILON) {
     OC_REAL8m mult = 1.0/sqrt(1.0-error.GetB());
-    OC_REAL8m bx = tx.GetB() * mult;    tx.Set(tx.GetA(),bx); 
+    OC_REAL8m bx = tx.GetB() * mult;    tx.Set(tx.GetA(),bx);
     OC_REAL8m by = ty.GetB() * mult;    ty.Set(ty.GetA(),by);
     OC_REAL8m bz = tz.GetB() * mult;    tz.Set(tz.GetA(),bz);
     OC_REAL8m berror = 1.0 - bx*bx;   berror -= by*by;   berror -= bz*bz;

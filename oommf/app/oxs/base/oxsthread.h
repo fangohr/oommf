@@ -305,6 +305,10 @@ class Oxs_Thread {
   /// These numbers are 1-based, because thread_number 0 is reserved
   /// for the main (parent) thread.
 
+#if OC_USE_NUMA
+  String numa_run_mask;
+#endif
+
   Oxs_ThreadControl start; // Unique to thread object
   Oxs_ThreadControl* stop; // Assigned by and unique to tree object.
   // The stop ptr is set in RunCmd call before child thread is notified.
@@ -814,6 +818,10 @@ public:
 
   Oxs_StripedArray() : datablock(0), arr(0),
                        arr_size(0), strip_count(0), strip_size(0) {}
+  Oxs_StripedArray(OC_INDEX newsize)
+    : datablock(0), arr(0), arr_size(0), strip_count(0), strip_size(0)
+  { SetSize(newsize); }
+
   ~Oxs_StripedArray() { Free(); }
 
   void Swap(Oxs_StripedArray<T>& other) {
@@ -985,9 +993,9 @@ template<class T> void Oxs_StripedArray<T>::SetSize
   }
 #if _OXS_THREAD_TRACK_MEMORY
   fprintf(stderr,
-          "+++ Oxs_StripedArray at %p allocated: %10lu x %2lu (%5.1f GB)\n",
+          "+++ Oxs_StripedArray at %p allocated: %10lu x %2lu (%5.1f GB : %lu bytes)\n",
           datablock,(unsigned long)newsize,(unsigned long)sizeof(T),
-          double(blocksize)/(1024.*1024.*1024.));
+          double(blocksize)/(1024.*1024.*1024.),blocksize);
 #endif
 
   // Note: It is important to cast datablock to type OC_UINDEX rather

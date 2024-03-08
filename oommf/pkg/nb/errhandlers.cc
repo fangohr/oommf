@@ -224,8 +224,7 @@ OC_INT4m TkMessage(Nb_MessageType mt,const OC_CHAR *msg,OC_INT4m exitcode,
     break;
   }
 
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
 
   // Presumably the call here is from the C-level, and Tcl globals
   // errorInfo and errorCode have not been set.  Clear these so previous
@@ -233,40 +232,19 @@ OC_INT4m TkMessage(Nb_MessageType mt,const OC_CHAR *msg,OC_INT4m exitcode,
   // and not empty, then set errorCode to this.
   Tcl_ResetResult(interp); // This should effectively reset errorCode
                           /// and errorInfo
-#if (TCL_MAJOR_VERSION >= 8)
   if(errCode!=NULL && errCode[0]!='\0') {
     Oc_AutoBuf ab = errCode;
     Tcl_SetObjErrorCode(interp, Tcl_NewStringObj(ab.GetStr(), -1));
   }
   Oc_AutoBuf ab = "(not available)";
   Tcl_AddErrorInfo(interp,ab.GetStr());
-#else // TCL>=8
-  // Tcl_SetErrorCode and Tcl_AddErrorInfo routines appear in the Tcl
-  // 7.5 tcl.h header file, but (unlike Tcl_SetObjErrorCode) there
-  // doesn't appear to be any way to set errorCode to a
-  // unknown-at-compile-time length list using Tcl_SetErrorCode.  Since
-  // this code is intended for backwards compatibility only, just set
-  // the variables directly and don't worry about it...
-  if(errCode==NULL || errCode[0]=='\0') {
-    Tcl_SetVar(interp,OC_CONST84_CHAR("errorCode"),
-               OC_CONST84_CHAR("NONE"),
-               TCL_GLOBAL_ONLY);
-  } else {
-    Tcl_SetVar(interp,OC_CONST84_CHAR("errorCode"),
-               OC_CONST84_CHAR(errCode),
-               TCL_GLOBAL_ONLY);
-  }
-  Tcl_SetVar(interp,OC_CONST84_CHAR("errorInfo"),
-	     OC_CONST84_CHAR("(not available)"),
-	     TCL_GLOBAL_ONLY);
-#endif // TCL>=8
 
 
   Tcl_Eval(interp,buf);  // We could check for errors
   // from Tcl_Eval, but to where would we send a message???
   int code = atoi(Tcl_GetStringResult(interp));
 
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return code;
 }
 

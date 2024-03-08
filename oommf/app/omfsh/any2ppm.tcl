@@ -14,7 +14,7 @@ package require If 2
 Oc_ForceStderrDefaultMessage
 
 Oc_Main SetAppName any2ppm
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 
@@ -47,7 +47,18 @@ Oc_CommandLine Option format {fmt} {
    # NOTE: There is a bad bug in the Tcl 8.5.0 that shipped with
    #       Ubuntu 8.04 (Hardy Heron) which breaks regexp in switch.
    #       So we just use exact matching instead.
-   global outFormat
+   # NOTE: In general, the code uses fconfigure to set the output
+   #       channel -translation to binary, to support binary output
+   #       formats. However, this mungs text output written directly to
+   #       the Windows command terminal.  As a workaround, for plain
+   #       text formats stdout has -encoding fconfigured to the platform
+   #       default. (This is utf-8 for unix and macOS, but "unicode" for
+   #       Windows.) This workaround is indicated by setting global
+   #       variable stdoutEncoding to the non-null string [fconfigure
+   #       stdout -encoding].
+   global outFormat stdoutEncoding
+   set outFormatText 0
+   set stdoutEncoding {}  ;# Empty string indicates -encoding binary
    switch -exact -- [string tolower $fmt] {
       jpg -
       jpe -
@@ -56,19 +67,24 @@ Oc_CommandLine Option format {fmt} {
       p6    {set fmt PPM}
       "ppm p3" -
       ppm -
-      p3    {set fmt P3}
+      p3    {
+         set fmt P3
+         set stdoutEncoding [fconfigure stdout -encoding]
+      }
       tif -
       tiff  {set fmt TIFF}
     }
     set outFormat $fmt
 } {Output file format (default is PPM P3)}
 set outFormat P3
+set stdoutEncoding [fconfigure stdout -encoding]
+## Default format P3 is a text format
 
 Oc_CommandLine Option [Oc_CommandLine Switch] {
     {{infile list} {} {Input file(s).  If none or "", read from stdin.}}
     } {
     global inList
-    set inList {}
+    set inList [list]
     foreach elt $infile {
         # The "-all" switch to lsearch isn't in Tcl 7.5 (argh...)
         if {[string match "-" $elt]} {
@@ -126,7 +142,7 @@ switch -exact -- $outSpec {
         set outname {}
         set outchan stdout
         fconfigure $outchan -translation auto \
-                -buffering full -buffersize $BUFSIZ
+           -buffering full -buffersize $BUFSIZ
     }
     default {
         set outmode fixed
@@ -159,13 +175,13 @@ foreach inname $inList {
         fconfigure stdin -translation binary
         set data [read stdin]
         if {[catch {set pic [image create photo -data $data]} errmsg]} {
-	    # Unable to process data using 'photo -data' option.  Try
-	    # using the -file option instead
+            # Unable to process data using 'photo -data' option.  Try
+            # using the -file option instead
             Oc_TempFile New temp -stem any2ppm
             set tempname [$temp AbsoluteName]
             $temp Claim
             $temp Delete
-	    set tempchan [open $tempname w]
+            set tempchan [open $tempname w]
             fconfigure $tempchan -translation binary
             if {[catch {puts -nonewline $tempchan $data} msg]} {
                 puts stderr "FATAL ERROR: $msg"
@@ -174,13 +190,13 @@ foreach inname $inList {
                 exit [incr errcount]
             }
             close $tempchan
-	    if {[catch {set pic [image create photo -file $tempname]} msg]} {
-		puts stderr "ERROR: $errmsg"
-		puts stderr "ERROR: $msg"
-		incr errcount
-		file delete $tempname
-		continue
-	    }
+            if {[catch {set pic [image create photo -file $tempname]} msg]} {
+                puts stderr "ERROR: $errmsg"
+                puts stderr "ERROR: $msg"
+                incr errcount
+                file delete $tempname
+                continue
+            }
             file delete $tempname
         }
     } else {
@@ -213,7 +229,6 @@ foreach inname $inList {
             }
         }
     }
-
     # Use Tk image photo write command.
     if {[string match {} $outname]} {
 	# Use temporary file to fake stdout output
@@ -232,20 +247,23 @@ foreach inname $inList {
     }
     image delete $pic
     if {[string match {} $outname]} {
-	# Copy results from $tempname to $outchan
-	# (which *should* be stdout!)
-	set tempchan [open $tempname r]
-	fconfigure $tempchan -translation binary
-	fconfigure $outchan -translation binary
-	if {[catch {fcopy $tempchan $outchan} msg]} {
-	    puts stderr "FATAL ERROR: $msg"
-	    catch {close $tempchan}
-	    catch {file delete $tempname}
-	    exit [incr errcount]
-	}
-	close $tempchan
-	file delete $tempname
-	flush $outchan
+        # Copy results from $tempname to $outchan
+        # (which *should* be stdout!)
+        set tempchan [open $tempname r]
+        fconfigure $tempchan -translation binary
+        fconfigure $outchan -translation binary
+        if {[string compare {} $stdoutEncoding]!=0} {
+           fconfigure $outchan -encoding $stdoutEncoding
+        }
+        if {[catch {fcopy $tempchan $outchan} msg]} {
+            puts stderr "FATAL ERROR: $msg"
+            catch {close $tempchan}
+            catch {file delete $tempname}
+            exit [incr errcount]
+        }
+        close $tempchan
+        file delete $tempname
+        flush $outchan
     }       
 
     if {!$noinfo} {
@@ -257,7 +275,6 @@ foreach inname $inList {
             puts stderr "Unknown output (programming error?)"
         }
     }
-
 }
 
 exit $errcount

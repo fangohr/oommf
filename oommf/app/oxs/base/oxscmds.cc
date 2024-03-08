@@ -50,7 +50,7 @@ OC_USE_BAD_ALLOC;
  *
  *---------------------------------------------------------------------- */
 typedef String Oxs_CmdProc(Oxs_Director* director,Tcl_Interp *interp,
-			   int argc,CONST84 char** argv);
+			   int argc,const char** argv);
 Oxs_CmdProc Oxs_SetRestartFlag;
 Oxs_CmdProc Oxs_SetRestartCrcCheck;
 Oxs_CmdProc Oxs_SetRestartFileDir;
@@ -183,35 +183,35 @@ String OxsCmdsMakeEventString(const vector<OxsRunEvent>& events)
       }
       static char event_buf[512];
       switch(it->event) {
-      case OXS_STEP_EVENT:
+      case OxsRunEventTypes::OXS_STEP_EVENT:
 	Oc_Snprintf(event_buf,sizeof(event_buf),
 		    "STEP %u %u %u",
 		    state->Id(),
 		    state->stage_number,
 		    state->iteration_count);
 	break;
-      case OXS_STAGE_DONE_EVENT:
+      case OxsRunEventTypes::OXS_STAGE_DONE_EVENT:
 	Oc_Snprintf(event_buf,sizeof(event_buf),
 		    "STAGE_DONE %u %u %u",
 		    state->Id(),
 		    state->stage_number,
 		    state->iteration_count);
 	break;
-      case OXS_RUN_DONE_EVENT:
+      case OxsRunEventTypes::OXS_RUN_DONE_EVENT:
 	Oc_Snprintf(event_buf,sizeof(event_buf),
 		    "RUN_DONE %u %u %u",
 		    state->Id(),
 		    state->stage_number,
 		    state->iteration_count);
 	break;
-      case OXS_CHECKPOINT_EVENT:
+      case OxsRunEventTypes::OXS_CHECKPOINT_EVENT:
 	Oc_Snprintf(event_buf,sizeof(event_buf),
 		    "CHECKPOINT %u %u %u",
 		    state->Id(),
 		    state->stage_number,
 		    state->iteration_count);
 	break;
-      case OXS_INVALID_EVENT:
+      case OxsRunEventTypes::OXS_INVALID_EVENT:
         OXS_THROW(Oxs_ProgramLogicError,"Invalid event detected");
         break;
       default:
@@ -243,26 +243,7 @@ String OxsCmdsMakeEventString(const vector<OxsRunEvent>& events)
 
 void Oxs_SetErrorCode(Tcl_Interp *interp, const char* value)
 {
-#if TCL_MAJOR_VERSION >= 8
   Tcl_SetObjErrorCode(interp, Tcl_NewStringObj(Oc_AutoBuf(value), -1));
-#else
-  // The Tcl_SetErrorCode (string interface) routine appears in the Tcl
-  // 7.5 tcl.h header file, but (unlike Tcl_SetObjErrorCode) there
-  // doesn't appear to be any way to set errorCode to a
-  // unknown-at-compile-time length list using it.  This code is for
-  // backwards compatibility only, so just set the variable directly and
-  // don't worry about it...
-  if(value==NULL || value[0]=='\0') {
-    Tcl_SetVar(interp,OC_CONST84_CHAR("errorCode"),
-               OC_CONST84_CHAR("NONE"),
-               TCL_GLOBAL_ONLY);
-  } else {
-    Tcl_SetVar(interp,OC_CONST84_CHAR("errorCode"),
-               OC_CONST84_CHAR(value),
-               TCL_GLOBAL_ONLY);
-  }
-#endif
-
 }
 
 /*
@@ -270,23 +251,13 @@ void Oxs_SetErrorCode(Tcl_Interp *interp, const char* value)
  *
  * Oxs_AddErrorInfo --
  *      Append to the error info of a Tcl interp.
- *      Note: There is a small difference in behavior between the
- *      pre-Tcl 8.0 version of this code, in that Tcl_AddErrorInfo
- *      initializes the errorInfo from the the current interpreter's
- *      result.  This difference shouldn't cause any real problems,
- *      especially since some parts of the OOMMF code base at this time
- *      (May 2008) already assume Tcl 8.0 or later.
  *
  *----------------------------------------------------------------------
  */
 
 void Oxs_AddErrorInfo(Tcl_Interp *interp, const char* msg)
 {
-#if TCL_MAJOR_VERSION < 8
-  Tcl_AddErrorInfo(interp, Oc_AutoBuf(msg));
-#else
   Tcl_AddObjErrorInfo(interp, Oc_AutoBuf(msg), -1);
-#endif
 }
 
 /*
@@ -299,7 +270,7 @@ void Oxs_AddErrorInfo(Tcl_Interp *interp, const char* msg)
  *----------------------------------------------------------------------
  */
 int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
-		       int argc,CONST84 char** argv)
+		       int argc,const char** argv)
 {
   static String result_message;
   static String error_message,error_info,error_code;
@@ -326,15 +297,13 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     // errorInfo will fill it with the current interp result;
     // this is probably not worth worrying about.
     Oxs_AddErrorInfo(interp,"");
-    const char* ei = Tcl_GetVar(interp,OC_CONST84_CHAR("errorInfo"),
-                                TCL_GLOBAL_ONLY);
+    const char* ei = Tcl_GetVar(interp,"errorInfo", TCL_GLOBAL_ONLY);
     if(ei!=NULL) {
       error_info = String(ei);
     } else {
       error_info.erase();
     }
-    const char* ec = Tcl_GetVar(interp,OC_CONST84_CHAR("errorCode"),
-                                TCL_GLOBAL_ONLY);
+    const char* ec = Tcl_GetVar(interp,"errorCode", TCL_GLOBAL_ONLY);
     if(ec!=NULL) {
       error_code = String(ec);
     } else {
@@ -483,7 +452,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
         if(!error_code.empty()) {
           Oxs_SetErrorCode(interp, error_code.c_str());
         }
-        Tcl_AppendResult(interp,error_message.c_str(),(char *)NULL);
+        Tcl_AppendResult(interp,"\n",error_message.c_str(),(char *)NULL);
     }
   } else { // ERROR
     // Reentrancy protection
@@ -493,7 +462,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
     Oxs_TclInterpState tcl_state(interp);
     try {
       ocd->director->SetErrorStatus(1);
-      Tcl_Eval(interp,OC_CONST84_CHAR("ReleaseProblem"));
+      Tcl_Eval(interp,"ReleaseProblem");
     } catch (...) {}
     tcl_state.Restore();
     if(!tmp_error_info.empty()) {
@@ -533,7 +502,7 @@ int OxsCmdsSwitchboard(ClientData cd,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_SetRestartFlag(Oxs_Director* director,Tcl_Interp *interp,
-			  int argc,CONST84 char** argv)
+			  int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -568,7 +537,7 @@ String Oxs_SetRestartFlag(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_SetRestartCrcCheck(Oxs_Director* director,Tcl_Interp *interp,
-			   int argc,CONST84 char** argv)
+			   int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -604,7 +573,7 @@ String Oxs_SetRestartCrcCheck(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_SetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
-                             int argc,CONST84 char** argv)
+                             int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -630,7 +599,7 @@ String Oxs_SetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_GetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
-                             int argc,CONST84 char** argv)
+                             int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -657,7 +626,7 @@ String Oxs_GetRestartFileDir(Oxs_Director* director,Tcl_Interp *interp,
  *
  *---------------------------------------------------------------------- */
 String Oxs_GetMifCrc(Oxs_Director* director,Tcl_Interp *interp,
-		     int argc,CONST84 char** argv)
+		     int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -691,7 +660,7 @@ String Oxs_GetMifCrc(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_GetMifParameters(Oxs_Director* director,Tcl_Interp *interp,
-			    int argc,CONST84 char** argv)
+			    int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -718,7 +687,7 @@ String Oxs_GetMifParameters(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_GetStage(Oxs_Director* director,Tcl_Interp *interp,
-		    int argc,CONST84 char** argv)
+		    int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -749,7 +718,7 @@ String Oxs_GetStage(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_GetRunStateCounts(Oxs_Director* director,Tcl_Interp *interp,
-			     int argc,CONST84 char** argv)
+			     int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -782,7 +751,7 @@ String Oxs_GetRunStateCounts(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_GetCurrentStateId(Oxs_Director* director,Tcl_Interp *interp,
-			     int argc,CONST84 char** argv)
+			     int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -814,7 +783,7 @@ String Oxs_GetCurrentStateId(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_SetStage(Oxs_Director* director,Tcl_Interp *interp,
-		    int argc,CONST84 char** argv)
+		    int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -862,7 +831,7 @@ String Oxs_SetStage(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_IsProblemLoaded(Oxs_Director* director,Tcl_Interp *interp,
-                           int argc, CONST84 char** argv)
+                           int argc, const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -893,7 +862,7 @@ String Oxs_IsProblemLoaded(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_IsRunDone(Oxs_Director* director,Tcl_Interp *interp,
-                     int argc, CONST84 char** argv)
+                     int argc, const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -924,7 +893,7 @@ String Oxs_IsRunDone(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_GetMif(Oxs_Director* director,Tcl_Interp *interp,
-		  int argc, CONST84 char** argv)
+		  int argc, const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -932,6 +901,31 @@ String Oxs_GetMif(Oxs_Director* director,Tcl_Interp *interp,
     throw OxsCmdsProcTclException(TCL_ERROR);
   }
   return director->GetMifHandle();
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * Oxs_GetMifInterpName --
+ *      Returns name of MIF child interp.
+ *
+ * Results:
+ *      Interp name as a string.
+ *
+ * Side effects:
+ *      None.
+ *
+ *----------------------------------------------------------------------
+ */
+String Oxs_GetMifInterpName(Oxs_Director* director,Tcl_Interp *interp,
+                     int argc,const char** argv)
+{
+  if(argc!=1) {
+    Tcl_AppendResult(interp, "wrong # args: should be \"",
+                     argv[0],"\"",(char *) NULL);
+    throw OxsCmdsProcTclException(TCL_ERROR);
+  }
+  return director->GetMifInterpName();
 }
 
 /*
@@ -950,7 +944,7 @@ String Oxs_GetMif(Oxs_Director* director,Tcl_Interp *interp,
  */
 
 String Oxs_ProbInit(Oxs_Director* director,Tcl_Interp *interp,
-		    int argc,CONST84 char** argv)
+		    int argc,const char** argv)
 {
   if (argc != 3) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -982,7 +976,7 @@ String Oxs_ProbInit(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_ProbReset(Oxs_Director* director,Tcl_Interp *interp,
-		     int argc,CONST84 char** argv)
+		     int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1023,7 +1017,7 @@ String Oxs_ProbReset(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_Run(Oxs_Director* director,Tcl_Interp *interp,
-	    int argc,CONST84 char** argv)
+	    int argc,const char** argv)
 { // On success, returns a list of events with associated state id
   // info.  Each item in the list has the form
   //      <event_type state_id stage_number iteration_count>
@@ -1118,7 +1112,7 @@ String Oxs_Run(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_DriverName(Oxs_Director* director,Tcl_Interp *interp,
-                      int argc,CONST84 char** argv)
+                      int argc,const char** argv)
 {
 
   if (argc != 1) {
@@ -1152,7 +1146,7 @@ String Oxs_DriverName(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_MeshGeometryString(Oxs_Director* director,Tcl_Interp *interp,
-                              int argc,CONST84 char** argv)
+                              int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1186,7 +1180,7 @@ String Oxs_MeshGeometryString(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_MifOption(Oxs_Director* director,Tcl_Interp *interp,
-                     int argc,CONST84 char** argv)
+                     int argc,const char** argv)
 {
 
   if(argc!=2) {
@@ -1221,7 +1215,7 @@ String Oxs_MifOption(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_ListRegisteredExtClasses(Oxs_Director*,Tcl_Interp *interp,
-				    int argc,CONST84 char** argv)
+				    int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1246,7 +1240,7 @@ String Oxs_ListRegisteredExtClasses(Oxs_Director*,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_ListExtObjects(Oxs_Director* director,Tcl_Interp *interp,
-			  int argc,CONST84 char** argv)
+			  int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1272,7 +1266,7 @@ String Oxs_ListExtObjects(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_ListEnergyObjects(Oxs_Director* director,Tcl_Interp *interp,
-			     int argc,CONST84 char** argv)
+			     int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1298,7 +1292,7 @@ String Oxs_ListEnergyObjects(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_ListOutputObjects(Oxs_Director* director, Tcl_Interp *interp,
-			     int argc, CONST84 char** argv)
+			     int argc, const char** argv)
 {
     if (argc != 1) {
         Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1328,7 +1322,7 @@ String Oxs_ListOutputObjects(Oxs_Director* director, Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_OutputGet(Oxs_Director* director,Tcl_Interp *interp,
-		     int argc,CONST84 char** argv)
+		     int argc,const char** argv)
 {
     if (argc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1345,7 +1339,7 @@ String Oxs_OutputGet(Oxs_Director* director,Tcl_Interp *interp,
 /*
  *----------------------------------------------------------------------
  *
- * Oxs_OutputNames --
+ * Oxs_GetAllScalarOutputs --
  *      Retrieves output from all scalar output objects
  *
  * Results:
@@ -1358,7 +1352,7 @@ String Oxs_OutputGet(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_GetAllScalarOutputs(Oxs_Director* director, Tcl_Interp *interp,
-                               int argc, CONST84 char** argv)
+                               int argc, const char** argv)
 {
     if (argc != 1) {
         Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1381,22 +1375,23 @@ String Oxs_GetAllScalarOutputs(Oxs_Director* director, Tcl_Interp *interp,
  *      A standard Tcl result.
  *
  * Side effects:
- *      Sets result of interp to a triple of strings giving the
- *      source, name, and type of output.
+ *      Sets result of interp to a string (flat list) of label-value
+ *      pairs including labels "owner", "name", "type", and "units".
+ *      Field outputs include an additional field, "filename_script".
  *
  *----------------------------------------------------------------------
  */
 String Oxs_OutputNames(Oxs_Director* director, Tcl_Interp *interp,
-		       int argc, CONST84 char** argv)
+		       int argc, const char** argv)
 {
     if (argc != 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"",
 		     argv[0], " output\"", (char *) NULL);
 	throw OxsCmdsProcTclException(TCL_ERROR);
     }
-    vector<String> names;
-    director->OutputNames(argv[1],names);
-    return Nb_MergeList(names);
+    vector<String> label_values;
+    director->OutputNames(argv[1],label_values);
+    return Nb_MergeList(label_values);
 }
 
 
@@ -1405,8 +1400,8 @@ String Oxs_OutputNames(Oxs_Director* director, Tcl_Interp *interp,
  *
  * Oxs_QueryState--
  *      Read access to Oxs_SimState data.  This routine is intended to
- *      be used through the Oc_Class Oxs_Mif wrapper procs GetStateKeys
- *      and GetStageValues, which provide wildcard expansions.
+ *      be used through the Oc_Class Oxs_Mif wrapper proc GetStateData,
+ *      which provides wildcard expansions.
  *
  * Results:
  *      String.  If the subcmd is "keys", then the return is a list of
@@ -1425,7 +1420,7 @@ String Oxs_OutputNames(Oxs_Director* director, Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_QueryState(Oxs_Director* director,Tcl_Interp *interp,
-		     int argc,CONST84 char** argv)
+		     int argc,const char** argv)
 {
     if (argc < 3) {
         Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1477,6 +1472,7 @@ String Oxs_QueryState(Oxs_Director* director,Tcl_Interp *interp,
       String tmpval;
       for(std::size_t i=0;i<keys.size();++i) {
         result.push_back(keys[i]);
+        values[i].PrintRealAsDouble(1); // No L suffix on reals
         values[i].Fill(tmpval);
         result.push_back(tmpval);
       }
@@ -1509,7 +1505,7 @@ String Oxs_QueryState(Oxs_Director* director,Tcl_Interp *interp,
  */
 String Oxs_EvalScalarField
 (Oxs_Director* director,Tcl_Interp *interp,
- int argc,CONST84 char** argv)
+ int argc,const char** argv)
 {
 
   if(argc!=5) {
@@ -1586,7 +1582,7 @@ String Oxs_EvalScalarField
  */
 String Oxs_EvalVectorField
 (Oxs_Director* director,Tcl_Interp *interp,
- int argc,CONST84 char** argv)
+ int argc,const char** argv)
 {
 
   if(argc!=5) {
@@ -1664,7 +1660,7 @@ String Oxs_EvalVectorField
  */
 String Oxs_GetAtlasRegions
 (Oxs_Director* director,Tcl_Interp *interp,
- int argc,CONST84 char** argv)
+ int argc,const char** argv)
 {
 
   if(argc!=2) {
@@ -1724,7 +1720,7 @@ String Oxs_GetAtlasRegions
  */
 String Oxs_GetAtlasRegionByPosition
 (Oxs_Director* director,Tcl_Interp *interp,
- int argc,CONST84 char** argv)
+ int argc,const char** argv)
 {
 
   if(argc!=5) {
@@ -1797,7 +1793,7 @@ String Oxs_GetAtlasRegionByPosition
  *----------------------------------------------------------------------
  */
 String Oxs_GetThreadStatus(Oxs_Director* /* director */,Tcl_Interp *interp,
-                           int argc,CONST84 char** argv)
+                           int argc,const char** argv)
 {
 
   if (argc != 1) {
@@ -1829,7 +1825,7 @@ String Oxs_GetThreadStatus(Oxs_Director* /* director */,Tcl_Interp *interp,
  */
 String Oxs_ExtCreateAndRegister
 (Oxs_Director* director,Tcl_Interp *interp,
- int argc,CONST84 char** argv)
+ int argc,const char** argv)
 {
 
   if(argc!=3) {
@@ -1870,7 +1866,7 @@ String Oxs_ExtCreateAndRegister
  *----------------------------------------------------------------------
  */
 String Oxs_GetCheckpointFilename(Oxs_Director* director,Tcl_Interp *interp,
-                                int argc,CONST84 char** argv)
+                                int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1902,7 +1898,7 @@ String Oxs_GetCheckpointFilename(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_GetCheckpointDisposal(Oxs_Director* director,Tcl_Interp *interp,
-                                 int argc,CONST84 char** argv)
+                                 int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -1922,7 +1918,7 @@ String Oxs_GetCheckpointDisposal(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  *
  * Oxs_SetCheckpointDisposal --
- *      Sets checkpoint fila disposal behavior.
+ *      Sets checkpoint file disposal behavior.
  *
  * Results:
  *      None (an empty string is returned)
@@ -1935,7 +1931,7 @@ String Oxs_GetCheckpointDisposal(Oxs_Director* director,Tcl_Interp *interp,
 
 String Oxs_SetCheckpointDisposal(Oxs_Director* director,
                                  Tcl_Interp *interp,
-                                 int argc,CONST84 char** argv)
+                                 int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -1973,7 +1969,7 @@ String Oxs_SetCheckpointDisposal(Oxs_Director* director,
  *----------------------------------------------------------------------
  */
 String Oxs_GetCheckpointInterval(Oxs_Director* director,Tcl_Interp *interp,
-                                 int argc,CONST84 char** argv)
+                                 int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -2014,7 +2010,7 @@ String Oxs_GetCheckpointInterval(Oxs_Director* director,Tcl_Interp *interp,
 
 String Oxs_SetCheckpointInterval(Oxs_Director* director,
                                  Tcl_Interp *interp,
-                                 int argc,CONST84 char** argv)
+                                 int argc,const char** argv)
 {
   if (argc != 2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
@@ -2057,7 +2053,7 @@ String Oxs_SetCheckpointInterval(Oxs_Director* director,
  *----------------------------------------------------------------------
  */
 String Oxs_GetCheckpointAge(Oxs_Director* director,Tcl_Interp *interp,
-                            int argc,CONST84 char** argv)
+                            int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -2095,7 +2091,7 @@ String Oxs_GetCheckpointAge(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_DirectorDevelopTest(Oxs_Director* director,Tcl_Interp *interp,
-			       int argc,CONST84 char** argv)
+			       int argc,const char** argv)
 {
   if(argc<2) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -2137,7 +2133,7 @@ String Oxs_DirectorDevelopTest(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 String Oxs_DriverLoadTestSetup(Oxs_Director* director,Tcl_Interp *interp,
-                               int argc,CONST84 char** argv)
+                               int argc,const char** argv)
 {
   if (argc != 1) {
     Tcl_AppendResult(interp, "wrong # args: should be \"",
@@ -2195,7 +2191,7 @@ String Oxs_DriverLoadTestSetup(Oxs_Director* director,Tcl_Interp *interp,
  *----------------------------------------------------------------------
  */
 int Oxs_ProbRelease(ClientData cd,Tcl_Interp *interp,
-		   int argc,CONST84 char** argv)
+		   int argc,const char** argv)
 {
   if (argc > 2) {
     Tcl_AppendResult(interp, "wrong # of args: should be",
@@ -2271,7 +2267,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
 				  Tcl_Interp *interp)
 {
 #define REGCMD(foocmd,fooname) \
-  Tcl_CreateCommand(interp,OC_CONST84_CHAR(#foocmd),OxsCmdsSwitchboard, \
+  Tcl_CreateCommand(interp,#foocmd,OxsCmdsSwitchboard, \
 	    new OxsCmdsClientData(director,foocmd,String(fooname)),     \
 	    OxsCmdsCleanup)
   // Note: The second argument to REGCMD is the name used for error
@@ -2290,6 +2286,7 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_IsProblemLoaded,"Oxs_Director::IsProblemLoaded");
   REGCMD(Oxs_IsRunDone,"Oxs_Director::IsRunDone");
   REGCMD(Oxs_GetMif,"Oxs_Director::GetMifHandle");
+  REGCMD(Oxs_GetMifInterpName,"Oxs_Director::GetMifInterpName");
   REGCMD(Oxs_ProbInit,"Oxs_Director::ProbInit");
   REGCMD(Oxs_ProbReset,"Oxs_Director::ProbReset");
   REGCMD(Oxs_Run,"Oxs_Run");
@@ -2320,6 +2317,5 @@ void OxsRegisterInterfaceCommands(Oxs_Director* director,
   REGCMD(Oxs_DriverLoadTestSetup,"Oxs_DriverLoadTestSetup");
 #undef REGCMD
   // The ProbRelease routine is special
-  Tcl_CreateCommand(interp,OC_CONST84_CHAR("Oxs_ProbRelease"),
-                    Oxs_ProbRelease,director,NULL);
+  Tcl_CreateCommand(interp,"Oxs_ProbRelease", Oxs_ProbRelease,director,NULL);
 }

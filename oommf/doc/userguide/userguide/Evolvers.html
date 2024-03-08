@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html590"
+<A NAME="tex2html594"
   HREF="Drivers.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html586"
+<A NAME="tex2html590"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html580"
+<A NAME="tex2html584"
   HREF="Energies.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html588"
+<A NAME="tex2html592"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html591"
+<B> Next:</B> <A NAME="tex2html595"
   HREF="Drivers.html">Drivers</A>
-<B> Up:</B> <A NAME="tex2html587"
+<B> Up:</B> <A NAME="tex2html591"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
-<B> Previous:</B> <A NAME="tex2html581"
+<B> Previous:</B> <A NAME="tex2html585"
   HREF="Energies.html">Energies</A>
 <BR>
 <BR>
@@ -59,7 +59,7 @@ energy surface through direct minimization techniques.  Evolvers are
 controlled by <A HREF="Drivers.html#sec:oxsDrivers">drivers</A>, and must be matched with the appropriate
 driver type, i.e., time evolvers must be paired with
 <A HREF="Drivers.html#item:TimeDriver">time drivers</A>, and
-minimization evolvers must be paired with <A HREF="Drivers.html#html:MinDriver">minimization
+minimization evolvers must be paired with <A HREF="Drivers.html#item:MinDriver">minimization
 drivers</A>.  The drivers hand a magnetization
 configuration to the evolvers with a request to advance the
 configuration by one <I>step</I> (also called an <I>iteration</I>).
@@ -72,17 +72,16 @@ of the driver, not the evolver.
 <P>
 There are currently three time evolvers and one minimization evolver in the
 standard OOMMF distribution.  The time evolvers are
-<A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A>,
-<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>, and
-<A HREF="#html:SpinXferEvolve"><TT>Oxs_SpinXferEvolve</TT></A>.
+<A HREF="#HTMLEulerEvolve"><TT>Oxs_EulerEvolve</TT></A>,
+<A HREF="#HTMLRungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A>, and
+<A HREF="#HTMLSpinXferEvolve"><TT>Oxs_SpinXferEvolve</TT></A>.
 The minimization evolver is
-<A HREF="#html:CGEvolve"><TT>Oxs_CGEvolve</TT></A>.
+<A HREF="#HTMLCGEvolve"><TT>Oxs_CGEvolve</TT></A>.
 <DL>
-<DD><A NAME="PTEE"></A><A NAME="5615"></A></DD>
-<DT><STRONG>Oxs_EulerEvolve:<A NAME="html:EulerEvolve"></A></STRONG></DT>
-<DD>Time evolver implementing a simple first order forward Euler method with
+<DT><STRONG>Oxs_EulerEvolve:<A NAME="HTMLEulerEvolve"></A></STRONG></DT>
+<DD><A NAME="PTEE"></A><A NAME="5705"></A>Time evolver implementing a simple first order forward Euler method with
 step size control on the Landau-Lifshitz
-ODE<A NAME="5617"></A>&nbsp;[<A
+ODE<A NAME="5706"></A>&nbsp;[<A
  HREF="bibliography.html#gilbert1955">12</A>,<A
  HREF="bibliography.html#landau1935">17</A>]:
 <BR>
@@ -119,7 +118,7 @@ field, <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> is the Landau-Lifshitz gyromagnetic ratio, and
 <!-- MATH
@@ -188,7 +187,7 @@ The Specify block has the form
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
    
@@ -233,7 +232,7 @@ The options <B>alpha</B>, <B>gamma_LL</B> and
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
@@ -253,7 +252,7 @@ The options <B>alpha</B>, <B>gamma_LL</B> and
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
@@ -278,7 +277,7 @@ neither is specified, then the default is
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$"> and <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma\\\rule{1pt}{0pt}\end{array}$}$
@@ -351,7 +350,7 @@ magnetization <!-- MATH
 units are degrees, with default value 0.01.
 
 <P>
-The four remaining entries, <B>error_rate</B>,
+The remaining entries, <B>error_rate</B>,
 <B>absolute_step_error</B>, <B>relative_step_error</B>, and
 <B>step_headroom</B>, control fine points of stepsize selection,
 and are intended for advance use only.  Given normalized magnetization
@@ -393,7 +392,7 @@ where the derivative with respect to time, <!-- MATH
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B>, is computed
 using the Landau-Lifshitz ODE (<A HREF="#eq:oxsllode">7.2</A>).  First order methods
@@ -401,7 +400,7 @@ essentially assume that <!-- MATH
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B> is constant on the interval
 <!-- MATH
@@ -414,7 +413,7 @@ essentially assume that <!-- MATH
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B>
 at the endpoints of the interval to estimate (guess) how untrue that
@@ -422,7 +421,8 @@ assumption is.
 
 <P>
 A candidate step is accepted if the maximum error across all positions
-<B><I>i</I></B> is smaller than <TT>absolute_step_error</TT>,
+<B><I>i</I></B> is smaller than all three of the error controls
+<TT>absolute_step_error</TT>,
 <TT>error_rate</TT><!-- MATH
  $\,\times\,\Delta t$
  -->
@@ -557,10 +557,10 @@ The vector field outputs are
 <B>Example:</B> 
   <TT><B>octant.mif</B></TT>.
 <P>
-<A NAME="PTRK"></A><A NAME="5735"></A></DD>
-<DT><STRONG>Oxs_RungeKuttaEvolve:<A NAME="html:RungeKuttaEvolve"></A></STRONG></DT>
-<DD>Time evolver implementing several Runge-Kutta methods for integrating
-the Landau-Lifshitz-Gilbert<A NAME="5737"></A> ODE
+</DD>
+<DT><STRONG>Oxs_RungeKuttaEvolve:<A NAME="HTMLRungeKuttaEvolve"></A></STRONG></DT>
+<DD><A NAME="PTRK"></A><A NAME="5825"></A>Time evolver implementing several Runge-Kutta methods for integrating
+the Landau-Lifshitz-Gilbert<A NAME="5826"></A> ODE
 (<A HREF="#eq:oxsllode">7.2</A>), (<A HREF="#eq:oxsllgode">7.3</A>), with step size control.  In
 most cases it will greatly outperform the <TT>Oxs_EulerEvolve</TT> class.
 The Specify block has the form
@@ -581,7 +581,7 @@ The Specify block has the form
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
    
@@ -623,14 +623,14 @@ The Specify block has the form
    <DD><TT> method </TT> <I>subtype</I>
    <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 Most of these options appear also in the
-<A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A> class.
+<A HREF="#HTMLEulerEvolve"><TT>Oxs_EulerEvolve</TT></A> class.
 The repeats have the same meaning as in that class, and the same
-default values except for <TT>relative_step_error</TT> and
-<TT>error_rate</TT>, which for <TT>Oxs_RungeKuttaEvolve</TT> have the
-default values of 0.01 and 1.0, respectively.  Additionally, the
-<B>alpha</B>, <B>gamma_LL</B> and <B>gamma_G</B> options
-may be initialized using scalar field objects, to allow these material
-parameters to vary spatially.
+default values except for <TT>error_rate</TT> and
+<TT>relative_step_error</TT>, which for <TT>Oxs_RungeKuttaEvolve</TT>
+have default values of 1.0 and 0.01, respectively.  Additionally,
+the <B>alpha</B>, <B>gamma_LL</B> and <B>gamma_G</B>
+options may be initialized using scalar field objects, to allow these
+material parameters to vary spatially.
 
 <P>
 The <B>allow_signed_gamma</B> parameter is for simulation testing
@@ -685,27 +685,27 @@ experimenting with <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma>0\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="44" HEIGHT="18" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="44" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img37.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\gamma&gt;0\\ \rule{1pt}{0pt}\end{array}$}$">, you should either set
 <!-- MATH
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha<=0\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="58" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="58" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img38.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\alpha&lt;=0\\ \rule{1pt}{0pt}\end{array}$}$"> to force spins back towards the effective field,
 or disable the energy precision control (discussed
-<A HREF="#html:oxsrkeprecision">below</A>).
+<A HREF="#HTMLoxsrkeprecision">below</A>).
 
 <P>
-The two controls <B>min_step_headroom</B> (default value 0.33) and
-<B>max_step_headroom</B> (default value 0.95) replace the single
-<TT>step_headroom</TT> option in <TT>Oxs_EulerEvolve</TT>.  The effective
-<TT>step_headroom</TT> is automatically adjusted by the evolver between the
-<I>min_headroom</I> and <I>max_headroom</I> limits to make the
-observed reject proportion approach the <B>reject_goal</B> (default
-value 0.05).
+The two controls <B>min_step_headroom</B> and
+<B>max_step_headroom</B> (default values 0.33 and 0.95,
+respectively) replace the single <TT>step_headroom</TT> control option
+in the <TT>Oxs_EulerEvolve</TT> class.  The effective <TT>step_headroom</TT> is
+automatically adjusted by the evolver between the <I>min_headroom</I>
+and <I>max_headroom</I> limits to make the observed reject proportion
+approach the <B>reject_goal</B> (default value 0.05).
 
 <P>
 The <B>method</B> entry selects a particular Runge-Kutta
@@ -719,7 +719,7 @@ stepsize control is managed by comparing <!-- MATH
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B> at the middle and
 final points of the interval, similar to what is done for stepsize
@@ -728,7 +728,7 @@ control for the <TT>Oxs_EulerEvolve</TT> class.  One step of the
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B>.
 
@@ -741,7 +741,7 @@ obtained with one full size step are compared.  The error is estimated at
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B>, but the
 end result is that of the 2 half-sized steps.
@@ -762,7 +762,7 @@ control.  Each step of these methods requires 6 evaluations of
  $\dot{\textbf{m}}$
  -->
 <B><IMG
- WIDTH="20" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
  SRC="img34.gif"
  ALT="$\dot{{\textbf{m}}}$"></B> if the step is accepted, 7 if rejected.  The difference
 between the methods involves tradeoffs between stability and error
@@ -772,7 +772,7 @@ two.  The default method used by <TT>Oxs_RungeKuttaEvolve</TT> is
 RK5(4)7FC.
 
 <P>
-<A NAME="html:oxsrkeprecision"></A>The remaining undiscussed entry in the <TT>Oxs_RungeKuttaEvolve</TT>
+<A NAME="HTMLoxsrkeprecision"></A>The remaining undiscussed entry in the <TT>Oxs_RungeKuttaEvolve</TT>
 Specify block is <B>energy_precision</B>.  This should be set to an
 estimate of the expected relative accuracy of the energy calculation.
 After accounting for any change in the total energy arising from
@@ -786,7 +786,7 @@ may be disabled by setting <I>eprecision</I> to -1.
 <P>
 The <TT>Oxs_RungeKuttaEvolve</TT> module provides the same scalar, scalar
 field, and vector field outputs as <TT>Oxs_EulerEvolve</TT>.  It also
-provides the following state data accessible through the MIF <A HREF="MIF_2.1_Extension_Commands.html#html:GetStateData"><TT>GetStateData</TT></A> command:
+provides the following state data accessible through the MIF <A HREF="MIF_2.1_Extension_Commands.html#PTGetStateData"><TT>GetStateData</TT></A> command:
 
 <BLOCKQUOTE>
 <TABLE CELLPADDING=3>
@@ -825,10 +825,10 @@ These terms, and the corresponding <TT>dMx/dt</TT>, <TT>dMy/dt</TT>, and
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>acsample.mif</B></TT>, <TT><B>spinmag.mif</B></TT>,
   <TT><B>spinmag2.mif</B></TT>, <TT><B>varalpha.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 <P>
-<A NAME="PTSX"></A><A NAME="5852"></A></DD>
-<DT><STRONG>Oxs_SpinXferEvolve:<A NAME="html:SpinXferEvolve"></A></STRONG></DT>
-<DD>Time evolver that integrates an
-Landau-Lifshitz-Gilbert<A NAME="5854"></A> ODE augmented with a
+</DD>
+<DT><STRONG>Oxs_SpinXferEvolve:<A NAME="HTMLSpinXferEvolve"></A></STRONG></DT>
+<DD><A NAME="PTSX"></A><A NAME="5942"></A>Time evolver that integrates an
+Landau-Lifshitz-Gilbert<A NAME="5943"></A> ODE augmented with a
 spin momentum term [<A
  HREF="bibliography.html#xiao2004">33</A>],
 
@@ -945,7 +945,7 @@ and <B><I>M</I><SUB>s</SUB></B> is the saturation magnetization in A/m.
 <P>
 The various parameters are defined in the Specify block, which is an
 extension of that for the
-<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class:
+<A HREF="#HTMLRungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class:
    
    <BLOCKQUOTE><DL><DT>
    <TT>Specify Oxs_SpinXferEvolve:</TT><I>name</I> <TT>{</TT>
@@ -963,7 +963,7 @@ extension of that for the
  $\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\\rule{1pt}{0pt}\end{array}$}$
  -->
 <IMG
- WIDTH="14" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ WIDTH="14" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
  SRC="img24.gif"
  ALT="$\mbox{\renewcommand {\arraystretch}{0}$\begin{array}[b]{@{}c@{}}\bar{\gamma}\\ \rule{1pt}{0pt}\end{array}$}$">
    
@@ -1031,7 +1031,7 @@ extension of that for the
    <DD><TT> energy_slack </TT> <I>eslack</I>
    <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 The options duplicated in the
-<A HREF="#html:RungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class
+<A HREF="#HTMLRungeKuttaEvolve"><TT>Oxs_RungeKuttaEvolve</TT></A> class
 Specify block have the same meaning and default values here, with the
 exception of <TT>error_rate</TT>, which for
 <TT>Oxs_SpinXferEvolve</TT> has the default value of -1 (i.e., disabled).
@@ -1120,7 +1120,7 @@ enabled, <TT>mp</TT> is actually <!-- MATH
  $\Delta_x\partial\textbf{m}/\partial\textbf{x}$
  -->
 <B><IMG
- WIDTH="25" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="25" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img60.gif"
  ALT="$\Delta_{x}^{}$"><IMG
  WIDTH="14" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
@@ -1133,7 +1133,7 @@ where <!-- MATH
  $\textbf{x}$
  -->
 <B><B>x</B></B> is the flow direction and <B><IMG
- WIDTH="25" HEIGHT="29" ALIGN="MIDDLE" BORDER="0"
+ WIDTH="25" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
  SRC="img60.gif"
  ALT="$\Delta_{x}^{}$"></B> is the cell dimension
 in that direction.)
@@ -1178,9 +1178,9 @@ are located in <TT><B>oommf/app/oxs/local</B></TT> instead of
 
 <B>Examples:</B> <TT><B>spinxfer.mif</B></TT>, <TT><B>spinxfer-miltat.mif</B></TT>, <TT><B>spinxfer-onespin.mif</B></TT>.
 <P>
-<A NAME="PTCG"></A><A NAME="5927"></A></DD>
-<DT><STRONG>Oxs_CGEvolve:<A NAME="html:CGEvolve"></A></STRONG></DT>
-<DD>The minimization evolver is <TT>Oxs_CGEvolve</TT>, which is an
+</DD>
+<DT><STRONG>Oxs_CGEvolve:<A NAME="HTMLCGEvolve"></A></STRONG></DT>
+<DD><A NAME="PTCG"></A><A NAME="6017"></A>The minimization evolver is <TT>Oxs_CGEvolve</TT>, which is an
 in-development conjugate gradient minimizer with no preconditioning. The
 Specify block has the form
    
@@ -1342,8 +1342,9 @@ conjugate gradient direction selection algorithm.  The default is
 Fletcher-Reeves, which has somewhat smaller memory requirements.
 
 <P>
-The last parameter, <B>fixed_spins</B>, performs the same function
-as for the <A HREF="#html:EulerEvolve"><TT>Oxs_EulerEvolve</TT></A> class.
+The final parameter, <B>fixed_spins</B>, performs the same function
+as it does in the <A HREF="#HTMLEulerEvolve"><TT>Oxs_EulerEvolve</TT></A>
+class.
 
 <P>
 The <TT>Oxs_CGEvolve</TT> module provides nine scalar, one scalar
@@ -1419,20 +1420,20 @@ The vector field outputs are
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html590"
+<A NAME="tex2html594"
   HREF="Drivers.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html586"
+<A NAME="tex2html590"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html580"
+<A NAME="tex2html584"
   HREF="Energies.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html588"
+<A NAME="tex2html592"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

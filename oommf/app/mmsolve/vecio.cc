@@ -169,7 +169,7 @@ int FileVector::WriteHeader(const char *filename,
     return -1;
   }
 
-  strncpy((char *)fh.Magic,VecFileMagic02,sizeof(fh.Magic)-1);
+  strncpy((char *)fh.Magic,VecFileMagic02,sizeof(fh.Magic));
   fh.Magic[sizeof(fh.Magic)-1]='\0';  // Safety
   fh.EndianTest=VecFileEndianTest;
   fh.Nx=Nx=Xdimen;

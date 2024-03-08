@@ -9,6 +9,7 @@
 
 #include "nb.h"
 #include "director.h"
+#include "driver.h"
 #include "mesh.h"
 #include "meshvalue.h"
 #include "oxswarn.h"
@@ -68,13 +69,13 @@ Oxs_RandomSiteExchange::Oxs_RandomSiteExchange(
   VerifyAllInitArgsUsed();
 
   // Setup outputs
-  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
+  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",
                             &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   maxspinangle_output.Register(director,0);
-  stage_maxspinangle_output.Setup(this,InstanceName(),"Stage Max Spin Ang","deg",1,
+  stage_maxspinangle_output.Setup(this,InstanceName(),"Stage Max Spin Ang","deg",
                             &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   stage_maxspinangle_output.Register(director,0);
-  run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang","deg",1,
+  run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang","deg",
                             &Oxs_RandomSiteExchange::UpdateDerivedOutputs);
   run_maxspinangle_output.Register(director,0);
 }
@@ -87,6 +88,11 @@ OC_BOOL Oxs_RandomSiteExchange::Init()
   mesh_id = 0;
   energy_density_error_estimate = -1;
   links.clear();
+
+  // Stage and run max angle computations require access to the
+  // immediate predecessor of the current state.
+  director->GetDriver()->SimstateHoldRequest(2);
+
   return Oxs_Energy::Init();
 }
 

@@ -7,13 +7,14 @@
 #ifndef _OXS_TIMEEVOLVER
 #define _OXS_TIMEEVOLVER
 
+#include "driver.h"
+#include "energy.h"
 #include "evolver.h"
 #include "output.h"
 
 /* End includes */
 
-class Oxs_TimeDriver; // Forward references
-struct Oxs_DriverStepInfo;
+class Oxs_TimeDriver; // Forward reference
 
 class Oxs_TimeEvolver:public Oxs_Evolver {
 private:
@@ -52,9 +53,20 @@ protected:
                  const char* argstr);      // MIF block argument string
 
   virtual OC_BOOL Init();  // All children of Oxs_TimeEvolver *must*
-  /// call this function in their Init() routines.  The main purpose
-  /// of this function is to initialize output variables.
+  /// call this function in their Init() routines.  The main purpose of
+  /// this function is to initialize output variables and advertise
+  /// "well known quantities" available for attaching to Oxs_SimStates.
 
+
+  void GetEnergies(const Oxs_ComputeEnergiesImports& ocei,
+                   Oxs_ComputeEnergiesExports& ocee);
+  // OOMMF 20201225 API interface. Children are encouraged to use this
+  // interface rather than accessing Oxs_ComputeEnergies directly, as
+  // this allows greater interface forward flexibility (which is
+  // especially important for third party extensions).
+
+  // The following GetEnergyDensity routines are deprecated in favor
+  // of the GetEnergies call above.
   void GetEnergyDensity(const Oxs_SimState& state,
                         Oxs_MeshValue<OC_REAL8m>& energy,
                         Oxs_MeshValue<ThreeVector>* mxH_req,
@@ -75,14 +87,30 @@ protected:
 public:
   virtual ~Oxs_TimeEvolver();
 
+  // InitNewStage default implementation calls GetEnergies(), if needed,
+  // to append requested derived values to state. Children may override,
+  // but if they do they should ensure that Oxs_ComputeEnergies() is
+  // called at some point to do so.
   virtual OC_BOOL
   InitNewStage(const Oxs_TimeDriver* /* driver */,
-               Oxs_ConstKey<Oxs_SimState> /* state */,
-               Oxs_ConstKey<Oxs_SimState> /* prevstate */) { return 1; }
-  /// Default implementation is a NOP.  Children may override.
-  /// NOTE: prevstate may be "INVALID".  Children should check
-  ///       before use.
-
+               Oxs_ConstKey<Oxs_SimState> statekey,
+               Oxs_ConstKey<Oxs_SimState> /* prevstate */,
+               Oxs_DriverStageInfo& /* stage_info */)
+  {
+    if(director->WellKnownQuantityRequestStatus()) {
+      const Oxs_SimState& state = statekey.GetReadReference();
+      UpdateFixedSpinList(state.mesh);
+      Oxs_MeshValue<OC_REAL8m> scratch_energy;
+      Oxs_MeshValue<ThreeVector> scratch_H;
+      Oxs_ComputeEnergiesImports ocei(*director,state,
+                                  director->GetEnergyObjects(),
+                                  GetFixedSpinList(),
+                                  &scratch_energy,&scratch_H);
+      Oxs_ComputeEnergiesExports ocee;
+      GetEnergies(ocei,ocee);
+    }
+    return 1;
+  }
 
   // There are two versions of the Step routine, one (Step) where
   // next_state is an Oxs_Key<Oxs_SimState>& import/export value, and
@@ -112,7 +140,7 @@ public:
   //
   // As a migration aid, a default implementations are provided.  The
   // Oxs_Driver code calls the newer interface; child evolver classes
-  // should  override exactly one of these.
+  // should override exactly one of these.
   //
   // Note: We can't give the same name to both routines because of implicit
   // conversion of Oxs_Key<T> to Oxs_ConstKey<T>.
@@ -120,20 +148,23 @@ public:
   virtual OC_BOOL
   Step(const Oxs_TimeDriver* /* driver */,
        Oxs_ConstKey<Oxs_SimState> /* current_state */,
-       const Oxs_DriverStepInfo& /* step_info */,
+       Oxs_DriverStepInfo& /* step_info */,
        Oxs_Key<Oxs_SimState>& /* next_state */)
  {
     throw Oxs_ExtError(this,
-          "Programming error: Implementation of"
-          " Oxs_TimeEvolver::Step(const Oxs_TimeDriver*,Oxs_ConstKey<Oxs_SimState>,Oxs_Key<Oxs_SimState>&)"
-          " not provided.");
+          "Programming error: Implementation of "
+          "Oxs_TimeEvolver::Step(const Oxs_TimeDriver*,"
+                       "Oxs_ConstKey<Oxs_SimState>,"
+                       "Oxs_DriverStepInfo&,"
+                       "Oxs_Key<Oxs_SimState>&) "
+          "not provided.");
     return 0;
   }
 
   virtual OC_BOOL
   TryStep(const Oxs_TimeDriver* driver,
        Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_ConstKey<Oxs_SimState>& next_state) {
     // Default implementation that wraps older Step() call.  New code
     // should override this implementation and ignore old Step()

@@ -463,15 +463,14 @@ FileSeqZeeman::FileSeqZeeman(int argc,const char* argp[])
   // Source script file
   Oc_AutoBuf ab;
   Tcl_Interp *interp = Oc_GlobalInterpreter();
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   int result=Tcl_EvalFile(interp,ab(scriptfile.GetStr()));
   if(result!=TCL_OK) {
     Message("Warning in FileSeqZeeman::FileSeqZeeman: "
 	    "Error trying to source scriptfile %s.",scriptfile.GetStr());
     procname="";
   }
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
 }
 
 FileSeqZeeman::~FileSeqZeeman()
@@ -483,12 +482,12 @@ int FileSeqZeeman::SetNomField(double newMs,const ThreeVector& newBfield,
   if(procname.Length()==0) return 0;  // procname not set.
   int errorcode;
   Tcl_Interp *interp=Oc_GlobalInterpreter();
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   Zeeman::SetNomField(newMs,newBfield,fieldstep);
-  char *buf=new char[procname.Length()+512];  // Should be big enough
-  sprintf(buf,"%s %.17g %.17g %.17g %d",procname.GetStr(),
-	  newBfield[0],newBfield[1],newBfield[2],fieldstep);
+  const size_t bufsize = procname.Length()+512;  // Should be big enough
+  char *buf=new char[bufsize];
+  snprintf(buf,bufsize,"%s %.17g %.17g %.17g %d",procname.GetStr(),
+           newBfield[0],newBfield[1],newBfield[2],fieldstep);
   errorcode=Tcl_Eval(interp,buf);
   delete[] buf;
   if(errorcode!=TCL_OK) {
@@ -498,7 +497,7 @@ int FileSeqZeeman::SetNomField(double newMs,const ThreeVector& newBfield,
     filename=Tcl_GetStringResult(interp);
     errorcode=FillArray();
   }
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   return errorcode;
 }
 

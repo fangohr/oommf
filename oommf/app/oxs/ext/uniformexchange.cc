@@ -11,6 +11,7 @@
 
 #include "nb.h"
 #include "director.h"
+#include "driver.h"
 #include "mesh.h"
 #include "meshvalue.h"
 #include "oxswarn.h"
@@ -51,7 +52,7 @@ Oxs_UniformExchange::Oxs_UniformExchange(
   const char* argstr)   // MIF input block parameters
   : Oxs_ChunkEnergy(name,newdtr,argstr),
     excoeftype(A_UNKNOWN), A(-1.), lex(-1.),
-    kernel(NGBR_UNKNOWN), 
+    kernel(NGBR_UNKNOWN),
     xperiodic(0),yperiodic(0),zperiodic(0),
     mesh_id(0), energy_density_error_estimate(-1)
 {
@@ -113,15 +114,14 @@ Oxs_UniformExchange::Oxs_UniformExchange(
   VerifyAllInitArgsUsed();
 
   // Setup outputs
-  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
-			    &Oxs_UniformExchange::UpdateDerivedOutputs);
+  maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang",
+                         "deg",&Oxs_UniformExchange::UpdateDerivedOutputs);
   maxspinangle_output.Register(director,0);
   stage_maxspinangle_output.Setup(this,InstanceName(),"Stage Max Spin Ang",
-                            "deg",1,
-			    &Oxs_UniformExchange::UpdateDerivedOutputs);
+                         "deg",&Oxs_UniformExchange::UpdateDerivedOutputs);
   stage_maxspinangle_output.Register(director,0);
-  run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang","deg",1,
-			    &Oxs_UniformExchange::UpdateDerivedOutputs);
+  run_maxspinangle_output.Setup(this,InstanceName(),"Run Max Spin Ang",
+                         "deg",&Oxs_UniformExchange::UpdateDerivedOutputs);
   run_maxspinangle_output.Register(director,0);
 }
 
@@ -135,7 +135,12 @@ OC_BOOL Oxs_UniformExchange::Init()
   ycoef.Free();
   zcoef.Free();
   energy_density_error_estimate = -1;
-  return Oxs_ChunkEnergy::Init();
+
+  // Stage and run max angle computations require access to the
+  // immediate predecessor of the current state.
+  director->GetDriver()->SimstateHoldRequest(2);
+
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void
@@ -326,7 +331,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrFree
   }
 
 
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -481,7 +486,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   if(thread_maxdot_x>thread_maxdot) thread_maxdot = thread_maxdot_x;
@@ -631,7 +636,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirror_lex
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -783,7 +788,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrMirrorStd
     }
   }
 
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -981,7 +986,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrBigAngMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -1166,7 +1171,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrZD2
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -1349,7 +1354,7 @@ Oxs_UniformExchange::CalcEnergy6NgbrAlt
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   if(thread_maxdot_x>thread_maxdot) thread_maxdot = thread_maxdot_x;
@@ -1755,7 +1760,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrFree
       if(z==2 || z==zdim-3) ck=25./24.;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2100,7 +2105,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1
       if(z==2 || z==zdim-3) ck=25./24.;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2424,7 +2429,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrZD1B
       /// Note: zcoef_index is only valid if zoff<5
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2659,7 +2664,7 @@ Oxs_UniformExchange::CalcEnergy12NgbrMirror
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -2890,7 +2895,7 @@ Oxs_UniformExchange::CalcEnergy26Ngbr
       ++z;
     }
   }
-  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0); 
+  ocedtaux.energy_total_accum += energy_sum * mesh->Volume(0);
   /// All cells have same volume in an Oxs_CommonRectangularMesh.
 
   maxdot[threadnumber] = thread_maxdot;
@@ -3097,7 +3102,7 @@ void Oxs_UniformExchange::ComputeEnergyChunk
   //   NGBR_12_FREE, NGBR_12_ZD1, NGBR_12_ZD1B, NGBR_26
   // This is checked for and reported in the individual arms of the
   // kernel if-test below.
-  const Oxs_RectangularMesh* rmesh 
+  const Oxs_RectangularMesh* rmesh
     = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
@@ -3261,7 +3266,7 @@ Oxs_UniformExchange::IncrementPreconditioner(PreconditionerData& pcd)
   //   NGBR_12_FREE, NGBR_12_ZD1, NGBR_12_ZD1B, NGBR_26
   // This is checked for and reported in the individual arms of the
   // kernel if-test below.
-  const Oxs_RectangularMesh* rmesh 
+  const Oxs_RectangularMesh* rmesh
     = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
@@ -3310,14 +3315,14 @@ Oxs_UniformExchange::IncrementPreconditioner(PreconditionerData& pcd)
           if(A_TYPE == excoeftype) {
             // x ngbrs
             if(x>0) {
-              if(0.0 != Ms[i-1]) sum += wgtx; 
+              if(0.0 != Ms[i-1]) sum += wgtx;
             } else if(xperiodic) {
-              if(0.0 != Ms[i-1+xdim]) sum += wgtx; 
+              if(0.0 != Ms[i-1+xdim]) sum += wgtx;
             }
             if(x<xdim-1) {
-              if(0.0 != Ms[i+1]) sum += wgtx; 
+              if(0.0 != Ms[i+1]) sum += wgtx;
             } else if(xperiodic) {
-              if(0.0 != Ms[i+1-xdim]) sum += wgtx; 
+              if(0.0 != Ms[i+1-xdim]) sum += wgtx;
             }
             // y ngbrs
             if(y>0) {
@@ -3345,10 +3350,10 @@ Oxs_UniformExchange::IncrementPreconditioner(PreconditionerData& pcd)
           } else { // LEX_TYPE == excoeftype
             // x ngbrs
             OC_REAL8m xsum=0.0;
-            if(x>0)            xsum += Ms[i-1]; 
-            else if(xperiodic) xsum += Ms[i-1+xdim]; 
-            if(x<xdim-1)       xsum += Ms[i+1]; 
-            else if(xperiodic) xsum += Ms[i+1-xdim]; 
+            if(x>0)            xsum += Ms[i-1];
+            else if(xperiodic) xsum += Ms[i-1+xdim];
+            if(x<xdim-1)       xsum += Ms[i+1];
+            else if(xperiodic) xsum += Ms[i+1-xdim];
             xsum *= wgtx;
             // y ngbrs
             OC_REAL8m ysum=0.0;

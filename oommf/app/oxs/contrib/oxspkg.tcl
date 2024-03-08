@@ -8,7 +8,7 @@
 set INSTALLDIR [file join .. local]
 
 # Directory names to exclude from package search
-set EXCLUDEPKG [list CVS newcontrib tmp new]
+set EXCLUDEPKG [list .git new newcontrib tmp]
 
 # Glob strings for package readme file search.  This is used in both
 # EXCLUDEFILES and in program package README report.  In the latter,
@@ -43,7 +43,7 @@ proc Usage {} {
    puts stderr "  or   oxspkg readme pkg \[pkg ...\]"
    puts stderr "  or   oxspkg requires pkg \[pkg ...\]"
    puts stderr "  or   oxspkg install \[-v\] \[-nopatch\] pkg \[pkg ...\]"
-   puts stderr "  or   oxspkg uninstall pkg \[pkg ...\]"
+   puts stderr "  or   oxspkg uninstall \[-f\] pkg \[pkg ...\]"
    puts stderr "  or   oxspkg copyout   pkg \[pkg ...\] destination"
    puts stderr "Wildcards (or keyword \"all\") accepted in pkg specifications."
    exit 255
@@ -179,9 +179,23 @@ proc FindInstallDir { pkgname } {
    return [file join $INSTALLDIR $pkgname]
 }
 
-proc MakeInstallName { pkgname filename } {
-   set installname [file join [FindInstallDir $pkgname] [file tail $filename]]
+proc MakeDestName { pkgname filename destdir } {
+   # NB: This proc assumes filename has pkgname as a path component, and
+   #     fuses the dest directory at that juncture.
+   set pathparts [file split $filename]
+   set clipindex [lsearch -exact $pathparts $pkgname]
+   if {$clipindex<0} {
+      error "Improper filename path structure"
+   }
+   set filename [file join {*}[lrange $pathparts $clipindex+1 end]]
+   set installname [file join $destdir $filename]
    return $installname
+}
+
+proc MakeInstallName { pkgname filename } {
+   # NB: This proc assumes filename has pkgname as a path component, and
+   #     fuses the install directory at that juncture.
+   return [MakeDestName $pkgname $filename [FindInstallDir $pkgname]]
 }
 
 proc CheckInstall { pkg } {
@@ -224,6 +238,30 @@ proc ListPackages { pkgs } {
    puts "---"
 }
 
+proc CopyFile { source target } {
+   # Copies one source *file* to one target *file*, creating intermediate
+   # directories in target path as necessary.
+   if {![file isfile $source]} {
+      return -code error "CopyFile error: source import\
+                          \"source\" is not a regular file"
+   }
+   if {[file isdirectory $target]} {
+      return -code error "CopyFile error: target file import\
+                          \"target\" is a directory"
+   }
+   if {[catch {file copy -force -- $source $target} errmsg]} {
+      if {![string match {*: no such file or directory} $errmsg] \
+             || ![file readable $source] \
+             || [file exist [file dirname $target]]} {
+         return -code error $errmsg
+      }
+      # Copy failed and target parent directory does not exist.
+      # Try creating directory path
+      file mkdir [file dirname $target]
+      file copy -force -- $source $target
+   }
+}
+
 proc Install { dopatch pkg } {
    global verbose
 
@@ -233,7 +271,9 @@ proc Install { dopatch pkg } {
       file mkdir [FindInstallDir $pkg]
    }
    foreach elt $filelist {
-      file copy -force -- $elt [MakeInstallName $pkg $elt]
+      set targetname [MakeInstallName $pkg $elt]
+      CopyFile $elt $targetname
+      file mtime $targetname [clock seconds] ;# "touch" copied file
    }
    if {$verbose} {
       puts [format "%2d files installed: %s" [llength $filelist] $filelist]
@@ -305,7 +345,17 @@ proc Install { dopatch pkg } {
    }
 }
 
-proc Uninstall { pkg } {
+proc RemoveDirTree { dir } {
+   # Deletes directory $dir and all its child directories.  This proc
+   # will throw an error if any of the directories are not empty.
+   foreach subdir [glob -nocomplain -directory $dir -types d *] {
+      RemoveDirTree $subdir
+      file delete $subdir
+   }
+   file delete $dir
+}
+
+proc Uninstall { forcedelete pkg } {
    set count 0
    set filelist [FindFiles $pkg]
    foreach elt $filelist {
@@ -322,8 +372,21 @@ proc Uninstall { pkg } {
        (package contains [llength $filelist] files)." $count]
    }
    set pkgdir [FindInstallDir $pkg]
-   if {[catch {file delete $pkgdir} msg]} {
-      puts "ERROR: Unable to delete package directory \"$pkgdir\" --- $msg"
+   if {[catch {RemoveDirTree $pkgdir} msg]} {
+      # Delete of install directory failed
+      if {$forcedelete} {
+         # Try harder
+         if {[catch {file delete -force -- $pkgdir} msg2]} {
+            puts "ERROR: Unable to delete package directory\
+                  \"$pkgdir\" --- $msg2"
+         } else {
+            puts "WARNING: Deleted package directory\
+                  \"$pkgdir\" overriding error: $msg"
+         }
+      } else {
+         puts "ERROR: Unable to delete package directory\
+                   \"$pkgdir\" --- $msg"
+      }
    }
 }
 
@@ -339,8 +402,9 @@ proc CopyOut { pkg dest } {
    set filelist [FindFiles $pkg]
    foreach elt $filelist {
       set installfile [MakeInstallName $pkg $elt]
+      set destfile [MakeDestName $pkg $elt $dest]
       if {[file exists $installfile]} {
-         file copy -force $installfile $dest
+         CopyFile $installfile $destfile
          incr count
       }
    }
@@ -419,16 +483,16 @@ switch -exact $cmd {
       }
    }
    install {
-      if {$argc<2} {
-         puts stderr "ERROR: Too few arguments"
-         Usage
-      }
       set dopatch [lsearch -regexp $argv {^-+nopat}]
       if {$dopatch < 0} {
          set dopatch 1
       } else {
          set argv [lreplace $argv $dopatch $dopatch]
          set dopatch 0
+      }
+      if {$argc<2} {
+         puts stderr "ERROR: Too few arguments"
+         Usage
       }
       set pkglist [MatchPackages $contrib_packages [lrange $argv 1 end]]
       if {[llength $pkglist]<1} {
@@ -442,6 +506,13 @@ switch -exact $cmd {
       }
    }
    uninstall {
+      set forcedelete [lsearch -regexp $argv {^-+f}]
+      if {$forcedelete < 0} {
+         set forcedelete 0
+      } else {
+         set argv [lreplace $argv $forcedelete $forcedelete]
+         set forcedelete 1
+      }
       if {$argc<2} {
          puts stderr "ERROR: Too few arguments"
          Usage
@@ -454,7 +525,7 @@ switch -exact $cmd {
       set maxnamlen [GetMaxStringLength $pkglist]
       foreach pkg $pkglist  {
          puts -nonewline [format "%*s: " $maxnamlen $pkg]
-         Uninstall $pkg
+         Uninstall $forcedelete $pkg
       }
    }
    copyout {

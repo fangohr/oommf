@@ -21,14 +21,12 @@
 int 
 Nb_Init(Tcl_Interp *interp)
 {
-#define RETURN_TCL_ERROR                                               \
-    Tcl_AddErrorInfo(interp, OC_CONST84_CHAR("\n    (in Nb_Init())")); \
+#define RETURN_TCL_ERROR                              \
+    Tcl_AddErrorInfo(interp, "\n    (in Nb_Init())"); \
     return TCL_ERROR
 
-  if (Tcl_PkgPresent(interp, OC_CONST84_CHAR("Oc"),
-		     OC_CONST84_CHAR("2"), 0) == NULL) {
-    Tcl_AppendResult(interp,
-	     OC_CONST84_CHAR("\n\t(Nb " NB_VERSION " needs Oc 2)"), NULL);
+  if (Tcl_PkgPresent(interp, "Oc", "2", 0) == NULL) {
+    Tcl_AppendResult(interp, "\n\t(Nb " NB_VERSION " needs Oc 2)", NULL);
     RETURN_TCL_ERROR;
   }
 
@@ -42,11 +40,7 @@ Nb_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"Nb_GetColor",(Tcl_CmdProc *)NbGetColor);
   Oc_RegisterCommand(interp,"Oc_Times",(Tcl_CmdProc *)OcTimes);
 
-#if TCL_MAJOR_VERSION < 8  // Use string interface
-  Oc_RegisterCommand(interp,"Nb_ImgObj",(Tcl_CmdProc *)NbImgObjCmd);
-#else
   Oc_RegisterObjCommand(interp,"Nb_ImgObj",(Tcl_ObjCmdProc *)NbImgObjCmd);
-#endif
 
 #if (OC_SYSTEM_TYPE == OC_UNIX)
   Oc_RegisterCommand(interp,"Nb_GetUserId",(Tcl_CmdProc *)NbGetUserId);
@@ -57,8 +51,7 @@ Nb_Init(Tcl_Interp *interp)
   Oc_RegisterCommand(interp,"Nb_GetUserName",(Tcl_CmdProc *)NbGetUserName);
 #endif
 
-  if (Tcl_PkgProvide(interp, OC_CONST84_CHAR("Nb"),
-		     OC_CONST84_CHAR(NB_VERSION)) != TCL_OK) {
+  if (Tcl_PkgProvide(interp, "Nb", NB_VERSION) != TCL_OK) {
     RETURN_TCL_ERROR;
   }
 
@@ -69,9 +62,7 @@ Nb_Init(Tcl_Interp *interp)
 
   // Test Nb_Xpfloat class for brokenness
   if(Nb_Xpfloat::Test() != 0) {
-    Tcl_AppendResult(interp,
-	     OC_CONST84_CHAR("\n\tNb_Xpfloat initialization test error"),
-             NULL);
+    Tcl_AppendResult(interp, "\n\tNb_Xpfloat initialization test error", NULL);
     RETURN_TCL_ERROR;
   }
 

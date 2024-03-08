@@ -63,7 +63,11 @@ MakeRule Define {
 ##       list.
 
 # PDF target. Note: Two passes of pdflatex may be needed after makeindex
-# to get Index included in the table of contents.
+# to get Index included in the table of contents. Also, on at least some
+# platforms if the subdirectory "userguide" (which holds latex2html
+# output) exists, 'makeindex userguide' will try to use the subdirectory
+# instead of userguide.idx. So it is important to include the .idx
+# suffix in the makeindex call.
 MakeRule Define {
    -targets            userguide.pdf
    -dependencies       [glob -nocomplain *.tex *.bib \
@@ -76,7 +80,7 @@ MakeRule Define {
       Oc_Exec Foreground pdflatex userguide
       Oc_Exec Foreground bibtex userguide
       Oc_Exec Foreground pdflatex userguide
-      Oc_Exec Foreground makeindex userguide
+      Oc_Exec Foreground makeindex userguide.idx
       Oc_Exec Foreground pdflatex userguide
       Oc_Exec Foreground pdflatex userguide
    }
@@ -89,7 +93,11 @@ MakeRule Define {
 
 
 # Postscript target. Note: Two passes of latex may be needed after
-# makeindex to get Index included in the table of contents.
+# makeindex to get Index included in the table of contents. Also, on at
+# least some platforms if the subdirectory "userguide" (which holds
+# latex2html output) exists, 'makeindex userguide' will try to use the
+# subdirectory instead of userguide.idx. So it is important to include
+# the .idx suffix in the makeindex call.
 MakeRule Define {
    -targets            userguide.ps
    -dependencies       userguide.dvi
@@ -111,7 +119,7 @@ MakeRule Define {
       Oc_Exec Foreground latex userguide
       Oc_Exec Foreground bibtex userguide
       Oc_Exec Foreground latex userguide
-      Oc_Exec Foreground makeindex userguide
+      Oc_Exec Foreground makeindex userguide.idx
       Oc_Exec Foreground latex userguide
       Oc_Exec Foreground latex userguide
    }
@@ -179,21 +187,27 @@ MakeRule Define {
     }
 }
 
-# Shortcut target for latex2html build. We might want to include a version
-# test to short-circuit builds with known bad versions of latex2html.
-if {[llength [auto_execok latex2html]]} {
-   MakeRule Define {
-      -targets         :latex2html
-      -dependencies    [file join userguide userguide.html]
-   }
-} else {
+# Shortcut target for latex2html build. Check existence and version.
+if {![llength [auto_execok latex2html]] \
+       || ![regexp {LaTeX2HTML Version +([0-9]+)} \
+               [exec -ignorestderr latex2html -version 2>@1] \
+               _ version] \
+       || $version < 2018} {
+   # Bad or missing latex2html
    MakeRule Define {
       -targets         :latex2html
       -dependencies    {}
       -script {
          puts stderr \
-            "\n*** Skipping target :latex2html (missing executable) ***\n"
+            "\n*** Skipping target :latex2html\
+             (bad or missing executable) ***\n"
       }
+   }
+} else {
+   # Presumably good latex2html
+   MakeRule Define {
+      -targets         :latex2html
+      -dependencies    [file join userguide userguide.html]
    }
 }
 

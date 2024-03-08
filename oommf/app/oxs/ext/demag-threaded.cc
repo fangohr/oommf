@@ -1599,7 +1599,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     // periodic images, using symmetries for images outside the first
     // octant.  In the periodic setting we have to be careful to not
     // accumulate each image more than once in the sum.
-    // 
+    //
     // Symmetries: A00, A11, A22 are even in each coordinate
     //             A01 is odd in x and y, even in z.
     //             A02 is odd in x and z, even in y.
@@ -1653,7 +1653,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
         }
       }
     }
-    
+
     ComputeD6f(Oxs_Newell_g_xz,ANxz,scaled_arad,
                workspace,threadtree,ddx,ddy,ddz,MaxThreadCount);
     for(OC_INDEX i=0;i<istop;i++) {

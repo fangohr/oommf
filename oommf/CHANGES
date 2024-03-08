@@ -1,3 +1,32 @@
+========== OOMMF 2.1a0 released 2023/09/30 ==========
+Significant changes since 2.0b0:
+
+  * New command line apps:
+	 - computefield
+	 - logreview
+
+  * New features:
+	 - avf2odt option -wgtfunc 
+	 - odtcalc option -supfile
+	 - hook in Oxs for time-varying Ms
+	 - expanded PPM file formats support
+
+  * New MIF file functionality:
+	 - Script control for output filenames
+	 - Random variables with std normal distribution
+
+  * New contributed Oxs extension:
+	 - oommf-mel (magnetoelastic coupling) 
+
+  * Bug fixes
+	- Ow_EntryScale re-entrancy
+	- mmArchive: more robust concurrent writing
+	- mmDisp: more robust acceptance of non-finite inputs
+	- killoommf: greater reliability against non-server apps
+
+  * Platform support
+	- eliminate sprintf() calls to satisfy clang 14.
+
 ========== OOMMF 2.0b0 released 2022/09/30 ==========
 Significant changes since 2.0a3:
 

@@ -68,7 +68,7 @@ const int default_group_digits=0;    // groups size, 0 == disable grouping
 // (which would require massively refinements in the near field).
 const OXS_DEMAG_REAL_ASYMP default_maxerror = 1e-12;
 #else
-const OXS_DEMAG_REAL_ASYMP default_maxerror 
+const OXS_DEMAG_REAL_ASYMP default_maxerror
    = 8*std::numeric_limits<OXS_DEMAG_REAL_ASYMP>::epsilon();
 #endif
 const int default_maxorder = 11;
@@ -280,7 +280,7 @@ void WriteTensorFile
     cout_buffer = std::cout.rdbuf();
     std::cout.rdbuf(Nfile.rdbuf());
   }
-  
+
   std::cout << std::setprecision(17);
   std::cout << "# OOMMF OVF 2.0\n#\n";
   std::cout << "# Segment count: 1\n#\n";
@@ -332,7 +332,7 @@ void WriteTensorFile
       }
     }
   }
-  
+
   std::cout << "# End: data text\n#\n";
   std::cout << "# End: segment\n";
 
@@ -496,7 +496,7 @@ int Oc_AppMain(int argc,char** argv)
   int display_digits = default_display_digits;
   int   group_digits = default_group_digits;
   char*    Nfilename = 0;
-  
+
   // Pull out options
   for(int i=1;i<argc-1;++i) {
     char* endptr;
@@ -550,7 +550,7 @@ int Oc_AppMain(int argc,char** argv)
       argc -=2; --i;
     }
   }
-  
+
   if(argc!=7) Usage();
 
 #if defined(_MSC_VER)

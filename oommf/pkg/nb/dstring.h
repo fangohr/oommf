@@ -1,7 +1,7 @@
 /* FILE: dstring.h                    -*-Mode: c++-*-
  *
  * Generic C++ Dynamic String class
- * 
+ *
  * NOTICE: Please see the file ../../LICENSE
  *
  * Last modified on: $Date: 2013/05/22 07:15:32 $
@@ -58,7 +58,8 @@ public:
   }
 #endif
 
-  const char* GetStr(void) const { return (const char *)str; }
+  const char* GetStr() const { return (const char *)str; }
+  const std::string GetStdString() const { return std::string(str); }
 
   char& operator[](OC_INDEX offset) {
     if(offset>0 && offset+1>bufsize) ExtendBuf(offset+1);

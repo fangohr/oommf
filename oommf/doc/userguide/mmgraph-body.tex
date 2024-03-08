@@ -142,6 +142,13 @@ appropriate fields in the \btn{Margin Requests} section.  Units are
 pixels.  Requested values smaller than the computed (default) values are
 ignored.
 
+The \btn{Canvas color} selection sets the color of the canvas
+background. The curve colors and symbol types are automatically
+assigned, either by curve or segment, as specified by the \btn{Color
+selection} control. (Data collected across multiple solver runs will
+consist of one segment for each run.) The \btn{Display} control can be
+used to enable or disable display of curves and/or symbols.
+
 The initial curve width is determined by the \cd{Ow\_GraphWin
   default\_curve\_width} setting in the \fn{config/options.tcl} and
 \fn{config/local/options.tcl} files, following the usual method of
@@ -150,7 +157,10 @@ The initial curve width is determined by the \cd{Ow\_GraphWin
 curve width can be changed by specifying the desired width in the
 \btn{Curve Width} entry in the {\btn{Options\pipe Configure...}} dialog
 box.  The units are pixels.  Long curves will be rendered more quickly,
-especially on \Windows, if the curve width is set to 1.
+especially on \Windows, if the curve width is set to 1. The symbol
+frequency and size (in pixels) may also be controlled. A value of 0 for
+\btn{Symbol Freq} disables symbol display. The default values for these
+options can be controlled from the configuration \fn{options.tcl} files. 
 
 As mentioned earlier, \app{mmGraph} stores in memory all data it
 receives.  Over the course of a long run, the amount of data stored can
@@ -162,29 +172,30 @@ stored under the specified limit.  A zero value for \btn{Point buffer
 size} is interpreted as no limit.  (The storage size of an individual
 record depends upon several factors, including the number of items in
 the record and the version of \Tcl\ being used.)  Data erasures may not
-be immediately reflected in the graph display.  At any time, the point
-buffer storage may be completely emptied with the \btn{Options\pipe
-clear Data} command.  The \btn{Options\pipe Stop Autosave} selection
-will turn off the auto save feature, if currently active.
+be immediately reflected in the graph display.
+
+At any time, the point buffer storage may be completely emptied with
+\btn{Options\pipe{}Clear Data}, or thinned via
+\btn{Options\pipe{}Thin Data}.  The \btn{Options\pipe{}Stop Autosave}
+selection will turn off the auto save feature, if currently active.  The
+\btn{Options\pipe{}Break Curves} item inserts a curve break record into
+the point buffer, causing a break in each curve after the current point.
+This option may be useful if \app{mmGraph} is being fed data from
+multiple sources.
 
 Also on this menu is \btn{Options\pipe Rescale}, which autoscales the
 graph axis limits from the selected data.  This command ignores but does
-not reset the \btn{Auto Scale} setting in the \btn{Options\pipe
-Configure...} dialog box.  The Rescale command may also be invoked by
-pressing the \key{Home} key.
+not reset the \btn{Auto Scale} setting in the
+\btn{Options\pipe{}Configure...} dialog box.  The Rescale command may
+also be invoked by pressing the \key{Home} key.
 
-The \btn{Options\pipe Break Curves} item inserts a curve break record
-into the point buffer, causing a break in each curve after the current
-point.  This option may be useful if \app{mmGraph} is being fed data
-from multiple sources.
-
-The \btn{Options\pipe Key} selection toggles the key (legend) display on
+The \btn{Options\pipe{}Key} selection toggles the key (legend) display on
 and off.  The key may also be repositioned by dragging with the left
 mouse button.  If curves are selected off both the y1 and y2 menus, then
 a horizontal line in the key separates the two sets of curves, with the
 labels for the y1 curves on top.
 
-If the \btn{Options\pipe Auto Reset} selection is enabled, then when a
+If the \btn{Options\pipe{}Auto Reset} selection is enabled, then when a
 new table is detected all previously existing axis menu labels that are
 not present in the column list of the new data set are deleted, along
 with their associated data.  \app{mmGraph} will detect a new table when
@@ -205,16 +216,16 @@ details.
 
 A few controls are available only using the mouse.  If the mouse pointer
 is positioned over a drawn item in the graph, holding down the
-\key{Control} key and the left mouse button will bring up the
+\key{Ctrl} key and the left mouse button will bring up the
 coordinates of that point, with respect to the y1-axis.  Similarly,
-depressing the \key{Control} key and the right mouse button, or
-alternatively holding down the \key{Control}+\key{Shift} keys while
+depressing the \key{Ctrl} key and the right mouse button, or
+alternatively holding down the \key{Ctrl}+\key{Shift} keys while
 pressing the left mouse button will bring up the coordinates of the
 point with respect to the y2-axis.  The coordinates displayed are the
 coordinates of a point on a drawn line, which are not necessarily the
 coordinates of a plotted data point.  (The data points are plotted at
 the endpoints of each line segment.)  The coordinate display is cleared
-when the mouse button is released while the \key{Control} key is down.
+when the mouse button is released while the \key{Ctrl} key is down.
 
 One vertical and one horizontal rule (line) are also available.
 Initially, these rules are tucked and hidden against the left and bottom
@@ -250,9 +261,9 @@ that point; if a display state is added in the interior of the list
 new entry are deleted.  The entire list is cleared any time automatic
 scaling is invoked.
 
-The \key{PageUp} and \key{PageDown} keys may also be used to zoom the
+The \key{Page\,Up} and \key{Page\,Down} keys may also be used to zoom the
 display in and out.  Use in conjuction with the \key{Shift} key to jump
-by larger steps, or with the \key{Control} key for finer control.  The
+by larger steps, or with the \key{Ctrl} key for finer control.  The
 \btn{Options\pipe Rescale} command or the
 \btn{Options\pipe Configure\ldots} dialog box may also be used to reset the
 graph extents.
@@ -267,7 +278,7 @@ the \btn{Auto Scale} feature, and manually pan the display using the
 keyboard arrow keys.  Each key press will translate the display one half
 frame in the indicated direction.  The \key{Shift} key used in
 combination with an arrow keys double the pan step size, while the
-\key{Control} key halves it.
+\key{Ctrl} key halves it.
 
 The menu selection \btn{File\pipe Reset} reinitializes the
 \app{mmGraph} application to its original state, releasing all data and

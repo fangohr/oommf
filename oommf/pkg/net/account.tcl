@@ -57,58 +57,9 @@ Oc_Class Net_Account {
     # Default initializer of the accountname.  Tries to determine
     # account name under which current thread is running.
     proc DefaultAccountName {} {
-       global env tcl_platform
-       set name {}
-       if {[info exists env(OOMMF_ACCOUNT_NAME)]
-           && [string length $env(OOMMF_ACCOUNT_NAME)]} {
-          set name $env(OOMMF_ACCOUNT_NAME)
-       } elseif {[info exists tcl_platform(user)]
-           && [string length $tcl_platform(user)]} {
-          set name $tcl_platform(user)
-       } else {
-          switch -- $tcl_platform(platform) {
-             unix {
-                if {[info exists env(USER)]
-                    && [string length $env(USER)]} {
-                   set name $env(USER)
-                } elseif {[info exists env(LOGNAME)]
-                          && [string length $env(LOGNAME)]} {
-                   set name $env(LOGNAME)
-                } elseif {![catch {exec whoami} check]
-                          && [string length $check]} {
-                   set name $check
-                } elseif {![catch {exec id -u -n} check]
-                          && [string length $check]} {
-                   # whoami is deprecated by posix id command
-                   set name $check
-                } elseif {![catch {exec id} check]
-                          && [string length $check]} {
-                   # Solaris has a non-posix id command that
-                   # doesn't support the -u and -n switches.
-                   if {[regexp {uid=[0-9]+\(([^)]+)\)} $check dummy check2]
-                       && [string length $check2]} {
-                      set name $check2
-                   }
-                }
-             }
-             windows {
-                # Check environment
-                if {[info exists env(USERNAME)]
-                    && [string length $env(USERNAME)]} {
-                   set name $env(USERNAME)
-                }
-                if {![catch {file tail [Nb_GetUserName]} check]} {
-                   set name $check
-                }
-                # Find some reliable entry in the registry?
-             }
-          }
-       }
-       if {[string match {} $name]} {
-          # Ultimate fallback
-          set name oommf
-       }
-       return $name
+       # Might want to do some checking on the network stack,
+       # but for now just use the Oc library routine.
+       return [Oc_AccountName]
     }
 
     # Milliseconds to wait for account thread to start on localhost
@@ -710,10 +661,18 @@ Oc_Class Net_Account {
                 lappend nicknames $tempname
              }
           }
+          pingme { ;# Wellness check
+             set detail [lindex $reply 2]
+             $this Send ping $detail
+          }
           die {
              if {!$ignore_die} {
                 after 0 exit
              }
+          }
+          default {
+             Oc_Log Log "$this: Unrecognized Tell message: $reply" \
+                warning $class
           }
        }
     }

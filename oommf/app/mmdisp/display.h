@@ -394,9 +394,16 @@ public:
 	       const Nb_BoundingBox<OC_REAL4>& arrow_box,
 	       const Nb_BoundingBox<OC_REAL4>& pixel_box,
 	       OC_BOOL reverse_layers,
-	       OC_REAL8m mat_width,Nb_DString mat_color,
-	       OC_REAL8m arrow_outline_width,
-	       Nb_DString arrow_outline_color);
+	       OC_REAL8m mat_width,
+               Nb_DString mat_color,
+               Nb_DString arrow_outline_color,
+               OC_REAL8m arrow_outline_width,
+               OC_REAL8m arrow_width,
+               OC_REAL8m arrow_tip_width,
+               OC_REAL8m arrow_length,
+               OC_REAL8m arrow_head_width,
+               OC_REAL8m arrow_head_ilen,
+               OC_REAL8m arrow_head_olen);
   /// Writes display to channel, as a PostScript file.
 
   OC_REAL4m GetZoom(void) const;

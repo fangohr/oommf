@@ -712,41 +712,6 @@ inline int Oc_GetPid() { return _getpid(); }\n"
 inline int Oc_GetPid() { return getpid(); }\n"
 }
 
-    # Does compiler have non-ansi sprintf that returns pointer instead
-    # of string length?
-    if {![catch {
-	$config GetValue program_compiler_c++_property_nonansi_sprintf
-    } _] && $_} {
-	# Provide wrapper
-	append porth {
-/* Wrapper to make sprintf ansi-compliant */
-#define OC_SPRINTF_WRAP(x) strlen(x)
-}
-    } else {
-	# Dummy wrapper
-	append porth {
-/* Dummy wrapper for ansi-compliant sprintf */
-#define OC_SPRINTF_WRAP(x) (x)
-}
-    }
-
-    # Does compiler support vsnprintf?
-    if {![catch {
-	$config GetValue program_compiler_c++_property_no_vsnprintf
-    } _] && $_} {
-	# No
-	append porth {
-/* Platform does not have vsnprintf */
-#define OC_HAS_VSNPRINTF 0
-}
-    } else {
-	# Yes
-	append porth {
-/* Platform supports vsnprintf */
-#define OC_HAS_VSNPRINTF 1
-}
-    }
-
     # Does compiler support strerror_r ?
     if {![catch {
 	$config GetValue program_compiler_c++_property_no_strerror_r
@@ -1319,20 +1284,30 @@ typedef  unsigned char      OC_UCHAR;
 
    append porth "
 /* Range limits, analogous to C language DBL_MIN and DBL_MAX macros */
-#define OC_REAL4_MIN      $varmin($varmap($real4type))
-#define OC_SQRT_REAL4_MIN $varmin(SQRT_$varmap($real4type))
-#define OC_REAL4_MAX      $varmax($varmap($real4type))
-#define OC_SQRT_REAL4_MAX $varmax(SQRT_$varmap($real4type))
-#define OC_REAL4m_MIN     $varmin($varmap($real4mtype))
-#define OC_REAL4m_MAX     $varmax($varmap($real4mtype))
-#define OC_REAL8_MIN      $varmin($varmap($real8type))
-#define OC_SQRT_REAL8_MIN $varmin(SQRT_$varmap($real8type))
-#define OC_REAL8_MAX      $varmax($varmap($real8type))
-#define OC_SQRT_REAL8_MAX $varmax(SQRT_$varmap($real8type))
-#define OC_REAL8m_MIN     $varmin($varmap($real8mtype))
-#define OC_REAL8m_MAX     $varmax($varmap($real8mtype))
-#define OC_REALWIDE_MIN   $varmin($varmap($realwidetype))
-#define OC_REALWIDE_MAX   $varmax($varmap($realwidetype))\n\n"
+#define OC_REAL4_MIN         $varmin($varmap($real4type))
+#define OC_REAL4_MAX         $varmax($varmap($real4type))
+#define OC_SQRT_REAL4_MIN    $varmin(SQRT_$varmap($real4type))
+#define OC_SQRT_REAL4_MAX    $varmax(SQRT_$varmap($real4type))
+
+#define OC_REAL4m_MIN        $varmin($varmap($real4mtype))
+#define OC_REAL4m_MAX        $varmax($varmap($real4mtype))
+#define OC_SQRT_REAL4m_MIN   $varmin(SQRT_$varmap($real4mtype))
+#define OC_SQRT_REAL4m_MAX   $varmax(SQRT_$varmap($real4mtype))
+
+#define OC_REAL8_MIN         $varmin($varmap($real8type))
+#define OC_REAL8_MAX         $varmax($varmap($real8type))
+#define OC_SQRT_REAL8_MIN    $varmin(SQRT_$varmap($real8type))
+#define OC_SQRT_REAL8_MAX    $varmax(SQRT_$varmap($real8type))
+
+#define OC_REAL8m_MIN        $varmin($varmap($real8mtype))
+#define OC_REAL8m_MAX        $varmax($varmap($real8mtype))
+#define OC_SQRT_REAL8m_MIN   $varmin(SQRT_$varmap($real8mtype))
+#define OC_SQRT_REAL8m_MAX   $varmax(SQRT_$varmap($real8mtype))
+
+#define OC_REALWIDE_MIN      $varmin($varmap($realwidetype))
+#define OC_REALWIDE_MAX      $varmax($varmap($realwidetype))
+#define OC_SQRT_REALWIDE_MIN $varmin(SQRT_$varmap($realwidetype))
+#define OC_SQRT_REALWIDE_MAX $varmax(SQRT_$varmap($realwidetype))\n\n"
 
    if {![catch {$config GetValue \
          program_compiler_c++_property_fp_double_extra_precision} _]} {
@@ -2093,6 +2068,7 @@ proc Oc_OpenUniqueFile {args} {
     set fn $pfx$sep1$serial$sep2$sfx
     while {[set code [catch {open $fn {CREAT EXCL RDWR}} handle]]} {
        if {![string match {*file already exists} $handle] \
+	    && ![string match {*file exists} $handle] \
             && ![string match {*permission denied} $handle]} {
           # Windows is very prickly on permission wrt accessing
           # files held open by another process.
@@ -2338,7 +2314,6 @@ proc Oc_RatApprox { x steps } {
    return [list [expr {$xsign*$b/$div}] [expr {$a/$div}]]
 }
 
-
 # Robust puts that doesn't squawk if stdout pipe is broken (by '| head',
 # for example).  Note that "puts" is used inside this proc, so don't try
 # renaming puts if using this proc.
@@ -2352,6 +2327,7 @@ proc Oc_RobustPuts { args } {
       }
    }
 }
+
 
 if {![llength [info commands Oc_SetPanicHeader]]} {
 proc Oc_SetPanicHeader {msg} {}

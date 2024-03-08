@@ -31,12 +31,12 @@ Oc_Class Ow_ListBox {
             if {![string match {} $old_variable]} {
                 # Remove old trace, if any
                 upvar #0 $old_variable shadow
-                trace vdelete shadow w "$this SelectItems"
+                trace remove variable shadow write "$this SelectItems"
             }
         }
         if {![catch {upvar #0 $variable shadow}]} {
             # Set new trace
-            trace variable shadow w "$this SelectItems"
+            trace add variable shadow write "$this SelectItems"
         }
         # Make selection and $variable agree
         if {[info exists shadow]} {
@@ -309,7 +309,7 @@ Oc_Class Ow_ListBox {
         catch {
             if {![catch {upvar #0 $variable shadow}]} {
                 # Remove trace
-                trace vdelete shadow w "$this SelectItems"
+                trace remove variable shadow write "$this SelectItems"
             }
         }
 

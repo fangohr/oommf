@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html748"
+<A NAME="tex2html752"
   HREF="Data_Archive_mmArchive.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html744"
+<A NAME="tex2html748"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html738"
+<A NAME="tex2html742"
   HREF="Data_Graph_Display_mmGraph.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html746"
+<A NAME="tex2html750"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html749"
+<B> Next:</B> <A NAME="tex2html753"
   HREF="Data_Archive_mmArchive.html">Data Archive: mmArchive</A>
-<B> Up:</B> <A NAME="tex2html745"
+<B> Up:</B> <A NAME="tex2html749"
   HREF="userguide.html">OOMMF Documentation</A>
-<B> Previous:</B> <A NAME="tex2html739"
+<B> Previous:</B> <A NAME="tex2html743"
   HREF="Data_Graph_Display_mmGraph.html">Data Graph Display: mmGraph</A>
 <BR>
 <BR>
@@ -50,7 +50,7 @@
 <H1><A NAME="SECTION001400000000000000000"></A><A NAME="sec:mmdisp"></A>
 <BR>
 Vector Field Display: mmDisp
-</H1><A NAME="15770"></A>
+</H1><A NAME="16019"></A>
 
 <P>
 <DIV ALIGN="CENTER">
@@ -111,7 +111,7 @@ That file will be opened on startup.
 Input to <B>mmDisp</B> may come from either a file or from a client
 application (typically a running solver), in any of the
 <A HREF="Vector_Field_File_Format_OV.html#sec:vfformats"
- NAME="15801">OOMMF vector field formats</A>.
+ NAME="16050">OOMMF vector field formats</A>.
 Other file formats can also be supported if a translation filter program
 is available.
 
@@ -133,7 +133,7 @@ display window size), or whether their values should be held constant
 while loading the file.
 
 <P>
-<A NAME="15808"></A>
+<A NAME="16057"></A>
 
 <P>
 <B>mmDisp</B> permits local customization allowing for automatic
@@ -148,9 +148,9 @@ format from standard input and writes to standard output the same data
 in one of the formats supported by <B>mmDisp</B>.  In its default
 configuration, <B>mmDisp</B> recognizes the patterns <TT>.gz</TT>, <TT>.z</TT>,
 and <TT>.zip</TT>, and invokes the translation
-program <TT>gzip -dc</TT><A NAME="15824"></A> to perform the
+program <TT>gzip -dc</TT><A NAME="16073"></A> to perform the
 ``translation.''  In this way, support for reading
-compressed<A NAME="15825"></A> files is
+compressed<A NAME="16074"></A> files is
 ``built in'' to <B>mmDisp</B> on any platform where the <B>gzip</B>
 program is installed.
 
@@ -158,7 +158,7 @@ program is installed.
 There are two categories of translations supported: decompression and
 format conversion.  Both are modified by the usual method of
 <A HREF="Local_Customizations.html#sec:install.custom"
- NAME="15832">local customization</A>.  The
+ NAME="16081">local customization</A>.  The
 command governing decompression in the customization file is of the form
 
   <BLOCKQUOTE><PRE>
@@ -200,7 +200,13 @@ Oc_Option Add * Nb_InputFilter ovf {.bar foo}
 This assumes that the program <TT>foo</TT> accepts input of the form
 <TT><B>.bar</B></TT> on standard input and writes the translated results to
 standard output.
-<A NAME="15852"></A>
+<A NAME="16101"></A>
+
+<P>
+The <FONT COLOR="#800000"><B>File|Load config...</B></FONT><A NAME="16103"></A> dialog
+allows one to load a previously saved display configuration file from
+disk to reset the current display. See the <A HREF="#sec:mmdispconfig">Configuration
+Files</A> section below for details.
 
 <P>
 
@@ -208,35 +214,37 @@ standard output.
 <FONT SIZE="+2"><B>Outputs</B></FONT>
 <BR>
 The vector field displayed by <B>mmDisp</B> may be saved to disk via the
-<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="15856"></A> dialog box.  The output
+<FONT COLOR="#800000"><B>File|Save As...</B></FONT><A NAME="16109"></A> dialog box.  The output
 is in the <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="15861">OVF format</A>.  The OVF file
+ NAME="16114">OVF format</A>.  The OVF file
 options may be set by selecting the appropriate radio buttons in the
 OVF File Options panel.  The <FONT COLOR="#800000"><B>Title</B></FONT> and <FONT COLOR="#800000"><B>Desc</B></FONT> fields may be
 edited before saving.  Enabling the <FONT COLOR="#800000"><B>Browse</B></FONT> button allows for
 saving multiple files without closing the ``Save File'' dialog box.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="15866"></A> dialog is used to
+The <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="16119"></A> dialog is used to
 produce a PostScript file of the current display.  On Unix systems, the
 output may be sent directly to a
-printer<A NAME="15867"></A> by filling the
+printer<A NAME="16120"></A> by filling the
 <FONT COLOR="#800000"><B>Print to:</B></FONT> entry with the appropriate pipe command, e.g.,
 |<TT>lpr</TT>.  (The exact form is system dependent.)  The other
 print dialog box options are described in the
 <A HREF="#sec:mmdispconfig">configuration files</A> section below.
 
 <P>
-The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="15873"></A> dialog
+The <FONT COLOR="#800000"><B>File|Write config...</B></FONT><A NAME="16126"></A> dialog
 allows one to save to disk a configuration file holding the current
-display parameters.  This file can be used to affect startup display
-parameters, or used as input to the <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="15878">avf2ppm</A> and
+display and print settings.  Files of this type can be used to control display
+parameters, at start time via the <TT>-config</TT> option or during run time
+through the <FONT COLOR="#800000"><B>File|Load config...</B></FONT> menu option. These files
+can also be used as input to the <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
+ NAME="16133">avf2ppm</A> and
 <A HREF="Making_PostScript_from_Vect.html#sec:avf2ps"
- NAME="15883">avf2ps</A> command line utilities
+ NAME="16138">avf2ps</A> command line utilities
 that convert files from the OVF format into bitmap images and
 PostScript printer files, respectively.  (mmDisp does not provide
-direct support for writing bitmap files.)  Details of the configuration
+internal support for writing bitmap files.)  Details of the configuration
 file are <A HREF="#sec:mmdispconfig">discussed below</A>.
 
 <P>
@@ -283,7 +291,7 @@ display.
 <P>
 Columns 2-4 in the Configure dialog box control the use of color.  Both
 arrows and pixels may be independently colored to indicate some
-quantity<A NAME="15905"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
+quantity<A NAME="16160"></A>.  The <FONT COLOR="#800000"><B>Color Quantity</B></FONT> column
 controls which scalar quantity the color of the arrow or pixel
 represents.  Available color quantities include vector <B><I>x</I></B>, <B><I>y</I></B>, and <B><I>z</I></B>
 components, total vector magnitude, slice depth, and angles as measured
@@ -292,7 +300,7 @@ divergence is also available for display.
 
 <P>
 The assignment of a color to a quantity value is determined by the
-<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="15908"></A> selected.  Colormaps are labeled by a
+<FONT COLOR="#800000"><B>Colormap</B></FONT><A NAME="16163"></A> selected.  Colormaps are labeled by a
 sequence of colors that are mapped across the range of the selected
 quantity.  For example, if the ``Red-Black-Blue'' colormap is applied to
 the <FONT COLOR="#800000"><B>Color Quantity</B></FONT> ``z'', then vectors pointing into the
@@ -360,11 +368,11 @@ axis directions easier.
 
 <P>
 Below the Arrow and Pixel Controls are several additional controls.  The
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="15922"></A><A NAME="html:mmdispdatascale"></A> entry
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="16177"></A><A NAME="HTMLmmdispdatascale"></A> entry
 affects the data value scaling.  As described above, all arrows are
 displayed with length between zero and full-scale.  The full-scale arrow
 length corresponds to some scalar value of the magnitude of the vector
-field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="15925"></A> entry allows the user to
+field.  The <FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="16180"></A> entry allows the user to
 set the value at which the drawn arrow length goes full-scale.  Any
 vectors in the vector field with magnitude equal to or greater than the
 data scale value will be represented by arrows drawn at full scale.
@@ -372,7 +380,7 @@ Other vectors will be represented by shorter arrows with length
 determined by a linear scale between zero and the data scale value.
 Similarly, the data scale value controls the range of values spanned by
 the colormap used to color pixels.  The usual use of the
-<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="15927"></A> entry is to reduce the data
+<FONT COLOR="#800000"><B>Data Scale</B></FONT><A NAME="16182"></A> entry is to reduce the data
 scale value so that more detail can be seen in those portions of
 the vector field which have magnitude less than other parts of the
 vector field.
@@ -386,7 +394,7 @@ value.  The initial (default) data scale value is usually the maximum
 vector magnitude in the field, so at this setting no arrows are
 truncated.  Entering <TT><B>0</B></TT> into the data scale box will cause the data
 scale to be reset to the default value.  (For <A HREF="OVF_1.0_format.html#sec:ovfformat"
- NAME="15933">OVF files</A>,
+ NAME="16188">OVF files</A>,
 the default data scale value is set from the <TT>ValueRangeMaxMag</TT>
 header line.  This is typically set to the maximum vector magnitude, but
 this is not guaranteed.)  The data scale control is intended primarily
@@ -395,7 +403,7 @@ may also be used to adjust the pixel display contrast for any field
 type.
 
 <P>
-The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="15936"></A> entry controls the spatial scaling of
+The <FONT COLOR="#800000"><B>Zoom</B></FONT><A NAME="16191"></A> entry controls the spatial scaling of
 the display.  The value roughly corresponds to the number of pixels per
 vector in the fully-sampled vector field.  (This value is not affected
 by the subsampling rate.)
@@ -405,7 +413,7 @@ The <FONT COLOR="#800000"><B>Margin</B></FONT> entry specifies the margin size, 
 maintained around the vector field.
 
 <P>
-The next row of entry boxes control slice<A NAME="15938"></A>
+The next row of entry boxes control slice<A NAME="16193"></A>
 display.  Slice selection allows display of that subset of the data
 that is within a specified distance of a plane running perpendicular
 to the view axis.  The location of that plane with respect to the view
@@ -424,7 +432,7 @@ documentation for more on mesh spatial units.)
 
 <P>
 Below the slice contols are controls to specify whether or not a
-bounding polygon<A NAME="15946"></A> is displayed, and the background
+bounding polygon<A NAME="16201"></A> is displayed, and the background
 color for the display window.
 
 <P>
@@ -432,6 +440,19 @@ No changes made by the user in the <FONT COLOR="#800000"><B>Options|Configure...
 <FONT COLOR="#800000"><B>Apply</B></FONT> or <FONT COLOR="#800000"><B>OK</B></FONT> button is selected.  If the <FONT COLOR="#800000"><B>OK</B></FONT> button is
 selected, the dialog box is also dismissed.  The <FONT COLOR="#800000"><B>Close</B></FONT>
 button dismisses the dialog without changing the display window.
+
+<P>
+The following item on the <FONT COLOR="#800000"><B>Options</B></FONT> menu is <FONT COLOR="#800000"><B>Options|Copy
+  configuration to clipboard</B></FONT>, which copies the current display and
+print configuration onto the system clipboard. This is plain text data
+as described in the <A HREF="#sec:mmdispconfig">configuration files</A>
+section. It can be copied into an editor for modification before
+saving to disk, or one can use the <FONT COLOR="#800000"><B>Options|Paste configuration
+  from clipboard</B></FONT> control to copy directly from the clipboard into
+another instance of <B>mmDisp</B>, which changes the configuration of the
+second <B>mmDisp</B> to match the first. Use the keyboard shortcuts
+<TT><B>Ctrl+Shift+C</B></TT> and <TT><B>Ctrl+Shift+V</B></TT>, respectively, to quickly
+invoke these operations.
 
 <P>
 The next item under the <FONT COLOR="#800000"><B>Options</B></FONT> menu is a checkbutton that
@@ -455,6 +476,17 @@ current data scale value and zoom (spatial magnification).  A vertical
 bar in the slider area marks the default data scale value.  Specifying
 <TT><B>0</B></TT> for the data scale value will reset the data scale to the
 default value.
+
+<P>
+Similar to <A HREF="Data_Graph_Display_mmGraph.html#sec:mmgraph"
+ NAME="16224"><B>mmGraph</B></A>, the mouse can be
+used to extract field values and positions from the display
+window. Depressing the <TT><B>Shift</B></TT> key and the left mouse button will
+open a pop-up showing the field value at the mouse pointer
+position. Holding down the <TT><B>Ctrl</B></TT>+<TT><B>Shift</B></TT> keys while pressing
+the left mouse button will show both the position and value. The pop-up
+disappears when the mouse button is released, unless the <TT><B>Shift</B></TT> key
+is released before the mouse.
 
 <P>
 The spatial magnification may be changed either by typing a value in the
@@ -494,12 +526,12 @@ field so that the selected point is centered within the display window.
 
 <P>
 <B>mmDisp</B> remembers the previous zoom value and data scale values.
-To revert to the previous settings, the user may hit the <TT><B>ESC</B></TT> key.
+To revert to the previous settings, the user may hit the <TT><B>Esc</B></TT> key.
 This is a limited ``Undo'' feature.
 
 <P>
 Below the data scale and zoom controls in the control bar is the slice
-center selection control<A NAME="15958"></A>.  This will be
+center selection control<A NAME="16231"></A>.  This will be
 labeled <FONT COLOR="#800000"><B>Z-slice</B></FONT>, <FONT COLOR="#800000"><B>X-slice</B></FONT>, or <FONT COLOR="#800000"><B>Y-slice</B></FONT>, depending on
 which view axis is selected.  The thickness of the slice can be set
 from the <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog box.
@@ -517,8 +549,8 @@ disables this behavior, and also other viewport changing operations
 Several keyboard shortcuts are available as alternatives to menu- or
 mouse-based operations.  (These are in addition to the usual keyboard
 access to the menu.)  The effect of a key combination depends on which
-subwindow of <B>mmDisp</B> is active.  The <TT><B>TAB</B></TT> key may be used to
-change the active subwindow.  The <TT><B>SHIFT-TAB</B></TT> key combination also
+subwindow of <B>mmDisp</B> is active.  The <TT><B>Tab</B></TT> key may be used to
+change the active subwindow.  The <TT><B>Shift+Tab</B></TT> key combination also
 changes the active subwindow, in reverse order.
 
 <P>
@@ -526,50 +558,50 @@ When the active subwindow is the display window, the following
 key combinations are active:
 
 <UL>
-<LI><TT><B>CTRL-o</B></TT> - same as menu selection <FONT COLOR="#800000"><B>File|Open...</B></FONT>
+<LI><TT><B>Ctrl+o</B></TT> - same as menu selection <FONT COLOR="#800000"><B>File|Open...</B></FONT>
 </LI>
-<LI><TT><B>CTRL-s</B></TT> - same as menu selection
-                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="15974"></A>
+<LI><TT><B>Ctrl+s</B></TT> - same as menu selection
+                       <FONT COLOR="#800000"><B>File|Save as...</B></FONT><A NAME="16247"></A>
 </LI>
-<LI><TT><B>CTRL-p</B></TT> - same as menu selection
-                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="15977"></A>
+<LI><TT><B>Ctrl+p</B></TT> - same as menu selection
+                       <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="16250"></A>
 </LI>
-<LI><TT><B>CTRL-c</B></TT> - same as menu selection
+<LI><TT><B>Ctrl+c</B></TT> - same as menu selection
         <FONT COLOR="#800000"><B>Options|Configure...</B></FONT>
 </LI>
-<LI><TT><B>CTRL-v</B></TT> - launches viewpoint selection menu,
+<LI><TT><B>Ctrl+v</B></TT> - launches viewpoint selection menu,
         <FONT COLOR="#800000"><B>View|Viewpoint</B></FONT>
 </LI>
-<LI><TT><B>CTRL-w</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Wrap Display</B></FONT>
+<LI><TT><B>Ctrl+w</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Wrap Display</B></FONT>
 </LI>
-<LI><TT><B>CTRL-f</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Fill Display</B></FONT>
+<LI><TT><B>Ctrl+f</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Fill Display</B></FONT>
 </LI>
-<LI><TT><B>HOME</B></TT> - First fill, then wrap the display.
+<LI><TT><B>Home</B></TT> - First fill, then wrap the display.
 </LI>
-<LI><TT><B>CTRL-space</B></TT> -
+<LI><TT><B>Ctrl+space</B></TT> -
  same as menu selection <FONT COLOR="#800000"><B>View|Center Display</B></FONT>
 </LI>
-<LI><TT><B>CTRL-r</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate ccw</B></FONT>
+<LI><TT><B>Ctrl+r</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate ccw</B></FONT>
 </LI>
-<LI><TT><B>SHIFT-CTRL-r</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate cw</B></FONT>
+<LI><TT><B>Ctrl+Shift+r</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate cw</B></FONT>
 </LI>
-<LI><TT><B>INSERT</B></TT> - decrease arrow subsample by 1
+<LI><TT><B>Insert</B></TT> - decrease arrow subsample by 1
 </LI>
-<LI><TT><B>DEL</B></TT> - increase arrow subsample by 1
+<LI><TT><B>Del</B></TT> - increase arrow subsample by 1
 </LI>
-<LI><TT><B>SHIFT-INSERT</B></TT> - decrease arrow subsample by factor of 2
+<LI><TT><B>Shift+Insert</B></TT> - decrease arrow subsample by factor of 2
 </LI>
-<LI><TT><B>SHIFT-DEL</B></TT> - increase arrow subsample by factor of 2
+<LI><TT><B>Shift+Del</B></TT> - increase arrow subsample by factor of 2
 </LI>
-<LI><TT><B>PAGEUP</B></TT> - increase the zoom value by a factor of 1.149
+<LI><TT><B>Page&nbsp;Up</B></TT> - increase the zoom value by a factor of 1.149
 </LI>
-<LI><TT><B>PAGEDOWN</B></TT> - decrease the zoom value by a factor of 1.149
+<LI><TT><B>Page&nbsp;Down</B></TT> - decrease the zoom value by a factor of 1.149
 </LI>
-<LI><TT><B>SHIFT-PAGEUP</B></TT> - increase the zoom value by factor of 2
+<LI><TT><B>Shift+Page&nbsp;Up</B></TT> - increase the zoom value by factor of 2
 </LI>
-<LI><TT><B>SHIFT-PAGEDOWN</B></TT> - decrease the zoom value by factor of 2
+<LI><TT><B>Shift+Page&nbsp;Down</B></TT> - decrease the zoom value by factor of 2
 </LI>
-<LI><TT><B>ESC</B></TT> - revert to previous data scale and zoom values
+<LI><TT><B>Esc</B></TT> - revert to previous data scale and zoom values
 </LI>
 </UL>
 
@@ -578,9 +610,9 @@ When the active subwindow is the control bar's coordinate axes display,
 the following key combinations are active:
 
 <UL>
-<LI><TT><B>LEFT</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate ccw</B></FONT>
+<LI><TT><B>Left</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate ccw</B></FONT>
 </LI>
-<LI><TT><B>RIGHT</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate cw</B></FONT>
+<LI><TT><B>Right</B></TT> - same as menu selection <FONT COLOR="#800000"><B>View|Rotate cw</B></FONT>
 </LI>
 </UL>
 
@@ -590,9 +622,9 @@ windows - arrow subsample, size, data scale or zoom, the following key
 combinations are active:
 
 <UL>
-<LI><TT><B>ESC</B></TT> - undo uncommitted value (displayed in red)
+<LI><TT><B>Esc</B></TT> - undo uncommitted value (displayed in red)
 </LI>
-<LI><TT><B>RETURN</B></TT> - commit entered value
+<LI><TT><B>Return</B></TT> - commit entered value
 </LI>
 </UL>
 
@@ -602,26 +634,26 @@ subsample, data scale or slice--the following key combinations are
 active:
 
 <UL>
-<LI><TT><B>LEFT</B></TT> - slide left (decrease value)
+<LI><TT><B>Left</B></TT> - slide left (decrease value)
 </LI>
-<LI><TT><B>RIGHT</B></TT> - slide right (increase value)
+<LI><TT><B>Right</B></TT> - slide right (increase value)
 </LI>
-<LI><TT><B>ESC</B></TT> - undo uncommitted value (displayed in red)
+<LI><TT><B>Esc</B></TT> - undo uncommitted value (displayed in red)
 </LI>
-<LI><TT><B>RETURN</B></TT> - commit current value
+<LI><TT><B>Return</B></TT> - commit current value
 </LI>
 </UL>
 
 <P>
 When any of the separate dialog windows are displayed (e.g., the
 <FONT COLOR="#800000"><B>File|Open...</B></FONT> or <FONT COLOR="#800000"><B>Options|Configure...</B></FONT>
-dialogs), the shortcut <TT><B>CTRL-.</B></TT> (control-period) will raise and
+dialogs), the shortcut <TT><B>Ctrl+.</B></TT> (control-period) will raise and
 transfer keyboard focus back to the root <B>mmDisp</B> window.
 
 <P>
 
 <P>
-<FONT SIZE="+2"><B>Configuration files</B></FONT>
+<FONT SIZE="+2"><B>Configuration Files</B></FONT>
 <BR><A NAME="sec:mmdispconfig"></A>The various initial display parameters (e.g., window size, orientation,
 colormap) are set by configuration files.  The default configuration
 file
@@ -659,7 +691,7 @@ the <TT>plot_config</TT> array:
 <DD>Set to 1 to display arrows, 0 to not draw arrows.
 </DD>
 <DT><STRONG><TT><B>arrow,autosample</B></TT></STRONG></DT>
-<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="16051"></A> and
+<DD>If 1, then ignore the value of <TT>arrow,subsample</TT><A NAME="16324"></A> and
  automatically determine a ``reasonable'' subsampling rate for the
  arrows.  Set to 0 to turn off this feature.
 </DD>
@@ -674,12 +706,12 @@ the <TT>plot_config</TT> array:
   <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog.
 </DD>
 <DT><STRONG><TT><B>arrow,colorcount</B></TT></STRONG></DT>
-<DD>Number of discretization<A NAME="16059"></A> levels to use
+<DD>Number of discretization<A NAME="16332"></A> levels to use
   from the colormap.  A value of zero will color all arrows with the
   first color in the colormap.
 </DD>
 <DT><STRONG><TT><B>arrow,quantity</B></TT></STRONG></DT>
-<DD>Scalar quantity the arrow color<A NAME="16061"></A> is to represent.
+<DD>Scalar quantity the arrow color<A NAME="16334"></A> is to represent.
  Supported values include <TT>x</TT>, <TT>y</TT>, <TT>z</TT>, <TT>xy-angle</TT>,
  <TT>xz-angle</TT>, <TT>yz-angle</TT>, and <TT>slice</TT>.  The
  <FONT COLOR="#800000"><B>Options|Configure...</B></FONT> dialog presents the complete list of
@@ -728,7 +760,7 @@ the <TT>plot_config</TT> array:
 <DD>Specify the background color.
 </DD>
 <DT><STRONG><TT><B>misc,drawboundary</B></TT></STRONG></DT>
-<DD>If 1, then draw the bounding polygon<A NAME="16092"></A>, if any, as
+<DD>If 1, then draw the bounding polygon<A NAME="16365"></A>, if any, as
  specified in the input vector field file.
 </DD>
 <DT><STRONG><TT><B>misc,boundarycolor</B></TT></STRONG></DT>
@@ -738,7 +770,7 @@ the <TT>plot_config</TT> array:
 <DD>Width of the bounding polygon, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,margin</B></TT></STRONG></DT>
-<DD>The size of the border margin<A NAME="16096"></A>, in pixels.
+<DD>The size of the border margin<A NAME="16369"></A>, in pixels.
 </DD>
 <DT><STRONG><TT><B>misc,defaultwindowwidth</B></TT>, <TT><B>misc,defaultwindowheight</B></TT></STRONG></DT>
 <DD>Width and height of initial display viewport, in pixels.
@@ -749,7 +781,7 @@ the <TT>plot_config</TT> array:
  ignored during <B>mmDisp</B> initialization, but are written out by the
  <FONT COLOR="#800000"><B>File|Write config...</B></FONT> command as a convenience for the
  <A HREF="Making_Bitmaps_from_Vector_.html#sec:avf2ppm"
- NAME="16107">avf2ppm</A> command line
+ NAME="16380">avf2ppm</A> command line
  utility.
 </DD>
 <DT><STRONG><TT><B>misc,rotation</B></TT></STRONG></DT>
@@ -765,7 +797,7 @@ the <TT>plot_config</TT> array:
 </DD>
 <DT><STRONG><TT><B>misc,datascale</B></TT></STRONG></DT>
 <DD>Scale for arrow size and colormap ranges; equivalent to the
- <A HREF="#html:mmdispdatascale"><TT>Data Scale</TT> control</A>.  In general,
+ <A HREF="#HTMLmmdispdatascale"><TT>Data Scale</TT> control</A>.  In general,
  this should be a positive real value, but a zero or empty value will
  set the scaling to its default setting.
 </DD>
@@ -807,7 +839,7 @@ the <TT>plot_config</TT> array:
 
 <P>
 The <TT>print_config</TT> array controls printing defaults, as displayed in
-the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="16140"></A> dialog box:
+the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="16413"></A> dialog box:
 <DL>
 <DT><STRONG><TT><B>orient</B></TT></STRONG></DT>
 <DD>Paper orientation, either landscape or portrait.
@@ -833,10 +865,13 @@ the <FONT COLOR="#800000"><B>File|Print...</B></FONT><A NAME="16140"></A> dialog
  dimension.  In particular, the x/y-scaling ratio remains 1:1.
 </DD>
 <DT><STRONG><TT><B>croptoview</B></TT></STRONG></DT>
-<DD>Boolean value, either 0 or 1.  If 1 (true), then the print
- output is cropped to display only that portion of the vector field that
- is visible in the display window.  If 0, then the display is ignored
- and the output is scaled so that the entire vector field is printed.
+<DD>Boolean value, either 0 or 1. If set to the default value 1 (true),
+ then the output is cropped to display only that portion of the vector
+ field that is visible in the display window.  If 0, then the display is
+ ignored and the entire vector field is printed, scaled to fit in the
+ dimensions specified by <TT>pwidth</TT> and <TT>pheight</TT>. In this case the
+ <TT>plot_config(misc,zoom)</TT> is used to control arrow and pixel
+ autosampling behavior (if enabled), but is otherwise ignored.
 </DD>
 </DL>
 
@@ -897,7 +932,7 @@ Figure 13.1:
 <P>
 The selection of vectors for display determined by the
 <FONT COLOR="#800000"><B>Subsample</B></FONT> value differs depending on whether or not the data
-lie on a regular grid<A NAME="16166"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
+lie on a regular grid<A NAME="16442"></A>.  If so, <FONT COLOR="#800000"><B>Subsample</B></FONT> takes integer
 values and determines the ratio of data points to displayed points.  For
 example, a value of 5 means that every fifth vector on the grid is
 displayed.  This means that the number of vectors displayed is 25 times
@@ -925,20 +960,20 @@ meshes.
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html748"
+<A NAME="tex2html752"
   HREF="Data_Archive_mmArchive.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html744"
+<A NAME="tex2html748"
   HREF="userguide.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html738"
+<A NAME="tex2html742"
   HREF="Data_Graph_Display_mmGraph.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html746"
+<A NAME="tex2html750"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

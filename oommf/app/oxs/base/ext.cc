@@ -26,26 +26,35 @@ OxsExtUserOutput::LookupSource
 (const char* instance_name)
 { // NB: This function assumes that member variable "director"
   // has been set.
-  if(source_field==NULL) {
+  if(source_field==nullptr) {
     // Source field lookup hasn't been performed yet;
     // Do it now, and increment source field cache
     // request.
-    if(source_field_name.find(':')==String::npos) {
+    String srcname = source_field_name; // Working copy
+    if(srcname.find(':')==String::npos) {
       // Local reference; change to full name
-      source_field_name.insert(0,":");
-      source_field_name.insert(0,instance_name);
+      srcname.insert(0,":");
+      srcname.insert(0,instance_name);
     }
     Oxs_Output* outcheck =
-      director->FindOutputObjectExact(source_field_name.c_str());
-    if(outcheck==NULL) {
+      director->FindOutputObjectExact(srcname.c_str());
+    if(outcheck==nullptr) {
+      // Exact match not found. Try regexp match on original
+      // source_field_name (not srcname).
+      outcheck = director->FindOutputObject(source_field_name.c_str());
+    }
+    if(outcheck==nullptr) {
       String msg = String("Unable to identify source field \"")
         + source_field_name + String("\" for user output \"")
         + name + String("\".");
       throw msg;
     }
-    source_field =
-      dynamic_cast<Oxs_VectorFieldOutputCache*>(outcheck);
-    if(source_field==NULL) {
+    source_field = dynamic_cast<Oxs_FieldOutput<ThreeVector>*>(outcheck);
+    if(source_field == nullptr ||
+       (dynamic_cast<Oxs_FieldOutputCacheControl<ThreeVector>*>
+          (source_field) == nullptr &&
+        dynamic_cast<Oxs_SimStateFieldOutputCacheControl<ThreeVector>*>
+          (source_field) == nullptr)) {
       String msg= String("Source output \"")
         + source_field_name
         + String("\" requested by user output \"")
@@ -58,11 +67,7 @@ OxsExtUserOutput::LookupSource
     // decremented when uo is destroyed, provided that
     // source_field is still registered with the director
     // at that time.
-    if(source_field->CacheRequestIncrement(1)) {
-      source_cacheable = 1;
-    } else {
-      source_cacheable = 0;
-    }
+    source_field->CacheRequestIncrement(1);
 
     // If output units were not specified by user, copy value
     // from source.
@@ -84,10 +89,8 @@ OxsExtUserOutput::~OxsExtUserOutput()
     // decrement the cache request, to pair with the increment
     // that is performed when uo is linked to source_field
     // (cf. Oxs_Ext::Init()).
-    if(source_cacheable) {
       source_field->CacheRequestIncrement(-1);
     }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -103,12 +106,14 @@ Oxs_Ext::~Oxs_Ext()
 }
 
 Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr)
-  : instanceId(idname), director(dtr) {}
+  : instanceId(idname), director(dtr) {
+  director->GetAllMifOptions(mif_options); // Store MIF options snapshot
+}
 
 // Helper function for extended constructor (see below)
 void Oxs_Ext::AddNewInitStringPair
 (const String& key,
- const String& value) 
+ const String& value)
 { // If key is already in init_strings, throw an exception.
   // Otherwise, add key+value to init_strings.
   map<String,String>::const_iterator it = init_strings.find(key);
@@ -127,6 +132,7 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
   : instanceId(idname), director(dtr)
 {
   int i;
+  director->GetAllMifOptions(mif_options); // Store MIF options snapshot
 
   // Use Tcl_SplitList to break argstr into components
   Nb_SplitList arglist;
@@ -343,7 +349,7 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
 
       // Output object initialization and registration
       uo.output.Setup(this,InstanceName(),uo.name.c_str(),
-                      uo.units.c_str(),1,
+                      uo.units.c_str(),
                       &Oxs_Ext::Fill__user_outputs_init,
                       &Oxs_Ext::Fill__user_outputs,
                       &Oxs_Ext::Fill__user_outputs_fini,
@@ -360,9 +366,9 @@ Oxs_Ext::Oxs_Ext(const char* idname,Oxs_Director* dtr,
 }
 
 
-OC_BOOL Oxs_Ext::Init()
-{ // NOTE: Any child that overrides the default Oxs_Ext::Init()
-  // function should embed a call to Oxs_Ext::Init() for proper
+OC_BOOL Oxs_Ext::PreInit()
+{ // NOTE: Any child that overrides the default Oxs_Ext::PreInit()
+  // function should embed a call to Oxs_Ext::PreInit() for proper
   // initialization of general Oxs_Ext members (in particular,
   // user outputs).
 
@@ -811,7 +817,7 @@ Oxs_Ext::GetGroupedStringListInitValue
     // Grouped list.  Replace OXSEXT_EXPAND_KEY keyword with the
     // implicit full string group count of 1.
     strvals.back() = String("1");
-    
+
     // Expand
     try {
       ExpandList(strvals,expanded_list);
@@ -1358,10 +1364,9 @@ Oxs_Ext::Fill__user_outputs_init
     if(output.cache.state_id == state.Id()) {
       continue;  // Already done
     }
-
     output.cache.state_id = 0;
 
-    if(uo.source_field==NULL) {
+    if(uo.source_field==nullptr) {
       // Source field lookup hasn't been performed yet;
       // Do it now.
       uo.LookupSource(InstanceName());
@@ -1369,29 +1374,7 @@ Oxs_Ext::Fill__user_outputs_init
 
     // Initialize source field.  When chunk vector fields
     // are coded, call their initializer instead.
-    if(uo.source_field->cache.state_id != state.Id()) {
-      if(uo.source_cacheable) {
-        if(!uo.source_field->UpdateCache(&state)) {
-          char item1[4000];
-          Oc_EllipsizeMessage(item1,sizeof(item1),
-                              uo.source_field_name.c_str());
-          char item2[4000];
-          Oc_EllipsizeMessage(item2,sizeof(item2),
-                              uo.name.c_str());
-          char buf[9000];
-          Oc_Snprintf(buf,sizeof(buf),
-                      "Source output \"%.4000s\" for user output"
-                      " \"%.4000s\" has not been and is unable to"
-                      " be updated for state %d (source field"
-                      " state id = %d)",
-                      item1,item2,
-                      state.Id(),uo.source_field->cache.state_id);
-          throw Oxs_ExtError(this,buf);
-        }
-      } else {
-        uo.source_field->FillBuffer(&state,uo.source_buffer);
-      }
-    }
+    uo.source_field->UpdateCache(&state);
 
     // Initialize selector and selector scaling
     if(!uo.selector.CheckMesh(state.mesh)) {
@@ -1439,7 +1422,7 @@ Oxs_Ext::Fill__user_outputs_init
 
 void
 Oxs_Ext::Fill__user_outputs
-(const Oxs_SimState& /* state */,
+(const Oxs_SimState& state,
  OC_INDEX node_start,
  OC_INDEX node_stop,
  int threadnumber)
@@ -1452,9 +1435,13 @@ Oxs_Ext::Fill__user_outputs
     if(output.cache.state_id != 0) {
       continue;
     }
-    const Oxs_MeshValue<ThreeVector>& source
-      = (uo.source_cacheable
-         ? uo.source_field->cache.value : uo.source_buffer);
+    const Oxs_MeshValue<ThreeVector>* sourceptr
+      = uo.source_field->GetCacheBuffer(&state);
+    if(sourceptr == nullptr) {
+      throw Oxs_ExtError(this,"Programming error;"
+                         " source field cache buffer not available.");
+    }
+    const Oxs_MeshValue<ThreeVector>& source = *sourceptr;
     const Oxs_MeshValue<ThreeVector>& selector = uo.selector;
 
     OC_REAL8m sum=0.0;
@@ -1463,7 +1450,7 @@ Oxs_Ext::Fill__user_outputs
     }
 
     uo.chunk_storage[threadnumber] += sum;
-    
+
   } // index<user_output.GetSize()
 }
 

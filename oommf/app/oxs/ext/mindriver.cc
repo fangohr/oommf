@@ -13,6 +13,7 @@
 #include "minevolver.h"
 #include "key.h"
 #include "mesh.h"
+#include "oxswarn.h"
 #include "energy.h"		// Needed to make MSVC++ 5 happy
 
 OC_USE_STRING;
@@ -68,7 +69,7 @@ Oxs_MinDriver::GetInitialState() const
 
 
 OC_BOOL Oxs_MinDriver::Init()
-{ 
+{
   Oxs_Driver::Init();  // Run init routine in parent.
   /// This will call Oxs_MinDriver::GetInitialState().
 
@@ -171,14 +172,23 @@ void Oxs_MinDriver::FillStateMemberData
  Oxs_SimState& new_state) const
 {
   Oxs_Driver::FillStateMemberData(old_state,new_state);
+}
 
+void Oxs_MinDriver::FillStateSupplemental
+(const Oxs_SimState& old_state,
+ Oxs_SimState& work_state) const
+{
   // Copy over values from old_state for time indexes, since
   // with mindriver time is not advanced.  Perhaps the time index
   // variables should be moved over to the WOO area in simstate?
-  new_state.stage_start_time   = old_state.stage_start_time;
-  new_state.stage_elapsed_time = old_state.stage_elapsed_time;
-  new_state.last_timestep      = old_state.last_timestep;
+  work_state.stage_start_time   = old_state.stage_start_time;
+  work_state.stage_elapsed_time = old_state.stage_elapsed_time;
+  work_state.last_timestep      = old_state.last_timestep;
+
+  // Base and user specified state initialization, if any.
+  Oxs_Driver::FillStateSupplemental(old_state,work_state);
 }
+
 
 OC_REAL8m
 Oxs_MinDriver::GetTotalEnergy(const Oxs_SimState& tstate) const
@@ -241,7 +251,7 @@ void Oxs_MinDriver::FillNewStageStateDerivedData
 OC_BOOL
 Oxs_MinDriver::Step
 (Oxs_ConstKey<Oxs_SimState> base_state,
- const Oxs_DriverStepInfo& stepinfo,
+ Oxs_DriverStepInfo& stepinfo,
  Oxs_ConstKey<Oxs_SimState>& next_state)
 { // Returns true if step was successful, false if
   // unable to step as requested.
@@ -258,6 +268,7 @@ Oxs_MinDriver::Step
 OC_BOOL
 Oxs_MinDriver::InitNewStage
 (Oxs_ConstKey<Oxs_SimState> state,
+ Oxs_DriverStageInfo& stageinfo,
  Oxs_ConstKey<Oxs_SimState> prevstate)
 {
   // Put write lock on evolver in order to get a non-const
@@ -266,5 +277,5 @@ Oxs_MinDriver::InitNewStage
   // is destroyed.
   Oxs_Key<Oxs_MinEvolver> temp_key = evolver_key;
   Oxs_MinEvolver& evolver = temp_key.GetWriteReference();
-  return evolver.InitNewStage(this,state,prevstate);
+  return evolver.InitNewStage(this,state,prevstate,stageinfo);
 }

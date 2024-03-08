@@ -213,9 +213,9 @@ ThreeVector STT_paralle_p;
 ThreeVector STT_perp_s;
 ThreeVector STT_perp_p;
 Oxs_MeshValue<ThreeVector> oersted_field;
-int pom;
+/* int pom;  // Not used */
 OC_UINT4m state_num;
-int dimY,dimX,dimZ,dimXY,cooXYZ;
+/* int dimY,dimX,dimZ,dimXY,cooXYZ; // Not used */
 OC_REAL8m distance;
 OC_REAL8m area_x, area_y, area_z, delta_x, delta_y, delta_z;
 
@@ -346,7 +346,7 @@ OC_REAL8m area_x, area_y, area_z, delta_x, delta_y, delta_z;
 	OC_REAL8m Rs_p;
 OC_REAL8m work_mode;
 OC_REAL8m oe_mode;
-  OC_REAL8m aJ;
+  /*  OC_REAL8m aJ; // Not used */
   OC_REAL8m eta0;		// STT efficiency, typically 0.7
   OC_REAL8m hbar;
   OC_REAL8m el;
@@ -381,7 +381,7 @@ public:
   virtual  OC_BOOL
   Step(const Oxs_TimeDriver* driver,
        Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_Key<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.

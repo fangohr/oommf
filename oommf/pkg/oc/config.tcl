@@ -363,7 +363,46 @@ Oc_Class Oc_Config {
        # primarily by external extension writers.  This value is
        # echoed in the ocport.h header by the Oc_MakePortHeader proc
        # in oc/procs.tcl. Format is "yyyymmdd".
-       return 20181207
+       # History:
+       #
+       #  20110716 : Introduction of OommfApiIndex (Git commit 69d4aab6)
+       #
+       #  20110628 : Refined OommfApiIndex value and dependencies (Git
+       #             commit 0309f72b)
+       #
+       #  20120925 : Preparation for OOMMF 1.2a5 release (Git commit
+       #             48f6e158)
+       #
+       #  20120928 : Bump snapshot dates for 1.2a5 release (Git commit
+       #             181b7d53)
+       #
+       #  20150129 : Oxs_ChunkEnergy changes (Git commit d5972783)
+       #
+       #  20170801 : Added energy_density_error_estimate to struct
+       #             Oxs_ComputeEnergyData (Git commit a5db5a46)
+       #
+       #  20170916 : Changed ComputeEnergyChunk API (Git commit cae53ef7)
+       #
+       #  20181207 : Refactor oxs/ext/demagcoef.{h,cc} demag tensor
+       #             initialization, November 2018 (Git commits 8be76952
+       #             through 706c998a)
+       #
+       #  20191207 : Plumbing updates to allow Oxs_Ext (and in
+       #             particular Oxs_Energy) objects to request automatic
+       #             computation of total H field. (Git commits 6edd6e9d
+       #             and 1f5d58ef, branch thermalexchange)
+       #
+       #  20201225 : Modification of Oxs_ComputeEnergies signature to
+       #             allow it to directly attach computed H field and
+       #             torque to corresponding Oxs_SimState object. Needed
+       #             by Oxs_AndCamExch for implementation of mean field
+       #             exchange computation of Anderson and Camley. (Git
+       #             commit fc8e532b, branch thermalexchange)
+       #
+       #  20230325 : Introduction of Oxs_StateInitializer class to allow
+       #             Oxs_SimState modification control from MIF files.
+       #
+       return 20230325
     }
 
     method CrossCompileSummary {} {
@@ -640,7 +679,8 @@ Oc_Class Oc_Config {
              catch {unset threaded}
              append ret "\n"
           } else {
-             append ret "                  \t --> RUN ERROR\n"
+             append ret "                  \t\
+                         --> RUN ERROR: $target_tcl_info\n"
           }
           catch {unset target_tcl_info}
        } else {
@@ -1231,7 +1271,7 @@ Oc_Class Oc_Config {
           return 0  ;# Can't open file
        }
        gets $f line
-       while {![eof $f] && ![string match "#define*TCL_VERSION*" $line]} {
+       while {![eof $f] && ![string match "#*define*TCL_VERSION*" $line]} {
           gets $f line	    
        }
        close $f

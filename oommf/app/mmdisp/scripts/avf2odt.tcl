@@ -28,20 +28,27 @@
 #                in the output data table.  "expr-expression" is a
 #                Tcl expr expression which is applied point-by-point
 #                on the input file before any averaging is done.
-#                Available variables are x, y, z, vx, vy, vz.  A
-#                couple of examples are
-#                    Ms A/m {sqrt($vx*$vx+$vy*$vy+$vz*$vz)}
+#                Available variables are x, y, z, r, vx, vy, vz, vmag.
+#                A couple of examples are
+#                    Ms A/m $vmag
 #                    M110 A/m {($vx+$vy)*0.70710678}
+#   wgtfuncs -- An expr-expression specifying a pointwise scaling and an
+#               integer that keeps (0) or drops (>0) zero-valued points
+#               from the average. The variables available for the
+#                expr-expression are the same as for valfuncs.
 #   defaultvals -- 1 or 0.  If 1, the vx, vy, and vz are included
 #                automatically in output table.  If 0, then only
 #                columns specified by the "functions" option are
 #                output.
-#
 #   defaultpos  -- 1 or 0.  If 1, the x, y, and/or z point coordinate
 #                values (as appropriate for averaging type) are
 #                automatically included in output table.  If 0, then
 #                these values are not automatically output, but may be
 #                included as desired through the valfuncs functionality.
+#   extravals   -- 1 or 0.  If 1, then columns for L1, L2 norms
+#                and min and max absolute component values are included.
+#                L1 column is (\sum_i |vx|+|vy|+|vz|)/point_count,
+#                L2 column is sqrt((\sum_i v*v)/point_count).
 #
 # The active volume is set from range, if set.  Otherwise,
 # rrange is used.  If neither is set, the default is the
@@ -54,7 +61,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2odt
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 
@@ -117,6 +124,14 @@ Oc_CommandLine Option valfunc {
 } { global wma
     lappend wma(valfuncs) $label $units $fcnexpr
 } {  Add ptwise functional output column} multi
+
+set wma(wgtfuncs) {}
+Oc_CommandLine Option wgtfunc {
+   {fcnexpr {} {is expr with $x, $vx, ..., $r, $vmag}}
+   {exclude_zeros {} {= 1 excludes 0-valued points from average}}
+} { global wma
+    lappend wma(wgtfuncs) $fcnexpr $exclude_zeros
+} {Pointwise weighting} multi
 
 set wma(defaultpos) 1
 Oc_CommandLine Option defaultpos {

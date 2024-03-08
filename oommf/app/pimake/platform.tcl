@@ -98,8 +98,9 @@ Oc_Class Platform {
        set ret {}
        set script [$configuration GetValue script_filename_static_library]
        if {[string length $script]} {
+          set pkgroot [file join [Oc_Main GetOOMMFRootDir] pkg]
           foreach stem $stemlist {
-             set pkgdir [file join .. .. pkg $stem]
+             set pkgdir [file join $pkgroot $stem]
              if {[file isdirectory $pkgdir]} {
                 lappend ret [file join $pkgdir $platformName \
                                  [eval $script $stem]]
@@ -258,13 +259,6 @@ Oc_Class Platform {
 	       }
             }
         }
-        if {![catch {$configuration GetValue program_linker_extra_args} flags]} {
-	   foreach elt $flags {
-	      if {[lsearch -exact $ret $elt]==-1} {
-		 lappend ret $elt
-	      }
-	   }
-        }
         return $ret
     }
 
@@ -396,6 +390,10 @@ Oc_Class Platform {
         if {[llength $args]} {
             return -code error "Expected option, but saw '[lindex $args 0]'"
         }
+        if {![catch {$configuration GetValue program_linker_extra_args} flags]} {
+           set linkcmd [concat $linkcmd $flags]
+        }
+
 	# Workaround for ${DBGX} values sprinkled in old broken
 	# tclConfig.sh and tkConfig.sh files.
 	regsub -all {\${DBGX}} $linkcmd {} linkcmd

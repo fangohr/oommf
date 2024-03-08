@@ -80,15 +80,16 @@ Oxs_EulerEvolve::Oxs_EulerEvolve(
   start_dm *= PI/180.; // Convert from deg to rad
 
   // Setup outputs
-  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",
      &Oxs_EulerEvolve::UpdateDerivedOutputs);
-  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",
      &Oxs_EulerEvolve::UpdateDerivedOutputs);
-  delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+  delta_E_output.Setup(this,InstanceName(),"Delta E","J",
      &Oxs_EulerEvolve::UpdateDerivedOutputs);
-  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+
+  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",
      &Oxs_EulerEvolve::UpdateDerivedOutputs);
-  mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+  mxH_output.Setup(this,InstanceName(),"mxH","A/m",
      &Oxs_EulerEvolve::UpdateDerivedOutputs);
 
   max_dm_dt_output.Register(director,-5);
@@ -330,7 +331,7 @@ Oxs_EulerEvolve::CheckError
 OC_BOOL
 Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
 		      Oxs_ConstKey<Oxs_SimState> current_state,
-                      const Oxs_DriverStepInfo& /* step_info */,
+                      Oxs_DriverStepInfo& /* step_info */,
 		      Oxs_Key<Oxs_SimState>& next_state)
 {
   const int number_of_threads = Oc_GetMaxThreadCount();
@@ -339,7 +340,7 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
 
   // Do first part of next_state structure initialization.
   Oxs_SimState& workstate = next_state.GetWriteReference();
-  driver->FillState(current_state.GetReadReference(),workstate);
+  driver->FillStateMemberData(current_state.GetReadReference(),workstate);
 
   if(cstate.mesh->Id() != workstate.mesh->Id()) {
     throw Oxs_ExtError(this,
@@ -436,7 +437,7 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
   workstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
   // Additional timestep control
-  driver->FillStateSupplemental(workstate);
+  driver->FillStateSupplemental(cstate,workstate);
 
   // Check for forced step.
   // Note: The driver->FillStateSupplemental call may increase the
@@ -658,6 +659,9 @@ Oxs_EulerEvolve::Step(const Oxs_TimeDriver* driver,
        "Oxs_EulerEvolve::Step:"
        " Programming error; data cache already set.");
   }
+
+  // Max angle carry-over.
+  driver->FillStateDerivedData(cstate,nstate);
 
   dm_dt_output.cache.value.Swap(new_dm_dt);
   dm_dt_output.cache.state_id = nstate.Id();

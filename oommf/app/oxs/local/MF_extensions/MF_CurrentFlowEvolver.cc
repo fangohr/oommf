@@ -43,12 +43,16 @@ MF_CurrentFlowEvolver::MF_CurrentFlowEvolver(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_TimeEvolver(name,newdtr,argstr),
-    mesh_id(0),
+    mesh_id(0), has_V_profile(0),
     max_step_decrease(0.03125), max_step_increase_limit(4.0),
     max_step_increase_adj_ratio(1.9),
+    Xstep(0.), Ystep(0.), Zstep(0.), n_x(0), n_y(0), n_z(0),
     reject_goal(0.05), reject_ratio(0.05),
+    step_headroom(0.),
     energy_state_id(0),next_timestep(0.),
-    rkstep_ptr(NULL)
+    rkstep_ptr(NULL),
+    aJ_s(0.), aJ_p(0.), Rs_ap(0.), Rs_p(0.), torq_const(0.),
+    bdry1_value(0.), bdry2_value(0.)
 {
 
 
@@ -685,7 +689,7 @@ if (!(Voltage == 0))
 		{	
 			scratch1a.z -= mesh->EdgeLengthZ();
 		}
-		while ( scratch1a.z < dimZ*mesh->EdgeLengthZ() )
+		while ( scratch1a.z < n_z*mesh->EdgeLengthZ() )
 		{
 		
 			vector_r_in_loop=scratch1;
@@ -1025,7 +1029,7 @@ void MF_CurrentFlowEvolver::NegotiateTimeStep
   if(stepsize<timestep_lower_bound) stepsize = timestep_lower_bound;
 
   // Negotiate with driver over size of next step
-  driver->FillState(cstate,nstate);
+  driver->FillStateMemberData(cstate,nstate);
   UpdateTimeFields(cstate,nstate,stepsize);
 
   // Update iteration count
@@ -1033,7 +1037,11 @@ void MF_CurrentFlowEvolver::NegotiateTimeStep
   nstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
   // Additional timestep control
+#if OOMMF_API_INDEX < 20230325
   driver->FillStateSupplemental(nstate);
+#else
+  driver->FillStateSupplemental(cstate,nstate);
+#endif
 
   // Check for forced step
   force_step = 0;
@@ -2040,7 +2048,7 @@ void MF_CurrentFlowEvolver::AdjustStepHeadroom(OC_INT4m step_reject)
 OC_BOOL
 MF_CurrentFlowEvolver::Step(const Oxs_TimeDriver* driver,
                       Oxs_ConstKey<Oxs_SimState> current_state_key,
-                      const Oxs_DriverStepInfo& step_info,
+                      Oxs_DriverStepInfo& step_info,
                       Oxs_Key<Oxs_SimState>& next_state_key)
 {
   const OC_REAL8m bad_energy_cut_ratio = 0.75;
@@ -2056,7 +2064,7 @@ MF_CurrentFlowEvolver::Step(const Oxs_TimeDriver* driver,
   OC_BOOL start_dm_active=0;
   if(next_timestep<=0.0 ||
      (cstate.stage_iteration_count<1
-      && step_info.current_attempt_count==0)) {
+      && step_info.GetCurrentAttemptCount()==0)) {
     if(cstate.stage_number==0
        || stage_init_step_control == SISC_START_DM) {
       start_dm_active = 1;
@@ -2364,6 +2372,16 @@ oersted_x_output.cache.value = tmp.x/((delta_x+1)*(delta_y+1)*(delta_z+1));
 oersted_y_output.cache.value = tmp.y/((delta_x+1)*(delta_y+1)*(delta_z+1));
 oersted_z_output.cache.value = tmp.z/((delta_x+1)*(delta_y+1)*(delta_z+1));
 
+if(!state.GetDerivedData("Oersted field x",dummy_value)) {
+  state.AddDerivedData("Oersted field x",oersted_x_output.cache.value);
+}
+if(!state.GetDerivedData("Oersted field y",dummy_value)) {
+  state.AddDerivedData("Oersted field y",oersted_y_output.cache.value);
+}
+if(!state.GetDerivedData("Oersted field z",dummy_value)) {
+  state.AddDerivedData("Oersted field z",oersted_z_output.cache.value);
+}
+
 for(it=links.begin();it!=links.end();++it)
 {
 	conductance += it->conductance;
@@ -2383,10 +2401,16 @@ throw Oxs_Ext::Error(this,
 conductance_output.cache.state_id=state.Id();
 current_density_output.cache.state_id=state.Id();
 
-
-
 mr_output.cache.value = 1/conductance;
-voltage_output.cache.value = Voltage;
+if(!state.GetDerivedData("magnetoresistance",dummy_value)) {
+  state.AddDerivedData("magnetoresistance",mr_output.cache.value);
+}
+
+ voltage_output.cache.value = Voltage;
+ if(!state.GetDerivedData("voltage",dummy_value)) {
+   state.AddDerivedData("voltage",voltage_output.cache.value);
+ }
+
     if(!state.GetDerivedData("Max dm/dt",dummy_value)) {
       state.AddDerivedData("Max dm/dt",max_dm_dt_output.cache.value);
     }

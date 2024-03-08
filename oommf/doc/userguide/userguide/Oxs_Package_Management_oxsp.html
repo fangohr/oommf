@@ -1,0 +1,231 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Oxs Package Management: oxspkg</TITLE>
+<META NAME="description" CONTENT="Oxs Package Management: oxspkg">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Oxs_Regression_Tests_oxsreg.html">
+<LINK REL="previous" HREF="ODT_Column_Extraction_odtco.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Oxs_Regression_Tests_oxsreg.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1038"
+  HREF="Oxs_Regression_Tests_oxsreg.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1034"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1028"
+  HREF="ODT_Column_Extraction_odtco.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1036"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html1039"
+  HREF="Oxs_Regression_Tests_oxsreg.html">Oxs Regression Tests: oxsregression</A>
+<B> Up:</B> <A NAME="tex2html1035"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html1029"
+  HREF="ODT_Column_Extraction_odtco.html">ODT Column Extraction: odtcols</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION0017190000000000000000"></A><A NAME="sec:oxspkg"></A><A NAME="19584"></A>
+<BR>
+Oxs Package Management:
+            oxspkg
+</H1>
+
+<P>
+The <B>oxspkg</B> command is used to manage optional Oxs extension
+packages.  Each package is stored in a separate directory under
+<TT><B>oommf/app/oxs/contrib/</B></TT>.  These packages can be ``installed'' and
+``uninstalled'' to and from the <TT><B>oommf/app/oxs/local/</B></TT> directory by
+the <B>oxspkg</B> command.  The install is a simple copy that does not
+automatically build the package or link it into the Oxs executable--a
+separate invocation of
+<A HREF="Platform_Independent_Make_p.html#sec:pimake"><B>pimake</B></A>
+is needed for that.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>oxspkg</B> launch command is:
+
+<DL COMPACT>
+<DT> 
+<DD><code>tclsh oommf.tcl oxspkg list</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg listfiles pkg [pkg ...]</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg readme pkg [pkg ...]</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg requires pkg [pkg ...]</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg install [-v] [-nopatch] pkg [pkg ...]</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg uninstall [-f] pkg [pkg ...]</code>
+<DT><B>or</B>
+<DD>
+<BR><DT> 
+<DD><code>tclsh oommf.tcl oxspkg copyout pkg [pkg ...] destination</code>
+</DD>
+</DL>Glob-style wildcards (*, ?) or the keyword <TT>all</TT> are accepted in
+package specifications.  (If your command shell expands wildcards, as
+is common on Unix systems, then you may need to escape or quote the
+wildcards so that they are passed unadulterated to the <B>oxspkg</B>
+program.)  The first argument following the <B>oxspkg</B>
+keyword is one of the sub-commands <TT>list</TT>, <TT>listfiles</TT>,
+<TT>readme</TT>, <TT>requires</TT>, <TT>install</TT>, <TT>uninstall</TT>, or
+<TT>copyout</TT>:
+<DL>
+<DT><STRONG><TT><B>list</B></TT></STRONG></DT>
+<DD>Lists all the packges available under
+  <TT><B>oommf/app/oxs/contrib/</B></TT>, how many (installable) files are in
+  each package, and the package install status.
+</DD>
+<DT><STRONG><TT><B>listfiles pkg [pkg ...]</B></TT></STRONG></DT>
+<DD>Lists each of the ``installable'' files for the selected package.
+  (There may be additional files for the package, e.g. <TT><B>README</B></TT> or
+  files with versioning information, included in the
+  <TT><B>oommf/app/oxs/contrib/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT> directory.  However, those
+  files are ignored by the <B>oxspkg install</B> command.)
+</DD>
+<DT><STRONG><TT><B>readme pkg [pkg ...]</B></TT></STRONG></DT>
+<DD>Prints to <TT><B>stdout</B></TT> the contents of the <TT><B>README</B></TT> file (if any)
+  for each package.
+</DD>
+<DT><STRONG><TT><B>requires pkg [pkg ...]</B></TT></STRONG></DT>
+<DD>Lists external libraries required for each package, as declared by any
+  <TT><B>*.rules</B></TT> files contained in the package. The user should ensure
+  these libraries are installed on the system and included on the
+  compiler and linker search paths before installing the Oxs extension
+  package. In particular, check the
+<PRE>
+$config SetValue program_compiler_extra_include_dirs ...
+$config SetValue program_linker_extra_lib_dirs ...
+</PRE>
+settings in the <A HREF="Local_Customizations.html#sec:install.custom">platform configuration file</A>.  There may be
+additional installation information in the package <TT><B>README</B></TT> file.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>install [-v] [-nopatch] pkg [pkg ...]</B></TT></STRONG></DT>
+<DD>Installs (copies) files for the selected package(s) from
+  <TT><B>oommf/app/oxs/contrib/</B></TT> to <TT><B>oommf/app/oxs/local/</B></TT>.  This
+  command <B>does not</B> compile the files or link them into the Oxs
+  executable.  The user is responsible for making a separate call to
+  <A HREF="Platform_Independent_Make_p.html#sec:pimake"><B>pimake</B></A> to build and link the
+  package. If the user is running OOMMF distributed with pre-built
+  binaries, then the user should first <TT>cd</TT> to the OOMMF root
+  directory and run
+  <code>tclsh oommf.tcl pimake distclean</code>
+  to delete the distributed binaries before running
+  <code>tclsh oommf.tcl pimake</code> to create a new build of OOMMF. This
+  ensures  new extension binaries are compatible with the rest of
+  the OOMMF install.
+
+<P>
+For third-party packages included in OOMMF distributions, the
+  contents of the directory <TT><B>oommf/app/oxs/contrib/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT>
+  will mirror some release of the package from the official source of
+  the package.  If those files don't build properly with the
+  OOMMF distribution, then a patch file will be included in the parent
+  <TT><B>oommf/app/oxs/contrib/</B></TT> directory.  Normally that patch file (if
+  any) is automatically applied as part of the installation procedure.
+  The <TT>-nopatch</TT> option skips the patch step. If there are no patches
+  for a particular package, then the message <TT>No patches found</TT> will
+  be reported during the install process.
+
+<P>
+The <TT>-v</TT> option requests more verbose output.
+</DD>
+<DT><STRONG><TT><B>uninstall [-f] pkg [pkg ...]</B></TT></STRONG></DT>
+<DD>Deletes all files in <TT><B>oommf/app/oxs/local/</B></TT> associated with the
+ selected package.  Here ``associated'' means a file name match with a
+ file in the package directory <TT><B>oommf/app/oxs/contrib/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT>.
+ There is no checking of contents or timestamps between the files. The
+ install directory <TT><B>oommf/app/oxs/local/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT> will also be
+ removed if it is empty after deleting the package files or if the
+ <TT>-f</TT> (force) option is specified.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>copyout pkg [pkg ...] destination</B></TT></STRONG></DT>
+<DD>Selects files in the same manner as the <TT>uninstall</TT> command, but
+  rather than deleting the files instead copies the files of each
+  package from <TT><B>oommf/app/oxs/local/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT> to
+  <TT><B>destination/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT>. The directory <TT><B>destination</B></TT> will
+  be created if it does not exist. This command is a development aid for
+  creating patches for packages: Edit the package files in
+  <TT><B>oommf/app/oxs/local/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT> as necessary and use <B>oxspkg
+  copyout</B> to copy the package files to <TT><B>destination</B></TT>. Then, from the
+  <TT><B>oommf/app/oxs/contrib/</B></TT> directory, run
+<PRE>
+diff -ru  &lt;pkg&gt;/  destination/&lt;pkg&gt;/  &gt;  &lt;pkg&gt;-&lt;date&gt;.patch
+</PRE>
+  for each package to create an updated patch. Here <TT>diff</TT> is the unix-compatible
+  file comparison utility. If the destination directory is in
+  <TT><B>oommf/app/oxs/contrib/</B></TT>, then name it either <TT><B>tmp</B></TT>, <TT><B>new</B></TT>, or
+  <TT><B>newcontrib</B></TT> to prevent <B>oxspkg</B> from treating it as a new
+  package directory.
+</DD>
+</DL>
+Most of the optional packages controlled by <B>oxspkg</B> are from
+third-party contributors.  Some may originate with the OOMMF core
+development team, but are made optional because they require third-party
+libraries or are considered too experimental to be included among the
+standard Oxs extension classes.  The various
+<TT><B>oommf/app/oxs/contrib/<TT>&lt;</TT>pkg<TT>&gt;</TT>/</B></TT> directories may contain
+<TT><B>README</B></TT> files with additional details.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html1038"
+  HREF="Oxs_Regression_Tests_oxsreg.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html1034"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html1028"
+  HREF="ODT_Column_Extraction_odtco.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html1036"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
+</BODY>
+</HTML>

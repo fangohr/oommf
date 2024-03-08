@@ -63,7 +63,11 @@ MakeRule Define {
 ##       list.
 
 # PDF target. Note: Two passes of pdflatex may be needed after makeindex
-# to get Index included in the table of contents.
+# to get Index included in the table of contents. Also, on at least some
+# platforms if the subdirectory "progman" (which holds latex2html
+# output) exists, 'makeindex progman' will try to use the subdirectory
+# instead of progman.idx. So it is important to include the .idx suffix
+# in the makeindex call.
 MakeRule Define {
    -targets            progman.pdf
    -dependencies       [glob -nocomplain *.tex *.bib \
@@ -76,7 +80,7 @@ MakeRule Define {
       Oc_Exec Foreground pdflatex progman
       Oc_Exec Foreground bibtex progman
       Oc_Exec Foreground pdflatex progman
-      Oc_Exec Foreground makeindex progman
+      Oc_Exec Foreground makeindex progman.idx
       Oc_Exec Foreground pdflatex progman
       Oc_Exec Foreground pdflatex progman
    }
@@ -89,7 +93,11 @@ MakeRule Define {
 
 
 # Postscript target. Note: Two passes of latex may be needed after
-# makeindex to get Index included in the table of contents.
+# makeindex to get Index included in the table of contents. Also, on at
+# least some platforms if the subdirectory "progman" (which holds
+# latex2html output) exists, 'makeindex progman' will try to use the
+# subdirectory instead of progman.idx. So it is important to include
+# the .idx suffix in the makeindex call.
 MakeRule Define {
    -targets            progman.ps
    -dependencies       progman.dvi
@@ -111,7 +119,7 @@ MakeRule Define {
       Oc_Exec Foreground latex progman
       Oc_Exec Foreground bibtex progman
       Oc_Exec Foreground latex progman
-      Oc_Exec Foreground makeindex progman
+      Oc_Exec Foreground makeindex progman.idx
       Oc_Exec Foreground latex progman
       Oc_Exec Foreground latex progman
    }
@@ -178,21 +186,28 @@ MakeRule Define {
    }
 }
 
-# Shortcut target for latex2html build. We might want to include a version
-# test to short-circuit builds with known bad versions of latex2html.
-if {[llength [auto_execok latex2html]]} {
-   MakeRule Define {
-      -targets         :latex2html
-      -dependencies    [file join progman progman.html]
-   }
-} else {
+
+# Shortcut target for latex2html build. Check existence and version.
+if {![llength [auto_execok latex2html]] \
+       || ![regexp {LaTeX2HTML Version +([0-9]+)} \
+               [exec -ignorestderr latex2html -version 2>@1] \
+               _ version] \
+       || $version < 2018} {
+   # Bad or missing latex2html
    MakeRule Define {
       -targets         :latex2html
       -dependencies    {}
       -script {
          puts stderr \
-            "\n*** Skipping target :latex2html (missing executable) ***\n"
+            "\n*** Skipping target :latex2html\
+             (bad or missing executable) ***\n"
       }
+   }
+} else {
+   # Presumably good latex2html
+   MakeRule Define {
+      -targets         :latex2html
+      -dependencies    [file join progman progman.html]
    }
 }
 

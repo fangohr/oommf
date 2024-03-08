@@ -154,7 +154,7 @@ OC_BOOL Oxs_UniaxialAnisotropy::Init()
   mult = 1.0;
   dmult = 0.0;
 
-  return Oxs_ChunkEnergy::Init();
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void

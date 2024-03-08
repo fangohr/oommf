@@ -27,11 +27,7 @@ OC_USE_STRING;
 // NB_TCL_COMMAND_USE_STRING_INTERFACE to 1 to force the use of the
 // string interface.  This may be useful for debugging purposes.
 #ifndef NB_TCL_COMMAND_USE_STRING_INTERFACE
-# if TCL_MAJOR_VERSION < 8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION==0)
-#  define NB_TCL_COMMAND_USE_STRING_INTERFACE 1
-# else
 #  define NB_TCL_COMMAND_USE_STRING_INTERFACE 0
-# endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////
@@ -43,7 +39,7 @@ class Nb_SplitList
 {
 private:
   int argc;
-  CONST84 char ** argv;
+  const char ** argv;
 public:
   Nb_SplitList() : argc(0), argv(NULL) {}
   void Release();
@@ -60,9 +56,7 @@ public:
 // Wrappers for Tcl_Merge().
 String Nb_MergeList(const vector<String>* args);
 String Nb_MergeList(const vector<String>& args);
-#if (TCL_MAJOR_VERSION > 8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>0))
 String Nb_MergeList(const Nb_TclObjArray& arr);
-#endif // Tcl version check
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -72,14 +66,14 @@ String Nb_MergeList(const Nb_TclObjArray& arr);
 // the base command, and as such are conceptually const.  For this
 // reason, the args and result are stored in mutable storage, so that
 // they may be changed by a const Nb_TclCommand object.
-//   For similar reasons, saving and restoring the interp result is
+//   For similar reasons, saving and restoring the interp state is
 // also considered conceptually const.
 class Nb_TclCommand
 {
 private:
   String exception_prefix;
   Tcl_Interp* interp;
-  mutable vector<Tcl_SavedResult> result_stack;
+  mutable vector<Tcl_InterpState> result_stack;
   mutable OC_BOOL no_too_few_restores_warning; // If this is set,
   /// then no warning is raised on cleanup if there are unpopped
   /// results.  This is intended for exception handling.  It
@@ -198,9 +192,6 @@ public:
 OC_BOOL operator<(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
 OC_BOOL operator>(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
 OC_BOOL operator==(const Nb_TclCommandLineOption&, const Nb_TclCommandLineOption&);
-//OC_BOOL operator<(const Tcl_SavedResult&, const Tcl_SavedResult&);
-//OC_BOOL operator>(const Tcl_SavedResult&, const Tcl_SavedResult&);
-//OC_BOOL operator==(const Tcl_SavedResult&, const Tcl_SavedResult&);
 
 int Nb_ParseTclCommandLineRequest
 (const char* exception_prefix,

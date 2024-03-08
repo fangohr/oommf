@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avf2ovf
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 
@@ -56,7 +56,7 @@ proc ReadFile { filename } {
     }
 
     # Read file
-    ChangeMesh $workname 0 0 0 -1
+    ChangeMesh $workname 0 0 0 -1 1
     
     # Delete tempfile, if any
     if { ![string match {} $tempfile] } {
@@ -469,12 +469,14 @@ if {$tx!=0.0 || $ty!=0.0 || $tz!=0.0} {
    PeriodicTranslate 0 0 $tx $ty $tz
 }
 
-# $filename == "" --> write to stdout
+# $outputfile == "" --> write to stdout
 if {!$writemags} {
    if {[string match npy $filetype]} {
-      WriteMeshNPY $outputfile $formatmap($dataformat) $gridmap($grid)
+      WriteMeshNPY $outputfile $formatmap($dataformat)\
+                  $gridmap($grid)
    } elseif { $fileversion == 1 } { ;# OVF output
-      WriteMesh $outputfile $formatmap($dataformat) $gridmap($grid) $title $desc
+      WriteMesh $outputfile $formatmap($dataformat)\
+                  $gridmap($grid) $title $desc
    } else {
       # OVF2 supports user-defined data format specification in text mode
       if {[regexp "^text\[ \t\r\n\]*(.*)$" $dataformat dummy fmtstr]} {
@@ -483,11 +485,11 @@ if {!$writemags} {
          set fmtspec $formatmap($dataformat)
       }
       WriteMeshOVF2 $outputfile $fmtspec $gridmap($grid) \
-         $title $desc
+                  $title $desc
    }
 } else {
-   WriteMeshMagnitudes $outputfile $formatmap($dataformat) $gridmap($grid) \
-      $title $desc
+   WriteMeshMagnitudes $outputfile $formatmap($dataformat)\
+               $gridmap($grid) $title $desc
 }
 
 exit 0

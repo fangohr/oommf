@@ -491,7 +491,7 @@ void Oc_Times(Oc_TimeVal& cpu_time,Oc_TimeVal& wall_time,OC_BOOL reset)
 #endif // NO_CLOCKS
 
 // Tcl wrapper for Oc_Times
-int OcTimes(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+int OcTimes(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   static char buf[256];
   Tcl_ResetResult(interp);

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <string>
 
+#include "director.h"
 #include "energy.h"
 #include "mesh.h"
 
@@ -27,14 +28,14 @@ void Oxs_Energy::FillCalcCountOutput(const Oxs_SimState& state)
 
 void Oxs_Energy::SetupOutputs()
 {
-  energy_sum_output.Setup(this,InstanceName(),"Energy","J",1,
+  energy_sum_output.Setup(this,InstanceName(),"Energy","J",
                           &Oxs_Energy::UpdateStandardOutputs);
-  field_output.Setup(this,InstanceName(),"Field","A/m",1,
-                     &Oxs_Energy::UpdateStandardOutputs);
-  energy_density_output.Setup(this,InstanceName(),"Energy density","J/m^3",1,
+  energy_density_output.Setup(this,InstanceName(),"Energy density","J/m^3",
+                              &Oxs_Energy::UpdateStandardOutputs);
+  field_output.Setup(this,InstanceName(),"Field","A/m",
                      &Oxs_Energy::UpdateStandardOutputs);
 #ifdef EXPORT_CALC_COUNT
-  calc_count_output.Setup(this,InstanceName(),"Calc count","",0,
+  calc_count_output.Setup(this,InstanceName(),"Calc count","",
                           &Oxs_Energy::FillCalcCountOutput);
 #endif // EXPORT_CALC_COUNT
   // Note: MS VC++ 6.0 requires fully qualified member names

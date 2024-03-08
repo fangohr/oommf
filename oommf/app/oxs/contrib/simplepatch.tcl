@@ -328,7 +328,7 @@ foreach patch_end [lrange $patchsets 1 end] {
       }
    } else {
       # non-git diff
-      if {![regexp {^---\s+(.*\S)\s+[0-9-]+\s+[0-9:.]+\s+[0-9+-]+$} \
+      if {![regexp {^---\s+(.*\S)\s+[0-9-]+\s+[0-9:.]+(\s+[0-9+-]+|)$} \
                $origline _ filename]} {
          puts stderr "ERROR: Bad patch? (skipping) ---"
          puts stderr [join $onepatch "\n"]

@@ -243,7 +243,7 @@ Oxs_ScriptVectorField::Value
   cmd.RestoreInterpResult();
 }
 
-void 
+void
 Oxs_ScriptVectorField::FillMeshValue
 (const Oxs_Mesh* mesh,
  Oxs_MeshValue<ThreeVector>& array) const

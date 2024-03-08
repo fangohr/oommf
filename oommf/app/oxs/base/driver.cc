@@ -8,7 +8,9 @@
 #include <limits>
 #include <map>
 #include <string>
+#include <utility>  // std::move
 #include <vector>
+#include <iostream>
 
 #include "oc.h"
 #include "nb.h"
@@ -17,6 +19,7 @@
 #include "key.h"
 #include "scalarfield.h"
 #include "simstate.h"
+#include "stateinitializer.h"
 #include "util.h"
 #include "energy.h"     // Needed to make MSVC++ 5 happy
 #include "oxswarn.h"
@@ -444,7 +447,7 @@ Oxs_Driver::FloatToProblemStatus
 
 
 #define OSO_INIT(name,descript,units) \
-   name##_output.Setup(this,InstanceName(),descript,units,0, \
+   name##_output.Setup(this,InstanceName(),descript,units, \
            &Oxs_Driver::Fill__##name##_output)
 // Constructor
 Oxs_Driver::Oxs_Driver
@@ -455,13 +458,22 @@ Oxs_Driver::Oxs_Driver
       problem_status(OXSDRIVER_PS_INVALID),
       report_max_spin_angle(0),normalize_aveM(1),scaling_aveM(1.0),
       report_wall_time(0),
-      number_of_stages(1),bgcheckpt(newdtr),
+      number_of_stages(1),
+      simstate_hold_size(1),
+      bgcheckpt(newdtr),
       start_iteration(0),start_stage(0),start_stage_iteration(0),
       start_stage_start_time(0.),start_stage_elapsed_time(0.),
       start_last_timestep(0.)
+  // Oxs_Driver is always holding at least one Oxs_SimState, so it costs
+  // no memory to set simstate_hold_size to one. In practice, nearly
+  // every simulation will have at least one Oxs_Ext object that holds
+  // onto a key to the most recent past accepted state, so
+  // simstate_hold_size could be bumped to two without any consequential
+  // increase in memory footprint.
 {
   // Reserve state space in director
-  director->ReserveSimulationStateRequest(2);
+  director->ReserveSimulationStateRequest(simstate_hold_size>2
+                                          ? simstate_hold_size : 2);
 
   //////////////////////////////////////////////////////////////////////
   /////////////////////// DEPRECATED FIELDS ////////////////////////////
@@ -526,24 +538,16 @@ Oxs_Driver::Oxs_Driver
   OXS_GET_INIT_EXT_OBJECT("Ms",Oxs_ScalarField,Msinit);
 
   OXS_GET_INIT_EXT_OBJECT("m0",Oxs_VectorField,m0);
-  m0_perturb = GetRealInitValue("m0_perturb",0.0);
 
   // Fill Ms and Ms_inverse array, and verify that Ms is non-negative.
-  Msinit->FillMeshValue(mesh_obj.GetPtr(),Ms);
-  Ms_inverse.AdjustSize(mesh_obj.GetPtr());
-  max_absMs = 0.0;
+  Msinit->FillMeshValue(mesh_obj.GetPtr(),initial_Ms);
   for(OC_INDEX icell=0;icell<mesh_obj->Size();icell++) {
-    if(Ms[icell]<0.0) {
+    if(initial_Ms[icell]<0.0) {
       char buf[1024];
       Oc_Snprintf(buf,sizeof(buf),
                   "Negative Ms value (%g) detected at mesh index %u.",
-                  static_cast<double>(Ms[icell]),icell);
+                  static_cast<double>(initial_Ms[icell]),icell);
       throw Oxs_ExtError(this,String(buf));
-    } else if(Ms[icell]==0.0) {
-      Ms_inverse[icell]=0.0; // Special case handling
-    } else {
-      Ms_inverse[icell]=1.0/Ms[icell];
-      if(Ms[icell]>max_absMs) max_absMs = Ms[icell];
     }
   }
 
@@ -551,6 +555,8 @@ Oxs_Driver::Oxs_Driver
   // the exchange term, but can be computed by the driver if desired.
   if(GetIntInitValue("report_max_spin_angle",0)) {
     report_max_spin_angle = 1;
+    SimstateHoldRequest(2); // Run and stage max angle computation
+    /// requires at least two accepted states be accessible.
   } else {
     report_max_spin_angle = 0;
   }
@@ -790,39 +796,40 @@ Oxs_Driver::Oxs_Driver
   OSO_INIT(iteration_count,"Iteration","");
   OSO_INIT(stage_iteration_count,"Stage iteration","");
   OSO_INIT(stage_number,"Stage","");
-  spin_output.Setup(this,InstanceName(),"Spin","",1,
+
+  spin_output.Setup(this,InstanceName(),"Spin","",
                     &Oxs_Driver::Fill__spin_output);
   magnetization_output.Setup(this,InstanceName(),
-                             "Magnetization","A/m",1,
+                             "Magnetization","A/m",
                              &Oxs_Driver::Fill__magnetization_output);
   if(normalize_aveM) {
-    aveMx_output.Setup(this,InstanceName(),"mx","",1,
+    aveMx_output.Setup(this,InstanceName(),"mx","",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
                        &Oxs_Driver::Fill__aveM_output_shares);
-    aveMy_output.Setup(this,InstanceName(),"my","",1,
+    aveMy_output.Setup(this,InstanceName(),"my","",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
                        &Oxs_Driver::Fill__aveM_output_shares);
-    aveMz_output.Setup(this,InstanceName(),"mz","",1,
+    aveMz_output.Setup(this,InstanceName(),"mz","",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
                        &Oxs_Driver::Fill__aveM_output_shares);
   } else {
-    aveMx_output.Setup(this,InstanceName(),"Mx","A/m",1,
+    aveMx_output.Setup(this,InstanceName(),"Mx","A/m",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
                        &Oxs_Driver::Fill__aveM_output_shares);
-    aveMy_output.Setup(this,InstanceName(),"My","A/m",1,
+    aveMy_output.Setup(this,InstanceName(),"My","A/m",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
                        &Oxs_Driver::Fill__aveM_output_shares);
-    aveMz_output.Setup(this,InstanceName(),"Mz","A/m",1,
+    aveMz_output.Setup(this,InstanceName(),"Mz","A/m",
                        &Oxs_Driver::Fill__aveM_output_init,
                        &Oxs_Driver::Fill__aveM_output,
                        &Oxs_Driver::Fill__aveM_output_fini,
@@ -831,19 +838,19 @@ Oxs_Driver::Oxs_Driver
 
   if(report_max_spin_angle) {
     maxSpinAng_output.Setup(this,InstanceName(),
-                            "Max Spin Ang","deg",1,
+                            "Max Spin Ang","deg",
                             &Oxs_Driver::Fill__maxSpinAng_output_init,
                             &Oxs_Driver::Fill__maxSpinAng_output,
                             &Oxs_Driver::Fill__maxSpinAng_output_fini,
                             &Oxs_Driver::Fill__maxSpinAng_output_shares);
     stage_maxSpinAng_output.Setup(this,InstanceName(),
-                            "Stage Max Spin Ang","deg",1,
+                            "Stage Max Spin Ang","deg",
                             &Oxs_Driver::Fill__maxSpinAng_output_init,
                             &Oxs_Driver::Fill__maxSpinAng_output,
                             &Oxs_Driver::Fill__maxSpinAng_output_fini,
                             &Oxs_Driver::Fill__maxSpinAng_output_shares);
     run_maxSpinAng_output.Setup(this,InstanceName(),
-                            "Run Max Spin Ang","deg",1,
+                            "Run Max Spin Ang","deg",
                             &Oxs_Driver::Fill__maxSpinAng_output_init,
                             &Oxs_Driver::Fill__maxSpinAng_output,
                             &Oxs_Driver::Fill__maxSpinAng_output_fini,
@@ -873,7 +880,7 @@ Oxs_Driver::Oxs_Driver
     OxsDriverProjectionOutput& po = projection_output[ipo];
     Oxs_ScalarOutput<Oxs_Driver>& output = po.output;
     output.Setup(this,InstanceName(),po.name.c_str(),po.units.c_str(),
-                 0,&Oxs_Driver::Fill__projection_outputs);
+                 &Oxs_Driver::Fill__projection_outputs);
     po.output.Register(director,0);
   }
 
@@ -915,8 +922,7 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
       fclose(check);
       String MIF_info;
       istate.RestoreState(bgcheckpt.CheckpointFilename(),
-                          mesh_key.GetPtr(),
-                          &Ms,&Ms_inverse,max_absMs,
+                          mesh_key.GetPtr(),&initial_Ms,
                           director,MIF_info);
       fresh_start = 0;
     } else if(rflag==1) {
@@ -938,29 +944,38 @@ void Oxs_Driver::SetStartValues (Oxs_SimState& istate) const
     istate.stage_elapsed_time    = start_stage_elapsed_time;
     istate.last_timestep         = start_last_timestep;
     istate.mesh = mesh_key.GetPtr();
-    istate.Ms = &Ms;
-    istate.Ms_inverse = &Ms_inverse;
-    istate.max_absMs = max_absMs;
+
+    // Copy initial_Ms into istate and set up related values.  TODO: Add
+    // separate reference_Ms import support
+    std::unique_ptr< Oxs_MeshValue<OC_REAL8m> >
+      iMsCopy(new Oxs_MeshValue<OC_REAL8m>(initial_Ms)); // Mimic
+            /// std::make_unique, which is introduced with C++14.
+    istate.MsSetup(std::move(iMsCopy)); // Note move semantics
+    istate.reference_Ms = istate.Ms;    // Share
 
     m0->FillMeshValue(istate.mesh,istate.spin);
     // Insure that all spins are unit vectors
     OC_INDEX size = istate.spin.Size();
-    if(m0_perturb <= 0.0) {
-      // No perturbation
-      for(OC_INDEX i=0;i<size;i++) istate.spin[i].MakeUnit();
-    } else {
-      for(OC_INDEX i=0;i<size;i++) {
-	istate.spin[i].MakeUnit();
-	istate.spin[i].PerturbDirection(m0_perturb);
-      }
-    }
+    for(OC_INDEX i=0;i<size;i++) istate.spin[i].MakeUnit();
   }
+
+  // User specified state initialization, if any.
+  for(auto siptr : director->GetStateInitializerObjects()) {
+    siptr->InitState(istate);
+  }
+
 }
 
-// Oxs_Driver version of Init().  All children of Oxs_Driver *must* call
-// this function in their Init() routines.  The main purpose of this
-// function is to set up base driver outputs and to initialize the
-// current state.
+OC_BOOL Oxs_Driver::PreInit()
+{
+  if(!Oxs_Ext::PreInit()) return 0;
+  return 1;
+}
+
+// Oxs_Driver version of Init().  All children of Oxs_Driver *must*
+// call this function in their Init() routines.  The main purpose
+// of this function is to set up base driver outputs and to initialize
+// the current state.
 OC_BOOL Oxs_Driver::Init()
 {
   if(!Oxs_Ext::Init()) return 0;
@@ -994,14 +1009,17 @@ OC_BOOL Oxs_Driver::Init()
                          "Oxs_RectangularMesh.");
   }
   if(normalize_aveM) {
-    const OC_INDEX mesh_size = Ms.Size();
+    const OC_INDEX mesh_size = initial_Ms.Size();
     OC_REAL8m sum = 0.0;
-    for(OC_INDEX j=0;j<mesh_size;++j) sum += fabs(Ms[j]);
+    for(OC_INDEX j=0;j<mesh_size;++j) sum += fabs(initial_Ms[j]);
     if(sum>0.0) scaling_aveM = 1.0/sum;
     else        scaling_aveM = 1.0; // Safety
   } else {
-    if(Ms.Size()>0) scaling_aveM = 1.0/static_cast<OC_REAL8m>(Ms.Size());
-    else            scaling_aveM = 1.0; // Safety
+    if(initial_Ms.Size()>0) {
+      scaling_aveM = 1.0/static_cast<OC_REAL8m>(initial_Ms.Size());
+    } else {
+      scaling_aveM = 1.0; // Safety
+    }
   }
 
   const OC_INDEX projection_count = projection_output.GetSize();
@@ -1021,7 +1039,7 @@ OC_BOOL Oxs_Driver::Init()
       OC_REAL8m sum = 0.0;
       if(normalize_aveM) {
         for(OC_INDEX j=0;j<mesh_size;++j) {
-          sum += fabs(Ms[j])*sqrt(trellis[j].MagSq());
+          sum += fabs(initial_Ms[j])*sqrt(trellis[j].MagSq());
         }
       } else {
         for(OC_INDEX j=0;j<mesh_size;++j) {
@@ -1115,7 +1133,8 @@ OC_BOOL Oxs_Driver::Init()
     // Allow evolver initialization.  Send invalid previous_state to
     // indicate that this is the initial state.
     Oxs_ConstKey<Oxs_SimState> dummy_state;
-    InitNewStage(current_state,dummy_state);
+    Oxs_DriverStageInfo stageinfo;
+    InitNewStage(current_state,stageinfo,dummy_state);
   }
 
   // Initialize checkpoint time and state id
@@ -1123,6 +1142,13 @@ OC_BOOL Oxs_Driver::Init()
 
   return success;
 }
+
+OC_BOOL Oxs_Driver::PostInit()
+{
+  if(!Oxs_Ext::PostInit()) return 0;
+  return 1;
+}
+
 
 void Oxs_Driver::StageRequestCount(unsigned int& min,
                                    unsigned int& max) const
@@ -1234,6 +1260,16 @@ void Oxs_Driver::FillStateMemberData
   // entry in DerivedData?  See also FillNewStageStateMemberData.
 }
 
+void Oxs_Driver::FillStateSupplemental
+(const Oxs_SimState& /* old_state */,
+ Oxs_SimState& work_state) const
+{
+  // User specified state initialization, if any.
+  for(auto siptr : director->GetStateInitializerObjects()) {
+    siptr->InitState(work_state);
+  }
+}
+
 void Oxs_Driver::FillStateDerivedData
 (const Oxs_SimState& old_state,
  const Oxs_SimState& new_state) const
@@ -1270,9 +1306,10 @@ void Oxs_Driver::FillState
 (const Oxs_SimState& old_state,
  Oxs_SimState& new_state) const
 { // This routine is intended for backward compatibility.
-  // New code should use the separate FillStateMemberData
-  // and FillStateDerivedData functions.
+  // New code should use the separate FillStateMemberData,
+  // FillStateSupplemental, and FillStateDerivedData functions.
   FillStateMemberData(old_state,new_state);
+  FillStateSupplemental(old_state,new_state);
   FillStateDerivedData(old_state,new_state);
 }
 
@@ -1323,6 +1360,11 @@ void Oxs_Driver::FillNewStageStateMemberData
   // Delta_E rendering.  Or maybe every state has a
   // previous_state_energy parallel to previous_state_id, and a Energy
   // entry in DerivedData?  See also FillNewStateMemberData.
+
+  // User specified state initialization, if any.
+  for(auto siptr : director->GetStateInitializerObjects()) {
+    siptr->InitState(new_state);
+  }
 }
 
 void Oxs_Driver::FillNewStageStateDerivedData
@@ -1424,6 +1466,12 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
                      OC_INT4m stage_increment)
 { // Called by director
 
+  // STATE CONTRACT: In any newly created state, the previous_state_id
+  // field will be set to 0 if there are no preceding "valid" states, or
+  // else to the last "valid" state.  A "valid" state is one returned as
+  // a successful step from the Oxs_Driver::Step routine or one created
+  // for stage initialiation.
+
   if(current_state.GetPtr() == NULL) {
     // Current state is not initialized.
     String msg="Current state in Oxs_Driver is not initialized;"
@@ -1476,6 +1524,7 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
 #endif // REPORT_TIME
         Oxs_ConstKey<Oxs_SimState> next_state;
         step_result = Step(current_state,step_info,next_state);
+
 #if REPORT_TIME
         driversteptime.Stop();
 #endif // REPORT_TIME
@@ -1484,18 +1533,22 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
           // and copy key from next_state.
           current_state = next_state; // Free old read lock
           current_state.GetReadReference();
-          current_state.GetPtr()->step_done = Oxs_SimState::SimStateStatus::DONE;
+          current_state.GetPtr()->step_done
+            = Oxs_SimState::SimStateStatus::DONE;
           if(report_max_spin_angle) {
             UpdateSpinAngleData(*(current_state.GetPtr())); // Update
             /// max spin angle data on each accepted step.  Might want
-            /// to modify this to instead estimate max angle change,
-            /// and only do actually calculation when estimate uncertainty
-            /// gets larger than some specified value.
+            /// to modify this to instead estimate max angle change, and
+            /// only do actually calculation when estimate uncertainty
+            /// gets larger than some specified value. And/or somehow
+            /// move this computation into the chunk energy portion of
+            /// Oxs_ComputeEnergies() so it can be run out of cache.
           }
           step_taken=1;
           step_info.current_attempt_count=0;
         } else { // Rejected step
-          next_state.GetPtr()->step_done = Oxs_SimState::SimStateStatus::NOT_DONE;
+          next_state.GetPtr()->step_done
+            = Oxs_SimState::SimStateStatus::NOT_DONE;
           ++step_info.current_attempt_count;
         }
         ++step_info.total_attempt_count;
@@ -1517,8 +1570,9 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
 
         const Oxs_SimState& newstate = current_state.GetReadReference();
         const Oxs_SimState& oldstate = previous_state.GetReadReference();
-        InitNewStage(current_state,previous_state); // Send state to
-                                 /// evolver for bookkeeping updates. asdf
+        Oxs_DriverStageInfo stageinfo;
+
+        InitNewStage(current_state,stageinfo,previous_state);
         FillNewStageStateDerivedData(oldstate,
                         oldstate.stage_number+stage_increment,newstate);
       }
@@ -1527,6 +1581,8 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
       // intended (and suppresses warning messages):
       // fall through
       case OXSDRIVER_PS_STAGE_START:
+        // Note: For the non-fallthrough case, InitNewStage is
+        // called in Oxs_Driver::Init().
         previous_state.Release();
         step_taken=1;
         ++step_info.total_attempt_count;
@@ -1574,6 +1630,13 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
       }
       cstate.AddAuxData(DataName("Problem Status"),
                         static_cast<OC_REAL8m>(problem_status));
+      if(simstate_hold_size>0) {
+        if(simstate_hold.size()>=simstate_hold_size) {
+          simstate_hold.pop(); // Drop oldest state key
+        }
+        // Copy the current state key (with a READ lock) into simstate_hold.
+        simstate_hold.push(current_state);
+      }
     }
 
     // Checkpoint file save
@@ -1585,19 +1648,23 @@ void Oxs_Driver::Run(vector<OxsRunEvent>& results,
   // goes multi-step the report mechanism will need to be adjusted.
   results.clear();
   if(step_events) {
-    results.push_back(OxsRunEvent(OXS_STEP_EVENT,current_state));
+    results.push_back(OxsRunEvent(OxsRunEventTypes::OXS_STEP_EVENT,
+                                  current_state));
   }
   if(stage_events) {
-    results.push_back(OxsRunEvent(OXS_STAGE_DONE_EVENT,current_state));
+    results.push_back(OxsRunEvent(OxsRunEventTypes::OXS_STAGE_DONE_EVENT,
+                                  current_state));
   }
   if(done_event || problem_status==OXSDRIVER_PS_DONE) {
     // The problem_status check handles case where ::Run is entered with
     // problem_status already in done state (which shouldn't actually
     // ever happen).
-    results.push_back(OxsRunEvent(OXS_RUN_DONE_EVENT,current_state));
+    results.push_back(OxsRunEvent(OxsRunEventTypes::OXS_RUN_DONE_EVENT,
+                                  current_state));
   }
   if(checkpoint_event) {
-    results.push_back(OxsRunEvent(OXS_CHECKPOINT_EVENT,current_state));
+    results.push_back(OxsRunEvent(OxsRunEventTypes::OXS_CHECKPOINT_EVENT,
+                                  current_state));
   }
 }
 

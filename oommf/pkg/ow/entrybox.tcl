@@ -44,7 +44,7 @@ Oc_Class Ow_EntryBox {
     public variable variable = {} {
 	if {[info exists oldvariable] && ![string match {} $oldvariable]} {
 	    upvar #0 $oldvariable tievariable
-            trace vdelete tievariable w "$this TraceValue $oldvariable"
+            trace remove variable tievariable write "$this TraceValue $oldvariable"
 	}
         if {![string match {} $variable]} {
             upvar #0 $variable tievariable
@@ -57,7 +57,7 @@ Oc_Class Ow_EntryBox {
             } else {
 		set tievariable $value  ;# Safety initialization
 	    }
-            trace variable tievariable w "$this TraceValue $variable"
+            trace add variable tievariable write "$this TraceValue $variable"
         } else {
             set writethrough 0
         }
@@ -97,10 +97,11 @@ Oc_Class Ow_EntryBox {
     # associated values from the standard Tk button widget.
     const private variable default_foreground
     const private variable default_disabledforeground
+    const private variable default_activeeditcolor = { red cyan }
 
     const public variable foreground = {} {
 	if {[info exists default_foreground]} {
-	    # If default_foreground isn't setup, then we
+	    # If default_foreground isn't set up, then we
 	    # must be inside Constructor.
 	    if {[string match {} $foreground]} {
 		set foreground $default_foreground   ;# Use default
@@ -114,7 +115,7 @@ Oc_Class Ow_EntryBox {
 
     const public variable disabledforeground = {} {
 	if {[info exists default_disabledforeground]} {
-	    # If default_disabledforeground isn't setup, then we
+	    # If default_disabledforeground isn't set up, then we
 	    # must be inside Constructor.
 	    if {[string match {} $disabledforeground]} {
 		# Use default
@@ -128,7 +129,7 @@ Oc_Class Ow_EntryBox {
     }
 
     const public variable coloredits = 0
-    const public variable activeeditcolor = red
+    const public variable activeeditcolor
     const public variable commiteditcolor
     const public variable commiteditsfcolor
     # Set coloredits 1 to color uncommitted edits
@@ -191,21 +192,6 @@ Oc_Class Ow_EntryBox {
 	# Process user preferences
 	eval $this Configure $args
 
-        # Check for tied variable, and if it exists use it to
-        # override any -value setting
-if {0} {
-        if {![string match {} $variable]} {
-            upvar #0 $variable tievariable
-            if {[info exists tievariable]} {
-                set value $tievariable
-            } else {
-		set tievariable $value  ;# Safety initialization
-	    }
-        } else {
-            set writethrough 0
-        }
-}
-
         # Validate input
 	if {![string match custom $valuetype]} {
 	    set valuecheck [Ow_GetEntryCheckRoutine $valuetype]
@@ -221,21 +207,6 @@ if {0} {
 	# destroying $winpath.
 	eval [linsert $outer_frame_options 0 frame $winpath]
 
-	# Setup default colors, using a temporary button widget
-	set btn [button $winpath.throwawaybutton]
-	set default_foreground [$btn cget -foreground]
-	set default_disabledforeground [$btn cget -disabledforeground]
-	destroy $btn
-
-	# If foreground and disabledforeground weren't setup by
-	# user, then use default colors.
-	if {[string match {} $foreground]} {
-	    set foreground $default_foreground
-	}
-	if {[string match {} $disabledforeground]} {
-	    set disabledforeground $default_disabledforeground
-	}
-
 	# Create label subwidget
 	label $winpath.label -text $label
 	if {![string match {} $labelwidth]} {
@@ -247,7 +218,21 @@ if {0} {
 			-width 0 -padx 0 -pady 0 -borderwidth 0
 	    }
 	}
-	if {[string match disabled $state]} {
+
+        # Set up default colors, using label subwidget
+	set default_foreground [$winpath.label cget -foreground]
+	set default_disabledforeground [$winpath.label cget -disabledforeground]
+
+	# Use defaults for any colors not set up by caller
+	if {[string match {} $foreground]} {
+	    set foreground $default_foreground
+	}
+	if {[string match {} $disabledforeground]} {
+	    set disabledforeground $default_disabledforeground
+	}
+
+        # Set label colors
+        if {[string match disabled $state]} {
 	    $winpath.label configure -foreground $disabledforeground
 	} else {
 	    $winpath.label configure -foreground $foreground
@@ -255,8 +240,9 @@ if {0} {
 	pack $winpath.label -side left -anchor e
 
 	# Create entry subwidget
-	set winentry [entry $winpath.value -relief sunken -bd 2 \
-		-width $valuewidth -bg [$winpath.label cget -bg] \
+	set winentry [entry $winpath.value -relief sunken \
+                -border 2 -width $valuewidth \
+                -background [$winpath.label cget -background] \
                 -state $state -justify $valuejustify]
 	## The default color scheme under Tcl 8.0 + Windows makes
 	## labels a light gray, and entry backgrounds bright white.
@@ -272,23 +258,30 @@ if {0} {
            set commiteditsfcolor $commiteditcolor
         }
 
+        # If activeeditcolor is not set by caller, then try to
+        # select a default with decent contrast.
+        if {$coloredits && ![info exists activeeditcolor]} {
+           set bg [$winentry cget -background]
+           set bestdist -1.0
+           foreach clr $default_activeeditcolor {
+              set dist [Ow_RedMeanDist $winentry $bg $clr]
+              if {$dist>$bestdist} {
+                 set bestdist $dist
+                 set bestclr $clr
+                 if {$bestdist > 1.5} { # Good enough
+                    break
+                 }
+              }
+           }
+           set activeeditcolor $bestclr
+        }
+
 	# Set up edit tracing
 	$winentry configure -textvariable [$this GlobalName testvalue]
-	trace variable testvalue w "$this TraceEdits"
+	trace add variable testvalue write "$this TraceEdits"
 
 	pack $winentry -fill x -expand 1 -side left
 	$this Set $value
-
-if {0} {
-        # Set trace to tied variable, if any (upvar from $variable
-        # to tievariable done above).
-        if {![string match {} variable]} {
-            if {![info exists tievariable] || $tievariable!=$value} {
-                set tievariable $value
-            }
-            trace variable tievariable w "$this TraceValue $variable"
-        }
-}
 
 	# Setup fonts
 	if {$uselabelfont} {
@@ -335,7 +328,7 @@ if {0} {
         ## even if the trace is triggered by a call to Tcl_SetVar
         ## in C code called from a proc from which the traced variable
         ## is not visible (due to no 'global' statement on that variable),
-        ## this trace can still function.        
+        ## this trace can still function.
         upvar #0 $globalname shadow
 	set keep_state [$winentry cget -state]
 	$winentry configure -state normal
@@ -436,13 +429,13 @@ if {0} {
         if {[catch {
             if {![string match {} variable]} {
                 upvar #0 $variable tievariable
-                trace vdelete tievariable w "$this TraceValue $variable"
+                trace remove variable tievariable write "$this TraceValue $variable"
             }
         } errmsg]} {
             Oc_Log Log $errmsg error
         }
         if {[catch {
-	    trace vdelete testvalue w "$this TraceEdits"
+	    trace remove variable testvalue write "$this TraceEdits"
         } errmsg]} {
             Oc_Log Log $errmsg error
         }

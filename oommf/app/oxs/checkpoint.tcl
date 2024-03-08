@@ -17,7 +17,7 @@ Oc_Class Oxs_CheckpointDialog {
     const public variable import_arrname = {}
 
     # Routine in mainline to call on an Apply or OK event.
-    public variable apply_callback = Oc_Nop 
+    public variable apply_callback = Oc_Nop
 
     # If menu_data is a two item list, consisting of menuname and
     # itemlabel, then this dialog box will automatically take care
@@ -106,19 +106,19 @@ Oc_Class Oxs_CheckpointDialog {
                     }
                 }
             }
-            trace variable userinit w "$this ExternalUpdate $import_arrname"
+            trace add variable userinit write "$this ExternalUpdate $import_arrname"
         }
 
         # Checkpoint filename
         label $winpath.file -text "File:\n$chkptdata(filename)"
-        trace variable chkptdata(filename) w \
+        trace add variable chkptdata(filename) write \
          "$winpath.file configure -text \"File:\n\$chkptdata(filename)\n\" ;# "
 
 
         # Checkpoint timestamp
         label $winpath.timestamp \
            -text "Last checkpoint:\n$chkptdata(timestamp)"
-        trace variable chkptdata(timestamp) w \
+        trace add variable chkptdata(timestamp) write \
            "$winpath.timestamp configure \
            -text \"Last checkpoint:\n\$chkptdata(timestamp)\" ;# "
 
@@ -172,15 +172,15 @@ Oc_Class Oxs_CheckpointDialog {
        # save the changes.
        $apply configure -state normal
        $ok configure -state normal
-       trace vdelete chkptdata(interval) w  "$this EditInProgress"
-       trace vdelete chkptdata(disposal) w  "$this EditInProgress"
+       trace remove variable chkptdata(interval) write  "$this EditInProgress"
+       trace remove variable chkptdata(disposal) write  "$this EditInProgress"
     }
 
     method NoEditInProgress {} {
        $apply configure -state disabled
        $ok configure -state disabled
-       trace variable chkptdata(interval) w  "$this EditInProgress"
-       trace variable chkptdata(disposal) w  "$this EditInProgress"
+       trace add variable chkptdata(interval) write  "$this EditInProgress"
+       trace add variable chkptdata(disposal) write  "$this EditInProgress"
        # Note: Due to the way variable writes are handled in
        # Ow_EntryBox, a trace on the chkptdata array as a whole is not
        # triggered by user changes in the Ow_EntryBox.  But a trace on
@@ -212,7 +212,7 @@ Oc_Class Oxs_CheckpointDialog {
         ## even if the trace is triggered by a call to Tcl_SetVar
         ## in C code called from a proc from which the traced array
         ## is not visible (due to no 'global' statement on that array),
-        ## this trace can still function.        
+        ## this trace can still function.
         if {[string match {} $elt]} {return}
         upvar #0 $globalarrname source
         if {[info exists chkptdata($elt)] && \
@@ -267,7 +267,7 @@ Oc_Class Oxs_CheckpointDialog {
         if {[catch {
             if {![string match {} $import_arrname]} {
                 upvar #0 $import_arrname userinit
-                trace vdelete userinit w "$this ExternalUpdate $import_arrname"
+                trace remove variable userinit write "$this ExternalUpdate $import_arrname"
             }
         } errmsg]} {
             Oc_Log Log $errmsg error
@@ -278,7 +278,7 @@ Oc_Class Oxs_CheckpointDialog {
 	Ow_MoveFocus .
 
         # Destroy windows
-	if {[catch { 
+	if {[catch {
             if {[info exists winpath] && [winfo exists $winpath]} {
                 # Remove <Destroy> binding
                 bind $winpath <Destroy> {}
@@ -309,7 +309,7 @@ proc ReadCheckpointControl { args } {
    }
 }
 ReadCheckpointControl
-trace variable checkpoint_control_list w ReadCheckpointControl
+trace add variable checkpoint_control_list write ReadCheckpointControl
 # If multiple checkpoint control dialogs for the same solver are open in
 # multiple mmLaunch interfaces, then the trace insures they stay in
 # sync.
@@ -337,7 +337,7 @@ proc Oxs_CheckpointControlCallback { chkptwidget arrname } {
    upvar $arrname chkptdata
    global checkpoint_control checkpoint_control_list
    if {[info exists chkptdata]} {
-      trace vdelete checkpoint_control_list w ReadCheckpointControl
+      trace remove variable checkpoint_control_list write ReadCheckpointControl
       ## The ReadCheckpointControl trace is for handling changes
       ## coming from (or through, via another mmLaunch interface)
       ## the solver interp.  In this code sequence we know that
@@ -346,7 +346,7 @@ proc Oxs_CheckpointControlCallback { chkptwidget arrname } {
       ## trace.
       array set checkpoint_control [array get chkptdata]
       set checkpoint_control_list [array get checkpoint_control]
-      trace variable checkpoint_control_list w ReadCheckpointControl
+      trace add variable checkpoint_control_list write ReadCheckpointControl
    }
 }
 

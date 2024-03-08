@@ -40,7 +40,7 @@ WindowsMessageBox(const char *buf)
 
 int
 Oc_WindowsMessageBoxCmd(ClientData, Tcl_Interp *interp,
-                        int argc,CONST84 char **argv)
+                        int argc,const char **argv)
 {
     Tcl_ResetResult(interp);
     if (argc != 2) {
@@ -114,7 +114,7 @@ Oc_SetPanicHeader(const char* header)
 
 int
 Oc_SetPanicHeaderCmd(ClientData, Tcl_Interp *interp, int argc,
-                     CONST84 char **argv)
+                     const char **argv)
 {
     Tcl_ResetResult(interp);
     if (argc != 2) {
@@ -126,19 +126,14 @@ Oc_SetPanicHeaderCmd(ClientData, Tcl_Interp *interp, int argc,
     return TCL_OK;
 }
 
-#if OC_HAS_VSNPRINTF
-// Wrapper around vsnprintf that throws an exception if buffer is too
-// short.  If platform is missing a system vsnprintf routine, then
-// define the program_compiler_c++_property_no_vsnprintf property
-// to 1 in the corresponding oommf/config/platform/ file.
-//
-// Update: snprintf and vsnprintf are part of the C++11 standard.
+// Wrappers around snprintf and vsnprintf that throw an exception if
+// buffer is too short.
+// Q: Am I the only one who is concerned that the return type for
+// snprintf and vsnprint, "int", is potentially more narrow than import
+// size of type "size_t"?  Not to mention signed versus unsigned?
 OC_INDEX
 Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
 {
-  // Am I the only one who is concerned that the return type for
-  // vsnprintf, "int", is potentially more narrow than import size
-  // of type "size_t"?  Not to mention signed versus unsigned?
   int result = vsnprintf(str,n,format,ap);
   if(result<0 || static_cast<size_t>(result)>=n) {
     // Some error occurred --- probably output truncation, but
@@ -156,35 +151,6 @@ Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
   }
   return static_cast<OC_INDEX>(result);
 }
-#else  // OC_HAVE_VSNPRINTF
-// Apparently missing C99 vsnprintf
-/*
- * The routines snprintf() and vsnprintf() supplied by some C libraries
- * are very helpful to prevent buffer overflows.  Here we provide a
- * poor man's substitute which doesn't prevent problems, but detects
- * them and causes a fatal error.  Too bad the real routines aren't ANSI.
- *
- * Note: Annoyingly, the docs say the vsprintf return type is int,
- *       which, hey!, may be narrower than size_t.  Use with care.
- */
-OC_INDEX
-Oc_Vsnprintf(char *str, size_t n, const char *format, va_list ap)
-{
-  if(str==NULL || format==NULL) {
-    Tcl_Panic(OC_CONST84_CHAR("NULL pointer passed to Oc_Vsnprintf"));
-  }
-  str[n-1] = '\0';
-  OC_INDEX len = OC_SPRINTF_WRAP(vsprintf(str,format,ap));
-  if (str[n-1] != '\0') {
-    // If we get here, then a buffer overflow has occurred.
-    // Since we don't know how serious this may be, we
-    // come to a full stop (panic) rather than throw
-    // a catchable exception.
-    Tcl_Panic(OC_CONST84_CHAR("Buffer overflow in Oc_Vsnprintf"));
-  }
-  return len;
-}
-#endif // OC_HAVE_VSNPRINTF
 
 OC_INDEX
 Oc_Snprintf(char *str, size_t n, const char *format, ...)
@@ -217,9 +183,6 @@ CustomPanic(char *format,...)
 
 #if (OC_SYSTEM_TYPE==OC_WINDOWS)
     WindowsMessageBox(TruncateMessage(buf,40,sizeof(buf)));
-# if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION <= 4)
-    Tcl_Finalize();  // Otherwise ExitProcess can hang.
-# endif
     ExitProcess(1);
 #else
     fputs(TruncateMessage(buf,40,sizeof(buf)),stderr);
@@ -252,7 +215,7 @@ Oc_BytesToAscii(const unsigned char *bytes,OC_INDEX len,Oc_AutoBuf& result)
   result.SetLength(2*size_t(len));
   char* outbuf = result.GetStr();
   for(OC_INDEX i=0;i<len;++i) {
-    sprintf(outbuf,"%02X",bytes[i]);
+    snprintf(outbuf,len-2*i,"%02X",bytes[i]);
     outbuf += 2;
   }
   *outbuf = '\0';
@@ -264,7 +227,7 @@ Oc_ErrorWrite(const char *format, ...) {
     static char start[] = "puts -nonewline stderr";
     Tcl_DString cmd;
     Tcl_Interp *interp = Oc_GlobalInterpreter();
-    Tcl_SavedResult saved;
+    Tcl_InterpState saved;
     va_list arg_ptr;
     va_start(arg_ptr,format);
 
@@ -273,7 +236,7 @@ Oc_ErrorWrite(const char *format, ...) {
 
     Tcl_DStringInit(&cmd);
     Tcl_DStringAppend(&cmd, start, -1);
-    Tcl_SaveResult(interp, &saved);
+    saved = Tcl_SaveInterpState(interp, TCL_OK);
     Tcl_DStringAppendElement(&cmd, buf);
     if (Tcl_Eval(interp, Tcl_DStringValue(&cmd))
 	    == TCL_ERROR) {
@@ -282,7 +245,7 @@ Oc_ErrorWrite(const char *format, ...) {
 	    fprintf(stderr,"%s",buf);
 	}
     }
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
     Tcl_DStringFree(&cmd);
 }
 
@@ -328,7 +291,7 @@ Oc_LogSupport::GetLogMark()
 int
 Oc_LogSupportInitPrefixCmd
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char **argv)
+ int argc,const char **argv)
 {
     Tcl_ResetResult(interp);
     if (argc != 2) {
@@ -343,7 +306,7 @@ Oc_LogSupportInitPrefixCmd
 int
 Oc_LogSupportGetLogMarkCmd
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char **argv)
+ int argc,const char **argv)
 {
     Tcl_ResetResult(interp);
     if (argc != 1) {
@@ -357,8 +320,8 @@ Oc_LogSupportGetLogMarkCmd
 }
 
 ////////////////////////////////////////////////////////////////////////
-// Oc_Report logging class. Not called Oc_Log to prevent confusion with
-// the OOMMF Oc_Log Tcl (Oc_Class) class.
+// Oc_Report logging routines. Not called Oc_Log to prevent confusion
+// with the OOMMF Oc_Log Tcl (Oc_Class) class.
 //   This class is based in part on public domain code by Thomas Guest,
 // 2009-05-13:
 //    https://wordaligned.org/articles/cpp-streambufs
@@ -366,6 +329,12 @@ namespace Oc_Report {
   class TeeBuffer: public std::streambuf {
   public:
     // streambuf which copies output to std::clog and a list of files.
+    TeeBuffer() : write_to_clog(true) {}
+    bool WriteToClog(bool status) {
+      bool old_status = write_to_clog;
+      write_to_clog = status;
+      return old_status;
+    }
     void AddFile(const std::string& filename) {
       std::unique_ptr<std::filebuf> pfile(new std::filebuf);
       if(!pfile->open(filename,ios_base::out|ios_base::app)) {
@@ -378,11 +347,14 @@ namespace Oc_Report {
   private:
     // TeeBuffer has no buffer. So every character "overflows"
     // and can be put directly into the teed buffers.
+    bool write_to_clog;
     virtual int overflow(int c) {
       if (c == EOF) return !EOF;
       bool eofcheck = false;
-      if(std::clog.rdbuf()->sputc(static_cast<char>(c)) == EOF) {
-        eofcheck = true;
+      if(write_to_clog) {
+        if(std::clog.rdbuf()->sputc(static_cast<char>(c)) == EOF) {
+          eofcheck = true;
+        }
       }
       for(auto it=files.begin();it!=files.end();++it) {
         if((*it)->sputc(static_cast<char>(c)) == EOF) {
@@ -392,10 +364,20 @@ namespace Oc_Report {
       return (eofcheck ? EOF : c);
     }
 
+    // It would be nice if the outputs were fully buffered until an
+    // explicit flush request occurs. That way a client could make
+    // multiple << calls w/o log output getting interleaved between
+    // processes. There is a pubsetbuf member which may do this, but the
+    // cool kids say the standard doesn't guarantee the buffer gets used
+    // and in practice it probably doesn't. IOW, std::filebuf doesn't
+    // actually provide support for, uh, buffering? YMMV
+
     // Sync all buffers
     virtual int sync() {
       bool synccheck = true;
-      if(std::clog.rdbuf()->pubsync() != 0) synccheck = false;
+      if(write_to_clog) {
+        if(std::clog.rdbuf()->pubsync() != 0) synccheck = false;
+      }
       for(auto it=files.begin();it!=files.end();++it) {
         if((*it)->pubsync() != 0) synccheck = false;
       }
@@ -408,6 +390,9 @@ namespace Oc_Report {
   void TeeStream::AddFile(const std::string& filename) {
     tbuf->AddFile(filename);
   }
+  bool TeeStream::WriteToClog(bool status) {
+    return tbuf->WriteToClog(status);
+  }
 
   // Instances
   TeeBuffer teebuf; // teebuf should be accessed only by Oc_Report::Log
@@ -415,11 +400,12 @@ namespace Oc_Report {
 } // namespace Oc_Report
 
 
-// Tcl interface to Oc_Report::Log.AddFile(). This allows the log file
-// to be registered from Tcl code.
-int Oc_ReportAddCLogFile
+// Tcl interfaces to Oc_Report::Log.AddFile() and ::Log.WriteToClog().
+// This allows the log file to be registered and controlled from Tcl
+// code. NB
+int Oc_ReportAddLogFile
 (ClientData, Tcl_Interp *interp,
- int argc,CONST84 char **argv)
+ int argc,const char **argv)
 {
     Tcl_ResetResult(interp);
     if (argc != 2) {
@@ -434,6 +420,29 @@ int Oc_ReportAddCLogFile
       Tcl_AppendResult(interp,err.ConstructMessage(msg),(char *)NULL);
       return TCL_ERROR;
     }
+    return TCL_OK;
+}
+int Oc_ReportWriteToClog
+(ClientData, Tcl_Interp *interp,
+ int argc,const char **argv)
+{
+    Tcl_ResetResult(interp);
+    if (argc != 2) {
+        Tcl_AppendResult(interp, argv[0], " must be called with"
+            " 1 argument: status", (char *) NULL);
+        return TCL_ERROR;
+    }
+    bool old_status;
+    try {
+      old_status = Oc_Report::Log.WriteToClog(std::stoi(argv[1]));
+    } catch(const Oc_Exception& err) {
+      Oc_AutoBuf msg;
+      Tcl_AppendResult(interp,err.ConstructMessage(msg),(char *)NULL);
+      return TCL_ERROR;
+    }
+    const char* value = "0";
+    if(old_status) value = "1";
+    Tcl_AppendResult(interp,value,(char *)NULL);
     return TCL_OK;
 }
 

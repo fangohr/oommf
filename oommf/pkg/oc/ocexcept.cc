@@ -78,6 +78,17 @@ Oc_Exception::Oc_Exception
     errmsg(errmsg_in)
 {}
 
+Oc_Exception::Oc_Exception
+(const char* file_in,      // File from which exception is thrown
+ int lineno_in,            // Line number from which exception is thrown
+ const char* classname_in, // Name of class throwing exception
+ const char* funcname_in,  // Name of function throwing exception
+ const std::string& errmsg_in) // Error message
+  : file(file_in), lineno(lineno_in),
+    classname(classname_in), funcname(funcname_in),
+    errmsg(errmsg_in.c_str())
+{}
+
 void Oc_Exception::PrependMessage(const char* prefix)
 {
   size_t prefix_len = strlen(prefix);

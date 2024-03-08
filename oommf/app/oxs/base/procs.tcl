@@ -103,6 +103,52 @@ proc Oxs_DateSort { files } {
    return $result
 }
 
+# Provides restricted access to the avf2odt utility, for use in slightly
+# unsafe interpreters.
+proc Oxs_RAvf2Odt { file args } {
+   if {![file exists $file]} {
+      error "Error in Oxs_RAvf2Odt: file \"$file\" does not exist"
+   }
+   if {![file readable $file]} {
+      error "Error in Oxs_RAvf2Odt: No read access to file \"$file\""
+   }
+   set opts [dict create -onefile - -headers none -v 0]
+   set badopts {}
+   foreach {label value} $args {
+      switch -exact -- $label {
+         -average -
+         -axis -
+         -ball_radius -
+         -defaultpos -
+         -extravals -
+         -filesort -
+         -headers -
+         -index -
+         -ipat -
+         -normalize -
+         -numfmt -
+         -region -
+         -rregion -
+         -v -
+         -valfunc -
+         -version {
+            dict set opts $label $value
+         }
+         default { lappend badopts $label }
+      }
+   }
+   if {[llength $badopts] != 0} {
+      error [format "Error in Oxs_RAvf2Odt: Bad option%s: %s" \
+                [expr {[llength $badopts]>1 ? "s" : ""}] $badopts]
+   }
+
+   set cmd [Oc_Application CommandLine avf2odt $file {*}$opts]
+   set result [exec -ignorestderr {*}$cmd \
+                  < [[Oc_Config RunPlatform] GetValue path_device_null] \
+                  2>@1 ]
+   return $result
+}
+
 # Checkpoint timestamp
 proc Oxs_CheckpointTimestamp {} {
    if {![catch {clock milliseconds} now]} {

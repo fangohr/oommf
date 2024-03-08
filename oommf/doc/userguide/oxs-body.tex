@@ -35,9 +35,9 @@ passed to \hyperrefhtml{\app{mifconvert}}{\app{mifconvert}
 Note on \Tk\ dependence: Some \MIF~2 problem descriptions rely on
 external image files\index{file!mask}\index{file!bitmap}; examples
 include those using the
-\htmlonlyref{\cd{Oxs\_ImageAtlas} class}{html:oxsImageAtlas}%
+\htmlonlyref{\cd{Oxs\_ImageAtlas} class}{HTMLoxsImageAtlas}%
 \latex{ (Sec.~\ref{sec:oxsAtlases})}, or those using the \MIF~2
-\htmlonlyref{\cd{ReadFile}}{html:ReadFile} command with the \cd{image}
+\ptlink{\cd{ReadFile}}{PTReadFile} command with the \cd{image}
 translation specification\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}.
 If the image file is not in the PPM P3 (text) format, then the
 \app{any2ppm}\index{application!any2ppm} application may be
@@ -104,7 +104,7 @@ where
   of another problem to be solved.
 \item[\optkey{-logfile logname}]
   Write log and error messages to file \textit{logname}.  The default log
-  file is \fn{oommf/oxsii.errors}.
+  file is \fn{oommf/oxsii.errors}.\index{file!log}
 \item[\optkey{-loglevel level}]
   Controls the detail level of log messages, with larger values of
   \textit{level} producing more output.  Default value is 1.
@@ -143,7 +143,7 @@ where
   system is free to move the threads among processors.  In the other two
   cases, each thread is tied to a particular node for the lifetime of
   the \app{Oxsii} instance.  See also the discussion
-  on \htmlonlyref{threading considerations}{html:threadconsider} in the
+  on \htmlonlyref{threading considerations}{HTMLthreadconsider} in the
   Boxsi documentation.
 
   The default value for \textit{nodes} is ``none'', which allows the
@@ -182,7 +182,7 @@ where
   parameters.  The \textit{params} argument should be a list with an
   even number of arguments, corresponding to name + value pairs.  Each
   ``name'' must appear in a
-  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
+  \ptlink{\cd{Parameter}}{PTmif2parameter}
   statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
   \MIF\ file.  The entire name + value list must be quoted so it is
   presented to \app{Oxsii} as a single item on the command line.  For
@@ -263,7 +263,7 @@ format, or convertible to that format by the command line tool
 directory \cd{oommf/app/oxs/examples}.  \MIF\ files may be edited with
 any plain text editor.
 
-\starssechead{Outputs\label{html:oxsiioutputs}}
+\starssechead{Outputs\label{HTMLoxsiioutputs}}
 Once a problem has been loaded, the scroll box under the Output
 heading will fill with a list of available outputs.  The contents of
 this list will depend upon the \cd{Oxs\_Ext} objects specified in the
@@ -275,8 +275,8 @@ selection under the Destination heading, and then specify the output
 timing under the Schedule heading.  Outputs may be scheduled by the
 step or stage, and may be sent out interactively by pressing the
 \btn{Send} button.  The initial output configuration is set by
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
-\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands in the input
+\ptlink{\cd{Destination}}{PTdestinationCmd} and
+\ptlink{\cd{Schedule}}{PTscheduleCmd} commands in the input
 \MIF\ file\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}.
 
 Outputs fall under two general categories: scalar (single-valued)
@@ -314,7 +314,7 @@ problem description file.  \btn{File\pipe Show~Console} brings up a
 \Tcl\ shell console running off the \app{Oxsii} interface \Tcl\
 interpreter.  This console is intended primary for debugging purposes.
 In particular, output from
-\MIF\ \htmlonlyref{Report}{html:MifReport} commands%
+\MIF\ \ptlink{Report}{PTMifReport} commands%
 \latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}
 may be viewed here.  \btn{File\pipe Close Interface} will remove the
 interface window from the display, but leaves the solver running.  This
@@ -384,6 +384,24 @@ determined by the specified
 Refer to the appropriate Oxs\_Ext class documentation for simulation and
 computational details.
 
+Error and status messages are written to the log file\index{file!log}
+(default \fn{oommf/oxsii.errors}). This is a plain text file where each
+record is prefixed with a timestamp and source identification. The start
+of each simulation is recorded with a \cd{Start:}\ record, and
+an \cd{End} record marks successful completion of the simulation. If you
+have multiple simulations running simultaneously, either on the same
+machine or on different machines but logging to the same (networked)
+file, then records from the different simulations will be
+intermingled. The \OOMMF\ command line application
+\hyperrefhtml{\app{logreview}}{\app{logreview}
+(Sec.~}{)}{sec:logreview}\index{application!logreview} can be used as an
+aid for reading \app{Oxsii} log files. See also the command line
+application
+\hyperrefhtml{\app{lastjob}}{\app{lastjob}
+(Sec.~}{)}{sec:lastjob}\index{application!lastjob}, which relies on the
+log file to determine the last simulation run and optionally restart
+interrupted simulations.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{OOMMF eXtensible Solver Batch Interface: boxsi}\label{sec:boxsi}%
@@ -436,13 +454,13 @@ where
   On termination, sends requests to other applications to
   shutdown too.  The \textit{tags} argument should be either
   a list of destination tags (which are declared by
-  \htmlonlyref{\cd{Destination} commands}{html:destinationCmd}\latex{,
+  \ptlink{\cd{Destination} commands}{PTdestinationCmd}\latex{,
   Sec.~\ref{sec:mif2ExtensionCommands}}) from the input \MIF\
   file, or else the keyword \cd{all}, which is interpreted to mean all
   the destination tags.
 \item[\optkey{-logfile logname}]
   Write log and error messages to file \textit{logname}.  The default log
-  file is \fn{oommf/boxsi.errors}.
+  file is \fn{oommf/boxsi.errors}.\index{file!log}
 \item[\optkey{-loglevel level}]
   Controls the detail level of log messages, with larger values of
   \textit{level} producing more output.  Default value is 1.
@@ -481,7 +499,7 @@ where
   system is free to move the threads among processors.  In the other two
   cases, each thread is tied to a particular node for the lifetime of
   the \app{Boxsi} instance.  See also the discussion
-  on \htmlonlyref{threading considerations}{html:threadconsider} below.
+  on \htmlonlyref{threading considerations}{HTMLthreadconsider} below.
 
   The default value for \textit{nodes} is ``none'', which allows the
   operating system to assign and move threads based on overall system
@@ -516,7 +534,7 @@ where
   parameters.  The \textit{params} argument should be a list with an
   even number of arguments, corresponding to name + value pairs.  Each
   ``name'' must appear in a
-  \htmlonlyref{\cd{Parameter}}{html:mif2parameter}
+  \ptlink{\cd{Parameter}}{PTmif2parameter}
   statement\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})} in the input
   \MIF\ file.  The entire name + value list must be quoted so it is
   presented to \app{Boxsi} as a single item on the command line.  For
@@ -614,13 +632,13 @@ Output, Destination, and Schedule sub-windows that display the current
 output configuration and allow interactive modification of that
 configuration.  These controls are identical to those in the \app{Oxsii}
 user interface; refer to the
-\htmlonlyref{\app{Oxsii} documentation}{html:oxsiioutputs}\latex{
+\htmlonlyref{\app{Oxsii} documentation}{HTMLoxsiioutputs}\latex{
 (Sec.~\ref{sec:oxsii})} for details.
 The only difference between \app{Boxsi} and \app{Oxsii} with
 respect to outputs is that in practice \app{Boxsi} tends to rely
 primarily on
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
-\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands in the input
+\ptlink{\cd{Destination}}{PTdestinationCmd} and
+\ptlink{\cd{Schedule}}{PTscheduleCmd} commands in the input
 \MIF\ file\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})}
 to setup the output configuration.  The interactive output interface is
 used for incidental runtime monitoring of the job.
@@ -684,7 +702,26 @@ simulation are determined by the specified
 Refer to the appropriate Oxs\_Ext class documentation for simulation and
 computational details.
 
-\starssechead{Threading considerations\label{html:threadconsider}}
+Error and status messages are written to the log file\index{file!log}
+(default \fn{oommf/boxsi.errors}). This is in the same log format as
+used by \app{Oxsii}. It is a plain text file where each
+record is prefixed with a timestamp and source identification. The start
+of each simulation is recorded with a \cd{Start:}\ record, and
+an \cd{End} record marks successful completion of the simulation. If you
+have multiple simulations running simultaneously, either on the same
+machine or on different machines but logging to the same (networked)
+file, then records from the different simulations will be
+intermingled. The \OOMMF\ command line application
+\hyperrefhtml{\app{logreview}}{\app{logreview}
+(Sec.~}{)}{sec:logreview}\index{application!logreview} can be used as an
+aid for reading \app{Boxsi} log files. See also the command line
+application
+\hyperrefhtml{\app{lastjob}}{\app{lastjob}
+(Sec.~}{)}{sec:lastjob}\index{application!lastjob}, which relies on the
+log file to determine the last simulation run and optionally restart
+interrupted simulations.
+
+\starssechead{Threading considerations\label{HTMLthreadconsider}}
 \index{parallelization|(}\index{NUMA|(}
 As an example, suppose you are running on a four dual-core processor
 box, where each of the four processors is connected to a separate memory
@@ -899,8 +936,8 @@ The most commonly used atlas is the simple \cd{Oxs\_BoxAtlas}.  For
 combining multiple atlases, use \cd{Oxs\_MultiAtlas}.
 
 \begin{description}
-\index{Oxs\_Ext~child~classes!Oxs\_BoxAtlas}%
-\pttarget{PTBA}\item[Oxs\_BoxAtlas:]
+\item[Oxs\_BoxAtlas:]
+\pttarget{PTBA}\index{Oxs\_Ext~child~classes!Oxs\_BoxAtlas}%
 An axes parallel rectangular parallelepiped,
 containing a single region that is coterminous with the atlas itself.
 The specify block has the form
@@ -934,8 +971,8 @@ region name is taken from the object instance name, i.e.,
  \fn{sample.mif}, \fn{cgtest.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTEA}\index{Oxs\_Ext~child~classes!Oxs\_EllipseAtlas}%
 \item[Oxs\_EllipseAtlas:]
+\pttarget{PTEA}\index{Oxs\_Ext~child~classes!Oxs\_EllipseAtlas}%
 Defines a volume in the shape of a right elliptical cylinder with axes
 parallel to the coordinate axes. This functionality can be obtained
 using appropriate \Tcl\ scripts with the \cd{Oxs\_ScriptAtlas} class,
@@ -1001,8 +1038,8 @@ interior region name.
  \fn{ellipse.mif},  \fn{ellipsea.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTESA}\index{Oxs\_Ext~child~classes!Oxs\_EllipsoidAtlas}%
 \item[Oxs\_EllipsoidAtlas:]
+\pttarget{PTESA}\index{Oxs\_Ext~child~classes!Oxs\_EllipsoidAtlas}%
 Conceptually analogous to \cd{Oxs\_EllipseAtlas}, this class defines an
 ellipsoidal region with axes parallel to the coordinate axes. With
 appropriate \Tcl\ scripts, the \cd{Oxs\_ScriptAtlas} class can provide
@@ -1038,8 +1075,8 @@ All entries are interpreted in the same manner as for the
   examples equivalent to \fn{ellipsoid.mif} using \Tcl\ scripts.
 \end{ExampleMifs}
 
+\item[Oxs\_ImageAtlas:\label{HTMLoxsImageAtlas}]%
 \pttarget{PTIA}\index{Oxs\_Ext~child~classes!Oxs\_ImageAtlas}%
-\item[Oxs\_ImageAtlas:\label{html:oxsImageAtlas}]%
 \index{file!mask|(}\index{file!bitmap|(}
 This class is designed to allow an image file
 to be used to define regions in terms of colors in the image.  It is
@@ -1053,8 +1090,8 @@ functionality of the 2D solver\latexonly{
 For situations requiring continuous variation in material parameters,
 the script field classes should be used in conjunction with the
 \cd{ReadFile} \MIF\ extension command.  See the
-\cd{ColorField} sample proc in the \htmlonlyref{\cd{ReadFile}
-documentation}{html:ReadFile} \latex{in
+\cd{ColorField} sample proc in the \ptlink{\cd{ReadFile}
+documentation}{PTReadFile} \latex{in
 Sec.~\ref{sec:mif2ExtensionCommands}} for an example of this
 technique.
 
@@ -1243,8 +1280,8 @@ the explicit matching procedure in this case is not defined.
  \fn{imageatlas.mif}, \fn{imageatlas2.mif}, \fn{imagelayers.mif}, \fn{grill.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTMA}\index{Oxs\_Ext~child~classes!Oxs\_MultiAtlas}%
 \item[Oxs\_MultiAtlas:]
+\pttarget{PTMA}\index{Oxs\_Ext~child~classes!Oxs\_MultiAtlas}%
 This atlas is built up as an ordered list of
 other atlases.  The set of regions defined by the \cd{Oxs\_MultiAtlas}
 is the union of the regions of all the atlases contained therein.  The
@@ -1310,8 +1347,8 @@ class.
   \fn{spinvalve-af.mif}, \fn{yoyo.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTSA}\index{Oxs\_Ext~child~classes!Oxs\_ScriptAtlas}%
 \item[Oxs\_ScriptAtlas:]
+\pttarget{PTSA}\index{Oxs\_Ext~child~classes!Oxs\_ScriptAtlas}%
 An atlas where the regions are defined via a \Tcl\ script.  The specify
 block has the form
 \begin{latexonly}
@@ -1418,9 +1455,9 @@ are periodic along one or more axes, use the
 \cd{Oxs\_PeriodicRectangularMesh} type.
 
 \begin{description}
-\pttarget{PTRM}\label{html:oxsrectangularmesh}%
-\index{Oxs\_Ext~child~classes!Oxs\_RectangularMesh}
 \item[Oxs\_RectangularMesh:]
+\label{HTMLoxsrectangularmesh}%
+\pttarget{PTRM}\index{Oxs\_Ext~child~classes!Oxs\_RectangularMesh}%
 This mesh is comprised of a lattice of rectangular prisms.
 The specify block has the form
 \begin{latexonly}
@@ -1453,9 +1490,9 @@ name \cd{:mesh}.
  \fn{sample.mif}, \fn{stdprob3.mif}, \fn{stdprob4.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTPRM}\label{html:oxsperiodicrectangularmesh}%
-\index{Oxs\_Ext~child~classes!Oxs\_PeriodicRectangularMesh}
 \item[Oxs\_PeriodicRectangularMesh:]
+\pttarget{PTPRM}\label{HTMLoxsperiodicrectangularmesh}%
+\index{Oxs\_Ext~child~classes!Oxs\_PeriodicRectangularMesh}%
 Like the \cd{Oxs\_RectangularMesh}, this mesh is also comprised of a
 lattice of rectangular prisms.  However, in this case the
 mesh is declared to be periodic along one or more of the axis
@@ -1527,9 +1564,9 @@ calc count'' value provided by the evolver.
 
 \starsssechead{Anisotropy Energy}
 \begin{description}
+\item[Oxs\_UniaxialAnisotropy:]
 \pttarget{PTUA}\index{Oxs\_Ext~child~classes!Oxs\_UniaxialAnisotropy}%
-\item[Oxs\_UniaxialAnisotropy:] Uniaxial magneto-crystalline
-  anisotropy.  The Specify block has the form
+Uniaxial magneto-crystalline anisotropy.  The Specify block has the form
    \begin{latexonly}
       \begin{quote}\tt
       Specify Oxs\_UniaxialAnisotropy:\oxsval{name} \ocb\\
@@ -1583,9 +1620,9 @@ calc count'' value provided by the evolver.
  \fn{diskarray.mif}, \fn{stdprob3.mif}, \fn{grill.mif}.
 \end{ExampleMifs}
 
+\item[Oxs\_CubicAnisotropy:]
 \pttarget{PTCA}\index{Oxs\_Ext~child~classes!Oxs\_CubicAnisotropy}%
-\item[Oxs\_CubicAnisotropy:] Cubic magneto-crystalline anisotropy.
-  The Specify block has the form
+Cubic magneto-crystalline anisotropy. The Specify block has the form
    \begin{latexonly}
       \begin{quote}\tt
       Specify Oxs\_CubicAnisotropy:\oxsval{name} \ocb\\
@@ -1648,8 +1685,8 @@ calc count'' value provided by the evolver.
 
 \starsssechead{Exchange Energy}
 \begin{description}
-\pttarget{PTE6}\index{Oxs\_Ext~child~classes!Oxs\_Exchange6Ngbr}%
 \item[Oxs\_Exchange6Ngbr:]
+\pttarget{PTE6}\index{Oxs\_Ext~child~classes!Oxs\_Exchange6Ngbr}%
    Standard 6-neighbor exchange energy.  The
    exchange energy density contribution from cell $i$ is given by
    \begin{equation}
@@ -1755,19 +1792,24 @@ calc count'' value provided by the evolver.
    angle between spins at neighboring cells:
 \begin{itemize}
 \item \textbf{Max Spin Ang:} maximum angle, in degrees, between
-  neigboring spins for the current magnetization state.
+  neigboring spins for the current magnetization state. Two spins $i$
+  and $j$ are neighbors if $A_{ij}$ is non-zero. If $A_{ij}<0$ then
+  \cd{Max Spin Ang} is measured as the difference from $180^\circ$,
+  because in that case the low-energy state has the spins anti-parallel.
 \item \textbf{Stage Max Spin Ang:} Maximum value of \cd{Max Spin Ang}
   for the current stage.
 \item \textbf{Run Max Spin Ang:} Maximum value obtained by
   \cd{Max Spin Ang} during the simulation.
 \end{itemize}
+   These values are also accessible inside the \MIF\ file through the
+   \ptlink{\cd{GetStateData}}{PTGetStateData} command.
 
    \begin{ExampleMifs}
      \fn{grill.mif}, \fn{spinvalve.mif}, \fn{tclshapes.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTUE}\index{Oxs\_Ext~child~classes!Oxs\_UniformExchange}%
 \item[Oxs\_UniformExchange:]
+\pttarget{PTUE}\index{Oxs\_Ext~child~classes!Oxs\_UniformExchange}%
    Similar to \cd{Oxs\_Exchange6Ngbr}, except the exchange constant $A$
    (or exchange length ${\rm lex}$) is uniform across all space.  The
    Specify block is very simple, consisting of either the label
@@ -1781,18 +1823,18 @@ calc count'' value provided by the evolver.
    \cd{Oxs\_UniformExchange} provides the three scalar outputs
    \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
    \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
-   These values are also accessible through the \MIF\
-   \htmlonlyref{\cd{GetStateData}}{html:GetStateData} command.
+   These values are also accessible inside the \MIF\ file through the
+   \ptlink{\cd{GetStateData}}{PTGetStateData} command.
 
    \begin{ExampleMifs}
      \fn{sample.mif}, \fn{cgtest.mif}, \fn{stdprob3.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTEP}\index{Oxs\_Ext~child~classes!Oxs\_ExchangePtwise}%
 \item[Oxs\_ExchangePtwise:]
+\pttarget{PTEP}\index{Oxs\_Ext~child~classes!Oxs\_ExchangePtwise}%
    The exchange coefficient $A_i$ is specified on
    a point-by-point (or cell-by-cell) basis, as opposed to the pairwise
-   specification model used by \cd{Oxs\_Exchange6Ngbr}.  The exchange
+   model used by \cd{Oxs\_Exchange6Ngbr}.  The exchange
    energy density at a cell $i$ is computed across its nearest 6 neighbors,
    $N_i$, using the formula
    \begin{displaymath}
@@ -1822,7 +1864,7 @@ calc count'' value provided by the evolver.
    between cells $i$ and $j$ under the assumption that $A_i$ and $A_j$
    are constant in each of the two cells.  Similar considerations are
    made in computing the exchange energy for a \htmlonlyref{2D variable
-   thickness model}{html:mifvariablethickness} \cite{porter2001}.
+   thickness model}{HTMLmifvariablethickness} \cite{porter2001}.
 
    The Specify block for \cd{Oxs\_ExchangePtwise} has the form
    \begin{latexonly}
@@ -1847,13 +1889,63 @@ calc count'' value provided by the evolver.
    \cd{Oxs\_ExchangePtwise} provides the three scalar outputs
    \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
    \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
+   These values are also accessible inside the \MIF\ file through the
+   \ptlink{\cd{GetStateData}}{PTGetStateData} command.
 
    \begin{ExampleMifs}[Example]
      \fn{antidots-filled.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTTS}\index{Oxs\_Ext~child~classes!Oxs\_TwoSurfaceExchange}%
+\item[Oxs\_RandomSiteExchange:]
+\pttarget{PTSE}\index{Oxs\_Ext~child~classes!Oxs\_RandomSiteExchange}%
+   A randomized exchange energy.  The Specify block has the form
+   \begin{latexonly}
+      \begin{quote}\tt
+      Specify Oxs\_RandomSiteExchange:\oxsval{name} \ocb\\
+        \bi linkprob \oxsval{probability} \\
+        \bi Amin \oxsval{A\_lower\_bound} \\
+        \bi Amax \oxsval{A\_upper\_bound} \\
+      \ccb
+      \end{quote}
+   \end{latexonly}
+   \begin{rawhtml}
+   <BLOCKQUOTE><DL><DT>
+   <TT>Specify Oxs_RandomSiteExchange:</TT><I>name</I> <TT>{</TT>
+       <DD> <TT>linkprob </TT><I>probability</I>
+       <DD> <TT>Amin </TT><I>A_lower_bound</I>
+       <DD> <TT>Amax </TT><I>A_upper_bound</I>
+   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
+   \end{rawhtml}
+   Each adjacent pair of cells $i$, $j$, is given \oxslabel{linkprob}
+   probability of having a non-zero exchange coefficient $A_{ij}$.  Here
+   two cells are adjacent if they lie in each other's 6-neighborhood.
+   If a pair is found to have a non-zero exchange coefficient, then
+   $A_{ij}$ is drawn uniformly from the range $[\cd{Amin},\cd{Amax}]$.
+   The exchange energy is computed using (\ref{eq:ExchangeEnergy}), the
+   formula used by the \cd{Oxs\_Exchange6Ngbr} energy object.  The
+   value $A_{ij}$ for each pair of cells is determined during problem
+   initialization, and is held fixed thereafter.  The limits
+   \oxsval{A\_lower\_bound} and \oxsval{A\_upper\_bound} may be any real
+   numbers; negative values may be used to weaken the exchange
+   interaction arising from other exchange energy terms.  The only
+   restriction is that \oxsval{A\_lower\_bound} must not be greater than
+   \oxsval{A\_upper\_bound}.  The \cd{linkprob} value \oxsval{probability}
+   must lie in the range $[0,1]$.
+
+   In addition to the standard energy and field outputs,
+   \cd{Oxs\_RandomSiteExchange} provides the three scalar outputs
+   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
+   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
+   These values are also accessible inside the \MIF\ file through the
+   \ptlink{\cd{GetStateData}}{PTGetStateData} command.
+
+   \begin{ExampleMifs}[Example]
+     \fn{randexch.mif}.
+   \end{ExampleMifs}
+
+
 \item[Oxs\_TwoSurfaceExchange:]
+\pttarget{PTTS}\index{Oxs\_Ext~child~classes!Oxs\_TwoSurfaceExchange}%
    Provides long-range bilinear and biquadratic exchange.  Typically
    used to simulate RKKY-style coupling across non-magnetic spacers in
    spinvalves.  The specify block has the form
@@ -1876,6 +1968,7 @@ calc count'' value provided by the evolver.
         \bi \bi scalarvalue \oxsval{fieldvalue}\\
         \bi \bi scalarside  \oxsval{side}\\
         \bi \ccb\\
+      \bi report\_max\_spin\_angle \oxsval{report\_angle}\\
       \ccb
       \end{quote}
    \end{latexonly}
@@ -1898,6 +1991,7 @@ calc count'' value provided by the evolver.
        <DD> <TT>scalarvalue </TT><I>fieldvalue</I>
        <DD> <TT>scalarside </TT><I>side</I>
    </DL><TT>}</TT>
+   <DD><TT> report_max_spin_angle </TT> <I>report_angle</I>
    <DT><TT>}</TT></DL></BLOCKQUOTE><P>
    \end{rawhtml}
    Here \textbf{sigma} and \textbf{sigma2} are the bilinear and
@@ -2023,75 +2117,39 @@ Specify Oxs_TwoSurfaceExchange:AF {
 \end{rawhtml}
 
    In addition to the standard energy and field outputs,
-   \cd{Oxs\_TwoSurfaceExchange} provides the three scalar outputs
+   \cd{Oxs\_TwoSurfaceExchange} provides three optional scalar outputs,
    \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
-   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
+   \cd{Run Max Spin Ang}, as described for
+   \ptlink{\cd{Oxs\_Exchange6Ngbr}}{PTE6}. Note,
+   however, that ``neighboring spins'' are those that interact through
+   exchange coupling. For \cd{Oxs\_TwoSurfaceExchange} this means spins
+   that are not necessarily spatially close, and so the maximum
+   ``neighbor'' spin angle is less meaningful in this context. These
+   outputs are disabled by default, but can be activated by setting
+   the \oxslabel{report\_max\_spin\_angle} option to 1. These values are
+   always accessible inside the \MIF\ file via
+   the \ptlink{\cd{GetStateData}}{PTGetStateData} command,
+   regardless of the \oxslabel{report\_max\_spin\_angle} setting.
 
 \begin{ExampleMifs}[Example]
   \fn{spinvalve-af.mif}.
 \end{ExampleMifs}
 
-
-\pttarget{PTSE}\index{Oxs\_Ext~child~classes!Oxs\_RandomSiteExchange}%
-\item[Oxs\_RandomSiteExchange:]
-   A randomized exchange energy.  The Specify block has the form
-   \begin{latexonly}
-      \begin{quote}\tt
-      Specify Oxs\_RandomSiteExchange:\oxsval{name} \ocb\\
-        \bi linkprob \oxsval{probability} \\
-        \bi Amin \oxsval{A\_lower\_bound} \\
-        \bi Amax \oxsval{A\_upper\_bound} \\
-      \ccb
-      \end{quote}
-   \end{latexonly}
-   \begin{rawhtml}
-   <BLOCKQUOTE><DL><DT>
-   <TT>Specify Oxs_RandomSiteExchange:</TT><I>name</I> <TT>{</TT>
-       <DD> <TT>linkprob </TT><I>probability</I>
-       <DD> <TT>Amin </TT><I>A_lower_bound</I>
-       <DD> <TT>Amax </TT><I>A_upper_bound</I>
-   <DT><TT>}</TT></DL></BLOCKQUOTE><P>
-   \end{rawhtml}
-   Each adjacent pair of cells $i$, $j$, is given \oxslabel{linkprob}
-   probability of having a non-zero exchange coefficient $A_{ij}$.  Here
-   two cells are adjacent if they lie in each other's 6-neighborhood.
-   If a pair is found to have a non-zero exchange coefficient, then
-   $A_{ij}$ is drawn uniformly from the range $[\cd{Amin},\cd{Amax}]$.
-   The exchange energy is computed using (\ref{eq:ExchangeEnergy}), the
-   formula used by the \cd{Oxs\_Exchange6Ngbr} energy object.  The
-   value $A_{ij}$ for each pair of cells is determined during problem
-   initialization, and is held fixed thereafter.  The limits
-   \oxsval{A\_lower\_bound} and \oxsval{A\_upper\_bound} may be any real
-   numbers; negative values may be used to weaken the exchange
-   interaction arising from other exchange energy terms.  The only
-   restriction is that \oxsval{A\_lower\_bound} must not be greater than
-   \oxsval{A\_upper\_bound}.  The \cd{linkprob} value \oxsval{probability}
-   must lie in the range $[0,1]$.
-
-   In addition to the standard energy and field outputs,
-   \cd{Oxs\_RandomSiteExchange} provides the three scalar outputs
-   \cd{Max Spin Ang}, \cd{Stage Max Spin Ang}, and
-   \cd{Run Max Spin Ang} as described for \cd{Oxs\_Exchange6Ngbr}.
-
-   \begin{ExampleMifs}[Example]
-     \fn{randexch.mif}.
-   \end{ExampleMifs}
-
 \end{description}
 
 \starsssechead{Self-Magnetostatic Energy}
 \begin{description}
-\pttarget{PTDE}\index{Oxs\_Ext~child~classes!Oxs\_Demag}%
 \item[Oxs\_Demag:]
+\pttarget{PTDE}\index{Oxs\_Ext~child~classes!Oxs\_Demag}%
    Standard demagnetization energy term, built upon
    the assumption that the magnetization is constant in each cell.
    It computes the average demagnetization field in each cell using
    formulae from \cite{aharoni1998,newell1993} and convolution
    via the Fast Fourier Transform.  This class supports non-periodic
    simulations if the mesh object in the \MIF\ file is of the
-   \htmlonlyref{\cd{Oxs\_RectangularMesh}}{html:oxsrectangularmesh}
+   \htmlonlyref{\cd{Oxs\_RectangularMesh}}{HTMLoxsrectangularmesh}
    type; for simulations periodic along one axis direction use the
-   \htmlonlyref{\cd{Oxs\_PeriodicRectangularMesh}}{html:oxsperiodicrectangularmesh}
+   \htmlonlyref{\cd{Oxs\_PeriodicRectangularMesh}}{HTMLoxsperiodicrectangularmesh}
    class.  Periodicity in more than one direction is not supported at
    this time.  The specify block has the form
    \begin{latexonly}
@@ -2146,8 +2204,8 @@ Specify Oxs_TwoSurfaceExchange:AF {
      \fn{sample.mif}, \fn{cgtest.mif}, \fn{pbcbrick.mif}, \fn{demagtensor.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTSD}\index{Oxs\_Ext~child~classes!Oxs\_SimpleDemag}%
 \item[Oxs\_SimpleDemag:]
+\pttarget{PTSD}\index{Oxs\_Ext~child~classes!Oxs\_SimpleDemag}%
    This is the same as the \cd{Oxs\_Demag} object, except that
    periodicity is not supported and asymptotic formulae are not used.
    The implementation does not use any of the symmetries
@@ -2167,8 +2225,8 @@ Specify Oxs_TwoSurfaceExchange:AF {
 
 \starsssechead{Zeeman Energy}
 \begin{description}
+\item[Oxs\_UZeeman:\label{HTMLUZeeman}]
 \pttarget{PTUZ}\index{Oxs\_Ext~child~classes!Oxs\_UZeeman}%
-\item[Oxs\_UZeeman:\label{html:UZeeman}]
    Uniform (homogeneous) applied field energy.  This class is frequently
    used for simulating hysteresis loops.  The specify block takes an
    optional \textbf{multiplier} entry, and a required field range list
@@ -2230,8 +2288,8 @@ Specify Oxs_TwoSurfaceExchange:AF {
      \fn{sample.mif}, \fn{cgtest.mif}, \fn{marble.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTFZ}\index{Oxs\_Ext~child~classes!Oxs\_FixedZeeman}%
 \item[Oxs\_FixedZeeman:]
+\pttarget{PTFZ}\index{Oxs\_Ext~child~classes!Oxs\_FixedZeeman}%
    Non-uniform, non-time varying applied field.
    This can be used to simulate a biasing field.  The specify block
    takes one required parameter, which defines the field, and one
@@ -2258,8 +2316,8 @@ Specify Oxs_TwoSurfaceExchange:AF {
      \fn{spinvalve.mif}, \fn{spinvalve-af.mif}, \fn{yoyo.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTSU}\index{Oxs\_Ext~child~classes!Oxs\_ScriptUZeeman}%
 \item[Oxs\_ScriptUZeeman:]
+\pttarget{PTSU}\index{Oxs\_Ext~child~classes!Oxs\_ScriptUZeeman}%
    Spatially uniform applied field,
    potentially varying as a function of time and stage, determined by a
    \Tcl\ script.  The Specify block has the form
@@ -2292,7 +2350,7 @@ Specify Oxs_TwoSurfaceExchange:AF {
    stage\_time total\_time base\_state\_id current\_state\_id\ccb}.
    The units for the time options are seconds.  The two
    \cd{state\_id} options are intended for use with the
-   \MIF\ \htmlonlyref{\cd{GetStateData}}{html:GetStateData} command;
+   \MIF\ \ptlink{\cd{GetStateData}}{PTGetStateData} command;
    refer to the documentation on that command in the \MIF~2.1 section
    for details.  If \cd{script\_args} is not specified, the default
    argument list is \cd{\ocb stage stage\_time total\_time\ccb}.
@@ -2375,13 +2433,12 @@ Specify Oxs_ScriptUZeeman {
      \fn{varalpha.mif}, \fn{yoyo.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTTZ}\index{Oxs\_Ext~child~classes!Oxs\_TransformZeeman}%
 \item[Oxs\_TransformZeeman:]
-   Essentially a combination of the \cd{Oxs\_FixedZeeman} and
-   \cd{Oxs\_ScriptUZeeman} classes, where an applied field is produced
-   by applying a spatially uniform, but time and stage varying linear
-   transform to a spatially varying but temporally static field.  The
-   transform is specified by a \Tcl\ script.
+\pttarget{PTTZ}\index{Oxs\_Ext~child~classes!Oxs\_TransformZeeman}%
+   A Tcl script specifies a spatially uniform, but time and stage
+   varying linear transform that is applied to a spatially varying but
+   temporally static field. This essentially combines
+   the \cd{Oxs\_ScriptUZeeman} and \cd{Oxs\_FixedZeeman} classes.
 
    The Specify block has the form
       \begin{latexonly}
@@ -2516,8 +2573,8 @@ block}{\cd{stage\_count} setting in the driver Specify block
   \fn{sample2.mif}, \fn{tickle.mif}, \fn{rotatecenter.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTSZ}\index{Oxs\_Ext~child~classes!Oxs\_StageZeeman}%
 \item[Oxs\_StageZeeman:]
+\pttarget{PTSZ}\index{Oxs\_Ext~child~classes!Oxs\_StageZeeman}%
    The \cd{Oxs\_StageZeeman} class provides spatially varying applied
    fields that are updated once per stage.  In its general form, the
    field at each stage is provided by an \hyperrefhtml{Oxs vector field
@@ -2597,18 +2654,18 @@ Specify Oxs_StageZeeman {
 </BLOCKQUOTE>
 \end{rawhtml}
 
-   The \cd{SlidingFieldSpec} proc is used to generate the initialization
-   string for an \cd{Oxs\_ScriptVectorField} vector field object, which
-   in turn uses the \cd{SlidingField} proc to specify the applied field
-   on a position-by-position basis.  The resulting field will be
-   \latex{$2\times 10^4$}\html{2e4} A/m in the positive x-direction at
-   all points with relative x-coordinate larger than \cd{\$stage/10.},
-   and 0 otherwise.  \cd{\$stage} is the stage index, which here is
-   one of 0, 1, \ldots, 10.  For example, if \cd{\$stage} is 5, then the
-   left half of the sample will see a \latex{$2\times 10^4$}\html{2e4}
-   A/m field directed to the right, and the right half of the sample
-   will see none.  The return value from \cd{SlidingFieldSpec} in this
-   case will be
+   The \cd{SlidingFieldSpec} proc generates an initialization string
+   that is used to create an \cd{Oxs\_ScriptVectorField} vector field
+   object, which in turn uses the \cd{SlidingField} proc to specify the
+   applied field on a position-by-position basis.  The resulting field
+   will be \latex{$2\times 10^4$}\html{2e4} A/m in the positive
+   x-direction at all points with relative x-coordinate larger
+   than \cd{\$stage/10.}, and 0 otherwise.  \cd{\$stage} is the stage
+   index, which here is one of 0, 1, \ldots, 10.  For example,
+   if \cd{\$stage} is 5, then the left half of the sample will see
+   a \latex{$2\times 10^4$}\html{2e4} A/m field directed to the right,
+   and the right half of the sample will see none.  The return value
+   from \cd{SlidingFieldSpec} in this case will be
 % The extra BLOCKQUOTE's here are a workaround for an apparent
 % latex2html bug
 \begin{rawhtml}
@@ -2777,7 +2834,7 @@ controlled by \hyperrefhtml{drivers}{\textit{drivers}
 driver type, i.e., time evolvers must be paired with
 \htmlonlyref{time drivers}{item:TimeDriver}, and
 minimization evolvers must be paired with \htmlonlyref{minimization
-drivers}{html:MinDriver}.  The drivers hand a magnetization
+drivers}{item:MinDriver}.  The drivers hand a magnetization
 configuration to the evolvers with a request to advance the
 configuration by one \textit{step} (also called an \textit{iteration}).
 It is the role of the drivers, not the evolvers, to determine when a
@@ -2788,14 +2845,14 @@ of the driver, not the evolver.
 
 There are currently three time evolvers and one minimization evolver in the
 standard \OOMMF\ distribution.  The time evolvers are
-\htmlonlyref{\cd{Oxs\_EulerEvolve}}{html:EulerEvolve},
-\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve}, and
-\htmlonlyref{\cd{Oxs\_SpinXferEvolve}}{html:SpinXferEvolve}.
+\htmlonlyref{\cd{Oxs\_EulerEvolve}}{HTMLEulerEvolve},
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{HTMLRungeKuttaEvolve}, and
+\htmlonlyref{\cd{Oxs\_SpinXferEvolve}}{HTMLSpinXferEvolve}.
 The minimization evolver is
-\htmlonlyref{\cd{Oxs\_CGEvolve}}{html:CGEvolve}.
+\htmlonlyref{\cd{Oxs\_CGEvolve}}{HTMLCGEvolve}.
 \begin{description}
+\item[Oxs\_EulerEvolve:\label{HTMLEulerEvolve}]
 \pttarget{PTEE}\index{Oxs\_Ext~child~classes!Oxs\_EulerEvolve}%
-\item[Oxs\_EulerEvolve:\label{html:EulerEvolve}]
 Time evolver implementing a simple first order forward Euler method with
 step size control on the Landau-Lifshitz
 ODE\index{ODE!Landau-Lifshitz}~\cite{gilbert1955,landau1935}:\\
@@ -2931,7 +2988,7 @@ selected so that the maximum change in the normalized (i.e., unit)
 magnetization $\vm$ is the value specified by \oxslabel{start\_dm}.  The
 units are degrees, with default value 0.01.
 
-The four remaining entries, \oxslabel{error\_rate},
+The remaining entries, \oxslabel{error\_rate},
 \oxslabel{absolute\_step\_error}, \oxslabel{relative\_step\_error}, and
 \oxslabel{step\_headroom}, control fine points of stepsize selection,
 and are intended for advance use only.  Given normalized magnetization
@@ -2952,7 +3009,8 @@ at the endpoints of the interval to estimate (guess) how untrue that
 assumption is.
 
 A candidate step is accepted if the maximum error across all positions
-$i$ is smaller than \texttt{absolute\_step\_error},
+$i$ is smaller than all three of the error controls
+\texttt{absolute\_step\_error},
 \texttt{error\_rate}$\,\times\,\Delta t$, and
 \texttt{relative\_step\_error}$\,\times\,|\dot{\vm}_{\rm
 max}|\Delta t$, where $|\dot{\vm}_{\rm max}|$ is the maximum value of
@@ -3021,8 +3079,8 @@ The vector field outputs are
   \fn{octant.mif}.
 \end{ExampleMifs}
 
+\item[Oxs\_RungeKuttaEvolve:\label{HTMLRungeKuttaEvolve}]
 \pttarget{PTRK}\index{Oxs\_Ext~child~classes!Oxs\_RungeKuttaEvolve}%
-\item[Oxs\_RungeKuttaEvolve:\label{html:RungeKuttaEvolve}]
 Time evolver implementing several Runge-Kutta methods for integrating
 the Landau-Lifshitz-Gilbert\index{ODE!Landau-Lifshitz} ODE
 (\ref{eq:oxsllode}), (\ref{eq:oxsllgode}), with step size control.  In
@@ -3098,14 +3156,14 @@ The Specify block has the form
    \end{rawhtml}
    \end{htmlonly}
 Most of these options appear also in the
-\htmlonlyref{\cd{Oxs\_EulerEvolve}}{html:EulerEvolve} class.
+\htmlonlyref{\cd{Oxs\_EulerEvolve}}{HTMLEulerEvolve} class.
 The repeats have the same meaning as in that class, and the same
-default values except for \texttt{relative\_step\_error} and
-\texttt{error\_rate}, which for \cd{Oxs\_RungeKuttaEvolve} have the
-default values of 0.01 and 1.0, respectively.  Additionally, the
-\oxslabel{alpha}, \oxslabel{gamma\_LL} and \oxslabel{gamma\_G} options
-may be initialized using scalar field objects, to allow these material
-parameters to vary spatially.
+default values except for \texttt{error\_rate} and
+\texttt{relative\_step\_error}, which for \cd{Oxs\_RungeKuttaEvolve}
+have default values of 1.0 and 0.01, respectively.  Additionally,
+the \oxslabel{alpha}, \oxslabel{gamma\_LL} and \oxslabel{gamma\_G}
+options may be initialized using scalar field objects, to allow these
+material parameters to vary spatially.
 
 The \oxslabel{allow\_signed\_gamma} parameter is for simulation testing
 purposes, and is intended for advanced use only.  There is some lack of
@@ -3125,15 +3183,15 @@ from the effective field and increase the total energy.  If you are
 experimenting with \abovemath{\gamma>0}, you should either set
 \abovemath{\alpha<=0} to force spins back towards the effective field,
 or disable the energy precision control (discussed
-\htmlonlyref{below}{html:oxsrkeprecision}).
+\htmlonlyref{below}{HTMLoxsrkeprecision}).
 
-The two controls \oxslabel{min\_step\_headroom} (default value 0.33) and
-\oxslabel{max\_step\_headroom} (default value 0.95) replace the single
-\cd{step\_headroom} option in \cd{Oxs\_EulerEvolve}.  The effective
-\cd{step\_headroom} is automatically adjusted by the evolver between the
-\oxsval{min\_headroom} and \oxsval{max\_headroom} limits to make the
-observed reject proportion approach the \oxslabel{reject\_goal} (default
-value 0.05).
+The two controls \oxslabel{min\_step\_headroom} and
+\oxslabel{max\_step\_headroom} (default values 0.33 and 0.95,
+respectively) replace the single \cd{step\_headroom} control option
+in the \cd{Oxs\_EulerEvolve} class.  The effective \cd{step\_headroom} is
+automatically adjusted by the evolver between the \oxsval{min\_headroom}
+and \oxsval{max\_headroom} limits to make the observed reject proportion
+approach the \oxslabel{reject\_goal} (default value 0.05).
 
 The \oxslabel{method} entry selects a particular Runge-Kutta
 implementation.  It should be set to one of \oxsval{rk2},
@@ -3169,7 +3227,7 @@ the smallest error, and RK5(4)7FC represents a compromise between the
 two.  The default method used by \cd{Oxs\_RungeKuttaEvolve} is
 RK5(4)7FC.
 
-\label{html:oxsrkeprecision}
+\label{HTMLoxsrkeprecision}
 The remaining undiscussed entry in the \cd{Oxs\_RungeKuttaEvolve}
 Specify block is \oxslabel{energy\_precision}.  This should be set to an
 estimate of the expected relative accuracy of the energy calculation.
@@ -3184,7 +3242,7 @@ may be disabled by setting \oxsval{eprecision} to -1.
 The \cd{Oxs\_RungeKuttaEvolve} module provides the same scalar, scalar
 field, and vector field outputs as \cd{Oxs\_EulerEvolve}.  It also
 provides the following state data accessible through the \MIF\
-\htmlonlyref{\cd{GetStateData}}{html:GetStateData} command:
+\ptlink{\cd{GetStateData}}{PTGetStateData} command:
 \begin{rawhtml}
 <BLOCKQUOTE>
 \end{rawhtml}
@@ -3228,8 +3286,8 @@ These terms, and the corresponding \cd{dMx/dt}, \cd{dMy/dt}, and
   \fn{spinmag2.mif}, \fn{varalpha.mif}, \fn{yoyo.mif}.
 \end{ExampleMifs}
 
+\item[Oxs\_SpinXferEvolve:\label{HTMLSpinXferEvolve}]
 \pttarget{PTSX}\index{Oxs\_Ext~child~classes!Oxs\_SpinXferEvolve}%
-\item[Oxs\_SpinXferEvolve:\label{html:SpinXferEvolve}]
 Time evolver that integrates an
 Landau-Lifshitz-Gilbert\index{ODE!Landau-Lifshitz} ODE augmented with a
 spin momentum term \cite{xiao2004},
@@ -3259,7 +3317,7 @@ and $M_s$ is the saturation magnetization in A/m.
 
 The various parameters are defined in the Specify block, which is an
 extension of that for the
-\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve} class:
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{HTMLRungeKuttaEvolve} class:
    \begin{latexonly}
    \begin{quote}\tt
    Specify Oxs\_SpinXferEvolve:\oxsval{name} \ocb\\
@@ -3361,7 +3419,7 @@ extension of that for the
    \end{rawhtml}
    \end{htmlonly}
 The options duplicated in the
-\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve} class
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{HTMLRungeKuttaEvolve} class
 Specify block have the same meaning and default values here, with the
 exception of \texttt{error\_rate}, which for
 \cd{Oxs\_SpinXferEvolve} has the default value of -1 (i.e., disabled).
@@ -3445,8 +3503,8 @@ are located in \fn{oommf/app/oxs/local} instead of
   \fn{spinxfer.mif}, \fn{spinxfer-miltat.mif}, \fn{spinxfer-onespin.mif}.
 \end{ExampleMifs}
 
+\item[Oxs\_CGEvolve:\label{HTMLCGEvolve}]
 \pttarget{PTCG}\index{Oxs\_Ext~child~classes!Oxs\_CGEvolve}%
-\item[Oxs\_CGEvolve:\label{html:CGEvolve}]
 The minimization evolver is \cd{Oxs\_CGEvolve}, which is an
 in-development conjugate gradient minimizer with no preconditioning. The
 Specify block has the form
@@ -3616,8 +3674,9 @@ The \oxslabel{method} parameter can be set to either
 conjugate gradient direction selection algorithm.  The default is
 Fletcher-Reeves, which has somewhat smaller memory requirements.
 
-The last parameter, \oxslabel{fixed\_spins}, performs the same function
-as for the \htmlonlyref{\cd{Oxs\_EulerEvolve}}{html:EulerEvolve} class.
+The final parameter, \oxslabel{fixed\_spins}, performs the same function
+as it does in the \htmlonlyref{\cd{Oxs\_EulerEvolve}}{HTMLEulerEvolve}
+class.
 
 The \cd{Oxs\_CGEvolve} module provides nine scalar, one scalar
  field, and two vector field outputs.  The scalar outputs are
@@ -3679,16 +3738,16 @@ criteria.
 
 There are two drivers in Oxs,
 \htmlonlyref{\cd{Oxs\_TimeDriver}}{item:TimeDriver}
-for controlling time evolvers such as
-\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve},
+for controlling LLG time evolvers such as
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{HTMLRungeKuttaEvolve},
 and
-\htmlonlyref{\cd{Oxs\_MinDriver}}{html:MinDriver}
-for controlling minimization evolvers like
-\htmlonlyref{\cd{Oxs\_CGEvolve}}{html:CGEvolve}.
+\htmlonlyref{\cd{Oxs\_MinDriver}}{item:MinDriver}
+for controlling energy minimization evolvers like
+\htmlonlyref{\cd{Oxs\_CGEvolve}}{HTMLCGEvolve}.
 
 \begin{description}
-\pttarget{PTTD}\index{Oxs\_Ext~child~classes!Oxs\_TimeDriver}%
 \item[Oxs\_TimeDriver:\label{item:TimeDriver}]
+\pttarget{PTTD}\index{Oxs\_Ext~child~classes!Oxs\_TimeDriver}%
 The Oxs time driver is \textbf{Oxs\_TimeDriver}.  The specify block has
 the form
 \begin{latexonly}
@@ -3753,11 +3812,11 @@ the pointwise saturation magnetization in A/m, and \cd{m0} is the
 initial configuration for the magnetization unit spins, i.e., $|\vm|=1$
 at each point.  These four parameters are required.
 
-The next group of 3 parameters control stage stopping criteria.  The
-\oxslabel{stopping\_dm\_dt} value, in degrees per nanosecond, specifies that a
-stage should be considered complete when the maximum $|d\vm/dt|$ across
-all spins drops below this value.  Similarly, the
-\oxslabel{stopping\_time} value specifies the maximum ``Simulation
+The next group of three parameters control stage stopping criteria.
+Measured in degrees per nanosecond, the \oxslabel{stopping\_dm\_dt}
+value specifies that a stage should be considered complete when the
+maximum $|d\vm/dt|$ across all spins drops below this value.  Similarly,
+the \oxslabel{stopping\_time} value specifies the maximum ``Simulation
 time,'' i.e., the Landau-Lifshitz-Gilbert ODE (\ref{eq:oxsllode}),
 (\ref{eq:oxsllgode}) time, allowed per stage.  For example, if
 \oxsval{time\_criteria} is
@@ -3777,7 +3836,7 @@ criteria all provide a default value of 0, meaning no constraint, but
 usually at least one is specified since otherwise there is no automatic
 stage termination control.  For quasi-static simulations, a
 \cd{stopping\_dm\_dt} value in the range of 1.0 to 0.01 is reasonable;
-the numerical precision of the energy calculations usually makes in not
+the numerical precision of the energy calculations usually makes it not
 possible to obtain $|d\vm/dt|$ much below 0.001 degree per nanosecond.
 
 
@@ -3794,7 +3853,7 @@ If \cd{stage\_count} is not specified, or is given the value 0, then the
 effective \oxsval{number\_of\_stages} value is computed by examining the
 length of the stopping criteria lists, and also any other \cd{Oxs\_Ext}
 object that has stage length expectations, such as
-\htmlonlyref{\cd{Oxs\_UZeeman}}{html:UZeeman}.  The longest of these is
+\htmlonlyref{\cd{Oxs\_UZeeman}}{HTMLUZeeman}.  The longest of these is
 taken to be the stage limit value.  Typically these lengths, along with
 \cd{stage\_count} if specified, will all be the same, and any
 differences indicate an error in the \MIF\ file.  Oxs will automatically
@@ -3857,9 +3916,9 @@ additional values: \oxslabel{basename},
 \oxslabel{scalar\_output\_format}, and
 \oxslabel{vector\_field\_output\_format}.  In the \MIF~2.2 format
 these output controls have been moved into the \cd{SetOptions} block.
-See the \hyperrefhtml{\cd{SetOptions}}{\cd{SetOptions}
-(Sec.~}{)}{html:mif2SetOptions}\index{SetOptions~command~(MIF)}
-documentation for details.
+See the \ptlink{\cd{SetOptions}}{PTmif2SetOptions}
+\latex{\hyperrefhtml{}{(Sec.~}{)}{sec:mif22ExtensionCommands}}
+documentation for details.\index{SetOptions~command~(MIF)}
 
 \cd{Oxs\_TimeDriver} provides 12 scalar outputs and 2 vector field
 outputs.  The scalar outputs are
@@ -3900,11 +3959,11 @@ The three ``Max Spin Ang'' outputs are disabled by default.  In general
 one should refer instead to the neighboring spin angle outputs provided
 by the exchange energies.  However, for backward compatibility, or for
 simulations without any exchange energy terms, the driver spin angle
-outputs can be enabled by setting the
-\oxslabel{report\_max\_spin\_angle} option to to 1.
+outputs can be enabled by setting
+the \oxslabel{report\_max\_spin\_angle} option to 1.
 
 The ``Wall time'' output is also disabled by default.  It can be enabled
-by setting the \oxslabel{report\_wall\_time} option to to 1.  It reports
+by setting the \oxslabel{report\_wall\_time} option to 1.  It reports
 the wall clock time, in seconds, since a system-dependent zero-time.
 This output may be useful for performance comparisions and
 debugging. (Note: The timestamp for a magnetization state is recorded
@@ -3923,8 +3982,8 @@ always exporting at full precision.
   \fn{sample.mif}, \fn{pulse.mif}.
 \end{ExampleMifs}
 
+\item[Oxs\_MinDriver:\label{item:MinDriver}]
 \pttarget{PTMD}\index{Oxs\_Ext~child~classes!Oxs\_MinDriver}%
-\item[Oxs\_MinDriver:\label{html:MinDriver}]
 The Oxs driver for controlling minimization evolvers is
 \textbf{Oxs\_MinDriver}.  The specify block has the form
 \begin{latexonly}
@@ -3999,10 +4058,10 @@ block supports three additional values: \oxslabel{basename} to control
 output filenames, and output format controls
 \oxslabel{scalar\_output\_format} and
 \oxslabel{vector\_field\_output\_format}.  In the \MIF~2.2 format these
-output controls have been moved into the \cd{SetOptions} block.  See the
-\hyperrefhtml{\cd{SetOptions}}{\cd{SetOptions}
-(Sec.~}{)}{html:mif2SetOptions}\index{SetOptions~command~(MIF)}
-documentation for details.
+output controls have been moved into the \cd{SetOptions} block.
+See the \ptlink{\cd{SetOptions}}{PTmif2SetOptions}
+\latex{\hyperrefhtml{}{(Sec.~}{)}{sec:mif22ExtensionCommands}}
+documentation for details.\index{SetOptions~command~(MIF)}
 
 \cd{Oxs\_MinDriver} provides 10 scalar outputs and 2 vector
 field outputs.  The scalar outputs are
@@ -4038,8 +4097,8 @@ Ang'' obtained across the current run, in degrees.
 As is the case for the \cd{Oxs\_TimeDriver}, the three ``Max Spin Ang''
 outputs and ``Wall time'' are disabled by default.  They angle outputs
 are enabled by setting the \oxslabel{report\_max\_spin\_angle} option to
-to 1, and the wall time output is enabled by setting the
-\oxslabel{report\_wall\_time} option to to 1.
+1, and the wall time output is enabled by setting the
+\oxslabel{report\_wall\_time} option to 1.
 
 The vector field outputs are
 \begin{itemize}
@@ -4066,8 +4125,8 @@ context in which they are used.
 Scalar field objects are documented first.  Vector field objects are
 considered farther below.
 \begin{description}
-\pttarget{PTUSF}\index{Oxs\_Ext~child~classes!Oxs\_UniformScalarField}%
 \item[Oxs\_UniformScalarField:\label{item:UniformScalarField}]
+\pttarget{PTUSF}\index{Oxs\_Ext~child~classes!Oxs\_UniformScalarField}%
    Returns the same constant value regardless of the import position.
    The Specify block takes one parameter, \textbf{value}, which is the
    returned constant value.  This class is frequently embedded inline to
@@ -4131,8 +4190,8 @@ created with \cd{value} set to \cd{8e5}.
 \end{ExampleMifs}
 
 
-\pttarget{PTASF}\index{Oxs\_Ext~child~classes!Oxs\_AtlasScalarField}%
 \item[Oxs\_AtlasScalarField:\label{item:AtlasScalarField}]
+\pttarget{PTASF}\index{Oxs\_Ext~child~classes!Oxs\_AtlasScalarField}%
    Declares values that are defined across individual regions of an
    \cd{Oxs\_Atlas}.  The Specify block looks like
       \begin{latexonly}
@@ -4190,8 +4249,8 @@ created with \cd{value} set to \cd{8e5}.
      \fn{grill.mif}, \fn{spinvalve.mif}, \fn{tclshapes.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTLSF}\index{Oxs\_Ext~child~classes!Oxs\_LinearScalarField}%
 \item[Oxs\_LinearScalarField:]
+\pttarget{PTLSF}\index{Oxs\_Ext~child~classes!Oxs\_LinearScalarField}%
    Returns a value that varies linearly with position.  The Specify
    block has the form:
       \begin{latexonly}
@@ -4224,8 +4283,8 @@ created with \cd{value} set to \cd{8e5}.
   \fn{spinvalve-af.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTRSF}\index{Oxs\_Ext~child~classes!Oxs\_RandomScalarField}%
 \item[Oxs\_RandomScalarField:]\label{item:RandomScalarField}
+\pttarget{PTRSF}\index{Oxs\_Ext~child~classes!Oxs\_RandomScalarField}%
 Defines a scalar field that varies spatially in a random fashion.
 The Specify block has the form:
       \begin{latexonly}
@@ -4248,7 +4307,7 @@ The Specify block has the form:
 The value at each position is drawn uniformly from the range declared by
 the two required parameters, \oxslabel{range\_min} and
 \oxslabel{range\_max}.  There is also an optional parameter,
-\oxslabel{cache\_grid}, which takes a mesh specification that describes
+\oxslabel{cache\_grid}, that takes a mesh specification describing
 the grid used for spatial discretization.  If
 \oxslabel{cache\_grid} is not specified, then each call to
 \cd{Oxs\_RandomScalarField} generates a different field.  If you want to
@@ -4261,8 +4320,8 @@ mesh.
   \fn{randomshape.mif}, \fn{stdprob1.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTSSF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptScalarField}%
 \item[Oxs\_ScriptScalarField:\label{item:ScriptScalarField}]
+\pttarget{PTSSF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptScalarField}%
 Analogous to the parallel
 \htmlonlyref{\cd{Oxs\_ScriptVectorField}}{item:ScriptVectorField}
 class, this class produces a scalar field dependent on a \Tcl\ script
@@ -4383,7 +4442,7 @@ Specify Oxs_ScriptScalarField {
    ymin=0, zmin=0) and (xmax=1e-6, ymax=250e-9, zmax=50e-9), and 0
    otherwise.
    See also the discussion of the
-   \htmlonlyref{\cd{ReadFile}}{html:ReadFile} \MIF\ extension command
+   \ptlink{\cd{ReadFile}}{PTReadFile} \MIF\ extension command
    \latex{in Sec.~\ref{sec:mif2ExtensionCommands}} for an example using
    an imported image file for similar purposes.
 
@@ -4433,8 +4492,8 @@ projection of the vector field \cd{:file1} onto the [1,1,1] direction.
   \fn{varalpha.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTVMSF}\index{Oxs\_Ext~child~classes!Oxs\_VecMagScalarField}%
 \item[Oxs\_VecMagScalarField:]
+\pttarget{PTVMSF}\index{Oxs\_Ext~child~classes!Oxs\_VecMagScalarField}%
 The \cd{Oxs\_VecMagScalarField} class produces a scalar field
 from a vector field by taking the norm of the vector field on a
 point-by-point basis, i.e.,
@@ -4508,8 +4567,8 @@ Specify Oxs_TimeDriver {
   \fn{sample-vecrotate.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTSOSF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptOrientScalarField}%
 \item[Oxs\_ScriptOrientScalarField:\label{item:ScriptOrientScalarField}]
+\pttarget{PTSOSF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptOrientScalarField}%
 Scalar fields provide scalar values as a function of position across
 three-space.  The \cd{Oxs\_ScriptOrientScalarField} class is used to
 compose a transformation on the input position before evaluation by
@@ -4597,8 +4656,8 @@ analogous operations on vector fields.
   \fn{sample-reflect.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTAOSF}\index{Oxs\_Ext~child~classes!Oxs\_AffineOrientScalarField}%
 \item[Oxs\_AffineOrientScalarField:\label{item:AffineOrientScalarField}]
+\pttarget{PTAOSF}\index{Oxs\_Ext~child~classes!Oxs\_AffineOrientScalarField}%
 The \cd{Oxs\_AffineOrientScalarField} class is similar to the
 \cd{Oxs\_ScriptOrientScalarField} class, except that the transformation
 on the import position is by an affine transformation defined in terms
@@ -4717,8 +4776,8 @@ analogous operations on vector fields.
   \fn{sample-rotate.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTATSF}\index{Oxs\_Ext~child~classes!Oxs\_AffineTransformScalarField}%
 \item[Oxs\_AffineTransformScalarField:\label{item:AffineTransformScalarField}]
+\pttarget{PTATSF}\index{Oxs\_Ext~child~classes!Oxs\_AffineTransformScalarField}%
 Like the \cd{Oxs\_AffineOrientScalarField} class, this class composes
 an affine transform with a separate scalar field, but in this case the
 affine transform is applied \textit{after} the field evaluation.
@@ -4768,8 +4827,8 @@ operations on vector fields.
   \fn{sample-rotate.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTISF}\index{Oxs\_Ext~child~classes!Oxs\_ImageScalarField}%
 \item[Oxs\_ImageScalarField:\label{item:ImageScalarField}]
+\pttarget{PTISF}\index{Oxs\_Ext~child~classes!Oxs\_ImageScalarField}%
 This class creates a scalar field using an image.  The Specify block has
 the form
 \begin{latexonly}
@@ -4839,8 +4898,8 @@ is raised if a value is needed for any point outside the image.
 \noindent
 The available vector field objects are:
 \begin{description}
-\pttarget{PTUVF}\index{Oxs\_Ext~child~classes!Oxs\_UniformVectorField}%
 \item[Oxs\_UniformVectorField:\label{item:UniformVectorField}]
+\pttarget{PTUVF}\index{Oxs\_Ext~child~classes!Oxs\_UniformVectorField}%
    Returns the same constant value regardless of the import position.
    The Specify block takes one required parameter, \oxslabel{vector},
    which is a 3-element list of the vector to return, and one optional
@@ -4925,8 +4984,8 @@ created with the value of \cd{vector} set to \cd{\ocb 1 0 0\ccb}.
   \fn{sample.mif}, \fn{cgtest.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTAVF}\index{Oxs\_Ext~child~classes!Oxs\_AtlasVectorField}%
 \item[Oxs\_AtlasVectorField:\label{item:AtlasVectorField}]
+\pttarget{PTAVF}\index{Oxs\_Ext~child~classes!Oxs\_AtlasVectorField}%
    Declares vector values that are defined across individual regions of
    an \cd{Oxs\_Atlas}.  The Specify block has the form
       \begin{latexonly}
@@ -4979,13 +5038,13 @@ created with the value of \cd{vector} set to \cd{\ocb 1 0 0\ccb}.
      \fn{imageatlas.mif}, \fn{spinvalve.mif}.
    \end{ExampleMifs}
 
-\pttarget{PTSVF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptVectorField}%
 \item[Oxs\_ScriptVectorField:\label{item:ScriptVectorField}]
+\pttarget{PTSVF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptVectorField}%
 Conceptually similar to the
 \htmlonlyref{\cd{Oxs\_ScriptScalarField}}{item:ScriptScalarField} scalar
 field object\latex{ (page~\pageref{item:ScriptScalarField})},
 except that the script should return a vector (as a 3 element list)
-rather than a scalar.  In addition to the parameters accepted by
+rather than a scalar.  In addition to parameters accepted by
 \cd{Oxs\_ScriptScalarField}, \cd{Oxs\_ScriptVectorField} also accepts
 an optional parameter \oxslabel{norm}.  If specified, the return
 values from the script are size adjusted to the specified magnitude.
@@ -5031,9 +5090,9 @@ Specify Oxs_ScriptVectorField {
 See also the
 \htmlonlyref{\cd{Oxs\_MaskVectorField}}{item:MaskVectorField}
 documentation and the discussion of the
-\htmlonlyref{\cd{ReadFile}}{html:ReadFile} \MIF\ extension command
+\ptlink{\cd{ReadFile}}{PTReadFile} \MIF\ extension command
 \latex{in Sec.~\ref{sec:mif2ExtensionCommands}}
-for other example uses of the \cd{Oxs\_ScriptVectorField} class.
+for another \cd{Oxs\_ScriptVectorField} example.
 
 \begin{ExampleMifs}
   \fn{cgtest.mif}, \fn{ellipsoid.mif},
@@ -5041,8 +5100,8 @@ for other example uses of the \cd{Oxs\_ScriptVectorField} class.
   \fn{stdprob3.mif}, \fn{yoyo.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTFVF}\index{Oxs\_Ext~child~classes!Oxs\_FileVectorField}%
 \item[Oxs\_FileVectorField:\label{item:FileVectorField}]
+\pttarget{PTFVF}\index{Oxs\_Ext~child~classes!Oxs\_FileVectorField}%
    Provides a file-specified vector field.  The Specify block has the form
       \begin{latexonly}
       \begin{quote}\tt
@@ -5128,8 +5187,8 @@ for other example uses of the \cd{Oxs\_ScriptVectorField} class.
   \fn{stdprob3.mif}, \fn{yoyo.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTRVF}\index{Oxs\_Ext~child~classes!Oxs\_RandomVectorField}%
 \item[Oxs\_RandomVectorField:]
+\pttarget{PTRVF}\index{Oxs\_Ext~child~classes!Oxs\_RandomVectorField}%
 Similar to
 \htmlonlyref{\cd{Oxs\_RandomScalarField}}{item:RandomScalarField}%
 \latex{ (q.v.)}, but defines a vector field rather than a scalar field that
@@ -5139,6 +5198,7 @@ varies spatially in a random fashion.  The Specify block has the form:
       Specify Oxs\_RandomVectorField:\oxsval{name} \ocb\\
        \bi min\_norm \oxsval{minvalue}\\
        \bi max\_norm \oxsval{maxvalue}\\
+       \bi base\_field \oxsval{vector\_field\_spec}\\
        \bi cache\_grid \oxsval{mesh\_spec}\\
       \ccb
       \end{quote}
@@ -5148,6 +5208,7 @@ varies spatially in a random fashion.  The Specify block has the form:
       <TT>Specify Oxs_RandomVectorField {</TT>
       <DD><TT> min_norm </TT><I>minvalue</I>
       <DD><TT> max_norm </TT><I>maxvalue</I>
+      <DD><TT> base_field </TT><I>vector_field_spec</I>
       <DD><TT> cache_grid </TT><I>mesh_spec</I>
       <DT><TT>}</TT></DL></BLOCKQUOTE><P>
       \end{rawhtml}
@@ -5157,22 +5218,34 @@ between these two specified values.  If \cd{min\_norm} = \cd{max\_norm},
 then the samples are uniformly distributed on the sphere of that radius.
 Otherwise, the samples are uniformly distributed in the hollow spherical
 volume with inner radius \cd{min\_norm} and outer radius \cd{max\_norm}.
-There is also an optional parameter, \oxslabel{cache\_grid}, which takes
-a mesh specification that describes the grid used for cache spatial
-discretization.  If \oxslabel{cache\_grid} is not specified, then each
-call to \cd{Oxs\_RandomVectorField} generates a different field.  If you
-want to use the same random vector field in two places (as a base for
-setting, say anisotropy axes and initial magnetization), then specify
+
+There are also two optional parameters, \oxslabel{base\_field} and
+\oxslabel{cache\_grid}. If the former is given, then the generated
+random field is added onto the field specified by
+\cd{vector\_field\_spec}.  If \oxslabel{base\_field} is omitted, the
+result is equivalent to specifying a zero field.
+
+The \oxslabel{cache\_grid} option takes a mesh specification that
+describes the grid used for spatial discretization caching.  If
+\oxslabel{cache\_grid} is not specified, then each call to
+\cd{Oxs\_RandomVectorField} generates a different field.  If you want to
+use the same random vector field in two places (as a base for setting,
+say anisotropy axes and initial magnetization), then specify
 \oxslabel{cache\_grid} with the appropriate (usually the base problem)
-mesh.
+mesh. Note also that if \oxslabel{cache\_grid} is not used, then on
+multi-threaded runs the random number generator call sequence among the
+threads is not deterministic, and so results may varying between runs,
+even for simulations started with the same
+\ptlink{random number seed}{PTmif2randomseed}.
+\latex{(\cd{RandomSeed}, Sec.~\ref{sec:mif2ExtensionCommands}.)}
 
 \begin{ExampleMifs}
   \fn{diskarray.mif}, \fn{sample2.mif}, \fn{randomshape.mif}
   \fn{stdprob1.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTPRVF}\index{Oxs\_Ext~child~classes!Oxs\_PlaneRandomVectorField}%
 \item[Oxs\_PlaneRandomVectorField:]
+\pttarget{PTPRVF}\index{Oxs\_Ext~child~classes!Oxs\_PlaneRandomVectorField}%
    Similar to \cd{Oxs\_RandomVectorField}, except that samples are
    drawn from 2D planes rather than 3-space.  The Specify block has the
    form
@@ -5214,9 +5287,9 @@ mesh.
   \fn{sample2.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTSOVF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptOrientVectorField}%
 \item[Oxs\_ScriptOrientVectorField:\label{item:ScriptOrientVectorField}]
-This class is analogous to the
+\pttarget{PTSOVF}\index{Oxs\_Ext~child~classes!Oxs\_ScriptOrientVectorField}%
+Compare to the
 \htmlonlyref{\cd{Oxs\_ScriptOrientScalarField}}{item:ScriptOrientScalarField}
 class\latex{ (page~\pageref{item:ScriptOrientScalarField})}.
 The Specify block has the form:
@@ -5271,9 +5344,9 @@ object.
   \fn{sample-vecreflect.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTAOVF}\index{Oxs\_Ext~child~classes!Oxs\_AffineOrientVectorField}%
 \item[Oxs\_AffineOrientVectorField:\label{item:AffineOrientVectorField}]
-This class is analogous to the
+\pttarget{PTAOVF}\index{Oxs\_Ext~child~classes!Oxs\_AffineOrientVectorField}%
+Compare to the
 \htmlonlyref{\cd{Oxs\_AffineOrientScalarField}}{item:AffineOrientScalarField}
 class\latex{ (page~\pageref{item:AffineOrientScalarField})}.
 The Specify block has the form:
@@ -5320,8 +5393,8 @@ an example.
   \fn{yoyo.mif}, \fn{sample-vecrotate.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTATVF}\index{Oxs\_Ext~child~classes!Oxs\_AffineTransformVectorField}%
 \item[Oxs\_AffineTransformVectorField:\label{item:AffineTransformVectorField}]
+\pttarget{PTATVF}\index{Oxs\_Ext~child~classes!Oxs\_AffineTransformVectorField}%
 This class applies an affine transform to the output of a vector field.
 It is similar to the
 \htmlonlyref{\cd{Oxs\_AffineTransformScalarField}}{item:AffineTransformScalarField}
@@ -5473,8 +5546,8 @@ illustrated below.
   \fn{sample-vecrotate.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTMVF}\index{Oxs\_Ext~child~classes!Oxs\_MaskVectorField}%
 \item[Oxs\_MaskVectorField:\label{item:MaskVectorField}]
+\pttarget{PTMVF}\index{Oxs\_Ext~child~classes!Oxs\_MaskVectorField}%
 Multiplies a vector field pointwise by a scalar vector field (the mask)
 to produce a new vector field.  The Specify block has the form:
 \begin{latexonly}
@@ -5553,8 +5626,8 @@ scalar and vector fields.
   \fn{rotatecenterstage.mif}.
 \end{ExampleMifs}
 
-\pttarget{PTIVF}\index{Oxs\_Ext~child~classes!Oxs\_ImageVectorField}%
 \item[Oxs\_ImageVectorField:\label{item:ImageVectorField}]
+\pttarget{PTIVF}\index{Oxs\_Ext~child~classes!Oxs\_ImageVectorField}%
 This class creates a vector field using an image.  The Specify block has
 the form
 \begin{latexonly}
@@ -5615,9 +5688,9 @@ the same as for the
 \end{description}
 
 \subsection{\MIF\ Support Classes}\label{oxsMIF}
-\pttarget{PTLV}\begin{description}
-\index{Oxs\_Ext~child~classes!Oxs\_LabelValue}%
+\begin{description}
 \item[Oxs\_LabelValue:]
+\pttarget{PTLV}\index{Oxs\_Ext~child~classes!Oxs\_LabelValue}%
    A convenience object that holds label + value
    pairs.  \cd{Oxs\_LabelValue} objects may be referenced via the
    standard \cd{attributes} field in other Specify blocks, as in
@@ -5696,7 +5769,7 @@ to compile and link the extension into the Oxs executable.
 All of the extensions distributed in an \OOMMF\ release that do not
 require libraries beyond those needed to run \OOMMF\ are distributed in
 the installed state. It is up to the end user to install additional
-libraries in the needed if they wish to activate other extensions. See
+libraries as needed if they wish to activate other extensions. See
 the \cd{requires} subcommand in
 the \htmlonlyref{\app{oxspkg}}{sec:oxspkg} documentation for details.
 

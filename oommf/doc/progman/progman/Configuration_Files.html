@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html200"
+<A NAME="tex2html203"
   HREF="Understanding_pimake.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html196"
+<A NAME="tex2html199"
   HREF="Debugging_OOMMF.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html190"
+<A NAME="tex2html193"
   HREF="Debugging_OOMMF.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html198"
+<A NAME="tex2html201"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html201"
+<B> Next:</B> <A NAME="tex2html204"
   HREF="Understanding_pimake.html">Understanding pimake</A>
-<B> Up:</B> <A NAME="tex2html197"
+<B> Up:</B> <A NAME="tex2html200"
   HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
-<B> Previous:</B> <A NAME="tex2html191"
+<B> Previous:</B> <A NAME="tex2html194"
   HREF="Debugging_OOMMF.html">Debugging OOMMF</A>
 <BR>
 <BR>
@@ -123,7 +123,7 @@ specified. This pertains primarily to the double-double routines in
 <TT>*_remove_*</TT> controls remove options from the default compile
 command. This can be a (Tcl) list, with each element matching as a
 regular expression. (Refer to the
-<A NAME="tex2html17"
+<A NAME="tex2html20"
   HREF="https://www.tcl-lang.org/man/">Tcl documentation</A>
 on the <TT>regexp</TT> command for details.) The <TT>*_add_*</TT> controls
 append options. OOMMF sets <TT>/O2</TT> optimization by default, but
@@ -200,15 +200,15 @@ used to construct the platform-specific header files
 <TT><B>pkg/xp/&lt;platform&gt;/xpport.h</B></TT>. These files contain
 C++ macro definitions, typedefs, and function wrappers,
 and are an important adjunct when reading the OOMMF source code.
-<A NAME="PTtclintrospection"></A>For in-depth investigations Tcl can be used to directly query and debug
-OOMMF initialization scripts. Start a Tcl shell, and from inside the
-shell append the OOMMF <TT><B>pkg/oc</B></TT> directory to the Tcl global
-<TT>auto_path</TT> variable. Next run <TT>package require Oc</TT> to load the
-Tcl-only portion of the OOMMF <TT>Oc</TT> library into the shell. Then
-you can check any and all <TT>Oc_Option</TT> values from
-<TT><B>config/options.tcl</B></TT>, platform configuration settings from
-<TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT>, and perform various other types of
-introspection from the Tcl shell. See
+For in-depth investigations<A NAME="PTtclintrospection"></A> Tcl can be
+used to directly query and debug OOMMF initialization scripts. Start a
+Tcl shell, and from inside the shell append the OOMMF <TT><B>pkg/oc</B></TT>
+directory to the Tcl global <TT>auto_path</TT> variable. Next run
+<TT>package require Oc</TT> to load the Tcl-only portion of the
+OOMMF <TT>Oc</TT> library into the shell. Then you can check any and all
+<TT>Oc_Option</TT> values from <TT><B>config/options.tcl</B></TT>, platform
+configuration settings from <TT><B>config/platforms/&lt;platform&gt;.tcl</B></TT>, and
+perform various other types of introspection from the Tcl shell. See
 Fig.&nbsp;<A HREF="#fig:oommftclintrospection">5.1</A> for a sample session.
 <A NAME="fig:oommftclintrospection"></A>
 
@@ -276,23 +276,25 @@ Figure 5.1:
   
 </DIV>
   <BR CLEAR="ALL">
-<HR><HR>
+<HR>
+<P>
+<HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html200"
+<A NAME="tex2html203"
   HREF="Understanding_pimake.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html196"
+<A NAME="tex2html199"
   HREF="Debugging_OOMMF.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html190"
+<A NAME="tex2html193"
   HREF="Debugging_OOMMF.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html198"
+<A NAME="tex2html201"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

@@ -107,6 +107,12 @@ Oc_Class Net_ThreadWish {
             catch {$slave eval [list uplevel #0 $cmd]}
         }
 
+        # An exit command entered from the console throws '::tcl::Bgerror
+        # {attempt to call eval in deleted interpreter}' on at least
+        # macOS 11.7.1 (Big Sur) w/ Tcl 8.6.12. Details are unclear, but
+        # withdrawing the console window appears to fix the issue.
+        catch {$slave eval [list console hide]}
+
         # Convert all commands into [return],
         # so nothing more happens in $slave
         if {[package vsatisfies [package provide Tcl] 7]} {
@@ -281,7 +287,7 @@ Oc_Class Net_ThreadWish {
         # from the server to do it for you.  The down side is that
         # any writes to $local before that write trace instruction
         # arrives from the server will not be sent out.
-#       $slave eval [list trace variable $local w $trace]
+#       $slave eval [list trace add variable $local write $trace]
 
 # NOT YET ACTIVE:
 if 0 {
@@ -292,7 +298,7 @@ if 0 {
                 return
             }
             # $local shadows a variable other than $remote.  Stop it.
-            trace vdelete $local w 
+            trace remove variable $local write
         }
 }
     }

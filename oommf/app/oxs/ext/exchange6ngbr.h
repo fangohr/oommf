@@ -8,6 +8,8 @@
 #ifndef _OXS_EXCHANGE6NGBR
 #define _OXS_EXCHANGE6NGBR
 
+#include <vector>
+
 #include "atlas.h"
 #include "key.h"
 #include "chunkenergy.h"
@@ -30,7 +32,7 @@ private:
   OC_INDEX coef_size;
   OC_REAL8m** coef;
   OC_REAL8m max_abscoef;
-  mutable Oxs_Key<Oxs_Atlas> atlaskey;  
+  mutable Oxs_Key<Oxs_Atlas> atlaskey;
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
   mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_INDEX> region_id;

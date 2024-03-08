@@ -1,0 +1,112 @@
+diff -ru tuw_cvodeevolve/tuw_cvodeevolve.cc tuw_cvodeevolve-new/tuw_cvodeevolve.cc
+--- tuw_cvodeevolve/tuw_cvodeevolve.cc	2022-01-22 02:39:23.919149032 -0500
++++ tuw_cvodeevolve-new/tuw_cvodeevolve.cc	2023-08-21 14:56:57.000000000 -0400
+@@ -4,7 +4,7 @@
+  *
+  */
+ 
+-#include <float.h>
++#include <cfloat>
+ 
+ #include "nb.h"
+ 
+@@ -356,12 +356,12 @@
+ OC_BOOL
+ Tuw_CvodeEvolve::Step(const Oxs_TimeDriver* driver,
+                 Oxs_ConstKey<Oxs_SimState> current_state,
+-                const Oxs_DriverStepInfo& /* step_info */,
++                Oxs_DriverStepInfo& /* step_info */,
+                 Oxs_Key<Oxs_SimState>& next_state)
+ {
+   const Oxs_SimState& cstate = current_state.GetReadReference();
+   Oxs_SimState* workstate = &(next_state.GetWriteReference());
+-  driver->FillState(cstate,*workstate);
++  driver->FillStateMemberData(cstate,*workstate);
+ 
+   if(cstate.mesh->Id() != workstate->mesh->Id()) {
+     throw Oxs_Ext::Error
+@@ -410,7 +410,7 @@
+   /// Note: cstate and *workstate have same stage_number.
+   workstate->iteration_count = cstate.iteration_count + 1;
+   workstate->stage_iteration_count = cstate.stage_iteration_count + 1;
+-  driver->FillStateSupplemental(*workstate);
++  driver->FillStateSupplemental(cstate,*workstate);
+   int itask = CV_ONE_STEP;
+   if(stepsize>workstate->last_timestep) {
+     // Driver cut requested stepsize.  Force CVode call to
+@@ -739,6 +739,7 @@
+     /// AddDerivedData calls will overwrite the old approximate
+     /// values.
+   }
++  driver->FillStateDerivedData(cstate,*fixedstate);
+ 
+   state_id = fixedstate->Id();
+   stage_number = fixedstate->stage_number;
+diff -ru tuw_cvodeevolve/tuw_cvodeevolve.h tuw_cvodeevolve-new/tuw_cvodeevolve.h
+--- tuw_cvodeevolve/tuw_cvodeevolve.h	2022-01-22 02:39:23.925149259 -0500
++++ tuw_cvodeevolve-new/tuw_cvodeevolve.h	2023-08-21 14:56:57.000000000 -0400
+@@ -7,7 +7,7 @@
+ #ifndef _TUW_CVODEEVOLVE
+ #define _TUW_CVODEEVOLVE
+ 
+-#include <stdio.h>  // for FILE* logfile.
++#include <cstdio>  // for FILE* logfile.
+ 
+ #include "director.h"
+ #include "ext.h"
+@@ -121,7 +121,7 @@
+   virtual  OC_BOOL
+   Step(const Oxs_TimeDriver* driver,
+        Oxs_ConstKey<Oxs_SimState> current_state,
+-       const Oxs_DriverStepInfo& step_info,
++       Oxs_DriverStepInfo& step_info,
+        Oxs_Key<Oxs_SimState>& next_state);
+   // Returns true if step was successful, false if
+   // unable to step as requested.
+diff -ru tuw_cvodeevolve/tuw_cvodeevolve.rules tuw_cvodeevolve-new/tuw_cvodeevolve.rules
+--- tuw_cvodeevolve/tuw_cvodeevolve.rules	2017-06-14 13:50:09.000000000 -0400
++++ tuw_cvodeevolve-new/tuw_cvodeevolve.rules	2023-08-21 15:00:50.000000000 -0400
+@@ -1,7 +1,19 @@
+ # FILE: tuw_cvodeevolve.rules
+ # External libraries needed by the tuw_cvodeevolve extension package
++
++# Default libs list
+ set Oxs_external_libs [list sundials_cvode sundials_nvecserial]
+ 
++# Platform-specific modifications to libs list; adjust as necessary.
++if {[array exists tcl_platform]} {
++   if {[string compare -nocase darwin $tcl_platform(os)]==0} {
++      set Oxs_external_libs [list sundials_cvode sundials_nvecserial klu]
++   } elseif {[string compare -nocase linux $tcl_platform(os)]==0} {
++      set Oxs_external_libs [list :libsundials_cvode.so.2 \
++                                :libsundials_nvecserial.so.2]
++   }
++}
++
+ # Note: If CVODE include files and libraries are not in the standard
+ # compiler/linker search path, then add appropriate
+ #
+@@ -13,3 +25,23 @@
+ #
+ # commands to your oommf/config/platforms/local/<platform>.tcl
+ # file.
++#
++# On macOS, if you get this error when launching oxs:
++#
++#  dyld[#]: symbol not found in flat namespace (_klu_analyze)
++#
++# then add "klu" to the Oxs_external_libs line above.
++#
++# On Linux, if you get "undefined reference" link errors such as
++#
++#   ... undefined reference to `CVSpgmr'
++#   ... undefined reference to `CVSpilsSetGSType'
++#
++# then the linker may be loading the wrong sundials/cvode library
++# version. Check that the proper sundials version is installed
++# (tuw_cvodeevolve requires version 2 as of Mar-2023), and modify
++# the Oxs_external_libs setting above to e.g.
++#
++#   set Oxs_external_libs [list :libsundials_cvode.so.2 \
++#                               :libsundials_nvecserial.so.2]
++#

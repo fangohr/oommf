@@ -126,10 +126,9 @@ Vf_FileInput::~Vf_FileInput()
   if(infile!=NULL)  fclose(infile);
   Tcl_Interp* interp=Oc_GlobalInterpreter();
   if(channel!=NULL && interp!=NULL) {
-    Tcl_SavedResult saved;
-    Tcl_SaveResult(interp, &saved);
+    Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
     Tcl_UnregisterChannel(interp, channel);
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
   // NOTE: "channel" should be registered with the global Tcl
   // interpreter, and should therefore be automatically
   // closed when "unregistered."
@@ -179,12 +178,10 @@ Vf_FileInput *Vf_FileInput::NewReader(const char *new_file,
   Tcl_Interp* interp=Oc_GlobalInterpreter();
   if(interp==NULL)
     FatalError(-1,STDDOC,"Tcl interpretor not initialized");
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   char *tmpbuf=new char[strlen(new_file)+16];
   strcpy(tmpbuf,new_file);
-  Tcl_Channel mychannel=Tcl_OpenFileChannel(interp,tmpbuf,
-                                            OC_CONST84_CHAR("r"),0);
+  Tcl_Channel mychannel=Tcl_OpenFileChannel(interp,tmpbuf, "r",0);
   delete[] tmpbuf;
   if(mychannel==NULL) {
     if(errmsg==NULL) {
@@ -195,7 +192,7 @@ Vf_FileInput *Vf_FileInput::NewReader(const char *new_file,
       *errmsg += new_file;
       *errmsg += "\" for Tcl reading";
     }
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
     fclose(fptr);
     return NULL;
   }
@@ -223,7 +220,7 @@ Vf_FileInput *Vf_FileInput::NewReader(const char *new_file,
   // -mjd, 30-Aug-1997.
 
   Tcl_RegisterChannel(interp, mychannel);
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   const char *mychannelName=Tcl_GetChannelName(mychannel);
 
   // Check that this is not an empty file (special case)
@@ -566,7 +563,7 @@ OC_BOOL Vf_OvfSegmentHeader::ValidSet(void) const
       }
     }
   }
-  if(valuelabels_list_bool && 
+  if(valuelabels_list_bool &&
      (!valuedim_bool || valuelabels_list.GetSize() != valuedim)) {
     set_code = 0;
   }
@@ -893,7 +890,7 @@ OC_INT4m Vf_OvfFileInput::ParseContentLine(const Nb_DString &buf,
 //
 OC_INT4m Vf_OvfFileInput::ReadTextVec3f(int Nin, Nb_Vec3<OC_REAL8> &data)
 {
-#define MEMBERNAME "ReadTextData"
+#define MEMBERNAME "ReadTextVec3f"
   static char buf[SCRATCH_BUF_SIZE];
   int ch=0,bufindex;
   int elt=0;  // Next element to fill; 0->x, 1->y, 2->z
@@ -1005,13 +1002,22 @@ OC_INT4m Vf_OvfFileInput::ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
         return 1; // Presumably EOF
       }
     }
-    if(!Nb_IsFinite(databuf[0]) || !Nb_IsFinite(databuf[1])
-       || !Nb_IsFinite(databuf[2])) return 2;
-    data.x=(OC_REAL8)databuf[0];
-    data.y=(OC_REAL8)databuf[1];
-    data.z=(OC_REAL8)databuf[2];
-  }
-  else if(datastyle == vf_obin8) {  // 8-byte binary type
+    data.x=static_cast<OC_REAL8>(databuf[0]);
+    data.y=static_cast<OC_REAL8>(databuf[1]);
+    data.z=static_cast<OC_REAL8>(databuf[2]);
+    if(!Nb_IsFinite(databuf[0])) {
+      if(badvalue!=NULL) *badvalue=data.x;
+      return 2;
+    }
+    if(!Nb_IsFinite(databuf[1])) {
+      if(badvalue!=NULL) *badvalue=data.y;
+      return 2;
+    }
+    if(!Nb_IsFinite(databuf[2])) {
+      if(badvalue!=NULL) *badvalue=data.z;
+      return 2;
+    }
+  } else if(datastyle == vf_obin8) {  // 8-byte binary type
     OC_REAL8 databuf[3];
     int count = 3;
     if(Nin<count) {
@@ -1027,6 +1033,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
         return 1; // Presumably EOF
       }
     }
+    data.x=databuf[0];    data.y=databuf[1];    data.z=databuf[2];
     if(!Nb_IsFinite(databuf[0])) {
       if(badvalue!=NULL) *badvalue=databuf[0];
       return 2;
@@ -1039,9 +1046,6 @@ OC_INT4m Vf_OvfFileInput::ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
       if(badvalue!=NULL) *badvalue=databuf[2];
       return 2;
     }
-    data.x=databuf[0];
-    data.y=databuf[1];
-    data.z=databuf[2];
   }
   return 0;
 #undef MEMBERNAME
@@ -1060,7 +1064,8 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
       count = Nin;
       databuf[0] = databuf[1] = databuf[2] = 0.0;
     }
-    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,databuf,OC_INDEX(count))!=0) {
+    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,databuf,
+                                                OC_INDEX(count))!=0) {
       return 1;
     }
     if(count<Nin) {
@@ -1069,20 +1074,30 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
         return 1; // Presumably EOF
       }
     }
-    if(!Nb_IsFinite(databuf[0]) || !Nb_IsFinite(databuf[1])
-       || !Nb_IsFinite(databuf[2])) return 2;
-    data.x=(OC_REAL8)databuf[0];
-    data.y=(OC_REAL8)databuf[1];
-    data.z=(OC_REAL8)databuf[2];
-  }
-  else if(datastyle == vf_obin8) {  // 8-byte binary type
+    data.x=static_cast<OC_REAL8>(databuf[0]);
+    data.y=static_cast<OC_REAL8>(databuf[1]);
+    data.z=static_cast<OC_REAL8>(databuf[2]);
+    if(!Nb_IsFinite(databuf[0])) {
+      if(badvalue!=NULL) *badvalue=data.x;
+      return 2;
+    }
+    if(!Nb_IsFinite(databuf[1])) {
+      if(badvalue!=NULL) *badvalue=data.y;
+      return 2;
+    }
+    if(!Nb_IsFinite(databuf[2])) {
+      if(badvalue!=NULL) *badvalue=data.z;
+      return 2;
+    }
+  } else if(datastyle == vf_obin8) {  // 8-byte binary type
     OC_REAL8 databuf[3];
     int count = 3;
     if(Nin<count) {
       count = Nin;
       databuf[0] = databuf[1] = databuf[2] = 0.0;
     }
-    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,databuf,OC_INDEX(count))!=0) {
+    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,databuf,
+                                                OC_INDEX(count))!=0) {
       return 1;
     }
     if(count<Nin) {
@@ -1091,6 +1106,7 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
         return 1; // Presumably EOF
       }
     }
+    data.x=databuf[0];    data.y=databuf[1];    data.z=databuf[2];
     if(!Nb_IsFinite(databuf[0])) {
       if(badvalue!=NULL) *badvalue=databuf[0];
       return 2;
@@ -1103,20 +1119,180 @@ OC_INT4m Vf_OvfFileInput::ReadVec3fFromLSB(Vf_OvfDataStyle datastyle,int Nin,
       if(badvalue!=NULL) *badvalue=databuf[2];
       return 2;
     }
-    data.x=databuf[0];
-    data.y=databuf[1];
-    data.z=databuf[2];
   }
   return 0;
 #undef MEMBERNAME
 }
 
-Vf_Mesh *Vf_OvfFileInput::NewMesh()
+
+// Read a vector of ASCII floating point values from infile, skipping any
+// leading whitespace and eating the first whitespace character after
+// the last value. The length of the vector is set by the .size() of the
+// data i/o buffer, which must be set before entry.
+//
+// Returns 0 on success, 1 on file read error, 2 if input is a nan or
+// inf.
+//
+OC_INT4m Vf_OvfFileInput::ReadTextVecN(std::vector<OC_REAL8> &data)
 {
+#define MEMBERNAME "ReadTextVecN"
+  static char buf[SCRATCH_BUF_SIZE];
+  const int Nin = static_cast<int>(data.size());
+
+  int ch=0,bufindex;
+  int return_value = 0;
+  int elt=0;  // Next element to fill
+  while(elt<Nin) {
+    // Skip leading white space and comments
+    while(1) {
+      ch=fgetc(infile);
+      if(ch==EOF) return 1;  // Premature end-of-file
+      // Check for comment.
+      if(ch=='#') {
+        ch=fgetc(infile);
+        if(ch==EOF) return 1;  // Premature end-of-file
+        if(ch=='#') {
+          // Comment; read to end of line
+          while((ch=fgetc(infile))!='\n') {
+            if(ch==EOF) return 1;  // Premature end-of-file
+          }
+        } else {
+          // Blank line; read to end of line
+          while ((ch=fgetc(infile))!='\n') {
+            if(ch==EOF) return 1;  // Premature end-of-file
+            if(!isspace(ch)) {
+              ClassMessage(STDDOC,"Field-value pair inside data block,"
+                           " or premature end of data in file %s.",
+                           (const char *)filename);
+              return 1;
+            }
+          }
+        }
+        continue;
+      }
+      // Non-comment white-space check
+      if(isspace(ch)) continue;
+      // Otherwise, should be data.
+      break;
+    }
+
+    // Fill buffer with data up to next white space character
+    bufindex=0;
+    do {
+      if(ch=='d' || ch=='D') ch='e';  // Convert FORTRAN 'd' exponent
+      buf[bufindex++]=(char)ch;       // designator to C 'e' designator
+      ch=fgetc(infile);
+      if(ch==EOF) return 1;  // Premature end-of-file
+    } while(!isspace(ch) && bufindex<SCRATCH_BUF_SIZE-1);
+    if(bufindex>=SCRATCH_BUF_SIZE-1) {
+      // Single data elt too big to fit in buffer?!
+      ClassMessage(STDDOC,"Bad data in file %s;"
+                    " Single value >%d characters long",
+                    (const char *)filename,SCRATCH_BUF_SIZE);
+      return 1;
+    }
+    buf[bufindex]='\0';
+
+    // Convert to floating point and store
+    char* endptr;
+    const OC_REAL8m value=OC_REAL8(Nb_Strtod(buf,&endptr));
+    if( (endptr-buf) != bufindex ) {
+      ClassMessage(STDDOC,"Non-numeric data ->%s<- in data block of file %s",
+                    buf,(const char *)filename);
+      return 1;
+    }
+
+    if(return_value == 0 && !Nb_IsFinite(value)) {
+      return_value = 2;
+    }
+
+    data[elt++] = value;
+  }
+
+  return return_value;
+#undef MEMBERNAME
+}
+
+// Reads N floating point values from infile, using "datastyle"
+// format, storing the result in export data, which must be
+// presized to length N.
+//
+// Returns 0 on success, 1 on file read error, 2 if input includes a NaN
+// or Inf.
+//
+OC_INT4m Vf_OvfFileInput::ReadVecN(Vf_OvfDataStyle datastyle,
+                                   std::vector<OC_REAL8> &data)
+{
+#define MEMBERNAME "ReadVecN"
+  const OC_INDEX Nin = static_cast<OC_INDEX>(data.size());
+  if(datastyle == vf_oascii) return ReadTextVecN(data);
+  if(datastyle == vf_obin4)      {  // 4-byte binary type
+    // Kludge: Fill back end of OC_REAL8 array with shorter OC_REAL4
+    // values, and then move values forward, converting on the fly.
+    OC_REAL4* databuf = reinterpret_cast<OC_REAL4*>(data.data()+Nin) - Nin;
+    if(Vf_OvfFileFormatSpecs::ReadBinary(infile,databuf,Nin)!=0) {
+      return 1;
+    }
+    for(int i=0;i<Nin;++i) {
+      data[i]=static_cast<OC_REAL8>(databuf[i]);
+    }
+  } else if(datastyle == vf_obin8) {  // 8-byte binary type
+    if(Vf_OvfFileFormatSpecs::ReadBinary(infile,data.data(),Nin)!=0) {
+      return 1;
+    }
+  }
+  for(int i=0;i<Nin;++i) {
+    if(!Nb_IsFinite(data[i])) { return 2; }
+  }
+  return 0;
+#undef MEMBERNAME
+}
+
+OC_INT4m Vf_OvfFileInput::ReadVecNFromLSB(Vf_OvfDataStyle datastyle,
+                                          std::vector<OC_REAL8> &data)
+{
+#define MEMBERNAME "ReadVecNFromLSB"
+  const OC_INDEX Nin = static_cast<OC_INDEX>(data.size());
+  if(datastyle == vf_oascii) return ReadTextVecN(data);
+  if(datastyle == vf_obin4)      {  // 4-byte binary type
+    // Kludge: Fill back end of OC_REAL8 array with shorter OC_REAL4
+    // values, and then move values forward, converting on the fly.
+    OC_REAL4* databuf = reinterpret_cast<OC_REAL4*>(data.data()+Nin) - Nin;
+    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,databuf,Nin)!=0) {
+      return 1;
+    }
+    for(int i=0;i<Nin;++i) {
+      data[i]=static_cast<OC_REAL8>(databuf[i]);
+    }
+  } else if(datastyle == vf_obin8) {  // 8-byte binary type
+    if(Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,data.data(),Nin)!=0) {
+      return 1;
+    }
+  }
+  for(int i=0;i<Nin;++i) {
+    if(!Nb_IsFinite(data[i])) { return 2; }
+  }
+  return 0;
+#undef MEMBERNAME
+}
+
+
+Vf_Mesh *Vf_OvfFileInput::NewMesh(int* baddata_status)
+{ // Returns a *Vf_EmptyMesh on error (not NULL).  Either way, the
+  // client is responsible for destroying (via delete) the returned
+  // mesh. If baddata_status is non-null, then non-finite floating point
+  // data (i.e., NaN or infinity) is not treated as an error, and
+  // *baddata_status is filled with either 0 or 1 to report the absence
+  // or presence of such, respectively.
+
 #define MEMBERNAME "NewMesh"
   Nb_DString buf,field,value;
   Vf_OvfDataStyle datastyle=vf_oascii;
   const char *datastylestring=NULL;
+
+  if(baddata_status!=0) {
+    *baddata_status = 0;  // Assume data is good until shown otherwise.
+  }
 
   Vf_OvfSegmentHeader ovfseghead;
   ovfseghead.SetBools(0);  // Safety
@@ -1270,8 +1446,9 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
   Vf_Mesh *mesh=NULL;
   if(ovfseghead.meshtype!=vf_oshmt_irregular) {
     // Rectangular grid
-    Nb_Vec3<OC_REAL8> basept(OC_REAL8(ovfseghead.xbase),OC_REAL8(ovfseghead.ybase),
-                          OC_REAL8(ovfseghead.zbase));
+    Nb_Vec3<OC_REAL8> basept(OC_REAL8(ovfseghead.xbase),
+                             OC_REAL8(ovfseghead.ybase),
+                             OC_REAL8(ovfseghead.zbase));
     Nb_Vec3<OC_REAL8> lastpt(OC_REAL8((ovfseghead.xnodes-1)*ovfseghead.xstepsize),
                           OC_REAL8((ovfseghead.ynodes-1)*ovfseghead.ystepsize),
                           OC_REAL8((ovfseghead.znodes-1)*ovfseghead.zstepsize));
@@ -1299,8 +1476,7 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
                                basept,gridstep,
                                data_range,total_range,bdryptr);
     mesh=mesh_rect;
-  }
-  else {
+  } else {
     // Irregular grid
     mesh_irreg=new Vf_GeneralMesh3f((const char *)filename,
                                     (const char *)ovfseghead.title,
@@ -1377,8 +1553,9 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
     OC_INDEX i,j,k;
     Nb_Vec3<OC_REAL8> data;
     OC_REAL8m baddata; // For debugging
-    for(k=0;k<ovfseghead.znodes;k++)
-      for(j=0;j<ovfseghead.ynodes;j++)
+    int baddata_flag=0;
+    for(k=0;k<ovfseghead.znodes;k++) {
+      for(j=0;j<ovfseghead.ynodes;j++) {
         for(i=0;i<ovfseghead.xnodes;i++) {
           // Read one entry
           int float_error=0;
@@ -1387,8 +1564,18 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
           } else {
             float_error = ReadVec3f(datastyle,filevaldim,data,&baddata);
           }
-          if(float_error!=0) {
-            if(float_error==2) {
+          if(float_error == 0) {
+            data*=norm; // Normalize data
+          } else if(float_error == 1) {
+            ClassMessage(STDDOC,"Premature EOF in file %s"
+                         " in data section",
+                         (const char *)filename);
+            delete mesh;
+            return new Vf_EmptyMesh();
+          } else { // float_error == 2
+            if(!baddata_flag) {
+              baddata_flag = 1; // Don't dump more than one bad data
+                               /// error message.
               if(datastyle == vf_obin8) {
                 unsigned char* cptr=(unsigned char*)(&baddata);
                 fprintf(stderr,"Bad data at index (%ld,%ld,%ld)\n",
@@ -1404,49 +1591,63 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
                            "Invalid floating point data detected"
                            " in file %s, at index (%d,%d,%d)",
                            (const char *)filename,i,j,k);
-            } else {
-              ClassMessage(STDDOC,"Premature EOF in file %s"
-                           " in data section",
-                           (const char *)filename);
+              if(baddata_status==0) {
+                delete mesh;
+                return new Vf_EmptyMesh();
+              } else {
+                *baddata_status=1;
+              }
             }
-            delete mesh;
-            return new Vf_EmptyMesh();
           }
-          data*=norm; // Normalize data.
           (*mesh_rect)(i,j,k)=data;
-        }
-  }
-  else {
+        }  // for-i
+      } // for-j
+    } // for-k
+  } else {
     // Irregular grid
     OC_INDEX i;
     Nb_LocatedVector<OC_REAL8> lv;
+    int baddata_flag=0;
     for(i=0;i<ovfseghead.pointcount;i++) {
       // Read one entry.  Note that location dimension is always 3
-      int float_error = 0;
+      int float_error_loc = 0, float_error_val = 0;
+      OC_REAL8m baddata_loc, baddata_val;
       if(ovfseghead.fileversion == vf_ovf_20) {
-        float_error = ReadVec3fFromLSB(datastyle,3,lv.location);
-        if(float_error==0) {
-          float_error = ReadVec3fFromLSB(datastyle,filevaldim,lv.value);
-        }
+        float_error_loc = ReadVec3fFromLSB(datastyle,3,lv.location,
+                                           &baddata_loc);
+        float_error_val = ReadVec3fFromLSB(datastyle,filevaldim,
+                                           lv.value,&baddata_val);
       } else {
-        float_error = ReadVec3f(datastyle,3,lv.location);
-        if(float_error==0) {
-          float_error = ReadVec3f(datastyle,filevaldim,lv.value);
-        }
+        float_error_loc = ReadVec3f(datastyle,3,lv.location,
+                                    &baddata_loc);
+        float_error_val = ReadVec3f(datastyle,filevaldim,
+                                    lv.value,&baddata_val);
       }
-      if(float_error!=0) {
-        if(float_error==2) {
+      if(float_error_val==0) {
+        lv.value*=norm; // Normalize data.
+      }
+      if(float_error_loc!=0 || float_error_val!=0) {
+        // Error detected
+        if(float_error_loc == 1 || float_error_val == 1) {
+          ClassMessage(STDDOC,"Premature EOF in file %s in data section",
+                       (const char *)filename);
+          delete mesh;
+          return new Vf_EmptyMesh();
+        }
+        if(baddata_flag == 0) {
+          // Only report first baddata instance
+          baddata_flag = 1;
           ClassMessage(STDDOC,
                        "Invalid floating point data detected in file %s",
                        (const char *)filename);
-        } else {
-          ClassMessage(STDDOC,"Premature EOF in file %s in data section",
-                       (const char *)filename);
+          if(baddata_status==0) {
+            delete mesh;
+            return new Vf_EmptyMesh();
+          } else {
+            *baddata_status=1;
+          }
         }
-        delete mesh;
-        return new Vf_EmptyMesh();
       }
-      lv.value*=norm; // Normalize data.
       mesh_irreg->AddPoint(lv);
     }
     mesh_irreg->SortPoints();
@@ -1552,6 +1753,340 @@ Vf_Mesh *Vf_OvfFileInput::NewMesh()
 
   return mesh;
 #undef MEMBERNAME
+}
+
+
+void Vf_OvfFileInput::ReadHeader
+(struct Vf_OvfSegmentHeader& ovfseghead) // export
+{ // Reads from Vf_FileInput::infile, storing result
+  // in ovfseghead. Leaves Vf_FileInput::infile pointing
+  // just past the end of the segment header.
+  //
+  // This routine throws an Oc_Exception on error
+#define MEMBERNAME "ReadHeader"
+  Nb_DString buf,field,value;
+
+  ovfseghead.SetBools(0);  // Safety
+
+  // Extract file version from first line
+  if(ReadLine(buf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (file type line missing)")));
+  }
+  ovfseghead.fileversion = Vf_OvfFileFormatSpecs::GetFileVersion(buf);
+  if(ovfseghead.fileversion == vf_ovf_20) {
+    ovfseghead.fileversion_bool = 1;
+  } else if(ovfseghead.fileversion == vf_ovf_10) {
+    ovfseghead.fileversion_bool = 1;
+  } else {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                          std::string("Invalid file type identifier \"")
+                          + buf.GetStdString()
+                          + std::string("\" in file ")
+                          + filename.GetStdString()));
+  }
+
+  // Skip remainder of preamble
+  while(1) {
+    if(ReadLine(buf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (no segment header found)")));
+    }
+    ParseContentLine(buf,field,value);
+    if(strcmp(field,"begin")==0  && strcmp(value,"header")==0) break;
+  }
+
+  // Read header and store results into Vf_OvfSegmentHeader struct
+  ovfseghead.SetFieldValue("meshtype","rectangular");
+  /// Set default meshtype to rectangular, for older ovf files w/o
+  /// the meshtype field.
+  while(1) {
+    if(ReadLine(buf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                       std::string("Premature EOF in file ")
+                       + filename.GetStdString()
+                       + std::string(" (missing segment header end mark)")));
+    }
+    ParseContentLine(buf,field,value);
+    if(strcmp(field,"end")==0 && strcmp(value,"header")==0) break;
+    if(field.Length()>0) ovfseghead.SetFieldValue(field,value);
+  }
+  if(!ovfseghead.ValidSet()) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                std::string("Incomplete or invalid segment header in file ")
+                + filename.GetStdString()
+                + std::string("; Skipping")));
+  }
+#undef MEMBERNAME
+}
+
+ void Vf_OvfFileInput::ReadData
+(const struct Vf_OvfSegmentHeader& ovfseghead,
+ const std::vector<int>& component_select,
+ std::vector<OC_REAL8m>& data_block,
+ bool& baddata_status)
+{ // Fills data_layout with dimension info from the file header,
+  // allocates the needed space in data_block, points the *data member
+  // of data_layout to the allocated block, and then fills data_block
+  // from the file. The baddata_status return is 0 if all the data are
+  // finite floating point values, or 1 if any of the values are NaNs or
+  // infinity. If the input grid is not rectangular, then the vector_dimension
+  // field of data_layout is increased by three, and the first three components
+  // of each entry are the (x,y,z) position values.
+  //
+  // This routine throws an Oc_Exception on error
+#define MEMBERNAME "ReadData"
+  Nb_DString buf,field,value;
+  Vf_OvfDataStyle datastyle=vf_oascii;
+  const char *datastylestring=NULL;
+
+  const bool do_component_select = (component_select.size()>0 ? true : false );
+
+  baddata_status = 0;  // Assume data are good until shown otherwise.
+
+  // Skip ahead in file from end of segment header to data section
+  while(1) {
+    if(ReadLine(buf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (no data section found)")));
+    }
+    ParseContentLine(buf,field,value);
+    if(strcmp(field,"begin")==0) {
+      if(strcmp(value,"datatext")==0) {
+        // ASCII data
+        datastyle=vf_oascii;
+        datastylestring="datatext";
+        break;
+      }
+      if(strcmp(value,"databinary4")==0) {
+        // 4-byte binary
+        datastyle=vf_obin4;
+        datastylestring="databinary4";
+        break;
+      }
+      if(strcmp(value,"databinary8")==0) {
+        // 8-byte binary
+        datastyle=vf_obin8;
+        datastylestring="databinary8";
+        break;
+      }
+    }
+  }
+
+#if 0 // valunit and valmult not used
+  // Value units and multiplier.  In OVF 2.0, value units
+  // is a list and value multiplier is not supported.  Also,
+  // value labels in OVF 2.0 are not supported in OVF 1.0.
+  // So, ignore valuelabels_list and kludge the others.
+  const char* valunit = "";
+  if(ovfseghead.valueunit_bool) {
+    valunit = (const char *)ovfseghead.valueunit;
+  } else if(ovfseghead.valueunits_list_bool) {
+    // Vf_Mesh only supports one valueunits string,
+    // so punt and just take the first one.
+    Nb_List_Index< Nb_DString > key;
+    valunit
+      = ovfseghead.valueunits_list.GetFirst(key)->GetStr();
+  }
+  OC_REAL8 valmult = 1.0;
+  if(ovfseghead.valuemultiplier_bool) {
+    valmult = ovfseghead.valuemultiplier;
+  }
+#endif // valunit and valmult not used
+
+  int filevaldim = 3;  // Default dimension of values in input file.
+  if(ovfseghead.valuedim_bool) {
+    filevaldim = ovfseghead.valuedim;
+  }
+
+  // If binary data, verify check value
+  if(datastyle == vf_obin4) {
+    OC_REAL4 test=OC_REAL4(0.);
+    if(ovfseghead.fileversion == vf_ovf_20) {
+      Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,&test,1);
+    } else {
+      Vf_OvfFileFormatSpecs::ReadBinary(infile,&test,1);
+    }
+    if(!Vf_OvfFileFormatSpecs::CheckValue(test)) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                     std::string("Invalid data block check value in file ")
+                     + filename.GetStdString()
+                     + std::string("; Wrong byte order?")));
+    }
+  } else if(datastyle == vf_obin8) {
+    OC_REAL8 test;
+    // OVF 2.0 files write binary blocks in LSB (little endian) order.
+    // The older formats use MSB (big endian).
+    if(ovfseghead.fileversion == vf_ovf_20) {
+      Vf_OvfFileFormatSpecs::ReadBinaryFromLSB(infile,&test,1);
+    } else {
+      Vf_OvfFileFormatSpecs::ReadBinary(infile,&test,1);
+    }
+    if(!Vf_OvfFileFormatSpecs::CheckValue(test)) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",MEMBERNAME,
+                     std::string("Invalid data block check value in file ")
+                     + filename.GetStdString()
+                            + std::string("; Wrong byte order?")));
+    }
+  }
+
+  // Allocate storage
+  OC_INDEX file_record_length = 0;
+  OC_INDEX point_count = 0;
+  if(ovfseghead.meshtype != vf_oshmt_irregular) {
+    // Rectangular mesh
+    file_record_length = filevaldim;
+    point_count = ovfseghead.xnodes*ovfseghead.ynodes*ovfseghead.znodes;
+  } else {
+    // Irregular mesh. Expand data_block dimension by three
+    // to allow space for the (x,y,z) position.
+    file_record_length = 3 + filevaldim;
+    point_count = ovfseghead.pointcount;
+  }
+  std::vector<OC_REAL8> record_buffer(file_record_length);
+  const OC_INDEX output_record_length
+    = (do_component_select ? component_select.size() : file_record_length);
+
+  // Read and store data
+  data_block.clear();
+  data_block.reserve(point_count * output_record_length);
+  for(OC_INDEX i=0;i<point_count;++i) {
+    // Read one record
+    int float_error=0;
+    if(ovfseghead.fileversion == vf_ovf_20) {
+      float_error = ReadVecNFromLSB(datastyle,record_buffer);
+    } else {
+      float_error = ReadVecN(datastyle,record_buffer);
+    }
+    if(float_error == 1) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" in data section")));
+    } else { // float_error == 2
+      baddata_status = 1;
+    }
+    // Append record_buffer to data_block
+    if(do_component_select) {
+      // Copy selected components from read buffer into output buffer,
+      // in specified order.
+      for(auto icomp : component_select) {
+        data_block.push_back(record_buffer[icomp]);
+      }
+    } else {
+      // Copy full read buffer into output buffer, maintaining order
+      // from file.
+      data_block.insert(data_block.end(),
+                        record_buffer.begin(), record_buffer.end());
+    }
+  }
+
+  // Skip over trailing whitespace
+  char endmark[2];
+  endmark[0]=endmark[1]='\0';
+  while(1) {
+    int ch=fgetc(infile);
+    if(feof(infile)) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (no data end marker)")));
+    }
+    if(ferror(infile)) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (looking for data end marker)")));
+    }
+
+    if(isspace(ch)) continue; // Skip blank
+
+    // Raise error if we find a binary character
+    if(ch<0x20 || ch>0x7e) {
+      const unsigned char uc = static_cast<unsigned char>(ch & 0xFF);
+      const char* hexbits = "0123456789abcdef";
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Error in file ")
+                            + filename.GetStdString()
+                            + std::string(": Binary data (0x")
+                            + std::string(1,hexbits[uc>>4])
+                            + std::string(1,hexbits[uc & 0x0F])
+                            + std::string(") detected past end of data block")));
+    }
+
+    // Otherwise, we have a non-space character.  Save in endmark
+    // and break out.
+    endmark[0]=(char)ch;
+    break;
+  }
+
+  // Remainder of current line should be data block end statement
+  Nb_DString tempbuf;
+  if(ReadLine(tempbuf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (no data end marker)")));
+  }
+  buf=endmark;
+  buf.Append(tempbuf);
+
+  ParseContentLine(buf,field,value);
+  if(strcmp(field,"end")!=0) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                          MEMBERNAME,
+                          std::string("Error in file ")
+                          + filename.GetStdString()
+                          + std::string(": Data block too long,"
+                                        " or end data marker missing.")));
+  }
+  if(strcmp(value,datastylestring)!=0) {
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                          MEMBERNAME,
+                          std::string("Data end marker wrong type in file ")
+                          + filename.GetStdString()
+                          + std::string("(->")
+                          + filename.GetStdString()
+                          + std::string("<- instead of ->")
+                          + std::string(datastylestring)
+                          + std::string("<-)")));
+  }
+
+  // Skip to segment end
+  while(1) {
+    if(ReadLine(buf)!=0) {
+      OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileInput",
+                            MEMBERNAME,
+                            std::string("Premature EOF in file ")
+                            + filename.GetStdString()
+                            + std::string(" (no segment end marker)")));
+    }
+    ParseContentLine(buf,field,value);
+    if(strcmp(field,"end")==0  && strcmp(value,"segment")==0) break;
+  }
+  // NOTE: *infile is closed by base destructor
+  // (Moreover, there may be additional segments in this file.)
+#undef MEMBERNAME
+}
+
+// Version of ReadData w/o component selection
+void Vf_OvfFileInput::ReadData
+(const struct Vf_OvfSegmentHeader& ovfseghead,
+ std::vector<OC_REAL8m>& data_block,
+ bool& baddata_status) {
+  std::vector<int> dummy; // No component selection
+  ReadData(ovfseghead,dummy,data_block,baddata_status);
 }
 
 
@@ -1847,6 +2382,12 @@ OC_INT4m Vf_OvfFileOutput::WriteMesh(Vf_Mesh *mesh,
       Nb_FprintfChannel(channel, NULL, 1024, "# End: Data Text\n");
     }
     Nb_FprintfChannel(channel, NULL, 1024, "# End: Segment\n");
+  } catch(Oc_Exception& err) {
+    Oc_AutoBuf caught_msg; err.ConstructMessage(caught_msg);
+    Oc_AutoBuf rethrow_msg = "Error writing OVF file data block: ";
+    rethrow_msg += caught_msg;
+    OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileOutput","WriteMesh",
+                          rethrow_msg));
   } catch(...) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Vf_OvfFileOutput","WriteMesh",
                           "Error writing OVF file data block; disk full?"));
@@ -1977,15 +2518,21 @@ OC_BOOL Vf_VioFileInput::IsType(const char *,
 #define MEMBERNAME "IsType"
   const char *VecFileMagic02 = "VecFil\x02";
   char buf[8];
-  if(fread(buf,1,8,test_fptr)==8 
+  if(fread(buf,1,8,test_fptr)==8
      && memcmp(VecFileMagic02,buf,8)==0) return 1;  // Match!
   return 0;
 #undef MEMBERNAME
 }
 
-Vf_Mesh *Vf_VioFileInput::NewMesh()
+Vf_Mesh *Vf_VioFileInput::NewMesh(int* baddata_status)
 {
 #define MEMBERNAME "NewMesh"
+
+  // Non-finite floating point status check not supported
+  if(baddata_status!=0) {
+    *baddata_status = -1;
+  }
+
   Vf_Mesh *newmesh=NewRectGrid();
   if(newmesh==NULL) newmesh=new Vf_EmptyMesh();
   return newmesh;
@@ -2087,29 +2634,35 @@ OC_BOOL Vf_SvfFileInput::IsType(const char * test_filename,
 {
 #define MEMBERNAME "IsType"
   const char* CheckProcName="Vf_SvfIsType";
-  char *cmd=new char[strlen(CheckProcName)+strlen(test_filename)
-              +strlen(test_channelName)+3+16]; // 16 for safety
-  sprintf(cmd,"%s [list %s] [list %s]",
+  const size_t cmdlen = strlen(CheckProcName)+strlen(test_filename)
+                      + strlen(test_channelName)+3+16; // 16 for safety
+  char *cmd=new char[cmdlen];
+  snprintf(cmd,cmdlen,"%s [list %s] [list %s]",
           CheckProcName,test_filename,test_channelName);
   Tcl_Interp* interp=Oc_GlobalInterpreter();
   if(interp==NULL)
     FatalError(-1,STDDOC,"Tcl interpretor not initialized");
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
   int return_code=Tcl_Eval(interp,cmd);
   if(return_code!=TCL_OK) NonFatalError(STDDOC,"Error in Tcl proc %s: %s",
                                         cmd,Tcl_GetStringResult(interp));
   delete[] cmd;
   int rescode = atoi(Tcl_GetStringResult(interp));
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
   if(rescode != 0) return 1;
   return 0;
 #undef MEMBERNAME
 }
 
-Vf_Mesh *Vf_SvfFileInput::NewMesh()
+Vf_Mesh *Vf_SvfFileInput::NewMesh(int* baddata_status)
 {
 #define MEMBERNAME "NewMesh"
+
+  // Non-finite floating point status check not supported
+  if(baddata_status!=0) {
+    *baddata_status = -1;
+  }
+
   // Initialize mesh, using filename as default title
   mesh=new Vf_GeneralMesh3f(filename,filename);
   mesh->ResetMesh();
@@ -2120,10 +2673,8 @@ Vf_Mesh *Vf_SvfFileInput::NewMesh()
 
   // If needed, register Vf_SvfFileInputTA with interpreter.
   Tcl_CmdInfo info;
-  Tcl_SavedResult saved;
-  Tcl_SaveResult(interp, &saved);
-  if(!Tcl_GetCommandInfo(interp,
-                         OC_CONST84_CHAR("Vf_SvfFileInputTA"),&info)) {
+  Tcl_InterpState saved = Tcl_SaveInterpState(interp, TCL_OK);
+  if(!Tcl_GetCommandInfo(interp, "Vf_SvfFileInputTA",&info)) {
     // Command not registered
     Oc_RegisterCommand(interp,"Vf_SvfFileInputTA",
                        Vf_SvfFileInputTA);
@@ -2137,20 +2688,20 @@ Vf_Mesh *Vf_SvfFileInput::NewMesh()
   /// ascii_this is an Ascii-ified
   size_t cmdlen=strlen(ReadProcName)+strlen(channelName)
                      +strlen(ascii_this)+3+16;  // 16 for safety
-  char *cmd=new char[cmdlen+1];
-  sprintf(cmd,"%s %s %s",ReadProcName,channelName,ascii_this);
+  char *cmd=new char[cmdlen];
+  snprintf(cmd,cmdlen,"%s %s %s",ReadProcName,channelName,ascii_this);
   delete[] ascii_this;
-  cmd[cmdlen]='\0';  // Safety
+  cmd[cmdlen-1]='\0';  // Safety
   int return_code=Tcl_Eval(interp,cmd);
   if(return_code!=TCL_OK) {
     NonFatalError(STDDOC,"Error in Tcl proc \"%s\": %s",
                   cmd,Tcl_GetStringResult(interp));
-    Tcl_RestoreResult(interp, &saved);
+    Tcl_RestoreInterpState(interp, saved);
     delete[] cmd;
     delete mesh;
     return new Vf_EmptyMesh();
   }
-  Tcl_RestoreResult(interp, &saved);
+  Tcl_RestoreInterpState(interp, saved);
 
   if(mesh->GetSize()<1) {
     ClassMessage(STDDOC,"No valid data in file %s",
@@ -2201,21 +2752,23 @@ Vf_Mesh *Vf_SvfFileInput::NewMesh()
 // Routine registered with Tcl interpreter for accessing
 // Vf_SvfFileInput functions from Tcl scripts.
 int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
-                       int argc,CONST84 char** argv)
+                       int argc,const char** argv)
 {
   static char buf[SCRATCH_BUF_SIZE];
   Tcl_ResetResult(interp);
   if(argc<3) {
-    sprintf(buf,"Vf_SvfFileInputTA must be called with"
-            " at least 2 arguments: <subcommand> <sfi_id> [parameters]"
-            " (%d arguments passed)",argc-1);
+    snprintf(buf,sizeof(buf),
+             "Vf_SvfFileInputTA must be called with"
+             " at least 2 arguments: <subcommand> <sfi_id> [parameters]"
+             " (%d arguments passed)",argc-1);
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
 
   Vf_SvfFileInput *sfip=(Vf_SvfFileInput *)Omf_AsciiPtr::AsciiToPtr(argv[2]);
   if(sfip==NULL || strcmp(sfip->class_doc.classname,"Vf_SvfFileInput")!=0) {
-    sprintf(buf,"Sfip (%s -> %p) invalid ptr handle",argv[2],sfip);
+    snprintf(buf,sizeof(buf),
+             "Sfip (%s -> %p) invalid ptr handle",argv[2],sfip);
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_ERROR;
   }
@@ -2235,7 +2788,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
     //  If line is a valid data line, then the input is passed into
     // the mesh, in the same manner as the addpoint subcommand.
     if(argc!=4) {
-      sprintf(buf,"processline subcommand requires 2 parameters:"
+      snprintf(buf,sizeof(buf),
+               "processline subcommand requires 2 parameters:"
               " mesh_id line; %d passed",argc-2);
       Tcl_AppendResult(interp,buf,(char *)NULL);
       return TCL_ERROR;
@@ -2287,8 +2841,9 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
   }
   else if(strcmp(argv[1],"addpoint")==0) {        // Add Point
     if(argc!=9) {
-      sprintf(buf,"addpoint subcommand requires 7 parameters:"
-              " mesh_id x y z mx my mz; %d passed",argc-2);
+      snprintf(buf,sizeof(buf),
+               "addpoint subcommand requires 7 parameters:"
+               " mesh_id x y z mx my mz; %d passed",argc-2);
       Tcl_AppendResult(interp,buf,(char *)NULL);
       return TCL_ERROR;
     }
@@ -2307,13 +2862,15 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
   }
   else if(strcmp(argv[1],"getpointcount")==0) {   // Get Point Count
     if(argc!=3) {
-      sprintf(buf,"getpointcount subcommand requires 1 parameter:"
-              " mesh_id ; %d passed",argc-2);
+      snprintf(buf,sizeof(buf),
+               "getpointcount subcommand requires 1 parameter:"
+               " mesh_id ; %d passed",argc-2);
       Tcl_AppendResult(interp,buf,(char *)NULL);
       return TCL_ERROR;
     }
     // Query mesh
-    sprintf(buf,"%ld",long(sfip->mesh->GetSize()));
+    snprintf(buf,sizeof(buf),
+             "%ld",long(sfip->mesh->GetSize()));
     Tcl_AppendResult(interp,buf,(char *)NULL);
     return TCL_OK;
   }
@@ -2334,7 +2891,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
         }
         else {
           Tcl_Free(pointstr);
-          sprintf(buf,"setbdry subcommand requires x y pairs;"
+          snprintf(buf,sizeof(buf),
+                   "setbdry subcommand requires x y pairs;"
                   " %" OC_INDEX_MOD "d values passed.",
                   2*boundary_list.GetSize()+1);
           Tcl_AppendResult(interp,buf,(char *)NULL);
@@ -2349,7 +2907,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
   }
   else if(strcmp(argv[1],"stephints")==0) {       // Grid step hints
     if(argc<4 || argc>6) {
-      sprintf(buf,"addpoint subcommand requires 2-4 parameters:"
+      snprintf(buf,sizeof(buf),
+              "addpoint subcommand requires 2-4 parameters:"
               " mesh_id xstep [ystep [zstep]];  %d passed",argc-2);
       Tcl_AppendResult(interp,buf,(char *)NULL);
       return TCL_ERROR;
@@ -2377,7 +2936,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
   }
   else if(strcmp(argv[1],"settitle")==0) {       // Set title
     if(argc!=4) {
-      sprintf(buf,"settitle subcommand requires 2 parameters:"
+      snprintf(buf,sizeof(buf),
+              "settitle subcommand requires 2 parameters:"
               " mesh_id title;  %d passed",argc-2);
       Tcl_AppendResult(interp,buf,(char *)NULL);
       return TCL_ERROR;
@@ -2387,7 +2947,8 @@ int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
   }
 
   // If we reach here, we didn't get a valid command!
-  sprintf(buf,"Illegal subcommand (%s); Should be"
+  snprintf(buf,sizeof(buf),
+          "Illegal subcommand (%s); Should be"
           " \"processline\", \"addpoint\", \"getpointcount\","
           " \"setbdry\",  or \"stephints\"",
           argv[1]);
@@ -3381,7 +3942,7 @@ Vf_Ovf20FileHeader::WriteHeader
         continue;
       }
     }
-      
+
     size_t namelen = strlen((*it)->GetName());
     size_t valuelen = valuebuf.size();
     size_t nbufsize = namelen + valuelen + 32;
@@ -4067,7 +4628,7 @@ Vf_Ovf20FileHeader::WriteNPY
   //    supported by NumPy: 2, 4, and 8. The 'f16' type is supported if
   //    the build compiler long double type is wider than 8 bytes.
   //    Notably, f16 provides the x86 80-bit float.
-  //       
+  //
   // The NPY version 2.0 format allows the total size of the header to
   //    be up to 4 GiB, and so the HEADER_LEN field grows from 2 to 4
   //    little endian bytes.
@@ -4127,13 +4688,13 @@ Vf_Ovf20FileHeader::WriteNPY
     header += " "; // space pad
   }
   header += "\n";
-  
+
   // Back fill HEADER_LEN and write header
   size_t HEADER_LEN = full_header_size - 10; // Here '10' is the prologue
   assert(HEADER_LEN<65536);
   header[8] = static_cast<unsigned char>(HEADER_LEN % 0xFF);
   header[9] = static_cast<unsigned char>((HEADER_LEN>>8) % 0xFF);
-  if(Nb_WriteChannel(outchan,header.data(),full_header_size) 
+  if(Nb_WriteChannel(outchan,header.data(),full_header_size)
      != OC_INDEX(full_header_size)) {
     OC_THROW(Oc_Exception(__FILE__,__LINE__,
                           "Vf_Ovf20FileHeader","WriteNPY",
@@ -4150,7 +4711,7 @@ Vf_Ovf20FileHeader::WriteNPY
     vector<char> tmpbuf(textwidth+1);
     if(output_meshtype == vf_ovf20mesh_irregular) {
       OC_REAL8m x,y,z;
-      for(OC_INDEX node=0;node<nodecount;++node) { 
+      for(OC_INDEX node=0;node<nodecount;++node) {
         char* wptr = workbuf.data();
         mesh->GetCellCenter(node,x,y,z);
         snprintf(tmpbuf.data(),textwidth+1,textfmt,x);
@@ -4339,7 +4900,7 @@ Vf_Mesh_MeshNodes::Vf_Mesh_MeshNodes(const Vf_Mesh* mesh)
   if(rectgrid) {
     type = vf_ovf20mesh_rectangular;
   }
- 
+
   meshunit = String(mesh->GetMeshUnit());
   mesh->GetPreciseRange(meshrange);
 
@@ -4350,7 +4911,7 @@ Vf_Mesh_MeshNodes::Vf_Mesh_MeshNodes(const Vf_Mesh* mesh)
 
   if(!rectgrid) {
     Nb_Vec3<OC_REAL4> shortcellsize = mesh->GetApproximateCellDimensions();
-    cellsize.x = shortcellsize.x; 
+    cellsize.x = shortcellsize.x;
     cellsize.y = shortcellsize.y;
     cellsize.z = shortcellsize.z;
 

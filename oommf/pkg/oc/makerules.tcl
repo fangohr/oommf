@@ -4,8 +4,7 @@
 # describe how to build the applications and/or extensions produced by
 # the source code in this directory.
 #
-# Last modified on: $Date: 2012/09/19 21:34:21 $
-# Last modified by: $Author: donahue $
+# NOTICE: Please see the file ../../LICENSE
 #
 # Verify that this script is being sourced by pimake
 if {[llength [info commands MakeRule]] == 0} {
@@ -248,7 +247,7 @@ MakeRule Define {
 
 MakeRule Define {
     -targets		upgrade
-    -script		{DeleteFiles functions.h em.tcl}
+    -script		{DeleteFiles functions.h em.tcl bug75.tcl bug76.tcl bug80.tcl bug81.tcl bug82.tcl bug83.tcl}
 }
 
 MakeRule Define {

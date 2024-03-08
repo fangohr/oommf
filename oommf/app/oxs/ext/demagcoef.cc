@@ -615,7 +615,7 @@ void ComputeD6f
     if(i1>imax)    i1 = imax;
     OC_INDEX i2 = static_cast<OC_INDEX>(ceil(iBound - ioff));
     if(i2>imax)    i2 = imax;
-    
+
     while(n<nstop) {
       n += imax - i; // Value of n after i increments
       for(;i<i1;++i) {
@@ -1036,10 +1036,10 @@ Oxs_DemagAsymptotic::FindRefinementCount
     (floor(pow(static_cast<double>(std::numeric_limits<OC_INDEX>::max()),
                1./3.)));
 #endif
-  
+
   const OXS_DEMAG_REAL_ASYMP count_limit
     = static_cast<OXS_DEMAG_REAL_ASYMP>(OC_INDEX_MAX_CUBEROOT);
-  
+
   OXS_DEMAG_REAL_ASYMP nx = ceil(dx/h);
   OXS_DEMAG_REAL_ASYMP ny = ceil(dy/h);
   OXS_DEMAG_REAL_ASYMP nz = ceil(dz/h);
@@ -1179,7 +1179,7 @@ void Oxs_DemagAsymptotic::FindBestRefinement
  * refinement.  This code assumes M = (h0/h)^3, where h is the maximum
  * of the original dimensions dx, dy, and dz.  An improvement to this
  * code would tighten the M estimate.
- * 
+ *
  */
 OC_INDEX
 Oxs_DemagAsymptotic::FindNeededRefinement
@@ -1285,7 +1285,7 @@ Oxs_DemagAsymptotic::FindKnotSchedule
   //
   //   Therefore, the requested "error" imported is interpreted with
   //   respect to the practical relative error, namely
-  //   
+  //
   //      PracRelErr_analytic = 8*eps*R^6/V^2
   //
   //      PracRelErr_asymptotic = 8*R^2/(5*(R^2-hmax^2) * (hmax/R)^(n-3)
@@ -1311,13 +1311,13 @@ Oxs_DemagAsymptotic::FindKnotSchedule
 #else
   const OXS_DEMAG_REAL_ASYMP analytic_machine_eps = XP_DD_EPS;
 #endif
-  
+
   const OXS_DEMAG_REAL_ASYMP Vol = dx*dy*dz;
   const OXS_DEMAG_REAL_ASYMP hmax
     = (dx>dy ? (dx>dz ? dx : dz) : (dy>dz ? dy : dz));
 
   const OXS_DEMAG_REAL_ASYMP analytic_speed_factor = 60;
-  
+
   assert(analytic_speed_factor>4); // Else asymptotic refinements for
                                    // speed don't make sense.
   assert(asymptotic_order>=5);  // Some code below assumes (order-4.5)>0
@@ -1391,7 +1391,7 @@ Oxs_DemagAsymptotic::FindKnotSchedule
     OC_INDEX rnx,rny,rnz;
     OC_INDEX hrefinecount
       = FindRefinementCount(dx,dy,dz,hrefinemax,rnx,rny,rnz);
-    
+
     // If hrefinecount will significantly speed things up, then do so
     // and done.
     if(OXS_DEMAG_REAL_ASYMP(hrefinecount)<0.5*analytic_speed_factor) {
@@ -1407,7 +1407,7 @@ Oxs_DemagAsymptotic::FindKnotSchedule
 #endif // DUMPKNOTS
       return R_analytic_max_happy;
     }
-    
+
     // Otherwise, find a reasonable middle point between
     // R_analytic_max_happy and R_asymptotic_min to stop refinement
     // use.
@@ -1595,7 +1595,7 @@ Oxs_DemagNxxAsymptotic::Asymptotic(const OxsDemagNabData& ptdata) const
     OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
                         "(Oxs_DemagNxxAsymptotic::Asymptotic)");
   }
-  
+
   // Copy data from refine_info structure.
   const OC_INDEX xcount = refine_info->xcount;
   const OC_INDEX ycount = refine_info->ycount;
@@ -2072,7 +2072,7 @@ Oxs_DemagNxyAsymptotic::Asymptotic(const OxsDemagNabData& ptdata) const
     OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
                         "(Oxs_DemagNxyAsymptotic::Asymptotic)");
   }
-  
+
   // Copy data from refine_info structure.
   const OC_INDEX xcount = refine_info->xcount;
   const OC_INDEX ycount = refine_info->ycount;
@@ -2136,7 +2136,7 @@ Oxs_DemagNxyAsymptotic::AsymptoticPairX
     OXS_THROW(Oxs_BadParameter,"No matching asymptotic range "
                         "(Oxs_DemagNxyAsymptotic::Asymptotic)");
   }
-  
+
   // Copy data from refine_info structure.
   const OC_INDEX xcount = refine_info->xcount;
   const OC_INDEX ycount = refine_info->ycount;

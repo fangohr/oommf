@@ -156,6 +156,10 @@ This assumes that the program \cd{foo} accepts input of the form
 standard output.
 \index{customize!file~format~translation|)}
 
+The \btn{File\pipe Load config\ldots}\index{file!configuration} dialog
+allows one to load a previously saved display configuration file from
+disk to reset the current display. See the \htmlref{Configuration
+Files}{sec:mmdispconfig} section below for details.
 
 \starsechead{Outputs}
 The vector field displayed by \app{mmDisp} may be saved to disk via the
@@ -178,14 +182,16 @@ print dialog box options are described in the
 
 The \btn{File\pipe Write config\ldots}\index{file!configuration} dialog
 allows one to save to disk a configuration file holding the current
-display parameters.  This file can be used to affect startup display
-parameters, or used as input to the \hyperrefhtml{avf2ppm}{\app{avf2ppm}
+display and print settings.  Files of this type can be used to control display
+parameters, at start time via the \cd{-config} option or during run time
+through the \btn{File\pipe Load config\ldots} menu option. These files
+can also be used as input to the \hyperrefhtml{avf2ppm}{\app{avf2ppm}
 (Sec.~}{)}{sec:avf2ppm}\index{application!avf2ppm} and
 \hyperrefhtml{avf2ps}{\app{avf2ps}
 (Sec.~}{)}{sec:avf2ps}\index{application!avf2ps} command line utilities
 that convert files from the \OVF\ format into bitmap images and
 \postscript\ printer files, respectively.  (mmDisp does not provide
-direct support for writing bitmap files.)  Details of the configuration
+internal support for writing bitmap files.)  Details of the configuration
 file are \htmlonlyref{discussed below}{sec:mmdispconfig}.
 
 \starsechead{Controls}\label{sec:mmdispcontrols}
@@ -296,7 +302,7 @@ subsampling and view scale may make comparisons between different view
 axis directions easier.
 
 Below the Arrow and Pixel Controls are several additional controls.  The
-\btn{Data Scale}\index{data!scale}\label{html:mmdispdatascale} entry
+\btn{Data Scale}\index{data!scale}\label{HTMLmmdispdatascale} entry
 affects the data value scaling.  As described above, all arrows are
 displayed with length between zero and full-scale.  The full-scale arrow
 length corresponds to some scalar value of the magnitude of the vector
@@ -365,6 +371,18 @@ dialog box affect the display window until either the
 selected, the dialog box is also dismissed.  The {\btn{Close}}
 button dismisses the dialog without changing the display window.
 
+The following item on the \btn{Options} menu is \btn{Options\pipe Copy
+  configuration to clipboard}, which copies the current display and
+print configuration onto the system clipboard. This is plain text data
+as described in the \htmlref{configuration files}{sec:mmdispconfig}
+section. It can be copied into an editor for modification before
+saving to disk, or one can use the \btn{Options\pipe Paste configuration
+  from clipboard} control to copy directly from the clipboard into
+another instance of \app{mmDisp}, which changes the configuration of the
+second \app{mmDisp} to match the first. Use the keyboard shortcuts
+\key{Ctrl+Shift+C} and \key{Ctrl+Shift+V}, respectively, to quickly
+invoke these operations.
+
 The next item under the \btn{Options} menu is a checkbutton that
 toggles the display of a control bar.  The control bar offers
 alternative interfaces to some of the operations available from the
@@ -385,6 +403,16 @@ current data scale value and zoom (spatial magnification).  A vertical
 bar in the slider area marks the default data scale value.  Specifying
 \key{0} for the data scale value will reset the data scale to the
 default value.
+
+Similar to \hyperrefhtml{\app{mmGraph}}{\app{mmGraph}
+  (Ch.~}{)}{sec:mmgraph}\index{application!mmGraph}, the mouse can be
+used to extract field values and positions from the display
+window. Depressing the \key{Shift} key and the left mouse button will
+open a pop-up showing the field value at the mouse pointer
+position. Holding down the \key{Ctrl}+\key{Shift} keys while pressing
+the left mouse button will show both the position and value. The pop-up
+disappears when the mouse button is released, unless the \key{Shift} key
+is released before the mouse.
 
 The spatial magnification may be changed either by typing a value in the
 Zoom box of the control bar, or by using the mouse inside the display
@@ -420,7 +448,7 @@ the middle button on a point in the display window translates the vector
 field so that the selected point is centered within the display window.
 
 \app{mmDisp} remembers the previous zoom value and data scale values.
-To revert to the previous settings, the user may hit the \key{ESC} key.
+To revert to the previous settings, the user may hit the \key{Esc} key.
 This is a limited ``Undo'' feature.
 
 Below the data scale and zoom controls in the control bar is the slice
@@ -440,71 +468,71 @@ disables this behavior, and also other viewport changing operations
 Several keyboard shortcuts are available as alternatives to menu- or
 mouse-based operations.  (These are in addition to the usual keyboard
 access to the menu.)  The effect of a key combination depends on which
-subwindow of \app{mmDisp} is active.  The \key{TAB} key may be used to
-change the active subwindow.  The \key{SHIFT-TAB} key combination also
+subwindow of \app{mmDisp} is active.  The \key{Tab} key may be used to
+change the active subwindow.  The \key{Shift+Tab} key combination also
 changes the active subwindow, in reverse order.
 
 When the active subwindow is the display window, the following
 key combinations are active:
 \begin{itemize}
-\item \key{CTRL-o} -- same as menu selection \btn{File\pipe Open\ldots}
-\item \key{CTRL-s} -- same as menu selection
+\item \key{Ctrl+o} -- same as menu selection \btn{File\pipe Open\ldots}
+\item \key{Ctrl+s} -- same as menu selection
                        {\btn{File\pipe Save as\ldots}\index{data!save}}
-\item \key{CTRL-p} -- same as menu selection
+\item \key{Ctrl+p} -- same as menu selection
                        {\btn{File\pipe Print\ldots}\index{data!print}}
-\item \key{CTRL-c} -- same as menu selection
+\item \key{Ctrl+c} -- same as menu selection
         \btn{Options\pipe Configure\ldots}
-\item \key{CTRL-v} -- launches viewpoint selection menu,
+\item \key{Ctrl+v} -- launches viewpoint selection menu,
         \btn{View\pipe Viewpoint}
-\item \key{CTRL-w} -- same as menu selection {\btn{View\pipe Wrap Display}}
-\item \key{CTRL-f} -- same as menu selection {\btn{View\pipe Fill Display}}
-\item \key{HOME} -- First fill, then wrap the display.
-\item \key{CTRL-space} --
+\item \key{Ctrl+w} -- same as menu selection {\btn{View\pipe Wrap Display}}
+\item \key{Ctrl+f} -- same as menu selection {\btn{View\pipe Fill Display}}
+\item \key{Home} -- First fill, then wrap the display.
+\item \key{Ctrl+space} --
  same as menu selection {\btn{View\pipe Center Display}}
-\item \key{CTRL-r} -- same as menu selection \btn{View\pipe Rotate ccw}
-\item \key{SHIFT-CTRL-r} -- same as menu selection \btn{View\pipe Rotate cw}
-\item \key{INSERT} -- decrease arrow subsample by 1
-\item \key{DEL} -- increase arrow subsample by 1
-\item \key{SHIFT-INSERT} -- decrease arrow subsample by factor of 2
-\item \key{SHIFT-DEL} -- increase arrow subsample by factor of 2
-\item \key{PAGEUP} -- increase the zoom value by a factor of 1.149
-\item \key{PAGEDOWN} -- decrease the zoom value by a factor of 1.149
-\item \key{SHIFT-PAGEUP} -- increase the zoom value by factor of 2
-\item \key{SHIFT-PAGEDOWN} -- decrease the zoom value by factor of 2
-\item \key{ESC} -- revert to previous data scale and zoom values
+\item \key{Ctrl+r} -- same as menu selection \btn{View\pipe Rotate ccw}
+\item \key{Ctrl+Shift+r} -- same as menu selection \btn{View\pipe Rotate cw}
+\item \key{Insert} -- decrease arrow subsample by 1
+\item \key{Del} -- increase arrow subsample by 1
+\item \key{Shift+Insert} -- decrease arrow subsample by factor of 2
+\item \key{Shift+Del} -- increase arrow subsample by factor of 2
+\item \key{Page\,Up} -- increase the zoom value by a factor of 1.149
+\item \key{Page\,Down} -- decrease the zoom value by a factor of 1.149
+\item \key{Shift+Page\,Up} -- increase the zoom value by factor of 2
+\item \key{Shift+Page\,Down} -- decrease the zoom value by factor of 2
+\item \key{Esc} -- revert to previous data scale and zoom values
 \end{itemize}
 
 When the active subwindow is the control bar's coordinate axes display,
 the following key combinations are active:
 \begin{itemize}
-\item \key{LEFT} -- same as menu selection \btn{View\pipe Rotate ccw}
-\item \key{RIGHT} -- same as menu selection \btn{View\pipe Rotate cw}
+\item \key{Left} -- same as menu selection \btn{View\pipe Rotate ccw}
+\item \key{Right} -- same as menu selection \btn{View\pipe Rotate cw}
 \end{itemize}
 
 When the active subwindow is any of the control bar's value entry
 windows -- arrow subsample, size, data scale or zoom, the following key
 combinations are active:
 \begin{itemize}
-\item \key{ESC} -- undo uncommitted value (displayed in red)
-\item \key{RETURN} -- commit entered value
+\item \key{Esc} -- undo uncommitted value (displayed in red)
+\item \key{Return} -- commit entered value
 \end{itemize}
 
 When the active subwindow is in any of the control bar's sliders---arrow
 subsample, data scale or slice---the following key combinations are
 active:
 \begin{itemize}
-\item \key{LEFT} -- slide left (decrease value)
-\item \key{RIGHT} -- slide right (increase value)
-\item \key{ESC} -- undo uncommitted value (displayed in red)
-\item \key{RETURN} -- commit current value
+\item \key{Left} -- slide left (decrease value)
+\item \key{Right} -- slide right (increase value)
+\item \key{Esc} -- undo uncommitted value (displayed in red)
+\item \key{Return} -- commit current value
 \end{itemize}
 
 When any of the separate dialog windows are displayed (e.g., the
 \btn{File\pipe Open\ldots} or \btn{Options\pipe Configure\ldots}
-dialogs), the shortcut \key{CTRL-.} (control-period) will raise and
+dialogs), the shortcut \key{Ctrl+.} (control-period) will raise and
 transfer keyboard focus back to the root \app{mmDisp} window.
 
-\starsechead{Configuration files}\label{sec:mmdispconfig}
+\starsechead{Configuration Files}\label{sec:mmdispconfig}
 The various initial display parameters (e.g., window size, orientation,
 colormap) are set by configuration files.  The default configuration
 file
@@ -624,7 +652,7 @@ the \cd{plot\_config} array:
  the viewport dimensions.
 \item[\optkey{misc,datascale}]
  Scale for arrow size and colormap ranges; equivalent to the
- \htmlonlyref{\cd{Data Scale} control}{html:mmdispdatascale}.  In general,
+ \htmlonlyref{\cd{Data Scale} control}{HTMLmmdispdatascale}.  In general,
  this should be a positive real value, but a zero or empty value will
  set the scaling to its default setting.
 \item[\optkey{misc,centerpt}]
@@ -679,10 +707,13 @@ the \btn{File\pipe Print\ldots}\index{data!print} dialog box:
  selected units.  The output will be scaled to meet the more restrictive
  dimension.  In particular, the x/y-scaling ratio remains 1:1.
 \item[\optkey{croptoview}]
- Boolean value, either 0 or 1.  If 1 (true), then the print
- output is cropped to display only that portion of the vector field that
- is visible in the display window.  If 0, then the display is ignored
- and the output is scaled so that the entire vector field is printed.
+ Boolean value, either 0 or 1. If set to the default value 1 (true),
+ then the output is cropped to display only that portion of the vector
+ field that is visible in the display window.  If 0, then the display is
+ ignored and the entire vector field is printed, scaled to fit in the
+ dimensions specified by \cd{pwidth} and \cd{pheight}. In this case the
+ \cd{plot\_config(misc,zoom)} is used to control arrow and pixel
+ autosampling behavior (if enabled), but is otherwise ignored.
 \end{description}
 
 If any of the above elements are set in multiple configuration files,

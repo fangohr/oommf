@@ -378,20 +378,22 @@ OC_BOOL
 UHH_ThetaEvolve::InitNewStage
 (const Oxs_TimeDriver* /* driver */,
  Oxs_ConstKey<Oxs_SimState> state,
- Oxs_ConstKey<Oxs_SimState> /* prevstate */)
+ Oxs_ConstKey<Oxs_SimState> /* prevstate */,
+ Oxs_DriverStageInfo& /* stage_info */)
+  
 {
   // Update derived data in state.
   const Oxs_SimState& cstate = state.GetReadReference();
   // Note: state is a copy-by-value import, so its read lock
   //       will be released on exit.
-	SetTemperature(GetStageTemp(cstate.stage_number),alpha,gamma);
+  SetTemperature(GetStageTemp(cstate.stage_number),alpha,gamma);
   return 1;
 }
 
 OC_BOOL
 UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
 		      Oxs_ConstKey<Oxs_SimState> current_state,
-		      const Oxs_DriverStepInfo& /* step_info */,
+                      Oxs_DriverStepInfo& /* step_info */,
 		      Oxs_Key<Oxs_SimState>& next_state)
 {
   const OC_REAL8m max_step_increase = 1.25;
@@ -401,7 +403,7 @@ UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
 
   const Oxs_SimState& cstate = current_state.GetReadReference();
   Oxs_SimState& workstate = next_state.GetWriteReference();
-  driver->FillState(cstate,workstate);
+  driver->FillStateMemberData(cstate,workstate);
 
   if(cstate.mesh->Id() != workstate.mesh->Id()) {
     throw Oxs_Ext::Error(this,
@@ -486,7 +488,14 @@ UHH_ThetaEvolve::Step(const Oxs_TimeDriver* driver,
   }
   workstate.iteration_count = cstate.iteration_count + 1;
   workstate.stage_iteration_count = cstate.stage_iteration_count + 1;
+#if OOMMF_API_INDEX < 20230325
   driver->FillStateSupplemental(workstate);
+#else
+  driver->FillStateSupplemental(cstate,workstate);
+#endif
+
+
+  
 
   if(workstate.last_timestep>stepsize) {
     // Either driver wants to force this stepsize (in order to end stage exactly at boundary),
@@ -737,6 +746,7 @@ void UHH_ThetaEvolve::UpdateDerivedOutputs(const Oxs_SimState& state)
       state.AddDerivedData("Temperature",
 			   temperature);
     }
+    temperature_output.cache.value=temperature;
 
   max_dm_dt_output.cache.value*=(180e-9/PI);
   /// Convert from radians/second to deg/ns

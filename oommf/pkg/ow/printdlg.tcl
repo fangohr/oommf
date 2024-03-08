@@ -273,12 +273,12 @@ Oc_Class Ow_PrintDlg {
                     }
                 }
             }
-            trace variable userinit w "$this ExternalUpdate $import_arrname"
+            trace add variable userinit write "$this ExternalUpdate $import_arrname"
         }
 
         set current_units $prn(units)
-        trace variable prn(units) w "$this ChangeUnits"
-	trace variable prn(croptoview) w "$this UpdateAspect pwidth"
+        trace add variable prn(units) write "$this ChangeUnits"
+	trace add variable prn(croptoview) write "$this UpdateAspect pwidth"
 
         # Left frame
         set lframe [frame $winpath.lframe -relief ridge -bd 4]
@@ -421,11 +421,11 @@ Oc_Class Ow_PrintDlg {
     # Routine to turn aspect tracing on and off
     private method AspectTrace { tracestate } { prn } {
 	if {$tracestate} {
-	    trace variable prn(pwidth)  w "$this UpdateAspect pwidth"
-	    trace variable prn(pheight) w "$this UpdateAspect pheight"
+	    trace add variable prn(pwidth)  write "$this UpdateAspect pwidth"
+	    trace add variable prn(pheight) write "$this UpdateAspect pheight"
 	} else {
-	    trace vdelete prn(pwidth)  w "$this UpdateAspect pwidth"
-	    trace vdelete prn(pheight) w "$this UpdateAspect pheight"
+	    trace remove variable prn(pwidth)  write "$this UpdateAspect pwidth"
+	    trace remove variable prn(pheight) write "$this UpdateAspect pheight"
 	}
     }
 
@@ -559,7 +559,7 @@ Oc_Class Ow_PrintDlg {
         if {[catch {
             if {![string match {} $import_arrname]} {
                 upvar #0 $import_arrname userinit
-                trace vdelete userinit w "$this ExternalUpdate $import_arrname"
+                trace remove variable userinit write "$this ExternalUpdate $import_arrname"
             }
         } errmsg]} {
             Oc_Log Log $errmsg error

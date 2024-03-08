@@ -92,6 +92,10 @@ foreach fn $rules {
       set contents [read $chan]
       close $chan
       set slave [interp create -safe]
+      # In safe interps tcl_platform array includes the "platform"
+      # but not "os". Add "os" to aid in library selection code.
+      global tcl_platform
+      $slave eval set tcl_platform(os) [list $tcl_platform(os)]
       $slave eval $contents
       if {![catch {$slave eval set Oxs_external_libs} libs]} {
 	 lappend lcllibs {*}$libs
@@ -134,7 +138,7 @@ MakeRule Define {
             puts $f "
                 Oc_Application Define {
                     -name		[list $e]
-                    -version		2.0b0
+                    -version		2.1a0
                     -machine		[list [Platform Name]]
                     -file		[list [file tail \
 					[Platform Executables [list $e]]]]
@@ -329,12 +333,12 @@ MakeRule Define {
     -dependencies       clean
     -script             {DeleteFiles [Platform Name] base/extinit.cc}
 }
- 
+
 MakeRule Define {
     -targets            clean
     -dependencies       mostlyclean
 }
- 
+
 MakeRule Define {
     -targets            mostlyclean
     -dependencies       objclean

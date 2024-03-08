@@ -15,7 +15,7 @@
 package require Oc
 
 # Report all status messages to stdout
-proc WriteToStdout {msg type src} {
+proc WriteToStdout {msg type src args} {
     puts "$src $type: $msg"
 }
 Oc_Log SetLogHandler WriteToStdout status

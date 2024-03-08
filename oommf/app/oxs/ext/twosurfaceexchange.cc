@@ -8,6 +8,7 @@
 
 #include "nb.h"
 #include "director.h"
+#include "driver.h"
 #include "mesh.h"
 #include "meshvalue.h"
 #include "oxswarn.h"
@@ -186,15 +187,15 @@ Oxs_TwoSurfaceExchange::Oxs_TwoSurfaceExchange(
 
   // Setup outputs
   if(report_max_spin_angle) {
-    maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
+    maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",
                               &Oxs_TwoSurfaceExchange::UpdateDerivedOutputs);
     maxspinangle_output.Register(director,0);
     stage_maxspinangle_output.Setup(this,InstanceName(),
-                           "Stage Max Spin Ang","deg",1,
+                           "Stage Max Spin Ang","deg",
                            &Oxs_TwoSurfaceExchange::UpdateDerivedOutputs);
     stage_maxspinangle_output.Register(director,0);
     run_maxspinangle_output.Setup(this,InstanceName(),
-                           "Run Max Spin Ang","deg",1,
+                           "Run Max Spin Ang","deg",
                            &Oxs_TwoSurfaceExchange::UpdateDerivedOutputs);
     run_maxspinangle_output.Register(director,0);
   }
@@ -208,6 +209,13 @@ OC_BOOL Oxs_TwoSurfaceExchange::Init()
   mesh_id = 0;
   energy_density_error_estimate = -1;
   links.clear();
+
+  // Stage and run max angle computations require access to the
+  // immediate predecessor of the current state.
+  if(report_max_spin_angle) {
+    director->GetDriver()->SimstateHoldRequest(2);
+  }
+
   return Oxs_Energy::Init();
 }
 
@@ -222,17 +230,17 @@ void Oxs_TwoSurfaceExchange::FillLinkList
   // the "first" surface.  Consider these pictures:
   //
   //          22222222222222 <-- Surface 2
-  //              ||||||           
+  //              ||||||
   //              ||||||  <-- Links
-  //              ||||||         
+  //              ||||||
   //              111111  <-- Surface 1
   //
   //  as compared to
   //
   //          11111111111111 <-- Surface 1
-  //           \\\||||||///        
+  //           \\\||||||///
   //            \\||||||// <-- Links
-  //             \||||||/        
+  //             \||||||/
   //              222222  <-- Surface 2
   //
   // In the second picture, all the outer cells in the top

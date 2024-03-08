@@ -56,7 +56,7 @@ Oxs_ScriptAtlas::Oxs_ScriptAtlas
     ++it;
   }
   DeleteInitValue("regions");
-  
+
   ThreeVector minpt(bounding_box.GetMinX(),bounding_box.GetMinY(),
 		    bounding_box.GetMinZ());
   ThreeVector maxpt(bounding_box.GetMaxX(),bounding_box.GetMaxY(),

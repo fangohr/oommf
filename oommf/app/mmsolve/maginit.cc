@@ -1138,7 +1138,7 @@ int MI_vioFile(int Nx,int Ny,MagElt** m,char** params)
   }
 
   // Clean up and exit
-  delete arr;
+  delete[] arr;
   fv.Close();
   return 0;
 }

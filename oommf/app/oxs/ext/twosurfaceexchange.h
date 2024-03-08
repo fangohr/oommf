@@ -66,7 +66,7 @@ private:
   Oxs_OwnedPointer<Oxs_ScalarField> bdry1,bdry2;
   OC_REAL8m bdry1_value,bdry2_value;
   String bdry1_side,bdry2_side;
-  
+
   mutable vector<Oxs_TwoSurfaceExchangeLinkParams> links;
   void FillLinkList(const Oxs_Mesh* mesh) const;
 

@@ -11,6 +11,9 @@
 
 % \documentclass[12pt]{article}  % Put this in file inputting this one
 
+% For label/reference/link options, see the "LINK REFERENCE" and
+% "LINK POINTS" comment sections below.
+
 \usepackage{makeidx}
 \usepackage{multirow}
 
@@ -65,8 +68,14 @@
 
 %begin{latexonly}
 \IfFileExists{latexml.sty}{\usepackage{latexml}}{
-  \newif\iflatexml % Assume no latexml.sty => no latexml
-  % (\newif creates a command initialized to \iffalse.)
+\newif\iflatexml % Assume no latexml.sty => no latexml
+% (\newif creates a command initialized to \iffalse.)
+%
+% NB: This is a no-latexml.sty code block, but if the
+% \LaTeXML declaration lifted from latexml.sty is placed
+% here then pdflatex complains that \z is an undefined
+% control sequence. So we place it instead farther below
+% at the outer level.
 }
 %end{latexonly}
 % latex2html builds won't load latexml, so won't define \iflatexml.
@@ -82,38 +91,38 @@
 % binding for the rawhtml environment (htmlonly is completely
 % analogous):
 %
-%   DefConstructorI(T_CS("\\begin{rawhtml}"), undef, '', reversion => '',
-%     afterDigest => [sub {
-%         my ($stomach, $whatsit) = @_;
-%         my $endmark = "\\end{rawhtml}";
-%         my $nlines  = 0;
-%         my ($line);
-%         my $gullet = $stomach->getGullet;
-%         $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
-%         while (defined($line = $gullet->readRawLine) && ($line ne $endmark)) {
-%           $nlines++; }
-%         NoteLog("Skip rawhtml ($nlines lines)"); }]);
+%  DefConstructorI(T_CS("\\begin{rawhtml}"), undef, '', reversion => '',
+%    afterDigest => [sub {
+%      my ($stomach, $whatsit) = @_;
+%      my $endmark = "\\end{rawhtml}";
+%      my $nlines  = 0;
+%      my ($line);
+%      my $gullet = $stomach->getGullet;
+%      $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
+%      while (defined($line = $gullet->readRawLine) && ($line ne $endmark)) {
+%        $nlines++; }
+%      NoteLog("Skip rawhtml ($nlines lines)"); }]);
 %
 % The problem is the comparison of $line against $endmark requires an
 % exact full-line match. One workaround is to  strip off any leading
 % whitespace before making the comparison, e.g.,
 %
-%     while (defined($line = $gullet->readRawLine)
-%            && $line =~ s/^\s*// && ($line ne $endmark)) {
+%    while (defined($line = $gullet->readRawLine)
+%           && $line =~ s/^\s*// && ($line ne $endmark)) {
 %
 % Another more general approach is to use a regexp match, e.g.,
 %
-%   DefConstructorI(T_CS("\\begin\{htmlonly\}"), undef, '', reversion => '',
-%     afterDigest => [sub {
-%         my ($stomach, $whatsit) = @_;
-%         my $endmark = '^\\s*\\\\end\{rawhtml\}\\s*$';
-%         my $nlines  = 0;
-%         my ($line);
-%         my $gullet = $stomach->getGullet;
-%         $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
-%         while (defined($line = $gullet->readRawLine) && ($line !~ m/$endmark/)) {
-%           $nlines++; }
-%         NoteLog("Skip htmlonly ($nlines lines)"); }]);
+%  DefConstructorI(T_CS("\\begin\{htmlonly\}"), undef, '', reversion => '',
+%    afterDigest => [sub {
+%      my ($stomach, $whatsit) = @_;
+%      my $endmark = '^\\s*\\\\end\{rawhtml\}\\s*$';
+%      my $nlines  = 0;
+%      my ($line);
+%      my $gullet = $stomach->getGullet;
+%      $gullet->readRawLine;    # IGNORE 1st line (after the \begin{$name} !!!
+%      while (defined($line = $gullet->readRawLine) && ($line !~ m/$endmark/)) {
+%        $nlines++; }
+%      NoteLog("Skip htmlonly ($nlines lines)"); }]);
 %
 % which allows any amount of leading or trailing whitespace on the \end
 % line.
@@ -211,6 +220,69 @@
 % packages, because hyperref redefines a lot of commands from other
 % packages. So keep this in mind and rearrange package ordering as
 % needed.
+%
+% Note 5: qpdfview (rpm qpdfview-0.5.0-1.el8) displays ugly boxes
+% around each link, regardless of the hyperref \usepackage options.
+% But evince works OK.
+%
+% Additional post-load options for hyperref package:
+%\hypersetup{%
+%  colorlinks=false,% hyperlinks will be black
+%  linkbordercolor=red,% hyperlink borders will be red
+%  pdfborderstyle={/S/U/W 1}% border style will be underline of width 1pt
+%}
+%%% \makeatletter
+%%% \Hy@AtBeginDocument{%
+%%%   \def\@pdfborder{0 0 1}% Overrides border definition set with colorlinks=true
+%%%   \def\@pdfborderstyle{/S/U/W 1}% Overrides border style set with colorlinks=true
+%%%                                 % Hyperlink border style will be underline of width 1pt
+%%% }
+%%% \makeatother
+%
+%  Here is the pdfborderstyle specification from Adobe:
+%
+%  -------------------------------------------------------------------------
+%  TABLE 8.17 Entires in a border style dictionary
+%  -------------------------------------------------------------------------
+%  KEY  TYPE  VALUE
+%  -------------------------------------------------------------------------
+%  Type name   (Optional) The type of PDF object that this dictionary
+%              describes; if present, must be Border for a border style
+%              dictionary.
+%
+%  W    number (Optional) The border width in points. If this value is 0,
+%              no border is drawn. Default value: 1.
+%
+%  S    name   (Optional) The border style:
+%
+%                 S (Solid) A solid rectangle surrounding the annotation.
+%
+%                 D (Dashed) A dashed rectangle surrounding the annotation.
+%                   The dash pattern is specified by the D entry (see below).
+%
+%                 B (Beveled) A simulated embossed rectangle that appears to
+%                                be raised above the surface of the page.
+%
+%                 I (Inset) A simulated engraved rectangle that appears to be
+%                   recessed below the surface of the page.
+%
+%                 U (Underline) A single line along the bottom of the
+%                                 annotation rectangle.
+%
+%              Other border styles may be defined in the future. Default
+%              value: S.
+%
+%  D    array  (Optional) A dash arraydefining a pattern of dashes and gaps
+%              to be used in drawing a dashed border (border style D above).
+%              The dash array is specified in the same format as in the line
+%              dash pattern parameter of the graphics state (see “Line Dash
+%              Pattern” on page 217). The dash phase is not specified and is
+%              assumed to be 0. For example, a D entry of [ 3 2 ] specifies
+%              a border drawn with 3-point dashes alternating with 2-point
+%              gaps. Default value: [3]
+%
+%  -------------------------------------------------------------------------
+
 
 \usepackage{html}
 
@@ -221,6 +293,7 @@
 }
 
 % LINK REFERENCE:
+% (See also LINK POINTS further below)
 %
 % Links to \label
 % \htmlonlyref{text}{label}
@@ -253,7 +326,7 @@
 %   the linktext is printed alone.
 %
 % More details on \arb* and \pt* commands are provided further down in
-% this file.
+% this file; see LINK POINTS below
 %
 % Links to URLs
 % \htmladdnormallink{text}{url}
@@ -281,7 +354,7 @@
 }
 
 % latexml defines command \iflatexml true if latexml is running,
-% otherwise false. Some one can do
+% otherwise false. So one can do
 %
 %  \iflatexml
 %    % latexml version
@@ -300,9 +373,9 @@
 % \fi
 %
 % It would be nice to work latex2html into this processing scheme, but
-% according to my notes latex2html doesn't do \if statements.  For
-% reference, \newif\iffoo defines a new command \iffoo defined initially
-% to be \iffalse, but also commands \footrue and \foofalse which
+% latex2html doesn't do \if statements.  For reference, \newif\iffoo
+% defines a new command \iffoo, which is defined initially to
+% be \iffalse, but also defines commands \footrue and \foofalse which
 % redefine \iffoo to be \iftrue and \iffalse, respectively.
 %
 % The html.sty file provided with latex2html provides five conditional
@@ -542,6 +615,7 @@
 % I want upright quotes in verbatim environments, but upquote package
 % seems to be not well supported. Might try \textquotesingle and
 % \textquotedbl in alltt environment.
+\usepackage{lmodern}     % Display ~ in verbatim and \textasciitilde properly
 \usepackage[T1]{fontenc} % for \textquotedbl
 \usepackage{textcomp}    % for \textquotesingle (not needed for post-2019 TeX)
 \latex{\newcommand{\ssquote}{\textquotesingle}}  % Straight quotes
@@ -592,6 +666,7 @@
 %end{latexonly}
 \html{\newcommand{\uptick}{{'}}}
 
+% LINK POINTS (see also LINK REFERENCE above)
 % A solution to the ``set marker at arbitrary point on a page'' problem:
 %
 % Usage: \arbtarget{targettext}{label}
@@ -600,10 +675,17 @@
 %        \pttarget[targettext]{label}
 %        \ptlink{linktext}{label}
 %
+
 % The first pair provide a link in html and pdf output, and a page
 % reference in pdf and ps output. The second pair provide a link in html
 % and pdf output, but no page reference; \ptlink is transparent in ps
-% output, printing only the linktext.
+% output, printing only the linktext. (Remember that in pdf paper output
+% the link is not available, so you may want to include a section
+% reference like
+%
+%  \latex{\unless\iflatexml\ (Sec.~\ref{sec:mif2ExtensionCommands})\fi},
+%
+% or else a page reference with arbtarget.)
 %
 % NB: Text like
 %   \begin{rawhtml}<BLOCKQUOTE>\end{rawhtml}
@@ -622,6 +704,7 @@
 % on the preceding page. Putting \pttarget after the sectioning command,
 %
 %   \section{My Favorite Toys}\pttarget{label}     %% LESS BAD
+% (actually, now good!? See UPDATE 28-Jan-2023 below.)
 %
 % is a bit better, but the link will tend to point to the line after the
 % section header, and if the viewer scrolls to put the anchor at the top
@@ -640,6 +723,42 @@
 % use the second version if you want active links in the PDF output.
 % Also note the change in argument ordering between \hyperref and
 % \htmlref, and also the square brackets on the former.
+%
+%
+% UPDATE 28-Jan-2023: I've changed the pdf version of the \pttarget to
+% put the \hypertarget command inside a \raisebox, which appears to make
+% pdf viewers better behaved. Although with this modification if
+% a \pttarget occurs in front of the first \item in a list environment
+% (e.g., \begin{description}) then it will trigger the error
+%
+%   ! LaTeX Error: Something's wrong--perhaps a missing \item.
+%
+% But it is better to place the \pttarget after \item anyway.
+%
+% I then discovered that latexml 0.8.7 (but apparently not 0.8.6) was
+% choking on many of the \pttarget commands, in particular ones
+% immediately following an \item[foo] tag. It seems that latexml was
+% having problems finding a place to anchor the link in the
+% underlying \hypertarget command if the target text was empty. I fixed
+% this by setting the default target text to be \rule{0.07pt}{0pt}.
+% (Smaller that 0.05pt behaves like 0pt.) The 0pt height means no ink is
+% rendered.  If I make the width 0pt then the anchor appears to end up
+% on the baseline, and the browsers scroll the target line off the top
+% of the window. Sigh. In principle the 0.07pt width slides the
+% subsequent text a little to the right, but it's not visible
+% regardless. An alternative is to move the first word of the subsequent
+% text into the \pttarget optional slot. For example, instead of
+%
+%   \item[Destination]\pttarget{PTfoo}%
+%   The format for the command is
+%
+% use
+%
+%   \item[Destination]%
+%   \pttarget[The]{PTfoo} format for the command is
+%
+% which is probably most robust.
+% END UPDATE 28-JAN-2023
 %
 % Unfortunately, the \section links are broken in some cases in LaTeXML
 % (version 0.8.6). If document splitting is such that sec:mft is the top
@@ -694,16 +813,19 @@
 \iflatexml % LaTeXML version
 \newcommand{\arbtarget}[2]{\hypertarget{#2}{#1}}
 \newcommand{\arbtargetlink}[4]{\hyperlink{#4}{#1}}
-\newcommand{\pttarget}[2][]{\hypertarget{#2}{#1}}
+\newcommand{\pttarget}[2][\rule{0.07pt}{0pt}]{\hypertarget{#2}{#1}}
 \newcommand{\ptlink}[2]{\hyperlink{#2}{#1}}
-
-\newcommand{\arbtargetlinkonly}[2]{\hyperlink{#2}{#1}}
 \else % LaTeX and PDFLaTeX version
   \newcounter{arbtargetcounter}
   \newcommand{\arbtarget}[2]{#1\refstepcounter{arbtargetcounter}\label{#2}}
   \newcommand{\arbtargetlink}[4]{#2\pageref{#4}#3}
   \ifnum\oommfpdf=1 % PDF output (with links)
-    \newcommand{\pttarget}[2][]{\hypertarget{#2}{#1}}
+    %\newcommand{\pttarget}[2][]{\raisebox{0.9\baselineskip}{\hypertarget{#2}{#1}}}
+    \newcommand{\pttarget}[2][]{\raisebox{0.9\baselineskip}{\hypertarget{#2}{\raisebox{-0.9\baselineskip}{#1}}}}
+    % We apparently need \raisebox to contain the hypertarget command to
+    % get the line holding the link to show in PDF viewer display.  This
+    % works fine by itself if the target text is an empty string, but if
+    % we don't lower the text it display above the line.
     \newcommand{\ptlink}[2]{\hyperlink{#2}{#1}}
   \else % PS output (no links)
     \newcommand{\pttarget}[2][]{#1}
@@ -743,6 +865,7 @@
 \newcommand{\OBS}{OBS}
 \newcommand{\eps}{Encapsulated PostScript}
 \newcommand{\postscript}{PostScript}
+\newcommand{\pdf}{Portable Document Format}
 \latex{\newcommand{\mumag}{$\mu$MAG}}
 \html{\newcommand{\mumag}{muMAG}}
 \newcommand{\micrometer}{\latex{$\mu$m}\html{\begin{rawhtml}&micro;m\end{rawhtml}}}
@@ -824,6 +947,32 @@
 % text. (BTW, latex2html gives a "cannot wrap" warning on \renewcommand,
 % so just use separate \latex and \html versions.)
 
+% If latexml.sty not loaded, then use this definition of \LaTeXML
+% (which is lifted directly from latexml.sty). Placing this above
+% inside \IfFileExists{latexml.sty} results in pdflatex complaining
+% that \z is an undefined control sequence.
+\makeatletter
+\providecommand{\LaTeXML}{L\kern-.36em%
+         {\sbox\z@ T%
+          \vbox to\ht\z@{\hbox{\check@mathfonts
+                               \fontsize\sf@size\z@
+                               \math@fontsfalse\selectfont
+                               A}%
+                         \vss}%
+         }%
+         \kern-.15em%
+%        T\kern-.1667em\lower.5ex\hbox{E}\kern-.125em\relax
+%        {\tt XML}}
+         T\kern-.1667em\lower.4ex\hbox{E}\kern-0.05em\relax
+         {\scshape xml}}%
+\makeatother
+
+% A reasonable approximation and final backstop to the LaTeXML logo
+% for systems w/o latexml.sty; see also the definition lifted from
+% latexml.sty above.
+\providecommand{\LaTeXML}{\LaTeX\textsc{ML}}
+% In the actual logo the last three letters, "XML", are in a slightly
+% smaller font.
 
 % Filenames and program code identifiers
 \blackhole{
@@ -1024,6 +1173,73 @@
      } % set spacing
 }{\end{list}}
 
+
+% Description-like list structure that provides right alignment of
+% labels. The width of the label field can be changed by setting
+% \rightdescwidth, for example,
+%
+%    {\settowidth{\rightdescwidth}{\textbf{my widest label}}
+%    \begin{rightdesc}\raggedright
+%      \item[pears] blah blah
+%      \item[my widest label] halb halb
+%    \end{rightdesc}}
+%
+% The curly brackets around the whole bit restrict the redefinition
+% of \rightdescwidth to just this group.  This produces something like
+%
+% ... leading text
+%
+%             _pears_  blah blah blah
+%   _my widest label_  halb halb
+%
+% following text ...
+%
+
+%begin{latexonly}
+% AFAICT, LaTeXML 0.8.7 ignores the optional width and alignment
+% arguments to \makebox. The following is a workaround, but it's
+% not quite right because \settowidth is a little off. The -1.3
+% factor in \rightbox definition is an approximate fudge factor.
+\newlength{\rightdescwidth}
+\setlength{\rightdescwidth}{5em}
+\iflatexml % LaTeXML branch
+\newlength{\rightboxwidth}
+\newlength{\rightboxwidthb}
+\newcommand{\rightbox}[2]{%
+\setlength{\rightboxwidth}{1.3#1}%
+\settowidth{\rightboxwidthb}{#2}%
+\addtolength{\rightboxwidth}{-1.3\rightboxwidthb}%
+\hspace*{\rightboxwidth}#2}
+\newcommand{\rightdesclabel}[1]{\rightbox{\rightdescwidth}{\textbf{#1}}}
+
+\else % not LaTeXML branch
+
+%\newcommand{\rightdesclabel}[1]{\hfill\textbf{#1}}
+\newcommand{\rightdesclabel}[1]{\makebox[\rightdescwidth][r]{\textbf{#1}}}
+
+\fi % end LaTeXML branching
+
+\newcounter{rightdesccnt}
+\newenvironment{rightdesc}
+  {\begin{list}
+    {\arabic{rightdesccnt}}
+    {\usecounter{rightdesccnt}
+     \setlength{\labelwidth}{\rightdescwidth}
+     \setlength{\labelsep}{0.5em}
+     \setlength{\listparindent}{0.5em}
+     \setlength{\leftmargin}{\rightdescwidth}
+     \setlength{\itemindent}{0em}
+     \let\makelabel=\rightdesclabel
+    }
+  }
+{\end{list}}
+
+%end{latexonly}
+\begin{htmlonly}
+\newenvironment{rightdesc}%
+{\begin{description}%
+}{\end{description}}
+\end{htmlonly}
 
 % Ersatz figure environment.  This is a standard figure environment in
 % LaTex, but a dummy block in HTML.  This is useful because LaTeX2HTML

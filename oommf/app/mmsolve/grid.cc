@@ -745,8 +745,10 @@ Grid2D::Grid2D(MIF mif)
   if(ExternalDemag->paramcount<1) ExternalDemag->params=(char**)NULL;
   else {
     ExternalDemag->params=dfparams;
-    if(ExternalDemag->paramcount>1)
-      sprintf(dfparams[1],"%.17g",mif.GetPartThickness()/cellsize);
+    if(ExternalDemag->paramcount>1) {
+      Oc_Snprintf(dfparams[1],(dfparams[0]+MAXDFNAMELENGTH)-dfparams[1],
+                  "%.17g",mif.GetPartThickness()/cellsize);
+    }
   }
 
   // Determine magelt_anistype and anisotropy directions
@@ -1010,36 +1012,36 @@ void Grid2D::GetUsageTimes(Nb_DString& str)
   char buf[512];
   Oc_TimeVal cpu,wall;
 
-  sprintf(buf,"Timing (seconds)     CPU       Elapsed\n");
+  snprintf(buf,sizeof(buf),"Timing (seconds)     CPU       Elapsed\n");
   str.Append(buf,sizeof(buf));
 
   sw_exch.GetTimes(cpu,wall);
-  sprintf(buf," Exchange    %12.3f %12.3f\n",
+  snprintf(buf,sizeof(buf)," Exchange    %12.3f %12.3f\n",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 
   sw_anis.GetTimes(cpu,wall);
-  sprintf(buf," Anisotropy  %12.3f %12.3f\n",
+  snprintf(buf,sizeof(buf)," Anisotropy  %12.3f %12.3f\n",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 
   sw_demag.GetTimes(cpu,wall);
-  sprintf(buf," Demag       %12.3f %12.3f\n",
+  snprintf(buf,sizeof(buf)," Demag       %12.3f %12.3f\n",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 
   sw_zeeman.GetTimes(cpu,wall);
-  sprintf(buf," Zeeman      %12.3f %12.3f\n",
+  snprintf(buf,sizeof(buf)," Zeeman      %12.3f %12.3f\n",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 
   sw_solve_total.GetTimes(cpu,wall);
-  sprintf(buf," Solve Total %12.3f %12.3f\n",
+  snprintf(buf,sizeof(buf)," Solve Total %12.3f %12.3f\n",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 
   sw_proc_total.GetTimes(cpu,wall);
-  sprintf(buf," Proc  Total %12.3f %12.3f",
+  snprintf(buf,sizeof(buf)," Proc  Total %12.3f %12.3f",
           double(cpu),double(wall));
   str.Append(buf,sizeof(buf));
 #endif // STOPWATCH_ON
@@ -1765,11 +1767,12 @@ void Grid2D::StepPredict2(double minstep,double maxtorque,
     if(bad_step_size<=minstep || (StepSize*maxtorque)<OC_REAL8_EPSILON) {
         // Step too small.
       char tempbuf[4096];
-      sprintf(tempbuf," Error: %.16g\n Original Energy: %.16g\n"
-              " Expected energy change: %.16g\n"
-              " Actual  energy  change: %.16g\n",
-              error,orig_energy,
-              expected_energy_change,actual_energy_change);
+      snprintf(tempbuf,sizeof(tempbuf),
+               " Error: %.16g\n Original Energy: %.16g\n"
+               " Expected energy change: %.16g\n"
+               " Actual  energy  change: %.16g\n",
+               error,orig_energy,
+               expected_energy_change,actual_energy_change);
       SendSmallStepMessage("Grid2D::StepPredict2",StepSize,maxtorque,
                            tempbuf);
       StepSize=0; next_stepsize=orig_stepsize;

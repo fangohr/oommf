@@ -59,6 +59,8 @@ public:
 
   virtual void FillStateMemberData(const Oxs_SimState& old_state,
                                    Oxs_SimState& new_state) const;
+  virtual void FillStateSupplemental(const Oxs_SimState& old_state,
+                                     Oxs_SimState& work_state) const;
   virtual void FillStateDerivedData(const Oxs_SimState& old_state,
                                     const Oxs_SimState& new_state) const;
 
@@ -69,15 +71,15 @@ public:
                                             const Oxs_SimState& new_state) const;
 
   virtual OC_BOOL InitNewStage(Oxs_ConstKey<Oxs_SimState> state,
-                            Oxs_ConstKey<Oxs_SimState> prevstate);
+                               Oxs_DriverStageInfo& stageinfo,
+                               Oxs_ConstKey<Oxs_SimState> prevstate);
 
   virtual  OC_BOOL
   Step(Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_ConstKey<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.
-
 };
 
 #endif // _OXS_MINDRIVER

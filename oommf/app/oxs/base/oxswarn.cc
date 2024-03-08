@@ -51,9 +51,10 @@ int Oxs_WarningMessage::ids_in_use = 0;
 std::map<int,int> Oxs_WarningMessage::message_counts;
 std::deque<Oxs_WarningMessage::MessageData> Oxs_WarningMessage::message_hold;
 
+
 int
 Oxs_WarningMessage::FormatMessage
-(const Oxs_WarningMessageRevisionInfo& revinfo,
+(const char* file,
  const char* line,
  const char* msg,
  const char* src,
@@ -79,7 +80,7 @@ Oxs_WarningMessage::FormatMessage
       result = 1;
     } else if(max_message_count>=0 && current_count>max_message_count) {
       result = -1;
-    } 
+    }
   }
   if(result<0) return result;
 
@@ -92,11 +93,8 @@ Oxs_WarningMessage::FormatMessage
   default:              fullmsg = String("UNKNOWN type: ");  break;
   }
   fullmsg += String(msg)
-    + String("\n   in file: ") + revinfo.file
-    + String("\n   at line: ") + String(line)
-    + String("\n  revision: ") + revinfo.revision
-    + String("\n      date: ") + revinfo.date
-    + String("\n    author: ") + revinfo.primary_author;
+           + String("\n   in file: ") + String(file)
+           + String("\n   at line: ") + String(line);
 
   if(result==1) {
     fullmsg += String("\n*** NOTE: Further messages of this type"
@@ -116,10 +114,10 @@ Oxs_WarningMessage::FormatMessage
     ecvec.push_back(id);
   } else {
     char idbuf[512];
-    Oc_Snprintf(idbuf,sizeof(idbuf),"Oxs_WarningMessage:%04d",instance_id); 
+    Oc_Snprintf(idbuf,sizeof(idbuf),"Oxs_WarningMessage:%04d",instance_id);
    ecvec.push_back(idbuf);
   }
-  ecvec.push_back(revinfo.file + String(":") + String(line));
+  ecvec.push_back(String(file) + String(":") + String(line));
   errCode = Nb_MergeList(ecvec);
 
   return result;
@@ -127,7 +125,7 @@ Oxs_WarningMessage::FormatMessage
 
 int
 Oxs_WarningMessage::HoldMessage
-(const Oxs_WarningMessageRevisionInfo& revinfo,
+(const char* file,
  const char* line,
  const char* msg,
  const char* src,
@@ -137,7 +135,7 @@ Oxs_WarningMessage::HoldMessage
   // call TransmitMessageHold to send messages out.
   String formatted_message;
   String errCode;
-  int result = FormatMessage(revinfo,line,msg,src,id,
+  int result = FormatMessage(file,line,msg,src,id,
                              formatted_message,errCode);
   if(result<0) return result;
   Oc_LockGuard lck(mutex);
@@ -156,7 +154,8 @@ int Oxs_WarningMessage::TransmitMessageHold()
     int isempty=0;
     {
       Oc_LockGuard lck(mutex);
-      if(!(isempty=message_hold.empty())) {
+      isempty=message_hold.empty();
+      if(!isempty) {
         data = message_hold.front();
         message_hold.pop_front();
       }
@@ -170,7 +169,7 @@ int Oxs_WarningMessage::TransmitMessageHold()
 
 int
 Oxs_WarningMessage::Send
-(const Oxs_WarningMessageRevisionInfo& revinfo,
+(const char* file,
  const char* line,
  const char* msg,
  const char* src,
@@ -180,15 +179,27 @@ Oxs_WarningMessage::Send
     // TkMessage call can only be made from the root thread.  If this
     // is not the root thread, then put message into holding area to
     // be called when thread join occurs.
-    return HoldMessage(revinfo,line,msg,src,id);
+    return HoldMessage(file,line,msg,src,id);
   }
   String formatted_message;
   String errCode;
-  int result = FormatMessage(revinfo,line,msg,src,id,
+  int result = FormatMessage(file,line,msg,src,id,
                              formatted_message,errCode);
   if(result<0) return result;
   return TkMessage(message_type,formatted_message.c_str(),0,errCode.c_str());
 }
+
+int
+Oxs_WarningMessage::Send
+(const Oxs_WarningMessageRevisionInfo& revinfo,
+ const char* line,
+ const char* msg,
+ const char* src,
+ const char* id)
+{ // Deprecated interface
+  return Send(revinfo.file.c_str(),line,msg,src,id);
+}
+
 
 int Oxs_WarningMessage::GetCurrentCount() const
 {

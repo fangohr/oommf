@@ -197,7 +197,7 @@ private:
 
   // Demag tensor computation accuracy
   OC_REAL8m demag_tensor_error;
-  
+
 #if !OOMMF_THREADS
   // Object to perform FFTs.  All transforms are the same size, so we
   // only need one Oxs_FFT3DThreeVector object.  (Note: A
@@ -293,11 +293,11 @@ private:
   /// OVF 2.0 file, with order Nxx Nxy Nxz Nyy Nyz Nzz.
 
   String saveN_fmt;  // File format for saveN
-  
+
   void FillCoefficientArrays(const Oxs_Mesh* mesh) const;
 
   void ReleaseMemory() const;
-  
+
 protected:
   virtual void GetEnergy(const Oxs_SimState& state,
 			 Oxs_EnergyData& oed) const {

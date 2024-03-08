@@ -15,6 +15,7 @@
 #include "nb.h"
 #include "key.h"
 #include "director.h"
+#include "driver.h"
 #include "mesh.h"
 #include "meshvalue.h"
 #include "oxswarn.h"
@@ -205,15 +206,15 @@ Oxs_Exchange6Ngbr::Oxs_Exchange6Ngbr(
     VerifyAllInitArgsUsed();
 
     // Setup outputs
-    maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",1,
+    maxspinangle_output.Setup(this,InstanceName(),"Max Spin Ang","deg",
                               &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     maxspinangle_output.Register(director,0);
     stage_maxspinangle_output.Setup(this,InstanceName(),
-                                    "Stage Max Spin Ang","deg",1,
+                                    "Stage Max Spin Ang","deg",
                                     &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     stage_maxspinangle_output.Register(director,0);
     run_maxspinangle_output.Setup(this,InstanceName(),
-                                  "Run Max Spin Ang","deg",1,
+                                  "Run Max Spin Ang","deg",
                                   &Oxs_Exchange6Ngbr::UpdateDerivedOutputs);
     run_maxspinangle_output.Register(director,0);
   }
@@ -241,7 +242,12 @@ OC_BOOL Oxs_Exchange6Ngbr::Init()
   mesh_id = 0;
   region_id.Release();
   energy_density_error_estimate = -1;
-  return Oxs_Energy::Init();
+
+  // Stage and run max angle computations require access to the
+  // immediate predecessor of the current state.
+  director->GetDriver()->SimstateHoldRequest(2);
+
+  return Oxs_ChunkEnergy::Init(); // Run parent initializer.
 }
 
 void Oxs_Exchange6Ngbr::CalcEnergyA
@@ -263,7 +269,7 @@ void Oxs_Exchange6Ngbr::CalcEnergyA
     String msg =
       String("Import mesh (\"")
       + String(state.mesh->InstanceName())
-      + String("\") to Oxs_Exchange6Ngbr::GetEnergyA()"
+      + String("\") to Oxs_Exchange6Ngbr::CalcEnergyA()"
              " routine of object \"") + String(InstanceName())
       + String("\" is not a rectangular mesh object.");
     throw Oxs_ExtError(msg.c_str());
@@ -842,7 +848,7 @@ Oxs_Exchange6Ngbr::IncrementPreconditioner(PreconditionerData& pcd)
 
   // Check periodicity.
   int xperiodic=0, yperiodic=0, zperiodic=0;
-  const Oxs_RectangularMesh* rmesh 
+  const Oxs_RectangularMesh* rmesh
     = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);

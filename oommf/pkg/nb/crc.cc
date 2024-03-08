@@ -26,16 +26,6 @@ const unsigned int TABLE_SIZE = 256;
 static bool table_initialized = 0;
 static OC_UINT4m crctable[TABLE_SIZE];
 
-// If available, Tcl_Obj's are used in the channel version of
-// Nb_ComputeCRC.
-#ifndef NB_CRC_TCL_OBJ_VERSION
-# if (TCL_MAJOR_VERSION > 8 || (TCL_MAJOR_VERSION==8 && TCL_MINOR_VERSION>1))
-#  define NB_CRC_TCL_OBJ_VERSION 1
-# else
-#  define NB_CRC_TCL_OBJ_VERSION 0
-# endif
-#endif
-
 static void NbCRCInitLookupTable()
 {
   for(OC_UINT4m i=0;i<TABLE_SIZE;++i) {
@@ -114,34 +104,22 @@ OC_UINT4m Nb_ComputeCRC(Tcl_Channel chan,NB_CRCFCNTYPE* bytes_read)
   NB_CRCFCNTYPE total_count = 0;
   OC_UINT4m r = START_VALUE;
 
-#if NB_CRC_TCL_OBJ_VERSION
   Tcl_Obj* obj = Tcl_NewObj();
   Tcl_IncrRefCount(obj);
   const unsigned char* buf = NULL;
-#else
-  unsigned char buf[READSIZE];
-#endif
 
   do {
 
-#if NB_CRC_TCL_OBJ_VERSION
     count = Tcl_ReadChars(chan,obj,READSIZE,0);
-#else
-    count = Tcl_Read(chan,(char*)buf,READSIZE);
-#endif // Tcl_Obj version
 
     if(count<0) { // Error
       if(bytes_read!=NULL) *bytes_read = static_cast<NB_CRCFCNTYPE>(-1);
-#if NB_CRC_TCL_OBJ_VERSION
       Tcl_DecrRefCount(obj);
       obj = NULL; // Safety
-#endif
       return 0;
     }
 
-#if NB_CRC_TCL_OBJ_VERSION
     buf = Tcl_GetByteArrayFromObj(obj,&count);
-#endif
 
     total_count += static_cast<NB_CRCFCNTYPE>(count);
     for(int i=0;i<count;++i) {
@@ -152,17 +130,15 @@ OC_UINT4m Nb_ComputeCRC(Tcl_Channel chan,NB_CRCFCNTYPE* bytes_read)
 
   if(bytes_read!=NULL) *bytes_read = total_count;
 
-#if NB_CRC_TCL_OBJ_VERSION
   Tcl_DecrRefCount(obj);
   obj = NULL; // Safety
-#endif
 
   return r;
 }
 
 // Tcl wrappers
 int NbComputeCRCBufferCmd(ClientData,Tcl_Interp *interp,
-			  int argc,CONST84 char** argv)
+			  int argc,const char** argv)
 {
   char msg[1024];
   Tcl_ResetResult(interp);
@@ -188,7 +164,7 @@ int NbComputeCRCBufferCmd(ClientData,Tcl_Interp *interp,
 }
 
 int NbComputeCRCChannelCmd(ClientData,Tcl_Interp *interp,
-			int argc,CONST84 char** argv)
+			int argc,const char** argv)
 {
   char msg[1024];
   Tcl_ResetResult(interp);

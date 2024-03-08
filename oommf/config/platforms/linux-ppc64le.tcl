@@ -163,7 +163,7 @@ source [file join [file dirname [Oc_DirectPathname [info script]]]  \
 ## NUMA development (numactl-devel) packages installed.
 # $config SetValue use_numa 1  ;# 1 to enable, 0 (default) to disable.
 #
-## Default nodes if NUMA is enables.  This is either a numeric list or
+## Default nodes if NUMA is enabled.  This is either a numeric list or
 ## else one of the keywords "auto" or "none".
 # $config SetValue numanodes auto
 #

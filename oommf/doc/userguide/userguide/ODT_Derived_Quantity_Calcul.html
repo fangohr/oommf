@@ -24,36 +24,36 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html972"
+<A NAME="tex2html1002"
   HREF="ODT_Table_Concatenation_odt.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html968"
+<A NAME="tex2html998"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html962"
+<A NAME="tex2html992"
   HREF="Process_Nicknames_nickname.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html970"
+<A NAME="tex2html1000"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html973"
+<B> Next:</B> <A NAME="tex2html1003"
   HREF="ODT_Table_Concatenation_odt.html">ODT Table Concatenation: odtcat</A>
-<B> Up:</B> <A NAME="tex2html969"
+<B> Up:</B> <A NAME="tex2html999"
   HREF="Command_Line_Utilities.html">Command Line Utilities</A>
-<B> Previous:</B> <A NAME="tex2html963"
+<B> Previous:</B> <A NAME="tex2html993"
   HREF="Process_Nicknames_nickname.html">Process Nicknames: nickname</A>
 <BR>
 <BR>
 <!--End of Navigation Panel-->
 
-<H1><A NAME="SECTION0017140000000000000000"></A><A NAME="sec:odtcalc"></A>
+<H1><A NAME="SECTION0017160000000000000000"></A><A NAME="sec:odtcalc"></A>
 <BR>
 ODT Derived Quantity Calculator: odtcalc
-</H1><A NAME="18768"></A>
+</H1><A NAME="19452"></A>
 
 <P>
-The <B>odtcalc</B><A NAME="18770"></A> utility reads an
+The <B>odtcalc</B><A NAME="19454"></A> utility reads an
 <A HREF="Data_Table_File_Format_ODT.html#sec:odtformat">ODT</A> file on stdin
 that contains one or more tables, and prints to stdout an ODT file
 consisting of the same tables augmented by additional columns as
@@ -68,12 +68,12 @@ existing columns.
 <BR>
 The <B>odtcalc</B> launch command is:
 <PRE>
-tclsh oommf.tcl odtcalc [standard options] [var expr unit ...] \
+tclsh oommf.tcl odtcalc [standard options] [var unit expr ...] \
     &lt;infile &gt;outfile
 </PRE>
 where
 <DL>
-<DT><STRONG><TT><B>var expr unit ...</B></TT></STRONG></DT>
+<DT><STRONG><TT><B>var unit expr ...</B></TT></STRONG></DT>
 <DD>Each triplet of command line arguments determines the calculation
   to make for the production of a new column in the output data table.
   Each <TT>var</TT> value becomes the new <TT>Columns:</TT> entry in the
@@ -96,21 +96,29 @@ where
 </DL>
 
 <P>
-The computation of a new data value for each row of each new column
-of data is performed by passing the corresponding <TT>expr</TT> command
-line argument to Tcl's <B>expr</B> command.  The standard collection
-of operators and functions are available.  The value of other columns
-in the same row may be accessed by use of the column label as a variable
-name.  For example, the value of the <TT>Iteration</TT> column can be used
-in <TT>expr</TT> by including the variable substitution <TT>$Iteration</TT>.
-When column labels include colons, the <TT>expr</TT> has the option of using
-just the portion of the column label after the last colon as the variable
-name.  For example, the value of the <TT>Oxs_UZeeman::Bx</TT> column can
-be used in <TT>expr</TT> by including the variable substitution <TT>$Bx</TT>.
-When multiple triples specifying new data columns are provided, the
-values of earlier new columns may be used to compute the values of later
-new columns.  The order of command line arguments controls the order of
-the new columns that are added to the right side of the data table.
+The computation of a new data value for each row of each new column of
+data is performed by passing the corresponding <TT>expr</TT> command line
+argument to Tcl's <B>expr</B> command.  The standard collection of
+operators and functions are available, and also the variables <TT>$pi</TT>
+and <TT>$mu0</TT> representing the commonly used values <B><IMG
+ WIDTH="14" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img84.gif"
+ ALT="$\pi$"></B> and <B><IMG
+ WIDTH="21" HEIGHT="28" ALIGN="MIDDLE" BORDER="0"
+ SRC="img85.gif"
+ ALT="$\mu_{0}^{}$"></B>.
+The value of other columns in the same row may be accessed by use of the
+column label as a variable name.  For example, the value of the
+<TT>Iteration</TT> column can be used in <TT>expr</TT> by including the variable
+substitution <TT>$Iteration</TT>.  When column labels include colons, the
+<TT>expr</TT> has the option of using just the portion of the column label
+after the last colon as the variable name.  For example, the value of the
+<TT>Oxs_UZeeman::Bx</TT> column can be used in <TT>expr</TT> by including the
+variable substitution <TT>$Bx</TT>.  When multiple triples specifying new
+data columns are provided, the values of earlier new columns may be used
+to compute the values of later new columns.  The order of command line
+arguments controls the order of the new columns that are added to the
+right side of the data table.
 
 <P>
 
@@ -124,7 +132,7 @@ magnetization axis component values <B><I>B</I><SUB>x</SUB></B>, <B><I>B</I><SUB
 want field and magnetization data projected onto the applied field
 axis.  We can create those values using <B>odtcalc</B> like so:
 <PRE>
-tclsh oommf.tcl odtcalc B '$Bx*0.86602540378443865+$By*0.5' mT \
+tclsh oommf.tcl odtcalc B mT '$Bx*0.86602540378443865+$By*0.5' \
    m '$mx*0.86602540378443865+$my*0.5' '' \
    &lt; ring.odt &gt; ring-augmented.odt
 </PRE>
@@ -154,20 +162,20 @@ tclsh oommf.tcl odtcols -t csv B m &lt; ring-augmented.odt &gt; ring-export.dat
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html972"
+<A NAME="tex2html1002"
   HREF="ODT_Table_Concatenation_odt.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html968"
+<A NAME="tex2html998"
   HREF="Command_Line_Utilities.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html962"
+<A NAME="tex2html992"
   HREF="Process_Nicknames_nickname.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html970"
+<A NAME="tex2html1000"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

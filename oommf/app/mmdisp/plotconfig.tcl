@@ -159,7 +159,7 @@ Oc_Class Mmd_PlotSelectConfigure {
 		    set psc($elt) $userinit($elt)
                 }
             }
-            trace variable userinit w "$this ExternalUpdate $import_arrname"
+            trace add variable userinit write "$this ExternalUpdate $import_arrname"
         }
 
 	# To simplify the plot configure interface, the single entry
@@ -251,9 +251,9 @@ Oc_Class Mmd_PlotSelectConfigure {
 		-valuewidth 5 -valuejustify right \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(arrow,subsample)
-	trace variable psc(arrow,status) w \
+	trace add variable psc(arrow,status) write \
 		"$this UpdateSubsampleState arrow $arrsr"
-	trace variable psc(arrow,autosample) w \
+	trace add variable psc(arrow,autosample) write \
 		"$this UpdateSubsampleState arrow $arrsr"
 
         set arrautosample [checkbutton $a14.as -text "Auto" \
@@ -341,9 +341,9 @@ Oc_Class Mmd_PlotSelectConfigure {
 		-valuewidth 5 -valuejustify right \
                 -disabledforeground $disabledcolor \
                 -variable ${gpsc}(pixel,subsample)
-	trace variable psc(pixel,status) w \
+	trace add variable psc(pixel,status) write \
 		"$this UpdateSubsampleState pixel $pixsr"
-	trace variable psc(pixel,autosample) w \
+	trace add variable psc(pixel,autosample) write \
 		"$this UpdateSubsampleState pixel $pixsr"
 
         set pixautosample [checkbutton $a24.as -text "Auto" \
@@ -654,7 +654,7 @@ Oc_Class Mmd_PlotSelectConfigure {
         if {[catch {
             if {![string match {} $import_arrname]} {
                 upvar #0 $import_arrname userinit
-                trace vdelete userinit w "$this ExternalUpdate $import_arrname"
+                trace remove variable userinit write "$this ExternalUpdate $import_arrname"
             }
         } errmsg]} {
             Oc_Log Log $errmsg error

@@ -12,7 +12,7 @@ if {[Oc_Main HasTk]} {
 }
 
 Oc_Main SetAppName mmArchive
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/11/24 21:17:20 $} _ date
 Oc_Main SetDate [string trim $date]
 Oc_Main SetAuthor [Oc_Person Lookup dgp]
@@ -127,7 +127,7 @@ append gui {
       foreach elt $result {
          $logwidget Append $elt
       }
-      trace variable status w [subst {$logwidget Append \$status ;#}]
+      trace add variable status write [subst {$logwidget Append \$status ;#}]
    }
    remote -callback LogInit set log
 
@@ -347,21 +347,27 @@ proc WriteTriples {conn triples} {
          lappend conn_data_fmt($conn) $fmt
       }
 
-      # Open output file for append
+      # Open output file for append. Note the difference between "a" and
+      # "a+" in the open command. The first appends to the end of the
+      # file with each write (albeit on Windows this is done via a seek
+      # + write and is not atomic), while "a+" positions at the end of
+      # the file when it is opened, but makes no allowance for writes
+      # from other sources.
       set chan {}
       set conn_file($conn) $conn_file_req($conn)
       if {[string match {} $conn_file($conn)] || \
-              [catch {open $conn_file($conn) "a+"} chan]} {
+              [catch {open $conn_file($conn) "a"} chan]} {
          # Unable to open output file.  Try using temporary filename
          set conn_file($conn) [Oc_TempName "mmArchive" ".odt"]
-         if {[catch {open $conn_file($conn) "a+"} chan]} {
+         if {[catch {open $conn_file($conn) "a"} chan]} {
             # Abandon ship!
             error "Unable to open DataTable output file: $chan"
             # Note: Error will get logged by catch around WriteTriples
          }
       }
-      LogMessage status "Opened $conn_file($conn)"
+      fconfigure $chan -buffering line
       set conn_channel($conn) $chan
+      LogMessage status "Opened $conn_file($conn)"
 
       # Setup exit handler
       global server
@@ -424,7 +430,7 @@ proc WriteTriples {conn triples} {
    # Index into tripdata using the column list.  Note that
    # there is no check for extra (new) data columns; any
    # such will just be ignored.
-   puts -nonewline $chan "          "  ;# Indent past "# Columns:" heading
+   set datarow "          "  ;# Indent past "# Columns:" heading
    foreach label $conn_col_list($conn)  \
        width $conn_head_width($conn) \
        fmt $conn_data_fmt($conn) {
@@ -443,10 +449,9 @@ proc WriteTriples {conn triples} {
                 set value [format " %*s" $width $value]
              }
           }
-          puts -nonewline $chan $value
+          append datarow $value
        }
-   puts $chan {}
-   flush $chan
+   puts $chan $datarow
 }
 
 proc CloseTriplesFile {conn} {

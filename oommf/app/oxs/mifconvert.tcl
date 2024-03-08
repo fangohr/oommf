@@ -415,7 +415,7 @@ proc MakeRelativePath { basedir path } {
         # Different volumes.  So punt and just return absolute path
         return $path
     }
-    
+
     # Find length of common initial path segments
     set size 0
     foreach b $basecomp p $pathcomp {
@@ -852,7 +852,7 @@ puts $outfile "Specify Oxs_RectangularMesh:mesh {
 }"
 
 ##############################################################
-# Write crystalline anisotropy info 
+# Write crystalline anisotropy info
 set anisk1 [EatAllRecords inlist "k1"]
 set anistype [EatAllRecords inlist "anisotropytype"]
 if {[catch {EatAllRecords inlist "anisotropydir1"} anisdir1]} {
@@ -1034,7 +1034,7 @@ while {![catch {ExtractRecord inlist "fieldrange"} range]} {
     }
 
     if {$repeat_count==1} {
-        lappend torque_control    $specarr(-torque) 
+        lappend torque_control    $specarr(-torque)
         lappend time_control      $specarr(-time)
         lappend iteration_control $specarr(-iteration)
     } else {
@@ -1048,7 +1048,7 @@ if {$rangecount<1} {
     array set specarr $default_control
     set specarr(-torque) [expr {$specarr(-torque)*$torque_mult}] ;# Convert
     ## stopping criterion from |mxh| (dimensionless) to |dm/dt| (deg/ns).
-    set torque_control    $specarr(-torque) 
+    set torque_control    $specarr(-torque)
     set time_control      $specarr(-time)
     set iteration_control $specarr(-iteration)
     set rangelist [list [list 0 0 0 0 0 0 0]]
@@ -1618,7 +1618,7 @@ proc RightLeft { x y z} {
         }
         puts $outfile {
 proc CRot { thetacos thetasin xcellsize wallrad x y z xspan yspan zspan} {
-    # script_args: relpt span 
+    # script_args: relpt span
     set x [expr {($x-0.5)*$xspan}]
     set y [expr {($y-0.5)*$yspan}]
     set xoff [expr {$x*$thetacos+$y*$thetasin}]
@@ -1745,7 +1745,7 @@ proc UpRightDownHeadToHead { rwidth x y z } {
         }
         puts $outfile {
 proc InLeftOutRot { thetacos thetasin xcellsize wallrad x y z xspan yspan zspan} {
-    # script_args: relpt span 
+    # script_args: relpt span
     set x [expr {($x-0.5)*$xspan}]
     set y [expr {($y-0.5)*$yspan}]
     set xoff [expr {$x*$thetacos+$y*$thetasin}]
@@ -2016,7 +2016,7 @@ proc SectionAtlas { atlasname init_string } {
 	    lappend internal_sections $newname
 	} else {
 	    # Inline section reference.  Use Oxs_SectionAtlas label
-	    # as new atlas name.  Assume new section is an 
+	    # as new atlas name.  Assume new section is an
 	    # Oxs_RectangularSection, since that is the only legal
 	    # MIF 2.0 section type.
 	    set istr [lindex $value 1]
@@ -2165,7 +2165,7 @@ proc FixupScriptFieldInitString { src initstr } {
 
 #####################
 # Begin conversion
-  
+
 # Drop "Init" from ScalarFieldInit and VectorFieldInit
 regsub -all -- {(Oxs_[^ ]+ScalarField)Init} $filestr {\1} filestr
 regsub -all -- {(Oxs_[^ ]+VectorField)Init} $filestr {\1} filestr

@@ -26,17 +26,107 @@ Oc_Class Oxs_Mif {
     private common regression_test_level 0
     private common regression_test_basename {}
 
-    private variable speckeys           ;# Ordered list of keys
-    private array variable spec
-    private variable destkeys = {}      ;# Ordered list of keys
-    private array variable dest
-    private array variable extra
-    private array variable assign
-    private array variable assigned
-    private array variable schedule
     private variable random_seed = {}
 
-    private array variable oid_wait     ;# PIDs awaiting OID assignment
+    private variable speckeys        ;# Ordered list of Specify keys
+    private array variable spec      ;# Maps spec keys to Specify values
+
+    private variable destkeys = {}   ;# Ordered list of Destination keys (tags)
+    private array variable dest      ;# Maps dest keys to app launch info
+    private variable destextra       ;# Destination cmd args (dict of dicts)
+    private array variable assign    ;# Maps dest keys to OIDs
+    private array variable assigned  ;# Maps OIDs to keys keys
+    private array variable schedule
+    private array variable oid_wait  ;# PIDs awaiting OID assignment
+
+    # The following notes describe the destination assignment process. The
+    # account server is involved in resolving oid and nickname identities,
+    # which necessitates going through the event loop. Account server
+    # replies are handled using the Oc_EventHandler class.
+    #
+    # 0) (Oxsii/Boxsi) After setup, the bottom of the oxsii.tcl and
+    #    boxsi.tcl scripts create a Net_Account link and wait for a Ready
+    #    message from the account server. Once Ready, a request is sent to
+    #    the account server for a list of services. An Oxs_Destination
+    #    object is created for each service. This occurs through the event
+    #    loop, so the ordering is uncertain, but typically this finishes
+    #    before the MIF file reading (step 1), which is processed via an
+    #    'after idle' command. In other words, Oxs_Destination objects are
+    #    typically created for pre-existing services before the MIF file
+    #    is read in step 1. In particular, problem basename is not
+    #    available for these Oxs_Destination objects at construction time
+    #    but must be added in at a later point (see Step Z).
+    #
+    # 1) (Oxsii/Boxsi) Oxsii and Boxsi load a MIF file through the
+    #    Oxs_Director::ProbInit C++ member function. In this call each MIF
+    #    file Specify block constructs Oxs_Ext objects, SetOption blocks
+    #    populate the Tcl Oxs_Mif 'options' variable, and Destination
+    #    commands append onto the Oxs_Mif 'destkeys' list, 'dest' array,
+    #    and 'destextra' dict. The Destination command has the form
+    #
+    #       Destination archive mmArchive[:Fred] [new] [args]
+    #
+    #    where "archive" is the key (called "tag" in most of the Oxs_Mif
+    #    code), mmArchive is the application, optional ':Fred' is a
+    #    nickname, and optional 'new' requests a new application be
+    #    launched. The optional 'args' field is a list of label+value
+    #    pairs, which may include a '-basename <basename_override>' pair
+    #    that sets the basename variable in the Oc_Class Oxs_Destination
+    #    instance.
+    #
+    #    WRT the aforementioned Oxs_Mif variables,
+    #             destkeys : ordered list of all keys
+    #           dest($key) : [list $app $nickname <0|1>]
+    #      destextra($key) : $args
+    #    where the <0|1> in the second item is 1 if "new" is specified,
+    #    otherwise 0. The $args is a list of label+value pairs, with
+    #    the first character of each label a hypen, e.g., "-basename".
+    #
+    # 2) (Oxs_Mif SetupSchedule) Upon return from Oxs_Director::ProbInit,
+    #    the oxsii/boxsi.tcl scripts call the Oxs_Mif SetupSchedule
+    #    method. If there are any keys stored in destkeys, then the
+    #    Oxs_Mif FindDestinations method is called to process that list.
+    #
+    # 3) (Oxs_Mif FindDestinations) Any keys in destkeys with the 'new'
+    #    request are passed on to the Oxs_Mif LaunchNewDestination (step
+    #    6) method. The rest are passed to the account server 'find'
+    #    interface.
+    #
+    # 4) (Oxs_Mif FindReply) The replies from the account server are used
+    #    to either map keys to oids (Oxs_Mif Assign method), or else a new
+    #    application is launched. If the Destination command included a
+    #    nickname, then the launching is handled through the Oxs_Mif
+    #    NameClaim method; otherwise the LaunchNewDestination method is
+    #    called.
+    #
+    # 5) (Oxs_Mif NameClaim) Send a 'claim' request on the nickname to the
+    #    account server. The answer is handled by the Oxs_Mif ClaimReply
+    #    method, which calls LaunchNewDestination (step 6) if the claim
+    #    request was successful, otherwise assume a race on the claim was
+    #    lost to another. In the latter case, the Oxs_Mif NotifyClaim
+    #    method is used to catch a 'notify claim' message from the account
+    #    server, which triggers a call to the Oxs_Mif FindDestinations
+    #    (step 3) method with the key.
+    #
+    # 6) (Oxs_Mif LaunchNewDestination) Execs the application, and sends a
+    #    getoid request to the account server with the exec pid. The
+    #    account server reply goes to the Oxs_Mif GetOidReply method.
+    #    Depending on timing, if the getoid request is positive, then call
+    #    Oxs_Mif method Assign to tie the key and oid. If a nickname was
+    #    requested, then an 'associate' request is sent to the account
+    #    server. If the getoid request failed, then the Oxs_Mif
+    #    NotifyNewOid method is set up to handle oid updates. NotifyNewOid
+    #    does essentially the same processing as GetOidReply.
+    #
+    # Z) The Oxs_Mif Assign method, accessed in steps 4 and 6, checks to
+    #    see if the number of assigned keys matches the length of the
+    #    destkeys list. If so, then all tags have been assigned and a pass
+    #    is made through all Oxs_Destination objects. Any missing basename
+    #    fields in the Oxs_Destination objects are filled in---these will
+    #    be Oxs_Destinations from Step 0 that existed prior to the loading
+    #    of the MIF file. Then a <DestinationTagsAssigned> event is
+    #    raised, which instigates the Oxs_Mif CreateSchedule method.
+    #
 
     # mif_interp is slave interpreter in which the MIF file is
     # eval'ed.  Normally this slave is deleted along with Oxs_Mif
@@ -48,7 +138,7 @@ Oc_Class Oxs_Mif {
     const public variable mif_interp
     private variable mif_interp_nodelete = 0
 
-    private variable mif_filename
+    private variable mif_filename = {}
     private variable parameters
     private array variable tmp_params
 
@@ -62,9 +152,16 @@ Oc_Class Oxs_Mif {
 
     private array variable options
 
+    private variable cleanup_handlers = {}
+
     Constructor { args } {
         eval $this Configure $args
         set speckeys {}
+        set dictextra [dict create]
+        foreach odi [Oxs_Destination Instances] {
+           $odi Configure -basename {}  ;# Reset basename in any
+                      ## pre-existing Oxs_Destination instances.
+        }
 
         # Setup slave interpreter
         if {[Oc_Option Get MIFinterp safety safety_level]} {
@@ -100,6 +197,7 @@ Oc_Class Oxs_Mif {
         interp alias $mif_interp RandomSeed {} $this RandomSeed
         interp alias $mif_interp Random {} Oc_UnifRand
         interp alias $mif_interp ReadRNGState {} Oc_ReadRNGState
+        interp alias $mif_interp NormalRV {} Oc_NormalRV
         interp alias $mif_interp OOMMFRootDir {} Oc_Main GetOOMMFRootDir
         interp alias $mif_interp Parameter {} $this SetParameter
         interp alias $mif_interp Destination {} $this Destination
@@ -112,9 +210,14 @@ Oc_Class Oxs_Mif {
         interp alias $mif_interp EvalVectorField {} Oxs_EvalVectorField
         interp alias $mif_interp QueryState {} Oxs_QueryState
         interp alias $mif_interp GetStateData {} Oxs_Mif GetStateData
+        interp alias $mif_interp SanitizeFilename {} \
+           Oxs_Output SanitizeFilename
+        interp alias $mif_interp DefaultFieldFilename {} \
+           Oxs_Output DefaultFieldFilename
         interp alias $mif_interp GetAtlasRegions {} Oxs_GetAtlasRegions
-        interp alias $mif_interp GetAtlasRegionByPosition \
-           {} Oxs_GetAtlasRegionByPosition
+        interp alias $mif_interp GetAtlasRegionByPosition {} \
+           Oxs_GetAtlasRegionByPosition
+        interp alias $mif_interp ExitHandler {} $this RegisterCleanupHandler
         if {![string match safe $safety_level]} {
             # Add extras to "custom" and "unsafe" interpreters
             if {[Oc_Application CompareVersions [info tclversion] 8.0]<0} {
@@ -122,10 +225,12 @@ Oc_Class Oxs_Mif {
                catch {auto_load Oxs_ReadFile}
                catch {auto_load Oxs_RGlob}
                catch {auto_load Oxs_DateSort}
+               catch {auto_load Oxs_RAvf2Odt}
             }
             interp alias $mif_interp ReadFile {} Oxs_ReadFile
             interp alias $mif_interp RGlob {} Oxs_RGlob
             interp alias $mif_interp DateSort {} Oxs_DateSort
+            interp alias $mif_interp Avf2Odt {} Oxs_RAvf2Odt
         } else {
             # In safe interpreters, set up "extra" commands
             # to raise errors
@@ -138,24 +243,7 @@ Oc_Class Oxs_Mif {
         interp alias $mif_interp ::tcl::mathfunc::atan2 {} ::tcl::mathfunc::atan2
 
         # Initialize "guaranteed to exist" options
-        set options(basename) oxs
-        set options(scalar_output_format) "%.17g"
-        set options(scalar_field_output_format) "binary 8"
-        set options(scalar_field_output_meshtype) rectangular
-        set options(scalar_field_output_writeheaders) 1
-        set options(vector_field_output_format) "binary 8"
-        set options(vector_field_output_meshtype) rectangular
-        set options(vector_field_output_writeheaders) 1
-        ## NOTE 1: The basename option is reset to a form based on
-        ##    the MIF filename when a file is loaded.  This may
-        ##    of course be overridden by a SetOptions command in
-        ##    the MIF file itself.
-        ## NOTE 2: The scalar/vector_field_output_writeheaders options
-        ##    are currently nop placeholders. In the future, the
-        ##    DataTable communication protocol may be extended to
-        ##    support raw output, in which case output.tcl can be
-        ##    modified to query this value and adjust its output stream
-        ##    accordingly.
+        $this SetDefaultOptions *
 
         ## Let child know if regression test is running.
         if {$regression_test_level>0} {
@@ -185,27 +273,84 @@ Oc_Class Oxs_Mif {
     }
 
     callback method Status {m} {
-        Oc_Log Log $m info $class
+       Oc_Log Log $m info $class
+    }
+
+    method SetDefaultOptions { glob } {
+       ## NOTE 1: This code implicitly assumes that none of the option
+       ##    labels includes any glob meta-characters, so that if
+       ##    glob is the explicit name of a label then it alone will
+       ##    match.
+       ## NOTE 2: The basename option is reset to a form based on
+       ##    the MIF filename when a file is loaded.  This may
+       ##    of course be overridden by a SetOptions command in
+       ##    the MIF file itself.
+       ## NOTE 3: The scalar/vector_field_output_writeheaders options
+       ##    are currently nop placeholders. In the future, the
+       ##    DataTable communication protocol may be extended to
+       ##    support raw output, in which case output.tcl can be
+       ##    modified to query this value and adjust its output stream
+       ##    accordingly.
+       if {[string match $glob basename]} {
+          if {[string match {} $mif_filename]} {
+             set options(basename) oxs
+          } else {
+             set options(basename) [file rootname [file tail $mif_filename]]
+          }
+       }
+       if {[string match $glob scalar_output_format]} {
+          set options(scalar_output_format) "%.17g"
+       }
+       if {[string match $glob scalar_field_output_format]} {
+          set options(scalar_field_output_format) "binary 8"
+       }
+       if {[string match $glob scalar_field_output_meshtype]} {
+          set options(scalar_field_output_meshtype) rectangular
+       }
+       if {[string match $glob scalar_field_output_filename_script]} {
+          set options(scalar_field_output_filename_script) {}
+       }
+       if {[string match $glob scalar_field_output_writeheaders]} {
+          set options(scalar_field_output_writeheaders) 1
+       }
+       if {[string match $glob vector_field_output_format]} {
+          set options(vector_field_output_format) "binary 8"
+       }
+       if {[string match $glob vector_field_output_meshtype]} {
+          set options(vector_field_output_meshtype) rectangular
+       }
+       if {[string match $glob vector_field_output_filename_script]} {
+          set options(vector_field_output_filename_script) {}
+       }
+       if {[string match $glob vector_field_output_writeheaders]} {
+          set options(vector_field_output_writeheaders) 1
+       }
     }
 
     method Destination {tag instance args} {
-        # Used to "declare" a destination in a MIF file.
-        # The $tag is a name that is associated with that destination
-        # for use in [Schedule] commands in the same MIF file.
-        # $instance is the name of the program instance to run.
-        # It has the form $app(:$name)? where $app is the name of a
-        # program, and $name is an identifier for the particular instance.
+       # Used to "declare" a destination in a MIF file.  The $tag is a
+       # name that is associated with that destination for use in
+       # [Schedule] commands in the same MIF file.  $instance is the name
+       # of the program instance to run.  It has the form $app(:$name)?
+       # where $app is the name of a program, and $name is an identifier
+       # for the particular instance.
 
-        # $args is a list of 2*N + M arguments, where N is the number
-        # of name-value pairs holding optional extra arguments, and
-        # M is 0 or 1 depending on the presence of a final "new"
-        # argument.
-
-        set new ""
-        if {[llength $args] % 2} {
-            # odd number of args, first is "new"
-            set new [lindex $args 0]
-            set args [lreplace $args 0 0]
+       # $args is a list of 2*N + M arguments, where N is the number of
+       # name-value pairs holding optional extra arguments, and M is 0 or
+       # 1 depending on the presence of a "new" argument.
+       set new {}
+       set argdict [dict create -basename [$this GetOption basename]]
+       for {set i 0} {$i<[llength $args]} {incr i} {
+          set label [lindex $args $i]
+          if {[string compare $label "new"] == 0} {
+             set new $label
+          } else {
+             if {$i+1 >= [llength $args]} {
+                return -code error "Invalid Destination args: \"$args\""
+             }
+             dict set argdict $label [lindex $args $i+1]
+             incr i
+          }
         }
 
         if {[lsearch -exact $destkeys $tag] != -1} {
@@ -232,92 +377,123 @@ Oc_Class Oxs_Mif {
         }
         lappend destkeys $tag
         set dest($tag) [list $app $name [string match new $new]]
-        set extra($tag) $args
+        dict set destextra $tag $argdict
     }
 
-    method Schedule {o d e {f {}} } {
-        # Establish an initial schedule to set output named $o to destination
-        # with tag $d on the event $e with frequency $f.  This amounts to
-        # setting up for the creation of an Oxs_Schedule instance.
+    method Schedule {o d e {filter_freq {}} {filter_script {}}} {
+       # Establish an initial schedule to set output named $o to
+       # destination with tag $d on the event $e with optional filter
+       # frequency and script.  This amounts to setting up for the
+       # creation of an Oxs_Schedule instance.
 
-        # Would like to check for unknown outputs, but we don't know
-        # them yet.  They will appear during problem reset.
-        if {[lsearch -exact $destkeys $d] == -1} {
-            return -code error "Unknown Destination Tag \"$d\""
-        }
-        set e [string toupper \
-                [string index $e 0]][string tolower [string range $e 1 end]]
-        if {[lsearch -exact {Step Stage Done} $e] == -1} {
-            return -code error "Unknown Event \"$e\""
-        }
-        if {[string compare Done $e] == 0 && [string match {} $f]} {
-           set f 1  ;# Done event doesn't require a frequency count
-        }
-        if {[catch {incr f 0}] || ($f < 0)} {
-            return -code error "Frequency must be a non-negative integer,\
-                    not \"$f\""
-        }
-        if {[string compare Done $e] == 0 && ($f > 1)} {
-            return -code error "Frequency for Done event must have value 1,\
-                    not \"$f\""
-        }
-        # Only one schedule per (output, dest, event) triple.
-        if {[info exists schedule($o,$d,$e)]} {
-            return -code error "Multiple schedules for sending\
-                    \"$o\" to \"$d\" on \"$e\" events"
-        }
-        set schedule($o,$d,$e) [list $o $d $e $f]
+       # Would like to check for unknown outputs, but we don't know them
+       # yet.  They will appear during problem reset.
+       if {[lsearch -exact $destkeys $d] == -1} {
+          return -code error "Unknown Destination Tag \"$d\""
+       }
+       set e [string toupper \
+                 [string index $e 0]][string tolower [string range $e 1 end]]
+       if {[lsearch -exact {Step Stage Done} $e] == -1} {
+          return -code error "Unknown Event \"$e\""
+       }
+       if {[string compare Done $e] == 0 && [string match {} $filter_freq]} {
+          set filter_freq 1  ;# Done event doesn't require a frequency count
+       }
+       if {[catch {incr filter_freq 0}] || ($filter_freq < 0)} {
+          return -code error "Frequency must be a non-negative integer,\
+                    not \"$filter_freq\""
+       }
+       if {[string compare Done $e] == 0 && ($filter_freq > 1)} {
+          return -code error "Frequency for Done event must have value 1,\
+                              not \"$filter_freq\""
+       }
+       # Only one schedule per (output, dest, event) triple.
+       if {[info exists schedule($o,$d,$e)]} {
+          return -code error "Multiple schedules for sending\
+                         \"$o\" to \"$d\" on \"$e\" events"
+       }
+       set schedule($o,$d,$e) \
+          [list $o $d $e [list $filter_freq $filter_script]]
     }
 
     method CreateSchedule {} {
-        set script ""
-        foreach key [array names schedule] {
-            # Get the arguments of the [Schedule] command.
-            # Here o is the output object, tag is the destination tag,
-            # e is the event and f is frequency.
-            foreach {o tag e f} $schedule($key) {break}
+       Oxs_Schedule ProblemInit $mif_interp
 
-            # Verify that $o names an output
-            if {[catch {Oxs_Output Lookup $o} output]} {
-                Oc_Log Log "Error in \"Schedule $o $tag $e $f\":\
+       # Check that all outputs in schedule exist. For any that
+       # don't, see if there is a unique glob match, and adjust
+       # name if so.
+       set known_outputs [Oxs_Output GetOutputNames]
+       foreach key [array names schedule] {
+          lassign $schedule($key) o tag e f
+          if {[lsearch -exact $known_outputs $o]<0} {
+             # No exact match. Try glob search
+             set matches [lsearch -glob -all -nocase -inline $known_outputs $o]
+             if {[llength $matches]==1} {
+                # Unique match.
+                set o [lindex $matches 0]
+                set schedule($key) [list $o $tag $e $f]
+             } else {
+                if {[llength $matches]==0} { ;# No matches
+                   Oc_Log Log "Error in \"Schedule $o $tag $e $f\":\
+                                 no output matching \"$o\"" error
+                } else { ;# Multiple matches
+                   Oc_Log Log "Error in \"Schedule $o $tag $e $f\":\
+                      [llength $matches] outputs match \"$o\": $matches" error
+                }
+                unset schedule($key)  ;# Remove offender
+             }
+          } ;# Otherwise, $key is OK as is
+       }
+
+       # Make schedule assignments
+       set script ""
+       foreach key [array names schedule] {
+          # Get the arguments of the [Schedule] command.
+          # Here o is the output object, tag is the destination tag,
+          # e is the event and f is filter frequency+script
+          lassign $schedule($key) o tag e f
+
+          # Verify that $o names an output
+          if {[catch {Oxs_Output Lookup $o} output]} {
+             Oc_Log Log "Error in \"Schedule $o $tag $e $f\":\
                         no such output \"$o\"" error
-                continue
-            }
+             continue
+          }
 
-            # Transform the destination tag into an Oxs_Destination name
-            # The destination tag directly determines an OID.
-            set oid $assign($tag)
+          # Transform the destination tag into an Oxs_Destination name
+          # The destination tag directly determines an OID.
+          set oid $assign($tag)
 
-            # The OID identifies a running process.  The service protocol
-            # sought by the output determines which service of that process
-            # we want to use as a destination.
+          # The OID identifies a running process.  The service protocol
+          # sought by the output determines which service of that process
+          # we want to use as a destination.
 
-            # NB: At this point we know that the application we seek is
-            # known to the account server; we do not know if the service
-            # has been registered there, let alone whether an
-            # Oxs_Destination instance exists here to represent it!
-            #
-            # Ack!  DataTable is special!
-            if {[catch {
-               if {[string match DataTable $output]} {
-                  set d [Oxs_Destination Find $oid DataTable]
-               } else {
-                  set d [Oxs_Destination Find $oid [$output Protocol]]
-               }
-               [Oxs_Destination Lookup $d] Store $extra($tag)
-            }]} {
-               # A destination could not be found; wait until another
-               # destination is created and try again.
-               Oc_EventHandler New _ Oxs_Destination NewDestination \
-                  [list $this CreateSchedule] -oneshot 1 -groups [list $this]
-               return
-            }
+          # NB: At this point we know that the application we seek is
+          # known to the account server; we do not know if the service
+          # has been registered there, let alone whether an
+          # Oxs_Destination instance exists here to represent it!
+          #
+          # Ack!  DataTable is special!
+          if {[catch {
+             if {[string match DataTable $output]} {
+                set d [Oxs_Destination Find $oid DataTable]
+             } else {
+                set d [Oxs_Destination Find $oid [$output Protocol]]
+             }
+             [Oxs_Destination Lookup $d] Store [dict get $destextra $tag]
+          }]} {
+             # A destination could not be found; wait until another
+             # destination is created and try again.
+             Oc_EventHandler New _ Oxs_Destination NewDestination \
+                [list $this CreateSchedule] -oneshot 1 -groups [list $this]
+             return
+          }
 
-            # Set up the schedule
-            append script "
-            [list Oxs_Schedule Set $o $d Frequency $e $f]
+          # Set up the schedule
+          append script "
+            [list Oxs_Schedule Set $o $d Filter $e $f]
             [list Oxs_Schedule Set $o $d Active $e 1]\n"
-         }
+       }
        eval $script
        Oxs_Schedule RemoveInvalid
        Oc_EventHandler Generate $this ScheduleReady
@@ -331,7 +507,8 @@ Oc_Class Oxs_Mif {
                     [list $this CreateSchedule] -oneshot 1 -groups [list $this]
             $this FindDestinations $acct $destkeys
         } else {
-            $this CreateSchedule
+           $this FinalizeAssign
+           $this CreateSchedule
         }
     }
 
@@ -344,8 +521,9 @@ Oc_Class Oxs_Mif {
         # Retrieve the OID for that process id from the account server
         set qid [$acct Send getoid $pid]
         Oc_EventHandler New _ $acct Reply$qid \
-                [list $this GetOidReply $acct $tag $pid $claim] -oneshot 1 \
-                -groups [list $this $acct]
+           [list $this GetOidReply $acct $tag $pid $claim] -oneshot 1 \
+           -groups [list $this $acct]
+        return $pid
     }
 
     method NotifyNewOid {acct tag p claim} {
@@ -369,11 +547,11 @@ Oc_Class Oxs_Mif {
         # If we claimed a name, make that association
         set oid [lindex $reply 3]
         if {$claim} {
-                foreach {app name new} $dest($tag) break
-                set qid [$acct Send associate $app:$name $oid]
-                Oc_EventHandler New _ $acct Reply$qid \
-                        [list $this AssociateCheck $acct $name $oid] \
-                        -oneshot 1 -groups [list $this $acct]
+           lassign $dest($tag) app name new
+           set qid [$acct Send associate $app:$name $oid]
+           Oc_EventHandler New _ $acct Reply$qid \
+              [list $this AssociateCheck $acct $name $oid] \
+              -oneshot 1 -groups [list $this $acct]
         }
 
         $this Assign $tag $oid
@@ -394,7 +572,7 @@ Oc_Class Oxs_Mif {
                       ## method is running.
        foreach pid [array names oid_wait_copy] {
           Oc_EventHandler DeleteGroup [list NotifyNewOid-$pid]
-          foreach {tag claim} $oid_wait_copy($pid) break
+          lassign $oid_wait_copy($pid) tag claim
           set qid [$acct Send getoid $pid]
           Oc_EventHandler New _ $acct Reply$qid \
               [list $this GetOidReply $acct $tag $pid $claim] -oneshot 1 \
@@ -425,7 +603,7 @@ Oc_Class Oxs_Mif {
 
             # If we claimed a name, make that association
             if {$claim} {
-                foreach {app name new} $dest($tag) break
+                lassign $dest($tag) app name new
                 set qid [$acct Send associate $app:$name $oid]
                 Oc_EventHandler New _ $acct Reply$qid \
                         [list $this AssociateCheck $acct $name $oid] \
@@ -446,6 +624,52 @@ Oc_Class Oxs_Mif {
         }
     }
 
+    proc MakeFullPath { fname } {} {
+       if {[string match relative [file pathtype $fname]]} {
+          # The relative check may not be strictly necessary, but may
+          # be helpful in case basename is volume relative...in which
+          # case we punt and don't change it.
+          global output_directory workdir  ;# Set in oxsii.tcl/boxsi.tcl
+          if {[string match {} $output_directory]} {
+             set fname [file join $workdir $fname]
+          } else {
+             set fname [file join $output_directory $fname]
+          }
+       }
+       return $fname
+    }
+
+    method FinalizeAssign {} {
+       # Fill any uninitialized basename fields in Oxs_Destination
+       # objects. (These will include destinations existing before
+       # loading of the MIF file.)
+       set default_basename [Oxs_Mif MakeFullPath \
+                                [$this GetOption basename]]
+       foreach di [Oxs_Destination Instances] {
+          if {[string match {} [$di Cget -basename]]} {
+             set name [$di Cget -name]
+             if {![regexp {<([0-9]+):[0-9]+>} $name _ oid]} {
+                return -code error "Invalid Oxs_Destination name: $name"
+             }
+             if {[info exists assigned($oid)]} {
+                set tag $assigned($oid)
+                if {[dict exists $destextra $tag -basename]} {
+                   set dibasename [Oxs_Mif MakeFullPath \
+                                      [dict get $destextra $tag -basename]]
+                } else {
+                   set dibasename $default_basename
+                }
+                $di Configure -basename $dibasename
+             } else {
+                $di Configure -basename $default_basename
+             }
+          }
+       }
+
+       # Signal tag assignment completion
+       Oc_EventHandler Generate $this DestinationTagsAssigned
+    }
+
     method Assign {tag oid} {
         if {[info exists assigned($oid)]} {
             return -code error "Attempt to assign OID \"$oid\" to two tags"
@@ -453,8 +677,8 @@ Oc_Class Oxs_Mif {
         set assign($tag) $oid
         set assigned($oid) $tag
         if {[array size assign] == [llength $destkeys]} {
-            # We have as many OID assignments as tags; all must be assigned
-            Oc_EventHandler Generate $this DestinationTagsAssigned
+           # We have as many OID assignments as tags; all must be assigned
+           $this FinalizeAssign
         }
     }
 
@@ -468,24 +692,27 @@ Oc_Class Oxs_Mif {
         set cmd [list $acct Send find]
         set seeking [list]
         foreach tag $taglist {
-            foreach {app name new} $dest($tag) break
-            if {$new} {
-                $this LaunchNewDestination $acct $app $tag
-            } else {
-                lappend seeking $tag
-                if {[string length $name]} {
-                    lappend cmd $app:$name
-                } else {
-                    lappend cmd $app:*
-                }
-            }
+           lassign $dest($tag) app nickname new
+           if {$new} {
+              set claim [expr {[string length $nickname] ? 1 : 0}]
+              $this LaunchNewDestination $acct $app $tag $claim
+           } else {
+              lappend seeking $tag
+              if {[string length $nickname]} {
+                 lappend cmd $app:$nickname
+              } else {
+                 lappend cmd $app:*
+              }
+           }
         }
 
-        # Issue the "find" command to the account server.
-        set qid [eval $cmd]
-        Oc_EventHandler New _ $acct Reply$qid \
-            [list $this FindReply $acct $seeking] \
-            -groups [list $this $acct] -oneshot 1
+        if {[llength $seeking]>0} {
+           # Issue the "find" command to the account server.
+           set qid [eval $cmd]
+           Oc_EventHandler New _ $acct Reply$qid \
+              [list $this FindReply $acct $seeking] \
+              -groups [list $this $acct] -oneshot 1
+        }
     }
 
     method FindReply {acct seeking} {
@@ -499,10 +726,11 @@ Oc_Class Oxs_Mif {
         foreach tag $seeking {
             set candidates [lindex $answers 0]
             set answers [lrange $answers 1 end]
-            foreach {app n new} $dest($tag) break
-
+            lassign $dest($tag) app n new
             foreach oid $candidates {
-                if {![catch {$this Assign $tag $oid}]} {break}
+               if {![catch {$this Assign $tag $oid}]} {
+                  break
+               }
             }
             if {![info exists assign($tag)]} {
                 # None of them worked.  Launch a new one instead.
@@ -581,7 +809,7 @@ Oc_Class Oxs_Mif {
           if {$regression_test_level!=1} {
              Oc_Srand   ;# Use clock-based seed
              set random_seed [expr {round([Oc_UnifRand]*((1<<31)-1))}]
-             ;## random_seed is an integer determined by clock-based seed
+             ## random_seed is an integer determined by clock-based seed
           }
           ## If regression_test_level == 1 ("load" test drawn from
           ## oxs/examples/) then clock-based seeding is disabled, and
@@ -609,6 +837,7 @@ Oc_Class Oxs_Mif {
               Invalid random_seed; \"$random_seed\" is not a 32-bit integer"
        }
        Oc_Srand $random_seed ;# Set C-level random number generator
+       Oc_SeedRV $random_seed
 
        # There is a bug in srand Obj handling prior to Tcl 8.4.  If the
        # value of random_seed is a literal value, and if that *literal
@@ -886,13 +1115,15 @@ Oc_Class Oxs_Mif {
     proc GetStateData { args } {
        # Interface to Oxs_QueryState with wildcard support
        # Usage:
-       #    GetStateData [-glob -exact -regexp] [-pairs] -- \
-       #        state_id [pattern ...]
+       #    GetStateData [-glob -exact -regexp] [-nocase] [-not] \
+       #        [-pairs] -- state_id [pattern ...]
        # If no patterns are specified then the list of keys is
        # returned.
 
        # Scan args for option flags
        set match_type -glob
+       set nocase {}
+       set not {}
        set return_pairs 0
        for {set i 0} {$i<[llength $args]} {} {
           set elt [lindex $args $i]
@@ -907,6 +1138,14 @@ Oc_Class Oxs_Mif {
                 set match_type $elt
                 set args [lreplace $args $i $i]
              }
+             -nocase {
+                set nocase "-nocase"
+                set args [lreplace $args $i $i]
+             }
+             -not {
+                set not "-not"
+                set args [lreplace $args $i $i]
+             }
              -pairs {
                 set return_pairs 1
                 set args [lreplace $args $i $i]
@@ -919,7 +1158,8 @@ Oc_Class Oxs_Mif {
 
        if {[llength $args]<1} {
           error "wrong # args: should be \"GetStateData\
-           ?-glob -exact -regexp -pairs --? state_id ?pattern ...?\""
+           ?-glob -exact -regexp -nocase -not -pairs --?\
+           state_id ?pattern ...?\""
        }
        set patterns [lassign $args state_id]
 
@@ -928,20 +1168,13 @@ Oc_Class Oxs_Mif {
           return [Oxs_QueryState $state_id keys]
        }
 
-       # If match request is -exact, then pass keys straight through
-       # to Oxs_QueryState
-       if {[string compare -exact $match_type]==0} {
-          # If match request is -exact then no key matching needed
-          return [Oxs_QueryState $state_id values {*}$patterns]
-       }
-
        # Get state keys
        set keys [Oxs_QueryState $state_id keys]
-
        set match_keys {}
        set nomatch {}
        foreach elt $patterns {
-          set matched [lsearch -all -inline $match_type $keys $elt]
+          set matched [lsearch -all -inline {*}$nocase\
+                       {*}$not $match_type $keys $elt]
           if {[llength $matched]==0} {
              lappend nomatch $elt
           } else {
@@ -968,155 +1201,163 @@ Oc_Class Oxs_Mif {
     }
 
     method ReadMif { filename params } {
-        # Fill spec from filename, using mif_interp to source the file.
+       # Fill spec from filename, using mif_interp to source the file.
 
-        set filename [Oc_DirectPathname $filename]  ;# Insure full path is used
-        set mif_filename $filename
-        set parameters $params
+       set filename [Oc_DirectPathname $filename]  ;# Insure full path is used
+       set mif_filename $filename
+       set parameters $params
 
-        # Re-initialize default basename, using mif_filename
-        set options(basename) [file rootname [file tail $mif_filename]]
+       # Re-initialize default basename, using mif_filename
+       if {$regression_test_level<1} {
+          set options(basename) [file rootname [file tail $mif_filename]]
+       } else {
+          # Regression test branch. For regression test level >= 2 output
+          # destinations (mmArchive) are set up in the MIF file, so it is
+          # important to have the proper test basename in place before any
+          # Oxs_Destination commands are processed.
+          set options(basename) $regression_test_basename
+       }
 
-        # Empty out any previous specifications (should we do this?)
-        $this Clear
+       # Empty out any previous specifications (should we do this?)
+       $this Clear
 
-        # Reset tmp_params array
-        if {[info exists tmp_params]} {unset tmp_params}
-        array set tmp_params $parameters
+       # Reset tmp_params array
+       if {[info exists tmp_params]} {unset tmp_params}
+       array set tmp_params $parameters
 
-        # Read file into a string.  Hopefully this isn't too big.
-        set chan [open $filename]
-        fconfigure $chan -encoding utf-8
-        set filestr [read $chan]
-        close $chan
+       # Read file into a string.  Hopefully this isn't too big.
+       set chan [open $filename]
+       fconfigure $chan -encoding utf-8
+       set filestr [read $chan]
+       close $chan
 
-        # Check that file is in MIF format
-        set ws "\[ \t\n\r\]"   ;# White space
-        set major 0
-        set minor 0
-        if {![regexp -- "^#$ws*MIF$ws*(\[0-9\]+)\\.(\[0-9\]+)$ws*" \
+       # Check that file is in MIF format
+       set ws "\[ \t\n\r\]"   ;# White space
+       set major 0
+       set minor 0
+       if {![regexp -- "^#$ws*MIF$ws*(\[0-9\]+)\\.(\[0-9\]+)$ws*" \
                 $filestr dummy major minor]} {
-            return -code error \
-                    "Input file \"$filename\" not in any MIF format"
-        }
-        if {$major!=2 || $minor<1} {
-            # MIF 1.x or 2.0 format.  Try to convert with mifconvert.
-            if {[catch {
-                Oc_Application CommandLine mifconvert \
-                        --format 2.1 --quiet - -
-            } cmdLine]} {
-                return -code error "Can't find mifconvert program to\
-                        convert input file $filename to MIF 2.1 format."
-            }
-            set cmdLine [linsert $cmdLine 0 |]
-            if {[string match unsafe $safety_level]} {
-                lappend cmdLine "--unsafe"
-            }
-            lappend cmdLine "<<" $filestr
-            set chan [open $cmdLine r]
-            set filestr [read $chan]
-            if {[catch {close $chan} errmsg]} {
-                return -code error "Error reading input file $filename\
-                        ---\n$errmsg"
-            }
+          return -code error \
+             "Input file \"$filename\" not in any MIF format"
+       }
+       if {$major!=2 || $minor<1} {
+          # MIF 1.x or 2.0 format.  Try to convert with mifconvert.
+          if {[catch {
+             Oc_Application CommandLine mifconvert \
+                --format 2.1 --quiet - -
+          } cmdLine]} {
+             return -code error "Can't find mifconvert program to\
+                    convert input file $filename to MIF 2.1 format."
+          }
+          set cmdLine [linsert $cmdLine 0 |]
+          if {[string match unsafe $safety_level]} {
+             lappend cmdLine "--unsafe"
+          }
+          lappend cmdLine "<<" $filestr
+          set chan [open $cmdLine r]
+          set filestr [read $chan]
+          if {[catch {close $chan} errmsg]} {
+             return -code error "Error reading input file $filename\
+                               ---\n$errmsg"
+          }
 
-            # Safety check
-            if {![regexp -- "^#$ws*MIF$ws*(\[0-9\]+)\\.(\[0-9\]+)$ws*" \
-                    $filestr dummy major minor] \
-                    || $major!=2 || $minor<1} {
-                return -code error "Input file \"$filename\"\
-                        not in or convertible to MIF 2.1 format"
-            }
-        }
+          # Safety check
+          if {![regexp -- "^#$ws*MIF$ws*(\[0-9\]+)\\.(\[0-9\]+)$ws*" \
+                   $filestr dummy major minor] \
+                 || $major!=2 || $minor<1} {
+             return -code error "Input file \"$filename\"\
+                   not in or convertible to MIF 2.1 format"
+          }
+       }
 
-        # Store effective file contents
-        set mif_file_contents $filestr
-        set mif_major_version $major
-        set mif_minor_version $minor
-        set version_2_1 0
-        if {$mif_major_version==2 && $mif_minor_version==1} {
-           set version_2_1 1
-           # Remove MIF commands not in version 2.1
-           interp alias $mif_interp SetOptions {} $this NotHere SetOptions
-           interp alias $mif_interp GetOptions {} $this NotHere GetOptions
-           interp alias $mif_interp EvalScalarField {} \
-              $this NotHere EvalScalarField
-           interp alias $mif_interp EvalVectorField {} \
-              $this NotHere EvalVectorField
-           interp alias $mif_interp GetAtlasRegions {} \
-              $this NotHere GetAtlasRegions
-           interp alias $mif_interp GetAtlasRegionByPosition {} \
-              $this NotHere GetAtlasRegionByPosition
-           interp alias $mif_interp GetMifFilename {} \
-              $this NotHere GetMifFilename
-           interp alias $mif_interp GetMifParameters {} \
-              $this NotHere GetMifParameters
-        }
+       # Store effective file contents
+       set mif_file_contents $filestr
+       set mif_major_version $major
+       set mif_minor_version $minor
+       set version_2_1 0
+       if {$mif_major_version==2 && $mif_minor_version==1} {
+          set version_2_1 1
+          # Remove MIF commands not in version 2.1
+          interp alias $mif_interp SetOptions {} $this NotHere SetOptions
+          interp alias $mif_interp GetOptions {} $this NotHere GetOptions
+          interp alias $mif_interp EvalScalarField {} \
+             $this NotHere EvalScalarField
+          interp alias $mif_interp EvalVectorField {} \
+             $this NotHere EvalVectorField
+          interp alias $mif_interp GetAtlasRegions {} \
+             $this NotHere GetAtlasRegions
+          interp alias $mif_interp GetAtlasRegionByPosition {} \
+             $this NotHere GetAtlasRegionByPosition
+          interp alias $mif_interp GetMifFilename {} \
+             $this NotHere GetMifFilename
+          interp alias $mif_interp GetMifParameters {} \
+             $this NotHere GetMifParameters
+       }
 
-        # Compute the CRC
-        set mif_crc [Nb_ComputeCRCBuffer filestr]
+       # Compute the CRC
+       set mif_crc [Nb_ComputeCRCBuffer filestr]
 
-        # Source filestr
-        set mif_interp_nodelete 1
-        set mif_interp_local_copy $mif_interp
-        $mif_interp_local_copy eval {proc {} script {
-            global errorInfo errorCode
-            rename {} {}
-            set code [catch {uplevel 1 $script} msg]
-            if {$code == 2} {
-                return -code error {"return" from outside of proc}
-            }
-            if {$code == 1} {
-		set key {    ("uplevel" body line }
-		set last [string last $key $errorInfo]
-		set fixed [string range $errorInfo 0 $last]
-		incr last [string length $key]
-		set scanme [string range $errorInfo $last end]
-		scan $scanme %d line
-		append fixed [subst {   (file "%FILE%" line $line)}]
-                return -code $code -errorinfo $fixed \
-                        -errorcode $errorCode $msg
-            } else {
-                return -code $code $msg
-            }
-        }}
-        set errcode [catch [list $mif_interp_local_copy \
-                               eval [list {} $filestr]] errmsg]
-        if {[info exists mif_interp_nodelete]} {
-           set mif_interp_nodelete 0
-        } else {
-           # Presumable "this" has been deleted.
-           catch {interp delete $mif_interp_local_copy}
-        }
+       # Source filestr
+       set mif_interp_nodelete 1
+       set mif_interp_local_copy $mif_interp
+       $mif_interp_local_copy eval {proc {} script {
+          global errorInfo errorCode
+          rename {} {}
+          set code [catch {uplevel 1 $script} msg]
+          if {$code == 2} {
+             return -code error {"return" from outside of proc}
+          }
+          if {$code == 1} {
+             set key "    \(\"uplevel\" body line "
+             set last [string last $key $errorInfo]
+             set fixed [string range $errorInfo 0 $last]
+             incr last [string length $key]
+             set scanme [string range $errorInfo $last end]
+             scan $scanme %d line
+             append fixed [subst {   (file "%FILE%" line $line)}]
+             return -code $code -errorinfo $fixed \
+                -errorcode $errorCode $msg
+          } else {
+             return -code $code $msg
+          }
+       }}
+       set errcode [catch [list $mif_interp_local_copy \
+                              eval [list {} $filestr]] errmsg]
+       if {[info exists mif_interp_nodelete]} {
+          set mif_interp_nodelete 0
+       } else {
+          # Presumably "this" has been deleted.
+          catch {interp delete $mif_interp_local_copy}
+       }
 
-        if {$errcode} {
-            # Error occurred sourcing $filename
-            global errorInfo errorCode
-            foreach {ei ec} [list $errorInfo $errorCode] {break}
-            catch {$this Clear}  ;# Clear out partial problem spec
-	    set ei [string map [list %FILE% $filename] $ei]
-            return -code error -errorinfo $ei -errorcode $ec $errmsg
-        }
+       if {$errcode} {
+          # Error occurred sourcing $filename
+          global errorInfo errorCode
+          lassign [list $errorInfo $errorCode] ei ec
+          catch {$this Clear}  ;# Clear out partial problem spec
+          set ei [string map [list %FILE% $filename] $ei]
+          return -code error -errorinfo $ei -errorcode $ec $errmsg
+       }
 
-        if {[llength [array names tmp_params]]>0} {
-            $this Clear
-            return -code error "Unused parameters: [array names tmp_params]"
-        }
+       if {[llength [array names tmp_params]]>0} {
+          $this Clear
+          return -code error "Unused parameters: [array names tmp_params]"
+       }
 
-        if {$version_2_1} {
-         # MIF version 2.1.  In this version, the MIF Specify command
-         # only stores the Spec keys.  Oxs_ExtCreateAndRegister must be
-         # run separately on each key after the entire MIF file has been
-         # sourced.  Cf. notes in the CreateExtObject class.
-         foreach key [$this GetSpecKeys] {
-            set init_str [$this GetSpecValue $key]
-            Oxs_ExtCreateAndRegister $key $init_str
-         }
-      }
+       if {$version_2_1} {
+          # MIF version 2.1.  In this version, the MIF Specify command
+          # only stores the Spec keys.  Oxs_ExtCreateAndRegister must be
+          # run separately on each key after the entire MIF file has been
+          # sourced.  Cf. notes in the CreateExtObject class.
+          foreach key [$this GetSpecKeys] {
+             set init_str [$this GetSpecValue $key]
+             Oxs_ExtCreateAndRegister $key $init_str
+          }
+       }
 
-      if {$regression_test_level>0} {
-         $this RegressionTestSetup
-      }
+       if {$regression_test_level>0} {
+          $this RegressionTestSetup
+       }
     }
 
     method SetOptions { args } {
@@ -1133,12 +1374,39 @@ Oc_Class Oxs_Mif {
           set initstr $args
        }
        if {[llength $initstr]%2!=0} {
-          return -code error "SetOptions arglist should have an\
-               even number of elements\
+          return -code error "Error in Oxs_Mif SetOptions method:\
+               arglist should have an even number of elements\
                ([llength $initstr] elements received)."
        }
+       set unrecognized {}
        foreach {label value} $initstr {
-          set options($label) $value
+          switch -exact $label {
+             basename -
+
+             scalar_output_format -
+
+             scalar_field_output_format -
+             scalar_field_output_meshtype -
+             scalar_field_output_filename_script -
+
+             vector_field_output_format -
+             vector_field_output_meshtype -
+             vector_field_output_filename_script  {
+                if {[string match {} $value]} {
+                   $this SetDefaultOptions $label
+                } else {
+                   set options($label) $value
+                }
+             }
+             comment {}
+             default {
+                lappend unrecognized $label
+             }
+          }
+       }
+       if {[llength $unrecognized]>0} {
+          return -code error "Unrecognized option label(s) in\
+                      Oxs_Mif SetOptions method: $unrecognized"
        }
     }
 
@@ -1155,6 +1423,29 @@ Oc_Class Oxs_Mif {
                         \"GetOptions\""
        }
        return [array get options]
+    }
+
+    method GetDestExtra { oid } {
+       if {![info exists assigned($oid)]} {
+          return -code error \
+             "Destination oid \"$oid\" not registered in Oxs_Mif"
+       }
+       set tag $assigned($oid)
+       if {![dict exists $destextra $tag]} {
+          return -code error \
+             "Destination \"$tag\" not registered in Oxs_Mif"
+       }
+       return [dict get $destextra $tag]
+    }
+
+    method RegisterCleanupHandler { script } {
+       lappend cleanup_handlers $script
+    }
+
+    method Cleanup {} {
+       foreach script $cleanup_handlers {
+          interp eval $mif_interp $script
+       }
     }
 
     method Dump {} {
@@ -1195,7 +1486,7 @@ Oc_Class Oxs_Mif {
        # would appear to be to initialize RandomSeed and then disable
        # the interface before the MIF file is loaded.
        #
-       # For all non-zero level, then run basename (as used for
+       # For all non-zero level, the run basename (as used for
        #  mmArchive output) is set to
        #
        #      "$regressiontest_basename"
@@ -1204,15 +1495,15 @@ Oc_Class Oxs_Mif {
        # Oxs_Mif, and so must be called *BEFORE* SetupInitialSchedule.
        #
        if {$regression_test_level < 1 } { return }  ;# Not a regression test
+       $this SetOptions [list basename $regression_test_basename]
        if {$regression_test_level < 2} {
           catch {unset schedule}
           set destkeys {}
           catch {unset dest}
-          catch {unset extra}
+          set destextra [dict create]
           $this Destination archive mmArchive
           $this Schedule DataTable archive Step 1
        }
-       $this SetOptions [list basename $regression_test_basename]
     }
 
     Destructor {

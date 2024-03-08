@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Field from Magnetization (3D): computefield</TITLE>
+<META NAME="description" CONTENT="Field from Magnetization (3D): computefield">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="Cyclic_Redundancy_Check_crc.html">
+<LINK REL="previous" HREF="Vector_Field_File_Differenc.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="Cyclic_Redundancy_Check_crc.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html894"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html890"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html884"
+  HREF="Vector_Field_File_Differenc.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html892"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html895"
+  HREF="Cyclic_Redundancy_Check_crc.html">Cyclic Redundancy Check: crc32</A>
+<B> Up:</B> <A NAME="tex2html891"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html885"
+  HREF="Vector_Field_File_Differenc.html">Vector Field File Difference:</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION001770000000000000000"></A><A NAME="sec:computefield"></A>
+<BR>
+Field from Magnetization (3D):
+            computefield
+</H1><A NAME="18906"></A><A NAME="18907"></A><A NAME="18908"></A><A NAME="18909"></A><A NAME="18910"></A>
+
+<P>
+Inspired by the 2D-solver based
+<A HREF="H_Fields_from_Magnetization.html#sec:mag2hfield"><B>mag2hfield</B></A>, the
+<B>computefield</B><A NAME="18916"></A> application uses the
+3D Oxs solver engine to compute demagnetization and other fields from a
+magnetization snapshot. Various options allow fields to be computed
+outside the original simulation volume (say the stray field above a thin
+film sample) or to isolate the field arising from one portion of the
+sample (for example from one layer in a multilayer structure).
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>computefield</B> launch command is:
+
+<P>
+
+<DIV ALIGN="LEFT">
+<TT>
+ tclsh oommf.tcl computefield [standard options] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-cwd directory] [-Msfile Msinputfile] [-Msspec spec] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-Msmask maskexpr] [-simulationbox xmin ymin zmin xmax ymax zmax] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-outdemagenergy demagenergyfile] [-outmif miffile] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-outM magfile] [-pbc axes] [-userscriptfile energyscriptfile] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-useroutputs <code>"</code>name1 file1 ...<code>"</code>] <TT>&#92;</TT>
+<BR>&nbsp;&nbsp;&nbsp;[-runboxsi &lt;0|1&gt;] [-runopts boxsiopts] &lt;m0_infile&gt; [outdemagfile]
+<BR></TT>
+</DIV>
+where
+<DL>
+<DT><STRONG><TT><B>-cwd directory</B></TT></STRONG></DT>
+<DD>Make directory the active working directory.
+</DD>
+<DT><STRONG><TT><B>-Msfile Msinputfile</B></TT></STRONG></DT>
+<DD>Set pointwise saturation magnetization values from
+  <TT><B>Msinputfile</B></TT>, overriding <B><I>M</I><SUB>s</SUB></B> values from <TT><B>m0_infile</B></TT>.  Any
+  points outside the span of <TT><B>Msinputfile</B></TT> have <B><I>M</I><SUB>s</SUB></B> set to 0.
+</DD>
+<DT><STRONG><TT><B>-Msspec spec</B></TT></STRONG></DT>
+<DD>Override the <B><I>M</I><SUB>s</SUB></B> values from <TT><B>m0_infile</B></TT> with the (quoted)
+  <TT>spec</TT> string in the form of an inline
+  <A HREF="Specify_Conventions.html#sec:specConventions"><TT>Specify</TT></A>
+  block. Note: If <TT>spec</TT> is a single numeric value representing a
+  uniform saturation magnetization (in A/m), then that value is
+  applied but restricted to the simulation volume described by the
+  <TT><B>m0_infile</B></TT>, with <B><I>M</I><SUB>s</SUB></B> is set to 0 A/m in any extended volume
+  requested by the <TT>-simulationbox</TT> option.
+
+<P>
+At most one of <TT>-Msfile</TT> and <TT>-Msspec</TT> may be used.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-Msmask maskexpr</B></TT></STRONG></DT>
+<DD>At each point in the simulation volume, the Tcl expr-expression
+  <TT>maskexpr</TT> is evaluated to rescale (multiply) the otherwise set
+  saturation magnetization <B><I>M</I><SUB>s</SUB></B>. The expr-expression may include the
+  special variables <TT>$x</TT>, <TT>$y</TT>, <TT>$z</TT>, <TT>$rx</TT>, <TT>$ry</TT>,
+  <TT>$rz</TT>, <TT>$Ms</TT>, <TT>$mx</TT>, <TT>$my</TT>, and <TT>$mz</TT>. The first
+  three are the raw pointwise location in meters, the second three are
+  the relative location (each in the range [0,1]), <TT>$Ms</TT> is the
+  saturation magnetization at the point, and <TT>($mx,$my,$,mz)</TT> is
+  the reduced (unit normalized) magnetization. Analogous to the
+  <TT>-wgtfunc</TT> option of <A HREF="Making_Data_Tables_from_Vec.html#sec:avf2odt"><B>avf2odt</B></A>, <TT>maskexpr</TT> is typically a 0/1 valued
+  function used to mask off a portion of the simulation part. See the
+  first example below.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-simulationbox xmin ymin zmin xmax ymax zmax</B></TT></STRONG></DT>
+<DD>Use the specified values for the simulation volume, overriding the
+  extents in the input <TT><B>m0_infile</B></TT> magnetization file.  The
+  x/y/z/min/max values can be listed as either six individual values or
+  quoted as a single element to <TT>computefield</TT>. Any entry specified
+  as a single hyphen (`-') will inherit the corresponding value from the
+  <TT><B>m0_infile</B></TT>.  (The <TT>-info</TT> option to the command line utility
+  <A HREF="Vector_Field_File_Format_Co.html#sec:avf2ovf">avf2ovf</A> can be used to
+  view the <TT><B>m0_infile</B></TT> extents.)
+
+<P>
+The <TT>simulationbox</TT> option is typically used to compute stray
+  fielda outside the original simulation volume. If the original volume
+  extends outside the requested volume, then magnetization outside the
+  requested volume is ignored and a warning is printed.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-outdemagenergy demagenergyfile</B></TT></STRONG></DT>
+<DD>Write the demagnetization energy density scalar field (.oef) to
+  <TT><B>demagenergyfile</B></TT>.
+</DD>
+<DT><STRONG><TT><B>-outmif miffile</B></TT></STRONG></DT>
+<DD>The <B>computefield</B> application creates a temporary MIF used as
+  input for running <B>boxsi</B>. This MIF file is deleted after
+  <B>boxsi</B> exits, but the <TT>-outmif</TT> option will save a copy in
+  <TT><B>miffile</B></TT>.
+</DD>
+<DT><STRONG><TT><B>-outM magfile</B></TT></STRONG></DT>
+<DD>Saves a copy of the magnetization as used in the computation,
+  incorporating <TT><B>m0_infile</B></TT> and <TT>Ms/file/spec/mask</TT> options.
+  This can be helpful for checking that input parameters, in particular
+  <TT>-Msmask</TT>, are behaving as expected.
+</DD>
+<DT><STRONG><TT><B>-pbc axes</B></TT></STRONG></DT>
+<DD>Creates a periodic mesh for the simulation. The <TT>axes</TT>
+  should be a string of one or more of the letters ``<TT>x</TT>'',
+  ``<TT>y</TT>'', and ``<TT>z</TT>'', denoting the periodic direction(s), as
+  used by the <TT>periodic</TT> option to the
+  <A HREF="Meshes.html#HTMLoxsperiodicrectangularmesh"><TT>Oxs_PeriodicRectangularMesh</TT></A>
+  <TT>Specify</TT> block.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-userscriptfile energyscriptfile</B></TT></STRONG></DT>
+<DD>The only outputs directly supported on the <B>computefield</B> command
+  line are demagnetization field, demagnetization energy density, and
+  magnetization. However, the user can create a separate Tcl script
+  file (<TT>energyscriptfile</TT>) with additional <TT>Oxs_Energy</TT> objects
+  to include in the run. (See second example below.) The name of each
+  desired output and the associated filename should be appended to the
+  Tcl list ``<TT>user_outputs</TT>'', either directly inside the script
+  file, or via the <TT>-useroutputs</TT> command line option.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-useroutputs <code>"</code>name1 file1 ...<code>"</code></B></TT></STRONG></DT>
+<DD>A list, quoted as a single element on the command line, of alternating
+  outputs and filenames, referring to <TT>Oxs_Energy</TT> objects specified
+  in the separate <TT>-userscriptfile</TT>. This command line option
+  augments and amends any <TT>user_outputs</TT> setting in the script file.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-runboxsi <TT>&lt;</TT>0|1<TT>&gt;</TT></B></TT></STRONG></DT>
+<DD>By default, <B>computefield</B> runs
+  <A HREF="OOMMF_eXtensible_Solver_Bat.html#sec:boxsi"><B>boxsi</B></A> on its
+  constructed MIF file to compute the requested output fields. This
+  behavior is short circuited with <TT>-runboxsi 0</TT>, which can be used in
+  conjunction with <TT>-outmif</TT> to allow additional user edits to the
+  MIF file preceding a manual <B>boxsi</B> run.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>-runopts boxsiopts</B></TT></STRONG></DT>
+<DD>Command line options passed to the automatic <B>boxsi</B> run. The
+  <TT>boxsiopts</TT> string must be quoted as a single argument to
+  <B>computefield</B>.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>m0_infile</B></TT></STRONG></DT>
+<DD>Input magnetization (.omf) file. Required. This file sets the
+  magnetization direction at each point, i.e., the MIF <TT>m0</TT> value
+  in the <A HREF="Drivers.html#item:TimeDriver"><TT>Oxs_TimeDriver</TT></A> and
+  <A HREF="Drivers.html#item:MinDriver"><TT>Oxs_MinDriver</TT></A> <TT>Specify</TT> blocks.
+  The pointwise saturation magnetization (MIF <TT>Ms</TT> option) and
+  simulation volume extents (MIF atlas object) are also derived from
+  this file unless overridden by other options.
+
+<P>
+</DD>
+<DT><STRONG><TT><B>outdemagfile</B></TT></STRONG></DT>
+<DD>Demagnetization output file name. Optional. If not specified then the
+  demagnetization field is not output.
+
+<P>
+</DD>
+</DL>
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Examples</B></FONT>
+<BR>
+Consider a multilayer thin film having total thickness 30 nm, with the
+top layer 10 nm thick. A simulation is run and the magnetization at some
+interesting point is saved to the file <TT><B>foo.omf</B></TT>. For efficiency, the
+simulation volume was set to contain only the film itself, but for
+analysis we want to know the stray field out to 150&nbsp;nm above the top of
+the film. Moreover, we would like to know the portion of the stray field
+coming from just the top 10&nbsp;nm layer. The command
+<PRE>
+tclsh oommf.tcl computefield -simulationbox - - - - - 180e-9 \
+  -Msmask '20e-9&lt;$z &amp;&amp; $z&lt;30e-9 ? 1 : 0' foo.omf foo-toplayer.ohf
+</PRE>
+will compute this and save the results in <TT><B>foo-toplayer.ohf</B></TT>. (On
+the Windows command line, remove or replace the backslash line
+continuation character with a caret, <code>^</code>, and replace the
+single quotes with double quotes.)
+
+<P>
+As another example, suppose <TT><B>bar.omf</B></TT> holds <TT>Oxs_MinDriver::Spin</TT>
+normalized magnetization output for a sample with uniform saturation
+magnetization of 1400&nbsp;kA/m. If we want to know the magnetocrystalline
+anisotropy field at that magnetization state, we can construct a
+separate file, say barK.tcl, that contains the anisotropy block from
+the original simulation:
+<PRE>
+Specify Oxs_UniaxialAnisotropy:K {
+   K1 520e3
+   axis {0 0 1}
+}
+lappend user_outputs Oxs_UniaxialAnisotropy:K:Field barK.ohf
+</PRE>
+The last line requests the field output be written to the file
+<TT><B>barK.ohf</B></TT>. We will feed this file to <B>computefield</B> using the
+<TT>-userscriptfile</TT> option. After closing <TT><B>barK.tcl</B></TT> we decide we
+would also like to have the anisotropy energy density, so we'll use the
+<TT>-useroutput</TT> option to request that, and for good measure request
+the demagnetization energy density with <TT>-outdemagenergy</TT> as
+well. The accompanying <B>computefield</B> command is
+<PRE>
+tclsh oommf.tcl computefield -Msspec 1.4e6 -userscriptfile barK.tcl \
+   -useroutputs "Oxs_UniaxialAnisotropy:K:Energy\ density barK.oef" \
+   -outdemagenergy bar-demag.oef bar.omf
+</PRE>
+Note that the demagnetization field is not requested and so won't be
+saved. (If that field is wanted, just add the filename after
+<TT><B>bar.omf</B></TT>.)
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html894"
+  HREF="Cyclic_Redundancy_Check_crc.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html890"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html884"
+  HREF="Vector_Field_File_Differenc.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html892"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
+</BODY>
+</HTML>

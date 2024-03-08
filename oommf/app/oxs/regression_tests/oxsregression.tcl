@@ -13,6 +13,21 @@ set tcl_precision 17
 set no_thread_pkg [catch {package require Thread}]
 ## -parallel option requires Tcl Thread package
 
+# Memcheck run levels
+set memcheck_control [dict create 0 {}]
+dict set memcheck_control 1 \
+  [list valgrind --quiet --error-exitcode=7 \
+   --tool=memcheck --leak-check=no --partial-loads-ok=no]
+dict set memcheck_control 2 \
+  [list valgrind --quiet --error-exitcode=7 \
+          --tool=memcheck --leak-check=full \
+          --errors-for-leak-kinds=definite,indirect \
+          --show-leak-kinds=definite,indirect \
+          --partial-loads-ok=no]
+
+# Factor to increase timeouts by when running memcheck.
+set memcheck_timeout_stretch 20
+
 ########################################################################
 # TEST FILES AND LOCATIONS:
 
@@ -199,19 +214,20 @@ proc Usage { {chan stderr} } {
    puts $chan "Usage: tclsh oxsregression.tcl\
                   \[-autoadd\]\
                   \[-alttestdir \<dirname\>\]\
-                  \[-cleanup\]\n      \
+                  \[-cleanup\]\n \
                   \[-ignoreextra\]\
-                  \[-keepfail\] \[-leak\]\
+                  \[-keepfail\]\
                   \[-listtests\]\
-                  \[-loglevel \<\#\>\]\n      \
+                  \[-loglevel \<\#\>\]\
+                  \[-memcheck \<\#\>\]\n \
                   \[-noexcludes\]${parallel_opt}\
                   \[-resultsfile \<filename\>\]\
-                  \[-showoutput\]\n      \
+                  \[-showoutput\]\n \
                   \[-sigfigs \<\#\>\]\
                   \[-threads \<\#\>\]\
                   \[-timeout \<\#\>\]\
                   \[-updaterefdata\]\
-                  \[-v\]\n      \
+                  \[-v\]\n \
                   \[testa testb ...\]"
    puts $chan " Where:"
    puts $chan "  -autoadd automatically adds new tests from\
@@ -220,10 +236,11 @@ proc Usage { {chan stderr} } {
    puts $chan "  -cleanup removes stray temp files from earlier runs and exits"
    puts $chan "  -ignoreextra ignore extra columns in new data"
    puts $chan "  -keepfail saves results from failed tests"
-   puts $chan "  -leak checks for memory leaks (requires valgrind)"
    puts $chan "  -listtests shows selected tests and exits"
    puts $chan "  -loglevel controls output to boxsi.errors\
                    (default $loglevel)"
+   puts $chan "  -memcheck tests for invalid memory accesses and leaks\
+                   (requires valgrind)"
    puts $chan "  -noexcludes ignore exclude files"
    if {!$no_thread_pkg} {
       puts $chan "  -parallel is number of tests to run concurrently (default 1)"
@@ -443,18 +460,6 @@ if {$keepfail_index >= 0} {
    set argv [lreplace $argv $keepfail_index $keepfail_index]
 }
 
-set leak 0
-set leak_index [lsearch -regexp $argv {^-+leak$}]
-if {$leak_index >= 0} {
-   set leak 1
-   set argv [lreplace $argv $leak_index $leak_index]
-
-   if {[string match {} [auto_execok valgrind]]} {
-      puts stderr "ERROR: No -leak test without valgrind"
-      exit 2
-   }
-}
-
 set listtests 0
 set listtests_index [lsearch -regexp $argv {^-+listtests$}]
 if {$listtests_index >= 0} {
@@ -464,13 +469,33 @@ if {$listtests_index >= 0} {
 
 set loglevel_index [lsearch -regexp $argv {^-+loglevel$}]
 if {$loglevel_index >= 0 && $loglevel_index+1 < [llength $argv]} {
-   set ul [expr {$loglevel_index + 1}]
-   set loglevel [lindex $argv $ul]
-   set argv [lreplace $argv $loglevel_index $ul]
+   set loglevel [lindex $argv $loglevel_index+1]
+   set argv [lreplace $argv $loglevel_index $loglevel_index+1]
    if {![regexp {^[0-9]+$} $loglevel]} {
       puts stderr "ERROR: Option loglevel must be a non-negative integer"
       exit 2
    }
+}
+
+set memcheck_level 0
+set memcheck_index [lsearch -regexp $argv {^-+memcheck$}]
+if {$memcheck_index >= 0 && $memcheck_index+1 < [llength $argv]} {
+   set memcheck_level [lindex $argv $memcheck_index+1]
+   set argv [lreplace $argv $memcheck_index $memcheck_index+1]
+   if {[string match {} [auto_execok valgrind]]} {
+      puts stderr "ERROR: Memcheck requires valgrind"
+      exit 2
+   }
+   if {![dict exist $memcheck_control $memcheck_level]} {
+      puts stderr "ERROR: Memcheck level request must be one of\
+       [join [dict keys $memcheck_control] ", "], not \"$memcheck_level\""
+      exit 2
+   }
+}
+if {$memcheck_level>0} {
+   set ::EXEC_PREFIX [dict get $memcheck_control $memcheck_level]
+   set EXEC_TEST_TIMEOUT \
+      [expr {$EXEC_TEST_TIMEOUT*$memcheck_timeout_stretch}]
 }
 
 set noexcludes 0
@@ -1682,16 +1707,24 @@ proc RunTest { testcount subdesc runtestparams } {
    if {$code > 0} {
       set resultcode RUNERROR
       append resultstr "RUN ERROR-->\n[string trim $errmsg]\n<--RUN ERROR\n"
+      if {$memcheck_level>0} {
+         set leak_count 0
+         if {[regexp {definitely lost: (\d+) bytes} $errmsg -> leak_count]} {
+         } else {
+            set leak_index 0
+            while {[regexp -indices -start $leak_index \
+                       {[0-9]== +([0-9,]+)[^\n]*definitely lost} $errmsg a b]} {
+               set bytes [string map {, {}} [string range $errmsg {*}$b]]
+               incr leak_count $bytes
+               set leak_index [expr {[lindex $a 1]+1}]
+            }
+         }
+         append resultstr "Memory leak: $leak_count bytes\n"
+      }
    } elseif {$code < 0} {
       set resultcode TIMEOUT
       append resultstr "TIMEOUT-->\n[string trim $errmsg]\n<--TIMEOUT\n"
    } else {
-      if {$leak} {
-         regexp {definitely lost: (\d+) bytes} $errmsg -> count
-         if {$count} {
-            append resultstr "LEAKED $count bytes"
-         }
-      }
       if {$showoutput} {
          append resultstr "TEST OUTPUT >>>>\n"
          append resultstr [string trim $errmsg]
@@ -1922,6 +1955,13 @@ if {[string compare "Darwin" $tcl_platform(os)] != 0} {
    lappend boxsi_base_command "<" $nuldevice
 }
 
+if {[info exists ::EXEC_PREFIX] && [string length $::EXEC_PREFIX]>0} {
+   set boxsi_base_command [linsert $boxsi_base_command 0 {*}$::EXEC_PREFIX]
+   puts "--- NOTE: Running all tests with exec prefix:"
+   puts "$::EXEC_PREFIX"
+   puts "------------------------------------------------\n"
+}
+
 set number_of_tests [TestCount $dotests]
 if {$number_of_tests<1} {
    puts stderr "*** NO TESTS ***"
@@ -1937,7 +1977,7 @@ set tstfmt [format "%%%dd" [expr {int(floor(log10($number_of_tests)))+1}]]
 set runtestparams [dict create]
 foreach kv {
    EXEC_TEST_TIMEOUT boxsi_base_command keepfail
-   leak logfile loglevel number_of_tests results_basename
+   memcheck_level logfile loglevel number_of_tests results_basename
    showoutput tstfmt updaterefdata verbose
 } {
    dict set runtestparams $kv [set $kv]

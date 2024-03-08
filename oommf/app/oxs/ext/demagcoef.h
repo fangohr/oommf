@@ -973,7 +973,7 @@ class Oxs_DemagAsymptotic {
   //   proper design would probably compute and keep a single schedule,
   //   and maybe wrap the analytic demag computation into the mix so all
   //   could share pertinent implementation details.
-  
+
 public:
 
   virtual ~Oxs_DemagAsymptotic() {}
@@ -994,7 +994,7 @@ public:
   virtual OXS_DEMAG_REAL_ASYMP GetAsymptoticStart() const =0;
   // Returns the offset R between the outer edge of the analytic
   // and inner edge of asymptotic regimes.
-  
+
   // Given cell dimensions dx x dy x dz, FindRefinementCount returns the
   // number of subcells in the coarsest refinement having all subcell
   // edge dimensions no bigger than import h.
@@ -1139,7 +1139,7 @@ public:
     // and inner edge of asymptotic regimes.
     return sqrt(Nxxvec.back().rsq);
   }
-  
+
 private:
   struct SubregionApproximate {
   public:
@@ -1246,7 +1246,7 @@ public:
     // and inner edge of asymptotic regimes.
     return sqrt(Nxyvec.back().rsq);
   }
-  
+
 private:
   struct SubregionApproximate {
   public:
@@ -1324,7 +1324,7 @@ public:
     : Nxx(dz,dy,dx,maxerror,asymptotic_order) {}
   // maxerror=0 selects default value of 8*machine epsilon
   // for OXS_DEMAG_REAL_ASYMP type.
-  
+
   ~Oxs_DemagNzzAsymptotic() {}
 
   OXS_DEMAG_REAL_ASYMP Asymptotic(OXS_DEMAG_REAL_ASYMP x,
@@ -1464,7 +1464,7 @@ public:
                            OXS_DEMAG_REAL_ASYMP rdy,
                            OXS_DEMAG_REAL_ASYMP rdz,
                            OXS_DEMAG_REAL_ASYMP Wx);
-  
+
   ~OxsDemagNxyIntegralXBase() {}
   OXS_DEMAG_REAL_ASYMP Compute(const OxsDemagNabPairData& data) const;
   /// ubase, uoff in data are wrt x
@@ -1750,7 +1750,7 @@ public:
       NxxIx(OxsDemagAsymptoticRefineInfo(ad.x,ad.y,ad.z,Wx*ktail,
                                          maxerror,asymptotic_order),Wx)
   {}
-  
+
   virtual ~OxsDemagNxxPeriodicX() {}
 
   virtual OXS_DEMAG_REAL_ASYMP NearField(const OxsDemagNabData& data) const
@@ -2094,7 +2094,7 @@ public:
     return Nxx.GetAsymptoticStart(); // Assume all terms have same
     /// asymptotic start radius.
   }
-  
+
 protected:
   Oxs_DemagPeriodic(OXS_DEMAG_REAL_ASYMP idx, // Cell sizes
                     OXS_DEMAG_REAL_ASYMP idy,
@@ -2152,7 +2152,7 @@ private:
                                     OXS_DEMAG_REAL_ASYMP dy,
                                     OXS_DEMAG_REAL_ASYMP dz,
                                     OC_INDEX rdimx);
-  
+
   OXS_DEMAG_REAL_ASYMP dx, dy, dz;
   const OC_INDEX rdimx;
   const OC_INDEX wdimx,wdimy,wdimz;
@@ -2240,7 +2240,7 @@ public:
                                  OXS_DEMAG_REAL_ASYMP &pbcNyz,
                                  OXS_DEMAG_REAL_ASYMP &pbcNzz) {
     ComputeHoleTensorPBCx(k,i,j,pbcNzz,pbcNxz,pbcNyz,pbcNxx,pbcNxy,pbcNyy);
-  }                         
+  }
 };
 
 #endif // _OXS_DEMAGCOEF

@@ -19,4 +19,3 @@ Oxs_ExtError::Oxs_ExtError(const Oxs_Ext* obj,const String& errmsg)
         + String(": ") + errmsg) {}
 void Oxs_ExtError::Prepend(const String& prefix) { msg = prefix + msg; }
 void Oxs_ExtError::Postpend(const String& suffix) { msg += suffix; }
-

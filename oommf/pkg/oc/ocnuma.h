@@ -69,7 +69,7 @@ int Oc_NumaReady(); // Returns 1 if Oc_NumaInit has been successfully
 //  Oc_SetMemoryPolicyFirstTouch must be called after memory allocation
 //  (so an address is held) but before memory use.
 void Oc_NumaDisable();
-void Oc_NumaInit(int max_threads,vector<int>& nodes);
+void Oc_NumaInit(int max_threads,std::vector<int>& nodes);
 void Oc_NumaRunOnNode(int thread);
 void Oc_NumaRunOnAnyNode();
 void Oc_SetMemoryPolicyFirstTouch(char* start,OC_UINDEX len);
@@ -81,13 +81,15 @@ int Oc_NumaGetRunNode(int thread);    // Returns -1 on error
 int Oc_NumaGetLocalNode();            // Returns -1 on error
 inline int Oc_NumaGetNodeCount() { return numa_max_node()+1; }
 void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab);
+void Oc_NumaGetRunMask(std::vector<int>& imask);
 void Oc_NumaGetRunMask(Oc_AutoBuf& ab);
 
 #else // OC_USE_NUMA
 inline int  Oc_NumaAvailable() { return 0; }
 inline int  Oc_NumaReady() { return 0; }
 inline void Oc_NumaDisable() {}
-inline void Oc_NumaInit(int /* max_threads */, vector<int>& /* nodes */) {}
+inline void Oc_NumaInit(int /* max_threads */,
+                        std::vector<int>& /* nodes */) {}
 inline void Oc_NumaRunOnNode(int /* thread */) {}
 inline void Oc_NumaRunOnAnyNode() {}
 inline int  Oc_NumaGetRunNode(int /* thread */) { return 0; }
@@ -95,8 +97,14 @@ inline void Oc_SetMemoryPolicyFirstTouch(char*,OC_UINDEX) {}
 inline int  Oc_NumaGetLocalNode()               { return 0; }
 inline int Oc_NumaGetNodeCount() { return 1; }
 inline void Oc_NumaGetInterleaveMask(Oc_AutoBuf& ab) { ab = "1"; }
+inline void Oc_NumaGetRunMask(std::vector<int>& imask) {
+  imask.clear(); imask.push_back(1);
+}
 inline void Oc_NumaGetRunMask(Oc_AutoBuf& ab) { ab = "1"; }
 #endif // OC_USE_NUMA
+
+// Code in both OC_USE_NUMA and !OC_USE_NUMA branches
+void Oc_NumaNodemaskBinaryStringRep(std::vector<int>& imask,String& bits);
 
 // Memory allocation.  If NUMA is enabled, then Oc_AllocThreadLocal
 // will allocate memory on the local node.  If NUMA is not enabled,

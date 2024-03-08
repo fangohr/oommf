@@ -41,7 +41,7 @@ void Oc_SetMaxThreadCount(int threads) {
 
 ////////////////////////////////////////////////////////////////////////
 // Tcl wrappers for thread code
-int OcHaveThreads(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv) 
+int OcHaveThreads(ClientData, Tcl_Interp *interp, int argc,const char **argv) 
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -55,7 +55,7 @@ int OcHaveThreads(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv)
 }
 
 int
-OcGetMaxThreadCount(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv) 
+OcGetMaxThreadCount(ClientData, Tcl_Interp *interp, int argc,const char **argv) 
 {
   Tcl_ResetResult(interp);
   if (argc != 1) {
@@ -69,7 +69,7 @@ OcGetMaxThreadCount(ClientData, Tcl_Interp *interp, int argc,CONST84 char **argv
 }
 
 int
-OcSetMaxThreadCount(ClientData,Tcl_Interp *interp,int argc,CONST84 char** argv)
+OcSetMaxThreadCount(ClientData,Tcl_Interp *interp,int argc,const char** argv)
 {
   char buf[1024];
   Tcl_ResetResult(interp);

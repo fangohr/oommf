@@ -19,8 +19,8 @@
  */
 
 #define OC_MAJOR_VERSION	2
-#define OC_MINOR_VERSION	0
-#define OC_RELEASE_LEVEL	"b"
+#define OC_MINOR_VERSION	1
+#define OC_RELEASE_LEVEL	"a"
 #define OC_RELEASE_SERIAL	0
 
 #endif /* _OC_VERSION */

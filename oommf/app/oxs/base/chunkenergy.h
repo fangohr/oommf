@@ -125,12 +125,11 @@ public:
 // running each chunk energy on the same range of cells, and also
 // allow multiple threads to run concurrently, with each thread
 // claiming a separate cell range.
-class Oxs_ComputeEnergiesChunkThread; // Thread helper class; 
+class Oxs_ComputeEnergiesChunkThread; // Thread helper class;
 class Oxs_ChunkEnergy:public Oxs_Energy {
-  friend void Oxs_ComputeEnergies(const Oxs_SimState&,
-                                  Oxs_ComputeEnergyData&,
-                                  const std::vector<Oxs_Energy*>&,
-                                  Oxs_ComputeEnergyExtraData& oceed);
+  friend void Oxs_ComputeEnergies
+  (const Oxs_ComputeEnergiesImports& ocei,
+   Oxs_ComputeEnergiesExports& ocee);
   friend class Oxs_ComputeEnergiesChunkThread;
 private:
   // Expressly disable default constructor, copy constructor and
@@ -220,7 +219,7 @@ protected:
   // computation routines; the serial routine ComputeEnergyAlt will make
   // one call with threadnumber == 0, and the parallel routine
   // Oxs_ComputeEnergies will always insure that the number of threads
-  // launched is not more than the number of chunks (so that if 
+  // launched is not more than the number of chunks (so that if
   // threads other than "0" block on entry waiting on "0", then
   // "0" will eventually show up).
 

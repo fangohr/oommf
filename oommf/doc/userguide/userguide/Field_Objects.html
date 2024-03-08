@@ -24,24 +24,24 @@
             VLINK="#4498F0",ALINK="00FFFF">
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html614"
+<A NAME="tex2html618"
   HREF="MIF_Support_Classes.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html610"
+<A NAME="tex2html614"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html604"
+<A NAME="tex2html608"
   HREF="Drivers.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html612"
+<A NAME="tex2html616"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
 <BR>
-<B> Next:</B> <A NAME="tex2html615"
+<B> Next:</B> <A NAME="tex2html619"
   HREF="MIF_Support_Classes.html">MIF Support Classes</A>
-<B> Up:</B> <A NAME="tex2html611"
+<B> Up:</B> <A NAME="tex2html615"
   HREF="Standard_Oxs_Ext_Child_Clas.html">Standard Oxs_Ext Child Classes</A>
-<B> Previous:</B> <A NAME="tex2html605"
+<B> Previous:</B> <A NAME="tex2html609"
   HREF="Drivers.html">Drivers</A>
 <BR>
 <BR>
@@ -62,9 +62,8 @@ context in which they are used.
 Scalar field objects are documented first.  Vector field objects are
 considered farther below.
 <DL>
-<DD><A NAME="PTUSF"></A><A NAME="6184"></A></DD>
 <DT><STRONG>Oxs_UniformScalarField:<A NAME="item:UniformScalarField"></A></STRONG></DT>
-<DD>Returns the same constant value regardless of the import position.
+<DD><A NAME="PTUSF"></A><A NAME="6278"></A>Returns the same constant value regardless of the import position.
    The Specify block takes one parameter, <B>value</B>, which is the
    returned constant value.  This class is frequently embedded inline to
    specify homogeneous material parameters.  For example, inside a driver
@@ -107,9 +106,9 @@ created with <TT>value</TT> set to <TT>8e5</TT>.
 
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
 <P>
-<A NAME="PTASF"></A><A NAME="6212"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AtlasScalarField:<A NAME="item:AtlasScalarField"></A></STRONG></DT>
-<DD>Declares values that are defined across individual regions of an
+<DD><A NAME="PTASF"></A><A NAME="6306"></A>Declares values that are defined across individual regions of an
    <TT>Oxs_Atlas</TT>.  The Specify block looks like
       
       <BLOCKQUOTE><DL><DT>
@@ -156,9 +155,9 @@ The vector field analogue to this class is
      <TT><B>grill.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>, <TT><B>tclshapes.mif</B></TT>.
    
 <P>
-<A NAME="PTLSF"></A><A NAME="6234"></A></DD>
+</DD>
 <DT><STRONG>Oxs_LinearScalarField:</STRONG></DT>
-<DD>Returns a value that varies linearly with position.  The Specify
+<DD><A NAME="PTLSF"></A><A NAME="6327"></A>Returns a value that varies linearly with position.  The Specify
    block has the form:
       
       <BLOCKQUOTE><DL><DT>
@@ -184,9 +183,9 @@ If optional value <B>norm</B> is specified, then the given
 <B>Example:</B> 
   <TT><B>spinvalve-af.mif</B></TT>.
 <P>
-<A NAME="PTRSF"></A><A NAME="6242"></A></DD>
+</DD>
 <DT><STRONG>Oxs_RandomScalarField:</STRONG></DT>
-<DD><A NAME="item:RandomScalarField"></A>Defines a scalar field that varies spatially in a random fashion.
+<DD><A NAME="item:RandomScalarField"></A><A NAME="PTRSF"></A><A NAME="6336"></A>Defines a scalar field that varies spatially in a random fashion.
 The Specify block has the form:
       
       <BLOCKQUOTE><DL><DT>
@@ -198,7 +197,7 @@ The Specify block has the form:
 The value at each position is drawn uniformly from the range declared by
 the two required parameters, <B>range_min</B> and
 <B>range_max</B>.  There is also an optional parameter,
-<B>cache_grid</B>, which takes a mesh specification that describes
+<B>cache_grid</B>, that takes a mesh specification describing
 the grid used for spatial discretization.  If
 <B>cache_grid</B> is not specified, then each call to
 <TT>Oxs_RandomScalarField</TT> generates a different field.  If you want to
@@ -211,9 +210,9 @@ mesh.
 
 <B>Examples:</B> <TT><B>randomshape.mif</B></TT>, <TT><B>stdprob1.mif</B></TT>.
 <P>
-<A NAME="PTSSF"></A><A NAME="6255"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ScriptScalarField:<A NAME="item:ScriptScalarField"></A></STRONG></DT>
-<DD>Analogous to the parallel
+<DD><A NAME="PTSSF"></A><A NAME="6349"></A>Analogous to the parallel
 <A HREF="#item:ScriptVectorField"><TT>Oxs_ScriptVectorField</TT></A>
 class, this class produces a scalar field dependent on a Tcl script
 and optionally other scalar and vector fields.  The Specify block has
@@ -312,7 +311,7 @@ Specify Oxs_ScriptScalarField {
    ymin=0, zmin=0) and (xmax=1e-6, ymax=250e-9, zmax=50e-9), and 0
    otherwise.
    See also the discussion of the
-   <A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+   <A HREF="MIF_2.1_Extension_Commands.html#PTReadFile"><TT>ReadFile</TT></A> MIF extension command
     for an example using
    an imported image file for similar purposes.
 
@@ -352,9 +351,9 @@ projection of the vector field <TT>:file1</TT> onto the [1,1,1] direction.
   <TT><B>manyregions-scriptfields.mif</B></TT>, <TT><B>manyspheres.mif</B></TT>,
   <TT><B>varalpha.mif</B></TT>.
 <P>
-<A NAME="PTVMSF"></A><A NAME="6338"></A></DD>
+</DD>
 <DT><STRONG>Oxs_VecMagScalarField:</STRONG></DT>
-<DD>The <TT>Oxs_VecMagScalarField</TT> class produces a scalar field
+<DD><A NAME="PTVMSF"></A><A NAME="6431"></A>The <TT>Oxs_VecMagScalarField</TT> class produces a scalar field
 from a vector field by taking the norm of the vector field on a
 point-by-point basis, i.e.,
 <P><!-- MATH
@@ -423,9 +422,9 @@ Specify Oxs_TimeDriver {
 <B>Example:</B> 
   <TT><B>sample-vecrotate.mif</B></TT>.
 <P>
-<A NAME="PTSOSF"></A><A NAME="6362"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ScriptOrientScalarField:<A NAME="item:ScriptOrientScalarField"></A></STRONG></DT>
-<DD>Scalar fields provide scalar values as a function of position across
+<DD><A NAME="PTSOSF"></A><A NAME="6456"></A>Scalar fields provide scalar values as a function of position across
 three-space.  The <TT>Oxs_ScriptOrientScalarField</TT> class is used to
 compose a transformation on the input position before evaluation by
 a scalar field.  The Specify block has the form:
@@ -489,9 +488,9 @@ analogous operations on vector fields.
 <B>Example:</B> 
   <TT><B>sample-reflect.mif</B></TT>.
 <P>
-<A NAME="PTAOSF"></A><A NAME="6391"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AffineOrientScalarField:<A NAME="item:AffineOrientScalarField"></A></STRONG></DT>
-<DD>The <TT>Oxs_AffineOrientScalarField</TT> class is similar to the
+<DD><A NAME="PTAOSF"></A><A NAME="6485"></A>The <TT>Oxs_AffineOrientScalarField</TT> class is similar to the
 <TT>Oxs_ScriptOrientScalarField</TT> class, except that the transformation
 on the import position is by an affine transformation defined in terms
 of a 3x3 matrix and an offset instead of a
@@ -609,9 +608,9 @@ analogous operations on vector fields.
 <B>Example:</B> 
   <TT><B>sample-rotate.mif</B></TT>.
 <P>
-<A NAME="PTATSF"></A><A NAME="6450"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AffineTransformScalarField:<A NAME="item:AffineTransformScalarField"></A></STRONG></DT>
-<DD>Like the <TT>Oxs_AffineOrientScalarField</TT> class, this class composes
+<DD><A NAME="PTATSF"></A><A NAME="6544"></A>Like the <TT>Oxs_AffineOrientScalarField</TT> class, this class composes
 an affine transform with a separate scalar field, but in this case the
 affine transform is applied <I>after</I> the field evaluation.
 The Specify block has the form:
@@ -667,9 +666,9 @@ operations on vector fields.
 <B>Example:</B> 
   <TT><B>sample-rotate.mif</B></TT>.
 <P>
-<A NAME="PTISF"></A><A NAME="6483"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ImageScalarField:<A NAME="item:ImageScalarField"></A></STRONG></DT>
-<DD>This class creates a scalar field using an image.  The Specify block has
+<DD><A NAME="PTISF"></A><A NAME="6577"></A>This class creates a scalar field using an image.  The Specify block has
 the form
 
 <BLOCKQUOTE><DL><DT>
@@ -726,9 +725,8 @@ is raised if a value is needed for any point outside the image.
 <P>
 The available vector field objects are:
 <DL>
-<DD><A NAME="PTUVF"></A><A NAME="6513"></A></DD>
 <DT><STRONG>Oxs_UniformVectorField:<A NAME="item:UniformVectorField"></A></STRONG></DT>
-<DD>Returns the same constant value regardless of the import position.
+<DD><A NAME="PTUVF"></A><A NAME="6607"></A>Returns the same constant value regardless of the import position.
    The Specify block takes one required parameter, <B>vector</B>,
    which is a 3-element list of the vector to return, and one optional
    parameter, <B>norm</B>, which if specified adjusts the size of
@@ -786,9 +784,9 @@ created with the value of <TT>vector</TT> set to <TT>{1 0 0}</TT>.
 
 <B>Examples:</B> <TT><B>sample.mif</B></TT>, <TT><B>cgtest.mif</B></TT>.
 <P>
-<A NAME="PTAVF"></A><A NAME="6544"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AtlasVectorField:<A NAME="item:AtlasVectorField"></A></STRONG></DT>
-<DD>Declares vector values that are defined across individual regions of
+<DD><A NAME="PTAVF"></A><A NAME="6638"></A>Declares vector values that are defined across individual regions of
    an <TT>Oxs_Atlas</TT>.  The Specify block has the form
       
       <BLOCKQUOTE><DL><DT>
@@ -826,13 +824,13 @@ The optional <B>norm</B> parameter causes each vector value to be
      <TT><B>imageatlas.mif</B></TT>, <TT><B>spinvalve.mif</B></TT>.
    
 <P>
-<A NAME="PTSVF"></A><A NAME="6561"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ScriptVectorField:<A NAME="item:ScriptVectorField"></A></STRONG></DT>
-<DD>Conceptually similar to the
+<DD><A NAME="PTSVF"></A><A NAME="6655"></A>Conceptually similar to the
 <A HREF="#item:ScriptScalarField"><TT>Oxs_ScriptScalarField</TT></A> scalar
 field object,
 except that the script should return a vector (as a 3 element list)
-rather than a scalar.  In addition to the parameters accepted by
+rather than a scalar.  In addition to parameters accepted by
 <TT>Oxs_ScriptScalarField</TT>, <TT>Oxs_ScriptVectorField</TT> also accepts
 an optional parameter <B>norm</B>.  If specified, the return
 values from the script are size adjusted to the specified magnitude.
@@ -869,10 +867,10 @@ Specify Oxs_ScriptVectorField {
 See also the
 <A HREF="#item:MaskVectorField"><TT>Oxs_MaskVectorField</TT></A>
 documentation and the discussion of the
-<A HREF="MIF_2.1_Extension_Commands.html#html:ReadFile"><TT>ReadFile</TT></A> MIF extension command
+<A HREF="MIF_2.1_Extension_Commands.html#PTReadFile"><TT>ReadFile</TT></A> MIF extension command
 
 <P>
-for other example uses of the <TT>Oxs_ScriptVectorField</TT> class.
+for another <TT>Oxs_ScriptVectorField</TT> example.
 
 <P>
 
@@ -880,9 +878,9 @@ for other example uses of the <TT>Oxs_ScriptVectorField</TT> class.
   <TT><B>manyregions-scriptfields.mif</B></TT>, <TT><B>sample-vecreflect.mif</B></TT>,
   <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 <P>
-<A NAME="PTFVF"></A><A NAME="6590"></A></DD>
+</DD>
 <DT><STRONG>Oxs_FileVectorField:<A NAME="item:FileVectorField"></A></STRONG></DT>
-<DD>Provides a file-specified vector field.  The Specify block has the form
+<DD><A NAME="PTFVF"></A><A NAME="6684"></A>Provides a file-specified vector field.  The Specify block has the form
       
       <BLOCKQUOTE><DL><DT>
       <TT>Specify Oxs_FileVectorField {</TT>
@@ -907,7 +905,7 @@ Required values in the Specify block are the name of the input vector
    specified via the <B>file</B> entry, which names a file
    containing a vector field in one of the formats recognized by
    <A HREF="Vector_Field_File_Format_Co.html#sec:avf2ovf"
- NAME="6597"><B>avf2ovf</B></A>.  If
+ NAME="6690"><B>avf2ovf</B></A>.  If
    <B>atlas</B> or <B>xrange/yrange/zrange</B> are specified,
    then the file will be scaled and translated as necessary to fit that
    scaling region, in the same manner as done, for example, by
@@ -953,9 +951,9 @@ The magnitude of the field can be modified by the optional
 
 <B>Examples:</B> <TT><B>stdprob3.mif</B></TT>, <TT><B>yoyo.mif</B></TT>.
 <P>
-<A NAME="PTRVF"></A><A NAME="6627"></A></DD>
+</DD>
 <DT><STRONG>Oxs_RandomVectorField:</STRONG></DT>
-<DD>Similar to
+<DD><A NAME="PTRVF"></A><A NAME="6720"></A>Similar to
 <A HREF="#item:RandomScalarField"><TT>Oxs_RandomScalarField</TT></A>, but defines a vector field rather than a scalar field that
 varies spatially in a random fashion.  The Specify block has the form:
       
@@ -963,6 +961,7 @@ varies spatially in a random fashion.  The Specify block has the form:
       <TT>Specify Oxs_RandomVectorField {</TT>
       <DD><TT> min_norm </TT><I>minvalue</I>
       <DD><TT> max_norm </TT><I>maxvalue</I>
+      <DD><TT> base_field </TT><I>vector_field_spec</I>
       <DD><TT> cache_grid </TT><I>mesh_spec</I>
       <DT><TT>}</TT></DL></BLOCKQUOTE><P>
 The Specify block takes two required parameters, <B>min_norm</B>
@@ -971,23 +970,36 @@ between these two specified values.  If <TT>min_norm</TT> = <TT>max_norm</TT>,
 then the samples are uniformly distributed on the sphere of that radius.
 Otherwise, the samples are uniformly distributed in the hollow spherical
 volume with inner radius <TT>min_norm</TT> and outer radius <TT>max_norm</TT>.
-There is also an optional parameter, <B>cache_grid</B>, which takes
-a mesh specification that describes the grid used for cache spatial
-discretization.  If <B>cache_grid</B> is not specified, then each
-call to <TT>Oxs_RandomVectorField</TT> generates a different field.  If you
-want to use the same random vector field in two places (as a base for
-setting, say anisotropy axes and initial magnetization), then specify
+
+<P>
+There are also two optional parameters, <B>base_field</B> and
+<B>cache_grid</B>. If the former is given, then the generated
+random field is added onto the field specified by
+<TT>vector_field_spec</TT>.  If <B>base_field</B> is omitted, the
+result is equivalent to specifying a zero field.
+
+<P>
+The <B>cache_grid</B> option takes a mesh specification that
+describes the grid used for spatial discretization caching.  If
+<B>cache_grid</B> is not specified, then each call to
+<TT>Oxs_RandomVectorField</TT> generates a different field.  If you want to
+use the same random vector field in two places (as a base for setting,
+say anisotropy axes and initial magnetization), then specify
 <B>cache_grid</B> with the appropriate (usually the base problem)
-mesh.
+mesh. Note also that if <B>cache_grid</B> is not used, then on
+multi-threaded runs the random number generator call sequence among the
+threads is not deterministic, and so results may varying between runs,
+even for simulations started with the same
+<A HREF="MIF_2.1_Extension_Commands.html#PTmif2randomseed">random number seed</A>.
 
 <P>
 
 <B>Examples:</B> <TT><B>diskarray.mif</B></TT>, <TT><B>sample2.mif</B></TT>, <TT><B>randomshape.mif</B></TT>
   <TT><B>stdprob1.mif</B></TT>.
 <P>
-<A NAME="PTPRVF"></A><A NAME="6648"></A></DD>
+</DD>
 <DT><STRONG>Oxs_PlaneRandomVectorField:</STRONG></DT>
-<DD>Similar to <TT>Oxs_RandomVectorField</TT>, except that samples are
+<DD><A NAME="PTPRVF"></A><A NAME="6750"></A>Similar to <TT>Oxs_RandomVectorField</TT>, except that samples are
    drawn from 2D planes rather than 3-space.  The Specify block has the
    form
       
@@ -1018,9 +1030,9 @@ The <B>min_norm</B>, <B>max_norm</B>, and
 <B>Example:</B> 
   <TT><B>sample2.mif</B></TT>.
 <P>
-<A NAME="PTSOVF"></A><A NAME="6659"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ScriptOrientVectorField:<A NAME="item:ScriptOrientVectorField"></A></STRONG></DT>
-<DD>This class is analogous to the
+<DD><A NAME="PTSOVF"></A><A NAME="6762"></A>Compare to the
 <A HREF="#item:ScriptOrientScalarField"><TT>Oxs_ScriptOrientScalarField</TT></A>
 class.
 The Specify block has the form:
@@ -1062,9 +1074,9 @@ object.
 <B>Example:</B> 
   <TT><B>sample-vecreflect.mif</B></TT>.
 <P>
-<A NAME="PTAOVF"></A><A NAME="6682"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AffineOrientVectorField:<A NAME="item:AffineOrientVectorField"></A></STRONG></DT>
-<DD>This class is analogous to the
+<DD><A NAME="PTAOVF"></A><A NAME="6785"></A>Compare to the
 <A HREF="#item:AffineOrientScalarField"><TT>Oxs_AffineOrientScalarField</TT></A>
 class.
 The Specify block has the form:
@@ -1100,9 +1112,9 @@ an example.
 
 <B>Examples:</B> <TT><B>yoyo.mif</B></TT>, <TT><B>sample-vecrotate.mif</B></TT>.
 <P>
-<A NAME="PTATVF"></A><A NAME="6698"></A></DD>
+</DD>
 <DT><STRONG>Oxs_AffineTransformVectorField:<A NAME="item:AffineTransformVectorField"></A></STRONG></DT>
-<DD>This class applies an affine transform to the output of a vector field.
+<DD><A NAME="PTATVF"></A><A NAME="6801"></A>This class applies an affine transform to the output of a vector field.
 It is similar to the
 <A HREF="#item:AffineTransformScalarField"><TT>Oxs_AffineTransformScalarField</TT></A>
 class, except
@@ -1236,9 +1248,9 @@ illustrated below.
 <B>Example:</B> 
   <TT><B>sample-vecrotate.mif</B></TT>.
 <P>
-<A NAME="PTMVF"></A><A NAME="6768"></A></DD>
+</DD>
 <DT><STRONG>Oxs_MaskVectorField:<A NAME="item:MaskVectorField"></A></STRONG></DT>
-<DD>Multiplies a vector field pointwise by a scalar vector field (the mask)
+<DD><A NAME="PTMVF"></A><A NAME="6871"></A>Multiplies a vector field pointwise by a scalar vector field (the mask)
 to produce a new vector field.  The Specify block has the form:
 
 <BLOCKQUOTE><DL><DT>
@@ -1286,9 +1298,9 @@ scalar and vector fields.
 <B>Example:</B> 
   <TT><B>rotatecenterstage.mif</B></TT>.
 <P>
-<A NAME="PTIVF"></A><A NAME="6789"></A></DD>
+</DD>
 <DT><STRONG>Oxs_ImageVectorField:<A NAME="item:ImageVectorField"></A></STRONG></DT>
-<DD>This class creates a vector field using an image.  The Specify block has
+<DD><A NAME="PTIVF"></A><A NAME="6892"></A>This class creates a vector field using an image.  The Specify block has
 the form
 
 <BLOCKQUOTE><DL><DT>
@@ -1329,20 +1341,20 @@ the same as for the
 <HR>
 <!--Navigation Panel--><A NAME="tex2html1"
   HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
-<A NAME="tex2html614"
+<A NAME="tex2html618"
   HREF="MIF_Support_Classes.html">
 <IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
-<A NAME="tex2html610"
+<A NAME="tex2html614"
   HREF="Standard_Oxs_Ext_Child_Clas.html">
 <IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
-<A NAME="tex2html604"
+<A NAME="tex2html608"
   HREF="Drivers.html">
 <IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
-<A NAME="tex2html612"
+<A NAME="tex2html616"
   HREF="docindex.html">
 <IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
 <BR>
 <!--End of Navigation Panel-->
-<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 30, 2022</I>
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
 </BODY>
 </HTML>

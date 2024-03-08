@@ -23,7 +23,7 @@ package require Ow
 wm withdraw .
 
 Oc_Main SetAppName mmDataTable
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author

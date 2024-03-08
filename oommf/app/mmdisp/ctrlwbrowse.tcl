@@ -97,7 +97,7 @@ Oc_Class CtrlWBrowse {
     }
     Destructor {
 	if {[info exists browse_state]} {
-	    trace vdelete [$this GlobalName browse_state] w \
+	    trace remove variable [$this GlobalName browse_state] write \
 		    "$this BrowseStateTrace"
 	}
 	if {[info exists winpath] && [winfo exists $winpath]} {

@@ -4,31 +4,16 @@
  *
  */
 
+#include <map>
+
 #include "oxsexcept.h"
 #include "oxsthread.h"
 #include "oxswarn.h"
 
 /* End includes */
 
-// In Tcl versions 8.3 and earlier, and Tcl 8.4 released prior to
-// 2004-07-16 (i.e., Tcl 8.4.6 and earlier), Tcl_ExitThread
-// unconditionally calls Tcl_FinalizeNotifier.  This produces a ref
-// counting bug if Tcl_InitNotifier has not been called in the thread.
-// This bug can cause OOMMF to hang during shutdown.  (In this
-// particular instance, the problem is triggered by Oxs_ThreadThrowaway
-// threads used for checkpointing.)
-//   However, Tcl_CreateInterp includes a call to Tcl_InitNotifier; the
-// safest workaround appears to be to create an interp in each child
-// thread.  (Testing prior to Tcl 8.4 presumably didn't much consider
-// the case of threads without interps.)  At some time we may have an
-// active use for such interps, but for now only create thread interps
-// as needed as a bug workaround.
-#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION < 4)
-# define _OXS_THREAD_MAKE_CHILD_INTERPS 1
-#else
-# define _OXS_THREAD_MAKE_CHILD_INTERPS 0
-#endif
-
+// #define to 1 if Tcl interps are needed inside threads
+#define _OXS_THREAD_MAKE_CHILD_INTERPS 0
 
 ////////////////////////////////////////////////////////////////////////
 // Oxs thread numbers
@@ -262,11 +247,63 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
   std::string threadstr = std::string("\nException thrown in thread ")
     + std::to_string(thread_number);
 
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_Interp *thread_interp = nullptr;
+#endif
+
   try {
     // Move more of the thread initialization code into this try block
     // as needed.
     Oc_AsyncError::RegisterThreadHandler();
     Oc_NumaRunOnNode(othread->thread_number);
+
+    // Reserve capacity in thread_local locker.  This can protect
+    // against implementation bugs in thread_local associative
+    // containers.
+#if defined(__PGI) || defined(__PGI__)
+    {
+      // Workaround for STL thread-local container initialization with
+      // Portland Group C++ compiler 19.4-0
+      Oxs_ThreadMapDataObject dummy;
+      OXS_THREADMAP locktest;
+      locktest["DUMMY"] = &dummy;
+      Oxs_ThreadLocalMap::locker = locktest;
+      Oxs_ThreadLocalMap::locker.erase("DUMMY");
+    }
+#endif // defined(__PGI) || defined(__PGI__)
+    Oxs_ThreadLocalMap::locker.reserve(256);
+
+#if OC_CHILD_COPY_FPU_CONTROL_WORD
+    // Copy FPU control data (which includes floating point precision
+    // and rounding) from parent to child.
+    Oc_FpuControlData fpu_control_data = othread->fpu_control_data;
+    fpu_control_data.WriteData();
+#ifndef NDEBUG
+    {
+      Oc_AutoBuf ab;
+      Oc_FpuControlData fpu_data;
+      fpu_data.ReadData();
+      fpu_data.GetDataString(ab);
+      Oxs_ThreadPrintf(stderr,"_Oxs_Thread_threadmain thread %d "
+                       "FPU control data:%s\n",thread_number,ab.GetStr());
+    }
+#endif // NDEBUG
+#endif // OC_CHILD_COPY_FPU_CONTROL_WORD
+
+#if OC_USE_NUMA
+    {
+      std::vector<int> imask;
+      Oc_NumaGetRunMask(imask);
+      Oc_NumaNodemaskBinaryStringRep(imask,othread->numa_run_mask);
+# ifndef NDEBUG
+      Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
+                       thread_number,othread->numa_run_mask.c_str());
+# endif // NDEBUG
+    }
+#endif
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+    thread_interp = Tcl_CreateInterp();
+#endif
   } catch (const Oc_Exception& ocerr) {
     Oc_AutoBuf msg;
     ocerr.ConstructMessage(msg);
@@ -285,51 +322,6 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
     Oxs_ThreadError::SetError(errmsg + ERRLOCATION);
     throw;
   }
-
-  // Reserve capacity in thread_local locker.  This can protect against
-  // implementation bugs in thread_local associative containers.
-#if defined(__PGI) || defined(__PGI__)
-  {
-    // Workaround for STL thread-local container initialization with
-    // Portland Group C++ compiler 19.4-0
-    Oxs_ThreadMapDataObject dummy;
-    OXS_THREADMAP locktest;
-    locktest["DUMMY"] = &dummy;
-    Oxs_ThreadLocalMap::locker = locktest;
-    Oxs_ThreadLocalMap::locker.erase("DUMMY");
-  }
-#endif // defined(__PGI) || defined(__PGI__)
-  Oxs_ThreadLocalMap::locker.reserve(256);
-
-#if OC_CHILD_COPY_FPU_CONTROL_WORD
-  // Copy FPU control data (which includes floating point precision
-  // and rounding) from parent to child.
-  Oc_FpuControlData fpu_control_data = othread->fpu_control_data;
-  fpu_control_data.WriteData();
-#ifndef NDEBUG
-  {
-    Oc_AutoBuf ab;
-    Oc_FpuControlData fpu_data;
-    fpu_data.ReadData();
-    fpu_data.GetDataString(ab);
-    Oxs_ThreadPrintf(stderr,"_Oxs_Thread_threadmain thread %d "
-                     "FPU control data:%s\n",thread_number,ab.GetStr());
-  }
-#endif // NDEBUG
-#endif // OC_CHILD_COPY_FPU_CONTROL_WORD
-
-#if OC_USE_NUMA
-  {
-    Oc_AutoBuf runmask;
-    Oc_NumaGetRunMask(runmask);
-    Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
-                     thread_number,runmask.GetStr());
-  }
-#endif
-
-#if _OXS_THREAD_MAKE_CHILD_INTERPS
-  Tcl_Interp *thread_interp = Tcl_CreateInterp();
-#endif
 
   // Notify parent Oxs_Thread that we are ready and waiting.  Note
   // that we are already holding a lock on the start mutex.
@@ -403,6 +395,7 @@ void _Oxs_Thread_threadmain(Oxs_Thread* othread)
 #if _OXS_THREAD_MAKE_CHILD_INTERPS
   Tcl_DeleteInterp(thread_interp);
 #endif
+  Tcl_FinalizeThread();  // Memory clean-up
 #undef ERRLOCATION
 }
 
@@ -581,11 +574,14 @@ void Oxs_ThreadTree::Launch(Oxs_ThreadRunObj& runobj,void* data)
   }
   if(size_t(free_thread)==threads.size()) {
     // All threads in use; create a new thread.
-    // Note: The thread_number is one larger than the index into
-    // the "threads" vector, because thread_number 0 is reserved
-    // for the main (parent) thread, which is not referenced in
-    // the "threads" vector.  (The "threads" vector only holds
-    // child threads.)
+    // Note 1: The thread_number is one larger than the index into the
+    //         "threads" vector, because thread_number 0 is reserved for
+    //         the main (parent) thread, which is not referenced in the
+    //         "threads" vector.  (The "threads" vector only holds child
+    //         threads.)
+    // Note 2: The Oxs_Thread constructor doesn't return before
+    //         _Oxs_Thread_threadmain for the thread has completed
+    //         initialization and signaled ready.
     threads.push_back(new Oxs_Thread(free_thread+1));
   }
   ++threads_unjoined;
@@ -686,27 +682,55 @@ void Oxs_ThreadTree::InitThreads(int import_threadcount)
 
   // If current number of threads is smaller than requested,
   // then create new threads to match.
-#if OC_USE_NUMA
-  if(threads.size()==0) { // Initial initialize
-    // Print node mask for master thread
-    Oc_AutoBuf runmask;
-    Oc_NumaGetRunMask(runmask);
-    Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
-                     0,runmask.GetStr());
-  }
-#endif
-
   int it;
   for(it=static_cast<int>(threads.size());it<import_threadcount-1;++it) {
-    // Note: The thread_number is one larger than the index into
-    // the "threads" vector, because thread_number 0 is reserved
-    // for the main (parent) thread, which is not referenced in
-    // the "threads" vector.  (The "threads" vector only holds
-    // child threads.)
+    // Note 1: The thread_number is one larger than the index into the
+    //         "threads" vector, because thread_number 0 is reserved for
+    //         the main (parent) thread, which is not referenced in the
+    //         "threads" vector.  (The "threads" vector only holds child
+    //         threads.)
+    // Note 2: The Oxs_Thread constructor doesn't return before
+    //         _Oxs_Thread_threadmain for the thread has completed
+    //         initialization and signaled ready.
     threads.push_back(new Oxs_Thread(it+1));
   }
   multi_level_thread_count = import_threadcount - 1;
 
+#if OC_USE_NUMA
+  {
+    // Print thread -> numa node mapping
+    std::vector<int> imask0;
+    String runmask0;
+    Oc_NumaGetRunMask(imask0);
+    Oc_NumaNodemaskBinaryStringRep(imask0,runmask0);
+# ifndef NDEBUG
+    Oxs_ThreadPrintf(stderr,"Thread %2d nodemask: %s\n",
+                     0,runmask0.c_str());
+# endif // NDEBUG
+
+    std::map< String, std::vector<int> > nodemap;
+    nodemap[runmask0].push_back(0);
+    for(size_t i=0;i<threads.size();++i) {
+      nodemap[threads[i]->numa_run_mask].push_back(i+1);
+    }
+    Oc_Report::Log << "\n" << Oc_LogSupport::GetLogMark()
+                   << "\nnodemask : threads ---\n";
+    const int thdwidth = static_cast<int>(floor(log10(threads.size()+1)))+1;
+    for (const auto& kv : nodemap) {
+      if(kv.first.length()==0) {
+        Oc_Report::Log << " (none)  :";
+      } else {
+        Oc_Report::Log << std::setw(6) << kv.first << "   :";
+      }
+      for(auto i : kv.second) {
+        Oc_Report::Log << " " << std::setw(thdwidth) << i;
+      }
+      Oc_Report::Log << "\n";
+    }
+    Oc_Report::Log << std::flush;
+  }
+#endif
+  
   // Clear all launch lists
   root_launch_threads.clear();
   for(it=0;it<import_threadcount-1;++it) {
@@ -1165,6 +1189,12 @@ void _Oxs_ThreadBush_main(Oxs_ThreadBush::TwigBundle&& bundle)
   thread_control.cond.notify_one();
   // Note: When the lock is removed the bundle ptr may go invalid, so it
   // necessary to notify before releasing the lock.
+
+#if _OXS_THREAD_MAKE_CHILD_INTERPS
+  Tcl_DeleteInterp(thread_interp);
+#endif
+  Tcl_FinalizeThread();  // Memory clean-up; only needed if calls were
+                         // made into the Tcl C-library.
 }
 
 void Oxs_ThreadBush::RunAllThreads(Oxs_ThreadTwig* twig)
@@ -1261,6 +1291,7 @@ void _Oxs_ThreadThrowaway_main(Oxs_ThreadThrowaway* obj)
 #if _OXS_THREAD_MAKE_CHILD_INTERPS
   Tcl_DeleteInterp(thread_interp);
 #endif
+  Tcl_FinalizeThread();  // Memory clean-up
 }
 
 void Oxs_ThreadThrowaway::Launch()

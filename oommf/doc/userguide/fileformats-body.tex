@@ -252,7 +252,7 @@ where
          Shape is a truncated pyramid, with ramp transition base
          width (overhang) specified in meters.
       \item {\bf Mask filename}\index{file!mask}\index{file!bitmap}%
-         \label{html:mifvariablethickness}\\
+         \label{HTMLmifvariablethickness}\\
          Shape and thickness are determined by a bitmap file, the name
          of which is specified as the second parameter.  The overall
          size of the simulation is still determined by Part Width and
@@ -670,13 +670,13 @@ unknown or untrusted source.
 
 After the first line, there is considerable flexibility in the layout of
 the file.  Generally near the top of the file one places any
-\htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
-\htmlonlyref{\cd{Parameter}}{html:mif2parameter}, and
-\htmlonlyref{\cd{RandomSeed}}{html:mif2randomseed} statements, as
+\ptlink{\cd{OOMMFRootDir}}{PTmif2oommfrootdir},
+\ptlink{\cd{Parameter}}{PTmif2parameter}, and
+\ptlink{\cd{RandomSeed}}{PTmif2randomseed} statements, as
 desired.
 
 This is followed by the major content of the file, the various
-\htmlonlyref{\cd{Specify}}{html:specifyCmd} blocks, which initialize
+\ptlink{\cd{Specify}}{PTspecifyCmd} blocks, which initialize
 \hyperrefhtml{\cd{Oxs\_Ext} objects}{\cd{Oxs\_Ext} objects
 (Sec.~}{, page~\pageref{sec:oxsext})}{sec:oxsext}:
 \begin{itemize}
@@ -736,8 +736,8 @@ magnetization \cd{Ms} and initial magnetization configuration \cd{m0}
 are declared inside the driver \cd{Specify} block as well.
 
 The pre-specified outputs, indicated by zero or more
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
-\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands, are
+\ptlink{\cd{Destination}}{PTdestinationCmd} and
+\ptlink{\cd{Schedule}}{PTscheduleCmd} commands, are
 conventionally placed after the \cd{Specify} blocks.  Output selection
 can also be modified at runtime using the
 \hyperrefhtml{\app{Oxsii}}{\app{Oxsii} (Sec.~}{,
@@ -767,23 +767,24 @@ of the Oxs documentation.
 In addition to the standard \Tcl\ commands (modulo the safe \Tcl\
 restrictions outlined above), a number of additional commands are
 available in \MIF~2.1 files:
-\htmlonlyref{\cd{Specify}}{html:specifyCmd},
-\htmlonlyref{\cd{ClearSpec}}{html:mif2ClearSpec},
-\htmlonlyref{\cd{DateSort}}{html:mif2datesort},
-\htmlonlyref{\cd{Destination}}{html:destinationCmd},
-\htmlonlyref{\cd{GetStateData}}{html:GetStateData},
-\htmlonlyref{\cd{Ignore}}{html:mif2Ignore},
-\htmlonlyref{\cd{OOMMFRootDir}}{html:mif2oommfrootdir},
-\htmlonlyref{\cd{Parameter}}{html:mif2parameter},
-\htmlonlyref{\cd{Random}}{html:mif2Random},\NONHTMLoutput{\linebreak}
-\htmlonlyref{\cd{RandomSeed}}{html:mif2randomseed},
-\htmlonlyref{\cd{Report}}{html:MifReport},
-\htmlonlyref{\cd{ReadFile}}{html:ReadFile},
-\htmlonlyref{\cd{RGlob}}{html:mif2rglob},
-and \htmlonlyref{\cd{Schedule}}{html:scheduleCmd}.
+\ptlink{\cd{Specify}}{PTspecifyCmd},
+\ptlink{\cd{ClearSpec}}{PTmif2ClearSpec},
+\ptlink{\cd{DateSort}}{PTmif2datesort},
+\ptlink{\cd{Destination}}{PTdestinationCmd},
+\ptlink{\cd{GetStateData}}{PTGetStateData},
+\ptlink{\cd{Ignore}}{PTmif2Ignore},
+\ptlink{\cd{OOMMFRootDir}}{PTmif2oommfrootdir},
+\ptlink{\cd{Parameter}}{PTmif2parameter},
+\ptlink{\cd{Random}}{PTmif2Random},\NONHTMLoutput{\linebreak}
+\ptlink{\cd{NormalRV}}{PTmif2NormalRV},
+\ptlink{\cd{RandomSeed}}{PTmif2randomseed},
+\ptlink{\cd{Report}}{PTMifReport},
+\ptlink{\cd{ReadFile}}{PTReadFile},
+\ptlink{\cd{RGlob}}{PTmif2rglob},
+and \ptlink{\cd{Schedule}}{PTscheduleCmd}.
 
 \begin{description}
-\item[Specify\label{html:specifyCmd}]\index{Specify~block~(MIF)}
+\item[Specify]\pttarget{PTspecifyCmd}\index{Specify~block~(MIF)}
 An Oxs simulation is built as a collection of \cd{Oxs\_Ext} (Oxs
 Extension) objects.  In general, \cd{Oxs\_Ext} objects are specified and
 initialized in the input \MIF~2.1 file using the \cd{Specify} command,
@@ -842,7 +843,7 @@ conventions are described in\html{ the}
 \hyperrefhtml{Specify Conventions}{Specify Conventions,
 Sec.~}{,}{sec:specConventions}\html{ section} below.
 
-\item[ClearSpec\label{html:mif2ClearSpec}]
+\item[ClearSpec]\pttarget{PTmif2ClearSpec}
 This command is used to disable one or all preceding \cd{Specify}
 commands.  In particular, one could use \cd{ClearSpec} to nullify a
 Specify block from a base \MIF\ file that was imported using the
@@ -866,7 +867,7 @@ where the parameter is the full name (here \cd{Oxs\_EulerEvolve:foo}) of
 the Specify block to remove.  If no parameter is given, then all
 preceding Specify blocks are removed.
 
-\item[DateSort\label{html:mif2datesort}]
+\item[DateSort]\pttarget{PTmif2datesort}
 Given a list of filenames, returns the list sorted by modification
 time, with oldest first. The files must all exist. Sample usage is
 \begin{rawhtml}
@@ -887,7 +888,7 @@ set last_omf [lindex [DateSort [RGlob *omf]] end]
 Here \cd{last\_omf} will be set to the \fn{*.omf} file in the current
 directory with the most recent modification time.
 
-\item[Destination\label{html:destinationCmd}]
+\item[Destination]\pttarget{PTdestinationCmd}
 \index{Destination~command~(MIF)}\index{nicknames}
 The format for the \cd{Destination} command is
 \begin{rawhtml}
@@ -897,7 +898,7 @@ The format for the \cd{Destination} command is
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-Destination <desttag> <appname> [new]
+Destination <desttag> <appname> [new] [-basename rootname]
 \end{verbatim}
 %begin{latexonly}
 \end{quote}
@@ -907,7 +908,7 @@ Destination <desttag> <appname> [new]
 \end{rawhtml}
 This command associates a symbolic \textit{desttag} with an
 application.  The tags are used by the
-\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} command\latex{ (see below)}
+\ptlink{\cd{Schedule}}{PTscheduleCmd} command\latex{ (see below)}
 to refer to specific application instances.  The \textit{appname} may
 either be an \OOMMF\ application name, e.g., mmDisp, or else a
 specific application instance in the form application:nickname, such
@@ -947,15 +948,21 @@ reference the same running application by nickname.  For example,
 several sequential solver runs could send stage output to the same
 \app{mmGraph} widget, to build up overlapping hysteresis loops.
 
-The last parameter to the Destination command is the optional
-\cd{new} keyword.  If present, then a fresh copy of the requested
-application is always launched for association with the given tag.  The
-\cd{new} option can be safely used with any generic application
-reference, but caution must be taken when using this option with
-specific instance references, because an error is raised if the
-requested nickname is already in use.
+If the optional \cd{new} keyword is included in the \cd{Destination}
+command, then a fresh copy of the requested application is always
+launched for association with the given tag.  The \cd{new} option can be
+safely used with any generic application reference, but caution must be
+taken when using this option with specific instance references, because
+an error is raised if the requested nickname is already in use.
 
-\item[GetStateData\label{html:GetStateData}]
+The \cd{-basename} option overrides the current output file basename
+setting with the value given by \textit{rootname}. (Cf.\
+the \cd{basename} option to the
+\hyperrefhtml{\MIF~2.2 \cd{SetOptions}}{\MIF~2.2 \cd{SetOptions}
+(Sec.~}{)}{sec:mif22ExtensionCommands} command.)
+
+
+\item[GetStateData]\pttarget{PTGetStateData}
 The \cd{GetStateData} command retrieves data attached to a specific
 magnetization state:
 \begin{rawhtml}
@@ -1044,7 +1051,7 @@ and \cd{max\_absMs} is in A/m.
 
 Additional key-value pairs may be attached to a state by \cd{Oxs\_Ext}
 objects.  For example,
-\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{html:RungeKuttaEvolve}
+\htmlonlyref{\cd{Oxs\_RungeKuttaEvolve}}{HTMLRungeKuttaEvolve}
 adds the average magnetization $x$-component under the key name
 \cd{Oxs\_RungeKuttaEvolve:{\oab}instance\_name{\cab}:Mx}.
 (Here \cd{{\oab}instance\_name{\cab}} is the instance name of the
@@ -1112,13 +1119,13 @@ For example use of \cd{GetStateData}, see the sample files
 directory \fn{oommf/app/oxs/examples/}.
 
 
-\item[Ignore\label{html:mif2Ignore}]
+\item[Ignore]\pttarget{PTmif2Ignore}
 The \cd{Ignore} command takes an arbitrary number of arguments, which
 are thrown away without being interpreted.  The primary use of
 \cd{Ignore} is to temporarily ``comment out'' (i.e., disable) Specify
 blocks.
 
-\item[OOMMFRootDir\label{html:mif2oommfrootdir}]
+\item[OOMMFRootDir]\pttarget{PTmif2oommfrootdir}
 This command takes no arguments, and returns the full directory path of
 the \OOMMF\ root directory.  This is useful in conjunction with the
 \cd{ReadFile} command for locating files within the \OOMMF\ hierarchy,
@@ -1143,7 +1150,7 @@ set outfile [OOMMFRootDir]/data/myoutput
 In this context one should always use \Tcl\ path conventions.  In
 particular, use forward slashes, ``\fs'', to separate directories.
 
-\item[Parameter\label{html:mif2parameter}]
+\item[Parameter]\pttarget{PTmif2parameter}
 The Oxs interfaces
 (\hyperrefhtml{Oxsii}{Oxsii, Sec.~}{}{sec:oxsii} and
 \hyperrefhtml{Boxsi}{Boxsi, Sec.~}{}{sec:boxsi})
@@ -1162,26 +1169,31 @@ command line does not have a corresponding \cd{Parameter} command in the
 \hyperrefhtml{variable substitution}{variable substitution
 (Sec.~}{)}{sec:varSubst} below.
 
-\item[Random\label{html:mif2Random}]
+\item[Random]\pttarget{PTmif2Random}
 Returns a pseudo-random number in the interval $[0,1]$, using a
 C-library random number generator.  This random number generator is
 specified by the \cd{OMF\_RANDOM} macro in the \fn{ocport.h} file found in
 the system-specific subdirectory of \fn{oommf/pkg/oc/}.  The standard
 \Tcl\ \cd{expr rand()} command is also available.
 
-\item[RandomSeed\label{html:mif2randomseed}]
-Initializes both the \Tcl\ and the C-library random number generators.
-If no parameter is given, then a seed is drawn from the system clock.
-Otherwise, one integer parameter may be specified to be used as the
-seed.
+\item[NormalRV]\pttarget{PTmif2NormalRV}
+Returns a pseudo-random number with standard normal distribution (mean
+0, variance 1) using the {\Cplusplus}11 \cd{std::normal\_distribution}
+library.
 
-\item[Report\label{html:MifReport}]
+\item[RandomSeed]\pttarget{PTmif2randomseed}
+Initializes both the \Tcl\ and the C/{\Cplusplus}-library random number
+generators. If no parameter is given, then a seed is drawn from the
+system clock. Otherwise, one integer parameter may be specified to be
+used as the seed.
+
+\item[Report]\pttarget{PTMifReport}
 Intended primarily as a \MIF\ debugging aid, \cd{Report} takes one
 string argument that is printed to the solver interface console and the
 Oxs log file.  It is essentially a replacement for the standard \Tcl\
 \cd{puts} command, which is not available in safe interpreters.
 
-\item[ReadFile\label{html:ReadFile}]
+\item[ReadFile]\pttarget{PTReadFile}
 The \Tcl\ \cd{read} command is absent from safe interpreters.  The
 \cd{ReadFile} command is introduced as a replacement available in
 ``custom'' and ``unsafe'' interpreters.  \cd{ReadFile} takes two
@@ -1290,7 +1302,7 @@ option is set to \cd{safe} in the \fn{options.tcl}
 \hyperrefhtml{customization file}{customization file
 (Sec.~}{)}{sec:install.custom}.
 
-\item[RGlob\label{html:mif2rglob}]
+\item[RGlob]\pttarget{PTmif2rglob}
 This command is modeled on the \Tcl\ \cd{glob} command (q.v.), but
 is restricted to the current working directory, that is, the
 directory holding the \MIF\ file.  The syntax is
@@ -1355,7 +1367,7 @@ option is set to \cd{safe} in the \fn{options.tcl}
 \cd{unsafe}, then the standard (and more capable) \Tcl\
 \cd{glob} command will be available.
 
-\item[Schedule\label{html:scheduleCmd}]\index{Schedule~command~(MIF)}
+\item[Schedule]\pttarget{PTscheduleCmd}\index{Schedule~command~(MIF)}
 The \cd{Schedule} command is used to setup outputs from the \MIF\ file.
 This functionality is critical for solvers running in batch mode, but is
 also useful for setting up default connections in interactive mode.
@@ -1392,7 +1404,7 @@ the DataTable output which is always present, the
 
 The second parameter to the \cd{Schedule} command is a destination tag.
 This is a tag associated to a running application by a previous
-\htmlonlyref{\cd{Destination} command}{html:destinationCmd}\latex{ (see
+\ptlink{\cd{Destination} command}{PTdestinationCmd}\latex{ (see
 above)}.  The symbolic destination tag replaces the application:OID
 nomenclature used in the graphical interface, because in general it is
 not possible to know the \OOMMF\ ID for application instances at the
@@ -1445,7 +1457,7 @@ every third stage.  Note that double quotes enclose the
 \label{sec:specConventions}\index{Specify~conventions~(MIF)}
 The Specify blocks in the input \MIF\ file determine the collection
 of \cd{Oxs\_Ext} objects defining the Oxs simulation.  As explained
-above, the \htmlonlyref{\cd{Specify}}{html:specifyCmd} command takes two
+above, the \ptlink{\cd{Specify}}{PTspecifyCmd} command takes two
 arguments, the name of the \cd{Oxs\_Ext} object to create, and an
 initialization string.  The format of the initialization string can
 be arbitrary, as determined by the author of the \cd{Oxs\_Ext} class.
@@ -1457,9 +1469,43 @@ Details on the standard \cd{Oxs\_Ext} classes included with \OOMMF\ can
 be found in the
 \hyperrefhtml{Oxs section}{Oxs documentation (Ch.~}{)}{sec:oxs}\html{
 of this document}.
+{\notpsonly{
+%begin{latexonly}
+\newlength{\ffsccolwidth}
+\iflatexml
+% LaTeXML 0.8.6 does not set tab stops properly (tabbing environment),
+% and \settowidth also doesn't work right. So instead estimate the max
+% first column width in em and set \ffsccolwidth directly. This may be
+% inaccurate depending on the display font, but it seems the best
+% workaround at this time.
+\setlength{\ffsccolwidth}{22em}
+%\settowidth{\ffsccolwidth}{\texttt{8}}
+%\setlength{\ffsccolwidth}{28\ffsccolwidth}
+\else
+\settowidth{\ffsccolwidth}{\tt Initialization string format}
+\addtolength{\ffsccolwidth}{3em}
+\fi
+\setlength{\parskip}{0pt}
+\setlength{\topsep}{0pt}
+\setlength{\itemsep}{\baselineskip}
+% end{latexonly}
+% LaTeXML 0.8.6 stumbles on interrow spacing on the following tabular
+% environment if it is wrapped inside a quotation environment. So
+% instead just offset with a blank line and a 0-width rule.
+\newline\\\rule{\parindent}{0pt}
+  {\tt\begin{tabular}{@{}p{\ffsccolwidth}@{}l@{}}
+  \ptlink{Initialization string format}{PTffSIS} &
+  \ptlink{Attributes}{PTffSA} \\
+  \ptlink{Comments}{PTffSC} &
+  \ptlink{Grouped lists}{PTffSGL} \\
+  \ptlink{Oxs\_Ext referencing}{PTffSOER} &
+  \ptlink{User defined support procedures}{PTffSSP} \\
+  \ptlink{User defined scalar outputs}{PTffSUSO} \\
+  \end{tabular}}
+}}
 
-\starsssechead{Initialization string format}%
-\label{par:specInitString}\index{Specify~initialization~string~(MIF)}
+\starsssechead{Initialization string format\pttarget{PTffSIS}}%
+\label{par:specInitString}\index{Specify~initialization~string~(MIF)}%
 Consider again the simple Specify block presented above:
 \begin{rawhtml}
 <BLOCKQUOTE>
@@ -1528,8 +1574,154 @@ and ``\ldots'' mark the location of the \cd{Oxs\_BoxAtlas}
 initialization string, which is omitted because it is not pertinent to
 the present discussion.)
 
-\starsssechead{\cd{Oxs\_Ext} referencing}%
-\label{par:oxsExtReferencing}\index{Oxs\_Ext~referencing~(MIF)}
+\starsssechead{Attributes\pttarget{PTffSA}}%
+\label{par:specifyAttributes}\index{Specify~attributes~(MIF)}
+Sometimes it is convenient to define label + value pairs outside a
+particular Specify block, and then import them using the
+``attributes'' label.  For example:
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_LabelValue:probdata {
+  alpha 0.5
+  start_dm 0.01
+}
+
+Specify Oxs_EulerEvolve {
+  attributes :probdata
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
+The \cd{Oxs\_LabelValue} object is an \cd{Oxs\_Ext} class that does
+nothing except hold label + value pairs.  The ``attributes'' label acts as an
+include statement, causing the label + value pairs contained in the
+specified \cd{Oxs\_LabelValue} object to be embedded into the enclosing
+\cd{Specify} initialization string.  This technique is most useful if the
+label + value pairs in the \cd{Oxs\_LabelValue} object are used in
+multiple Specify blocks, either inside the same \MIF\ file, or
+across several \MIF\ files into which the \cd{Oxs\_LabelValue} block is
+imported using the \cd{ReadFile} \MIF\ extension command.
+
+\starsssechead{Comments\pttarget{PTffSC}}%
+\label{par:specifyComments}\index{Specify~comments~(MIF)}
+The standard \Tcl\ commenting mechanism treats all text running from an
+initial \lb\ symbol through to the end of a line as a comment.  You may
+note in the above examples that newlines are treated the same as
+other whitespace inside the curly braces delimiting the \cd{Specify}
+initialization string.  Because of this and additional reasons, \Tcl\
+comments cannot be used inside Specify blocks.  Instead, by
+convention any label + value pair where label is ``comment'' is treated
+as a comment and thrown away.  For example:
+\begin{rawhtml}
+<BLOCKQUOTE>
+\end{rawhtml}
+%begin{latexonly}
+\begin{quote}
+%end{latexonly}
+\begin{verbatim}
+Specify Oxs_UniaxialAnisotropy {
+  axis { 1 0 0 }
+  comment {K1  4500e3}
+  K1 530e3
+  comment { 530e3 J/m^3 is nominal for Co }
+}
+\end{verbatim}
+%begin{latexonly}
+\end{quote}
+%end{latexonly}
+\begin{rawhtml}
+</BLOCKQUOTE>
+\end{rawhtml}
+Pay attention to the difference between ``comment'' used here as the
+label portion of a label + value pair, and the \MIF\ extension command
+``Ignore'' used outside Specify blocks.  In particular, \cd{Ignore}
+takes an arbitrary number of arguments, but the value element associated
+with a comment label must be grouped as a single element, just as any
+other value element.
+
+\starsssechead{Grouped lists\pttarget{PTffSGL}}%
+\label{par:groupedLists}\index{Specify~grouped~lists~(MIF)}
+As noted earlier, sometimes the value portion of a label + value pair
+will be a list.  Some Oxs objects support \textit{grouped lists}, which
+provide a type of run-length encoding for lists.  Consider the sample
+list
+\begin{verbatim}
+   { 1.1  1.2  1.2  1.2  1.2  1.3 }
+\end{verbatim}
+In a grouped list the middle run of 1.2's may be represented as a
+sublist with a repeat count of 4, like so
+\begin{verbatim}
+   { 1.1  { 1.2  4 } 1.3 :expand: }
+\end{verbatim}
+Here the \cd{:expand:} keyword, when appearing as the last element of
+the top level list, enables the group expansion mechanism.  Any
+preceding element, such as \cd{\ocb\ 1.2 4 \ccb}, that 1) is a proper
+sublist, and 2) has a positive integer as the last element, is treated
+as a grouped sublist with repeat count given by the last element.  No
+element of the top-level list is ever interpreted as a repeat count.
+For example, the short form of the list
+\begin{verbatim}
+   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
+\end{verbatim}
+is
+\begin{verbatim}
+   { { 1e-9 6 } :expand: }
+\end{verbatim}
+Note the additional level of brace grouping.  Grouped lists may also be
+nested, as in this example
+\begin{verbatim}
+   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
+\end{verbatim}
+which is equivalent to
+\begin{verbatim}
+   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
+\end{verbatim}
+There are some difficulties with this mechanism when the list components
+are strings, such as filenames, that may contain embedded spaces.  For
+example, consider the list
+\begin{verbatim}
+   { "file 3" "file 3" "5 file" }
+\end{verbatim}
+If we tried to write this as
+\begin{verbatim}
+   { { "file 3" 2 } "5 file" :expand: }
+\end{verbatim}
+we would find that, because of the nested grouping rules, this grouped
+list gets expanded into
+\begin{verbatim}
+   { file file file file file file "5 file" }
+\end{verbatim}
+Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
+Following normal \Tcl\ rules, the double quotes are treated as equivalents
+to braces for grouping purposes.  However, the keyword \cd{:noexpand:}
+may be used to disable further expansion, like so
+\begin{verbatim}
+   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
+\end{verbatim}
+The \cd{:noexpand:} keyword placed at the end of a list disables all
+group expansion in that list.  Although it is an unlikely example,
+if one had a flat, i.e., non-grouped list with last element ``:expand:'',
+then one would have to disable the grouping mechanism that would
+otherwise be invoked by appending \cd{:noexpand:} to the list.  In
+flat lists generated by program code, it is recommended to append
+\cd{:noexpand:} just to be certain that the list is not expanded.
+
+As a matter of nomenclature, standard (i.e., flat) lists and single
+values are also considered grouped lists, albeit trivial ones.  Any Oxs
+object that accepts grouped lists in its Specify block should explicitly
+state so in its documentation.
+
+\starsssechead{\cd{Oxs\_Ext} referencing\pttarget{PTffSOER}}%
+\label{par:oxsExtReferencing}\index{Specify~Oxs\_Ext~referencing~(MIF)}
 The ``atlas'' value in the mesh Specify block of the preceding example
 refers to an earlier \cd{Oxs\_Ext} object, ``Oxs\_BoxAtlas:myatlas''.
 It frequently occurs that one \cd{Oxs\_Ext} object needs access to
@@ -1675,154 +1867,8 @@ declared via top-level Specify blocks.  For this reason
 \cd{Oxs\_Energy} terms are invariably created via top-level Specify
 blocks, and not as embedded objects.
 
-\starsssechead{Grouped lists}%
-\label{par:groupedLists}\index{grouped~lists~(MIF)}
-As noted earlier, sometimes the value portion of a label + value pair
-will be a list.  Some Oxs objects support \textit{grouped lists}, which
-provide a type of run-length encoding for lists.  Consider the sample
-list
-\begin{verbatim}
-   { 1.1  1.2  1.2  1.2  1.2  1.3 }
-\end{verbatim}
-In a grouped list the middle run of 1.2's may be represented as a
-sublist with a repeat count of 4, like so
-\begin{verbatim}
-   { 1.1  { 1.2  4 } 1.3 :expand: }
-\end{verbatim}
-Here the \cd{:expand:} keyword, when appearing as the last element of
-the top level list, enables the group expansion mechanism.  Any
-preceding element, such as \cd{\ocb\ 1.2 4 \ccb}, that 1) is a proper
-sublist, and 2) has a positive integer as the last element, is treated
-as a grouped sublist with repeat count given by the last element.  No
-element of the top-level list is ever interpreted as a repeat count.
-For example, the short form of the list
-\begin{verbatim}
-   { 1e-9 1e-9 1e-9 1e-9 1e-9 1e-9 }
-\end{verbatim}
-is
-\begin{verbatim}
-   { { 1e-9 6 } :expand: }
-\end{verbatim}
-Note the additional level of brace grouping.  Grouped lists may also be
-nested, as in this example
-\begin{verbatim}
-   { 5.0 { 5.1 { 5.2 3 } 5.3 2 } :expand: }
-\end{verbatim}
-which is equivalent to
-\begin{verbatim}
-   { 5.0  5.1  5.2  5.2  5.2  5.3  5.1  5.2  5.2  5.2  5.3 }
-\end{verbatim}
-There are some difficulties with this mechanism when the list components
-are strings, such as filenames, that may contain embedded spaces.  For
-example, consider the list
-\begin{verbatim}
-   { "file 3" "file 3" "5 file" }
-\end{verbatim}
-If we tried to write this as
-\begin{verbatim}
-   { { "file 3" 2 } "5 file" :expand: }
-\end{verbatim}
-we would find that, because of the nested grouping rules, this grouped
-list gets expanded into
-\begin{verbatim}
-   { file file file file file file "5 file" }
-\end{verbatim}
-Here the trailing ``3'' in ``file 3'' is interpreted as a repeat count.
-Following normal \Tcl\ rules, the double quotes are treated as equivalents
-to braces for grouping purposes.  However, the keyword \cd{:noexpand:}
-may be used to disable further expansion, like so
-\begin{verbatim}
-   { { {"file 3" :noexpand:} 2 } "5 file" :expand: }
-\end{verbatim}
-The \cd{:noexpand:} keyword placed at the end of a list disables all
-group expansion in that list.  Although it is an unlikely example,
-if one had a flat, i.e., non-grouped list with last element ``:expand:'',
-then one would have to disable the grouping mechanism that would
-otherwise be invoked by appending \cd{:noexpand:} to the list.  In
-flat lists generated by program code, it is recommended to append
-\cd{:noexpand:} just to be certain that the list is not expanded.
-
-As a matter of nomenclature, standard (i.e., flat) lists and single
-values are also considered grouped lists, albeit trivial ones.  Any Oxs
-object that accepts grouped lists in its Specify block should explicitly
-state so in its documentation.
-
-\starsssechead{Comments}%
-\label{par:specifyComments}\index{Specify~comments~(MIF)}
-The standard \Tcl\ commenting mechanism treats all text running from an
-initial \lb\ symbol through to the end of a line as a comment.  You may
-note in the above examples that newlines are treated the same as
-other whitespace inside the curly braces delimiting the \cd{Specify}
-initialization string.  Because of this and additional reasons, \Tcl\
-comments cannot be used inside Specify blocks.  Instead, by
-convention any label + value pair where label is ``comment'' is treated
-as a comment and thrown away.  For example:
-\begin{rawhtml}
-<BLOCKQUOTE>
-\end{rawhtml}
-%begin{latexonly}
-\begin{quote}
-%end{latexonly}
-\begin{verbatim}
-Specify Oxs_UniaxialAnisotropy {
-  axis { 1 0 0 }
-  comment {K1  4500e3}
-  K1 530e3
-  comment { 530e3 J/m^3 is nominal for Co }
-}
-\end{verbatim}
-%begin{latexonly}
-\end{quote}
-%end{latexonly}
-\begin{rawhtml}
-</BLOCKQUOTE>
-\end{rawhtml}
-Pay attention to the difference between ``comment'' used here as the
-label portion of a label + value pair, and the \MIF\ extension command
-``Ignore'' used outside Specify blocks.  In particular, \cd{Ignore}
-takes an arbitrary number of arguments, but the value element associated
-with a comment label must be grouped as a single element, just as any
-other value element.
-
-\starsssechead{Attributes}%
-\label{par:specifyAttributes}\index{Specify~attributes~(MIF)}
-Sometimes it is convenient to define label + value pairs outside a
-particular Specify block, and then import them using the
-``attributes'' label.  For example:
-\begin{rawhtml}
-<BLOCKQUOTE>
-\end{rawhtml}
-%begin{latexonly}
-\begin{quote}
-%end{latexonly}
-\begin{verbatim}
-Specify Oxs_LabelValue:probdata {
-  alpha 0.5
-  start_dm 0.01
-}
-
-Specify Oxs_EulerEvolve {
-  attributes :probdata
-}
-\end{verbatim}
-%begin{latexonly}
-\end{quote}
-%end{latexonly}
-\begin{rawhtml}
-</BLOCKQUOTE>
-\end{rawhtml}
-The \cd{Oxs\_LabelValue} object is an \cd{Oxs\_Ext} class that does
-nothing except hold label + value pairs.  The ``attributes'' label acts as an
-include statement, causing the label + value pairs contained in the
-specified \cd{Oxs\_LabelValue} object to be embedded into the enclosing
-\cd{Specify} initialization string.  This technique is most useful if the
-label + value pairs in the \cd{Oxs\_LabelValue} object are used in
-multiple Specify blocks, either inside the same \MIF\ file, or
-across several \MIF\ files into which the \cd{Oxs\_LabelValue} block is
-imported using the \cd{ReadFile} \MIF\ extension command.
-
-\starsssechead{User defined support procedures}%
-\label{par:supportProcs}\index{Specify~support~procs~(MIF)}
+\starsssechead{User defined support procedures\pttarget{PTffSSP}}%
+\label{par:supportProcs}\index{Specify~user~defined~support~procs~(MIF)}
 A number of \cd{Oxs\_Ext} classes utilize user-defined \Tcl\
 procedures (procs) to provide extended runtime functionality.  The
 most common examples are the various field initialization script
@@ -2010,14 +2056,14 @@ converted into an index into the list, and the proc return value is
 either 0 or 8e5 depending on whether the corresponding point in the mask
 is 0 or 1.  This is essentially the same technique used in the
 \cd{ColorField} proc example presented in the
-\htmlonlyref{\cd{ReadFile}}{html:ReadFile} \MIF\ extension command
+\ptlink{\cd{ReadFile}}{PTReadFile} \MIF\ extension command
 documented above\latex{ (Sec.~\ref{sec:mif2ExtensionCommands})},
 except that there the data structure values are built from a separate
 image file rather than from data embedded inside the \MIF\ file.
 \index{file!mask|)}
 
-\starsssechead{User defined scalar outputs}%
-\label{par:userScalarOutputs}\index{Specify~user~scalar~outputs~(MIF)}
+\starsssechead{User defined scalar outputs\pttarget{PTffSUSO}}%
+\label{par:userScalarOutputs}\index{Specify~user~defined~scalar~outputs~(MIF)}
 \OOMMF\ \cd{Oxs\_Ext} objects support a general method to allow users to
 define scalar (DataTable) outputs derived from vector field outputs.
 These scalar outputs are defined by ``\cd{user\_output}'' sub-blocks inside
@@ -2182,7 +2228,7 @@ One powerful consequence of the evaluation of \MIF~2.1 input files by
 the Oxs interfaces (\hyperrefhtml{Oxsii}{Oxsii,
 Sec.~}{}{sec:oxsii} and \hyperrefhtml{Boxsi}{Boxsi, Sec.~}{}{sec:boxsi})
 use the \cd{-parameter} command line option in conjunction with
-the \MIF\ \htmlonlyref{Parameter}{html:mif2parameter} command to
+the \MIF\ \ptlink{Parameter}{PTmif2parameter} command to
 set variables from the command line for use inside the \MIF\ input file.
 Variables in \Tcl\ are evaluated (i.e., value substituted)
 by prefixing the variable name with the symbol ``\$''.  For example, if
@@ -2418,8 +2464,8 @@ detailed below.
  and \cd{Oxs\_MinDriver} objects are no longer supported.  Instead,
  there is a new top-level extension command, \cd{SetOptions}, where
  these options are declared.  The \cd{SetOptions} block also
- supports new options for controlling output vector field mesh type
- (rectangular or irregular) and scalar field output format.
+ supports new options for controlling output formats, mesh types, and
+ filenames.
 \item In the \MIF~2.1 format, \MIF\ files are
  processed in a two pass mode.  During the first pass, \cd{Specify}
  commands simply store the contents of the \cd{Specify} blocks without
@@ -2450,87 +2496,157 @@ In addition to the commands available in
 \hyperrefhtml{\MIF~2.1 files}{\MIF~2.1 files (Sec.~}{)}{sec:mif2ExtensionCommands},
 \MIF~2.2 introduces the following new commands:
 %
-\htmlonlyref{\cd{GetMifFilename}}{html:mif2GetMifFilename},
-\htmlonlyref{\cd{GetMifParameters}}{html:mif2GetMifParameters},
-\htmlonlyref{\cd{GetOptions}}{html:mif2GetOptions},
-\htmlonlyref{\cd{SetOptions}}{html:mif2SetOptions},
-\htmlonlyref{\cd{EvalScalarField}}{html:mif2EvalScalarField},
-\htmlonlyref{\cd{EvalVectorField}}{html:mif2EvalVectorField},
-\htmlonlyref{\cd{GetAtlasRegions}}{html:mif2GetAtlasRegions},
-and \htmlonlyref{\cd{GetAtlasRegionByPosition}}{html:mif2GetAtlasRegionByPosition}.
+\ptlink{\cd{GetMifFilename}}{PTmif2GetMifFilename},
+\ptlink{\cd{GetMifParameters}}{PTmif2GetMifParameters},
+\ptlink{\cd{GetOptions}}{PTmif2GetOptions},
+\ptlink{\cd{SetOptions}}{PTmif2SetOptions},
+\ptlink{\cd{DefaultFieldFilename}}{PTmif2DefaultFieldFilename},
+\ptlink{\cd{EvalScalarField}}{PTmif2EvalScalarField},
+\ptlink{\cd{EvalVectorField}}{PTmif2EvalVectorField},
+\ptlink{\cd{GetAtlasRegions}}{PTmif2GetAtlasRegions},
+and\NONHTMLoutput{\linebreak}
+\ptlink{\cd{GetAtlasRegionByPosition}}{PTmif2GetAtlasRegionByPosition}.
 
 \begin{description}
-\item[GetMifFilename\label{html:mif2GetMifFilename}]\index{GetMifFilename~command~(MIF)}
+\item[GetMifFilename]\pttarget{PTmif2GetMifFilename}\index{GetMifFilename~command~(MIF)}
 The \cd{GetMifFilename} command returns the full (absolute) name of the
 \MIF\ file being read.  This command takes no parameters.
 
-\item[GetMifParameters\label{html:mif2GetMifParameters}]\index{GetMifParameters~command~(MIF)}
+\item[GetMifParameters]\pttarget{PTmif2GetMifParameters}\index{GetMifParameters~command~(MIF)}
 This command takes no parameters, and returns an even numbered list of
 ``Parameter'' label + value pairs as set on the command line or in the
 Load Problem dialog box.  If no parameters were specified, then the return
 will be an empty list.
 
-\item[GetOptions\label{html:mif2GetOptions}]
+\item[GetOptions]\pttarget{PTmif2GetOptions}
 The \cd{GetOptions} command takes no parameters.  It returns the
 accumulated contents of all preceding \cd{SetOptions} blocks, as an even
 numbered list of label + value pairs.
 
-\item[SetOptions\label{html:mif2SetOptions}]\index{SetOptions~command~(MIF)}
+\item[SetOptions]\pttarget{PTmif2SetOptions}\index{SetOptions~command~(MIF)}
 In \MIF~2.1 files, the output basename and output file formats are
 specified inside the driver's Specify block.  In \MIF~2.2 these
 specifications are moved to a separate \cd{SetOptions} block.  This
 block can be placed anywhere in the \MIF\ file, but is typically placed
 near the start of the file so that it affects all output
 initializations.  The \cd{SetOptions} command takes a single argument,
-which is a list of label + value pairs.  The default labels are:
+which is a list of label + value pairs.  The supported labels are:
 \begin{itemize}
 \item \cd{basename}
 \item \cd{scalar\_output\_format}
 \item \cd{scalar\_field\_output\_format}
 \item \cd{scalar\_field\_output\_meshtype}
+\item \cd{scalar\_field\_output\_filename\_script}
 \item \cd{vector\_field\_output\_format}
 \item \cd{vector\_field\_output\_meshtype}
+\item \cd{vector\_field\_output\_filename\_script}
 \end{itemize}
+Multiple \cd{SetOptions} blocks are allowed.  Values specified
+in one \cd{SetOption} block will be superseded if reset by later
+\cd{SetOption} blocks. Judicious placement of \cd{SetOptions} blocks
+allows formats and filenames to be varied across different outputs in
+one \MIF\ file.
+
 The \cd{basename} value is used as a prefix for output filename
 construction by the data output routines.  If \cd{basename} is not
-specified, then the default value is taken from the filename of the
-input MIF file.  The \cd{scalar\_output\_format} value is a C-style
-printf string specifying
-the output format for DataTable output.  This is
-optional, with default value ``\cd{\%.17g}''.  The values associated with
-\cd{scalar\_field\_output\_format} and
-\cd{vector\_field\_output\_format} should be two element lists
-that specify the style and precision for scalar and vector field
+specified, then the default value is the filename of the input MIF file
+minus its extension (\cd{.mif}).  The \cd{scalar\_output\_format} value
+is a C-style printf string specifying the output format for DataTable
+output.  This is optional, with default value ``\cd{\%.17g}''.  The
+\cd{scalar(vector)\_field\_output\_format} value
+should be a two element list that specifies the style and precision for
 output sent to \hyperrefhtml{\app{mmDisp}}{\app{mmDisp}
 (Ch.~}{)}{sec:mmdisp}\index{application!mmDisp} and
 \hyperrefhtml{\app{mmArchive}}{\app{mmArchive}
 (Ch.~}{)}{sec:mmarchive}\index{application!mmArchive}.  The first
-element in the list should be one of \cd{binary} or \cd{text}, specifying
-the output style.  If binary output is selected, then the second element
-specifying precision should be either 4 or 8, denoting component binary
-output length in bytes.  For text output, the
-second element should be a C-style printf string like that used by
-\cd{scalar\_output\_format}.  The default value for both
-\cd{scalar\_field\_output\_format} and
-\cd{vector\_field\_output\_format} is ``\cd{binary 8}''.
-For \cd{scalar\_field\_output\_meshtype} and
-\cd{vector\_field\_output\_meshtype} the values should be either
+element in the list should be one of \cd{binary} or \cd{text},
+specifying the output style.  If binary output is selected, then the
+second element specifying precision should be either 4 or 8, denoting
+component binary output length in bytes. For text output, the second
+element should be a C-style printf string like that used by
+\cd{scalar\_output\_format}.
+Be forewarned that for large field files text-style output may be many
+times slower that binary; if you require text format for
+post-processing, it may be better to save from
+\app{Oxsii}/\app{Boxsi} in binary format and convert afterwards to
+text using \hyperrefhtml{\app{avf2ovf}}{\app{avf2ovf}
+(Sec.~}{)}{sec:avf2ovf}\index{application!avf2ovf}.
+The default value for
+\cd{scalar(vector)\_field\_output\_format} is ``\cd{binary 8}''.
+For \cd{scalar(vector)\_field\_output\_meshtype} the value should be either
 ``rectangular'' (default) or ``irregular'', specifying the grid type for
-the corresponding field output files.
+the corresponding field output files. The
+``\cd{scalar(vector)\_field\_output\_filename\_script}''
+value is a \Tcl\ script used to construct filenames for the respective
+output type.
 
-Multiple \cd{SetOptions} blocks are allowed.  Label values specified
-in one \cd{SetOption} block may be overwritten by a later
-\cd{SetOption} block.  Output formats for a given output are
-set during the processing of the \cd{Specify} block for the enclosing
-\cd{Oxs\_Ext} object.  Therefore, one can specify different formats
-for outputs in different \cd{Oxs\_Ext} objects by strategic placement
-of \cd{SetOptions} blocks.
+Typically \cd{SetOptions} is declared near the top of the \MIF\ file,
+before any \cd{Specify} blocks, so that the options apply to
+all \cd{Oxs\_Ext} objects. However, multiple \cd{SetOptions} blocks are
+allowed.  Values specified in one \cd{SetOption} block will be replaced
+if reset by later \cd{SetOption} blocks. Judicious placement
+of \cd{SetOptions} blocks allows formats and filenames to be varied
+across different outputs in one \MIF\ file.
 
-Additional label names may be added in the future, and may be
-\cd{Oxs\_Ext} class dependent.  At present there is no checking for
-unknown label names, but that policy is subject to change.
+The filename for \cd{DataTable} output written through \app{mmArchive}
+has the form
+\begin{verbatim}
+<basename>.odt
+\end{verbatim}
+If an \app{mmArchive} instance is associated with a
+\ptlink{\cd{Destination}}{PTdestinationCmd}
+tag\latex{\unless\iflatexml\ (Sec.~\ref{sec:mif2ExtensionCommands})\fi},
+then \cd{basename} is the setting active at
+the point of the \cd{Destination} command in the \MIF\ file.  For
+\app{mmArchive} instances not associated with a \cd{Destination} tag,
+including ones launched interactively after problem initialization,
+the \cd{basename} used is the value active at the end of the \MIF\ file.
 
-An example \cd{SetOptions} block:
+Output formats and filename scripts for a given output are set during
+the processing of the \cd{Specify} block for the enclosing \cd{Oxs\_Ext}
+object. For the field outputs, the default filename format is
+\begin{verbatim}
+<basename>-<outputname>-<stage>-<iteration>.<ext>
+\end{verbatim}
+where the stage and iteration are two and seven digit integers, with
+leading zeros as needed. (If the total number of stages in a simulation
+is larger than 99, then the stage format width is expanded to fit.  The
+extension is determined by the type of output: \cd{.omf} for
+magnetization, \cd{.ohf} for H fields, \cd{.obf} for B fields, \cd{.oef}
+for energy density fields, and and \cd{.ovf} for everything else. The
+filename format can be altered using a filename script. This script
+should be a \Tcl\ \cd{proc} that takes one argument and returns the
+desired filename. The import argument is a \Tcl\ \cd{dict} structure
+that includes the following fields:
+{\settowidth{\rightdescwidth}{\textbf{ interation\_fmt}}
+\begin{rightdesc}\raggedright
+\item[basename] The active \cd{SetOption} basename, extended to an
+absolute pathname
+\item[event] Generating event: \cd{Step}, \cd{Stage}, \cd{Done},
+or \cd{Interactive}
+\item[iteration] Iteration count
+\item[iteration\_fmt] Suggested iteration format; defaults to ``\%07d''
+\item[name] The output name, e.g. \cd{Oxs\_RungeKuttaEvolve::Total field}
+\item[ptype] The protocol type; either \cd{scalarField} or \cd{vectorField}
+\item[saniname] File-system friendly ``sanitized'' version of the output
+name, e.g., \cd{Oxs\_RungeKuttaEvolve-Total\_field}
+\item[stage] Stage number
+\item[stage\_fmt] Suggested stage format; ``\%02d'' unless stage count
+is larger than 99
+\item[state\_id] Internal state number
+\item[units] Output units, e.g., ``A/m''; this will be an empty string
+if the output is unitless
+\end{rightdesc}}
+Inside the filename proc use the \Tcl\ \cd{dict get} command to retrieve
+items from the params dict as needed. You can also call
+\begin{verbatim}
+DefaultFieldFilename $params
+\end{verbatim}
+to get the default scalar or vector field filename as described above.
+
+The following \MIF\ fragment illustrates \cd{SetOptions} usage including
+a vector field filename script that truncates the iteration count on
+stage events:
 \begin{rawhtml}
 <BLOCKQUOTE>
 \end{rawhtml}
@@ -2538,12 +2654,23 @@ An example \cd{SetOptions} block:
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
+proc ShortStageVF { params } {
+   set filename [DefaultFieldFilename $params]
+   set event [dict get $params event]
+   if {[string compare Stage $event] == 0} {
+      # Strip trailing iteration count (but retaining extension)
+      regsub -- {-[0-9]+(\.[a-zA-Z]+)$} $filename {\1} filename
+   }
+   return $filename
+}
+
 SetOptions {
  basename fubar
  scalar_output_format %.12g
  scalar_field_output_format {text %.4g}
  scalar_field_output_meshtype irregular
  vector_field_output_format {binary 4}
+ vector_field_output_filename_script ShortStageVF
 }
 \end{verbatim}
 %begin{latexonly}
@@ -2553,8 +2680,14 @@ SetOptions {
 </BLOCKQUOTE>
 \end{rawhtml}
 
+\item[DefaultFieldFilename]\pttarget{PTmif2DefaultFieldFilename}%
+\index{DefaultFieldFilename~command~(MIF)}
+Can be called from inside an output filename script with
+the \cd{\$params} import to retrieve the MIF default filename. See the
+\ptlink{\cd{SetOptions}}{PTmif2SetOptions} section for details and an
+example.
 
-\item[EvalScalarField\label{html:mif2EvalScalarField}]\index{EvalScalarField~command~(MIF)}
+\item[EvalScalarField]\pttarget{PTmif2EvalScalarField}\index{EvalScalarField~command~(MIF)}
 This command allows access in a \MIF\ file to values from a scalar field
 defined in a preceding \cd{Specify} block.  For example,
 \begin{rawhtml}
@@ -2564,16 +2697,16 @@ defined in a preceding \cd{Specify} block.  For example,
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-   Oxs_AtlasScalarField:Ms {
-      atlas :atlas
-      default_value 0
-      values {
-         Adisks 520e3
-         Bdisks 520e3
-      }
-   }}
+Oxs_AtlasScalarField:Ms {
+   atlas :atlas
+   default_value 0
+   values {
+      Adisks 520e3
+      Bdisks 520e3
+   }
+}}
 
-   set Ms_a [EvalScalarField :Ms 50e-9 20e-9 2e-9]
+set Ms_a [EvalScalarField :Ms 50e-9 20e-9 2e-9]
 \end{verbatim}
 %begin{latexonly}
 \end{quote}
@@ -2586,13 +2719,13 @@ field (here \cd{:Ms}), and the three coordinates of the point where you
 want the field evaluated.  The coordinates are in the problem coordinate
 space, i.e., in meters.
 
-\item[EvalVectorField\label{html:mif2EvalVectorField}]\index{EvalVectorField~command~(MIF)}
+\item[EvalVectorField]\pttarget{PTmif2EvalVectorField}\index{EvalVectorField~command~(MIF)}
 This command is the same as the \cd{EvalScalarField} command, except
 that the field reference is to a vector field, and the return value is a
 three item list representing the three components of the vector field at
 the specified point.
 
-\item[GetAtlasRegions\label{html:mif2GetAtlasRegions}]
+\item[GetAtlasRegions]\pttarget{PTmif2GetAtlasRegions}
 This command takes one argument, which is a reference to an atlas, and
 returns an ordered list of all the regions in that atlas.  The first
 item on the returned list will always be ``universe'', which includes
@@ -2605,7 +2738,7 @@ points outside the nominal bounds of the atlas.  Sample usage:
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-   set regions_list [GetAtlasRegions :atlas]
+set regions_list [GetAtlasRegions :atlas]
 \end{verbatim}
 %begin{latexonly}
 \end{quote}
@@ -2615,7 +2748,7 @@ points outside the nominal bounds of the atlas.  Sample usage:
 \end{rawhtml}
 
 
-\item[GetAtlasRegionByPosition\label{html:mif2GetAtlasRegionByPosition}]
+\item[GetAtlasRegionByPosition]\pttarget{PTmif2GetAtlasRegionByPosition}
 This command takes four arguments: a reference to atlas, followed by the
 x, y, and z coordinates of a point using problem coordinates (i.e.,
 meters).  The return value is the name of the region containing the
@@ -2630,7 +2763,7 @@ usage:
 \begin{quote}
 %end{latexonly}
 \begin{verbatim}
-   set rogue_region [GetAtlasRegionByPosition :atlas 350e-9 120e-9 7.5e-9]
+set rogue_region [GetAtlasRegionByPosition :atlas 350e-9 120e-9 7.5e-9]
 \end{verbatim}
 %begin{latexonly}
 \end{quote}
@@ -2870,7 +3003,7 @@ resources, including online manuals, can be found at the
 Although \MIF\ files are \Tcl\ scripts, they also rely on a number of
 \hyperrefhtml{\MIF\ extension commands}{\MIF\ extension commands
   (Sec.~}{)}{sec:mif2ExtensionCommands}. The most prominent of these is
-the \htmlonlyref{\cd{Specify}}{html:specifyCmd} command, used to
+the \ptlink{\cd{Specify}}{PTspecifyCmd} command, used to
 initialize \cd{Oxs\_Ext} (Oxs extension) objects, such as region
 definitions (atlases), mesh discretization, energy terms (exchange,
 anisotropy, dipole-dipole, applied fields), and solution method (energy
@@ -2883,13 +3016,13 @@ Classes section}{under Standard Oxs\_Ext Child Classes
 
 Other commonly used \MIF\ extension commands are \cd{Parameter},
 \cd{Destination}, and \cd{Schedule}.
-\htmlonlyref{\cd{Parameter}}{html:mif2parameter} operates similar to
+\ptlink{\cd{Parameter}}{PTmif2parameter} operates similar to
 the \Tcl\ \cd{set} command, but allows the user to change the default
 value at runtime, through either the \cd{Params} box in the \cd{Oxsii
   Load Problem} dialog, or via the \cd{-parameters} command line option
 to \cd{Boxsi}. The
-\htmlonlyref{\cd{Destination}}{html:destinationCmd} and
-\htmlonlyref{\cd{Schedule}}{html:scheduleCmd} commands
+\ptlink{\cd{Destination}}{PTdestinationCmd} and
+\ptlink{\cd{Schedule}}{PTscheduleCmd} commands
 are used primarily for non-interactive set up of simulation output
 for \cd{Boxsi}.
 
@@ -3255,7 +3388,7 @@ file descriptor lines.  They are order independent.  All are required
 unless otherwise stated.  Numeric values are floating point values
 unless ``integer'' is explicitly stated.
 \begin{itemize}
-\item {\bf title:} Long file name or title.
+\item {\bf title:} Long filename or title.
 \item {\bf desc:} Description line.  Optional.  Use as many as desired.
    Description lines may be displayed by post-processing programs,
    unlike comment lines which are ignored by all automated processing.
@@ -3369,7 +3502,7 @@ inactive.
 # Begin: Segment
 # Begin: Header
 #
-# Title: Long file name or title goes here
+# Title: Long filename or title goes here
 #
 # Desc: 'Description' tag, which may be used or ignored by postprocessing
 # Desc: programs. You can put anything you want here, and can have as many
@@ -3487,7 +3620,7 @@ example \OVF~2.0 file for an irregular mesh with $N=2$
 # Begin: Segment
 # Begin: Header
 #
-# Title: Long file name or title goes here
+# Title: Long filename or title goes here
 #
 # Desc: Optional description line 1.
 # Desc: Optional description line 2.

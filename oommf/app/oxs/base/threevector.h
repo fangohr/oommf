@@ -67,7 +67,7 @@ public:
   // Assignment operators (note default copy assignment operator)
   Oxs_ThreeVector& Set(OC_REAL8m xi,OC_REAL8m yi,OC_REAL8m zi)
     { x=xi; y=yi; z=zi; return *this; }
-  Oxs_ThreeVector& operator+=(const Oxs_ThreeVector& v) { 
+  Oxs_ThreeVector& operator+=(const Oxs_ThreeVector& v) {
     x+=v.x; y+=v.y; z+=v.z;
     return *this;
   }

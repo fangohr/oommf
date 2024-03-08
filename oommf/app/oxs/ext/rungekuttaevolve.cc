@@ -287,15 +287,16 @@ Oxs_RungeKuttaEvolve::Oxs_RungeKuttaEvolve(
   }
 
   // Setup outputs
-  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",0,
+  max_dm_dt_output.Setup(this,InstanceName(),"Max dm/dt","deg/ns",
      &Oxs_RungeKuttaEvolve::UpdateDerivedOutputs);
-  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",0,
+  dE_dt_output.Setup(this,InstanceName(),"dE/dt","J/s",
      &Oxs_RungeKuttaEvolve::UpdateDerivedOutputs);
-  delta_E_output.Setup(this,InstanceName(),"Delta E","J",0,
+  delta_E_output.Setup(this,InstanceName(),"Delta E","J",
      &Oxs_RungeKuttaEvolve::UpdateDerivedOutputs);
-  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",1,
+
+  dm_dt_output.Setup(this,InstanceName(),"dm/dt","rad/s",
      &Oxs_RungeKuttaEvolve::UpdateDerivedOutputs);
-  mxH_output.Setup(this,InstanceName(),"mxH","A/m",1,
+  mxH_output.Setup(this,InstanceName(),"mxH","A/m",
      &Oxs_RungeKuttaEvolve::UpdateDerivedOutputs);
 
   max_dm_dt_output.Register(director,-5);
@@ -868,7 +869,7 @@ void Oxs_RungeKuttaEvolve::NegotiateTimeStep
   nstate.stage_iteration_count = cstate.stage_iteration_count + 1;
 
   // Additional timestep control
-  driver->FillStateSupplemental(nstate);
+  driver->FillStateSupplemental(cstate,nstate);
 
   // Check for forced step.
   // Note: The driver->FillStateSupplemental call may increase the
@@ -2758,7 +2759,8 @@ OC_BOOL
 Oxs_RungeKuttaEvolve::InitNewStage
 (const Oxs_TimeDriver* /* driver */,
  Oxs_ConstKey<Oxs_SimState> state,
- Oxs_ConstKey<Oxs_SimState> prevstate)
+ Oxs_ConstKey<Oxs_SimState> prevstate,
+ Oxs_DriverStageInfo& /* stage_info */)
 {
   // Note 1: state is a copy-by-value import, so its read lock
   //         will be released on exit.
@@ -2766,6 +2768,7 @@ Oxs_RungeKuttaEvolve::InitNewStage
   //         "INVALID" status.
   const Oxs_SimState& cstate = state.GetReadReference();
   const Oxs_SimState* pstate_ptr = prevstate.GetPtr();
+
   const Oxs_MeshValue<OC_REAL8m>& Ms = *(cstate.Ms);
   const Oxs_MeshValue<ThreeVector>& spin = cstate.spin;
 
@@ -2807,6 +2810,19 @@ Oxs_RungeKuttaEvolve::InitNewStage
 
   // Update additional derived data in state.
   UpdateDerivedOutputs(cstate,pstate_ptr);
+  // TODO: If stage_info request H_total, then arrange for that to occur
+  //       in UpdateDerivedOutputs.
+  //
+  // WRT Oxs_SimState interactions, perhaps the Oxs_Ext PreInit()
+  // phase should initialize all Oxs_SimState values that don't depend
+  // on client classes, the Init() phase should have clients fill any
+  // Oxs_SimState derived data that each Oxs_Ext object can fill
+  // without access to other Oxs_Ext objects, and PostInit() fill any
+  // remaining derived data.  In that schema, UpdateDerivedOutputs
+  // should occur in the PostInit() phase, since in particular Oxs_Ext
+  // objects that process user scripts may query the Oxs_SimState for
+  // derived data. An example of this is Oxs_ScriptUZeeman in which
+  // the user script want ::Mx, ::My, ::Mz output.
 
   return 1;
 }
@@ -2814,7 +2830,7 @@ Oxs_RungeKuttaEvolve::InitNewStage
 OC_BOOL
 Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
                       Oxs_ConstKey<Oxs_SimState> current_state_key,
-                      const Oxs_DriverStepInfo& step_info,
+                      Oxs_DriverStepInfo& step_info,
                       Oxs_Key<Oxs_SimState>& next_state_key)
 {
 #if REPORT_TIME
@@ -2831,7 +2847,7 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
   OC_BOOL start_cond_active=0;
   if(next_timestep<=0.0 ||
      (cstate.stage_iteration_count<1
-      && step_info.current_attempt_count==0)) {
+      && step_info.GetCurrentAttemptCount()==0)) {
     if(cstate.stage_number==0
        || stage_init_step_control == SISC_START_COND) {
       start_cond_active = 1;
@@ -2864,7 +2880,7 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
   NegotiateTimeStep(driver,cstate,*work_state,next_timestep,
                     start_cond_active,force_step,driver_set_step);
   OC_REAL8m stepsize = work_state->last_timestep;
-  work_state=NULL; // Safety: disable pointer
+  work_state=nullptr; // Safety: disable pointer
 
   // Step
   OC_REAL8m error_estimate,norm_error;
@@ -2877,7 +2893,6 @@ Oxs_RungeKuttaEvolve::Step(const Oxs_TimeDriver* driver,
                       error_estimate,global_error_order,norm_error,
                       new_energy_and_dmdt_computed);
   const Oxs_SimState& nstate = next_state_key.GetReadReference();
-  driver->FillStateDerivedData(cstate,nstate);
 
   OC_REAL8m max_dm_dt;
   cstate.GetDerivedData(DataName("Max dm/dt"),max_dm_dt);
@@ -3015,6 +3030,7 @@ timer[0].Stop();
   }
 
   // Otherwise, we are accepting the new step.
+  driver->FillStateDerivedData(cstate,nstate);
 
   // Calculate dm_dt at new point, and fill in cache.
   // This branch is not active when using the RKF54 kernel, but is

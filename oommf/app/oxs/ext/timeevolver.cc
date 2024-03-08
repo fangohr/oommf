@@ -25,23 +25,24 @@ Oxs_TimeEvolver::Oxs_TimeEvolver
   : Oxs_Evolver(name,newdtr,argstr), energy_calc_count(0)
 {
   total_energy_output.Setup(this,InstanceName(),
-                            "Total energy","J",1,
+                            "Total energy","J",
                             &Oxs_TimeEvolver::UpdateEnergyOutputs);
+  energy_calc_count_output.Setup(this,InstanceName(),
+                           "Energy calc count","",
+                           &Oxs_TimeEvolver::FillEnergyCalcCountOutput);
+
   total_energy_density_output.Setup(this,InstanceName(),
-                           "Total energy density","J/m^3",1,
+                           "Total energy density","J/m^3",
                            &Oxs_TimeEvolver::UpdateEnergyOutputs);
   total_field_output.Setup(this,InstanceName(),
-                           "Total field","A/m",1,
+                           "Total field","A/m",
                            &Oxs_TimeEvolver::UpdateEnergyOutputs);
-  energy_calc_count_output.Setup(this,InstanceName(),
-                           "Energy calc count","",0,
-                           &Oxs_TimeEvolver::FillEnergyCalcCountOutput);
   /// Note: MSVC++ 6.0 requires fully qualified member names
 
   total_energy_output.Register(director,-5);
+  energy_calc_count_output.Register(director,-5);
   total_energy_density_output.Register(director,-5);
   total_field_output.Register(director,-5);
-  energy_calc_count_output.Register(director,-5);
 
   // Eventually, caching should be handled by controlling Tcl script.
   // Until then, request caching of scalar energy output by default.
@@ -69,6 +70,22 @@ OC_BOOL Oxs_TimeEvolver::Init()
   temp_energy.Release();
   temp_field.Release();
 
+  // Advertise "well known quantities" available for attaching to
+  // Oxs_SimStates. This attachment is handled in the GetEnergies()
+  // routine.
+  director->SetWellKnownQuantityLabel
+    (Oxs_Director::WellKnownQuantity::total_energy_density,
+     DataName("Total energy density"));
+  director->SetWellKnownQuantityLabel
+    (Oxs_Director::WellKnownQuantity::total_H,
+     DataName("Total field"));
+  director->SetWellKnownQuantityLabel
+    (Oxs_Director::WellKnownQuantity::total_mxH,
+     DataName("mxH"));
+  director->SetWellKnownQuantityLabel
+    (Oxs_Director::WellKnownQuantity::dm_dt,
+     DataName("dm/dt"));
+
   return Oxs_Evolver::Init();
 }
 
@@ -87,14 +104,40 @@ Oxs_TimeEvolver::~Oxs_TimeEvolver()
 }
 
 
-// GetEnergyDensity: Note that mxH is returned, as opposed to MxH.
-// This relieves this routine from needing to know what Ms is, and saves
-// an unneeded multiplication (since the evolver is just going to divide
-// it back out again to calculate dm/dt (as opposed again to dM/dt)).
-// The returned energy array is average energy density for the
-// corresponding cell in J/m^3; mxH is in A/m, pE_pt (partial derivative
-// of E with respect to t) is in J/s.  Any of mxH or H may be
-// NULL, which disables assignment for that variable.
+// OOMMF 20201225 API interface. Children are encouraged to use this
+// interface rather than accessing Oxs_ComputeEnergies directly, as this
+// allows greater interface forward flexibility (which is especially
+// important for third party extensions).
+void Oxs_TimeEvolver::GetEnergies
+(const Oxs_ComputeEnergiesImports& ocei,
+ Oxs_ComputeEnergiesExports& ocee)
+{
+#if REPORT_TIME
+  OC_BOOL sot_running = steponlytime.IsRunning();
+  if(sot_running) {
+    steponlytime.Stop();
+  }
+#endif // REPORT_TIME
+  // TODO: Arrange for attaching "well known quantities" to Oxs_SimState.
+  Oxs_ComputeEnergies(ocei,ocee);
+#if REPORT_TIME
+  if(sot_running) {
+    steponlytime.Start();
+  }
+#endif // REPORT_TIME
+}
+
+// GetEnergyDensity: Note that mxH is returned, as opposed to MxH.  This
+// relieves this routine from needing to know what Ms is, and saves an
+// unneeded multiplication (since the evolver is just going to divide it
+// back out again to calculate dm/dt (as opposed again to dM/dt)).  The
+// returned energy array is average energy density for the corresponding
+// cell in J/m^3; mxH is in A/m, pE_pt (partial derivative of E with
+// respect to t) is in J/s.  Any of mxH or H may be NULL, which disables
+// assignment for that variable.  NB: This is a deprecated interface;
+// new code should use the OOMMF 20201225 API void GetEnergies(const
+// Oxs_ComputeEnergiesImports&, Oxs_ComputeEnergiesExports&) interface
+// above.
 void Oxs_TimeEvolver::GetEnergyDensity
 (const Oxs_SimState& state,
  Oxs_MeshValue<OC_REAL8m>& energy,
@@ -116,33 +159,20 @@ void Oxs_TimeEvolver::GetEnergyDensity
   /// If field is requested by both H_req and total_field_output,
   /// then fill H_req first, and copy to field_cache at end.
 
-  // Set up energy computation output data structure
-  Oxs_ComputeEnergyData oced(state);
-  oced.scratch_energy = &temp_energy;
-  oced.scratch_H      = &temp_field;
-  oced.energy_accum   = &energy;
-  oced.H_accum        = H_fill;
-  oced.mxH_accum      = mxH_req;
-  oced.energy         = NULL;  // Required null
-  oced.H              = NULL;  // Required null
-  oced.mxH            = NULL;  // Required null
-
+  // Set up energy computation data structures
   UpdateFixedSpinList(state.mesh);
-  Oxs_ComputeEnergyExtraData oceed(GetFixedSpinList(),0);
+  Oxs_ComputeEnergiesImports ocei(*director,state,
+                                  director->GetEnergyObjects(),
+                                  GetFixedSpinList(),
+                                  &temp_energy,&temp_field);
+  Oxs_ComputeEnergiesExports ocee;
+  ocee.energy   = &energy;
+  ocee.H        = H_fill;
+  ocee.mxH      = mxH_req;
+  ocee.mxHxm    = nullptr;
+  // Remaining ocee members are initialized to zero by default.
 
-  // Compute total energy and torque
-#if REPORT_TIME
-  OC_BOOL sot_running = steponlytime.IsRunning();
-  if(sot_running) {
-    steponlytime.Stop();
-  }
-#endif // REPORT_TIME
-  Oxs_ComputeEnergies(state,oced,director->GetEnergyObjects(),oceed);
-#if REPORT_TIME
-  if(sot_running) {
-    steponlytime.Start();
-  }
-#endif // REPORT_TIME
+  GetEnergies(ocei,ocee);
 
   if(total_energy_density_output.GetCacheRequestCount()>0) {
     // Energy density field output requested.  Copy results
@@ -166,12 +196,12 @@ void Oxs_TimeEvolver::GetEnergyDensity
   // has cache enabled.
   if (total_energy_output.GetCacheRequestCount()>0) {
     total_energy_output.cache.state_id=0;
-    total_energy_output.cache.value=oced.energy_sum;
+    total_energy_output.cache.value=ocee.energy_sum;
     total_energy_output.cache.state_id=state.Id();
   }
 
-  pE_pt = oced.pE_pt;  // Export pE_pt value
-  total_E = oced.energy_sum; // Export total energy
+  pE_pt = ocee.pE_pt;  // Export pE_pt value
+  total_E = ocee.energy_sum; // Export total energy
 }
 
 void Oxs_TimeEvolver::UpdateEnergyOutputs(const Oxs_SimState& state)

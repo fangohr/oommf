@@ -49,10 +49,10 @@ Oxs_TimeDriver::Oxs_TimeDriver(
   VerifyAllInitArgsUsed();
 
   last_timestep_output.Setup(
-           this,InstanceName(),"Last time step","s",0,
+           this,InstanceName(),"Last time step","s",
 	   &Oxs_TimeDriver::Fill__last_timestep_output);
   simulation_time_output.Setup(
-	   this,InstanceName(),"Simulation time","s",0,
+	   this,InstanceName(),"Simulation time","s",
 	   &Oxs_TimeDriver::Fill__simulation_time_output);
 
   last_timestep_output.Register(director,0);
@@ -77,7 +77,7 @@ Oxs_TimeDriver::GetInitialState() const
 
 
 OC_BOOL Oxs_TimeDriver::Init()
-{ 
+{
   Oxs_Driver::Init();  // Run init routine in parent.
   /// This will call Oxs_TimeDriver::GetInitialState().
 
@@ -178,7 +178,9 @@ Oxs_TimeDriver::ChildIsRunDone(const Oxs_SimState& /* state */) const
   return 0; // Run not done
 }
 
-void Oxs_TimeDriver::FillStateSupplemental(Oxs_SimState& work_state) const
+void Oxs_TimeDriver::FillStateSupplemental
+(const Oxs_SimState& old_state,
+ Oxs_SimState& work_state) const
 {
   OC_REAL8m work_step = work_state.last_timestep;
   OC_REAL8m base_time = work_state.stage_elapsed_time - work_step;
@@ -219,12 +221,13 @@ void Oxs_TimeDriver::FillStateSupplemental(Oxs_SimState& work_state) const
       work_state.stage_elapsed_time = base_time+tempstep;
     }
   }
+  Oxs_Driver::FillStateSupplemental(old_state,work_state);
 }
 
 OC_BOOL
 Oxs_TimeDriver::Step
 (Oxs_ConstKey<Oxs_SimState> base_state,
- const Oxs_DriverStepInfo& stepinfo,
+ Oxs_DriverStepInfo& stepinfo,
  Oxs_ConstKey<Oxs_SimState>& next_state)
 { // Returns true if step was successful, false if
   // unable to step as requested.
@@ -241,6 +244,7 @@ Oxs_TimeDriver::Step
 OC_BOOL
 Oxs_TimeDriver::InitNewStage
 (Oxs_ConstKey<Oxs_SimState> state,
+ Oxs_DriverStageInfo& stageinfo,
  Oxs_ConstKey<Oxs_SimState> prevstate)
 {
   // Put write lock on evolver in order to get a non-const
@@ -249,7 +253,7 @@ Oxs_TimeDriver::InitNewStage
   // is destroyed.
   Oxs_Key<Oxs_TimeEvolver> temp_key = evolver_key;
   Oxs_TimeEvolver& evolver = temp_key.GetWriteReference();
-  return evolver.InitNewStage(this,state,prevstate);
+  return evolver.InitNewStage(this,state,prevstate,stageinfo);
 }
 
 

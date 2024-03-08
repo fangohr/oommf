@@ -8,7 +8,7 @@ Oc_ForceStderrDefaultMessage
 catch {wm withdraw .}
 
 Oc_Main SetAppName avfdiff
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 
 Oc_CommandLine Option console {} {}
 Oc_CommandLine Option [Oc_CommandLine Switch] {

@@ -7,6 +7,13 @@
  * can be shared between threads, each Oxs_Key object should be accessed
  * from only its home thread.
  *
+ * NB: Oxs_Key and Oxs_ConstKey have non-standard copy semantics, namely
+ *     the lock state is not copied. This precludes their use in C++
+ *     standard library containers. However, the Oxs_ConstKeyFob class
+ *     provides a wrapper around Oxs_ConstKey with standard copy
+ *     semantics, so Oxs_ConstKeyFob can be used in standard library
+ *     containers.
+ *
  * Usage notes:  In general, in passing around pointers to Oxs_Lock
  * objects, one has 3 choices: pass a raw pointer, pass an
  * Oxs_ConstKey object, or pass an Oxs_Key object.  Here are some
@@ -22,7 +29,7 @@
  *        well.  Because Oxs_ConstKey<T> is not "const", the callee
  *        can gain a read lock, if desired.  The object should usually
  *        be passed by value (as opposed to reference) so the caller
- *        can invoke with a Oxs_Key<T> object.
+ *        can invoke with an Oxs_Key<T> object.
  *
  *    3) Oxs_Key<T>& : Pass an 'Oxs_Key<T>' object by reference when the
  *        receiving routine needs to write to the object.  This *must*
@@ -156,10 +163,13 @@ public:
 // "Effective C++.")
 // MAINTAINER NOTE: Be sure to mirror any changes between the two
 // classes.
+template<class T> class Oxs_ConstKeyFob; // Forward reference
 template<class T> class Oxs_ConstKey
 {
   friend class Oxs_Key<T>;
-private:
+  friend class Oxs_ConstKeyFob<T>; // Needed by Oxs_ConstKeyFob<T>(const
+                                  /// Oxs_ConstKey<T>&) constructor.
+protected:
   OC_UINT4m id;
   T* ptr;
   enum Lock_Held { DEP, READ, INVALID } lock;
@@ -228,6 +238,53 @@ public:
 
 
 ////////////////////////////////////////////////////////////////////////
+// ConstKeyFob class. This is a wrapper around Oxs_ConstKey that can be
+// used in std:: containers. Oxs_Key and Oxs_ConstKey shouldn't be used
+// directly in standard containers because their copy constructors and
+// assignment operators don't copy the key state, setting instead a dep
+// lock on the new object. When std:: containers resize, objects may be
+// moved via copying, which will lose key locks.  ConstKeyFob works
+// around this by implementing standard copy semantics on top of
+// ConstKey.
+template<class T> class Oxs_ConstKeyFob : public Oxs_ConstKey<T>
+{
+public:
+  Oxs_ConstKeyFob<T>() = default;
+
+  Oxs_ConstKeyFob<T>(const Oxs_ConstKeyFob<T>& other)
+  : Oxs_ConstKey<T>(static_cast<const Oxs_ConstKey<T>&>(other))
+  {
+    if(other.lock == Oxs_ConstKey<T>::DEP) {
+      this->GetDepReference();
+    } else if(other.lock == Oxs_ConstKey<T>::READ) {
+      this->GetReadReference();
+    } else {
+      this->Release();
+    }
+  }
+
+  Oxs_ConstKeyFob<T>(const Oxs_ConstKey<T>& other)
+  : Oxs_ConstKey<T>(other) {
+    if(other.lock == Oxs_ConstKey<T>::DEP) {
+      this->GetDepReference();
+    } else if(other.lock == Oxs_ConstKey<T>::READ) {
+      this->GetReadReference();
+    } else {
+      this->Release();
+    }
+  }
+
+  void Swap(Oxs_ConstKeyFob<T>& other) {
+    Oxs_ConstKey<T>::Swap(static_cast<Oxs_ConstKey<T>&>(other));
+  }
+
+  Oxs_ConstKeyFob<T>& operator=(Oxs_ConstKeyFob<T>& other) {
+    Oxs_ConstKeyFob<T> tmp(other);
+    Swap(tmp);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////
 // Include all definitions here.  This is required by compiler/linkers
 // using what gcc calls the "Borland model," as opposed to the "Cfront
 // model."  The latter is distinguished by the use of template
@@ -271,7 +328,7 @@ void Oxs_Key<T>::Set(T* tptr)
 template<class T>
 void Oxs_Key<T>::Swap(Oxs_Key<T>& other)
 { // Note: This works okay also if this==&other
-  OC_UINT4m      tmpid=id;      id=other.id;      other.id=tmpid;
+  OC_UINT4m   tmpid=id;      id=other.id;      other.id=tmpid;
   T*         tmpptr=ptr;    ptr=other.ptr;    other.ptr=tmpptr;
   Lock_Held tmplock=lock;  lock=other.lock;  other.lock=tmplock;
 }

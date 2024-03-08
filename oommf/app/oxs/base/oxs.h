@@ -16,10 +16,10 @@
  * also be changed in the following files:
  *    oommf/app/oxs/base/oxs.tcl
  */
- 
+
 #define OXS_MAJOR_VERSION    2
-#define OXS_MINOR_VERSION    0
-#define OXS_RELEASE_LEVEL    "b"
+#define OXS_MINOR_VERSION    1
+#define OXS_RELEASE_LEVEL    "a"
 #define OXS_RELEASE_SERIAL   0
 
 /* Set this value when making a snapshot release, example value 20061206 */

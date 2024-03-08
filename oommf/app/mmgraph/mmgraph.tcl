@@ -27,8 +27,17 @@ package require Ow 2	;# Ow_PrintDlg: -smart_menu
 package require Nb 2	;# [Nb_InputFilter]
 wm withdraw .
 
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] panic Oc_Log
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] error Oc_Log
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] warning Oc_Log
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] info Oc_Log
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] panic
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] error
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] warning
+Oc_Log SetLogHandler [list Ow_BkgdLogger Log] info
+
 Oc_Main SetAppName mmGraph
-Oc_Main SetVersion 2.0b0
+Oc_Main SetVersion 2.1a0
 regexp \\\044Date:(.*)\\\044 {$Date: 2015/10/09 05:50:34 $} _ date
 Oc_Main SetDate [string trim $date]
 # regexp \\\044Author:(.*)\\\044 {$Author: donahue $} _ author
@@ -104,7 +113,7 @@ proc SetDefaultConfiguration {} {
 	table_end 0
 	jobname {}
     }]
-    trace variable _mmgraph(autosave) w MenuOptionsSaveAutoSaveState
+    trace add variable _mmgraph(autosave) write MenuOptionsSaveAutoSaveState
     # Autosave Note: All the autosave elts are setup inside the SaveFile proc,
     #   including the autosave element itself.
 
@@ -118,6 +127,8 @@ proc SetDefaultConfiguration {} {
     Oc_Option Get Ow_GraphWin default_symbol_freq default_symbol_freq
     set default_symbol_size 10
     Oc_Option Get Ow_GraphWin default_symbol_size default_symbol_size
+    set default_symbols_only 0
+    Oc_Option Get Ow_GraphWin default_symbols_only default_symbols_only
     array set _mmgpsc [subst {
        title  {}
        autolabel 1
@@ -148,6 +159,7 @@ proc SetDefaultConfiguration {} {
        curve_width $default_curve_width
        symbol_freq $default_symbol_freq
        symbol_size $default_symbol_size
+       symbols_only $default_symbols_only
        ptbufsize 0
        oldptbufsize 0
     }]
@@ -737,7 +749,7 @@ proc SetPlotConfiguration { pscvar }  {
    #            log_scale_x, log_scale_y, log_scale_y2,
    #            xmin,xmax,ymin,ymax,y2min,y2max,
    #            color_selection,canvas_color,curve_width,
-   #            symbol_freq,symbol_size,ptbufsize,
+   #            symbol_freq,symbol_size,symbols_only,ptbufsize,
    #            lmargin_min,rmargin_min,tmargin_min,bmargin_min
    if {$_mmgpsc(curve_width) != $psc(curve_width)} {
       $graph Configure -curve_width $psc(curve_width)
@@ -800,7 +812,8 @@ proc SetPlotConfiguration { pscvar }  {
       -color_selection $_mmgpsc(color_selection) \
       -canvas_color $_mmgpsc(canvas_color) \
       -symbol_freq $_mmgpsc(symbol_freq) \
-      -symbol_size $_mmgpsc(symbol_size)
+      -symbol_size $_mmgpsc(symbol_size) \
+      -symbols_only $_mmgpsc(symbols_only)
    $graph SetMargins \
       $_mmgpsc(lmargin_min) $_mmgpsc(rmargin_min) \
       $_mmgpsc(tmargin_min) $_mmgpsc(bmargin_min)
@@ -840,7 +853,7 @@ $optionsmenu add command -label "Configure..." -underline 0 \
                   -apply_callback SetPlotConfiguration
         }
 
-$optionsmenu add command -label "clear Data" -underline 6 \
+$optionsmenu add command -label "Clear Data" -underline 6 \
 	-command {ClearDataInteractive}
 
 $optionsmenu add cascade -label "Thin Data" -underline 0 -menu $thinmenu
@@ -1278,12 +1291,12 @@ proc ChangeCurve { yaxis ordinate redraw } {
          }
          if {!$ylog} {
             set yoffset [lindex $yoffset_pair 0]
-            if {[string match {} $yoffset]} {
+            if {![string is double -strict $yoffset]} {
                set yoffset 0.0
             }
          } else {
             set yoffset [lindex $yoffset_pair 1]
-            if {[string match {} $yoffset]} {
+            if {![string is double -strict $yoffset]} {
                set yoffset 1.0
             }
          }
@@ -1298,9 +1311,10 @@ proc ChangeCurve { yaxis ordinate redraw } {
             } else {
                set xval [lindex $record $xindex]
                set yval [lindex $record $yindex]
-               if {![string match {} $xval] && ![string match {} $yval]} {
+               if {[string is double -strict $xval] \
+                      && [string is double -strict $yval]} {
                   lappend data_list $xval [expr {$yval - $yoffset}]
-               }
+                }
             }
          }
       } else {
@@ -1313,7 +1327,8 @@ proc ChangeCurve { yaxis ordinate redraw } {
             } else {
                set xval [lindex $record $xindex]
                set yval [lindex $record $yindex]
-               if {![string match {} $xval] && ![string match {} $yval]} {
+               if {[string is double -strict $xval] \
+                      && [string is double -strict $yval]} {
                   lappend data_list $xval [expr {$yval/$yoffset}]
                }
             }

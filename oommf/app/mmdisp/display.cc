@@ -546,9 +546,9 @@ OC_BOOL DisplayFrame::MakeTkColor
     return 0;
   }
 
-  OC_UINT4 r = (OC_UINT4)OC_ROUND(red*256.);    if(r>255) r=255;
-  OC_UINT4 g = (OC_UINT4)OC_ROUND(green*256.);  if(g>255) g=255;
-  OC_UINT4 b = (OC_UINT4)OC_ROUND(blue*256.);   if(b>255) b=255;
+  OC_UINT4 r = (OC_UINT4)OC_ROUND(red*255.);    if(r>255) r=255;
+  OC_UINT4 g = (OC_UINT4)OC_ROUND(green*255.);  if(g>255) g=255;
+  OC_UINT4 b = (OC_UINT4)OC_ROUND(blue*255.);   if(b>255) b=255;
 
   char buf[16];
   Oc_Snprintf(buf,sizeof(buf),"#%02X%02X%02X",r,g,b);
@@ -1449,8 +1449,14 @@ DisplayFrame::PSDump
  OC_BOOL reverse_layers,
  OC_REAL8m mat_width,
  Nb_DString mat_color,
+ Nb_DString arrow_outline_color,
  OC_REAL8m arrow_outline_width,
- Nb_DString arrow_outline_color)
+ OC_REAL8m arrow_width,
+ OC_REAL8m arrow_tip_width,
+ OC_REAL8m arrow_length,
+ OC_REAL8m arrow_head_width,
+ OC_REAL8m arrow_head_ilen,
+ OC_REAL8m arrow_head_olen)
 {
 #define MEMBERNAME "PSDump"
 
@@ -1475,8 +1481,12 @@ DisplayFrame::PSDump
                      page_orientation,
                      xmin,ymin,xmax,ymax,
                      OommfPackedRGB(background_color.GetStr()),
+                     mat_width,
+                     OommfPackedRGB(mat_color.GetStr()),
+                     OommfPackedRGB(arrow_outline_color.GetStr()),
                      arrow_outline_width,
-                     OommfPackedRGB(arrow_outline_color.GetStr()));
+                     arrow_width,arrow_tip_width,arrow_length,
+                     arrow_head_width,arrow_head_ilen,arrow_head_olen);
 
   // Get pixel data, if requested
   OC_BOOL clip_pixels=0;
@@ -1678,19 +1688,14 @@ DisplayFrame::PSDump
     psdraw.DrawPolyLine(vlist,boundary_width,color,joinstyle);
   }
 
-  // Add mat
-  if(mat_width>0) {
-    OommfPackedRGB color(mat_color.GetStr());
-    psdraw.AddMat(mat_width,color);
-  }
-
   if(arrow_level_sample!=NULL) delete[] arrow_level_sample;
   if(pixel_level_sample!=NULL) delete[] pixel_level_sample;
 
   pixel_valid=arrow_valid=0; // Restricted display bounding
   /// box invalidates subsample arrays.
 
-  // PostScript trailer automatically written on psdraw destruction.
+  // Mat (if any) and PostScript trailer automatically written on psdraw
+  // destruction.
 
   return TCL_OK;
 #undef MEMBERNAME

@@ -168,8 +168,10 @@ Oc_Class Net_Protocol {
             # caller handles errors properly.  Somehow need to ID the app.
             # This is wrapped up in a catch in case Oc_Log is trying to
             # write to a tty that no longer exists.
+            set text "${this}:method Reply:Error replying to socket message"
+            set msgid "${class}:crc:[Nb_ComputeCRCBuffer text]"
             catch {Oc_Log Log "Error replying to socket\
-                     message\n\t'$cmd':\n\n\t$msg" warning $class}
+                    message\n\t'${cmd}':\n\n\t${msg}" warning $class $msgid}
             return [list 1 $msg]
         } else {
             # The message must be a two element Tcl list to make

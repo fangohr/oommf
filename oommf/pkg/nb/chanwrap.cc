@@ -47,8 +47,7 @@ void Nb_InputChannel::OpenFile(const char* filename,
 
   Oc_DirectPathname(filename,file_descriptor);
 
-  chan = Tcl_OpenFileChannel(NULL,file_descriptor.GetStr(),
-			     OC_CONST84_CHAR("r"),0);
+  chan = Tcl_OpenFileChannel(NULL,file_descriptor.GetStr(), "r",0);
   if(chan==NULL) {
     // Unable to open file.
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_InputChannel","OpenFile",
@@ -57,14 +56,9 @@ void Nb_InputChannel::OpenFile(const char* filename,
                        file_descriptor.GetStr()));
   }
 
-  if(Tcl_SetChannelOption(NULL,chan,
-			  OC_CONST84_CHAR("-translation"),
-			  OC_CONST84_CHAR(translation))!=TCL_OK ||
-     Tcl_SetChannelOption(NULL,chan,
-			  OC_CONST84_CHAR("-buffering"),
-			  OC_CONST84_CHAR("full"))!=TCL_OK ||
-     Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-buffersize"),
-         OC_CONST84_CHAR(OC_STRINGIFY(NB_INPUTCHANNEL_BUFSIZE)))!=TCL_OK) {
+  if(Tcl_SetChannelOption(NULL,chan, "-translation", translation)!=TCL_OK ||
+     Tcl_SetChannelOption(NULL,chan, "-buffering", "full")!=TCL_OK ||
+     Tcl_SetChannelOption(NULL,chan,"-buffersize", OC_STRINGIFY(NB_INPUTCHANNEL_BUFSIZE))!=TCL_OK) {
     // Channel configuration error.
     OC_THROW(Oc_Exception(__FILE__,__LINE__,"Nb_InputChannel","OpenFile",
                        NB_INPUTCHANNEL_ERRBUFSIZE+2000,
@@ -128,13 +122,10 @@ void Nb_FileChannel::Open
   try {
     // Set default channel options.  Client may call Tcl_SetChannelOption
     // directly to change these if desired.
-    Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-buffering"),
-			 OC_CONST84_CHAR("full"));
-    Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-buffersize"),
-			 OC_CONST84_CHAR("100000")); // What's a good size???
+    Tcl_SetChannelOption(NULL,chan,"-buffering", "full");
+    Tcl_SetChannelOption(NULL,chan,"-buffersize", "100000"); // What's a good size???
     // Binary mode
-    Tcl_SetChannelOption(NULL,chan,OC_CONST84_CHAR("-translation"),
-                         OC_CONST84_CHAR("binary"));
+    Tcl_SetChannelOption(NULL,chan,"-translation", "binary");
   } catch (...) {
     Close();
     throw;

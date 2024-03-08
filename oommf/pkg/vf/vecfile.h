@@ -140,9 +140,16 @@ public:
   virtual ~Vf_FileInput();
   const char *GetFileName(void) { return (const char *)filename; }
   virtual const char *FileType(void)=0;
-  virtual Vf_Mesh *NewMesh(void)=0;  // Derived classes should return
-  /// a *Vf_EmptyMesh on error (not NULL).  Either way, the client
-  /// is responsible for destroying (via delete) the returned mesh.
+  virtual Vf_Mesh *NewMesh(int* baddata_status=0)=0;  // Derived classes
+  /// should return a *Vf_EmptyMesh on error (not NULL).  Either way,
+  /// the client is responsible for destroying (via delete) the returned
+  /// mesh.
+  ///   If baddata_status is non-null, then NewMesh should fill
+  /// *baddata_status with either -1, 0, or 1. A value of 0 means
+  /// that all values in the data block are finite valued (i.e.,
+  /// no NaNs or infinities). A value of 1 indicates at least one
+  /// NaN or infinity in the data block. Older code that does not
+  /// support this check should set *baddata_status to -1.
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -358,6 +365,10 @@ private:
   OC_INT4m ReadLine(Nb_DString &buf);
   OC_INT4m ParseContentLine(const Nb_DString &buf,
 			 Nb_DString &field,Nb_DString &value);
+
+  // ReadVec3f() reads binary data in big endian (MSB) format, which is
+  // used in OVF 1.x files. OVF 2.x files store binary data in little
+  // endian (LSB) format, which should be read using ReadVec3fFromLSB().
   OC_INT4m ReadTextVec3f(int Nin,Nb_Vec3<OC_REAL8> &data);
   OC_INT4m ReadVec3f(Vf_OvfDataStyle datastyle,int Nin,
 		  Nb_Vec3<OC_REAL8> &data,
@@ -366,7 +377,33 @@ private:
                          Nb_Vec3<OC_REAL8> &data,
                          OC_REAL8m* badvalue=NULL);
 
-  // Internal constructor
+  // The Read*VecN* routines read N values from *infile and store the
+  // data in the std::vector<OC_REAL8> buffer "data". Here "N" is the
+  // pre-sized length of data (i.e., on entry N is set to data.size()).
+  // ReadVecN() reads binary data in big endian (MSB) format, which is
+  // used in OVF 1.x files. OVF 2.x files store binary data in little
+  // endian (LSB) format, which should be read using ReadVecNFromLSB().
+  OC_INT4m ReadTextVecN(std::vector<OC_REAL8> &data);
+  OC_INT4m ReadVecN(Vf_OvfDataStyle datastyle,
+                    std::vector<OC_REAL8> &data);
+  OC_INT4m ReadVecNFromLSB(Vf_OvfDataStyle datastyle,
+                           std::vector<OC_REAL8> &data);
+
+  void ReadHeader
+  (struct Vf_OvfSegmentHeader& ovfseghead);  // export
+
+  void ReadData
+  (const struct Vf_OvfSegmentHeader& ovfseghead, // import
+   const std::vector<int>& component_select,     // import
+   std::vector<OC_REAL8m>& data_block,           // export
+   bool& baddata_status);                        // export
+
+  void ReadData // Version of preceding but w/o component selection
+  (const struct Vf_OvfSegmentHeader& ovfseghead, // import
+   std::vector<OC_REAL8m>& data_block,           // export
+   bool& baddata_status);                        // export
+
+// Internal constructor
   Vf_OvfFileInput(const char *new_filename,
 	       FILE *new_infile,
 	       Tcl_Channel new_channel,
@@ -396,7 +433,7 @@ public:
 		     FILE *input_file,
 		     Tcl_Channel channel,
 		     const char *channelName);
-  Vf_Mesh *NewMesh(void);
+  Vf_Mesh *NewMesh(int* baddata_status=0);
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -469,7 +506,7 @@ public:
 		     FILE *input_file,
 		     Tcl_Channel channel,
 		     const char *channelName);
-  Vf_Mesh *NewMesh(void); // Returns *Vf_EmptyMesh on error
+  Vf_Mesh *NewMesh(int* baddata_status=0); // Returns *Vf_EmptyMesh on error
   Vf_GridVec3f *NewRectGrid(void);  // Return NULL on error
 };
 
@@ -486,7 +523,7 @@ private:
   static const char *file_type;
   static const Vf_FileInputID id;
   friend int Vf_SvfFileInputTA(ClientData,Tcl_Interp *interp,
-                               int argc,CONST84 char** argv);
+                               int argc,const char** argv);
 
   // Instance data members
   Vf_GeneralMesh3f *mesh;
@@ -514,7 +551,7 @@ public:
 		     FILE *input_file,
 		     Tcl_Channel channel,
 		     const char *channelName);
-  Vf_Mesh *NewMesh(void); // Returns *Vf_EmptyMesh on error
+  Vf_Mesh *NewMesh(int* baddata_status=0); // Returns *Vf_EmptyMesh on error
   Vf_GridVec3f *NewRectGrid(void) { return NULL; } // Return NULL on error
   ~Vf_SvfFileInput();
 };
@@ -785,7 +822,7 @@ public:
     value.clear();
 
     int argc;
-    CONST84 char ** argv;
+    const char ** argv;
     if(Tcl_SplitList(NULL,Oc_AutoBuf(cptr),&argc,&argv)!=TCL_OK) {
       char buf[4096];
       Oc_Snprintf(buf,sizeof(buf),

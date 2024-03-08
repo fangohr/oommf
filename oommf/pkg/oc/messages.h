@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "ocport.h"
@@ -59,12 +60,23 @@ namespace Oc_Report {
     TeeStream(const TeeStream&) = delete;
     TeeStream& operator=(const TeeStream&) = delete;
     void AddFile(const std::string& filename);
+    bool WriteToClog(bool status);
   private:
     TeeBuffer* tbuf;
   };
   extern TeeStream Log;
 } // namespace Oc_Report
 
-Tcl_CmdProc Oc_ReportAddCLogFile;
+Tcl_CmdProc Oc_ReportAddLogFile;
+Tcl_CmdProc Oc_ReportWriteToClog;
+
+// Template wrapper around ostringstream string conversion code.
+// Intended primarily for use in building error message std::strings.
+template <typename T>
+std::string Oc_MakeString(const T& obj) {
+  std::ostringstream oss;
+  oss << obj;
+  return oss.str();
+}
 
 #endif /* _OC_MESSAGES */

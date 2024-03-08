@@ -44,7 +44,7 @@
 # The Oc_FileLogger class defined at the bottom of this file is
 # an alternative log handler typically used alongside Oc_Log.
 
-proc Oc_StderrLogMessage {msg type src} {
+proc Oc_StderrLogMessage {msg type src args} {
    # Log handler that writes to stderr (no Tk).
    global errorInfo errorCode
    set ei $errorInfo
@@ -93,7 +93,7 @@ proc Oc_StderrLogMessage {msg type src} {
    puts stderr $newtext
 }
 
-proc Oc_WindowsMessageBoxLogMessage {msg type src} {
+proc Oc_WindowsMessageBoxLogMessage {msg type src args} {
    # Base log handler option on Windows (no Tk).
    global errorInfo errorCode
    set ei $errorInfo
@@ -127,7 +127,7 @@ proc Oc_WindowsMessageBoxLogMessage {msg type src} {
    Oc_WindowsMessageBox $newtext
 }
 
-proc Oc_TkLogMessage {msg type src} {
+proc Oc_TkLogMessage {msg type src args} {
    # Log handler option for when Tk is available.  If Ow_Dialog is
    # loaded, then uses that for message display, otherwise falls back
    # to tk_dialog.  The former supports scrolling, window resizing,
@@ -155,7 +155,7 @@ proc Oc_TkLogMessage {msg type src} {
    if {[catch {winfo exists .} result] || !$result} {
       # Main application window '.' has been destroyed.
       set code [catch {
-         uplevel 1 [list Oc_StderrLogMessage $msg $type $src]
+         uplevel 1 [list Oc_StderrLogMessage $msg $type $src {*}$args]
       } result]
       return -code $code $result
    }
@@ -365,13 +365,14 @@ Oc_Class Oc_Log {
       return $handler_alias
    }
 
-   proc Log {msg {type ""} {src ""}} {db} {
+   proc Log {msg {type ""} {src ""} {msgid ""}} {db} {
       # prevent infinite loops when Oc_EventHandlers log messages
       if {[string compare Oc_EventHandler $src]} {
          # Event generation is more extensible logging mechanism.
          # Interested loggers can come and go by creating/destroying
          # handlers.
-         Oc_EventHandler Generate $class Log -src $src -type $type -msg $msg
+         Oc_EventHandler Generate $class Log -src $src -type $type \
+            -msg $msg -msgid $msgid
       }
       if {[info exists db($src,$type)]} {
          set handler $db($src,$type)
@@ -390,7 +391,7 @@ Oc_Class Oc_Log {
       global errorInfo errorCode
       set stack "$errorInfo\n($errorCode)"
       if {[catch {
-         uplevel #0 [linsert $handler end $msg $type $src]
+         uplevel #0 [linsert $handler end $msg $type $src $msgid]
       } ret]} {
          if {[string match $class $src] && [string match error $type]} {
             # Registered handler for errors from this class failed.
@@ -398,12 +399,17 @@ Oc_Class Oc_Log {
             # failure -- infinite loop.  To avoid this, fall back on
             # the default message handler.
             if {[catch {
-               uplevel #0 [list Oc_DefaultLogMessage $msg error $class]
+               uplevel #0 [list Oc_DefaultLogMessage $msg error $class $msgid]
             }]} {
                # If even *that* fails, try writing to stderr
                set msg [join [split $msg \n] \n\t]
-               puts stderr "<[pid]> $class error:\nNo usable handler\
-                            to report message.  Message was:\n\t$msg"
+               set emsg "<[pid]> $class error:\nNo usable handler\
+                  to report message"
+               if {![string match {} $msgid]} {
+                  append emsg " (msgid: $msgid)"
+               }
+               append emsg ".   Message was:\n\t$msg"
+               puts stderr $emsg
                flush stderr
             }
             return
@@ -413,11 +419,15 @@ Oc_Class Oc_Log {
          set stack [join [split $stack \n] \n\t]
          set lstack [join [split "$errorInfo\n($errorCode)" \n] \n\t]
          set fmsg "LogHandler '$handler' failed\n\treporting message\
-                    of type '$type'\n\tfrom source '$src'.\n    Original\
-                    message:\n\t$msg\n    LogHandler '$handler'\
-                    error:\n\t$ret\n    Original stack:\n\t$stack\n   \
-                    LogHandler stack:\n\t$lstack"
-         $class Log $fmsg error $class
+                   of type '$type'\n\tfrom source '$src'"
+         if {![string match {} $msgid]} {
+            append fmsg " (msgid: $msgid)"
+         }
+         append fmsg ".\n    Original\
+                  message:\n\t$msg\n    LogHandler '$handler'\
+                  error:\n\t$ret\n    Original stack:\n\t$stack\n   \
+                  LogHandler stack:\n\t$lstack"
+         $class Log $fmsg error $class $msgid
       }
    }
 
@@ -496,8 +506,8 @@ proc tclLog {string} {
 #  Oc_Log SetLogHandler [list Oc_FileLogger Log] info
 #  Oc_Log SetLogHandler [list Oc_FileLogger Log] status
 #
-# NB: The log prefix marker here is duplicated in Oc_Main SetAppName for
-#     use by C++ logging code. Changes here should be replicated there.
+# NB: The log prefix marker here (iipid) is duplicated in Oc_Main SetAppName
+#     for use by C++ logging code. Changes here should be replicated there.
 Oc_Class Oc_FileLogger {
    common filename {}
 
@@ -506,7 +516,7 @@ Oc_Class Oc_FileLogger {
    # StderrEcho proc.
    common stderr_echo 1
 
-   proc Log {msg type src} {
+   proc Log {msg type src args} {
       global errorInfo errorCode tcl_platform
 
       # Note: In Tcl 8.5.7 (others?), the clock format command
@@ -598,9 +608,6 @@ Oc_Class Oc_FileLogger {
       } else {
          close $chanid
          set filename $name
-         if {$stderr_echo} {
-            puts stderr "Logging to file \"$filename\""
-         }
       }
    }
 

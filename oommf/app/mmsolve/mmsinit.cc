@@ -186,7 +186,7 @@ static const char* Stringtoa(const Nb_DString &str)
 //			method
 //		RCVT - a conversion routine to apply to the return value
 //			of the method.
-//		RFMT - an sprintf format string for converting the return
+//		RFMT - an snprintf format string for converting the return
 //			value of RCVT to a string.
 //              ERROR - whether or not the C++ class method returns an error
 //                     code.  Set ERROR to E if it does, N if not.
@@ -199,8 +199,7 @@ static const char* Stringtoa(const Nb_DString &str)
 extern "C" {                                                            \
 int                                                                     \
 MAKE_INSTANCE_NAME(CLASS_C_NAME,METHOD)                                 \
-(ClientData clientData, Tcl_Interp *interp, int argc,                   \
-                                              CONST84 char **argv)      \
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)\
 {                                                                       \
     int i;                                                              \
     if (argc != NUMARGS + 2) {                                          \
@@ -344,7 +343,7 @@ extern "C" {
 
 int
 MIFInstanceSetDefaultControlPointSpec
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 {
     int i;
     if (argc < 3 ) {
@@ -369,7 +368,7 @@ MIFInstanceSetDefaultControlPointSpec
 
 int
 MIFInstanceGetFieldRangeList
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 { // This is handled specially so we can return arbitrarily
   // long strings without going though 'mybuf'.
     int i;
@@ -393,7 +392,7 @@ MIFInstanceGetFieldRangeList
 
 int
 MIFInstanceWrite
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 { // This is handled specially so we can return arbitrarily
   // long strings without going though 'mybuf'.
     int i;
@@ -440,7 +439,7 @@ MIFInstanceWrite
 
 int
 Grid2DInstanceGetDimens
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 {
     int i;
     if (argc != 2 ) {
@@ -467,7 +466,7 @@ Grid2DInstanceGetDimens
 
 int
 Grid2DInstanceGetEnergyDensities
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 {
     int i;
     if (argc != 2 ) {
@@ -498,7 +497,7 @@ Grid2DInstanceGetEnergyDensities
 
 int
 Grid2DInstanceGetStepStats
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 {
     int i;
     if (argc != 2 ) {
@@ -528,7 +527,7 @@ Grid2DInstanceGetStepStats
 
 int
 Grid2DInstanceGetUsageTimes
-(ClientData clientData, Tcl_Interp *interp, int argc, CONST84 char **argv)
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)
 {
     int i;
     if (argc != 2 ) {
@@ -555,7 +554,7 @@ Grid2DInstanceGetUsageTimes
 
 int
 MIFInstanceDelete
-(ClientData /*clientData*/, Tcl_Interp *interp, int /*argc*/, CONST84 char **argv)
+(ClientData /*clientData*/, Tcl_Interp *interp, int /*argc*/, const char **argv)
 {
     static char buf[256]; // Should be big enough
     Oc_Snprintf(buf, sizeof(buf), "rename %s {}",argv[0]);
@@ -564,7 +563,7 @@ MIFInstanceDelete
 
 int
 Grid2DInstanceDelete
-(ClientData /*clientData*/, Tcl_Interp *interp, int /*argc*/, CONST84 char **argv)
+(ClientData /*clientData*/, Tcl_Interp *interp, int /*argc*/, const char **argv)
 {
     static char buf[256]; // Should be big enough
     Oc_Snprintf(buf, sizeof(buf), "rename %s {}",argv[0]);
@@ -660,8 +659,7 @@ struct funcmap Grid2DMethods[] = {
 #define MMS_INSTANCE(NAME,TCLNAME)                                      \
 int                                                                     \
 Mms_##NAME##InstanceCmd                                                 \
-(ClientData clientData, Tcl_Interp *interp, int argc,                   \
-                                              CONST84 char **argv)      \
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)\
 {                                                                       \
     int i;                                                              \
     if (argc < 2) {                                                     \
@@ -722,7 +720,7 @@ MMS_CLASSDELETEPROC(Grid2D,Grid2D)
 int                                                                     \
 Mms##NAME##New                                                          \
 (ClientData /* clientData */, Tcl_Interp *interp, int argc,             \
-                                                   CONST84 char **argv) \
+                                                     const char **argv) \
 {                                                                       \
     int i;                                                              \
     if ((argc > 4) || (argc < 3)) {                                     \
@@ -768,7 +766,7 @@ Mms##NAME##New                                                          \
 int                                                                     \
 Mms##NAME##New                                                          \
 (ClientData /* clientData */, Tcl_Interp *interp, int argc,             \
-                                                   CONST84 char **argv) \
+                                                   const char **argv)   \
 {                                                                       \
     int i;                                                              \
     if (argc != 4) {                                                    \
@@ -829,8 +827,7 @@ MMS_CLASSNEWPROC_1P(Grid2D,Grid2D,"<varName> <mms_mif instance>",
 #define MMS_CLASS(NAME)                                                 \
 int                                                                     \
 Mms_##NAME##Cmd                                                         \
-(ClientData clientData, Tcl_Interp *interp, int argc,                   \
-                                              CONST84 char **argv)      \
+(ClientData clientData, Tcl_Interp *interp, int argc, const char **argv)\
 {                                                                       \
     char c;                                                             \
     int i;                                                              \

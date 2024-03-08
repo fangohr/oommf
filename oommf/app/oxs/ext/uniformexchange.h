@@ -73,7 +73,7 @@ private:
 
   // Calculation routines for each of the aforementioned energy
   // formulations.  Note that the following kernels have not been
-  // upgraded to supported periodic meshes: 
+  // upgraded to supported periodic meshes:
   //   NGBR_12_FREE, NGBR_12_ZD1, NGBR_12_ZD1B, NGBR_26
   void CalcEnergy6NgbrFree
   (const Oxs_MeshValue<ThreeVector>& spin,

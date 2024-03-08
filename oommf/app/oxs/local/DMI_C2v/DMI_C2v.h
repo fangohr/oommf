@@ -37,7 +37,7 @@ private:
   OC_REAL8m** Dy;  
   Oxs_Key<Oxs_Atlas> atlaskey;  
   Oxs_OwnedPointer<Oxs_Atlas> atlas;
-  mutable OC_INT4m mesh_id;
+  mutable OC_UINT4m mesh_id;
   mutable Oxs_MeshValue<OC_INT4m> region_id;
 
   // Periodic boundaries?

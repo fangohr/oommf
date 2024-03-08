@@ -128,7 +128,7 @@ Oxs_Demag::Oxs_Demag(
     demag_tensor_error = GetRealInitValue("demag_tensor_error",
                                           demag_tensor_error);
   }
-  
+
   cache_size = 1024*GetIntInitValue("cache_size_KB",1024);
   /// Cache size in KB.  Default is 1 MB.  Code wants bytes, so multiply
   /// user input by 1024.  cache_size is used to set embed_block_size in
@@ -355,7 +355,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
   if(pmesh==NULL) {
-    const Oxs_RectangularMesh* rmesh 
+    const Oxs_RectangularMesh* rmesh
       = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
     if (rmesh!=NULL) {
       // Rectangular, non-periodic mesh
@@ -614,7 +614,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
     // periodic images, using symmetries for images outside the first
     // octant.  In the periodic setting we have to be careful to not
     // accumulate each image more than once in the sum.
-    // 
+    //
     // Symmetries: A00, A11, A22 are even in each coordinate
     //             A01 is odd in x and y, even in z.
     //             A02 is odd in x and z, even in y.
@@ -666,7 +666,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
         }
       }
     }
-    
+
     ComputeD6f(Oxs_Newell_g_xz,ANxz,scaled_arad,workspace,ddx,ddy,ddz);
     for(OC_INDEX k=0;k<kstop;k++) {
       for(OC_INDEX j=0;j<jstop;j++) {
@@ -934,7 +934,7 @@ void Oxs_Demag::FillCoefficientArrays(const Oxs_Mesh* genmesh) const
                  " \"binary 8\", \"binary 4\", or \"text [fmt]\"");
       OXS_THROW(Oxs_BadUserInput,errors);
     }
-    
+
     // A is sized to FFT-space dimensions, adimy x adimz x adimx.  Copy
     // out real-space data to an array of reduced size for output.
     vector<OC_REAL8m> data;
@@ -1195,7 +1195,7 @@ void Oxs_Demag::ComputeEnergy
     // first compute full forward FFT, then do the convolution
     // (really matrix-vector A^*M^ multiply), and then do the
     // full inverse FFT.
-    
+
     // Calculate FFT of Mtemp
 #if REPORT_TIME
     fftforwardtime.Start();
@@ -1254,7 +1254,7 @@ void Oxs_Demag::ComputeEnergy
           OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
           OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-          const A_coefs& Aref = A[ajindex+i]; 
+          const A_coefs& Aref = A[ajindex+i];
 
           Hxfrm[index]   = Aref.A00*Hx_re + Aref.A01*Hy_re + Aref.A02*Hz_re;
           Hxfrm[index+1] = Aref.A00*Hx_im + Aref.A01*Hy_im + Aref.A02*Hz_im;
@@ -1277,7 +1277,7 @@ void Oxs_Demag::ComputeEnergy
           OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
           OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-          const A_coefs& Aref = A[ajindex+i]; 
+          const A_coefs& Aref = A[ajindex+i];
 
           // Flip signs on a01 and a12 as compared to the j>=0
           // case because a01 and a12 are odd in y.
@@ -1307,7 +1307,7 @@ void Oxs_Demag::ComputeEnergy
           OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
           OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-          const A_coefs& Aref = A[ajindex+i]; 
+          const A_coefs& Aref = A[ajindex+i];
 
           // Flip signs on a02 and a12 as compared to the k>=0, j>=0 case
           // because a02 and a12 are odd in z.
@@ -1332,7 +1332,7 @@ void Oxs_Demag::ComputeEnergy
           OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
           OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-          const A_coefs& Aref = A[ajindex+i]; 
+          const A_coefs& Aref = A[ajindex+i];
 
           // Flip signs on a01 and a02 as compared to the k>=0, j>=0 case
           // because a01 is odd in y and even in z,
@@ -1492,7 +1492,7 @@ void Oxs_Demag::ComputeEnergy
             OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
             OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-            const A_coefs& Aref = A[akindex+i]; 
+            const A_coefs& Aref = A[akindex+i];
 
             Hxfrm[index]   = Aref.A00*Hx_re + Aref.A01*Hy_re + Aref.A02*Hz_re;
             Hxfrm[index+1] = Aref.A00*Hx_im + Aref.A01*Hy_im + Aref.A02*Hz_im;
@@ -1515,7 +1515,7 @@ void Oxs_Demag::ComputeEnergy
             OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
             OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-            const A_coefs& Aref = A[akindex+i]; 
+            const A_coefs& Aref = A[akindex+i];
 
             // Flip signs on a02 and a12 as compared to the k>=0, j>=0 case
             // because a02 and a12 are odd in z.
@@ -1584,7 +1584,7 @@ void Oxs_Demag::ComputeEnergy
             OXS_FFT_REAL_TYPE Hz_re = Hxfrm[index+4];
             OXS_FFT_REAL_TYPE Hz_im = Hxfrm[index+5];
 
-            const A_coefs& Aref = A[akindex+i]; 
+            const A_coefs& Aref = A[akindex+i];
 
             // Flip signs on a01 and a02 as compared to the k>=0, j>=0 case
             // because a01 is odd in y and even in z,
@@ -1740,7 +1740,7 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
   }
 
   // Check periodicity
-  const Oxs_RectangularMesh* rmesh 
+  const Oxs_RectangularMesh* rmesh
     = dynamic_cast<const Oxs_RectangularMesh*>(mesh);
   const Oxs_PeriodicRectangularMesh* pmesh
     = dynamic_cast<const Oxs_PeriodicRectangularMesh*>(mesh);
@@ -1778,7 +1778,7 @@ Oxs_Demag::IncrementPreconditioner(PreconditionerData& pcd)
   OC_INDEX dimx = mesh->DimX();
   OC_INDEX dimy = mesh->DimY();
   OC_INDEX dimz = mesh->DimZ();
-  
+
   OXS_DEMAG_REAL_ASYMP dx = mesh->EdgeLengthX();
   OXS_DEMAG_REAL_ASYMP dy = mesh->EdgeLengthY();
   OXS_DEMAG_REAL_ASYMP dz = mesh->EdgeLengthZ();

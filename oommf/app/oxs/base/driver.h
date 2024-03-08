@@ -7,6 +7,7 @@
 #ifndef _OXS_DRIVER
 #define _OXS_DRIVER
 
+#include <queue>
 #include <string>
 
 #include "oc.h"
@@ -14,6 +15,7 @@
 #include "ext.h"
 #include "labelvalue.h"
 #include "mesh.h"
+#include "meshvalue.h"
 #include "simstate.h"
 #include "key.h"
 #include "outputderiv.h"
@@ -27,14 +29,23 @@ class Oxs_Evolver; // Forward references
 struct OxsRunEvent;
 
 struct Oxs_DriverStepInfo {
-public:
+private:
+  friend class Oxs_Driver;
   OC_UINT4m total_attempt_count; // Total number of attempts
   OC_UINT4m current_attempt_count;  // Number of attempts at current step
+public:
   Oxs_DriverStepInfo()
     : total_attempt_count(0),current_attempt_count(0) {}
   Oxs_DriverStepInfo(OC_UINT4m tc,OC_UINT4m ac)
     : total_attempt_count(tc),current_attempt_count(ac) {}
+  OC_UINT4m GetTotalAttemptCount() const { return total_attempt_count; }
+  OC_UINT4m GetCurrentAttemptCount() const { return current_attempt_count; }
 };
+
+// Oxs_DriverStageInfo is passed to evolver InitNewStage routines.
+// Currently this struct is empty, and exists only as a placeholder
+// in case of future need.
+struct Oxs_DriverStageInfo {};
 
 void OxsDriverCheckpointShutdownHandler(int,ClientData);
 
@@ -46,6 +57,7 @@ public:
     OXSDRIVER_PS_DONE };
   OxsDriverProblemStatus FloatToProblemStatus(OC_REAL8m ps_float);
   OC_REAL8m ProblemStatusToFloat(OxsDriverProblemStatus ps_enum);
+
 private:
   OxsDriverProblemStatus problem_status;
   // Problem Status description
@@ -78,7 +90,6 @@ private:
   // to decide checkpoint file disposal inside ~Oxs_Driver().
   //
 
-private:
 #if REPORT_TIME
   // driversteptime records time (cpu and wall) spent in the driver's
   // Step function.  This information is reported to stderr when
@@ -99,13 +110,9 @@ private:
   Oxs_OwnedPointer<Oxs_Mesh> mesh_obj; // Mesh basket
   Oxs_ConstKey<Oxs_Mesh> mesh_key;
 
-  Oxs_MeshValue<OC_REAL8m> Ms;  // Saturation magnetization
-  Oxs_MeshValue<OC_REAL8m> Ms_inverse;  // 1/Ms
-  OC_REAL8m max_absMs; // Maximum value of |Ms| across array.  At present,
-  /// Ms is restricted to >=0, so max_absMs is the same as max Ms.
+  Oxs_MeshValue<OC_REAL8m> initial_Ms;  // Saturation magnetization
 
   Oxs_OwnedPointer<Oxs_VectorField> m0; // Initial spin configuration
-  OC_REAL8m m0_perturb;  // Amount to perturb initial spin configuration
 
   // State-based outputs, maintained by the driver.  These are
   // conceptually public, but are specified private to force
@@ -201,6 +208,12 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
   /// stage counts across Oxs_Ext objects aren't compatible.
 
   OC_UINT4m report_stage_number; // See Run member for details.
+
+  OC_UINT4m simstate_hold_size;
+  std::queue< Oxs_ConstKeyFob<Oxs_SimState> > simstate_hold;
+  // Note: The Oxs_ConstKey<T> template has nonstandard copy semantics
+  // that prevents it from being using inside standard containers.  Use
+  // the Oxs_ConstKeyFob<T> template as a workaround.
 
   //////////////////////////////////////////////////////////////////////
   // CHECKPOINTING /////////////////////////////////////////////////////
@@ -381,10 +394,9 @@ Oxs_ScalarOutput<Oxs_Driver> name##_output
   virtual OC_BOOL ChildIsStageDone(const Oxs_SimState& state) const =0;
   virtual OC_BOOL ChildIsRunDone(const Oxs_SimState& state) const =0;
 
-  // Disable copy constructor and assignment operator by declaring
-  // them without defining them.
-  Oxs_Driver(const Oxs_Driver&);
-  Oxs_Driver& operator=(const Oxs_Driver&);
+  // Disable copy constructor and assignment operator
+  Oxs_Driver(const Oxs_Driver&) = delete;
+  Oxs_Driver& operator=(const Oxs_Driver&) = delete;
 
 protected:
   Oxs_Driver(const char* name,        // Child instance id
@@ -393,9 +405,13 @@ protected:
 
   void SetStartValues(Oxs_SimState& istate) const;
 
+  virtual OC_BOOL PreInit();
+
   virtual OC_BOOL Init();  // All children of Oxs_Driver *must* call
   /// this function in their Init() routines.  The main purpose
   /// of this function is to initialize the current state.
+
+  virtual OC_BOOL PostInit();
 
 public:
 
@@ -411,6 +427,17 @@ public:
     return current_state.GetPtr();
   }
 
+  // Clients may request Oxs_Driver to hold READ locks
+  // on a specified number of older, accepted states:
+  OC_UINT4m SimstateHoldRequest(OC_UINT4m hold_request) {
+    if(hold_request>simstate_hold_size) {
+      director->ReserveSimulationStateRequest(hold_request
+                                              - simstate_hold_size);
+      simstate_hold_size = hold_request;
+    }
+    return simstate_hold_size;
+  }
+
   // Checks state against parent Oxs_Driver class stage/run limiters,
   // and if passes (i.e., not done), then calls ChildStage/RunDone
   // functions.  If this is not enough flexibility, we could make
@@ -421,16 +448,22 @@ public:
 
   virtual  OC_BOOL
   Step(Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_ConstKey<Oxs_SimState>& next_state)=0;
   // Returns true if step was successful, false if
   // unable to step as requested.
 
   // External problem "Run" interface; called from director.
+  // STATE CONTRACT: In any newly created state, the previous_state_id
+  // field will be set to 0 if there are no preceding "valid" states, or
+  // else to the last "valid" state.  A "valid" state is one returned as
+  // a successful step from the Oxs_Driver::Step routine or one created
+  // for stage initialiation.
   void Run(vector<OxsRunEvent>& results) {
     Run(results,1); // Call internal Run interface with default
     // stage increment (==1).
   }
+
 
   // GetIteration, GetCurrentStateId, SetStage and GetStage throw
   // exceptions on errors.
@@ -480,17 +513,60 @@ public:
     }
   }
 
+
+
+  //  FillState* routine overview:
+  //  The following three FillState* routines are primarily called from
+  //  evolver objects' Step() or TryStep() routines to initialize a new
+  //  Oxs_SimState object as part of the state evolution process.  The
+  //  typical call sequence is (1) director->GetNewSimulationState() to
+  //  get a blank Oxs_SimState object, followed immediately by (2)
+  //  driver->FillStateMemberData() to initialize Oxs_SimState member
+  //  data. (FillStateMemberData() calls the Oxs_SimState CloneHeader()
+  //  member function to copy member data from the old state, and then
+  //  resets run status values to indicate uninitialized status.) The
+  //  evolver code should then (3) set the iteration count and time
+  //  fields in the Oxs_SimState header and (4) call
+  //  FillStateSupplemental to allow for additional state
+  //  initialization/modification at the direction of any MIF-specified
+  //  Oxs_StateInitializer objects. (One example of this would be Ms
+  //  adjustments arising from thermal effects.) It is important to note
+  //  that both FillStateMemberData() and FillStateSupplemental() take
+  //  as their second import a non-const unlocked Oxs_SimState
+  //  reference.
+  //    At this point the evolver object should (5) compute and fill the
+  //  Oxs_SimState spin field and (6) lock the state. Data derived from
+  //  this state configuration can then be added (7). In particular, for
+  //  accepted states (i.e., not rejected or evolver intermediate
+  //  states), the evolver should call (8) driver->FillStateDerivedData
+  //  to fill any requested "global" derived data, notably the maximum
+  //  angle (maxang) diagnostic. As background, generally maxang is
+  //  computed as a side effect of the exchange computation, and so
+  //  comes for free.  But if a simulation has no exchange or the
+  //  exchange magang is not relevant, then a simulation can request the
+  //  driver to compute maxang, via the report_max_spin_angle
+  //  parameter. This computation is not free, so should only be
+  //  computed on accepted state.
+  //    The FillState() routine calls the other three, but is provided
+  //  only for backwards compatibility. It's use is deprecated, for one
+  //  reason because the new_state import is non-const, and setting
+  //  DerivedData on an unlocked state is not recommended as there is no
+  //  protection against deletion --- and future API changes aren't
+  //  guaranteed to not automatically clear DerivedData on unlocked
+  //  states.
   virtual void FillStateMemberData(const Oxs_SimState& old_state,
                                    Oxs_SimState& new_state) const;
+  virtual void FillStateSupplemental(const Oxs_SimState& old_state,
+                                     Oxs_SimState& new_state) const;
   virtual void FillStateDerivedData(const Oxs_SimState& old_state,
                                     const Oxs_SimState& new_state) const;
-  virtual void FillState(const Oxs_SimState& old_state,
-                         Oxs_SimState& new_state) const;
+  virtual void FillState(const Oxs_SimState& old_state,   // DEPRECATED
+                         Oxs_SimState& new_state) const;  // DEPRECATED
   /// FillState is called to fill in a new blank state, using
   ///   an old state as a template.  Specific drivers may have
   ///   supplemental state filling routines as part of a cooperative
   ///   agreement with particular evolver subclasses.
-  /// A default implementation is provided.  Child classes should
+  ///  A default implementation is provided.  Child classes should
   ///   either use this method as is, or else call it from the
   ///   overriding method.  Complete replacement is discouraged,
   ///   to make it easier to propagate any future changes in
@@ -498,6 +574,14 @@ public:
   /// June 2009: Use of FillState is deprecated.  New code should
   ///   use the separate FillStateMemberData and FillStateDerivedData
   ///   routines.
+  /// March 2023: Oxs_Driver::FillStateSupplemental introduced, primarly
+  ///   as support for Oxs_StateInitializer object. It is based in part
+  ///   on an earlier function in Oxs_TimeDriver with the same name but
+  ///   different signature used to fill state time fields following a
+  ///   FillStateMemberData call. Child classes should redefine as
+  ///   necessary but call the base Oxs_Driver implementation to process
+  ///   Oxs_StateInitializer requests.
+
 
   virtual void FillNewStageStateMemberData(const Oxs_SimState& old_state,
                                      int new_stage_number,
@@ -505,17 +589,6 @@ public:
   virtual void FillNewStageStateDerivedData(const Oxs_SimState& old_state,
                                      int new_stage_number,
                                      const Oxs_SimState& new_state) const;
-#if 0
-  virtual void FillNewStageState(const Oxs_SimState& old_state,
-				 int new_stage_number,
-				 Oxs_SimState& new_state) const
-  { // Deprecated routine.  New code should use the separate
-    // FillNewStageStateMemberData and FillNewStageStateDerivedData
-    // functions.
-    FillNewStageStateMemberData(old_state,new_stage_number,new_state);
-    FillNewStageStateDerivedData(old_state,new_stage_number,new_state);
-  }
-#endif
   /// FillNewStageState is called to copy a state across a stage
   /// boundary.  A default method is provided.  Child classes should
   /// either use this method as is, or else call it from overriding
@@ -526,7 +599,8 @@ public:
   ///    FillNewStageStateDerivedData routines.
 
   virtual OC_BOOL InitNewStage(Oxs_ConstKey<Oxs_SimState> state,
-                            Oxs_ConstKey<Oxs_SimState> prevstate) =0;
+                               Oxs_DriverStageInfo& stage_info,
+                               Oxs_ConstKey<Oxs_SimState> prevstate) =0;
   /// InitNewStage sends first state of new stage to the evolver for
   /// any necessary internal bookkeeping.  This call also runs through
   /// the child driver class, so it can update any internal structures

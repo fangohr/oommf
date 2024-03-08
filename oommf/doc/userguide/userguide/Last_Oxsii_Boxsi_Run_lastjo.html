@@ -1,0 +1,145 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2018.2 (Released May 16, 2018) -->
+<HTML>
+<HEAD>
+<TITLE>Last Oxsii/Boxsi Run: lastjob</TITLE>
+<META NAME="description" CONTENT="Last Oxsii/Boxsi Run: lastjob">
+<META NAME="keywords" CONTENT="userguide">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2018.2">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="userguide.css">
+
+<LINK REL="next" HREF="OOMMF_Host_Server_launchhos.html">
+<LINK REL="previous" HREF="Killing_OOMMF_Processes_kil.html">
+<LINK REL="up" HREF="Command_Line_Utilities.html">
+<LINK REL="next" HREF="OOMMF_Host_Server_launchhos.html">
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF",text="#000000",LINK="#0000FF",
+            VLINK="#4498F0",ALINK="00FFFF">
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html930"
+  HREF="OOMMF_Host_Server_launchhos.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html926"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html920"
+  HREF="Killing_OOMMF_Processes_kil.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html928"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html931"
+  HREF="OOMMF_Host_Server_launchhos.html">The OOMMF Host Server:</A>
+<B> Up:</B> <A NAME="tex2html927"
+  HREF="Command_Line_Utilities.html">Command Line Utilities</A>
+<B> Previous:</B> <A NAME="tex2html921"
+  HREF="Killing_OOMMF_Processes_kil.html">Killing OOMMF Processes: killoommf</A>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION0017100000000000000000"></A><A NAME="sec:lastjob"></A><A NAME="19116"></A><A NAME="19117"></A>
+<BR>
+Last Oxsii/Boxsi Run:
+            lastjob
+</H1>
+
+<P>
+The <B>lastjob</B> command reads through <A HREF="OOMMF_eXtensible_Solver.html#sec:oxs"
+ NAME="19123">Oxs</A> log files and identifies
+the last simulation run.  From information in the log file,
+<B>lastjob</B> constructs a command equivalent to that used to launch the
+last simulation and prints that command to stdout.  If that simulation
+is not recorded as complete in the log file, and a restart is requested,
+then the simulation will be restarted with the <TT>-restart 1</TT> comand
+line option.  If a restart (checkpoint) file exists for the simulation,
+then the command will restart the simulation at the checkpoint state.
+If a restart file cannot be found, then the job restart will fail.  (By
+default, <B>oxsii</B> and <B>boxsi</B> write <A HREF="Drivers.html#PToxsdrivercheckpoint">checkpoint
+files</A> to disk every fifteen minutes.  If a
+simulation is aborted, for example by a system crash, then the
+checkpoint file can be used to restart the simulation.)
+Refer also to the <A HREF="Oxs_Log_File_Review_logrevi.html#sec:logreview"
+ NAME="19136"><B>logreview</B></A> command line
+tool.
+
+<P>
+
+<P>
+<FONT SIZE="+1"><B>Launching</B></FONT>
+<BR>
+The <B>lastjob</B> launch command is:
+<PRE>
+tclsh oommf.tcl lastjob [-logfile logname] [-unfinished] [-v] &lt;show|restart&gt; \
+   &lt;oxsii|boxsi&gt; [hostname] [username]
+</PRE>
+where
+<DL>
+<DT><STRONG><TT><B>-logfile logname</B></TT></STRONG></DT>
+<DD>The name of the file to look in to determine the last job.  Optional.
+The default is to look in the OOMMF root directory for either
+<TT><B>oxsii.errors</B></TT> or <TT><B>boxsi.errors</B></TT>, corresponding to whether
+<B>oxsii</B> or <B>boxsi</B> jobs are selected.
+</DD>
+<DT><STRONG><TT><B>-unfinished</B></TT></STRONG></DT>
+<DD>Restrict search to unfinished jobs.  Optional.
+</DD>
+<DT><STRONG><TT><B>-v</B></TT></STRONG></DT>
+<DD>Request verbose output.  Optional.
+</DD>
+<DT><STRONG><TT><B>show|restart</B></TT></STRONG></DT>
+<DD>Selects whether to simply show the command or to attempt a restart.
+Required.
+</DD>
+<DT><STRONG><TT><B>oxsii|boxsi</B></TT></STRONG></DT>
+<DD>Selects <B>oxsii</B> or <B>boxsi</B> jobs.  Required.
+</DD>
+<DT><STRONG><TT><B>hostname</B></TT></STRONG></DT>
+<DD>The name of the host machine to look for jobs for.  This is optional,
+with the default being the name of the current machine.  This option is
+useful if the log file is on a shared drive used by multiple hosts.
+This field is interpreted as a regular expression, so for example
+``<TT>.*</TT>'' can be used to find the last job for all hosts.
+</DD>
+<DT><STRONG><TT><B>username</B></TT></STRONG></DT>
+<DD>The name of the user to look for jobs for.  This is optional,
+with the default being the name of the current user.  This option is
+useful if the same log file is shared by multiple users.
+This field is interpreted as a regular expression, so for example
+``<TT>.*</TT>'' can be used to find the last job by any user.
+</DD>
+</DL>
+Note: If your command shell expands wildcards, as is common on Unix
+systems, then you may need to escape or quote regular expressions to
+protect them from expansion by the shell.
+
+<P>
+<HR>
+<!--Navigation Panel--><A NAME="tex2html1"
+  HREF="https://math.nist.gov/oommf"><IMG ALT="OOMMF Home" BORDER="2" SRC="oommficon.gif"></A> 
+<A NAME="tex2html930"
+  HREF="OOMMF_Host_Server_launchhos.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.gif"></A> 
+<A NAME="tex2html926"
+  HREF="Command_Line_Utilities.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.gif"></A> 
+<A NAME="tex2html920"
+  HREF="Killing_OOMMF_Processes_kil.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.gif"></A>  
+<A NAME="tex2html928"
+  HREF="docindex.html">
+<IMG WIDTH="43" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="index" SRC="index.gif"></A>
+<BR>
+<!--End of Navigation Panel-->
+<BR><I><A HREF="Credits.html#sec:Credits">OOMMF Documentation Team</A><BR>September 27, 2023</I>
+</BODY>
+</HTML>

@@ -43,9 +43,8 @@ Oxs_DMI_C2v::Oxs_DMI_C2v(
   Oxs_Director* newdtr, // App director
   const char* argstr)   // MIF input block parameters
   : Oxs_Energy(name,newdtr,argstr),
-    A_size(0), Dx(NULL), Dy(NULL), 
-    xperiodic(0), yperiodic(0), zperiodic(0),
-    mesh_id(0)
+    A_size(0), Dx(NULL), Dy(NULL), mesh_id(0),
+    xperiodic(0), yperiodic(0), zperiodic(0)
 {
   // Process arguments
   OXS_GET_INIT_EXT_OBJECT("atlas",Oxs_Atlas,atlas);
@@ -106,7 +105,7 @@ Oxs_DMI_C2v::Oxs_DMI_C2v(
 		  (unsigned int)params.size());
       throw Oxs_Ext::Error(this,buf);
   }
-  for(i=0;i<params.size();i+=3) {
+  for(i=0; static_cast<OC_UINDEX>(i) < params.size(); i+=3) {
     OC_INT4m i1 = atlas->GetRegionId(params[i]);
     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
     if(i1<0 || i2<0) {
@@ -163,7 +162,7 @@ Oxs_DMI_C2v::Oxs_DMI_C2v(
 		  (unsigned int)params.size());
       throw Oxs_Ext::Error(this,buf);
   }
-  for(i=0;i<params.size();i+=3) {
+  for(i=0; static_cast<OC_UINDEX>(i) < params.size(); i+=3) {
     OC_INT4m i1 = atlas->GetRegionId(params[i]);
     OC_INT4m i2 = atlas->GetRegionId(params[i+1]);
     if(i1<0 || i2<0) {

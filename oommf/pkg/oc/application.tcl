@@ -298,6 +298,7 @@ Oc_Class Oc_Application {
     }
 
     const public variable machine
+    const public variable altmachine
     const public variable name 
     const public variable version
     const public variable file
@@ -351,38 +352,41 @@ Oc_Class Oc_Application {
           set fileset 1
           set execfile [file join $directory $file]
        }
-        # Try to resolve the machine into a supporting shell application
-        if {$fileset && ![catch {eval $class Resolve $machine} app]} {
-            # Found a shell app which WillRun
-            if {[file readable $execfile]} {
-		set suboptions {}
-		foreach o $options {
-		    catch {lappend suboptions [uplevel #0 [list subst $o]]}
-		}
-                set cache($this) [concat [list $app Exec $execfile] $suboptions]
-                return 1
-            } else {
-                set cache($this) "$execfile: permission denied"
-                return 0
-            }
-        }
-        # No shell app -- try as a binary
-        if {!$fileset || [string match $platformName $machine]} {
-            if {[file executable [lindex [auto_execok $execfile] 0]]} {
-		set suboptions {}
-		foreach o $options {
-		    catch {lappend suboptions [uplevel #0 [list subst $o]]}
-		}
-                set cache($this) [concat [list exec $execfile] $suboptions]
-                return 1
-            } else {
-                set cache($this) "$execfile: permission denied"
-                return 0
-            }
-        } else {
-            set cache($this) "$execfile: needs shell or platform '$machine'"
-            return 0
-        }
+       # Try to resolve the machine into a supporting shell application
+       if {$fileset && \
+              (![catch {eval $class Resolve $machine} app] ||
+               ([info exists altmachine] && \
+                   ![catch {eval $class Resolve $altmachine} app]))} {
+          # Found a shell app which WillRun
+          if {[file readable $execfile]} {
+             set suboptions {}
+             foreach o $options {
+                catch {lappend suboptions [uplevel #0 [list subst $o]]}
+             }
+             set cache($this) [concat [list $app Exec $execfile] $suboptions]
+             return 1
+          } else {
+             set cache($this) "$execfile: permission denied"
+             return 0
+          }
+       }
+       # No shell app -- try as a binary
+       if {!$fileset || [string match $platformName $machine]} {
+          if {[file executable [lindex [auto_execok $execfile] 0]]} {
+             set suboptions {}
+             foreach o $options {
+                catch {lappend suboptions [uplevel #0 [list subst $o]]}
+             }
+             set cache($this) [concat [list exec $execfile] $suboptions]
+             return 1
+          } else {
+             set cache($this) "$execfile: permission denied"
+             return 0
+          }
+       } else {
+          set cache($this) "$execfile: needs shell or platform '$machine'"
+          return 0
+       }
     }
        
 }

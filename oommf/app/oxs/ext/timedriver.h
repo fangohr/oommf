@@ -69,18 +69,21 @@ public:
   // parent.
 
   virtual OC_BOOL InitNewStage(Oxs_ConstKey<Oxs_SimState> state,
-                            Oxs_ConstKey<Oxs_SimState> prevstate);
+                               Oxs_DriverStageInfo& stageinfo,
+                               Oxs_ConstKey<Oxs_SimState> prevstate);
 
   virtual  OC_BOOL
   Step(Oxs_ConstKey<Oxs_SimState> current_state,
-       const Oxs_DriverStepInfo& step_info,
+       Oxs_DriverStepInfo& step_info,
        Oxs_ConstKey<Oxs_SimState>& next_state);
   // Returns true if step was successful, false if
   // unable to step as requested.
 
   // Time driver interface
-  virtual void FillStateSupplemental(Oxs_SimState& work_state) const;
-  /// FillStateSupplemental is called from time evolvers to adjust timestep.
+  virtual void FillStateSupplemental(const Oxs_SimState& old_state,
+                                     Oxs_SimState& work_state) const;
+  /// FillStateSupplemental is called from time evolvers to adjust timestep
+  /// and process any Oxs_StateInitializer requests.
 };
 
 #endif // _OXS_TIMEDRIVER

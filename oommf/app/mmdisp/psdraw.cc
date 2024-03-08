@@ -30,23 +30,36 @@ OommfPSDraw::OommfPSDraw
  OC_REAL8m xmin,OC_REAL8m ymin,
  OC_REAL8m xmax,OC_REAL8m ymax,
  OommfPackedRGB background_color,
+ OC_REAL8m matwidth,
+ OommfPackedRGB matcolor,
+ OommfPackedRGB arrow_outline_color,
  OC_REAL8m arrow_outline_width,
- OommfPackedRGB arrow_outline_color
-)
+ OC_REAL8m arrow_width,
+ OC_REAL8m arrow_tip_width,
+ OC_REAL8m arrow_length,
+ OC_REAL8m arrow_head_width,
+ OC_REAL8m arrow_head_ilen,
+ OC_REAL8m arrow_head_olen)
   : channel(use_channel),
-    LineWidth(0.075),
-    ArrowLength(0.90),ArrowHeadRatio(0.5),
-    ArrowOutlineWidth(arrow_outline_width),
+    bbox_xmin(int(floor(pxoff))),
+    bbox_ymin(int(floor(pyoff))),
+    bbox_xmax(int(ceil(pxoff
+     +(strcmp("Landscape",page_orientation)==0 ? printheight : printwidth)))),
+    bbox_ymax(int(ceil(pyoff
+     +(strcmp("Landscape",page_orientation)==0 ? printwidth : printheight)))),
+    scale(OC_MIN(printwidth/(xmax-xmin),printheight/(ymax-ymin))),
+    mat_width(matwidth),
+    mat_color(matcolor),
     ArrowOutlineColor(arrow_outline_color),
-    InOutTipRadius(0.15),
-    plot_xmin(xmin),plot_ymin(ymin),
-    plot_xmax(xmax),plot_ymax(ymax)
+    ArrowOutlineWidth(arrow_outline_width),
+    ArrowWidth(arrow_width),
+    ArrowTipWidth(arrow_tip_width),
+    ArrowLength(arrow_length),
+    ArrowHeadWidth(arrow_head_width),
+    ArrowHeadInnerLength(arrow_head_ilen),
+    ArrowHeadOuterLength(arrow_head_olen),
+    InOutTipRadius(0.15)
 {
-  // Determine scaling
-  OC_REAL8m xscale = printwidth/(xmax-xmin);
-  OC_REAL8m yscale = printheight/(ymax-ymin);
-  OC_REAL8m scale = OC_MIN(xscale,yscale);
-
   // Write header
   // NOTE: When using Nb_WriteChannel, each '%' in the output
   //  string is written to the output channel.  However, when
@@ -58,18 +71,6 @@ OommfPSDraw::OommfPSDraw
   Nb_WriteChannel(channel,"%%CreationDate: ",-1);
   time_t current_time = time(NULL);
   Nb_WriteChannel(channel,ctime(&current_time),-1);
-
-  int bbox_xmin = int(floor(pxoff));
-  int bbox_ymin = int(floor(pyoff));
-  int bbox_xmax = 0;
-  int bbox_ymax = 0;
-  if(strcmp("Landscape",page_orientation)==0) {
-    bbox_xmax = int(ceil(pxoff+printheight));
-    bbox_ymax = int(ceil(pyoff+printwidth));
-  } else {
-    bbox_xmax = int(ceil(pxoff+printwidth));
-    bbox_ymax = int(ceil(pyoff+printheight));
-  }
   Nb_FprintfChannel(channel,NULL,1024,"%%%%BoundingBox: %d %d %d %d\n",
                     bbox_xmin,bbox_ymin,bbox_xmax,bbox_ymax);
 
@@ -90,123 +91,122 @@ OommfPSDraw::OommfPSDraw
   Nb_WriteChannel(channel,"  itransform\n",-1);
   Nb_WriteChannel(channel,"} def\n\n",-1);
 
-  // Arrow
-  if(ArrowOutlineWidth<=0.0) { // No outline
-    Nb_WriteChannel(channel,"/MakeStandardArrow { %stack: r g b\n",-1);
-    Nb_WriteChannel(channel,"  setrgbcolor\n",-1);
-    Nb_WriteChannel(channel,"  newpath\n",-1);
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g moveto\n",
-                      static_cast<double>(-ArrowLength/2.),
-                      static_cast<double>(LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio*0.8),
-                      static_cast<double>(LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio),
-                      static_cast<double>(ArrowHeadRatio*0.4));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.),
-                      static_cast<double>(LineWidth/8.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.),
-                      static_cast<double>(-LineWidth/8.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio),
-                      static_cast<double>(-ArrowHeadRatio*0.4));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio*0.8),
-                      static_cast<double>(-LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(-ArrowLength/2.),
-                      static_cast<double>(-LineWidth/2.));
-    Nb_WriteChannel(channel,"  closepath\n  fill\n} def\n\n",-1);
-  } else { // Yes outline
-    unsigned int red,green,blue;
-    OC_REAL8m offset = ArrowOutlineWidth * LineWidth * 2./3.;
-    ArrowOutlineColor.Get(red,green,blue);
+  // Arrow routines. See NOTES IX, 27-Oct-2021, pp. 4-5 for details
+  Nb_WriteChannel(channel,"/MakeStandardArrow { %stack: r g b\n",-1);
+  if(ArrowOutlineWidth>0.0) { // Draw outline about standard arrow
+    // Compute needed trig ratios
+    // Special case handling: NOTES IX, 29-Oct-2021, pp. 6-7.
+    // SPECIAL CASES: ArrowHeadWidth == ArrowTipWidth
+    //                ArrowHeadOuterLength == 0
+    //                ArrowHeadWidth == ArrowWidth
+    // Convenience variables
+    const OC_REAL8m Ld = ArrowHeadOuterLength - ArrowHeadInnerLength;
+    const OC_REAL8m Lo = ArrowHeadOuterLength;
+    const OC_REAL8m Wb = ArrowHeadWidth-ArrowWidth;    // width at back
+    const OC_REAL8m Wt = ArrowHeadWidth-ArrowTipWidth; // width at tip
+    const OC_REAL8m sAOW = ArrowOutlineWidth*ArrowWidth*0.25;
 
-    // PostScript routine for arrow outline
-    Nb_WriteChannel(channel,"/MakeStandardArrowOutline {\n",-1);
+    // Compute cot(alpha2)+csc(alpha2) in NOTES IX
+    const OC_REAL8m max_boff = sAOW + Ld;
+    OC_REAL8m boff = sAOW*(2*Ld+sqrt(Wb*Wb+4*Ld*Ld));
+    if(Ld<=0.0 || boff<Wb*max_boff) {
+      boff /= Wb;
+    } else {
+      boff = max_boff;
+    }
+
+
+    // Special case handling at tip
+    OC_REAL8m c2x=ArrowLength/2.-ArrowHeadOuterLength+sAOW;
+    OC_REAL8m c2y=ArrowHeadWidth/2.+sAOW;
+    OC_REAL8m dx =ArrowLength/2.+sAOW;
+    OC_REAL8m dy =ArrowTipWidth/2.+sAOW;
+    if(Wt>0.0 || Lo>0.0) {
+      // Compute csc(alpha1)-cot(alpha1) in NOTES IX:
+      OC_REAL8m coff = sAOW*Wt / (sqrt(Wt*Wt+4*Lo*Lo)+2*Lo);
+      // Compute sec(alpha1)-tan(alpha1) in NOTES IX:
+      OC_REAL8m doff = 2*sAOW*Lo / (sqrt(Wt*Wt+4*Lo*Lo)+Wt);
+      c2x = ArrowLength/2.-ArrowHeadOuterLength+coff;
+      dy =ArrowTipWidth/2.+doff;
+    } else {
+      dx = c2x = OC_MAX(dx,c2x);
+      dy = c2y = OC_MAX(dy,c2y);
+    }
+
+    // Outline setup
+    unsigned int red,green,blue;
+    ArrowOutlineColor.Get(red,green,blue);
     Nb_FprintfChannel(channel,NULL,1024,
                       "  %.6g %.6g %.6g setrgbcolor\n",
                       red/255.,green/255.,blue/255.);
     Nb_WriteChannel(channel,"  newpath\n",-1);
 
-    assert(0.4*ArrowHeadRatio > LineWidth/8.);
-    OC_REAL8m tiprat = 1.0/(0.4 - LineWidth/(8.*ArrowHeadRatio));
-    OC_REAL8m tipratx = offset*(sqrt(tiprat*tiprat+1)-tiprat);
-    OC_REAL8m tipraty = offset*(sqrt(tiprat*tiprat+1)-1)/tiprat;
-    OC_REAL8m backarrowx = ArrowLength/2.-ArrowHeadRatio + tipratx;
-    OC_REAL8m tipx = ArrowLength/2. + offset;
-    OC_REAL8m tipy = LineWidth/8. + tipraty;
-
-    // Top half
+    // Render upper half of arrow outline
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g moveto\n",
-              static_cast<double>(-ArrowLength/2.-offset),
-              static_cast<double>(LineWidth/2.+offset));
+         static_cast<double>(-ArrowLength/2.-sAOW),
+         static_cast<double>(ArrowWidth/2.+sAOW));                  // Pt a
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-0.8*ArrowHeadRatio-1.5*offset),
-              static_cast<double>(LineWidth/2.+offset));
+         static_cast<double>(ArrowLength/2.-ArrowHeadInnerLength-boff),
+         static_cast<double>(ArrowWidth/2.+sAOW));                  // Pt b
+    if(Ld<=0.0 || Wb/2>0.75*sAOW) {
+      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+         static_cast<double>(ArrowLength/2.-ArrowHeadOuterLength-boff),
+         static_cast<double>(ArrowHeadWidth/2.+sAOW));              // Pt c1
+      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+         static_cast<double>(c2x),static_cast<double>(c2y));        // Pt c2
+    }
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-1.5*offset),
-              static_cast<double>(0.4*ArrowHeadRatio+offset));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(backarrowx),
-              static_cast<double>(0.4*ArrowHeadRatio+offset));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(tipx),
-              static_cast<double>(tipy));
-
+         static_cast<double>(dx),static_cast<double>(dy));          // Pt d
     // Bottom half
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(tipx),
-              static_cast<double>(-tipy));
+         static_cast<double>(dx),static_cast<double>(-dy));         // Pt d
+    if(Ld<=0.0 || Wb/2>0.75*sAOW) {
+      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+         static_cast<double>(c2x),static_cast<double>(-c2y));       // Pt c2
+      Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+        static_cast<double>(ArrowLength/2.-ArrowHeadOuterLength-boff),
+        static_cast<double>(-(ArrowHeadWidth/2.+sAOW)));            // Pt c1
+    }
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio),
-              static_cast<double>(-0.4*ArrowHeadRatio-offset));
+        static_cast<double>(ArrowLength/2.-ArrowHeadInnerLength-boff),
+        static_cast<double>(-(ArrowWidth/2.+sAOW)));                // Pt b
     Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-ArrowHeadRatio-1.5*offset),
-              static_cast<double>(-0.4*ArrowHeadRatio-offset));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(ArrowLength/2.-0.8*ArrowHeadRatio-1.5*offset),
-              static_cast<double>(-LineWidth/2.-offset));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-              static_cast<double>(-ArrowLength/2.-offset),
-              static_cast<double>(-LineWidth/2.-offset));
-
-    Nb_WriteChannel(channel,"  closepath\n  fill\n} def\n\n",-1);
-
-    Nb_WriteChannel(channel,"/MakeStandardArrow { %stack: r g b\n",-1);
-    Nb_WriteChannel(channel,"  MakeStandardArrowOutline\n",-1);
-    Nb_WriteChannel(channel,"  setrgbcolor\n",-1);
-    Nb_WriteChannel(channel,"  newpath\n",-1);
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g moveto\n",
-                      static_cast<double>(-ArrowLength/2.),
-                      static_cast<double>(LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio*0.8),
-                      static_cast<double>(LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>( ArrowLength/2.-ArrowHeadRatio),
-                      static_cast<double>(ArrowHeadRatio*0.4));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.),
-                      static_cast<double>(LineWidth/8.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.),
-                      static_cast<double>(-LineWidth/8.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio),
-                      static_cast<double>(-ArrowHeadRatio*0.4));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(ArrowLength/2.-ArrowHeadRatio*0.8),
-                      static_cast<double>(-LineWidth/2.));
-    Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
-                      static_cast<double>(-ArrowLength/2.),
-                      static_cast<double>(-LineWidth/2.));
-    Nb_WriteChannel(channel,"  closepath\n  fill\n} def\n\n",-1);
+        static_cast<double>(-ArrowLength/2.-sAOW),
+        static_cast<double>(-(ArrowWidth/2.+sAOW)));                // Pt a
+    Nb_WriteChannel(channel,"  closepath\n  fill\n",-1);
   }
-
+  // Render "standard" arrow (no translation, rotation, or scaling)
+  Nb_WriteChannel(channel,"  setrgbcolor\n",-1);  // stack: r g b
+  Nb_WriteChannel(channel,"  newpath\n",-1);
+  // Top half
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g moveto\n",
+                      static_cast<double>(-ArrowLength/2.),
+                    static_cast<double>(ArrowWidth/2.));       // Pt A
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.-ArrowHeadInnerLength),
+                      static_cast<double>(ArrowWidth/2.));     // Pt B
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.-ArrowHeadOuterLength),
+                      static_cast<double>(ArrowHeadWidth/2.)); // Pt C
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.),
+                      static_cast<double>(ArrowTipWidth/2.));  // Pt D
+  // Do reflected bottom half
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.),
+                      static_cast<double>(-ArrowTipWidth/2.));
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.-ArrowHeadOuterLength),
+                      static_cast<double>(-ArrowHeadWidth/2.));
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(ArrowLength/2.-ArrowHeadInnerLength),
+                      static_cast<double>(-ArrowWidth/2.));
+  Nb_FprintfChannel(channel,NULL,1024,"  %.6g %.6g lineto\n",
+                      static_cast<double>(-ArrowLength/2.),
+                      static_cast<double>(-ArrowWidth/2.));
+  Nb_WriteChannel(channel,"  closepath\n  fill\n} def\n\n",-1);
+  // MakeArrow wrapper routine that provides translation, rotation, and
+  // scaling to MakeStandardArrow
   Nb_WriteChannel(channel,
                   "/MakeArrow { %stack: r g b xscale yscale rot xpos ypos\n",
                   -1);
@@ -381,30 +381,26 @@ OommfPSDraw::OommfPSDraw
                     bbox_xmax,bbox_ymax,
                     bbox_xmin,bbox_ymax);
 
-  Nb_FprintfChannel(channel,NULL,1024,
-                    "%.6g %.6g translate\n",
-                    static_cast<double>(pxoff),
-                    static_cast<double>(pyoff));
   if(strcmp("Landscape",page_orientation)==0) {
+    Nb_FprintfChannel(channel,NULL,1024,
+                      "%.6g %.6g translate\n",
+                      static_cast<double>(bbox_xmax),
+                      static_cast<double>(bbox_ymin));
     Nb_WriteChannel(channel,"90 rotate\n",-1);
-    Nb_FprintfChannel(channel,NULL,1024,
-                      "%.6g %.6g scale\n",
-                      static_cast<double>(scale),
-                      static_cast<double>(-1*scale));
-    Nb_FprintfChannel(channel,NULL,1024,
-                      "%.6g %.6g translate\n\n",
-                      static_cast<double>(-xmin),
-                      static_cast<double>(-ymin));
   } else { // Portrait orientation
     Nb_FprintfChannel(channel,NULL,1024,
-                      "%.6g %.6g scale\n",
-                      static_cast<double>(scale),
-                      static_cast<double>(-1*scale));
-    Nb_FprintfChannel(channel,NULL,1024,
-                      "%.6g %.6g translate\n\n",
-                      static_cast<double>(-xmin),
-                      static_cast<double>(-ymax));
+                      "%.6g %.6g translate\n",
+                      static_cast<double>(bbox_xmin),
+                      static_cast<double>(bbox_ymin));
   }
+  Nb_FprintfChannel(channel,NULL,1024,
+                    "%.6g %.6g scale\n",
+                    static_cast<double>(scale),
+                    static_cast<double>(-1*scale));
+  Nb_FprintfChannel(channel,NULL,1024,
+                    "%.6g %.6g translate\n\n",
+                    static_cast<double>(-xmin),
+                    static_cast<double>(-ymax));
 
   Nb_WriteChannel(channel,"% Device pixel dimensions\n",-1);
   Nb_WriteChannel(channel,"1 1 idtransform /ydevscale exch def"
@@ -415,7 +411,9 @@ OommfPSDraw::OommfPSDraw
 
 OommfPSDraw::~OommfPSDraw()
 { // Writes trailer
-  Nb_WriteChannel(channel,"\nrestore\nshowpage\n",-1);
+  Nb_WriteChannel(channel,"\ngrestore\n",-1);
+  ApplyMat();
+  Nb_WriteChannel(channel,"\nshowpage\n",-1);
   Nb_WriteChannel(channel,"%%Trailer\n%%EOF\n",-1);
   channel=NULL;
 }
@@ -619,44 +617,47 @@ OommfPSDraw::DrawSquareWithDot
 }
 
 void
-OommfPSDraw::AddMat
-(OC_REAL8m width,
- OommfPackedRGB color)
-{ // Lays flat mat around border of specified width (in pixels)
+OommfPSDraw::ApplyMat()
+{ // Lays flat mat around border of specified mat width
   // and color.
-#define MEMBERNAME "AddMat(OC_REAL8m,OommfPackedRGB)"
+#define MEMBERNAME "ApplyMat(OC_REAL8m,OommfPackedRGB)"
+  if(mat_width<=0.0) return;
   unsigned int red,green,blue;
-  color.Get(red,green,blue);
-
+  mat_color.Get(red,green,blue);
   Nb_WriteChannel(channel,"\n% Draw mat\n",-1);
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g ",
+  Nb_WriteChannel(channel,"gsave\nnewpath\n",-1);
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g setrgbcolor\n",
                     red/255.,green/255.,blue/255.);
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g %.6g SolidRect\n",
-                    static_cast<double>(plot_xmin),
-                    static_cast<double>(plot_ymin),
-                    static_cast<double>(width),
-                    static_cast<double>(plot_ymax-plot_ymin));
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g ",
-                    red/255.,green/255.,blue/255.);
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g %.6g SolidRect\n",
-                    static_cast<double>(plot_xmin),
-                    static_cast<double>(plot_ymin),
-                    static_cast<double>(plot_xmax-plot_xmin),
-                    static_cast<double>(width));
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g ",
-                    red/255.,green/255.,blue/255.);
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g %.6g SolidRect\n",
-                    static_cast<double>(plot_xmax-width),
-                    static_cast<double>(plot_ymin),
-                    static_cast<double>(width),
-                    static_cast<double>(plot_ymax-plot_ymin));
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g ",
-                    red/255.,green/255.,blue/255.);
-  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g %.6g %.6g SolidRect\n",
-                    static_cast<double>(plot_xmin),
-                    static_cast<double>(plot_ymax-width),
-                    static_cast<double>(plot_xmax-plot_xmin),
-                    static_cast<double>(width));
-
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g moveto\n",
+                    static_cast<double>(bbox_xmin),
+                    static_cast<double>(bbox_ymin));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmax),
+                    static_cast<double>(bbox_ymin));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmax),
+                    static_cast<double>(bbox_ymax));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmin),
+                    static_cast<double>(bbox_ymax));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmin),
+                    static_cast<double>(bbox_ymin));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmin+mat_width),
+                    static_cast<double>(bbox_ymin));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmin+mat_width),
+                    static_cast<double>(bbox_ymax-mat_width));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmax-mat_width),
+                    static_cast<double>(bbox_ymax-mat_width));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmax-mat_width),
+                    static_cast<double>(bbox_ymin+mat_width));
+  Nb_FprintfChannel(channel,NULL,1024,"%.6g %.6g lineto\n",
+                    static_cast<double>(bbox_xmin),
+                    static_cast<double>(bbox_ymin+mat_width));
+  Nb_WriteChannel(channel,"closepath\nfill\ngrestore\n",-1);
 #undef MEMBERNAME
 }
