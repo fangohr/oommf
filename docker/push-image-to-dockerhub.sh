@@ -15,5 +15,3 @@ docker buildx inspect container || echo docker buildx create --name container --
 # multi-platform build and push to Dockerhub
 time docker buildx build --tag oommf/oommf:latest tag --tag oommf/oommf:21a0 --platform linux/arm64,linux/amd64 --builder container --push .
 
-# TODO add  once working
-
