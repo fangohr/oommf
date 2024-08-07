@@ -804,7 +804,7 @@ void Anv_SpinTEvolve_3d::NegotiateTimeStep
   if(stepsize<timestep_lower_bound) stepsize = timestep_lower_bound;
 
   // Negotiate with driver over size of next step
-  driver->FillState(cstate,nstate);
+  driver->FillStateMemberData(cstate,nstate);
   UpdateTimeFields(cstate,nstate,stepsize);
 
   // Update iteration count
@@ -1823,7 +1823,7 @@ void Anv_SpinTEvolve_3d::AdjustStepHeadroom(OC_INT4m step_reject)
 OC_BOOL
 Anv_SpinTEvolve_3d::Step(const Oxs_TimeDriver* driver,
                       Oxs_ConstKey<Oxs_SimState> current_state_key,
-                      const Oxs_DriverStepInfo& step_info,
+                      Oxs_DriverStepInfo& step_info,
                       Oxs_Key<Oxs_SimState>& next_state_key)
 {
   const OC_REAL8m bad_energy_cut_ratio = 0.75;

@@ -1,18 +1,33 @@
 == git-repo-url: https://github.com/oommf-extensions/anv-spintevolve-3d.git
 == repo-name: anv-spintevolve-3d
 == snap-shot-of-repo: provenance-anv-spintevolve-3d-HEAD.zip
-== cloned-on-date: Thu Feb 29 14:10:24 2024
+== cloned-on-date: Wed Aug  7 17:20:03 2024
 == copied-files-from-path-in-repo: src/
 last commit:
-commit b51ac083778f3699e17042ca07e13238d4876ad2
-Author: Martin Lang <m.lang@soton.ac.uk>
-Date:   Fri Oct 13 10:00:54 2023 +0200
+commit 27ff14d7842469aa3cf95031813df967c86ce9b1
+Merge: b51ac08 691cd9b
+Author: Martin Lang <67915889+lang-m@users.noreply.github.com>
+Date:   Wed Aug 7 17:15:43 2024 +0200
 
-    Compatibility with old and new OOMMF releases
+    Merge pull request #2 from oommf-extensions/fix-oommf21a0
+    
+    Fix extension to make it work with OOMMF 2.1a0
+
+commit 691cd9b937670058c5bafb126f6d92a950332472
+Author: Martin Lang <martin.lang@mpsd.mpg.de>
+Date:   Wed Aug 7 17:13:20 2024 +0200
+
+    Update README
+
+commit d0e2c4e00c416e3e35ee0cf437cda7cf750ae5e8
+Author: Martin Lang <martin.lang@mpsd.mpg.de>
+Date:   Wed Aug 7 17:08:18 2024 +0200
+
+    Fix extension to make it work with OOMMF 2.1a0
 
 == src file-list:
 total 92
--rw-r--r-- 1 pathaks cfel 80715 Feb 29 14:10 spintevolve_3d.cc
--rw-r--r-- 1 pathaks cfel 11495 Feb 29 14:10 spintevolve_3d.h
+-rw-r--r-- 1 mlang cfel 80719 Aug  7 17:20 spintevolve_3d.cc
+-rw-r--r-- 1 mlang cfel 11489 Aug  7 17:20 spintevolve_3d.h
 
 == see contents of provenance-anv-spintevolve-3d-HEAD.zip for additional info, examples, etc.
