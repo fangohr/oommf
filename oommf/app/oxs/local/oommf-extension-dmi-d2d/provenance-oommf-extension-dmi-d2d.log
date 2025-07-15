@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/joommf/oommf-extension-dmi-d2d.git
 == repo-name: oommf-extension-dmi-d2d
 == snap-shot-of-repo: provenance-oommf-extension-dmi-d2d-HEAD.zip
-== cloned-on-date: Thu Feb 29 14:10:22 2024
+== cloned-on-date: Tue Jul 15 10:11:19 2025
 == copied-files-from-path-in-repo: src/
 last commit:
 commit 9ce00156458a3cf9f5c5e139ba2f5814fe041444
@@ -12,11 +12,11 @@ Date:   Mon May 24 12:09:00 2021 +0100
 
 == src file-list:
 total 48
--rw-r--r-- 1 pathaks cfel 8791 Feb 29 14:10 DMI_D2d_x.cc
--rw-r--r-- 1 pathaks cfel 1682 Feb 29 14:10 DMI_D2d_x.h
--rw-r--r-- 1 pathaks cfel 8782 Feb 29 14:10 DMI_D2d_y.cc
--rw-r--r-- 1 pathaks cfel 1682 Feb 29 14:10 DMI_D2d_y.h
--rw-r--r-- 1 pathaks cfel 8809 Feb 29 14:10 DMI_D2d_z.cc
--rw-r--r-- 1 pathaks cfel 1682 Feb 29 14:10 DMI_D2d_z.h
+-rw-r--r-- 1 sam sam 8791 Jul 15 10:11 DMI_D2d_x.cc
+-rw-r--r-- 1 sam sam 1682 Jul 15 10:11 DMI_D2d_x.h
+-rw-r--r-- 1 sam sam 8782 Jul 15 10:11 DMI_D2d_y.cc
+-rw-r--r-- 1 sam sam 1682 Jul 15 10:11 DMI_D2d_y.h
+-rw-r--r-- 1 sam sam 8809 Jul 15 10:11 DMI_D2d_z.cc
+-rw-r--r-- 1 sam sam 1682 Jul 15 10:11 DMI_D2d_z.h
 
 == see contents of provenance-oommf-extension-dmi-d2d-HEAD.zip for additional info, examples, etc.

@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/joommf/oommf-extension-dmi-t.git
 == repo-name: oommf-extension-dmi-t
 == snap-shot-of-repo: provenance-oommf-extension-dmi-t-HEAD.zip
-== cloned-on-date: Thu Feb 29 14:10:23 2024
+== cloned-on-date: Tue Jul 15 10:11:19 2025
 == copied-files-from-path-in-repo: src/
 last commit:
 commit 097240b1236819146f6da60fd24a5e3d7163c28b
@@ -12,7 +12,7 @@ Date:   Mon May 24 12:08:28 2021 +0100
 
 == src file-list:
 total 16
--rw-r--r-- 1 pathaks cfel 9727 Feb 29 14:10 DMI_T.cc
--rw-r--r-- 1 pathaks cfel 1671 Feb 29 14:10 DMI_T.h
+-rw-r--r-- 1 sam sam 9727 Jul 15 10:11 DMI_T.cc
+-rw-r--r-- 1 sam sam 1671 Jul 15 10:11 DMI_T.h
 
 == see contents of provenance-oommf-extension-dmi-t-HEAD.zip for additional info, examples, etc.

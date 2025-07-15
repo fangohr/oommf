@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/joommf/oommf-extension-dmi-cnv.git
 == repo-name: oommf-extension-dmi-cnv
 == snap-shot-of-repo: provenance-oommf-extension-dmi-cnv-HEAD.zip
-== cloned-on-date: Thu Feb 29 14:10:21 2024
+== cloned-on-date: Tue Jul 15 10:11:18 2025
 == copied-files-from-path-in-repo: src/
 last commit:
 commit 1419e78be9ca9313a61c5b69cfb535265e624cdd
@@ -12,11 +12,11 @@ Date:   Mon May 24 12:10:04 2021 +0100
 
 == src file-list:
 total 48
--rw-r--r-- 1 pathaks cfel 8985 Feb 29 14:10 DMI_Cnv_x.cc
--rw-r--r-- 1 pathaks cfel 1803 Feb 29 14:10 DMI_Cnv_x.h
--rw-r--r-- 1 pathaks cfel 8971 Feb 29 14:10 DMI_Cnv_y.cc
--rw-r--r-- 1 pathaks cfel 1803 Feb 29 14:10 DMI_Cnv_y.h
--rw-r--r-- 1 pathaks cfel 9102 Feb 29 14:10 DMI_Cnv_z.cc
--rw-r--r-- 1 pathaks cfel 1803 Feb 29 14:10 DMI_Cnv_z.h
+-rw-r--r-- 1 sam sam 8985 Jul 15 10:11 DMI_Cnv_x.cc
+-rw-r--r-- 1 sam sam 1803 Jul 15 10:11 DMI_Cnv_x.h
+-rw-r--r-- 1 sam sam 8971 Jul 15 10:11 DMI_Cnv_y.cc
+-rw-r--r-- 1 sam sam 1803 Jul 15 10:11 DMI_Cnv_y.h
+-rw-r--r-- 1 sam sam 9102 Jul 15 10:11 DMI_Cnv_z.cc
+-rw-r--r-- 1 sam sam 1803 Jul 15 10:11 DMI_Cnv_z.h
 
 == see contents of provenance-oommf-extension-dmi-cnv-HEAD.zip for additional info, examples, etc.
