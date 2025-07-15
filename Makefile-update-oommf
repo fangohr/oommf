@@ -113,6 +113,7 @@ DMITREPO="oommf-extension-dmi-t"
 DMID2DREPO="oommf-extension-dmi-d2d"
 MELREPO="oommf-mel"
 SPINTEVOLVE3DREPO="anv-spintevolve-3d"
+OOMMF_NEW_DMI_EXTENSIONS_REPO="oommf_dmi_extensions"
 
 get-cnv:
 	python3 clone-log-and-extract-src.py https://github.com/joommf/$(DMICNVREPO).git src
@@ -129,7 +130,10 @@ get-mel:
 get-spintevolve-3d:
 	python3 clone-log-and-extract-src.py https://github.com/oommf-extensions/$(SPINTEVOLVE3DREPO).git src
 
-fetch-all-extensions: get-cnv get-d2d get-t get-mel get-spintevolve-3d
+get-new-dmi:
+	python3 clone-log-and-extract-src.py https://github.com/Micromagnetics-Chile/$(OOMMF_NEW_DMI_EXTENSIONS_REPO).git src
+
+fetch-all-extensions: get-cnv get-d2d get-t get-mel get-spintevolve-3d get-new-dmi
 
 
 #
