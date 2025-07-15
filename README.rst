@@ -100,6 +100,8 @@ different crystallographic classes:
    (`repository <https://github.com/joommf/oommf-extension-dmi-t>`__),
 3. D2d - antiskyrmion DMI
    (`repository <https://github.com/joommf/oommf-extension-dmi-d2d>`__)
+4. a generalised DMI extension supporting multiple crystallographic classes
+   (`repository <https://github.com/Micromagnetics-Chile/oommf_dmi_extensions>`__)
 
 and
 
@@ -288,8 +290,9 @@ How to cite
   refer to the “How to cite” section in the corresponding repositories for
   the particular crystallographic class
   (`Cnv <https://github.com/joommf/oommf-extension-dmi-cnv>`__,
-  `T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__, or
-  `D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__).
+  `T(O) <https://github.com/joommf/oommf-extension-dmi-t>`__,
+  `D2d <https://github.com/joommf/oommf-extension-dmi-d2d>`__, or
+  `other <https://github.com/Micromagnetics-Chile/oommf_dmi_extensions>`__).
 
 
 
