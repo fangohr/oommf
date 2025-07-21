@@ -1,0 +1,35 @@
+== git-repo-url: https://github.com/Micromagnetics-Chile/oommf_dmi_extensions.git
+== repo-name: oommf_dmi_extensions
+== snap-shot-of-repo: provenance-oommf_dmi_extensions-HEAD.zip
+== cloned-on-date: Tue Jul 15 10:11:21 2025
+== copied-files-from-path-in-repo: src/
+last commit:
+commit f3a895553a5bf5811be9324717f655d7fb694d6d
+Author: David Ignacio Cortes <davidcortesortuno@users.noreply.github.com>
+Date:   Thu Jul 10 16:02:59 2025 -0400
+
+    Update README.md
+
+== src file-list:
+total 180
+-rw-r--r-- 1 sam sam 11205 Jul 15 10:11 DMI_Cn_z.cc
+-rw-r--r-- 1 sam sam  1435 Jul 15 10:11 DMI_Cn_z.h
+-rw-r--r-- 1 sam sam 12673 Jul 15 10:11 exchange_dmi_cn_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2428 Jul 15 10:11 exchange_dmi_cn_12ngbrs.h
+-rw-r--r-- 1 sam sam 15070 Jul 15 10:11 exchange_dmi_cnv_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2784 Jul 15 10:11 exchange_dmi_cnv_12ngbrs.h
+-rw-r--r-- 1 sam sam 19889 Jul 15 10:11 exchange_dmi_cnv_12ngbrs_robinbc.cc
+-rw-r--r-- 1 sam sam  3089 Jul 15 10:11 exchange_dmi_cnv_12ngbrs_robinbc.h
+-rw-r--r-- 1 sam sam 11852 Jul 15 10:11 exchange_dmi_d2d_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2784 Jul 15 10:11 exchange_dmi_d2d_12ngbrs.h
+-rw-r--r-- 1 sam sam 12521 Jul 15 10:11 exchange_dmi_dn_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2648 Jul 15 10:11 exchange_dmi_dn_12ngbrs.h
+-rw-r--r-- 1 sam sam 12533 Jul 15 10:11 exchange_dmi_s4_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2293 Jul 15 10:11 exchange_dmi_s4_12ngbrs.h
+-rw-r--r-- 1 sam sam 12214 Jul 15 10:11 exchange_dmi_t_12ngbrs.cc
+-rw-r--r-- 1 sam sam  2635 Jul 15 10:11 exchange_dmi_t_12ngbrs.h
+-rw-r--r-- 1 sam sam 19344 Jul 15 10:11 exchange_dmi_t_12ngbrs_robinbc.cc
+-rw-r--r-- 1 sam sam  3237 Jul 15 10:11 exchange_dmi_t_12ngbrs_robinbc.h
+-rw-r--r-- 1 sam sam  3235 Jul 15 10:11 mesh_neighbors.h
+
+== see contents of provenance-oommf_dmi_extensions-HEAD.zip for additional info, examples, etc.

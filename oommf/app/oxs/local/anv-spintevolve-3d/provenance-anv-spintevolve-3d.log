@@ -1,7 +1,7 @@
 == git-repo-url: https://github.com/oommf-extensions/anv-spintevolve-3d.git
 == repo-name: anv-spintevolve-3d
 == snap-shot-of-repo: provenance-anv-spintevolve-3d-HEAD.zip
-== cloned-on-date: Wed Aug  7 17:20:03 2024
+== cloned-on-date: Tue Jul 15 10:11:20 2025
 == copied-files-from-path-in-repo: src/
 last commit:
 commit 27ff14d7842469aa3cf95031813df967c86ce9b1
@@ -27,7 +27,7 @@ Date:   Wed Aug 7 17:08:18 2024 +0200
 
 == src file-list:
 total 92
--rw-r--r-- 1 mlang cfel 80719 Aug  7 17:20 spintevolve_3d.cc
--rw-r--r-- 1 mlang cfel 11489 Aug  7 17:20 spintevolve_3d.h
+-rw-r--r-- 1 sam sam 80719 Jul 15 10:11 spintevolve_3d.cc
+-rw-r--r-- 1 sam sam 11489 Jul 15 10:11 spintevolve_3d.h
 
 == see contents of provenance-anv-spintevolve-3d-HEAD.zip for additional info, examples, etc.
